@@ -477,3 +477,72 @@ fn the_terrain_cook_is_deterministic_and_incremental() {
     assert_eq!(cooked, vec!["terrain/island.ogt".to_string()]);
     assert_ne!(read(&a), read(&b));
 }
+
+/// Terrains that share an edge (east and north of one): the same declared
+/// `height`, the same 16-bit samples on the edge, different heights inside.
+/// Each cooks its heights over the declared range, not over its own lowest
+/// and highest, so the edge decodes to the same metres in both, while each
+/// terrain's range is still its own.
+#[test]
+fn adjacent_terrains_with_equal_edge_samples_meet_exactly() {
+    let edge = |y: u32| (21_000 + (y * 1_237) % 9_000) as u16;
+    let west_at = |x: u32, y: u32| {
+        if x == 64 {
+            edge(y)
+        } else {
+            (20_000 + (x * 37 + y * 11) % 5_000) as u16
+        }
+    };
+    let west = png16(65, 65, west_at);
+    // North of west: its first row is west's last.
+    let north = png16(65, 65, |x, y| {
+        if y == 0 {
+            west_at(x, 64)
+        } else {
+            (5_000 + (x * 29 + y * 41) % 7_000) as u16
+        }
+    });
+    let east = png16(65, 65, |x, y| {
+        if x == 0 {
+            edge(y)
+        } else {
+            (30_000 + (x * 53 + y * 7) % 9_000) as u16
+        }
+    });
+    let ogt = |png: &str| {
+        format!(
+            "type terrain\nversion 1\n---\nheightmap \"{png}\"\nheight -256 768\nsize 64 64\ntile 64\n"
+        )
+    };
+    let (w, e, n) = (ogt("west.png"), ogt("east.png"), ogt("north.png"));
+    let root = project(
+        "seam",
+        &[
+            ("terrain/west.png", &west),
+            ("terrain/east.png", &east),
+            ("terrain/west.ogt", w.as_bytes()),
+            ("terrain/east.ogt", e.as_bytes()),
+            ("terrain/north.png", &north),
+            ("terrain/north.ogt", n.as_bytes()),
+        ],
+    );
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let load = |id: &str| bundle.load_terrain(id).unwrap();
+    let (tw, te) = (load("terrain/west.ogt"), load("terrain/east.ogt"));
+    let tn = load("terrain/north.ogt");
+    let (fw, fe, fn_) = (tw.field().unwrap(), te.field().unwrap(), tn.field().unwrap());
+    for y in 0..65u32 {
+        let a = fw.heights[(y * 65 + 64) as usize];
+        let b = fe.heights[(y * 65) as usize];
+        assert_eq!(a.to_bits(), b.to_bits(), "row {y}: {a} vs {b}");
+        let want = -256.0 + edge(y) as f32 / 65535.0 * 1024.0;
+        assert!((a - want).abs() < 1e-4, "row {y}: {a} vs the source's {want}");
+    }
+    // Each terrain's range is its own heights', not the declared one.
+    for (t, f) in [(&tw, &fw), (&te, &fe), (&tn, &fn_)] {
+        let (lo, hi) = f.range();
+        assert!(lo > -200.0 && hi < 500.0, "{lo} to {hi}");
+        assert_eq!(t.range, (lo, hi));
+    }
+}

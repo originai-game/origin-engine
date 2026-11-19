@@ -580,7 +580,7 @@ impl BlobKind for Lightmap {
 
 row!(
     /// The root of a terrain blob (an `.ogt` of `type terrain`).
-    TerrainMeta, "og.Terrain", 6 {
+    TerrainMeta, "og.Terrain", 7 {
         /// Extent along x and z in metres, centred on the terrain's origin.
         size_x: f32,
         size_z: f32,
@@ -592,10 +592,14 @@ row!(
         tile: u32,
         control: u32,
         levels: u32,
-        /// The lowest and highest height (metres above the origin): every
-        /// tile's 16-bit heights span this range.
+        /// The lowest and highest height (metres above the origin).
         height_min: f32,
         height_max: f32,
+        /// The range every tile's 16-bit heights span: a 16-bit
+        /// heightmap's declared `height` (so its samples keep their
+        /// steps), else `height_min` to `height_max`.
+        steps_min: f32,
+        steps_max: f32,
         layers: u32,
         /// The control map's size (0: none).
         control_width: u32,
