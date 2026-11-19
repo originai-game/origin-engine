@@ -424,21 +424,27 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
         return 9.0;
     };
     // Inside a system, through its context (og.DayNight declared among its
-    // reads); between ticks, from the world.
+    // reads; undeclared, refused and logged once: NaN, never a made-up
+    // hour); between ticks, from the world.
     if let Some(frame) = crate::engine::running(world) {
         // SAFETY: the frame is published while this system runs.
         let ctx = unsafe { frame.ctx() };
         let time = ctx.time();
-        let d = crate::host::api::running_record(
+        let Ok((l, id)) = crate::host::api::running_record(
             &eng,
             "og.DayNight",
             crate::host::codec::RecordKind::Resource,
-        )
-        .ok()
-        .and_then(|(l, id)| {
-            l.read::<record::DayNight>(&ctx.resource_bytes(id).ok()?)
-                .ok()
-        });
+        ) else {
+            return 9.0;
+        };
+        let d = match ctx.resource_bytes(id) {
+            Ok(bytes) => l.read::<record::DayNight>(&bytes).ok(),
+            Err(e) if e.kind() == og_core::ErrorKind::Access => {
+                crate::host::api::undeclared(&eng, frame.system, "read", "og.DayNight");
+                return f64::NAN;
+            }
+            Err(_) => None,
+        };
         return d.map_or(9.0, |d| f64::from(hours(&d, time.tick, time.dt)));
     }
     let Ok(w) = eng.world() else {

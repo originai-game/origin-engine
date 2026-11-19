@@ -166,22 +166,31 @@ pub fn og_atmosphere_season(world: u32) -> SeasonInfo {
     };
     // Inside a system, through its context (og.Season declared among its
     // reads, and og.DayNight for the hour); between ticks, from the world.
+    // An undeclared one is refused and logged once (the answer is then
+    // og.Season's defaults, or the day's mean temperature: a struct's
+    // fields carry no NaN to the game).
     if let Some(frame) = crate::engine::running(world) {
         // SAFETY: the frame is published while this system runs.
         let ctx = unsafe { frame.ctx() };
         let time = ctx.time();
-        let Some(s) = crate::host::api::running_record(&eng, STATE, RecordKind::Resource)
-            .ok()
-            .and_then(|(l, id)| l.read::<record::Season>(&ctx.resource_bytes(id).ok()?).ok())
-        else {
+        let read = |name: &str| -> Option<(Layout, Vec<u8>)> {
+            let (l, id) =
+                crate::host::api::running_record(&eng, name, RecordKind::Resource).ok()?;
+            match ctx.resource_bytes(id) {
+                Ok(bytes) => Some((l, bytes)),
+                Err(e) => {
+                    if e.kind() == og_core::ErrorKind::Access {
+                        crate::host::api::undeclared(&eng, frame.system, "read", name);
+                    }
+                    None
+                }
+            }
+        };
+        let Some(s) = read(STATE).and_then(|(l, b)| l.read::<record::Season>(&b).ok()) else {
             return defaults();
         };
-        let hours = crate::host::api::running_record(&eng, DAY_NIGHT, RecordKind::Resource)
-            .ok()
-            .and_then(|(l, id)| {
-                l.read::<record::DayNight>(&ctx.resource_bytes(id).ok()?)
-                    .ok()
-            })
+        let hours = read(DAY_NIGHT)
+            .and_then(|(l, b)| l.read::<record::DayNight>(&b).ok())
             .and_then(|d| day_hours(&d, time.tick, time.dt));
         return Now::of(&s, time.tick, time.dt).info(hours);
     }

@@ -6,7 +6,7 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.atmosphere.season`
 
-The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. For lamps that light at sunset, snow that should fall instead of rain, crops and festivals. Inside a system, declare og.Season among its reads, and og.DayNight for the hour's temperature.
+The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. For lamps that light at sunset, snow that should fall instead of rain, crops and festivals. Inside a system, declare og.Season among its reads, and og.DayNight for the hour's temperature: an undeclared one is refused and logged once, and the answer is then og.Season's defaults, or the day's mean temperature.
 
 See `seasons §1`.
 
@@ -24,7 +24,7 @@ Binding symbol `og_atmosphere_season` · publish builds: kept
 
 ```ogt
 fn season {
-  doc "The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. For lamps that light at sunset, snow that should fall instead of rain, crops and festivals. Inside a system, declare og.Season among its reads, and og.DayNight for the hour's temperature."
+  doc "The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. For lamps that light at sunset, snow that should fall instead of rain, crops and festivals. Inside a system, declare og.Season among its reads, and og.DayNight for the hour's temperature: an undeclared one is refused and logged once, and the answer is then og.Season's defaults, or the day's mean temperature."
   guide "seasons §1"
   param world World "The world."
   returns SeasonInfo

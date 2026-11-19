@@ -37085,13 +37085,13 @@ export declare namespace og {
    */
   namespace atmosphere {
     /**
-     * The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads.
+     * The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads: undeclared, the read is refused, logged once, and answers NaN.
      *
      * @param world The world.
      */
     function timeOfDay(world: World): number;
     /**
-     * The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. For lamps that light at sunset, snow that should fall instead of rain, crops and festivals. Inside a system, declare og.Season among its reads, and og.DayNight for the hour's temperature.
+     * The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. For lamps that light at sunset, snow that should fall instead of rain, crops and festivals. Inside a system, declare og.Season among its reads, and og.DayNight for the hour's temperature: an undeclared one is refused and logged once, and the answer is then og.Season's defaults, or the day's mean temperature.
      * See `seasons §1`.
      *
      * @param world The world.

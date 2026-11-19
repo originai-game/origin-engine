@@ -24,13 +24,19 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 
 test("the day-night clock is the start plus the simulated time times the speed", () => {
   const Clock = defineResource("DayNightClock", { hours: f32() });
-  const Read = defineSystem("DayNightReadClock", { reads: [og.DayNight], writes: [Clock] }, (_q, _t, world) => {
+  const Read = defineSystem("DayNightReadClock", { reads: [og.DayNight, og.Season], writes: [Clock] }, (_q, _t, world) => {
     must(world.resource(Clock)).hours = og.atmosphere.timeOfDay(world);
+  });
+  // Without og.DayNight among its reads the hour is refused (NaN, never a made-up 9 h), and the season's read logged.
+  let blind = 0;
+  const Blind = defineSystem("DayNightReadBlind", {}, (_q, _t, world) => {
+    blind = og.atmosphere.timeOfDay(world);
+    og.atmosphere.season(world);
   });
   const engine = start(
     og.game({
       resources: [Clock],
-      systems: [Read],
+      systems: [Read, Blind],
       start: (world: World) => {
         const d = must(world.resource(og.DayNight));
         d.enabled = true;
@@ -43,6 +49,9 @@ test("the day-night clock is the start plus the simulated time times the speed",
   // 119 ticks of 1/60 s at one game hour per second, past midnight.
   expect(og.atmosphere.timeOfDay(engine.world)).toBeCloseTo((23 + 120 / 60) % 24, 4);
   expect(must(engine.world.resource(Clock)).hours).toBeCloseTo((23 + 119 / 60) % 24, 4);
+  expect(blind).toBeNaN();
+  const refused = engine.takeLog().filter((l) => l.warning && l.text.includes("DayNightReadBlind"));
+  expect(refused.map((l) => l.text.match(/'og\.\w+'/)?.[0]).sort()).toEqual(["'og.DayNight'", "'og.Season'"]);
 });
 
 test("get answers the sun og.DayNight drives as it is drawn, and og.Time whole", () => {

@@ -6,7 +6,7 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.atmosphere.timeOfDay`
 
-The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads.
+The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads: undeclared, the read is refused, logged once, and answers NaN.
 
 ```ts
 og.atmosphere.timeOfDay(world: World): number
@@ -22,7 +22,7 @@ Binding symbol `og_atmosphere_time_of_day` · publish builds: kept
 
 ```ogt
 fn timeOfDay {
-  doc "The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads."
+  doc "The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads: undeclared, the read is refused, logged once, and answers NaN."
   param world World "The world."
   returns f32
 }
