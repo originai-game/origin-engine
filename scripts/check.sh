@@ -21,6 +21,9 @@ fi
 og_lock_acquire "$OG_TARGET_DIR" "gate $* ($PWD)"
 export OG_TARGET_DIR
 export OG_GATE_TREE="$(og_worktree_tree)"
+# Pinned binaries (og-assets.json) are installed before any step reads or compiles them; a
+# verified cache makes this offline and takes seconds (docs/ci.md §The asset store).
+bun scripts/assets.ts ensure >/dev/null
 # Jobs per step follow the machine: its cores shared between the gates
 # admitted now and each gate's concurrent steps, never fewer than 2. An idle
 # machine gives one gate most of its cores; a busy one falls back to 2.

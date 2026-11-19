@@ -8,6 +8,10 @@ clean() {
   [ -z "$(git status --porcelain)" ] || {
     echo 'land: commit or remove working-tree changes first' >&2; exit 1;
   }
+  # Pinned assets are ignored by Git: a re-recorded reference shows only here.
+  bun scripts/assets.ts status >/dev/null || {
+    echo 'land: pin the changed assets (bun scripts/assets.ts pin) and push them, or restore them (ensure)' >&2; exit 1;
+  }
 }
 
 # Conservative shared inputs, including all generated/drift-checked outputs.

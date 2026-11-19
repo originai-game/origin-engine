@@ -88,6 +88,8 @@ if ! command -v cargo-nextest >/dev/null; then
 fi
 step scripts/install-tools.sh
 step cargo fetch --locked
+# The pinned binaries (og-assets.json) that tests compile in and the gate reads.
+step bun scripts/assets.ts ensure
 step bun install --cwd tests/install --frozen-lockfile
 # og check's tsrs comes from scripts/install-tools.sh above. Cache the tsgo
 # check-conformance compares it with (TSGO_VERSION in crates/og-cli/src/commands/check.rs).

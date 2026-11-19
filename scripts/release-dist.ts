@@ -509,7 +509,9 @@ async function main() {
   const checkoutVersion = (JSON.parse(readFileSync(join(ROOT, "packages/engine/package.json"), "utf8")) as { version: string }).version;
   const here = !registry && !opt("--revision") && version === checkoutVersion;
   const revision = opt("--revision") ?? again?.revision ?? (here ? git("rev-parse", "HEAD") : revisionOf(version));
-  const dirty = again ? again.dirty : here && git("status", "--porcelain") !== "";
+  // Pinned assets are ignored by Git, so a pinned file that is not its pin is dirty too (scripts/assets.ts status).
+  const dirty = again ? again.dirty : here && (git("status", "--porcelain") !== ""
+    || spawnSync("bun", [join(ROOT, "scripts/assets.ts"), "status"], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] }).status !== 0);
   const work = mkdtempSync(join(dir, ".work-"));
   try {
     // What every target shares, unpacked once.
