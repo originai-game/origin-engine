@@ -3095,6 +3095,7 @@ dependencies = [
  "og-probe",
  "og-render",
  "og-runtime",
+ "og-shared",
  "og-ui",
  "pollster",
  "serde_json",
@@ -3349,10 +3350,13 @@ dependencies = [
  "og-core",
  "rayon",
  "ring",
+ "rustls",
  "serde_json",
  "tokio",
  "tokio-tungstenite",
+ "tungstenite",
  "ureq",
+ "webpki-roots 1.0.12",
 ]
 
 [[package]]

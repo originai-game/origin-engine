@@ -49,7 +49,7 @@ commands:
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
       [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--room <ws url>]
-      [--json] [--no-check] [--require-checked]
+      [--shared <ws url> [--shared-token-file <f>]] [--json] [--no-check] [--require-checked]
                       cook, type-check, bundle and run the game on the native host with the probe;
                       outputs of screenshot/dump_* land in --out (default <project>/og-out)
                       --require-checked exits 1 when GPU checks remain unchecked (default: warning)

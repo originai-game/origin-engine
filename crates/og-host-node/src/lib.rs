@@ -47,6 +47,7 @@ mod render;
 mod replay;
 mod resident;
 mod room;
+mod shared;
 #[cfg(not(feature = "publish"))]
 mod ui_check;
 mod wire;

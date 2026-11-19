@@ -9,12 +9,16 @@
 //! - [`config`]: the `world-server` `.ogt` file.
 //! - `server` and `bots` (native): `og world-server` and the load test.
 //!
+//! - `client` (native, the `client` feature): one connection to a server.
+//!
 //! Everything but `protocol`, `view` and `wire` is the `server` feature's.
 
 #[cfg(feature = "server")]
 pub mod auth;
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 pub mod bots;
+#[cfg(all(feature = "client", not(target_arch = "wasm32")))]
+pub mod client;
 #[cfg(feature = "server")]
 pub mod config;
 pub mod protocol;
