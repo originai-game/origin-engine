@@ -1,17 +1,17 @@
 // The general components' review sheet (docs/ui.md §6.2): the store page
 // (shop, purchase confirmation, login calendar), the progress page
-// (achievements, daily quests), the social page (chat, friends) and the
+// (achievements, daily quests), the purchase page (each confirmation state), the season page (pass and reveal), the social page (chat, friends) and the
 // states page (each member empty, loading, failed or refused), dressed by a
 // style pack. The pages use the built-in components by name, as a game
 // does, with fixture stores; loading a page loads them.
 //
-// Commands: style:<fantasy>, page:<store|progress|social|states|rewards>,
+// Commands: style:<fantasy>, page:<store|purchase|progress|social|states|rewards|season>,
 // reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
-import { INK_NAMES, PROGRESS, REWARDS, SOCIAL, STATES, STORE } from "./fixtures.ts";
+import { INK_NAMES, ITEM_NAMES, PROGRESS, REWARDS, SEASON, SOCIAL, STATES, STORE } from "./fixtures.ts";
 
-const PAGES = ["store", "progress", "social", "states", "rewards"] as const;
+const PAGES = ["store", "purchase", "progress", "social", "states", "rewards", "season"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = [
@@ -20,6 +20,8 @@ const DOCUMENTS = [
   "ui/social.svelte",
   "ui/states.svelte",
   "ui/rewards.svelte",
+  "ui/purchase.svelte",
+  "ui/season.svelte",
   "ui/sheet.svelte",
 ];
 
@@ -28,19 +30,21 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what
   return r.value;
 }
 
-/** The style and the icon set in one configure, so neither resets the other. */
+/** The style and both icon sets in one configure, so neither resets the other:
+ * the store's painted item art (`item-<name>`, sheet only) and the ink icons. */
 function setStyle(world: World, name: string): void {
+  const items = must(og.load.texture(world, "art/shop-items.png"), "shop items");
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
+  const icons = { texture: items, columns: 8, rows: 3, pictures: true, names: ITEM_NAMES.map((n) => `item-${n}`) };
   const fallbackIcons = { texture: ink, columns: 8, rows: 4, names: INK_NAMES };
-  if (name === "default") {
-    og.ui.configure(world, { style: null, font: null, fallbackIcons });
-  } else og.ui.configure(world, { style: must(og.load.style(world, `@styles/${name}`), name), font: null, fallbackIcons });
+  const style = name === "default" ? null : must(og.load.style(world, `@styles/${name}`), name);
+  og.ui.configure(world, { style, font: null, icons, fallbackIcons });
 }
 
 /** Mounts the sheet, its stores the fixtures and the page shown. */
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const data = { ...STORE, ...PROGRESS, ...SOCIAL, ...STATES, ...REWARDS, page: "store" };
+  const data = { ...STORE, ...PROGRESS, ...SOCIAL, ...STATES, ...REWARDS, ...SEASON, page: "store" };
   const stores = Object.fromEntries(Object.entries(data).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
   must(scope.mount("sheet", "GeneralSheet", stores), "mount");
@@ -55,6 +59,9 @@ export default og.game({
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.04, g: 0.03, b: 0.02 };
     setStyle(world, "fantasy");
+    // The shop family's strings in the review's CJK locale, as a game ships
+    // them (English comes with the kit).
+    must(og.i18n.load(world, "strings/zh-CN.ogt"), "zh-CN");
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   ui: show,

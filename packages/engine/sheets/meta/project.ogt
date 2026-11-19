@@ -18,6 +18,8 @@ ui {
   screen "social-default" "style:default;page:social"
   screen "states-default" "style:default;page:states"
   screen "rewards-default" "style:default;page:rewards"
+  screen "purchase-default" "style:default;page:purchase"
+  screen "season-default" "style:default;page:season"
   screen "store-fantasy" "style:fantasy;page:store"
   screen "progress-fantasy" "style:fantasy;page:progress"
   screen "social-fantasy" "style:fantasy;page:social"

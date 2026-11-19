@@ -12,53 +12,64 @@ export const INK_NAMES = [
   "flag", "apple", "leaf", "fire", "drop", "skull", "music", "person",
 ];
 
-const offer = (id: string, name: string, icon: string, detail: string, more: Partial<{ badge: string; featured: boolean; soldOut: boolean; owned: boolean; affordable: boolean }> = {}) =>
-  ({ id, name, icon, detail, badge: "", featured: false, soldOut: false, owned: false, affordable: true, ...more });
+/** The store's painted item art (art/shop-items.png, 8 × 3, sample art only). */
+export const ITEM_NAMES = [
+  "blade", "potion", "cloak", "key", "shield", "scroll", "ring", "ember",
+  "fire", "amulet", "moonstone", "purse", "herb", "axe", "lantern", "bow",
+  "coin", "gem",
+];
+
+const offer = (id: string, name: string, icon: string, detail: string, rarity: string, more: Partial<{ badge: string; badgeTone: string; featured: boolean; soldOut: boolean; owned: boolean; affordable: boolean }> = {}) =>
+  ({ id, name, icon: `item-${icon}`, detail, rarity, badge: "", badgeTone: "", featured: false, soldOut: false, owned: false, affordable: true, ...more });
 const price = (offer: string, currency: "gold" | "gems" | "tokens", amount: string, more: Partial<{ was: string; short: boolean }> = {}) => ({
   id: `${offer}-${currency}`, offer, amount, was: "", short: false, ...more,
-  icon: { gold: "coin", gems: "gem", tokens: "star" }[currency],
+  icon: { gold: "item-coin", gems: "item-gem", tokens: "star" }[currency],
   label: { gold: "Gold", gems: "Gems", tokens: "Tokens" }[currency],
 });
 
 export const STORE = {
   shopTitle: "",
+  shopKicker: "Store",
   shopWallet: [
-    { id: "gold", icon: "coin", label: "Gold", amount: "12,450" },
-    { id: "gems", icon: "gem", label: "Gems", amount: "320" },
+    { id: "gold", icon: "item-coin", label: "Gold", amount: "12,450" },
+    { id: "gems", icon: "item-gem", label: "Gems", amount: "3,200" },
     { id: "tokens", icon: "star", label: "Tokens", amount: "8" },
   ],
   shopTabs: [
-    { id: "featured", label: "Featured" }, { id: "items", label: "Items" }, { id: "looks", label: "Looks" },
-    { id: "bundles", label: "Bundles" }, { id: "gems", label: "Gems" },
+    { id: "featured", label: "Featured", count: 8 }, { id: "items", label: "Items", count: 12 }, { id: "looks", label: "Looks", count: 8 },
+    { id: "bundles", label: "Bundles", count: 2 }, { id: "seasonal", label: "Seasonal", count: 5 },
   ],
   shopTab: "featured",
   shopOffers: [
-    offer("bundle", "Founder Bundle", "crown", "3 items and 500 gems", { badge: "-30%", featured: true }),
-    offer("potion", "Potion Pack", "potion", "x10"),
-    offer("cape", "Ember Cape", "fire", "Look", { badge: "New", owned: true }),
-    offer("key", "Vault Key", "key", "x1", { soldOut: true }),
-    offer("mount", "Dragon Mount", "star", "Mount", { affordable: false }),
-    offer("elixir", "Elixir of Swiftness", "drop", "x3, 10 minutes each"),
-    offer("shield", "Oak Shield", "shield", "Gear", { badge: "2 left" }),
-    offer("bombs", "Powder Bombs", "bomb", "x5"),
+    offer("bundle", "Founder Bundle", "blade", "3 items and 500 gems", "legendary", { badge: "−30%", featured: true }),
+    offer("potion", "Potion Pack", "potion", "×10", "uncommon"),
+    offer("cape", "Ember Cape", "cloak", "Look", "epic", { badge: "New", badgeTone: "success", owned: true }),
+    offer("key", "Vault Key", "key", "×1", "rare", { soldOut: true }),
+    offer("shield", "Dragonscale Shield", "shield", "Shield", "legendary", { affordable: false }),
+    offer("map", "Map of the Reaches", "scroll", "Reveals the east", "common"),
+    offer("band", "Moonlit Band", "ring", "Ring · +4 Intellect", "rare", { badge: "2 left" }),
+    offer("lantern", "Storm Lantern", "lantern", "Lights the deep roads", "uncommon"),
   ],
   shopPrices: [
     price("bundle", "gems", "700", { was: "1,000" }),
     price("potion", "gold", "1,200"), price("potion", "gems", "40"),
     price("cape", "gems", "250"),
     price("key", "gold", "5,000"),
-    price("mount", "gems", "2,400", { short: true }), price("mount", "tokens", "12", { short: true }),
-    price("elixir", "gold", "900"),
-    price("shield", "gold", "3,200"), price("shield", "tokens", "2"),
-    price("bombs", "gold", "650"),
+    price("shield", "gems", "4,800", { short: true }),
+    price("map", "gold", "800"),
+    price("band", "gold", "3,250"), price("band", "tokens", "2"),
+    price("lantern", "gold", "650"),
   ],
-  shopSelected: "potion",
+  shopSelected: "bundle",
 
-  confirmName: "Potion Pack",
-  confirmIcon: "potion",
-  confirmDetail: "Ten healing potions, each restoring 50 health.",
+  // The confirmation the selected offer asked for: its own currency, the
+  // balance after from that wallet (3,200 − 700 = 2,500).
+  confirmName: "Founder Bundle",
+  confirmIcon: "item-blade",
+  confirmRarity: "legendary",
+  confirmDetail: "3 items and 500 gems",
   confirmPrices: [
-    { id: "gold", icon: "coin", label: "Gold", amount: "1,200", was: "", after: "12,450 → 11,250", short: false },
+    { id: "gems", icon: "item-gem", label: "Gems", amount: "700", was: "1,000", after: "3,200 → 2,500", short: false, missing: "" },
   ],
 };
 
@@ -163,7 +174,22 @@ export const STATES = {
   yes: true,
   world: "world",
   shopError: "The shop could not be reached. Check your connection.",
+  // The purchase page: a failed purchase (the error strip after a Buy) and a short one (no
+  // strip, Buy disabled, the gem row says how many more), apart.
   confirmError: "The purchase did not go through. Nothing was charged.",
+  failName: "Potion Pack",
+  failIcon: "item-potion",
+  failRarity: "uncommon",
+  failPrices: [
+    { id: "gold", icon: "item-coin", label: "Gold", amount: "1,200", was: "", after: "12,450 → 11,250", short: false, missing: "" },
+  ],
+  shortName: "Dragonscale Shield",
+  shortIcon: "item-shield",
+  shortRarity: "legendary",
+  shortDetail: "A shield for the long roads",
+  shortPrices: [
+    { id: "gems", icon: "item-gem", label: "Gems", amount: "4,800", was: "", after: "", short: true, missing: "1,600" },
+  ],
   chatMutedChannels: [{ id: "world", label: "World", unread: 0 }],
   chatMuted: [msg("x1", "system", "", "20:20", "You are muted for 5 minutes.")],
   chatMutedNotice: "You are muted for 5 minutes.",
@@ -175,4 +201,42 @@ export const STATES = {
   ],
   rewardsClaimedRefresh: "Next reward in 23h 10m",
   questsEmptyRefresh: "Resets in 23h 59m",
+};
+
+/** The season page: a pass without premium (its tiers read Locked, the free
+ * tier 3 waits), and a chest sealed and revealed. */
+export const SEASON = {
+  passSeason: "Season of Embers",
+  passRefresh: "Ends in 12 days",
+  passLevel: "3",
+  passProgress: 0.48,
+  passProgressText: "240 / 500 XP",
+  passUpgrade: "Get premium",
+  passRewards: [
+    { id: "shard", tier: "1", premium: true, name: "Ember shard", icon: "item-ember", amount: "×5", detail: "", state: "available" },
+    { id: "cloak", tier: "2", premium: true, name: "Ashen Cloak", icon: "item-cloak", amount: "Look", detail: "", state: "available" },
+    { id: "flame", tier: "3", premium: true, name: "Phoenix flame", icon: "item-fire", amount: "×2", detail: "", state: "available" },
+    { id: "blade", tier: "4", premium: true, name: "Ember Blade", icon: "item-blade", amount: "Skin", detail: "", state: "locked" },
+    { id: "amulet", tier: "5", premium: true, name: "Sun Amulet", icon: "item-amulet", amount: "×1", detail: "", state: "locked" },
+    { id: "stone", tier: "6", premium: true, name: "Moonstone", icon: "item-moonstone", amount: "×20", detail: "", state: "locked" },
+    { id: "gold", tier: "1", premium: false, name: "Gold", icon: "item-purse", amount: "500", detail: "", state: "claimed" },
+    { id: "keys", tier: "2", premium: false, name: "Chest keys", icon: "item-key", amount: "×3", detail: "", state: "claimed" },
+    { id: "potions", tier: "3", premium: false, name: "Potions", icon: "item-potion", amount: "×5", detail: "", state: "available" },
+    { id: "leaf", tier: "4", premium: false, name: "Silverleaf", icon: "item-herb", amount: "×10", detail: "", state: "locked" },
+    { id: "scroll", tier: "5", premium: false, name: "Scroll", icon: "item-scroll", amount: "×1", detail: "", state: "locked" },
+    { id: "ring", tier: "6", premium: false, name: "Ring", icon: "item-ring", amount: "×1", detail: "", state: "locked" },
+  ],
+  revealTitle: "Abbey chest",
+  revealKicker: "Expedition rewards",
+  revealFound: "Expedition rewards · 4 found",
+  revealBody: "Open the chest to see what your party recovered.",
+  revealIcon: "item-purse",
+  revealSealed: "sealed",
+  revealRevealed: "revealed",
+  revealRewards: [
+    { id: "blade", name: "Emberwake Blade", icon: "item-blade", amount: "", rarity: "legendary", fresh: true },
+    { id: "band", name: "Moonlit Band", icon: "item-ring", amount: "", rarity: "rare", fresh: true },
+    { id: "draught", name: "Healing draught", icon: "item-potion", amount: "×3", rarity: "uncommon", fresh: false },
+    { id: "gold", name: "Gold", icon: "item-purse", amount: "×120", rarity: "common", fresh: false },
+  ],
 };

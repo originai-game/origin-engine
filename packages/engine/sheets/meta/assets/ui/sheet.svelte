@@ -7,6 +7,10 @@
     <GeneralSocialPage />
   {:else if $page == 'rewards'}
     <GeneralRewardsPage />
+  {:else if $page == 'purchase'}
+    <GeneralPurchasePage />
+  {:else if $page == 'season'}
+    <GeneralSeasonPage />
   {:else if $page == 'states'}
     <GeneralStatesPage />
   {:else}
