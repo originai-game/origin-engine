@@ -25,15 +25,16 @@
 
 use crate::engine::{Engine, engine, running};
 use crate::host::codec::{Layout, RecordKind};
-use crate::host::wire::{self, SharedRemote, SharedState, SharedStatus, record};
+use crate::host::wire::{self, SharedObjectInfo, SharedRemote, SharedState, SharedStatus, record};
 use og_ecs::{Entity, QueryDesc, SystemContext, SystemDesc, World};
 use og_shared::protocol::{
-    Authority, AvatarState, ClientMsg, Hello, MAX_EVENT, MAX_FIELDS, PROTOCOL, ServerMsg,
+    Authority, AvatarState, ClientMsg, Hello, MAX_EVENT, MAX_FIELDS, MAX_OBJECT, ObjectOp,
+    PROTOCOL, Place, ServerMsg, SharedObject,
 };
 use og_shared::view::{Proposer, View};
 use serde_json::{Value, json};
 use std::cell::RefCell;
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 pub(crate) const SYSTEM: &str = "og.shared";
 const WORLD: &str = "og.SharedWorld";
@@ -44,8 +45,12 @@ const LEFT: &str = "og.SharedLeft";
 const ENTERED: &str = "og.PresenceEntered";
 const PRESENCE_LEFT: &str = "og.PresenceLeft";
 const CORRECTED: &str = "og.SharedCorrected";
+const OBJECT: &str = "og.SharedObject";
+const OBJECT_CHANGED: &str = "og.SharedObjectChanged";
+const OBJECT_GONE: &str = "og.SharedObjectGone";
+const OP_ANSWERED: &str = "og.SharedOpAnswered";
 /// Registered together (crate::engine::lazy).
-pub(crate) const RECORDS: [&str; 8] = [
+pub(crate) const RECORDS: [&str; 12] = [
     WORLD,
     AVATAR,
     REMOTE,
@@ -54,6 +59,10 @@ pub(crate) const RECORDS: [&str; 8] = [
     ENTERED,
     PRESENCE_LEFT,
     CORRECTED,
+    OBJECT,
+    OBJECT_CHANGED,
+    OBJECT_GONE,
+    OP_ANSWERED,
 ];
 const TRANSFORM: &str = "og.Transform";
 const ORIGIN: &str = "og.WorldOrigin";
@@ -91,6 +100,8 @@ pub(crate) struct Session {
     // The shape (og.shared.shape).
     avatar: String,
     avatar_bytes: usize,
+    /// The game's object component (og.shared.shape's `object`).
+    object: String,
     event: String,
     fingerprint: u64,
     /// Delivered events waiting for the next tick, and ops for the host.
@@ -118,6 +129,13 @@ pub(crate) struct Session {
     /// overtake the enters on the stream.
     resumed: BTreeMap<String, Remote>,
     resumed_until: u32,
+    /// The shared objects held, by key: their entity and version.
+    objects: BTreeMap<String, (Entity, u32)>,
+    /// After a welcome: the keys the server sent again; at `resumed_until`
+    /// the held objects not among them have left.
+    objects_fresh: Option<BTreeSet<String>>,
+    /// og.shared.put and og.shared.remove's last op number.
+    ops: u32,
     /// Asked for a connection and not answered yet.
     asking: bool,
     remotes: BTreeMap<u16, Remote>,
@@ -321,11 +339,20 @@ pub fn og_shared_shape(world: u32, desc: Option<String>) -> Result<(), String> {
             }),
         }
     };
-    let (avatar, event) = (name(&d.avatar, "avatar")?, name(&d.event, "event")?);
+    let (avatar, object, event) = (
+        name(&d.avatar, "avatar")?,
+        name(&d.object, "object")?,
+        name(&d.event, "event")?,
+    );
     let avatar_layout = if avatar.is_empty() {
         None
     } else {
         Some(game_component(&eng, &avatar, "avatar", MAX_FIELDS)?)
+    };
+    let object_layout = if object.is_empty() {
+        None
+    } else {
+        Some(game_component(&eng, &object, "object", MAX_OBJECT)?)
     };
     let event_layout = if event.is_empty() {
         None
@@ -334,11 +361,17 @@ pub fn og_shared_shape(world: u32, desc: Option<String>) -> Result<(), String> {
     };
     ensure_records(&eng, w)?;
     grant_origin(w)?;
-    if !avatar.is_empty() {
-        w.grant(SYSTEM, &[avatar.as_str()])
-            .map_err(|e| e.reason().to_string())?;
+    for c in [&avatar, &object] {
+        if !c.is_empty() {
+            w.grant(SYSTEM, &[c.as_str()])
+                .map_err(|e| e.reason().to_string())?;
+        }
     }
-    let parts: Vec<&Layout> = avatar_layout.iter().chain(event_layout.iter()).collect();
+    let parts: Vec<&Layout> = avatar_layout
+        .iter()
+        .chain(object_layout.iter())
+        .chain(event_layout.iter())
+        .collect();
     with(world, |s| {
         s.fingerprint = if parts.is_empty() {
             0
@@ -347,6 +380,7 @@ pub fn og_shared_shape(world: u32, desc: Option<String>) -> Result<(), String> {
         };
         s.avatar_bytes = avatar_layout.as_ref().map_or(0, Layout::size);
         s.avatar = avatar;
+        s.object = object;
         s.event = event;
     });
     Ok(())
@@ -515,6 +549,114 @@ pub fn og_shared_events(world: u32, component: String) -> Result<Value, String> 
     Ok(Value::Array(out))
 }
 
+/// A joined session's next op number, after the checks put and remove share.
+fn op_ready(world: u32, key: &str, what: &str) -> Result<(), String> {
+    if !og_shared::protocol::object_key(key) {
+        return Err(format!(
+            "og.shared.{what}: '{key}' is not a key: 1 to 64 of letters, digits, `.`, `_`, `-`, `:` and `/`"
+        ));
+    }
+    if !with(world, |s| s.state == SharedState::Joined && s.open) {
+        return Err(format!(
+            "og.shared.{what}: not joined (og.SharedJoined has not arrived)"
+        ));
+    }
+    Ok(())
+}
+
+fn send_op(world: u32, key: String, expect: Option<u32>, set: Option<(Place, Vec<u8>)>) -> u32 {
+    with(world, |s| {
+        s.ops += 1;
+        let seq = s.ops;
+        s.send(
+            ClientMsg::Object(ObjectOp {
+                seq,
+                key,
+                expect,
+                set,
+            })
+            .to_bytes(),
+        );
+        seq
+    })
+}
+
+pub fn og_shared_put(
+    world: u32,
+    key: String,
+    component: String,
+    value: String,
+    desc: Option<String>,
+) -> Result<u32, String> {
+    let eng = engine_of(world)?;
+    let name = token_name(&component);
+    let (object, cs) = with(world, |s| (s.object.clone(), s.cell_size));
+    if object.is_empty() {
+        return Err(
+            "og.shared.put needs an object component: og.shared.shape(world, { object: MyObject })"
+                .into(),
+        );
+    }
+    if name != object {
+        return Err(format!(
+            "og.shared.put takes '{object}', og.shared.shape's object; not '{name}'"
+        ));
+    }
+    op_ready(world, &key, "put")?;
+    // Read as f64: a place is exact at any distance.
+    let d: Value = match desc.as_deref() {
+        None | Some("") | Some("null") => Value::Null,
+        Some(t) => serde_json::from_str(t).map_err(|e| format!("desc: {e}"))?,
+    };
+    let p = &d["position"];
+    let at = [&p["x"], &p["y"], &p["z"]].map(|v| v.as_f64().unwrap_or(0.0));
+    let yaw = d["yaw"].as_f64().unwrap_or(0.0);
+    if !at.iter().chain([&yaw]).all(|v| v.is_finite()) {
+        return Err(format!("og.shared.put: the place is not finite: {d}"));
+    }
+    let expect = match &d["expect"] {
+        Value::Null => None,
+        v => Some(
+            v.as_u64()
+                .and_then(|v| u32::try_from(v).ok())
+                .ok_or_else(|| format!("og.shared.put: expect is a version, got {v}"))?,
+        ),
+    };
+    let v: Value = serde_json::from_str(&value).map_err(|e| format!("value: {e}"))?;
+    let Some(layout) = eng.state.borrow().layouts.get(&name).cloned() else {
+        return Err(format!("'{name}' is not registered in this world"));
+    };
+    let bytes = layout.encode(None, Some(&v))?;
+    let place = Place::from_world(cs, at, yaw as f32);
+    Ok(send_op(world, key, expect, Some((place, bytes))))
+}
+
+pub fn og_shared_remove(world: u32, key: String, expect: String) -> Result<u32, String> {
+    op_ready(world, &key, "remove")?;
+    let expect = match serde_json::from_str::<Value>(&expect).unwrap_or(Value::Null) {
+        Value::Null => None,
+        v => Some(
+            v.as_u64()
+                .and_then(|v| u32::try_from(v).ok())
+                .ok_or_else(|| format!("og.shared.remove: expect is a version, got {v}"))?,
+        ),
+    };
+    Ok(send_op(world, key, expect, None))
+}
+
+pub fn og_shared_object(world: u32, entity: f64) -> Option<SharedObjectInfo> {
+    let bits = entity as u64;
+    with(world, |s| {
+        s.objects
+            .iter()
+            .find(|(_, (e, _))| e.to_bits() == bits)
+            .map(|(k, (_, v))| SharedObjectInfo {
+                key: k.clone(),
+                version: *v,
+            })
+    })
+}
+
 pub fn og_shared_remote(world: u32, entity: f64) -> Option<SharedRemote> {
     let bits = entity as u64;
     with(world, |s| {
@@ -655,15 +797,17 @@ fn system(ctx: &mut SystemContext<'_>, engine_id: u32) -> og_core::Result<()> {
             let st = eng.state.borrow();
             let mut names: Vec<&str> = RECORDS.to_vec();
             names.extend([TRANSFORM, ORIGIN]);
-            let avatar = with(engine_id, |s| s.avatar.clone());
+            let (avatar, object) = with(engine_id, |s| (s.avatar.clone(), s.object.clone()));
             let mut m: BTreeMap<String, Layout> = names
                 .iter()
                 .filter_map(|n| st.layouts.get(*n).map(|l| (n.to_string(), l.clone())))
                 .collect();
-            if !avatar.is_empty()
-                && let Some(l) = st.layouts.get(&avatar)
-            {
-                m.insert(avatar, l.clone());
+            for c in [avatar, object] {
+                if !c.is_empty()
+                    && let Some(l) = st.layouts.get(&c)
+                {
+                    m.insert(c, l.clone());
+                }
             }
             m
         },
@@ -702,6 +846,26 @@ fn system(ctx: &mut SystemContext<'_>, engine_id: u32) -> og_core::Result<()> {
 
     // Avatars held across a reconnect that the server did not enter again
     // within a second of server ticks have left.
+    let stale: Vec<(String, Entity)> = with(engine_id, |s| {
+        if s.newest < s.resumed_until {
+            return Vec::new();
+        }
+        let Some(fresh) = s.objects_fresh.take() else {
+            return Vec::new();
+        };
+        let gone: Vec<String> = s
+            .objects
+            .keys()
+            .filter(|k| !fresh.contains(*k))
+            .cloned()
+            .collect();
+        gone.into_iter()
+            .filter_map(|k| s.objects.remove(&k).map(|(e, _)| (k, e)))
+            .collect()
+    });
+    for (key, e) in stale {
+        object_gone(ctx, &recs, &key, e)?;
+    }
     let gone: Vec<Remote> = with(engine_id, |s| {
         if s.resumed.is_empty() || s.newest < s.resumed_until {
             return Vec::new();
@@ -793,7 +957,76 @@ fn clear_remotes(ctx: &mut SystemContext<'_>, engine_id: u32, recs: &Recs) -> og
             &json!({ "entity": r.entity.to_bits(), "player": short(&r.player) }),
         )?;
     }
+    let objects = with(engine_id, |s| {
+        s.objects_fresh = None;
+        std::mem::take(&mut s.objects)
+    });
+    for (key, (e, _)) in objects {
+        object_gone(ctx, recs, &key, e)?;
+    }
     Ok(())
+}
+
+fn object_gone(ctx: &mut SystemContext<'_>, recs: &Recs, key: &str, e: Entity) -> og_core::Result<()> {
+    let _ = ctx.despawn(e);
+    recs.event(
+        ctx,
+        OBJECT_GONE,
+        &json!({ "entity": e.to_bits(), "key": short(key) }),
+    )
+}
+
+/// A shared object's state on its entity: spawned, or written over.
+fn object_in(
+    ctx: &mut SystemContext<'_>,
+    engine_id: u32,
+    recs: &Recs,
+    transform: &(og_ecs::SchemaId, Layout),
+    origin: [f64; 3],
+    o: SharedObject,
+) -> og_core::Result<()> {
+    let (cs, object, held) = with(engine_id, |s| {
+        if let Some(f) = s.objects_fresh.as_mut() {
+            f.insert(o.key.clone());
+        }
+        (s.cell_size, s.object.clone(), s.objects.get(&o.key).map(|(e, _)| *e))
+    });
+    let p = o.place.position(cs);
+    let at = json!({
+        "position": { "x": p[0] - origin[0], "y": p[1] - origin[1], "z": p[2] - origin[2] },
+        "quaternion": quat_of(o.place.yaw()),
+    });
+    let mut parts = vec![
+        (transform.0, transform.1.encode(None, Some(&at)).map_err(invalid)?),
+        (
+            ctx.id_by_name(OBJECT)?,
+            recs.get(OBJECT)?
+                .encode(None, Some(&json!({ "version": o.version })))
+                .map_err(invalid)?,
+        ),
+    ];
+    if !object.is_empty()
+        && let Some(l) = recs.layouts.get(&object)
+    {
+        let mut b = o.data.clone();
+        b.resize(l.size(), 0);
+        parts.push((ctx.id_by_name(&object)?, b));
+    }
+    let entity = match held {
+        Some(e) => {
+            for (id, b) in &parts {
+                ctx.set_bytes(e, *id, b)?;
+            }
+            e
+        }
+        None => ctx.spawn_bytes(parts)?,
+    };
+    with(engine_id, |s| s.objects.insert(o.key.clone(), (entity, o.version)));
+    recs.event(
+        ctx,
+        OBJECT_CHANGED,
+        &json!({ "entity": entity.to_bits(), "key": short(&o.key), "version": o.version }),
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -972,6 +1205,7 @@ fn message(
             with(engine_id, |s| {
                 s.clock = None;
                 s.resumed_until = w.tick + u32::from(w.tick_hz).max(1);
+                s.objects_fresh = Some(BTreeSet::new());
                 let held = std::mem::take(&mut s.remotes);
                 s.resumed
                     .extend(held.into_values().map(|r| (r.player.clone(), r)));
@@ -1191,8 +1425,21 @@ fn message(
             });
         }
         ServerMsg::Pong { .. } => {}
-        // Shared objects reach the API with og.shared.put.
-        ServerMsg::Object(_) | ServerMsg::ObjectGone { .. } | ServerMsg::Op { .. } => {}
+        ServerMsg::Object(o) => object_in(ctx, engine_id, recs, transform, origin, o)?,
+        ServerMsg::ObjectGone { key } => {
+            if let Some((e, _)) = with(engine_id, |s| s.objects.remove(&key)) {
+                object_gone(ctx, recs, &key, e)?;
+            }
+        }
+        ServerMsg::Op {
+            seq,
+            taken,
+            version,
+        } => recs.event(
+            ctx,
+            OP_ANSWERED,
+            &json!({ "op": seq, "taken": taken, "version": version }),
+        )?,
     }
     Ok(())
 }

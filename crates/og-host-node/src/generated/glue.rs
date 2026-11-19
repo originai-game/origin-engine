@@ -3884,6 +3884,24 @@ pub fn og_shared_events(env: Env, world: u32, component: String) -> String {
     <Host as SharedApi>::og_shared_events(&Host, world, component)
 }
 
+#[napi(js_name = "og_shared_put")]
+pub fn og_shared_put(env: Env, world: u32, key: String, component: String, value: String, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_put(&Host, world, key, component, value, desc)
+}
+
+#[napi(js_name = "og_shared_remove")]
+pub fn og_shared_remove(env: Env, world: u32, key: String, expect: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_remove(&Host, world, key, expect)
+}
+
+#[napi(js_name = "og_shared_object")]
+pub fn og_shared_object(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_object(&Host, world, entity)
+}
+
 #[napi(js_name = "og_shared_remote")]
 pub fn og_shared_remote(env: Env, world: u32, entity: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.shared.put",
+      "summary": "Shared objects (guide shared-worlds §5): state the world server owns and every visitor near it sees the same, such as a door one visitor opens or a block one places. og.shared.shape's `object` names the game's component every object carries; og.shared.put and og.shared.remove change one by key, optionally only at the version the visitor saw, and og.SharedOpAnswered says whether the server took it. Each object within sight is an og.SharedObject entity with an og.Transform and that component, spawned, rewritten and despawned by the engine (og.SharedObjectChanged, og.SharedObjectGone); og.shared.object names its key and version. Like remote avatars they are host input kept in og.platform.journal. A world that names none of the records keeps its type table and hash."
+    }
+  ]
+}

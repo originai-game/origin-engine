@@ -153,6 +153,11 @@ export const shared = Object.freeze({
   send: (world: W, component: { name: string }, value?: unknown) =>
     parse(abi().og_shared_send(world.id, component.name, JSON.stringify(value ?? {}))),
   events: (world: W, component: { name: string }) => parse(abi().og_shared_events(world.id, component.name)),
+  put: (world: W, key: string, component: { name: string }, value?: unknown, desc?: unknown) =>
+    parse(abi().og_shared_put(world.id, key, component.name, JSON.stringify(value ?? {}), json(desc))),
+  remove: (world: W, key: string, expect?: number | null) =>
+    parse(abi().og_shared_remove(world.id, key, JSON.stringify(expect ?? null))),
+  object: (world: W, entity: number) => parse(abi().og_shared_object(world.id, entity)),
   remote: (world: W, entity: number) => parse(abi().og_shared_remote(world.id, entity)),
   status: (world: W) => parse(abi().og_shared_status(world.id)),
 });

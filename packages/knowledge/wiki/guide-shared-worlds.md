@@ -2,7 +2,7 @@
 
 # The `shared-worlds` guide: Shared worlds
 
-How to let the visitors of one world see each other: what a shared world shares and what it does not, joining, drawing the others, moving your own avatar within the server's rules, running a world server for development and self-hosting, and replaying a session. For games where every peer runs the same simulation, use lockstep instead (`networking §1`).
+How to let the visitors of one world see each other: what a shared world shares and what it does not, joining, drawing the others, moving your own avatar within the server's rules, objects every visitor shares (a door, a placed block), running a world server for development and self-hosting, and replaying a session. For games where every peer runs the same simulation, use lockstep instead (`networking §1`).
 
 The API: `og api show shared`.
 
@@ -19,7 +19,9 @@ The API: `og api show shared`.
 
 - A shared world shares presence: where each visitor is, where it faces,
   how fast it moves, and a few bytes of the game's own (a locomotion
-  mode, an appearance). Doors, pickups and creatures stay each client's own.
+  mode, an appearance), and the shared objects the game puts there (§5).
+  Everything else (creatures, physics, a kit's own doors) stays each
+  client's own.
 - The two do not mix: a world in lockstep cannot join a shared world.
 
 <a id="guide-shared-worlds-2"></a>
@@ -81,7 +83,39 @@ and, after og.shared.shape, the game's avatar component.
   never a plain transform write, or the server refuses them as too fast.
 
 <a id="guide-shared-worlds-5"></a>
-### `shared-worlds §5` A world server for development and self-hosting
+### `shared-worlds §5` Shared objects
+
+A shared object is state the server owns and every visitor near it sees
+the same: a door one visitor opens is open for the others, a block one
+places is there for the next visitor, after a server restart too when the
+server keeps a store (`--store FILE`).
+
+```ts
+// GameDesc.start, with the avatar: the component every object carries.
+og.shared.shape(world, { avatar: Look, object: Door });
+// A visitor opens it: expect the version it saw, so two at once can't both win.
+const v = og.shared.object(world, door)?.version ?? 0;
+og.shared.put(world, "door/12", Door, { open: true }, { position: at, expect: v });
+```
+
+- Each object near the visitor (within the avatars' two cells) is an
+  og.SharedObject entity with an og.Transform and the game's object
+  component; og.SharedObjectChanged and og.SharedObjectGone say when it
+  came, changed or went. Play the door's swing when it changes; never
+  write the entity, which the next change overwrites.
+- og.shared.put and og.shared.remove return an op number;
+  og.SharedOpAnswered says whether the server took it. It refuses an op
+  whose `expect` is not the object's version, an object outside the
+  visitor's sight (old or new place), and ops past the events a second.
+  The server checks the place against the visitor's own, so an op sent
+  before the visitor's first state reached it (the tick it joins) is
+  refused: put in answer to the player, not at start.
+- Keep an object small (256 bytes packed at most) and few: they are sent
+  whole on each change. Mechanics stay the game's: the server keeps the
+  state, each client simulates what follows from it.
+
+<a id="guide-shared-worlds-6"></a>
+### `shared-worlds §6` A world server for development and self-hosting
 
 ```sh
 og world-server --auth none --dev                        # local only: visitors name themselves
@@ -116,10 +150,10 @@ og run --shared ws://127.0.0.1:47910 --shared-token-file t1
 | per area (two cells around one) | 200 |
 | per server, 4 vCPU | 2000, tick p99 ≤ 10 ms |
 
-<a id="guide-shared-worlds-6"></a>
-### `shared-worlds §6` Replay and determinism
+<a id="guide-shared-worlds-7"></a>
+### `shared-worlds §7` Replay and determinism
 
-- Remote avatars are world state: they are in the world hash, and every
+- Remote avatars and shared objects are world state: they are in the world hash, and every
   message that moves them is host input, applied at a tick's start and
   kept in og.platform.journal. `og replay record --platform-journal <f>`
   replays a session, web or native, tick for tick with no server.

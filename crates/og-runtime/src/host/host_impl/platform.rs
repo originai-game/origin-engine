@@ -161,6 +161,15 @@ macro_rules! __og_host_bindings_platform {
             fn og_shared_events(&self, world: u32, component: String) -> String {
                 $crate::host_impl::answer($crate::og_shared_events(world, component))
             }
+            fn og_shared_put(&self, world: u32, key: String, component: String, value: String, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_shared_put(world, key, component, value, desc))
+            }
+            fn og_shared_remove(&self, world: u32, key: String, expect: String) -> String {
+                $crate::host_impl::answer($crate::og_shared_remove(world, key, expect))
+            }
+            fn og_shared_object(&self, world: u32, entity: f64) -> String {
+                $crate::host_impl::json($crate::og_shared_object(world, entity))
+            }
             fn og_shared_remote(&self, world: u32, entity: f64) -> String {
                 $crate::host_impl::json($crate::og_shared_remote(world, entity))
             }

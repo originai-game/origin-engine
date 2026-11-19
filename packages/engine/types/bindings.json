@@ -8015,6 +8015,20 @@
     },
     {
       "id": 107,
+      "name": "SharedObject",
+      "schema": "og.SharedObject",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "version",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 108,
       "name": "MotionAgent",
       "schema": "og.MotionAgent",
       "module": "motion",
@@ -8044,7 +8058,7 @@
       ]
     },
     {
-      "id": 108,
+      "id": 109,
       "name": "Destructible",
       "schema": "og.Destructible",
       "module": "destruction",
@@ -8142,7 +8156,7 @@
       ]
     },
     {
-      "id": 109,
+      "id": 110,
       "name": "Chunk",
       "schema": "og.Chunk",
       "module": "destruction",
@@ -8180,7 +8194,7 @@
       ]
     },
     {
-      "id": 110,
+      "id": 111,
       "name": "PixelTerrain",
       "schema": "og.PixelTerrain",
       "module": "destruction",
@@ -8292,7 +8306,7 @@
       ]
     },
     {
-      "id": 111,
+      "id": 112,
       "name": "PixelPiece",
       "schema": "og.PixelPiece",
       "module": "destruction",
@@ -8330,7 +8344,7 @@
       ]
     },
     {
-      "id": 112,
+      "id": 113,
       "name": "Vfx",
       "schema": "og.Vfx",
       "module": "vfx",
@@ -8394,7 +8408,7 @@
       ]
     },
     {
-      "id": 113,
+      "id": 114,
       "name": "SightMap",
       "schema": "og.SightMap",
       "module": "sight",
@@ -8437,7 +8451,7 @@
       ]
     },
     {
-      "id": 114,
+      "id": 115,
       "name": "Sight",
       "schema": "og.Sight",
       "module": "sight",
@@ -8456,7 +8470,7 @@
       ]
     },
     {
-      "id": 115,
+      "id": 116,
       "name": "SightBlocker",
       "schema": "og.SightBlocker",
       "module": "sight",
@@ -8469,7 +8483,7 @@
       ]
     },
     {
-      "id": 116,
+      "id": 117,
       "name": "Film",
       "schema": "og.Film",
       "module": "film",
@@ -8556,7 +8570,7 @@
       ]
     },
     {
-      "id": 117,
+      "id": 118,
       "name": "FilmDeck",
       "schema": "og.FilmDeck",
       "module": "film",
@@ -14333,6 +14347,70 @@
     },
     {
       "id": 65,
+      "name": "SharedObjectChanged",
+      "schema": "og.SharedObjectChanged",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "version",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "name": "SharedObjectGone",
+      "schema": "og.SharedObjectGone",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "name": "SharedOpAnswered",
+      "schema": "og.SharedOpAnswered",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "op",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "taken",
+          "type": "bool",
+          "default": false
+        },
+        {
+          "name": "version",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 68,
       "name": "Fractured",
       "schema": "og.Fractured",
       "module": "destruction",
@@ -14379,7 +14457,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 69,
       "name": "PixelDetached",
       "schema": "og.PixelDetached",
       "module": "destruction",
@@ -14416,7 +14494,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 70,
       "name": "VfxEvent",
       "schema": "og.VfxEvent",
       "module": "vfx",
@@ -14444,7 +14522,7 @@
       ]
     },
     {
-      "id": 68,
+      "id": 71,
       "name": "FilmSegment",
       "schema": "og.FilmSegment",
       "module": "film",
@@ -14467,7 +14545,7 @@
       ]
     },
     {
-      "id": 69,
+      "id": 72,
       "name": "FilmChoice",
       "schema": "og.FilmChoice",
       "module": "film",
@@ -14495,7 +14573,7 @@
       ]
     },
     {
-      "id": 70,
+      "id": 73,
       "name": "FilmChapter",
       "schema": "og.FilmChapter",
       "module": "film",
@@ -14518,7 +14596,7 @@
       ]
     },
     {
-      "id": 71,
+      "id": 74,
       "name": "FilmEnded",
       "schema": "og.FilmEnded",
       "module": "film",
@@ -14541,7 +14619,7 @@
       ]
     },
     {
-      "id": 72,
+      "id": 75,
       "name": "SceneChanged",
       "schema": "og.SceneChanged",
       "module": "scene",
@@ -27409,6 +27487,98 @@
     {
       "id": 606,
       "kind": "fn",
+      "path": "og.shared.put",
+      "symbol": "og_shared_put",
+      "module": "shared",
+      "name": "put",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "Partial<Value<C>>",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SharedPutDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 607,
+      "kind": "fn",
+      "path": "og.shared.remove",
+      "symbol": "og_shared_remove",
+      "module": "shared",
+      "name": "remove",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "key",
+          "type": "String",
+          "optional": false
+        },
+        {
+          "name": "expect",
+          "type": "Option<u32>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 608,
+      "kind": "fn",
+      "path": "og.shared.object",
+      "symbol": "og_shared_object",
+      "module": "shared",
+      "name": "object",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Option<SharedObjectInfo>",
+      "publish": true
+    },
+    {
+      "id": 609,
+      "kind": "fn",
       "path": "og.shared.remote",
       "symbol": "og_shared_remote",
       "module": "shared",
@@ -27429,7 +27599,7 @@
       "publish": true
     },
     {
-      "id": 607,
+      "id": 610,
       "kind": "fn",
       "path": "og.shared.status",
       "symbol": "og_shared_status",
@@ -27446,7 +27616,7 @@
       "publish": true
     },
     {
-      "id": 608,
+      "id": 611,
       "kind": "fn",
       "path": "og.motion.pose",
       "symbol": "og_motion_pose",
@@ -27473,7 +27643,7 @@
       "publish": true
     },
     {
-      "id": 609,
+      "id": 612,
       "kind": "fn",
       "path": "og.motion.place",
       "symbol": "og_motion_place",
@@ -27500,7 +27670,7 @@
       "publish": true
     },
     {
-      "id": 610,
+      "id": 613,
       "kind": "fn",
       "path": "og.motion.face",
       "symbol": "og_motion_face",
@@ -27527,7 +27697,7 @@
       "publish": true
     },
     {
-      "id": 611,
+      "id": 614,
       "kind": "fn",
       "path": "og.motion.walkTo",
       "symbol": "og_motion_walk_to",
@@ -27554,7 +27724,7 @@
       "publish": true
     },
     {
-      "id": 612,
+      "id": 615,
       "kind": "fn",
       "path": "og.motion.jump",
       "symbol": "og_motion_jump",
@@ -27581,7 +27751,7 @@
       "publish": true
     },
     {
-      "id": 613,
+      "id": 616,
       "kind": "fn",
       "path": "og.motion.clear",
       "symbol": "og_motion_clear",
@@ -27603,7 +27773,7 @@
       "publish": true
     },
     {
-      "id": 614,
+      "id": 617,
       "kind": "fn",
       "path": "og.motion.lookAt",
       "symbol": "og_motion_look_at",
@@ -27630,7 +27800,7 @@
       "publish": true
     },
     {
-      "id": 615,
+      "id": 618,
       "kind": "fn",
       "path": "og.motion.react",
       "symbol": "og_motion_react",
@@ -27657,7 +27827,7 @@
       "publish": true
     },
     {
-      "id": 616,
+      "id": 619,
       "kind": "fn",
       "path": "og.motion.status",
       "symbol": "og_motion_status",
@@ -27679,7 +27849,7 @@
       "publish": true
     },
     {
-      "id": 617,
+      "id": 620,
       "kind": "fn",
       "path": "og.motion.capabilities",
       "symbol": "og_motion_capabilities",
@@ -27696,7 +27866,7 @@
       "publish": true
     },
     {
-      "id": 618,
+      "id": 621,
       "kind": "fn",
       "path": "og.motion.setBackend",
       "symbol": "og_motion_set_backend",
@@ -27718,7 +27888,7 @@
       "publish": true
     },
     {
-      "id": 619,
+      "id": 622,
       "kind": "fn",
       "path": "og.motion.presentation",
       "symbol": "og_motion_presentation",
@@ -27740,7 +27910,7 @@
       "publish": true
     },
     {
-      "id": 620,
+      "id": 623,
       "kind": "fn",
       "path": "og.motion.poses",
       "symbol": "og_motion_poses",
@@ -27751,7 +27921,7 @@
       "publish": true
     },
     {
-      "id": 621,
+      "id": 624,
       "kind": "fn",
       "path": "og.destruction.damage",
       "symbol": "og_destruction_damage",
@@ -27778,7 +27948,7 @@
       "publish": true
     },
     {
-      "id": 622,
+      "id": 625,
       "kind": "fn",
       "path": "og.destruction.explode",
       "symbol": "og_destruction_explode",
@@ -27800,7 +27970,7 @@
       "publish": true
     },
     {
-      "id": 623,
+      "id": 626,
       "kind": "fn",
       "path": "og.destruction.fracture",
       "symbol": "og_destruction_fracture",
@@ -27822,7 +27992,7 @@
       "publish": true
     },
     {
-      "id": 624,
+      "id": 627,
       "kind": "fn",
       "path": "og.destruction.info",
       "symbol": "og_destruction_info",
@@ -27844,7 +28014,7 @@
       "publish": true
     },
     {
-      "id": 625,
+      "id": 628,
       "kind": "fn",
       "path": "og.destruction.material",
       "symbol": "og_destruction_material",
@@ -27866,7 +28036,7 @@
       "publish": true
     },
     {
-      "id": 626,
+      "id": 629,
       "kind": "fn",
       "path": "og.destruction.capabilities",
       "symbol": "og_destruction_capabilities",
@@ -27883,7 +28053,7 @@
       "publish": true
     },
     {
-      "id": 627,
+      "id": 630,
       "kind": "fn",
       "path": "og.destruction.carve2d",
       "symbol": "og_destruction_carve2d",
@@ -27910,7 +28080,7 @@
       "publish": true
     },
     {
-      "id": 628,
+      "id": 631,
       "kind": "fn",
       "path": "og.destruction.fill2d",
       "symbol": "og_destruction_fill2d",
@@ -27937,7 +28107,7 @@
       "publish": true
     },
     {
-      "id": 629,
+      "id": 632,
       "kind": "fn",
       "path": "og.destruction.explode2d",
       "symbol": "og_destruction_explode2d",
@@ -27959,7 +28129,7 @@
       "publish": true
     },
     {
-      "id": 630,
+      "id": 633,
       "kind": "fn",
       "path": "og.destruction.fracture2d",
       "symbol": "og_destruction_fracture2d",
@@ -27986,7 +28156,7 @@
       "publish": true
     },
     {
-      "id": 631,
+      "id": 634,
       "kind": "fn",
       "path": "og.destruction.cell2d",
       "symbol": "og_destruction_cell2d",
@@ -28013,7 +28183,7 @@
       "publish": true
     },
     {
-      "id": 632,
+      "id": 635,
       "kind": "fn",
       "path": "og.vfx.spawn",
       "symbol": "og_vfx_spawn",
@@ -28035,7 +28205,7 @@
       "publish": true
     },
     {
-      "id": 633,
+      "id": 636,
       "kind": "fn",
       "path": "og.vfx.info",
       "symbol": "og_vfx_info",
@@ -28057,7 +28227,7 @@
       "publish": true
     },
     {
-      "id": 634,
+      "id": 637,
       "kind": "fn",
       "path": "og.sight.visible",
       "symbol": "og_sight_visible",
@@ -28084,7 +28254,7 @@
       "publish": true
     },
     {
-      "id": 635,
+      "id": 638,
       "kind": "fn",
       "path": "og.sight.explored",
       "symbol": "og_sight_explored",
@@ -28111,7 +28281,7 @@
       "publish": true
     },
     {
-      "id": 636,
+      "id": 639,
       "kind": "fn",
       "path": "og.sight.reveal",
       "symbol": "og_sight_reveal",
@@ -28143,7 +28313,7 @@
       "publish": true
     },
     {
-      "id": 637,
+      "id": 640,
       "kind": "fn",
       "path": "og.sight.forget",
       "symbol": "og_sight_forget",
@@ -28165,7 +28335,7 @@
       "publish": true
     },
     {
-      "id": 638,
+      "id": 641,
       "kind": "fn",
       "path": "og.film.load",
       "symbol": "og_film_load",
@@ -28187,7 +28357,7 @@
       "publish": true
     },
     {
-      "id": 639,
+      "id": 642,
       "kind": "fn",
       "path": "og.film.start",
       "symbol": "og_film_start",
@@ -28209,7 +28379,7 @@
       "publish": true
     },
     {
-      "id": 640,
+      "id": 643,
       "kind": "fn",
       "path": "og.film.view",
       "symbol": "og_film_view",
@@ -28231,7 +28401,7 @@
       "publish": true
     },
     {
-      "id": 641,
+      "id": 644,
       "kind": "fn",
       "path": "og.film.choose",
       "symbol": "og_film_choose",
@@ -28258,7 +28428,7 @@
       "publish": true
     },
     {
-      "id": 642,
+      "id": 645,
       "kind": "fn",
       "path": "og.film.play",
       "symbol": "og_film_play",
@@ -28280,7 +28450,7 @@
       "publish": true
     },
     {
-      "id": 643,
+      "id": 646,
       "kind": "fn",
       "path": "og.film.pause",
       "symbol": "og_film_pause",
@@ -28302,7 +28472,7 @@
       "publish": true
     },
     {
-      "id": 644,
+      "id": 647,
       "kind": "fn",
       "path": "og.film.skip",
       "symbol": "og_film_skip",
@@ -28324,7 +28494,7 @@
       "publish": true
     },
     {
-      "id": 645,
+      "id": 648,
       "kind": "fn",
       "path": "og.film.chart",
       "symbol": "og_film_chart",
@@ -28346,7 +28516,7 @@
       "publish": true
     },
     {
-      "id": 646,
+      "id": 649,
       "kind": "fn",
       "path": "og.film.stop",
       "symbol": "og_film_stop",
@@ -28368,7 +28538,7 @@
       "publish": true
     },
     {
-      "id": 647,
+      "id": 650,
       "kind": "fn",
       "path": "og.scene.preload",
       "symbol": "og_scene_preload",
@@ -28390,7 +28560,7 @@
       "publish": true
     },
     {
-      "id": 648,
+      "id": 651,
       "kind": "fn",
       "path": "og.scene.progress",
       "symbol": "og_scene_progress",
@@ -28412,7 +28582,7 @@
       "publish": true
     },
     {
-      "id": 649,
+      "id": 652,
       "kind": "fn",
       "path": "og.scene.release",
       "symbol": "og_scene_release",
@@ -28434,7 +28604,7 @@
       "publish": true
     },
     {
-      "id": 650,
+      "id": 653,
       "kind": "fn",
       "path": "og.scene.change",
       "symbol": "og_scene_change",
@@ -28456,7 +28626,7 @@
       "publish": true
     },
     {
-      "id": 651,
+      "id": 654,
       "kind": "fn",
       "path": "og.scene.current",
       "symbol": "og_scene_current",
@@ -28473,7 +28643,7 @@
       "publish": true
     },
     {
-      "id": 652,
+      "id": 655,
       "kind": "fn",
       "path": "og.loading.stage",
       "symbol": "og_loading_stage",
@@ -28495,7 +28665,7 @@
       "publish": true
     },
     {
-      "id": 653,
+      "id": 656,
       "kind": "fn",
       "path": "og.loading.done",
       "symbol": "og_loading_done",
@@ -28512,7 +28682,7 @@
       "publish": true
     },
     {
-      "id": 654,
+      "id": 657,
       "kind": "fn",
       "path": "og.loading.idle",
       "symbol": "og_loading_idle",
@@ -28529,7 +28699,7 @@
       "publish": true
     },
     {
-      "id": 655,
+      "id": 658,
       "kind": "fn",
       "path": "og.loading.status",
       "symbol": "og_loading_status",

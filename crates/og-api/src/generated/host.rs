@@ -1445,6 +1445,12 @@ pub trait SharedApi: Wire {
     fn og_shared_send(&self, world: u32, component: String, value: String) -> String;
     /// `og.shared.events`
     fn og_shared_events(&self, world: u32, component: String) -> String;
+    /// `og.shared.put`
+    fn og_shared_put(&self, world: u32, key: String, component: String, value: String, desc: Option<String>) -> String;
+    /// `og.shared.remove`
+    fn og_shared_remove(&self, world: u32, key: String, expect: String) -> String;
+    /// `og.shared.object`
+    fn og_shared_object(&self, world: u32, entity: f64) -> String;
     /// `og.shared.remote`
     fn og_shared_remote(&self, world: u32, entity: f64) -> String;
     /// `og.shared.status`
@@ -2188,6 +2194,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_shared_teleport",
     "og_shared_send",
     "og_shared_events",
+    "og_shared_put",
+    "og_shared_remove",
+    "og_shared_object",
     "og_shared_remote",
     "og_shared_status",
     "og_motion_pose",

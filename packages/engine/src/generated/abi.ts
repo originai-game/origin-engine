@@ -1286,6 +1286,12 @@ export interface HostAbi<A, V> {
   og_shared_send(world: number, component: string, value: string): string;
   /** `og.shared.events` */
   og_shared_events(world: number, component: string): string;
+  /** `og.shared.put` */
+  og_shared_put(world: number, key: string, component: string, value: string, desc: string | undefined): string;
+  /** `og.shared.remove` */
+  og_shared_remove(world: number, key: string, expect: string): string;
+  /** `og.shared.object` */
+  og_shared_object(world: number, entity: number): string;
   /** `og.shared.remote` */
   og_shared_remote(world: number, entity: number): string;
   /** `og.shared.status` */
@@ -1996,6 +2002,9 @@ export const SYMBOLS: readonly string[] = [
   "og_shared_teleport",
   "og_shared_send",
   "og_shared_events",
+  "og_shared_put",
+  "og_shared_remove",
+  "og_shared_object",
   "og_shared_remote",
   "og_shared_status",
   "og_motion_pose",
@@ -2263,6 +2272,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_timeline_stop(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.timeline.stop", "entity", entity);
       return abi.og_timeline_stop(world, entity);
+    },
+    og_shared_object(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.shared.object", "entity", entity);
+      return abi.og_shared_object(world, entity);
     },
     og_shared_remote(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.shared.remote", "entity", entity);

@@ -14,7 +14,8 @@
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_game_game, og_host_begin_bundle,
-    og_net_hash, og_platform_journal, og_shared_deliver, og_shared_join, og_shared_remote,
+    og_net_hash, og_platform_journal, og_reflect_define_component, og_shared_deliver,
+    og_shared_join, og_shared_object, og_shared_put, og_shared_remote, og_shared_shape,
     og_shared_status, og_shared_take, og_world_alive, og_world_get, og_world_insert,
     og_world_spawn, set_hooks,
 };
@@ -571,4 +572,165 @@ fn a_client_whose_nat_rebinds_resumes_its_avatar() {
     drop(wires);
     drop(server);
     drop(rt);
+}
+
+/// The shared objects an engine holds, by key: (entity, version).
+fn objects(engine: u32) -> BTreeMap<String, (f64, u32)> {
+    (0..4u64)
+        .flat_map(|g| (0..4096u64).map(move |i| (g << 32 | i) as f64))
+        .filter(|e| og_world_alive(engine, *e))
+        .filter_map(|e| og_shared_object(engine, e).map(|o| (o.key, (e, o.version))))
+        .collect()
+}
+
+/// A door one visitor opens, over a real server that keeps its objects in
+/// a file: the other visitor's engine holds it as an entity with the
+/// game's component and place, a put on a stale version is refused, and a
+/// visitor of a server started again on the file finds the door as it was
+/// left. Ways this could fail: the object never reaches the other engine,
+/// arrives without the game's component or at another place, a stale put
+/// wins, or the store loses the object (or keeps a refused write) across
+/// the restart.
+#[test]
+fn a_shared_door_is_seen_by_others_and_outlives_a_server_restart() {
+    use og_shared::auth::{Rules, Verifier, sign_hs256};
+    use og_shared::server::{KeySource, Server};
+    use og_shared::store::FileStore;
+    use std::time::{Duration, Instant};
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    answer(og_runtime::host_impl::answer(og_reflect_define_component(
+        "Door".into(),
+        json!([{ "name": "angle", "kind": "f32", "default": 0, "options": {} }]).to_string(),
+    )));
+    let dir = std::env::temp_dir().join(format!("og-shared-door-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("objects.log");
+    let _ = std::fs::remove_file(&file);
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let cert = og_shared::cert::self_signed(&["localhost".into(), "127.0.0.1".into()], 1).unwrap();
+    let serve = |file: &std::path::Path| {
+        rt.block_on(async {
+            let s = Server::start(
+                "127.0.0.1:0".parse().unwrap(),
+                Config::default(),
+                Verifier::hs256(b"s", Rules::audience("g")),
+                KeySource::None,
+                false,
+                Some(Box::new(FileStore::new(file))),
+            )
+            .await
+            .unwrap();
+            let wt = s
+                .serve_webtransport(
+                    "127.0.0.1:0".parse().unwrap(),
+                    &cert.cert_pem,
+                    &cert.key_pem,
+                )
+                .unwrap();
+            (s, wt)
+        })
+    };
+    let exp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        + 120;
+    let token = |p: &str| sign_hs256(b"s", &json!({ "aud": "g", "sub": p, "exp": exp }));
+    let shaped = |x: f64| {
+        let e = engine();
+        answer(og_runtime::host_impl::answer(og_shared_shape(
+            e,
+            Some(json!({ "object": "Door" }).to_string()),
+        )));
+        visitor(e, x);
+        e
+    };
+    let wire = |engine: u32, wt: std::net::SocketAddr, p: &str| Wire {
+        engine,
+        url: format!("https://{wt}/"),
+        hash: cert.sha256,
+        token: token(p),
+        client: None,
+    };
+    let until = |wires: &mut [Wire], secs: f64, done: &dyn Fn() -> bool| {
+        let t = Instant::now();
+        while !done() {
+            assert!(t.elapsed().as_secs_f64() < secs, "not within {secs} s");
+            for w in wires.iter_mut() {
+                w.pump();
+                answer(og_engine_frame(w.engine, FRAME_MS));
+            }
+            std::thread::sleep(Duration::from_secs_f64(FRAME_MS / 1000.0));
+        }
+    };
+    let angle = |engine: u32, e: f64| {
+        answer(og_runtime::host_impl::answer(og_world_get(
+            engine,
+            e,
+            "Door".into(),
+        )))["value"]["angle"]
+            .as_f64()
+            .unwrap()
+    };
+    let put = |engine: u32, angle: f64, expect: Option<u32>| {
+        og_shared_put(
+            engine,
+            "door:1".into(),
+            "\"Door\"".into(),
+            json!({ "angle": angle }).to_string(),
+            Some(json!({ "position": { "x": 5, "y": 0, "z": 2 }, "expect": expect }).to_string()),
+        )
+        .unwrap()
+    };
+
+    let (mut server, wt) = serve(&file);
+    let (a, b) = (shaped(0.0), shaped(10.0));
+    let mut wires = [wire(a, wt, "a"), wire(b, wt, "b")];
+    // Each sees the other: the server holds both places (an op is checked
+    // against its sender's place, so one sent before it is refused).
+    until(&mut wires, 10.0, &|| remotes(a).len() == 1 && remotes(b).len() == 1);
+    put(a, 1.5, None);
+    until(&mut wires, 5.0, &|| {
+        objects(b).get("door:1").is_some_and(|o| o.1 == 1)
+    });
+    let (door, _) = objects(b)["door:1"];
+    assert_eq!(angle(b, door), 1.5);
+    assert!((x_of(b, door) - 5.0).abs() < 0.01, "drawn at {}", x_of(b, door));
+    // b closes it on version 1; a's open on version 1 comes after and is
+    // refused: the door stays closed at version 2 for both.
+    put(b, 0.0, Some(1));
+    until(&mut wires, 5.0, &|| {
+        objects(a).get("door:1").is_some_and(|o| o.1 == 2)
+    });
+    put(a, 3.0, Some(1));
+    for _ in 0..30 {
+        for w in wires.iter_mut() {
+            w.pump();
+            answer(og_engine_frame(w.engine, FRAME_MS));
+        }
+        std::thread::sleep(Duration::from_secs_f64(FRAME_MS / 1000.0));
+    }
+    for e in [a, b] {
+        let held = objects(e);
+        assert_eq!(held.len(), 1);
+        let (d, v) = held["door:1"];
+        assert_eq!((v, angle(e, d)), (2, 0.0), "a stale put won");
+    }
+
+    drop(wires);
+    server.drain("restart");
+    rt.block_on(server.drained(Duration::from_secs(2)));
+    let (_server2, wt2) = serve(&file);
+    let c = shaped(4.0);
+    let mut wires = [wire(c, wt2, "c")];
+    until(&mut wires, 10.0, &|| {
+        og_shared_status(c).state == "joined" && objects(c).contains_key("door:1")
+    });
+    let (d, v) = objects(c)["door:1"];
+    assert_eq!((v, angle(c, d)), (2, 0.0), "the store did not keep the door");
+    assert!((x_of(c, d) - 5.0).abs() < 0.01);
+    drop(wires);
+    drop(rt);
+    let _ = std::fs::remove_dir_all(&dir);
 }
