@@ -1,0 +1,68 @@
+{
+  "added": [
+    {
+      "member": "Default style puzzle and idle tokens",
+      "summary": "--play-* roles for the puzzle and idle families (PuzzleGoals, PuzzleBoosters, IdleResources, IdleGenerators, IdleOffline, IdlePrestige): the counter's cut well and its low rim and ink, a goal's socket, met check and dimmed art, the score's star bar and marks, the booster socket, its armed ring and lift and an out booster's gold tag, the resource chip and its full rim, a generator's level hexagon, yield ink, Auto and boost tags, locked art and cycle bar, the haul's gold glow, Double's gold and prestige's epic purple."
+    },
+    {
+      "member": "PuzzleGoals",
+      "summary": "New props progress and stars: the score toward the level's top star on a leaning bar under it, with the game's star marks, lit up to the progress. A goal shows its name under what is left. New parts PuzzleGoals.socket, .name, .track, .fill and .star."
+    },
+    {
+      "member": "IdleGenerators",
+      "summary": "A generator's level sits on a hexagon at its socket's foot and its cycle is a leaning bar with the time left beside it; a locked row says Locked with what unlocks it (its rate) on one tag. The kicker Producers heads the list. New parts IdleGenerators.kicker, .socket, .level, .owned, .track, .fill, .time and .tag."
+    },
+    {
+      "member": "IdleOffline",
+      "summary": "The time away is shown large, the panel's status naming the whole sentence; the haul is a row of sockets with the amount and the name under each; Double is dressed in the game's gold. New parts IdleOffline.kicker, .away, .haul, .socket and .amount."
+    },
+    {
+      "member": "IdlePrestige",
+      "summary": "The currency sits in a socket glowing epic purple, what is held beside what a reset gives; each bonus row reads now, an arrow, after; the requirement's tag reads Ready with a check once met over a leaning bar; Prestige is washed in the epic purple. New parts IdlePrestige.kicker, .socket, .label, .tag, .track and .fill."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "PuzzleLevelPath",
+      "summary": "On a phone the road no longer runs under the Play plate: below a disc with words (Play, Open, Selected) it leaves only after a gap under them."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "PuzzleGoals",
+      "change": "Moves sit in a cut well, a goal is a socket and the score sits over its star bar. PuzzleGoals.plate, .caption and .headline are gone.",
+      "fix": "A style that dressed PuzzleGoals.plate dresses PuzzleGoals.counter or .goal; .caption dresses .label or .name; .headline dresses .figure.",
+      "find": ["PuzzleGoals.plate", "PuzzleGoals.caption", "PuzzleGoals.headline"]
+    },
+    {
+      "member": "PuzzleBoosters",
+      "change": "A booster is a round socket with its count on a tag (×3, or a gold + when none are left); Armed and Unavailable are tags over the socket and the armed one is lifted. PuzzleBoosters.cell, .figure, .badge, .headline, .label and .caption are gone.",
+      "fix": "A style that dressed PuzzleBoosters.cell dresses PuzzleBoosters.booster or .socket; .figure and .badge dress .count; .headline dresses .name; .label and .caption dress .state or .empty.",
+      "find": ["PuzzleBoosters.cell", "PuzzleBoosters.figure", "PuzzleBoosters.badge", "PuzzleBoosters.headline", "PuzzleBoosters.label", "PuzzleBoosters.caption"]
+    },
+    {
+      "member": "IdleResources",
+      "change": "A currency is a cut chip with its art in a socket, the income under the amount and Full on a gold tag. IdleResources.badge, .label, .caption and .well are gone.",
+      "fix": "A style that dressed IdleResources.badge dresses IdleResources.tag; .label and .caption dress .rate or .name; .well dresses .placeholder.",
+      "find": ["IdleResources.badge", "IdleResources.label", "IdleResources.caption", "IdleResources.well"]
+    },
+    {
+      "member": "IdleGenerators",
+      "change": "The cycle is the list's own leaning bar, not a ProgressBar, and the level is a bare figure on a hexagon (the row's name says Lv). IdleGenerators.figure, .meter, .badge, .label, .well, .headline and .caption are gone.",
+      "fix": "A style that dressed IdleGenerators.meter or .well dresses IdleGenerators.track and .fill; .badge dresses .tag or .level; .figure dresses .owned; .headline dresses .name; .label and .caption dress .rate or .time.",
+      "find": ["IdleGenerators.figure", "IdleGenerators.meter", "IdleGenerators.badge", "IdleGenerators.label", "IdleGenerators.well", "IdleGenerators.headline", "IdleGenerators.caption"]
+    },
+    {
+      "member": "IdleOffline",
+      "change": "The sentence You were away for … is the panel's status name; the panel shows the time large with the word away. The haul is sockets, not rows. IdleOffline.summary, .row and .caption are gone.",
+      "fix": "A style that dressed IdleOffline.summary dresses IdleOffline.away and .figure; .row dresses .haul; .caption dresses .label.",
+      "find": ["IdleOffline.summary", "IdleOffline.row", "IdleOffline.caption"]
+    },
+    {
+      "member": "IdlePrestige",
+      "change": "The requirement's bar is the panel's own leaning bar, not a ProgressBar; Ready and Not yet sit on a tag. IdlePrestige.badge, .well, .card and .caption are gone.",
+      "fix": "A style that dressed IdlePrestige.badge dresses IdlePrestige.tag; .well dresses .requirement or .track; .card dresses .confirm; .caption dresses .label.",
+      "find": ["IdlePrestige.badge", "IdlePrestige.well", "IdlePrestige.card", "IdlePrestige.caption"]
+    }
+  ]
+}

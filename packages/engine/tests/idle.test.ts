@@ -206,7 +206,9 @@ test("IdleGenerators: a row chooses by key and is selected; a locked row is disa
     tap(e, locked);
     expect(intents(events, ["choose"])).toEqual(["choose:farm"]);
     const shown = texts(e);
-    for (const want of ["×25", "lv 3", "auto", "×2", "locked", "0.4s", "+1.2k/s"]) expect(shown).toContain(want);
+    for (const want of ["×25", "3", "auto", "×2", "locked", "0.4s", "+1.2k/s"]) expect(shown).toContain(want);
+    // The level on its hexagon is a bare figure; the row's name says what it is.
+    expect(row(e, "option", "farm").name?.toLowerCase()).toBe("farm, lv 3");
     // Each running cycle is a ProgressBar.
     expect(all(e, /./).filter((x) => x.role === "progressbar").length).toBe(2);
   });
@@ -286,7 +288,8 @@ test("IdlePrestige: request first; the game's confirming shows Reset and Cancel;
 test("IdleOffline: time away from the game's words or its seconds; Collect and Double report; Double only when the game offers it", () => {
   const events: Event[] = [];
   run(member("offline", "default", {}, { events }), (e) => {
-    expect(texts(e)).toContain("you were away for 3h 45m");
+    expect(texts(e)).toContain("3h 45m");
+    expect(elements(e).some((x) => x.role === "status" && x.name?.toLowerCase() === "you were away for 3h 45m")).toBeTrue();
     for (const want of ["+1.24m", "+5,000", "watch an ad"]) expect(texts(e)).toContain(want);
     tap(e, find(e, /\/Double$/)!);
     tap(e, find(e, /\/Collect$/)!);
@@ -294,7 +297,7 @@ test("IdleOffline: time away from the game's words or its seconds; Collect and D
   });
   const single: Event[] = [];
   run(member("offline", "disabled", {}, { events: single }), (e) => {
-    expect(texts(e)).toContain("you were away for 8h (capped)");
+    expect(texts(e)).toContain("8h (capped)");
     expect(find(e, /\/Double$/)?.width ?? 0).toBe(0);
     tap(e, find(e, /\/Collect$/)!);
     expect(intents(single, ["double", "collect"])).toEqual(["collect:"]);

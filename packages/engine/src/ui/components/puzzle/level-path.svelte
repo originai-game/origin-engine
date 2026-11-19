@@ -18,7 +18,8 @@
   a road, each at the place across the path the game gives (x). The road
   is lit gold up to the level to play and pale past it. A disc shows its
   number, a lock when it is locked, its stars on a dark capsule at its
-  foot once done, and the Play plate under the current one; the chosen
+  foot once done, and the Play plate under the current one, the road leaving
+  only below it after a gap; the chosen
   one is ringed and says Selected, an open one says Open. Reports choose
   (a level's key; a locked level is disabled and sends nothing) and, with
   X or pad Y on the focused disc, details. The game decides what is open
@@ -106,6 +107,10 @@
 .across { inset-block-start: calc(var(--road) / -2); block-size: var(--road); inset-inline-start: calc(var(--lo) * (100% - var(--stop)) + var(--stop) / 2 - var(--road) / 2); inline-size: calc(var(--span) * (100% - var(--stop)) + var(--road)); }
 .down-in { inset-block-start: calc(var(--road) / -2); block-size: calc(var(--mid) + var(--road) / 2); inset-inline-start: calc(var(--x) * (100% - var(--stop)) + var(--stop) / 2 - var(--road) / 2); inline-size: var(--road); }
 .down-out { inset-block-start: var(--mid); block-size: calc(100% - var(--mid)); inset-inline-start: calc(var(--x) * (100% - var(--stop)) + var(--stop) / 2 - var(--road) / 2); inline-size: var(--road); }
+/* Under a disc with words (Play, Open, Selected) the road leaves only below
+   them, after a gap, so it never touches the plate or the tag. */
+.lane:is([data-state=current], [data-state=open], [data-selected=true]) { padding-block-end: calc(var(--pad-end) + var(--space-lg)); }
+.lane:is([data-state=current], [data-state=open], [data-selected=true]) .down-out { inset-block-start: auto; inset-block-end: 0; block-size: calc(var(--space-lg) - var(--space-xs)); }
 /* A disc: slate when done, the accent with rings when it is the one to
    play, rimmed in the accent when open, dark with a lock when locked. */
 .node { inline-size: var(--node); block-size: var(--node); min-block-size: var(--size-touch); min-inline-size: var(--size-touch); padding: 0; border: 0; border-radius: var(--select-node-radius); color: var(--hud-ink); background: var(--select-node-fill); box-shadow: var(--select-node-rim); transition: var(--change-motion); }

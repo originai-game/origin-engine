@@ -22,10 +22,6 @@ hud/perf-readout.svelte	PerfReadout.label PerfReadout.caption	4
 hud/qte-prompt.svelte	QtePrompt.label QtePrompt.headline	1
 hud/star-bar.svelte	StarBar.well StarBar.track	1
 hud/status-grid.svelte	StatusGrid.badge StatusGrid.tag	2
-idle/generators.svelte	IdleGenerators.name IdleGenerators.headline	1
-idle/generators.svelte	IdleGenerators.rate IdleGenerators.label IdleGenerators.caption	1
-idle/offline.svelte	IdleOffline.summary IdleOffline.label IdleOffline.caption	1
-idle/resources.svelte	IdleResources.name IdleResources.caption	1
 meta/chat.svelte	Chat.time Chat.figure Chat.caption	2
 meta/friends.svelte	Friends.avatar Friends.picture Friends.well	2
 meta/friends.svelte	Friends.name Friends.headline	2
@@ -38,12 +34,6 @@ panels/chart.svelte	Chart.label Chart.caption	2
 panels/conversation.svelte	RpgConversation.name RpgConversation.headline	1
 panels/data-grid.svelte	DataGrid.heading DataGrid.caption	1
 panels/node-graph.svelte	NodeGraph.label NodeGraph.badge	1
-puzzle/boosters.svelte	PuzzleBoosters.count PuzzleBoosters.figure PuzzleBoosters.badge	1
-puzzle/boosters.svelte	PuzzleBoosters.name PuzzleBoosters.headline	1
-puzzle/boosters.svelte	PuzzleBoosters.state PuzzleBoosters.label PuzzleBoosters.caption	1
-puzzle/goals.svelte	PuzzleGoals.figure PuzzleGoals.headline	1
-puzzle/goals.svelte	PuzzleGoals.label PuzzleGoals.caption	1
-puzzle/goals.svelte	PuzzleGoals.warning PuzzleGoals.plate PuzzleGoals.caption	1
 puzzle/summary.svelte	PuzzleSummary.earned PuzzleSummary.label PuzzleSummary.caption	1
 puzzle/summary.svelte	PuzzleSummary.frame PuzzleSummary.card	1
 puzzle/summary.svelte	PuzzleSummary.level PuzzleSummary.label PuzzleSummary.caption	1
