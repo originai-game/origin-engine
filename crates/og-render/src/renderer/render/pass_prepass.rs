@@ -43,10 +43,11 @@ impl Renderer {
             grass_frame,
         } = plan;
         let (ctx, encoder, stats) = (cx.ctx, &mut *cx.encoder, &mut *cx.stats);
-        // The water's surfaces for the AO (water.rs `draw_ao_depth`), drawn after the prepass against it.
-        let ao_depth = self
+        // The water's surfaces for the AO and the volumetric fog (water.rs `draw_ao_depth`), drawn after the
+        // prepass against it.
+        let front_depth = self
             .graph
-            .try_view("ao-depth")
+            .try_view("front-depth")
             .filter(|_| !water_draws.is_empty());
         let attachment = |view, clear: f64| {
             Some(wgpu::RenderPassColorAttachment {
@@ -76,7 +77,7 @@ impl Renderer {
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     // Stylise's object pass tests against it.
-                    store: if object_space || ao_depth.is_some() {
+                    store: if object_space || front_depth.is_some() {
                         wgpu::StoreOp::Store
                     } else {
                         wgpu::StoreOp::Discard
@@ -268,8 +269,8 @@ impl Renderer {
                 main_list.indirect,
             );
         }
-        if let Some(target) = self.graph.try_view("ao-depth") {
-            // The AO's depth: the prepass's, then each water surface's own in front of what it covers.
+        if let Some(target) = self.graph.try_view("front-depth") {
+            // The prepass's depth, then each water surface's own in front of what it covers.
             let size = wgpu::Extent3d {
                 width: self.width,
                 height: self.height,
@@ -277,12 +278,12 @@ impl Renderer {
             };
             encoder.copy_texture_to_texture(
                 self.graph.view("lindepth").texture().as_image_copy(),
-                self.graph.view("ao-depth").texture().as_image_copy(),
+                self.graph.view("front-depth").texture().as_image_copy(),
                 size,
             );
-            if ao_depth.is_some() {
+            if front_depth.is_some() {
                 let mut p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("water ao depth"),
+                    label: Some("water front depth"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: target,
                         depth_slice: None,

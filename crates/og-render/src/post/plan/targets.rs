@@ -27,7 +27,7 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx) {
     ao(g, cx);
     composed(g, cx);
     effects(g, cx);
-    ao_depth(g, cx);
+    front_depth(g, cx);
 }
 
 /// The imported targets, the lit image, the depth, the temporal histories
@@ -385,15 +385,14 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
     }
 }
 
-/// The prepass depth with the water's surfaces in it, which the AO reads
-/// ([`PlanCx::ao_depth`]).
-fn ao_depth(g: &mut RenderGraph, cx: &PlanCx) {
+/// The prepass depth with the water's surfaces in front, which the AO and
+/// the volumetric fog read ([`PlanCx::front_depth`]).
+fn front_depth(g: &mut RenderGraph, cx: &PlanCx) {
     let cfg = cx.cfg;
-    let ao_depth = cx.ao_depth;
     let (w, h) = (cfg.width, cfg.height);
-    if ao_depth {
+    if cx.front_depth {
         g.transient(
-            "ao-depth",
+            "front-depth",
             desc(
                 w,
                 h,

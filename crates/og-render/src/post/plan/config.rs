@@ -36,11 +36,16 @@ pub(crate) struct GraphConfig {
     /// The main pass draws water or a 3D fluid: it copies the scene drawn
     /// so far.
     pub water: bool,
-    /// The screen AO sees the water's surfaces (`ao-depth`; water.rs
+    /// The screen AO sees the water's surfaces (`front-depth`; water.rs
     /// `draw_ao_depth`): water drawn with `PostEffects::ao.direct` above 0,
     /// the three.js-era AO that darkened the water's pixel whole. At 0 the
     /// water, drawn after the AO is applied, is outside it.
     pub water_ao: bool,
+    /// The volumetric fog ends each pixel's ray at the water's surface
+    /// (`front-depth`): water drawn under it. Blended in the main pass,
+    /// the water is not in the prepass depth, so the fog ran on to the
+    /// sky or the bed behind it, through and under the water.
+    pub water_fog: bool,
     /// The main pass copies the opaque scene for transmissive materials
     /// (into the renderer's own mip-chained target, not a graph target).
     pub transmission: bool,

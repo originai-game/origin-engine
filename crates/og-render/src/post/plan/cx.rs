@@ -18,11 +18,12 @@ pub(super) struct PlanCx<'a> {
     pub(super) contact: bool,
     /// The target the AO passes end in ([`ao_target_name`]).
     pub(super) ao_out: &'static str,
-    /// With water the AO darkens (`GraphConfig::water_ao`): the prepass
-    /// depth with the water's surfaces in it, which the AO reads (lib.rs,
-    /// water.rs `draw_ao_depth`); the prepass pass writes it after its own
-    /// targets.
-    pub(super) ao_depth: bool,
+    /// The prepass depth with the water's surfaces in front (`front-depth`;
+    /// water.rs `draw_ao_depth`), which the prepass pass writes after its
+    /// own targets: the AO reads it when the water darkens
+    /// (`GraphConfig::water_ao`), the volumetric fog's apply in the main
+    /// pass when the fog is over water (`GraphConfig::water_fog`).
+    pub(super) front_depth: bool,
     /// The passes after the tonemap ([`chain_passes`]).
     pub(super) chain: Vec<FramePass>,
     pub(super) names: LitNames,
@@ -56,7 +57,7 @@ impl<'a> PlanCx<'a> {
             prepass,
             contact,
             ao_out: ao_target_name(contact),
-            ao_depth: prepass && cfg.water_ao && has(FramePass::Ao),
+            front_depth: prepass && ((cfg.water_ao && has(FramePass::Ao)) || cfg.water_fog),
             chain: chain_passes(passes),
             aa: names.aa.unwrap_or("history-write"),
             after_dof: names.after_dof.unwrap_or("history-write"),

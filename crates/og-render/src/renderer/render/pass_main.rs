@@ -566,14 +566,16 @@ impl Renderer {
             false,
         );
         drop(pass);
-        // Volumetric fog over everything drawn (volumetric.rs).
+        // Volumetric fog over everything drawn (volumetric.rs), to the first
+        // surface each pixel shows: the water's where it lies in front.
         if volumetric_fog.is_some() {
+            let depth = self.graph.try_view("front-depth");
             self.volumetric.encode_apply(
                 &self.device,
                 encoder,
                 frame_bind_group,
                 self.graph.view("hdr"),
-                self.graph.view("lindepth"),
+                depth.unwrap_or(self.graph.view("lindepth")),
             );
         }
         // The lit image for the next frame's GI (`gi-write`).

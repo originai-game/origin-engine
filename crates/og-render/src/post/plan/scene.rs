@@ -8,7 +8,7 @@ use super::*;
 pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
     let (passes, cfg) = (cx.passes, cx.cfg);
     let has = |p| cx.has(p);
-    let (prepass, contact, ao_depth) = (cx.prepass, cx.contact, cx.ao_depth);
+    let (prepass, contact, front_depth) = (cx.prepass, cx.contact, cx.front_depth);
     let (msaa, gi_copy) = (cx.msaa, cx.gi_copy);
     let fields = cx.fields();
     let name = p.name();
@@ -44,8 +44,8 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
             if cfg.object_space {
                 writes.push("object-space");
             }
-            if ao_depth {
-                writes.push("ao-depth");
+            if front_depth {
+                writes.push("front-depth");
             }
             g.pass(name, &[], &writes);
             // It sets `fx_group`, which holds the main pass's AO (or
@@ -110,6 +110,10 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
             }
             if prepass {
                 reads.push("lindepth");
+            }
+            // The volumetric fog's apply, at the end of the pass.
+            if front_depth && cfg.water_fog {
+                reads.push("front-depth");
             }
             if has(FramePass::Particles) {
                 reads.push("particles");

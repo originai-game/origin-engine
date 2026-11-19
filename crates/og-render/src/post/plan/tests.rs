@@ -18,6 +18,7 @@ fn cfg(taa: bool, gi: bool) -> GraphConfig {
         bent: false,
         water: false,
         water_ao: false,
+        water_fog: false,
         transmission: false,
         zoom_blur: false,
         fluid_fields: 0,

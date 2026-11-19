@@ -6,7 +6,8 @@ use super::*;
 pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
     let has = |p| cx.has(p);
     let ao_out = cx.ao_out;
-    let mut ao_reads = vec![if cx.ao_depth { "ao-depth" } else { "lindepth" }, "gbuffer"];
+    let water = cx.cfg.water_ao && cx.front_depth;
+    let mut ao_reads = vec![if water { "front-depth" } else { "lindepth" }, "gbuffer"];
     // The GI reads the previous frame's lit image.
     if cx.cfg.gi {
         ao_reads.push(if cx.cfg.taa {

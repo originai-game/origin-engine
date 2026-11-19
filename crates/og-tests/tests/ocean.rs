@@ -417,3 +417,71 @@ fn a_lamp_over_the_water_lights_it() {
         "the lamp did not light the water ({dark} bare, {lit} lit)"
     );
 }
+
+/// Volumetric height fog over the sea fogs the air down to the water's
+/// surface, not the sky or the bed behind it: the waves seen 20 to 40 m
+/// off from a deck 10 m up through sea mist (0.006 per metre at the
+/// surface, thinning by 0.14 per metre) keep at least half the light and
+/// dark across them that the same fog drawn plain leaves. The water is
+/// blended in the main pass and was not in the depth the fog's apply read,
+/// so each sea pixel's ray ran on through the sea, under it, where height
+/// fog thickens without bound, and flattened it to the fog's grey
+/// (Infinity World, og.Fog.volumetric).
+#[test]
+#[ignore = "requires GPU"]
+fn volumetric_height_fog_keeps_the_sea_under_it() {
+    use og_render::{Camera, Exposure, VolumetricFog};
+    let frame = |volumetric: bool| {
+        let mut built = scenes::build("water-ocean").expect("sea");
+        let scene = &mut built.scene;
+        let fog = scene.atmosphere.fog.as_mut().expect("the sea's haze");
+        fog.height_density = 0.006;
+        fog.falloff = 0.14;
+        let color = fog.color;
+        scene.atmosphere.volumetric_fog = volumetric.then_some(VolumetricFog {
+            color: Vec3::ONE,
+            ambient: color,
+            density: 0.0,
+            height: 0.0,
+            height_density: 0.006,
+            falloff: 0.14,
+            ..VolumetricFog::default()
+        });
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 10.0, 0.0),
+            target: Vec3::new(0.0, 0.0, -40.0),
+            far: 5000.0,
+            exposure: Exposure::linear(0.8),
+            ..Default::default()
+        };
+        og_tests::gfx::render_built(&mut built)
+            .expect("render")
+            .image
+    };
+    // The grey's standard deviation over the frame's lower third, all sea.
+    let ripples = |img: &RgbaImage| {
+        let (mut n, mut s, mut s2) = (0.0f64, 0.0f64, 0.0f64);
+        for y in img.height * 2 / 3..img.height {
+            for x in 0..img.width {
+                let i = ((y * img.width + x) * 4) as usize;
+                let p = &img.pixels[i..i + 3];
+                let g = (f64::from(p[0]) + f64::from(p[1]) + f64::from(p[2])) / 3.0;
+                n += 1.0;
+                s += g;
+                s2 += g * g;
+            }
+        }
+        let mean = s / n;
+        (mean, (s2 / n - mean * mean).max(0.0).sqrt())
+    };
+    let (plain, lit) = (ripples(&frame(false)), ripples(&frame(true)));
+    println!("the sea's grey (mean, sd): plain fog {plain:?}, volumetric {lit:?}");
+    assert!(
+        plain.1 > 4.0,
+        "the plain fog's sea shows no waves: {plain:?}"
+    );
+    assert!(
+        lit.1 > 0.5 * plain.1,
+        "under volumetric fog the sea is {lit:?}, under the plain fog {plain:?}"
+    );
+}

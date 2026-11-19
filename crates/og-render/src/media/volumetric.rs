@@ -39,6 +39,11 @@
 //! the lit image (colour × transmittance + in-scattered light) at each
 //! pixel's prepass depth, so opaque surfaces, the sky (at `distance`) and
 //! whatever was blended in front of them are all seen through the volume.
+//! Water is the exception: its surfaces' own depth is drawn in front of the
+//! prepass's (`front-depth`, water.rs `draw_ao_depth`) and the fog ends
+//! there. Blended, it is not in the prepass depth, and the fog ran on to
+//! the sky or the bed behind it, through the water and under the sea,
+//! where the height fog is densest, flattening it to the fog's grey.
 //!
 //! Under water the same pass draws the water the eye is in
 //! ([`Medium::Water`]) instead: the sun's light in it, which the waves

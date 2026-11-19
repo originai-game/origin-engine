@@ -11,7 +11,8 @@ pub(super) fn groups(cx: &BindCx, pass: FramePass) -> Option<Pair> {
         // The GI reads the lit image the previous frame left: the
         // TAA history it wrote, or the main pass's copy.
         FramePass::Ao => {
-            let d = cx.graph.try_view("ao-depth").unwrap_or(cx.depth());
+            let water = cx.cfg.water_ao.then(|| cx.graph.try_view("front-depth"));
+            let d = water.flatten().unwrap_or(cx.depth());
             let previous = |slot: usize| match (cx.cfg.gi, cx.history(), &cx.persistent.gi) {
                 (false, ..) => black,
                 (true, Some(h), _) => &h[1 - slot],

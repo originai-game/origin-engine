@@ -903,6 +903,7 @@ impl Renderer {
             lightdir_on,
             gtao,
             scene_water,
+            volumetric_fog: volumetric_fog.is_some(),
             distortion: particle_frame.distortion,
             transmission,
             fluids: arenas.fluids,

@@ -609,6 +609,7 @@ mod tests {
             bent: false,
             water: false,
             water_ao: false,
+            water_fog: false,
             transmission: false,
             zoom_blur: false,
             fluid_fields: 0,

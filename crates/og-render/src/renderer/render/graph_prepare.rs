@@ -14,6 +14,8 @@ pub(super) struct PrepareGraphInputs<'a> {
     pub lightdir_on: bool,
     pub gtao: bool,
     pub scene_water: &'a [Water],
+    /// The frame draws volumetric fog.
+    pub volumetric_fog: bool,
     pub distortion: bool,
     pub transmission: bool,
     pub fluids: usize,
@@ -39,6 +41,7 @@ impl Renderer {
             lightdir_on,
             gtao,
             scene_water,
+            volumetric_fog,
             distortion,
             transmission,
             fluids,
@@ -105,6 +108,7 @@ impl Renderer {
                     bent,
                     water: !scene_water.is_empty() || fluids_3d || distortion,
                     water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
+                    water_fog: !scene_water.is_empty() && volumetric_fog,
                     transmission,
                     zoom_blur: effects.screen_blur.is_some_and(|b| {
                         b.kind == crate::ScreenBlurKind::Zoom && b.strength.abs() < 1.0
