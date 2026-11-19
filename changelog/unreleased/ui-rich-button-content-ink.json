@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "Button content keeps its plate's text color when CJK spacing or other rich-text features are used, while explicitly colored inline runs retain their own ink."
+  ]
+}

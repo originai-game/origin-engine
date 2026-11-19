@@ -43,6 +43,9 @@ pub struct RichSpan {
     pub text: String,
     pub step: TypeStep,
     pub color: Srgba,
+    /// The paragraph supplies the ink, rather than an explicit run style
+    /// or link. Native-part inheritance may update only these runs.
+    pub(crate) inherits_color: bool,
     pub font: FontRole,
     pub bold: bool,
     pub italic: bool,

@@ -186,6 +186,7 @@ impl Ui {
                 text: text[bytes[start]..bytes[end]].to_owned(),
                 step,
                 color: desc.color.unwrap_or(t.palette.ink),
+                inherits_color: true,
                 font: desc.font,
                 bold: false,
                 italic: false,
@@ -215,6 +216,7 @@ impl Ui {
             for (_, _, style) in ranges.iter().filter(|(a, b, _)| *a <= start && end <= *b) {
                 if let Some(c) = &style.color {
                     s.color = resolve_color(c, &t);
+                    s.inherits_color = false;
                 }
                 if let Some(step) = style.step {
                     s.step = step;
@@ -348,6 +350,7 @@ impl Ui {
                     s.link = Some(link.clone());
                     if style.color.is_none() {
                         s.color = t.palette.highlight;
+                        s.inherits_color = false;
                     }
                     s.underline |= style.underline.is_none();
                 }

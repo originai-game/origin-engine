@@ -455,6 +455,84 @@ fn an_arabic_run_is_shaped_with_its_own_font() {
     assert_eq!(arabic.iter().map(|g| g.key()).collect::<Vec<_>>(), alone);
 }
 
+/// CJK spacing promotes labels to rich text. Their inherited ink must
+/// still follow the button, without replacing explicit inline colors.
+#[test]
+fn button_span_ink_reaches_every_fallback_run() {
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
+    let ui = Ui::new(UiDesc {
+        fonts: Fonts {
+            body: f.latin.clone(),
+            chain: vec![f.cjk.clone()],
+            ..Fonts::default()
+        },
+        ..UiDesc::default()
+    });
+    let mut d = Doc::with_ui(
+        ui,
+        r##"<meta name="component" content="t"/>
+<column>
+  <button variant="primary"><span>Go原点</span></button>
+  <button variant="primary">Direct引擎</button>
+  <button variant="primary"><span style="color: #123456">Own文字</span></button>
+  <button variant="primary"><span>Nested原<span style="color: #123456">点</span><span style="color: #edf6ff">字</span></span></button>
+  <button variant="primary"><span>渲染</span></button>
+</column>"##,
+    );
+    for scheme in [Scheme::Dark, Scheme::Light] {
+        d.ui.set_theme(Theme::new(scheme));
+        for _ in 0..30 {
+            d.step(InputFrame::default());
+        }
+        let drawn: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| match &i.cmd {
+                    DrawCmd::Text {
+                        text, font, color, ..
+                    } => Some((text.as_str(), *font, *color)),
+                    _ => None,
+                })
+                .collect();
+        let go = drawn
+            .iter()
+            .find(|c| c.0 == "Go")
+            .expect("Latin span run")
+            .2;
+        let direct = drawn
+            .iter()
+            .find(|c| c.0 == "Direct")
+            .expect("direct Latin run")
+            .2;
+        assert_eq!(go, direct, "the span inherits primary-button ink");
+        let cjk: Vec<_> = drawn.iter().filter(|c| Some(c.1) == f.cjk.handle).collect();
+        for (label, own) in [
+            ("原点", None),
+            ("引擎", None),
+            ("文字", Some("#123456")),
+            ("原", None),
+            ("点", Some("#123456")),
+            ("字", Some("#edf6ff")),
+            ("渲染", None),
+        ] {
+            let runs: Vec<_> = cjk.iter().filter(|c| c.0 == label).collect();
+            assert!(!runs.is_empty(), "fallback {label}: {drawn:?}");
+            for run in runs {
+                if let Some(hex) = own {
+                    assert!(
+                        near(run.2, og_ui::style_file::parse_color(hex).unwrap()),
+                        "explicit {label}: {drawn:?}"
+                    );
+                } else {
+                    assert_eq!(run.2, go, "inherited {label}: {drawn:?}");
+                }
+            }
+        }
+    }
+}
+
 #[test]
 fn named_fonts_keep_runtime_fallback_glyphs_beside_digits() {
     let mut handles = Handles::default();

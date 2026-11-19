@@ -644,13 +644,27 @@ impl Ui {
             .tree
             .part_host(n.key)
             .is_none_or(|host| host.own.contains("color"));
-        if !declared
-            && let crate::layout::Content::Text(text) = &*n.content
-            && text.color != ink
-        {
+        let needs_ink = !declared
+            && match &*n.content {
+                crate::layout::Content::Text(text) => text.color != ink,
+                crate::layout::Content::Rich(text) => text
+                    .spans
+                    .iter()
+                    .any(|span| span.inherits_color && span.color != ink),
+                _ => false,
+            };
+        if needs_ink {
             self.tree.rewrite(c);
-            if let crate::layout::Content::Text(text) = self.tree.content_mut(c) {
-                text.color = ink;
+            match self.tree.content_mut(c) {
+                crate::layout::Content::Text(text) => text.color = ink,
+                crate::layout::Content::Rich(text) => {
+                    for span in &mut text.spans {
+                        if span.inherits_color {
+                            span.color = ink;
+                        }
+                    }
+                }
+                _ => {}
             }
         }
         for k in 0..self.tree.nodes[c].built_children.len() {
