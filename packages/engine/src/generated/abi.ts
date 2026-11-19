@@ -850,6 +850,8 @@ export interface HostAbi<A, V> {
   og_platform_store_get(world: number, key: string): string;
   /** `og.platform.storeSet` */
   og_platform_store_set(world: number, desc: string | undefined): string;
+  /** `og.platform.catalogHead` */
+  og_platform_catalog_head(world: number, catalog: string): string;
   /** `og.platform.storeList` */
   og_platform_store_list(world: number): number;
   /** `og.platform.leaderboardSubmit` */
@@ -1768,6 +1770,7 @@ export const SYMBOLS: readonly string[] = [
   "og_story_mark",
   "og_platform_store_get",
   "og_platform_store_set",
+  "og_platform_catalog_head",
   "og_platform_store_list",
   "og_platform_leaderboard_submit",
   "og_platform_leaderboard_top",

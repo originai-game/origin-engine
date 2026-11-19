@@ -326,7 +326,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     // The platform services are faked: every call succeeds unless --platform-fake scripts it.
     const fake = platformFake === undefined ? { ok: true as const, value: {} } : readFake(platformFake);
     if (!fake.ok) fail(`--platform-fake: ${fake.reason}`);
-    const platform = nativePlatform(platformStore, fake.ok ? fake.value : {});
+    const platform = nativePlatform(platformStore, fake.ok ? fake.value : {}, content);
     engine.attachPlatform(platform);
     // One sink per engine, pumped after every step (crates/og-audio/README.md
     // §Host contract): null keeps the stream drained, a .wav path captures it.

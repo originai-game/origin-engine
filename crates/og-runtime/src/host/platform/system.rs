@@ -14,6 +14,9 @@ pub(crate) fn mount(world: &mut World, mount: crate::engine::Mount<'_>) -> Resul
             move |ctx| {
                 let tick = ctx.time().tick;
                 let ms = tick_ms(engine_id);
+                // The catalog versions answers and notices named, pinned
+                // for og.load.data once the platform state is let go.
+                let mut pins = Vec::new();
                 let arrived = with(engine_id, |p| {
                     let inbox = std::mem::take(&mut p.inbox);
                     let mut arrived = Vec::new();
@@ -33,6 +36,9 @@ pub(crate) fn mount(world: &mut World, mount: crate::engine::Mount<'_>) -> Resul
                         let slot = p.sub.contains_key(&id);
                         let done = slot.then(|| advance_slot(p, id, &v, tick)).flatten();
                         let host_time = time_of(&v);
+                        if ok && p.log.get(&id).is_some_and(|r| r.method == "catalog.head") {
+                            pins.push(v["data"].clone());
+                        }
                         if let Some(r) = p.log.get_mut(&id) {
                             r.answer = Some((v, tick));
                         }
@@ -71,6 +77,9 @@ pub(crate) fn mount(world: &mut World, mount: crate::engine::Mount<'_>) -> Resul
                         p.next_notice = p.next_notice.wrapping_add(1).max(1);
                         let n = p.next_notice;
                         let kind = v["kind"].as_str().unwrap_or("").to_string();
+                        if kind == "catalog" {
+                            pins.push(v["data"].clone());
+                        }
                         out.push((n, kind.clone()));
                         p.notices.insert(
                             n,
@@ -87,6 +96,13 @@ pub(crate) fn mount(world: &mut World, mount: crate::engine::Mount<'_>) -> Resul
                     }
                     out
                 });
+                if !pins.is_empty()
+                    && let Ok(eng) = engine(engine_id)
+                {
+                    for data in &pins {
+                        crate::world::data::pin(&eng, data);
+                    }
+                }
                 for (request, ok) in arrived {
                     ctx.send(PlatformAnswered { request, ok })?;
                 }

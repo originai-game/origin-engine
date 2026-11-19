@@ -2114,6 +2114,11 @@ pub fn og_platform_store_set(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_platform_catalog_head(world: u32, catalog: String) -> String {
+    <Host as PlatformApi>::og_platform_catalog_head(&Host, world, catalog)
+}
+
+#[wasm_bindgen]
 pub fn og_platform_store_list(world: u32) -> u32 {
     <Host as PlatformApi>::og_platform_store_list(&Host, world)
 }

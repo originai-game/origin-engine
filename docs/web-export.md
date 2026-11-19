@@ -184,8 +184,12 @@ og.load.data reads a game's content catalogs (the og-api guide loading
 --content <url>`, else project.ogt `publish { content "<url>" }`, under
 the asset base's rules for the URL. The build writes the page's
 configuration `content` and og-build.json's `content: { base, origin }`;
-the Worker reads `<base>/<catalog>/<version>/manifest.json` and then each
-file against the integrity the manifest lists. The host serves the base
+the Worker reads `<base>/<catalog>/<version>/manifest.json` (against the
+integrity a `catalog.head` answer named, once one has) and then each file
+against the integrity the manifest lists, checking SHA-384 itself so a
+network or CORS failure stays `failed`. `<base>/<catalog>/head.json`
+(served `no-store`) answers `catalog.head` on a page without a Player
+(§Providers). The host serves the base
 with CORS reads from the page's origin (and `Cross-Origin-Resource-Policy:
 cross-origin` under isolation) and lets the Content-Security-Policy reach
 `origin`. The service worker does not cache it: the browser's HTTP cache
@@ -671,6 +675,18 @@ answers: `platform` that of the browser's storage, `rooms` that of no
 rooms. A part that is not a provider is left out with a line in the log.
 In a publish build a provider whose `host` is `local` answers the platform
 services `unavailable`: a published page never fakes a purchase.
+
+Content catalogs (og-api guide saves §11, loading §14): a provider may
+name the game's content base, `content: { base() }` (one https directory
+for every catalog of the game, read once when the engine starts), which
+takes the place of the build's `--content`. `staticCatalog(base, { inner,
+read })` is a provider over the static layout: it answers `catalog.head`
+from `<base>/<catalog>/head.json` (`cache: no-store`), names `base`, and
+hands every other call to `inner`. The page `og build --content` wrote
+answers `catalog.head` the same way where no Player and no provider do. A
+Player answers `catalog.head` where its hello lists it and may push `{
+kind: "catalog", data: { catalog, version, manifest } }`; a notice is a
+hint, never relied on: games poll the head.
 
 `relayRooms(url, { reconnectMs })` (`src/web/relay-rooms.ts`) is the web
 room provider for a self-hosted page: og-net's protocol to an `og relay`

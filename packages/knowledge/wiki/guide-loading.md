@@ -685,5 +685,8 @@ og.load.data reads one file of one version of it.
   (not JSON, or not a manifest).
 - og.load.release frees a file once it is read. A version's manifest
   is read once a session.
-- Which version is current is the host's answer, not a file: a catalog
-  version never moves, so read it from the host and poll it.
+- Which version is current is the host's answer, not a file:
+  og.platform.catalogHead (guide saves §11). Its answer, or a `catalog`
+  notice, pins that version's manifest to the integrity it names, and a
+  manifest read later is checked against it; one read before any answer
+  named the version is read as it is.

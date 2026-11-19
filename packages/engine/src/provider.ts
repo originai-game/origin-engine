@@ -40,7 +40,7 @@ export const SERVICE_METHODS = [
 ] as const;
 
 /** The methods any store or portal can answer: the core vocabulary. */
-export const CORE_METHODS = ["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "telemetry", ...SERVICE_METHODS] as const;
+export const CORE_METHODS = ["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "telemetry", "catalog.head", ...SERVICE_METHODS] as const;
 
 /** Methods one host defines: `point` (Origin Point) and `ai.mark` are OriginGame's. */
 export const HOST_EXTENSIONS = ["point", "ai.mark"] as const;
@@ -84,8 +84,12 @@ export type PlatformAnswer = (
 
 /** Unasked host input (og_platform_notify): applied at the next tick's start as og.PlatformNotice. */
 export interface PlatformNotice {
-  /** `host`: a message from the page around the game (`{ name, ... }`), whose meaning the game and that page agree. */
-  readonly kind: "purchase" | "entitlements" | "invite" | "host";
+  /**
+   * `host`: a message from the page around the game (`{ name, ... }`), whose meaning the game and that page agree.
+   * `catalog`: a content catalog may have a new version (`{ catalog, version, manifest }`). Best effort: games poll
+   * `catalog.head`, so a provider that cannot push (a top-level page) never sends it.
+   */
+  readonly kind: "purchase" | "entitlements" | "invite" | "catalog" | "host";
   readonly data: unknown;
   readonly time?: number;
 }
@@ -116,6 +120,12 @@ export interface PlatformProvider {
   handle(calls: readonly PlatformCall[], answer: (request: number, result: PlatformAnswer) => void, link?: PlatformLink): void;
   /** Called on every pump, with calls or without: a provider that answers later or sends notices on its own. */
   poll?(link: PlatformLink): void;
+  /**
+   * Where og.load.data reads the game's content catalogs: `base()` is an https directory (http only on
+   * localhost) holding `<catalog>/…`, one for every catalog of the game, read once when the engine starts.
+   * Absent: the page's own content base (`og build --content`); absent there too, data loads fail `unavailable`.
+   */
+  readonly content?: { base(): string };
 }
 
 /** A successful answer. */
@@ -126,6 +136,103 @@ export const failure = (code: string, message: string): PlatformAnswer => ({ ok:
 
 /** The answer to a method this provider does not answer. */
 export const unavailable = (method: string, host = "this host"): PlatformAnswer => failure("unavailable", `${host} answers no ${method}`);
+
+// ── content catalogs ───────────────────────────────────────────────────
+
+/** `catalog.head`'s answer data: a catalog's current version and its manifest's integrity (crates/og-api/guides/saves.md §11). */
+export interface CatalogHead {
+  readonly catalog: string;
+  readonly version: string;
+  /** The version manifest's integrity, `sha384-<base64>`. */
+  readonly manifest: string;
+  /** When it was published, UTC ms. */
+  readonly published: number;
+}
+
+const CATALOG_NAME = /^[A-Za-z0-9._-]{1,64}$/;
+const CATALOG_VERSION = /^[A-Za-z0-9._-]{1,128}$/;
+const SHA384 = /^sha384-[A-Za-z0-9+/]{64}$/;
+
+/** What is wrong with a `catalog.head` answer's data for `catalog`, or null when it has the contract's shape. */
+export function catalogHeadProblem(catalog: string, data: unknown): string | null {
+  const d = data as Partial<Record<keyof CatalogHead, unknown>> | null;
+  if (!d || typeof d !== "object") return "the head is not an object { catalog, version, manifest, published }";
+  if (d.catalog !== catalog) return `the head names catalog '${String(d.catalog)}', not '${catalog}'`;
+  if (typeof d.version !== "string" || !CATALOG_VERSION.test(d.version)) return `the head's version '${String(d.version)}' is not 1 to 128 of letters, digits, '.', '_' and '-'`;
+  if (typeof d.manifest !== "string" || !SHA384.test(d.manifest)) return "the head's manifest is not an integrity, sha384-<base64>";
+  if (typeof d.published !== "number" || !Number.isFinite(d.published)) return "the head's published is not UTC ms, a number";
+  return null;
+}
+
+/**
+ * `catalog.head`'s answer from a `<base>/<catalog>/head.json` file's text, as the static layout serves it:
+ * null text is `not_found`, a file without the answer's shape `failed`.
+ */
+export function catalogHeadAnswer(catalog: string, text: string | null): PlatformAnswer {
+  if (text === null) return failure("not_found", `no catalog '${catalog}' is published (no ${catalog}/head.json)`);
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    return failure("failed", `${catalog}/head.json is not JSON: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const problem = catalogHeadProblem(catalog, data);
+  if (problem) return failure("failed", `${catalog}/head.json: ${problem}`);
+  const h = data as CatalogHead;
+  return ok({ catalog: h.catalog, version: h.version, manifest: h.manifest, published: h.published });
+}
+
+/** Reads `<base>/<catalog>/head.json`: its text, or null when there is none (404). Throws for a network failure. */
+export type CatalogRead = (url: string) => string | null | Promise<string | null>;
+
+/** The browser's read of a head file: never cached, a 404 is none. */
+export const fetchCatalog: CatalogRead = async (url) => {
+  // Through globalThis: a game's type check has no fetch global.
+  const get = (globalThis as unknown as { fetch(url: string, init: { cache: string }): Promise<{ ok: boolean; status: number; text(): Promise<string> }> }).fetch;
+  const r = await get(url, { cache: "no-store" });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.text();
+};
+
+/**
+ * A provider over the static catalog layout (`<base>/<catalog>/head.json` and the files beside it): it answers
+ * `catalog.head` by reading the head file, never cached, names `base` as the content base, and hands every other
+ * call to `inner` (none: `unavailable`). For a self-hosted page and for tests; a platform may serve the same layout.
+ */
+export function staticCatalog(base: string, options: { readonly inner?: PlatformProvider; readonly read?: CatalogRead } = {}): PlatformProvider {
+  const root = base.replace(/\/+$/, "");
+  const inner = options.inner;
+  const read = options.read ?? fetchCatalog;
+  const head = (request: number, catalog: string, answer: (request: number, result: PlatformAnswer) => void) => {
+    const settle = (text: string | null) => answer(request, catalogHeadAnswer(catalog, text));
+    const lost = (e: unknown) => answer(request, failure("offline", `${catalog}/head.json: ${e instanceof Error ? e.message : String(e)}`));
+    try {
+      const text = read(`${root}/${catalog}/head.json`);
+      if (text instanceof Promise) text.then(settle, lost);
+      else settle(text);
+    } catch (e) {
+      lost(e);
+    }
+  };
+  return {
+    host: inner?.host ?? "static",
+    capabilities: [...(inner?.capabilities ?? []).filter((c) => c !== "catalog.head"), "catalog.head"],
+    ...(inner?.time === undefined ? {} : { time: inner.time }),
+    content: { base: () => root },
+    handle(calls, answer, link) {
+      const rest: PlatformCall[] = [];
+      for (const c of calls) {
+        if (c.method === "catalog.head") head(c.request, String(c.args["catalog"] ?? ""), answer);
+        else rest.push(c);
+      }
+      if (rest.length === 0) return;
+      if (inner) inner.handle(rest, answer, link);
+      else for (const c of rest) if (c.method !== "telemetry") answer(c.request, unavailable(c.method, "a static catalog"));
+    },
+    ...(inner?.poll ? { poll: (link: PlatformLink) => inner.poll!(link) } : {}),
+  };
+}
 
 // ── rooms ──────────────────────────────────────────────────────────────
 
@@ -191,6 +298,7 @@ export const SAMPLE_ARGS: Readonly<Record<PlatformMethod, Record<string, unknown
   "leaderboard.top": { board: "conformance", count: 10 },
   "leaderboard.around": { board: "conformance", count: 10 },
   telemetry: { name: "conformance", attrs: {} },
+  "catalog.head": { catalog: "conformance" },
   "purchase.products": { ids: [] },
   "purchase.buy": { product: "conformance", quantity: 1 },
   "purchase.entitlements": {},
@@ -229,6 +337,8 @@ function shapeProblems(method: string, a: unknown): string[] {
   if (r["time"] !== undefined && typeof r["time"] !== "number") out.push(`${where}: time is UTC ms, a number`);
   if (r["ok"] === true) {
     if (!("data" in r)) out.push(`${where}: ok answers carry data (null for none)`);
+    const head = method === "catalog.head" ? catalogHeadProblem("conformance", r["data"]) : null;
+    if (head) out.push(`${where}: ${head}`);
     return out;
   }
   if (r["ok"] !== false) return [...out, `${where}: ok is true or false`];
@@ -281,7 +391,7 @@ export async function checkPlatformProvider(provider: PlatformProvider, options:
     },
     answer,
     notify(n) {
-      if (!["purchase", "entitlements", "invite", "host"].includes(n?.kind)) problems.push(`a notice's kind '${String(n?.kind)}' is not purchase, entitlements, invite or host`);
+      if (!["purchase", "entitlements", "invite", "catalog", "host"].includes(n?.kind)) problems.push(`a notice's kind '${String(n?.kind)}' is not purchase, entitlements, invite, catalog or host`);
     },
     pause: () => void paused++,
     resume: () => void paused--,

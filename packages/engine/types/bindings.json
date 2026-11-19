@@ -22849,6 +22849,28 @@
     {
       "id": 390,
       "kind": "fn",
+      "path": "og.platform.catalogHead",
+      "symbol": "og_platform_catalog_head",
+      "module": "platform",
+      "name": "catalogHead",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "catalog",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<u32>",
+      "publish": true
+    },
+    {
+      "id": 390,
+      "kind": "fn",
       "path": "og.platform.storeList",
       "symbol": "og_platform_store_list",
       "module": "platform",

@@ -5,6 +5,7 @@
 // services (purchases, ads, achievements, identity, share) are faked
 // deterministically: by default every call succeeds, and `--platform-fake
 // <file.json>` (a LocalFake; PlaytestDesc.platform) scripts their outcomes.
+// With `--content <dir>`, og.platform.catalogHead reads `<dir>/<catalog>/head.json`.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
@@ -21,9 +22,13 @@ export function filePersistence(path: string): LocalPersistence {
   };
 }
 
-/** The native platform: a file's store when `path` is given, else memory; the services faked as `fake` scripts them. */
-export function nativePlatform(path?: string, fake: LocalFake = {}): ReturnType<typeof localPlatform> {
-  return localPlatform(path ? filePersistence(path) : memoryPersistence(), fake);
+/**
+ * The native platform: a file's store when `path` is given, else memory; the services faked as `fake` scripts them;
+ * with `content` (a directory), catalog heads read from its `<catalog>/head.json`, at once.
+ */
+export function nativePlatform(path?: string, fake: LocalFake = {}, content?: string): ReturnType<typeof localPlatform> {
+  const read = (url: string) => (existsSync(url) ? readFileSync(url, "utf8") : null);
+  return localPlatform(path ? filePersistence(path) : memoryPersistence(), fake, content === undefined ? undefined : { base: content, read });
 }
 
 /** A LocalFake read from `--platform-fake <file.json>`, or the reason it cannot be. */
