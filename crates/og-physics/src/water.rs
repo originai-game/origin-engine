@@ -3,8 +3,8 @@
 //! the waves bodies raised), what crossed it this tick (og.Splash) and what
 //! cuts it now (the renderer's disturbance, [`Wakes`]).
 //!
-//! - og.Water ([`WaterBody`]): a lake, a sea or a river, a function of the
-//!   place and the time. Bodies cross and cut it ([`submersion`]); it lifts
+//! - og.Water ([`WaterBody`]): a lake, a sea, a river or still water over
+//!   a mesh ([`WaterMesh`]), a function of the place and the time. Bodies cross and cut it ([`submersion`]); it lifts
 //!   only the hulls of og.Buoyancy.
 //! - og.WaterSurface ([`SurfaceState`]): a height field for 3D (the wave
 //!   equation on a grid) that the bodies crossing it splash, with a box
@@ -26,6 +26,7 @@ use og_core::glam::Vec3;
 
 mod body;
 mod line;
+mod mesh;
 mod query;
 pub(crate) mod submersion;
 mod surface;
@@ -33,6 +34,7 @@ mod wakes;
 
 pub use body::WaterBody;
 pub(crate) use line::LineState;
+pub use mesh::WaterMesh;
 pub use query::WaterAt;
 pub(crate) use query::{at, level, ripple};
 pub(crate) use submersion::Under;

@@ -21,7 +21,7 @@ og.physics.water(world: World, point: Vector3): Result<WaterPoint | null>
 | `world` | `World` | no | The world. |
 | `point` | `Vector3` | no | The point, in world space, in metres (an og.WaterLine reads x and y). |
 
-**Returns** `Result<WaterPoint | null>`: Null over no water; an og.Water drawn over a mesh (`geometry`) is not looked at.
+**Returns** `Result<WaterPoint | null>`: Null over no water. An og.Water drawn over a mesh (`geometry`) is water only over its triangles, still, at their height.
 
 Binding symbol `og_physics_water` · publish builds: kept
 
@@ -32,7 +32,7 @@ fn water {
   aliases "is underwater, water depth, in water, swimming, water current, flow velocity, wave normal, water at point"
   param world World "The world."
   param point Vector3 "The point, in world space, in metres (an og.WaterLine reads x and y)."
-  returns Result.Option.WaterPoint "Null over no water; an og.Water drawn over a mesh (`geometry`) is not looked at."
+  returns Result.Option.WaterPoint "Null over no water. An og.Water drawn over a mesh (`geometry`) is water only over its triangles, still, at their height."
 }
 ```
 

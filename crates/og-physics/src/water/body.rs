@@ -15,7 +15,9 @@ use std::sync::Arc;
 /// With a `river` (W5: og.Water.river, in the frame's xz) the water is the
 /// river's ribbon alone, at its level along the course, its current the
 /// water's velocity there, so a body drifts down it at the speed it is
-/// drawn flowing.
+/// drawn flowing. With a `mesh` (og.Water.geometry, in world space) the
+/// water is still and stands only over the mesh's triangles, at their
+/// height: a lake of any outline.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WaterBody {
     pub entity: u64,
@@ -25,6 +27,7 @@ pub struct WaterBody {
     pub zero: og_core::glam::DVec3,
     pub shore: Option<(Arc<og_env::ocean::Shore>, og_env::ocean::ShoreTrains)>,
     pub river: Option<Arc<og_env::river::River>>,
+    pub mesh: Option<Arc<super::WaterMesh>>,
 }
 
 impl WaterBody {
@@ -40,6 +43,9 @@ impl WaterBody {
     /// its shore trains' together (shoaling only lowers a wave). A body
     /// further from the rest level than this is clear of the water.
     pub fn reach(&self) -> f32 {
+        if self.mesh.is_some() {
+            return 0.0;
+        }
         let Some(sea) = &self.sea else {
             return 0.0;
         };
@@ -52,6 +58,12 @@ impl WaterBody {
     /// [`og_env::ocean::Ocean::surface`]; still water without a
     /// sea).
     pub fn surface(&self, x: f64, z: f64, seconds: f64) -> Option<og_env::ocean::SurfacePoint> {
+        if let Some(mesh) = &self.mesh {
+            return Some(og_env::ocean::SurfacePoint {
+                height: mesh.level(x as f32, z as f32)? - self.position.y,
+                ..Default::default()
+            });
+        }
         if let Some(river) = &self.river {
             let at = river.at(og_core::glam::Vec2::new(x as f32, z as f32))?;
             return Some(og_env::ocean::SurfacePoint {

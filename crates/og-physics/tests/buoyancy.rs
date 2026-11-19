@@ -34,6 +34,7 @@ fn lake() -> WaterBody {
         zero: DVec3::ZERO,
         shore: None,
         river: None,
+        mesh: None,
     }
 }
 

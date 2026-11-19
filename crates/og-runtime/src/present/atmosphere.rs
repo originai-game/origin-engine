@@ -23,7 +23,7 @@ pub use shader::{
 #[cfg(not(feature = "publish"))]
 pub(crate) use sky::derive;
 pub use sky::og_atmosphere_time_of_day;
-pub(crate) use water::{ModuleState, river_of};
+pub(crate) use water::{ModuleState, river_of, water_mesh_of};
 
 use crate::host::codec::Layout;
 use crate::host::wire::{Color, FromJson, record};

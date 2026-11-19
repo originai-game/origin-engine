@@ -207,6 +207,7 @@ mod tests {
             zero: og_core::glam::DVec3::ZERO,
             shore: None,
             river: None,
+            mesh: None,
         }
     }
 

@@ -15,10 +15,64 @@ use std::sync::Arc;
 /// A river's path handle and its width's and speed's bits.
 type RiverKey = (u64, u32, u32);
 
-/// The water on one engine: its rivers by [`RiverKey`], the newest last.
+/// A mesh water's geometry handle, its mesh's revision and its world
+/// matrix's bits.
+type MeshKey = (u64, u64, [u32; 16]);
+
+/// The water on one engine: its rivers by [`RiverKey`] and its mesh waters
+/// by [`MeshKey`], the newest last.
 #[derive(Default)]
 pub(crate) struct ModuleState {
     rivers: std::cell::RefCell<Vec<(RiverKey, Arc<og_env::river::River>)>>,
+    meshes: std::cell::RefCell<Vec<(MeshKey, Arc<og_physics::WaterMesh>)>>,
+}
+
+/// An og.Water drawn over a mesh (og.Water.geometry), as the tick floats
+/// bodies on it: the geometry's triangles placed by `world` (the entity's
+/// world matrix, scale included, as the renderer draws it). Made once per
+/// geometry, mesh revision and pose. None for no live geometry or one that
+/// holds no water seen from above.
+pub(crate) fn water_mesh_of(
+    engine: u32,
+    geometry: u64,
+    world: Mat4,
+) -> Option<Arc<og_physics::WaterMesh>> {
+    let eng = crate::engine::engine(engine).ok()?;
+    let rs = eng.render.try_borrow().ok()?;
+    let handle = *rs.geometries.get((geometry & 0xffff_ffff) as usize)?;
+    let key = (
+        geometry,
+        rs.scene.mesh_revision(handle.index()),
+        world.to_cols_array().map(f32::to_bits),
+    );
+    let meshes = &eng.modules.atmosphere.meshes;
+    if let Some(m) = meshes
+        .borrow()
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, m)| m.clone())
+    {
+        return Some(m);
+    }
+    let data = rs.scene.mesh(handle)?;
+    let at = |i: u32| {
+        data.vertices
+            .get(i as usize)
+            .map(|v| world.transform_point3(Vec3::from(v.position)))
+    };
+    let mesh = Arc::new(og_physics::WaterMesh::new(
+        data.indices
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .filter_map(|&[a, b, c]| Some([at(a)?, at(b)?, at(c)?])),
+    )?);
+    let mut c = meshes.borrow_mut();
+    if c.len() >= 64 {
+        c.remove(0);
+    }
+    c.push((key, mesh.clone()));
+    Some(mesh)
 }
 
 /// An og.Water's river (og.Water.river: its path sampled every metre or so,

@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "added": [
+    {
+      "member": "og.Water.geometry",
+      "summary": "An og.Water drawn over a mesh is water to the simulation too: still water standing only over the mesh's triangles, at their height as drawn (the entity's pose and scale included). og.physics.water and og.physics.waterHeight answer it, og.Buoyancy floats on it and bodies crossing it are og.Splash events. Before, mesh water was a look only. A lake that follows its shore floats boats like a sea, without a square that covers the lower ground around it. It has no waves and no current."
+    }
+  ]
+}

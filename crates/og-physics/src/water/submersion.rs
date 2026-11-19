@@ -29,8 +29,9 @@ pub(crate) struct Wet {
 /// only for a body its waves can reach.
 fn level_near(w: &WaterBody, f: &Floater, seconds: f64, dt: f32) -> Option<f32> {
     let near = NEAR + 2.0 * f.velocity.y.abs() * dt;
-    // A river's level is its course's: only its own point says how high.
-    if w.river.is_none() {
+    // A river's level is its course's, a mesh's its triangles': only its
+    // own point says how high.
+    if w.river.is_none() && w.mesh.is_none() {
         let reach = w.reach() + near;
         if f.min.y > w.position.y + reach || f.max.y < w.position.y - reach {
             return None;
@@ -110,6 +111,7 @@ mod tests {
             zero: og_core::glam::DVec3::ZERO,
             shore: None,
             river: None,
+            mesh: None,
         }
     }
 

@@ -82,6 +82,7 @@ fn over(
         Some(river) => river
             .at(og_core::glam::Vec2::new(centre.x, centre.z))
             .is_some(),
+        None if w.mesh.is_some() => w.surface(centre.x.into(), centre.z.into(), 0.0).is_some(),
         None => {
             local.x.abs() <= w.size.x * 0.5 + extent.x && local.y.abs() <= w.size.y * 0.5 + extent.y
         }

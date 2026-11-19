@@ -18447,7 +18447,7 @@ export interface Water {
    */
   size: Vector2;
   /**
-   * Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights.
+   * Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline, with the same colour by depth, refraction, foam and reflections. 0: the grid. A mesh surface has no wave heights: it is still water standing over the mesh's triangles alone, at their height, for og.physics.water, waterHeight, og.Buoyancy and og.Splash (a lake of any outline, not a square that covers the low ground around it).
    */
   geometry: Geometry;
   /**
@@ -36682,7 +36682,7 @@ export declare namespace og {
      *
      * @param world The world.
      * @param point The point, in world space, in metres (an og.WaterLine reads x and y).
-     * @returns Null over no water; an og.Water drawn over a mesh (`geometry`) is not looked at.
+     * @returns Null over no water. An og.Water drawn over a mesh (`geometry`) is water only over its triangles, still, at their height.
      */
     function water(world: World, point: Vector3): Result<WaterPoint | null>;
     /**

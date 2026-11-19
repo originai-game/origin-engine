@@ -87,7 +87,7 @@ mod stats;
 #[path = "soft/verlet.rs"]
 mod verlet;
 mod water;
-pub use water::{Wakes, WaterAt, WaterBody, WaterCut};
+pub use water::{Wakes, WaterAt, WaterBody, WaterCut, WaterMesh};
 
 #[cfg(feature = "physics2d")]
 mod dim2;

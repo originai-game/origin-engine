@@ -404,8 +404,11 @@ What differs is the lift. An og.Water alone lifts only bodies with
 og.Buoyancy; everything else sinks through it. og.WaterSurface and
 og.WaterLine also lift every body's box by their own `buoyancy`, so a pool
 of crates floats without a component on each. An og.Water drawn over a
-mesh (`geometry`) is a look only: it has no height to ask for and nothing
-crosses it.
+mesh (`geometry`, a lake that follows its shore) is still water standing
+only over the mesh's triangles, at their height as drawn (its entity's
+pose and scale included): og.physics.water and waterHeight answer it,
+og.Buoyancy floats on it and bodies crossing it splash, but it has no
+waves and no current.
 
 Force fields. An og.ForceField accelerates what is inside the og.Volume
 beside it, a heavy body as a light one, so it is the tool for gravity that

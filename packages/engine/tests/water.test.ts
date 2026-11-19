@@ -7,7 +7,7 @@
 // Whatever crosses any og.Water is an og.Splash, with or without og.Buoyancy.
 // og.Buoyancy floats a crate on still water at the depth Archimedes gives,
 // and a hull rides a gale's sea, the same on every run and through a
-// restore.
+// restore. An og.Water drawn over a mesh is still water over its triangles.
 import { beforeAll, expect, test } from "bun:test";
 import { og, defineSystem } from "@origingame/engine";
 import type { World } from "@origingame/engine";
@@ -255,3 +255,54 @@ test("a stone dropped into a pond is an og.Splash at its level", () => {
   // Two metres of free fall.
   expect(heard[0]!.speed).toBeLessThan(-5);
 });
+
+/**
+ * An L-shaped lake drawn over a mesh (og.Water.geometry), turned a quarter
+ * about y and scaled 2: a square pool at its rest level and a lower one
+ * beside it, at x 1000, y 3. A crate set down on the upper pool.
+ */
+function lake(world: World): void {
+  // Local x z corners of each quad, at local y 0 (upper) and -0.5 (lower).
+  const quads: [number, number, number, number, number][] = [[0, 0, 10, 10, 0], [10, 0, 20, 4, -0.5]];
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (const [x0, z0, x1, z1, y] of quads) {
+    const n = positions.length / 3;
+    positions.push(x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1);
+    indices.push(n, n + 2, n + 1, n, n + 3, n + 2);
+  }
+  const geometry = must(og.render.bufferGeometry(world, { positions: new Float32Array(positions), indices: new Uint32Array(indices) }));
+  const s = Math.SQRT1_2;
+  const e = must(world.spawn({ name: "lake", position: { x: 1000, y: 3, z: 0 }, quaternion: { x: 0, y: s, z: 0, w: s }, scale: { x: 2, y: 2, z: 2 } }));
+  world.insert(e, og.Water, { geometry });
+  body(world, "crate", lakePoint(5, 5, 0.5), { x: 2, y: 0.5, z: 2 }, 0.6);
+}
+
+/** Where the lake's local (x, z) lies in the world, `up` over the rest level: scaled 2, then turned a quarter about y (local +x to world -z). */
+function lakePoint(x: number, z: number, up = 0): { x: number; y: number; z: number } {
+  return { x: 1000 + 2 * z, y: 3 + up, z: -2 * x };
+}
+
+test("a lake over a mesh is water only over its triangles, at their height, and floats a crate", () => {
+  const r = createEngine(og.game({ start: lake }) as GameToken, {});
+  if (!r.ok) throw new Error(r.reason);
+  const engine = r.value;
+  expect(engine.advance(900).ok).toBeTrue();
+  const w = engine.world;
+  const water = w.find("lake")!;
+  const upper = must(og.physics.water(w, { ...lakePoint(5, 5), y: 1 }))!;
+  expect(Number(upper.water)).toBe(Number(water));
+  expect(upper.height).toBeCloseTo(3, 5);
+  expect(upper.depth).toBeCloseTo(2, 5);
+  expect(upper.normal).toEqual({ x: 0, y: 1, z: 0 });
+  expect(upper.velocity).toEqual({ x: 0, y: 0, z: 0 });
+  // The lower pool stands 1 m lower (-0.5 scaled 2).
+  const lower = lakePoint(15, 2);
+  expect(must(og.physics.water(w, lower))!.height).toBeCloseTo(2, 5);
+  expect(must(og.physics.waterHeight(w, water, lower.x, lower.z))).toBeCloseTo(2, 5);
+  // Inside the mesh's bounds but off its triangles, and past it: no water.
+  expect(must(og.physics.water(w, lakePoint(15, 8)))).toBeNull();
+  expect(must(og.physics.water(w, lakePoint(5, -1)))).toBeNull();
+  // Density 0.6 in water of density 2: its centre 0.1 m over the level.
+  expect(y(engine, "crate")).toBeCloseTo(3.1, 2);
+}, 30_000);

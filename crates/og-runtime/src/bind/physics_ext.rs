@@ -402,10 +402,11 @@ impl<'a> Reader<'a> {
     }
 }
 
-/// The world's og.Water bodies in entity order (those drawn over a mesh
-/// left out: an arbitrary shape, no square of water): each at its world
-/// position, its sea (og.Water.wind) and og.WorldOrigin's zero. What
-/// bodies cross and float on and og.physics.waterHeight answers with.
+/// The world's og.Water bodies in entity order: each at its world
+/// position, its sea (og.Water.wind), og.WorldOrigin's zero, and one drawn
+/// over a mesh (og.Water.geometry) as still water over its triangles,
+/// placed as it is drawn. What bodies cross and float on and
+/// og.physics.waterHeight answers with.
 pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::WaterBody>, String> {
     let (layout, origin, terrain) = {
         let st = eng.state.borrow();
@@ -424,10 +425,25 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
         .into_iter()
         .filter_map(|(id, v)| {
             let w = record::Water::from_json(&v).ok()?;
+            let e = Entity::from_bits(id);
+            let position = r.position(e)?;
             if w.geometry != 0 {
-                return None;
+                // No wave heights on a mesh: still water over its triangles.
+                let (at, q, scale) = r.pose(e)?;
+                let world = glam::Mat4::from_scale_rotation_translation(scale, q, at);
+                return Some(og_physics::WaterBody {
+                    entity: id,
+                    position,
+                    size: w.size,
+                    sea: None,
+                    zero,
+                    shore: None,
+                    river: None,
+                    mesh: Some(crate::present::atmosphere::water_mesh_of(
+                        eng.id, w.geometry, world,
+                    )?),
+                });
             }
-            let position = r.position(Entity::from_bits(id))?;
             let sea = og_env::ocean::Ocean::new(w.wind, w.swell, w.choppiness);
             Some(og_physics::WaterBody {
                 entity: id,
@@ -444,6 +460,7 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
                 sea,
                 zero,
                 river: crate::present::atmosphere::river_of(eng.id, &v),
+                mesh: None,
             })
         })
         .collect())
