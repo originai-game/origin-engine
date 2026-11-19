@@ -136,8 +136,8 @@ pub enum Against {
 /// frame `name`: saved in [`out_dir`], recorded under `OG_UI_CAPTURE=1`,
 /// then compared with the reference `against` chooses, under [`compare`]'s
 /// rule. Prints the difference it measured and reports a frame outside it
-/// ([`report_moved`]); answers a reference of another size or a broken
-/// frame (`og_tests::compare::broken`).
+/// ([`report_moved`]); answers a missing or unreadable reference, a reference
+/// of another size or a broken frame (`og_tests::compare::broken`).
 pub fn check_reference(
     name: &str,
     image: &RgbaImage,
@@ -170,7 +170,7 @@ pub fn check_reference(
         reference_dir(recorded).join(&file)
     };
     let expected = image::open(&reference)
-        .unwrap_or_else(|e| panic!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))
+        .map_err(|e| format!("{}: {e} (OG_UI_CAPTURE=1 records it)", reference.display()))?
         .to_rgba8();
     if expected.dimensions() != (image.width, image.height) {
         return Err(format!(
