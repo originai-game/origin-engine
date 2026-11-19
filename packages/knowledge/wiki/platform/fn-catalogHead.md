@@ -6,7 +6,7 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 ### `og.platform.catalogHead`
 
-Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). Poll it, every 30 to 60 seconds while the game cares: og.PlatformNoticeKind.catalog is a hint a host may never send.
+Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). Poll it, every 30 to 60 seconds while the game cares: a catalog notice (og.PlatformNotice) is a hint a host may never send.
 
 See `saves §11`.
 
@@ -27,7 +27,7 @@ Binding symbol `og_platform_catalog_head` · publish builds: kept
 
 ```ogt
 fn catalogHead {
-  doc "Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). Poll it, every 30 to 60 seconds while the game cares: og.PlatformNoticeKind.catalog is a hint a host may never send."
+  doc "Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). Poll it, every 30 to 60 seconds while the game cares: a catalog notice (og.PlatformNotice) is a hint a host may never send."
   guide "saves §11"
   aliases "content version, world index version, published level version, catalog pointer"
   param world World "The world."
