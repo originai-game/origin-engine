@@ -27,16 +27,20 @@ skip_unchanged() {
 }
 . "$OG_ROOT/scripts/gate/commands.sh"
 
+if [ -n "${GATE_LOGS:-}" ]; then
+  python3 -c 'import time; print(time.monotonic())' > "$GATE_LOGS/$1.resource-start"
+fi
+case "$1" in
+  rust-gpu|bun-test|fixtures|browser|web-reference)
+    og_gpu_acquire "gate $1 ($PWD)" || exit 1 ;;
+esac
+if [ -n "${GATE_LOGS:-}" ]; then
+  python3 -c 'import time; print(time.monotonic())' > "$GATE_LOGS/$1.command-start"
+fi
 case "$1" in
   rust-build) python3 scripts/gate/native.py build; exit $? ;;
   rust-cpu) python3 scripts/gate/native.py cpu; exit $? ;;
-  rust-gpu)
-    og_gpu_acquire "gate Rust rendering ($PWD)" || exit 1
-    python3 scripts/gate/native.py gpu; exit $? ;;
-  bun-test|fixtures|browser|web-reference)
-    og_gpu_acquire "gate $1 ($PWD)" || exit 1 ;;
-esac
-case "$1" in
+  rust-gpu) python3 scripts/gate/native.py gpu; exit $? ;;
   doc-tests) cargo test --workspace --doc; rc=$? ;;
   bun-quick)
     # The lock, landing and guard tests read scripts/ alone (a minute).
@@ -47,12 +51,18 @@ case "$1" in
         og_green_set bun-quick.scripts
       rc=$?
     fi
-    # Every script test, found rather than listed, so a new one cannot be missed.
     [ "$rc" != 0 ] || {
-      bun test $(find scripts -name '*.test.ts' | sort | sed 's|^|./|') && bun scripts/gate/bun.ts quick
+      # An explicit preflight skip must not also silently skip the toolchain test.
+      script_tests=()
+      while IFS= read -r file; do
+        if [ "$file" = scripts/toolchain.test.ts ] && [[ "$RAN" == *' preflight '* ]]; then continue; fi
+        script_tests+=("./$file")
+      done < <(find scripts -name '*.test.ts' | sort)
+      bun test "${script_tests[@]}" && bun scripts/gate/bun.ts quick
       rc=$?
     } ;;
   browser)
+    require_web_ready browser || exit 1
     # packages/engine's test:browser is the one list of the browser tests;
     # each runs even when one before it failed.
     tests="$(bun -e 'console.log(require("./packages/engine/package.json").scripts["test:browser"])' | grep -o 'tests/web/[a-z0-9-]*\.ts')"

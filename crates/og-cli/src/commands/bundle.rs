@@ -16,12 +16,30 @@
 //! and prints the size table. Layout and contract: docs/web-export.md.
 
 use crate::project::{self, Project};
+use std::io::Write;
 use std::path::Path;
 use std::process::ExitCode;
 
 const USAGE: &str = "usage: og build [project] [--publish] [--out DIR] [--assets URL] [--content URL] [--modules cdn|local] [--json] [--no-check]";
 
+fn build_trace(event: &str) {
+    if let Some(path) = std::env::var_os("OG_BUILD_TRACE")
+        && let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+    {
+        let at = std::time::UNIX_EPOCH
+            .elapsed()
+            .unwrap_or_default()
+            .as_millis();
+        let row = serde_json::json!({"event": event, "pid": std::process::id(), "at": at});
+        let _ = file.write_all(format!("{row}\n").as_bytes());
+    }
+}
+
 pub fn run(args: &[&str]) -> ExitCode {
+    build_trace("cli-start");
     let mut project = ".".to_string();
     let mut publish = false;
     let mut json = false;
@@ -133,6 +151,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         eprintln!("og build: {n}");
     }
     if p.has_assets() {
+        build_trace("cook-start");
         match crate::cook::cook_for(&p.root, 0, true, publish) {
             Ok(r) => {
                 if !json {
@@ -151,6 +170,10 @@ pub fn run(args: &[&str]) -> ExitCode {
                 return ExitCode::FAILURE;
             }
         }
+        build_trace("cook-complete");
+    }
+    if check {
+        build_trace("check-start");
     }
     if check && let Err(e) = crate::check::require(&p, &package, json) {
         eprintln!("og build: {e}");
@@ -161,6 +184,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     if json {
         cmd.arg("--json");
     }
+    build_trace("export-spawn");
     match cmd.status() {
         Ok(s) => project::exit_of(s),
         Err(e) => {

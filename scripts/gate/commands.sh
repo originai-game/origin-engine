@@ -419,9 +419,58 @@ step_engine_typecheck() {
   (cd packages/engine && OG_BIN="$OG_TARGET_DIR/debug/og" bun run typecheck)
 }
 
+step_preflight() {
+  case " ${OG_GATE_STEPS:-} " in
+    *' wasm-bindgen '*)
+      og_need wasm-bindgen || return 1
+      local lock
+      lock="$(og_lock_version wasm-bindgen)" || return 1
+      [ "$(wasm-bindgen --version | awk '{print $2}')" = "$lock" ] || {
+        og_err "wasm-bindgen must match Cargo.lock ($lock); run scripts/install-tools.sh"
+        return 1
+      }
+      if [ "${OG_WASM_VARIANTS:-dev}" != dev ]; then
+        og_need wasm-split || return 1
+        local split_version
+        split_version="${BINARYEN_VERSION:-$(sed -n 's/^BINARYEN_VERSION="${BINARYEN_VERSION:-\([0-9]*\)}"$/\1/p' scripts/install-tools.sh)}"
+        [ "$(wasm-split --version | awk '{print $3}')" = "$split_version" ] || {
+          og_err "wasm-split must match Binaryen $split_version; run scripts/install-tools.sh"
+          return 1
+        }
+      fi ;;
+  esac
+  case " ${OG_GATE_STEPS:-} " in
+    *' bun-quick '*|*' engine-typecheck '*) bun test ./scripts/toolchain.test.ts ;;
+  esac
+}
+
+require_ready() {
+  case " ${OG_GATE_RAN:-} " in *" $2 "*) return 0 ;; esac
+  og_err "$1: $2 did not prepare the package in this run"
+  return 1
+}
+
+step_native_ready() {
+  require_ready native-ready rust-build || return 1
+  sh packages/engine/scripts/build.sh --native
+}
+
+step_api_surface() {
+  require_ready api-surface native-ready || return 1
+  (cd packages/engine && OG_RENDERER=none bun test ./tests/api-surface.test.ts)
+}
+
+step_web_ready() {
+  require_wasm web-ready && require_ready web-ready native-ready && require_ready web-ready wasm-bindgen || return 1
+  OG_GATE_NATIVE_READY=1 sh packages/engine/scripts/build.sh
+}
+
+require_web_ready() {
+  require_wasm "$1" && require_ready "$1" web-ready
+}
+
 step_bun_test() {
-  require_wasm bun-test || return 1
-  OG_GATE=1 sh packages/engine/scripts/build.sh || return 1
+  require_web_ready bun-test || return 1
   bun scripts/gate/bun.ts full
 }
 
@@ -433,7 +482,7 @@ step_bun_test() {
 # mark, so the next gate with a GPU runs it.
 step_fixtures() {
   local dir name log rc project ran="" unchanged="" unchecked="" bad="" t0 times=""
-  OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
+  require_ready fixtures native-ready || return 1
   for dir in packages/create/template tests/fixtures/*/; do
     dir="${dir%/}"
     [ -f "$dir/project.ogt" ] && [ -d "$dir/tests" ] || continue
@@ -545,7 +594,7 @@ step_web_reference() {
   # dist/web: this checkout's dev og and addon and the gate's wasm, never
   # what a release build or an older gate left there (the measure lane's
   # 0.3.0 og refused fx-showcase's newer asset types, 2026-10-24).
-  OG_GATE=1 sh packages/engine/scripts/build.sh || return 1
+  require_web_ready web-reference || return 1
   rm -rf "$dir"; mkdir -p "$dir"
   og_say "web-reference: $(printf '%s' "$WEB_GROUPS" | og_words), $jobs at a time (OG_WEB_JOBS); logs in ${dir#"$OG_ROOT"/}/"
   t0="$(date +%s)"

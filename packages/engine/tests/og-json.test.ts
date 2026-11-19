@@ -3,7 +3,7 @@
 // status, and `og build --json` with where the build lands. A change to
 // any shape asserted here is a breaking change.
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,7 +11,7 @@ import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o: { cwd: string; env: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
-  spawn(cmd: string[], o: { cwd: string; env: Record<string, string | undefined>; stdout: "pipe"; stderr: "pipe" }): { stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array>; exited: Promise<number>; kill(): void };
+  spawn(cmd: string[], o: { cwd: string; env: Record<string, string | undefined>; stdout: "pipe"; stderr: "pipe"; timeout?: number }): { stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array>; exited: Promise<number>; pid: number; signalCode: string | null; kill(): void };
 };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -25,6 +25,59 @@ const og = (...args: string[]) => {
   const r = Bun.spawnSync([ogBin(), ...args], { cwd: repo, env });
   return { code: r.exitCode, stdout: new TextDecoder().decode(r.stdout), stderr: new TextDecoder().decode(r.stderr) };
 };
+
+const BUILD_WALL_MS = 180_000;
+
+async function tracedBuild(name: string, deadline: number, ...args: string[]) {
+  const logs = process.env.GATE_LOGS;
+  if (!logs) return og("build", ...args);
+  const trace = join(logs, `og-json-${name}.jsonl`);
+  const child = Bun.spawn([ogBin(), "build", ...args], {
+    cwd: repo, env: { ...env, OG_BUILD_TRACE: trace }, stdout: "pipe", stderr: "pipe",
+    timeout: Math.max(1, Math.floor(deadline - performance.now())),
+  });
+  const record = (event: string, fields: Record<string, unknown>) => {
+    try {
+      appendFileSync(trace, JSON.stringify({ at: Date.now(), pid: child.pid, event, ...fields }) + "\n");
+    } catch {
+      // The contract is independent of evidence storage.
+    }
+  };
+  record("spawn", {});
+  const pipe = async (stream: "stdout" | "stderr") => {
+    const reader = child[stream].getReader();
+    const decoder = new TextDecoder();
+    let output = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      const chunk = done ? decoder.decode() : decoder.decode(value, { stream: true });
+      if (chunk) record(stream, { chunk });
+      output += chunk;
+      if (done) return output;
+    }
+  };
+  const sample = setInterval(() => {
+    if (process.platform === "win32") return;
+    const result = Bun.spawnSync(["ps", "-axo", "pid=,ppid=,stat=,pcpu=,rss=,time=,comm="], { cwd: repo, env });
+    const rows = new TextDecoder().decode(result.stdout).trim().split("\n").map((row) => row.trim());
+    const family = new Set([String(child.pid)]);
+    for (let size = 0; size !== family.size;) {
+      size = family.size;
+      for (const row of rows) {
+        const [pid, parent] = row.split(/\s+/, 3);
+        if (pid && parent && family.has(parent)) family.add(pid);
+      }
+    }
+    record("process-tree", { rows: rows.filter((row) => family.has(row.split(/\s+/, 1)[0]!)) });
+  }, 15_000);
+  try {
+    const [code, stdout, stderr] = await Promise.all([child.exited, pipe("stdout"), pipe("stderr")]);
+    record("exit", { status: code, signal: child.signalCode });
+    return { code, stdout, stderr };
+  } finally {
+    clearInterval(sample);
+  }
+}
 /** Every stdout line, each of which must be one JSON object. */
 const lines = (stdout: string) => stdout.split("\n").filter((l) => l !== "").map((l) => JSON.parse(l) as Record<string, unknown>);
 
@@ -99,9 +152,10 @@ test("og probe prints the result as JSON, exits 1 on an error, and --raw prints 
   expect([gone.code, gone.stdout]).toEqual([1, ""]);
 }, 120_000);
 
-test("og build --json prints check and build events; the build lands in dist/ or --out", () => {
+test("og build --json prints check and build events; the build lands in dist/ or --out", async () => {
+  const deadline = performance.now() + BUILD_WALL_MS;
   const events = (r: { stdout: string }) => lines(r.stdout);
-  const r = og("build", game, "--json");
+  const r = await tracedBuild("default", deadline, game, "--json");
   expect(r.code).toBe(0);
   const [check, build] = events(r) as [Record<string, any>, Record<string, any>];
   expect(events(r).map((e) => e.event)).toEqual(["check", "build"]);
@@ -112,8 +166,8 @@ test("og build --json prints check and build events; the build lands in dist/ or
   expect(existsSync(join(game, "dist", "og-build.json"))).toBe(true);
   expect(existsSync(join(game, "dist", build.manifest.entry))).toBe(true);
   const elsewhere = join(root, "elsewhere");
-  const moved = og("build", game, "--json", "--no-check", "--out", elsewhere);
+  const moved = await tracedBuild("elsewhere", deadline, game, "--json", "--no-check", "--out", elsewhere);
   expect(moved.code).toBe(0);
   expect(events(moved).map((e) => [e.event, e.out])).toEqual([["build", elsewhere]]);
   expect(existsSync(join(elsewhere, "og-build.json"))).toBe(true);
-}, 180_000);
+}, BUILD_WALL_MS);

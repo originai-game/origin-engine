@@ -42,7 +42,9 @@ for (const entry of readdirSync("packages", { withFileTypes: true })) {
   // engine preparation and typecheck are done once by step_bun_test.
   const prepare = typeof script === "string" ? script.slice(0, testCommand).replace(/\s*&&\s*$/, "") : "";
   if (!full && prepare.trim()) await run(["bash", "-eu", "-c", prepare], resolve(pkg));
-  const files = [...new Bun.Glob("{tests,extensions}/**/*.{test,spec}.{ts,tsx,js}").scanSync(pkg)].sort();
+  const files = [...new Bun.Glob("{tests,extensions}/**/*.{test,spec}.{ts,tsx,js}").scanSync(pkg)]
+    .filter(file => !full || file !== "tests/api-surface.test.ts" || !(process.env.OG_GATE_RAN ?? "").includes(" api-surface "))
+    .sort();
   const dependencies = new Map<string, Set<string>>();
   const classified = new Set<string>();
   for (const file of files) {

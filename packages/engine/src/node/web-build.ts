@@ -50,7 +50,7 @@
 // later); with --json one JSON line:
 //   { event: "build", ok, out, publish, files: [{ path, bytes, compressed, codec }], total, downloads, probe: { build, members }, manifest }
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { referencedModules } from "./modules.ts";
 import type { EngineModules } from "../web/split.ts";
@@ -71,6 +71,17 @@ declare module "node:fs" {
 }
 declare module "node:os" {
   export function availableParallelism(): number;
+}
+
+// Opt-in evidence survives a killed exporter without changing its stdout protocol.
+function buildTrace(event: string, fields: Record<string, unknown> = {}): void {
+  const file = process.env.OG_BUILD_TRACE;
+  if (!file) return;
+  try {
+    appendFileSync(file, JSON.stringify({ at: Date.now(), pid: process.pid, event, ...fields }) + "\n");
+  } catch {
+    // Diagnostics cannot make a build fail.
+  }
 }
 declare module "node:path" {
   export function relative(from: string, to: string): string;
@@ -664,7 +675,9 @@ async function sizesOfFiles(paths: readonly string[]): Promise<Array<{ bytes: nu
   const worker = async () => {
     for (let i = next++; i < paths.length; i = next++) sizes[i] = await compressedSize(new Uint8Array(readFileSync(paths[i]!)));
   };
-  await Promise.all(Array.from({ length: Math.min(paths.length, availableParallelism()) }, worker));
+  const workers = Math.min(paths.length, availableParallelism());
+  buildTrace("size-workers", { workers, files: paths.length });
+  await Promise.all(Array.from({ length: workers }, worker));
   return sizes;
 }
 
@@ -672,6 +685,7 @@ async function compressedSize(bytes: Uint8Array): Promise<{ bytes: number; size:
   const brotli = Boolean(Bun.which("brotli"));
   const key = sizeKey(brotli ? "brotli-11" : "gzip-9", bytes);
   const hit = factGet(key) as { size: number; codec: SizeRow["codec"] } | undefined;
+  buildTrace("size-fact", { key, hit: hit !== undefined, bytes: bytes.length });
   if (hit) return { bytes: bytes.length, ...hit };
   let out: { size: number; codec: SizeRow["codec"] } | null = null;
   if (brotli) {
@@ -681,6 +695,7 @@ async function compressedSize(bytes: Uint8Array): Promise<{ bytes: number; size:
   }
   out ??= { size: Bun.gzipSync(bytes, { level: 9 }).length, codec: "gzip-9" };
   factPut(key, out);
+  buildTrace("size-complete", { key, ...out });
   return { bytes: bytes.length, ...out };
 }
 
@@ -692,8 +707,10 @@ async function compressedSize(bytes: Uint8Array): Promise<{ bytes: number; size:
 async function probeOf(glue: string, wasm: string, profile: "2d" | "3d"): Promise<{ build: string; members: string[] } | null> {
   const key = probeKey(glue, wasm, profile);
   const hit = factGet(key) as { build: string; members: string[] } | undefined;
+  buildTrace("probe-fact", { profile, hit: hit !== undefined });
   if (hit) return hit;
   const probe = await probeOfUncached(glue, wasm, profile);
+  buildTrace("probe-complete", { profile, ok: probe !== null });
   if (probe) factPut(key, probe);
   return probe;
 }
@@ -1282,13 +1299,16 @@ if (import.meta.main) {
     const s = JSON.parse(given) as Omit<ProjectSettings, "publish"> & { publish?: Partial<PublishSettings> };
     settings = { ...s, publish: { ...DEFAULT_PUBLISH, ...s.publish } };
   }
+  buildTrace("export-start");
   const b = await webBuild(resolve(project!), resolve(entry!), resolve(out!), argv.includes("--publish"), settings);
+  buildTrace("export-complete", { ok: b.ok });
   if (!b.ok) {
     if (argv.includes("--json")) process.stdout.write(JSON.stringify({ event: "build", ...b, files: [], total: { bytes: 0, compressed: 0 } }) + "\n");
     process.stderr.write(`og build: ${b.reason}\n`);
     process.exit(1);
   }
   const sizes = await sizesOf(b.out);
+  buildTrace("sizes-complete", { files: sizes.files.length, ...sizes.total });
   if (argv.includes("--json")) process.stdout.write(JSON.stringify({ event: "build", ok: b.ok, out: b.out, publish: b.publish, ...sizes, probe: b.probe, manifest: b.manifest }) + "\n");
   else {
     process.stdout.write(table(sizes));

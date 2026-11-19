@@ -157,6 +157,12 @@ assert 'engine-typecheck' in gate['QUICK']
 assert 'engine-typecheck' in gate['FULL']
 assert gate['NEEDS']['engine-typecheck'] == ('rust-build',)
 assert 'engine-typecheck' in gate['NEEDS']['bun-test']
+assert 'preflight' in gate['NEEDS']['rust-build']
+assert 'api-surface' in gate['NEEDS']['bun-test']
+assert 'web-ready' in gate['NEEDS']['browser']
+assert 'bun-test' not in gate['NEEDS']['browser']
+assert not {'rust-cpu', 'rust-gpu'}.intersection(gate['NEEDS']['bun-test'])
+assert {'bun-test', 'browser', 'fixtures'} <= gate['PROJECT_STEPS']
 PY
 if [ "$?" -ne 0 ]; then echo 'FAIL engine typecheck lane coverage'; exit 1; fi
 t="$scratch/typecheck"

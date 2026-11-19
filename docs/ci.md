@@ -217,7 +217,10 @@ that depend on it still run.
 `scripts/check.sh` owns admission, `scripts/gate/run.py` schedules the
 dependency DAG, and `step.sh` takes GPU slots only for rendering steps.
 Native test binaries are built and listed once; CPU and GPU executions
-reuse them.
+reuse them. The run's `timings.json` records step start, outer resource
+wait, command wall, log bytes and the logical bytes of known published
+products. Cargo's internal waits count as command wall; product bytes
+are not peak disk usage.
 
 Selection uses Cargo's resolved dependency graph, Bun's import graph and
 fixture input manifests; passing snapshots are git trees of the working
@@ -267,20 +270,24 @@ split, and the lowest such crate is its cause.
 
 | Step | Command and contract | Lane |
 |---|---|---|
+| `preflight` | Runs the engine TS configs and toolchain tests before native compilation, and verifies the wasm tools before a functional wasm build when selected. | quick, full or a scoped prerequisite |
 | `fmt` | `cargo fmt --all --check` | quick, full |
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | quick, full |
 | `rust-build` | nextest builds and lists native test binaries; quick excludes og-tests. Then `cargo build -p og-host-node -p og-cli`, the dev addon and `og` every later step uses; `packages/engine/scripts/build.sh` under the gate copies them and runs no cargo. | quick, full |
 | `rust-cpu`, `rust-gpu` | nextest executes the discovered tests with separate reports and bounded workers. | quick, full |
 | `doc-tests` | `cargo test --workspace --doc` | full |
 | `drift` | The dev `og api check` checks generated declarations, wiki, schema and Rust glue against the IDL. | quick, full |
+| `native-ready` | Prepares the engine package's native addon, CLI and assets once for the selected consumers. | quick, full or a scoped prerequisite |
+| `api-surface` | Compares the live native API to the IDL, in both directions, without a GPU. | quick, full or a scoped prerequisite |
 | `bun-quick` | Non-engine package tests, without rebuilding native artifacts. | quick, full |
 | `engine-typecheck` | All three packages/engine TypeScript configurations (API, runtime including UI/component tests, templates) through the native `og check`. Depends only on `rust-build`; no wasm, addon loading or GPU slot. | quick, full |
 | `wasm-lanes-check` | `scripts/wasm-lanes.sh check` of each `lanes` variant in `scripts/wasm-crates.txt` whenever og-render, og-host-web or a crate they depend on changes, because under atomics wgpu's web types are not Send. | quick, full |
 | `wasm-check` | `cargo check --target wasm32-unknown-unknown -p og-tests-web` whenever it or a crate it depends on changes: the crate is empty natively, so the workspace's check and clippy never compile it. With it, og-host-web without og-runtime's optional modules (design §2.1): none of them (3D and 2D) and each one left out, which no shipped variant builds. | quick, full |
 | `wasm-build` | Build `scripts/wasm-crates.txt` modules in `wasm-test` into `target/og-wasm/raw`. `OG_WASM_VARIANTS` picks them: `dev` (the development module alone: bun-test's cross-host tests, a landing), `reference` (adds the 3D publish pair, web-reference alone), `all` (every publish and lanes variant: a run with `browser`, and `scripts/release-wasm.sh`). Tests that load a publish or lanes module skip without one. | full |
 | `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
+| `web-ready` | Packages the prepared native and wasm products once for the selected web consumers. | full or a scoped prerequisite |
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
-| `bun-test` | Package tests using the dev addon and gate-produced wasm (`OG_GATE=1`); depends on `engine-typecheck`. | full |
+| `bun-test` | Package tests using the dev addon and gate-produced wasm (`OG_GATE=1`), after engine typecheck, drift and surface checks. A scoped Bun landing also selects the native suites, but Bun doesn't wait for their results. | full |
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton; needs only the native `og`, so `--only fixtures` builds no wasm. | full |
 | `browser` | Every file packages/engine's `test:browser` names, each run even when one before it failed. | full |
 | `web-reference` | Headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3), compared under unchanged tolerances. | explicit |

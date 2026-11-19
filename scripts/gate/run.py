@@ -10,15 +10,18 @@ import time
 
 # Inputs produced in this run, not path-based selection rules.
 NEEDS = {
-    'fmt': (), 'clippy': ('fmt',), 'rust-build': ('clippy',),
+    'preflight': (), 'fmt': (), 'clippy': ('fmt',), 'rust-build': ('clippy', 'preflight'),
+    'native-ready': ('rust-build',), 'drift': ('rust-build',), 'api-surface': ('native-ready',),
     'rust-cpu': ('rust-build',), 'rust-gpu': ('rust-build',),
-    'drift': ('rust-build',), 'bun-quick': (), 'engine-typecheck': ('rust-build',),
-    'wasm-lanes-check': (), 'wasm-check': (), 'wasm-build': (), 'wasm-bindgen': ('wasm-build',),
-    'bun-test': ('rust-cpu', 'rust-gpu', 'wasm-bindgen', 'bun-quick', 'engine-typecheck'),
+    'bun-quick': ('preflight',), 'engine-typecheck': ('rust-build',),
+    'wasm-lanes-check': ('preflight',), 'wasm-check': ('preflight',),
+    'wasm-build': ('preflight',), 'wasm-bindgen': ('wasm-build',),
+    'web-ready': ('native-ready', 'wasm-bindgen'),
+    'bun-test': ('web-ready', 'api-surface', 'drift', 'bun-quick', 'engine-typecheck'),
     # Fixtures run the native og alone: a fixtures-only run builds no wasm.
-    'fixtures': ('rust-build',), 'doc-tests': ('rust-cpu',),
-    'browser': ('bun-test', 'fixtures'),
-    'web-reference': ('wasm-bindgen', 'rust-build'),
+    'fixtures': ('native-ready',), 'doc-tests': ('rust-build',),
+    'browser': ('web-ready', 'api-surface', 'drift', 'engine-typecheck'),
+    'web-reference': ('web-ready',),
     'check-conformance': (),
 }
 
@@ -35,8 +38,53 @@ def stop_group(proc, sig):
         pass
 
 
-QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'bun-quick', 'engine-typecheck', 'wasm-lanes-check', 'wasm-check')
+QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'api-surface', 'bun-quick', 'engine-typecheck', 'wasm-lanes-check', 'wasm-check')
 FULL = QUICK + ('wasm-build', 'wasm-bindgen', 'bun-test', 'fixtures', 'doc-tests', 'browser')
+# These consumers can cook the same projects. Serialize them when selected
+# together without adding tests to a scoped run merely to enforce ordering.
+PROJECT_STEPS = {'bun-test', 'fixtures', 'browser', 'web-reference'}
+
+
+def output_bytes(step, env):
+    """Logical size of published products; don't walk Cargo caches or scratch."""
+    wasm = Path(env.get('OG_WASM_OUT', 'target/og-wasm'))
+    paths = []
+    if step == 'wasm-build':
+        paths = list((wasm / 'raw').glob('*.wasm'))
+    elif step == 'wasm-bindgen':
+        paths = [p for d in ('bindgen', 'dev', 'split') for p in (wasm / d).rglob('*')]
+    elif step in ('native-ready', 'web-ready'):
+        roots = [Path('packages/engine/native')] if step == 'native-ready' else list(Path('packages/engine/dist').glob('web*'))
+        paths = [p for root in roots for p in root.rglob('*')]
+    elif step == 'rust-build':
+        try:
+            data = json.loads((Path(env['GATE_LOGS']) / 'binaries.json').read_text())
+            paths = [Path(b['binary-path']) for b in data['rust-binaries'].values()]
+        except (OSError, ValueError, KeyError):
+            return None
+    else:
+        return None
+    return sum(p.stat().st_size for p in set(paths) if p.is_file())
+
+
+def record_timing(row, logs, step, duration, rc, env, cancelled=False):
+    def marker(name):
+        try:
+            return float((logs / f'{step}.{name}-start').read_text())
+        except (OSError, ValueError):
+            return None
+
+    start, command = marker('resource'), marker('command')
+    wait = max(0, command - start) if start is not None and command is not None else None
+    try:
+        products = output_bytes(step, env) if not cancelled and rc == 0 else None
+    except OSError:
+        products = None
+    row.update(wall_s=duration, resource_wait_s=wait,
+               command_s=max(0, row['launch_monotonic'] + duration - command) if command is not None else None,
+               log_bytes=(logs / f'{step}.log').stat().st_size,
+               product_bytes=products, exit_code=rc, cancelled=cancelled)
+    del row['launch_monotonic']
 
 
 def main():
@@ -53,14 +101,20 @@ def main():
     unknown = wanted - NEEDS.keys()
     if unknown:
         raise ValueError('Unknown steps: ' + ', '.join(sorted(unknown)))
+    # Landing batches that request Bun still cover both native suites. This
+    # is selection policy, not a build/runtime prerequisite for Bun.
+    if 'bun-test' in wanted:
+        wanted.update(('rust-cpu', 'rust-gpu'))
     if lane == 'full':
         NEEDS['rust-cpu'] += ('wasm-build',)
-        NEEDS['rust-gpu'] += ('wasm-build',)
     while True:
         expanded = wanted | {d for s in wanted for d in NEEDS[s]}
         if expanded == wanted:
             break
         wanted = expanded
+    # Order early checks before execution, but don't add them to aside scopes.
+    for step in ('rust-cpu', 'rust-gpu', 'fixtures'):
+        NEEDS[step] += tuple(s for s in ('drift', 'api-surface', 'engine-typecheck') if s in wanted)
     # OG_GATE_SKIP: steps the coordinator named for an exception (docs/ci.md
     # §Lanes). A dependent still runs; the skip is printed, never a pass.
     skip = [s.strip() for s in os.environ.get('OG_GATE_SKIP', '').split(',') if s.strip()]
@@ -81,6 +135,7 @@ def main():
     # the browser tests load every publish and lanes variant, web-reference's
     # panic check the 3D publish pair, and bun-test (a landing) none of them.
     env['OG_WASM_VARIANTS'] = 'all' if 'browser' in wanted else 'reference' if 'web-reference' in wanted else 'dev'
+    env['OG_GATE_STEPS'] = ' '.join(sorted(wanted - set(skipped)))
     env.pop('OG_WASM_STALE', None)
     # Capture Cargo's authoritative graph once per run, before parallel readers.
     with (logs / 'cargo.json').open('w') as out:
@@ -90,6 +145,7 @@ def main():
     if whole:
         lane_record.unlink(missing_ok=True)
     active = {}
+    timings = {}
     completed = {s: f'SKIPPED {s} (OG_GATE_SKIP)' for s in skipped}
     started = time.monotonic()
     print(f'gate {lane}: {jobs} steps × {threads} jobs; logs {logs}', flush=True)
@@ -109,11 +165,15 @@ def main():
                     continue
                 if not all(d in completed for d in NEEDS[step]):
                     continue
+                if step in PROJECT_STEPS and PROJECT_STEPS.intersection(active):
+                    continue
                 log = (logs / f'{step}.log').open('w')
                 step_env = dict(env, OG_GATE_RAN=' ' + ' '.join(s for s in completed if completed[s].startswith('PASS ')) + ' ')
+                begin = time.monotonic()
                 proc = subprocess.Popen(['bash', 'scripts/gate/step.sh', step], env=step_env,
                                         stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-                active[step] = (proc, log, time.monotonic())
+                timings[step] = {'started_unix_ns': time.time_ns(), 'launch_monotonic': begin}
+                active[step] = (proc, log, begin)
                 print(f'--> {step}', flush=True)
             for step, (proc, log, begin) in list(active.items()):
                 rc = proc.poll()
@@ -122,6 +182,7 @@ def main():
                 log.close()
                 del active[step]
                 duration = time.monotonic() - begin
+                record_timing(timings[step], logs, step, duration, rc, env)
                 print((logs / f'{step}.log').read_text(), end='', flush=True)
                 status = 'PASS' if rc == 0 else 'SKIPPED' if rc == 3 else 'FAIL'
                 completed[step] = f'{status} {step} ({duration:.1f}s)'
@@ -147,14 +208,16 @@ def main():
         # Each step has its own process group, including its compiler/test children.
         for proc, log, _ in active.values():
             stop_group(proc, signal.SIGTERM)
-        for proc, log, _ in active.values():
+        for step, (proc, log, begin) in active.items():
             try:
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 stop_group(proc, getattr(signal, 'SIGKILL', signal.SIGTERM))
                 proc.wait()
             log.close()
+            record_timing(timings[step], logs, step, time.monotonic() - begin, proc.returncode, env, cancelled=True)
         summary = '\n'.join(completed[s] for s in NEEDS if s in completed) + '\n'
+        (logs / 'timings.json').write_text(json.dumps(timings, indent=2) + '\n')
         (logs / 'summary.txt').write_text(summary)
         (Path(os.environ['OG_EVIDENCE_DIR']) / 'check-summary.txt').write_text(summary)
 

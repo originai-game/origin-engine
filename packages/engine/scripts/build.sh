@@ -77,7 +77,7 @@ if [ "${OG_GATE:-}" != 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "$linux_x64" != 1 
 fi
 # Development fixtures use the pin locally; release installs fetch it only
 # when a project's cook uses motion, without writing into the engine install.
-if [ "${OG_GATE:-}" = 1 ]; then
+if [ "${OG_GATE:-}" = 1 ] && [ "${OG_GATE_NATIVE_READY:-}" != 1 ]; then
   bun "$here/../../scripts/assets.ts" ensure "$here"
 fi
 platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -e 'console.log(process.platform + "-" + process.arch)')"
@@ -112,7 +112,10 @@ og_bin="$here/native/og.$platform"
 # exit 137, nothing printed); and never removed first, since a gate step
 # running beside this one (bun-functional beside ui-styles' build) would
 # find no og or addon in between.
-if [ "$host_build" = 0 ]; then
+if [ "${OG_GATE:-}" = 1 ] && [ "${OG_GATE_NATIVE_READY:-}" = 1 ]; then
+  case " ${OG_GATE_RAN:-} " in *' native-ready '*) ;; *) echo 'build.sh: gate native package was not prepared' >&2; exit 1 ;; esac
+  [ -f "$addon" ] && [ -f "$og_bin" ] || { echo 'build.sh: prepared native package is incomplete' >&2; exit 1; }
+elif [ "$host_build" = 0 ]; then
   rm -f "$addon" "$og_bin"
 elif [ -f "$bindir/libog_host_node.dylib" ]; then
   cp "$bindir/libog_host_node.dylib" "$addon.$$"
@@ -128,7 +131,7 @@ else
   echo "build.sh: no native addon in $bindir" >&2
   exit 1
 fi
-if [ "$host_build" != 0 ]; then
+if [ "$host_build" != 0 ] && ! { [ "${OG_GATE:-}" = 1 ] && [ "${OG_GATE_NATIVE_READY:-}" = 1 ]; }; then
   mv -f "$addon.$$" "$addon"
   cp "$bindir/og$exe" "$og_bin.$$"
   mv -f "$og_bin.$$" "$og_bin"
