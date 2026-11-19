@@ -155,6 +155,18 @@ fi
 # step_wasm_build, OG_WASM_VARIANTS): `dev` has no publish or lanes module,
 # so dist/web-publish* stay empty and the tests that load them skip.
 variants="${OG_WASM_VARIANTS:-$(cat "$gate_wasm/variants" 2>/dev/null || echo all)}"
+# A split module (scripts/gate/commands.sh wasm_split, docs/web-export.md
+# §Modules): its primary over the whole module, and its modules beside it in
+# modules/. The lanes modules and the remote-frame twins are not split and
+# ship whole; so does a build without wasm-split's output.
+use_split() {
+  [ -d "$gate_wasm/split/$1" ] || {
+    case "$1" in *frames) ;; *) echo "build.sh: $gate_wasm/split/$1 is missing, so dist/$2 ships $1 whole (scripts/install-tools.sh installs wasm-split)" >&2 ;; esac
+    return 0
+  }
+  for f in "$gate_wasm/split/$1"/*_bg.wasm; do cp "$f" "$here/dist/$2/"; done
+  for d in "$gate_wasm/split/$1"/modules*; do rm -rf "$here/dist/$2/$(basename "$d")"; cp -R "$d" "$here/dist/$2/"; done
+}
 if [ -f "$gate_wasm/bindgen/og_host_web/origin-engine_bg.wasm" ] \
     && { [ -f "$gate_modules/og_host_web-publish.wasm" ] || [ "$variants" = dev ]; }; then
   rm -rf "$here/dist/web-publish"/* "$here/dist/web"/* "$here/dist/web-publish-2d" "$here/dist/web-publish-frames" "$here/dist/web-publish-2d-frames"
@@ -162,6 +174,7 @@ if [ -f "$gate_wasm/bindgen/og_host_web/origin-engine_bg.wasm" ] \
   [ "$variants" != dev ] || exit 0
   cp "$gate_wasm/bindgen/og_host_web-publish/"* "$here/dist/web-publish/"
   cp "$gate_modules/og_host_web-publish.wasm" "$here/dist/web-publish/origin-engine_bg.wasm"
+  use_split og_host_web-publish web-publish
   # The 2D publish variant, when scripts/wasm-crates.txt declares it (a
   # 2d game's og build --publish ships it); a missing one stops the build.
   variant_2d="$(awk '{ sub(/#.*/, "") } $1 == "variant" && $2 == "publish2d" && $3 == "og-host-web" { print 1 }' "$root/scripts/wasm-crates.txt")"
@@ -169,6 +182,7 @@ if [ -f "$gate_wasm/bindgen/og_host_web/origin-engine_bg.wasm" ] \
     mkdir -p "$here/dist/web-publish-2d"
     cp "$gate_wasm/bindgen/og_host_web-publish2d/"* "$here/dist/web-publish-2d/"
     cp "$gate_modules/og_host_web-publish2d.wasm" "$here/dist/web-publish-2d/origin-engine_bg.wasm"
+    use_split og_host_web-publish2d web-publish-2d
   elif [ -n "$variant_2d" ] && [ "$variants" != reference ]; then
     echo "build.sh: $gate_modules/og_host_web-publish2d.wasm is missing; prepare all wasm variants again (docs/web-export.md §Variants)" >&2
     # The functional lane runs with the gate's web module stale (OG_WASM_STALE=1,

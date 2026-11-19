@@ -6,6 +6,7 @@ import type { AudioLatencyMessage, AudioMessage } from "../audio.ts";
 import type { InjectedInput } from "../input.ts";
 import type { RpcRings } from "../rpc-ring.ts";
 import type { SessionGrant } from "./shared.ts";
+import type { EngineModules } from "../split.ts";
 
 export interface Start {
   type: "start";
@@ -20,6 +21,12 @@ export interface Start {
   lanes?: { glue: string; wasm: string; threads: number; bytes?: number };
   /** Why the shell did not choose lanes, reported back in ready. */
   lanesWhy?: string;
+  /**
+   * A split engine's modules (docs/web-export.md §Modules): where the
+   * single-threaded and the lanes module's are, and the ones the game
+   * references, fetched beside the primary. Absent: an unsplit engine.
+   */
+  modules?: { single: EngineModules; lanes?: EngineModules };
   canvas?: OffscreenCanvas;
   seed?: number;
   ring?: SharedArrayBuffer;

@@ -1,4 +1,4 @@
-//! `og build [project] [--publish] [--out DIR] [--assets URL] [--content URL] [--json] [--no-check]`: cook,
+//! `og build [project] [--publish] [--out DIR] [--assets URL] [--content URL] [--modules cdn|local] [--json] [--no-check]`: cook,
 //! type-check (crate::check; a type error builds nothing, and a publish
 //! build is always checked: `--publish` refuses `--no-check`), then export
 //! the game into `<project>/dist` (or `publish.out` of project.ogt): the
@@ -19,7 +19,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og build [project] [--publish] [--out DIR] [--assets URL] [--content URL] [--json] [--no-check]";
+const USAGE: &str = "usage: og build [project] [--publish] [--out DIR] [--assets URL] [--content URL] [--modules cdn|local] [--json] [--no-check]";
 
 pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".".to_string();
@@ -29,6 +29,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut out = None;
     let mut assets = None;
     let mut content = None;
+    let mut modules = None;
     let mut i = 0;
     while i < args.len() {
         match args[i] {
@@ -63,6 +64,19 @@ pub fn run(args: &[&str]) -> ExitCode {
                 }
                 i += 1;
             }
+            // Where a publish build's split engine modules come from
+            // (docs/web-export.md §Modules): the CDN (the default) or a copy
+            // in the output, for an offline or self-hosted build.
+            "--modules" => match args.get(i + 1) {
+                Some(&m @ ("cdn" | "local")) => {
+                    modules = Some(m);
+                    i += 1;
+                }
+                _ => {
+                    eprintln!("og build: --modules takes cdn or local. {USAGE}");
+                    return ExitCode::from(2);
+                }
+            },
             a if a.starts_with('-') => {
                 eprintln!("og build: unknown option `{a}`. {USAGE}");
                 return ExitCode::from(2);
@@ -103,6 +117,9 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     if let Some(c) = content {
         settings["publish"]["content"] = serde_json::json!(c);
+    }
+    if let Some(m) = modules {
+        settings["publish"]["modules"] = serde_json::json!(m);
     }
     if publish && let Err(e) = crate::publish::refuse_3d_world(&p.root, &settings) {
         eprintln!("og build --publish: {e}");

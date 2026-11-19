@@ -1,0 +1,11 @@
+{
+  "//": "The engine wasm's split modules (docs/web-export.md §Modules): each module takes the functions whose demangled path, from its first non-std crate on, matches one of its patterns; the first module that matches wins. scripts/wasm-split.ts keeps in the primary every function a game using none of them runs (wasm-profile.ts), so such a game loads none.",
+  "modules": {
+    "video": ["^og_video::", "^og_runtime::bind::video"],
+    "story": ["^og_story::", "^og_runtime::bind::(story|film)"],
+    "nav": ["^og_ai::", "^spade::", "^rstar::", "^og_runtime::bind::(nav|ai|agents|sight)"],
+    "motion": ["^og_anim::motion", "^og_runtime::bind::motion"],
+    "destruction": ["^og_physics::destruction", "^og_runtime::bind::destruction"],
+    "physics": ["^rapier3d::", "^parry3d::", "^rapier2d::", "^parry2d::", "^og_physics::", "^nalgebra::", "^simba::", "^robust::"]
+  }
+}

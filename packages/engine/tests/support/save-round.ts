@@ -24,7 +24,8 @@ if (host === "node") {
   const dir = host === "publish" ? "web-publish" : "web";
   const { loadWebHost } = await import("../../src/web/host.ts");
   const glue = await import(join(pkg, "dist", dir, "origin-engine.js"));
-  await loadWebHost(glue, readFileSync(join(pkg, "dist", dir, "origin-engine_bg.wasm")));
+  const { fileModuleHost } = await import("../../src/node/modules.ts");
+  await loadWebHost(glue, readFileSync(join(pkg, "dist", dir, "origin-engine_bg.wasm")), undefined, fileModuleHost(join(pkg, "dist", dir)));
 }
 
 const RsPos = defineComponent("RsPos", { x: f32(), v: f32(1) });

@@ -10,7 +10,8 @@ import { gunzipSync } from "node:zlib";
 import { ENGINE_PUBKEY, verifyMinisign } from "../packages/engine/src/node/vfx-pack.ts";
 import { ENGINE_PUBKEY as LAUNCHER_PUBKEY } from "../packages/launcher/og.ts";
 import { pinnedKey } from "../packages/launcher/build.ts";
-import { checkPacksOutside, deduplicateAssets, finish, writeVfxArchives } from "./release-dist.ts";
+import { checkPacksOutside, deduplicateAssets, finish, writeVfxArchives, writeWasmModules } from "./release-dist.ts";
+import { createHash } from "node:crypto";
 import { splitSymbols } from "../packages/engine/scripts/wasm-symbols.ts";
 
 const fixture = join(import.meta.dir, "../tests/fixtures/vfx-release");
@@ -112,6 +113,16 @@ describe("vfx archives", () => {
     const vfx = writeVfxArchives(dir, "1.2.3-dev.4", fixture);
     const symbols = "origingame-engine-wasm-symbols-1.2.3-dev.4.tgz";
     writeFileSync(join(dir, symbols), "matching named modules");
+    // A split engine module in the engine package: copied under the platform's
+    // wasm route, signed, and its listing told where it is served.
+    const engine = scratch("og-wasm-modules-");
+    mkdirSync(join(engine, "dist/web-publish/modules"), { recursive: true });
+    const module = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+    const hash = createHash("sha256").update(module).digest("hex");
+    writeFileSync(join(engine, `dist/web-publish/modules/physics.${hash.slice(0, 12)}.wasm`), module);
+    writeFileSync(join(engine, "dist/web-publish/modules/modules.json"), JSON.stringify({ physics: { file: `modules/physics.${hash.slice(0, 12)}.wasm`, bytes: 8, sha256: hash } }));
+    expect(writeWasmModules(engine, dir, "1.2.3-dev.4")).toEqual([`wasm/publish/physics.${hash.slice(0, 12)}.wasm`]);
+    expect(JSON.parse(readFileSync(join(engine, "dist/web-publish/modules/modules.json"), "utf8")).physics.base).toBe("https://origingame.ai/downloads/engine/1.2.3-dev.4/wasm/publish/");
     finish(dir, "1.2.3-dev.4", "0".repeat(40), "2026-11-07T00:00:00.000Z", vfx);
     const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
     expect(manifest.vfx).toEqual(vfx);
@@ -122,6 +133,7 @@ describe("vfx archives", () => {
     const sums = readFileSync(join(dir, "SHA256SUMS"), "utf8");
     expect(sums).not.toContain(symbols);
     expect(sums).toContain(`${vfx["spark-pack"]!.sha256}  vfx/spark-pack.tar.gz\n`);
+    expect(sums).toContain(`${hash}  wasm/publish/physics.${hash.slice(0, 12)}.wasm\n`);
     expect(sums).toContain("  manifest.json\n");
     // Every line verifies from the version's directory, as publish checks them.
     // Git Bash on Windows has sha256sum, and shasum only as a Perl script.

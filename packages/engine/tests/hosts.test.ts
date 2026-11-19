@@ -84,6 +84,23 @@ function physics(host: string, ...extra: string[]) {
   };
 }
 
+// The publish module split into its primary and on-demand modules
+// (docs/web-export.md §Modules): a module that loads late changes nothing,
+// so the world is the native host's whether physics arrives at its first
+// call (inside the first tick) or before the engine starts, and a scene
+// without nav, motion, destruction or video loads none of them.
+const NO_SPLIT = !existsSync(join(pkg, "dist", "web-publish", "modules", "modules.json"));
+test.skipIf(STALE_WASM || NO_SPLIT)("a split publish module gives the native world whenever its modules load, and loads only those it calls", () => {
+  const node = physics("node", "--snapshot", "--ticks", "300");
+  const late = physics("publish", "--snapshot", "--ticks", "300") as ReturnType<typeof physics> & { modules: string[] };
+  const early = physics("publish", "--snapshot", "--ticks", "300", "--modules", "physics,nav,story,motion,destruction,video") as ReturnType<typeof physics> & { modules: string[] };
+  expect(late.snapshot).toBe(node.snapshot);
+  expect(early.snapshot).toBe(node.snapshot);
+  expect(late.modules).toContain("physics");
+  for (const m of ["nav", "motion", "destruction", "video"]) expect(late.modules).not.toContain(m);
+  expect(early.modules).toEqual(["destruction", "motion", "nav", "physics", "story", "video"]);
+}, 180_000);
+
 for (const profile of ["3d", "2d"]) {
   test.skipIf(STALE_WASM)(`a ${profile} physics scene gives the same world hash on both hosts after 600 ticks`, () => {
     const node = physics("node", "--profile", profile);

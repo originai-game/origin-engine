@@ -5,6 +5,7 @@
 //
 //   bun tests/support/physics-hash.ts --host node|web|lanes [--ticks 600] [--profile 3d|2d]
 //       [--bodies N] [--snapshot] [--threads N] [--module 3d|2d] [--restore <file>]
+//       [--dir <bound module directory>] [--modules physics,nav]
 //
 // --bodies: the dropped bodies, 64 by default; past 64 each further 64 drop
 // the same way beside the first, 9 m further out on alternate sides (1,024
@@ -49,13 +50,20 @@ if (which === "node") {
   const dir = join(pkg, "dist", opt("--module", profile) === "2d" ? "web-publish-2d" : "web-publish");
   const { loadWebHost } = await import("../../src/web/host.ts");
   const glue = await import(join(dir, "origin-engine-lanes.js"));
-  await loadWebHost(glue, readFileSync(join(dir, "origin-engine-lanes_bg.wasm")), threads);
+  const { fileModuleHost } = await import("../../src/node/modules.ts");
+  await loadWebHost(glue, readFileSync(join(dir, "origin-engine-lanes_bg.wasm")), threads, fileModuleHost(dir, true));
   lanesReport = glue.og_web_lanes;
 } else {
-  const { loadWebHost } = await import("../../src/web/host.ts");
+  const { loadWebHost, loadEngineModules } = await import("../../src/web/host.ts");
   const directory = which === "publish" ? (profile === "2d" ? "web-publish-2d" : "web-publish") : "web";
-  const glue = await import(join(pkg, "dist", directory, "origin-engine.js"));
-  await loadWebHost(glue, readFileSync(join(pkg, "dist", directory, "origin-engine_bg.wasm")));
+  const dir = argv.includes("--dir") ? opt("--dir", "") : join(pkg, "dist", directory);
+  const glue = await import(join(dir, "origin-engine.js"));
+  // A split module's modules come from modules/ beside it (docs/web-export.md
+  // §Modules): synchronously when an engine call first needs one, or all of
+  // --modules (comma-separated) before the engine starts.
+  const { fileModuleHost } = await import("../../src/node/modules.ts");
+  await loadWebHost(glue, readFileSync(join(dir, "origin-engine_bg.wasm")), undefined, fileModuleHost(dir));
+  if (argv.includes("--modules")) await loadEngineModules(opt("--modules", "").split(","));
 }
 
 const Tally = defineResource("PhTally", { entered: u32(), started: u32() });
@@ -152,6 +160,7 @@ console.log(
     advanceMs: +ms.toFixed(2),
     ...(snapshot ? { snapshot: snapshot.value } : {}),
     ...(lanesReport ? { lanes: JSON.parse(lanesReport()) } : {}),
+    ...(which === "publish" ? { modules: (await import("../../src/web/host.ts")).loadedEngineModules() } : {}),
   }),
 );
 // The lanes glue's wasm-bindgen-rayon snippet listens for a pool Worker's

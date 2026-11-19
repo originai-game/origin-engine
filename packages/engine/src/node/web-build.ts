@@ -51,7 +51,10 @@
 //   { event: "build", ok, out, publish, files: [{ path, bytes, compressed, codec }], total, downloads, probe: { build, members }, manifest }
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { referencedModules } from "./modules.ts";
+import type { EngineModules } from "../web/split.ts";
+import bindingsJson from "../../types/bindings.json" with { type: "json" };
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { availableParallelism } from "node:os";
 import { bundleGame, ENGINE_ROOT } from "./build.ts";
@@ -167,6 +170,13 @@ export interface PublishSettings {
    * project.ogt `publish { content }`. Null: a data load fails `unavailable`.
    */
   readonly content: string | null;
+  /**
+   * Where a publish build's split engine modules come from (docs/web-export.md
+   * §Modules): `cdn` (the default) the engine version's directory on
+   * origingame.ai, fetched in CORS mode; `local` copied into the output's
+   * `modules/`, for an offline or self-hosted build (`og build --modules local`).
+   */
+  readonly modules: "cdn" | "local";
 }
 
 export interface ProjectSettings {
@@ -200,6 +210,7 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   loadingLabels: null,
   assets: null,
   content: null,
+  modules: "cdn",
 };
 
 /** The settings of a project read without og (tests): name, id, engine and profile; publish defaults. */
@@ -301,6 +312,15 @@ export interface BuildManifest {
    * the engine without remote frames (docs/web-export.md §Variants).
    */
   readonly frames: readonly string[];
+  /**
+   * A split engine's modules (docs/web-export.md §Modules): `referenced`, the
+   * ones the game names, which the boot fetches beside the primary (the
+   * rest load on their first call); `base`, where they are served (the
+   * engine version's `wasm/<variant>/` on the CDN, or `modules/` in this
+   * output), and `origin`, what the page's Content-Security-Policy must allow
+   * (`connect-src`), null when they are beside the page. Null: an unsplit engine.
+   */
+  readonly modules: { readonly referenced: readonly string[]; readonly base: string; readonly origin: string | null; readonly local: boolean } | null;
   readonly display: {
     readonly fit: "letterbox" | "fill";
     readonly aspect: string | null;
@@ -685,7 +705,8 @@ async function probeOfUncached(glue: string, wasm: string, profile: "2d" | "3d")
     const { og } = await import(${JSON.stringify(pathToFileURL(join(here, "..", "index.ts")).href)});
     const { createEngine } = await import(${JSON.stringify(pathToFileURL(join(here, "..", "runtime.ts")).href)});
     const { readFileSync } = await import("node:fs");
-    await loadWebHost(glue, readFileSync(${JSON.stringify(wasm)}));
+    const { fileModuleHost } = await import(${JSON.stringify(pathToFileURL(join(here, "modules.ts")).href)});
+    await loadWebHost(glue, readFileSync(${JSON.stringify(wasm)}), undefined, fileModuleHost(${JSON.stringify(dirname(wasm))}));
     const e = createEngine(og.game({}), { profile: ${JSON.stringify(profile)} });
     if (!e.ok) throw new Error(e.reason);
     const hello = JSON.parse(e.value.call(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "hello", params: {} }))).result;
@@ -988,6 +1009,26 @@ export async function webBuild(project: string, entry: string, out: string, publ
   if (lanes) {
     for (const f of LANES_FILES) cpSync(join(engineDir, f), join(out, f), { recursive: true });
   }
+  // A split engine's modules (docs/web-export.md §Modules): served from the
+  // engine version's directory on the CDN, or copied here (`--modules
+  // local`, and an engine built in a checkout, which no CDN serves yet).
+  const splitOf = (dir: string): EngineModules | null => {
+    const listing = join(engineDir, dir, "modules.json");
+    if (!publish || !existsSync(listing)) return null;
+    const listed = JSON.parse(readFileSync(listing, "utf8")) as Record<string, { file: string; base?: string }>;
+    const entries = Object.entries(listed);
+    const cdn = p.modules === "cdn" ? entries[0]?.[1].base : undefined;
+    if (!cdn) cpSync(join(engineDir, dir), join(out, dir), { recursive: true });
+    rmSync(join(out, dir, "modules.json"), { force: true });
+    const files = Object.fromEntries(entries.map(([m, e]) => [m, cdn ? basename(e.file) : e.file]));
+    return { base: cdn ?? "", files, referenced: referenced.filter((m) => m in listed) };
+  };
+  const referenced = publish ? referencedModules(project, bindingsJson as never) : [];
+  const single = splitOf("modules");
+  const laneModules = lanes ? splitOf("modules-lanes") : null;
+  if (publish && p.modules === "cdn" && single && single.base === "") {
+    process.stderr.write(`og build: note: this engine (${ENGINE_VERSION}) names no CDN for its modules (an engine built in a checkout), so they are copied into ${join(out, "modules")}\n`);
+  }
   cpSync(vendor, join(out, "basis"), { recursive: true });
   // The AV1 fallback decoder, fetched only by a browser without AV1 in WebCodecs (src/web/video.ts).
   const av1 = join(ENGINE_ROOT, "dist", "av1", "og-av1.wasm");
@@ -1088,6 +1129,8 @@ export async function webBuild(project: string, entry: string, out: string, publ
     // this integrity, and every other file against the manifest's.
     ...(p.assets ? { assets: { base: p.assets, manifest: integrityOf(new Uint8Array(readFileSync(join(out, "cooked", ".cook.ogt")))) } } : {}),
     ...(p.content ? { content: p.content } : {}),
+    // The page resolves a module base given as "" against itself (shell/page.ts).
+    ...(single ? { modules: { single, ...(laneModules ? { lanes: laneModules } : {}) } } : {}),
   };
   writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish, play: served("play.js"), css: served("shell.css"), install: served("install.js") }));
   writeFileSync(join(out, "_headers"), headersFile(p.isolation, Object.values(names)));
@@ -1151,6 +1194,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
     assets: p.assets ? { base: p.assets, origin: new URL(p.assets).origin } : null,
     content: p.content ? { base: p.content, origin: new URL(p.content).origin } : null,
     frames: settings.frames ?? [],
+    modules: single
+      ? { referenced: single.referenced, base: single.base || "modules/", origin: single.base ? new URL(single.base).origin : null, local: single.base === "" }
+      : null,
     display: { fit: p.fit, aspect: p.aspect, orientation: p.orientation, dprCap: p.dprCap, fullscreen: p.fullscreen, gate: p.gate, madeWith: p.madeWith },
     icons,
     pwa: publish ? { manifest: "manifest.webmanifest", serviceWorker: "sw.js" } : null,

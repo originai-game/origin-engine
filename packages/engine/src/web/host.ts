@@ -8,6 +8,9 @@
 import { ARRAYS, bindHost, boundHost, type ColumnArray, type HostBinding } from "../runtime.ts";
 import type { HostAbi } from "../generated/abi.ts";
 import bindings from "../../types/bindings.json" with { type: "json" };
+import { fetchModuleHost, instantiateSplit, type ModuleHost } from "./split.ts";
+
+export { fetchModuleHost, loadEngineModules, loadedEngineModules, type ModuleHost } from "./split.ts";
 
 interface CallDecl {
   readonly symbol: string;
@@ -122,12 +125,14 @@ async function startPool(start: () => Promise<unknown>, deadlineMs: number): Pro
  * there (an error, a pool Worker's `error` event or the deadline) terminates
  * the pool's Workers and throws before the engine is told or anything is
  * bound, so the caller can discard this glue and load the single-threaded
- * variant instead.
+ * variant instead. A split wasm (a publish build's: split.ts) loads its
+ * modules through `modules`, by default fetched beside a wasm given as a URL.
  */
-export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: number): Promise<HostBinding> {
+export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: number, modules?: ModuleHost): Promise<HostBinding> {
   const bound = boundHost();
   if (bound) return bound;
-  const exports = await glue.default(wasm === undefined ? undefined : { module_or_path: wasm });
+  const host = modules ?? (typeof wasm === "string" || wasm instanceof URL ? fetchModuleHost(wasm) : null);
+  const exports = await instantiateSplit(host, () => glue.default(wasm === undefined ? undefined : { module_or_path: wasm }));
   if (threads !== undefined) {
     if (!glue.initThreadPool || !glue.og_lanes_ready) throw new Error("the module is not the lanes variant (no initThreadPool)");
     const init = glue.initThreadPool;

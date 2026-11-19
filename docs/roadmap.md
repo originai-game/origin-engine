@@ -75,8 +75,9 @@ band for buoyancy) and wgpu 31 (unpublished). Ray tracing is a non-goal.
   adapter and a renderer path without MRT, async pipelines or timestamps),
   then the GL tier for WeChat iOS and older devices, then Douyin, Alipay
   and others on the same adapter.
-- **Loaded on demand:** optional capabilities (GPU extras, physics,
-  navigation, video) as artifacts loaded after the first frame.
+- **Loaded on demand:** physics, story, nav, motion, destruction and
+  video load from the CDN on demand in the single-threaded publish module;
+  the lanes module and the GPU extras are next (§Structure).
 - **Determinism for every game:** report iteration over containers filled
   in arrival order, report the lint at publish and packaging, ask the
   platform for a `connect-src` policy on the play origin, check that both
@@ -126,8 +127,10 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   probes, destruction's body weights, a stamp's quaternion without `w`).
   The thread-locals left are the process's roots, named where they are
   declared (`engine.rs`); nothing an engine owns is kept on the thread.
-- **Optional runtime modules (§2.1):** variants that leave modules out,
-  then separate artifacts loaded after the first frame.
+- **Optional runtime modules (§2.1):** the single-threaded publish
+  modules are split and load on demand (docs/web-export.md §Modules); open:
+  the lanes modules (each pool Worker must load a module into its own
+  instance) and the GPU extras (a first-frame profile from the L4).
 - **One host implementation (§2.1):** native counterparts of the web
   host's TypeScript services, with the native shell.
 - **og-cook** links `og-ui` for its parsers behind the `cook` feature; no

@@ -446,7 +446,7 @@ export function finish(dir: string, version: string, revision: string, releasedA
     vfx,
   };
   writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  const files = [...archives.map((t) => archiveName(version, t)), ...Object.keys(vfx).map(archivePath), "manifest.json"];
+  const files = [...archives.map((t) => archiveName(version, t)), ...Object.keys(vfx).map(archivePath), ...wasmFiles(dir), "manifest.json"];
   rmSync(join(dir, "install.sh"), { force: true });
   rmSync(join(dir, "install.ps1"), { force: true });
   if (channel === "release") {
@@ -461,6 +461,48 @@ export function finish(dir: string, version: string, revision: string, releasedA
     if (size > UPLOAD_LIMIT) die(`${archiveName(version, t)} is ${size} bytes; the platform's upload takes at most ${UPLOAD_LIMIT}`);
   }
   return { archives, signed: sign(dir, version, revision) };
+}
+
+/**
+ * The engine wasm's split modules (docs/web-export.md §Modules), served from
+ * the version's directory: each `dist/<host>/modules[-lanes]/` of the engine
+ * package under `wasm/<variant>/<module>.<hash12>.wasm` (the platform's
+ * route), its variant as scripts/wasm-crates.txt names it. Each listing in
+ * the package gets the `base` they are served from, so a game built with this
+ * engine fetches them there (og build's default). Returns the files written,
+ * relative to `dir`.
+ */
+export const WASM_HOSTS: Record<string, string> = {
+  "web-publish/modules": "publish",
+  "web-publish-2d/modules": "publish2d",
+};
+export function writeWasmModules(engine: string, dir: string, version: string): string[] {
+  rmSync(join(dir, "wasm"), { recursive: true, force: true });
+  const files: string[] = [];
+  for (const [from, variant] of Object.entries(WASM_HOSTS)) {
+    const listing = join(engine, "dist", from, "modules.json");
+    if (!existsSync(listing)) continue;
+    const listed = JSON.parse(readFileSync(listing, "utf8")) as Record<string, { file: string; bytes: number; sha256: string; base?: string }>;
+    const base = `${DOWNLOADS}/${version}/wasm/${variant}/`;
+    for (const [m, entry] of Object.entries(listed)) {
+      const source = join(engine, "dist", dirname(from), entry.file);
+      if (sha256(source) !== entry.sha256) die(`${source} is not the module ${listing} names`);
+      const name = `wasm/${variant}/${basename(entry.file)}`;
+      if (!/^wasm\/[a-z0-9-]+\/[a-z0-9]+\.[0-9a-f]{12}\.wasm$/.test(name)) die(`${name} is not a name the platform's wasm route serves`);
+      mkdirSync(join(dir, "wasm", variant), { recursive: true });
+      copyFileSync(source, join(dir, name));
+      files.push(name);
+      listed[m] = { ...entry, base };
+    }
+    writeFileSync(listing, `${JSON.stringify(listed, null, 2)}\n`);
+  }
+  return files.sort();
+}
+
+/** The `wasm/<variant>/*.wasm` files of a version's directory, sorted. */
+function wasmFiles(dir: string): string[] {
+  if (!existsSync(join(dir, "wasm"))) return [];
+  return readdirSync(join(dir, "wasm")).flatMap((v) => readdirSync(join(dir, "wasm", v)).map((f) => `wasm/${v}/${f}`)).sort();
 }
 
 /** The platform ingress's request body limit (210 MiB). */
@@ -479,6 +521,8 @@ function signAgain(dir: string, version: string) {
     const f = archiveName(version, t);
     if (existsSync(join(dir, f)) && before.get(f) !== sha256(join(dir, f))) die(`${f} is not the archive SHA256SUMS named; archive again (and verify) instead`);
   }
+  // The split modules in place, as the last SHA256SUMS named them.
+  for (const f of wasmFiles(dir)) if (before.get(f) !== sha256(join(dir, f))) die(`${f} is not the module SHA256SUMS named; archive again (and verify) instead`);
   // The vfx archives in place, as the last manifest named them.
   const vfx = (JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as { vfx?: Record<string, VfxEntry> }).vfx ?? {};
   for (const name of Object.keys(vfx)) {
@@ -557,6 +601,9 @@ async function main() {
     }
     mkdirSync(join(common, "files"), { recursive: true });
     const vfx = writeVfxArchives(dir, version, vfxSource(revision, here, work));
+    // Before the archives are assembled: each target's engine names where its modules are served.
+    const wasm = writeWasmModules(join(common, "engine"), dir, version);
+    if (wasm.length) say(`${wasm.length} split engine module(s) under wasm/`);
     const downloadable = Object.keys(vfx);
 
     const builds: Partial<Record<Target, Layout>> = {};

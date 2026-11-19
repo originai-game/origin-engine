@@ -9,7 +9,8 @@ import { SourceMap } from "../../sourcemap.ts";
 import { useSourceMap } from "../../spawn-site.ts";
 import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installRemoteFetcher, installVideo, onBar, pageSvg, preloadBundle, transcodeBundle } from "../boot.ts";
 import { FrameCounter } from "../frames.ts";
-import { loadWebHost } from "../host.ts";
+import { fetchModuleHost, loadEngineModules, loadWebHost } from "../host.ts";
+import type { EngineModules } from "../split.ts";
 import * as pipelines from "../pipelines.ts";
 import { settle, SETTLE_FIRST_MS, SETTLE_MS } from "../settle.ts";
 import type { Gate } from "./gate.ts";
@@ -74,6 +75,10 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     // to the single-threaded build, the same engine with the same API.
     let lanes: { on: boolean; threads: number; why: string } = { on: false, threads: 1, why: data.lanesWhy ?? "the page offered no lanes variant" };
     let glue: Glue | null = null;
+    // A split engine's referenced modules start downloading with the
+    // primary; the rest load on their first call (docs/web-export.md §Modules).
+    const moduleHost = (m: EngineModules | undefined) => (m ? fetchModuleHost(m.base, m.files, m.referenced) : undefined);
+    let referenced: readonly string[] = [];
     if (data.lanes) {
       // The bar's total counts the lanes wasm in place of the
       // single-threaded one; after a failure it counts what the lanes
@@ -84,8 +89,9 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
       try {
         const g = (await import(data.lanes.glue)) as Glue;
         if (data.expect) received.total = total + (lanesBytes ?? 0) - (data.expect.wasm ?? 0);
-        await loadWebHost(g, await counted(data.lanes.wasm, lanesBytes), data.lanes.threads);
+        await loadWebHost(g, await counted(data.lanes.wasm, lanesBytes), data.lanes.threads, moduleHost(data.modules?.lanes));
         glue = g;
+        referenced = data.modules?.lanes?.referenced ?? [];
         lanes = { on: true, threads: data.lanes.threads, why: "" };
       } catch (e) {
         // The lanes glue is discarded: loadWebHost bound nothing and told the engine nothing.
@@ -95,8 +101,11 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     }
     if (!glue) {
       glue = (await import(data.glue)) as Glue;
-      await loadWebHost(glue, await counted(data.wasm, data.expect?.wasm));
+      await loadWebHost(glue, await counted(data.wasm, data.expect?.wasm), undefined, moduleHost(data.modules?.single));
+      referenced = data.modules?.single.referenced ?? [];
     }
+    // In place before the game's first tick, so no tick waits on a module it references.
+    await loadEngineModules(referenced);
     run.glue = glue;
     // Fork s63: at most UPLOAD_BUDGET texture bytes a frame; the rest in the frames after.
     glue.og_web_upload_budget?.(UPLOAD_BUDGET);

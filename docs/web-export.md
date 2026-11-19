@@ -320,6 +320,47 @@ og.ui.remoteFrames false, so it carries none of their code. Local
 variant: what counts is the largest one a player downloads, never the sum
 (`scripts/size-gate.sh`, docs/ci.md).
 
+## Modules
+
+A single-threaded publish module is split (Binaryen's `wasm-split`, pinned by
+`scripts/install-tools.sh`; `packages/engine/scripts/wasm-split.ts`) into
+the primary, which boots, and one module per optional capability:
+`physics`, `story` (with og.film), `nav` (with og.ai), `motion`,
+`destruction` and `video` (`scripts/wasm-modules.json` assigns the
+functions). Every function a game using none of them runs, profiled by
+`scripts/wasm-profile.ts`, stays in the primary, so such a game loads
+none. The lanes modules and the remote-frame twins ship whole: a lanes
+pool Worker instantiates the module again, so each of its modules would
+have to be loaded into every Worker's instance too (open work).
+
+The primary imports a placeholder for each split function
+(`placeholder.<module>`); `loadWebHost`'s optional fourth argument, a
+`ModuleHost` (`src/web/split.ts`), instantiates a module against the
+primary's exports, and the module writes its functions into the
+primary's table. A placeholder called before its module arrived loads it
+synchronously (the tick waits) and calls through, so a module that loads
+late changes no result: the world hash is the unsplit module's whenever
+it arrives (`tests/hosts.test.ts`).
+
+**Where they come from.** A release publishes each module once per engine
+version, content-addressed and immutable, at
+`https://origingame.ai/downloads/engine/<version>/wasm/<variant>/<module>.<hash12>.wasm`
+(`application/wasm`, `Access-Control-Allow-Origin: *`,
+`Cross-Origin-Resource-Policy: cross-origin`), listed in SHA256SUMS
+(`scripts/release-dist.ts`, docs/release.md §1). `og build --publish`
+records in og-build.json's `modules` the ones the game references (a
+member of their IDL modules named in its sources, scenes or documents),
+their `base` and the `origin` the page's Content-Security-Policy must
+allow in `connect-src`; the Worker fetches the referenced ones in CORS
+mode beside the primary during the loading screen and puts them in place
+before the first tick. The rest load on their first call.
+
+`og build --publish --modules local` copies every module into the
+output's `modules/` and fetches
+them from beside the page, for an offline or self-hosted build; an engine
+built in a checkout, which no CDN serves, does so by default.
+`modules` is null for an unsplit engine.
+
 ## Errors
 
 A failure reaches the page as one structured host error: the Worker's

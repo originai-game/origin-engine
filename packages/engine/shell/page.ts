@@ -45,6 +45,7 @@ import type { HostError } from "../src/web/shell.ts";
 import type { FrameStats } from "../src/web/frames.ts";
 import { mapStack } from "../src/sourcemap.ts";
 import { browserOf, crashFields, deviceOf, gpuOf, memoryOf, playFields, type Context, type MemoryInfo } from "./telemetry.ts";
+import type { EngineModules } from "../src/web/split.ts";
 
 /** The page's configuration (`<script type="application/json" id="og-config">`, written by og build). */
 export interface ShellConfig {
@@ -106,6 +107,13 @@ export interface ShellConfig {
   readonly assets?: { readonly base: string; readonly manifest: string };
   /** The content base og.load.data reads catalogs from (`og build --content`, project.ogt `publish { content }`); absent: none. */
   readonly content?: string;
+  /**
+   * A split engine's modules (docs/web-export.md §Modules), for the
+   * single-threaded and the lanes module: their base (the CDN's, or "" for
+   * beside the page), files and the ones the game references. Absent: an
+   * unsplit engine.
+   */
+  readonly modules?: { readonly single: EngineModules; readonly lanes?: EngineModules };
 }
 
 /**
@@ -222,7 +230,13 @@ export function readConfig(doc: Document = document): ShellConfig {
     files: c.files && typeof c.files === "object" ? c.files : {},
     ...(c.assets && typeof c.assets.base === "string" && typeof c.assets.manifest === "string" ? { assets: { base: c.assets.base, manifest: c.assets.manifest } } : {}),
     ...(typeof c.content === "string" && c.content !== "" ? { content: c.content } : {}),
+    ...(c.modules && typeof c.modules.single?.base === "string" ? { modules: c.modules } : {}),
   };
+}
+
+/** The modules' base as the Worker resolves it: the CDN's, or the page's directory. */
+function modulesAt(m: EngineModules, page: string): EngineModules {
+  return { ...m, base: m.base === "" ? new URL(".", page).href : m.base };
 }
 
 /**
@@ -730,6 +744,9 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       glue: at("origin-engine.js"),
       wasm: at("origin-engine_bg.wasm"),
       ...(config.expect.lanes > 0 ? { lanes: { glue: at("origin-engine-lanes.js"), wasm: at("origin-engine-lanes_bg.wasm"), bytes: config.expect.lanes } } : {}),
+      ...(config.modules
+        ? { modules: { single: modulesAt(config.modules.single, location.href), ...(config.modules.lanes ? { lanes: modulesAt(config.modules.lanes, location.href) } : {}) } }
+        : {}),
       // The package: next to the page, or on its asset base, every file checked.
       ...(config.assets ? { root: config.assets.base.replace(/\/$/, ""), rootIntegrity: config.assets.manifest } : { root: new URL(".", location.href).href.replace(/\/$/, "") }),
       ...(content ? { content } : {}),

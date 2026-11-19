@@ -144,6 +144,7 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
       glue: options.glue,
       wasm: options.wasm,
       ...("threads" in choice ? { lanes: { ...options.lanes!, threads: choice.threads } } : { lanesWhy: choice.why }),
+      ...(options.modules ? { modules: options.modules } : {}),
       canvas: offscreen,
       seed: options.seed,
       ring,

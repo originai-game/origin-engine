@@ -23,9 +23,10 @@ installed into E2B, production's provider, last.
 |---|---|---|
 | `<version>/origin-engine-<version>-<target>.tar.gz` | one target's dist, its root directory `origin-engine-<version>-<target>/` | immutable |
 | `<version>/vfx/<pack>.tar.gz` | one downloadable effect pack, its root directory `<pack>/` (below) | immutable |
+| `<version>/wasm/<variant>/<module>.<hash12>.wasm` | one split engine module (docs/web-export.md §Modules): `<variant>` `publish` or `publish2d`, served as `application/wasm` with CORS for the play origin | immutable |
 | `<version>/manifest.json` | `{version, base?, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx, ui, fonts, looks}`; the four pack sections are the pack catalogue (below) | immutable |
 | `<version>/previews/<kind>/<name>.webp` | one preview per catalogued pack, `<kind>` one of `vfx`, `ui`, `fonts`, `looks`, at most 960×540 | immutable |
-| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`), every preview's, manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
+| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`, the split engine modules' as `wasm/<variant>/<file>`), every preview's, manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
 | `latest/manifest.json` | the newest release (never a dev build) | no-cache |
 | `install.sh`, `install.ps1` | install the `og` launcher (`packages/launcher`) | no-cache |
 

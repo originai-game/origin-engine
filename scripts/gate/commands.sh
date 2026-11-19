@@ -301,6 +301,31 @@ wasm_bindgen_one() {
   cp "$OG_WASM_OUT/bindgen/$name/${out}_bg.wasm" "$OG_WASM_OUT/dev/$name.wasm"
 }
 
+# The single-threaded publish modules split (docs/web-export.md §Modules):
+# each bound module's primary and its on-demand modules in
+# $OG_WASM_OUT/split/<name>/ (packages/engine/scripts/wasm-split.ts), which
+# scripts/build.sh puts in dist/web-publish*. The lanes modules and the
+# remote-frame twins ship whole: a lanes pool Worker instantiates the module
+# again and would need each module loaded into its own instance. The size
+# gate measures the whole modules: the largest download is a game that uses
+# every module.
+wasm_split() {
+  local d name pids=() failed=0
+  rm -rf "$OG_WASM_OUT/split"
+  for d in "$OG_WASM_OUT"/bindgen/og_host_web-publish*; do
+    [ -d "$d" ] || continue
+    name="$(basename "$d")"
+    [ "${name%frames}" = "$name" ] || continue
+    og_need wasm-split || return 1
+    mkdir -p "$OG_WASM_OUT/split/$name"
+    bun "$OG_ROOT/packages/engine/scripts/wasm-split.ts" "$d" "$OG_WASM_OUT/split/$name" > "$OG_WASM_OUT/split/$name.log" 2>&1 &
+    pids+=($!)
+  done
+  for d in "${pids[@]:-}"; do [ -z "$d" ] || wait "$d" || failed=1; done
+  for d in "$OG_WASM_OUT"/split/*.log; do [ -f "$d" ] && sed "s|^|split $(basename "$d" .log): |" "$d"; done
+  [ "$failed" = 0 ] || { og_err "wasm split failed (scripts/install-tools.sh installs wasm-split)"; return 1; }
+}
+
 step_wasm_bindgen() {
   local raw name
   [ -s "$OG_WASM_OUT/built.txt" ] || { og_err "no built wasm modules"; return 1; }
@@ -317,6 +342,7 @@ step_wasm_bindgen() {
     printf '%s\n' "$OG_WASM_OUT/dev/$name.wasm" >> "$OG_WASM_OUT/dev-all.txt.part"
   done < "$OG_WASM_OUT/built.txt"
   grep -E -- '-(publish|lanes)[a-z0-9]*\.wasm$' "$OG_WASM_OUT/dev-all.txt.part" > "$OG_WASM_OUT/dev.txt.part" || cp "$OG_WASM_OUT/dev-all.txt.part" "$OG_WASM_OUT/dev.txt.part"
+  wasm_split || return 1
   mv -f "$OG_WASM_OUT/dev.txt.part" "$OG_WASM_OUT/dev.txt"
   mv -f "$OG_WASM_OUT/dev-all.txt.part" "$OG_WASM_OUT/dev-all.txt"
   wasm_stamp

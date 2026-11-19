@@ -67,6 +67,7 @@ import { playRumble, type RumbleRequest } from "./gamepad.ts";
 import type { RpcRings } from "./rpc-ring.ts";
 import type { PlatformCall, PlatformHost, PlatformNotice } from "../platform-local.ts";
 import type { BootPhases } from "./worker/state.ts";
+import type { Start } from "./worker/messages.ts";
 import type { TraceDocument } from "../trace.ts";
 import { bootWorker, type HostError, type Ready } from "./shell/boot.ts";
 import { FrameDeadline } from "./shell/deadline.ts";
@@ -100,6 +101,8 @@ export interface ShellOptions {
    * device has the cores for it (laneChoice).
    */
   readonly lanes?: { readonly glue: string; readonly wasm: string; readonly bytes?: number };
+  /** A split engine's modules (StartMessage `modules`, docs/web-export.md §Modules). */
+  readonly modules?: Start["modules"];
   /** A replay seed; omitted is GameDesc.seed. */
   readonly seed?: number;
   /** Tick and render with the display (default true); false leaves ticks to `call("advance", n)`. */
