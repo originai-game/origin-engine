@@ -113,7 +113,7 @@ h2, h3, p { margin: 0; }
 .figure, .balance, .more { font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
 .figure { white-space: nowrap; }
 .currency { flex: none; inline-size: calc(20 * var(--font-step-px)); block-size: calc(20 * var(--font-step-px)); }
-.was { white-space: nowrap; font-size: var(--shop-was-size); font-weight: var(--inv-name-weight); }
+.was { margin-inline-end: var(--space-xs); white-space: nowrap; font-size: var(--shop-was-size); font-weight: var(--inv-name-weight); }
 .balance, .more { flex: none; max-width: stretch; margin-inline-start: auto; text-align: end; overflow-wrap: anywhere; }
 [data-short=true] .price, .lack .key, .lack .more { color: var(--shop-short-ink); }
 .alert { flex: none; width: stretch; padding: var(--space-xs) var(--space-sm); overflow-wrap: anywhere; background: var(--inv-alert-fill); box-shadow: var(--inv-alert-rim); }

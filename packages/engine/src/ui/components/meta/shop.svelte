@@ -183,7 +183,7 @@
 .price[data-short=true] { color: var(--shop-short-ink); }
 .price .figure { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .currency { flex: none; inline-size: calc(18 * var(--font-step-px)); block-size: calc(18 * var(--font-step-px)); }
-.was { white-space: nowrap; font-size: var(--shop-was-size); font-weight: var(--inv-name-weight); }
+.was { margin-inline-end: var(--space-xs); white-space: nowrap; font-size: var(--shop-was-size); font-weight: var(--inv-name-weight); }
 .status { flex: none; margin-inline-start: auto; align-items: center; padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); white-space: nowrap; color: var(--shop-sold-ink); background: var(--shop-sold-fill); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
 .status[data-kind=owned] { color: var(--shop-owned-ink); background: var(--shop-owned-fill); }
 .status[data-kind=short] { color: var(--shop-short-ink); background: var(--shop-short-fill); }
