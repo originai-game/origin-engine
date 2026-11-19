@@ -234,10 +234,10 @@ export class SafariPage {
   async eval<T = unknown>(expression: string): Promise<T> {
     const script = `const done = arguments[arguments.length - 1];
       const drain = () => { const b = globalThis.__og_wd_log__; return b ? b.splice(0) : []; };
-      Promise.resolve().then(() => (0, eval)(arguments[0])).then(
+      Promise.resolve().then(() => (${expression}\n)).then(
         (v) => done({ v: v === undefined ? undefined : typeof v === "function" ? "{}" : JSON.stringify(v), log: drain() }),
         (e) => done({ e: String((e && (e.stack ? (e.message + "\\n" + e.stack) : e.message)) || e), log: drain() }));`;
-    const r = await this.#cmd<{ v?: string; e?: string; log?: string[] }>("POST", "/execute/async", { script, args: [expression] });
+    const r = await this.#cmd<{ v?: string; e?: string; log?: string[] }>("POST", "/execute/async", { script, args: [] });
     if (r?.log?.length) this.log.push(...r.log);
     if (r?.e !== undefined) throw new Error(r.e);
     return (r?.v === undefined || r.v === null ? undefined : JSON.parse(r.v)) as T;
