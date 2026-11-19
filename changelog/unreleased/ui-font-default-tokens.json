@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Default style type tokens",
-      "summary": "Moves frames: the default style's --font-sans and --font-display name \"Instrument Sans\" first, so a default-style game with no font draws its body and display text in the engine's default face at real weights and widths."
-    }
-  ]
-}

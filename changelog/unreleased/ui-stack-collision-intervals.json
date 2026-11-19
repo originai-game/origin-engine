@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI world anchors",
-      "summary": "Stacked world labels mark each blocker's vertical collision interval once rather than rescanning the blockers for successive candidate positions. Placement choices, collision gaps and fallback behavior are unchanged."
-    }
-  ]
-}

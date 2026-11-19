@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og world-server --wt-listen",
-      "summary": "`og world-server --wt-listen ADDR --cert F --key F` also serves WebTransport beside the WebSocket: snapshots and proposals cross as datagrams, so a lost packet delays only itself, and every other message crosses one stream. `og world-server cert` writes a self-signed ECDSA certificate (14 days at most) and prints the SHA-256 a page passes. `og world-server load --url https://… --cert-hash HEX` drives bots over it, and `--latency MS --loss PCT` shapes either transport and reports delivery (delivered fraction, added delay, gaps). The WebSocket protocol is unchanged."
-    }
-  ]
-}

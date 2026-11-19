@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "cook: model simplification",
-      "summary": "Simplification now collapses paired UV seams together rather than crossing charts, preserving continuous texture regions without freezing every seam vertex. Unused flat-normal duplicates no longer distort seam classification. Boundary-preserving conformance keeps the incident faces at non-manifold source junctions; deformation discontinuities remain locked. Flat shading retains thin faces that survive the actual position grid instead of opening surfaces with a width cutoff. Chart-heavy LODs use the independent surface bake when needed to reach their existing targets."
-    }
-  ]
-}

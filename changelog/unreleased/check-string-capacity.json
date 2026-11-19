@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "og check reports statically known string field capacities outside 1–4096 bytes at their source file and field, before boot, including imported factory aliases and const capacities."
-  ]
-}

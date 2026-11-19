@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI world frames",
-    "summary": "World HUD frames reuse traversal indexes and avoid transient non-text glyph-scan and constant mass-timeline allocations without changing their draw order or number formatting."
-  }]
-}

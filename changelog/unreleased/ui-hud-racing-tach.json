@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "RacingTelemetry",
-      "summary": "The speed is held to half its dial face's width (the face is its size container, the share the figure has on a desktop), so on a phone at a large text scale the figure stays inside the face, clear of the arc's ticks and the shift lights. On a phone the gear's tag stands in the arc's opening under the face, and the face holds the lights, the speed and its units. The --hud-size-speed and --hud-size-speed-compact tokens carry the face's share."
-    }
-  ]
-}

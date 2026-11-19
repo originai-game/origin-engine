@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.load.bundle",
-      "summary": "Native rendering drops recoverable decoded texture copies after their current revision uploads, reconstructing texels from the owning cooked bundle for device recovery or CPU reads, including the currently displayed mip tail or full chain. Deferred uploads, active CPU readers and pending mip swaps retain the data they need; mesh data used by simulation and compact-pipeline fallback stays available."
-    }
-  ]
-}

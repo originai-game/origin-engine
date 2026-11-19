@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "Virtual list and grid rows with authored focusable controls now use structural wrappers without duplicate focus targets, option selection or built-in padding. Plain-content rows remain selectable options."
-  ]
-}

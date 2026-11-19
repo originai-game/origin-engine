@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Model",
-      "summary": "A tree with cooked foliage shades its own crown: the leaves hide the sky and the sun from the inside of the crown (an ellipsoid of the leaves' measured area density, Hegeman et al. 2006), so a leaf or branch there takes less of the light around it, reflects less of the sky (Lagarde 2014) and takes at most the sun the crown lets through; what the leaves scatter on is passed forward in their colour, darker each leaf deeper (Boulanger et al. 2009), and a translucent leaf also takes the sky's light through from behind (meshlet path only). A leaf with dome normals (`foliage.y`) now reflects the sky off its own face instead of its canopy's normal, so a crown's inner leaves no longer take a grazing sheen of the sky. Shaded inner crowns are darker and keep their hue instead of turning grey-mauve or cyan. Moves frames of every tree."
-    }
-  ]
-}

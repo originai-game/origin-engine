@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.StreamCell",
-      "summary": "On the web, a streaming group's Basis textures are transcoded on other Workers, not on the engine's: a cell's load no longer stops the frames while its pack's textures transcode. Before, every texture of a pack was transcoded on the engine's Worker one after another without a frame between them, and the first pack of a session started the transcoder there too. Measured in desktop Chromium with 14 textures of 1024x1024 to BC7 per pack and the engine's side stood in: the longest stop went from about 280 ms (the first pack) and 120 to 160 ms (each later one) to 5 to 12 ms, where an idle loop already shows 4 to 6 ms, and a later pack is ready in about 70 ms where it took about 130. The Workers start with the first such texture (up to four, on machines with the cores for them) and stay. Where a Worker cannot start, the engine's Worker transcodes as before. The textures handed to the engine, world state and hashes are unchanged."
-    }
-  ]
-}

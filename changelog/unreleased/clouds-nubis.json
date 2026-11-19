@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: og.Clouds",
-      "summary": "The cumulus is rebuilt as the Horizon Zero Dawn and Nubis cloudscape (third_party/nubis-clouds.md): a weather map stands each cloud on the layer's base with a height gradient, so tops billow into domes over flat, darker bases and no puff floats loose under the layer; the detail noise moves the cloud's surface in and out, so near clouds billow at their edges instead of drawing as smooth lumps; the march crosses a cloud in fine steps instead of one sample a stride, so edges no longer step; and the sun's light is gathered through six widening steps with four octaves of multiple scattering, so a backlit cloud has a silver lining. `coverage` is the share of the sky covered: a sky tuned to the old meaning reads clearer, and a game tuned to it may need to raise `coverage`. Every scene with clouds moves."
-    }
-  ]
-}

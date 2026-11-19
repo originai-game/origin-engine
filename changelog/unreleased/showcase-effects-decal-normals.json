@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Decal (normalMap)",
-      "summary": "A normal-mapped decal no longer flattens the surface under its whole box. Its normal map now bends the surface's own shading normal instead of replacing it, so where the decal's map is flat (its margin) a normal-mapped plaster, stone or cobble surface keeps its relief, and a bullet hole shows as a hole instead of a smooth square."
-    }
-  ]
-}

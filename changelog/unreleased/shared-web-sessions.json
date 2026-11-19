@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "@origingame/engine/provider",
-      "summary": "A page's `sessions` provider hosts og.shared on the web: a SessionProvider (`host`, `connect({ world, reconnect })` answering `{ ok, url, token? }`), `staticSession({ url, token? })` for a fixed world server, `tokenEndpoint(url)` for a game's own endpoint that signs short-lived tokens for an `og world-server --auth hs256`, or a world server's URL in `window.__OG_PROVIDER.sessions`. The engine Worker opens the WebSocket itself. A page without one ends og.shared.join with og.SharedLeft `unavailable`. Additive: PROVIDER_VERSION stays 1."
-    }
-  ]
-}

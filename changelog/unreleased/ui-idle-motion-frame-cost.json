@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI motion frame cost",
-    "summary": "Retained scalar transitions reuse unchanged native-part dependencies, avoid scanning shared inherited token maps, and skip unrelated computed-value motion phases and custom-effect cascades. Registered custom-property motion and before-change inheritance keep their existing behavior."
-  }]
-}

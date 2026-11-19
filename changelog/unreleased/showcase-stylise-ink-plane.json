@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Stylise.ink (depth)",
-      "summary": "Depth ink no longer draws a thick band where a ground plane recedes to the horizon. A silhouette is now a break in the inverse depth between opposite neighbours, which stays affine across any plane, as the hatching's contours already found it. Silhouettes and creases on objects keep their lines."
-    }
-  ]
-}

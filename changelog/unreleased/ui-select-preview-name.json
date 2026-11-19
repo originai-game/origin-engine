@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "RhythmSongSelect",
-      "summary": "The Preview button's accessible name is its words alone (Preview, or Previewing while it plays); its key cap no longer joins the name as \"X Preview\"."
-    }
-  ]
-}

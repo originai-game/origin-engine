@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI world anchors",
-      "summary": "Unchanged world wrappers reuse their kept paint instead of repainting their descendants every tick. Depth, occlusion and layer changes still invalidate the wrapped drawing, including when a wrapper appears or disappears."
-    }
-  ]
-}

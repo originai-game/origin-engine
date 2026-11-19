@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "News",
-      "summary": "A feed taller than its host (at 1280 × 720, an open article with its picture and the article after it) ran past the foot of the screen, where nothing scrolled to it. The panel now takes its articles' height up to its host's and the articles scroll under the heading, with a fade where more follows; a shorter feed, the empty state and the error keep their own height."
-    }
-  ]
-}

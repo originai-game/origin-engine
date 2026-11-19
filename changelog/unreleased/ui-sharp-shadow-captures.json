@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI masks after text halos",
-    "summary": "Sharp CSS text-shadow halos draw without offscreen filter captures, leaving masks intact on dense HUDs instead of painting the compass strip as an opaque black band. Blurred and mixed shadow lists keep their whole-silhouette filters."
-  }]
-}

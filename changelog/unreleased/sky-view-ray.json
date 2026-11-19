@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: the sky",
-      "summary": "The sky, its sun, moon, stars and clouds stand where they are however far the camera is from the render origin. The view ray through a pixel was the difference of two points unprojected at the camera's place, rounded at its distance from the origin: 4 km out the sky was drawn up to 0.4° off (a degree at 14 km) and turned a little with every step. The ray is now built from the camera's rotation and projection alone."
-    }
-  ]
-}

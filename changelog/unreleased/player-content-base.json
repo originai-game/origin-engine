@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.load.data",
-      "summary": "On a page a Player hosts, the Player's hello may name the content base (`content`), over the build's `og build --content`. The page starts the engine with its base to come (CreateOptions.contentLater, host call og_engine_set_content); data loads stay pending until the hello settles the platform, then read from the named base, or fail `unavailable` when there is none."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui",
-      "summary": "Overflow clips an element's content before filtering, without cutting its own drop-shadow or blur output back to its box. Ancestor overflow, clip-path and masks still clip the resulting image."
-    }
-  ]
-}

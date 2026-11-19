@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: og.Clouds",
-      "summary": "The main camera's clouds march one texel in four each frame and reproject the rest from the frame before (Schneider 2015), and the march takes longer steps behind a cloud's visible surface, so the cloud pass costs about a quarter of a full march. The march's dither turns every drawn frame and averages away over four frames, in a still frame as in a moving one: near clouds showed a fine regular grain. The first frame after a cut, a resize or a capture marches every texel. Each fine sample's two nearest light samples share its weather map read, the sun at a sample's height is interpolated from four reads a ray and the fog past 5 km is read once a ray, and the air in front of a cloud is integrated in 4 to 12 steps by its distance (Hillaire 2020): a sunset's cloud pass costs about a fifth less, with the same look."
-    }
-  ]
-}

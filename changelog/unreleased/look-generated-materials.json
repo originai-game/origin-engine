@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "MaterialStyle.surface",
-      "summary": "Terrain, grass, scattered models and water now take the shared clay, paper and plastic surface response instead of leaving it on models alone. Generated terrain, grass and water also take flatShading; water retains its wave, refraction and absorption calculations."
-    }
-  ]
-}

@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI world drawing",
-    "summary": "Store small world drawing markers directly in draw commands so rebuilding and copying moving-anchor lists does not allocate a box for each marker."
-  }]
-}

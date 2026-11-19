@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "RpgCompanions",
-      "summary": "On a phone a fallen companion's empty health bar sits directly under its name, level with the other plates' bars; its Fallen tag stands under the bar instead of moving it."
-    }
-  ]
-}

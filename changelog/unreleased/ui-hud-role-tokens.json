@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Default style HUD tokens",
-      "summary": "--hud-* (stroked HUD type, condensed figures, tracked capitals, cut plates, tag plates, key caps, pips, the HUD accent), --judge-* (a lit colour and gradient per judgement), --gauge-* and --chart-* role tokens, which a style pack sets to restyle the HUD."
-    }
-  ]
-}

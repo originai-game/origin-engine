@@ -9,7 +9,7 @@ version 1
 # results screen), states every member in every fixture state it declares.
 name "Rhythm kit sheet"
 id "rhythm-sheet"
-engine "0.8.0"
+engine "0.9.0"
 entry "src/main.ts"
 profile "2d"
 tick 60

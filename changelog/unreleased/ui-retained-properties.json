@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI rendering",
-      "summary": "Flat normal-blended shape paints retain geometry during supported transform and opacity animation, with generation-checked emitted shapes and changed-instance GPU uploads. Paint, clipping, topology and unsupported content changes keep the ordinary rendering path; both hosts use the same mechanism."
-    }
-  ]
-}

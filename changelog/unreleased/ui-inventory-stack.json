@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "RpgBackpack",
-      "summary": "A tile's stack count is written short in the active locale (99,999 reads 100K), with the whole number as its name, so a large stack stays inside its tile on a phone at large text sizes."
-    }
-  ]
-}

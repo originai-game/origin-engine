@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Default style shooter HUD tokens",
-      "summary": "--hud-* roles for the sides' inks, the vitals' fills, feed rows, rarity, the radar, the compass band, the reticle, hit marks, incoming damage arcs, slot lift, ready glow, sweeps and the HUD's type steps, which a style pack sets to restyle the shooter HUD."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: og.Water.river",
-      "summary": "The white water below a river's fall now clears within a length set by the fall's drop (three drops, at least one width) instead of an exponential tail that left a 7 m river white some five widths downstream, and the churn is patches over the water's own colour rather than a grey veil under them: white at the fall's foot, thinning and fading into streaks drawn along the current, clear water within a few widths."
-    }
-  ]
-}

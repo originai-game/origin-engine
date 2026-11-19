@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.anim.humanoid",
-      "summary": "A Meshy rig's chest and upper chest are recognised (Mixamo names with two digits, Spine01 and Spine02). They were left unmapped, so the arms hung from the spine and og.anim.retarget and og.MotionAgent bent the character's back as one bone."
-    }
-  ]
-}

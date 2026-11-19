@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI runtime font glyphs",
-    "summary": "Overlapping font strokes generate distance fields from their filled outline boundary, removing translucent seams and ghost strokes inside enlarged runtime glyphs while preserving counters and exterior edges."
-  }]
-}

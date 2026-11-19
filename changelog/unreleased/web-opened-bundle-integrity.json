@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.load.bundle",
-      "summary": "On the web, every file of a bundle opened at run time is fetched against the Subresource Integrity its own manifest lists (`integrity \"sha384-…\"`), as a package from an asset base is: bytes that differ from what was cooked fail their load once, naming the integrity, instead of loading as if intact. As there, the browser does not tell a refused hash from a network failure, so such a fetch is not tried again."
-    }
-  ]
-}

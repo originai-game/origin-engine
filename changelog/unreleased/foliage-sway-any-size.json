@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Model",
-      "summary": "A model with cooked foliage sways in og.Wind in a scene of any size: the meshlet path that sways it now runs whenever such a model is drawn (it ran only from 16,384 instances under the default culling)."
-    }
-  ]
-}

@@ -5,7 +5,7 @@ version 1
 # temple's ruins, their motion generated between the game's goals.
 name "Motion Course"
 id "motion-course"
-engine "0.8.0"
+engine "0.9.0"
 entry "src/main.ts"
 tick 60
 seed 1

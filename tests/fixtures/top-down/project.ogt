@@ -5,7 +5,7 @@ version 1
 # a tilemap, a walking farmer, packed crop sprites and 2D lamps.
 name "Top down"
 id "top-down"
-engine "0.8.0"
+engine "0.9.0"
 entry "src/main.ts"
 profile "2d"
 tick 60

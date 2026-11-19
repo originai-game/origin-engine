@@ -5,7 +5,7 @@ version 1
 # a knight run by a sprite animation graph, pixel terrain, 2D lights.
 name "Side scroller"
 id "side-scroller"
-engine "0.8.0"
+engine "0.9.0"
 entry "src/main.ts"
 profile "2d"
 tick 60

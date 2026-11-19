@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Default style action RPG HUD tokens",
-      "summary": "--hud-* roles for the vitals' life, mana and stamina fills, the boss's health, the stagger gauge, the experience line, a fill in the HUD's accent, the hexagon, slot lift, ready glow, sweeps and their lit edge, the no-mana veil and its word's size, the ultimate's gold, effect edges, feed rows and rarity, blips and the round map, the lock-on ring, a critical's slant, a burn's ink, a quest step's marker and struck line, and the HUD's RPG type steps, which a style pack sets to restyle the RPG HUD."
-    }
-  ]
-}

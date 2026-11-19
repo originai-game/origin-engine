@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "GodRays",
-      "summary": "Remove concentric radial-sampling bands with stable centred interleaved taps and a normalized spatial resolve, without temporal noise or changing the default threshold. Preserve an empty mask exactly and match the converged radial integral without adding haze."
-    }
-  ]
-}

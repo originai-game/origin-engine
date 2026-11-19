@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI world anchors",
-    "summary": "Moving world wrappers preserve unchanged local paint while projection, occlusion and edge arrows are regenerated for the current frame."
-  }]
-}

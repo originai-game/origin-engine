@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.ui.documentSchema",
-      "summary": "Contained world labels can opt out of edge fading with contain-fade=none, keeping off-screen boss plates readable without changing distance, occlusion or declutter fades."
-    }
-  ]
-}

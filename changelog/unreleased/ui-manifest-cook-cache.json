@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "Cooking now refreshes built-in UI dependencies when only the component manifest changes, without requiring document edits or clearing the cooked cache."
-  ]
-}

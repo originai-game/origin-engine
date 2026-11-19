@@ -1,3 +1,0 @@
-{
-  "fixed": ["Volumetric spot beams integrate inside their finite cones instead of disappearing between depth samples. Froxel fog resolves spots on the pixel ray with the grid's extinction, so narrow beams retain their silhouette instead of breaking into lit and unlit blocks. Grid dimensions, depth strata and clustered-light limits are unchanged."]
-}

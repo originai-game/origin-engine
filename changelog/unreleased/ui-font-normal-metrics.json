@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI line-height",
-    "summary": "line-height: normal uses the selected font's vertical metrics, with ascent, descent and line gap rounded separately as in the browser. The 1.2 fallback is retained only for faces without usable metrics; explicit numeric and length leading is unchanged."
-  }]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Default style world label tokens",
-      "summary": "--world-* roles for the world labels: reaction inks and health fills (hostile, neutral, friendly, the player's, an ally's, a dead unit's name), a nameplate's ghost and its drain, quarter cuts, rims (plain, elite, target, targeted elite, low and its breathing), bar sizes (a unit's, a boss's, a compact one, the cast bar, an overhead bar and its resource line), the elite chip, the cast row (casting, can't interrupt, interrupted), world type steps, loot tiers' inks, glows, beams, the legendary wash and shimmer and the hover fill, the prompt's entry, hold ring and gamepad cap, speech's shout rim, timer and pop, a waypoint's pin, core and halo, telegraph washes, sweeps, rims and impact, selection ring motion, placement fills, rims, cell fills and hatches, a path's strokes, and the marks' sizes (wings, brackets, glows, pins, chevrons, tails) and a bubble's room on the screen, which a style pack sets to restyle the world labels."
-    }
-  ]
-}

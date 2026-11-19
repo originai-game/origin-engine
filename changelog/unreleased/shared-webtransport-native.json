@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og run --shared",
-      "summary": "`og run --shared https://host:port/ [--shared-cert-hash HEX]` carries a native run's og.shared session over WebTransport (`og world-server --wt-listen`), checking a self-signed certificate by its SHA-256; a `ws://` URL is a WebSocket as before."
-    }
-  ]
-}

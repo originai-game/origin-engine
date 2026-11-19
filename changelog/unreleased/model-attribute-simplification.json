@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "cook: model face budgets and LODs",
-      "summary": "UV seams and complex generated topology no longer pin a model above its face budget or a LOD above its requested target: attribute-aware meshoptimizer collapses preserve source UVs, colours and deformation boundaries within the error limit."
-    }
-  ]
-}

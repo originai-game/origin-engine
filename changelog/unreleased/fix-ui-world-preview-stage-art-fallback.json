@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI art slots",
-      "summary": "Missing or unresolved art keeps a neutral placeholder instead of drawing internal document paths or asset names. Authored accessible and probe labels remain available; internal slot identifiers stay in art slot and probe detail metadata, not user-facing text."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: og.Fog",
-      "summary": "What the sky draws under the horizon is fogged as land as far off is, not by og.Fog.sky's share: where a world's ground left the view open below the horizon, the sky's ground read as a flat band under the fogged hills."
-    }
-  ]
-}

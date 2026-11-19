@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.load.bundle",
-      "summary": "On the web, a Basis-coded texture of a bundle opened at run time that no streaming group holds (an HLOD proxy's, or a model loaded outside any cell group) loads: the web host hands it to the Worker's transcoder when it is first used and answers pending until the Worker has transcoded it, so its model stays hidden for that time and then draws, as natively. Before, its load failed with \"not transcoded\": the Worker transcodes only the game's own bundle at boot and streaming groups' packs, and the web host has no Basis transcoder of its own."
-    }
-  ]
-}

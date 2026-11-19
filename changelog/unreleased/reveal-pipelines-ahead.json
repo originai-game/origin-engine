@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "render.reveal",
-      "summary": "The first frame that shows a kind of streamed model no longer stops to compile its pipelines (42 ms of a first cell's load frame on a desktop Vulkan GPU): while a fade is at nothing its model is not drawn and its pipelines compile on worker threads, and the frames start the fade once they are made, usually at once. A model with its fade turned off (seconds 0) draws whole on its first frame and compiles there, as before. A script's frames (og run without --realtime, og render) do not wait this way: they read the fade by its ticks and reproduce run to run. Captures, world state and hashes are unchanged."
-    }
-  ]
-}

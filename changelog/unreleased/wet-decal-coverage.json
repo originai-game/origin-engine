@@ -1,4 +1,0 @@
-{
-  "added": ["Decal.wet multiplies the receiver's diffuse albedo and covers its normal-map detail by opacity, using a flat normal when the decal has no map. Authored roughness also reaches screen-space reflections, so puddles can form flat mirrors. The default false retains the existing colour mix and additive normal bend."],
-  "breaking": [{ "member": "render.Decal", "change": "The reflected record adds wet, default false.", "fix": "Re-cook scenes against the updated schema; leave wet false to retain existing decals." }]
-}

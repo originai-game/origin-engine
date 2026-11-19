@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI line-height",
-    "summary": "An explicit line-height: normal applies normal leading to CJK text too, instead of retaining the default type ramp's extra CJK spacing. Inherited normal leading now places compact mixed-script labels consistently."
-  }]
-}

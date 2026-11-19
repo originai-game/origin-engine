@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Default style strategy HUD tokens",
-      "summary": "--hud-* roles for a plate whose edge is lit in danger, a surface that wears nothing, an empty slot in a queue or a command card, a unit's health fill green, gold when hurt and red when low, the minimap's camera frame and an alert's red ring on it, and the strategy HUD's readout and unit-name type steps with their phone steps and a cooldown's figure and a tile's key cap each held to a share of its tile, which a style pack sets to restyle the strategy HUD."
-    }
-  ]
-}

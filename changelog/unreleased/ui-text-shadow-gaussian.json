@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI text-shadow",
-    "summary": "CSS text shadows blur the complete glyph silhouette with a Gaussian and composite in sRGB space, preserving soft halos beyond tight line boxes without the atlas's rectangular cutoff. Authored overflow clips still apply."
-  }]
-}

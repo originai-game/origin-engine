@@ -1,9 +1,0 @@
-{
-  "simulation": "changed",
-  "fixed": [
-    {
-      "member": "World.despawn",
-      "summary": "An entity's name is free again once its despawn applies: inside a system when the system returns (a later system of the same tick, a later tick or a call between ticks may spawn the name again), between ticks at once. It stayed taken until a probe call brought the runtime's name table in line, so plain og run and published games refused the spawn while og test and og run --json did not."
-    }
-  ]
-}

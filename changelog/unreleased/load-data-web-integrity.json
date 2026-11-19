@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.load.data",
-      "summary": "On the web a catalog file's SHA-384 is checked by the Worker after the fetch, so a network or CORS failure fails the load `failed` (a 404 `not_found`) instead of `integrity`."
-    }
-  ]
-}

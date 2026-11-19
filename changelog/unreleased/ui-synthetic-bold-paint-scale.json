@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI text",
-      "summary": "Synthetic bold text now refreshes its ink growth and one-device-pixel second copy when an inherited transform changes its device scale, matching fresh painting on both hosts."
-    }
-  ]
-}

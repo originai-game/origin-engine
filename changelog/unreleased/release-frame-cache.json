@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og build --publish",
-      "summary": "Fetch remote-frame publish hosts automatically only when project settings declare frames. Both profiles and their lanes variants remain available through hash-pinned shared caching, with offline reuse and explicit download errors; ordinary installs no longer carry the four optional wasm twins."
-    }
-  ]
-}

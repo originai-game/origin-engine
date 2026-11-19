@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "load.bundle",
-      "summary": "Runtime-opened bundles register their own streaming groups: cell groups no longer freeze the world, and unloading releases full meshes, textures and budget usage through the declaring bundle. Conflicting group names fail the new bundle open, naming both bundles."
-    }
-  ]
-}

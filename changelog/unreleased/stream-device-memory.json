@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    { "member": "og.stream.budget", "summary": "Price grouped textures by the renderer's actual transcode format and exact mip block sizes before residency admission, including existing cooked packs, instead of charging every texture as RGBA8." }
-  ]
-}

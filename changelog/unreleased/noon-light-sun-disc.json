@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: og.PhysicalSky",
-      "summary": "The physical sky's sun disc is the sun's own size, 0.27° across its radius (its mean semi-diameter), alone and under og.DayNight, with the same light as before, so bloom still draws its glow: under og.DayNight it drew the gradient's 1.8°, a huge winter sun and a wide oval near the frame's edge, and alone 0.8°. A disc narrower than a pixel is drawn a pixel wide with its light spread over it. og.Sky's own sunSize is drawn as set."
-    }
-  ]
-}

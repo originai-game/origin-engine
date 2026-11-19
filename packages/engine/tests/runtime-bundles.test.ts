@@ -127,7 +127,7 @@ function cell(id: string, x: number): string {
 /** Writes and cooks the project at `dir` from `files` (paths under assets/). */
 function cook(dir: string, id: string, files: Record<string, Uint8Array | string>): void {
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "project.ogt"), `type project\nversion 1\n---\nname "${id}"\nid "${id}"\nengine "0.8.0"\nentry "main.ts"\nprofile "3d"\ntick 60\nseed 1\n`);
+  writeFileSync(join(dir, "project.ogt"), `type project\nversion 1\n---\nname "${id}"\nid "${id}"\nengine "0.9.0"\nentry "main.ts"\nprofile "3d"\ntick 60\nseed 1\n`);
   writeFileSync(join(dir, "main.ts"), "export {};\n");
   for (const [path, bytes] of Object.entries(files)) {
     mkdirSync(dirname(join(dir, "assets", path)), { recursive: true });

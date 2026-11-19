@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Fog.sunColor",
-      "summary": "The fog's glow looking into the sun now stands round the sun the sky draws (og.DayNight's, og.Sky's or og.PhysicalSky's), not round the first DirectionalLight. When the light was og.DayNight's moon, the sky's red sunset glow under the sun showed round the moon instead. With no procedural sky the glow follows the light as before."
-    }
-  ]
-}

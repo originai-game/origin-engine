@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.ui.documentSchema",
-      "summary": "Document mass bars gain shield and resource tracks, health segments, CSS --bar-* inks and low-health rims. bar-ghost retains a 400ms hold/300ms drain through keyed rebuilds and snapshots. Health has a 30×3 pixel floor; bars support scene occlusion and maximum-distance fading, draw far-to-near across templates, and remain beneath text anchors."
-    }
-  ]
-}

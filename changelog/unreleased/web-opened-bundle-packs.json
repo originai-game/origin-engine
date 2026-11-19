@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.load.bundle",
-      "summary": "On the web, a streaming group's pack from a bundle opened at run time has its Basis textures transcoded against that bundle's own manifest, as the game's packs are against the game's. Before, the Worker looked them up in the game's manifest, found none and handed the pack over untranscoded, and the web host, which has no Basis transcoder of its own, could not load those textures."
-    }
-  ]
-}

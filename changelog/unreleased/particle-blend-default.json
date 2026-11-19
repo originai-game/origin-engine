@@ -1,4 +1,0 @@
-{
-  "fixed": [{ "member": "ParticleEmitter", "summary": "Rust emitters now use the same per-kind blend default as effect files: alpha for lit meshes and additive otherwise. Explicit blend choices are unchanged." }],
-  "breaking": [{ "member": "ParticleEmitter.blend (Rust)", "change": "The field is now Option<ParticleBlend>; None retains the per-kind default.", "fix": "Wrap explicit Rust blend values in Some and read the resolved value with emitter.blend(). Effect files and the TypeScript API need no changes." }]
-}

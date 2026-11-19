@@ -1,6 +1,0 @@
-{
-  "simulation": "changed",
-  "fixed": [
-    { "member": "og.world.despawn", "summary": "Despawning a streaming cell also despawns its sub-scene members and descendants, including a partially spawned cell, and discards its persisted rows." }
-  ]
-}

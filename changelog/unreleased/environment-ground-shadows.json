@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "rendering: og.Environment.groundShadows",
-      "summary": "A grounded environment's ground (groundHeight above 0) takes the shadows of what stands on it, as a real floor would, so props sit on the photographed ground instead of floating over it: the map's light they hide from it, within 32 m of groundCenter, and the sun's shadow from a DirectionalLight with castShadow (three.js ShadowMaterial, Unity's HDRI backplate, Unreal's HDRI Backdrop). groundShadows sets how dark, 1 by default; 0 draws the ground as photographed, as before. A grounded scene's ground darkens round its props unless it sets 0."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.platform.journal",
-      "summary": "Everything the host handed the engine (its attach and clock, every answer and notice) with the tick it was handed at, kept on every host but a publish build. og replay record --platform-journal <journal.json> records with a session's journal, handing each entry back at its tick as the engine took it; the trace keeps it and og replay compare does the same. A web session's platform answers, which arrive when the page delivers them, now replay natively as --loads does for uncooked loads."
-    }
-  ]
-}

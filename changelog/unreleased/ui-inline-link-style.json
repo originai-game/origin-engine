@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI document links",
-      "summary": "HTML links use their element's computed ink and text decoration, including inherited colors and text-decoration: none. Default links remain highlighted and underlined; components no longer need to work around link runs overriding CSS."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "@origingame/engine/provider",
-      "summary": "A SessionAnswer (and staticSession, tokenEndpoint) may name `webtransport: { url: \"https://…\", certHashes? }`: a browser that has WebTransport carries og.shared over it and falls back to the answer's WebSocket when it fails to open. og.shared.status's `transport` says `wt` or `ws`. Additive: PROVIDER_VERSION stays 1."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Default style loading tokens",
-      "summary": "--loading-* roles for the loading screen: the shade behind its words and at its side, the placeholder without key art, the progress fill and its glow, the bar's lead edge, and Continue's fill and glow, which a style pack sets to restyle the loading screen."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: og.Weather puddles on og.Terrain",
-      "summary": "Standing water fills a terrain layer's joints and cracks first, up to just under its relief's middle by half the puddles, and the displaced ground rises flat to it: wet setts stand out of water that mirrors the sky between them. The joints had stayed dark lines unless a broad puddle happened to cover them."
-    }
-  ]
-}

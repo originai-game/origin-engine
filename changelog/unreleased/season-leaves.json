@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.Season",
-      "summary": "Deciduous leaves follow the year: with og.Season enabled each leaf of a species whose leaves material has season above 0 grows from its bud, turns to a colour between autumnColor and autumnColor2, browns and drops on its own day (trees of a species about 10 days apart, leaves of one tree about a week), its shadow with it; the wood stays. The crown drawn is og.atmosphere.season's leafOut times what has not fallen. Needs compute and indirect draws (RenderCapabilities.caps); the GL tier, scattered copies and impostor cards draw the leaves as modelled."
-    }
-  ]
-}

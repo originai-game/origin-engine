@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI CSS margins",
-      "summary": "Mixed-unit min(), max() and clamp() margins now resolve at layout against the containing width, including logical margins and font-relative terms, rather than being rejected."
-    }
-  ]
-}

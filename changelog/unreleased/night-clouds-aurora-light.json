@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: og.Clouds",
-      "summary": "Clouds under an og.Aurora are lit by it: the display's light from above reaches into the cloud as diffuse light through a scattering layer, keeping its green and red, and from the side through the gaps in the cover. Night clouds read as the aurora's dark grey-green instead of black cut-outs against it, and the ground's light, which the live sky captures with the clouds, no longer goes black under them."
-    }
-  ]
-}

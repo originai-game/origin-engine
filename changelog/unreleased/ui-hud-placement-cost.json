@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI world placement",
-    "summary": "Reduces tag and spawned-number placement work with exact-input anchor reuse, bounded occupancy sweeps and conservative free-space pruning, preserving placement preferences, clearance and screen containment."
-  }]
-}

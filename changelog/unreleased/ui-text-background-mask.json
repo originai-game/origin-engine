@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI background-clip: text",
-      "summary": "Text-clipped backgrounds clear the whole box outside the glyph mask, so wide headings no longer leave solid gradient rectangles beyond their letters."
-    }
-  ]
-}

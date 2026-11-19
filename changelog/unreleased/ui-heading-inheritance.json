@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI typography",
-    "summary": "HTML headings and small text keep the document's inherited font family and line height instead of resetting them through their default font shorthand; theme heading sizes and weights remain defaults."
-  }]
-}

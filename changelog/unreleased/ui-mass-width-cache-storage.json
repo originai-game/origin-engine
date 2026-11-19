@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "UI world mass elements",
-    "summary": "Keep active label widths in place instead of rebuilding their cache every frame, preserving placement and font/template invalidation."
-  }]
-}

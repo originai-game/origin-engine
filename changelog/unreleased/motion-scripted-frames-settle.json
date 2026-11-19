@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.MotionAgent",
-      "summary": "Each frame `og render` draws waits for og.motion's results due by its tick, as a probe capture does. Before, only captures and dump_motion waited: where the model ran slower than the tick (a software renderer), `og render` drew the characters seconds behind the world (a wave at 11 s drawn as the walk from 4 s), and two renders of one script differed. A display frame, and an `og run --commands` frame between its captures, still never waits for the model."
-    }
-  ]
-}

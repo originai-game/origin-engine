@@ -1,9 +1,0 @@
-{
-  "simulation": "changed",
-  "fixed": [
-    {
-      "member": "World.has",
-      "summary": "Inside a system or hook, world.has answers from the entity's archetype, as world.get does, whatever the caller's query declares. It read the caller's query views, so in a hook (which has none) it was always false."
-    }
-  ]
-}

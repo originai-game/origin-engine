@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.anim.humanoid",
-      "summary": "A rig's spine, chest and upper chest are taken in the order they hang from the hips, whatever their names number. Meshy's auto-rig numbers its spine from the top down (Hips, Spine02, Spine01, Spine, neck), so its upper chest was mapped below its chest, and retargeted clips and og.motion drew the torso folded: the head about 0.4 m low and raised arms at chest height."
-    }
-  ]
-}

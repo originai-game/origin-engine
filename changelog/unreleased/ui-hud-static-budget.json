@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "Static HUD CPU budget",
-    "summary": "Raises only the static HUD budget from 1.0 ms to 1.1 ms with xiaomao's explicit approval on 2026-11-18: v5's complete placement (candidate search, containment, drawn bounds and mass avoidance) measures about 0.01 ms over 1.0 ms. Moving-camera and dense-menu budgets are unchanged."
-  }]
-}

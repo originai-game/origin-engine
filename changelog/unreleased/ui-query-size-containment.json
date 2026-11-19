@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui",
-      "summary": "Size query containers exclude their descendants from intrinsic sizing on the queried axes, preventing container-unit text in content-sized flex items from feeding back into their own size and dropping the UI frame."
-    }
-  ]
-}

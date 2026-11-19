@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.ui.documentSchema",
-      "summary": "World anchors report clamp edge, direction and LOD to document CSS. lod sets distance thresholds and bound lod-lock keeps targeted or casting plates at full detail without changing placement or fading."
-    }
-  ]
-}

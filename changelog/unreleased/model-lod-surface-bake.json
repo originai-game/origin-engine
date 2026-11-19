@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "cook: per-LOD surfaces",
-      "summary": "A model LOD whose source charts prevent its triangle target can receive an xatlas parameterisation and a switch-footprint surface projected from LOD0, with aligned albedo, tangent-space normal, occlusion, roughness, metalness, opacity and emission maps and dilated gutters. Derived corners share source attributes on disk and store their own 16-bit atlas UVs. Derived normal and material maps use linear ETC1S, with two-channel normal sampling or XYZ reconstruction on fallback devices; source textures and LOD0 keep their encoding and density. Runtime instances, crowds and terrain scatter select the material with the geometry; levels that reach their target retain source UVs and add no maps. Physical-extension and material-variant surfaces retain their existing path."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Default style social tokens",
-      "summary": "--social-* roles for chat, friends and a conversation: a chat line's chip and the player's own gold wash, the shown channel's fill and gold foot, another player's name colour, how far an away or offline friend's avatar dims, a conversation band's glass and gold-lit rim, the speaker's gold plate, a reply key's keyline, narration's style and the line's type steps (with a phone step). --alert-level-shade fills a level up's ring. A style pack restyles the family by setting them."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI motion",
-      "summary": "Warmed class changes that only retarget a built-in button's scale and opacity preserve the control instead of rebuilding it. Changes to real styles, shadow parts, inherited values or positioned content keep the full path. Inheritance bookkeeping revisits only changed values and declaration ownership. Both hosts share the mechanism."
-    }
-  ]
-}

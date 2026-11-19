@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og build (web)",
-      "summary": "A page whose Content-Security-Policy has no `'unsafe-eval'`, such as `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'`, now transcodes its Basis KTX2 textures. Before, every transcode under such a policy failed with \"Evaluating a string as JavaScript violates the following Content Security Policy directive\", and the page drew without its textures. The Basis transcoder (`basis/basis_transcoder.js`, Basis Universal v1.50 as before) is rebuilt so that its glue never calls `eval()` or `new Function()`. It is now an ES module, which the engine Worker and its transcoding pool import instead of evaluating its text."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "PostEffects.screenBlur",
-      "summary": "Keep zoom-blur highlights continuous and sharp with three stratified eight-tap radial stages instead of repeated dotted copies or hundreds of full-resolution reads; centre-crossing strengths retain direct adaptive integration."
-    }
-  ]
-}

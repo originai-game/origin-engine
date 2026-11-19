@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Terrain",
-      "summary": "Close one-pixel cracks between terrain clipmap levels by morphing fine vertices onto the coarser lattice in position as well as height."
-    }
-  ]
-}

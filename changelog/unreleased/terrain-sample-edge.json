@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.terrain.sample",
-      "summary": "On a terrain's edge, og.terrain.sample interpolates only that edge's two samples, so a neighbouring terrain that shares the edge reads the same bits from its side; before, the two sides' triangle formulas could differ in the last bit."
-    }
-  ]
-}

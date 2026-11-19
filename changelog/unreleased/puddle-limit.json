@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "atmosphere: og.WeatherState.puddleLimit",
-      "summary": "The most the puddles fill (default 1, as before): steady rain fills them to it and no further, the ground draining what more falls, so a street keeps its water in the joints and hollows instead of one sheet. Lowered below the fill, the puddles drain down to it at drainTime's rate. A game that stopped the fill by raising puddleTime sets the limit instead."
-    }
-  ]
-}

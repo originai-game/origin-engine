@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui",
-      "summary": "SVGs with a viewBox and one definite CSS size derive their auto axis from the intrinsic aspect ratio, including percentage sizes; an explicit aspect-ratio still overrides it."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "changed",
-  "fixed": [
-    {
-      "member": "StreamState",
-      "summary": "Natively the tick a streaming group becomes resident (and its StreamEvent) follows from ticks alone: at most one group is put in place per tick, and a frame that catches up runs a boundary per tick. It moved with the host's calls (one group per probe call, idle frame or catch-up frame), so og run and og run --json reached different hashes. Runs that called the probe between frames now see the plain run's ticks. On the web a pack's arrival stays host timing; the world guide §4 says how to wait deterministically."
-    }
-  ]
-}

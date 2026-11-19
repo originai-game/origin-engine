@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Default style racing HUD tokens",
-      "summary": "--hud-* roles for ink on the accent, the player's row in the position tower, a place's box, a car's stripe, the best lap's violet, a delta's ink, the tachometer's rev arc, its well, red zone and glass face, the shift lights' green to red ramp, a pedal's keyline, the track map's road and line, a call's tracking, the racing HUD's place, time and speed type steps, and the tachometer's and the track map's sides on a phone, which a style pack sets to restyle the racing HUD."
-    }
-  ]
-}

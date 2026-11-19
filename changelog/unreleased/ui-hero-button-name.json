@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "HeroButton",
-      "summary": "The button's accessible name is its words alone (End turn): the key cap beside them is no longer read as part of the name (End turn E)."
-    }
-  ]
-}

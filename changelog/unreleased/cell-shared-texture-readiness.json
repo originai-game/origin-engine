@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "StreamStatus.ready",
-      "summary": "Cell presentation readiness includes shared-group models, ordinary nested sub-scenes and HLOD proxy textures. Pending proxies stay hidden and become visible once their maps are prepared. Simulation residency, events and hashes are unchanged."
-    }
-  ]
-}

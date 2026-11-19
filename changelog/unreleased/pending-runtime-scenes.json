@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    { "member": "og.load.scene", "summary": "Return a stable pending scene handle while an open runtime bundle's scene blob is being fetched, then mark it ready or failed at a tick boundary instead of refusing the first load." }
-  ]
-}

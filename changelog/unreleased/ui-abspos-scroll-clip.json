@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "Absolutely positioned UI descendants now draw outside intervening scrollers when their containing block is outside the scroller. Containing-block overflow and explicit clip paths still clip them."
-  ]
-}

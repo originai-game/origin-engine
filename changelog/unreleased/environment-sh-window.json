@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "EnvironmentMap",
-      "summary": "Moves frames: adaptively window diffuse irradiance harmonics so compact bright sources in HDR environment maps cannot ring negative and turn matte surfaces saturated blue. Cooked and runtime-loaded maps share the same nonnegative-irradiance window; average illumination and specular mip texels are unchanged. Existing environment maps and probes recook."
-    }
-  ]
-}

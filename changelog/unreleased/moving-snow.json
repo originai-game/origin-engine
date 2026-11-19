@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: og.WeatherState.snowCover",
-      "summary": "Snow on a skinned mesh or an og.Garment (a walking figure, its pack and cloak) is a dusting on what faces up, thicker the more level the face, instead of the ground's lying cover, whose hard edge cut a flat-shaded mesh into white facets and laid a sheet on a cloak swinging level. No water stands on them either; static meshes, the terrain and scattered copies keep their cover."
-    }
-  ]
-}

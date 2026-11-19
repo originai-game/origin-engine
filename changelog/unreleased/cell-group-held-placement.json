@@ -1,9 +1,0 @@
-{
-  "simulation": "changed",
-  "fixed": [
-    {
-      "member": "og.StreamCell",
-      "summary": "A held cell-loading tick can admit every cell group it waits for, even after another group used that tick's ordinary placement quota. Multiple nearby cells and cells recovering after a budget increase no longer freeze. Ordinary groups still place at most once per tick; cell load ticks remain determined by the hold gate, not host frames or fetch timing. A cell group the hold admits turns resident at the held tick rather than the next one, so its StreamEvent can arrive a tick earlier; CellEvent ticks are unchanged. The previously frozen combination now completes its intended loading tick."
-    }
-  ]
-}
