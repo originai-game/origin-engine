@@ -62,6 +62,7 @@ const LAYERS: &[(&str, &[&str])] = &[
             "og-reactive",
             "og-render",
             "og-rive",
+            "og-shared",
             "og-story",
             "og-text",
             "og-tween",
