@@ -41,13 +41,17 @@ id the version was built from; a dev build `dev.<date>.<n>` also names
 Shipping wasm is bindgen output with only the optional `name` custom
 section removed. Instructions, imports, exports and other custom sections
 stay unchanged; this does not reintroduce wasm-opt. The separate symbols
-archive contains the original named modules, at `wasm-symbols/web*/`, for
-offline stack symbolication by function index. Pack writes
+archive contains the original named modules, at `wasm-symbols/web*/` (the
+split modules at `wasm-symbols/web*/modules/`), for offline stack
+symbolication by function index. Pack writes
 `origingame-engine-wasm-symbols-<version>.tgz` and its `.sha256` checksum.
-Keep these in the team's private bucket under `engine/<version>/symbols/`,
-outside the downloads endpoint, public manifest and signed install sums.
-Before publishing, record the actual private bucket path and verified hash
-in this document's version release notes. Build facts are computed after
+`scripts/release.sh publish` (a release and a dev build alike) pins it as a
+private object of the engine asset store (docs/ci.md §The asset store) in
+`dist/release/<version>/symbols/og-assets.json`, pushes and verifies it,
+and prints its sha256; it is never in the downloads endpoint, the public
+manifest or the signed install sums, and `bun scripts/assets.ts ensure` on
+that directory with the store key fetches it. Each version's sha256 is
+recorded below (§1 Symbols). Build facts are computed after
 removing names. A future public symbols endpoint requires the platform's
 download filename allowlist to accept optional artifacts first.
 
@@ -165,6 +169,13 @@ Range request; a mismatching part is deleted, and nothing reaches
 `engines/` before its sha256 verifies. Launcher 2 (`og
 --launcher-version`) has the events; launcher 1 reports only an exit
 status and prose on stderr.
+
+**Symbols.** Each version's symbols archive in the asset store (private,
+`<store>/api/engine-assets/sha256/<sha256>`):
+
+| Version | sha256 | Bytes |
+|---|---|---|
+| dev.20261119.1 | `fff8ca45c74c16497ad720e00656990797304370ff39d41c23839000ddc1842d` | 105,445,575 (no named split modules) |
 
 ### 1a. Dev builds while a pin is being tested
 

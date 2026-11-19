@@ -211,6 +211,21 @@ cmd_publish() {
     bun scripts/assets.ts push "$frames" || { og_err "release: could not push the frame archives to the asset store"; return 1; }
   fi
   bun scripts/assets.ts verify packages/engine "$frames" || { og_err "release: the engine's optional data is not in the asset store"; return 1; }
+  # The named wasm (pack.sh's symbols archive, docs/release.md §1) goes to the
+  # asset store as a private object, pinned in <out>/symbols/og-assets.json;
+  # never the downloads, the manifest or SHA256SUMS.
+  local sym="origingame-engine-wasm-symbols-$v.tgz"
+  if [ -f "$out/$sym" ]; then
+    mkdir -p "$out/symbols" && cp "$out/$sym" "$out/symbols/$sym" || return 1
+    bun scripts/assets.ts pin "$out/symbols" --private "$sym" >/dev/null || { og_err "release: could not pin $sym"; return 1; }
+    if [ "${#dry[@]}" = 0 ]; then
+      bun scripts/assets.ts push "$out/symbols" || { og_err "release: could not push $sym to the asset store"; return 1; }
+      bun scripts/assets.ts verify "$out/symbols" || { og_err "release: $sym is not in the asset store"; return 1; }
+    fi
+    og_say "release: symbols $sym sha256 $(bun -e 'console.log(require(process.argv[1]).files[0].sha256)' "$out/symbols/og-assets.json") (private, pinned in ${out#"$OG_ROOT"/}/symbols/og-assets.json)"
+  elif [ "$(bun -e 'console.log(require(process.argv[1]).source)' "$out/release.json")" = build ]; then
+    og_err "release: no ${out#"$OG_ROOT"/}/$sym; pack.sh writes it beside the engine tarball (docs/release.md §1)"; return 1
+  fi
   bun scripts/release-publish.ts "$out" --version "$v" "${dry[@]}"
 }
 
