@@ -74,7 +74,9 @@
 :host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; align-items: stretch; color: var(--hud-ink); }
 .stage { width: stretch; min-width: 0; }
 [part="ArenaVersus.side ArenaVersus.plate"] { min-width: 0; container-type: inline-size; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
-[part="ArenaVersus.heading"] { margin: 0; padding-block-end: var(--space-xs); text-align: start; font-size: var(--party-size-side); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--result-team-a-ink); filter: var(--result-team-a-glow); box-shadow: var(--result-team-a-rule); text-shadow: none; overflow-wrap: break-word; }
+/* A long team name breaks only between words; one wider than its side
+   (a wide face) steps its type down until it fits three lines. */
+[part="ArenaVersus.heading"] { margin: 0; padding-block-end: var(--space-xs); text-align: start; font-size: var(--party-size-side); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--result-team-a-ink); filter: var(--result-team-a-glow); box-shadow: var(--result-team-a-rule); text-shadow: none; overflow-wrap: normal; line-clamp: 3; -og-fit-min: base; }
 [part="ArenaVersus.heading"][data-team=b] { text-align: end; color: var(--result-team-b-ink); filter: var(--result-team-b-glow); box-shadow: var(--result-team-b-rule); }
 [part="ArenaVersus.card"] { padding: var(--space-xs) var(--space-md); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--result-team-a-row); box-shadow: var(--result-team-a-edge); text-shadow: none; }
 .b [part="ArenaVersus.card"] { flex-direction: row-reverse; background: var(--party-team-b-row-end); box-shadow: var(--party-team-b-edge-end); }
