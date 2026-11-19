@@ -247,6 +247,7 @@ crates/            Rust workspace
   og-tilemap       tilesets, layered maps, auto-tiling
   og-geom          procedural geometry and CSG
   og-net           room protocol, lockstep, the native relay
+  og-shared        shared worlds: their protocol, a client's view, `og world-server` and its load bots
   og-lanes         deterministic data-parallel work
   og-video         AV1 decoding natively (rav1d); og-video-wasm: the browser fallback decoder
   og-cook          assets/ to cooked/ .ogb blobs
