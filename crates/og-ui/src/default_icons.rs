@@ -57,7 +57,9 @@ icons!(
     "skull",
     "star",
     "sword",
+    "tree",
     "trophy",
+    "wheat",
 );
 
 pub(crate) fn find(name: &str) -> Option<&'static str> {

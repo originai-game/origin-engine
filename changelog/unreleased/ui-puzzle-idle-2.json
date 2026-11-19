@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "Default icons",
+      "summary": "Two pinned Lucide vectors join the last-resort icon set: tree (Lucide tree-pine) and wheat, so wood and farms have their own icon instead of borrowing leaf, whose outline reads as a speech bubble at chip size. IdleResources, IdleOffline and IdleGenerators fixtures use them."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "PuzzleLevelPath",
+      "summary": "A chapter's header (its name, stars and star meter) holds to the top of the path while its levels scroll under it, so a path that opens scrolled to the level to play no longer shows the header half cut."
+    }
+  ]
+}

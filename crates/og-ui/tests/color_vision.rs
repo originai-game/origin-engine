@@ -146,7 +146,9 @@ fn engine_icons_draw_without_a_game_atlas_and_remain_last_fallback() {
         "skull",
         "star",
         "sword",
+        "tree",
         "trophy",
+        "wheat",
     ];
     for name in names {
         let mut ui = ui_with_font(test_font_metrics());

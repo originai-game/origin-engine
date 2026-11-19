@@ -14,7 +14,7 @@ import { FIXTURES, NAMES, localized } from "./fixtures.ts";
 
 /** The sheet's painted art (art/goods.png, 4 × 3, sheet only), drawn for the icons
  * its fixtures name; the ink icons stand in for the rest. */
-const ART_NAMES = ["coin", "gem", "leaf", "fire", "skull", "sword", "shield", "drop", "bolt", "apple"];
+const ART_NAMES = ["coin", "gem", "wheat", "fire", "skull", "sword", "shield", "drop", "bolt", "apple"];
 
 /** The fixtures in the active locale, read in start (ui may not call og.i18n). */
 let text = FIXTURES;
