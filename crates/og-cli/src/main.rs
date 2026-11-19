@@ -49,7 +49,7 @@ commands:
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
       [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--room <ws url>]
-      [--shared <ws url> [--shared-token-file <f>]] [--json] [--no-check] [--require-checked]
+      [--shared <ws or https url> [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--json] [--no-check] [--require-checked]
                       cook, type-check, bundle and run the game on the native host with the probe;
                       outputs of screenshot/dump_* land in --out (default <project>/og-out)
                       --require-checked exits 1 when GPU checks remain unchecked (default: warning)
@@ -278,14 +278,16 @@ commands:
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep); behind a TLS
                       proxy it is reached as `og run --room wss://<host>/<room>`
-  world-server [--listen ADDR] [--config F] [--auth hs256|jwks|none --dev] [--secret-file F]
-      [--jwks URL|FILE] [--audience GAME] [--metrics ADDR]
+  world-server [--listen ADDR] [--wt-listen ADDR --cert F --key F] [--config F]
+      [--auth hs256|jwks|none --dev] [--secret-file F] [--jwks URL|FILE] [--audience GAME] [--metrics ADDR]
                       the shared-world server (og.shared): presence and avatars near each client,
                       standalone on any host; tokens checked offline (hs256, jwks; none only with
                       --dev); GET /healthz, Prometheus --metrics, SIGTERM drains. `world-server
                       load` runs a bot swarm against one and measures bytes, sight and tick time
-                      (--gate holds it to the design's budgets); `world-server token` signs an
-                      HS256 token for a self-hosted server
+                      (--gate holds it to the design's budgets; --latency and --loss shape it);
+                      `world-server token` signs an HS256 token for a self-hosted server;
+                      `world-server cert` makes a self-signed WebTransport certificate and prints
+                      the hash a page passes
   doctor [--json] [--require-checked]
                       check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix;

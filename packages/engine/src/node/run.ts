@@ -7,7 +7,7 @@
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render] [--capture-only]
 //       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>]
 //       [--trace <out.json> [--trace-append]] [--room ws://127.0.0.1:P/<room>]
-//       [--shared ws://127.0.0.1:P/ [--shared-token-file <f>]] [--json]
+//       [--shared ws://127.0.0.1:P/|https://127.0.0.1:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--json]
 //       [--restore <world.save>] [--handoff <world.save>] [--forks N]
 //
 // - With --forks N and --commands: after the script's run, N forks of it,
@@ -39,7 +39,8 @@
 // - With --shared: the engine's shared-world sessions (og.shared.join) go to
 //   that `og world-server`, with the token in --shared-token-file sent as it
 //   is (a static session provider; none for a server started --auth none
-//   --dev). The link is pumped around every frame and the run keeps real
+//   --dev). An https:// URL is the server's WebTransport (--wt-listen),
+//   its certificate checked against --shared-cert-hash when given. The link is pumped around every frame and the run keeps real
 //   time, as the server does; the summary carries og.shared.status.
 // - Without a renderer (OG_RENDERER=none, as the platform's engine and probe
 //   sandboxes set) the run is the same run: the play surface keeps --size, a
@@ -128,6 +129,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     let room: string | undefined;
     let shared: string | undefined;
     let sharedTokenFile: string | undefined;
+    let sharedCertHash = "";
     let restoreFile: string | undefined;
     let handoffFile: string | undefined;
     let failureCapture: string | undefined;
@@ -169,6 +171,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       else if (a === "--room") room = next();
       else if (a === "--shared") shared = next();
       else if (a === "--shared-token-file") sharedTokenFile = resolve(next());
+      else if (a === "--shared-cert-hash") sharedCertHash = next();
       else if (a === "--restore") restoreFile = resolve(next());
       else if (a === "--handoff") handoffFile = resolve(next());
       else if (a === "--failure-capture") failureCapture = resolve(next());
@@ -450,7 +453,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     // Before --setup, so a setup step may join (og.shared.join).
     if (shared !== undefined) {
       const token = sharedTokenFile === undefined ? "" : readFileSync(sharedTokenFile, "utf8").trim();
-      if (!extras.og_node_shared_attach(engine.id, shared, token)) fail(`--shared ${shared}: write ws://127.0.0.1:<port>/ (og world-server prints its address) or wss://<host>/`);
+      if (!extras.og_node_shared_attach(engine.id, shared, token, sharedCertHash)) {
+        fail(`--shared ${shared}: write ws://127.0.0.1:<port>/ or https://127.0.0.1:<port>/ (og world-server prints its addresses) or wss://<host>/, and --shared-cert-hash only with https:// as 64 hex digits`);
+      }
     }
 
     for (const step of setup) {

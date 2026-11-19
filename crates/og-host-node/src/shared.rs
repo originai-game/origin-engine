@@ -1,6 +1,7 @@
 //! Shared worlds on the native host: `og run --shared ws://127.0.0.1:P/`
 //! (with `--shared-token-file`) gives an engine a static session provider,
-//! one fixed endpoint and token. Between frames the run pumps the link: the
+//! one fixed endpoint and token; an `https://` endpoint is WebTransport,
+//! its certificate checked against `--shared-cert-hash` when given. Between frames the run pumps the link: the
 //! engine's ops (og_shared_take) open, carry and close one og-shared client
 //! connection, and what the connection says goes back (og_shared_deliver),
 //! in order. Each `connect` op opens a new connection; reconnecting is the
@@ -18,6 +19,8 @@ use std::collections::BTreeMap;
 struct Link {
     url: String,
     token: String,
+    /// For an `https://` URL: the certificate's SHA-256s (none: the system's roots).
+    hashes: Vec<[u8; 32]>,
     client: Option<Client>,
 }
 
@@ -25,19 +28,31 @@ thread_local! {
     static LINKS: RefCell<BTreeMap<u32, Link>> = const { RefCell::new(BTreeMap::new()) };
 }
 
-/// Give an engine a static session provider: `url` (`ws://` or `wss://`) and
-/// the token sent as it is. The engine hears that sessions are carried.
+/// Give an engine a static session provider: `url` (`ws://`, `wss://`, or
+/// `https://` for WebTransport), the token sent as it is, and for
+/// WebTransport the certificate's SHA-256 in hex (empty: the system's
+/// roots). The engine hears that sessions are carried.
 #[napi(js_name = "og_node_shared_attach")]
-pub fn og_node_shared_attach(engine: u32, url: String, token: String) -> bool {
-    if !(url.starts_with("ws://") || url.starts_with("wss://")) {
+pub fn og_node_shared_attach(engine: u32, url: String, token: String, cert_hash: String) -> bool {
+    let wt = url.starts_with("https://");
+    if !(wt || url.starts_with("ws://") || url.starts_with("wss://")) {
         return false;
     }
+    let hashes = match (wt, cert_hash.is_empty()) {
+        (_, true) => Vec::new(),
+        (true, false) => match og_shared::wt::parse_hash(&cert_hash) {
+            Ok(h) => vec![h],
+            Err(_) => return false,
+        },
+        (false, false) => return false,
+    };
     LINKS.with(|l| {
         l.borrow_mut().insert(
             engine,
             Link {
                 url,
                 token,
+                hashes,
                 client: None,
             },
         )
@@ -53,7 +68,13 @@ fn carry(engine: u32, link: &mut Link) {
         serde_json::from_str(&og_runtime::og_shared_take(engine)).unwrap_or_default();
     for op in ops {
         match op["op"].as_str() {
-            Some("connect") => link.client = Some(Client::connect(&link.url)),
+            Some("connect") => {
+                link.client = Some(if link.url.starts_with("https://") {
+                    Client::connect_wt(&link.url, link.hashes.clone())
+                } else {
+                    Client::connect(&link.url)
+                })
+            }
             Some("send") => {
                 if let (Some(c), Some(b)) = (
                     &link.client,
@@ -93,7 +114,12 @@ pub fn og_node_shared_pump(engine: u32) -> u32 {
         for e in events {
             let v = match e {
                 ClientEvent::Open => {
-                    json!({ "type": "open", "transport": "ws", "token": link.token })
+                    let transport = if link.url.starts_with("https://") {
+                        "wt"
+                    } else {
+                        "ws"
+                    };
+                    json!({ "type": "open", "transport": transport, "token": link.token })
                 }
                 ClientEvent::Message(b) => {
                     json!({ "type": "message", "bytes": og_core::base64::encode(&b) })
