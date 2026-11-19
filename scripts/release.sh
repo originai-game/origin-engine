@@ -88,7 +88,10 @@ cmd_pack() {
   v="$(checkout_version)"; out="$(out_dir "$v")"
   cmd_check || return 1
   rm -rf "$out"; mkdir -p "$out"
-  bun scripts/changelog.ts notes "$v" > "$out/NOTES.md" || { og_err "release: changelog.json has no $v entry for the release notes; run scripts/release.sh bump $v"; return 1; }
+  # A dev build has no versions entry (release-bump.ts --dev): its notes are unreleased's.
+  local notes_of=("$v")
+  case "$v" in *-dev.*) notes_of=() ;; esac
+  bun scripts/changelog.ts notes "${notes_of[@]}" > "$out/NOTES.md" || { og_err "release: changelog.json has no $v entry for the release notes; run scripts/release.sh bump $v"; return 1; }
   og_say "release: packing $v into ${out#"$OG_ROOT"/}/"
   (cd packages/engine && sh scripts/pack.sh --linux-x64) || { og_err "release: packages/engine/scripts/pack.sh failed"; return 1; }
   cp packages/engine/dist/pack/*.tgz "$out/" || return 1
