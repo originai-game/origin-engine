@@ -209,7 +209,7 @@ Choices are constraints and hints in project.ogt's create block.
 The look, mood and UI also configure its look file; no gameplay is generated.
   --genre --view --look --mood --ui --platform --input --players --lang --music
            creation choices; --lang en,zh accepts comma-separated tags
-  --no-prompt  accept inferred choices without prompting
+  --no-prompt  accept inferred choices without prompting (it never prompts without a terminal)
   --force     overwrite skeleton files in a nonempty directory`;
 
 function main(argv: string[]): number {

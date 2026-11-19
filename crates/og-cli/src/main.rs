@@ -43,7 +43,9 @@ commands:
   create [dir] [--name \"Name\"] [--id slug] [--premise \"one line\"] [--force] [--no-prompt]
       [--genre G] [--view V] [--look L] [--mood M] [--ui U] [--platform P]
       [--input I] [--players P] [--lang en,zh] [--music M]
-                      write one empty game project and its creation choices; `og new` is an alias
+                      write one empty game project and its creation choices; `og new` is an alias;
+                      never prompts with --no-prompt or without a terminal; --look is a catalogue
+                      style with a preset (an unknown one exits 1, listing them); the start guide §1
   new [dir] [options]  alias for og create
   session [project]   keep a worktree's native host warm until idle or interrupted
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
@@ -102,7 +104,10 @@ commands:
                       materials, meshes, lights, the scene graph, transforms, the camera, texture
                       loads) and list each line that is not, with the three-to-og guide's section
   probe <method> [params-json] [--port P] [--out file.png] [--raw]
-                      one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket)
+                      one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket):
+                      the result as JSON on stdout, exit 0 (a refusal, false or null, is a result); an
+                      error on stderr, exit 1; a capture's PNG written to --out (default capture.png)
+                      and its path in png; --raw prints the whole answer frame (the testing guide §9)
   dev [project] [--port P] [--exit-after N] [--json]
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
                       report each reload against the 300 ms budget and type-check each src/ change
@@ -117,10 +122,13 @@ commands:
                       --filter selects suite files by a project-relative path substring;
                       --affected <git-revision> selects changed dependencies (unknown inputs run all);
                       --jobs N runs up to N playtest files at once, each one's output whole, in order
+                      --json: stdout is JSON Lines only, the check, playtest and test events (the
+                      testing guide §9); the prose goes to stderr
   build [project] [--publish] [--out DIR] [--json] [--no-check]
                       cook, type-check and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
-                      only the player-facing probe members and adds the PWA (sw.js, manifest)
+                      only the player-facing probe members and adds the PWA (sw.js, manifest);
+                      --json: the check and build events as JSON Lines (the testing guide §9)
   cook [project] [--threads N] [--report [out.md]] [--json] [--watch [--exit-after N]]
                       assets/ into cooked/, incrementally; --report prints the ten slowest
                       assets by their last cook; --watch cooks each change, timing it

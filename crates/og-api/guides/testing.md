@@ -258,3 +258,57 @@ Editing scenes from a run, after tuning with `set:` or the probe's patch:
   that answers its default. Debug draw is rendering, never fed back into
   the simulation, and not world state, so a snapshot or a replay does not
   carry it.
+
+## 9. Machine-readable output
+
+A tool that drives `og` reads these shapes; each is pinned by a test, and
+a change to one is a breaking change. Fields may be added; none is
+renamed, retyped or removed without one.
+
+**`og test --json`.** Stdout is JSON Lines, one object per line, and
+nothing else; the prose, the bun tests' report and the summary go to
+stderr. The exit status is 0 exactly when the `test` event's `ok` is true.
+Each line has an `event`, in this order:
+
+1. `check`, unless `--no-check`: `ok`, `tool`, `version`, `config`, `ms`,
+   `diagnostics` (`{file, line, col, code, message}` each), `uncheckedCount`.
+2. `playtest`, once for each `tests/*.og.ts` file that ran, in the files'
+   order (none when the check failed): `playtest` (the file's name without
+   `.og.ts`), `file`, `ok`, `status` (`passed`, `unchecked` or `failed`),
+   `tests`, `checks` (every `expect()`), `frameChecks`, `unchecked` (the
+   frames left unchecked), `uncheckedCount`, `failures` (strings),
+   `failureCaptures` (`{run, world, snapshot, frame}` each), `out` (the
+   file's output directory, `og-out/test/<playtest>/`), `ms`, `assertions`
+   (`{violations, uncovered, required, defaults}`), `runs`, `adapterErrors`
+   and, when a run happened, the first run's `tick`, `hash`, `hashes`,
+   `tier`, `renderer`, `adapterError` and `warnings`.
+3. `test`, last: `ok`, `suites`, `passed`, `failed`, `uncheckedSuites`,
+   `uncheckedCount`, `skipped`, `renderer` (`null`, or `"none"` when a run
+   found no GPU), `adapterError`, `adapterErrors` and `check` (`{ok, ms,
+   errors}`, `{ok: false, error}` when the checker could not run, or
+   `null`). `unchecked` is an old alias of `uncheckedCount`.
+
+**`og probe <method> [params-json]`.** One call to the probe of a running
+`og run --port P` or `og dev` (`og api show probe` lists the members and
+their results). Stdout is the call's `result` as JSON and nothing else,
+exit 0; a refusal (`false`, `null`) is a result. A JSON-RPC error prints
+`og probe: <method>: error <code>: <message>` on stderr and exits 1; so
+does a probe that cannot be reached. A `capture` result's `png` is the
+path the PNG was written to (`--out`, default `capture.png`) instead of
+base64. `--raw` prints the whole answer frame, `{jsonrpc, id, result}` or
+`{jsonrpc, id, error}`, on one line.
+
+**`og build --json`.** Stdout is JSON Lines: the `check` event as above,
+then one `build` event: `ok`, `out` (the absolute directory written),
+`publish`, `files` (`{path, bytes, compressed, codec}` each), `total`,
+`downloads`, `probe` (`{build, members}`) and `manifest` (the build's
+`og-build.json`). A failed build prints its event with `ok: false` and a
+`reason`, and exits 1. The play page is `<out>/<manifest.entry>`.
+
+**Where outputs land.** A build is written to `--out`, else project.ogt's
+`publish { out }`, else `<project>/dist/`. Everything else a command writes
+goes under `<project>/og-out/`, which a build never reads: `og run`'s
+screenshots and dumps (`--out`, default `og-out/`), a playtest's runs
+(`og-out/test/<playtest>/run-<n>/`), `og render` (`og-out/render/`),
+`og run --device` (`og-out/device/`), `og explore` (`og-out/explore/`),
+`og ui check` (`og-out/ui-check/`) and `og ui preview` (`og-out/ui-preview/`).

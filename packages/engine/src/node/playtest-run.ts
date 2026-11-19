@@ -125,6 +125,7 @@ const first = runs[0];
 const status = !ok ? "failed" : unchecked.length > 0 ? "unchecked" : "passed";
 const line = {
   playtest: name,
+  event: "playtest",
   file,
   ok,
   status,
