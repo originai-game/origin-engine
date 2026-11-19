@@ -51,6 +51,69 @@ fn flags<'a>(args: &[&'a str], bare: &[&str]) -> Result<Vec<(&'a str, &'a str)>,
     Ok(out)
 }
 
+/// The files a process holds besides its connections: listeners, the
+/// runtime's polls and wakers, stdio, the store and the metrics.
+const SPARE_FILES: u64 = 64;
+
+/// Raise this process's soft limit on open files to its hard limit (a
+/// shell's default soft limit, often 1024, holds about 1000 connections)
+/// and return the limit now in force; `None` where the OS has no such limit.
+#[cfg(unix)]
+fn raise_open_files() -> Option<u64> {
+    let mut lim = libc::rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+    // SAFETY: getrlimit writes the struct it is given.
+    if unsafe { libc::getrlimit(libc::RLIMIT_NOFILE, &mut lim) } != 0 {
+        return None;
+    }
+    #[allow(unused_mut)]
+    let mut want = lim.rlim_max;
+    // macOS refuses a soft limit past kern.maxfilesperproc, and its hard
+    // limit is often unlimited.
+    #[cfg(target_os = "macos")]
+    {
+        let mut per_proc: libc::c_int = 0;
+        let mut len = std::mem::size_of::<libc::c_int>();
+        // SAFETY: the name is NUL-terminated and the value fits a c_int.
+        let ok = unsafe {
+            libc::sysctlbyname(
+                c"kern.maxfilesperproc".as_ptr(),
+                (&raw mut per_proc).cast(),
+                &mut len,
+                std::ptr::null_mut(),
+                0,
+            )
+        } == 0;
+        if ok && per_proc > 0 {
+            want = want.min(per_proc as libc::rlim_t);
+        }
+    }
+    if want > lim.rlim_cur {
+        let raised = libc::rlimit {
+            rlim_cur: want,
+            rlim_max: lim.rlim_max,
+        };
+        // SAFETY: setrlimit reads the struct it is given.
+        if unsafe { libc::setrlimit(libc::RLIMIT_NOFILE, &raised) } == 0 {
+            lim.rlim_cur = want;
+        }
+    }
+    Some(lim.rlim_cur)
+}
+
+#[cfg(not(unix))]
+fn raise_open_files() -> Option<u64> {
+    None
+}
+
+/// Raise the open-file limit; when even the hard limit is under `needed`,
+/// return the limit in force.
+fn short_of_open_files(needed: u64) -> Option<u64> {
+    raise_open_files().filter(|&limit| limit < needed)
+}
+
 fn read_secret(path: &str) -> Result<Vec<u8>, String> {
     let s = std::fs::read(path).map_err(|e| format!("cannot read {path}: {e}"))?;
     let s = s.trim_ascii().to_vec();
@@ -98,6 +161,18 @@ fn serve(args: &[&str]) -> ExitCode {
             Ok(n) if n > 0 => config.max_players = n,
             _ => return fail("--max-players takes a whole number above 0"),
         }
+    }
+    // A WebSocket player holds one open file. Past the host's limit the
+    // server takes the players it can hold and refuses the rest as full,
+    // rather than failing their connections.
+    let needed = config.max_players as u64 + SPARE_FILES;
+    if let Some(limit) = short_of_open_files(needed) {
+        let holds = limit.saturating_sub(SPARE_FILES).max(1);
+        eprintln!(
+            "og world-server: {} players need {needed} open files but this host allows {limit}, so it serves {holds}: raise the hard limit to {needed} (`ulimit -Hn {needed}` as root, LimitNOFILE={needed} in a systemd unit, --ulimit nofile={needed} for docker)",
+            config.max_players
+        );
+        config.max_players = holds as usize;
     }
     // Shared objects survive restarts in this file (an append log).
     let store = get("--store").map(std::path::PathBuf::from);
@@ -396,6 +471,19 @@ fn load(args: &[&str]) -> ExitCode {
         warmup: desc.warmup + joining,
         ..desc
     };
+    // A bot holds one open file, four through a shaping relay.
+    let per_bot = if desc.latency_ms > 0.0 || desc.loss > 0.0 {
+        4
+    } else {
+        1
+    };
+    let needed = desc.bots as u64 * per_bot + SPARE_FILES;
+    if let Some(limit) = short_of_open_files(needed) {
+        eprintln!(
+            "og world-server load: {} bots need {needed} open files but this host allows {limit}: raise the hard limit to {needed} (`ulimit -Hn {needed}` as root)",
+            desc.bots
+        );
+    }
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

@@ -343,7 +343,7 @@ async fn ws_link(d: &LoadDesc, i: usize) -> Result<Link, String> {
     };
     let tcp = TcpStream::connect(&dial)
         .await
-        .map_err(|_| "cannot connect".to_string())?;
+        .map_err(|e| format!("cannot connect: {e}"))?;
     let _ = tcp.set_nodelay(true);
     let stream = Counted {
         inner: tcp,
