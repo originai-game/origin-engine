@@ -118,7 +118,8 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     // Terrain tiles are inflated by the browser off the engine's thread where it can.
     installInflater(glue);
     // Streamed video: WebCodecs where the browser decodes AV1, else rav1d's own wasm module (fetched only then).
-    await installVideo(glue, data.av1);
+    await installVideo(glue, data.av1, data.decoders?.av1);
+    run.audioDecoder = data.decoders?.audio;
     // Uncooked images (og.load.imageData) are decoded by the browser, never in the wasm.
     installImageDecoder(glue);
     // A document's http(s) images are fetched here and decoded by the browser (an SVG by the page).

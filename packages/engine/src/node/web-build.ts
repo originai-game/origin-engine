@@ -12,7 +12,11 @@
 //                              `<meta name="og-engine" content="<version>">`
 //   play.js                    the shell, bundled (minified with --publish)
 //   game.js                    the engine Worker: startWorker(game), the runtime, the game
+//   shell.css, install.js      the shell's CSS and (--publish) its beforeinstallprompt hook, files
+//                              so index.html has no inline script or style (a strict CSP serves it)
 //   audio-worklet.js           the AudioWorklet the shell loads on the first gesture
+//   audio-decoder.js           the audio decoder's Worker (src/web/audio-decoder.ts), started by
+//                              the engine Worker from this file, never a `blob:` URL
 //   origin-engine.js, origin-engine_bg.wasm   the web host: dist/web (every member, both physics
 //                              profiles), or with --publish the variant of the game's profile:
 //                              dist/web-publish (3D) or dist/web-publish-2d (2D), each with only
@@ -24,6 +28,7 @@
 //                              profile, from the same directory: wasm atomics, rayon on a pool of
 //                              Workers when the page is cross-origin isolated
 //   basis/                     Binomial's Basis transcoder and its licence
+//   av1/                       the AV1 fallback decoder, og-av1.wasm, and its Worker, av1-worker.js
 //   cooked/                    the project's cooked bundle: the first group (everything no streaming
 //                              group holds, the proxies included) and each streaming group's pack,
 //                              cooked/stream/<name>.ogb; a grouped output's own file is left out;
@@ -52,6 +57,8 @@ import { availableParallelism } from "node:os";
 import { bundleGame, ENGINE_ROOT } from "./build.ts";
 import { frameHost } from "./frame-hosts.ts";
 import { unhashed } from "../sourcemap.ts";
+import { decoderSource } from "../web/audio-decoder.ts";
+import { av1WorkerSource } from "../web/video.ts";
 import { bootMark, engineMark, motionSubset, shellTokens, SHELL_MOTIONS, BRAND_DIR } from "../../shell/brand.ts";
 
 declare module "node:fs" {
@@ -392,7 +399,7 @@ export interface Downloads {
     readonly mips: DownloadSum;
     /** Font packs' faces (`<id>.face.ogb`), fetched when the locale or a frame's text needs them. */
     readonly fonts: DownloadSum;
-    /** The AudioWorklet, fetched on the first gesture. */
+    /** The AudioWorklet and the audio decoder's Worker, fetched once audio starts. */
     readonly worklet: DownloadSum;
     /** Streamed videos' indexes and chunks (`<id>#stream`, its renditions and their chunks), fetched as players need them. */
     readonly videos: DownloadSum;
@@ -408,7 +415,7 @@ export interface DownloadBoot extends DownloadSum {
   readonly engine: DownloadSum;
   /** The cooked first group (everything no streaming group holds; a chunked sound's first chunk is its own output). */
   readonly cooked: DownloadSum;
-  /** index.html, play.js, game.js. */
+  /** index.html, shell.css, install.js, play.js, game.js. */
   readonly shell: DownloadSum;
   /** The Basis transcoder (fetched when the first group has Basis textures). */
   readonly basis: DownloadSum;
@@ -427,7 +434,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
   const isPack = (p: string) => /^cooked\/stream\/[^/]+\.ogb$/.test(p) || p === MOTION_MODEL;
   const isVideo = (p: string) => p.startsWith("cooked/") && VIDEO_STREAM.test(p);
   const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !TEXTURE_MIPS.test(p) && !FONT_FACE.test(p) && !isVideo(p));
-  const shell = sum((p) => /^(index\.html|play\.js|game\.js)$/.test(p));
+  const shell = sum((p) => /^(index\.html|shell\.css|install\.js|play\.js|game\.js)$/.test(p));
   const basis = sum((p) => /^basis\/basis_transcoder\.(js|wasm)$/.test(p));
   const page = (engine: DownloadSum): DownloadBoot => ({ ...add(engine, cooked, shell, basis), engine, cooked, shell, basis });
   const lanes = sum((p) => LANES_ENGINE.test(p));
@@ -438,7 +445,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
       chunks: sum((p) => SOUND_CHUNK.test(p)),
       mips: sum((p) => TEXTURE_MIPS.test(p)),
       fonts: sum((p) => FONT_FACE.test(p)),
-      worklet: sum((p) => p === "audio-worklet.js"),
+      worklet: sum((p) => p === "audio-worklet.js" || p === "audio-decoder.js"),
       videos: sum(isVideo),
       av1: sum((p) => p.startsWith("av1/")),
       pwa: sum((p) => p === "sw.js" || p === "manifest.webmanifest" || p.startsWith("icons/")),
@@ -481,7 +488,7 @@ export function downloadLines(d: Downloads, codec: SizeRow["codec"]): string {
     d.later.chunks.files ? `${d.later.chunks.files} sound chunks ${d.later.chunks.compressed} B (ahead of their playheads)` : "",
     d.later.mips.files ? `${d.later.mips.files} texture mip chains ${d.later.mips.compressed} B (when big on screen)` : "",
     d.later.fonts.files ? `${d.later.fonts.files} font-pack faces ${d.later.fonts.compressed} B (when the locale or its text needs them)` : "",
-    d.later.worklet.files ? `the audio worklet ${d.later.worklet.compressed} B (first gesture)` : "",
+    d.later.worklet.files ? `the audio worklet and decoder ${d.later.worklet.compressed} B (once audio starts)` : "",
     d.later.pwa.files ? `the service worker and icons ${d.later.pwa.compressed} B` : "",
   ].filter(Boolean);
   if (later.length) lines.push(`  later: ${later.join("; ")}`);
@@ -699,14 +706,25 @@ export function aspectRatio(aspect: string | null): number | null {
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
+/** shell.css as a build writes it: the tokens, the shell's motions and its rules. */
+export function shellCss(): string {
+  return [shellTokens(), motionSubset(SHELL_MOTIONS), readFileSync(join(SHELL_DIR, "shell.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\n\s*/g, "\n").trim()].join("\n") + "\n";
+}
+
 /**
- * index.html: the shell's markup with its CSS, marks and configuration inlined. With a
- * manifest, a script in the head keeps Chromium's beforeinstallprompt, which fires before
- * the shell's module has booted (shell/page.ts installPwa offers it).
+ * install.js: keeps Chromium's beforeinstallprompt, which fires before the shell's module has
+ * booted (shell/page.ts installPwa offers it). A classic script in the head, so it runs first.
  */
-export function pageHtml(o: { settings: ProjectSettings; publish: boolean; config: Record<string, unknown>; icon: string; pwa: boolean; play?: string }): string {
+export const INSTALL_SCRIPT = 'addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__ogInstallPrompt=e});\n';
+
+/**
+ * index.html: the shell's markup with its marks and configuration inlined, and no inline
+ * script or style, so a Content-Security-Policy of `script-src 'self'` and `style-src 'self'`
+ * serves it (docs/web-export.md §Hosting): its CSS is `css` (shell.css) and, with a manifest,
+ * `install` (install.js) runs in the head. `play`, `css` and `install` are the served names.
+ */
+export function pageHtml(o: { settings: ProjectSettings; publish: boolean; config: Record<string, unknown>; icon: string; pwa: boolean; play?: string; css?: string; install?: string }): string {
   const play = o.play ?? "play.js";
-  const css = [shellTokens(), motionSubset(SHELL_MOTIONS), readFileSync(join(SHELL_DIR, "shell.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\n\s*/g, "\n").trim()].join("\n");
   // `<` cannot appear in the JSON's strings unescaped, so the script element cannot be closed early.
   const config = JSON.stringify(o.config).replace(/</g, "\\u003c");
   const title = escapeHtml(o.settings.name);
@@ -728,10 +746,8 @@ export function pageHtml(o: { settings: ProjectSettings; publish: boolean; confi
 <title>${title}</title>
 <link rel="icon" href="./${o.icon}">
 <link rel="apple-touch-icon" href="./${o.icon}">
-${o.pwa ? '<link rel="manifest" href="./manifest.webmanifest">\n<script>addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__ogInstallPrompt=e})</script>\n' : ""}<link rel="modulepreload" href="./${play}">
-<style>
-${css}
-</style>
+${o.pwa ? `<link rel="manifest" href="./manifest.webmanifest">\n<script src="./${o.install ?? "install.js"}"></script>\n` : ""}<link rel="stylesheet" href="./${o.css ?? "shell.css"}">
+<link rel="modulepreload" href="./${play}">
 </head>
 <body>
 <div id="og-stage"><canvas id="og-canvas" tabindex="0" aria-label="${title}"></canvas></div>
@@ -833,8 +849,11 @@ const LANES_ENGINE = /^(origin-engine-lanes(\.[0-9a-f]{12})?(\.js|_bg(\.[0-9a-f]
  */
 export const HASHED_FILES = [
   "play.js",
+  "shell.css",
+  "install.js",
   "game.js",
   "audio-worklet.js",
+  "audio-decoder.js",
   "origin-engine.js",
   "origin-engine_bg.wasm",
   "origin-engine-lanes.js",
@@ -842,6 +861,7 @@ export const HASHED_FILES = [
   "basis/basis_transcoder.js",
   "basis/basis_transcoder.wasm",
   "av1/og-av1.wasm",
+  "av1/av1-worker.js",
 ] as const;
 /** `game.js` named by its content, `game.<first 12 hex of sha256>.js`. */
 export function hashedName(path: string, sha256hex: string): string {
@@ -958,7 +978,15 @@ export async function webBuild(project: string, entry: string, out: string, publ
   cpSync(vendor, join(out, "basis"), { recursive: true });
   // The AV1 fallback decoder, fetched only by a browser without AV1 in WebCodecs (src/web/video.ts).
   const av1 = join(ENGINE_ROOT, "dist", "av1", "og-av1.wasm");
-  if (existsSync(av1)) cpSync(av1, join(out, "av1", "og-av1.wasm"));
+  if (existsSync(av1)) {
+    cpSync(av1, join(out, "av1", "og-av1.wasm"));
+    writeFileSync(join(out, "av1", "av1-worker.js"), av1WorkerSource());
+  }
+  // The shell's CSS, its install hook and the audio decoder's Worker are files, never inline
+  // or `blob:`, so a strict Content-Security-Policy serves them (docs/web-export.md §Hosting).
+  writeFileSync(join(out, "shell.css"), shellCss());
+  if (publish) writeFileSync(join(out, "install.js"), INSTALL_SCRIPT);
+  writeFileSync(join(out, "audio-decoder.js"), decoderSource());
   cpSync(cooked, join(out, "cooked"), { recursive: true });
   // The cook's own timings and art-contract log (og cook --report) are not the game's.
   rmSync(join(out, "cooked", ".cook-times.ogt"), { force: true });
@@ -1047,7 +1075,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     // this integrity, and every other file against the manifest's.
     ...(p.assets ? { assets: { base: p.assets, manifest: integrityOf(new Uint8Array(readFileSync(join(out, "cooked", ".cook.ogt")))) } } : {}),
   };
-  writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish, play: served("play.js") }));
+  writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish, play: served("play.js"), css: served("shell.css"), install: served("install.js") }));
   writeFileSync(join(out, "_headers"), headersFile(p.isolation, Object.values(names)));
   if (p.isolation !== "off") writeFileSync(join(out, "origingame.runtime.json"), JSON.stringify({ version: 1, crossOriginIsolated: true }) + "\n");
   if (publish) {

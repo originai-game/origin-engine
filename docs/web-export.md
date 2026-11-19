@@ -20,15 +20,19 @@ only (§Content-hashed names), listed in og-build.json.
 
 | Path | What it is |
 |---|---|
-| `index.html` | The player shell's page. Carries `<meta name="og-engine" content="<engine version>">`, `og-build` (`publish`/`dev`), `og-profile` and `og-player` (`frame page`: the Player transports the shell speaks, which the platform reads to open the page at the top level), the inlined CSS and the page configuration (`<script type="application/json" id="og-config">`). |
+| `index.html` | The player shell's page. Carries `<meta name="og-engine" content="<engine version>">`, `og-build` (`publish`/`dev`), `og-profile` and `og-player` (`frame page`: the Player transports the shell speaks, which the platform reads to open the page at the top level), and the page configuration (`<script type="application/json" id="og-config">`, data that runs nothing): no inline script or style (§Hosting). |
+| `shell.css` | The shell's CSS: the brand tokens, its motions and its rules. |
+| `install.js` | `--publish` only: the head's beforeinstallprompt hook, which runs before the shell's module. |
 | `play.js` | The shell (`packages/engine/shell/page.ts`, bundled). |
 | `game.js` | The engine Worker: the runtime and the game. |
 | `audio-worklet.js` | The AudioWorklet, loaded on the first gesture. |
+| `audio-decoder.js` | The audio decoder's Worker, started by the engine Worker once audio starts. |
 | `game.js.map`, `play.js.map`, `audio-worklet.js.map` | A dev build's source maps, beside their bundles and linked from them (§Source maps). |
 | `sourcemaps/` | A publish build's source maps of the same three bundles, unlinked and not to be served (§Source maps). |
 | `origin-engine.js`, `origin-engine_bg.wasm` | The web host from wasm-bindgen: `dist/web` in a dev build, the publish variant of the project's `profile` with `--publish` (§Variants). |
 | `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant of the same profile and wasm-bindgen-rayon's Worker script (§Lanes). |
 | `basis/` | Binomial's Basis transcoder and its licence. |
+| `av1/` | The AV1 fallback decoder (`og-av1.wasm`) and its Worker (`av1-worker.js`), fetched only by a browser without AV1 in WebCodecs. |
 | `cooked/` | The cooked bundle, split by streaming group: the first group and one pack per streaming group, `cooked/stream/<name>.ogb` (§Streaming groups). |
 | `icons/` | `publish.icon`, or the brand tile at 192 and 512 px. |
 | `og-build.json` | The build manifest (below). |
@@ -130,9 +134,24 @@ chunks are fetched ahead of its playheads.
   `allow="cross-origin-isolated"` on the iframe. Without isolation
   everything still works, single-threaded and over `postMessage` instead
   of the SharedArrayBuffer rings.
-- A Content-Security-Policy must allow `worker-src blob:` (or send no
-  `worker-src`/`script-src`), since the lanes pool's Workers start from a
-  `blob:` URL; a host that refuses it gets the single-threaded engine.
+- A Content-Security-Policy as strict as this serves the page whole, lanes
+  included:
+
+  ```text
+  default-src 'self'; script-src 'self' 'wasm-unsafe-eval'
+  ```
+
+  The page has no inline script or style, and every Worker (the engine's,
+  the lanes pool's, the audio and AV1 decoders') starts from a file on the
+  page's origin, never a `blob:` URL. Add to it:
+  - the content base (og.load.data) and an asset base (§Asset base) to
+    `connect-src`, beside `'self'`;
+  - `img-src blob:` for SVG images in UI documents, which the page decodes
+    from a `blob:` URL; without it they cannot be drawn.
+
+  The lanes pool's helper starts its Workers from a `blob:` copy only when
+  it is served from another origin than the page, which `og build` never
+  does (scripts/rayon-worker.sh).
 - `Cache-Control: no-cache` on `/`, `index.html`, `sw.js` and
   `og-build.json`; `public, max-age=31536000, immutable` on the
   content-hashed files.
@@ -197,10 +216,11 @@ does og.ui.remoteFrames answer true.
 
 A publish build serves every file the page or the engine Worker fetches by
 name as `<stem>.<the first 12 hex digits of its sha256>.<ext>`
-(`game.3f2a9c1e04b7.js`): `play.js`, `game.js`, `audio-worklet.js`, the
-engine glue and modules (single-threaded and lanes),
-`basis/basis_transcoder.{js,wasm}` and the AV1 fallback decoder
-`av1/og-av1.wasm` (`HASHED_FILES` in `src/node/web-build.ts`). A new build
+(`game.3f2a9c1e04b7.js`): `play.js`, `shell.css`, `install.js`,
+`game.js`, `audio-worklet.js`, `audio-decoder.js`, the engine glue and
+modules (single-threaded and lanes), `basis/basis_transcoder.{js,wasm}` and
+the AV1 fallback decoder `av1/og-av1.wasm` and its Worker
+`av1/av1-worker.js` (`HASHED_FILES` in `src/node/web-build.ts`). A new build
 changes the URL of what changed and nothing else. The page finds them
 through its configuration's `files` (og-build.json's `names`); a host or
 tool finds them through og-build.json (`worker`, `wasm`, `lanes`, `names`),

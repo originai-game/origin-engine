@@ -198,13 +198,13 @@ export interface Preloaded {
  * Streamed video's decoders for this Worker (video.ts): the decoder this
  * browser plays AV1 with, reported by og.video.capabilities; the rav1d
  * fallback module (`av1`, dist/av1/og-av1.wasm by default) is fetched only
- * when WebCodecs cannot decode AV1, by its own Worker, when a stream first
- * plays.
+ * when WebCodecs cannot decode AV1, by its own Worker (`worker`, its script
+ * av1/av1-worker.js beside a built page), when a stream first plays.
  */
-export async function installVideo(glue: WebExtras, av1: string | undefined): Promise<VideoStreams | null> {
+export async function installVideo(glue: WebExtras, av1: string | undefined, worker?: string): Promise<VideoStreams | null> {
   if (!glue.og_web_install_video) return null;
   const choice = await chooseDecoder();
-  const streams = new VideoStreams(choice, av1 ?? FALLBACK_URL);
+  const streams = new VideoStreams(choice, av1 ?? FALLBACK_URL, worker ?? null);
   glue.og_web_install_video(
     (key, width, height, codec, config, table, chunkFrames) => streams.stream(key, width, height, 0, table, chunkFrames, codec, config),
     (stream, player, frame, looped) => streams.want(player, stream, frame, looped),

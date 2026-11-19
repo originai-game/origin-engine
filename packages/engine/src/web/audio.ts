@@ -254,20 +254,23 @@ export class WorkerAudio {
   /** The decoder Worker; null where none can start (the engine then decodes as it mixes). */
   readonly #decoder: AudioDecoder | null;
 
-  private constructor(glue: WebAudioGlue, engine: number, message: AudioMessage) {
+  private constructor(glue: WebAudioGlue, engine: number, message: AudioMessage, decoder: string | undefined) {
     this.#glue = glue;
     this.#engine = engine;
     this.#ring = message.ring ?? null;
     this.#port = message.port ?? null;
     this.#sampleRate = message.sampleRate;
-    this.#decoder = AudioDecoder.start(glue, engine);
+    this.#decoder = AudioDecoder.start(glue, engine, decoder ? () => new Worker(decoder) : undefined);
   }
 
-  /** Open the engine's mixer at the context's rate, on the shell's `audio` message. */
-  static attach(glue: WebAudioGlue, engine: number, message: AudioMessage): Wire<WorkerAudio> {
+  /**
+   * Open the engine's mixer at the context's rate, on the shell's `audio` message; `decoder` is
+   * the decoder Worker's script (audio-decoder.js beside a built page), else a `blob:` copy.
+   */
+  static attach(glue: WebAudioGlue, engine: number, message: AudioMessage, decoder?: string): Wire<WorkerAudio> {
     const opened = JSON.parse(glue.og_web_audio_open(engine, message.sampleRate)) as Wire<number>;
     if (!opened.ok) return opened;
-    const audio = new WorkerAudio(glue, engine, message);
+    const audio = new WorkerAudio(glue, engine, message, decoder);
     audio.latency(message.latency ?? 0);
     return { ok: true, value: audio };
   }

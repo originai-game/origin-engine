@@ -704,6 +704,8 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       ...(config.assets ? { root: config.assets.base.replace(/\/$/, ""), rootIntegrity: config.assets.manifest } : { root: new URL(".", location.href).href.replace(/\/$/, "") }),
       basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
       av1: at("av1/og-av1.wasm"),
+      // The decoders' Workers from the page's own files: no `blob:` script (a strict CSP).
+      decoders: { audio: at("audio-decoder.js"), av1: at("av1/av1-worker.js") },
       autoplay: false,
       // Behind the gate, the first screen: one tick builds the game's UI (a harness keeps tick 0).
       prime: !harness,

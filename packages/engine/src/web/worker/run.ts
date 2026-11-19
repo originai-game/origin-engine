@@ -65,6 +65,8 @@ export class Run {
   lastTier = "none";
   lanes: unknown = null;
   audio: WorkerAudio | null = null;
+  /** The audio decoder Worker's script (the start message's `decoders.audio`). */
+  audioDecoder: string | undefined;
   /** Field telemetry's frame counts (frames.ts), when the page's build has telemetry on; null otherwise. */
   frameCounter: FrameCounter | null = null;
   /** What the page was asked and answered: the ticks behind the gate apply its answers (settle.ts). */

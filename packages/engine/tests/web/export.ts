@@ -15,9 +15,11 @@
 // and boots the lanes variant (`__runtime_probe__.lanes.on`, Workers beside
 // the engine's), offline too from the service worker's precache; served
 // without them it runs the single-threaded engine and says why; served
-// isolated but with a Content-Security-Policy of `worker-src 'self'`, which
-// refuses the pool's `blob:` Workers, it falls back to the single-threaded
-// engine within the pool's deadline and says the lanes variant did not start.
+// isolated under a strict Content-Security-Policy (no inline script or
+// style, no `blob:` Worker) the shell is styled, its gate works and the
+// lanes pool starts from its own file; under one that refuses the pool's
+// script it falls back to the single-threaded engine within the pool's
+// deadline and says the lanes variant did not start.
 // Both archetypes are 2D games, so their lanes pages run the 2D lanes module.
 //
 //   bun tests/web/export.ts [--out <dir>] [--chrome <path>]
@@ -102,6 +104,11 @@ const INSTALL_PROBE = "window.__ogTest = { prompted: false, prompts: 0 }; addEve
 const HINT = "fetch('./manifest.webmanifest').then((r) => r.json()).then((m) => ({ ...__ogTest, offer: `Install ${m.short_name} to play offline`, hidden: document.getElementById('og-install').hidden, text: document.querySelector('#og-install span').textContent, button: document.querySelector('#og-install button').hidden ? null : document.querySelector('#og-install button').textContent }))";
 type Hint = { prompted: boolean; prompts: number; hidden: boolean; text: string; offer: string; button: string | null };
 
+// A platform page's Content-Security-Policy: no inline script or style, no `blob:` Worker
+// (docs/web-export.md §Hosting); `connect-src 'self'` where the platform names its content base.
+const STRICT_CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+// The page's own CSP violations, from the document's start (a Worker's are seen by what it starts).
+const VIOLATIONS = "window.__ogViolations = []; addEventListener('securitypolicyviolation', (e) => __ogViolations.push(`${e.effectiveDirective} ${e.blockedURI}`));";
 const results: Record<string, unknown> = {};
 const browser = await Browser.launch({ chrome });
 
@@ -219,21 +226,55 @@ try {
     }
     results["runner boot"] = boot;
   }
+  // ── a strict CSP (a platform page's): no inline script or style, no blob: Workers ──
+  {
+    const server = serve({ dist: builds["runner"]!.dist, isolate: true, headers: { "content-security-policy": STRICT_CSP } });
+    const log: string[] = [];
+    const page = await browser.open("about:blank", log);
+    try {
+      await page.send("Page.addScriptToEvaluateOnNewDocument", { source: VIOLATIONS });
+      await page.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/game/index.html` });
+      const t = await load(page);
+      const isolated = await page.eval<boolean>("crossOriginIsolated");
+      check(isolated && t.lanes.on && t.lanes.threads > 1, `strict csp: isolated, the lanes pool starts from its own file on ${t.lanes.threads} Workers`, t.lanes);
+      // The shell's CSS applied: the gate is a layer over the viewport, not laid out below the page.
+      const gate = await page.eval<{ hidden: boolean; position: string; top: number; bottom: number; height: number }>(
+        "(() => { const g = document.getElementById('og-gate'); const r = g.getBoundingClientRect(); return { hidden: g.hidden, position: getComputedStyle(g).position, top: r.top, bottom: r.bottom, height: innerHeight }; })()",
+      );
+      // Unstyled, it is `static` and laid out below the page (R6: y=975 in a 540 px viewport).
+      check(!gate.hidden && gate.position !== "static" && gate.top >= 0 && gate.bottom <= gate.height, "strict csp: the shell's CSS applies and the play gate covers the viewport", gate);
+      const before = await page.held<number>("__runtime_probe__.tick()", "strict csp's tick behind the gate");
+      await page.tap(640, 360);
+      const after = await page.until<number>(`__runtime_probe__.tick().then((t) => t > ${before + 30} && t)`, 30_000).catch((e: Error) => e.message);
+      check(typeof after === "number", "strict csp: a tap on the gate starts the clock", { before, after });
+      const refused = await page.eval<string[]>("__ogViolations");
+      const csp = log.filter((l) => /Content Security Policy|Refused to/.test(l));
+      check(refused.length === 0 && csp.length === 0, "strict csp: the page breaks no directive", { refused, csp: csp.slice(0, 5) });
+      results["runner strict csp"] = { ...t, isolated, shot: save("runner-strict-csp.png", await page.screenshot()) };
+    } catch (e) {
+      check(false, "runner under a strict csp", { error: String(e), log: log.slice(-20) });
+    } finally {
+      await page.send("Page.close").catch(() => {});
+      server.stop();
+    }
+  }
   // ── lanes refused by the host's CSP: the single-threaded engine, in time ──
   {
-    const server = serve({ dist: builds["runner"]!.dist, isolate: true, headers: { "content-security-policy": "worker-src 'self'" } });
+    // Only the engine Worker's own script may start: the pool's helper is refused.
+    const csp = `worker-src 127.0.0.1:*/game/${builds["runner"]!.manifest.worker}`;
+    const server = serve({ dist: builds["runner"]!.dist, isolate: true, headers: { "content-security-policy": csp } });
     const log: string[] = [];
     const page = await browser.open(`http://127.0.0.1:${server.port}/game/index.html`, log);
     try {
       const t = await load(page);
       const isolated = await page.eval<boolean>("crossOriginIsolated");
-      check(isolated && !t.lanes.on && t.lanes.threads === 1 && /the lanes variant did not start/.test(t.lanes.why), "csp worker-src 'self': isolated, the pool's blob: Workers are refused and the single-threaded engine says the lanes variant did not start", t.lanes);
+      check(isolated && !t.lanes.on && t.lanes.threads === 1 && /the lanes variant did not start/.test(t.lanes.why), "csp refusing the pool: isolated, the pool's Workers are refused and the single-threaded engine says the lanes variant did not start", t.lanes);
       // The deadline bounds the wait for the pool; the rest of the boot gets as long again.
-      check(t.ready > 0 && t.ready < 2 * LANES_POOL_DEADLINE_MS, `csp worker-src 'self': ready at ${t.ready} ms, within the pool's deadline (${LANES_POOL_DEADLINE_MS} ms) and a boot`, t);
-      check(t.firstFrame > 0, "csp worker-src 'self': the single-threaded engine draws its first frame", t);
+      check(t.ready > 0 && t.ready < 2 * LANES_POOL_DEADLINE_MS, `csp refusing the pool: ready at ${t.ready} ms, within the pool's deadline (${LANES_POOL_DEADLINE_MS} ms) and a boot`, t);
+      check(t.firstFrame > 0, "csp refusing the pool: the single-threaded engine draws its first frame", t);
       results["runner csp"] = { ...t, isolated, shot: save("runner-csp.png", await page.screenshot()) };
     } catch (e) {
-      check(false, "runner with worker-src 'self'", { error: String(e), log: log.slice(-20) });
+      check(false, "runner with the pool refused", { error: String(e), log: log.slice(-20) });
     } finally {
       await page.send("Page.close").catch(() => {});
       server.stop();

@@ -137,7 +137,7 @@ export function startWorker(game: GameToken): void {
     if (data.type === "keyboard-layout") boundHost()?.abi.og_input_set_keyboard_layout(JSON.stringify(data.labels));
     if (data.type === "audio-latency") run.audio?.latency(data.latency);
     if (data.type === "audio" && glue && !run.audio) {
-      const attached = WorkerAudio.attach(glue, engine.id, data);
+      const attached = WorkerAudio.attach(glue, engine.id, data, run.audioDecoder);
       if (attached.ok) run.audio = attached.value;
       else run.log(`warn: audio: ${attached.reason}`);
     }

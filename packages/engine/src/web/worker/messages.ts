@@ -39,6 +39,12 @@ export interface Start {
   basis?: { js: string; wasm: string };
   /** The rav1d fallback decoder's module URL (dist/av1/og-av1.wasm by default). */
   av1?: string;
+  /**
+   * The decoder Workers' scripts on the page's origin (a built page's audio-decoder.js and
+   * av1/av1-worker.js), so a CSP without `worker-src blob:` serves them; each one absent starts
+   * from a `blob:` copy of its source.
+   */
+  decoders?: { audio?: string; av1?: string };
   /** The project's physics profile (project.ogt `profile`). */
   profile?: "2d" | "3d";
   /** project.ogt's text (CreateOptions.project). */
