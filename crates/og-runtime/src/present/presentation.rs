@@ -209,6 +209,16 @@ pub(crate) fn hash(rs: &RenderState) -> u64 {
     h
 }
 
+/// As a tick starts, once its cells have loaded: the models they placed
+/// start fading in now, not with the next frame or tick, so the tick that
+/// loads a cell never reads its group ready or the loading idle before
+/// the fade. Only while a renderer draws, as [`before_tick`].
+pub(crate) fn cells_placed(rs: &mut RenderState, world: &World) {
+    if rs.backend.is_some() {
+        crate::present::reveal::step(rs, world);
+    }
+}
+
 /// As a tick starts, the world the last one left: each particle system as
 /// that tick left it joins its history. Only while a renderer draws: the
 /// particles' tick is the one the systems were extracted for, as a frame

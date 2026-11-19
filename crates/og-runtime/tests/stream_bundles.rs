@@ -872,6 +872,104 @@ fn a_fade_waits_for_its_pipelines_on_display_frames_and_never_on_a_scripts() {
     std::fs::remove_dir_all(base).unwrap();
 }
 
+/// The parcel group's StreamStatus.ready as a system read it in each tick.
+#[derive(Default)]
+struct Overlay(RefCell<Vec<(f64, bool)>>);
+impl Hooks for Overlay {
+    fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+        if call.kind == 0 {
+            let status = value(host_impl::answer(og_stream_status(
+                call.engine,
+                "parcel".into(),
+            )));
+            self.0
+                .borrow_mut()
+                .push((call.tick, status["ready"] == true));
+        }
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        match std::fs::read(path) {
+            Ok(bytes) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(format!("{path}: {e}")),
+        }
+    }
+}
+
+/// A game drops its loading overlay in the first tick a cell group reads
+/// ready. Its pack read ahead and its textures prepared, the cell loads
+/// with nothing left to wait for but its models' fade, which no frame has
+/// seen yet in the tick that loads it: ready stays false through that tick
+/// and the fade, then is true for good. Broken while the fade started only
+/// with the next frame or tick: the loading tick read ready, and the ticks
+/// after it did not.
+#[test]
+fn a_cell_group_is_not_ready_in_the_tick_its_cell_loads() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("ready-at-load-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let root = base.join("game");
+    // The anchor reads 100 m ahead: the cell's group is fetched from here.
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 0 0 0\n }\n StreamAnchor {\n  reach 0\n  maxSpeed 50\n }\n}\n".to_vec())]);
+    let path = base.join("parcel");
+    parcel(&path, "parcel", "parcel", 100, true);
+    let overlay = Rc::new(Overlay::default());
+    set_hooks(overlay.clone());
+    og_host_begin_bundle();
+    let watch = og_system_define_system(
+        "Overlay".into(),
+        json!({ "reads": [], "writes": [] }).to_string(),
+        1,
+    );
+    let game = og_game_game(Some(json!({ "seed": 1, "systems": [watch] }).to_string()));
+    let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+        .as_u64()
+        .unwrap() as u32;
+    let held = Rc::new(Cell::new(Held::default()));
+    answer(set_render_backend(
+        engine,
+        Some(Box::new(Recorder(held.clone()))),
+    ));
+    let g = Game { engine, held };
+    g.place("world.ogt");
+    g.open(&path);
+    g.place("parcel/place.ogt");
+    // The pack lands and its textures are prepared while the cell is away.
+    for _ in 0..600 {
+        g.frame();
+        if g.state("parcel") == "resident" && og_loading_idle(engine) {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    assert_eq!(g.state("parcel"), "resident");
+    assert!(og_loading_idle(engine), "its textures were never prepared");
+    assert!(!g.loaded("parcel"), "the cell loaded from 90 m");
+    assert!(
+        overlay.0.borrow().iter().all(|r| !r.1),
+        "ready before the cell loaded"
+    );
+    let walked = overlay.0.borrow().len();
+    g.walk(100);
+    for _ in 0..64 {
+        g.frame();
+    }
+    assert!(g.loaded("parcel"));
+    let read = overlay.0.borrow()[walked..].to_vec();
+    let waiting = read.iter().take_while(|r| !r.1).count();
+    assert!(
+        waiting >= 20,
+        "ready was read {waiting} ticks into a 24-tick fade: {read:?}"
+    );
+    assert!(
+        read.len() > waiting && read[waiting..].iter().all(|r| r.1),
+        "ready did not stay: {read:?}"
+    );
+    assert!(og_engine_destroy(engine));
+    std::fs::remove_dir_all(base).unwrap();
+}
+
 /// Full meshes must not leave their cooked raycast BVHs behind. HLOD's
 /// baked atlases and proxies live as long as their placements, not forever
 /// in the model cache. Keep all bundles open throughout this route.
