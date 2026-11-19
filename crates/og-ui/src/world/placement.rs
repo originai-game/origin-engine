@@ -662,41 +662,68 @@ fn declutter(
     if ys.is_empty() {
         return None;
     }
+    let free = |row: &[u64], lo: usize, hi: usize, reverse: bool| -> Option<usize> {
+        if lo >= hi {
+            return None;
+        }
+        let mut words = lo / 64..=(hi - 1) / 64;
+        while let Some(word) = if reverse {
+            words.next_back()
+        } else {
+            words.next()
+        } {
+            let start = lo.saturating_sub(word * 64);
+            let end = (hi - word * 64).min(64);
+            let bits = !row[word] & (u64::MAX << start) & (u64::MAX >> (64 - end));
+            if bits != 0 {
+                let bit = if reverse {
+                    63 - bits.leading_zeros()
+                } else {
+                    bits.trailing_zeros()
+                };
+                return Some(word * 64 + bit as usize);
+            }
+        }
+        None
+    };
     let zero = ys.partition_point(|&y| y < 0.0);
     if mode == Declutter::Stack
         && 0.0 <= reach
         && b.x + 0.0 >= inside.x - 0.5
         && b.x + 0.0 + b.width <= inside.right() + 0.5
     {
-        // Stacks usually have room on their own vertical. Test it before
-        // building the two-dimensional collision index. A collision rules
-        // out a whole run of ordinates, not just the one tested.
-        let free = |at: usize| clear(&moved(Vec2::new(0.0, ys[at])));
-        let mut end = zero;
-        while end > 0 {
-            let at = end - 1;
-            let r = moved(Vec2::new(0.0, ys[at])).outset(gap - 0.01);
-            if let Some(p) = placed.iter().find(|p| p.overlaps(&r)) {
-                end = ys[..at].partition_point(|&y| {
-                    moved(Vec2::new(0.0, y)).outset(gap - 0.01).bottom() <= p.y
-                });
-            } else {
-                let length = Vec2::new(0.0, ys[at]).length();
-                let lo = ys[..=at].partition_point(|&y| Vec2::new(0.0, y).length() > length);
-                let at = (lo..=at).find(|&at| free(at)).unwrap();
-                return Some(Vec2::new(0.0, ys[at]));
+        // Each crossing blocker covers one interval of vertical candidates.
+        // Mark it once rather than scanning the blockers again at each step
+        // up or down. These are the exact f32 bounds used by `clear`.
+        blocked.clear();
+        blocked.resize(ys.len().div_ceil(64), 0);
+        let vertical = moved(Vec2::ZERO).outset(gap - 0.01);
+        for p in placed {
+            if vertical.x >= p.right() || vertical.right() <= p.x {
+                continue;
+            }
+            let lo = ys
+                .partition_point(|&y| moved(Vec2::new(0.0, y)).outset(gap - 0.01).bottom() <= p.y);
+            let hi =
+                ys.partition_point(|&y| moved(Vec2::new(0.0, y)).outset(gap - 0.01).y < p.bottom());
+            if lo >= hi {
+                continue;
+            }
+            for (offset, word) in blocked[lo / 64..=(hi - 1) / 64].iter_mut().enumerate() {
+                let base = (lo / 64 + offset) * 64;
+                *word |= low_bits((hi - base).min(64)) & !low_bits(lo.saturating_sub(base));
             }
         }
-        let mut at = ys.partition_point(|&y| y <= 0.0);
-        while at < ys.len() {
-            let r = moved(Vec2::new(0.0, ys[at])).outset(gap - 0.01);
-            if let Some(p) = placed.iter().find(|p| p.overlaps(&r)) {
-                at += 1 + ys[at + 1..].partition_point(|&y| {
-                    moved(Vec2::new(0.0, y)).outset(gap - 0.01).y < p.bottom()
-                });
-            } else {
-                return Some(Vec2::new(0.0, ys[at]));
-            }
+        if let Some(at) = free(blocked, 0, zero, true) {
+            let length = Vec2::new(0.0, ys[at]).length();
+            let lo = ys[..=at].partition_point(|&y| Vec2::new(0.0, y).length() > length);
+            // Equal rounded lengths still choose the earlier (upper) y.
+            let at = free(blocked, lo, at + 1, false).unwrap();
+            return Some(Vec2::new(0.0, ys[at]));
+        }
+        let below = ys.partition_point(|&y| y <= 0.0);
+        if let Some(at) = free(blocked, below, ys.len(), false) {
+            return Some(Vec2::new(0.0, ys[at]));
         }
     }
     // A successful vertical stack needs no horizontal candidates. Keep every
@@ -775,30 +802,6 @@ fn declutter(
                 }
             }
         }
-        let free = |row: &[u64], lo: usize, hi: usize, reverse: bool| -> Option<usize> {
-            if lo >= hi {
-                return None;
-            }
-            let mut words = lo / 64..=(hi - 1) / 64;
-            while let Some(word) = if reverse {
-                words.next_back()
-            } else {
-                words.next()
-            } {
-                let start = lo.saturating_sub(word * 64);
-                let end = (hi - word * 64).min(64);
-                let bits = !row[word] & (u64::MAX << start) & (u64::MAX >> (64 - end));
-                if bits != 0 {
-                    let bit = if reverse {
-                        63 - bits.leading_zeros()
-                    } else {
-                        bits.trailing_zeros()
-                    };
-                    return Some(word * 64 + bit as usize);
-                }
-            }
-            None
-        };
         let order = |d: Vec2| (d.length(), d.x.abs(), d.y, d.x);
         let mut best: Option<Vec2> = None;
         let zero = xs.partition_point(|&x| x < 0.0);
@@ -1655,7 +1658,8 @@ impl crate::ui::Layout {
             info.scale = scale;
             let projected = view.project(p, vp.width, vp.height);
             let half = Vec2::new(r.width, r.height) * scale / 2.0;
-            let (lo, hi, placement) = drawn_box(&tree.nodes, a.node, &mut world.placement.drawn_stack);
+            let (lo, hi, placement) =
+                drawn_box(&tree.nodes, a.node, &mut world.placement.drawn_stack);
             let mut pivot = d.pivot.fractions();
             let mut arrow = None;
             let (at, depth) = match projected {
