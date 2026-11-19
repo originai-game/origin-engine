@@ -164,12 +164,36 @@ impl crate::ui::Layout {
             }
             set
         };
-        // Layers meant to be over the rest (dialogs, menus, tips, toasts).
-        let over_layers: std::collections::BTreeSet<usize> = tree
+        // Layers meant to be over the rest (dialogs, menus, tips, toasts):
+        // a non-anchored floating layer, but never the base layer, the
+        // lowest drawn one. A dialog or a menu is checked only against its
+        // own content, not the page it covers; but a screen whose whole
+        // content is one such layer (a dialog or a full-screen page the
+        // review mounts on its own, with nothing in the tree beneath it) is
+        // the base, so its own overlaps are still reported.
+        let drawn_in_tree = preorder(&tree.nodes, 0)
+            .into_iter()
+            .any(|i| i != 0 && painted(&tree.nodes[i]) && seen_at_all(i));
+        let non_anchored: Vec<usize> = tree
             .floating
             .iter()
             .copied()
             .filter(|&f| !matches!(tree.nodes[f].float, Float::Anchored { .. }))
+            .collect();
+        // The base layer is the in-tree content if it draws, else the
+        // lowest-ranked non-anchored floating layer (ties: the first built).
+        let base_float = (!drawn_in_tree)
+            .then(|| {
+                non_anchored
+                    .iter()
+                    .copied()
+                    .min_by_key(|&f| (tree.nodes[f].float.rank(), f))
+            })
+            .flatten();
+        let over_layers: std::collections::BTreeSet<usize> = non_anchored
+            .iter()
+            .copied()
+            .filter(|&f| Some(f) != base_float)
             .flat_map(|f| preorder(&tree.nodes, f))
             .collect();
         let placed: Vec<usize> = order

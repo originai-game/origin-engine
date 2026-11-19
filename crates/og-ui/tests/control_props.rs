@@ -3270,3 +3270,41 @@ fn interest_delays_time_when_a_hint_shows_and_leaves() {
         assert!((12..=15).contains(&a.0), "200ms to show: {a:?}");
     });
 }
+
+/// A full-screen layer (a dialog, or a page the review mounts on its own)
+/// is checked for overlaps within itself. It was wrongly treated as a
+/// layer drawn over the rest and skipped whole, so its own overlapping
+/// elements — a caption landing on a neighbour in a scaled graph — were
+/// never reported, while og ui check still reported 0. Ways it could fail:
+/// the base layer skipped again (no overlap found), or a dialog over a
+/// page reporting a false overlap against the page beneath it.
+///
+/// WIP (wip/ui-check-base-layer): this un-skips the base layer, but the
+/// fix is still too wide — it also flags a screen's own full-screen
+/// backdrop (an absolute inset:0 Veil/Ground/Shade) as overlapping all
+/// content. A correct fix must keep such a backdrop exempt as an
+/// intentional under-layer. See the branch's notes file.
+#[test]
+fn a_full_screen_layer_is_checked_for_its_own_overlaps() {
+    // A modal screen (the whole content on one Float::Modal layer) with two
+    // absolutely placed, painted boxes that overlap: the overlap is its own.
+    let modal = r#"<meta name="screen" content="t" data-layer="modal">
+<div id="Root">
+  <div id="A"></div>
+  <div id="B"></div>
+</div>
+<style>
+#Root { position: relative; width: 300px; height: 200px; }
+#A { position: absolute; left: 40px; top: 40px; width: 120px; height: 60px; background: #334; }
+#B { position: absolute; left: 100px; top: 70px; width: 120px; height: 60px; background: #556; }
+</style>"#;
+    with_doc(modal, &[], |d| {
+        let pairs: Vec<_> =
+            d.ui.overlaps().iter().map(|o| (o.path.clone(), o.other.clone())).collect();
+        assert!(
+            pairs.iter().any(|(a, b)| (a.ends_with("/A") && b.ends_with("/B"))
+                || (a.ends_with("/B") && b.ends_with("/A"))),
+            "the modal layer's own overlap is reported: {pairs:?}"
+        );
+    });
+}
