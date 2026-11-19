@@ -2,12 +2,1890 @@
   "version": 1,
   "files": [
     {
+      "path": "extensions/effekseer-starter/Icicle2/model-icicle1.glb",
+      "sha256": "e8fe1931057298242e0dbfb0f28622298d25c6fb36f2e4fd9a4e4f5c17562218",
+      "size": 4972,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/Icicle2/model-icicle3.glb",
+      "sha256": "ba63e15d9ce90b623f31f7d1c525bbfb06344316d6c7bc79a93e12c808248e97",
+      "size": 4968,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/meteo1/model-block1.glb",
+      "sha256": "cfa1d997243ca89cfe8df5613378ed16503a5e19091df4d8ecbe55b639cabf45",
+      "size": 3056,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/meteo1/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Attack_Impact.png",
+      "sha256": "0a353030f241477a636f7f2eeb15276f9535275bfac6dc186234e2dd36fadae8",
+      "size": 292003,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Blow2.png",
+      "sha256": "6b3396dbc1c224a60777b50f2466cd3b49681d22b53c2e5b8b090e6990814d49",
+      "size": 640580,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Blow4.png",
+      "sha256": "9a9dc51507b6f448ff19e9d77752d1f74273cac458254383a2328a98ec404dba",
+      "size": 549917,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Blow8.png",
+      "sha256": "f847facb4f138ac78aae5093cbe6ede705a16c0171cf1d9ffbc29e26f6add301",
+      "size": 352807,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Breakdown.png",
+      "sha256": "ddcb8d35992e8fab0c31895c33d288b6b8c8ae70a40c82d90b32a38833110cf7",
+      "size": 403547,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Claw3.png",
+      "sha256": "de5715a5de65bcbc4e73544c9636fe7ad1f39be218a26ff77af6d7d9d94e34ae",
+      "size": 413765,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Cure1.png",
+      "sha256": "e4a7ceb08c0a1b98eaf9328278cb214ebfe23cbd64b554cba1960711269de4e4",
+      "size": 600760,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Cure7.png",
+      "sha256": "de4ab9bb521bf9554a9d9f25f2f163524ea98eb9aaf9c1bb09f4647c4af89690",
+      "size": 300984,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/FeatherBomb.png",
+      "sha256": "e28cb34911c5a85175ea7efb59523b508b63df7ad719a044a4632adbc7b5151e",
+      "size": 345380,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Fire7.png",
+      "sha256": "bb094566d8f1ade304c969e59f389ee46590c6d56f1863fa42035245a41f3b91",
+      "size": 354114,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/FireBall.png",
+      "sha256": "83a4b0aeb039d6355f8fc7e73918822d4d3dee8709dfc6c93cc05d38a5bb57ee",
+      "size": 433394,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/HealPotion2.png",
+      "sha256": "1c77beae732e344284bc0e47ec0951348c509454471d47242056ef3ec6702715",
+      "size": 257894,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/HolySandstorm.png",
+      "sha256": "d980aac6097420a52a86d4a855a723ead6a35fabc8d23946e3097dd6304d0935",
+      "size": 821105,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Icicle2.png",
+      "sha256": "427375c73d4727ab54ab845e432f87b9d769ef10041c2cc25f9cd1f68b9322b8",
+      "size": 150723,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Laser03.png",
+      "sha256": "0d97ba0827550b6a2ee467d7f8e0a67c3be98e82d95d6bc49d896302282ca803",
+      "size": 229379,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Light4.png",
+      "sha256": "13c14b438a41dfaa71ec98f0f7fa49b22f92df16068c71964ef6011645004a2e",
+      "size": 506692,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Magic2_fire.png",
+      "sha256": "d932d2a6af9149b137adb23416f7f2cbbed8187cb1a544e568234fb65ff2f135",
+      "size": 132827,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/MagicCold.png",
+      "sha256": "1c1c4b66d89ccec42aa46c7d17f5436f558019187757808d560240112d3d35bb",
+      "size": 466090,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/MagicDark.png",
+      "sha256": "912393dfed3855f9b45f642c66add32c65f95e005f2b2daa8d7d9dbde4cf692e",
+      "size": 791709,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/MagicFire2.png",
+      "sha256": "3cbed7ea3b11cbf7f4d7cca84d27cfb213d58c3c1369f392a18d33b256d7f401",
+      "size": 647748,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/MagicHeal2.png",
+      "sha256": "0f0d7d641cb0427d3c37976142f250cb7ff04a9e6c65d8a3a018838d88e4fa6f",
+      "size": 964011,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/MagicWater.png",
+      "sha256": "2d83523fc1f575f1331869ade08cfff19a7749fdea99e3dfef2243ab90341135",
+      "size": 758636,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/PowerUp.png",
+      "sha256": "529f34b62a7eee8a7b86e5437c8e54b48a103b881787d49b0b92b759f07bc585",
+      "size": 397039,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Spear2.png",
+      "sha256": "184c5f1948599a53d7d5cca84fbf07024ef8fc4005f5eca5b001fdf25cca0852",
+      "size": 247275,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Sword5.png",
+      "sha256": "92e5b40b0e9865e58d5e88d2a43a10bc983f46d4692d9b80e4bab9f82347c4a0",
+      "size": 415492,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Sword7.png",
+      "sha256": "38ecc1f890c8df67e55925937ef7493922a37723f881ec1e8c1c6d5fa8d851dd",
+      "size": 311021,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Sword8.png",
+      "sha256": "8a97e11757e01149b3628f58480618e7ead54a3b43840a0aaa872d0bb4662837",
+      "size": 532386,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Thunder1.png",
+      "sha256": "7a32e93d8e7f3195c322d68ec34691d837074cbb94cd2a95a6252d03b1f383d1",
+      "size": 394994,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/Undine4.png",
+      "sha256": "7d3f07f243e62b9aecb2a4ca2336a646dab43cce8be558e7d82f57baa5d30f71",
+      "size": 451597,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/boss_death.png",
+      "sha256": "11cf918e626eb7d30ffa30ae579a18947b7a400649d2bcf363accf9b7a0b412e",
+      "size": 266565,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/cover.png",
+      "sha256": "aa8728ac35c0a39052914079fa72c3e255f78b80e2324dc906d0db9b7e3256f5",
+      "size": 12493,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/electric_dust.png",
+      "sha256": "37786493973b907b4efcb176751caf28be0c4376d1ecc47d064df992893f8516",
+      "size": 276570,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/hit_eff.png",
+      "sha256": "805eb0652832ea1d38781785128712aa1feb69e408897ea4ec11192b6da51008",
+      "size": 299345,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/hozyo2.png",
+      "sha256": "7960b1b6c17ea60ddc7a92d30c4b356aa766e4584f95050266f2ac65c214af25",
+      "size": 595618,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/hozyo4.png",
+      "sha256": "d7d107889bf1bca0062dd936136025c03f8e91cb9c7e0e17f8d65ca107981ffa",
+      "size": 412975,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/magic_circle.png",
+      "sha256": "5dd42e2075a596d54043d32deb70f9658162f2beeb3820e8afc7024a25c56a4a",
+      "size": 292271,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/meteo1.png",
+      "sha256": "967f1e6386dbc2340ea79a818d7cfa4ca3513ef22022f05036bd90e952b85d82",
+      "size": 386045,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/sakura1.png",
+      "sha256": "121403cd7726a22e9a9057a3c42adbf280e6d7cb00173a6097dfd474086c4e71",
+      "size": 130269,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/preview/smallTexturesSquareWave_orbital.png",
+      "sha256": "f69611a2b50a5148734da7cfbcb7aabaa8c822db374562ddbdc74b5f7c7419c0",
+      "size": 635614,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Aurora.png",
+      "sha256": "e756192afd2e7e8be11e798b07542fbfae399d5703803fec19ff5df5494354c0",
+      "size": 4486,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/AuroraRing.png",
+      "sha256": "e6c64b342b2730c93ff70049d392885c24be1685e90d2e8d2a398f04e0f4eea4",
+      "size": 5274,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Aurora_B.png",
+      "sha256": "9ccbcfecb7341edc28f085c4c48620db108f4aa30e24ec64d37f74f1b53de1e6",
+      "size": 5693,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Burst01.png",
+      "sha256": "8ea1d671a9e17f6c0a73fe2378708c4ce1a11ff16c7f420caa6a8ccb0d44c2ae",
+      "size": 20936,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Cloud01.png",
+      "sha256": "4e9846ddefb9d33469402edd7fe4dc74cdd0c6b48972acfcdc06a916ffd66894",
+      "size": 12735,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Distortion.png",
+      "sha256": "22d6563bf3c8040873aa83ca8c7f961c383356ff915e7a8ecc7110b191348dee",
+      "size": 60688,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Distortion11.png",
+      "sha256": "726e72206a18e9faffc554f90c832ec9bd9dc1e0d80be44ceb6a26dc51243f4a",
+      "size": 42508,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Distortion6.png",
+      "sha256": "926922911980c121100ed8620a4ae08ccd9410cf468721d426e3204a5e7bde06",
+      "size": 69753,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/ExperimentalBlur.png",
+      "sha256": "80f2f7271b28f4333c190a08f9390ab87fe45e0a1f5d1410cdafad56a29728d0",
+      "size": 25784,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/ExperimentalNoise.png",
+      "sha256": "e68891efd767baf97b4adb3b13d120ef22429a71d5a17142cdc634f624f190df",
+      "size": 27284,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Feather.png",
+      "sha256": "9fa902c068b0fd9bc53322ea50e27898f60d81001582e094039ef7141866bff0",
+      "size": 42080,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Fire.png",
+      "sha256": "d5d24d6065db8bfff23d86c7dd7a707c697556dcc8f8d9ca0ec37706bc18f9cf",
+      "size": 71754,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Fire4.png",
+      "sha256": "c29ee0d06beb113d865deb6428deb8c00d890e73c4720188ccc0c77fe9b7c977",
+      "size": 7581,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Fire6.png",
+      "sha256": "aae4702e37e8f5a4d8ad4eb98acdb99a1067d031250e1c12dc305b448dbde6f7",
+      "size": 158244,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/FireFog.png",
+      "sha256": "a8c31c7f26a195e56d1621f669fcd08fafdf0efbd1953787ea897b16c3832fe5",
+      "size": 31418,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Fire_Blur.png",
+      "sha256": "9a128965ce60eea2b2393a484f532e9aaa3303cb638ae972dc278e7b5ccb1516",
+      "size": 110542,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Fire_Single-5d682741.png",
+      "sha256": "5857c380ceeeb60fa561ed0d742b288005f1c1a5dba25c0676c4f2414953c346",
+      "size": 15720,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Fire_Single.png",
+      "sha256": "5857c380ceeeb60fa561ed0d742b288005f1c1a5dba25c0676c4f2414953c346",
+      "size": 15720,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/FlameRadiation.png",
+      "sha256": "e7351e4efd7d9530798ce66469a5368ecb357c282fc05eed87664c0bfb9b1ede",
+      "size": 13984,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Foam001-713b55cf.png",
+      "sha256": "6c34d96f48009c8d66dd044f04d9539ae01606e3c2dc384b61d483d7a2eecb8c",
+      "size": 2056,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Foam001.png",
+      "sha256": "65cfb22673b0c52256aada8aad47d5f16204dc325f06221f8f01fd737628c32e",
+      "size": 1421,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Foam002.png",
+      "sha256": "8ef95c08b6c47a0d04ed4669b5744b59f22996c011f19c9a895a4f007c820570",
+      "size": 2130,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Foam003.png",
+      "sha256": "c531c05797ea95321c2ebc10d4afcd2d7c3a8986a4063107272b476a263d9f1f",
+      "size": 1824,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Fog001.png",
+      "sha256": "2f16da9bd7bd70a41079f9764b4467bd610341e8eb3c6ef32feba6f23c0c7c16",
+      "size": 10835,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Fog3001.png",
+      "sha256": "31c1a7860e55fe082dd89d593439f3329522e111792bf88fedd91b72b1bb8003",
+      "size": 20891,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/FractalNoise_2.png",
+      "sha256": "9200b90717a0d8936a735da1367bde3de852d072c5ff56644875cbb209fd4a12",
+      "size": 135192,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Hammer1.png",
+      "sha256": "bdf82b9c52db41298a050087c53fe415bf9b1f6f7759b367f1d7bd99738bbef8",
+      "size": 87976,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/LaserMain02.png",
+      "sha256": "77b7b9c9286d5c7ab1b37d3a29ca5012332384e7616b157ef7ec6e34893902bc",
+      "size": 653,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Line01-d5bd32db.png",
+      "sha256": "4ff473504dc111a9ab2174a57619b3423862bc7f4edb7cdc14157a9fbed392df",
+      "size": 1020,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Line01.png",
+      "sha256": "8a12d37ac233d3f7852257c3dc428d250f93a72ca049064284433de30ed942f0",
+      "size": 2925,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Line1.png",
+      "sha256": "3443fa6d3cda9abf473b7a8a04d42c075103ecaf4a9d641d3d59a9ede255609d",
+      "size": 328,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Line3.png",
+      "sha256": "25e5d0badd87d22cc2fee22afa0dc75073e48d806be1ee98dbe9242087ad2b6c",
+      "size": 3076,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Line6-9f180d6d.png",
+      "sha256": "33e3104048408f5f8d1bc727a4eac56b1145f07db2efe4d7c8d3b8594f41e541",
+      "size": 785,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Line6.png",
+      "sha256": "0090daa2712e9b5fe9a93a1fb992a0a6724345d7c4722b759a1b62c59a8cf1f6",
+      "size": 1315,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/MagicCircle1.png",
+      "sha256": "9b0dc41a117dcb2052a294f5a06532632bea6a836ca324c17076738acc0bc47f",
+      "size": 57839,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/MagicCircle4.png",
+      "sha256": "0086fd31af48e070f2a9d29d95faf25ee81c5fc9f1702cd880bc85f4e090f3e9",
+      "size": 29384,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Particle01-8c6ffbd0.png",
+      "sha256": "193bf2ea4097cae95af93cff7b16d39e04aa1e8e4e87f1d5a6a2d2b6fecbab3b",
+      "size": 2567,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Particle01-b96f716d.png",
+      "sha256": "604e70bb41afe27afe001ff978969bc8e2e32dec590a8da3fcf1c0c7c6e27f10",
+      "size": 3705,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Particle01.png",
+      "sha256": "3f7deb5b5be680af5cb2ae8c9092a2cd5f29b03dfb2f675d1c687e90e9232c53",
+      "size": 3644,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Particle02-b223f51c.png",
+      "sha256": "ed33df94e01469a258f24b5d6f117f2fc2b188b40b2504a7cff1fcad25d1baef",
+      "size": 3578,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Particle02.png",
+      "sha256": "9d2057a8d908e82ba42be77b16df55908b5602e03bc581e8ebaf6a8965e089ba",
+      "size": 2367,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Particle_Hard.png",
+      "sha256": "f221176840510167871663dad1a44ba7b031af4a7edbda5352ca91ca8b553d93",
+      "size": 4290,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Particle_Soft.png",
+      "sha256": "b3e7d46229a22b58fa5df4883abc8e5ef8b3edd29cca2e4d8d05507331e7756a",
+      "size": 3973,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Photon.png",
+      "sha256": "c136cea4a4d49f87cdd81dbe96a37d5e87c394c90903b819daecc5b17f0afbfe",
+      "size": 4982,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/PolkaDot.png",
+      "sha256": "8a0a9458367b69aed86bede596edd5a3e3fae9fe299343cb94631dcb2db44b30",
+      "size": 6797,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/ShadowEye.png",
+      "sha256": "f4c120ad60ac293fadac3e9b00e1c0149c2b7a0fe0078890d5e1de2a83e2c7df",
+      "size": 6645,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/ShockWave1.png",
+      "sha256": "f4c5dbc600b77ced1db1aade3dbada635b24eb4bfa96c35b0b07a09a62e54ebd",
+      "size": 1878,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/ShockWave3.png",
+      "sha256": "5b8eff6996259002d1e04a1b8b016b1150da27e1a89aafebbaa7692476d8954b",
+      "size": 224,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/ShockWave4.png",
+      "sha256": "fc3658b2025d71d71656c7bba4abd264c04e0e63ef8ed711ed5692d294d06cef",
+      "size": 1789,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/ShockWave5.png",
+      "sha256": "763493d7ba1e221e82fdb4b34cde4d4ad7b83ebea080c9f2732a03f8774f01e3",
+      "size": 3762,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Shock_wave_ring0011.png",
+      "sha256": "778c1d1ea5a33690c3d9e55e4c4f00bd5f74ec28869fa3df44776e1d0514a505",
+      "size": 5113,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Shock_wave_ring004.png",
+      "sha256": "a78723895894e4ec4406b35fed7109e2f4f6d74d2e4cd8efc323bbbd7f70dfc2",
+      "size": 4276,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Smoke-037c8d34.png",
+      "sha256": "cc3cbe2fe873dc077264fa63c9fa40d378e150b571b7e1e5fbae051d3d7e496c",
+      "size": 90912,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Smoke.png",
+      "sha256": "cc3cbe2fe873dc077264fa63c9fa40d378e150b571b7e1e5fbae051d3d7e496c",
+      "size": 90912,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/SnowCrystals_M.png",
+      "sha256": "9b908479d7fa168ba1c89d0daf59c1eae49c6e5904046cb4ff8f9983e0ea0b4a",
+      "size": 6772,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/SnowCrystals_S.png",
+      "sha256": "6cbda6aced22a6a9289e7770a869d208e210fe0ad9844a07ea3f8f552e3f37aa",
+      "size": 903,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Splash.png",
+      "sha256": "7c8f07fdf2646526d0b0764a18db96faeb1d9ff8f43356b3ac2e460f6ea19db1",
+      "size": 53158,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Thunder01.png",
+      "sha256": "c16ecec1bd5dc9e18267b17ac70b6e0527851466d05d09e6b919a7887ce17f1d",
+      "size": 9101,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/WaterForm1.png",
+      "sha256": "9ea511439184d72cd88d640272432f1c1c9e6a719f3d979c48bbf042eccc1dd0",
+      "size": 134848,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/Wind.png",
+      "sha256": "ab37c0b69e4a506816b5fe81e112476f2b4d918351ce608f244dad13a028408d",
+      "size": 25921,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/actionlines.png",
+      "sha256": "d460c6aadb7f567837977f5d532a93b8bf100f349e534a24a25472e919df4b72",
+      "size": 8385,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/burst02_red.png",
+      "sha256": "3de7bf00cd370150259b263bd6f0581dbaa9002e1735fbf333f4fb257747e5ae",
+      "size": 58243,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/circle1.png",
+      "sha256": "0ddb62a35d0dd995b5ac3765eab491e88823e79b3bd2f7e8e23130eaf7f8cb9b",
+      "size": 6312,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/clockHand.png",
+      "sha256": "8976d47129ccf2bb1b11115c36d94ead5d8364d5dfb62cb1cda4735a1892fc23",
+      "size": 1755,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/drillshi.png",
+      "sha256": "54d43003e1f366aa4ebf51a24ed959b891ffb6ae0d7e521b0e969d00b5569248",
+      "size": 23727,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/eggzero.png",
+      "sha256": "5e0dd84e2eae54c1cd2be6191f9978755c0dd91a41a8cd2b5c8966c5e82f36e6",
+      "size": 654,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/fog1.png",
+      "sha256": "4a64e3b73742718e76d079716d90559859940406eeeb97025c165fb0b1484c2b",
+      "size": 37414,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/hisigata0.png",
+      "sha256": "885c27010d6d4389c4aa1b95b8928cf32a75b6d6742ee635da9d389ff302ffa3",
+      "size": 3056,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/hisigata1.png",
+      "sha256": "326189240bb7d2f45dca5377637324da43b146b72b168005175d37e2c9c93e95",
+      "size": 2237,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/icicle2.png",
+      "sha256": "b4d92270492804a7e5e23fb00523a2b3c2c1fdb49587d8bae9c2f63348f95314",
+      "size": 69294,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/naihu.png",
+      "sha256": "9e1d64e8a254f03dd1feb31b36ef911ef52cf23a3dbe91aebc4d5aae08717a81",
+      "size": 2192,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/particle.png",
+      "sha256": "0ecd83e1378e52163f53d495c3bc52d0642b57be74c4279b90df604e02ceb2c6",
+      "size": 307,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/particle2.png",
+      "sha256": "29325443ef31d6abe7bd3b01690fc14a044451d3bddf4553b969b617cdc183c4",
+      "size": 776,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/particle4.png",
+      "sha256": "19860e8d23bab5a01979e5cfac67390b4d44f36801ff478f679f0730502fe497",
+      "size": 496,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/rainnaka.png",
+      "sha256": "887f12bf3adf015d80ed1f3874939b741183709f189bdbcfd3490bc7b13a6eb1",
+      "size": 3464,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/ribbon01_trans.png",
+      "sha256": "105aef42a940951b759ee308624783fe8c9cf48b3b3338a3b00b5aa79b6b8429",
+      "size": 213,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/sakura-1.png",
+      "sha256": "26349b87e8596b8ac34d8d4f38c64a8f9830f4754a55cbde54778ff3d9eb7341",
+      "size": 5648,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/smoke_01.png",
+      "sha256": "643a06c242bdb9423698329e4329580567fa3418e2892ac9adcc37d913cd9557",
+      "size": 4483,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/squareWave.png",
+      "sha256": "d917ad45f7705283ad637acf6ff5f444b6802f24d973985b5fdc759271f9a3f6",
+      "size": 502,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/star.png",
+      "sha256": "b8d08eddd036efb5760fcec9f1ba375452e4289036917480ed4380e443e1a04d",
+      "size": 8196,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/starpart_.png",
+      "sha256": "3755d50108f2f85947be344bdb03479225793010704d75dc3d2b98f6ee951309",
+      "size": 153,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/effekseer-starter/textures/t0002.png",
+      "sha256": "e645cc9c76d3825659b3a11bd8bc0c84801855b5c6fce02ce7c546a4cfae99b1",
+      "size": 660,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/materials/sheet/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/arcane-magic-circle.png",
+      "sha256": "e2833951f5c6b75aa5c29370be5d5ef047a53ad4f08960628b012faaef030a36",
+      "size": 597092,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/big-fire-explosion.png",
+      "sha256": "5b36140e40d3432c4c8d1ad1d7dbb3c04d73837d62b663169539a40d00aa8424",
+      "size": 216948,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/blue-energy-beam.png",
+      "sha256": "c4f9b73a41e92e06219abf4043b9ef5db9f269657ce01cd856b5ea6cf302b248",
+      "size": 240588,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/campfire.png",
+      "sha256": "e23b21a4660872512c4d23dd86a48bf61794f08dfacba31d74d9e5181fedbb6c",
+      "size": 294558,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/charge-up-energy.png",
+      "sha256": "1b29efec655c255bb54e40126ad48cf4efdec8fe4d146c4ff698512c96c3fa36",
+      "size": 252224,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/cherry-blossom-petals.png",
+      "sha256": "ef9599247ce7fe08e6b28c1790d8d99802973762d70095f6bd85a55f523e14ea",
+      "size": 62616,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/cover.png",
+      "sha256": "694e3dae18111d1a76c6829ace209f644674ee7a507731136a6a7dc72d3ed71c",
+      "size": 35047,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/crescent-sword-slash.png",
+      "sha256": "221b51abe506d7b97bc7d3b76bd5f1ae3c25dbb9cbe56e77625c372a463481b9",
+      "size": 117002,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/critical-hit-damage-999.png",
+      "sha256": "7f662c7692aa5e682fa89591782256b4a45b2b6019060af912c8074e37272372",
+      "size": 308875,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/dark-shadow-aura.png",
+      "sha256": "9ee36fac163a9d34a34313f429da32ce3e8e0e68243442598df00038d684a03c",
+      "size": 141857,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/dash-speed-lines.png",
+      "sha256": "6a9b624134d5a929a4d054952eba18ed16021cfafccabced6bcad2d42817716c",
+      "size": 144018,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/dimensional-portal.png",
+      "sha256": "1179b6e94be5316b46ee0f39d12bfbbc30fb3c68a320ce6e7ccd0b219ac9aee6",
+      "size": 260462,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/dragon-fire-breath.png",
+      "sha256": "9c277b2446fcea41f3ccd175ecdaa2535c762f80ee25f955cbdab5265c4e3512",
+      "size": 303893,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/electric-impact-hit.png",
+      "sha256": "4d513a82ecc58b6725fdd1285d3ce6f89e0e1b50fb2a05e9ab8e0a3f59822d3b",
+      "size": 268266,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/embers-rising.png",
+      "sha256": "af2156c3a2b2e8b66600f8e16b18e8a814299ec88c93f864d915199f3705dc96",
+      "size": 68165,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/falling-leaves.png",
+      "sha256": "978d2a211996ed09bebe33b2b90e863e2acb05d869bc2caed276a23b16bc8604",
+      "size": 38899,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/feral-claw-scratch-blood.png",
+      "sha256": "d882209c9bf83a14f393b349ed541f600757ab5b0619b065cdae13c4d89b8355",
+      "size": 134576,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/fire-tornado.png",
+      "sha256": "5b388cf538c03d173cc7d1edfb65813e6bdba6a804e3d5472d0ad5c3305fd47d",
+      "size": 196754,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/fireball-projectile.png",
+      "sha256": "60155958945bd01af0c2f4a4ab65e14d0c4147989dc333325efdf2802f9286fe",
+      "size": 232500,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/fireflies.png",
+      "sha256": "ff203d660e0891bf039acd5e57b2efacd28ac455960e1a93af0f018399624022",
+      "size": 36390,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/fireworks-celebration.png",
+      "sha256": "9d89e9e4589260c58d211c8a53e73068e7aadb85ce912f19a612486a764f5a23",
+      "size": 96354,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/frost-nova.png",
+      "sha256": "8a62970dd85ea2b95aff3dbf0b214c34ebdfb17435a000380553e7be9e6f5bbb",
+      "size": 342982,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/gold-coins-loot-drop.png",
+      "sha256": "ee510d35ec64d70ac9e0946d5022d799e319eae5a14c287363ca5634207f6f64",
+      "size": 164928,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/ground-slam-quake.png",
+      "sha256": "2e6621af870ebec40f5e9ac72afcfdc1574cc0290226c66b4fa5080dd8c237a7",
+      "size": 102669,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/healing-with-rising-crosses.png",
+      "sha256": "fe8be143b55961e6ae842df90df6cf5c3ca426890d96ed4d0ceb099f2bb29502",
+      "size": 102783,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/hex-shield-barrier.png",
+      "sha256": "9cc5f03d9d5c82f1d40f2425e5e7db660205b09dbd721cdb52f9f48bc4fae6a2",
+      "size": 425321,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/holy-pillar-of-light.png",
+      "sha256": "b0556bd02852f223d3e1490359002cc57433236506e8a8514cfa9352ff67a996",
+      "size": 202220,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/ice-spikes-erupting.png",
+      "sha256": "42500cb438ac287e422ae582e13404d3967a2c507fc85c3d3af9811eb2501a19",
+      "size": 264677,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/lava-eruption-pillar.png",
+      "sha256": "7b164440abdf72cf90ed6faa4292c9849a8f2bbcf94d93cd8fc4bb6093669d9b",
+      "size": 192035,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/level-up.png",
+      "sha256": "4128c053a0a1fa7c45824767bb017753714a61dedee9f9338152f33453f05226",
+      "size": 208543,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/lightning-strike-from-the-sky.png",
+      "sha256": "bdb4991a6a71981845e382e567eeb45f14a7979ccbc645a28986c3d466209ec2",
+      "size": 200007,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/meteor-strike.png",
+      "sha256": "b3ec8b64bfb360e5ccfdb55e1ac8a9f4b0804dedb6a7dc39bfb26a434ff322e4",
+      "size": 148349,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/plasma-orb.png",
+      "sha256": "40721a088e69f542e40c5ce26211f218eb5c537304ade418134da1466f5fefab",
+      "size": 293602,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/poison-gas-cloud.png",
+      "sha256": "1645ff2a1fa7fb2737bc7a2abc66e3c62afc54a46313194828f53ecea604411b",
+      "size": 110704,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/purple-black-hole-vortex.png",
+      "sha256": "04777405aca5f9f89f5924796bd6a892583d727ee580f33d21d780cb766f9d59",
+      "size": 265394,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/rain.png",
+      "sha256": "640f59d13d8d6c4ce5d9db5a284878ffed1f9224158242bd6c4f71ac00b353ef",
+      "size": 70033,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/smoke-poof.png",
+      "sha256": "490860181063e924b670330a6bdd85aabe175aeb8533f007b5e77120d4425aff",
+      "size": 42296,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/snow-falling.png",
+      "sha256": "08199f1e8b696c57a5d137f8c121bcb4864a5a064cf61387dbffd7a789da61fe",
+      "size": 90307,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/sparkle-twinkle.png",
+      "sha256": "e4bce2e6a8341b2fc9050220bfce8dc42526d4667beb999aecbf159697419d63",
+      "size": 140605,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/spinning-wind-slash.png",
+      "sha256": "1cd9f9b3080efe5265f2bedd26dfe5a4485fadeec45fb554555c370627362b93",
+      "size": 151808,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/teleport-blink.png",
+      "sha256": "47627849a4acbc60e2d0bf3b3ebdd9d700e77a25fa7663e3aae374ab2651f0b1",
+      "size": 190339,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/triple-slash-combo-with-blue-energy.png",
+      "sha256": "05d50046a38cbcd97e0b6ecd9c65abbad4d469504796546f48fb33bacca34062",
+      "size": 257174,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/pixel-scenario/preview/water-splash.png",
+      "sha256": "83ada35a90e5d1f2e8f671794539029b2441391510d24f1a74374ca414e3b5d8",
+      "size": 164671,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/dirt.png",
+      "sha256": "232ded677f1fdba0585fcd8c0971936c50d69dcf65d47765928cffb783fdb85f",
+      "size": 280833,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/fire.png",
+      "sha256": "b0fde238e03d5d407588713f7c28555b6ad3e2352d5117834626681622d888ff",
+      "size": 114197,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/flame.png",
+      "sha256": "d4890fd59cdcc93e11be41b0a9a1987b686577243ecd46b24c2938ff565b565e",
+      "size": 117394,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/muzzle.png",
+      "sha256": "1ff07057dc1f6ac5cb05ddc3dd4ad6adaec5ba81a5b5183c0979f5b56e528e4f",
+      "size": 144063,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/ring.png",
+      "sha256": "513ee482c5602e7a738eb61dc170461a9f75bf0e5f339a95a80dc2df8c859513",
+      "size": 38480,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/scorch.png",
+      "sha256": "ce46d67d70f0d0ac8653dcf9e360fcba0c7aa7bcb5b1ba84db0819e3a0dc17c6",
+      "size": 35839,
+      "visibility": "public"
+    },
+    {
+      "path": "extensions/realistic-starter/textures/smoke.png",
+      "sha256": "396d44615ff1257213f63b9133334e317533341aefb0087019abec1d9aa0fcdc",
+      "size": 174645,
+      "visibility": "public"
+    },
+    {
       "path": "motion/model.safetensors",
       "sha256": "ee488c6d72e6e1b547ed583847c24cb4b81ea5563f1359699a3536331216e6fe",
       "size": 35353890,
       "visibility": "public",
       "source": "og-motion-train 29e4538, weights/geo8 (the retrain from run3: geo run epoch 8, dec1) through scripts/export_engine.py; upright Idle_02 frames 22–25 and the jump at Regular_Jump frame 24 from library_full.npz, idle raw and FK lean checked below 5 degrees",
       "licence": "Licensed by NVIDIA Corporation under the NVIDIA Open Model Agreement."
+    },
+    {
+      "path": "sheets/arena-social/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/arena/assets/art/brenna.png",
+      "sha256": "6f3911e5640225faecba1e7699987688ecf48b01ea97866a2261a27a8984f2e6",
+      "size": 98789,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/arena/assets/art/idris.png",
+      "sha256": "9dac67bf242617322ce6174b7d28de02eafb7cc8a004c1d01864d05db80d8b56",
+      "size": 98613,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/arena/assets/art/lurker.png",
+      "sha256": "82c257e81e02085b072176ee272485be815e7e3890a6e51bb278fceca63d973e",
+      "size": 113881,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/arena/assets/art/maren.png",
+      "sha256": "2304b9d8acc3e4d8643f909a1bd6dcc9f2b442fe1b3ffe161a1ca4ef2a29a404",
+      "size": 108288,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/arena/assets/art/oarsman.png",
+      "sha256": "135218360523adc035ccb8960a5117a01f82842c9b255f78418ff2ef0c4567e1",
+      "size": 114483,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/arena/assets/art/sela.png",
+      "sha256": "54a851a215d2c2476af6d4e750d2ba89faaafd11552cd9ac586b4d9d14d9fb19",
+      "size": 102886,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/arena/assets/art/ysolde.png",
+      "sha256": "34224566caedcb8cfa9f01ddbe1c0dfca614439dfadc609322083646e8745dd7",
+      "size": 106990,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/arena/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/card/assets/art/card-art.png",
+      "sha256": "5f80f6b421d02847ed87a846c7b7693af3200496de582cc7032e7c139e1da9c6",
+      "size": 216373,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/card/assets/art/runmap.jpg",
+      "sha256": "57bfef9c5e1c4dc58ec49c945859682e7665958afd2a8dff2c351611973dd398",
+      "size": 133936,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/card/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/components/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/currency/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/hud-builtins/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/hud/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/idle/assets/art/goods.png",
+      "sha256": "86f7b84ab9fb85945729c9d79727015bf15df19914d2cb38496241e0d768a6aa",
+      "size": 203377,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/idle/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/meta/assets/art/shop-items.png",
+      "sha256": "9e757c88645bbe5a1a38517b4913626e4064df56915b0928d4b05eed709704b2",
+      "size": 362063,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/meta/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/profile/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/puzzle/assets/art/meadow.jpg",
+      "sha256": "ab1ccad4ec31399dfb3f1ed9814fc1e1df087378f88a62d18d2c799d84436543",
+      "size": 324103,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/puzzle/assets/art/pieces.png",
+      "sha256": "4ae1aac240e76ad928e4f9e588ad2477588ac2cb7a5eff97d94a810cd3a85e66",
+      "size": 185868,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/puzzle/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/racing/assets/art/garage-car.jpg",
+      "sha256": "128afe29be589e99220fd18aac313f7ad640df6924add7b30f36c6482a7414cf",
+      "size": 71948,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/racing/assets/art/hud-nitro.jpg",
+      "sha256": "3ee97a28f9fa3c69850dbf7f19cc31b9352ab18e604f0906ff387b5fab2afffb",
+      "size": 4218,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/racing/assets/art/hud-stage.jpg",
+      "sha256": "3f0b7b6a5a285400145d7cf98ad061596a9b20622e49a1094178c589645500ce",
+      "size": 237952,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/racing/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/jacket-1.jpg",
+      "sha256": "5ea4e07c822d6057f4566aa2c8de50bd8ed19c1e5a80d9b4c9c93c658beb8b90",
+      "size": 15198,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/jacket-2.jpg",
+      "sha256": "9b253519b72e2e2111071008d860ddfe36e3113b8025c3f1d65e5ce4f0eac662",
+      "size": 15445,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/jacket-3.jpg",
+      "sha256": "2817a4d58f8662dbfcd235f9ce93a0fd39752b3d98bc49d40b85b98ad6101334",
+      "size": 16484,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/jacket-4.jpg",
+      "sha256": "d5b49789b4e292ba7233f1005fc04ad990c03a065add9f45035d6d68f966548a",
+      "size": 13342,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/jacket-5.jpg",
+      "sha256": "cae8337d6dfba1eea42ee0c6616eaaa5f0a7b6d562a9ee7cd809df6f68dd5ea2",
+      "size": 17787,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/jacket-6.jpg",
+      "sha256": "d8415400dbacc41843a980d5fa3e2cdff3f27035c592d41ec5c6f4265419b665",
+      "size": 16713,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/jacket-7.jpg",
+      "sha256": "058ab2b2afbe0a14afd0bef03d9dd1fbac01885b5adb6811b4309f62b2d1e8b5",
+      "size": 18856,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/jacket-8.jpg",
+      "sha256": "ba7c2340f6038dd3394694fcab3d5bd50231c310e90f9017308fe0f46d271909",
+      "size": 16033,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/jacket.jpg",
+      "sha256": "27e4dc53ec73230be74baaf7b20480c988baee49090db1cce152b0ff6ccb5255",
+      "size": 11096,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/select-stage.jpg",
+      "sha256": "56b567e8bf3958b375b85451b00b2014d5736fdcbfa207c3c30f8dd219f76a4d",
+      "size": 163447,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/art/stage.jpg",
+      "sha256": "24ff93e1d6fd2511da9ebde996d0ce2146c31a690681e718d68eaf3c0c17290c",
+      "size": 254322,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rhythm/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/abbey.png",
+      "sha256": "12ed4416544905a0ea32d12a2361aacb1f5e26dfefae4ffd57e113174ff08c22",
+      "size": 260338,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/blade.png",
+      "sha256": "8711064f40ef0784a62d87e01af610f21265125303068842a0489c9c810df4d3",
+      "size": 257482,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/brenna-full.png",
+      "sha256": "e8508ef25284b6409d87575bb1e858ce7fb1dbdcef56e8ffab481bee01f8a8ba",
+      "size": 489482,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/brenna.png",
+      "sha256": "6f3911e5640225faecba1e7699987688ecf48b01ea97866a2261a27a8984f2e6",
+      "size": 98789,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/causeway.png",
+      "sha256": "92321bdac8714427da1845cf44f9e2baeb025b6b1a97ce97a9421416c32dc77f",
+      "size": 279213,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-arc.jpg",
+      "sha256": "27e4dc53ec73230be74baaf7b20480c988baee49090db1cce152b0ff6ccb5255",
+      "size": 11096,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-brannoch.jpg",
+      "sha256": "2294ef2c3852084ed83137b2a94629ebc9589f7107a2fbf5e632f33068090bbd",
+      "size": 12501,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-caelum.jpg",
+      "sha256": "20c63ec72d87dc5e0c5ebaf3d5d285c35d77fdc426b1379271ba4397a19d4413",
+      "size": 12269,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-ether.jpg",
+      "sha256": "c07394ddf9505f85bb41462957f9eb375fdfd91c31810fce8601cb2496ece8db",
+      "size": 9140,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-fire.jpg",
+      "sha256": "337e7da6afbdb329129b6ab8320aeb6e1587e04c8a8fd6707be1f0dd6275def1",
+      "size": 8224,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-frost.jpg",
+      "sha256": "c6aa5be3cbffb0f13633ee3a2ef477af989feb884df9515e79a5ce7d86ea99aa",
+      "size": 13038,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-fury.jpg",
+      "sha256": "961f18de7e133aed957367716c802e9c0e28ec32b2a6198214c22e5616ac725c",
+      "size": 10076,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-gale.jpg",
+      "sha256": "dbd67eaa5b4c9a89b4e356050b0f879555c395b64555bc96ef33662b6f9b9b0e",
+      "size": 11397,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-gold.jpg",
+      "sha256": "f2702ee159f51623c27833f1d0a754b3e5fe9df3a67a66139c11a423bc51f98a",
+      "size": 5375,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-hex.jpg",
+      "sha256": "cb32765b117462f654c8200514f2263de4d50fedb8e6a408b7b39ae6415c950f",
+      "size": 8081,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-ice.jpg",
+      "sha256": "0ae87b416b42c6c656a2f407d94ca12ce5d9ef656f2f53f0690a2a6cde254b7f",
+      "size": 11139,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-map.jpg",
+      "sha256": "ea79c8a7e7f43172d242ec5738ab38bd182430f021014613f256c69c442bf8be",
+      "size": 51036,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-meteor.jpg",
+      "sha256": "9e230017f9ba6294f045e2beb5adcae3ed7d61d744b13b6a379e715a93d57f57",
+      "size": 13035,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-radiance.jpg",
+      "sha256": "691c54085be51258921011c600d9280889a47165c974fcf1cc8d765f42cf3e9f",
+      "size": 11046,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-shard.jpg",
+      "sha256": "e7c7b2cd2fa65a6c7e758805aee5b0ee494722367a5b6a0157987d9b03848b6d",
+      "size": 5320,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-slash.jpg",
+      "sha256": "fa0938b3c4487674c8d6aa2cefcbd29d8d33d552c9d6f2e27b5c4d453e725078",
+      "size": 12055,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-stage.jpg",
+      "sha256": "03db626259611437721dc331599d079fb08e0f6a5b5e15a168944039badec607",
+      "size": 296145,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-sylvenne.jpg",
+      "sha256": "93fd24dff2d9d3d235ef9845d3d808faf87201fe2d9cc2e58cbe208529decb18",
+      "size": 11272,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-tonic.jpg",
+      "sha256": "2fa7b4a8225f9eb78bca0f28c9ed96a8f311920464a7e8ccbafb19ed586875ce",
+      "size": 8344,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-ward.jpg",
+      "sha256": "906840fe54d0892b61c4260ac7e456239005b32279e561549c039085269b259b",
+      "size": 9176,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/hud-ysolde.jpg",
+      "sha256": "c9320926ed69a04e45583b7132e677175e0d079a1a099065ed517d2a73400ffc",
+      "size": 12049,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/idris.png",
+      "sha256": "9dac67bf242617322ce6174b7d28de02eafb7cc8a004c1d01864d05db80d8b56",
+      "size": 98613,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/items.png",
+      "sha256": "84021801b750868d8e96271d87ff968a57ac6dab31bfc20864b36d38bc796b24",
+      "size": 1231664,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/lurker.png",
+      "sha256": "82c257e81e02085b072176ee272485be815e7e3890a6e51bb278fceca63d973e",
+      "size": 113881,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/map.png",
+      "sha256": "1259fedcc2199741f9eabf4e62f1da802a6cc2d312a015b026557aeadfe82a26",
+      "size": 1626104,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/maren.png",
+      "sha256": "2304b9d8acc3e4d8643f909a1bd6dcc9f2b442fe1b3ffe161a1ca4ef2a29a404",
+      "size": 108288,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/oarsman.png",
+      "sha256": "135218360523adc035ccb8960a5117a01f82842c9b255f78418ff2ef0c4567e1",
+      "size": 114483,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/scene.png",
+      "sha256": "366b0dd41c6f9232b7339fdab4e5b199584bdcaad4eefddd7582104326fa08c4",
+      "size": 2320844,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/sela.png",
+      "sha256": "54a851a215d2c2476af6d4e750d2ba89faaafd11552cd9ac586b4d9d14d9fb19",
+      "size": 102886,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/art/ysolde.png",
+      "sha256": "34224566caedcb8cfa9f01ddbe1c0dfca614439dfadc609322083646e8745dd7",
+      "size": 106990,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/fonts/arabic/NotoSansArabic-Regular.ttf",
+      "sha256": "7c6accbb8df37e870e1bdf98648163e069a98f7bbbbe020b3be9b52ce31b6dd9",
+      "size": 176436,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/fonts/chinese-simplified/NotoSansSC-Regular.ttf",
+      "sha256": "2691c17e3cccb1b50877b59c6dd5ecf065f935360b53e3f5ef3adc409c7e6d78",
+      "size": 1419424,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/fonts/japanese/NotoSansJP-Regular.ttf",
+      "sha256": "0c49addf26ba186b6a310842d70b4771a4242a23aa160133108c541e04bed74e",
+      "size": 1347888,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/rpg/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-film-cellar.jpg",
+      "sha256": "f70567c5be6db0dd33bd9d2d0a1dab8dd50c2d1ec7abba99f57cdc78bca27282",
+      "size": 90022,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-film-dawn.jpg",
+      "sha256": "bb50f1cf32eadb2edc8a1de858798318d8e58df1b95048daa24a474e17ae0d67",
+      "size": 82530,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-film-hall.jpg",
+      "sha256": "d0678c673c8956ee5c1cc4a61222d8712091e7ba86bd034d6a16529c802403ce",
+      "size": 78896,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-film-kitchen.jpg",
+      "sha256": "dfaa5f11d826bef6839f2fc6db1670bd99d9cb418a0ce78876444a3d435372da",
+      "size": 65187,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-key.jpg",
+      "sha256": "84e8357e58c651b9ca6dbd4128476e280f69e202646c94804de64c9deb7a0b05",
+      "size": 248367,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-logo.png",
+      "sha256": "b58823ca6a8d1d822fcdacd4f413fc0a386fd856dcfe583b2e1f46ab42769d67",
+      "size": 286971,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-mode-arena.jpg",
+      "sha256": "f8f3a6c8597e20b8a0dfdb8297805f413658ba1470fd0ae349c33a795dcec9a7",
+      "size": 145304,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-mode-story.jpg",
+      "sha256": "d2a5acecb32a0260059ff4b0bdf70bacead2151e63e3a37cef3adb590fc722d4",
+      "size": 133896,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-mode-trials.jpg",
+      "sha256": "bc2e6a221d1bbc4c59675033355999e48b76ab485b906509db8dd60e5a674a3f",
+      "size": 134192,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/art/front-studio.png",
+      "sha256": "af9cd564a1cc5be376ae8206f5405eefa3c1d75e32436f33d1d38a017fb6ffa5",
+      "size": 40711,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/screens/assets/icons/ink-icons.png",
+      "sha256": "108c229749500fc59cde544c981ef9751e7b1cdd0691e19d4039ac8f4ade7ba2",
+      "size": 30867,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/barrier.jpg",
+      "sha256": "b624a0466efb2011c04a2f1df76d6687a20cd1d9cb242b32ab6a4bc60251dc63",
+      "size": 9467,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/burn.jpg",
+      "sha256": "337e7da6afbdb329129b6ab8320aeb6e1587e04c8a8fd6707be1f0dd6275def1",
+      "size": 8224,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/cell.jpg",
+      "sha256": "5cc0a01851208bc6843bb78c96d3c3baea29e243950e510312e038bee0b377a5",
+      "size": 10500,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/dash.jpg",
+      "sha256": "6d09cc5e6969e336dda6fec16ba4ecbbbadd574de244342aac765c71f75ab851",
+      "size": 9703,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/frag.jpg",
+      "sha256": "e5c2e0ac5646194ecb8405b89129f34e5122bbce9297ae18beb418cefce81215",
+      "size": 11110,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/fury.jpg",
+      "sha256": "961f18de7e133aed957367716c802e9c0e28ec32b2a6198214c22e5616ac725c",
+      "size": 10076,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/haste.jpg",
+      "sha256": "d0b1d4f8e92262eb1d98f0bfe699255e1064ca863c550885d6dcbc85212472a7",
+      "size": 10838,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/map.jpg",
+      "sha256": "94233462b8e42f8a98c904a1f5af4ffe5c3021ed2e4ecd6fc419ece3e0bc2b69",
+      "size": 46297,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/moraine.jpg",
+      "sha256": "93fd24dff2d9d3d235ef9845d3d808faf87201fe2d9cc2e58cbe208529decb18",
+      "size": 11272,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/overdrive.jpg",
+      "sha256": "06655bdad03920ebfdee722489c7dd63a537e7d8889990bd3e57e3fc5d2066ca",
+      "size": 9955,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/quill.jpg",
+      "sha256": "20c63ec72d87dc5e0c5ebaf3d5d285c35d77fdc426b1379271ba4397a19d4413",
+      "size": 12269,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/rounds.jpg",
+      "sha256": "3ee97a28f9fa3c69850dbf7f19cc31b9352ab18e604f0906ff387b5fab2afffb",
+      "size": 4218,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/stage.jpg",
+      "sha256": "0d10b898f4888d374b0d6995b448fc287360e3b1eade87cbfa5b595ccda414be",
+      "size": 273218,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/stim.jpg",
+      "sha256": "2fed72dcdb76a558f59b41161e1a35c4129c69665633077325f8113a644e01d6",
+      "size": 9280,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/art/ysolde.jpg",
+      "sha256": "c9320926ed69a04e45583b7132e677175e0d079a1a099065ed517d2a73400ffc",
+      "size": 12049,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/shooter/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-field.jpg",
+      "sha256": "8954ef99379d0cd10fc295f521dd8cdfb15cce6f91d773ac8dbc10d8fc9bd1ef",
+      "size": 343358,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-map.jpg",
+      "sha256": "e592ccfd1eda4a723f64c21c1a199ee1aac8b95368a3108d6faf5d5ee320fe0c",
+      "size": 38748,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-res-0.jpg",
+      "sha256": "ed82e20b9a5c2d3f70a3f2f1ce3620cfaa6b8fb6d9f9fd1945bc1d9fe4bd26d9",
+      "size": 3209,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-res-1.jpg",
+      "sha256": "9952d0a0f62819cc6d615afd53a8fe8a5de3e4035dce8a06103d5df61986163f",
+      "size": 2915,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-res-2.jpg",
+      "sha256": "33675217c428c5addacecd2068dfedff7c19708c1771c2532cfa0a9d621f805b",
+      "size": 3938,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-res-3.jpg",
+      "sha256": "ec9e77788c673d8726de7bfa308f957e23ed0a8b63fd1d92ef72e735dfc11e6f",
+      "size": 3197,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-res-4.jpg",
+      "sha256": "eb175e113cfe53ed70782ed5dac8e081cc94592b9e95e137663de4cd2f1d6246",
+      "size": 2616,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-res-5.jpg",
+      "sha256": "feadbdae18cf9ffc97cf3ac7f862822344f01be6ff02f41015d078389bcd7581",
+      "size": 3080,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-rts-0.jpg",
+      "sha256": "7eae07fd522acade21be91d89616f451f531d357a5b56a890a769ef4cb96f264",
+      "size": 5704,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-rts-1.jpg",
+      "sha256": "7530ba5462ed375e807e9c94bc1b3fdc5835d512090637e8d6988e86c3fee339",
+      "size": 5890,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-rts-2.jpg",
+      "sha256": "1b8fc27de3d30a5167d7dc4ca35e45c56ffae90b05d80fe4e59b8f5526981395",
+      "size": 5499,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-rts-3.jpg",
+      "sha256": "97f4744cc8a49d8e8cf19e1f30c7ca927a84c3b677d44d6c06999afb5cfadb85",
+      "size": 4796,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-rts-4.jpg",
+      "sha256": "e41249be3c86c419c49ca680a7055da4cc5c311f2f191dfa832c3766403a3606",
+      "size": 4643,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-rts-5.jpg",
+      "sha256": "29963a7a32d850866a4ba5baec2c7c253904a7464731fc8c75c3319d15df9c14",
+      "size": 4798,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-rts-6.jpg",
+      "sha256": "a780446a855f50792297f0aa38f5f2158e825c70eb0da68720c5c8ce09ac30b0",
+      "size": 4610,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/art/hud-rts-7.jpg",
+      "sha256": "766e872e7b8dda1bf77272c4ccadefc565e1368b532c7d919e6e6eeafe564e5c",
+      "size": 4656,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/strategy/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/style/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/world/assets/art/world-scene.jpg",
+      "sha256": "ced59878d88cabf6d89919cf8f933a5fb4a7e3717c5cc927fd4ff31911cd2fa8",
+      "size": 686967,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/world/assets/art/world-topdown.jpg",
+      "sha256": "12ae52272792ab3518d8810bf89091d0af529ceec8e39c67513fe840c6784b6c",
+      "size": 970162,
+      "visibility": "public"
+    },
+    {
+      "path": "sheets/world/assets/icons/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "shell/brand/icon-192.png",
+      "sha256": "7109e4663c59e266b0653e027d8e50183ecad6c6cdf59ac0b236ef4eb3b231e3",
+      "size": 7992,
+      "visibility": "public"
+    },
+    {
+      "path": "shell/brand/icon-512.png",
+      "sha256": "3544aca00b9f2ac4776fde41e343e607ff264dbe80333cf81235264a3d285b4c",
+      "size": 23824,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/forest/assets/models/palm.glb",
+      "sha256": "e2e1b02f37a1211f36df0a2a94a4a0685ad6a15548ec7e0977daa2ecf9b099c8",
+      "size": 9416,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/lane-panic/assets/models/walker.glb",
+      "sha256": "e068aeca18b491e54b48ae8c264d208a414f9de455a571340bf55ef0c3d2face",
+      "size": 34296,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/qoa/frames.qoa",
+      "sha256": "c194313e3e19927ba77d78fddbb74712ce3749738c4243ddcca2a02f8034c461",
+      "size": 9728,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/story/assets/vo/guard_halt.wav",
+      "sha256": "2a8bb66fead248d56eb263762f4c3097934021a855a07f31c4d2393f575c36fb",
+      "size": 27118,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/terrain/assets/terrain/hill.png",
+      "sha256": "9d1629a7d90edb0a2eeaeaaebd217f96f86bd9e063571180e7c41006b1ae71ff",
+      "size": 20598,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/terrain/assets/textures/grass.png",
+      "sha256": "ab259a74d3a7d0d40503fadbded126a2bd6573e906ddaec53d77f8a78e7e1552",
+      "size": 97,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/video/assets/clips/count.mp4",
+      "sha256": "61708036926cffb47e76a633fdc3a0dc3d9b110592b908a2f076a7b62cd84cf2",
+      "size": 74243,
+      "visibility": "public"
+    },
+    {
+      "path": "vendor/basis/basis_transcoder.wasm",
+      "sha256": "f593e2722eb16014a3959e1a7a41ac09419bb4bd23e09e34c5c4f9e6c2b94c25",
+      "size": 519781,
+      "visibility": "public"
     }
   ]
 }

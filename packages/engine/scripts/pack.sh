@@ -37,6 +37,9 @@ if [ "$(cat "$here/native/build-profile" 2>/dev/null)" != release ]; then
 fi
 rm -rf "$out"
 mkdir -p "$out/stage"
+# The pinned files the package ships or copies in (extensions, sheets, vendor, the templates'
+# fonts and styles; docs/ci.md §The asset store), each checked against its pin.
+bun "$root/scripts/assets.ts" ensure "$here" "$root/templates"
 [ "$native_only" = 1 ] || for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm dist/web-publish-2d/origin-engine_bg.wasm dist/web-publish-2d/origin-engine.js \
     dist/web-publish/origin-engine-lanes_bg.wasm dist/web-publish/origin-engine-lanes.js dist/web-publish/snippets \
     dist/web-publish-2d/origin-engine-lanes_bg.wasm dist/web-publish-2d/origin-engine-lanes.js dist/web-publish-2d/snippets \
