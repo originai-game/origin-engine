@@ -594,9 +594,10 @@ fn group_status(eng: &Engine, a: &assets::Assets, g: &Group) -> StreamStatus {
         name: g.desc.name.clone(),
         scene: g.desc.scene.clone(),
         state: g.state.wire(),
-        ready: g.state == State::Resident
-            && g.ready
-            && cell_groups::ready(a, &eng.render.borrow(), &g.desc.name, now),
+        ready: g.state == State::Resident && g.ready && {
+            let rs = eng.render.borrow();
+            residency::shown(a, &rs, g, now) && cell_groups::ready(a, &rs, &g.desc.name, now)
+        },
         wanted: g.wanted,
         requested: g.requested,
         priority: g.desc.priority,

@@ -247,7 +247,8 @@ looks and colour LUTs (`.cube`).
 - Until its group's model textures are decoded, models stay hidden rather
   than exposing an untextured proxy. Texture decode and transcode run away
   from the tick. Resident and StreamEvent describe pack readiness; the
-  presentation-only `StreamStatus.ready` becomes true after preparation.
+  presentation-only `StreamStatus.ready` becomes true after preparation,
+  once the models it showed have faded in (§5), for a group of any trigger.
   A directly loaded texture may draw its 1x1 grey placeholder meanwhile;
   use the loading screen when that pop would be visible. A sound plays as
   silence of its own length until its samples arrive; the real assets take

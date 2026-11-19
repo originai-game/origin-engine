@@ -984,6 +984,117 @@ fn a_cell_group_is_not_ready_in_the_tick_its_cell_loads() {
     std::fs::remove_dir_all(base).unwrap();
 }
 
+/// A group that is no cell's (a requested one here; a distance or a volume
+/// group is the same) upgrades a model the world already places: hidden
+/// until its textures are prepared, it then fades in, and the group is
+/// ready only once the fade is over. Broken while only a cell group's
+/// models were asked after: the group read ready as its textures landed,
+/// with the whole fade still to come.
+#[test]
+fn a_named_group_is_not_ready_while_its_models_fade_in() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    /// The hut group's ready as a system read it, and its textures
+    /// prepared only once `prepared` says so.
+    #[derive(Default)]
+    struct Gated {
+        prepared: Cell<bool>,
+        read: RefCell<Vec<bool>>,
+    }
+    impl Hooks for Gated {
+        fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+            if call.kind == 0 {
+                let status = value(host_impl::answer(og_stream_status(
+                    call.engine,
+                    "hut".into(),
+                )));
+                self.read.borrow_mut().push(status["ready"] == true);
+            }
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            match std::fs::read(path) {
+                Ok(bytes) => Fetch::Ready(bytes),
+                Err(e) => Fetch::Failed(format!("{path}: {e}")),
+            }
+        }
+        fn texture(
+            &self,
+            t: &og_bundle::runtime::CookedTexture,
+            f: Option<&og_render::TextureFormats>,
+        ) -> Fetch<og_render::TextureSource> {
+            if !self.prepared.get() {
+                return Fetch::Pending;
+            }
+            match t.to_texture_source(f) {
+                Ok(t) => Fetch::Ready(t),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+    }
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("named-group-fade-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let image = image::RgbaImage::from_pixel(64, 64, image::Rgba([200, 90, 40, 255]));
+    let mut png = std::io::Cursor::new(Vec::new());
+    image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+    cook(
+        &root,
+        &[
+            ("hut/tex.png", png.into_inner()),
+            ("hut/model.ogt", b"type model\nversion 1\n---\nmaterial \"paint\" {\n  map \"tex.png\"\n}\npart \"wall\" {\n  material \"paint\"\n  boxGeometry {\n    width 2\n  }\n}\n".to_vec()),
+            ("world.ogt", b"type scene\nversion 1\n---\nstream \"hut\" {\n  asset \"hut/model.ogt\"\n}\nentity \"hut\" {\n  model \"hut/model.ogt\"\n}\n".to_vec()),
+        ],
+    );
+    let hooks = Rc::new(Gated::default());
+    set_hooks(hooks.clone());
+    og_host_begin_bundle();
+    let watch = og_system_define_system(
+        "Overlay".into(),
+        json!({ "reads": [], "writes": [] }).to_string(),
+        1,
+    );
+    let game = og_game_game(Some(json!({ "seed": 1, "systems": [watch] }).to_string()));
+    let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+        .as_u64()
+        .unwrap() as u32;
+    let held = Rc::new(Cell::new(Held::default()));
+    answer(set_render_backend(
+        engine,
+        Some(Box::new(Recorder(held.clone()))),
+    ));
+    let g = Game { engine, held };
+    g.place("world.ogt");
+    answer(og_stream_request(engine, "hut".into()));
+    for _ in 0..8 {
+        g.frame();
+    }
+    assert_eq!(g.state("hut"), "resident");
+    assert_eq!(g.held.get().instances, 0, "an untextured model drew");
+    assert!(
+        hooks.read.borrow().iter().all(|r| !r),
+        "ready with its textures pending"
+    );
+    let before = hooks.read.borrow().len();
+    hooks.prepared.set(true);
+    for _ in 0..64 {
+        g.frame();
+    }
+    assert_eq!(g.held.get().instances, 1);
+    assert_eq!(g.held.get().reveal, 1.0, "the fade ended");
+    let read = hooks.read.borrow()[before..].to_vec();
+    let waiting = read.iter().take_while(|r| !**r).count();
+    assert!(
+        waiting >= 20,
+        "ready was read {waiting} ticks into a 24-tick fade: {read:?}"
+    );
+    assert!(
+        read.len() > waiting && read[waiting..].iter().all(|r| *r),
+        "ready did not stay: {read:?}"
+    );
+    assert!(og_engine_destroy(engine));
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 /// Full meshes must not leave their cooked raycast BVHs behind. HLOD's
 /// baked atlases and proxies live as long as their placements, not forever
 /// in the model cache. Keep all bundles open throughout this route.
