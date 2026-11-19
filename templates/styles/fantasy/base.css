@@ -285,6 +285,25 @@
   --button-image-width: 50% var(--button-image-end);
   --button-primary-image-disabled: var(--button-image-disabled);
   --button-primary-ink: var(--on-primary);
+  /* The action (button.go) is the painted red plate too: no fill under
+     the art, the plate's own light ink, and no cut or glow of the
+     default's (the art draws its own ends). */
+  --action-fill: none;
+  --action-hover-fill: none;
+  --action-pressed-fill: none;
+  --action-ink: var(--on-primary);
+  --action-glow: none;
+  --action-cut: 0px;
+  --action-reward-fill: none;
+  --action-reward-hover-fill: none;
+  --action-reward-pressed-fill: none;
+  --action-reward-ink: var(--on-primary);
+  --action-reward-glow: none;
+  --action-confirm-fill: none;
+  --action-confirm-hover-fill: none;
+  --action-confirm-pressed-fill: none;
+  --action-confirm-ink: var(--on-primary);
+  --action-confirm-glow: none;
   --button-font-size: var(--font-step-2xl);
   --button-tracking: var(--font-tracking-wide);
   --button-transform: uppercase;

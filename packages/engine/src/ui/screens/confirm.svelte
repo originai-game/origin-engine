@@ -52,7 +52,6 @@ button.plate::part(base) { border-width: 0; clip-path: polygon(var(--dialog-cut)
 /* Chinese, Japanese and Korean have no capitals to track: the label is set a step larger instead. */
 button.plate:lang(zh, ja, ko) { --button-font-size: var(--dialog-label-cjk-size); --button-tracking: 0; }
 button.glass { --button-fill: var(--hud-plate-fill); --button-hover-fill: var(--hud-plate-fill); --button-pressed-fill: var(--hud-plate-fill); --button-base-shadow: var(--system-plate-edge); --button-hover-shadow: var(--system-plate-lit-edge); --button-rim: transparent; --button-hover-rim: transparent; --button-ink: var(--front-ink); --button-hover-ink: var(--front-ink); }
-button.go { --button-primary-fill: var(--front-play-fill); --button-primary-hover-fill: var(--front-play-hover-fill); --button-primary-pressed-fill: var(--front-play-pressed-fill); --button-primary-ink: var(--front-play-ink); --button-primary-hover-ink: var(--front-play-ink); --button-primary-pressed-ink: var(--front-play-ink); --button-primary-shadow: none; --button-primary-rim: transparent; --button-primary-hover-rim: transparent; }
 #Ok { --button-danger-fill: var(--dialog-danger-fill); --button-danger-hover-fill: var(--dialog-danger-hover-fill); --button-danger-pressed-fill: var(--dialog-danger-pressed-fill); --button-danger-ink: var(--front-ink); --button-danger-rim: transparent; --button-danger-shadow: none; }
 /* A phone: the question one step down, so a long one leaves room for what
    follows. */

@@ -42,7 +42,7 @@
             </div>
             <div class="end" data-layout="row" data-gap="tight">
               <div part="DailyQuests.reward DailyQuests.figure" class="prize" data-layout="stack" data-gap="none" data-state={q.state} aria-label={t("general.quests.reward", { reward: q.reward })}><og-icon class="prize-icon" icon={q.rewardIcon}></og-icon><span class="prize-figure">{q.reward}</span></div>
-              {#if q.state == 'done'}<button id="Claim" class="claim" variant="primary" data-motion="pop" onclick={claim}>{t("general.quests.claim")}</button>{/if}
+              {#if q.state == 'done'}<button id="Claim" data-tone="reward" class="claim go" variant="primary" data-motion="pop" onclick={claim}>{t("general.quests.claim")}</button>{/if}
               {#if q.state == 'claimed'}<div part="DailyQuests.claimed" class="stamp" data-layout="row" data-gap="hair" data-motion="stamp"><og-icon class="mark" icon="check"></og-icon><span>{t("general.quests.claimed")}</span></div>{/if}
             </div>
           </li>
@@ -91,7 +91,7 @@
 .prize-icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .prize-figure { text-align: center; overflow-wrap: anywhere; font-size: var(--quest-size-figure); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
 /* Claim: a gold face that pops in. */
-.claim { flex: none; min-height: var(--size-touch); --button-primary-fill: var(--quest-claim-fill); --button-primary-hover-fill: var(--quest-claim-hover-fill); --button-primary-pressed-fill: var(--quest-claim-fill); --button-primary-ink: var(--quest-gold-ink); --button-primary-shadow: var(--quest-claim-shadow); }
+.claim { flex: none; min-height: var(--size-touch);  }
 .stamp { flex: none; white-space: nowrap; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--tone-success); }
 .empty { width: stretch; }
 .empty-mark { width: var(--size-lg); height: var(--size-lg); }

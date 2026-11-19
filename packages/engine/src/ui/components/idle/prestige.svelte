@@ -89,7 +89,7 @@
     </div>
   {:else}
     <div class="actions" data-layout="cluster">
-      <button id="Request" variant="primary" disabled={!met} onclick={request}><og-icon class="button-icon" icon={icon}></og-icon><span>{t("idle.prestige.request")}</span></button>
+      <button id="Request" class="go" variant="primary" disabled={!met} onclick={request}><og-icon class="button-icon" icon={icon}></og-icon><span>{t("idle.prestige.request")}</span></button>
     </div>
   {/if}
 </section>
@@ -137,7 +137,6 @@
 .actions { width: stretch; flex: none; justify-content: flex-end; }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
 /* Ascend: washed in the epic purple. */
-#Request { --button-primary-fill: var(--play-epic-fill); --button-primary-hover-fill: var(--play-epic-fill); --button-primary-pressed-fill: var(--play-epic-fill); --button-primary-ink: var(--play-epic-on-ink); }
 .button-icon { width: var(--size-xs); height: var(--size-xs); flex: none; }
 @media (pointer: coarse) { .actions button { flex: 1; } }
 /* A narrow panel (a phone, or a side column on a wide screen) wraps each

@@ -25,12 +25,12 @@
         <p id="Left">{t("screen.game-over.Left", { value: formatCountdown(left) })}</p>
         <p id="Line">{t("screen.game-over.revive")}</p>
         <div id="OfferArt">{@render offerArt?.()}</div>
-        <button id="Revive" variant="primary" class="large revive" onclick={revive}>{t("screen.game-over.Revive", { price: price })}</button>
+        <button id="Revive" data-tone="reward" variant="primary" class="large revive go" onclick={revive}>{t("screen.game-over.Revive", { price: price })}</button>
         <button id="Decline" variant="quiet" onclick={decline}>{t("screen.game-over.decline")}</button>
       </div>
     {:else}
       <div id="Actions">
-        <button id="Retry" variant="primary" class="large" onclick={retry}>{t("screen.game-over.retry")}</button>
+        <button id="Retry" variant="primary" class="large go" onclick={retry}>{t("screen.game-over.retry")}</button>
         {#if checkpoint}<button id="Checkpoint" onclick={checkpoint}>{t("screen.game-over.checkpoint")}</button>{/if}
         <button id="Quit" variant="quiet" onclick={quit}>{t("screen.game-over.quit")}</button>
       </div>
@@ -67,7 +67,6 @@ p { margin: 0; }
 [part="game-over.offer"] button { justify-self: stretch; }
 #Left { justify-self: center; display: block; text-align: center; line-height: calc(88 * var(--font-step-px)); inline-size: calc(88 * var(--font-step-px)); block-size: calc(88 * var(--font-step-px)); border-radius: 50%; font-size: var(--hud-size-lg); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); background: var(--hud-dial-face); box-shadow: var(--result-ring); filter: var(--hud-gold-glow); }
 #Line { font-size: var(--hud-size-md); font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-defeat-tracking); text-transform: uppercase; color: var(--hud-ink); }
-.revive { --button-primary-fill: var(--result-revive-fill); --button-primary-hover-fill: var(--result-revive-fill); --button-primary-pressed-fill: var(--result-revive-fill); --button-primary-ink: var(--result-medal-ink); --button-primary-shadow: var(--result-revive-glow); }
 .large, .large::part(base) { min-block-size: var(--control-lg); }
 @media (width < 600px), (height < 600px) {
   :root { padding: var(--space-lg); }

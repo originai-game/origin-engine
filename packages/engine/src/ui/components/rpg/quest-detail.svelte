@@ -64,7 +64,7 @@
   </div>
   {#if canTrack || canLocate}<footer part="RpgQuestDetail.actions" class="actions" data-layout="cluster" data-gap="tight">
     {#if canLocate}<button id="Locate" onclick={locate}><div class="face" data-layout="row" data-gap="hair"><og-icon class="action-mark" icon="map"></og-icon><span>{t("rpg.quest.locate")}</span></div></button>{/if}
-    {#if canTrack && tracked}<button id="Untrack" onclick={track}>{t("rpg.quest.untrack")}</button>{:else if canTrack}<button id="Track" variant="primary" onclick={track}>{t("rpg.quest.track")}</button>{/if}
+    {#if canTrack && tracked}<button id="Untrack" onclick={track}>{t("rpg.quest.untrack")}</button>{:else if canTrack}<button id="Track" class="go" variant="primary" onclick={track}>{t("rpg.quest.track")}</button>{/if}
   </footer>{/if}
 </article>
 

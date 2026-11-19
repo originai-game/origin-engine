@@ -45,7 +45,7 @@
         {#if !ready}<Spinner size={22} name={t("screen.loading.busy")} />{/if}
         {#if !ready && status}<p id="Status" part="loading.status">{status}</p>{/if}
         {#if !(ready && waits)}<p id="Percent" part="loading.figure" data-ready={ready}>{t("screen.loading.Percent", { progress: formatPercent(progress) })}</p>{/if}
-        {#if ready && waits}<button id="Continue" variant="primary" autofocus="true" data-motion="pop" onclick={continue} onconfirm={continue}><span class="key">{t("screen.loading.continueKey")}</span><span class="pointer">{t("screen.loading.continue")}</span><span class="touch">{t("screen.loading.tapContinue")}</span></button>{/if}
+        {#if ready && waits}<button id="Continue" class="go" variant="primary" autofocus="true" data-motion="pop" onclick={continue} onconfirm={continue}><span class="key">{t("screen.loading.continueKey")}</span><span class="pointer">{t("screen.loading.continue")}</span><span class="touch">{t("screen.loading.tapContinue")}</span></button>{/if}
       </div>
     </div>
   </div>
@@ -89,7 +89,7 @@ p { margin: 0; }
 [part="loading.status"] { min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 [part="loading.figure"] { min-inline-size: calc(72 * var(--font-step-px)); font-size: calc(40 * var(--font-step-px)); line-height: 1; text-align: end; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 [part="loading.figure"][data-ready=true] { color: var(--hud-accent); }
-#Continue { --button-primary-fill: var(--loading-continue-fill); --button-primary-hover-fill: var(--loading-continue-fill); --button-primary-pressed-fill: var(--loading-continue-fill); --button-primary-ink: var(--hud-key-ink); --button-primary-shadow: var(--loading-continue-glow); --button-radius: calc(2 * var(--hud-plate-cut)); --button-corner-shape: bevel; --button-transform: var(--hud-label-transform); --button-tracking: var(--hud-label-tracking); }
+#Continue { --button-transform: var(--hud-label-transform); --button-tracking: var(--hud-label-tracking);   }
 #Continue::part(base) { column-gap: var(--space-sm); min-block-size: var(--touch-target); padding-inline: calc(22 * var(--font-step-px)); font-weight: var(--hud-figure-weight); white-space: normal; }
 #Continue span { text-transform: var(--hud-label-transform); letter-spacing: var(--hud-label-tracking); }
 #Continue .key { color: var(--hud-ink); background: var(--hud-key-ink); box-shadow: none; }

@@ -52,7 +52,7 @@
               {#if !u.maxed && u.locked}<span part="IdlePurchases.badge" data-tag="locked">{t("idle.purchases.locked")}</span>{/if}
               {#if !u.maxed && !u.locked && !u.affordable}<span part="IdlePurchases.badge" data-tag="short">{t("idle.purchases.short")}</span>{/if}
               {#if !u.maxed}
-              <button id="Buy" variant="primary" disabled={!u.affordable || u.maxed || u.locked} aria-label={u.cost != '' ? t("idle.purchases.buyFor", { name: u.name, cost: u.cost }) : t("idle.purchases.buyNamed", { name: u.name })} data-affordable={u.affordable} onclick={buy}><div class="buy" data-layout="stack" data-gap="none">
+              <button id="Buy" class="go" variant="primary" disabled={!u.affordable || u.maxed || u.locked} aria-label={u.cost != '' ? t("idle.purchases.buyFor", { name: u.name, cost: u.cost }) : t("idle.purchases.buyNamed", { name: u.name })} data-affordable={u.affordable} onclick={buy}><div class="buy" data-layout="stack" data-gap="none">
                 {#if u.count != ''}<span class="count" part="IdlePurchases.figure">{u.count}</span>{/if}
                 {#if u.cost != ''}<div part="IdlePurchases.cost IdlePurchases.figure" data-layout="row" data-gap="hair"><og-icon class="cost-icon" icon={u.costIcon}></og-icon><span class="cost-figure">{u.cost}</span></div>{:else}<span class="buy-word">{t("idle.purchases.buy")}</span>{/if}
               </div></button>

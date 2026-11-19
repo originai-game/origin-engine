@@ -45,7 +45,7 @@
     <button id="Back" variant="ghost" aria-label={t("shooter.loadout.back")} onclick={back} onback={back}><kbd id="BackKey" data-action="back"></kbd><span id="BackLabel">{t("shooter.loadout.back")}</span></button>
     {#each slots as s (s.id)}
       {#if s.id == selected}
-        <button id="Equip" variant="primary" aria-label={t("shooter.loadout.equip")} disabled={s.locked || s.equipped} onclick={equip}><kbd id="EquipKey" data-action="details"></kbd><span id="EquipLabel">{t("shooter.loadout.equip")}</span></button>
+        <button id="Equip" class="go" variant="primary" aria-label={t("shooter.loadout.equip")} disabled={s.locked || s.equipped} onclick={equip}><kbd id="EquipKey" data-action="details"></kbd><span id="EquipLabel">{t("shooter.loadout.equip")}</span></button>
       {/if}
     {/each}
   </footer>
@@ -91,8 +91,6 @@
 #Actions button { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); min-width: calc(var(--size-xxl) * 1.25); }
 #Actions button:hover { background: var(--party-button-hover-fill); }
 #Actions button:focus-visible { box-shadow: var(--party-focus-rim); }
-#Actions #Equip { color: var(--party-go-ink); background: var(--front-play-fill); box-shadow: none; }
-#Actions #Equip:hover { background: var(--party-go-hover-fill); }
 #Actions button:disabled { opacity: 0.45; }
 #Actions button > span { color: inherit; font-weight: inherit; }
 #BackKey, #EquipKey { color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }

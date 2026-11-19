@@ -36,7 +36,7 @@
   </div>
   <div id="Detail">{@render detail?.()}</div>
   <footer id="Footer">
-    <button id="Play" variant="primary" disabled={modes.length == 0} onclick={play} onconfirm={play}>{t("screen.mode-select.play")}</button>
+    <button id="Play" class="go" variant="primary" disabled={modes.length == 0} onclick={play} onconfirm={play}>{t("screen.mode-select.play")}</button>
   </footer>
 </div>
 
@@ -87,11 +87,9 @@ h1, h2, p { margin: 0; }
 #Footer { display: flex; justify-content: end; }
 /* Play: the screen's one lit plate, cut at two corners like the cards,
    glowing while there is a mode to play. */
-#Footer:has(#Play:enabled) { filter: var(--front-play-glow); }
-#Play { --button-primary-fill: var(--front-play-fill); --button-primary-hover-fill: var(--front-play-hover-fill); --button-primary-pressed-fill: var(--front-play-pressed-fill); --button-primary-ink: var(--front-play-ink); --button-primary-hover-ink: var(--front-play-ink); --button-primary-pressed-ink: var(--front-play-ink); --button-primary-shadow: none; --button-primary-rim: transparent; --button-primary-hover-rim: transparent; --button-radius: 0; --button-focus-radius: 0; --button-font-size: calc(20 * var(--font-step-px)); --button-tracking: var(--font-tracking-sm); --button-transform: uppercase; }
+#Play { --button-font-size: calc(20 * var(--font-step-px)); --button-tracking: var(--font-tracking-sm); --button-transform: uppercase;  }
 #Play, #Play::part(base) { min-inline-size: calc(240 * var(--font-step-px)); block-size: var(--control-lg); }
 /* Only the plate is cut; the focus ring stays whole around it. */
-#Play::part(base) { clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
 @media (600px <= width < 1024px) and (height >= 600px) {
   :root { padding-inline: var(--space-xxl); }
   #Modes { grid-template-columns: repeat(2, minmax(0, 1fr)); block-size: auto; }

@@ -64,9 +64,9 @@
         <button id="Delete" variant="danger" class="plate" onclick={delete} ondetails={delete}>{t("screen.save-load.delete")}</button>
         {#if mode == "save"}
           <button id="New" class="plate" onclick={newSlot}>{t("screen.save-load.new")}</button>
-          <button id="Save" variant="primary" class="plate lit" onclick={save}>{t("screen.save-load.save")}</button>
+          <button id="Save" variant="primary" class="plate go" onclick={save}>{t("screen.save-load.save")}</button>
         {:else if slots.length > 0}
-          <button id="Load" variant="primary" class="plate lit" onclick={load}>{t("screen.save-load.load")}</button>
+          <button id="Load" variant="primary" class="plate go" onclick={load}>{t("screen.save-load.load")}</button>
         {/if}
       </div>
     </aside>
@@ -126,7 +126,6 @@ h1, p { margin: 0; }
 button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: calc(16 * var(--font-step-px)); --button-tracking: var(--font-tracking-md); --button-transform: uppercase; flex: 1 1 calc(120 * var(--font-step-px)); min-inline-size: 0; }
 button.plate, button.plate::part(base) { block-size: var(--control-lg); }
 button.plate::part(base) { border-width: 0; clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
-button.lit { --button-primary-fill: var(--front-play-fill); --button-primary-hover-fill: var(--front-play-hover-fill); --button-primary-pressed-fill: var(--front-play-pressed-fill); --button-primary-ink: var(--front-play-ink); --button-primary-hover-ink: var(--front-play-ink); --button-primary-pressed-ink: var(--front-play-ink); --button-primary-shadow: none; --button-primary-rim: transparent; --button-primary-hover-rim: transparent; }
 #New { --button-fill: var(--hud-plate-fill); --button-hover-fill: var(--hud-plate-fill); --button-base-shadow: var(--system-plate-edge); --button-hover-shadow: var(--system-plate-lit-edge); --button-rim: transparent; --button-hover-rim: transparent; --button-ink: var(--front-ink); --button-hover-ink: var(--front-ink); }
 @media (width < 600px), (height < 600px) {
   :root { row-gap: var(--space-md); padding: var(--space-lg) var(--space-lg) var(--space-md); }

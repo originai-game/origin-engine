@@ -35,7 +35,7 @@
     <div class="state" data-layout="cover" data-fill role="status"><div class="state-plate" data-layout="stack" data-gap="tight"><Spinner size={0} name={t("rhythm.songs.loading")} /><p class="state-text" part="RhythmSongSelect.caption">{t("rhythm.songs.loading")}</p></div></div>
   {:else}
     {#if status == 'error'}
-      <div class="state" data-layout="cover" data-fill role="alert" data-status="error"><div class="state-plate" data-layout="stack" data-gap="tight"><p class="state-text" part="RhythmSongSelect.caption">{t("rhythm.songs.error")}</p><button id="Retry" class="act" variant="primary" onclick={retry}><span>{t("rhythm.songs.retry")}</span></button></div></div>
+      <div class="state" data-layout="cover" data-fill role="alert" data-status="error"><div class="state-plate" data-layout="stack" data-gap="tight"><p class="state-text" part="RhythmSongSelect.caption">{t("rhythm.songs.error")}</p><button id="Retry" class="act go" variant="primary" onclick={retry}><span>{t("rhythm.songs.retry")}</span></button></div></div>
     {:else}
       {#if songs.length}
         <div class="body" data-layout="row" data-gap="wide" data-fill>

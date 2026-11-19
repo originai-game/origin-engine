@@ -1,0 +1,11 @@
+{
+  "added": [
+    {
+      "member": "Default style action tokens",
+      "summary": "--action-* roles: the one main action of every built-in screen and component (Play, Continue, Buy, Equip, Send) is a plate in the families' light with two corners cut, glowing while it can be pressed; a button wears it with class=\"go\". data-tone=reward is the same plate in gold, for a claim; data-tone=confirm in green, only beside a decline. A style pack restyles every main action by setting them."
+    }
+  ],
+  "fixed": [
+    "The built-in components' main actions no longer come in eleven dresses (a rounded white pill, a gold pill, a green pill, a purple pill and others): results, game over, loading, mode select, settings, save and load, calibration, the store's purchase, chat, friends, inbox, daily quests, achievements, reveal, idle, arena, loadout, garage, racing and rhythm results, song select and quest detail all wear the action plate, a claim in gold and an accept beside a decline in green."
+  ]
+}

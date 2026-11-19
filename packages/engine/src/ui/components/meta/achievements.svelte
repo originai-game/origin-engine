@@ -51,7 +51,7 @@
             </div>
             {#if a.rarity}<div part="Achievements.rarity" class="rarity" data-tier={a.tier} role="group" aria-label={t("general.achievements.rarity", { percent: a.rarity })}><span class="share">{a.rarity}</span><span class="of">{t("general.achievements.players")}</span></div>{/if}
             {#if a.claimed}<div part="Achievements.claimed" class="stamp" data-layout="row" data-gap="hair" data-motion="stamp"><og-icon class="state-mark" icon="check"></og-icon><span>{t("general.achievements.claimed")}</span></div>
-            {:else if a.claimable}<button id="Claim" class="claim" variant="primary" data-motion="pop" onclick={claim}>{t("general.achievements.claim")}</button>{/if}
+            {:else if a.claimable}<button id="Claim" data-tone="reward" class="claim go" variant="primary" data-motion="pop" onclick={claim}>{t("general.achievements.claim")}</button>{/if}
           </li>
         {/each}
       </ul>
@@ -105,7 +105,7 @@
 .share { white-space: nowrap; font-size: var(--quest-size-figure); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--ink-bright); }
 .rarity[data-tier=legendary] .share { color: var(--quest-gold); }
 .of { white-space: nowrap; font: var(--caption-text); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-ink-faint); }
-.claim { flex: none; min-height: var(--size-touch); --button-primary-fill: var(--quest-claim-fill); --button-primary-hover-fill: var(--quest-claim-hover-fill); --button-primary-pressed-fill: var(--quest-claim-fill); --button-primary-ink: var(--quest-gold-ink); --button-primary-shadow: var(--quest-claim-shadow); }
+.claim { flex: none; min-height: var(--size-touch);  }
 .stamp { flex: none; white-space: nowrap; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--tone-success); }
 .empty { width: stretch; }
 .empty-mark { width: var(--size-lg); height: var(--size-lg); }

@@ -241,6 +241,34 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
     font-family: var(--figure-font);
   }
   :where([part$=".well"]) { border-radius: var(--well-radius); corner-shape: var(--well-corner-shape); background: var(--well-fill); box-shadow: var(--well-shadow); }
+  /* The action (`button.go`): the one main action of a built-in screen or
+     component, the role tokens' plate with two corners cut, glowing while
+     it can be pressed; `data-tone=reward` (a claim) in gold,
+     `data-tone=confirm` (beside a decline) in green. The focus ring stays
+     whole around the cut plate. */
+  :where(button.go) {
+    --button-primary-fill: var(--action-fill); --button-primary-hover-fill: var(--action-hover-fill);
+    --button-primary-pressed-fill: var(--action-pressed-fill);
+    --button-primary-ink: var(--action-ink); --button-primary-hover-ink: var(--action-ink); --button-primary-pressed-ink: var(--action-ink);
+    --button-primary-shadow: none; --button-primary-rim: transparent; --button-primary-hover-rim: transparent;
+    --button-radius: 0; --button-focus-radius: 0;
+  }
+  :where(button.go[data-tone=reward]) {
+    --button-primary-fill: var(--action-reward-fill); --button-primary-hover-fill: var(--action-reward-hover-fill);
+    --button-primary-pressed-fill: var(--action-reward-pressed-fill);
+    --button-primary-ink: var(--action-reward-ink); --button-primary-hover-ink: var(--action-reward-ink); --button-primary-pressed-ink: var(--action-reward-ink);
+  }
+  :where(button.go[data-tone=confirm]) {
+    --button-primary-fill: var(--action-confirm-fill); --button-primary-hover-fill: var(--action-confirm-hover-fill);
+    --button-primary-pressed-fill: var(--action-confirm-pressed-fill);
+    --button-primary-ink: var(--action-confirm-ink); --button-primary-hover-ink: var(--action-confirm-ink); --button-primary-pressed-ink: var(--action-confirm-ink);
+  }
+  button.go::part(base) {
+    clip-path: polygon(var(--action-cut) 0, 100% 0, 100% calc(100% - var(--action-cut)), calc(100% - var(--action-cut)) 100%, 0 100%, 0 var(--action-cut));
+  }
+  :where(button.go.primary:enabled) { filter: var(--action-glow); }
+  :where(button.go.primary[data-tone=reward]:enabled) { filter: var(--action-reward-glow); }
+  :where(button.go.primary[data-tone=confirm]:enabled) { filter: var(--action-confirm-glow); }
   /* A surface with a fill of its own holds its text: the halo a document
      drawn over the scene sets (`text-shadow: var(--tag-halo)`, inherited)
      stops at it. A bare frame has no fill and passes it on. */

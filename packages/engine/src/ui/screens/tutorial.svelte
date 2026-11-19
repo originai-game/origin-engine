@@ -66,7 +66,6 @@ button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-wid
 button.plate::part(base) { border-width: 0; clip-path: polygon(var(--dialog-cut) 0, 100% 0, 100% calc(100% - var(--dialog-cut)), calc(100% - var(--dialog-cut)) 100%, 0 100%, 0 var(--dialog-cut)); }
 /* Chinese, Japanese and Korean have no capitals to track: the label is set a step larger instead. */
 button.plate:lang(zh, ja, ko) { --button-font-size: var(--dialog-label-cjk-size); --button-tracking: 0; }
-button.go { --button-primary-fill: var(--front-play-fill); --button-primary-hover-fill: var(--front-play-hover-fill); --button-primary-pressed-fill: var(--front-play-pressed-fill); --button-primary-ink: var(--front-play-ink); --button-primary-hover-ink: var(--front-play-ink); --button-primary-pressed-ink: var(--front-play-ink); --button-primary-shadow: none; --button-primary-rim: transparent; --button-primary-hover-rim: transparent; }
 @media (width < 600px) and (orientation: portrait) {
   #Card { inset-inline: var(--space-md); inline-size: auto; max-inline-size: none; }
 }

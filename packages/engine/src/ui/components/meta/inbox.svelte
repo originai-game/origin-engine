@@ -38,7 +38,7 @@
           {#each attachments as attachment (attachment.id)}{#if attachment.message == message.id}<li part="Inbox.attachment" class="attachment" data-layout="cluster"><og-icon part="Inbox.icon" class="icon" icon={attachment.icon}></og-icon><div part="Inbox.name">{attachment.name}</div><div part="Inbox.amount Inbox.figure" class="amount">{attachment.amount}</div></li>{/if}{/each}
         </ul><span part="Inbox.state Inbox.caption" class="muted" data-state={message.expired ? 'expired' : message.claimed ? 'claimed' : 'available'}>{message.expired ? t("meta.inbox.expired") : message.claimed ? t("meta.claimed") : t("meta.available")}</span></section>{/if}
         <footer part="Inbox.actions" class="actions" data-layout="cluster">
-          {#if message.hasAttachments}<button id="Claim" part="Inbox.claim" variant="primary" disabled={busy || !message.claimable || message.claimed || message.expired} onclick={claim}>{t("meta.inbox.claim")}</button>{/if}
+          {#if message.hasAttachments}<button id="Claim" data-tone="reward" class="go" part="Inbox.claim" variant="primary" disabled={busy || !message.claimable || message.claimed || message.expired} onclick={claim}>{t("meta.inbox.claim")}</button>{/if}
           {#if message.canDelete}<button id="Delete" part="Inbox.delete" disabled={busy} onclick={delete}>{t("meta.inbox.delete")}</button>{/if}
         </footer>
       </article>{/if}{/each}
@@ -79,7 +79,6 @@ h4 { font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing
 [part~="Inbox.state"][data-state=claimed] { color: var(--tone-success); }
 .actions button { min-block-size: var(--touch-target); white-space: normal; }
 /* Claim: the reward's gold face. */
-#Claim { --button-primary-fill: var(--quest-claim-fill); --button-primary-hover-fill: var(--quest-claim-hover-fill); --button-primary-pressed-fill: var(--quest-claim-fill); --button-primary-ink: var(--quest-gold-ink); --button-primary-shadow: var(--quest-claim-shadow); }
 .wait { padding: var(--space-lg); }
 /* A narrow inbox: the list over the reader in one column, neither scrolling sideways. */
 @container (width < 600px) { .layout { grid-template-columns: minmax(0, 1fr); } .list { min-block-size: calc(160 * var(--font-step-px)); max-block-size: var(--size-5xl); } .reader { max-block-size: none; overflow: visible; } }

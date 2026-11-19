@@ -36,7 +36,7 @@
               {#if r.note}<span part="Friends.caption" class="note">{r.note}</span>{/if}
             </div>
             <div class="actions" data-layout="row" data-gap="tight">
-              <button id="Accept" variant="primary" aria-label={t("general.friends.acceptName", { name: r.name })} onclick={accept}><og-icon class="mark" icon="check"></og-icon><span class="action-label">{t("general.friends.accept")}</span></button>
+              <button id="Accept" data-tone="confirm" class="go" variant="primary" aria-label={t("general.friends.acceptName", { name: r.name })} onclick={accept}><og-icon class="mark" icon="check"></og-icon><span class="action-label">{t("general.friends.accept")}</span></button>
               <button id="Decline" variant="ghost" aria-label={t("general.friends.declineName", { name: r.name })} onclick={decline}><og-icon class="mark" icon="close"></og-icon><span class="action-label">{t("general.friends.decline")}</span></button>
             </div>
           </li>
@@ -82,7 +82,6 @@
 [part~="Friends.request"], .friend { width: stretch; }
 /* A request: a cut card washed gold, Accept on the reward's gold face. */
 [part~="Friends.request"] { padding: var(--space-xs) var(--space-sm); background: var(--quest-ready-fill); box-shadow: var(--quest-ready-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
-#Accept { --button-primary-fill: var(--quest-claim-fill); --button-primary-hover-fill: var(--quest-claim-hover-fill); --button-primary-pressed-fill: var(--quest-claim-fill); --button-primary-ink: var(--quest-gold-ink); --button-primary-shadow: var(--quest-claim-shadow); }
 /* A friend: a cut row; the one chosen washed gold with a gold bar. */
 button[part="Friends.row"] { min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; border-radius: 0; background: none; box-shadow: none; clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
 button[part="Friends.row"]:hover { background: var(--quest-entry-fill); }

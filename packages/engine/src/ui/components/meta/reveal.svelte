@@ -56,9 +56,9 @@
     {#if body}<p part="Reveal.body Reveal.caption" class="body">{body}</p>{/if}
   {/if}
   {#if !error}<footer part="Reveal.actions" class="actions" data-layout="row" data-gap="tight">
-    {#if state == 'sealed'}<button id="Open" part="Reveal.open" class="act" variant="primary" disabled={disabled} aria-label={t("meta.reveal.open")} onclick={open}><kbd class="cap" data-action="details"></kbd><span>{t("meta.reveal.open")}</span></button>
+    {#if state == 'sealed'}<button id="Open" data-tone="reward" part="Reveal.open" class="act go" variant="primary" disabled={disabled} aria-label={t("meta.reveal.open")} onclick={open}><kbd class="cap" data-action="details"></kbd><span>{t("meta.reveal.open")}</span></button>
     {:else if state == 'revealing' && canSkip}<button id="Skip" part="Reveal.skip" class="act" disabled={disabled} aria-label={t("meta.reveal.skip")} onclick={skip}><kbd class="cap" data-action="back"></kbd><span>{t("meta.reveal.skip")}</span></button>
-    {:else if state == 'revealed'}<button id="Continue" part="Reveal.continue" class="act" variant="primary" disabled={disabled} aria-label={continueLabel || t("meta.continue")} onclick={continue}><kbd class="cap" data-action="details"></kbd><span>{continueLabel || t("meta.continue")}</span></button>{/if}
+    {:else if state == 'revealed'}<button id="Continue" part="Reveal.continue" class="act go" variant="primary" disabled={disabled} aria-label={continueLabel || t("meta.continue")} onclick={continue}><kbd class="cap" data-action="details"></kbd><span>{continueLabel || t("meta.continue")}</span></button>{/if}
   </footer>{/if}
 </section>
 

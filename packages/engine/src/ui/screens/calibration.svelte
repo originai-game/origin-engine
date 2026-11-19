@@ -38,7 +38,7 @@
         <p id="OffsetHint">{t("screen.calibration.offsetHint")}</p>
         <div id="Measure" class="line" data-layout="cluster">
           <button id="Start" class="plate" onclick={measure}>{t("screen.calibration.start")}</button>
-          <button id="Tap" variant="primary" class="plate lit" onclick={tap}>{t("screen.calibration.tap")}</button>
+          <button id="Tap" variant="primary" class="plate go" onclick={tap}>{t("screen.calibration.tap")}</button>
           <p id="Taps">{t("screen.calibration.Taps", { taps: taps })}</p>
         </div>
         <div id="Manual" class="line">
@@ -58,9 +58,9 @@
     <footer id="Foot" data-layout="cluster">
       <button id="Back" class="plate" onclick={back}>{t("screen.common.back")}</button>
       {#if step == "controller"}
-        <button id="Done" variant="primary" class="plate lit" onclick={done}>{t("screen.calibration.done")}</button>
+        <button id="Done" variant="primary" class="plate go" onclick={done}>{t("screen.calibration.done")}</button>
       {:else}
-        <button id="Next" variant="primary" class="plate lit" onclick={next}>{t("screen.calibration.next")}</button>
+        <button id="Next" variant="primary" class="plate go" onclick={next}>{t("screen.calibration.next")}</button>
       {/if}
     </footer>
   </section>
@@ -104,7 +104,6 @@ p { margin: 0; }
 button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: calc(16 * var(--font-step-px)); --button-tracking: var(--font-tracking-md); --button-transform: uppercase; min-inline-size: calc(140 * var(--font-step-px)); }
 button.plate, button.plate::part(base) { block-size: var(--control-lg); }
 button.plate::part(base) { border-width: 0; clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
-button.lit { --button-primary-fill: var(--front-play-fill); --button-primary-hover-fill: var(--front-play-hover-fill); --button-primary-pressed-fill: var(--front-play-pressed-fill); --button-primary-ink: var(--front-play-ink); --button-primary-hover-ink: var(--front-play-ink); --button-primary-pressed-ink: var(--front-play-ink); --button-primary-shadow: none; --button-primary-rim: transparent; --button-primary-hover-rim: transparent; }
 #Back { --button-fill: var(--hud-plate-fill); --button-hover-fill: var(--hud-plate-fill); --button-base-shadow: var(--system-plate-edge); --button-hover-shadow: var(--system-plate-lit-edge); --button-rim: transparent; --button-hover-rim: transparent; --button-ink: var(--front-ink); --button-hover-ink: var(--front-ink); }
 #Start { --button-fill: var(--hud-plate-fill); --button-hover-fill: var(--hud-plate-fill); --button-base-shadow: var(--system-plate-edge); --button-rim: transparent; --button-ink: var(--front-ink); --button-hover-ink: var(--front-ink); }
 #Tap, #Tap::part(base) { block-size: var(--control-lg); }

@@ -86,7 +86,7 @@
     <footer id="Footer">
       <button id="Replay" variant="quiet" onclick={replay}>{t("screen.results.replay")}</button>
       <button id="Again" onclick={again}>{t("screen.results.again")}</button>
-      <button id="Continue" variant="primary" onclick={continue} onconfirm={continue}>{t("screen.results.continue")}</button>
+      <button id="Continue" class="go" variant="primary" onclick={continue} onconfirm={continue}>{t("screen.results.continue")}</button>
     </footer>
   </section>
 </div>

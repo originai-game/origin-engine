@@ -57,7 +57,7 @@
     {:else}
       <button id="Ready" variant="ghost" aria-label={t("arena.lobby.readyUp")} disabled={!canReady} onclick={ready} ondetails={ready}><kbd class="key" data-action="details"></kbd><span>{t("arena.lobby.readyUp")}</span></button>
     {/if}
-    {#if isHost}<button id="Start" variant="primary" disabled={!isHost || !canStart} onclick={start}><span>{t("arena.lobby.start")}</span></button>{/if}
+    {#if isHost}<button id="Start" class="go" variant="primary" disabled={!isHost || !canStart} onclick={start}><span>{t("arena.lobby.start")}</span></button>{/if}
   </footer>
 </section>
 
@@ -94,8 +94,6 @@
 button { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
 button:hover { background: var(--party-button-hover-fill); }
 button:focus-visible { box-shadow: var(--party-focus-rim); }
-button[variant=primary] { color: var(--party-go-ink); background: var(--front-play-fill); box-shadow: none; }
-button[variant=primary]:hover { background: var(--party-go-hover-fill); }
 button:disabled { opacity: 0.45; }
 button > span { color: inherit; font-weight: inherit; }
 #Invite { flex: none; min-height: var(--size-md); gap: var(--space-xxs); padding: 0 var(--space-md); }

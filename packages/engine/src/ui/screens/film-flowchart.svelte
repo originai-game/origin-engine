@@ -61,7 +61,6 @@ button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-wid
 button.plate::part(base) { border-width: 0; clip-path: polygon(var(--dialog-cut) 0, 100% 0, 100% calc(100% - var(--dialog-cut)), calc(100% - var(--dialog-cut)) 100%, 0 100%, 0 var(--dialog-cut)); }
 /* Chinese, Japanese and Korean have no capitals to track: the label is set a step larger instead. */
 button.plate:lang(zh, ja, ko) { --button-font-size: var(--dialog-label-cjk-size); --button-tracking: 0; }
-button.go { --button-primary-fill: var(--front-play-fill); --button-primary-hover-fill: var(--front-play-hover-fill); --button-primary-pressed-fill: var(--front-play-pressed-fill); --button-primary-ink: var(--front-play-ink); --button-primary-hover-ink: var(--front-play-ink); --button-primary-pressed-ink: var(--front-play-ink); --button-primary-shadow: none; --button-primary-rim: transparent; --button-primary-hover-rim: transparent; }
 @media (width < 600px), (height < 600px) {
   :root { row-gap: var(--space-md); padding: var(--space-lg) calc(env(safe-area-inset-right) + var(--space-lg)) calc(env(safe-area-inset-bottom) + var(--space-md)) calc(env(safe-area-inset-left) + var(--space-lg)); }
   [part="film-flowchart.band"] { flex-wrap: wrap; row-gap: var(--space-xs); }

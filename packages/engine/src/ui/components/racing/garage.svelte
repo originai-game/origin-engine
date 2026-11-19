@@ -63,9 +63,9 @@
                 <button id="Locked" variant="primary" disabled={true} aria-description={v.price}><span>{t("racing.garage.locked")}</span>{#if v.price != ''}<span class="reason">{v.price}</span>{/if}</button>
               {:else}
                 {#if v.owned}
-                  <button id="Select" variant="primary" disabled={v.id == chosen} onclick={select}><span>{v.id == chosen ? t("racing.garage.driving") : t("racing.garage.select")}</span></button>
+                  <button id="Select" class="go" variant="primary" disabled={v.id == chosen} onclick={select}><span>{v.id == chosen ? t("racing.garage.driving") : t("racing.garage.select")}</span></button>
                 {:else}
-                  <button id="Buy" variant="primary" disabled={!v.affordable} onclick={buy}><span>{t("racing.garage.buy", { price: v.price })}</span>{#if !v.affordable}<span class="reason">{t("racing.garage.short")}</span>{/if}</button>
+                  <button id="Buy" class="go" variant="primary" disabled={!v.affordable} onclick={buy}><span>{t("racing.garage.buy", { price: v.price })}</span>{#if !v.affordable}<span class="reason">{t("racing.garage.short")}</span>{/if}</button>
                 {/if}
               {/if}
             {/if}
@@ -126,8 +126,6 @@
 .actions button { flex: 1 1 auto; flex-wrap: wrap; min-width: calc(var(--size-xxl) * 1.25); padding-block: var(--space-xxs); }
 .actions button:hover, #EmptyBack:hover { background: var(--party-button-hover-fill); }
 .actions button:focus-visible, #EmptyBack:focus-visible { box-shadow: var(--party-focus-rim); }
-.actions button[variant=primary] { color: var(--party-go-ink); background: var(--front-play-fill); box-shadow: none; }
-.actions button[variant=primary]:hover { background: var(--party-go-hover-fill); }
 .actions button:disabled { opacity: 0.45; }
 .actions button > span, #EmptyBack > span { color: inherit; font-weight: inherit; }
 .reason { overflow-wrap: break-word; }

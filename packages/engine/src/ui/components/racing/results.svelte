@@ -58,7 +58,7 @@
   {/if}
   <footer class="actions" data-layout="row">
     <button id="Retry" variant="ghost" disabled={!canRetry} aria-label={t("racing.results.retry")} onclick={retry} ondetails={retry}><kbd class="key" data-action="details"></kbd><span>{t("racing.results.retry")}</span></button>
-    <button id="Continue" variant="primary" onclick={continue}><span>{t("racing.results.continue")}</span></button>
+    <button id="Continue" class="go" variant="primary" onclick={continue}><span>{t("racing.results.continue")}</span></button>
   </footer>
 </section>
 

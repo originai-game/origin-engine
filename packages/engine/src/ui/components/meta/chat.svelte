@@ -57,7 +57,7 @@
   {#if notice}<p part="Chat.notice Chat.label" role="status">{notice}</p>{/if}
   <form part="Chat.compose" data-layout="row" data-gap="tight" onsubmit={send}>
     <input id="Draft" data-fill type="text" aria-label={t("general.chat.placeholder")} placeholder={t("general.chat.placeholder")} maxlength={maxLength} disabled={!canSend} bind:value={draft}>
-    <button id="Send" variant="primary" aria-label={t("general.chat.send")} disabled={!canSend}><div data-layout="row" data-gap="tight"><og-icon class="send-mark" icon="play"></og-icon><span class="send-label">{t("general.chat.send")}</span></div></button>
+    <button id="Send" class="go" variant="primary" aria-label={t("general.chat.send")} disabled={!canSend}><div data-layout="row" data-gap="tight"><og-icon class="send-mark" icon="play"></og-icon><span class="send-label">{t("general.chat.send")}</span></div></button>
   </form>
 </section>
 

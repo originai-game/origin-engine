@@ -116,7 +116,7 @@
     <p class="empty-text" part="ArenaDraft.caption" role="status">{t("arena.draft.empty")}</p>
   {/if}
   {#if phase != 'done'}<footer class="actions" data-layout="row">
-    <button id="Confirm" variant="primary" aria-label={t("arena.draft.confirm")} disabled={!canConfirm || phase == 'done'} onclick={confirm} ondetails={confirm}><kbd class="key" data-action="details"></kbd><span>{t("arena.draft.confirm")}</span></button>
+    <button id="Confirm" class="go" variant="primary" aria-label={t("arena.draft.confirm")} disabled={!canConfirm || phase == 'done'} onclick={confirm} ondetails={confirm}><kbd class="key" data-action="details"></kbd><span>{t("arena.draft.confirm")}</span></button>
   </footer>{/if}
 </section>
 
@@ -164,8 +164,7 @@
 .line { min-width: 0; }
 .empty-text { margin: 0; padding: var(--space-lg); text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); }
 .actions { width: stretch; flex: none; justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
-#Confirm { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); color: var(--party-go-ink); background: var(--front-play-fill); box-shadow: none; min-width: calc(var(--size-xxl) * 1.25); }
-#Confirm:hover { background: var(--party-go-hover-fill); }
+#Confirm { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); text-shadow: none; min-width: calc(var(--size-xxl) * 1.25);  }
 #Confirm:focus-visible { box-shadow: var(--party-focus-rim); }
 #Confirm:disabled { opacity: 0.45; }
 #Confirm > span { color: inherit; font-weight: inherit; }

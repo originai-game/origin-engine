@@ -68,7 +68,7 @@
   </div>
   <footer class="actions" data-layout="row">
     <button id="Retry" variant="ghost" disabled={!canRetry} onclick={retry}><span>{t("rhythm.results.retry")}</span></button>
-    <button id="Next" variant="primary" aria-label={t("rhythm.results.next")} onclick={next} onback={next}><kbd class="key" data-action="back"></kbd><span>{t("rhythm.results.next")}</span></button>
+    <button id="Next" class="go" variant="primary" aria-label={t("rhythm.results.next")} onclick={next} onback={next}><kbd class="key" data-action="back"></kbd><span>{t("rhythm.results.next")}</span></button>
   </footer>
 </section>
 

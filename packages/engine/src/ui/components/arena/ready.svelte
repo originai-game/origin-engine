@@ -38,7 +38,7 @@
     </div>
   {:else}<p part="ArenaReady.empty ArenaReady.caption" role="status">{t("ready.empty")}</p>{/if}{/if}
   <footer part="ArenaReady.actions" data-layout="cluster">
-    <button id="Accept" part="ArenaReady.accept" variant="primary" aria-pressed={response == 'ready'} disabled={!canRespond || closed || loading || !players.length} onclick={accept}>{t("ready.accept")}</button>
+    <button id="Accept" data-tone="confirm" class="go" part="ArenaReady.accept" variant="primary" aria-pressed={response == 'ready'} disabled={!canRespond || closed || loading || !players.length} onclick={accept}>{t("ready.accept")}</button>
     <button id="Decline" part="ArenaReady.decline" aria-pressed={response == 'declined'} disabled={!canRespond || closed || loading || !players.length} onclick={decline}>{t("ready.decline")}</button>
   </footer>
 </section>
@@ -67,7 +67,6 @@
 [part="ArenaReady.actions"] button { flex: 1 1 auto; min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
 [part="ArenaReady.actions"] button:hover { background: var(--party-button-hover-fill); }
 [part="ArenaReady.actions"] button:focus-visible { box-shadow: var(--party-focus-rim); }
-[part="ArenaReady.actions"] #Accept { color: var(--party-ready-ink); background: var(--party-ready-fill); box-shadow: none; }
 [part="ArenaReady.actions"] button[aria-pressed=true] { box-shadow: var(--party-on-rim); }
 [part="ArenaReady.actions"] button:disabled { opacity: 0.45; }
 </style>

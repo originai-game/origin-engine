@@ -48,7 +48,7 @@
   {/if}
   <footer class="actions" data-layout="cluster">
     {#if canDouble}<button id="Double" variant="secondary" onclick={double}><div class="double" data-layout="stack" data-gap="none"><span>{t("idle.offline.double")}</span>{#if doubleText != ''}<span class="double-text">{doubleText}</span>{/if}</div></button>{/if}
-    <button id="Collect" variant="primary" onclick={collect}><span>{t("idle.offline.collect")}</span></button>
+    <button id="Collect" data-tone="reward" class="go" variant="primary" onclick={collect}><span>{t("idle.offline.collect")}</span></button>
   </footer>
 </section>
 

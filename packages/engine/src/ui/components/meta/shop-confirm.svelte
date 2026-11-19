@@ -79,7 +79,7 @@
     {#if !canBuy && !busy && reason}<p part="ShopConfirm.reason" class="reason" role="status">{reason}</p>{/if}
     <div class="buttons" data-layout="row" data-gap="tight">
       <button id="Cancel" class="act" variant="ghost" aria-label={t("general.confirm.cancel")} onclick={cancel}><kbd class="cap" data-action="back"></kbd><span>{t("general.confirm.cancel")}</span></button>
-      <button id="Buy" class="act main" variant="primary" disabled={!canBuy || busy} aria-busy={busy} aria-label={busy ? t("general.confirm.busy") : t("general.confirm.buy")} onclick={confirm}><span>{busy ? t("general.confirm.busy") : t("general.confirm.buy")}</span></button>
+      <button id="Buy" class="act main go" variant="primary" disabled={!canBuy || busy} aria-busy={busy} aria-label={busy ? t("general.confirm.busy") : t("general.confirm.buy")} onclick={confirm}><span>{busy ? t("general.confirm.busy") : t("general.confirm.buy")}</span></button>
     </div>
   </footer>
 </section>
