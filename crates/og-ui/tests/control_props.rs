@@ -3270,3 +3270,224 @@ fn interest_delays_time_when_a_hint_shows_and_leaves() {
         assert!((12..=15).contains(&a.0), "200ms to show: {a:?}");
     });
 }
+
+/// A full-screen layer (a dialog, or a page the review mounts on its own)
+/// is checked for overlaps within itself. It was wrongly treated as a
+/// layer drawn over the rest and skipped whole, so its own overlapping
+/// elements — a caption landing on a neighbour in a scaled graph — were
+/// never reported, while og ui check still reported 0. Ways it could fail:
+/// the base layer skipped again (no overlap found), or a dialog over a
+/// page reporting a false overlap against the page beneath it.
+#[test]
+fn a_full_screen_layer_is_checked_for_its_own_overlaps() {
+    // A name-independent full-surface fill is an underlay, but content or
+    // a control in that same position is not. A fill above the content, or
+    // one that covers only part of the screen, is not an underlay either.
+    for (backing, css, exempt) in [
+        (r#"<div id="Backing"></div>"#, "", true),
+        (
+            r#"<div id="Backing"></div><div id="Second" style="position: absolute; inset: 0; width: 800px; height: 900px; background: #223"></div>"#,
+            "",
+            true,
+        ),
+        (
+            r#"<div id="Backing"></div>"#,
+            r#"#B::after { content: ""; position: absolute; inset: 0; }"#,
+            true,
+        ),
+        (
+            r#"<div id="Backing"></div>"#,
+            r#"#B::after { content: "X"; position: absolute; inset: 0; }"#,
+            true,
+        ),
+        (r#"<div id="Backing">Read me</div>"#, "", false),
+        (r#"<button id="Backing"></button>"#, "", false),
+        (
+            r##"<svg id="Backing" viewBox="0 0 800 900"><rect width="800" height="900" fill="#335577" /></svg>"##,
+            "",
+            false,
+        ),
+        (
+            r#"<div id="Backing" interactive="true" onclick={act}></div>"#,
+            "",
+            false,
+        ),
+        (
+            r#"<div id="Backing"></div>"#,
+            "#Backing { z-index: 1; }",
+            false,
+        ),
+        (
+            r#"<div id="Backing"></div>"#,
+            "#Backing { width: 200px; }",
+            false,
+        ),
+        // Paint order, not DOM order: the fill is built first but behind.
+        (r#"<div id="Backing"></div>"#, "#A { z-index: -1; }", false),
+        // A container of real content is not a decorative leaf.
+        (
+            r#"<div id="Backing"><span id="Label">Read me</span></div>"#,
+            "",
+            false,
+        ),
+    ] {
+        let modal = format!(
+            r#"<meta name="screen" content="t" data-layer="modal">
+<div id="Root">
+  {backing}
+  <div id="A"></div>
+  <div id="B"></div>
+</div>
+<style>
+#Root {{ position: relative; width: 800px; height: 900px; }}
+#Backing {{ position: absolute; inset: 0; width: 800px; height: 900px; background: #112; padding: 0; }}
+#Label {{ position: absolute; left: 40px; top: 40px; }}
+#A {{ position: absolute; left: 40px; top: 40px; width: 120px; height: 60px; background: #334; }}
+#B {{ position: absolute; left: 100px; top: 70px; width: 120px; height: 60px; background: #556; }}
+{css}
+</style>"#
+        );
+        with_doc(&modal, &[], |d| {
+            let pairs: Vec<_> =
+                d.ui.overlaps()
+                    .iter()
+                    .map(|o| (o.path.clone(), o.other.clone()))
+                    .collect();
+            let pair = |x: &str, y: &str| {
+                pairs.iter().any(|(a, b)| {
+                    (a.ends_with(x) && b.ends_with(y)) || (a.ends_with(y) && b.ends_with(x))
+                })
+            };
+            assert!(
+                pair("/A", "/B"),
+                "content overlap: {backing} {css}: {pairs:?}"
+            );
+            assert_eq!(
+                pair("/Backing", "/A"),
+                !exempt,
+                "only a lowest full-surface fill is exempt: {backing} {css}: {pairs:?}; {:?}",
+                d.get("Backing")
+            );
+            if backing.contains("Label") {
+                assert!(
+                    pair("/Label", "/A"),
+                    "underlay descendants remain content: {pairs:?}"
+                );
+            }
+            assert!(
+                pairs
+                    .iter()
+                    .all(|(a, b)| !a.ends_with("/Second") && !b.ends_with("/Second")),
+                "stacked background fills remain underlays: {pairs:?}"
+            );
+            if css.contains("::after") {
+                let generated = pairs.iter().any(|(a, b)| {
+                    (a.contains("::after") && b.ends_with("/A"))
+                        || (b.contains("::after") && a.ends_with("/A"))
+                });
+                assert_eq!(
+                    generated,
+                    css.contains("\"X\""),
+                    "an empty generated line draws nothing, but generated text is content: {css}: {pairs:?}"
+                );
+            }
+            if exempt {
+                d.viewport.safe_area = Insets {
+                    top: 47.0,
+                    bottom: 34.0,
+                    ..Insets::default()
+                };
+                d.step(InputFrame::default());
+                assert_eq!(d.get("Backing").y, 47.0, "the fill starts below the notch");
+                let overlaps = d.ui.overlaps();
+                assert!(
+                    overlaps
+                        .iter()
+                        .all(|o| !o.path.ends_with("/Backing") && !o.other.ends_with("/Backing")),
+                    "safe-area underlay: {overlaps:?}"
+                );
+                assert!(
+                    overlaps
+                        .iter()
+                        .any(|o| (o.path.ends_with("/A") && o.other.ends_with("/B"))
+                            || (o.path.ends_with("/B") && o.other.ends_with("/A"))),
+                    "safe-area content is still checked: {overlaps:?}"
+                );
+            }
+        });
+    }
+    // A negative-z shade can cover a local content box rather than the
+    // viewport, without filling all of its padding. Its empty generated
+    // run is not content; a real run is.
+    for (text, exempt) in [("", true), ("X", false)] {
+        with_doc(
+            &format!(
+                r#"<meta name="screen" content="t" data-layer="modal">
+<div id="Root"><div id="Pane"><div id="A"></div><div id="B"></div></div></div>
+<style>
+#Root {{ position: relative; width: 800px; height: 900px; }}
+#Pane {{ position: absolute; left: 20px; top: 20px; width: 400px; height: 300px; padding: 30px; isolation: isolate; }}
+#Pane::before {{ content: "{text}"; position: absolute; inset: 15px 0 0; z-index: -1; background: #112; }}
+#A {{ position: absolute; left: 30px; top: 30px; width: 120px; height: 60px; background: #334; }}
+#B {{ position: absolute; left: 90px; top: 60px; width: 120px; height: 60px; background: #556; }}
+</style>"#
+            ),
+            &[],
+            |d| {
+                let overlaps = d.ui.overlaps();
+                assert!(
+                    overlaps
+                        .iter()
+                        .any(|o| (o.path.ends_with("/A") && o.other.ends_with("/B"))
+                            || (o.path.ends_with("/B") && o.other.ends_with("/A"))),
+                    "local shade never exempts real content: {overlaps:?}"
+                );
+                assert_eq!(
+                    overlaps
+                        .iter()
+                        .any(|o| o.path.contains("::before") || o.other.contains("::before")),
+                    !exempt,
+                    "only an empty decorative shade is an underlay: {text}: {overlaps:?}"
+                );
+            },
+        );
+    }
+    // An actual dialog above the base still intentionally covers the page.
+    with_doc(
+        r#"<meta name="screen" content="t" data-layer="modal">
+<div id="Root">
+  <div id="A"></div><div id="B"></div>
+  <dialog id="Dialog" modal open aria-label="Overlay"><button id="Ok">OK</button></dialog>
+</div>
+<style>
+#Root { width: 800px; height: 900px; position: relative; }
+#A, #B { position: absolute; left: 350px; top: 400px; width: 100px; height: 100px; background: #334; }
+#Dialog { width: 600px; height: 600px; }
+</style>"#,
+        &[],
+        |d| {
+            for _ in 0..30 {
+                d.step(InputFrame::default());
+            }
+            let a = d.get("A");
+            // The in-flow placeholder is also named Dialog; inspect the
+            // actual floating backdrop, not that zero-sized placeholder.
+            let dialog =
+                d.ui.probe_elements()
+                    .into_iter()
+                    .find(|e| e.id == "Dialog" && e.width > 0.0)
+                    .expect("the modal backdrop is drawn");
+            assert!(
+                a.x < dialog.x + dialog.width
+                    && dialog.x < a.x + a.width
+                    && a.y < dialog.y + dialog.height
+                    && dialog.y < a.y + a.height,
+                "the dialog really covers base content: {a:?} {dialog:?}"
+            );
+            let overlaps = d.ui.overlaps();
+            assert_eq!(overlaps.len(), 1, "only the base's A/B pair: {overlaps:?}");
+            assert!(overlaps[0].path.ends_with("/A") || overlaps[0].other.ends_with("/A"));
+            assert!(overlaps[0].path.ends_with("/B") || overlaps[0].other.ends_with("/B"));
+        },
+    );
+}

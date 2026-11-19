@@ -18,7 +18,15 @@ fn covers(decl: &str, path: &str) -> bool {
 fn painted(n: &Node) -> bool {
     !n.placed.rect.is_empty()
         && (n.layout.used.background.is_some()
-            || !matches!(*n.content, Content::None)
+            || match &*n.content {
+                Content::None => false,
+                Content::Text(t) => !t.text.is_empty(),
+                Content::Rich(r) => r
+                    .spans
+                    .iter()
+                    .any(|s| !s.text.is_empty() || s.atom.is_some()),
+                _ => true,
+            }
             || !matches!(
                 n.widget,
                 crate::layout::Widget::None | crate::layout::Widget::Spacer
@@ -164,12 +172,33 @@ impl crate::ui::Layout {
             }
             set
         };
-        // Layers meant to be over the rest (dialogs, menus, tips, toasts).
-        let over_layers: std::collections::BTreeSet<usize> = tree
+        // A page may itself be a floating screen. Only layers above a
+        // drawn base are intentional overlays (dialogs, menus, tips, toasts).
+        let drawn_in_tree = preorder(&tree.nodes, 0)
+            .into_iter()
+            .any(|i| i != 0 && painted(&tree.nodes[i]) && seen_at_all(i));
+        let non_anchored: Vec<usize> = tree
             .floating
             .iter()
             .copied()
             .filter(|&f| !matches!(tree.nodes[f].float, Float::Anchored { .. }))
+            .collect();
+        let base_float = (!drawn_in_tree)
+            .then(|| {
+                non_anchored
+                    .iter()
+                    .copied()
+                    .filter(|&f| {
+                        preorder(&tree.nodes, f)
+                            .into_iter()
+                            .any(|i| painted(&tree.nodes[i]) && seen_at_all(i))
+                    })
+                    .min_by_key(|&f| tree.orders.pos[f])
+            })
+            .flatten();
+        let over_layers: std::collections::BTreeSet<usize> = non_anchored
+            .into_iter()
+            .filter(|&f| Some(f) != base_float)
             .flat_map(|f| preorder(&tree.nodes, f))
             .collect();
         let placed: Vec<usize> = order
@@ -190,13 +219,76 @@ impl crate::ui::Layout {
                 i != 0 && !over_layers.contains(&i) && painted(&tree.nodes[i]) && seen_at_all(i)
             })
             .collect();
+        // The base's lowest full-surface fills are intentional underlays.
+        // A negative-z fill can instead cover its parent's content box;
+        // a shade clamped inside the padding still backs all its content.
+        // Neither may contain text, images, custom shapes or controls;
+        // empty generated text does not make a background into content.
+        // Read the real paint order, not DOM order:
+        // the same fill drawn above content would conceal it and must report.
+        let surface = base_float.map_or(env.viewport.safe_rect(), |f| {
+            shown(f).intersect(&env.viewport.safe_rect())
+        });
+        let fills: std::collections::BTreeSet<usize> = others
+            .iter()
+            .copied()
+            .filter(|&i| {
+                let n = &tree.nodes[i];
+                let r = shown(i);
+                let backing = if n.z() < 0 && n.parent != NONE {
+                    posed(n.parent, false)
+                        .inset(&tree.nodes[n.parent].layout.used.padding)
+                        .intersect(&shown(n.parent))
+                        .intersect(&env.viewport.safe_rect())
+                } else {
+                    surface
+                };
+                n.props.out_of_flow()
+                    && n.layout.used.background.is_some()
+                    && matches!(*n.content, Content::None)
+                    && preorder(&tree.nodes, i).into_iter().all(|c| {
+                        let node = &tree.nodes[c];
+                        (c == i || !painted(node))
+                            && matches!(node.widget, crate::layout::Widget::None)
+                            && node.drawn_shapes().next().is_none()
+                            && !tree.draws.contains_key(&c)
+                            && !node.el.interactive
+                            && !node.focusable
+                            && !node.nav
+                            && !node.props.pointer
+                            && node.props.gestures.is_none()
+                            && node.props.drag.is_none()
+                            && node.props.pinch.is_none()
+                            && node.props.drop.is_none()
+                    })
+                    && area(&backing)
+                    && r.x <= backing.x
+                    && r.y <= backing.y
+                    && r.right() >= backing.right()
+                    && r.bottom() >= backing.bottom()
+            })
+            .collect();
+        let underlays: std::collections::BTreeSet<usize> = fills
+            .iter()
+            .copied()
+            .filter(|&i| {
+                let up = ancestors(i);
+                others.iter().all(|&o| {
+                    up.contains(&o) || fills.contains(&o) || tree.orders.pos[i] < tree.orders.pos[o]
+                })
+            })
+            .collect();
+        let others: Vec<usize> = others
+            .into_iter()
+            .filter(|i| !underlays.contains(i))
+            .collect();
         for &p in &placed {
             let sub: std::collections::BTreeSet<usize> =
                 preorder(&tree.nodes, p).into_iter().collect();
             let up = ancestors(p);
             for &a in sub
                 .iter()
-                .filter(|&&a| painted(&tree.nodes[a]) && seen_at_all(a))
+                .filter(|&&a| !underlays.contains(&a) && painted(&tree.nodes[a]) && seen_at_all(a))
             {
                 for &o in &others {
                     if sub.contains(&o) || up.contains(&o) {
@@ -254,6 +346,7 @@ impl crate::ui::Layout {
                         .into_iter()
                         .filter(|&a| {
                             if over_layers.contains(&a)
+                                || underlays.contains(&a)
                                 || !painted(&tree.nodes[a])
                                 || !seen_at_all(a)
                             {

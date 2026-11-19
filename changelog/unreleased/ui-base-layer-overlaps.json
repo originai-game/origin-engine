@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui.overlaps",
+      "summary": "Check content overlaps inside a screen mounted as the base floating layer, instead of skipping the entire screen as an intentional overlay. Noninteractive background-only fills beneath content remain intentional underlays when covering the safe surface, or their parent's content box at negative z-index. Empty generated text boxes draw nothing; nonempty text, images and controls are still checked."
+    }
+  ]
+}

@@ -2906,6 +2906,13 @@ sibling flow areas, including descendants overflowing a flex or grid cell.
 It uses visible boxes and emitted text bounds, respects ancestor clips and
 zero opacity, and applies no minimum-area threshold or result-count cap.
 Stacks and engine-declared overlays (a badge on its item) are intentional.
+A floating screen used as the base page is checked within itself. Its
+background-only fills covering the safe surface beneath all content are
+intentional underlays if they contain no content or interaction. A
+negative-z fill may instead cover its parent's content box, as a local
+shade; padding need not be covered.
+Other page content, including nonempty generated text, is checked; an
+empty generated text box draws nothing and does not overlap.
 A document can mark intentional overlap with
 `data-og-overlap="full/probe/path another/full/path"`; a path covers that
 element's descendants, declarations cover the declaring subtree, and `*`
