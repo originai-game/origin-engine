@@ -15,6 +15,10 @@
 #   zig, cargo-zigbuild  `build.sh --linux-x64`'s cross build against glibc
 #                     2.31 (release packing), pinned by ZIG_VERSION and
 #                     CARGO_ZIGBUILD_VERSION with their sha256; Linux x86_64 only
+#   wasm-split        Binaryen's module splitter, pinned by BINARYEN_VERSION and
+#                     each release archive's sha256: cuts the shipping wasm
+#                     into its primary and its on-demand modules
+#                     (packages/engine/scripts/wasm-split.ts)
 #   tsrs              `og check`'s type checker, pinned by TSRS_VERSION and the
 #                     SRI of its npm platform package; the package version
 #                     0.18.0-ts7.1.0-dev.20260929 is a binary that reports
@@ -34,6 +38,7 @@ SCCACHE_VERSION="${SCCACHE_VERSION:-0.19.0}"
 SHELLCHECK_VERSION="${SHELLCHECK_VERSION:-0.11.0}"
 TSRS_VERSION="${TSRS_VERSION:-0.18.0-ts7.1.0-dev.20260929}"
 TSRS_REPORTS="7.1.0-dev.20260930.4"
+BINARYEN_VERSION="${BINARYEN_VERSION:-133}"
 ZIG_VERSION="${ZIG_VERSION:-0.17.0}"
 ZIG_SHA256=1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
 CARGO_ZIGBUILD_VERSION="${CARGO_ZIGBUILD_VERSION:-0.23.4}"
@@ -164,6 +169,31 @@ else
   tar -xJf "$tmp/$sc" -C "$tmp"
   cp "$tmp/shellcheck-v$SHELLCHECK_VERSION/shellcheck" "$BIN/"
   shellcheck --version | awk '/^version:/ {print "shellcheck " $2}'
+fi
+
+# wasm-split: Binaryen's release archive, checked against its sha256 (the
+# release's own .sha256 files); only wasm-split is installed, a static binary.
+if command -v wasm-split >/dev/null && [ "$(wasm-split --version | awk '{print $3}')" = "$BINARYEN_VERSION" ]; then
+  og_say "wasm-split $BINARYEN_VERSION: present"
+else
+  case "$os-$arch" in
+    Linux-x86_64)   b=x86_64-linux;  bsum=2dc9c7813f5375db93d96ead4b78222fcc3e2677bbb832297af4797782a37489 ;;
+    Linux-aarch64)  b=aarch64-linux; bsum=89c07ea56faf38d0fbecf36ca8ec0721756716185f265b568e133d427f299bf8 ;;
+    Darwin-aarch64) b=arm64-macos;   bsum=ad66da82ac13f163e424b1643f16c6dfcccc98b5966296b43e52d3cab04f84a8 ;;
+    Darwin-x86_64)  b=x86_64-macos;  bsum=13a9b90be775c6389ce3d1f879cb8627bea56708ba8c122983941d53a8199b95 ;;
+    *) b="" ;;
+  esac
+  if [ -z "$b" ]; then
+    og_say "wasm-split: no Binaryen release for $os-$arch; the release's wasm split needs it"
+  else
+    og_say "wasm-split $BINARYEN_VERSION: installing"
+    a="binaryen-version_$BINARYEN_VERSION-$b.tar.gz"
+    fetch "https://github.com/WebAssembly/binaryen/releases/download/version_$BINARYEN_VERSION/$a" "$tmp/$a"
+    [ "$( (sha256sum "$tmp/$a" 2>/dev/null || shasum -a 256 "$tmp/$a") | awk '{print $1}')" = "$bsum" ] || { og_err "$a: sha256 is not the pinned $bsum"; exit 1; }
+    tar -xzf "$tmp/$a" -C "$tmp"
+    cp "$tmp/binaryen-version_$BINARYEN_VERSION/bin/wasm-split" "$BIN/"
+    wasm-split --version
+  fi
 fi
 
 # tsrs: the npm platform package @tsrs/<platform> (GitHub releases carry no
