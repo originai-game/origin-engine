@@ -167,11 +167,13 @@ impl Hooks for Disk {
 }
 
 /// What the last frame drew: how many instances, and the box around them.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct Frame {
     instances: usize,
     min: Vec3,
     max: Vec3,
+    /// Each instance drawn in part: how much, and whether fading out.
+    fades: Vec<(f32, bool)>,
 }
 
 struct Recorder(Rc<RefCell<Frame>>);
@@ -188,6 +190,7 @@ impl RenderBackend for Recorder {
             instances: scene.objects.instances.len(),
             min: Vec3::MAX,
             max: Vec3::MIN,
+            fades: Vec::new(),
         };
         for i in &scene.objects.instances {
             let Some((a, b)) = scene.mesh(i.mesh).and_then(|m| m.bounds()) else {
@@ -204,6 +207,13 @@ impl RenderBackend for Recorder {
                 f.max = f.max.max(p);
             }
         }
+        f.fades = scene
+            .objects
+            .instances
+            .iter()
+            .filter(|i| i.fx.reveal < 1.0)
+            .map(|i| (i.fx.reveal, i.fx.fade_out))
+            .collect();
         *self.0.borrow_mut() = f;
         Ok(())
     }
@@ -260,10 +270,15 @@ fn step(e: u32, n: u32) {
     }
 }
 
-/// A few frames, then the frame drawn and dump_render's `hlod` of it:
-/// scenes, proxies, unloaded, replaced.
+/// Frames past a cross-fade's 0.4 s, then the frame drawn and
+/// dump_render's `hlod` of it: scenes, proxies, unloaded, replaced.
 fn drawn(e: u32, frame: &Rc<RefCell<Frame>>) -> (Frame, [u64; 4]) {
-    step(e, 3);
+    settle(e, frame, 30)
+}
+
+/// `n` frames, then the frame drawn and dump_render's `hlod` of it.
+fn settle(e: u32, frame: &Rc<RefCell<Frame>>, n: u32) -> (Frame, [u64; 4]) {
+    step(e, n);
     let _ = og_engine_take_outputs(e);
     // The command runs as the next tick starts, on the frame before it;
     // nothing changes between the two.
@@ -283,7 +298,7 @@ fn drawn(e: u32, frame: &Rc<RefCell<Frame>>) -> (Frame, [u64; 4]) {
             .unwrap_or_else(|| panic!("no hlod.{k}: {dump}"))
     };
     (
-        *frame.borrow(),
+        frame.borrow().clone(),
         [n("scenes"), n("proxies"), n("unloaded"), n("replaced")],
     )
 }
@@ -331,6 +346,48 @@ fn a_far_town_draws_its_proxies_where_its_houses_stand() {
     look(e, MIDDLE, 30.0);
     let (again, h) = drawn(e, &frame);
     assert_eq!((h, again.instances), ([1, 0, 0, 0], 36 * PARTS));
+}
+
+#[test]
+fn a_turning_node_cross_fades_its_proxy_with_its_houses() {
+    let (e, frame) = engine("scenes/town.ogt");
+    look(e, MIDDLE, 30.0);
+    assert_eq!(drawn(e, &frame).1, [1, 0, 0, 0]);
+    // Turned to the proxy: a few frames in, both draw, the proxy fading in
+    // and every house part fading out by as much, so each pixel is the
+    // one or the other; no house counts as replaced yet.
+    look(e, MIDDLE, 3000.0);
+    let (mid, h) = settle(e, &frame, 6);
+    assert_eq!(h, [1, 1, 0, 0], "mid-fade: {h:?}");
+    assert_eq!(mid.instances, 36 * PARTS + 1, "{mid:?}");
+    let ins: Vec<f32> = mid.fades.iter().filter(|f| !f.1).map(|f| f.0).collect();
+    let outs: Vec<f32> = mid.fades.iter().filter(|f| f.1).map(|f| f.0).collect();
+    assert_eq!((ins.len(), outs.len()), (1, 36 * PARTS), "{:?}", mid.fades);
+    assert!(ins[0] > 0.05 && ins[0] < 0.95, "{ins:?}");
+    assert!(
+        outs.iter().all(|o| (o + ins[0] - 1.0).abs() < 1e-5),
+        "{ins:?} {outs:?}"
+    );
+    // Turned back mid-fade: reversed from where it was, never a pop.
+    look(e, MIDDLE, 30.0);
+    let (back, h) = settle(e, &frame, 1);
+    assert_eq!(h, [1, 1, 0, 0], "reversed: {h:?}");
+    let proxy = back
+        .fades
+        .iter()
+        .find(|f| f.1)
+        .expect("the proxy fades out");
+    assert!((proxy.0 - ins[0]).abs() < 0.2, "{proxy:?} from {ins:?}");
+    // Settled: the houses alone again, whole.
+    let (done, h) = drawn(e, &frame);
+    assert_eq!(
+        (h, done.instances, done.fades.len()),
+        ([1, 0, 0, 0], 36 * PARTS, 0)
+    );
+    // And to the proxy, to the end: the proxy alone, whole.
+    look(e, MIDDLE, 3000.0);
+    let (far, h) = drawn(e, &frame);
+    assert_eq!((h, far.fades.len()), ([1, 1, 0, 36], 0));
 }
 
 #[test]

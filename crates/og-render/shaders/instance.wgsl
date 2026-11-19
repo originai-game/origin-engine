@@ -7,15 +7,23 @@ fn instance_matrix(c0: vec3<f32>, c1: vec3<f32>, c2: vec3<f32>, c3: vec3<f32>) -
   return mat4x4<f32>(vec4<f32>(c0, 0.0), vec4<f32>(c1, 0.0), vec4<f32>(c2, 0.0), vec4<f32>(c3, 1.0));
 }
 
-// How much of an instance fading in is still hidden, 0 to 1 (0: whole),
-// from its look's flash word: 512 a step above the outline group
-// (instances.rs `fx_bits`).
+// How much of an instance fading in is still hidden, in 255 steps (0:
+// whole), and in bit 8 whether it fades out against another fading in, from
+// its look's flash word: 512 a step above the outline group (instances.rs
+// `fx_bits`, environment.rs `InstanceFx::hidden_bits`).
 fn look_hidden_steps(look: vec4<f32>) -> u32 {
-  return u32(max(floor(look.y / 512.0), 0.0)) & 255u;
+  return u32(max(floor(look.y / 512.0), 0.0)) & 511u;
+}
+
+// The share of an instance hidden, 0 to 1 (0: whole), from its steps;
+// negative for one fading out against another (`reveal_cut`).
+fn hidden_share(steps: u32) -> f32 {
+  let share = f32(steps & 255u) / 255.0;
+  return select(share, -share, (steps & 256u) != 0u);
 }
 
 fn look_hidden(look: vec4<f32>) -> f32 {
-  return f32(look_hidden_steps(look)) / 255.0;
+  return hidden_share(look_hidden_steps(look));
 }
 
 // Whether the dither cuts a fragment of an instance fading in
@@ -25,13 +33,19 @@ fn look_hidden(look: vec4<f32>) -> f32 {
 // sixtieth of a second of `seconds` so the frames (and a temporal resolve)
 // average to the share drawn. The lit pass and the prepass cut the same
 // pixels of a frame; a shadow pass cuts its map's texels, which the
-// shadow's filter averages to a lighter shadow. Callers fold it into their
-// entry point's one discard.
+// shadow's filter averages to a lighter shadow. A negative `hidden` fades
+// out against an instance fading in (`InstanceFx::fade_out`): it keeps
+// exactly the pixels that one cuts, the noise under 1 - |hidden|, so a
+// cross-fade draws each pixel once (the dithered LOD transition of
+// Unity's LOD cross-fade and Unreal's dithered LOD transition). Callers
+// fold it into their entry point's one discard.
 fn reveal_cut(hidden: f32, pixel: vec2<f32>, seconds: f32) -> bool {
-  if (hidden <= 0.0) { return false; }
+  if (hidden == 0.0) { return false; }
   let turn = floor(seconds * 60.0) % 64.0;
   let p = floor(pixel) + 5.588238 * turn;
-  return fract(52.9829189 * fract(dot(p, vec2<f32>(0.06711056, 0.00583715)))) < hidden;
+  let noise = fract(52.9829189 * fract(dot(p, vec2<f32>(0.06711056, 0.00583715))));
+  if (hidden > 0.0) { return noise < hidden; }
+  return noise >= 1.0 + hidden;
 }
 
 // A normal's world direction: through the inverse transpose of the model's

@@ -59,10 +59,11 @@ pub(crate) fn fx_bits(fx: &crate::InstanceFx) -> [f32; 3] {
         g => (1 + g % 255) as f32,
     };
     // How much of a model fading in is still hidden rides above the group,
-    // 512 a step (pbr.wgsl `look_hidden`): a whole instance carries what it
-    // did before, and the word stays below 2^18, so the flash keeps six
-    // bits of its fraction while the instance fades.
-    let hidden = fx.hidden_steps() as f32;
+    // 512 a step, with whether it fades out against another in the step's
+    // bit 8 (instance.wgsl `look_hidden_steps`): a whole instance carries
+    // what it did before, and the word stays below 2^18, so the flash
+    // keeps six bits of its fraction while the instance fades.
+    let hidden = fx.hidden_bits() as f32;
     [
         flash + 2.0 * group + 512.0 * hidden,
         color,

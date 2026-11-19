@@ -76,6 +76,13 @@ pub struct InstanceFx {
     /// at 0 until that is false never stops a frame for them.
     /// Presentation only: the simulation never reads it.
     pub reveal: f32,
+    /// Whether it fades out against another fading in (a cross-fade): its
+    /// dither keeps exactly the pixels and shadow texels an instance with
+    /// `reveal` `1 - reveal` and no `fade_out` cuts, so the pair draws
+    /// each pixel once, the one or the other (og-runtime's HLOD draws a
+    /// proxy and the models it stands in for so). Read only while
+    /// `reveal` is under 1.
+    pub fade_out: bool,
 }
 
 impl InstanceFx {
@@ -86,6 +93,7 @@ impl InstanceFx {
         tint: Vec3::ONE,
         outline: 0,
         reveal: 1.0,
+        fade_out: false,
     };
 
     /// [`Self::reveal`] as the GPU reads it: how much is hidden, in 255
@@ -96,6 +104,16 @@ impl InstanceFx {
             ((1.0 - self.reveal.clamp(0.0, 1.0)) * 255.0 + 0.5) as u32
         } else {
             0
+        }
+    }
+
+    /// [`Self::hidden_steps`] with [`Self::fade_out`] in bit 8 (set only
+    /// while some of it is hidden): what the instance record carries
+    /// (instance.wgsl `look_hidden_steps`).
+    pub(crate) fn hidden_bits(&self) -> u32 {
+        match self.hidden_steps() {
+            0 => 0,
+            steps => steps | (u32::from(self.fade_out) << 8),
         }
     }
 }

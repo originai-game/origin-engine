@@ -44,7 +44,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
   // An instance fading in: the pixels the lit pass cuts (instance.wgsl
   // `reveal_cut`), from the bits `outline_object` put above its id.
-  let hidden = reveal_cut(f32((in.object >> 16u) & 255u) / 255.0, in.clip.xy, frame.time.x);
+  let hidden = reveal_cut(hidden_share((in.object >> 16u) & 511u), in.clip.xy, frame.time.x);
   if (DISCARD && ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved || hidden)) {
     discard;
   }
