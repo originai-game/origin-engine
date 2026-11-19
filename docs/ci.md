@@ -538,9 +538,24 @@ pin and names each one it cannot have; a verified cache works offline.
 ## Generated sources
 
 The raw generated sources behind the shipped assets (Meshy models, gateway
-images, training runs, recordings) are private objects in the same store,
-pinned with `bun scripts/assets.ts pin <dir> --private <path...>` and pushed
-with `push`; reading them needs a key the store lets write. Ship game-ready
+images, training runs, recordings) are private objects in the same store;
+reading them needs a key the store lets write. `tools/archive.ts` of a
+showcase project puts its own, and `bun scripts/assets.ts pin <dir>
+--private <path...>` and `push` pin any other.
+
+Everything the former bucket `origin-generated-assets` held (7,293 keys,
+22.9 GB, imported 2026-11-19: `meshy/`, `training/`, `kimodo/`, `scenes/`,
+`gateway/`, `repro/`, `showcase-recordings/`) is in the store. Its index is
+the private object `ae676abeac60964bb75f614d6830e75964a23e0ad3e15da5f83d1901be0cfaf1`
+(1,437,111 bytes): `{version, bucket, imported, files: [{key, size, sha256}]}`,
+so a key a README or journal cites, such as `meshy/model/<operation>/model.glb`,
+resolves to its object:
+
+```sh
+curl -sH "Authorization: Bearer $OG_PLATFORM_DEVELOPMENT_KEY" \
+  https://origingame.ai/api/engine-assets/sha256/ae676abeac60964bb75f614d6830e75964a23e0ad3e15da5f83d1901be0cfaf1 |
+  jq -r '.files[] | select(.key == "meshy/model/<operation>/model.glb") | .sha256'
+``` Ship game-ready
 files (meshes simplified and compressed, maps sized for their place in the
 frame) as public pins: players download them.
 

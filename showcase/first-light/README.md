@@ -77,10 +77,10 @@ generated through the OriginGame gateway for origin-engine; no third-party
 asset is included. The image prompts were not kept; the concept images are.
 
 The raw GLBs, their concept images and a `task.json` receipt each are in
-the private bucket `origin-generated-assets` under
-`meshy/model/<operation>/`, so a model can be packed again or regenerated.
-The shipped files are pinned in `og-assets.json` and stored under
-`showcase/first-light/<sha256>.<ext>`.
+the generated-sources archive under `meshy/model/<operation>/` (private
+objects in the asset store, docs/ci.md §Generated sources), so a model can
+be packed again or regenerated. The shipped files are pinned in
+`og-assets.json`.
 
 | Shipped file | What | Meshy input | Operation (archive directory) | Gateway task | Size | sha256 (shipped) | sha256 (raw `model.glb`) |
 |---|---|---|---|---|---|---|---|
