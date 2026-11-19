@@ -10,7 +10,7 @@ This client's shared-world session: its settings, which the game sets, and where
 
 See `shared-worlds §2`.
 
-Also known as: multiplayer, MMO, online presence, see other players, shared world, persistent world, massively multiplayer, visitors, avatars of others, server authoritative, interest management
+Also known as: MMO, MMORPG, online presence, see other visitors, shared world, persistent world, open world online, visitors, avatars of others, server authoritative, interest management
 
 Token `og.SharedWorld`, registered under the schema name `og.SharedWorld`; its value type is `SharedWorld`.
 
@@ -25,7 +25,7 @@ Token `og.SharedWorld`, registered under the schema name `og.SharedWorld`; its v
 ```ogt
 resource SharedWorld {
   doc "This client's shared-world session: its settings, which the game sets, and where it stands, which the engine writes. Remote avatars are drawn `interpDelayMs` behind the newest server time this client has, between the two states around it."
-  aliases "multiplayer, MMO, online presence, see other players, shared world, persistent world, massively multiplayer, visitors, avatars of others, server authoritative, interest management"
+  aliases "MMO, MMORPG, online presence, see other visitors, shared world, persistent world, open world online, visitors, avatars of others, server authoritative, interest management"
   guide "shared-worlds §2"
   field sendRateHz u32 "How often this client proposes its avatar's state, per second (at most the tick rate)." {
     default 20

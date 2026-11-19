@@ -11,15 +11,15 @@ The API: `og api show shared`.
 
 | | lockstep room (`networking`) | shared world |
 |---|---|---|
-| who simulates | every peer, the whole world, in step | each client its own world; a server holds the avatars |
-| what crosses | every player's input, every tick | each avatar's state, to the clients near it |
-| players | at most 16 | 200 in one area, 2000 per server, more as more servers |
-| a slow player | holds or rolls back everyone | is drawn late; nobody waits |
+| who simulates | every peer, the whole game, in step | each client its own copy; a server holds the avatars |
+| what crosses | every peer's input, every tick | each avatar's state, to the clients near it |
+| size | at most 16 peers | 200 avatars in one area, 2000 per server, more as more servers |
+| a late peer | holds or rolls back everyone | is drawn late; nobody waits |
 | cheating | a peer can only lie about its input | the server checks each move against its kind's speed |
 
 - A shared world shares presence: where each visitor is, where it faces,
   how fast it moves, and a few bytes of the game's own (a locomotion
-  mode, an appearance). Doors, pickups and enemies stay each client's own.
+  mode, an appearance). Doors, pickups and creatures stay each client's own.
 - The two do not mix: a world in lockstep cannot join a shared world.
 
 <a id="guide-shared-worlds-2"></a>
@@ -28,7 +28,7 @@ The API: `og api show shared`.
 ```ts
 // GameDesc.start: the avatar's extra fields, before joining.
 og.shared.shape(world, { avatar: Look });
-// The player's entity: its og.Transform is what is shared.
+// This visitor's entity: its og.Transform is what is shared.
 const me = world.spawn({ name: "me" }).value!;
 world.insert(me, og.Transform, { position: spawnAt });
 world.insert(me, og.SharedAvatar, { kind: 0 });
@@ -84,7 +84,7 @@ and, after og.shared.shape, the game's avatar component.
 ### `shared-worlds §5` A world server for development and self-hosting
 
 ```sh
-og world-server --auth none --dev                        # local only: players name themselves
+og world-server --auth none --dev                        # local only: visitors name themselves
 og world-server token --secret-file s --audience my-game --sub p1 > t1
 og world-server --auth hs256 --secret-file s --audience my-game
 og run --shared ws://127.0.0.1:47910 --shared-token-file t1
