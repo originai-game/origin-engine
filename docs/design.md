@@ -1216,13 +1216,17 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   z: a leaf is a `size` cell of two models or more, each level above twice
   as wide, a proxy one ordinary cooked model built from the level below
   (welded, parts flush on a larger one dropped, simplified by
-  meshoptimizer, charted by xatlas, its base colour, roughness, metalness
-  and emission painted from what it stands in for by og-bake's
-  `transfer`). A proxy's error is measured, as a model
+  meshoptimizer, charted by xatlas, its base colour, roughness, metalness,
+  emission and tangent-space normals (its models' surfaces and normal maps,
+  in the MikkTSpace frame of its own page) painted from what it stands in
+  for by og-bake's `transfer`). A proxy's error is measured, as a model
   level's is, and it is drawn by the same one-pixel rule in place of every
   model under its node, so the renderer knows nothing of it: a proxy is
-  instances like any other. It is presentation only. The models stay in
-  the world, and a node whose model was destroyed, hidden, moved or given
+  instances like any other. Where a node's choice turns, the proxy and what
+  it replaces cross-fade for 0.4 s, dithered against each other in every
+  pass (`InstanceFx::fade_out` keeps exactly the pixels the side fading in
+  cuts), unless a model of the node is not as the cook read it. It is
+  presentation only. The models stay in the world, and a node whose model was destroyed, hidden, moved or given
   a look of its own draws its models again. A cell's sub-scene keeps its
   tree in the boot bundle and draws its proxies at the cell while the cell
   is not loaded. A proxy is one batch, drawn in the passes whose volume
@@ -1234,9 +1238,8 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   themselves, with the reason in the cook report:
   skinned, impostor, cut-out, fractured, GPU-instanced and tinted models,
   and one larger than a leaf. Not yet: a node over cells (each sub-scene
-  has its own tree), a dithered cross-fade (a proxy replaces its models in
-  one frame, under a pixel of error), merged foliage (impostors draw it),
-  normal maps on proxies, and a proxy lit by its models' bake.
+  has its own tree), merged foliage (impostors draw it), and a
+  proxy lit by its models' bake.
 - **Reflection probes** (`og.ReflectionProbe`): box-projected cubes (the
   box and fade of the `og.Volume` on the entity, as every region) captured
   with the lit pipelines and prefiltered like the environment, chosen per

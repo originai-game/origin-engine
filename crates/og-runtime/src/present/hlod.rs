@@ -11,6 +11,19 @@
 //! `RenderSettings.lodBias`). A node nearer than that hands the choice to
 //! its children, and its own models draw themselves.
 //!
+//! **Cross-fade.** Where a node's choice turns, the proxy and what was
+//! drawn in its place (its children's proxies or the models) are both
+//! drawn for [`crate::present::reveal::SECONDS`], dithered against each
+//! other: the side fading in draws a share of the pixels, the side fading
+//! out exactly the others (`og_render::InstanceFx::fade_out`), so no
+//! pixel is drawn twice or left empty, and a temporal resolve sees one
+//! surface turn into the other rather than a pop (the dithered LOD
+//! transition of Unity's LOD cross-fade and Unreal's dithered LOD
+//! transition). A turn back during the fade reverses it from where it
+//! is. Only a node whose models are all as the cook read it fades: one
+//! changed, a cell that is not loaded, or a proxy still fading in after
+//! its maps arrived switches at once, as before.
+//!
 //! **Presentation only.** The models stay in the world, simulated,
 //! collided with and found by queries as before; only which instances the
 //! frame holds changes. A proxy stands in for its models only while each
@@ -60,6 +73,9 @@ struct Place {
     /// Per node, whether its proxy drew last frame (the hysteresis); none
     /// for a node not asked.
     drew: Vec<Option<bool>>,
+    /// Per node, the frame time in ticks its cross-fade towards `drew`
+    /// started at; none when it is not fading.
+    fades: Vec<Option<f64>>,
     /// Distinguishes its proxies' instances from every other place's.
     serial: u64,
 }
@@ -88,6 +104,11 @@ pub(crate) struct HlodState {
     /// The models the last frame's proxies drew in place of, by entity
     /// (the probe's `dump_entity`).
     pub replaced: IdMap<u64, ()>,
+    /// The models cross-fading with a proxy in the frame being built: how
+    /// much of each is drawn and whether it fades out
+    /// (`og_render::InstanceFx::reveal`, `fade_out`). The frame's model
+    /// rows take it.
+    pub crossing: IdMap<u64, (f32, bool)>,
     /// Counts the changes to the places other than a frame's draw: a
     /// place added, or given its members.
     pub changes: u64,
@@ -312,6 +333,7 @@ pub(crate) fn cell_placed(eng: &Engine, cell: Entity, index: usize) {
     state.places.push(Place {
         scene,
         drew: vec![None; tree.hlod.nodes.len()],
+        fades: vec![None; tree.hlod.nodes.len()],
         tree,
         root: Some(cell.to_bits()),
         cell: true,
@@ -361,6 +383,7 @@ pub(crate) fn scene_spawned(
     {
         p.members = members;
         p.drew.fill(None);
+        p.fades.fill(None);
         return;
     }
     // An earlier spawn of it here whose models are all gone draws nothing more.
@@ -371,6 +394,7 @@ pub(crate) fn scene_spawned(
     state.places.push(Place {
         scene: scene.id.clone(),
         drew: vec![None; tree.hlod.nodes.len()],
+        fades: vec![None; tree.hlod.nodes.len()],
         tree,
         root,
         cell,
@@ -515,7 +539,14 @@ pub(crate) fn draw(
     keys: &mut Vec<(u64, u32)>,
 ) -> IdMap<u64, ()> {
     let mut replaced = IdMap::new();
+    let mut crossed = IdMap::new();
     let mut drawn = Drawn::default();
+    // A cross-fade's length in ticks, and how far one started at `at` is
+    // at this frame's time.
+    let now = rs.reveal.now();
+    let dt = world.time().dt;
+    let ticks = f64::from(crate::present::reveal::SECONDS) / f64::from(dt.max(1e-6));
+    let progress = |at: f64| ((now - at) / ticks).clamp(0.0, 1.0) as f32;
     let mut places = std::mem::take(&mut rs.hlod.places);
     let before = places.len();
     // A cell that is gone takes its place with it.
@@ -575,9 +606,11 @@ pub(crate) fn draw(
                 }
             })
         };
-        let mut stack: Vec<usize> = tree.hlod.children(None).collect();
+        // Each node with the fade an ancestor draws it under, if any.
+        let mut stack: Vec<(usize, Option<(f32, bool)>)> =
+            tree.hlod.children(None).map(|n| (n, None)).collect();
         stack.reverse();
-        while let Some(n) = stack.pop() {
+        while let Some((n, crossing)) = stack.pop() {
             let node = &nodes[n];
             let parts = view
                 .models
@@ -616,37 +649,89 @@ pub(crate) fn draw(
                 // leaf's are all its own).
                 Some(_) => !near || own < node.members.1,
             };
-            settled &= place.drew[n] == Some(proxy);
-            place.drew[n] = Some(proxy);
-            let Some(parts) = parts.filter(|_| proxy) else {
-                stack.extend(children.into_iter().rev());
-                continue;
+            // Under an ancestor fading out, what was drawn goes on being
+            // drawn as it was until the fade ends.
+            let before = place.drew[n];
+            let proxy = match (crossing, before) {
+                (Some((_, true)), Some(b)) if parts.is_some() || !b => b,
+                _ => proxy,
             };
-            settled &= place.drew[n + 1..node.end].iter().all(Option::is_none);
-            place.drew[n + 1..node.end].fill(None);
             // Fading in, when its maps arrived with nothing drawn in its
             // place (`crate::present::reveal`).
             let reveal = rs.reveal.proxy(tree.proxies[n]);
-            settled &= reveal == 1.0;
+            // The cross-fade: started where the choice turned, reversed
+            // from where it was when it turns back during one.
+            let fades = crossing.is_none()
+                && loaded
+                && parts.is_some()
+                && reveal == 1.0
+                && under.clone().all(|k| member(k, h) == Member::Intact);
+            if !fades {
+                place.fades[n] = None;
+            } else if before.is_some_and(|b| b != proxy) {
+                let shown = place.fades[n].map_or(1.0, progress);
+                place.fades[n] = Some(now - f64::from(1.0 - shown) * ticks);
+            }
+            let t = place.fades[n].map(progress).filter(|&t| t < 1.0);
+            if t.is_none() {
+                place.fades[n] = None;
+            }
+            settled &= before == Some(proxy) && t.is_none();
+            place.drew[n] = Some(proxy);
+            // What its children and its own models draw with: an
+            // ancestor's fade, else this node's other side.
+            let other = match t {
+                Some(t) if proxy => Some((1.0 - t, true)),
+                Some(t) => Some((t, false)),
+                None => crossing,
+            };
+            let own_models = |crossed: &mut IdMap<u64, (f32, bool)>| {
+                if let Some(c) = other {
+                    for &(entity, _) in &place.members[own..node.members.1] {
+                        crossed.insert(entity, c);
+                    }
+                }
+            };
+            let (Some(parts), true) = (parts, proxy || t.is_some()) else {
+                own_models(&mut crossed);
+                stack.extend(children.into_iter().rev().map(|c| (c, other)));
+                continue;
+            };
+            // This node's side of its own fade, or of an ancestor's.
+            let (reveal, fade_out) = match (t, crossing) {
+                (Some(t), _) if proxy => (t, false),
+                (Some(t), _) => (1.0 - t, true),
+                (None, Some(c)) => c,
+                (None, None) => (reveal, false),
+            };
+            if t.is_some() {
+                // The other side draws too: its walk is kept as it was.
+                own_models(&mut crossed);
+                stack.extend(children.into_iter().rev().map(|c| (c, other)));
+            } else {
+                settled &= place.drew[n + 1..node.end].iter().all(Option::is_none);
+                place.drew[n + 1..node.end].fill(None);
+                place.fades[n + 1..node.end].fill(None);
+            }
             drawn.proxies += 1;
-            if loaded {
+            if !loaded {
+                drawn.unloaded += 1;
+            } else if t.is_none() && crossing.is_none() {
                 for k in under {
                     replaced.insert(place.members[k].0, ());
                 }
-            } else {
-                drawn.unloaded += 1;
             }
-            let fx = match view.debug {
-                true => og_render::InstanceFx {
-                    flash: 0.8,
-                    flash_color: debug_color(node.level),
-                    reveal,
-                    ..og_render::InstanceFx::NONE
-                },
-                false => og_render::InstanceFx {
-                    reveal,
-                    ..og_render::InstanceFx::NONE
-                },
+            let fx = og_render::InstanceFx {
+                reveal,
+                fade_out,
+                ..match view.debug {
+                    true => og_render::InstanceFx {
+                        flash: 0.8,
+                        flash_color: debug_color(node.level),
+                        ..og_render::InstanceFx::NONE
+                    },
+                    false => og_render::InstanceFx::NONE,
+                }
             };
             let key = (1 << 63) | (place.serial << 24) | n as u64;
             for (k, &(mesh, material, local)) in parts.iter().enumerate() {
@@ -670,6 +755,7 @@ pub(crate) fn draw(
         }
     }
     drawn.replaced = replaced.len() as u32;
+    rs.hlod.crossing = crossed;
     rs.hlod.places = places;
     rs.hlod.drawn = drawn;
     rs.hlod.settled = settled;

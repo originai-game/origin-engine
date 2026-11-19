@@ -145,9 +145,9 @@ fn look_outline(look: vec4<f32>) -> u32 {
 }
 
 // An instance's id in the outline target: its group's, else its transform's.
-// Above it, in bits 16 to 23, how much of an instance fading in is hidden
+// Above it, in bits 16 to 24, how much of an instance fading in is hidden
 // (`look_hidden_steps`): the prepass has no look of its own to cut by
-// (pbr_prepass.wgsl `prepass_hidden`).
+// (pbr_prepass.wgsl).
 fn outline_object(m0: vec3<f32>, m1: vec3<f32>, m2: vec3<f32>, m3: vec3<f32>, look: vec4<f32>) -> u32 {
   let hidden = look_hidden_steps(look) << 16u;
   let group = look_outline(look);

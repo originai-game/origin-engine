@@ -97,6 +97,7 @@ pub(super) fn models(
                             tint: rgb(&tint),
                             outline: 0,
                             reveal: 1.0,
+                            fade_out: false,
                         },
                         cast: on(&cast, true),
                         receive: on(&receive, true),
@@ -334,13 +335,26 @@ pub(super) fn models(
         crate::present::hlod::draw(world, rs, h, &view, keys)
     };
     build.hlod_drawn(hlod_inputs, hlod_from, &rs.scene, keys);
+    // The models cross-fading with a proxy (`crate::present::hlod`): how
+    // much of each is drawn, and whether it is the side fading out. Empty
+    // when the proxies were copied (a frame with a fade never is).
+    let crossing = std::mem::take(&mut rs.hlod.crossing);
     for (i, mut parts) in parts_of.into_iter().enumerate() {
         let r = build.rows()[i];
         let (e, asset, bias, sway, m) = (r.entity, r.asset, r.bias, r.sway, r.matrix);
         let mut look = r.look;
         let is_replaced = replaced.contains_key(&e);
+        let crossed = crossing.get(&e).copied();
+        if let Some((reveal, fade_out)) = crossed {
+            look.fx.reveal = look.fx.reveal.min(reveal);
+            look.fx.fade_out = fade_out;
+        }
         build.start(&rs.scene, keys);
-        if let Some(level) = build.copy_row(i, is_replaced, &mut rs.scene, keys) {
+        if let Some(level) = crossed
+            .is_none()
+            .then(|| build.copy_row(i, is_replaced, &mut rs.scene, keys))
+            .flatten()
+        {
             if let Some(level) = level {
                 drawn.insert(e, level);
             }
@@ -372,7 +386,8 @@ pub(super) fn models(
         };
         // Copied by the next frame when its level held here (the
         // hysteresis then keeps it) and nothing animates it.
-        build.built(false, level as u8, settled && !r.posed && !r.crowd);
+        let copyable = settled && !r.posed && !r.crowd && crossed.is_none();
+        build.built(false, level as u8, copyable);
         drawn.insert(e, level as u8);
         if debug_lod {
             look.fx.flash = 0.8;

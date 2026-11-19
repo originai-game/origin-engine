@@ -355,6 +355,11 @@ impl Reveal {
         self.display = display;
     }
 
+    /// The time of the frame being read, in ticks ([`Reveal::frame`]).
+    pub(crate) fn now(&self) -> f64 {
+        self.frame
+    }
+
     /// How much of `fade` the frame being read draws.
     fn part(&self, fade: &Fade) -> f32 {
         match self.display {
