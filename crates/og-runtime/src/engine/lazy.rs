@@ -525,6 +525,22 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::bind::shared::RECORDS[7],
         enable: crate::bind::shared::enable,
     },
+    Lazy {
+        name: crate::bind::shared::RECORDS[8],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[9],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[10],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[11],
+        enable: crate::bind::shared::enable,
+    },
     // og.scene: written and sent by the runtime's before-tick hook
     // (world::scenes) once a game first changes scene; no module to grant.
     Lazy {

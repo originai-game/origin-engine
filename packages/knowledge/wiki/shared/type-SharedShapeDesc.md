@@ -13,6 +13,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `avatar` | `AnyComponent \| null` | `null` | — | — | — | The game's component whose fields every state carries (a locomotion mode, an appearance id): on the og.SharedAvatar entity, and written on each og.RemoteAvatar. Its packed bytes are at most 32. Null: none. |
+| `object` | `AnyComponent \| null` | `null` | — | — | — | The game's component every shared object carries (a door's open state, a placed block's material): written on each og.SharedObject entity. Its packed bytes are at most 256. Null: no objects. |
 | `event` | `AnyComponent \| null` | `null` | — | — | — | The game's component used as an event record (og.shared.send, og.shared.events): its packed bytes are at most 1024, and an Entity field named `from` is set to the sender's og.RemoteAvatar. Used as a shape only. Null: no events. |
 
 ```ogt
@@ -20,8 +21,9 @@ struct SharedShapeDesc {
   doc "What the game shares besides the transform (og.shared.shape)."
   desc true
   field avatar Option.AnyComponent "The game's component whose fields every state carries (a locomotion mode, an appearance id): on the og.SharedAvatar entity, and written on each og.RemoteAvatar. Its packed bytes are at most 32. Null: none."
+  field object Option.AnyComponent "The game's component every shared object carries (a door's open state, a placed block's material): written on each og.SharedObject entity. Its packed bytes are at most 256. Null: no objects."
   field event Option.AnyComponent "The game's component used as an event record (og.shared.send, og.shared.events): its packed bytes are at most 1024, and an Entity field named `from` is set to the sender's og.RemoteAvatar. Used as a shape only. Null: no events."
 }
 ```
 
-<sub>Module `shared` line 112</sub>
+<sub>Module `shared` line 157</sub>

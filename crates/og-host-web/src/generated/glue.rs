@@ -3280,6 +3280,21 @@ pub fn og_shared_events(world: u32, component: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_shared_put(world: u32, key: String, component: String, value: String, desc: Option<String>) -> String {
+    <Host as SharedApi>::og_shared_put(&Host, world, key, component, value, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_remove(world: u32, key: String, expect: String) -> String {
+    <Host as SharedApi>::og_shared_remove(&Host, world, key, expect)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_object(world: u32, entity: f64) -> String {
+    <Host as SharedApi>::og_shared_object(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_shared_remote(world: u32, entity: f64) -> String {
     <Host as SharedApi>::og_shared_remote(&Host, world, entity)
 }

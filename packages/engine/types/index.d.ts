@@ -32066,6 +32066,21 @@ export interface RemoteAvatar {
 }
 
 /**
+ * A shared object near this visitor, written by the engine: an entity with an og.Transform and the game's object component (og.shared.shape), spawned when the object comes into sight, rewritten when anyone changes it (og.shared.put), despawned when it leaves sight or is removed. The server owns it: change it with og.shared.put and og.shared.remove, never by writing the entity. Its key: og.shared.object.
+ * See `shared-worlds §5`.
+ *
+ * The value of the `SharedObject` component (token `og.SharedObject`).
+ */
+export interface SharedObject {
+  /**
+   * Its version: 1 when created, one more each change.
+   *
+   * @readonly written by the engine
+   */
+  readonly version: number;
+}
+
+/**
  * The server took this client in: sent at the start of the tick after its welcome arrived, and again after a reconnect.
  *
  * The payload of the `SharedJoined` event (token `og.SharedJoined`).
@@ -32133,6 +32148,81 @@ export interface SharedCorrected {
 }
 
 /**
+ * A shared object came into sight or changed: its og.SharedObject entity holds the new state from this tick.
+ *
+ * The payload of the `SharedObjectChanged` event (token `og.SharedObjectChanged`).
+ */
+export interface SharedObjectChanged {
+  /** Its og.SharedObject entity. */
+  readonly entity: Entity;
+  /** Its key (at most 63 bytes). */
+  readonly key: string;
+  /** Its version now. */
+  readonly version: number;
+}
+
+/**
+ * A shared object left sight or was removed: its og.SharedObject entity was despawned this tick.
+ *
+ * The payload of the `SharedObjectGone` event (token `og.SharedObjectGone`).
+ */
+export interface SharedObjectGone {
+  /** The entity it had. */
+  readonly entity: Entity;
+  /** Its key (at most 63 bytes). */
+  readonly key: string;
+}
+
+/**
+ * The server's answer to this client's og.shared.put or og.shared.remove. Refused when the object's version was not the one expected, it lies outside this visitor's sight, or ops came faster than the server's events a second.
+ *
+ * The payload of the `SharedOpAnswered` event (token `og.SharedOpAnswered`).
+ */
+export interface SharedOpAnswered {
+  /** The op, as og.shared.put or og.shared.remove returned it. */
+  readonly op: number;
+  /** Whether the server applied it. */
+  readonly taken: boolean;
+  /** The object's version now (0: there is none). */
+  readonly version: number;
+}
+
+/**
+ * Where a shared object is, and the version a change expects (og.shared.put).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SharedPutDesc {
+  /**
+   * Where, in world space; within this visitor's sight.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly position?: Vector3;
+  /**
+   * Its rotation about y.
+   *
+   * @default 0
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   */
+  readonly yaw?: number;
+  /**
+   * Apply only while the object has this version (0: only if it does not exist yet): two visitors opening one door, the second is refused. Null: whatever it has.
+   *
+   * @default null
+   */
+  readonly expect?: number | null;
+}
+
+/** Which shared object an og.SharedObject entity is. */
+export interface SharedObjectInfo {
+  /** Its key. */
+  readonly key: string;
+  /** Its version. */
+  readonly version: number;
+}
+
+/**
  * What the game shares besides the transform (og.shared.shape).
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -32144,6 +32234,12 @@ export interface SharedShapeDesc {
    * @default null
    */
   readonly avatar?: AnyComponent | null;
+  /**
+   * The game's component every shared object carries (a door's open state, a placed block's material): written on each og.SharedObject entity. Its packed bytes are at most 256. Null: no objects.
+   *
+   * @default null
+   */
+  readonly object?: AnyComponent | null;
   /**
    * The game's component used as an event record (og.shared.send, og.shared.events): its packed bytes are at most 1024, and an Entity field named `from` is set to the sender's og.RemoteAvatar. Used as a shape only. Null: no events.
    *
@@ -32231,6 +32327,9 @@ export interface SharedStatus {
   /** Why the last session ended or was refused; empty while none did. */
   readonly reason: string;
 }
+
+
+
 
 
 
@@ -39424,6 +39523,11 @@ export declare namespace og {
    */
   const RemoteAvatar: ComponentType<{ readonly id: FieldSpec<"u32">; readonly kind: FieldSpec<"u32">; readonly sinceTick: FieldSpec<"f64">; readonly jumpedTick: FieldSpec<"f64"> }, RemoteAvatar>;
   /**
+   * A shared object near this visitor, written by the engine: an entity with an og.Transform and the game's object component (og.shared.shape), spawned when the object comes into sight, rewritten when anyone changes it (og.shared.put), despawned when it leaves sight or is removed. The server owns it: change it with og.shared.put and og.shared.remove, never by writing the entity. Its key: og.shared.object.
+   * See `shared-worlds §5`.
+   */
+  const SharedObject: ComponentType<{ readonly version: FieldSpec<"u32"> }, SharedObject>;
+  /**
    * The server took this client in: sent at the start of the tick after its welcome arrived, and again after a reconnect.
    */
   const SharedJoined: EventType<SharedJoined>;
@@ -39442,6 +39546,18 @@ export declare namespace og {
    * See `shared-worlds §4`.
    */
   const SharedCorrected: EventType<SharedCorrected>;
+  /**
+   * A shared object came into sight or changed: its og.SharedObject entity holds the new state from this tick.
+   */
+  const SharedObjectChanged: EventType<SharedObjectChanged>;
+  /**
+   * A shared object left sight or was removed: its og.SharedObject entity was despawned this tick.
+   */
+  const SharedObjectGone: EventType<SharedObjectGone>;
+  /**
+   * The server's answer to this client's og.shared.put or og.shared.remove. Refused when the object's version was not the one expected, it lies outside this visitor's sight, or ops came faster than the server's events a second.
+   */
+  const SharedOpAnswered: EventType<SharedOpAnswered>;
   /**
    * Shared worlds: visitors of one large world see each other's avatars in real time, near them only. Each client runs its own world; a world server (`og world-server`) holds the avatars, checks each move and sends each client those near it. The game marks its avatar with og.SharedAvatar and moves it as always; every other visitor in sight is an og.RemoteAvatar entity the engine spawns, moves and despawns.
    * The host supplies the connection; game code names no URL or token. What the session delivers is host input, journaled with og.platform.journal.
@@ -39499,6 +39615,35 @@ export declare namespace og {
      * @returns Refused for another component than the shape's.
      */
     function events<C extends AnyComponent>(world: World, component: C): Result<readonly Value<C>[]>;
+    /**
+     * Create or change a shared object near this visitor: the server applies it in the order ops arrive, and every visitor near it (this one too) sees its og.SharedObject entity change; og.SharedOpAnswered says whether it was taken. Kept across server restarts when the server keeps a store.
+     * See `shared-worlds §5`.
+     *
+     * @param world The world.
+     * @param key The object's key in this world: 1 to 64 of letters, digits, `.`, `_`, `-`, `:` and `/` (`door/12`).
+     * @param component The object component og.shared.shape named.
+     * @param value Its fields; omitted ones take their defaults.
+     * @param desc Where it is, and the version it expects.
+     * @returns The op's number (og.SharedOpAnswered.op). Refused without a joined session, without an object shape, for another component, or a key that is not one.
+     */
+    function put<C extends AnyComponent>(world: World, key: string, component: C, value: Partial<Value<C>>, desc?: SharedPutDesc): Result<number>;
+    /**
+     * Remove a shared object near this visitor: its og.SharedObject entity despawns for everyone near it.
+     * See `shared-worlds §5`.
+     *
+     * @param world The world.
+     * @param key The object's key.
+     * @param expect Only while it has this version; null: whatever it has.
+     * @returns The op's number (og.SharedOpAnswered.op). Refused without a joined session or for a key that is not one.
+     */
+    function remove(world: World, key: string, expect: number | null): Result<number>;
+    /**
+     * Which shared object an og.SharedObject entity is: its key and version. Null for an entity that is not one.
+     *
+     * @param world The world.
+     * @param entity The og.SharedObject entity.
+     */
+    function object(world: World, entity: Entity): SharedObjectInfo | null;
     /**
      * Who an og.RemoteAvatar is: its player id, name and kind. Null for an entity that is not one.
      *

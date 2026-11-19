@@ -16040,11 +16040,17 @@
         "SharedWorld",
         "SharedAvatar",
         "RemoteAvatar",
+        "SharedObject",
         "SharedJoined",
         "SharedLeft",
         "PresenceEntered",
         "PresenceLeft",
         "SharedCorrected",
+        "SharedObjectChanged",
+        "SharedObjectGone",
+        "SharedOpAnswered",
+        "SharedPutDesc",
+        "SharedObjectInfo",
         "SharedShapeDesc",
         "SharedJoinDesc",
         "SharedRemote",
@@ -16188,6 +16194,98 @@
           ],
           "returns": "Result<List<Value<C>>>",
           "returnsDoc": "Refused for another component than the shape's.",
+          "publish": true
+        },
+        {
+          "name": "put",
+          "doc": "Create or change a shared object near this visitor: the server applies it in the order ops arrive, and every visitor near it (this one too) sees its og.SharedObject entity change; og.SharedOpAnswered says whether it was taken. Kept across server restarts when the server keeps a store.\nSee `shared-worlds §5`.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "AnyComponent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "The object's key in this world: 1 to 64 of letters, digits, `.`, `_`, `-`, `:` and `/` (`door/12`)."
+            },
+            {
+              "name": "component",
+              "type": "C",
+              "optional": false,
+              "doc": "The object component og.shared.shape named."
+            },
+            {
+              "name": "value",
+              "type": "Partial<Value<C>>",
+              "optional": false,
+              "doc": "Its fields; omitted ones take their defaults."
+            },
+            {
+              "name": "desc",
+              "type": "SharedPutDesc",
+              "optional": true,
+              "doc": "Where it is, and the version it expects."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "The op's number (og.SharedOpAnswered.op). Refused without a joined session, without an object shape, for another component, or a key that is not one.",
+          "publish": true
+        },
+        {
+          "name": "remove",
+          "doc": "Remove a shared object near this visitor: its og.SharedObject entity despawns for everyone near it.\nSee `shared-worlds §5`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "optional": false,
+              "doc": "The object's key."
+            },
+            {
+              "name": "expect",
+              "type": "Option<u32>",
+              "optional": false,
+              "doc": "Only while it has this version; null: whatever it has."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "The op's number (og.SharedOpAnswered.op). Refused without a joined session or for a key that is not one.",
+          "publish": true
+        },
+        {
+          "name": "object",
+          "doc": "Which shared object an og.SharedObject entity is: its key and version. Null for an entity that is not one.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.SharedObject entity."
+            }
+          ],
+          "returns": "Option<SharedObjectInfo>",
           "publish": true
         },
         {
@@ -56894,6 +56992,23 @@
       },
       "additionalProperties": false
     },
+    "SharedObject": {
+      "x-og-kind": "component",
+      "x-og-module": "shared",
+      "description": "A shared object near this visitor, written by the engine: an entity with an og.Transform and the game's object component (og.shared.shape), spawned when the object comes into sight, rewritten when anyone changes it (og.shared.put), despawned when it leaves sight or is removed. The server owns it: change it with og.shared.put and og.shared.remove, never by writing the entity. Its key: og.shared.object.\nSee `shared-worlds §5`.",
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its version: 1 when created, one more each change.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
     "SharedJoined": {
       "x-og-kind": "event",
       "x-og-module": "shared",
@@ -57008,6 +57123,146 @@
       ],
       "additionalProperties": false
     },
+    "SharedObjectChanged": {
+      "x-og-kind": "event",
+      "x-og-module": "shared",
+      "description": "A shared object came into sight or changed: its og.SharedObject entity holds the new state from this tick.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "Its og.SharedObject entity."
+        },
+        "key": {
+          "type": "string",
+          "description": "Its key (at most 63 bytes)."
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its version now."
+        }
+      },
+      "required": [
+        "entity",
+        "key",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "SharedObjectGone": {
+      "x-og-kind": "event",
+      "x-og-module": "shared",
+      "description": "A shared object left sight or was removed: its og.SharedObject entity was despawned this tick.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity it had."
+        },
+        "key": {
+          "type": "string",
+          "description": "Its key (at most 63 bytes)."
+        }
+      },
+      "required": [
+        "entity",
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "SharedOpAnswered": {
+      "x-og-kind": "event",
+      "x-og-module": "shared",
+      "description": "The server's answer to this client's og.shared.put or og.shared.remove. Refused when the object's version was not the one expected, it lies outside this visitor's sight, or ops came faster than the server's events a second.",
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The op, as og.shared.put or og.shared.remove returned it."
+        },
+        "taken": {
+          "type": "boolean",
+          "description": "Whether the server applied it."
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The object's version now (0: there is none)."
+        }
+      },
+      "required": [
+        "op",
+        "taken",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "SharedPutDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "shared",
+      "description": "Where a shared object is, and the version a change expects (og.shared.put).",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where, in world space; within this visitor's sight.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "yaw": {
+          "type": "number",
+          "description": "Its rotation about y.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "expect": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Apply only while the object has this version (0: only if it does not exist yet): two visitors opening one door, the second is refused. Null: whatever it has.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SharedObjectInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "shared",
+      "description": "Which shared object an og.SharedObject entity is.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key."
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its version."
+        }
+      },
+      "required": [
+        "key",
+        "version"
+      ],
+      "additionalProperties": false
+    },
     "SharedShapeDesc": {
       "x-og-kind": "desc",
       "x-og-module": "shared",
@@ -57024,6 +57279,18 @@
             }
           ],
           "description": "The game's component whose fields every state carries (a locomotion mode, an appearance id): on the og.SharedAvatar entity, and written on each og.RemoteAvatar. Its packed bytes are at most 32. Null: none.",
+          "default": null
+        },
+        "object": {
+          "anyOf": [
+            {
+              "x-og-type": "AnyComponent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The game's component every shared object carries (a door's open state, a placed block's material): written on each og.SharedObject entity. Its packed bytes are at most 256. Null: no objects.",
           "default": null
         },
         "event": {

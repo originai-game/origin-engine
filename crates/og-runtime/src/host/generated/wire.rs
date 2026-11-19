@@ -26001,10 +26001,91 @@ impl ToJson for SharedState {
     }
 }
 
+/// `SharedPutDesc`: packages/knowledge/wiki/shared.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SharedPutDesc {
+    pub position: Vec3,
+    pub yaw: f32,
+    pub expect: Option<u32>,
+}
+
+impl Default for SharedPutDesc {
+    fn default() -> Self {
+        Self {
+            position: Default::default(),
+            yaw: Default::default(),
+            expect: Default::default(),
+        }
+    }
+}
+
+impl FromJson for SharedPutDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            position: field(o, "position", d.position)?,
+            yaw: field(o, "yaw", d.yaw)?,
+            expect: field(o, "expect", d.expect)?,
+        })
+    }
+}
+
+impl ToJson for SharedPutDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("position".into(), self.position.to_json());
+        o.insert("yaw".into(), self.yaw.to_json());
+        o.insert("expect".into(), self.expect.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `SharedObjectInfo`: packages/knowledge/wiki/shared.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SharedObjectInfo {
+    pub key: String,
+    pub version: u32,
+}
+
+impl Default for SharedObjectInfo {
+    fn default() -> Self {
+        Self {
+            key: Default::default(),
+            version: Default::default(),
+        }
+    }
+}
+
+impl FromJson for SharedObjectInfo {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            key: field(o, "key", d.key)?,
+            version: field(o, "version", d.version)?,
+        })
+    }
+}
+
+impl ToJson for SharedObjectInfo {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("key".into(), self.key.to_json());
+        o.insert("version".into(), self.version.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `SharedShapeDesc`: packages/knowledge/wiki/shared.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SharedShapeDesc {
     pub avatar: Option<Value>,
+    pub object: Option<Value>,
     pub event: Option<Value>,
 }
 
@@ -26012,6 +26093,7 @@ impl Default for SharedShapeDesc {
     fn default() -> Self {
         Self {
             avatar: Default::default(),
+            object: Default::default(),
             event: Default::default(),
         }
     }
@@ -26025,6 +26107,7 @@ impl FromJson for SharedShapeDesc {
         let o = object(v)?;
         Ok(Self {
             avatar: field(o, "avatar", d.avatar)?,
+            object: field(o, "object", d.object)?,
             event: field(o, "event", d.event)?,
         })
     }
@@ -26034,6 +26117,7 @@ impl ToJson for SharedShapeDesc {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("avatar".into(), self.avatar.to_json());
+        o.insert("object".into(), self.object.to_json());
         o.insert("event".into(), self.event.to_json());
         Value::Object(o)
     }
@@ -38610,6 +38694,32 @@ pub mod record {
         }
     }
 
+    /// `SharedObject`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SharedObject {
+        pub version: u32,
+    }
+
+    impl Default for SharedObject {
+        fn default() -> Self {
+            Self {
+                version: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SharedObject {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                version: field(o, "version", d.version)?,
+            })
+        }
+    }
+
     /// `SharedJoined`: packages/knowledge/wiki/shared.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct SharedJoined {
@@ -38754,6 +38864,99 @@ pub mod record {
             let o = object(v)?;
             Ok(Self {
                 sequence: field(o, "sequence", d.sequence)?,
+            })
+        }
+    }
+
+    /// `SharedObjectChanged`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SharedObjectChanged {
+        pub entity: u64,
+        pub key: String,
+        pub version: u32,
+    }
+
+    impl Default for SharedObjectChanged {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                key: Default::default(),
+                version: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SharedObjectChanged {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                key: field(o, "key", d.key)?,
+                version: field(o, "version", d.version)?,
+            })
+        }
+    }
+
+    /// `SharedObjectGone`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SharedObjectGone {
+        pub entity: u64,
+        pub key: String,
+    }
+
+    impl Default for SharedObjectGone {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                key: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SharedObjectGone {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                key: field(o, "key", d.key)?,
+            })
+        }
+    }
+
+    /// `SharedOpAnswered`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SharedOpAnswered {
+        pub op: u32,
+        pub taken: bool,
+        pub version: u32,
+    }
+
+    impl Default for SharedOpAnswered {
+        fn default() -> Self {
+            Self {
+                op: Default::default(),
+                taken: Default::default(),
+                version: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SharedOpAnswered {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                op: field(o, "op", d.op)?,
+                taken: field(o, "taken", d.taken)?,
+                version: field(o, "version", d.version)?,
             })
         }
     }

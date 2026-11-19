@@ -77,6 +77,15 @@ module shared {
     }
   }
 
+  component SharedObject {
+    doc "A shared object near this visitor, written by the engine: an entity with an og.Transform and the game's object component (og.shared.shape), spawned when the object comes into sight, rewritten when anyone changes it (og.shared.put), despawned when it leaves sight or is removed. The server owns it: change it with og.shared.put and og.shared.remove, never by writing the entity. Its key: og.shared.object."
+    aliases "networked object, replicated object, door state online, persistent world object, server-owned entity"
+    guide "shared-worlds §5"
+    field version u32 "Its version: 1 when created, one more each change." {
+      readonly true
+    }
+  }
+
   event SharedJoined {
     doc "The server took this client in: sent at the start of the tick after its welcome arrived, and again after a reconnect."
     field player String "This player's opaque id, the provider's (at most 63 bytes)."
@@ -109,10 +118,47 @@ module shared {
     field sequence u32 "The proposal the correction answers."
   }
 
+  event SharedObjectChanged {
+    doc "A shared object came into sight or changed: its og.SharedObject entity holds the new state from this tick."
+    field entity Entity "Its og.SharedObject entity."
+    field key String "Its key (at most 63 bytes)."
+    field version u32 "Its version now."
+  }
+
+  event SharedObjectGone {
+    doc "A shared object left sight or was removed: its og.SharedObject entity was despawned this tick."
+    field entity Entity "The entity it had."
+    field key String "Its key (at most 63 bytes)."
+  }
+
+  event SharedOpAnswered {
+    doc "The server's answer to this client's og.shared.put or og.shared.remove. Refused when the object's version was not the one expected, it lies outside this visitor's sight, or ops came faster than the server's events a second."
+    field op u32 "The op, as og.shared.put or og.shared.remove returned it."
+    field taken bool "Whether the server applied it."
+    field version u32 "The object's version now (0: there is none)."
+  }
+
+  struct SharedPutDesc {
+    doc "Where a shared object is, and the version a change expects (og.shared.put)."
+    desc true
+    field position Vector3 "Where, in world space; within this visitor's sight."
+    field yaw f32 "Its rotation about y." {
+      unit rad
+    }
+    field expect Option.u32 "Apply only while the object has this version (0: only if it does not exist yet): two visitors opening one door, the second is refused. Null: whatever it has."
+  }
+
+  struct SharedObjectInfo {
+    doc "Which shared object an og.SharedObject entity is."
+    field key String "Its key."
+    field version u32 "Its version."
+  }
+
   struct SharedShapeDesc {
     doc "What the game shares besides the transform (og.shared.shape)."
     desc true
     field avatar Option.AnyComponent "The game's component whose fields every state carries (a locomotion mode, an appearance id): on the og.SharedAvatar entity, and written on each og.RemoteAvatar. Its packed bytes are at most 32. Null: none."
+    field object Option.AnyComponent "The game's component every shared object carries (a door's open state, a placed block's material): written on each og.SharedObject entity. Its packed bytes are at most 256. Null: no objects."
     field event Option.AnyComponent "The game's component used as an event record (og.shared.send, og.shared.events): its packed bytes are at most 1024, and an Entity field named `from` is set to the sender's og.RemoteAvatar. Used as a shape only. Null: no events."
   }
 
@@ -205,6 +251,34 @@ module shared {
     param world World "The world."
     param component C "The event component og.shared.shape named."
     returns Result.List.Value.C "Refused for another component than the shape's."
+  }
+
+  fn put {
+    doc "Create or change a shared object near this visitor: the server applies it in the order ops arrive, and every visitor near it (this one too) sees its og.SharedObject entity change; og.SharedOpAnswered says whether it was taken. Kept across server restarts when the server keeps a store."
+    guide "shared-worlds §5"
+    generic C AnyComponent
+    param world World "The world."
+    param key String "The object's key in this world: 1 to 64 of letters, digits, `.`, `_`, `-`, `:` and `/` (`door/12`)."
+    param component C "The object component og.shared.shape named."
+    param value Partial.Value.C "Its fields; omitted ones take their defaults."
+    param desc SharedPutDesc "Where it is, and the version it expects."
+    returns Result.u32 "The op's number (og.SharedOpAnswered.op). Refused without a joined session, without an object shape, for another component, or a key that is not one."
+  }
+
+  fn remove {
+    doc "Remove a shared object near this visitor: its og.SharedObject entity despawns for everyone near it."
+    guide "shared-worlds §5"
+    param world World "The world."
+    param key String "The object's key."
+    param expect Option.u32 "Only while it has this version; null: whatever it has."
+    returns Result.u32 "The op's number (og.SharedOpAnswered.op). Refused without a joined session or for a key that is not one."
+  }
+
+  fn object {
+    doc "Which shared object an og.SharedObject entity is: its key and version. Null for an entity that is not one."
+    param world World "The world."
+    param entity Entity "The og.SharedObject entity."
+    returns Option.SharedObjectInfo
   }
 
   fn remote {
