@@ -61,6 +61,19 @@ export function fontPacksDir(): string {
   throw new Error(`no font packs next to ${here}; reinstall the engine distribution`);
 }
 
+/**
+ * In an engine checkout, the files `templates/og-assets.json` pins under
+ * `area` (such as `fonts/latin`) that are not installed: they live in the
+ * asset store until `bun scripts/assets.ts ensure templates` fetches them. A
+ * packed create (fonts/ beside bin/) has no manifest and misses nothing.
+ */
+export function missingPins(packs: string, area: string): string[] {
+  const manifest = join(packs, "..", "og-assets.json");
+  if (!existsSync(manifest)) return [];
+  const files = (JSON.parse(readFileSync(manifest, "utf8")) as { files?: { path: string }[] }).files ?? [];
+  return files.map((f) => f.path).filter((p) => p.startsWith(`${area}/`) && !existsSync(join(packs, "..", p)));
+}
+
 export function catalogueFile(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   for (const candidate of [join(here, "..", "..", "knowledge", "looks", "catalogue.json"), join(here, "..", "looks", "catalogue.json")]) {
@@ -146,6 +159,13 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
   return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: style.look.mood }));
 }
 
+/** The font packs in `packs`: each directory with an extension.json, and its languages. */
+function readPacks(packs: string): ({ dir: string } & FontPackLanguages)[] {
+  return readdirSync(packs, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && existsSync(join(packs, e.name, "extension.json")))
+    .map((e) => ({ dir: join(packs, e.name), ...(JSON.parse(readFileSync(join(packs, e.name, "extension.json"), "utf8")) as FontPackLanguages) }));
+}
+
 export function create(options: CreateOptions): Created {
   const choices = resolveCreationChoices(options.premise ?? "", {
     ...options.choices, ...(options.look === undefined ? {} : { look: options.look }),
@@ -157,6 +177,12 @@ export function create(options: CreateOptions): Created {
   if (existsSync(dir)) {
     if (!statSync(dir).isDirectory()) throw new Error(`${dir} is a file; pick another directory`);
     if (readdirSync(dir).length > 0 && !options.force) throw new Error(`${dir} is not empty; pick an empty directory, or pass --force`);
+  }
+  // Before anything is written: a pack copied without its pinned font makes a game that does not cook.
+  const packs = fontPacksDir();
+  for (const name of new Set(choices.lang.map((l) => fontPackFor(l, readPacks(packs))).filter((n) => n !== undefined))) {
+    const missing = missingPins(packs, `fonts/${name}`);
+    if (missing.length) throw new Error(`${missing.length} pinned file(s) of the checkout's templates/fonts/${name} are not installed (${missing[0]}); run bun scripts/assets.ts ensure templates`);
   }
   const template = templateDir();
   const written: string[] = [];
@@ -180,10 +206,7 @@ export function create(options: CreateOptions): Created {
   }
   // The font packs its languages are written in, as `og font add` installs
   // them (assets/fonts/<pack>/); og.i18n puts them in the fallback chain.
-  const packs = fontPacksDir();
-  const available = readdirSync(packs, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && existsSync(join(packs, e.name, "extension.json")))
-    .map((e) => ({ dir: join(packs, e.name), ...(JSON.parse(readFileSync(join(packs, e.name, "extension.json"), "utf8")) as FontPackLanguages) }));
+  const available = readPacks(packs);
   for (const name of new Set(choices.lang.map((l) => fontPackFor(l, available)).filter((n) => n !== undefined))) {
     copy(available.find((p) => p.name === name)!.dir, join(dir, "assets", "fonts", name));
   }

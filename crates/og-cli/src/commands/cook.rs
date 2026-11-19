@@ -263,6 +263,12 @@ pub fn cook_for(root: &Path, threads: usize, web: bool, publish: bool) -> Result
     let report = cook_project(root, &options).map_err(|e| format!("og cook: {e}"))?;
     if report.ok() {
         Ok(report)
+    } else if let Some(missing) = missing_checkout_pins() {
+        // The failures are this checkout's, not the game's: say the one fix.
+        Err(format!(
+            "og cook: {} asset(s) failed, and this engine checkout lacks {missing}; run bun scripts/assets.ts ensure templates",
+            report.errors().len()
+        ))
     } else {
         Err(format!(
             "og cook: {} asset(s) failed:\n  {}",
@@ -270,6 +276,35 @@ pub fn cook_for(root: &Path, threads: usize, web: bool, publish: bool) -> Result
             report.errors().join("\n  ")
         ))
     }
+}
+
+/// In an engine checkout whose built-in styles or fonts come from
+/// `templates/`, the first file `templates/og-assets.json` pins there that is
+/// not installed, with how many are missing: those live in the asset store
+/// until `bun scripts/assets.ts ensure templates`. `None` for an installed
+/// engine (no manifest) or a complete checkout.
+fn missing_checkout_pins() -> Option<String> {
+    let dirs = [
+        og_cook::cook::look::styles_dir(),
+        og_cook::cook::look::fonts_dir(),
+    ];
+    let templates = dirs.into_iter().flatten().find_map(|d| {
+        let t = d.parent()?;
+        t.join("og-assets.json").is_file().then(|| t.to_path_buf())
+    })?;
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(templates.join("og-assets.json")).ok()?).ok()?;
+    let missing: Vec<&str> = manifest["files"]
+        .as_array()?
+        .iter()
+        .filter_map(|f| f["path"].as_str())
+        .filter(|p| !templates.join(p).exists())
+        .collect();
+    let first = missing.first()?;
+    Some(format!(
+        "{} pinned file(s) under templates/ ({first})",
+        missing.len()
+    ))
 }
 
 /// One line: what was cooked this time; then one per warning (a locale's

@@ -228,3 +228,20 @@ test("the packed package creates the same skeleton and briefs from its own prese
   expect(mono.palette).toHaveLength(4);
   expect(brief("--look", "pixel").references[0].path).toBe(join(installed, "previews/pixel.webp"));
 });
+
+test("in a checkout missing a pinned font, create refuses with the one fix and writes nothing", () => {
+  // The checkout's layout: packages/create, packages/knowledge/looks, templates/ with og-assets.json.
+  const root = join(scratch, "unfetched-checkout");
+  const repo = join(pkg, "..", "..");
+  for (const part of ["bin", "template", "package.json"]) cpSync(join(pkg, part), join(root, "packages/create", part), { recursive: true });
+  cpSync(join(repo, "packages/knowledge/looks"), join(root, "packages/knowledge/looks"), { recursive: true });
+  cpSync(join(repo, "templates/og-assets.json"), join(root, "templates/og-assets.json"));
+  cpSync(join(repo, "templates/fonts/latin"), join(root, "templates/fonts/latin"), { recursive: true, filter: (s) => !s.endsWith("NotoSans-Latin.ttf") });
+  const r = Bun.spawnSync(["bun", join(root, "packages/create/bin/create.ts"), "game", "--lang", "en", "--no-prompt"], { cwd: scratch });
+  const err = new TextDecoder().decode(r.stderr);
+  expect(r.exitCode).toBe(1);
+  expect(err.trim().split("\n")).toHaveLength(1);
+  expect(err).toContain("fonts/latin/NotoSans-Latin.ttf");
+  expect(err).toContain("run bun scripts/assets.ts ensure templates");
+  expect(existsSync(join(scratch, "game"))).toBe(false);
+});
