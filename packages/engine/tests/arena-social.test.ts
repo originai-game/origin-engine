@@ -95,7 +95,8 @@ for (const width of [1280, 390]) {
     for (const fixture of ["disabled", "closed"]) run("vote", fixture, width, (e, events) => {
       tap(e, row(e, "grove")); expect(events).toEqual([]);
       if (fixture === "closed") {
-        expect(elements(e).map((x) => x.text)).toContain("Winner");
+        // A style's label role chooses casing.
+        expect(elements(e).map((x) => x.text.toLowerCase())).toContain("winner");
         expect(elements(e).map((x) => x.text)).not.toContain("18s");
       }
     });

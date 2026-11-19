@@ -22,9 +22,12 @@ The documents use HTML elements with CSS: `:host` styles the root,
 boxes. Scrolling is `overflow-y: auto` on a `div`. Element ids and parts
 remain stable when a game ejects a document.
 
-Each member's `<style>` supplies layout and a token-based default look:
-type hierarchy, spacing and quiet row surfaces, in the `og-components`
-layer. A style pack (`og-pack`) overrides appearance through the
+Each member's `<style>` supplies layout and a token-based default look
+in the `og-components` layer. The roster, draft, lobby, ready check,
+vote, spectator, versus and round HUD wear the default style's smoked
+glass and lit edges: every colour, fill, rim and type step is a
+`--party-*`, `--hud-*` or `--result-*` role token, so a pack restyles
+the family by setting those tokens; names wrap on whole words. A style pack (`og-pack`) overrides appearance through the
 members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `[part="ArenaScoreboard.row"][data-local=true]`
 or `button::part(ArenaRoster\.cell)[data-taken=true]`. The fantasy pack dresses them

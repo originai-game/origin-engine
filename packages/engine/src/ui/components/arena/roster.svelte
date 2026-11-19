@@ -65,35 +65,49 @@
 </section>
 
 <style>
-:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; }
-[part="ArenaRoster.band"] { width: stretch; flex: none; }
-[part="ArenaRoster.title"] { margin: 0; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+/* Character selection on a smoked cut card: each character a tile of dark
+   glass with its portrait shaded into its foot, the chosen one ringed in
+   the accent and washed in it; a locked or taken one drawn grey with its
+   reason on a tag. Names wrap on whole words and are never cut. */
+:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; color: var(--hud-ink); --fade-fill: var(--party-open-fill); }
+[part="ArenaRoster.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="ArenaRoster.band"] { width: stretch; flex: none; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+[part="ArenaRoster.title"] { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; }
 .grid-shell { position: relative; min-block-size: 0; }
 .grid-scroll { overflow-y: auto; flex: 1; min-height: 0; }
-.grid { --layout-tile: calc(var(--size-xxl) * 1.25); padding: var(--space-xxs); padding-block-end: var(--space-lg); }
-[part="ArenaRoster.cell"] { padding: var(--space-sm); align-items: stretch; justify-content: flex-start; }
-[part="ArenaRoster.cell"] .face { width: stretch; }
-[part="ArenaRoster.portrait ArenaRoster.picture"] { position: relative; width: stretch; overflow: hidden; }
+.grid { --layout-tile: min(var(--party-tile), 45cqi); padding: var(--space-xxs); padding-block-end: var(--space-lg); }
+[part="ArenaRoster.cell"] { padding: 0; align-items: stretch; justify-content: flex-start; border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-tile-fill); box-shadow: var(--party-tile-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="ArenaRoster.cell"]:hover { box-shadow: var(--party-tile-hover-rim); }
+[part="ArenaRoster.cell"]:focus-visible { box-shadow: var(--party-focus-rim); }
+[part="ArenaRoster.cell"][aria-selected=true] { background: var(--party-tile-on-fill); box-shadow: var(--party-on-rim); }
+[part="ArenaRoster.cell"]:disabled { color: var(--hud-ink-dim); background: var(--party-tile-fill); box-shadow: var(--party-tile-rim); }
+[part="ArenaRoster.cell"] .face { width: stretch; height: stretch; padding-block-end: var(--space-sm); }
+[part="ArenaRoster.portrait ArenaRoster.picture"] { --layout-ratio: 1.15; position: relative; width: stretch; overflow: hidden; border: 0; border-radius: 0; background: none; box-shadow: none; }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
-.glyph { width: var(--size-lg); height: var(--size-lg); }
-.marks { position: absolute; left: var(--space-xxs); right: var(--space-xxs); top: var(--space-xxs); }
-[part~="ArenaRoster.mark"] { padding: 0 var(--space-xs); white-space: nowrap; }
+.glyph { width: var(--size-lg); height: var(--size-lg); color: var(--hud-ink); }
+[part="ArenaRoster.cell"]:disabled .art { filter: var(--party-out-art); opacity: 1; }
+[part="ArenaRoster.cell"]:disabled .glyph { color: var(--hud-ink-dim); }
+.marks { position: absolute; left: var(--space-xs); right: var(--space-xs); top: var(--space-xs); }
+[part~="ArenaRoster.mark"] { padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }
+[part~="ArenaRoster.mark"][data-ready=true] { color: var(--party-ready-ink); background: var(--party-ready-fill); }
 .check { width: var(--size-xs); height: var(--size-xs); }
-.name, .role { text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.name { padding-inline: var(--space-xs); text-align: center; font-size: var(--hud-size-name); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
+.role { padding-inline: var(--space-xs); text-align: center; overflow-wrap: break-word; font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 /* A badge wraps rather than lose its reason (Taken by …). */
-.tag { max-width: stretch; align-self: center; padding: 0 var(--space-xs); text-align: center; overflow-wrap: anywhere; }
-.chosen { flex: none; align-items: baseline; justify-content: center; padding: var(--space-sm); }
-.chosen .tag { align-self: center; }
-.chosen-name { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.tag { flex: none; padding: 0 var(--space-xs); border: 0; border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); max-width: stretch; align-self: center; text-align: center; overflow-wrap: anywhere; }
+.tag[data-tag=selected] { color: var(--party-go-ink); background: var(--hud-accent); box-shadow: none; }
+.tag[data-tag=locked], .tag[data-tag=taken] { color: var(--hud-ink-dim); }
+.chosen { flex: none; align-items: center; justify-content: flex-start; padding: var(--space-sm) var(--space-md); border-radius: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.chosen-name { min-width: 0; font-size: var(--party-size-name); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); text-transform: var(--hud-label-transform); color: var(--hud-ink); overflow-wrap: break-word; }
 /* A role longer than the footer wraps inside it. */
-.chosen-role { flex: 0 1 auto; min-width: 0; max-inline-size: 100%; text-align: center; overflow-wrap: anywhere; }
-.empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
-/* The roster sits in a panel: its own width, not the screen's, tightens it,
-   once three whole cells no longer fit on a line. */
+.chosen-role { flex: 0 1 auto; min-width: 0; max-inline-size: 100%; overflow-wrap: anywhere; font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); }
+/* The roster sits in a panel: its own width, not the screen's, tightens it. */
 @container (width < 380px) {
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); --layout-gap: var(--layout-gap-tight); }
-  [part="ArenaRoster.cell"] { padding: var(--space-xs); }
+  [part="ArenaRoster.frame"] { padding: var(--space-sm); }
+  .grid { --layout-tile: min(var(--party-tile-compact), 45cqi); --layout-gap: var(--layout-gap-tight); }
   .glyph { width: var(--size-md); height: var(--size-md); }
-  .chosen { --layout-gap: var(--layout-gap-tight); }
+  .chosen { --layout-gap: var(--layout-gap-tight); padding: var(--space-xs) var(--space-sm); }
+  .chosen-name { font-size: var(--party-size-name-compact); }
 }
 </style>

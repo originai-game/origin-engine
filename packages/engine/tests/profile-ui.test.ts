@@ -55,13 +55,14 @@ for (const width of [1280, 390]) {
     for (const fixture of Object.keys(FIXTURES)) run(fixture, width, (e) => {
       const text = texts(e);
       if (["loading", "error", "empty"].includes(fixture)) {
-        expect(text).not.toContain("Brenna Vale"); expect(text).not.toContain("128"); expect(text).not.toContain("Add friend");
+        const lower = text.map((x) => x.toLowerCase());
+        expect(lower).not.toContain("brenna vale"); expect(text).not.toContain("128"); expect(lower).not.toContain("add friend");
         expect(text).toContain(fixture === "loading" ? "Loading profile…" : fixture === "empty" ? "No profile found" : "Profile could not be loaded. Check your connection.");
         if (fixture === "loading") expect(elements(e).some((x) => x.role === "progressbar")).toBeTrue();
       } else if (fixture === "private") { expect(text).toContain("Stats are private"); expect(text).not.toContain("128"); }
       else if (fixture === "no-stats") expect(text).toContain("No stats yet");
       if (fixture === "default") {
-        expect(text.filter((x) => x === "Brenna Vale")).toHaveLength(1);
+        expect(text.filter((x) => x.toLowerCase() === "brenna vale")).toHaveLength(1);
         expect(elements(e).find((x) => x.role === "figure")?.name).toBe("Brenna Vale");
         expect(text).toContain("12"); expect(text).toContain("Online");
       }
@@ -84,7 +85,7 @@ for (const width of [1280, 390]) {
     });
     run("pending", width, (e, events) => {
       const action = elements(e).find((x) => x.role === "button")!;
-      expect(action.disabled).toBeTrue(); expect(texts(e)).toContain("Sending…");
+      expect(action.disabled).toBeTrue(); expect(texts(e).map((x) => x.toLowerCase())).toContain("sending…");
       tap(e, action); expect(events).toEqual([]);
     });
     run("error", width, (e, events) => {

@@ -41,7 +41,7 @@
           <p class="waiting" part="ArenaVersus.caption" role="status">{t("arena.versus.waiting")}</p>
         {/if}
       </div>
-      <div class="seal" data-layout="ratio" data-motion="stamp"><span part="ArenaVersus.badge" class="vs">{t("arena.versus.vs")}</span></div>
+      <div class="seal" data-layout="ratio" data-motion="stamp"><div class="seal-edge" data-layout="ratio"><div class="seal-face" data-layout="ratio"><span part="ArenaVersus.badge" class="vs">{t("arena.versus.vs")}</span></div></div></div>
       <div part="ArenaVersus.side ArenaVersus.plate" class="side b" data-layout="stack" data-fill data-motion="enter" data-team="b" role="group" aria-label={nameB != '' ? nameB : t("arena.team.b")}>
         <h2 part="ArenaVersus.heading" class="team-name" data-team="b">{nameB != '' ? nameB : t("arena.team.b")}</h2>
         {#if sideB.length}
@@ -67,33 +67,51 @@
 </section>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
-:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; align-items: stretch; }
+/* The versus reveal over the scene: each side's name large in its colour
+   over a rule of it, its players on rows washed in that colour from the
+   outer edge (the second side mirrored), the local player's row lit
+   white; between them a gold hexagon seal. */
+:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; align-items: stretch; color: var(--hud-ink); }
 .stage { width: stretch; min-width: 0; }
-[part="ArenaVersus.side ArenaVersus.plate"] { min-width: 0; padding: var(--space-md); }
-[part="ArenaVersus.heading"] { margin: 0; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="ArenaVersus.card"] { padding: var(--space-sm); }
-.b [part="ArenaVersus.card"] { flex-direction: row-reverse; }
-[part="ArenaVersus.portrait ArenaVersus.picture"] { --layout-ratio: 1; flex: none; width: var(--size-xl); height: var(--size-xl); overflow: hidden; }
-.art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
-.glyph { width: var(--size-md); height: var(--size-md); }
+[part="ArenaVersus.side ArenaVersus.plate"] { min-width: 0; container-type: inline-size; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+[part="ArenaVersus.heading"] { margin: 0; padding-block-end: var(--space-xs); text-align: start; font-size: var(--party-size-side); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--result-team-a-ink); filter: var(--result-team-a-glow); box-shadow: var(--result-team-a-rule); text-shadow: none; overflow-wrap: break-word; }
+[part="ArenaVersus.heading"][data-team=b] { text-align: end; color: var(--result-team-b-ink); filter: var(--result-team-b-glow); box-shadow: var(--result-team-b-rule); }
+[part="ArenaVersus.card"] { padding: var(--space-xs) var(--space-md); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--result-team-a-row); box-shadow: var(--result-team-a-edge); text-shadow: none; }
+.b [part="ArenaVersus.card"] { flex-direction: row-reverse; background: var(--party-team-b-row-end); box-shadow: var(--party-team-b-edge-end); }
+[part="ArenaVersus.card"][data-local=true] { background: var(--result-row-lit); color: var(--result-row-lit-ink); }
+[part="ArenaVersus.portrait ArenaVersus.picture"] { --layout-ratio: 1; flex: none; box-sizing: border-box; padding: var(--stroke-thick); border: 0; border-radius: 0; background: var(--hud-edge); box-shadow: none; clip-path: var(--hud-octagon); overflow: hidden; inline-size: var(--size-xl); block-size: var(--size-xl); background: var(--hud-edge); }
+.art { width: stretch; height: stretch; object-fit: cover; object-position: center top; clip-path: var(--hud-octagon); }
+.glyph { width: var(--size-md); height: var(--size-md); color: var(--hud-ink); }
+[data-local=true] .glyph { color: var(--result-row-lit-ink); }
 .who { min-width: 0; }
-.name { --headline-text: var(--text-lg); }
-.name, .character, .rank { max-inline-size: stretch; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: start; }
-.rank { inline-size: stretch; white-space: normal; overflow-wrap: anywhere; }
+.name { max-inline-size: stretch; text-align: start; font-size: var(--party-size-fighter); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
+.character { max-inline-size: stretch; text-align: start; font-size: var(--hud-size-xs); line-height: 1.3; font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); overflow-wrap: break-word; }
+.rank { inline-size: stretch; text-align: start; font-size: var(--hud-size-xs); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: 0; text-transform: none; color: var(--hud-gold); overflow-wrap: break-word; }
+[data-local=true] .character, [data-local=true] .rank { color: var(--party-lit-dim); }
 .b .name, .b .character, .b .rank { text-align: end; }
-.you { align-self: flex-start; white-space: nowrap; padding: 0 var(--space-xs); }
+.you { align-self: flex-start; flex: none; padding: 0 var(--space-xs); border: 0; border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); white-space: nowrap; }
 .b .you { align-self: flex-end; }
-.waiting { margin: 0; padding: var(--space-lg); text-align: center; }
-.seal { --layout-ratio: 1; flex: none; width: var(--size-xl); height: var(--size-xl); }
-.vs { --badge-text: var(--text-xl2); white-space: nowrap; }
+.waiting { margin: 0; padding: var(--space-lg); text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); text-shadow: var(--hud-shadow); }
+.seal { --layout-ratio: 0.87; flex: none; inline-size: calc(var(--party-size-seal) * 2); filter: var(--party-seal-glow); overflow: visible; }
+.seal-edge { --layout-ratio: 0.87; box-sizing: border-box; inline-size: stretch; padding: var(--stroke-thick); clip-path: var(--hud-hexagon); background: var(--hud-gold); }
+.seal-face { --layout-ratio: 0.87; inline-size: stretch; clip-path: var(--hud-hexagon); background: var(--party-seal-fill); }
+.vs { padding: 0; border-radius: 0; white-space: nowrap; font-size: var(--party-size-seal); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-style: var(--hud-figure-slant); color: var(--hud-gold); background: none; box-shadow: none; text-shadow: none; }
+/* A narrow side (the reveal in a column of a wide page at large text):
+   the portrait smaller and the row tighter, so a long name keeps whole. */
+@container (width < 300px) {
+  [part="ArenaVersus.card"] { padding: var(--space-xxs) var(--space-xs); --layout-gap-loose: var(--layout-gap-tight); }
+  [part="ArenaVersus.portrait ArenaVersus.picture"] { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
+  .glyph { width: var(--size-sm); height: var(--size-sm); }
+}
 /* The reveal fills the screen, so the screen's width decides: a phone stacks the sides with the seal between them. */
 @media (width < 600px) {
   .stage { flex-direction: column; align-items: stretch; --layout-gap-wide: var(--space-xs); }
-  [part="ArenaVersus.side ArenaVersus.plate"] { flex: none; padding: var(--space-xs); --layout-gap: var(--space-xs); }
-  .seal { align-self: center; width: var(--size-lg); height: var(--size-lg); }
-  [part="ArenaVersus.portrait ArenaVersus.picture"] { width: var(--size-lg); height: var(--size-lg); }
+  [part="ArenaVersus.side ArenaVersus.plate"] { flex: none; --layout-gap: var(--space-xs); }
+  [part="ArenaVersus.heading"] { font-size: var(--party-size-hero-compact); }
+  .seal { align-self: center; inline-size: calc(var(--party-size-seal-compact) * 2); }
+  .vs { font-size: var(--party-size-seal-compact); }
+  [part="ArenaVersus.card"] { padding: var(--space-xxs) var(--space-sm); --layout-gap-loose: var(--layout-gap); }
+  [part="ArenaVersus.portrait ArenaVersus.picture"] { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
   .glyph { width: var(--size-sm); height: var(--size-sm); }
 }
 </style>

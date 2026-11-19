@@ -18,7 +18,8 @@ same name wins.
 
 Each member's `<style>` holds layout only. The HUD members (telemetry, lap
 HUD, standings, banner, track map, boost, pedals, car, bonus) stand bare
-over the scene in the default style's smoked glass and lit edges: every
+over the scene (the garage, over its shown car's picture, with the
+`--party-*` card, tiles and type steps) in the default style's smoked glass and lit edges: every
 colour, fill, rim, radius and type step is a `--hud-*` or `--bar-*` role
 token (a racing set beside the shooter's and the RPG's: the player's row,
 a place's box, the best lap's violet, the rev arc, its red zone and the

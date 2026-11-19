@@ -46,16 +46,35 @@
   {:else}<p part="ArenaVote.empty ArenaVote.caption" role="status">{t("vote.empty")}</p>{/if}{/if}
 </section>
 <style>
-:host { inline-size: stretch; block-size: auto; max-block-size: stretch; }
-[part="ArenaVote.title"], [part~="ArenaVote.detail"], [part~="ArenaVote.empty"] { margin: 0; overflow-wrap: anywhere; }
+/* The vote on a smoked cut card: the clock in gold, an option a cut tile
+   of dark glass with its tally at the end, the player's own ringed in
+   the accent and washed in it. */
+:host { inline-size: stretch; block-size: auto; max-block-size: stretch; color: var(--hud-ink); --fade-fill: var(--party-open-fill); }
+[part="ArenaVote.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="ArenaVote.title"] { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; }
+[part~="ArenaVote.detail"], [part~="ArenaVote.empty"] { margin: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); overflow-wrap: break-word; }
 [part="ArenaVote.title"], [part~="ArenaVote.detail"], [part~="ArenaVote.timer"] { flex: none; }
+[part~="ArenaVote.timer"] { font-size: var(--hud-size-time); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-gold); text-shadow: none; }
 .scroll-area { position: relative; min-block-size: 0; }
 [part="ArenaVote.options"] { min-block-size: 0; padding-block-end: var(--space-lg); }
-[part="ArenaVote.option"] { flex: none; min-block-size: var(--size-touch); text-align: start; }
+[part="ArenaVote.option"] { flex: none; min-block-size: var(--size-touch); padding: var(--space-sm) var(--space-md); text-align: start; border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-tile-fill); box-shadow: var(--party-tile-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="ArenaVote.option"]:hover { box-shadow: var(--party-tile-hover-rim); }
+[part="ArenaVote.option"]:focus-visible { box-shadow: var(--party-focus-rim); }
+[part="ArenaVote.option"][aria-pressed=true] { background: var(--party-tile-on-fill); box-shadow: var(--party-on-rim); }
+[part="ArenaVote.option"]:disabled { color: var(--hud-ink-dim); }
 .option-body { inline-size: stretch; }
-[part="ArenaVote.icon"] { flex: none; inline-size: var(--size-sm); block-size: var(--size-sm); }
+[part="ArenaVote.icon"] { flex: none; inline-size: var(--size-sm); block-size: var(--size-sm); color: inherit; }
 .copy { min-inline-size: 0; }
-[part~="ArenaVote.name"], [part~="ArenaVote.description"], [part~="ArenaVote.tally"], [part~="ArenaVote.state"] { overflow-wrap: anywhere; }
-[part~="ArenaVote.tally"] { flex: 0 1 auto; }
-@container (width < 400px) { [part~="ArenaVote.tally"] { flex-basis: 100%; text-align: end; } }
+[part~="ArenaVote.name"] { font-size: var(--hud-size-readout); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
+[part~="ArenaVote.description"] { font-size: var(--hud-size-xs); color: var(--hud-ink-dim); overflow-wrap: break-word; }
+[part~="ArenaVote.state"] { font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent); overflow-wrap: break-word; }
+[part~="ArenaVote.state"][data-tone=success] { color: var(--party-ready); }
+[part="ArenaVote.option"]:disabled [part~="ArenaVote.state"] { color: var(--hud-ink-dim); }
+:host > section > [part~="ArenaVote.state"] { color: var(--hud-ink-dim); }
+[part~="ArenaVote.tally"] { flex: 0 1 auto; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: inherit; text-shadow: none; overflow-wrap: break-word; }
+@container (width < 400px) {
+  [part="ArenaVote.frame"] { padding: var(--space-sm); }
+  [part="ArenaVote.option"] { padding: var(--space-xs) var(--space-sm); }
+  [part~="ArenaVote.tally"] { flex-basis: 100%; text-align: end; }
+}
 </style>

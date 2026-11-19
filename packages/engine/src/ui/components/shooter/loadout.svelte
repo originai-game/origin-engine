@@ -42,10 +42,10 @@
     <div id="Fade" part="Loadout.fade"></div>
   </div>
   <footer id="Actions" data-layout="cluster">
-    <button id="Back" variant="ghost" onclick={back} onback={back}><kbd id="BackKey" data-action="back"></kbd><span id="BackLabel">{t("shooter.loadout.back")}</span></button>
+    <button id="Back" variant="ghost" aria-label={t("shooter.loadout.back")} onclick={back} onback={back}><kbd id="BackKey" data-action="back"></kbd><span id="BackLabel">{t("shooter.loadout.back")}</span></button>
     {#each slots as s (s.id)}
       {#if s.id == selected}
-        <button id="Equip" variant="primary" disabled={s.locked || s.equipped} onclick={equip}><kbd id="EquipKey" data-action="details"></kbd><span id="EquipLabel">{t("shooter.loadout.equip")}</span></button>
+        <button id="Equip" variant="primary" aria-label={t("shooter.loadout.equip")} disabled={s.locked || s.equipped} onclick={equip}><kbd id="EquipKey" data-action="details"></kbd><span id="EquipLabel">{t("shooter.loadout.equip")}</span></button>
       {/if}
     {/each}
   </footer>
@@ -53,34 +53,61 @@
 </section>
 
 <style>
+/* The loadout over the scene: the title in large condensed capitals, a
+   category's name over a rule, each item a cut plate of smoked glass (the
+   chosen one ringed in the accent and washed in it), Equipped on a green
+   tag, the price in gold; names wrap on whole words. */
+:host { color: var(--hud-ink); }
+#Title { margin: 0; font-size: var(--party-size-hero); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
 #Body { width: stretch; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
 /* The scrollbar is drawn on the right in either direction, so the room beside it is
    on the right too. */
 #Groups { width: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; --layout-tile: calc(var(--size-xxl) * 3); align-content: start; }
-.item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); min-width: 0; }
+.group { min-width: 0; }
+.category { margin: 0; padding-block-end: var(--space-xs); font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); color: var(--hud-ink); box-shadow: var(--party-rule-strong); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
+.item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); min-width: 0; border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-tile-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.item:hover { box-shadow: var(--party-tile-hover-rim); }
+.item:focus-visible { box-shadow: var(--party-focus-rim); }
+.item[aria-selected=true] { background: var(--party-card-on-fill); box-shadow: var(--party-on-rim); }
+.item:disabled { color: var(--hud-ink-dim); }
 .face { width: stretch; }
-.icon { flex: none; width: var(--size-sm); height: var(--size-sm); }
-.text { align-items: flex-start; }
-.name { text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: stretch; }
-/* The tag drops under the figures when a long translation leaves no room beside them. */
-.detail { text-align: start; white-space: nowrap; --figure-size: var(--font-step-sm); }
+.icon { flex: none; width: var(--size-sm); height: var(--size-sm); color: inherit; }
+.text { min-width: 0; align-items: flex-start; }
+.name { max-width: stretch; text-align: start; font-size: var(--hud-size-name); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
+.detail { text-align: start; white-space: nowrap; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); text-shadow: none; }
 /* Equipped is a tag on the detail line, so every row's price stands alone at its end
    and the name keeps the row's width. */
-.badge { flex: 0 1 auto; max-width: stretch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 var(--space-xs); }
+.badge { flex: 0 1 auto; max-width: stretch; padding: 0 var(--space-xs); border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--party-ready-ink); background: var(--party-ready-fill); box-shadow: none; overflow-wrap: break-word; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
 .cost { flex: none; }
-.price { --figure-size: var(--font-step-sm); white-space: nowrap; }
-.coin { width: var(--size-xs); height: var(--size-xs); }
+.price { white-space: nowrap; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-gold); text-shadow: none; }
+.item:disabled .price { color: var(--hud-ink-dim); }
+.coin { width: var(--size-xs); height: var(--size-xs); color: var(--hud-gold); }
+.item:disabled .coin { color: var(--hud-ink-dim); }
+#Empty { margin: 0; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); }
 /* The bottom edge fades while there is more to scroll, so a cut row reads as more below. */
 #Fade { grid-column: 1 / -1; position: sticky; bottom: 0; margin-top: calc(var(--fade-size) * -1); opacity: 0; }
 @container scroll-state(scrollable: bottom) { #Fade { opacity: 1; } }
 #Actions { justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
-#Actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); }
+#Actions button { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); min-width: calc(var(--size-xxl) * 1.25); }
+#Actions button:hover { background: var(--party-button-hover-fill); }
+#Actions button:focus-visible { box-shadow: var(--party-focus-rim); }
+#Actions #Equip { color: var(--party-go-ink); background: var(--front-play-fill); box-shadow: none; }
+#Actions #Equip:hover { background: var(--party-go-hover-fill); }
+#Actions button:disabled { opacity: 0.45; }
+#Actions button > span { color: inherit; font-weight: inherit; }
+#BackKey, #EquipKey { color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }
+@media (width < 600px) {
+  :host { --layout-gap-wide: var(--layout-gap-loose); }
+  #Title { font-size: var(--party-size-hero-compact); }
+  #Groups { padding-right: var(--space-xs); }
+  #Actions button { flex: 1 1 auto; }
+}
 /* A landscape phone has height for a few rows only: the title takes less of it,
    and the actions stand beside the list, at its end under the thumb, so the
    list keeps the page's height. */
 @media (height < 600px) and (orientation: landscape) {
-  :host { --layout-gap-wide: var(--layout-gap); --title-size: var(--title-lead-size); }
-  .category { margin: 0; }
+  :host { --layout-gap-wide: var(--layout-gap); }
+  #Title { font-size: var(--party-size-hero-compact); }
   #Body { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
   #Groups { grid-template-columns: minmax(0, 1fr); }
   #Actions { width: calc(var(--size-xxl) * 1.25); height: stretch; align-content: end; }

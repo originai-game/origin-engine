@@ -100,8 +100,11 @@ h1, p { margin: 0; }
 #Page { flex: 1; min-block-size: 0; display: flex; flex-direction: column; justify-content: safe center; gap: var(--space-xl); overflow-y: auto; -og-scroll-fade: var(--space-xxl); }
 #Head { display: flex; align-items: flex-end; gap: var(--space-xl); }
 #Text { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: var(--space-md); }
-/* The verdict: condensed capitals in the result's lit fill. */
-[part="results.title"] { font-size: var(--result-size-hero); line-height: 0.9; font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); text-transform: uppercase; letter-spacing: var(--result-verdict-tracking); overflow-wrap: anywhere; color: transparent; background: var(--result-won-fill); background-clip: var(--hud-text-clip); filter: var(--result-won-glow); }
+/* The verdict: condensed capitals in the result's lit fill. The verdict,
+   the grade and a stat's plate follow the player's text scale up to a
+   share of the screen's height, so at large text the head gives the
+   stats under it room and every figure shows before a scroll. */
+[part="results.title"] { font-size: min(var(--result-size-hero), var(--party-hold-verdict)); line-height: 0.9; font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); text-transform: uppercase; letter-spacing: var(--result-verdict-tracking); overflow-wrap: anywhere; color: transparent; background: var(--result-won-fill); background-clip: var(--hud-text-clip); filter: var(--result-won-glow); }
 .outcome-lost { background: var(--result-lost-fill); background-clip: var(--hud-text-clip); filter: var(--result-lost-glow); }
 #Rule { position: relative; inline-size: min(100%, calc(560 * var(--font-step-px))); block-size: var(--stroke-thin); background: var(--result-rule); }
 #Diamond { position: absolute; inset-inline-start: 50%; inset-block-start: 50%; inline-size: calc(9 * var(--font-step-px)); block-size: calc(9 * var(--font-step-px)); translate: -50% -50%; rotate: 45deg; background: var(--hud-ink); box-shadow: var(--result-diamond-glow); }
@@ -116,20 +119,20 @@ h1, p { margin: 0; }
 /* The grade on a hexagon with a lit edge. */
 #GradeCell { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }
 #GradeEdge { padding: var(--stroke-thick); clip-path: var(--hud-hexagon); background: var(--hud-edge); filter: var(--result-grade-glow); }
-[part="results.grade"] { display: block; text-align: center; line-height: calc(var(--result-size-grade) * 1.72); inline-size: calc(var(--result-size-grade) * 1.5); block-size: calc(var(--result-size-grade) * 1.72); clip-path: var(--hud-hexagon); background: var(--result-grade-face); font-size: var(--result-size-grade); line-height: 1; font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); color: var(--hud-ink); }
+[part="results.grade"] { --grade: min(var(--result-size-grade), var(--party-hold-grade)); display: block; text-align: center; line-height: calc(var(--grade) * 1.72); inline-size: calc(var(--grade) * 1.5); block-size: calc(var(--grade) * 1.72); clip-path: var(--hud-hexagon); background: var(--result-grade-face); font-size: var(--grade); line-height: 1; font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); color: var(--hud-ink); }
 #GradeCaption { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 /* Tabs: a rule under them and the chosen tab underlined in the accent. */
 #Tabs { inline-size: stretch; --tabs-track-fill: none; --tabs-track-shadow: none; --tabs-track-rule: var(--stroke-hairline) solid var(--result-tab-rule); --tabs-tab-fill: none; --tabs-tab-hover-fill: var(--result-tab-hover); --tabs-tab-selected-fill: var(--result-tab-selected); --tabs-tab-selected-shadow: var(--result-tab-mark); --tabs-tab-ink: var(--hud-ink-dim); --tabs-tab-selected-ink: var(--hud-ink); --tabs-transform: uppercase; --tabs-tracking: var(--result-tab-tracking); --tabs-radius: 0px; }
 #Summary { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: var(--space-xxl); align-items: start; }
 #Stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(170 * var(--font-step-px)), 1fr)); gap: var(--space-md); }
 /* A stat: a cut plate, its name small above its figure; a best in gold. */
-[part="results.row"] { display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-sm); min-inline-size: 0; min-block-size: calc(140 * var(--font-step-px)); padding: var(--space-md) var(--space-lg); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); container-type: inline-size; }
+[part="results.row"] { display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-sm); min-inline-size: 0; min-block-size: min(calc(140 * var(--font-step-px)), var(--party-hold-plate)); padding: var(--space-md) var(--space-lg); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); container-type: inline-size; }
 [part="results.row"][data-best=true] { box-shadow: var(--result-best-rim); }
 #StatHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-xs); }
 [part="results.label"] { min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); overflow-wrap: anywhere; }
 #Best { flex: none; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent-ink); background: var(--hud-key-gold-fill); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); white-space: nowrap; }
 /* The figure fills its plate up to the size step, never wider than it. */
-[part="results.figure"] { font-size: min(var(--result-size-figure), 28cqi); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); white-space: nowrap; }
+[part="results.figure"] { font-size: min(var(--result-size-figure), 28cqi, var(--party-hold-figure)); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); white-space: nowrap; }
 #RewardsColumn { display: flex; flex-direction: column; gap: var(--space-sm); min-inline-size: 0; }
 #RewardsHeading { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 #Rewards { display: flex; flex-wrap: wrap; gap: var(--space-md); }

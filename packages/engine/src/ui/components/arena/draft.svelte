@@ -37,7 +37,7 @@
   </header>
   {#if slots.length}
     <div class="teams" data-layout="row" data-gap="loose" data-fill>
-      <div part="ArenaDraft.team ArenaDraft.plate ArenaDraft.card" class="team" data-layout="stack" data-gap="tight" data-fill aria-current={active == 'a'} role="group" aria-label={(nameA != '' ? nameA : t("arena.team.a"))}>
+      <div part="ArenaDraft.team ArenaDraft.plate ArenaDraft.card" class="team" data-team="a" data-layout="stack" data-gap="tight" data-fill aria-current={active == 'a'} role="group" aria-label={(nameA != '' ? nameA : t("arena.team.a"))}>
         <h3 part="ArenaDraft.heading" class="team-name" data-team="a">{(nameA != '' ? nameA : t("arena.team.a"))}</h3>
         <span class="section" part="ArenaDraft.caption">{t("arena.draft.bans")}</span>
         <div class="bans" data-layout="cluster" data-gap="tight" role="list" aria-label={t("arena.draft.bans")}>
@@ -45,7 +45,7 @@
             {#if s.team == 'a' && s.kind == 'ban'}
               <div part="ArenaDraft.slot" class="ban" data-layout="stack" data-gap="hair" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name != '' ? 'banned' : 'empty')}>
                 <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-layout="ratio" data-state={s.name != '' ? 'banned' : 'empty'}>
-                  {#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}
+                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
                   {#if s.name != ''}<og-icon class="strike" icon="close"></og-icon>{/if}
                 </div>
                 <span part="ArenaDraft.badge" class="tag" data-tag={s.active ? 'banning' : (s.name != '' ? 'banned' : 'open')}>{s.active ? t("arena.draft.banning") : (s.name != '' ? t("arena.draft.banned") : t("arena.draft.open"))}</span>
@@ -60,7 +60,7 @@
             {#if s.team == 'a' && s.kind == 'pick'}
               <div part="ArenaDraft.slot ArenaDraft.row" class="pick" data-layout="row" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name != '' ? 'filled' : 'empty')}>
                 <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-layout="ratio" data-state={s.name != '' ? 'filled' : 'empty'}>
-                  {#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}
+                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
                 </div>
                 <div class="who" data-layout="stack" data-gap="none" data-fill>
                   <span part="ArenaDraft.name ArenaDraft.headline" class="pick-name">{s.name != '' ? s.name : t("arena.draft.open")}</span>
@@ -74,7 +74,7 @@
           {/each}
         </div>
       </div>
-      <div part="ArenaDraft.team ArenaDraft.plate ArenaDraft.card" class="team" data-layout="stack" data-gap="tight" data-fill aria-current={active == 'b'} role="group" aria-label={(nameB != '' ? nameB : t("arena.team.b"))}>
+      <div part="ArenaDraft.team ArenaDraft.plate ArenaDraft.card" class="team" data-team="b" data-layout="stack" data-gap="tight" data-fill aria-current={active == 'b'} role="group" aria-label={(nameB != '' ? nameB : t("arena.team.b"))}>
         <h3 part="ArenaDraft.heading" class="team-name" data-team="b">{(nameB != '' ? nameB : t("arena.team.b"))}</h3>
         <span class="section" part="ArenaDraft.caption">{t("arena.draft.bans")}</span>
         <div class="bans" data-layout="cluster" data-gap="tight" role="list" aria-label={t("arena.draft.bans")}>
@@ -82,7 +82,7 @@
             {#if s.team == 'b' && s.kind == 'ban'}
               <div part="ArenaDraft.slot" class="ban" data-layout="stack" data-gap="hair" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name != '' ? 'banned' : 'empty')}>
                 <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-layout="ratio" data-state={s.name != '' ? 'banned' : 'empty'}>
-                  {#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}
+                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
                   {#if s.name != ''}<og-icon class="strike" icon="close"></og-icon>{/if}
                 </div>
                 <span part="ArenaDraft.badge" class="tag" data-tag={s.active ? 'banning' : (s.name != '' ? 'banned' : 'open')}>{s.active ? t("arena.draft.banning") : (s.name != '' ? t("arena.draft.banned") : t("arena.draft.open"))}</span>
@@ -97,7 +97,7 @@
             {#if s.team == 'b' && s.kind == 'pick'}
               <div part="ArenaDraft.slot ArenaDraft.row" class="pick" data-layout="row" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name != '' ? 'filled' : 'empty')}>
                 <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-layout="ratio" data-state={s.name != '' ? 'filled' : 'empty'}>
-                  {#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}
+                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
                 </div>
                 <div class="who" data-layout="stack" data-gap="none" data-fill>
                   <span part="ArenaDraft.name ArenaDraft.headline" class="pick-name">{s.name != '' ? s.name : t("arena.draft.open")}</span>
@@ -116,47 +116,69 @@
     <p class="empty-text" part="ArenaDraft.caption" role="status">{t("arena.draft.empty")}</p>
   {/if}
   {#if phase != 'done'}<footer class="actions" data-layout="row">
-    <button id="Confirm" variant="primary" disabled={!canConfirm || phase == 'done'} onclick={confirm} ondetails={confirm}><kbd class="key" data-action="details"></kbd><span>{t("arena.draft.confirm")}</span></button>
+    <button id="Confirm" variant="primary" aria-label={t("arena.draft.confirm")} disabled={!canConfirm || phase == 'done'} onclick={confirm} ondetails={confirm}><kbd class="key" data-action="details"></kbd><span>{t("arena.draft.confirm")}</span></button>
   </footer>{/if}
 </section>
 
 <style>
-:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; }
-[part="ArenaDraft.band"] { width: stretch; justify-content: space-between; flex: none; }
+/* The draft on a smoked cut card: a team's name in its colour over a rule
+   of it, its bans as struck octagons, its picks as rows washed in the
+   team's colour from their edge; the slot being filled is lit white. */
+:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; color: var(--hud-ink); }
+[part="ArenaDraft.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="ArenaDraft.band"] { width: stretch; justify-content: space-between; flex: none; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 .head { min-width: 0; }
-[part="ArenaDraft.title"] { margin: 0; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.phase, .tag { flex: none; padding: 0 var(--space-xs); white-space: nowrap; }
-.turn { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part="ArenaDraft.title"] { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; }
+.phase, .tag { flex: none; padding: 0 var(--space-xs); border: 0; border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); white-space: nowrap; }
+.phase { color: var(--party-gold-ink); background: var(--hud-key-gold-fill); box-shadow: none; }
+.tag[data-tag=banning], .tag[data-tag=picking] { color: var(--party-go-ink); background: var(--hud-accent); box-shadow: none; }
+.tag[data-tag=open] { color: var(--hud-ink-dim); }
+.turn { min-width: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-ink); overflow-wrap: break-word; }
 .clock { flex: none; }
-.teams { width: stretch; min-height: 0; align-items: stretch; overflow-y: auto; }
-[part~="ArenaDraft.team"] { min-width: 0; padding: var(--space-sm); }
-[part="ArenaDraft.heading"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.section { white-space: nowrap; }
+.teams { width: stretch; min-height: 0; align-items: flex-start; overflow-y: auto; -og-scroll-fade: var(--space-xl); }
+[part~="ArenaDraft.team"] { min-width: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+[part="ArenaDraft.heading"] { margin: 0; padding-block-end: var(--space-xs); font-size: var(--hud-size-readout); line-height: 1.15; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--result-team-a-ink); box-shadow: var(--result-team-a-rule); overflow-wrap: break-word; }
+[part="ArenaDraft.heading"][data-team=b] { color: var(--result-team-b-ink); box-shadow: var(--result-team-b-rule); }
+.section { font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; }
 /* A ban is as wide as its words (Banned, the name), at any text size: the word is never cut, a long name wraps. */
 [part~="ArenaDraft.slot"].ban { flex: 0 1 auto; align-items: center; min-width: var(--size-xl); max-width: stretch; }
-[part~="ArenaDraft.slot"].pick { padding: var(--space-sm); min-height: var(--size-touch); }
-[part="ArenaDraft.portrait ArenaDraft.picture"] { position: relative; flex: none; width: var(--size-lg); height: var(--size-lg); overflow: hidden; }
-[part="ArenaDraft.portrait ArenaDraft.picture"].small { width: var(--size-md); height: var(--size-md); }
+[part~="ArenaDraft.slot"].pick { padding: var(--space-xs) var(--space-sm); min-height: var(--size-touch); border-radius: 0; color: var(--hud-ink); background: var(--result-team-a-row); box-shadow: var(--result-team-a-edge); }
+.team[data-team=b] [part~="ArenaDraft.slot"].pick { background: var(--result-team-b-row); box-shadow: var(--result-team-b-edge); }
+[part~="ArenaDraft.slot"].pick[data-state=active] { background: var(--result-row-lit); color: var(--result-row-lit-ink); }
+[part="ArenaDraft.portrait ArenaDraft.picture"] { position: relative; flex: none; box-sizing: border-box; padding: var(--stroke-thick); border: 0; border-radius: 0; background: var(--hud-edge); box-shadow: none; clip-path: var(--hud-octagon); overflow: hidden; inline-size: var(--party-portrait); block-size: var(--party-portrait); }
+[part="ArenaDraft.portrait ArenaDraft.picture"].small { inline-size: var(--party-ban); block-size: var(--party-ban); }
+[part="ArenaDraft.portrait ArenaDraft.picture"][data-state=empty] { padding: var(--stroke-hairline); background: var(--party-open-edge); }
+.well { inline-size: stretch; block-size: stretch; clip-path: var(--hud-octagon); background: var(--party-open-fill); }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
-.glyph { width: var(--size-sm); height: var(--size-sm); }
+.glyph { width: var(--size-sm); height: var(--size-sm); color: var(--hud-ink); }
 .small .glyph { width: var(--size-xs); height: var(--size-xs); }
-.strike { position: absolute; left: 0; top: 0; width: stretch; height: stretch; }
-.ban-name { max-width: stretch; text-align: center; overflow-wrap: anywhere; }
+[data-state=banned] .art { filter: var(--party-ban-art); }
+[data-state=banned] .glyph { color: var(--hud-ink-dim); }
+.strike { position: absolute; left: 0; top: 0; width: stretch; height: stretch; color: var(--hud-foe); }
+.ban-name { max-width: stretch; text-align: center; font-size: var(--hud-size-xs); line-height: 1.2; color: var(--hud-ink-dim); overflow-wrap: anywhere; }
 .who { min-width: 0; }
-.pick-name, .player { min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.pick-name { min-width: 0; text-align: start; font-size: var(--hud-size-name); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
+[data-state=empty] .pick-name { color: var(--hud-ink-dim); }
+.player { min-width: 0; text-align: start; font-size: var(--hud-size-xs); color: var(--hud-ink-dim); overflow-wrap: anywhere; }
+[data-state=active] .player { color: var(--party-lit-dim); }
 .line { min-width: 0; }
-.line .tag { flex: none; }
-.empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); }
 .actions { width: stretch; flex: none; justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
-.actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
+#Confirm { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); color: var(--party-go-ink); background: var(--front-play-fill); box-shadow: none; min-width: calc(var(--size-xxl) * 1.25); }
+#Confirm:hover { background: var(--party-go-hover-fill); }
+#Confirm:focus-visible { box-shadow: var(--party-focus-rim); }
+#Confirm:disabled { opacity: 0.45; }
+#Confirm > span { color: inherit; font-weight: inherit; }
+.key { color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }
 @media (pointer: coarse) { .key { display: none; } }
 /* The draft sits in a panel: its own width, not the screen's, tightens it. */
 @container (width < 600px) {
+  [part="ArenaDraft.frame"] { padding: var(--space-sm); }
   [part="ArenaDraft.band"] { --layout-gap-loose: var(--layout-gap-tight); }
   .teams { --layout-gap-loose: var(--layout-gap-tight); }
-  [part~="ArenaDraft.team"] { padding: var(--space-xs); }
-  [part~="ArenaDraft.slot"].pick { --layout-gap: var(--layout-gap-tight); padding: var(--space-xxs); }
-  [part="ArenaDraft.portrait ArenaDraft.picture"] { width: var(--size-md); height: var(--size-md); }
-  .actions button { flex: 1; }
+  [part~="ArenaDraft.slot"].pick { --layout-gap: var(--layout-gap-tight); padding: var(--space-xxs) var(--space-xs); }
+  [part="ArenaDraft.portrait ArenaDraft.picture"] { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
+  #Confirm { flex: 1; }
 }
+@container (width < 520px) { .teams { flex-direction: column; align-items: stretch; } [part~="ArenaDraft.team"] { flex: none; } }
 </style>

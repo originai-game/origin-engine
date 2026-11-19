@@ -1,0 +1,26 @@
+{
+  "added": [
+    {
+      "member": "Default style character and party tokens",
+      "summary": "--party-* roles for the pages around a match and a character's own pages: the smoked cut card and its rules, a tile's or a row's glass, its hover, chosen (an accent ring with a white lip and a wash from its foot) and focus rims, a portrait's shade, the grey of what cannot be picked and a ban's art, an open seat's hairline octagon, ready's green and a refusal's red as ink, tag, glow and a row's edge, the button plate and the accent action's ink, a team's plate on the round HUD and the second side's mirrored row on the versus, the versus seal, the garage's picture shades and ground, the character figure's glow, and the family's type steps and sizes (a name, a side's title, a player's name held to its side, the seal, a round's verdict, a score, the clock, a roster tile, a portrait, a ban, an equipment slot, a garage tile), which a style pack sets to restyle the family."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "ArenaRoster, ArenaDraft, ArenaLobby, ArenaReady, ArenaVote, ArenaSpectator, ArenaVersus, ArenaRoundHud",
+      "summary": "Redrawn to the approved character and party mockup in the default style's smoked glass and lit edges: the roster, draft, lobby, ready check and vote on cut cards, a character a tile with its portrait, the chosen one ringed in the accent, a locked or taken one grey with its reason on a tag; the draft's teams in their colours with bans as struck octagons and the slot being filled lit white; a lobby seat a cut row with an octagon portrait, Host on gold, You on the accent and Ready in green; the ready check's clock in gold and each answer on its row's edge; a vote's options as tiles with the tally at the end; the spectator's plate with the watched player washed in the accent; the versus bare over the scene, each side's name large in its colour, the second side mirrored, a gold hexagon seal between them; the round HUD's team plates with the team's colour along the foot and the round's verdict in the result's lit fill. Names and titles wrap on whole words and are no longer cut with an ellipsis; on a phone the round HUD puts the round and its clock on a line over the two teams. Parts and props are unchanged."
+    },
+    {
+      "member": "RpgCharacter, RpgStats, RpgMenuBar, Profile, Loadout, RacingGarage",
+      "summary": "Redrawn in the same look: the character sheet and its stats on cut cards with ruled rows and condensed tabular figures, equipment slots cut and in their rarity, the chosen one ringed in the accent; the menu bar's tabs as tracked capitals with the chosen one underlined in the accent; the profile's rank on a gold tag and each figure on a cut plate; the loadout's items as cut plates with Equipped on a green tag and the price in gold, long names wrapping; the garage's shown car picture filling the page under a shade, its name in large slanted capitals, the ratings and the action on a cut card and the cars as cut tiles. Parts and props are unchanged."
+    },
+    {
+      "member": "ArenaLobby, ArenaDraft, Loadout, RacingGarage",
+      "summary": "A button with a key cap is named by its words alone: the lobby's Ready up and Cancel ready, the draft's Lock in, the loadout's Back and Equip and the garage's Back no longer read the key before the word."
+    },
+    {
+      "member": "results",
+      "summary": "At 150 % text on a desktop the verdict, the grade and the stat plates follow the text scale only up to a share of the screen's height, so the head no longer fills the top half and the stat figures show whole above the actions."
+    }
+  ]
+}

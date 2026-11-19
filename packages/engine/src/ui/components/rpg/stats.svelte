@@ -42,15 +42,22 @@
 </section>
 
 <style>
-[part="RpgStats.band"] { width: stretch; justify-content: center; flex: none; }
+/* A character's figures on a smoked cut card: ruled rows, each a small
+   mark, its label and its value in condensed tabular figures. */
+:host { color: var(--hud-ink); }
+[part="RpgStats.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="RpgStats.band"] { width: stretch; justify-content: center; flex: none; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+[part="RpgStats.title"] { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; text-align: center; }
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }
+.body { -og-scroll-fade: var(--space-xl); }
 .columns { width: stretch; padding: 0 var(--space-xs); }
-.column { align-self: stretch; }
+.column { align-self: stretch; min-width: 0; }
 .split { width: var(--stroke-hairline); align-self: stretch; margin: 0; }
-.group { width: stretch; padding-bottom: var(--space-xs); }
-[part="RpgStats.row"] { width: stretch; padding: var(--space-sm) 0; }
-.row-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
-.row-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row-value { flex: none; white-space: nowrap; }
+.group { width: stretch; padding-bottom: var(--space-sm); }
+[part="RpgStats.row"] { width: stretch; min-height: var(--size-md); padding: var(--space-xs) 0; border-radius: 0; color: var(--hud-ink); background: none; box-shadow: var(--party-rule); }
+.row-mark { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--hud-label-ink); }
+.row-label { min-width: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-label-ink); overflow-wrap: break-word; }
+.row-value { flex: none; white-space: nowrap; font-size: var(--hud-size-readout); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); text-shadow: none; }
+@media (width < 600px) { [part="RpgStats.frame"] { padding: var(--space-sm); } }
 @container (width < 420px) { .split { display: none; } }
 </style>

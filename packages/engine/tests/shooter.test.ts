@@ -141,7 +141,7 @@ test("Loadout: a tap selects by row key, a locked slot sends nothing, and Equip 
   const e = loadout(events);
   try {
     e.advance(3);
-    expect(find(e, /\/Title$/)!.text).toBe("Loadout");
+    expect(find(e, /\/Title$/)!.text.toLowerCase()).toBe("loadout");
     // A style's label role chooses casing; the group names and order stay.
     expect(elements(e).filter((x) => x.role === "heading" && x.path.includes("/Groups/")).map((x) => x.text.toLowerCase())).toEqual(["rifles", "secondary"]);
     tap(e, find(e, /#strider$/)!);

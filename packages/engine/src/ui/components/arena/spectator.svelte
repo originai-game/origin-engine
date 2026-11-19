@@ -47,14 +47,29 @@
   </footer>
 </section>
 <style>
-/* A spectator HUD may be placed over the scene. Filled roles stop the halo. */
-:host { text-shadow: var(--tag-halo); inline-size: stretch; max-block-size: stretch; }
-[part="ArenaSpectator.title"], [part~="ArenaSpectator.detail"], [part~="ArenaSpectator.empty"] { margin: 0; overflow-wrap: anywhere; }
+/* The spectator's plate over the match: smoked glass with a cut corner,
+   the mode in condensed capitals, a row per player with a hairline edge,
+   the one being watched washed in the accent with its edge lit. */
+:host { inline-size: stretch; max-block-size: stretch; color: var(--hud-ink); --fade-fill: var(--party-open-fill); }
+[part="ArenaSpectator.frame"] { box-sizing: border-box; padding: var(--space-md); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="ArenaSpectator.title"] { margin: 0; font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); overflow-wrap: break-word; text-shadow: none; }
+[part~="ArenaSpectator.detail"], [part~="ArenaSpectator.empty"] { margin: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); overflow-wrap: break-word; }
 [part="ArenaSpectator.title"], [part~="ArenaSpectator.detail"], [part~="ArenaSpectator.mode"], [part="ArenaSpectator.actions"] { flex: none; }
+[part~="ArenaSpectator.mode"] { font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); overflow-wrap: break-word; }
 .scroll-area { position: relative; min-block-size: 0; }
 [part="ArenaSpectator.targets"] { min-block-size: 0; padding-block-end: var(--space-lg); }
-[part="ArenaSpectator.target"] { flex: none; min-block-size: var(--size-touch); text-align: start; padding-block: var(--space-xs); }
+[part="ArenaSpectator.target"] { flex: none; min-block-size: var(--size-touch); text-align: start; padding: var(--space-xs) var(--space-md); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--result-row-fill); box-shadow: var(--party-state-edge); }
+[part="ArenaSpectator.target"]:hover { background: var(--party-button-hover-fill); }
+[part="ArenaSpectator.target"]:focus-visible { box-shadow: var(--party-focus-rim); }
+[part="ArenaSpectator.target"][aria-pressed=true] { background: var(--party-on-row); box-shadow: var(--party-on-edge); }
+[part="ArenaSpectator.target"]:disabled { color: var(--hud-ink-dim); }
 .target-body { inline-size: stretch; }
-[part~="ArenaSpectator.name"], [part~="ArenaSpectator.team"], [part~="ArenaSpectator.state"] { overflow-wrap: anywhere; }
-[part="ArenaSpectator.actions"] button { flex: 1 1 auto; min-block-size: var(--size-touch); }
+[part~="ArenaSpectator.name"] { font-size: var(--hud-size-name); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
+[part~="ArenaSpectator.team"] { font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); overflow-wrap: break-word; }
+[part~="ArenaSpectator.state"] { font-size: var(--hud-size-xs); color: var(--hud-ink-dim); overflow-wrap: break-word; }
+[part="ArenaSpectator.actions"] button { flex: 1 1 auto; min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); padding: 0 var(--space-md); }
+[part="ArenaSpectator.actions"] button:hover { background: var(--party-button-hover-fill); }
+[part="ArenaSpectator.actions"] button:focus-visible { box-shadow: var(--party-focus-rim); }
+[part="ArenaSpectator.actions"] button[aria-pressed=true] { box-shadow: var(--party-on-rim); }
+[part="ArenaSpectator.actions"] button:disabled { opacity: 0.45; }
 </style>

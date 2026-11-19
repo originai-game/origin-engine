@@ -28,6 +28,8 @@
   rating; the garage reports the car's key and Back (back).
 -->
 <section id="RacingGarage" part="RacingGarage.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("racing.garage.title")}>
+  {#each vehicles as v (v.id)}{#if v.id == shown && v.image}<img class="backdrop" src={v.image} alt="" data-anchor="fill">{/if}{/each}
+  <div class="shade" data-anchor="fill"></div>
   <header part="RacingGarage.band" data-layout="row"><h2 part="RacingGarage.title" data-fill>{title != '' ? title : t("racing.garage.title")}</h2></header>
   {#if vehicles.length}
     <div class="body" data-layout="switcher" data-gap="wide" data-fill>
@@ -35,8 +37,7 @@
         {#each vehicles as v (v.id)}
           {#if v.id == shown}
             <figure part="RacingGarage.hero RacingGarage.picture" class="hero" data-layout="stack" data-gap="hair" aria-label={v.title} data-owned={v.owned} data-locked={v.locked} data-chosen={v.id == chosen}>
-              {#if v.image}<img class="art" src={v.image} alt="">
-              {:else}<div class="well" part="RacingGarage.well"></div>{/if}
+              {#if !v.image}<div class="well" part="RacingGarage.well"></div>{/if}
               <span class="hero-name" part="RacingGarage.headline">{v.title}</span>
               <span class="hero-body" part="RacingGarage.caption">{v.body}</span>
             </figure>
@@ -55,7 +56,7 @@
           {/each}
         </div>
         <div class="actions" data-layout="cluster">
-          <button id="Back" variant="ghost" onclick={back} onback={back}><kbd class="key" data-action="back"></kbd><span>{t("racing.garage.back")}</span></button>
+          <button id="Back" variant="ghost" aria-label={t("racing.garage.back")} onclick={back} onback={back}><kbd class="key" data-action="back"></kbd><span>{t("racing.garage.back")}</span></button>
           {#each vehicles as v (v.id)}
             {#if v.id == shown}
               {#if v.locked}
@@ -85,46 +86,83 @@
   {:else}
     <div class="empty" data-layout="cover" data-gap="loose" data-fill role="status">
       <p class="empty-text" part="RacingGarage.caption">{t("racing.garage.empty")}</p>
-      <button id="EmptyBack" variant="ghost" onclick={back} onback={back}><kbd class="key" data-action="back"></kbd><span>{t("racing.garage.back")}</span></button>
+      <button id="EmptyBack" variant="ghost" aria-label={t("racing.garage.back")} onclick={back} onback={back}><kbd class="key" data-action="back"></kbd><span>{t("racing.garage.back")}</span></button>
     </div>
   {/if}
 </section>
 
 <style>
-[part="RacingGarage.band"] { width: stretch; flex: none; }
-[part="RacingGarage.title"] { margin: 0; overflow-wrap: anywhere; }
-.body { width: stretch; overflow-y: auto; align-items: flex-start; justify-content: center; --layout-switch-at: var(--measure-xl); }
-.show { align-items: center; max-width: stretch; }
-[part="RacingGarage.hero RacingGarage.picture"] { width: stretch; margin: 0; padding: var(--space-sm); }
-.art, .well { width: stretch; aspect-ratio: 1.8; }
-.art { object-fit: cover; }
-.hero-name, .hero-body { width: stretch; text-align: start; }
-.steps button { width: var(--size-touch); height: var(--size-touch); padding: 0; }
+/* The garage: the shown car's picture fills the page under a shade that
+   holds the words over it; its class in the accent over its name in large
+   slanted capitals, the arrows and the count under them; the ratings and
+   the action on a smoked cut card at the end; the cars along the foot as
+   cut tiles, the shown one ringed in the accent. */
+:host { color: var(--hud-ink); }
+[part="RacingGarage.frame"] { position: relative; box-sizing: border-box; padding: var(--space-xl); border: 0; border-radius: 0; overflow: hidden; color: var(--hud-ink); background: var(--party-ground); box-shadow: none; }
+.backdrop { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.shade { background: var(--party-hero-shade); pointer-events: none; }
+[part="RacingGarage.band"], .body, .tiles-scroll, .empty { position: relative; }
+[part="RacingGarage.band"] { width: stretch; flex: none; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+[part="RacingGarage.title"] { margin: 0; font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); color: var(--hud-ink); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
+.body { width: stretch; min-height: 0; overflow-y: auto; align-items: safe flex-end; justify-content: space-between; -og-scroll-fade: var(--space-xl); --layout-switch-at: calc(var(--party-garage-side) * 2); }
+.show { align-items: flex-start; min-width: 0; max-width: stretch; }
+[part="RacingGarage.hero RacingGarage.picture"] { width: stretch; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; --layout-gap-hair: var(--space-xs); }
+.well { order: -2; width: stretch; aspect-ratio: 3.2; border-radius: 0; background: var(--party-open-row); box-shadow: var(--party-seat-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+.hero-body { order: -1; width: stretch; text-align: start; font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); color: var(--hud-accent); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
+.hero-name { width: stretch; text-align: start; font-size: var(--party-size-car); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-style: var(--hud-figure-slant); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
+.steps button { width: var(--size-touch); height: var(--size-touch); padding: 0; border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.steps button:hover { background: var(--party-button-hover-fill); }
+.steps button:focus-visible { box-shadow: var(--party-focus-rim); }
 .next-icon { rotate: 180deg; }
 #Prev:dir(rtl) og-icon { rotate: 180deg; }
 #Next:dir(rtl) .next-icon { rotate: 0deg; }
-.count { min-width: var(--size-xl); text-align: center; white-space: nowrap; }
+.count { min-width: var(--size-xl); text-align: center; white-space: nowrap; font-size: var(--hud-size-readout); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); text-shadow: var(--front-shadow); }
+/* The card takes the ratings' share beside the car, or the whole width
+   once the garage is too narrow for both at the player's text size. */
+.side { flex-grow: 0.6; box-sizing: border-box; max-width: stretch; padding: var(--space-md); background: var(--party-card-fill); box-shadow: var(--party-card-rim); --layout-gap-wide: var(--space-md); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="RacingGarage.row"] { border-radius: 0; background: none; }
 .actions { justify-content: flex-end; }
-.actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); }
-.reason { white-space: nowrap; }
+.actions button, #EmptyBack { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.actions button { flex: 1 1 auto; flex-wrap: wrap; min-width: calc(var(--size-xxl) * 1.25); padding-block: var(--space-xxs); }
+.actions button:hover, #EmptyBack:hover { background: var(--party-button-hover-fill); }
+.actions button:focus-visible, #EmptyBack:focus-visible { box-shadow: var(--party-focus-rim); }
+.actions button[variant=primary] { color: var(--party-go-ink); background: var(--front-play-fill); box-shadow: none; }
+.actions button[variant=primary]:hover { background: var(--party-go-hover-fill); }
+.actions button:disabled { opacity: 0.45; }
+.actions button > span, #EmptyBack > span { color: inherit; font-weight: inherit; }
+.reason { overflow-wrap: break-word; }
 /* The strip scrolls inside the garage's width and never widens it. */
 .tiles-scroll { overflow-x: auto; min-width: 0; flex: none; contain: inline-size; }
-.tiles { padding: var(--space-xxs); }
-[part="RacingGarage.tile RacingGarage.cell"] { flex: none; width: calc(var(--size-xxl) * 1.7); min-height: var(--size-xl); padding: var(--space-xs) var(--space-sm); }
+.tiles { padding: var(--space-xxs); align-items: stretch; }
+[part="RacingGarage.tile RacingGarage.cell"] { flex: none; width: var(--party-garage-tile); min-height: var(--size-xl); padding: var(--space-xs) var(--space-sm); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-tile-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="RacingGarage.tile RacingGarage.cell"]:hover { box-shadow: var(--party-tile-hover-rim); }
+[part="RacingGarage.tile RacingGarage.cell"]:focus-visible { box-shadow: var(--party-focus-rim); }
+[part="RacingGarage.tile RacingGarage.cell"][aria-selected=true] { background: var(--party-card-on-fill); box-shadow: var(--party-on-rim); }
+[part="RacingGarage.tile RacingGarage.cell"][data-locked=true] { color: var(--hud-ink-dim); }
 [part="RacingGarage.tile RacingGarage.cell"] .face { width: stretch; align-items: flex-start; }
-.name { width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.tag { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; padding: 0 var(--space-xs); }
-.empty-text { margin: 0; }
+.name { width: stretch; text-align: start; font-size: var(--hud-size-xs); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
+.tag { max-width: stretch; padding: 0 var(--space-xs); border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); overflow-wrap: break-word; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.tag[data-tag=driving] { color: var(--party-go-ink); background: var(--hud-accent); box-shadow: none; }
+.tag[data-tag=price] { color: var(--hud-gold); }
+.tag[data-tag=locked] { color: var(--hud-ink-dim); }
+.empty-text { margin: 0; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); }
+.key { color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }
 @media (pointer: coarse) { .key { display: none; } }
+/* A phone: the picture closes on the ground under it, the name smaller.
+   The frame's own gap follows the viewport: a container cannot query
+   itself. */
+@media (width < 600px) {
+  [part="RacingGarage.frame"] { padding: var(--space-sm); --layout-gap-loose: var(--layout-gap); }
+  .backdrop, .shade { bottom: auto; block-size: 38%; }
+  .shade { background: var(--party-hero-shade-compact); }
+  [part="RacingGarage.tile RacingGarage.cell"] { width: var(--party-garage-tile-compact); }
+}
 /* A narrow panel stacks the shown car over the ratings and the action, the
-   tiles along the foot under the thumb. The frame's own gap follows the
-   viewport: a container cannot query itself. */
-@media (width < 600px) { [part="RacingGarage.frame"] { --layout-gap-loose: var(--layout-gap); } }
+   tiles along the foot under the thumb. */
 @container (width < 600px) {
-  .body { justify-content: flex-start; --layout-gap-wide: var(--layout-gap); }
-  .show { width: stretch; }
-  .art, .well { aspect-ratio: 3.2; }
-  .side { width: stretch; align-items: center; --layout-gap-wide: var(--layout-gap); }
-  .actions { width: stretch; justify-content: center; }
+  .body { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: safe flex-end; --layout-gap-wide: var(--layout-gap); }
+  .show { width: stretch; flex: none; }
+  .side { width: stretch; flex: none; padding: var(--space-sm); --layout-gap-wide: var(--layout-gap); }
+  .actions { width: stretch; }
 }
 </style>

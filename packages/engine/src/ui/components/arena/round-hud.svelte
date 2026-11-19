@@ -59,36 +59,42 @@
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
-:host { inline-size: stretch; min-inline-size: 0; align-items: center; pointer-events: none; --layout-gap-wide: var(--space-xl); }
+/* The round HUD over the match: each team's plate of smoked glass with
+   its colour along its foot and its score large in that colour, the
+   round and its clock between them; a round's verdict in the result's
+   lit fill over a rule, held to the screen's width. */
+:host { inline-size: stretch; min-inline-size: 0; align-items: center; pointer-events: none; color: var(--hud-ink); --layout-gap-wide: var(--space-xl); }
 .bar { max-width: stretch; min-width: 0; align-items: stretch; justify-content: center; }
-[part="ArenaRoundHud.team ArenaRoundHud.plate"] { flex: 0 1 auto; min-width: 0; padding: var(--space-xs) var(--space-md); }
-.team.a { justify-content: flex-end; }
-.team.b { justify-content: flex-start; }
-.name { min-width: 0; max-width: calc(var(--size-xxl) * 2.2); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.you { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-[part="ArenaRoundHud.score ArenaRoundHud.figure"] { --figure-size: var(--type-xl3-size); --figure-weight: var(--font-weight-bold); flex: none; min-width: var(--size-md); text-align: center; white-space: nowrap; }
-[part="ArenaRoundHud.round ArenaRoundHud.plate"] { flex: none; align-items: center; justify-content: center; padding: var(--space-xxs) var(--space-md); }
-.round-label { white-space: nowrap; }
-.call { width: stretch; justify-content: center; }
-[part="ArenaRoundHud.banner ArenaRoundHud.plate"] { align-items: center; max-width: stretch; padding: var(--space-sm) var(--space-3xl); }
-.outcome { --title-size: var(--font-step-3xl); --title-weight: var(--font-weight-bold); white-space: nowrap; }
-.detail { text-align: center; max-width: stretch; }
+[part="ArenaRoundHud.team ArenaRoundHud.plate"] { flex: 0 1 auto; min-width: 0; padding: var(--space-xs) var(--space-lg); border: 0; border-radius: 0; background: var(--hud-plate-fill); box-shadow: var(--party-team-a-plate); }
+.team.a { justify-content: flex-end; clip-path: polygon(var(--party-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--party-cut)); }
+.team.b { justify-content: flex-start; box-shadow: var(--party-team-b-plate); clip-path: polygon(0 0, calc(100% - var(--party-cut)) 0, 100% var(--party-cut), 100% 100%, 0 100%); }
+.name { min-width: 0; font-size: var(--hud-size-sm); line-height: 1.15; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; overflow-wrap: break-word; }
+.you { flex: none; padding: 0 var(--space-xs); border: 0; border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); white-space: nowrap; color: var(--party-go-ink); background: var(--hud-accent); box-shadow: none; }
+[part="ArenaRoundHud.score ArenaRoundHud.figure"] { flex: none; min-width: var(--size-md); text-align: center; white-space: nowrap; font-size: var(--party-size-figure); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--result-team-a-ink); filter: var(--result-team-a-glow); text-shadow: none; }
+[part="ArenaRoundHud.score ArenaRoundHud.figure"][data-team=b] { color: var(--result-team-b-ink); filter: var(--result-team-b-glow); }
+[part="ArenaRoundHud.round ArenaRoundHud.plate"] { flex: none; align-items: center; justify-content: center; padding: var(--space-xxs) var(--space-lg); border: 0; border-radius: 0; background: var(--hud-tag-fill); box-shadow: var(--hud-plate-rim); }
+.round-label { font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-shadow: none; }
+.call { width: stretch; justify-content: center; container-type: inline-size; }
+[part="ArenaRoundHud.banner ArenaRoundHud.plate"] { align-items: center; max-width: stretch; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; --layout-gap-hair: var(--space-xs); }
+.outcome { max-width: stretch; text-align: center; font-size: var(--party-size-call); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-verdict-tracking); text-transform: var(--hud-label-transform); overflow-wrap: break-word; color: transparent; background: var(--result-won-fill); background-clip: var(--hud-text-clip); filter: var(--result-won-glow); text-shadow: none; }
+[data-outcome=lost] .outcome { background: var(--result-lost-fill); background-clip: var(--hud-text-clip); filter: var(--result-lost-glow); }
+.detail { max-width: stretch; text-align: center; font-size: var(--hud-size-sm); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: var(--hud-shadow); overflow-wrap: break-word; }
 /* The HUD spans the screen, so the screen's width decides. A phone keeps
    the scores and the round, and gives each team's name a line of its own
    over its score, so the name has the plate's whole width. */
 @media (width < 600px) {
   :host { --layout-gap-wide: var(--space-lg); }
-  /* The bar never outgrows the screen: the plates share the width, the round's words wrap. */
-  .bar { width: stretch; }
-  [part="ArenaRoundHud.team ArenaRoundHud.plate"] { flex: 1 1 0; flex-wrap: wrap; align-content: center; --layout-gap: var(--space-xs); padding: var(--space-xxs) var(--space-xs); }
-  .name { flex: 1 1 100%; max-width: none; }
+  /* The bar never outgrows the screen: the round and its clock take a
+     line over the two teams, which share the width under it, so a name
+     and a score keep whole at any text size. */
+  .bar { width: stretch; flex-wrap: wrap; }
+  [part="ArenaRoundHud.team ArenaRoundHud.plate"] { flex: 1 1 0; flex-wrap: wrap; align-content: center; --layout-gap: var(--space-xs); padding: var(--space-xxs) var(--space-sm); }
+  .name { flex: 1 1 100%; font-size: var(--hud-size-xs); }
   .team.b .name { order: -1; }
   .team.a .name { text-align: end; }
   .team.b .name { text-align: start; }
-  [part="ArenaRoundHud.round ArenaRoundHud.plate"] { flex: 0 1 auto; min-width: 0; padding: var(--space-xxs) var(--space-xs); }
+  [part="ArenaRoundHud.score ArenaRoundHud.figure"] { font-size: var(--party-size-figure-compact); }
+  [part="ArenaRoundHud.round ArenaRoundHud.plate"] { order: -1; flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; min-width: 0; padding: var(--space-xxs) var(--space-sm); --layout-gap-hair: var(--space-sm); }
   .round-label { white-space: normal; text-align: center; }
-  [part="ArenaRoundHud.banner ArenaRoundHud.plate"] { padding: var(--space-xs) var(--space-xl); }
 }
 </style>
