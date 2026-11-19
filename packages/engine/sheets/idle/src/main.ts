@@ -10,7 +10,14 @@
 // screen (og ui preview --screen "x=style:fantasy;page:states-purchases").
 
 import { og, type UiReadable, type World } from "@origingame/engine";
-import { FIXTURES, NAMES } from "./fixtures.ts";
+import { FIXTURES, NAMES, localized } from "./fixtures.ts";
+
+/** The sheet's painted art (art/goods.png, 4 × 3, sheet only), drawn for the icons
+ * its fixtures name; the ink icons stand in for the rest. */
+const ART_NAMES = ["coin", "gem", "leaf", "fire", "skull", "sword", "shield", "drop", "bolt", "apple"];
+
+/** The fixtures in the active locale, read in start (ui may not call og.i18n). */
+let text = FIXTURES;
 
 const PAGES = ["play", "reset", "offline", "states", "states-resources", "states-generators", "states-purchases", "states-prestige", "states-offline"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
@@ -33,10 +40,11 @@ const INK_NAMES = [
 /** The style and the fallback icons in one configure, so neither resets the other. */
 function setStyle(world: World, name: string): void {
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
+  const art = must(og.load.texture(world, "art/goods.png"), "painted art");
+  const icons = { texture: art, columns: 4, rows: 3, pictures: true, names: ART_NAMES };
   const fallbackIcons = { texture: ink, columns: 8, rows: 4, names: INK_NAMES };
-  if (name === "default") {
-    og.ui.configure(world, { style: null, font: null, fallbackIcons });
-  } else og.ui.configure(world, { style: must(og.load.style(world, `@styles/${name}`), name), font: null, fallbackIcons });
+  const style = name === "default" ? null : must(og.load.style(world, `@styles/${name}`), name);
+  og.ui.configure(world, { style, font: null, icons, fallbackIcons });
 }
 
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */
@@ -44,7 +52,7 @@ function stores(world: World): Record<string, UiReadable<unknown>> {
   const scope = og.ui.scope(world, "sheet");
   const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "play") };
   const captions: Record<string, string> = {};
-  for (const [member, states] of Object.entries(FIXTURES)) {
+  for (const [member, states] of Object.entries(text)) {
     for (const [state, fixture] of Object.entries(states)) {
       const name = `${member}_${state}`;
       captions[name] = `${NAMES[member]} · ${state}`;
@@ -72,6 +80,10 @@ export default og.game({
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.05, g: 0.05, b: 0.06 };
     setStyle(world, "fantasy");
+    // The kit's strings and the fixture words in Chinese, as a game ships
+    // them (English comes with the kit).
+    for (const locale of ["en", "zh-CN"]) must(og.i18n.load(world, `strings/${locale}.ogt`), locale);
+    text = localized(FIXTURES, (key) => (og.i18n.has(world, key) ? og.i18n.t(world, key) : key));
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   ui: show,

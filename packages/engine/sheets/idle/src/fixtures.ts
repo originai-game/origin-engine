@@ -13,7 +13,7 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
     overflow: {"currencies":[{"id":"gold","icon":"coin","name":"Gold Sovereigns of the Eastern Treasury","amount":1.234e+24,"value":"","rate":"","perSecond":5.6e+21,"full":false},{"id":"gems","icon":"gem","name":"Gems","amount":99999999,"value":"","rate":"+1.25 quadrillion per second","perSecond":0,"full":false},{"id":"wood","icon":"leaf","name":"Wood","amount":5000,"value":"5,000 / 5,000","rate":"","perSecond":0,"full":true},{"id":"stone","icon":"shield","name":"Stone","amount":48210,"value":"","rate":"","perSecond":120,"full":false},{"id":"mana","icon":"drop","name":"Mana","amount":250,"value":"","rate":"","perSecond":3.5,"full":false},{"id":"souls","icon":"skull","name":"Souls","amount":7,"value":"","rate":"","perSecond":0,"full":false},{"id":"stars","icon":"star","name":"Stardust","amount":1500000000,"value":"","rate":"","perSecond":2200000,"full":false},{"id":"crowns","icon":"crown","name":"Crowns","amount":3,"value":"","rate":"","perSecond":0,"full":false}],"loading":false},
   },
   generators: {
-    default: {"title":"","generators":[{"id":"farm","icon":"leaf","name":"Farm","owned":25,"rate":"+48/s","cycle":0.62,"cycleText":"0.4s","level":3,"boost":"","auto":true,"locked":false},{"id":"mine","icon":"gem","name":"Gem Mine","owned":4,"rate":"+1.2K/s","cycle":0.18,"cycleText":"8.2s","level":1,"boost":"×2","auto":false,"locked":false},{"id":"forge","icon":"fire","name":"Forge","owned":0,"rate":"+25K/s","cycle":-1,"cycleText":"","level":0,"boost":"","auto":false,"locked":true}],"selected":"mine"},
+    default: {"title":"","generators":[{"id":"farm","icon":"leaf","name":"Farm","owned":25,"rate":"+48/s","cycle":0.62,"cycleText":"0.4s","level":3,"boost":"","auto":true,"locked":false},{"id":"mine","icon":"gem","name":"Gem Mine","owned":4,"rate":"+1.2K/s","cycle":0.18,"cycleText":"8.2s","level":1,"boost":"×2","auto":false,"locked":false},{"id":"forge","icon":"fire","name":"Forge","owned":0,"rate":"10K gold","cycle":-1,"cycleText":"","level":0,"boost":"","auto":false,"locked":true}],"selected":"mine"},
     empty: {"title":"","generators":[],"selected":""},
     disabled: {"title":"","generators":[{"id":"forge","icon":"fire","name":"Forge","owned":0,"rate":"Reach 1M gold","cycle":-1,"cycleText":"","level":0,"boost":"","auto":false,"locked":true},{"id":"tower","icon":"crown","name":"Mage Tower","owned":0,"rate":"Reach 1B gold","cycle":-1,"cycleText":"","level":0,"boost":"","auto":false,"locked":true}],"selected":""},
     selected: {"title":"","generators":[{"id":"farm","icon":"leaf","name":"Farm","owned":25,"rate":"+48/s","cycle":1,"cycleText":"","level":3,"boost":"","auto":false,"locked":false},{"id":"mine","icon":"gem","name":"Gem Mine","owned":4,"rate":"+1.2K/s","cycle":0,"cycleText":"","level":1,"boost":"","auto":false,"locked":false}],"selected":"farm"},
@@ -43,3 +43,21 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
 };
 
 export const NAMES: Record<string, string> = {"resources":"IdleResources","generators":"IdleGenerators","purchases":"IdlePurchases","prestige":"IdlePrestige","offline":"IdleOffline"};
+
+/** Fields that carry a value, a key or a format rather than words. */
+const NOT_TEXT = new Set(["id", "icon", "costIcon", "counter", "state", "chapter", "selected", "armed", "amount", "value", "held", "gain", "now", "after", "count", "cost", "cycleText", "progressText", "boost", "result", "total"]);
+
+/** The sheet's fixture words in the active locale, as a game's data goes
+ * through its string tables: each is read as sheet.<slug of the English>
+ * (strings/zh-CN.ogt), and a word the table lacks stays English. */
+export function localized(data: typeof FIXTURES, tr: (key: string) => string): typeof FIXTURES {
+  const word = (field: string, v: unknown): unknown => {
+    if (typeof v !== "string" || NOT_TEXT.has(field) || !/[A-Za-z]/.test(v)) return v;
+    const key = `sheet.${v.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+    const out = tr(key);
+    return out && out !== key ? out : v;
+  };
+  const row = (r: Record<string, unknown>) => Object.fromEntries(Object.entries(r).map(([f, v]) => [f, word(f, v)]));
+  return Object.fromEntries(Object.entries(data).map(([member, states]) => [member, Object.fromEntries(Object.entries(states).map(([state, fixture]) =>
+    [state, Object.fromEntries(Object.entries(fixture).map(([prop, v]) => [prop, Array.isArray(v) ? v.map((r) => row(r as Record<string, unknown>)) : word(prop, v)]))]))]));
+}

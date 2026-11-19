@@ -5,13 +5,13 @@
 
 export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> = {
   goals: {
-    default: {"counter":"moves","moves":18,"seconds":0,"low":false,"score":12450,"goals":[{"id":"red","icon":"apple","label":"Red sweets","left":12,"done":false},{"id":"jelly","icon":"drop","label":"Jelly","left":4,"done":false},{"id":"leaf","icon":"leaf","label":"Leaves","left":0,"done":true}]},
-    time: {"counter":"time","moves":0,"seconds":74,"low":false,"score":3200,"goals":[{"id":"gem","icon":"gem","label":"Gems","left":20,"done":false}]},
-    low: {"counter":"moves","moves":3,"seconds":0,"low":true,"score":8800,"goals":[{"id":"red","icon":"apple","label":"Red sweets","left":5,"done":false},{"id":"leaf","icon":"leaf","label":"Leaves","left":0,"done":true}]},
-    lowTime: {"counter":"time","moves":0,"seconds":7,"low":true,"score":15000,"goals":[{"id":"gem","icon":"gem","label":"Gems","left":2,"done":false}]},
-    done: {"counter":"moves","moves":6,"seconds":0,"low":false,"score":24300,"goals":[{"id":"red","icon":"apple","label":"Red sweets","left":0,"done":true},{"id":"jelly","icon":"drop","label":"Jelly","left":0,"done":true}]},
-    empty: {"counter":"moves","moves":25,"seconds":0,"low":false,"score":0,"goals":[]},
-    overflow: {"counter":"moves","moves":1250,"seconds":0,"low":false,"score":123456789,"goals":[{"id":"a","icon":"apple","label":"Red sweets","left":1250,"done":false},{"id":"b","icon":"drop","label":"Jelly","left":99,"done":false},{"id":"c","icon":"leaf","label":"Leaves","left":0,"done":true},{"id":"d","icon":"gem","label":"Gems","left":340,"done":false},{"id":"e","icon":"star","label":"Stars","left":7,"done":false},{"id":"f","icon":"key","label":"Keys","left":3,"done":false}]},
+    default: {"progress":0.62,"stars":[{"id":"s1","at":0.4},{"id":"s2","at":0.7},{"id":"s3","at":1}],"counter":"moves","moves":18,"seconds":0,"low":false,"score":12450,"goals":[{"id":"red","icon":"apple","label":"Red sweets","left":12,"done":false},{"id":"jelly","icon":"drop","label":"Jelly","left":4,"done":false},{"id":"leaf","icon":"leaf","label":"Leaves","left":0,"done":true}]},
+    time: {"progress":0.2,"stars":[{"id":"s1","at":0.4},{"id":"s2","at":0.7},{"id":"s3","at":1}],"counter":"time","moves":0,"seconds":74,"low":false,"score":3200,"goals":[{"id":"gem","icon":"gem","label":"Gems","left":20,"done":false}]},
+    low: {"progress":0.45,"stars":[{"id":"s1","at":0.4},{"id":"s2","at":0.7},{"id":"s3","at":1}],"counter":"moves","moves":3,"seconds":0,"low":true,"score":8800,"goals":[{"id":"red","icon":"apple","label":"Red sweets","left":5,"done":false},{"id":"leaf","icon":"leaf","label":"Leaves","left":0,"done":true}]},
+    lowTime: {"progress":0.75,"stars":[{"id":"s1","at":0.4},{"id":"s2","at":0.7},{"id":"s3","at":1}],"counter":"time","moves":0,"seconds":7,"low":true,"score":15000,"goals":[{"id":"gem","icon":"gem","label":"Gems","left":2,"done":false}]},
+    done: {"progress":1,"stars":[{"id":"s1","at":0.4},{"id":"s2","at":0.7},{"id":"s3","at":1}],"counter":"moves","moves":6,"seconds":0,"low":false,"score":24300,"goals":[{"id":"red","icon":"apple","label":"Red sweets","left":0,"done":true},{"id":"jelly","icon":"drop","label":"Jelly","left":0,"done":true}]},
+    empty: {"progress":-1,"stars":[],"counter":"moves","moves":25,"seconds":0,"low":false,"score":0,"goals":[]},
+    overflow: {"progress":1,"stars":[{"id":"s1","at":0.4},{"id":"s2","at":0.7},{"id":"s3","at":1}],"counter":"moves","moves":1250,"seconds":0,"low":false,"score":123456789,"goals":[{"id":"a","icon":"apple","label":"Red sweets","left":1250,"done":false},{"id":"b","icon":"drop","label":"Jelly","left":99,"done":false},{"id":"c","icon":"leaf","label":"Leaves","left":0,"done":true},{"id":"d","icon":"gem","label":"Gems","left":340,"done":false},{"id":"e","icon":"star","label":"Stars","left":7,"done":false},{"id":"f","icon":"key","label":"Keys","left":3,"done":false}]},
   },
   boosters: {
     default: {"armed":"","boosters":[{"id":"hammer","icon":"bomb","name":"Hammer","count":3,"available":true},{"id":"shuffle","icon":"bolt","name":"Shuffle","count":1,"available":true},{"id":"moves","icon":"plus","name":"Extra moves","count":5,"available":true},{"id":"burst","icon":"fire","name":"Colour burst","count":0,"available":false}]},
@@ -38,3 +38,21 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
 
 /** Each member's component name, for the states page's captions. */
 export const NAMES: Record<string, string> = {"goals":"PuzzleGoals","boosters":"PuzzleBoosters","levelPath":"PuzzleLevelPath","summary":"PuzzleSummary"};
+
+/** Fields that carry a value, a key or a format rather than words. */
+const NOT_TEXT = new Set(["id", "icon", "costIcon", "counter", "state", "chapter", "selected", "armed", "amount", "value", "held", "gain", "now", "after", "count", "cost", "cycleText", "progressText", "boost", "result", "total"]);
+
+/** The sheet's fixture words in the active locale, as a game's data goes
+ * through its string tables: each is read as sheet.<slug of the English>
+ * (strings/zh-CN.ogt), and a word the table lacks stays English. */
+export function localized(data: typeof FIXTURES, tr: (key: string) => string): typeof FIXTURES {
+  const word = (field: string, v: unknown): unknown => {
+    if (typeof v !== "string" || NOT_TEXT.has(field) || !/[A-Za-z]/.test(v)) return v;
+    const key = `sheet.${v.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+    const out = tr(key);
+    return out && out !== key ? out : v;
+  };
+  const row = (r: Record<string, unknown>) => Object.fromEntries(Object.entries(r).map(([f, v]) => [f, word(f, v)]));
+  return Object.fromEntries(Object.entries(data).map(([member, states]) => [member, Object.fromEntries(Object.entries(states).map(([state, fixture]) =>
+    [state, Object.fromEntries(Object.entries(fixture).map(([prop, v]) => [prop, Array.isArray(v) ? v.map((r) => row(r as Record<string, unknown>)) : word(prop, v)]))]))]));
+}
