@@ -8,14 +8,19 @@
 //! - [`auth`]: token verifiers (`none`, `hs256`, `jwks`), offline.
 //! - [`config`]: the `world-server` `.ogt` file.
 //! - `server` and `bots` (native): `og world-server` and the load test.
+//!
+//! Everything but `protocol`, `view` and `wire` is the `server` feature's.
 
+#[cfg(feature = "server")]
 pub mod auth;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 pub mod bots;
+#[cfg(feature = "server")]
 pub mod config;
 pub mod protocol;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 pub mod server;
+#[cfg(feature = "server")]
 pub mod shard;
 pub mod view;
 pub mod wire;
