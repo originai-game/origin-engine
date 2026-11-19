@@ -6,6 +6,33 @@ node_modules/
 
 # og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
 /assets/fonts/latin/NotoSans-Latin.ttf
+/assets/fonts/latin/af.hyph
+/assets/fonts/latin/ca.hyph
+/assets/fonts/latin/cs.hyph
+/assets/fonts/latin/da.hyph
+/assets/fonts/latin/de.hyph
+/assets/fonts/latin/en.hyph
+/assets/fonts/latin/es.hyph
+/assets/fonts/latin/et.hyph
+/assets/fonts/latin/fi.hyph
+/assets/fonts/latin/fr.hyph
+/assets/fonts/latin/gl.hyph
+/assets/fonts/latin/hr.hyph
+/assets/fonts/latin/hu.hyph
+/assets/fonts/latin/is.hyph
+/assets/fonts/latin/it.hyph
+/assets/fonts/latin/la.hyph
+/assets/fonts/latin/lt.hyph
+/assets/fonts/latin/nl.hyph
+/assets/fonts/latin/no.hyph
+/assets/fonts/latin/pl.hyph
+/assets/fonts/latin/pt.hyph
+/assets/fonts/latin/sk.hyph
+/assets/fonts/latin/sl.hyph
+/assets/fonts/latin/sq.hyph
+/assets/fonts/latin/sv.hyph
+/assets/fonts/latin/tk.hyph
+/assets/fonts/latin/tr.hyph
 /assets/models/boat.glb
 /assets/models/boulder.glb
 /assets/models/dog.glb
