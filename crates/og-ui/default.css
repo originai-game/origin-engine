@@ -1140,6 +1140,7 @@
     --map-room-rim-width: calc(2 * var(--font-step-px));
     --map-room-shadow: 0 calc(5 * var(--font-step-px)) calc(12 * var(--font-step-px)) rgb(0 0 0 / 0.6);
     --map-round: 50%;
+    --map-round-corner-shape: round;
     --map-rule: linear-gradient(90deg, rgb(255 196 70), transparent);
     --map-run-caption-size: min(calc(12 * var(--font-step-px)), 3.6cqi, 4.4cqb);
     --map-run-room: min(calc(48 * var(--font-step-px)), 11cqi, 13cqb);

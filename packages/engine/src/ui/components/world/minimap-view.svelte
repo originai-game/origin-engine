@@ -46,6 +46,9 @@
 .square #Bezel { border-radius: var(--map-square-bezel-round); }
 #Glass { position: relative; width: var(--side); height: var(--side); padding: 0; border: 0; overflow: hidden; border-radius: var(--map-round); background: var(--map-glass-well); box-shadow: none; }
 .square #Glass { border-radius: var(--map-square-glass-round); }
+/* The round glass is a circle whatever corner a pack gives its buttons: a
+   bevel at a 50 % radius cuts it into a diamond inside its round bezel. */
+#Glass[data-shape=round], #Glass[data-shape=round]::part(base) { corner-shape: var(--map-round-corner-shape); }
 #Glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: var(--map-glass-rim); }
 #World { position: absolute; top: 0; inset-inline-start: 0; width: var(--side); height: var(--side); transform-origin: 50% 50%; }
 #World.turning { rotate: calc(var(--heading) * -1deg); }

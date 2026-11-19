@@ -1389,6 +1389,8 @@
   --role-map-legend-mark: calc(14 * var(--font-step-px));
   /* A round mark: the player's disc, a waypoint's ring, the chosen ring. */
   --role-map-round: 50%;
+  /* Its corner shape: a pack's bevel never cuts a round mark into a diamond. */
+  --role-map-round-corner-shape: round;
   --role-map-diamond-round: var(--radius-field);
   --role-map-square-bezel-round: var(--radius-panel);
   --role-map-square-glass-round: var(--radius-card);
