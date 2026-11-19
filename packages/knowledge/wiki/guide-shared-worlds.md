@@ -131,6 +131,13 @@ og run --shared ws://127.0.0.1:47910 --shared-token-file t1
 - The server's world config (an `.ogt` file, `--config`) sets the cell
   size, the radius, the 64 in sight, the rates, the kinds' speeds and the
   bounds. Its defaults are the budgets below.
+- Each WebSocket player holds one open file. The server raises its soft
+  limit to the host's hard limit at start; when the hard limit is below
+  `--max-players` plus 64, it says so, names the number and serves only
+  the players it can hold. Raise the hard limit where the server runs
+  (`LimitNOFILE=` in a systemd unit, `--ulimit nofile=` for docker): 2064
+  for the default 2000 players. The load test's bots need the same on
+  their host, four files a bot when shaped.
 - `og world-server load --bots N --gate` measures a server against them
   before you rely on it; `--latency MS --loss PCT` measures it over a bad
   network.

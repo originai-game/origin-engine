@@ -74,4 +74,5 @@ mod cli {
     mod sprite;
     mod ui;
     mod video;
+    mod world_server;
 }

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og world-server",
+      "summary": "The world server and `og world-server load` raise their soft open-file limit to the hard limit at startup (Linux and macOS), so a shell's default of 1024 no longer stops a server near 1000 players. When the hard limit is below what --max-players needs, the server says so in one line naming the number, serves the players it can hold and refuses the rest as full instead of failing their connections."
+    }
+  ]
+}
