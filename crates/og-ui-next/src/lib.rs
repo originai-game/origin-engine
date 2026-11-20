@@ -8,6 +8,7 @@ pub mod arena;
 pub mod doc;
 pub mod look;
 pub mod prim;
+pub mod queue;
 pub mod sheet;
 pub mod style;
 pub mod text;

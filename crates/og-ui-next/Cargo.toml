@@ -12,6 +12,7 @@ og-css = { path = "../og-css" }
 og-text = { path = "../og-text" }
 # The .svelte parser (doc::UiDocument), until it moves into this crate at the switch.
 og-ui = { path = "../og-ui" }
+nsh-reactive = { path = "../../third_party/nsh-reactive" }
 rune-taffy = { path = "../../third_party/rune-taffy" }
 taffy = { version = "=0.15.1", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size"] }
 rustc-hash = "2"
