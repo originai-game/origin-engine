@@ -20,7 +20,9 @@ fn effects_off_add_no_passes() {
         stats.graph_passes, all.graph_passes
     );
     assert_eq!(stats.prepass_draws, 0);
-    assert_eq!(all.graph_passes, stats.graph_passes + 1 + 2 + 3 + 1 + 3);
+    // AO: the prepass, GTAO's depth MIP chain (depth-mips), ao and its
+    // blur; depth of field 3, motion blur 1, god rays 3.
+    assert_eq!(all.graph_passes, stats.graph_passes + 1 + 3 + 3 + 1 + 3);
     let _ = Curve::default();
 }
 
