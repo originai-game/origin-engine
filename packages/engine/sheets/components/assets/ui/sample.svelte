@@ -53,6 +53,8 @@
       <Inbox title={$sample.title} summary={$sample.summary} messages={$sample_messages} attachments={$sample_attachments} selected={$sample.selected} loading={$sample.loading} busy={$sample.busy} error={$sample.error} />
     {:else if $member == 'news'}
       <News title={$sample.title} entries={$sample_entries} selected={$sample.selected} loading={$sample.loading} disabled={$sample.disabled} error={$sample.error} />
+    {:else if $member == 'progressBar'}
+      <div class="meter"><ProgressBar value={$sample.value} buffer={$sample.buffer} label={$sample.label} valueText={$sample.valueText} showValue={$sample.showValue} indeterminate={$sample.indeterminate} tone={$sample.tone} /></div>
     {/if}
   </div>
 </section>
@@ -61,6 +63,7 @@
 :host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; padding: var(--space-lg); gap: var(--space-lg); overflow: auto; }
 .caption { margin: 0; font: var(--text-lg); color: var(--ink-muted); }
 .stage { position: relative; display: flex; flex-direction: column; align-items: start; flex: 1; gap: var(--space-md); }
+.meter { inline-size: calc(var(--size-xxl) * 6); max-inline-size: 100%; }
 .pane { margin: 0; padding: var(--space-md); }
 /* A ribbon is shown where a game puts it: in the corner it names of a
    card that clips, whose own corner cuts the strip's ends. */
