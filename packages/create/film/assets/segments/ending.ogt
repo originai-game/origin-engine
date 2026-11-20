@@ -1,0 +1,9 @@
+type timeline
+version 1
+---
+duration 4
+track video {
+  key 0 {
+    video "clips/opening.ogt"
+  }
+}

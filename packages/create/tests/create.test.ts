@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { artBrief, audioBrief, authoredArt, create, creationLooks, CREATION_CHOICES, fontPackFor, fontPacksDir, creationSchema, inferCreationChoices, MOODS, parseCreationInput, pickStyle, presetLook, pseudoMessage, readCatalogue, resolveCreationChoices, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
+import { artBrief, audioBrief, authoredArt, create, creationDocument, creationLooks, CREATION_CHOICES, FORM_VIEWS, formOf, previewSlots, fontPackFor, fontPacksDir, creationSchema, inferCreationChoices, MOODS, parseCreationInput, pickStyle, presetLook, pseudoMessage, readCatalogue, resolveCreationChoices, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 
 const pkg = join(import.meta.dir, "..");
 const scratch = realpathSync(mkdtempSync(join(tmpdir(), "og-create-")));
@@ -83,14 +83,15 @@ test("creation choices write manifest and look configuration, never gameplay", (
   expect(read("default/src/main.ts")).toBe('import { og } from "@origingame/engine";\n\nexport default og.game({});\n');
   for (const [i, view] of CREATION_CHOICES.view.entries()) {
     const dir = `choice-${i}`;
-    const r = cli(dir, "--id", "same", "--name", "Same", "--genre", "arena", "--view", view, "--look", "pixel", "--mood", "cold", "--ui", "default", "--platform", "phone-portrait", "--input", "gamepad", "--players", "online-lockstep", "--lang", "ja,en,ar", "--music", "folk");
+    const look = formOf(view) === "2d" ? "pixel" : "faceted-low-poly";
+    const r = cli(dir, "--id", "same", "--name", "Same", "--genre", "arena", "--view", view, "--look", look, "--mood", "cold", "--ui", "default", "--platform", "phone-portrait", "--input", "gamepad", "--players", "online-lockstep", "--lang", "ja,en,ar", "--music", "folk");
     expect(r.code, r.err).toBe(0);
     expect(files(join(scratch, dir))).toEqual(expected);
     for (const f of skeleton.filter(f => f !== "project.ogt" && f !== "assets/looks/same.ogt")) expect(read(dir, f)).toBe(read("default", f));
-    expect(read(dir, "assets/looks/same.ogt")).toBe('type look\nversion 1\n---\nextends "pixel"\nmood "cold"\nui "default"\n');
+    expect(read(dir, "assets/looks/same.ogt")).toBe(`type look\nversion 1\n---\nextends "${look}"\nmood "cold"\nui "default"\n`);
     const manifest = read(dir, "project.ogt");
     expect(manifest.slice(0, manifest.indexOf("create {"))).toBe(read("default/project.ogt").split("create {")[0]);
-    for (const line of ['genre "arena"', `view "${view}"`, 'look "pixel"', 'mood "cold"', 'ui "default"', 'platform "phone-portrait"', 'input "gamepad"', 'players "online-lockstep"', 'lang "ja" "en" "ar"', 'music "folk"']) expect(manifest).toContain(line);
+    for (const line of [`form "${formOf(view)}"`, 'genre "arena"', `view "${view}"`, `look "${look}"`, 'mood "cold"', 'ui "default"', 'platform "phone-portrait"', 'input "gamepad"', 'players "online-lockstep"', 'lang "ja" "en" "ar"', 'music "folk"']) expect(manifest).toContain(line);
     expect(manifest).toMatch(/^look "looks\/same.ogt"$/m);
     expect(manifest).not.toMatch(/^profile |orientation|dpr_cap/m);
   }
@@ -127,7 +128,7 @@ test("names are escaped, defaults are stable, and refusal leaves the destination
 
 test("creation choices infer a premise, preserve overrides, and serialize every choice", () => {
   const c = resolveCreationChoices("温暖的手机横屏平台跳跃", { mood: "cold", music: "folk", look: "pixel" });
-  expect(c).toEqual({ genre: "action-platformer", view: "side-2d", look: "pixel", mood: "cold", ui: "default", platform: "phone-landscape", input: "touch", players: "single", lang: ["zh"], music: "folk" });
+  expect(c).toEqual({ form: "2d", genre: "action-platformer", view: "side-2d", look: "pixel", mood: "cold", ui: "default", platform: "phone-landscape", input: "touch", players: "single", lang: ["zh"], music: "folk" });
   expect(inferCreationChoices("isometric online shooter", { platform: "desktop", input: "gamepad" })).toMatchObject({ genre: "shooter", view: "isometric-2.5d", players: "online-lockstep", input: "gamepad" });
   expect(resolveCreationChoices("", { look: "pixel", ui: "default" }).ui).toBe("default");
   expect(() => parseCreationInput({ players: "mmo" })).toThrow("players");
@@ -244,4 +245,75 @@ test("in a checkout missing a pinned font, create refuses with the one fix and w
   expect(err).toContain("fonts/latin/NotoSans-Latin.ttf");
   expect(err).toContain("run bun scripts/assets.ts ensure templates");
   expect(existsSync(join(scratch, "game"))).toBe(false);
+});
+
+test("a look that does not draw the form or view is refused, naming the looks that do, and writes nothing", () => {
+  expect(() => resolveCreationChoices("", { look: "pixel", form: "3d" })).toThrow("look pixel does not draw 3d (third-person-3d)");
+  expect(() => resolveCreationChoices("", { look: "cinematic-realism", view: "side-2d" })).toThrow(/For side-2d pick one of pixel, minimal-geometric, neon-vector, cartoon-2d$/);
+  expect(() => resolveCreationChoices("", { form: "2d", view: "third-person-3d" })).toThrow("view third-person-3d is 3d, not form 2d");
+  expect(() => resolveCreationChoices("", { look: "pixel", variant: "voxel" })).toThrow("look pixel has no variant 'voxel'");
+  for (const args of [["--form", "3d", "--look", "pixel"], ["--form", "film", "--genre", "rpg"], ["--look", "toy-3d", "--variant", "8bit"]]) {
+    const r = cli("refused-pair", ...args);
+    expect(r.code, r.err).toBe(1);
+    expect(existsSync(join(scratch, "refused-pair"))).toBeFalse();
+  }
+  // Each form's default view is one its default look draws.
+  for (const form of CREATION_CHOICES.form) {
+    const c = resolveCreationChoices("", { form });
+    if (form === "film") expect([c.genre, c.view, c.players]).toEqual([undefined, undefined, undefined]);
+    else expect(FORM_VIEWS[form]).toContain(c.view!);
+  }
+  expect(resolveCreationChoices("", { form: "2d", genre: "rpg" }).view).toBe("top-down-2d");
+  expect(resolveCreationChoices("an interactive film about a heist").form).toBe("film");
+  expect(resolveCreationChoices("", { look: "toy-3d", variant: "clay" })).toMatchObject({ variant: "clay", mood: "warm" });
+});
+
+test("form film writes the film skeleton over the one skeleton, without the game-only fields", () => {
+  const r = cli("film", "--form", "film", "--look", "painterly-3d", "--variant", "lush");
+  expect(r.code, r.err).toBe(0);
+  const made = files(join(scratch, "film"));
+  for (const f of ["assets/story/film.yarn", "assets/segments/opening.ogt", "assets/segments/ending.ogt", "assets/clips/opening.ogt", "assets/clips/opening.mp4", "tests/smoke.og.ts", "tsconfig.json"]) expect(made).toContain(f);
+  expect(read("film/src/main.ts")).toContain('og.film.start(world, { dialogue: "film", paused: true })');
+  const block = read("film/project.ogt").split("create {")[1]!;
+  expect(block).toContain('form "film"');
+  expect(block).not.toMatch(/^\s*(genre|view|players) /m);
+  expect(read("film/assets/looks/film.ogt")).toBe('type look\nversion 1\n---\nextends "painterly-3d"\nvariant "lush"\nmood "warm"\nui "fantasy"\n');
+});
+
+test("the creation document matches the options, and a release cannot ship an unfilled preview slot", () => {
+  const doc = creationDocument();
+  const looks = creationLooks();
+  expect(doc.options.look.map(l => l.id)).toEqual(looks);
+  expect(doc.schema.properties.look.enum).toEqual(looks);
+  for (const key of Object.keys(CREATION_CHOICES) as (keyof typeof CREATION_CHOICES)[]) {
+    const ids = doc.options[key].map((o: { id: string }) => o.id);
+    expect(ids, key).toEqual([...CREATION_CHOICES[key]]);
+    expect(doc.schema.properties[key].enum, key).toEqual(ids);
+  }
+  expect([...doc.order, ...doc.more].sort()).toEqual(Object.keys(doc.schema.properties).sort());
+  // Every look and variant has its slot and its compat entry; every compat look draws its views' forms.
+  const slots = previewSlots();
+  const paths = new Set(slots.map(s => s.path));
+  const referenced = [...doc.options.look.flatMap(l => [l.preview, ...l.variants.map(v => v.preview)]), ...doc.options.ui.map(o => o.preview!), ...doc.options.mood.map(o => o.preview!)];
+  expect(referenced.map(p => p.path).sort()).toEqual([...paths].sort());
+  expect(paths.has("previews/pixel.8bit.webp") && paths.has("previews/ui/scifi.webp") && paths.has("previews/mood/high-contrast.webp")).toBeTrue();
+  for (const l of doc.options.look) {
+    expect(doc.compat.looks[l.id]!.variants).toEqual(l.variants.map(v => v.id));
+    for (const v of l.variants) expect(v.label["zh-CN"], `${l.id}.${v.id}`).toEqual(expect.any(String));
+  }
+  expect(doc.compat.looks.pixel!.forms).toEqual(["2d", "film"]);
+  expect(doc.compat.looks["minimal-geometric"]!.forms).toEqual(["2d", "2.5d", "3d", "film"]);
+  expect(doc.compat.formFields.film).not.toContain("genre");
+  expect(doc.compat.genreDefaultView.rpg).toEqual({ "2d": "top-down-2d", "2.5d": "isometric-2.5d", "3d": "third-person-3d" });
+  expect(doc.defaults.byForm.film).not.toHaveProperty("genre");
+  // Filled: each slot carries its file; a missing or unknown slot throws.
+  const filled = Object.fromEntries(slots.map((s, i) => [s.path, { url: `https://cdn/${s.path}`, sha256: String(i).padStart(64, "0"), size: i + 1, engine: "0.9.9" }]));
+  const full = creationDocument(filled);
+  expect(full.options.look.find(l => l.id === "pixel")!.variants[0]!.preview).toEqual({ path: "previews/pixel.8bit.webp", ...filled["previews/pixel.8bit.webp"]! });
+  expect(JSON.stringify(creationDocument(filled))).toBe(JSON.stringify(full));
+  const { ["previews/mood/dark.webp"]: _, ...short } = filled;
+  expect(() => creationDocument(short)).toThrow("previews/mood/dark.webp");
+  expect(() => creationDocument({ ...filled, "previews/extra.webp": filled["previews/pixel.webp"]! })).toThrow("previews/extra.webp");
+  const printed = Bun.spawnSync(["bun", join(pkg, "bin/create.ts"), "--creation"]);
+  expect(JSON.parse(new TextDecoder().decode(printed.stdout))).toEqual(JSON.parse(JSON.stringify(doc)));
 });

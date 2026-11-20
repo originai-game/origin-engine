@@ -2,13 +2,18 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CREATION_CHOICES, creationBlock, inferCreationChoices, parseCreationInput } from "./choices.ts";
+import { CREATION_CHOICES, creationBlock, FORM_VIEWS, formOf, GAME_ONLY, inferCreationChoices, parseCreationInput } from "./choices.ts";
+import type { View } from "./choices.ts";
+import { creationDocument } from "./creation.ts";
+import type { PreviewFile } from "./creation.ts";
 import type { CreationChoices, CreationInput } from "./choices.ts";
 import { fontPackFor } from "./languages.ts";
 import type { FontPackLanguages } from "./languages.ts";
 
-export { CREATION_CHOICES, creationBlock, creationSchema, inferCreationChoices, parseCreationInput } from "./choices.ts";
-export type { CreationChoices, CreationInput } from "./choices.ts";
+export { CREATION_CHOICES, creationBlock, creationSchema, defaultView, FORM_VIEWS, formFields, formOf, GAME_ONLY, GENRE_VIEWS, inferCreationChoices, parseCreationInput } from "./choices.ts";
+export type { CreationChoices, CreationInput, Form, Genre, View } from "./choices.ts";
+export { creationCompat, creationDocument, lookForms, previewSlots } from "./creation.ts";
+export type { CreationCompat, CreationDocument, PreviewFile, PreviewSlot } from "./creation.ts";
 export { canonicalTag, fontPackFor, isRtl, localeScript } from "./languages.ts";
 export type { FontPackLanguages, LocaleScript } from "./languages.ts";
 export { PSEUDO_LOCALE, pseudoMessage, pseudoTable } from "./pseudo-locale.ts";
@@ -50,6 +55,8 @@ export interface Style {
   readonly premise: Readonly<Record<string, string>>;
   readonly look: { readonly presetReady: boolean; readonly support: string; readonly profiles: readonly Profile[]; readonly views: readonly string[]; readonly mood: string; readonly missing: readonly string[] };
   readonly ui: string;
+  readonly preview?: string;
+  readonly variants?: readonly { readonly name: string; readonly title: string; readonly descriptor: string; readonly mood: string }[];
 }
 
 /** The font packs: templates/fonts in a checkout, the package's fonts/ once packed. */
@@ -148,15 +155,37 @@ export function skeletonFiles(): string[] {
   return skeleton;
 }
 
-/** Resolve the agent's choices without writing any project files. */
+/** The film skeleton's directory: what `form film` adds over template/ (og api show film). */
+export function filmDir(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "../film");
+}
+
+/**
+ * Resolve the agent's choices without writing any project files. The look
+ * must draw the form (a 2D look for a 2D game, catalogue `views`), and the
+ * variant must be one of the look's.
+ */
 export function resolveCreationChoices(premise: string, input: CreationInput = {}, profile?: Profile, catalogue?: string): CreationChoices {
-  const asked = inferCreationChoices(premise, input);
   const styles = readCatalogue(catalogue);
-  const effectiveProfile = profile ?? (asked.view.endsWith("2d") ? "2d" : "3d");
-  const slug = input.look ?? pickStyle(premise, styles, effectiveProfile, asked.view)?.style.slug ?? (effectiveProfile === "2d" ? "pixel" : "faceted-low-poly");
+  let asked = inferCreationChoices(premise, input);
+  // A look chosen without a form or view gives the form, when the inferred one is not one it draws.
+  const chosen = input.look === undefined ? undefined : styles.find(s => s.slug === input.look);
+  if (chosen && input.form === undefined && input.view === undefined && asked.view !== undefined && !chosen.look.views.includes(asked.view)) {
+    asked = inferCreationChoices(premise, { ...input, form: formOf(chosen.look.views[0] as View) });
+  }
+  const view = asked.view;
+  const effectiveProfile = profile ?? (asked.form === "2d" ? "2d" : "3d");
+  const slug = input.look ?? (asked.form === "film" ? "cinematic-realism" : pickStyle(premise, styles, effectiveProfile, view)?.style.slug ?? (asked.form === "2d" ? "pixel" : "faceted-low-poly"));
   const style = styles.find(s => s.slug === slug && s.look.presetReady);
   if (!style) throw new Error(`no look preset '${slug}'; pick one of ${creationLooks(styles).join(", ")}`);
-  return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: style.look.mood }));
+  if (view !== undefined && !style.look.views.includes(view)) {
+    const fits = creationLooks(styles).filter(l => styles.find(s => s.slug === l)!.look.views.includes(view));
+    throw new Error(`look ${slug} does not draw ${asked.form} (${view}); it draws ${style.look.views.join(", ")}. For ${view} pick one of ${fits.join(", ")}`);
+  }
+  const variants = (style.variants ?? []).map(v => v.name);
+  if (input.variant !== undefined && !variants.includes(input.variant)) throw new Error(`look ${slug} has no variant '${input.variant}'; ${variants.length ? `pick one of ${variants.join(", ")}` : "it has none"}`);
+  const variantMood = style.variants?.find(v => v.name === input.variant)?.mood;
+  return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: variantMood ?? style.look.mood }));
 }
 
 /** The font packs in `packs`: each directory with an extension.json, and its languages. */
@@ -210,9 +239,11 @@ export function create(options: CreateOptions): Created {
   for (const name of new Set(choices.lang.map((l) => fontPackFor(l, available)).filter((n) => n !== undefined))) {
     copy(available.find((p) => p.name === name)!.dir, join(dir, "assets", "fonts", name));
   }
+  // A film adds its story, segments, placeholder clip and entry (og api show film).
+  if (choices.form === "film") copy(filmDir(), dir);
   const look = `looks/${id}.ogt`;
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
-  writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\nmood ${JSON.stringify(choices.mood)}\nui ${JSON.stringify(choices.ui)}\n`);
+  writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\n${choices.variant === undefined ? "" : `variant ${JSON.stringify(choices.variant)}\n`}mood ${JSON.stringify(choices.mood)}\nui ${JSON.stringify(choices.ui)}\n`);
   written.push(`assets/${look}`);
   const manifest = join(dir, "project.ogt");
   writeFileSync(manifest, readFileSync(manifest, "utf8")
@@ -222,22 +253,32 @@ export function create(options: CreateOptions): Created {
   const data = JSON.parse(readFileSync(pkg, "utf8"));
   data.name = id;
   writeFileSync(pkg, `${JSON.stringify(data, null, 2)}\n`);
-  return { dir, name, id, files: written, choices };
+  return { dir, name, id, files: [...new Set(written)], choices };
 }
 
-const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--premise "one line"] [--look slug] [--force]
+const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--premise "one line"] [--form 2d|2.5d|3d|film] [--look slug] [--force]
+       create --creation [--previews previews.json]
 
 Writes one empty Origin Engine project (default: ./origin-game).
 Choices are constraints and hints in project.ogt's create block.
-The look, mood and UI also configure its look file; no gameplay is generated.
-  --genre --view --look --mood --ui --platform --input --players --lang --music
-           creation choices; --lang en,zh accepts comma-separated tags
-  --no-prompt  accept inferred choices without prompting (it never prompts without a terminal)
-  --force     overwrite skeleton files in a nonempty directory`;
+The look, variant, mood and UI also configure its look file; no gameplay is generated.
+  --form      2d, 2.5d or 3d (a game, its view one of the form's), or film: an
+              interactive film (og.film), which adds a Yarn story, two segments and a
+              placeholder clip; genre, view and players do not apply to a film
+  --genre --view --look --variant --mood --ui --platform --input --players --lang --music
+              creation choices; --lang en,zh accepts comma-separated tags. A look must
+              draw the form; a variant must be one of the look's
+  --no-prompt accept inferred choices without prompting (it never prompts without a terminal)
+  --force     overwrite skeleton files in a nonempty directory
+  --creation  print the creation document (every option, label, preview slot, compat rule
+              and default; packages/create/README.md) as JSON and write nothing.
+              --previews fills each slot from a JSON map of path -> { url, sha256, size, engine }`;
+
+const FIELDS = ["form", "genre", "view", "look", "variant", "ui", "mood", "platform", "input", "players", "lang", "music"] as const;
 
 function main(argv: string[]): number {
   let dir: string | undefined, name: string | undefined, id: string | undefined, premise: string | undefined;
-  let force = false, ask = true;
+  let force = false, ask = true, document = false, previews: string | undefined;
   let choices: Record<string, unknown> = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
@@ -252,25 +293,38 @@ function main(argv: string[]): number {
     else if (a === "--force") force = true;
     else if (a === "--no-prompt") ask = false;
     else if (a === "--choices") continue;
-    else if (a === "--look" || a === "--lang" || Object.keys(CREATION_CHOICES).some(key => a === `--${key}`)) choices[a.slice(2)] = a === "--lang" ? value().split(",") : value();
+    else if (a === "--creation") document = true;
+    else if (a === "--previews") previews = value();
+    else if (a === "--look" || a === "--variant" || a === "--lang" || Object.keys(CREATION_CHOICES).some(key => a === `--${key}`)) choices[a.slice(2)] = a === "--lang" ? value().split(",") : value();
     else if (a === "-h" || a === "--help") { console.log(USAGE); return 0; }
     else if (a.startsWith("-")) throw new Error(`unknown option ${a}. ${USAGE}`);
     else if (dir === undefined) dir = a;
     else throw new Error(`one directory only, got '${dir}' and '${a}'`);
   }
+  if (document) {
+    const filled = previews === undefined ? undefined : JSON.parse(readFileSync(previews, "utf8")) as Record<string, PreviewFile>;
+    process.stdout.write(`${JSON.stringify(creationDocument(filled), null, 2)}\n`);
+    return 0;
+  }
   if (ask && process.stdin.isTTY && process.stdout.isTTY && typeof globalThis.prompt === "function") {
     premise ??= globalThis.prompt("What is the game, in one line (genre, mood, setting)?") ?? "";
-    for (const key of ["genre", "view", "look", "mood", "ui", "platform", "input", "players", "lang", "music"] as const) {
+    for (const key of FIELDS) {
       if (choices[key] !== undefined) continue;
-      if (key !== "look" && key !== "lang" && CREATION_CHOICES[key].length === 1) {
+      const now = resolveCreationChoices(premise, parseCreationInput(choices));
+      if (now.form === "film" && (GAME_ONLY as readonly string[]).includes(key)) continue;
+      const styles = readCatalogue();
+      const variants = (styles.find(s => s.slug === now.look)?.variants ?? []).map(v => v.name);
+      if (key === "variant" && !variants.length) continue;
+      if (key !== "look" && key !== "lang" && key !== "variant" && CREATION_CHOICES[key].length === 1) {
         choices[key] = CREATION_CHOICES[key][0];
         continue;
       }
-      const suggested = resolveCreationChoices(premise, parseCreationInput(choices))[key];
-      const values = key === "look" ? creationLooks().join(", ") : key === "lang" ? "comma-separated language tags" : CREATION_CHOICES[key].join(", ");
+      const suggested = now[key];
+      const values = key === "look" ? creationLooks().join(", ") : key === "variant" ? `${variants.join(", ")} (empty: none)` : key === "lang" ? "comma-separated language tags" : key === "view" ? FORM_VIEWS[now.form].join(", ") : CREATION_CHOICES[key].join(", ");
       for (;;) {
-        const answer = globalThis.prompt(`${key}: ${values}`, Array.isArray(suggested) ? suggested.join(",") : String(suggested));
+        const answer = globalThis.prompt(`${key}: ${values}`, Array.isArray(suggested) ? suggested.join(",") : String(suggested ?? ""));
         if (answer === null) throw new Error("creation cancelled");
+        if (key === "variant" && answer === "") break;
         try {
           const next = { ...choices, ...parseCreationInput({ [key]: key === "lang" ? answer.split(",") : answer }) };
           resolveCreationChoices(premise, parseCreationInput(next));
@@ -281,7 +335,7 @@ function main(argv: string[]): number {
     }
   }
   const made = create({ dir: dir ?? id ?? (name ? slug(name) : "origin-game"), ...(name === undefined ? {} : { name }), ...(id === undefined ? {} : { id }), ...(premise === undefined ? {} : { premise }), choices: parseCreationInput(choices), force });
-  console.log(`Created ${made.name} (${made.id}) in ${relative(process.cwd(), made.dir) || "."}: ${made.files.length} files.\nCreation choices are in project.ogt. Build the game with the engine API, then run og check and og run .`);
+  console.log(`Created ${made.name} (${made.id}) in ${relative(process.cwd(), made.dir) || "."}: ${made.files.length} files.\nCreation choices are in project.ogt. ${made.choices.form === "film" ? "Write the story and segments (og api show film), replace the placeholder clip" : "Build the game with the engine API"}, then run og check and og run .`);
   return 0;
 }
 

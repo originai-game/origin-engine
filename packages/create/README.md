@@ -9,8 +9,8 @@ variant, sample scene, gameplay, or installed art.
 og create my-game --name "My Game" --view side-2d --look pixel --no-prompt
 ```
 
-The agent chooses genre, view, look, mood, UI style, platform, input,
-players, languages, and music. These choices are constraints and hints in
+The agent chooses the form, genre, view, look and variant, mood, UI style,
+platform, input, players, languages, and music. These choices are constraints and hints in
 `project.ogt`'s `create` block. Creation also writes `assets/looks/<id>.ogt`
 with the chosen preset, mood and UI pack, named by the manifest's top-level
 `look`. It generates no gameplay or art, and changes no publish settings.
@@ -25,8 +25,21 @@ its script.
 ## Options and return value
 
 `create [dir] [--name "Name"] [--id slug] [--premise "one line"] [--force]`
-accepts `--genre`, `--view`, `--look`, `--mood`, `--ui`, `--platform`,
-`--input`, `--players`, `--lang en,zh`, and `--music`.
+accepts `--form`, `--genre`, `--view`, `--look`, `--variant`, `--mood`,
+`--ui`, `--platform`, `--input`, `--players`, `--lang en,zh`, and `--music`.
+
+`--form` is `2d`, `2.5d`, `3d` or `film`. For a game, the view is one of
+its form's (`2d`: side-2d, top-down-2d; `2.5d`: isometric-2.5d; `3d`:
+third-person-3d, first-person-3d), defaulting to its genre's first view of
+that form; a form and view that disagree are refused. `film` is an
+interactive film (`og api show film`): creation writes the same skeleton
+plus `assets/story/film.yarn` (three film nodes, two endings),
+`assets/segments/opening.ogt` and `ending.ogt`, a placeholder
+`assets/clips/opening.ogt` stream and an entry that loads and starts the
+film paused. A film has no `genre`, `view` or `players`; giving one is
+refused. The look must draw the form (its catalogue `views`; every look
+styles a film), and `--variant` must be one of the look's; a variant's mood
+is the default mood.
 
 On a terminal, missing choices are prompted with inferred defaults.
 `--no-prompt` accepts those defaults. Explicit choices win. `--choices`
@@ -58,13 +71,41 @@ look names and descriptions remain in the catalogue.
 `creationLooks()` lists the looks a new game may pick: the catalogue's
 twelve, each with a preset. Pass it to `creationSchema`. A name that is no
 look fails with the list. A look's UI pack (default, cartoon, fantasy or
-scifi) is the default UI choice. A look's variants (`variant "<name>"` in
-the game's look, docs/art.md §2.11) are not creation choices: the agent
-writes one into the look file when the game asks for it.
+scifi) is the default UI choice. `variant` names one of the look's variants
+(docs/art.md §2.11) and is written into the look file.
 
 The inference helpers suggest choices using English and Chinese keywords.
 They do not implement those choices. Languages default to Japanese for
 kana, Chinese for Han text, or English otherwise. Music defaults to ambient.
+
+## Creation document
+
+`creationDocument(previews?, catalogue?)` returns everything a home page
+needs to offer creation, and `og create --creation [--previews file.json]`
+prints it as `JSON.stringify(doc, null, 2)` plus a newline. A release
+publishes it, every preview filled, as `<version>/creation.json`. It is a
+contract with the platform: a field is added, never renamed or removed,
+without a breaking changelog entry.
+
+| Field | Contents |
+|---|---|
+| `schemaVersion` | 1 |
+| `order`, `more` | the home page's questions in order (`form`, `genre`, `look`, `variant`, `ui`), and those behind "more settings" |
+| `schema` | `creationSchema(looks)`: JSON Schema 2020-12 of a selection, with `form`, `variant`, and `allOf` rules (a film has no genre, view or players; a game's view is its form's) |
+| `options.<field>` | each option's `id`, `label` and `description` (`en`, `zh-CN`); views carry their `form`; looks carry `variants` (with their `mood`); looks, variants, `ui` and `mood` options carry `preview` |
+| `compat` | `formViews`, `genreViews` (preferred first), `genreDefaultView[genre][form]`, `formFields[form]` (the fields that apply), and `looks[slug]`: `forms`, `views`, recommended `ui`, default `mood`, `variants` |
+| `defaults` | the default `form` and `byForm[form]`: what creation picks with no premise |
+
+A `preview` is `{ path }`, relative to the version root, and the release
+adds `url`, `sha256`, `size` and `engine` (the version that rendered it).
+`previewSlots(catalogue?)` lists every slot as `{ path, kind, look?,
+variant?, pack?, mood? }`: `previews/<look>.webp`,
+`previews/<look>.<variant>.webp`, `previews/ui/<pack>.webp` and
+`previews/mood/<mood>.webp`, a mood drawn in its slot's `look`
+(cinematic-realism). Given previews, `creationDocument` throws on an
+unfilled slot or a path that is no slot. Both read the packed
+`looks/catalogue.json` by default, so a release imports the version's own
+copy from `create/bin/create.ts`.
 
 ## Art and audio contracts
 

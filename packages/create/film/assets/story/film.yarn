@@ -1,0 +1,21 @@
+#og-profile:yarn-spinner-3.2.2
+#og-name:film
+title: opening
+og-film: segments/opening.ogt
+og-film-chapter: chapter.opening
+---
+-> Stay #line:opening.stay #default
+    <<jump stay>>
+-> Leave #line:opening.leave
+    <<jump leave>>
+===
+title: stay
+og-film: segments/ending.ogt
+og-film-ending: stay
+---
+===
+title: leave
+og-film: segments/ending.ogt
+og-film-ending: leave
+---
+===

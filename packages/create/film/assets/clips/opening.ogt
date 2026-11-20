@@ -1,0 +1,9 @@
+type video
+version 1
+---
+# Placeholder footage: a still frame to replace with the film's own clips.
+source "opening.mp4"
+stream true
+fps 24
+keyframe 1
+audio false

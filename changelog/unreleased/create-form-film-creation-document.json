@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og create --form",
+      "summary": "A first-level creation choice: 2d, 2.5d, 3d or film. A game's view is one of its form's (its genre's first by default), and a look that does not draw the form or view is refused, naming the looks that do. `film` writes the og.film skeleton beside the usual one: a Yarn story, two segments, a placeholder stream and an entry that starts the film paused; genre, view and players do not apply to it. `--variant` picks one of the look's variants and writes it into the game's look."
+    },
+    {
+      "member": "og create --creation",
+      "summary": "Prints the creation document: the schema, every option with its English and Chinese label and description, preview slots for looks, variants, UI packs and moods, the compat rules (form views, genre default views, the fields each form asks for, each look's forms, UI pack, mood and variants) and the defaults per form. `creationDocument(previews)` and `previewSlots()` from @origingame/create-game make the document a release publishes as creation.json (packages/create/README.md §Creation document)."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+type timeline
+version 1
+---
+duration 4
+track video {
+  key 0 {
+    video "clips/opening.ogt"
+  }
+}
+track marker {
+  key 1 {
+    name "film.open"
+  }
+  key 3 {
+    name "film.lock"
+  }
+  key 3.5 {
+    name "film.cut"
+  }
+}

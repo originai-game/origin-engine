@@ -1,10 +1,16 @@
-import type { CreationChoices } from "./choices.ts";
+import type { CREATION_CHOICES } from "./choices.ts";
 
 type Copy = readonly [enLabel: string, zhLabel: string, enDescription: string, zhDescription: string];
-type EnumField = Exclude<keyof CreationChoices, "look" | "lang">;
+type EnumField = Exclude<keyof typeof CREATION_CHOICES, never>;
 
 /** Form copy keyed by stable IDs; adding a choice requires both translations. */
 export const CHOICE_LABELS = {
+  form: {
+    "2d": ["2D", "2D", "Flat sprites and tiles, seen from the side or from above.", "平面的精灵与瓦片，从侧面或上方观察。"],
+    "2.5d": ["2.5D", "2.5D", "A 3D world seen through a fixed angled camera.", "通过固定斜角镜头观察的三维世界。"],
+    "3d": ["3D", "3D", "A 3D world the camera moves through.", "镜头可在其中自由移动的三维世界。"],
+    film: ["Interactive film", "互动影游", "Footage that branches on the player's choices.", "随玩家选择分支的影像剧情。"],
+  },
   genre: {
     "action-platformer": ["Action platformer", "动作平台", "Run, jump and fight through obstacles.", "奔跑、跳跃并战胜沿途的障碍。"],
     shooter: ["Shooter", "射击", "Aim and shoot while managing movement and cover.", "瞄准射击，配合移动与掩护。"],
@@ -64,7 +70,7 @@ export const CHOICE_LABELS = {
     folk: ["Folk", "民谣", "Acoustic instruments and traditional melodies.", "原声乐器与传统旋律。"],
     rock: ["Rock", "摇滚", "Guitars, bass and driving drums.", "吉他、贝斯与有力的鼓点。"],
   },
-} satisfies { [K in EnumField]: Record<CreationChoices[K], Copy> };
+} satisfies { [K in EnumField]: Record<(typeof CREATION_CHOICES)[K][number], Copy> };
 
 export function localized([en, zh, enDescription, zhDescription]: Copy) {
   return { label: { en, "zh-CN": zh }, description: { en: enDescription, "zh-CN": zhDescription } };
@@ -84,4 +90,29 @@ export const LOOK_ZH: Readonly<Record<string, readonly [string, string]>> = {
   "toy-3d": ["玩具三维", "圆润倒角的缎面塑料玩具、明亮色彩与柔和接触阴影；变体涵盖体素、黏土、微缩景观与纸艺。"],
   "cartoon-2d": ["卡通二维", "简洁造型、每种材质两三个平涂色阶与暖深色轮廓；变体涵盖水彩、绘本与橡皮管动画。"],
   "pixel-3d-hybrid": ["像素与三维混合", "清晰的像素角色置于具有光影与景深的三维场景。"],
+};
+
+/** Chinese copy of the catalogue's variants, keyed `<look>.<variant>`; English titles and descriptors remain catalogue-owned. */
+export const VARIANT_ZH: Readonly<Record<string, readonly [string, string]>> = {
+  "cinematic-realism.muted": ["克制舞台光", "简化的三维造型与克制色彩，由舞台式的局部光束与薄雾照亮。"],
+  "inked-comic-3d.bold-comic": ["醒目漫画", "粗轮廓、分组明确的明暗与深色阴影前的饱和点缀，运动中也一目了然。"],
+  "inked-comic-3d.heavy-ink": ["浓墨重影", "实黑阴影、粗糙排线与低饱和色彩塑造变形的人物，高光只留给危险。"],
+  "painterly-3d.lush": ["厚重油彩", "厚重不透明的色块、有选择的笔触与丰富的冷暖对比构成浓密的绘画场景。"],
+  "painterly-3d.luminous-layers": ["光影层叠", "多层前景与背景的侧视绘画场景，暗部之中有强烈的发光焦点。"],
+  "painterly-3d.expressionist": ["表现主义", "可见笔触、冲撞的色块与变形的面孔，让每一帧都像情绪化的画作。"],
+  "low-resolution-3d.monochrome-dither": ["单色抖动三维", "三维场景简化为一两种颜色，由点阵承担明暗过渡，透视依然真实。"],
+  "pixel.8bit": ["早期主机像素", "小巧的精灵、每个色阶寥寥几步硬过渡与严格网格上重复的瓦片。"],
+  "pixel.monochrome": ["单墨像素", "黑白（或一墨一纸）像素，由剪影与留白表达，至多一种强调色。"],
+  "pixel.detailed": ["精细插画像素", "接近插画的像素：丰富的色簇、细微的色相变化与精细场景。"],
+  "pixel.luminous": ["暗底发光像素", "以暗色为底，饱和的光源、轮廓高光与辉光构成画面。"],
+  "pixel.coarse": ["极简粗像素", "每个形象只有很少的像素，以剪影、留白与少量色块讲述氛围与故事。"],
+  "pixel.topdown": ["俯视瓦片世界", "俯视或四分之三视角的瓦片地图与直立精灵，台阶与悬崖清楚表达高度。"],
+  "minimal-geometric.layered-silhouette": ["层叠剪影", "实色前景轮廓叠在更浅、更朦胧的远景前，用形状与明度表现纵深。"],
+  "toy-3d.voxel": ["体素世界", "立方体搭建角色、建筑与地形，阶梯状轮廓清晰可见。"],
+  "toy-3d.clay": ["黏土雕塑", "略带凹凸的触感表面、圆钝边缘与指纹痕迹，常伴随定格动画的顿挫。"],
+  "toy-3d.diorama": ["微缩景观", "高角度（常为等距）取景、小巧圆润的建筑与柔和阴影，像桌面模型。"],
+  "toy-3d.paper": ["纸艺", "折叠的平面、可见的纸张厚度与层叠剪纸构成整个世界。"],
+  "cartoon-2d.watercolor": ["水彩晕染", "透明的色层、边缘积聚的颜料与留白的纸面，让画面轻盈透气。"],
+  "cartoon-2d.storybook": ["绘本装饰", "温和的轮廓、图案化的植物与柔和色块，组成可探索的绘本世界。"],
+  "cartoon-2d.rubber-hose": ["橡皮管动画", "圆头角色、可弯曲的管状四肢与持续的挤压拉伸，墨线如早期影院动画。"],
 };

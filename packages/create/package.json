@@ -30,6 +30,7 @@
     "template/tsconfig.json",
     "template/gitignore",
     "template/gitattributes",
+    "film",
     "looks",
     "README.md",
     "previews",

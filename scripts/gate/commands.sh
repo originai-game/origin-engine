@@ -521,10 +521,12 @@ step_bun_test() {
 step_fixtures() {
   local dir name log rc project ran="" unchanged="" unchecked="" bad="" t0 times=""
   require_ready fixtures native-ready || return 1
-  for dir in packages/create/template tests/fixtures/*/; do
+  # packages/create/film: the skeleton `og create --form film` writes over template/.
+  for dir in packages/create/template packages/create/film tests/fixtures/*/; do
     dir="${dir%/}"
-    [ -f "$dir/project.ogt" ] && [ -d "$dir/tests" ] || continue
+    [ "$dir" = packages/create/film ] || { [ -f "$dir/project.ogt" ] && [ -d "$dir/tests" ]; } || continue
     name="${dir##*/}"
+    [ "$dir" = packages/create/film ] && name=creation-film
     if skip_unchanged "fixture.$name" "fixture $name" "$(rule_fixture "$dir")"; then
       unchanged="$unchanged $name"
       continue
@@ -537,6 +539,9 @@ step_fixtures() {
       if [ "$dir" = packages/create/template ]; then
         project="$GATE_LOGS/creation-skeleton"
         bun packages/create/bin/create.ts "$project" --no-prompt --force || exit 1
+      elif [ "$dir" = packages/create/film ]; then
+        project="$GATE_LOGS/creation-film"
+        bun packages/create/bin/create.ts "$project" --form film --no-prompt --force || exit 1
       fi
       "$OG_TARGET_DIR/debug/og" test "$project"; rc=$?
       exit "$rc"
