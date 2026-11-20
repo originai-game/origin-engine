@@ -35,7 +35,7 @@
 
 <style>
 /* The frame: cut at two corners, rimmed and washed in its type's colour. */
-:host { container-type: size; position: relative; inline-size: stretch; block-size: stretch; padding: var(--space-xs); overflow: hidden; clip-path: polygon(var(--tcg-face-cut) 0, 100% 0, 100% calc(100% - var(--tcg-face-cut)), calc(100% - var(--tcg-face-cut)) 100%, 0 100%, 0 var(--tcg-face-cut)); background: var(--tcg-face-fill); box-shadow: var(--tcg-face-rim); color: var(--tcg-neutral); }
+:host { container-type: size; position: relative; inline-size: stretch; block-size: stretch; padding: var(--space-xs); overflow: hidden; border-radius: var(--tcg-face-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; background: var(--tcg-face-fill); box-shadow: var(--tcg-face-rim); color: var(--tcg-neutral); }
 [part="CardFace.frame"][data-type=attack] { color: var(--tcg-attack); }
 [part="CardFace.frame"][data-type=skill] { color: var(--tcg-skill); }
 [part="CardFace.frame"][data-type=power] { color: var(--tcg-power); }
@@ -43,7 +43,7 @@
 [part="CardFace.frame"][data-type=relic] { color: var(--tcg-relic); }
 .wash { position: absolute; inset: 0; background: var(--tcg-face-wash); opacity: 0.22; }
 /* The art window takes what the words leave, over its rarity's glow. */
-.window { position: relative; flex: 1 1 0; min-block-size: 18%; justify-content: center; align-items: center; overflow: hidden; clip-path: polygon(var(--tcg-window-cut) 0, 100% 0, 100% calc(100% - var(--tcg-window-cut)), calc(100% - var(--tcg-window-cut)) 100%, 0 100%, 0 var(--tcg-window-cut)); background: var(--tcg-window-fill); color: var(--common); }
+.window { position: relative; flex: 1 1 0; min-block-size: 18%; justify-content: center; align-items: center; overflow: hidden; border-radius: var(--tcg-window-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; background: var(--tcg-window-fill); color: var(--common); }
 [data-rarity=uncommon] .window { color: var(--uncommon); }
 [data-rarity=rare] .window { color: var(--rare); }
 [data-rarity=epic] .window { color: var(--epic); }

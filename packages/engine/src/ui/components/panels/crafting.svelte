@@ -70,7 +70,7 @@
 </section>
 
 <style>
-[part="RpgCrafting.frame"] { position: relative; inline-size: stretch; max-block-size: stretch; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="RpgCrafting.frame"] { position: relative; inline-size: stretch; max-block-size: stretch; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 h2, h3, h4, p { margin: 0; }
 .band { flex: none; width: stretch; }
@@ -81,7 +81,7 @@ h2, h3, h4, p { margin: 0; }
 /* Two columns, the recipes and the selected one; one over the other when narrow. */
 .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: var(--space-lg); row-gap: var(--space-md); min-block-size: 0; width: stretch; }
 .recipes { gap: var(--space-xs); min-block-size: 0; align-content: start; }
-.row { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); flex: none; width: stretch; min-block-size: var(--size-touch); padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md); justify-content: flex-start; border: none; border-radius: 0; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-rarity); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.row { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); flex: none; width: stretch; min-block-size: var(--size-touch); padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md); justify-content: flex-start; border: none; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-rarity); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .row:hover { background: var(--inv-row-hover-fill); }
 .row[aria-selected=true] { background: var(--inv-row-on-fill); box-shadow: var(--inv-row-on-rim); }
 :is(.row, .detail)[data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
@@ -90,7 +90,7 @@ h2, h3, h4, p { margin: 0; }
 :is(.row, .detail)[data-rarity=legendary] { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
 :is(.row, .detail)[data-rarity=mythic] { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
 .face { display: flex; align-items: center; gap: var(--space-sm); width: stretch; min-width: 0; }
-.socket { flex: none; inline-size: calc(44 * var(--font-step-px)); block-size: calc(44 * var(--font-step-px)); background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.socket { flex: none; inline-size: calc(44 * var(--font-step-px)); block-size: calc(44 * var(--font-step-px)); background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RpgCrafting.icon"] { inline-size: 74%; block-size: 74%; filter: var(--inv-slot-art-shadow); }
 .row[data-can=false] .socket { opacity: var(--disabled-content-opacity); }
 .words { min-width: 0; align-items: flex-start; text-align: start; }
@@ -109,7 +109,7 @@ h2, h3, h4, p { margin: 0; }
 .result-name { font-size: var(--inv-figure-xl-size); color: var(--inv-rarity); overflow-wrap: anywhere; }
 .held { font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); }
 .ingredients { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(130 * var(--font-step-px)), 1fr)); gap: var(--space-xs); margin: 0; padding: 0; list-style: none; }
-.ingredient { display: flex; flex-direction: column; gap: var(--space-xxs); padding: var(--space-xs) var(--space-sm); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.ingredient { display: flex; flex-direction: column; gap: var(--space-xxs); padding: var(--space-xs) var(--space-sm); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .ingredient[data-sufficient=false] { background: var(--inv-short-fill); box-shadow: var(--inv-short-rim); }
 .ing-name { color: var(--ink-label); overflow-wrap: anywhere; }
 .have { font-size: var(--inv-figure-lg-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }

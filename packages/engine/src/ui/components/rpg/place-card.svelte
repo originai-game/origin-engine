@@ -31,7 +31,7 @@
 </section>
 
 <style>
-:host { inline-size: stretch; min-inline-size: 0; container-type: inline-size; color: var(--hud-ink); align-items: stretch; background: var(--map-card-fill-flat); box-shadow: var(--hud-plate-rim); --cut: calc(var(--hud-plate-cut) * 2); clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+:host { inline-size: stretch; min-inline-size: 0; container-type: inline-size; color: var(--hud-ink); align-items: stretch; background: var(--map-card-fill-flat); box-shadow: var(--hud-plate-rim); --cut: calc(var(--hud-plate-cut) * 2); border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .pic { flex: none; inline-size: 34%; min-block-size: stretch; }
 .picture { width: 100%; height: 100%; object-fit: cover; }
 .fade { background: var(--map-picture-fade); }
@@ -42,7 +42,7 @@
    card is short, so the name and the buttons always show. */
 .about { margin: 0; flex: 0 1 auto; min-block-size: 0; overflow: hidden; line-clamp: 2; text-align: start; font-size: var(--hud-size-sm); line-height: 1.45; color: var(--hud-ink-dim); }
 .actions { flex: none; inline-size: stretch; padding-block-start: var(--space-xs); }
-.act { flex: 1 1 auto; min-inline-size: 0; min-block-size: var(--size-touch); padding: 0 var(--space-sm); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); transition: var(--change-motion); }
+.act { flex: 1 1 auto; min-inline-size: 0; min-block-size: var(--size-touch); padding: 0 var(--space-sm); border: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; transition: var(--change-motion); }
 .act .face { width: stretch; justify-content: center; align-items: center; }
 .act-label { color: inherit; font-weight: inherit; white-space: nowrap; }
 .act-mark { inline-size: var(--select-glyph-lg); block-size: var(--select-glyph-lg); flex: none; }

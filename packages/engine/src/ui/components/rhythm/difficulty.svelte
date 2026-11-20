@@ -85,7 +85,7 @@
 .head .name { flex: none; max-width: stretch; }
 .best { max-width: stretch; min-width: 0; align-items: center; }
 .score { min-width: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink-dim); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-.tag { align-items: center; gap: calc(4 * var(--font-step-px)); flex: none; padding: 0 var(--space-xs); border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.tag { align-items: center; gap: calc(4 * var(--font-step-px)); flex: none; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .tag.grade { color: var(--hud-gold); }
 .tag[data-tag=locked] { color: var(--hud-ink-dim); }
 .tag-icon { inline-size: var(--select-glyph); block-size: var(--select-glyph); }

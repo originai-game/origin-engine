@@ -56,7 +56,7 @@
 .art { width: 70%; height: 70%; filter: var(--inv-slot-art-shadow); }
 [data-available=false] .art { filter: var(--play-out-art); }
 /* The count on a dark tag at the socket's foot; none left, a gold +. */
-.count { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); color: var(--ink-bright); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.count { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); color: var(--ink-bright); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .count[data-out=true] { color: var(--play-out-tag-ink); background: var(--play-out-tag-fill); }
 /* Armed or Unavailable in words on a tag over the socket, in the
    booster's own column, so it is never cut by the tray or a neighbour. */

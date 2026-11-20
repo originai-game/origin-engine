@@ -33,11 +33,11 @@
 <style>
 /* Smoked glass with a lit top edge and two corners cut; the stockpiles in
    a row that wraps to a second when its room is short. */
-:host { display: flex; flex-wrap: wrap; align-items: center; column-gap: calc(22 * var(--font-step-px)); row-gap: calc(6 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; min-inline-size: 0; padding: calc(6 * var(--font-step-px)) calc(16 * var(--font-step-px)); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+:host { display: flex; flex-wrap: wrap; align-items: center; column-gap: calc(22 * var(--font-step-px)); row-gap: calc(6 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; min-inline-size: 0; padding: calc(6 * var(--font-step-px)) calc(16 * var(--font-step-px)); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .resource { display: flex; align-items: center; column-gap: calc(7 * var(--font-step-px)); flex: 0 1 auto; min-inline-size: 0; }
 /* The pictures are art: they keep their size at any text scale. */
 .picture, .glyph { flex: none; inline-size: var(--size-sm); block-size: var(--size-sm); }
-.picture { object-fit: cover; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.picture { object-fit: cover; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .glyph { color: var(--hud-ink); filter: var(--hud-glyph-shadow); }
 .figures { display: flex; flex-direction: column; min-inline-size: 0; }
 .line { display: flex; align-items: baseline; column-gap: calc(3 * var(--font-step-px)); min-inline-size: 0; }
@@ -48,7 +48,7 @@
 .rate[data-trend=loss] { color: var(--hud-harm); }
 .rate[data-trend=note] { color: var(--hud-gold); }
 [data-warn=true] .amount { color: var(--hud-gold); }
-.tier { flex: 0 1 auto; min-inline-size: 0; padding: calc(2 * var(--font-step-px)) calc(8 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; color: var(--hud-accent-ink); background: var(--hud-accent); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.tier { flex: 0 1 auto; min-inline-size: 0; padding: calc(2 * var(--font-step-px)) calc(8 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; color: var(--hud-accent-ink); background: var(--hud-accent); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .empty { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; }
 /* On a phone the bar takes the width: the stockpiles spread across one
    row, or two at a large text scale, smaller. */

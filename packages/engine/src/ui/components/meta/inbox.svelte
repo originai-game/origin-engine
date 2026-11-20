@@ -51,11 +51,11 @@
 h2, h3, h4, p { margin: 0; overflow-wrap: anywhere; }
 .muted { overflow-wrap: anywhere; color: var(--quest-ink-quiet); }
 /* The count on a dark cut tag. */
-[part~="Inbox.summary"] { padding: var(--space-xxs) var(--space-sm); color: var(--ink-bright); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+[part~="Inbox.summary"] { padding: var(--space-xxs) var(--space-sm); color: var(--ink-bright); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); }
 .list { max-block-size: var(--measure-xl); margin: 0; padding: var(--space-xxs); list-style: none; }
 /* A message: a card with two corners cut; unread carries a gold rail, the one open a gold wash. */
-.row { display: block; inline-size: stretch; padding: var(--space-sm) var(--space-md); text-align: start; border-radius: 0; background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+.row { display: block; inline-size: stretch; padding: var(--space-sm) var(--space-md); text-align: start; background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .row[data-unread=true] { box-shadow: var(--quest-selected-rim); }
 .row[data-selected=true] { background: var(--alert-open-fill); box-shadow: var(--quest-selected-rim); }
 .row[data-unread=false] .subject { color: var(--quest-ink-quiet); }
@@ -73,7 +73,7 @@ h2, h3, h4, p { margin: 0; overflow-wrap: anywhere; }
 h4 { font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-ink-quiet); }
 .attachment-list { flex-direction: row; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
 /* An attachment: a dark cut chip, its icon in gold and its amount as a figure. */
-.attachment { flex-wrap: nowrap; align-items: center; padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-sm); background: var(--quest-well-fill); box-shadow: var(--quest-well-ready-rim); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+.attachment { flex-wrap: nowrap; align-items: center; padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-sm); background: var(--quest-well-fill); box-shadow: var(--quest-well-ready-rim); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .amount { font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--quest-gold); }
 [part~="Inbox.state"][data-state=expired] { color: var(--tone-danger); }
 [part~="Inbox.state"][data-state=claimed] { color: var(--tone-success); }

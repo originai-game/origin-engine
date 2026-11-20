@@ -48,7 +48,7 @@
 .byline { font-size: var(--hud-size-sm); font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 /* Chips: small figures on solid plates; the chart's in its tier. */
 .tags { margin-block-start: var(--space-xxs); }
-.chart, .tag { max-inline-size: stretch; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; -webkit-text-stroke-width: 0; text-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.chart, .tag { max-inline-size: stretch; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; -webkit-text-stroke-width: 0; text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .tag { background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
 .chart { color: var(--chart-ink); background: var(--chart-normal); }
 .chart[data-tier=easy] { background: var(--chart-easy); }

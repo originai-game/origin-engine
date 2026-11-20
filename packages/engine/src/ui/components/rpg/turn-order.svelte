@@ -38,6 +38,6 @@
 .ring .portrait { clip-path: var(--hud-octagon); background: var(--hud-plate-fill); }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .round-rule { width: stretch; }
-.round-title { flex: none; padding: var(--space-xs) var(--space-xl); white-space: nowrap; --badge-text: var(--text-lg); border-radius: 0; background: var(--hud-tag-fill); box-shadow: var(--hud-plate-lit-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.round-title { flex: none; padding: var(--space-xs) var(--space-xl); white-space: nowrap; --badge-text: var(--text-lg); background: var(--hud-tag-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 @media (height < 500px) { .ring { max-width: var(--size-xl); } .turns { padding: 0; } .round-title { padding: 0 var(--space-lg); } }
 </style>

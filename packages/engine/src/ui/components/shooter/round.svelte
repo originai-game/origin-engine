@@ -36,7 +36,7 @@
 <style>
 :host { align-items: center; column-gap: var(--space-md); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 /* The plate: smoked glass, two corners cut, a lit top edge in the accent. */
-#Plate { flex: 0 1 auto; min-inline-size: 0; align-items: baseline; padding: calc(3 * var(--font-step-px)) var(--space-sm); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+#Plate { flex: 0 1 auto; min-inline-size: 0; align-items: baseline; padding: calc(3 * var(--font-step-px)) var(--space-sm); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .urgent #Plate { box-shadow: var(--bar-critical-rim); }
 .legend { min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; -webkit-text-stroke-width: 0; text-shadow: none; }
 .clock { flex: none; font-size: var(--hud-size-sm); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; -webkit-text-stroke-width: 0; text-shadow: none; }

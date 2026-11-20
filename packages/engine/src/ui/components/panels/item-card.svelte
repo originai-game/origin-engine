@@ -82,7 +82,7 @@
 <style>
 /* The frame: two corners cut, a lit top edge; the rarity tints the hero's
    glow, the kicker, the name and the lore's rule. */
-[part="RpgItemCard.frame"] { --inv-rarity: var(--common); position: relative; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="RpgItemCard.frame"] { --inv-rarity: var(--common); position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RpgItemCard.frame"][data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
 [part="RpgItemCard.frame"][data-rarity=rare] { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
 [part="RpgItemCard.frame"][data-rarity=epic] { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
@@ -104,14 +104,14 @@ h2, p { margin: 0; }
    text never leaves the figures without room. */
 .body { flex: 0 1 auto; min-block-size: 0; width: stretch; }
 /* The headline figure, large, with its change; what is equipped beside it. */
-.lead { flex: none; flex-wrap: wrap; align-items: flex-end; column-gap: var(--space-md); row-gap: var(--space-xxs); padding: var(--space-sm) var(--space-md); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+.lead { flex: none; flex-wrap: wrap; align-items: flex-end; column-gap: var(--space-md); row-gap: var(--space-xxs); padding: var(--space-sm) var(--space-md); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lead-main { flex: 1 0 auto; }
 .lead-figures { align-items: center; flex-wrap: wrap; }
 .big { font-size: var(--icard-lead-size); line-height: 1; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 .lead-current { flex: none; margin-inline-start: auto; align-items: flex-end; text-align: end; }
 .now { font-size: var(--inv-figure-lg-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); color: var(--ink-label); white-space: nowrap; }
 /* A change: a chip in the trend's colour with an arrow. */
-.delta { flex: none; align-items: center; padding: 0 var(--space-xs); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); white-space: nowrap; color: var(--ink-label); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.delta { flex: none; align-items: center; padding: 0 var(--space-xs); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); white-space: nowrap; color: var(--ink-label); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .delta[data-trend=up] { color: var(--icard-up-ink); background: var(--icard-up-fill); }
 .delta[data-trend=down] { color: var(--icard-down-ink); background: var(--icard-down-fill); }
 .arrow { display: none; flex: none; inline-size: var(--icard-arrow-size); block-size: var(--icard-arrow-size); background: currentColor; }
@@ -156,7 +156,7 @@ h2, p { margin: 0; }
   /* Narrow or short: the art in a socket beside the name, no lore, the
      rows without the equipped column. */
   .top { flex-direction: row; align-items: center; gap: var(--space-sm); }
-  .hero { inline-size: var(--icard-socket-size); block-size: var(--icard-socket-size); width: auto; flex: none; border: none; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+  .hero { inline-size: var(--icard-socket-size); block-size: var(--icard-socket-size); width: auto; flex: none; border: none; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
   .hero::before { display: none; }
   .hero-art { inline-size: 80%; block-size: 80%; }
   .band { min-width: 0; flex: 1 1 0; padding: 0; }

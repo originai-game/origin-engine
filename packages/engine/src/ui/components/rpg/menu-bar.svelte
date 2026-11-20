@@ -38,7 +38,7 @@
 [part="RpgMenuBar.tab"]:hover { background: var(--result-tab-hover); }
 [part="RpgMenuBar.tab"][aria-selected=true] { color: var(--hud-ink); background: var(--result-tab-selected); box-shadow: var(--result-tab-mark); }
 [part="RpgMenuBar.tab"]:focus-visible { box-shadow: var(--party-focus-rim); }
-.menu-close { width: var(--size-touch); height: var(--size-touch); flex: none; padding: 0; border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.menu-close { width: var(--size-touch); height: var(--size-touch); flex: none; padding: 0; border: 0; color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .menu-close:hover { background: var(--party-button-hover-fill); }
 .menu-close:focus-visible { box-shadow: var(--party-focus-rim); }
 .face { inline-size: 100%; block-size: 100%; }

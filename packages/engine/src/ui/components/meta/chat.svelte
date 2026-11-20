@@ -65,14 +65,14 @@
 .tabs { width: stretch; flex: none; padding-block-end: var(--space-xxs); }
 .tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; min-width: 0; }
 /* A channel: a cut tab; the one shown washed and lit gold along its foot. */
-[part="Chat.tab"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); border-radius: 0; color: var(--quest-ink-quiet); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+[part="Chat.tab"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); color: var(--quest-ink-quiet); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="Chat.tab"][aria-selected=true] { color: var(--ink-bright); background: var(--social-tab-on-fill); box-shadow: var(--social-tab-on-rim); }
 .tab-label { white-space: nowrap; max-width: calc(var(--size-xxl) * 2.5); overflow: hidden; text-overflow: ellipsis; font-weight: var(--quest-weight); }
 /* Unread: a gold cut chip with a dark figure. */
-[part~="Chat.unread"] { margin: 0; min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; border-radius: 0; color: var(--quest-gold-ink); background: var(--quest-gold); font-weight: var(--hud-figure-weight); font-variant-numeric: var(--hud-figure-numeric); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+[part~="Chat.unread"] { margin: 0; min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; color: var(--quest-gold-ink); background: var(--quest-gold); font-weight: var(--hud-figure-weight); font-variant-numeric: var(--hud-figure-numeric); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* The log in a dark cut well; the log scrolls inside the well's rim. */
 [part="Chat.log"] { width: stretch; }
-.well { width: stretch; min-height: 0; padding: var(--space-xs) var(--stroke-thin); border-radius: 0; background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+.well { width: stretch; min-height: 0; padding: var(--space-xs) var(--stroke-thin); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .messages { width: stretch; margin: 0; padding: var(--space-sm); list-style: none; }
 [part="Chat.message"] { width: stretch; padding: var(--space-xxs) 0; }
 [part="Chat.message"][data-kind=own] { align-items: flex-end; }
@@ -85,7 +85,7 @@
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--quest-gold); }
 /* A line on a cut chip; the player's own washed gold at the far side; a system line bare and quiet. */
 [part="Chat.text"] { margin: 0; text-align: start; overflow-wrap: anywhere; color: var(--ink-bright); }
-[part="Chat.text"]:not([data-kind=system]) { max-width: 88%; padding: var(--space-xs) var(--space-sm); background: var(--social-line-fill); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+[part="Chat.text"]:not([data-kind=system]) { max-width: 88%; padding: var(--space-xs) var(--space-sm); background: var(--social-line-fill); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="Chat.message"][data-kind=own] [part="Chat.text"] { text-align: end; background: var(--social-own-fill); box-shadow: var(--social-own-rim); }
 [part="Chat.message"][data-kind=system] [part="Chat.text"] { max-width: stretch; padding: 0; color: var(--quest-ink-quiet); }
 .empty { margin: 0; padding: var(--space-lg); text-align: center; color: var(--quest-ink-quiet); }

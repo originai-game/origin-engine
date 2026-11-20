@@ -65,11 +65,11 @@ h1, h2, p { margin: 0; }
 #Period, #Period::part(base) { block-size: var(--control-sm); }
 #Period::part(base) { padding: 0 var(--space-md); }
 /* The switch: one well, the chosen tab a lit face in it. */
-#Tabs { gap: 0; inline-size: fit-content; padding: var(--stroke-thick); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+#Tabs { gap: 0; inline-size: fit-content; padding: var(--stroke-thick); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 #Tabs button::part(base) { border-color: transparent; border-radius: 0; text-transform: var(--hud-label-transform); letter-spacing: var(--result-tab-tracking); }
 button.selection-off::part(base) { color: var(--hud-ink-dim); }
 button.selection-on::part(base) { color: var(--chosen-ink); background: var(--chosen-tab-fill); box-shadow: var(--chosen-tab-edge); }
-[part="leaderboard.league"], [part="leaderboard.me"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="leaderboard.league"], [part="leaderboard.me"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="leaderboard.league"] { flex-wrap: wrap; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); }
 #LeagueBarName { font-size: var(--hud-size-md); font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: uppercase; color: var(--result-gold); }
 #Lines { flex: 1 1 auto; min-inline-size: 0; font: var(--text-caption); color: var(--hud-ink-dim); }
@@ -77,7 +77,7 @@ button.selection-on::part(base) { color: var(--chosen-ink); background: var(--ch
 #Body { flex: 1; min-block-size: 0; overflow-y: auto; -og-scroll-fade: var(--space-xl); }
 #List { display: flex; flex-direction: column; gap: var(--space-xxs); }
 /* A row: rank box, emblem, name, score; the name keeps the room. */
-[part="leaderboard.row"] { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "rank art name score"; align-items: center; column-gap: var(--space-md); padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); background: var(--result-row-fill); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); color: var(--hud-ink); }
+[part="leaderboard.row"] { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "rank art name score"; align-items: center; column-gap: var(--space-md); padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); background: var(--result-row-fill); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); }
 [part="leaderboard.row"]:hover, [part="leaderboard.row"]:focus-visible { background: var(--result-row-hover); box-shadow: var(--result-row-hover-rim); }
 [part="leaderboard.row"]:active { scale: 0.99; }
 [part="leaderboard.row"][data-promote=true] { box-shadow: inset calc(3 * var(--stroke-hairline)) 0 0 var(--result-promote); }
@@ -88,7 +88,7 @@ button.selection-on::part(base) { color: var(--chosen-ink); background: var(--ch
 #Avatar { grid-area: art; inline-size: var(--size-md); block-size: var(--size-md); clip-path: var(--hud-octagon); }
 #Who { grid-area: name; min-inline-size: 0; }
 #RowScore { grid-area: score; }
-[part="leaderboard.rank"] { display: block; text-align: center; min-inline-size: calc(52 * var(--font-step-px)); line-height: calc(38 * var(--font-step-px)); padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); background: var(--hud-place-fill); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+[part="leaderboard.rank"] { display: block; text-align: center; min-inline-size: calc(52 * var(--font-step-px)); line-height: calc(38 * var(--font-step-px)); padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); background: var(--hud-place-fill); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [data-place="1"] [part="leaderboard.rank"] { color: var(--result-medal-ink); background: var(--result-gold); }
 [data-place="2"] [part="leaderboard.rank"] { color: var(--result-medal-ink); background: var(--result-silver); }
 [data-place="3"] [part="leaderboard.rank"] { color: var(--result-medal-ink); background: var(--result-bronze); }

@@ -27,7 +27,7 @@
 <style>
 /* As wide as its container up to a measure, inset from its edges, so the
    seven columns share the header's width on a phone at any text size. */
-#Calendar { display: flex; flex-direction: column; gap: var(--space-sm); box-sizing: border-box; inline-size: 100%; max-inline-size: var(--measure-md); padding: var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(calc(2 * var(--hud-plate-cut)) 0, 100% 0, 100% calc(100% - 2 * var(--hud-plate-cut)), calc(100% - 2 * var(--hud-plate-cut)) 100%, 0 100%, 0 calc(2 * var(--hud-plate-cut))); color: var(--hud-ink); }
+#Calendar { display: flex; flex-direction: column; gap: var(--space-sm); box-sizing: border-box; inline-size: 100%; max-inline-size: var(--measure-md); padding: var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: calc(2 * var(--hud-plate-cut)) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); }
 #Head { display: flex; align-items: center; gap: var(--space-xs); }
 #Prev, #Next { flex: none; min-inline-size: var(--touch-target); min-block-size: var(--touch-target); --button-radius: var(--hud-tag-cut); --button-corner-shape: bevel; --button-quiet-ink: var(--hud-ink); background: var(--data-well); box-shadow: var(--data-well-rim); }
 #Prev::part(base), #Next::part(base) { padding-inline: 0; }

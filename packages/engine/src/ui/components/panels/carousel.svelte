@@ -35,12 +35,12 @@
 
 <style>
 :host { inline-size: var(--measure-md); max-inline-size: 100%; align-items: center; }
-#Carousel { padding: var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(calc(2 * var(--hud-plate-cut)) 0, 100% 0, 100% calc(100% - 2 * var(--hud-plate-cut)), calc(100% - 2 * var(--hud-plate-cut)) 100%, 0 100%, 0 calc(2 * var(--hud-plate-cut))); color: var(--hud-ink); }
+#Carousel { padding: var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: calc(2 * var(--hud-plate-cut)) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); }
 /* One page fills the window; the next waits beyond its edge, scrolled to. */
 #Viewport { inline-size: 100%; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; }
 .page { flex: none; inline-size: 100%; min-inline-size: 0; padding: 0; scroll-snap-align: center; --cell-radius: var(--hud-plate-cut); --cell-corner-shape: bevel; }
 .art { object-fit: cover; }
-.art, .well { inline-size: stretch; height: var(--size-3xl); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); --well-fill: var(--loading-placeholder); }
+.art, .well { inline-size: stretch; height: var(--size-3xl); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --well-fill: var(--loading-placeholder); }
 .title { font-size: var(--hud-size-sm); font-weight: var(--data-title-weight); color: var(--hud-ink); overflow-wrap: anywhere; }
 .body { color: var(--hud-ink-dim); overflow-wrap: anywhere; }
 .empty { margin: 0; padding: var(--space-md); }

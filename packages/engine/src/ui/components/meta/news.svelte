@@ -44,18 +44,18 @@ h2, h3, p { margin: 0; overflow-wrap: anywhere; }
 .list { inline-size: stretch; margin: 0; padding: 0; list-style: none; }
 /* An article: a card with two corners cut; a pinned one carries the gold
    rail, the open one a gold keyline. */
-.article { align-items: start; padding: var(--space-md) var(--space-lg); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+.article { align-items: start; padding: var(--space-md) var(--space-lg); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .article[data-pinned=true] { box-shadow: var(--quest-selected-rim); }
 .meta { inline-size: stretch; align-items: center; }
 /* The kind as a chip in the info hue; the date quiet; Pinned and Unread as gold tags. */
 .kind { padding: 0 var(--space-xs); font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--alert-info); background: var(--quest-chip-fill); box-shadow: var(--quest-chip-rim); border-radius: var(--quest-stamp-radius); }
 .date { color: var(--quest-ink-faint); }
-.badge { padding: 0 var(--space-xs); font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-gold-ink); background: var(--quest-gold); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+.badge { padding: 0 var(--space-xs); font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-gold-ink); background: var(--quest-gold); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="News.heading"] { inline-size: stretch; }
 .toggle { display: block; inline-size: stretch; min-block-size: var(--touch-target); padding-inline: 0; text-align: start; white-space: normal; overflow-wrap: anywhere; }
 .headline { display: block; inline-size: stretch; white-space: normal; overflow-wrap: anywhere; font-size: var(--quest-size-figure); font-weight: var(--quest-weight); color: var(--ink-bright); }
 .summary { color: var(--quest-ink-quiet); }
-.picture { inline-size: 100%; max-block-size: var(--size-6xl); aspect-ratio: 2; object-fit: cover; clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+.picture { inline-size: 100%; max-block-size: var(--size-6xl); aspect-ratio: 2; object-fit: cover; border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .body { white-space: pre-wrap; color: var(--quest-ink-quiet); }
 .action { max-inline-size: 100%; min-block-size: var(--touch-target); white-space: normal; }
 .wait { padding: var(--space-lg); }

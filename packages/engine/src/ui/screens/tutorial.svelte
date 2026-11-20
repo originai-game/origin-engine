@@ -63,7 +63,7 @@ h2, p { margin: 0; }
 #Skip, #Skip::part(base), #Next, #Next::part(base) { min-block-size: var(--touch-target); }
 #Next { margin-inline-start: auto; min-inline-size: calc(120 * var(--font-step-px)); }
 button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: var(--dialog-label-size); --button-tracking: var(--font-tracking-lg); --button-transform: uppercase; }
-button.plate::part(base) { border-width: 0; clip-path: polygon(var(--dialog-cut) 0, 100% 0, 100% calc(100% - var(--dialog-cut)), calc(100% - var(--dialog-cut)) 100%, 0 100%, 0 var(--dialog-cut)); }
+button.plate::part(base) { border-width: 0; border-radius: var(--dialog-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* Chinese, Japanese and Korean have no capitals to track: the label is set a step larger instead. */
 button.plate:lang(zh, ja, ko) { --button-font-size: var(--dialog-label-cjk-size); --button-tracking: 0; }
 @media (width < 600px) and (orientation: portrait) {

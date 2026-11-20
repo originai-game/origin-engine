@@ -64,7 +64,7 @@
    the result's lit fill, the level's name, the stars the game awarded as
    large lit glyphs (the middle one raised, each popping in turn), the
    score on the star bar, the breakdown in a recess, and Next in green. */
-:host { inline-size: stretch; max-inline-size: calc(var(--measure-lg) * 1.1); max-block-size: stretch; min-block-size: 0; padding: var(--space-xl) var(--space-xl) var(--space-lg); --layout-switch-at: var(--measure-xs); background: var(--result-card-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--result-card-cut) 0, 100% 0, 100% calc(100% - var(--result-card-cut)), calc(100% - var(--result-card-cut)) 100%, 0 100%, 0 var(--result-card-cut)); }
+:host { inline-size: stretch; max-inline-size: calc(var(--measure-lg) * 1.1); max-block-size: stretch; min-block-size: 0; padding: var(--space-xl) var(--space-xl) var(--space-lg); --layout-switch-at: var(--measure-xs); background: var(--result-card-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--result-card-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="PuzzleSummary.band"] { flex: none; align-items: center; padding: 0; border: 0; min-block-size: 0; background: none; }
 [part="PuzzleSummary.title"] { margin: 0; text-align: center; font-size: var(--result-size-title-compact); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: transparent; background: var(--result-won-fill); background-clip: var(--hud-text-clip); filter: var(--result-won-glow); }
 [data-result=lose] [part="PuzzleSummary.title"] { background: var(--result-lost-fill); background-clip: var(--hud-text-clip); filter: var(--result-lost-glow); }
@@ -77,7 +77,7 @@
 .medal.lit { fill: var(--star-fill-solid); stroke: var(--star-edge); filter: var(--star-glow); animation: var(--pop-motion); animation-delay: var(--result-star-delay); }
 .earned, .record { white-space: nowrap; }
 .earned { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
-.record { padding: 0 var(--space-sm); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--result-medal-ink); background: var(--hud-key-gold-fill); box-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.record { padding: 0 var(--space-sm); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--result-medal-ink); background: var(--hud-key-gold-fill); box-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .breakdown-shell { flex-basis: auto; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
 /* The breakdown scrolls only when it has more than fits: its edge then fades
    into the recess, so more below shows, and at rest its last row is whole. */

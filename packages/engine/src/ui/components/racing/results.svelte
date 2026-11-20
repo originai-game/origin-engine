@@ -77,7 +77,7 @@
 .hero { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; }
 .hero:empty { display: none; }
 .mine-place { margin: 0; font-size: var(--hud-size-place); line-height: 0.9; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-style: var(--judge-slant); color: var(--hud-accent); filter: var(--result-grade-glow); white-space: nowrap; }
-.mine { justify-content: space-between; align-items: baseline; column-gap: var(--space-md); flex-wrap: wrap; padding: var(--space-sm) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.mine { justify-content: space-between; align-items: baseline; column-gap: var(--space-md); flex-wrap: wrap; padding: var(--space-sm) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .mine-label, [part="RacingResults.heading"] { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 .mine-figure { font-size: var(--hud-size-lg); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 .gold { color: var(--hud-gold); }
@@ -85,14 +85,14 @@
 [part="RacingResults.heading"], [part="RacingResults.row"] { width: stretch; padding: var(--space-xxs) var(--space-md) var(--space-xxs) 0; }
 [part="RacingResults.heading"] { flex: none; border: 0; }
 .rows { width: stretch; }
-[part="RacingResults.row"] { min-height: var(--size-touch); align-items: center; border-radius: 0; color: var(--hud-ink); background: var(--hud-feed-fill-start); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+[part="RacingResults.row"] { min-height: var(--size-touch); align-items: center; color: var(--hud-ink); background: var(--hud-feed-fill-start); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RacingResults.row"]:hover { background: var(--hud-feed-fill-start); }
 .place { flex: none; width: calc(32 * var(--font-step-px)); text-align: center; }
 [part="RacingResults.row"] .place { align-self: stretch; display: block; line-height: var(--size-touch); font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); letter-spacing: 0; color: var(--hud-ink); background: var(--hud-place-fill); }
 [part="RacingResults.row"]:first-child[data-state=finished] .place { color: var(--result-medal-ink); background: var(--result-gold); }
 .head-name { text-align: start; }
 .driver { flex: 1 0 100%; text-align: start; overflow-wrap: anywhere; font-size: var(--hud-size-name); font-weight: var(--hud-label-weight); }
-.you, .fastest, .out { flex: none; white-space: nowrap; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: 0; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.you, .fastest, .out { flex: none; white-space: nowrap; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .you { color: var(--hud-ink); }
 .fastest { color: var(--hud-best-ink); }
 .out { color: var(--hud-harm); }

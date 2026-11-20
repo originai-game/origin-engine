@@ -42,6 +42,6 @@
 .blip[data-kind=objective] { --pip: calc(13 * var(--font-step-px)); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--hud-gold); }
 /* The player's arrow at the centre, turned to the heading (north stays up). */
 #Self { position: absolute; --me: calc(14 * var(--font-step-px)); inline-size: var(--me); block-size: var(--me); left: calc(50% - var(--me) / 2); top: calc(50% - var(--me) / 2); rotate: calc(var(--heading) * 1deg); fill: var(--hud-ink); filter: var(--hud-glyph-shadow); }
-#North { padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+#North { padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 @media (width < 600px) { :host { --side: calc(var(--size-xl) * 1.25); } .blip { --pip: calc(7 * var(--font-step-px)); } }
 </style>

@@ -112,13 +112,13 @@ div.row { display: grid; grid-template-columns: minmax(min(calc(160 * var(--font
    other rows' names do. */
 #Toggle::part(row) { padding-inline: 0; }
 [part="settings.description"] { display: none; }
-[part="settings.row"]:focus-within [part="settings.description"] { display: block; position: absolute; inset-block-start: 0; inset-inline-end: 0; inline-size: calc((100% - var(--space-3xl)) * 0.4); padding: var(--space-lg) var(--space-xl); font-size: calc(15 * var(--font-step-px)); line-height: var(--font-leading-normal); color: var(--front-ink-dim); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+[part="settings.row"]:focus-within [part="settings.description"] { display: block; position: absolute; inset-block-start: 0; inset-inline-end: 0; inline-size: calc((100% - var(--space-3xl)) * 0.4); padding: var(--space-lg) var(--space-xl); font-size: calc(15 * var(--font-step-px)); line-height: var(--font-leading-normal); color: var(--front-ink-dim); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* The foot. */
 #Foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: var(--space-sm) var(--space-md); }
 #Defaults { margin-inline-end: auto; }
 button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: calc(16 * var(--font-step-px)); --button-tracking: var(--font-tracking-md); --button-transform: uppercase; min-inline-size: calc(160 * var(--font-step-px)); }
 button.plate, button.plate::part(base) { block-size: var(--control-lg); }
-button.plate::part(base) { border-width: 0; clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+button.plate::part(base) { border-width: 0; border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 #Revert { --button-fill: var(--hud-plate-fill); --button-hover-fill: var(--hud-plate-fill); --button-base-shadow: var(--system-plate-edge); --button-hover-shadow: var(--system-plate-lit-edge); --button-rim: transparent; --button-hover-rim: transparent; --button-ink: var(--front-ink); --button-hover-ink: var(--front-ink); }
 @media (pointer: coarse) { .cap { display: none; } }
 /* A tablet or a phone: no side room; the focused row's description opens

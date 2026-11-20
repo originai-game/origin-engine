@@ -21,7 +21,7 @@
 <style>
 /* The HUD plate: headings in small tracked capitals over a faint rule,
    the cells dense and plain, a faint rule under each row. */
-#Table { display: flex; flex-direction: column; width: stretch; height: stretch; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(calc(2 * var(--hud-plate-cut)) 0, 100% 0, 100% calc(100% - 2 * var(--hud-plate-cut)), calc(100% - 2 * var(--hud-plate-cut)) 100%, 0 100%, 0 calc(2 * var(--hud-plate-cut))); color: var(--hud-ink); }
+#Table { display: flex; flex-direction: column; width: stretch; height: stretch; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: calc(2 * var(--hud-plate-cut)) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); }
 #Head, #Cells { display: grid; grid-template-columns: 2fr 1fr 1fr; width: stretch; padding-inline: var(--space-sm); }
 #Head { padding-block: var(--space-sm); border-block-end: var(--data-rule-line); }
 .heading { margin: 0; min-width: 0; padding-inline: var(--space-sm); font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--data-head-ink); }

@@ -38,6 +38,11 @@
   --role-plate-corner-shape: bevel;
   --role-plate-shadow: var(--shadow-plate);
   --role-plate-pad: var(--space-sm);
+  /* Cut: the corner every family surface wears where it cuts two corners
+     (a quest entry, a HUD plate, a party card, a tag), a family's `-cut`
+     length long. It takes the plate's shape, so a style that rounds its
+     plates rounds them too; a style sets `--cut-shape` to part them. */
+  --role-cut-shape: var(--plate-corner-shape);
 
   /* Band: the heading strip across a frame's top, and the title in it.
      `.small` is a HUD panel's band, `.lead` one whose title starts at the

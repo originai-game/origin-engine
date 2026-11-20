@@ -70,7 +70,7 @@
 .total-bar { min-width: 0; }
 .rows { width: stretch; margin: 0; padding: 0 0 var(--space-xs); list-style: none; }
 /* An entry: a card with two corners cut; gold from its edge while a reward waits; hatched while hidden. */
-.entry { width: stretch; min-width: 0; padding: var(--space-sm) var(--space-md) var(--space-sm) var(--space-sm); border-radius: 0; background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+.entry { width: stretch; min-width: 0; padding: var(--space-sm) var(--space-md) var(--space-sm) var(--space-sm); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .entry:hover { background: var(--quest-entry-fill); }
 .entry[data-ready=true] { background: var(--quest-ready-fill); box-shadow: var(--quest-ready-rim); }
 .entry[data-hidden=true] { background: var(--quest-locked-fill); }

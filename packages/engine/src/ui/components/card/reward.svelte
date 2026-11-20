@@ -66,7 +66,7 @@
 .face { width: stretch; height: stretch; }
 .bracket { position: absolute; inset: calc(var(--space-xxs) * -1); background: var(--inv-bracket); filter: var(--inv-bracket-glow); pointer-events: none; }
 /* A relic: gold-rimmed glass, its mark in a diamond over a gold glow. */
-.relic-face { width: stretch; height: stretch; align-items: center; justify-content: center; padding: var(--space-sm); overflow: hidden; text-align: center; background: var(--tcg-relic-fill); box-shadow: var(--tcg-relic-rim); clip-path: polygon(var(--tcg-face-cut) 0, 100% 0, 100% calc(100% - var(--tcg-face-cut)), calc(100% - var(--tcg-face-cut)) 100%, 0 100%, 0 var(--tcg-face-cut)); }
+.relic-face { width: stretch; height: stretch; align-items: center; justify-content: center; padding: var(--space-sm); overflow: hidden; text-align: center; background: var(--tcg-relic-fill); box-shadow: var(--tcg-relic-rim); border-radius: var(--tcg-face-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="CardReward.relic"]:disabled .relic-face { filter: var(--tcg-dim); }
 .mark { width: 42%; aspect-ratio: 1; flex: none; justify-content: center; align-items: center; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--tcg-relic-mark-fill); }
 .mark-icon { width: 58%; height: 58%; color: var(--tcg-relic); }

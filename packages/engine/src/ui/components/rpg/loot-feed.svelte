@@ -38,13 +38,13 @@
 [data-rarity=rare] .edge { background: var(--hud-rare); }
 [data-rarity=epic] .edge { background: var(--hud-epic); }
 [data-rarity=legendary] .edge { background: var(--hud-legendary); }
-.art { flex: none; margin-block: calc(3 * var(--font-step-px)); inline-size: calc(20 * var(--font-step-px)); block-size: calc(20 * var(--font-step-px)); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.art { flex: none; margin-block: calc(3 * var(--font-step-px)); inline-size: calc(20 * var(--font-step-px)); block-size: calc(20 * var(--font-step-px)); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .picture { object-fit: cover; }
 .glyph { color: var(--hud-ink); }
 .item { min-inline-size: 0; font-size: var(--hud-size-feed); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); }
 [data-rarity=epic] .item { color: var(--hud-epic-ink); }
 [data-rarity=legendary] .item { color: var(--hud-legendary); }
-.tag { flex: 0 1 auto; min-inline-size: 0; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.tag { flex: 0 1 auto; min-inline-size: 0; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .count { flex: none; font-size: var(--hud-size-feed); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; color: var(--hud-ink-dim); text-shadow: var(--hud-shadow); }
 [data-rarity=legendary] .count { color: var(--hud-legendary); }
 @media (width < 600px) {

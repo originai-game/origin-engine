@@ -101,12 +101,12 @@
    tower's portrait in a lit tile, its name large, its stats on a dark
    well, each path a feed row edged by its state, the buy plates and Sell
    on glass, an affordable one lit in the accent. */
-:host { padding: calc(12 * var(--font-step-px)) calc(14 * var(--font-step-px)); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+:host { padding: calc(12 * var(--font-step-px)) calc(14 * var(--font-step-px)); border: 0; color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="StrategyTower.band"] { align-items: center; column-gap: calc(10 * var(--font-step-px)); min-height: 0; padding: 0; border-bottom: 0; background: var(--hud-bare-fill); box-shadow: none; }
-[part="StrategyTower.portrait StrategyTower.picture"] { display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: calc(2 * var(--font-step-px)); background: var(--hud-ready-edge); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+[part="StrategyTower.portrait StrategyTower.picture"] { display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: calc(2 * var(--font-step-px)); background: var(--hud-ready-edge); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .mark { color: var(--hud-glyph); filter: var(--hud-glyph-shadow); }
 [part="StrategyTower.title"] { font-family: inherit; font-size: var(--hud-size-unit); line-height: 1.15; font-weight: var(--hud-figure-weight); color: var(--hud-ink); text-shadow: var(--hud-shadow); }
-.level, .state { font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border: 0; border-radius: 0; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.level, .state { font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border: 0; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .level { color: var(--hud-gold); }
 .stats { border-radius: 0; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
 .label { font: inherit; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
@@ -125,7 +125,7 @@
 .fill { background: var(--hud-accent-fill); }
 [data-state=maxed] .fill { background: var(--hud-stagger-fill); }
 .buy, #Sell { color: var(--hud-ink); }
-.buy::part(base), #Sell::part(base) { border: 0; border-radius: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.buy::part(base), #Sell::part(base) { border: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .buy[data-state=affordable]::part(base) { box-shadow: var(--hud-plate-lit-rim); }
 .cost { font-family: inherit; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); }
 .cost[data-state=unaffordable] { color: var(--hud-harm); }

@@ -70,7 +70,7 @@
 /* The reason at the card's head beside the cost gem, over the art: above
    any Play plate and on the edge the next card leaves uncovered. A card
    without a cost (a curse, a status) gives the reason the gem's room. */
-.reason { position: absolute; inset-inline-start: calc(var(--tcg-gem-size) + var(--space-xxs)); inset-inline-end: var(--space-xs); top: var(--space-sm); justify-content: flex-start; align-items: center; padding: var(--space-xxs) var(--space-xs); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); background: var(--tcg-reason-fill); box-shadow: var(--tcg-reason-rim); color: var(--tcg-reason-ink); font-size: var(--tcg-reason-size); font-weight: var(--tcg-type-weight); letter-spacing: var(--tcg-reason-tracking); text-transform: none; }
+.reason { position: absolute; inset-inline-start: calc(var(--tcg-gem-size) + var(--space-xxs)); inset-inline-end: var(--space-xs); top: var(--space-sm); justify-content: flex-start; align-items: center; padding: var(--space-xxs) var(--space-xs); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; background: var(--tcg-reason-fill); box-shadow: var(--tcg-reason-rim); color: var(--tcg-reason-ink); font-size: var(--tcg-reason-size); font-weight: var(--tcg-type-weight); letter-spacing: var(--tcg-reason-tracking); text-transform: none; }
 .reason[data-cost=false] { inset-inline-start: var(--space-xs); }
 .lock { flex: none; inline-size: var(--tcg-reason-size); block-size: var(--tcg-reason-size); }
 .reason-text { margin: 0; min-width: 0; text-align: start; line-clamp: 2; overflow: hidden; line-height: 1.15; }

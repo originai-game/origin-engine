@@ -292,8 +292,15 @@ impl BoxDecor {
             }
             if let Some(shape) = &c.clip {
                 // Its own shape stays its box: the cut takes everything
-                // drawn in it once.
-                d.clip = crate::paint::Clip::Cut(shape.resolve(w, h, c.clip_ref));
+                // drawn in it once. A bare geometry box cuts along the
+                // box's own corners, their radii and `corner-shape`
+                // (CSS Masking 1 §6.1, Borders 4 §5).
+                d.clip = crate::paint::Clip::Cut(match (shape, &self.corners) {
+                    (crate::css::paint_css::CssClip::Box, Some(k)) => {
+                        shaped_box(w, h, c.clip_ref.0, k.resolve(w, h))
+                    }
+                    _ => shape.resolve(w, h, c.clip_ref),
+                });
             }
             // A blend or `isolation: isolate` makes it a group (CSS
             // Compositing 1 §3.2): its subtree drawn offscreen over a
@@ -481,6 +488,75 @@ fn round() -> og_draw::UiCssCorners {
     og_draw::UiCssCorners {
         vertical: [0.0; 4],
         shape: [1.0; 4],
+    }
+}
+
+/// The `w` × `h` border box's own outline, `insets` in from it (top,
+/// right, bottom, left), as a clip: each corner's radii less the insets
+/// it meets, its curve the superellipse of its `corner-shape` K
+/// (|x|^n + |y|^n = 1, n = 2^K), as straight cubics.
+fn shaped_box(
+    w: f32,
+    h: f32,
+    [t, r, b, l]: [f32; 4],
+    (rx, c): Resolved,
+) -> crate::paint::ShapeKind {
+    const STEPS: usize = 12;
+    let ry = c.vertical;
+    let (x0, y0, x1, y1) = (l, t, (w - r).max(l), (h - b).max(t));
+    // Clockwise from the top left: the outer corner, the two sides it
+    // meets (x, y signs pointing out of the box) and the insets it loses.
+    let corners = [
+        ([x0, y0], [-1.0, -1.0], [l, t]),
+        ([x1, y0], [1.0, -1.0], [r, t]),
+        ([x1, y1], [1.0, 1.0], [r, b]),
+        ([x0, y1], [-1.0, 1.0], [l, b]),
+    ];
+    let mut p: Vec<[f32; 2]> = Vec::new();
+    for (k, (at, [sx, sy], [ix, iy])) in corners.into_iter().enumerate() {
+        let (a, bb) = ((rx[k] - ix).max(0.0), (ry[k] - iy).max(0.0));
+        let n = 2f32.powf(c.shape[k]);
+        if a <= 0.0 || bb <= 0.0 || n.is_infinite() {
+            p.push(at);
+            continue;
+        }
+        let o = [at[0] - sx * a, at[1] - sy * bb];
+        // From the side met first going clockwise to the other: the top
+        // left starts on the left side, the top right on the top.
+        let horizontal_first = sx * sy > 0.0;
+        if n <= 0.0 {
+            // Notch: in to the corner's inner point and out again.
+            let (first, last) = ([at[0], o[1]], [o[0], at[1]]);
+            let (first, last) = if horizontal_first {
+                (first, last)
+            } else {
+                (last, first)
+            };
+            p.extend([first, o, last]);
+            continue;
+        }
+        for s in 0..=STEPS {
+            let th = s as f32 / STEPS as f32 * std::f32::consts::FRAC_PI_2;
+            let (cx, cy) = (th.cos().powf(2.0 / n), th.sin().powf(2.0 / n));
+            let (u, v) = if horizontal_first { (cx, cy) } else { (cy, cx) };
+            p.push([o[0] + sx * a * u, o[1] + sy * bb * v]);
+        }
+    }
+    let mut pts = vec![p[0]];
+    for k in 1..=p.len() {
+        let (a, b) = (p[k - 1], p[k % p.len()]);
+        pts.extend([a, b, b]);
+    }
+    crate::paint::ShapeKind::Path {
+        contours: vec![pts.len() as u32],
+        points: pts,
+        closed: true,
+        filled: true,
+        curves: true,
+        fill_rule: crate::paint::FillRule::NonZero,
+        width: 0.0,
+        cap: Default::default(),
+        join: Default::default(),
     }
 }
 

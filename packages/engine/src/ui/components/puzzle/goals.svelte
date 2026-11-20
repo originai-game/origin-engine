@@ -66,12 +66,12 @@
 :host { block-size: auto; }
 .counters { align-items: stretch; padding: var(--space-xs); }
 /* Moves or time: a big figure over its word in a cut well; low, amber. */
-[part="PuzzleGoals.counter"] { position: relative; flex: none; align-items: center; justify-content: center; min-width: calc(var(--size-xl) * 1.6); padding: var(--space-xs) var(--space-sm); background: var(--play-well-fill); box-shadow: var(--play-well-rim); clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%); }
+[part="PuzzleGoals.counter"] { position: relative; flex: none; align-items: center; justify-content: center; min-width: calc(var(--size-xl) * 1.6); padding: var(--space-xs) var(--space-sm); background: var(--play-well-fill); box-shadow: var(--play-well-rim); border-radius: 0 0 var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="PuzzleGoals.counter"][data-low=true] { box-shadow: var(--play-low-rim); }
 .counter-figure { white-space: nowrap; font-size: var(--play-counter-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--ink-bright); }
 .counter-figure[data-low=true] { color: var(--play-low-ink); }
 .label, .score-label { white-space: nowrap; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
-.warning { margin-block-start: var(--space-xxs); padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--play-low-tag-ink); background: var(--play-low-ink); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.warning { margin-block-start: var(--space-xxs); padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--play-low-tag-ink); background: var(--play-low-ink); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* A goal: its socket, what is left under it, its name; met, a check. */
 [part="PuzzleGoals.goals"] { justify-content: center; align-items: stretch; }
 [part="PuzzleGoals.goal"] { position: relative; align-items: center; justify-content: flex-start; min-width: calc(var(--size-xl) * 1.3); max-width: calc(var(--size-xl) * 2); padding: var(--space-xxs) var(--space-xs); background: var(--play-goal-fill); box-shadow: var(--play-goal-rim); }

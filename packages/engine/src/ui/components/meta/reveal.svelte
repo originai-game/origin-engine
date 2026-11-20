@@ -65,7 +65,7 @@
 <style>
 :host { inline-size: stretch; }
 /* The frame: two corners cut, a lit top edge. */
-[part="Reveal.frame"] { position: relative; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="Reveal.frame"] { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 h2, p { margin: 0; overflow-wrap: anywhere; }
 .band { flex: none; width: stretch; align-items: center; justify-content: flex-start; text-align: center; }
@@ -87,12 +87,12 @@ h2, p { margin: 0; overflow-wrap: anywhere; }
 .reward[data-rarity=legendary] { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
 .reward[data-rarity=mythic] { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
 .face { width: stretch; align-items: center; text-align: center; }
-.socket { position: relative; inline-size: var(--shop-reward-size); max-inline-size: stretch; aspect-ratio: 1; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+.socket { position: relative; inline-size: var(--shop-reward-size); max-inline-size: stretch; aspect-ratio: 1; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .reward { --inv-base-rim: var(--inv-socket-rim); }
 .reward:hover .socket { --inv-socket-rim: var(--inv-slot-hover-rim), var(--inv-base-rim); }
 .art { inline-size: 70%; block-size: 70%; filter: var(--inv-slot-art-shadow); }
 .bar { position: absolute; inset-inline: var(--inv-slot-cut); bottom: 0; block-size: var(--stroke-thick); color: var(--inv-rarity); background: currentColor; box-shadow: var(--inv-slot-bar-glow); }
-.amount { position: absolute; inset-inline-end: var(--space-xs); bottom: var(--space-sm); padding: 0 var(--space-xxs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); line-height: 1.35; white-space: nowrap; color: var(--ink-bright); background: var(--inv-tag-fill); box-shadow: var(--inv-tag-rim); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.amount { position: absolute; inset-inline-end: var(--space-xs); bottom: var(--space-sm); padding: 0 var(--space-xxs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); line-height: 1.35; white-space: nowrap; color: var(--ink-bright); background: var(--inv-tag-fill); box-shadow: var(--inv-tag-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .fresh { position: absolute; inset-inline-end: var(--space-sm); top: var(--space-sm); inline-size: var(--space-xs); block-size: var(--space-xs); border-radius: var(--inv-chip-radius); background: var(--inv-accent); box-shadow: var(--inv-fresh-glow); }
 .rarity { font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-rarity); }
 .name { max-width: stretch; font-weight: var(--inv-name-weight); color: var(--ink-bright); overflow-wrap: anywhere; }

@@ -124,7 +124,7 @@
 
 <style>
 /* The frame: two corners cut, a lit top edge. */
-[part="Shop.frame"] { position: relative; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="Shop.frame"] { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 [part="Shop.band"] { width: stretch; flex: none; align-items: flex-end; }
 .heading { min-width: 0; flex-basis: calc(120 * var(--font-step-px)); }
@@ -152,7 +152,7 @@
 /* The grid: as many columns as fit, a featured tile two of them. */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--shop-tile-min-width), 1fr)); gap: var(--space-xs); width: stretch; padding: var(--space-xs); }
 /* A tile: cut at two corners, its rarity the light behind its art. */
-.offer { --inv-rarity: var(--common); position: relative; width: stretch; height: stretch; min-width: 0; padding: var(--space-xs) var(--space-xs) var(--space-sm); align-items: stretch; justify-content: flex-start; border: none; border-radius: 0; background: var(--shop-tile-fill); box-shadow: var(--shop-tile-rim); clip-path: polygon(var(--shop-tile-cut) 0, 100% 0, 100% calc(100% - var(--shop-tile-cut)), calc(100% - var(--shop-tile-cut)) 100%, 0 100%, 0 var(--shop-tile-cut)); }
+.offer { --inv-rarity: var(--common); position: relative; width: stretch; height: stretch; min-width: 0; padding: var(--space-xs) var(--space-xs) var(--space-sm); align-items: stretch; justify-content: flex-start; border: none; background: var(--shop-tile-fill); box-shadow: var(--shop-tile-rim); border-radius: var(--shop-tile-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .offer:hover, .offer:active { background: var(--shop-tile-fill); box-shadow: var(--shop-tile-hover-rim); }
 .offer[aria-selected=true] { box-shadow: var(--shop-tile-selected-rim); }
 .offer[data-featured=true] { grid-column: span 2; }
@@ -162,13 +162,13 @@
 .offer[data-rarity=legendary] { --inv-rarity: var(--legendary); }
 .offer[data-rarity=mythic] { --inv-rarity: var(--mythic); }
 .face { width: stretch; min-width: 0; }
-.art { position: relative; flex: none; width: stretch; block-size: var(--shop-art-height); color: var(--inv-rarity); background: var(--shop-art-fill); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+.art { position: relative; flex: none; width: stretch; block-size: var(--shop-art-height); color: var(--inv-rarity); background: var(--shop-art-fill); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .art::before { content: ""; position: absolute; inset: 0; background: var(--shop-art-glow); opacity: var(--shop-art-glow-opacity); }
 .art-icon { position: relative; inline-size: var(--shop-art-size); block-size: var(--shop-art-size); filter: var(--inv-slot-art-shadow); }
 [data-refused=true] .art-icon { filter: var(--shop-art-refused); }
 /* Corner tags over the art: Featured at the leading corner, the game's
    badge at the other, each ending in an ellipsis before it meets the other. */
-.ctag { position: absolute; top: var(--space-sm); max-inline-size: calc(50% - var(--space-md)); padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.ctag { position: absolute; top: var(--space-sm); max-inline-size: calc(50% - var(--space-md)); padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .ctag.lead { inset-inline-start: var(--space-sm); color: var(--inv-accent-ink); background: var(--inv-accent); }
 .ctag.end { inset-inline-end: var(--space-sm); border-radius: 0; box-shadow: none; color: var(--shop-badge-ink); background: var(--shop-badge-fill); }
 .ctag.end[data-tone=success] { color: var(--inv-equipped-ink); background: var(--inv-equipped-fill); }
@@ -184,7 +184,7 @@
 .price .figure { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .currency { flex: none; inline-size: calc(18 * var(--font-step-px)); block-size: calc(18 * var(--font-step-px)); }
 .was { margin-inline-end: var(--space-xs); white-space: nowrap; font-size: var(--shop-was-size); font-weight: var(--inv-name-weight); }
-.status { flex: none; margin-inline-start: auto; align-items: center; padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); white-space: nowrap; color: var(--shop-sold-ink); background: var(--shop-sold-fill); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.status { flex: none; margin-inline-start: auto; align-items: center; padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); white-space: nowrap; color: var(--shop-sold-ink); background: var(--shop-sold-fill); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .status[data-kind=owned] { color: var(--shop-owned-ink); background: var(--shop-owned-fill); }
 .status[data-kind=short] { color: var(--shop-short-ink); background: var(--shop-short-fill); }
 .status-mark { flex: none; inline-size: var(--inv-tag-size); block-size: var(--inv-tag-size); }

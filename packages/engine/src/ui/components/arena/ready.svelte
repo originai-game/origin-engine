@@ -47,7 +47,7 @@
    player with its answer as a word, its leading edge green once ready
    and red when refused; Accept is green. */
 :host { inline-size: stretch; max-block-size: stretch; color: var(--hud-ink); --fade-fill: var(--party-open-fill); }
-[part="ArenaReady.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="ArenaReady.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="ArenaReady.title"] { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; text-align: center; }
 [part~="ArenaReady.detail"], [part~="ArenaReady.empty"] { margin: 0; text-align: center; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); overflow-wrap: break-word; }
 [part="ArenaReady.title"], [part~="ArenaReady.detail"], [part~="ArenaReady.timer"], [part="ArenaReady.actions"] { flex: none; }
@@ -64,7 +64,7 @@
 [data-state=offline] [part="ArenaReady.name"] { color: var(--hud-ink-dim); }
 [data-state=ready] [part="ArenaReady.state ArenaReady.headline"] { color: var(--party-ready); }
 [data-state=declined] [part="ArenaReady.state ArenaReady.headline"] { color: var(--party-refused); }
-[part="ArenaReady.actions"] button { flex: 1 1 auto; min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="ArenaReady.actions"] button { flex: 1 1 auto; min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --button-radius: var(--hud-plate-cut) 0; --button-corner-shape: var(--cut-shape); }
 [part="ArenaReady.actions"] button:hover { background: var(--party-button-hover-fill); }
 [part="ArenaReady.actions"] button:focus-visible { box-shadow: var(--party-focus-rim); }
 [part="ArenaReady.actions"] button[aria-pressed=true] { box-shadow: var(--party-on-rim); }

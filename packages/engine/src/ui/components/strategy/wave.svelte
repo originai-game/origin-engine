@@ -67,17 +67,17 @@
 :host { display: flex; flex-direction: column; align-items: stretch; row-gap: calc(5 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); }
 /* The plate: smoked glass, its edge lit in danger while a wave comes or
    fights; quiet once every wave is cleared. */
-#Plate { display: flex; align-items: center; column-gap: calc(10 * var(--font-step-px)); min-inline-size: 0; padding: calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px)); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-alert-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+#Plate { display: flex; align-items: center; column-gap: calc(10 * var(--font-step-px)); min-inline-size: 0; padding: calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px)); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-alert-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [data-phase=done] #Plate { box-shadow: var(--hud-plate-rim); }
 /* The picture is art: it keeps its size at any text scale. */
-.icon { flex: none; inline-size: calc(var(--size-md) * 0.75); block-size: calc(var(--size-md) * 0.75); object-fit: cover; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.icon { flex: none; inline-size: calc(var(--size-md) * 0.75); block-size: calc(var(--size-md) * 0.75); object-fit: cover; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .main { display: flex; flex-direction: column; row-gap: calc(1 * var(--font-step-px)); flex: 1 1 auto; min-inline-size: 0; }
 .head { display: flex; align-items: center; column-gap: calc(6 * var(--font-step-px)); min-inline-size: 0; }
 /* The wave's title is short: it fits, or wraps onto a second line; it is
    never cut. */
 .label { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-harm); }
 [data-phase=done] .label { color: var(--hud-label-ink); }
-.final { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.4; font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-gold); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.final { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.4; font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-gold); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .clock { display: flex; align-items: center; column-gap: calc(8 * var(--font-step-px)); min-inline-size: 0; }
 .time { flex: none; font-size: var(--hud-size-readout); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-shadow: var(--hud-shadow); }
 [data-near=true] .time { color: var(--hud-harm); }
@@ -94,12 +94,12 @@
 .mark { flex: none; inline-size: calc(16 * var(--font-step-px)); block-size: calc(16 * var(--font-step-px)); color: var(--hud-ink); }
 .enemy-name { flex: 1 1 auto; min-inline-size: 0; font-size: var(--hud-size-feed); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .enemy[data-scouted=false] .enemy-name { color: var(--hud-ink-dim); }
-.boss { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.4; font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-harm); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.boss { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.4; font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-harm); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .enemy-count { flex: none; font-size: var(--hud-size-feed); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 /* Call early: a lit plate, what it pays in gold; a long reward scrolls in
    its line, inside the button's padding. */
 #CallEarly { min-block-size: var(--size-touch); min-inline-size: 0; max-inline-size: stretch; }
-#CallEarly::part(base) { padding: calc(4 * var(--font-step-px)) calc(12 * var(--font-step-px)); border: 0; border-radius: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+#CallEarly::part(base) { padding: calc(4 * var(--font-step-px)) calc(12 * var(--font-step-px)); border: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .call-face { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; column-gap: calc(8 * var(--font-step-px)); max-inline-size: stretch; min-inline-size: 0; }
 .call-label { flex: none; font-size: var(--hud-label-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--hud-ink); }
 .reward { flex: 0 1 auto; min-inline-size: 0; max-inline-size: 100%; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); color: var(--hud-gold); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }

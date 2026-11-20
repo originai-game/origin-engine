@@ -63,7 +63,7 @@ p { margin: 0; }
 /* The offer and the actions: a column of full-width buttons; the offer
    on a cut HUD plate with its time left in a gold ring. */
 #Offer, #Actions { display: grid; gap: var(--space-sm); justify-items: stretch; align-self: stretch; }
-[part="game-over.offer"] { justify-items: center; text-align: center; padding: var(--space-lg); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="game-over.offer"] { justify-items: center; text-align: center; padding: var(--space-lg); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="game-over.offer"] button { justify-self: stretch; }
 #Left { justify-self: center; display: block; text-align: center; line-height: calc(88 * var(--font-step-px)); inline-size: calc(88 * var(--font-step-px)); block-size: calc(88 * var(--font-step-px)); border-radius: 50%; font-size: var(--hud-size-lg); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); background: var(--hud-dial-face); box-shadow: var(--result-ring); filter: var(--hud-gold-glow); }
 #Line { font-size: var(--hud-size-md); font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-defeat-tracking); text-transform: uppercase; color: var(--hud-ink); }

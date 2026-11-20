@@ -70,13 +70,13 @@
    the accent and washed in it; a locked or taken one drawn grey with its
    reason on a tag. Names wrap on whole words and are never cut. */
 :host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; color: var(--hud-ink); --fade-fill: var(--party-open-fill); }
-[part="ArenaRoster.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="ArenaRoster.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="ArenaRoster.band"] { width: stretch; flex: none; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 [part="ArenaRoster.title"] { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; }
 .grid-shell { position: relative; min-block-size: 0; }
 .grid-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 .grid { --layout-tile: min(var(--party-tile), 45cqi); padding: var(--space-xxs); padding-block-end: var(--space-lg); }
-[part="ArenaRoster.cell"] { padding: 0; align-items: stretch; justify-content: flex-start; border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-tile-fill); box-shadow: var(--party-tile-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="ArenaRoster.cell"] { padding: 0; align-items: stretch; justify-content: flex-start; border: 0; color: var(--hud-ink); background: var(--party-tile-fill); box-shadow: var(--party-tile-rim); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="ArenaRoster.cell"]:hover { box-shadow: var(--party-tile-hover-rim); }
 [part="ArenaRoster.cell"]:focus-visible { box-shadow: var(--party-focus-rim); }
 [part="ArenaRoster.cell"][aria-selected=true] { background: var(--party-tile-on-fill); box-shadow: var(--party-on-rim); }
@@ -94,10 +94,10 @@
 .name { padding-inline: var(--space-xs); text-align: center; font-size: var(--hud-size-name); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
 .role { padding-inline: var(--space-xs); text-align: center; overflow-wrap: break-word; font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 /* A badge wraps rather than lose its reason (Taken by …). */
-.tag { flex: none; padding: 0 var(--space-xs); border: 0; border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); max-width: stretch; align-self: center; text-align: center; overflow-wrap: anywhere; }
+.tag { flex: none; padding: 0 var(--space-xs); border: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; max-width: stretch; align-self: center; text-align: center; overflow-wrap: anywhere; }
 .tag[data-tag=selected] { color: var(--party-go-ink); background: var(--hud-accent); box-shadow: none; }
 .tag[data-tag=locked], .tag[data-tag=taken] { color: var(--hud-ink-dim); }
-.chosen { flex: none; align-items: center; justify-content: flex-start; padding: var(--space-sm) var(--space-md); border-radius: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.chosen { flex: none; align-items: center; justify-content: flex-start; padding: var(--space-sm) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .chosen-name { min-width: 0; font-size: var(--party-size-name); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); text-transform: var(--hud-label-transform); color: var(--hud-ink); overflow-wrap: break-word; }
 /* A role longer than the footer wraps inside it. */
 .chosen-role { flex: 0 1 auto; min-width: 0; max-inline-size: 100%; overflow-wrap: anywhere; font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }

@@ -75,7 +75,7 @@
 #Ground { position: absolute; inset: 0; background: var(--front-ground); }
 #Calibration { inline-size: stretch; }
 p { margin: 0; }
-[part="calibration.frame"] { position: relative; flex: none; border: 0; border-radius: 0; display: flex; flex-direction: column; row-gap: var(--space-lg); inline-size: 100%; max-inline-size: calc(760 * var(--font-step-px)); padding: var(--space-xl) var(--space-xxl); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+[part="calibration.frame"] { position: relative; flex: none; border: 0; display: flex; flex-direction: column; row-gap: var(--space-lg); inline-size: 100%; max-inline-size: calc(760 * var(--font-step-px)); padding: var(--space-xl) var(--space-xxl); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 #Steps { display: flex; align-items: center; column-gap: var(--space-sm); margin: 0; padding: 0; list-style: none; }
 .st { flex: none; display: flex; align-items: center; column-gap: var(--space-sm); font-size: calc(13 * var(--font-step-px)); font-weight: var(--font-weight-semibold); letter-spacing: var(--hud-label-tracking); text-transform: uppercase; white-space: nowrap; color: var(--front-ink-faint); }
 .num { display: grid; place-items: center; inline-size: calc(26 * var(--font-step-px)); block-size: calc(26 * var(--font-step-px)); border-radius: 50%; box-shadow: inset 0 0 0 var(--stroke-hairline) var(--system-step-rim); font-size: calc(13 * var(--font-step-px)); letter-spacing: 0; font-variant-numeric: tabular-nums; }
@@ -103,7 +103,7 @@ p { margin: 0; }
 #Foot { display: flex; justify-content: space-between; gap: var(--space-sm); }
 button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: calc(16 * var(--font-step-px)); --button-tracking: var(--font-tracking-md); --button-transform: uppercase; min-inline-size: calc(140 * var(--font-step-px)); }
 button.plate, button.plate::part(base) { block-size: var(--control-lg); }
-button.plate::part(base) { border-width: 0; clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+button.plate::part(base) { border-width: 0; border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 #Back { --button-fill: var(--hud-plate-fill); --button-hover-fill: var(--hud-plate-fill); --button-base-shadow: var(--system-plate-edge); --button-hover-shadow: var(--system-plate-lit-edge); --button-rim: transparent; --button-hover-rim: transparent; --button-ink: var(--front-ink); --button-hover-ink: var(--front-ink); }
 #Start { --button-fill: var(--hud-plate-fill); --button-hover-fill: var(--hud-plate-fill); --button-base-shadow: var(--system-plate-edge); --button-rim: transparent; --button-ink: var(--front-ink); --button-hover-ink: var(--front-ink); }
 #Tap, #Tap::part(base) { block-size: var(--control-lg); }

@@ -76,7 +76,7 @@
    capitals beside the avatar, the rank on a gold tag, each figure on a
    cut plate under its label, the actions as plates lit along their top. */
 :host { inline-size: stretch; max-block-size: stretch; color: var(--hud-ink); --fade-fill: var(--party-open-fill); }
-[part="Profile.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="Profile.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .scroll-area { position: relative; min-block-size: 0; }
 .content { padding-block-end: var(--space-lg); }
 [part="Profile.identity"] { flex: none; }
@@ -84,18 +84,18 @@
 .identity-copy { min-inline-size: 0; align-items: flex-start; }
 [part~="Profile.name"] { margin: 0; max-inline-size: stretch; font-size: var(--party-size-name); line-height: 1.05; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; overflow-wrap: break-word; }
 [part~="Profile.handle"] { max-inline-size: stretch; font-size: var(--hud-size-xs); color: var(--hud-ink-dim); overflow-wrap: anywhere; }
-[part~="Profile.rank"] { max-inline-size: stretch; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--party-gold-ink); background: var(--hud-key-gold-fill); overflow-wrap: break-word; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+[part~="Profile.rank"] { max-inline-size: stretch; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--party-gold-ink); background: var(--hud-key-gold-fill); overflow-wrap: break-word; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="Profile.bio"] { margin: 0; font-size: var(--hud-size-name); line-height: 1.4; color: var(--hud-ink); overflow-wrap: break-word; }
 [part="Profile.state"] { margin: 0; text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); overflow-wrap: break-word; }
 /* As many plates a line as keep a long label's words whole at the player's text size. */
 [part="Profile.stats"] { grid-template-columns: repeat(auto-fill, minmax(min(calc(200 * var(--font-step-px)), 100%), 1fr)); flex: none; }
-[part~="Profile.stat"] { min-inline-size: 0; padding: var(--space-sm) var(--space-md); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); container-type: inline-size; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part~="Profile.stat"] { min-inline-size: 0; padding: var(--space-sm) var(--space-md); border: 0; color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); container-type: inline-size; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part~="Profile.label"] { font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); overflow-wrap: break-word; }
 [part~="Profile.value"] { font-size: var(--party-size-stat); line-height: 1.05; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); text-shadow: none; overflow-wrap: break-word; }
 [part~="Profile.detail"] { font-size: var(--hud-size-xs); color: var(--hud-ink-dim); overflow-wrap: break-word; }
 [part="Profile.actions"] { flex: none; }
 .action-row { min-inline-size: 0; }
-[part="Profile.action"], [part="Profile.retry"] { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); white-space: normal; text-align: center; padding-block: var(--space-xs); }
+[part="Profile.action"], [part="Profile.retry"] { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; white-space: normal; text-align: center; padding-block: var(--space-xs); }
 [part="Profile.action"]:hover, [part="Profile.retry"]:hover { background: var(--party-button-hover-fill); }
 [part="Profile.action"]:focus-visible, [part="Profile.retry"]:focus-visible { box-shadow: var(--party-focus-rim); }
 [part="Profile.action"]:disabled { opacity: 0.45; }

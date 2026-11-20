@@ -31,7 +31,7 @@
 <style>
 #Notifications { display: flex; flex-direction: column; align-items: end; gap: var(--space-sm); block-size: stretch; padding: calc(env(-og-hud-inset-top) + var(--space-lg)) calc(env(-og-hud-inset-right) + var(--space-lg)) calc(env(-og-hud-inset-bottom) + var(--space-lg)) calc(env(-og-hud-inset-left) + var(--space-lg)); }
 /* A plate with two corners cut, its tone's rail and wash at its leading edge. */
-.note { position: relative; border-radius: 0; display: flex; align-items: center; gap: var(--space-md); inline-size: var(--measure-md); max-inline-size: 100%; padding: var(--space-sm) var(--space-xs) var(--space-sm) calc(var(--alert-rail) + var(--space-md)); background: var(--alert-info-wash), var(--alert-plate-fill); box-shadow: var(--alert-plate-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); animation: arrive var(--motion-enter) both; }
+.note { position: relative; display: flex; align-items: center; gap: var(--space-md); inline-size: var(--measure-md); max-inline-size: 100%; padding: var(--space-sm) var(--space-xs) var(--space-sm) calc(var(--alert-rail) + var(--space-md)); background: var(--alert-info-wash), var(--alert-plate-fill); box-shadow: var(--alert-plate-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; animation: arrive var(--motion-enter) both; }
 .note::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; inline-size: var(--alert-rail); background: var(--alert-info); }
 .note[data-tone=success] { background: var(--alert-success-wash), var(--alert-plate-fill); }
 .note[data-tone=success]::before { background: var(--alert-success); }

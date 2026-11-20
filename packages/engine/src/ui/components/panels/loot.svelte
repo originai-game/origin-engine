@@ -46,7 +46,7 @@
 
 <style>
 /* The frame: two corners cut, a lit top edge. */
-[part="RpgLoot.frame"] { position: relative; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="RpgLoot.frame"] { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 h2, h3, p { margin: 0; }
 .band { flex: none; width: stretch; }
@@ -56,7 +56,7 @@ h2, h3, p { margin: 0; }
 .wait { flex: none; padding: var(--space-sm); }
 [part="RpgLoot.items"] { list-style: none; margin: 0; padding: 0; gap: var(--space-xs); }
 /* A row: the item's rarity on its leading edge, its icon in a socket. */
-.row { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); position: relative; flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-sm); row-gap: var(--space-xs); padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md); border-radius: 0; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-rarity); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.row { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); position: relative; flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-sm); row-gap: var(--space-xs); padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-rarity); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .row:hover { background: var(--inv-row-hover-fill); }
 .row:focus-within { background: var(--inv-row-on-fill); box-shadow: var(--inv-row-on-rim); }
 .row[data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
@@ -65,7 +65,7 @@ h2, h3, p { margin: 0; }
 .row[data-rarity=legendary] { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
 .row[data-rarity=mythic] { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
 .row[data-available=false] .socket, .row[data-available=false] .name, .row[data-available=false] .count { opacity: var(--disabled-content-opacity); }
-.socket { flex: none; align-self: flex-start; inline-size: calc(48 * var(--font-step-px)); block-size: calc(48 * var(--font-step-px)); background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.socket { flex: none; align-self: flex-start; inline-size: calc(48 * var(--font-step-px)); block-size: calc(48 * var(--font-step-px)); background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RpgLoot.icon"] { inline-size: 78%; block-size: 78%; filter: var(--inv-slot-art-shadow); }
 .detail { min-width: 0; }
 /* The count sits on the name's line, whatever the lines under it wrap to. */

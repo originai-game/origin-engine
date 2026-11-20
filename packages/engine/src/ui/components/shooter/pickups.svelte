@@ -34,7 +34,7 @@
 [data-rarity=rare] .edge { background: var(--hud-rare); }
 [data-rarity=epic] .edge { background: var(--hud-epic); }
 [data-rarity=legendary] .edge { background: var(--hud-legendary); }
-.art { flex: none; margin-block: calc(2 * var(--font-step-px)); inline-size: calc(22 * var(--font-step-px)); block-size: calc(22 * var(--font-step-px)); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.art { flex: none; margin-block: calc(2 * var(--font-step-px)); inline-size: calc(22 * var(--font-step-px)); block-size: calc(22 * var(--font-step-px)); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .picture { object-fit: cover; }
 .glyph { color: var(--hud-ink); }
 .item { min-inline-size: 0; font-size: var(--hud-size-feed); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }

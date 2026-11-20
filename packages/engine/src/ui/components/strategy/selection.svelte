@@ -71,8 +71,8 @@
 /* The portrait, its health bar and figures. The portrait is art: it keeps
    its size at any text scale. */
 .lead { display: flex; flex-direction: column; align-items: stretch; row-gap: calc(5 * var(--font-step-px)); flex: none; min-inline-size: var(--portrait); }
-.portrait { align-self: center; inline-size: var(--portrait); block-size: var(--portrait); padding: calc(2 * var(--font-step-px)); box-sizing: border-box; background: var(--hud-ready-edge); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
-.portrait-face { display: flex; align-items: center; justify-content: center; inline-size: 100%; block-size: 100%; overflow: hidden; background: var(--hud-plate-fill); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.portrait { align-self: center; inline-size: var(--portrait); block-size: var(--portrait); padding: calc(2 * var(--font-step-px)); box-sizing: border-box; background: var(--hud-ready-edge); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.portrait-face { display: flex; align-items: center; justify-content: center; inline-size: 100%; block-size: 100%; overflow: hidden; background: var(--hud-plate-fill); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .portrait-face .art { inline-size: 100%; block-size: 100%; object-fit: cover; }
 .mark { inline-size: 55%; block-size: 55%; color: var(--hud-glyph); filter: var(--hud-glyph-shadow); }
 .health { position: relative; block-size: calc(7 * var(--font-step-px)); overflow: hidden; background: var(--bar-well); box-shadow: var(--bar-rim); }
@@ -91,7 +91,7 @@
 .count { flex: none; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; color: var(--hud-ink-dim); }
 .line { min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .stats { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; column-gap: calc(5 * var(--font-step-px)); row-gap: calc(4 * var(--font-step-px)); flex: 0 1 auto; min-inline-size: 0; max-inline-size: 100%; }
-.stat, .status { flex: 0 1 auto; min-inline-size: 0; padding: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.stat, .status { flex: 0 1 auto; min-inline-size: 0; padding: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .status { color: var(--hud-gold); }
 /* The cards: one row while every card fits on it (the panel's width,
    100cqi), else two even rows (12 as 6 and 6, never 10 and an orphaned
@@ -99,18 +99,18 @@
    size at any text scale. */
 .roster { --slot: calc(var(--card) + 4 * var(--font-step-px)); --all: calc(var(--n) * var(--slot) - 4 * var(--font-step-px)); --half: calc((var(--n) + 1) / 2 * var(--slot) - 4 * var(--font-step-px)); display: flex; flex-wrap: wrap; align-content: flex-start; gap: calc(4 * var(--font-step-px)); min-inline-size: 0; max-inline-size: calc(var(--half) + clamp(0px, (100cqi - var(--all)) * 1000, var(--all) - var(--half))); max-block-size: calc(var(--card) * 2 + 4 * var(--font-step-px)); overflow-y: auto; }
 .card { flex: none; padding: 0; border: 0; border-radius: 0; inline-size: var(--card); block-size: var(--card); min-inline-size: 0; color: var(--hud-ink); }
-.card::part(base) { padding: calc(2 * var(--font-step-px)); border: 0; border-radius: 0; background: var(--hud-edge); box-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.card::part(base) { padding: calc(2 * var(--font-step-px)); border: 0; background: var(--hud-edge); box-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .card[aria-selected=true]::part(base) { background: var(--hud-ready-edge); }
 /* The face is sized from the card: an option button's content box gives
    a stretched or percentage child no width. */
-.card-face { position: relative; inline-size: calc(var(--card) - 4 * var(--font-step-px)); block-size: calc(var(--card) - 4 * var(--font-step-px)); overflow: hidden; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.card-face { position: relative; inline-size: calc(var(--card) - 4 * var(--font-step-px)); block-size: calc(var(--card) - 4 * var(--font-step-px)); overflow: hidden; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .card-face .art { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .blank-art { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; display: flex; align-items: center; justify-content: center; background: var(--hud-plate-fill); }
 .card-mark { inline-size: 60%; block-size: 60%; color: var(--hud-glyph); }
 .stack { position: absolute; right: 0; top: 0; padding: 0 calc(2 * var(--font-step-px)); font-size: var(--hud-size-label-compact); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); white-space: nowrap; background: var(--hud-tag-fill); }
 /* The count of the cards a phone leaves out, a tile of the cards' size;
    a desktop shows every card. */
-.more { display: none; flex: none; align-items: center; justify-content: center; inline-size: var(--card); block-size: var(--card); box-sizing: border-box; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.more { display: none; flex: none; align-items: center; justify-content: center; inline-size: var(--card); block-size: var(--card); box-sizing: border-box; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* A card's health: a thin bar inset at its foot. */
 .meter { position: absolute; left: calc(3 * var(--font-step-px)); right: calc(3 * var(--font-step-px)); bottom: calc(3 * var(--font-step-px)); block-size: calc(3 * var(--font-step-px)); overflow: hidden; background: var(--hud-line-well); }
 .meter-fill { position: absolute; left: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--hud-boon); }

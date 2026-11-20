@@ -96,7 +96,7 @@
 
 <style>
 :host { inline-size: stretch; block-size: auto; min-inline-size: 0; max-block-size: 100%; min-block-size: 0; }
-[part="IdlePrestige.frame"] { position: relative; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="IdlePrestige.frame"] { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 .kicker { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--inv-kicker-size); font-weight: var(--hud-label-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--hud-label-ink); }
 [part="IdlePrestige.band"] { width: stretch; flex: none; align-items: flex-start; }
@@ -113,7 +113,7 @@
 .figure { max-inline-size: 100%; overflow-wrap: anywhere; font-size: var(--play-figure-lg-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--ink-bright); }
 .figure[data-tag=gain] { text-align: end; color: var(--play-epic-ink); }
 .rows { width: stretch; margin: 0; padding: 0; list-style: none; }
-[part="IdlePrestige.row"] { width: stretch; align-items: center; padding: var(--space-xxs) var(--space-sm); min-height: var(--size-md); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+[part="IdlePrestige.row"] { width: stretch; align-items: center; padding: var(--space-xxs) var(--space-sm); min-height: var(--size-md); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .row-icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .name { flex: 1; min-width: 0; text-align: start; overflow-wrap: anywhere; font-weight: var(--inv-name-weight); color: var(--ink-bright); }
 .readouts { flex: none; justify-content: flex-end; align-items: center; }
@@ -125,7 +125,7 @@
 [part="IdlePrestige.requirement"] { padding: var(--space-sm); background: var(--play-well-fill); box-shadow: var(--play-well-rim); }
 .req-line, .bar-line { width: stretch; align-items: center; }
 .req-text { flex: 1; min-width: 0; text-align: start; overflow-wrap: anywhere; color: var(--ink-bright); }
-.tag { flex: none; align-items: center; padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); background: var(--hud-tag-fill); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.tag { flex: none; align-items: center; padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); background: var(--hud-tag-fill); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .tag[data-met=true] { color: var(--play-auto-ink); background: var(--play-auto-fill); }
 .req-mark { width: calc(var(--size-xs) * 0.75); height: calc(var(--size-xs) * 0.75); flex: none; }
 .track { position: relative; min-width: var(--size-lg); block-size: calc(10 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); }

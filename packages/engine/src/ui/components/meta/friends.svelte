@@ -81,9 +81,9 @@
 .rows { width: stretch; margin: 0; padding: 0; list-style: none; }
 [part~="Friends.request"], .friend { width: stretch; }
 /* A request: a cut card washed gold, Accept on the reward's gold face. */
-[part~="Friends.request"] { padding: var(--space-xs) var(--space-sm); background: var(--quest-ready-fill); box-shadow: var(--quest-ready-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+[part~="Friends.request"] { padding: var(--space-xs) var(--space-sm); background: var(--quest-ready-fill); box-shadow: var(--quest-ready-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* A friend: a cut row; the one chosen washed gold with a gold bar. */
-button[part="Friends.row"] { min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; border-radius: 0; background: none; box-shadow: none; clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+button[part="Friends.row"] { min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; background: none; box-shadow: none; border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --button-radius: var(--quest-cut) 0; --button-corner-shape: var(--cut-shape); }
 button[part="Friends.row"]:hover { background: var(--quest-entry-fill); }
 button[part="Friends.row"][data-selected=true] { background: var(--quest-selected-fill); box-shadow: var(--quest-selected-rim); }
 [part="Friends.row"] .face { width: stretch; }

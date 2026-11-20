@@ -92,12 +92,12 @@
 .words { align-items: flex-start; min-width: 0; }
 /* The marks: cut tags, Cleared in the accent, Failed in danger, a full
    combo and all perfect in the chart's special ramp, a new best in gold. */
-[part="RhythmResults.badge"] { white-space: nowrap; padding: 0 var(--space-sm); font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent-ink); background: var(--hud-key-lit-fill); box-shadow: none; border-radius: 0; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+[part="RhythmResults.badge"] { white-space: nowrap; padding: 0 var(--space-sm); font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent-ink); background: var(--hud-key-lit-fill); box-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RhythmResults.badge"][data-tag=failed] { color: var(--hud-ink); background: var(--bar-danger); }
 [part="RhythmResults.badge"][data-tag=fullCombo], [part="RhythmResults.badge"][data-tag=allPerfect] { color: var(--chart-ink); background: var(--chart-special); }
 [part="RhythmResults.badge"][data-tag=newBest] { font-size: var(--hud-tag-size); color: var(--result-medal-ink); background: var(--hud-key-gold-fill); }
 /* Plates: the score, the max combo, the accuracy and the tally. */
-.score-cell, .stat, .counts { background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.score-cell, .stat, .counts { background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .score-cell { flex: 1 1 auto; max-width: stretch; min-width: 0; align-items: flex-start; padding: var(--space-md) var(--space-lg); }
 .score { font-size: var(--result-size-score); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 [part="RhythmResults.caption"] { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }

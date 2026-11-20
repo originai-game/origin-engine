@@ -65,7 +65,7 @@
 #Groups { width: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; --layout-tile: calc(var(--size-xxl) * 3); align-content: start; }
 .group { min-width: 0; }
 .category { margin: 0; padding-block-end: var(--space-xs); font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); color: var(--hud-ink); box-shadow: var(--party-rule-strong); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
-.item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); min-width: 0; border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-tile-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); min-width: 0; border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-tile-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .item:hover { box-shadow: var(--party-tile-hover-rim); }
 .item:focus-visible { box-shadow: var(--party-focus-rim); }
 .item[aria-selected=true] { background: var(--party-card-on-fill); box-shadow: var(--party-on-rim); }
@@ -77,7 +77,7 @@
 .detail { text-align: start; white-space: nowrap; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); text-shadow: none; }
 /* Equipped is a tag on the detail line, so every row's price stands alone at its end
    and the name keeps the row's width. */
-.badge { flex: 0 1 auto; max-width: stretch; padding: 0 var(--space-xs); border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--party-ready-ink); background: var(--party-ready-fill); box-shadow: none; overflow-wrap: break-word; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.badge { flex: 0 1 auto; max-width: stretch; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--party-ready-ink); background: var(--party-ready-fill); box-shadow: none; overflow-wrap: break-word; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .cost { flex: none; }
 .price { white-space: nowrap; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-gold); text-shadow: none; }
 .item:disabled .price { color: var(--hud-ink-dim); }
@@ -88,7 +88,7 @@
 #Fade { grid-column: 1 / -1; position: sticky; bottom: 0; margin-top: calc(var(--fade-size) * -1); opacity: 0; }
 @container scroll-state(scrollable: bottom) { #Fade { opacity: 1; } }
 #Actions { justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
-#Actions button { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); min-width: calc(var(--size-xxl) * 1.25); }
+#Actions button { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --button-radius: var(--hud-plate-cut) 0; --button-corner-shape: var(--cut-shape); min-width: calc(var(--size-xxl) * 1.25); }
 #Actions button:hover { background: var(--party-button-hover-fill); }
 #Actions button:focus-visible { box-shadow: var(--party-focus-rim); }
 #Actions button:disabled { opacity: 0.45; }

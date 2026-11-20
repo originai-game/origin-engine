@@ -94,7 +94,7 @@ h1, p { margin: 0; }
 #Body { flex: 1; min-block-size: 0; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-rows: minmax(0, 1fr); column-gap: var(--space-3xl); }
 #Slots { min-block-size: 0; overflow: hidden auto; margin: calc(var(--space-xs) * -1); padding: var(--space-xs); }
 #List { display: flex; flex-direction: column; row-gap: var(--space-sm); }
-[part="save-load.row"] { position: relative; display: flex; align-items: center; column-gap: var(--space-lg); padding: var(--space-sm); border: 0; border-radius: 0; background: var(--system-row-fill); box-shadow: var(--system-row-rim); clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+[part="save-load.row"] { position: relative; display: flex; align-items: center; column-gap: var(--space-lg); padding: var(--space-sm); border: 0; background: var(--system-row-fill); box-shadow: var(--system-row-rim); border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="save-load.row"]:hover, [part="save-load.row"]:focus-visible { background: var(--system-row-on-fill); }
 .selection-on { background: var(--system-row-on-fill); box-shadow: var(--system-slot-on-rim); }
 [part="save-load.thumb"] { flex: none; inline-size: calc(150 * var(--font-step-px)); aspect-ratio: 1.78; block-size: auto; object-fit: cover; }
@@ -110,7 +110,7 @@ h1, p { margin: 0; }
 [part="save-load.row"]:has(#Empty) [part="save-load.thumb"] { display: none; }
 [part="save-load.row"]:has(#Empty) #Text { padding-inline-end: 0; }
 [part="save-load.tag"] { position: absolute; inset-block-start: var(--space-sm); inset-inline-end: var(--space-md); padding: var(--space-xxs) var(--space-sm); font-size: var(--hud-tag-size); font-weight: var(--font-weight-bold); letter-spacing: var(--hud-label-tracking); text-transform: uppercase; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
-[part="save-load.detail"] { min-block-size: 0; display: flex; flex-direction: column; row-gap: var(--space-sm); padding: var(--space-lg); overflow: hidden auto; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+[part="save-load.detail"] { min-block-size: 0; display: flex; flex-direction: column; row-gap: var(--space-sm); padding: var(--space-lg); overflow: hidden auto; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* No slot chosen: no plate, only the actions at the foot. */
 [part="save-load.detail"]:not(:has([part="save-load.shot"])) { background: none; box-shadow: none; }
 [part="save-load.shot"] { flex: none; inline-size: 100%; aspect-ratio: 1.78; block-size: auto; object-fit: cover; margin-block-end: var(--space-xs); box-shadow: var(--system-slot-empty-rim); }
@@ -125,7 +125,7 @@ h1, p { margin: 0; }
 [part="save-load.actions"] { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--space-sm); margin-block-start: auto; padding-block-start: var(--space-md); }
 button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: calc(16 * var(--font-step-px)); --button-tracking: var(--font-tracking-md); --button-transform: uppercase; flex: 1 1 calc(120 * var(--font-step-px)); min-inline-size: 0; }
 button.plate, button.plate::part(base) { block-size: var(--control-lg); }
-button.plate::part(base) { border-width: 0; clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+button.plate::part(base) { border-width: 0; border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 #New { --button-fill: var(--hud-plate-fill); --button-hover-fill: var(--hud-plate-fill); --button-base-shadow: var(--system-plate-edge); --button-hover-shadow: var(--system-plate-lit-edge); --button-rim: transparent; --button-hover-rim: transparent; --button-ink: var(--front-ink); --button-hover-ink: var(--front-ink); }
 @media (width < 600px), (height < 600px) {
   :root { row-gap: var(--space-md); padding: var(--space-lg) var(--space-lg) var(--space-md); }

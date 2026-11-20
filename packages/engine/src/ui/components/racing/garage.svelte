@@ -107,10 +107,10 @@
 .body { width: stretch; min-height: 0; overflow-y: auto; align-items: safe flex-end; justify-content: space-between; -og-scroll-fade: var(--space-xl); --layout-switch-at: calc(var(--party-garage-side) * 2); }
 .show { align-items: flex-start; min-width: 0; max-width: stretch; }
 [part="RacingGarage.hero RacingGarage.picture"] { width: stretch; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; --layout-gap-hair: var(--space-xs); }
-.well { order: -2; width: stretch; aspect-ratio: 3.2; border-radius: 0; background: var(--party-open-row); box-shadow: var(--party-seat-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+.well { order: -2; width: stretch; aspect-ratio: 3.2; background: var(--party-open-row); box-shadow: var(--party-seat-rim); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .hero-body { order: -1; width: stretch; text-align: start; font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); color: var(--hud-accent); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
 .hero-name { width: stretch; text-align: start; font-size: var(--party-size-car); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-style: var(--hud-figure-slant); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
-.steps button { width: var(--size-touch); height: var(--size-touch); padding: 0; border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.steps button { width: var(--size-touch); height: var(--size-touch); padding: 0; border: 0; color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --button-radius: var(--hud-plate-cut) 0; --button-corner-shape: var(--cut-shape); }
 .steps button:hover { background: var(--party-button-hover-fill); }
 .steps button:focus-visible { box-shadow: var(--party-focus-rim); }
 .next-icon { rotate: 180deg; }
@@ -119,10 +119,10 @@
 .count { min-width: var(--size-xl); text-align: center; white-space: nowrap; font-size: var(--hud-size-readout); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); text-shadow: var(--front-shadow); }
 /* The card takes the ratings' share beside the car, or the whole width
    once the garage is too narrow for both at the player's text size. */
-.side { flex-grow: 0.6; box-sizing: border-box; max-width: stretch; padding: var(--space-md); background: var(--party-card-fill); box-shadow: var(--party-card-rim); --layout-gap-wide: var(--space-md); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+.side { flex-grow: 0.6; box-sizing: border-box; max-width: stretch; padding: var(--space-md); background: var(--party-card-fill); box-shadow: var(--party-card-rim); --layout-gap-wide: var(--space-md); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RacingGarage.row"] { border-radius: 0; background: none; }
 .actions { justify-content: flex-end; }
-.actions button, #EmptyBack { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.actions button, #EmptyBack { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --button-radius: var(--hud-plate-cut) 0; --button-corner-shape: var(--cut-shape); }
 .actions button { flex: 1 1 auto; flex-wrap: wrap; min-width: calc(var(--size-xxl) * 1.25); padding-block: var(--space-xxs); }
 .actions button:hover, #EmptyBack:hover { background: var(--party-button-hover-fill); }
 .actions button:focus-visible, #EmptyBack:focus-visible { box-shadow: var(--party-focus-rim); }
@@ -132,14 +132,14 @@
 /* The strip scrolls inside the garage's width and never widens it. */
 .tiles-scroll { overflow-x: auto; min-width: 0; flex: none; contain: inline-size; }
 .tiles { padding: var(--space-xxs); align-items: stretch; }
-[part="RacingGarage.tile RacingGarage.cell"] { flex: none; width: var(--party-garage-tile); min-height: var(--size-xl); padding: var(--space-xs) var(--space-sm); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-tile-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="RacingGarage.tile RacingGarage.cell"] { flex: none; width: var(--party-garage-tile); min-height: var(--size-xl); padding: var(--space-xs) var(--space-sm); border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-tile-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RacingGarage.tile RacingGarage.cell"]:hover { box-shadow: var(--party-tile-hover-rim); }
 [part="RacingGarage.tile RacingGarage.cell"]:focus-visible { box-shadow: var(--party-focus-rim); }
 [part="RacingGarage.tile RacingGarage.cell"][aria-selected=true] { background: var(--party-card-on-fill); box-shadow: var(--party-on-rim); }
 [part="RacingGarage.tile RacingGarage.cell"][data-locked=true] { color: var(--hud-ink-dim); }
 [part="RacingGarage.tile RacingGarage.cell"] .face { width: stretch; align-items: flex-start; }
 .name { width: stretch; text-align: start; font-size: var(--hud-size-xs); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
-.tag { max-width: stretch; padding: 0 var(--space-xs); border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); overflow-wrap: break-word; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.tag { max-width: stretch; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); overflow-wrap: break-word; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .tag[data-tag=driving] { color: var(--party-go-ink); background: var(--hud-accent); box-shadow: none; }
 .tag[data-tag=price] { color: var(--hud-gold); }
 .tag[data-tag=locked] { color: var(--hud-ink-dim); }

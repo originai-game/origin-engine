@@ -56,7 +56,7 @@
 </section>
 
 <style>
-:host { position: relative; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+:host { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="CardDeckList.band"] { width: stretch; justify-content: flex-start; flex: none; }
 [part="CardDeckList.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="CardDeckList.size"] { grid-template-columns: 1fr auto; width: stretch; flex: none; align-items: baseline; padding: 0 var(--space-xs); }

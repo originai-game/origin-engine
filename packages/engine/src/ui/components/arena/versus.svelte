@@ -92,7 +92,7 @@
 .rank { inline-size: stretch; text-align: start; font-size: var(--hud-size-xs); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: 0; text-transform: none; color: var(--hud-gold); overflow-wrap: break-word; }
 [data-local=true] .character, [data-local=true] .rank { color: var(--party-lit-dim); }
 .b .name, .b .character, .b .rank { text-align: end; }
-.you { align-self: flex-start; flex: none; padding: 0 var(--space-xs); border: 0; border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); white-space: nowrap; }
+.you { align-self: flex-start; flex: none; padding: 0 var(--space-xs); border: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; white-space: nowrap; }
 .b .you { align-self: flex-end; }
 .waiting { margin: 0; padding: var(--space-lg); text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); text-shadow: var(--hud-shadow); }
 .seal { --layout-ratio: 0.87; flex: none; inline-size: calc(var(--party-size-seal) * 2); filter: var(--party-seal-glow); overflow: visible; }

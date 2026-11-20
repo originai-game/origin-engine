@@ -81,7 +81,7 @@
 
 <style>
 /* The frame: two corners cut, a lit top edge. */
-[part="RpgBackpack.frame"] { position: relative; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="RpgBackpack.frame"] { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 [part="RpgBackpack.band"] { width: stretch; flex: none; align-items: flex-end; }
 .heading { min-width: 0; flex-basis: calc(120 * var(--font-step-px)); }
@@ -114,14 +114,14 @@
 [part="RpgBackpack.cell"][data-rarity=epic] { --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); --inv-rarity: var(--epic); }
 [part="RpgBackpack.cell"][data-rarity=legendary] { --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); --inv-rarity: var(--legendary); }
 [part="RpgBackpack.cell"][data-rarity=mythic] { --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); --inv-rarity: var(--mythic); }
-.tile { position: relative; width: stretch; height: stretch; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+.tile { position: relative; width: stretch; height: stretch; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RpgBackpack.cell"] { --inv-base-rim: var(--inv-socket-rim); }
 [part="RpgBackpack.cell"]:hover .tile { --inv-socket-rim: var(--inv-slot-hover-rim), var(--inv-base-rim); }
 [part="RpgBackpack.cell"][aria-selected=true] .tile { --inv-socket-rim: var(--inv-slot-selected-rim), var(--inv-base-rim); }
 .art { width: 68%; height: 68%; filter: var(--inv-slot-art-shadow); }
 [data-broken=true] .art { filter: var(--inv-slot-broken-art); }
 .bar { position: absolute; inset-inline: var(--inv-slot-cut); bottom: 0; block-size: var(--stroke-thick); color: var(--inv-rarity); background: currentColor; box-shadow: var(--inv-slot-bar-glow); }
-.tag { position: absolute; padding: 0 var(--space-xxs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); line-height: 1.35; color: var(--ink-bright); background: var(--inv-tag-fill); box-shadow: var(--inv-tag-rim); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); white-space: nowrap; }
+.tag { position: absolute; padding: 0 var(--space-xxs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); line-height: 1.35; color: var(--ink-bright); background: var(--inv-tag-fill); box-shadow: var(--inv-tag-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; white-space: nowrap; }
 .stack { inset-inline-end: var(--space-xs); bottom: var(--space-sm); }
 .equipped { inset-inline-start: var(--space-xs); top: var(--space-xs); padding: 0 var(--space-xs); color: var(--inv-equipped-ink); background: var(--inv-equipped-fill); box-shadow: none; }
 .locked { inset-inline-end: var(--space-xs); top: var(--space-xs); inline-size: calc(20 * var(--font-step-px)); block-size: calc(20 * var(--font-step-px)); padding: 0; }

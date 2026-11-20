@@ -64,7 +64,7 @@ h1, h2, p { margin: 0; }
    words, two corners are cut and the rim is drawn over the art. The card
    itself is not cut, so its glow and its focus ring fall outside. */
 [part="mode-select.cell"] { position: relative; display: flex; border: 0; background: none; border-radius: 0; box-shadow: none; }
-[part="mode-select.plate"] { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: end; overflow: hidden; clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+[part="mode-select.plate"] { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: end; overflow: hidden; border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="mode-select.plate"]::after { content: ""; position: absolute; inset: 0; box-shadow: var(--front-card-rim); }
 [part="mode-select.cell"]:hover, [part="mode-select.cell"]:focus-visible { translate: 0 var(--state-lift); }
 [part="mode-select.cell"]:active { translate: 0 0; }
@@ -82,7 +82,7 @@ h1, h2, p { margin: 0; }
 #Line { font-size: calc(17 * var(--font-step-px)); line-height: var(--font-leading-snug); color: var(--front-ink-dim); line-clamp: 2; }
 [part="mode-select.lock"] { display: flex; align-items: center; column-gap: var(--space-xs); font-size: calc(14 * var(--font-step-px)); font-weight: var(--font-weight-semibold); color: var(--front-lock-ink); }
 .lock { flex: none; inline-size: var(--size-xs); block-size: var(--size-xs); }
-[part="mode-select.tag"] { position: absolute; inset-block-start: var(--space-lg); inset-inline-end: var(--space-lg); max-inline-size: calc(100% - 2 * var(--space-lg)); padding: var(--space-xxs) var(--space-sm); font-size: var(--hud-tag-size); font-weight: var(--font-weight-bold); letter-spacing: var(--hud-label-tracking); text-transform: uppercase; color: var(--front-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part="mode-select.tag"] { position: absolute; inset-block-start: var(--space-lg); inset-inline-end: var(--space-lg); max-inline-size: calc(100% - 2 * var(--space-lg)); padding: var(--space-xxs) var(--space-sm); font-size: var(--hud-tag-size); font-weight: var(--font-weight-bold); letter-spacing: var(--hud-label-tracking); text-transform: uppercase; color: var(--front-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="mode-select.tag"].fresh { color: var(--front-tag-on-ink); background: var(--front-tag-on-fill); }
 #Footer { display: flex; justify-content: end; }
 /* Play: the screen's one lit plate, cut at two corners like the cards,

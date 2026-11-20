@@ -47,6 +47,6 @@
 [data-valid=false] .cell[data-blocked=true] { background: var(--world-blocked-cell); }
 /* The badge under the footprint: a dark tag, upright, a text box,
    hanging below its point. */
-.badge { display: block; translate: 0 100%; padding: calc(2 * var(--font-step-px)) calc(8 * var(--font-step-px)); font-size: var(--world-size-badge); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--world-caps-stretch); letter-spacing: var(--world-caps-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--world-friendly-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.badge { display: block; translate: 0 100%; padding: calc(2 * var(--font-step-px)) calc(8 * var(--font-step-px)); font-size: var(--world-size-badge); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--world-caps-stretch); letter-spacing: var(--world-caps-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--world-friendly-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .badge[data-valid=false] { color: var(--world-hostile-ink); }
 </style>

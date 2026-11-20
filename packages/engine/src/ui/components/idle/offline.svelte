@@ -54,7 +54,7 @@
 
 <style>
 :host { inline-size: stretch; min-inline-size: 0; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; }
-[part="IdleOffline.frame"] { position: relative; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="IdleOffline.frame"] { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 .kicker { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--inv-kicker-size); font-weight: var(--hud-label-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--hud-label-ink); }
 [part="IdleOffline.band"] { width: stretch; flex: none; align-items: flex-start; }
@@ -66,7 +66,7 @@
 .body { overflow-y: auto; flex: 0 1 auto; min-height: 0; }
 .haul { width: stretch; margin: 0; padding: 0; list-style: none; }
 /* A haul socket: glowing gold from its foot, cut at two corners. */
-[part="IdleOffline.haul"] { flex: 1 1 0; align-items: center; min-inline-size: calc(var(--size-xl) * 1.7); max-inline-size: calc(var(--size-xl) * 3); padding: var(--space-xs); background: var(--play-haul-fill); box-shadow: var(--inv-row-rim); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+[part="IdleOffline.haul"] { flex: 1 1 0; align-items: center; min-inline-size: calc(var(--size-xl) * 1.7); max-inline-size: calc(var(--size-xl) * 3); padding: var(--space-xs); background: var(--play-haul-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .socket { inline-size: var(--size-lg); block-size: var(--size-lg); }
 .icon { width: 100%; height: 100%; filter: var(--inv-slot-art-shadow); }
 .amount { max-inline-size: 100%; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--play-figure-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--ink-bright); }

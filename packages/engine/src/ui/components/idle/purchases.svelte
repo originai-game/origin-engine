@@ -72,7 +72,7 @@
 <style>
 :host { inline-size: stretch; block-size: stretch; min-block-size: 0; }
 /* The frame: two corners cut, a lit top edge (the shop family's look). */
-[part="IdlePurchases.frame"] { position: relative; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="IdlePurchases.frame"] { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 [part="IdlePurchases.band"] { width: stretch; flex: none; align-items: flex-end; }
 [part="IdlePurchases.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
@@ -84,9 +84,9 @@
 .rows-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 .rows { width: stretch; margin: 0; padding: 0; padding-block-end: var(--space-lg); list-style: none; }
 /* A row: cut at two corners, its socket, words, then its state and Buy. */
-[part="IdlePurchases.row"] { padding: var(--space-xs) var(--space-sm); align-items: center; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-accent); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+[part="IdlePurchases.row"] { padding: var(--space-xs) var(--space-sm); align-items: center; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-accent); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="IdlePurchases.row"][data-locked=true] .art, [part="IdlePurchases.row"][data-locked=true] .body { opacity: var(--disabled-content-opacity); }
-.art { flex: none; inline-size: calc(48 * var(--font-step-px)); block-size: calc(48 * var(--font-step-px)); background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.art { flex: none; inline-size: calc(48 * var(--font-step-px)); block-size: calc(48 * var(--font-step-px)); background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .icon { width: 64%; height: 64%; filter: var(--inv-slot-art-shadow); }
 .body { min-width: 0; }
 .line { width: stretch; min-width: 0; align-items: center; }
@@ -94,7 +94,7 @@
 [part~="IdlePurchases.effect"] { margin: 0; text-align: start; overflow-wrap: anywhere; }
 /* Small words: the level as a chip; a refusal in its tone on a wash of it. */
 [part="IdlePurchases.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); border-radius: var(--inv-chip-radius); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); color: var(--ink-label); background: var(--inv-tab-count-fill); box-shadow: none; }
-[part="IdlePurchases.badge"]:not([data-tag=level]) { border-radius: 0; letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); color: var(--shop-sold-ink); background: var(--shop-sold-fill); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+[part="IdlePurchases.badge"]:not([data-tag=level]) { letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); color: var(--shop-sold-ink); background: var(--shop-sold-fill); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="IdlePurchases.badge"][data-tag=short] { color: var(--shop-short-ink); background: var(--shop-short-fill); }
 .end { flex: none; align-items: flex-end; max-width: 50%; }
 /* Buy: how many over what they cost; refused, a wash of the danger. */

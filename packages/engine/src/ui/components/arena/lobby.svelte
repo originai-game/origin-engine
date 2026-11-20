@@ -66,13 +66,13 @@
    an octagon portrait, the local player's lit along its top in the
    accent, an open seat a faint wash; Ready is green, with a glow. */
 :host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; color: var(--hud-ink); }
-[part="ArenaLobby.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="ArenaLobby.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="ArenaLobby.band"] { width: stretch; align-items: baseline; flex: none; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 [part="ArenaLobby.title"] { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; }
 .detail { min-width: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); overflow-wrap: break-word; }
 .list { overflow-y: auto; flex: 1; min-height: 0; -og-scroll-fade: var(--space-xl); }
 .rows { width: stretch; }
-[part="ArenaLobby.row"] { padding: var(--space-xs) var(--space-sm); min-height: var(--size-touch); border-radius: 0; color: var(--hud-ink); background: var(--result-row-fill); box-shadow: var(--party-seat-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="ArenaLobby.row"] { padding: var(--space-xs) var(--space-sm); min-height: var(--size-touch); color: var(--hud-ink); background: var(--result-row-fill); box-shadow: var(--party-seat-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="ArenaLobby.row"][data-local=true] { box-shadow: var(--hud-plate-lit-rim); }
 [part="ArenaLobby.row"][data-open=true] { background: var(--party-open-row); }
 [part="ArenaLobby.portrait ArenaLobby.picture"] { flex: none; box-sizing: border-box; padding: var(--stroke-thick); border: 0; border-radius: 0; background: var(--hud-edge); box-shadow: none; clip-path: var(--hud-octagon); overflow: hidden; inline-size: var(--party-portrait); block-size: var(--party-portrait); }
@@ -85,13 +85,13 @@
 .name { text-align: start; font-size: var(--hud-size-name); line-height: 1.15; font-weight: var(--hud-figure-weight); color: var(--hud-ink); overflow-wrap: break-word; }
 [data-open=true] .name { color: var(--hud-ink-dim); }
 .tags { flex-wrap: wrap; }
-.tag { flex: none; padding: 0 var(--space-xs); border: 0; border-radius: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); white-space: nowrap; }
+.tag { flex: none; padding: 0 var(--space-xs); border: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; white-space: nowrap; }
 .tag[data-tag=host] { color: var(--party-gold-ink); background: var(--hud-key-gold-fill); box-shadow: none; }
 .tag[data-tag=you] { color: var(--party-go-ink); background: var(--hud-accent); box-shadow: none; }
 [part="ArenaLobby.state ArenaLobby.label"] { flex: none; white-space: nowrap; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink-dim); }
 [part="ArenaLobby.state ArenaLobby.label"][data-ready=true] { color: var(--party-ready); filter: var(--party-ready-glow); }
 .check { width: var(--size-xs); height: var(--size-xs); }
-button { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; border-radius: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+button { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --button-radius: var(--hud-plate-cut) 0; --button-corner-shape: var(--cut-shape); }
 button:hover { background: var(--party-button-hover-fill); }
 button:focus-visible { box-shadow: var(--party-focus-rim); }
 button:disabled { opacity: 0.45; }

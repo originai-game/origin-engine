@@ -34,7 +34,7 @@ h2, h3, p { margin: 0; }
 [part="RpgConversationBacklog.title"] { flex: 1 1 auto; }
 /* A line: a cut card; the speaker in gold small capitals, narration
    quiet and in italics; the line replaying washed gold with a gold bar. */
-[part="RpgConversationBacklog.row"] { flex: none; padding: var(--space-sm) var(--space-md); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+[part="RpgConversationBacklog.row"] { flex: none; padding: var(--space-sm) var(--space-md); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RpgConversationBacklog.row"][data-playing=true] { background: var(--quest-ready-fill); box-shadow: var(--quest-ready-rim); }
 [part~="RpgConversationBacklog.speaker"] { overflow-wrap: anywhere; font: var(--caption-text); font-weight: var(--quest-weight); font-variant-caps: var(--alert-speaker-caps); letter-spacing: var(--hud-label-tracking); color: var(--quest-gold); }
 [part~="RpgConversationBacklog.speaker"][data-narration=true] { color: var(--quest-ink-quiet); }

@@ -97,7 +97,7 @@
 .objective-text { min-inline-size: 0; overflow-wrap: anywhere; }
 .objective-optional { flex: none; padding: 0 var(--space-xs); white-space: nowrap; letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); background: var(--quest-chip-fill); box-shadow: var(--quest-chip-rim); border-radius: var(--quest-stamp-radius); }
 /* A reward: a cut chip, its icon in an octagon socket; a unique one lit gold. */
-.reward { min-inline-size: calc(var(--size-xxl) * 2.6); max-inline-size: stretch; flex: 1 1 auto; padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+.reward { min-inline-size: calc(var(--size-xxl) * 2.6); max-inline-size: stretch; flex: 1 1 auto; padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .reward[data-unique=true] { box-shadow: var(--quest-ready-rim); }
 .socket { flex: none; width: var(--size-lg); height: var(--size-lg); background: var(--quest-socket-rim); clip-path: polygon(22% 0, 78% 0, 100% 22%, 100% 78%, 78% 100%, 22% 100%, 0 78%, 0 22%); --layout-anchor-inset: var(--stroke-thin); }
 .socket[data-unique=true] { background: var(--quest-socket-gold-rim); }

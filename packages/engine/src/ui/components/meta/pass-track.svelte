@@ -90,7 +90,7 @@
 <style>
 :host { inline-size: stretch; }
 /* The frame: two corners cut, a lit top edge. */
-[part="PassTrack.frame"] { position: relative; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="PassTrack.frame"] { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 h2 { margin: 0; overflow-wrap: anywhere; }
 .band { width: stretch; flex: none; align-items: flex-end; }
@@ -119,7 +119,7 @@ h2 { margin: 0; overflow-wrap: anywhere; }
 .lane { min-width: 0; margin: 0; padding: var(--space-xxs); list-style: none; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-snap-type: x proximity; mask-image: var(--shop-lane-fade); padding-inline-end: var(--size-lg); }
 /* A tile: cut at two corners; premium washed and rimmed in gold; ready
    ringed in the family's light. */
-.tile { flex: 1 0 var(--shop-tier-width); min-inline-size: var(--shop-tier-width); align-items: center; padding: var(--space-xs); scroll-snap-align: start; text-align: center; background: var(--shop-tile-fill); box-shadow: var(--shop-tile-rim); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+.tile { flex: 1 0 var(--shop-tier-width); min-inline-size: var(--shop-tier-width); align-items: center; padding: var(--space-xs); scroll-snap-align: start; text-align: center; background: var(--shop-tile-fill); box-shadow: var(--shop-tile-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .tile[data-premium=true] { background: var(--shop-premium-tile); box-shadow: var(--shop-premium-rim); }
 .tile[data-ready=true] { box-shadow: var(--shop-ready-rim); }
 .tier { align-self: flex-start; font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); white-space: nowrap; }
@@ -129,7 +129,7 @@ h2 { margin: 0; overflow-wrap: anywhere; }
 .name { max-width: stretch; font-weight: var(--inv-name-weight); color: var(--ink-bright); overflow-wrap: anywhere; }
 .detail { margin: 0; max-width: stretch; font-size: var(--inv-tag-size); color: var(--ink-label); overflow-wrap: anywhere; }
 .amount { font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); color: var(--ink-bright); white-space: nowrap; }
-.state { align-items: center; margin-block-start: auto; padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); white-space: nowrap; color: var(--shop-sold-ink); background: var(--shop-sold-fill); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.state { align-items: center; margin-block-start: auto; padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); white-space: nowrap; color: var(--shop-sold-ink); background: var(--shop-sold-fill); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .state[data-kind=claimed] { color: var(--shop-owned-ink); background: var(--shop-owned-fill); }
 .mark { flex: none; inline-size: var(--inv-tag-size); block-size: var(--inv-tag-size); }
 .claim { margin-block-start: auto; width: stretch; min-block-size: var(--size-touch); white-space: normal; }

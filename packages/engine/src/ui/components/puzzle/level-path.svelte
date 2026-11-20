@@ -86,7 +86,7 @@
 /* The chapter's header: the only glass the path draws. It holds to the
    scroller's top while its chapter scrolls under it, so a path opened at
    the level to play never shows its title half cut. */
-.head { position: sticky; top: 0; z-index: 1; flex: none; width: stretch; padding: var(--space-sm) var(--space-md) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--select-row-cut) 0, 100% 0, 100% calc(100% - var(--select-row-cut)), calc(100% - var(--select-row-cut)) 100%, 0 100%, 0 var(--select-row-cut)); }
+.head { position: sticky; top: 0; z-index: 1; flex: none; width: stretch; padding: var(--space-sm) var(--space-md) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--select-row-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .head-row { width: stretch; align-items: center; }
 .title { margin: 0; min-inline-size: 0; text-align: start; font-size: var(--select-size-name-on); line-height: 1.15; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); color: var(--hud-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .total { flex: none; align-items: center; padding: calc(2 * var(--font-step-px)) var(--space-sm); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); white-space: nowrap; }
@@ -141,7 +141,7 @@
    dark tag. */
 .here, .word { position: absolute; inset-block-start: calc(50% + var(--node-on) / 2 + var(--space-xs)); inset-inline-start: 50%; translate: -50% 0; white-space: nowrap; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); }
 .lane:has(.stars) .word { inset-block-start: calc(50% + var(--node) / 2 + var(--space-md)); }
-.here { padding: calc(3 * var(--font-step-px)) var(--space-md); font-size: var(--hud-size-xs); color: var(--select-accent-ink); background: var(--select-button-on-fill); box-shadow: var(--select-button-on-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.here { padding: calc(3 * var(--font-step-px)) var(--space-md); font-size: var(--hud-size-xs); color: var(--select-accent-ink); background: var(--select-button-on-fill); box-shadow: var(--select-button-on-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .word { inset-block-start: calc(50% + var(--node) / 2 + var(--space-xs)); padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.6; color: var(--hud-ink); background: var(--hud-tag-fill); }
 [part="PuzzleLevelPath.empty"] { padding: var(--space-xl); }
 .empty-text { margin: 0; padding: var(--space-sm) var(--space-md); text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink); background: var(--hud-tag-fill); }

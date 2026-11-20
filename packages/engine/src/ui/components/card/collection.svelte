@@ -67,7 +67,7 @@
 </section>
 
 <style>
-:host { position: relative; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+:host { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="CardCollection.band"] { width: stretch; justify-content: flex-start; flex: none; }
 [part="CardCollection.title"] { margin: 0; }
 /* Filters: an underline strip, each with its count; the strip scrolls and fades. */
@@ -88,7 +88,7 @@
 .cell-face { position: relative; width: stretch; height: stretch; }
 .face { width: stretch; height: stretch; }
 .hatch { position: absolute; inset: 0; background: var(--tcg-hatch); pointer-events: none; }
-.owned { position: absolute; inset-inline-end: var(--space-xxs); top: var(--space-xxs); padding: 0 var(--space-xxs); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); background: var(--inv-tag-fill); box-shadow: var(--inv-tag-rim); color: var(--ink-bright); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); }
+.owned { position: absolute; inset-inline-end: var(--space-xxs); top: var(--space-xxs); padding: 0 var(--space-xxs); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; background: var(--inv-tag-fill); box-shadow: var(--inv-tag-rim); color: var(--ink-bright); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); }
 .bracket { position: absolute; inset: calc(var(--space-xxs) * -1); background: var(--inv-bracket); filter: var(--inv-bracket-glow); pointer-events: none; }
 .deck { max-width: stretch; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); color: var(--tcg-count-empty-ink); }
 .deck[data-in-deck=true] { color: var(--inv-accent); }

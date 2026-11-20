@@ -74,7 +74,7 @@
 .quest[aria-selected=true] .quest-name { text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); }
 .quest[data-done=true] .quest-name { color: var(--ink-done); text-decoration-line: var(--hud-done-line); }
 /* A fresh update: a gold tag with two corners cut. */
-.fresh { flex: none; padding: 0 var(--space-xs); font: var(--caption-text); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--quest-gold-ink); background: var(--quest-gold); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+.fresh { flex: none; padding: 0 var(--space-xs); font: var(--caption-text); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--quest-gold-ink); background: var(--quest-gold); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .quest-open { flex: none; width: var(--size-xs); height: var(--size-xs); color: var(--quest-gold); }
 .quest-open:dir(rtl) { scale: -1 1; }
 @media (pointer: fine) and (width >= 600px) { .quest { min-height: calc(var(--size-touch) * 0.82); } }

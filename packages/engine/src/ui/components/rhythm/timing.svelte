@@ -39,7 +39,7 @@
 <style>
 /* On a smoked plate with two corners cut, so its coloured words read over
    any lane's glow. */
-:host { inline-size: calc(196 * var(--font-step-px)); max-inline-size: stretch; padding: var(--space-sm) var(--space-md); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); --layout-anchor-inset: 0; }
+:host { inline-size: calc(196 * var(--font-step-px)); max-inline-size: stretch; padding: var(--space-sm) var(--space-md); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --layout-anchor-inset: 0; }
 .tally { margin: 0; padding: 0; list-style: none; }
 .row { align-items: baseline; }
 .name { min-inline-size: 0; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }

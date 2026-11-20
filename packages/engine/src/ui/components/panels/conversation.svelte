@@ -53,7 +53,7 @@
 <style>
 :host { flex-flow: row wrap; overflow-y: auto; }
 /* The band: cut glass lit gold along its top. */
-[part="RpgConversation.frame"] { border-radius: 0; background: var(--social-band-fill); box-shadow: var(--social-band-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+[part="RpgConversation.frame"] { background: var(--social-band-fill); box-shadow: var(--social-band-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .portrait { width: calc(var(--size-xxl) * 1.9); height: stretch; object-fit: cover; object-position: center top; flex: none; }
 .said { width: 42%; padding: var(--space-md) 0; flex: none; }
 /* The speaker on a gold plate, its far end cut. */
@@ -65,7 +65,7 @@
 .reply-item { width: stretch; }
 /* A reply: a cut row, its key in a gold keyline; the one in focus washed
    gold with its key filled; a reply used grey with a faint key. */
-[part="RpgConversation.row"] { width: stretch; min-height: var(--size-touch); justify-content: flex-start; padding: var(--space-xs) var(--space-md); border-radius: 0; background: var(--social-line-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+[part="RpgConversation.row"] { width: stretch; min-height: var(--size-touch); justify-content: flex-start; padding: var(--space-xs) var(--space-md); background: var(--social-line-fill); box-shadow: var(--quest-entry-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RpgConversation.row"]:hover { background: var(--quest-entry-fill); }
 [part="RpgConversation.row"][aria-selected=true] { background: var(--quest-selected-fill); box-shadow: var(--quest-selected-rim); }
 [part="RpgConversation.row"] .face { width: stretch; align-items: center; }

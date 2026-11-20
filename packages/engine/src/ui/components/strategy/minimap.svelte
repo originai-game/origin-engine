@@ -32,8 +32,8 @@
 <style>
 /* The tile is art: it keeps its size at any text scale. Its fill is its
    lit edge; the map is inset inside it. */
-:host { --side: calc(var(--size-5xl) * 1.04); flex: none; inline-size: var(--side); block-size: var(--side); max-inline-size: stretch; padding: calc(2 * var(--font-step-px)); background: var(--hud-edge); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); filter: var(--hud-lift); }
-#Scope { position: relative; inline-size: 100%; block-size: 100%; overflow: hidden; background: var(--hud-radar-well); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+:host { --side: calc(var(--size-5xl) * 1.04); flex: none; inline-size: var(--side); block-size: var(--side); max-inline-size: stretch; padding: calc(2 * var(--font-step-px)); background: var(--hud-edge); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; filter: var(--hud-lift); }
+#Scope { position: relative; inline-size: 100%; block-size: 100%; overflow: hidden; background: var(--hud-radar-well); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 #Map { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .dot { position: absolute; --pip: calc(5 * var(--font-step-px)); inline-size: var(--pip); block-size: var(--pip); left: calc(var(--x) * 100% - var(--pip) / 2); top: calc(var(--y) * 100% - var(--pip) / 2); background: var(--hud-ink); box-shadow: var(--hud-marker-rim); }
 .dot[data-base=true] { --pip: calc(9 * var(--font-step-px)); }

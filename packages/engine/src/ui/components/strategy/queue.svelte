@@ -53,9 +53,9 @@
    is larger. The tiles are art and keep their size at any text scale. */
 .slot { flex: none; inline-size: var(--tile); block-size: var(--tile); min-inline-size: 0; color: var(--hud-ink); }
 .slot:first-child { inline-size: var(--first); block-size: var(--first); }
-.slot::part(base) { padding: calc(2 * var(--font-step-px)); border: 0; border-radius: 0; background: var(--hud-edge); box-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.slot::part(base) { padding: calc(2 * var(--font-step-px)); border: 0; background: var(--hud-edge); box-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .slot[data-state=blocked]::part(base) { background: var(--hud-harm); }
-.face { container-type: size; position: relative; inline-size: stretch; block-size: stretch; overflow: hidden; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.face { container-type: size; position: relative; inline-size: stretch; block-size: stretch; overflow: hidden; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .art { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .blank-art { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; display: flex; align-items: center; justify-content: center; background: var(--hud-plate-fill); }
 .mark { inline-size: 60%; block-size: 60%; color: var(--hud-glyph); }
@@ -70,7 +70,7 @@
 .stack { position: absolute; right: 0; top: 0; padding: 0 calc(2 * var(--font-step-px)); font-size: var(--hud-size-label-compact); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); white-space: nowrap; background: var(--hud-tag-fill); }
 /* The free places: empty tiles, one per place, drawn as one strip. */
 .open { flex: none; inline-size: calc(var(--open) * (var(--tile) + var(--gap)) - var(--gap)); block-size: var(--tile); background: var(--hud-slot-empty); mask-image: repeating-linear-gradient(90deg, #000 0 var(--tile), transparent var(--tile) calc(var(--tile) + var(--gap))); }
-.capacity, .state { flex: none; padding: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.capacity, .state { flex: none; padding: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .capacity[data-full=true] { color: var(--hud-gold); }
 .state[data-state=paused] { color: var(--hud-gold); }
 .state[data-state=blocked] { color: var(--hud-harm); }

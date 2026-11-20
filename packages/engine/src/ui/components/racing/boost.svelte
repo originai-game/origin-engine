@@ -35,7 +35,7 @@
 
 <style>
 :host { align-items: center; column-gap: calc(10 * var(--font-step-px)); inline-size: calc(240 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); }
-.icon { flex: none; inline-size: calc(34 * var(--font-step-px)); block-size: calc(34 * var(--font-step-px)); object-fit: cover; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); filter: var(--hud-lift); }
+.icon { flex: none; inline-size: calc(34 * var(--font-step-px)); block-size: calc(34 * var(--font-step-px)); object-fit: cover; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; filter: var(--hud-lift); }
 .col { flex: 1 1 auto; min-inline-size: 0; row-gap: calc(5 * var(--font-step-px)); }
 .head { align-items: center; column-gap: calc(8 * var(--font-step-px)); min-inline-size: 0; }
 .label { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ally); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }

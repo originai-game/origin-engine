@@ -45,13 +45,13 @@
 .rows { inline-size: stretch; row-gap: calc(4 * var(--font-step-px)); }
 /* A row: the place's box, the car's stripe, the name and the gap, on
    dark glass fading to the right, two corners cut. */
-.row { display: flex; align-items: center; column-gap: calc(8 * var(--font-step-px)); inline-size: stretch; min-inline-size: 0; padding-inline-end: calc(12 * var(--font-step-px)); background: var(--hud-feed-fill-start); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.row { display: flex; align-items: center; column-gap: calc(8 * var(--font-step-px)); inline-size: stretch; min-inline-size: 0; padding-inline-end: calc(12 * var(--font-step-px)); background: var(--hud-feed-fill-start); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .place { flex: none; inline-size: calc(30 * var(--font-step-px)); line-height: calc(26 * var(--font-step-px)); text-align: center; font-size: var(--hud-size-name); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; background: var(--hud-place-fill); }
 .car { flex: none; inline-size: calc(5 * var(--font-step-px)); block-size: calc(20 * var(--font-step-px)); background: var(--hud-car); }
 .name { flex: 1 1 auto; min-inline-size: 0; font-size: var(--hud-size-name); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .gap { flex: none; font-size: var(--hud-size-name); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 .gap[data-leader=true] { color: var(--hud-ink-dim); }
-.state { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.state { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .state[data-state=pitting] { color: var(--hud-gold); }
 .state[data-state=retired] { color: var(--hud-harm); }
 .row[data-state=retired] { opacity: 0.6; }

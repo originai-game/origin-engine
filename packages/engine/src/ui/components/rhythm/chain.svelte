@@ -34,7 +34,7 @@
 <style>
 :host { align-items: center; max-inline-size: stretch; --layout-anchor-inset: 0; }
 /* The plate: smoked glass, two corners cut, a lit top edge in the accent. */
-#Plate { flex: none; align-items: baseline; padding: var(--space-xxs) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+#Plate { flex: none; align-items: baseline; padding: var(--space-xxs) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .label { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; }
 .multiplier { font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-accent); white-space: nowrap; }
 /* The pips: one leaning strip cut into cells; the lit part is the steps

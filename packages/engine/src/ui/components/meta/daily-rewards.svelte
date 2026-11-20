@@ -69,13 +69,13 @@
    wraps under it when both do not fit. */
 [part="DailyRewards.title"] { margin: 0; flex: 1 1 auto; }
 /* The next reward's time on a dark cut tag. */
-.timer { max-width: stretch; padding: var(--space-xxs) var(--space-sm); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+.timer { max-width: stretch; padding: var(--space-xxs) var(--space-sm); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .refresh-text { text-align: end; min-inline-size: 0; overflow-wrap: anywhere; color: var(--ink-bright); }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .days { grid-template-columns: repeat(7, minmax(0, 1fr)); width: stretch; margin: 0; padding: var(--space-xxs) 0 var(--space-xs); list-style: none; }
 .slot { position: relative; width: stretch; min-width: 0; align-items: stretch; }
 /* A day: a tile with two corners cut, its header strip, art and foot. */
-.day { width: stretch; min-width: 0; height: stretch; min-height: calc(var(--size-xxl) * 1.8); padding: 0; align-items: stretch; justify-content: flex-start; border: 0; border-radius: 0; background: var(--quest-day-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+.day { width: stretch; min-width: 0; height: stretch; min-height: calc(var(--size-xxl) * 1.8); padding: 0; align-items: stretch; justify-content: flex-start; border: 0; background: var(--quest-day-fill); box-shadow: var(--quest-entry-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .day:hover { box-shadow: var(--quest-entry-rim); }
 .day .face { width: stretch; height: stretch; align-items: stretch; }
 .head { margin: 0; padding: var(--space-xxs) var(--space-xxs); text-align: center; overflow-wrap: anywhere; font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-ink-quiet); background: var(--quest-day-head-fill); }

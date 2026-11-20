@@ -66,7 +66,7 @@
    two columns of cut slots (each in its rarity, the chosen one ringed in
    the accent, an empty one a dark well), the attributes on ruled rows. */
 :host { color: var(--hud-ink); }
-[part="RpgCharacter.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); clip-path: polygon(var(--party-cut) 0, 100% 0, 100% calc(100% - var(--party-cut)), calc(100% - var(--party-cut)) 100%, 0 100%, 0 var(--party-cut)); }
+[part="RpgCharacter.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RpgCharacter.band"] { width: stretch; justify-content: center; flex: none; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 [part="RpgCharacter.title"] { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; text-align: center; }
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }
@@ -78,7 +78,7 @@
 .doll { position: relative; width: stretch; min-height: 0; justify-content: space-between; padding: var(--space-sm) var(--space-xs); background: var(--party-figure-glow); }
 .figure { position: absolute; inset-inline-start: 18%; top: 0; bottom: 0; inline-size: 64%; block-size: 100%; object-fit: contain; object-position: center bottom; filter: var(--party-figure-shadow); }
 .column { position: relative; height: stretch; min-height: 0; justify-content: space-between; }
-[part="RpgCharacter.cell"] { flex: none; width: var(--party-slot); height: var(--party-slot); padding: var(--space-xs); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--party-tile-fill); box-shadow: var(--party-tile-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="RpgCharacter.cell"] { flex: none; width: var(--party-slot); height: var(--party-slot); padding: var(--space-xs); border: 0; color: var(--hud-ink); background: var(--party-tile-fill); box-shadow: var(--party-tile-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="RpgCharacter.cell"]:hover { box-shadow: var(--party-tile-hover-rim); }
 [part="RpgCharacter.cell"][data-rarity=common] { background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); }
 [part="RpgCharacter.cell"][data-rarity=uncommon] { background: var(--cell-uncommon-fill); box-shadow: var(--cell-uncommon-shadow); }

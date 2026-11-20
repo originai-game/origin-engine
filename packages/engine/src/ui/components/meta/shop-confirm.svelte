@@ -87,7 +87,7 @@
 <style>
 :host { inline-size: stretch; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; }
 /* The frame: two corners cut, a lit top edge; the rarity dresses the socket. */
-[part="ShopConfirm.frame"] { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); position: relative; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="ShopConfirm.frame"] { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="ShopConfirm.frame"][data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
 [part="ShopConfirm.frame"][data-rarity=rare] { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
 [part="ShopConfirm.frame"][data-rarity=epic] { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
@@ -100,7 +100,7 @@ h2, h3, p { margin: 0; }
 .name { font-size: var(--inv-figure-xl-size); font-weight: var(--inv-figure-weight); color: var(--ink-bright); overflow-wrap: anywhere; line-clamp: 3; overflow: hidden; }
 .body { flex: 0 1 auto; min-block-size: 0; width: stretch; }
 .offer { flex: none; width: stretch; align-items: center; }
-.socket { flex: none; inline-size: var(--shop-socket-size); block-size: var(--shop-socket-size); background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+.socket { flex: none; inline-size: var(--shop-socket-size); block-size: var(--shop-socket-size); background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .art-icon { inline-size: 74%; block-size: 74%; filter: var(--inv-slot-art-shadow); }
 .detail { min-width: 0; overflow-wrap: anywhere; color: var(--ink-label); }
 /* The ledger: a sunk well, one group of rows a currency, a rule between. */
@@ -126,7 +126,7 @@ h2, h3, p { margin: 0; }
 .cap { flex: none; }
 /* A phone: a sheet, square at its foot, the socket smaller. */
 @media (width < 600px) {
-  [part="ShopConfirm.frame"] { clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--inv-frame-cut)); }
+  [part="ShopConfirm.frame"] { border-radius: var(--inv-frame-cut) 0 0 0; corner-shape: var(--cut-shape); clip-path: border-box; }
   .socket { inline-size: var(--shop-socket-compact-size); block-size: var(--shop-socket-compact-size); }
   .main { flex-grow: 1; }
 }

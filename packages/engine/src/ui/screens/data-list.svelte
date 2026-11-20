@@ -26,7 +26,7 @@
 <style>
 /* The HUD plate: each row a name over its detail, its figure at the end
    condensed and tabular, a faint rule under it. */
-#DataList { width: stretch; height: stretch; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(calc(2 * var(--hud-plate-cut)) 0, 100% 0, 100% calc(100% - 2 * var(--hud-plate-cut)), calc(100% - 2 * var(--hud-plate-cut)) 100%, 0 100%, 0 calc(2 * var(--hud-plate-cut))); color: var(--hud-ink); --row-fill: none; --row-hover-fill: var(--data-row-hover-fill); --row-pressed-fill: var(--data-row-pressed-fill); --row-selected-fill: var(--data-row-selected-fill); --row-selected-edge: var(--data-row-selected-edge); --row-radius: 0px; }
+#DataList { width: stretch; height: stretch; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: calc(2 * var(--hud-plate-cut)) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); --row-fill: none; --row-hover-fill: var(--data-row-hover-fill); --row-pressed-fill: var(--data-row-pressed-fill); --row-selected-fill: var(--data-row-selected-fill); --row-selected-edge: var(--data-row-selected-edge); --row-radius: 0px; }
 #Rows { width: stretch; height: stretch; }
 .row { width: stretch; padding: var(--space-sm) var(--space-md); min-width: 0; border-block-end: var(--data-rule-line); }
 .face { display: flex; align-items: center; justify-content: start; gap: var(--space-md); width: stretch; min-width: 0; text-align: start; }

@@ -70,6 +70,6 @@
   .portrait { align-self: start; inline-size: calc(28 * var(--font-step-px)); block-size: calc(28 * var(--font-step-px)); }
   .callsign { font-size: var(--hud-size-xs); }
   .bar { block-size: calc(4 * var(--font-step-px)); }
-  .status { padding: 0 calc(3 * var(--font-step-px)); font-size: var(--hud-tag-size); letter-spacing: normal; -webkit-text-stroke-width: 0; text-shadow: none; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+  .status { padding: 0 calc(3 * var(--font-step-px)); font-size: var(--hud-tag-size); letter-spacing: normal; -webkit-text-stroke-width: 0; text-shadow: none; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 }
 </style>

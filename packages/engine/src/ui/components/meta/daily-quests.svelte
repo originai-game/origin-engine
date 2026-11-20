@@ -60,13 +60,13 @@
    wraps under it when both do not fit. */
 [part="DailyQuests.title"] { margin: 0; flex: 1 1 auto; }
 /* The refresh time on a dark cut tag. */
-.timer { max-width: stretch; padding: var(--space-xxs) var(--space-sm); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+.timer { max-width: stretch; padding: var(--space-xxs) var(--space-sm); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .refresh-text { text-align: end; min-inline-size: 0; overflow-wrap: anywhere; color: var(--ink-bright); }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .rows { width: stretch; margin: 0; padding: 0 0 var(--space-xs); list-style: none; }
 /* An entry: a card with two corners cut, washed gold from its leading
    edge while its reward waits, dimmed once it is taken. */
-.quest { width: stretch; min-width: 0; padding: var(--space-sm) var(--space-md) var(--space-sm) var(--space-sm); border-radius: 0; background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+.quest { width: stretch; min-width: 0; padding: var(--space-sm) var(--space-md) var(--space-sm) var(--space-sm); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .quest:hover { background: var(--quest-entry-fill); }
 .quest[data-state=done] { background: var(--quest-ready-fill); box-shadow: var(--quest-ready-rim); }
 .quest[data-state=claimed] .socket, .quest[data-state=claimed] .body, .quest[data-state=claimed] .prize { opacity: var(--quest-taken-opacity); }
@@ -86,7 +86,7 @@
 .progress[data-state=done] .count { color: var(--quest-gold); }
 .end { flex: none; max-width: 45%; }
 /* The prize in a dark cut box, glowing gold while it waits. */
-.prize { flex: none; min-inline-size: calc(var(--size-xl) * 1.4); max-inline-size: stretch; min-block-size: var(--size-xl); padding: var(--space-xxs) var(--space-sm); align-items: center; justify-content: center; border-radius: 0; background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+.prize { flex: none; min-inline-size: calc(var(--size-xl) * 1.4); max-inline-size: stretch; min-block-size: var(--size-xl); padding: var(--space-xxs) var(--space-sm); align-items: center; justify-content: center; background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .prize[data-state=done] { background: var(--quest-well-ready-fill); box-shadow: var(--quest-well-ready-rim); color: var(--quest-gold); }
 .prize-icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .prize-figure { text-align: center; overflow-wrap: anywhere; font-size: var(--quest-size-figure); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }

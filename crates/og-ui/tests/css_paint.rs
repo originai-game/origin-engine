@@ -1775,6 +1775,8 @@ fn opacity_outline_crisp_edges_and_clips_draw_as_css_says() {
   <div id="Flow" style="clip: rect(2px, 10px, 12px, 4px); background: #ff0000"></div>
   <div id="Path" style="clip-path: path(evenodd, 'M0 0 L20 0 L0 20 Z'); background: #ff0000"></div>
   <div id="NonZero" style="clip-path: path('M 2 2 h 10 v 10 z'); background: #ff0000"></div>
+  <div id="Notch" style="border-radius: 6px 0; corner-shape: notch; clip-path: border-box; background: #ff0000"></div>
+  <div id="Bevel" style="border-radius: 6px 0; corner-shape: bevel; clip-path: border-box; background: #ff0000"></div>
 </column>
 <style>column > div, column > div > div { width: 20px; height: 20px; flex-shrink: 0; margin-bottom: 8px; }</style>"#;
     let mut ui = ui_with_font(test_font_metrics());
@@ -1868,6 +1870,41 @@ fn opacity_outline_crisp_edges_and_clips_draw_as_css_says() {
             vec![[2.0, 2.0], [12.0, 2.0], [12.0, 12.0]],
             og_draw::UiFillRule::NonZero
         ))
+    );
+    // A bare geometry box cuts along the box's own corners: each corner
+    // its radius, its curve its corner-shape (a uniform round rectangle
+    // would lose both the square corners and the cut).
+    assert_eq!(
+        clip_of(&d, "Notch").map(|c| c.0),
+        Some(vec![
+            [0.0, 6.0],
+            [6.0, 6.0],
+            [6.0, 0.0],
+            [20.0, 0.0],
+            [20.0, 14.0],
+            [14.0, 14.0],
+            [14.0, 20.0],
+            [0.0, 20.0],
+        ])
+    );
+    let bevel = clip_of(&d, "Bevel").expect("Bevel is cut").0;
+    for p in [
+        [0.0, 6.0],
+        [6.0, 0.0],
+        [20.0, 0.0],
+        [20.0, 14.0],
+        [14.0, 20.0],
+        [0.0, 20.0],
+    ] {
+        assert!(bevel.contains(&p), "{p:?} not on {bevel:?}");
+    }
+    assert!(
+        !bevel.contains(&[0.0, 0.0]) && !bevel.contains(&[20.0, 20.0]),
+        "{bevel:?}"
+    );
+    assert!(
+        bevel.iter().all(|&[x, y]| x + y >= 5.0 && x + y <= 35.0),
+        "a bevel is a straight cut: {bevel:?}"
     );
 }
 

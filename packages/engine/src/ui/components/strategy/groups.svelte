@@ -28,13 +28,13 @@
 /* A small plate per group: smoked glass, lit in the accent when it is
    the group selected, its edge in gold while it wants the player. */
 .group { flex: 0 1 auto; min-inline-size: 0; max-inline-size: 100%; color: var(--hud-ink); }
-.group::part(base) { padding: calc(3 * var(--font-step-px)) calc(8 * var(--font-step-px)); border: 0; border-radius: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.group::part(base) { padding: calc(3 * var(--font-step-px)) calc(8 * var(--font-step-px)); border: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .group[aria-pressed=true]::part(base) { background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); }
 .group[data-alert=true]::part(base) { box-shadow: var(--hud-step-rim); }
 .face { display: flex; align-items: center; column-gap: calc(6 * var(--font-step-px)); min-inline-size: 0; }
 .key { flex: 0 1 auto; min-inline-size: calc(18 * var(--font-step-px)); max-inline-size: calc(var(--size-xl) * 1.2); padding: 0 calc(4 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .group[aria-pressed=true] .key { background: var(--hud-key-lit-fill); }
-.picture { flex: none; inline-size: var(--size-sm); block-size: var(--size-sm); object-fit: cover; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.picture { flex: none; inline-size: var(--size-sm); block-size: var(--size-sm); object-fit: cover; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .count { flex: none; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 [data-alert=true] .count { color: var(--hud-gold); }
 /* The key cap stays under a touch screen too: it names the group. */

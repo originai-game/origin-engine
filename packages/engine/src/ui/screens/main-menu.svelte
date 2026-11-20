@@ -84,7 +84,7 @@ button.entry.minor::part(base) { padding-block: var(--space-xs); }
 button.entry.minor { --button-font-size: var(--front-entry-quiet-size); --button-ink: var(--front-ink-faint); --button-quiet-ink: var(--front-ink-faint); }
 button.entry.minor::part(base) { color: var(--front-ink-faint); }
 /* News: a cut glass plate in the far corner (on a phone, above the entries). */
-[part="main-menu.news"] { position: absolute; inset-inline-end: var(--space-3xl); inset-block-end: var(--space-3xl); display: flex; align-items: center; column-gap: var(--space-md); inline-size: calc(360 * var(--font-step-px)); max-inline-size: calc(100% - 2 * var(--space-3xl)); padding: var(--space-md) var(--space-lg); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+[part="main-menu.news"] { position: absolute; inset-inline-end: var(--space-3xl); inset-block-end: var(--space-3xl); display: flex; align-items: center; column-gap: var(--space-md); inline-size: calc(360 * var(--font-step-px)); max-inline-size: calc(100% - 2 * var(--space-3xl)); padding: var(--space-md) var(--space-lg); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="main-menu.news"]:hover, [part="main-menu.news"]:focus-visible { translate: 0 var(--state-lift); box-shadow: var(--hud-plate-lit-rim); }
 [part="main-menu.news"]:active { translate: 0 0; }
 #Words { display: flex; flex-direction: column; row-gap: var(--space-xxs); flex: 1 1 auto; min-inline-size: 0; }

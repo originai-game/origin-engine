@@ -41,7 +41,7 @@
 /* The frame spans what its page gives it: the centre layout's reading
    measure would cap a call's plate below the room a page gives it. */
 :host { inline-size: stretch; max-inline-size: stretch; pointer-events: none; color: var(--hud-ink); }
-.plate { align-items: center; max-inline-size: stretch; min-inline-size: 0; row-gap: calc(2 * var(--font-step-px)); padding: calc(6 * var(--font-step-px)) calc(18 * var(--font-step-px)); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.plate { align-items: center; max-inline-size: stretch; min-inline-size: 0; row-gap: calc(2 * var(--font-step-px)); padding: calc(6 * var(--font-step-px)) calc(18 * var(--font-step-px)); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .line { align-items: baseline; justify-content: center; column-gap: var(--space-sm); max-inline-size: 100%; min-inline-size: 0; }
 .call { min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-banner-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .plate[data-kind=countdown] .call { font-size: var(--hud-size-lg); letter-spacing: normal; font-variant-numeric: var(--hud-figure-numeric); }

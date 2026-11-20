@@ -84,8 +84,8 @@
 .lit { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--hud-stagger-fill); box-shadow: var(--hud-stagger-glow); }
 .cuts { background: var(--bar-notch); mask-image: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--cells) - 3 * var(--font-step-px)), #000 calc(100% / var(--cells) - 3 * var(--font-step-px)) calc(100% / var(--cells))); }
 #End { flex: none; align-items: center; margin-inline-start: auto; }
-.weakness { flex: none; inline-size: calc(22 * var(--font-step-px)); block-size: calc(22 * var(--font-step-px)); background: var(--hud-harm); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); --layout-anchor-inset: calc(2 * var(--font-step-px)); filter: var(--hud-lift); }
-.art, .blank { clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.weakness { flex: none; inline-size: calc(22 * var(--font-step-px)); block-size: calc(22 * var(--font-step-px)); background: var(--hud-harm); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --layout-anchor-inset: calc(2 * var(--font-step-px)); filter: var(--hud-lift); }
+.art, .blank { border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .art { object-fit: cover; }
 .blank { background: var(--hud-plate-fill); }
 .glyph { inline-size: 64%; block-size: 64%; color: var(--hud-ink); }

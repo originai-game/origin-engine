@@ -51,7 +51,7 @@ h1, p { margin: 0; }
 #Body { flex: 1; min-block-size: 0; overflow: hidden auto; margin: calc(var(--space-lg) * -1); padding: var(--space-lg); }
 #Chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--film-card-width), 100%), 1fr)); gap: var(--space-lg); align-items: start; }
 [part="film-chapters.card"] { display: flex; flex-direction: column; row-gap: var(--space-sm); min-inline-size: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
-[part="film-chapters.plate"] { position: relative; aspect-ratio: 1.78; overflow: hidden; clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+[part="film-chapters.plate"] { position: relative; aspect-ratio: 1.78; overflow: hidden; border-radius: var(--front-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [part="film-chapters.plate"]::after { content: ""; position: absolute; inset: 0; box-shadow: var(--front-card-rim); }
 .thumb, .well { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
 .thumb { object-fit: cover; border-radius: 0; filter: var(--front-art-off); }

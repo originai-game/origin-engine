@@ -30,15 +30,15 @@
 :host { margin: 0; padding: 0; list-style: none; column-gap: calc(8 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); --cut: calc(5 * var(--font-step-px)); }
 .effect { align-items: center; row-gap: calc(3 * var(--font-step-px)); filter: var(--hud-lift); }
 /* The tile: the edge is its fill, the art inset inside it. */
-.tile { inline-size: calc(30 * var(--font-step-px)); block-size: calc(30 * var(--font-step-px)); background: var(--hud-boon); clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); --layout-anchor-inset: calc(2 * var(--font-step-px)); }
+.tile { inline-size: calc(30 * var(--font-step-px)); block-size: calc(30 * var(--font-step-px)); background: var(--hud-boon); border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --layout-anchor-inset: calc(2 * var(--font-step-px)); }
 [data-harmful=true] .tile { background: var(--hud-harm); }
-.art, .blank, .timer { clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+.art, .blank, .timer { border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .art { object-fit: cover; }
 .blank { background: var(--hud-plate-fill); }
 .glyph { inline-size: 60%; block-size: 60%; color: var(--hud-ink); }
 /* The time run out is dark; the sweep turns clockwise from the top. */
 .timer { background: var(--hud-sweep); mask-image: conic-gradient(transparent calc(var(--left) * 360deg), #000 0); }
-.tag { max-inline-size: calc(64 * var(--font-step-px)); padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.tag { max-inline-size: calc(64 * var(--font-step-px)); padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [data-harmful=true] .tag { color: var(--hud-harm); }
 @media (width < 600px) { :host { column-gap: calc(6 * var(--font-step-px)); } .tile { inline-size: calc(26 * var(--font-step-px)); block-size: calc(26 * var(--font-step-px)); } .tag { padding: 0 calc(3 * var(--font-step-px)); } }
 </style>

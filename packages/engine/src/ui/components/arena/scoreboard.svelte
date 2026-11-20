@@ -132,7 +132,7 @@ td.total { font-size: var(--hud-size-md); }
 /* A long team name wraps beside its score; a player's tags sit beside the name and wrap under it. */
 .team-name { min-width: 0; text-align: start; overflow-wrap: anywhere; }
 .team-score { flex: none; min-width: var(--size-md); text-align: center; white-space: nowrap; }
-.you, .off { flex: none; white-space: nowrap; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.you, .off { flex: none; white-space: nowrap; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .off { color: var(--hud-ink-dim); }
 .num, .total { text-align: end; white-space: nowrap; }
 .num { min-width: var(--size-md); }

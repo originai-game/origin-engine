@@ -62,7 +62,7 @@
 /* The chip: dark glass, the tier's strip, the name in the tier's ink; it
    pops in. A text box: it grows with the text scale. */
 .chip { flex: none; min-inline-size: 0; max-inline-size: stretch; color: var(--world-common-ink); animation: var(--world-loot-motion); }
-.chip::part(base) { padding: 0; border: var(--world-loot-border); border-radius: 0; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.chip::part(base) { padding: 0; border: var(--world-loot-border); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .face { position: relative; display: flex; align-items: center; column-gap: calc(6 * var(--font-step-px)); min-inline-size: 0; padding: calc(3 * var(--font-step-px)) calc(9 * var(--font-step-px)) calc(3 * var(--font-step-px)) calc(11 * var(--font-step-px)); overflow: hidden; font-size: var(--world-size-loot); line-height: 1.2; font-weight: var(--hud-label-weight); }
 .strip { position: absolute; left: 0; top: 0; bottom: 0; inline-size: var(--world-loot-strip); background: var(--world-common); }
 [data-rarity=uncommon] .strip { background: var(--world-uncommon); }
