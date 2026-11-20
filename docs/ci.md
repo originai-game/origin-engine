@@ -387,7 +387,7 @@ changes with `shellcheck -s bash .agents/{setup,resume,environment}`,
 sccache keeps a local disk cache on every host and no remote cache,
 because remote hits were slower than local rebuilds. The checkouts on one
 machine share it: `/Volumes/app/.sccache` on macrunner,
-`SCCACHE_DIR=E:\sccache` on studio-win, `~/.cache/sccache` on an orb.
+`SCCACHE_DIR=D:\sccache` on studio-win, `~/.cache/sccache` on an orb.
 
 One sccache server per host serves every checkout. `.cargo/config.toml`'s
 rustc wrapper is `scripts/rustc-wrapper`, a path in the checkout, so a
