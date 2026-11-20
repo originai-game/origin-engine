@@ -84,7 +84,7 @@ fn source(v: &Value) -> Option<(String, String)> {
 }
 
 fn allocations() -> usize {
-    og_core::alloc::heap().map_or(0, |h| h.allocations)
+    og_core::alloc::thread_allocations()
 }
 
 impl Next {
@@ -372,7 +372,7 @@ impl Next {
             "look_ms": s.look, "build_ms": s.build, "build_allocations": s.build_allocations,
             "frame_ms": s.frame, "commit_ms": s.commit, "layout_ms": s.layout,
             "allocations": s.allocations, "ops": s.ops, "refolded": s.refolded,
-            "elements": s.elements, "mounts": self.mounts.len(),
+            "elements": s.elements, "items": self.frame.items.len(), "mounts": self.mounts.len(),
         })
     }
 }

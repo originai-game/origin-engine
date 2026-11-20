@@ -10,6 +10,18 @@ static LIVE: AtomicUsize = AtomicUsize::new(0);
 static PEAK: AtomicUsize = AtomicUsize::new(0);
 static COUNT: AtomicUsize = AtomicUsize::new(0);
 
+std::thread_local! {
+    /// This thread's allocations: a span on one thread (a UI frame) counts
+    /// its own, not the render or audio threads' beside it.
+    static MINE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+fn counted() {
+    COUNT.fetch_add(1, Ordering::Relaxed);
+    // A thread being torn down has no counter left; its count is moot.
+    let _ = MINE.try_with(|c| c.set(c.get() + 1));
+}
+
 /// A global allocator that counts what `A` hands out ([`heap`]).
 pub struct Counting<A>(pub A);
 
@@ -25,7 +37,7 @@ unsafe impl<A: GlobalAlloc> GlobalAlloc for Counting<A> {
         // SAFETY: the caller's contract, passed on.
         let p = unsafe { self.0.alloc(layout) };
         if !p.is_null() {
-            COUNT.fetch_add(1, Ordering::Relaxed);
+            counted();
             grew(layout.size());
         }
         p
@@ -35,7 +47,7 @@ unsafe impl<A: GlobalAlloc> GlobalAlloc for Counting<A> {
         // SAFETY: the caller's contract, passed on.
         let p = unsafe { self.0.alloc_zeroed(layout) };
         if !p.is_null() {
-            COUNT.fetch_add(1, Ordering::Relaxed);
+            counted();
             grew(layout.size());
         }
         p
@@ -83,6 +95,11 @@ pub fn heap() -> Option<Heap> {
     })
 }
 
+/// The allocations [`Counting`] made on this thread so far.
+pub fn thread_allocations() -> usize {
+    MINE.try_with(std::cell::Cell::get).unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -98,6 +115,19 @@ mod tests {
         assert!(!p.is_null());
         let during = heap().expect("counted");
         assert_eq!(during.allocations, before.allocations + 1);
+        let mine = thread_allocations();
+        assert!(mine >= 1, "this thread's allocation counted");
+        let elsewhere = std::thread::spawn(move || {
+            let b = Counting(System);
+            // SAFETY: a valid layout; freed at once with it.
+            unsafe { b.dealloc(b.alloc(layout), layout) };
+        });
+        elsewhere.join().unwrap();
+        assert_eq!(
+            thread_allocations(),
+            mine,
+            "another thread's allocation is its own"
+        );
         assert!(during.peak >= during.live);
         // SAFETY: grown from the same layout, then freed with its new size.
         let q = unsafe { a.realloc(p, layout, 3000) };
