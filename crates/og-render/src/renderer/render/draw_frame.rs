@@ -1051,7 +1051,7 @@ impl Renderer {
         // Every pass waiting for the one before it (`set_gpu_serial`): the
         // debris' and GPU culling's command buffers, which the frame's
         // follow, run first, in a submit of their own.
-        if super::settings::gpu_serial() {
+        if super::settings::gpu_serial(self.frame_index) {
             self.queue.submit(
                 instance_uploads
                     .debris_commands

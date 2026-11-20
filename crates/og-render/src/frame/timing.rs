@@ -217,6 +217,11 @@ pub(crate) struct Encoder {
     /// encoded declared it needs ([`Encoder::expect`]).
     #[cfg(all(debug_assertions, not(feature = "publish")))]
     expected: Option<(crate::Caps, crate::Caps)>,
+    /// The timed render passes labelled as a part of a graph pass
+    /// (`"main: scatter"`), each with its first query: what
+    /// [`split_queries`] names them by. Only a serial frame's passes are
+    /// labelled so, so other frames keep none.
+    parts: Vec<(u32, String)>,
 }
 
 impl std::ops::Deref for Encoder {
@@ -240,7 +245,13 @@ impl Encoder {
             marks,
             #[cfg(all(debug_assertions, not(feature = "publish")))]
             expected: None,
+            parts: Vec::new(),
         }
+    }
+
+    /// The parts ([`Encoder::parts`]) begun so far, taken.
+    pub fn take_parts(&mut self) -> Vec<(u32, String)> {
+        std::mem::take(&mut self.parts)
     }
 
     /// From here on, what the encoder opens is checked (debug builds
@@ -328,11 +339,17 @@ impl Encoder {
             crate::Caps::NONE
         };
         self.uses(desc.label, mrt, desc.timestamp_writes.is_some());
-        let Encoder { raw, marks, .. } = self;
+        let Encoder {
+            raw, marks, parts, ..
+        } = self;
         let pair = match desc.timestamp_writes {
             Some(_) => None,
             None => marks.as_mut().and_then(FrameMarks::pair),
         };
+        if let (Some((_, begin, _)), Some(label)) = (&pair, desc.label.filter(|l| l.contains(": ")))
+        {
+            parts.push((*begin, label.to_string()));
+        }
         let timestamp_writes = match (&desc.timestamp_writes, pair) {
             (Some(w), _) => Some(wgpu::RenderPassTimestampWrites {
                 query_set: w.query_set,
@@ -409,6 +426,34 @@ impl Encoder {
     pub fn finish(self) -> wgpu::CommandBuffer {
         self.raw.finish()
     }
+}
+
+/// The timed queries `range` of graph pass `name`, named: a pair whose
+/// render pass was labelled as a part of it (`"{name}: scatter"`,
+/// [`Encoder::parts`]) under that label, every other under `name`, each
+/// run of one name its own entry. A frame without parts keeps one entry.
+pub(crate) fn split_queries(
+    name: String,
+    range: std::ops::Range<u32>,
+    parts: &[(u32, String)],
+) -> Vec<(String, std::ops::Range<u32>)> {
+    let prefix = format!("{name}: ");
+    let mut out: Vec<(String, std::ops::Range<u32>)> = Vec::new();
+    for q in range.clone().step_by(2) {
+        let part = parts
+            .iter()
+            .find(|(at, label)| *at == q && label.starts_with(&prefix))
+            .map(|(_, label)| label.as_str());
+        let named = part.unwrap_or(&name);
+        match out.last_mut() {
+            Some((n, r)) if n == named && r.end == q => r.end = q + 2,
+            _ => out.push((named.to_string(), q..(q + 2).min(range.end))),
+        }
+    }
+    if out.is_empty() {
+        out.push((name, range));
+    }
+    out
 }
 
 #[cfg(not(feature = "publish"))]
@@ -810,6 +855,28 @@ mod tests {
     /// 10 ns a tick: 1 ms is 100 000 ticks; 1 is the frame's first.
     fn at(ms: f64) -> u64 {
         1 + (ms * 100_000.0).round() as u64
+    }
+
+    #[test]
+    fn a_serial_frames_parts_are_named_and_the_rest_keeps_the_pass() {
+        let parts = [
+            (2, "main: scatter".to_string()),
+            (4, "main: scatter".to_string()),
+            (6, "other: x".to_string()),
+        ];
+        let named = split_queries("main".into(), 0..8, &parts);
+        assert_eq!(
+            named,
+            vec![
+                ("main".into(), 0..2),
+                ("main: scatter".into(), 2..6),
+                ("main".into(), 6..8)
+            ]
+        );
+        assert_eq!(
+            split_queries("main".into(), 0..4, &[]),
+            vec![("main".into(), 0..4)]
+        );
     }
 
     #[test]

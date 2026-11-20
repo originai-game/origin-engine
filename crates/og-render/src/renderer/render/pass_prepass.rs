@@ -72,33 +72,68 @@ impl Renderer {
                 },
             })
         };
-        let mut p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("prepass"),
-            color_attachments: &[
-                attachment(self.graph.view("gbuffer"), 0.0),
-                attachment(self.graph.view("lindepth"), post::FAR_DEPTH as f64),
-                attachment(self.graph.view("outline-id"), 0.0),
-            ],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: self.graph.view(post::prepass_depth(self.samples)),
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
-                    // Stylise's object pass tests against it, and the main
-                    // pass goes on in it (post::shares_prepass_depth).
-                    store: if object_space || front_depth.is_some() {
-                        wgpu::StoreOp::Store
-                    } else {
-                        kept_depth
-                    },
-                }),
-                stencil_ops: None,
-            }),
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
+        // A serial frame draws each class of draw in a render pass of its
+        // own (as the main pass's, pass_main.rs): the record reads the
+        // prepass's cost by what it draws.
+        let serial = super::settings::gpu_serial(self.frame_index);
+        let begin = |encoder: &mut crate::Encoder, first: bool, label: &'static str| {
+            let attachment = |view, clear: f64| {
+                let mut a = attachment(view, clear);
+                if let (false, Some(a)) = (first, a.as_mut()) {
+                    a.ops.load = wgpu::LoadOp::Load;
+                }
+                a
+            };
+            encoder
+                .begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(label),
+                    color_attachments: &[
+                        attachment(self.graph.view("gbuffer"), 0.0),
+                        attachment(self.graph.view("lindepth"), post::FAR_DEPTH as f64),
+                        attachment(self.graph.view("outline-id"), 0.0),
+                    ],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: self.graph.view(post::prepass_depth(self.samples)),
+                        depth_ops: Some(wgpu::Operations {
+                            load: if first {
+                                wgpu::LoadOp::Clear(1.0)
+                            } else {
+                                wgpu::LoadOp::Load
+                            },
+                            // Stylise's object pass tests against it, and the main
+                            // pass goes on in it (post::shares_prepass_depth).
+                            store: if serial || object_space || front_depth.is_some() {
+                                wgpu::StoreOp::Store
+                            } else {
+                                kept_depth
+                            },
+                        }),
+                        stencil_ops: None,
+                    }),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                })
+                .forget_lifetime()
+        };
+        let mut p = begin(
+            encoder,
+            true,
+            if serial { "prepass: opaque" } else { "prepass" },
+        );
         p.set_bind_group(0, frame_bind_group, &[]);
         p.set_bind_group(2, fx_group, &[]);
+        macro_rules! part {
+            ($label:literal) => {
+                if serial {
+                    drop(p);
+                    self.serial_cut(encoder);
+                    p = begin(encoder, false, $label);
+                    p.set_bind_group(0, frame_bind_group, &[]);
+                    p.set_bind_group(2, fx_group, &[]);
+                }
+            };
+        }
         let instances = match (main_list.indirect, culled_gpu) {
             (Some(_), Some(gc)) => &gc.instances,
             _ => &self.instances.instance_buffer,
@@ -150,6 +185,7 @@ impl Renderer {
             }
             stats.prepass_draws += 1;
         }
+        part!("prepass: meshlets");
         if let Some(m) = self
             .visibility
             .meshlet
@@ -172,6 +208,7 @@ impl Renderer {
                 |_, _| {},
             );
         }
+        part!("prepass: skinned");
         stats.prepass_draws += ctx.draw_skinned(
             &mut p,
             skinned_visible,
@@ -183,6 +220,7 @@ impl Renderer {
             None,
             main_list.indirect,
         );
+        part!("prepass: terrain");
         if let Some(indices) = terrain_indices {
             p.set_bind_group(3, self.world.terrain.fx.group(true), &[]);
             let prepass = terrain::TerrainPass::Prepass;
@@ -190,6 +228,7 @@ impl Renderer {
                 terrain::draw_levels(&mut p, terrain_draws, indices, prepass, view_frustum, None);
             stats.prepass_draws += n;
         }
+        part!("prepass: scatter");
         let (n, _) = self.world.scatter.draw(
             &mut p,
             scatter::ScatterPass::Prepass,
@@ -205,6 +244,7 @@ impl Renderer {
             ShadowTarget::Cascade,
         );
         stats.prepass_draws += n;
+        part!("prepass: grass");
         stats.prepass_draws += self.world.grass.draw(
             &mut p,
             grass::GrassPass::Prepass,

@@ -31,9 +31,9 @@ impl Renderer {
     /// With every pass waiting for the one before it
     /// ([`Renderer::set_gpu_serial`]), what was encoded so far runs to its
     /// end before the next pass is encoded.
-    fn serial_cut(&self, encoder: &mut Encoder) {
+    pub(super) fn serial_cut(&self, encoder: &mut Encoder) {
         #[cfg(not(feature = "publish"))]
-        if super::settings::gpu_serial() {
+        if super::settings::gpu_serial(self.frame_index) {
             encoder.cut(&self.device, &self.queue);
         }
         #[cfg(feature = "publish")]
@@ -174,7 +174,12 @@ impl Renderer {
                 });
             }
             if encoder.timed() {
-                pass_queries.push((pass.name(), q0..encoder.used()));
+                let parts = encoder.take_parts();
+                pass_queries.extend(crate::timing::split_queries(
+                    pass.name(),
+                    q0..encoder.used(),
+                    &parts,
+                ));
             }
         }
     }

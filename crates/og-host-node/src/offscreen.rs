@@ -312,11 +312,18 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
             ..og_render::RenderDesc::default()
         },
     );
-    // OG_GPU_SERIAL=1 (`og run --gpu-serial`): every render-graph pass
-    // waits for the one before it, for each pass's cost in isolation. Not
-    // in a published game's build.
+    // OG_GPU_SERIAL=N: every Nth frame each render-graph pass waits for
+    // the one before it, for each pass's cost in isolation (1, `og run
+    // --gpu-serial`: every frame; `og run --perf` samples one frame in
+    // 30, set by the record, which this leaves alone). Not in a
+    // published game's build.
     #[cfg(not(feature = "publish"))]
-    og_render::Renderer::set_gpu_serial(std::env::var("OG_GPU_SERIAL").is_ok_and(|v| v == "1"));
+    if let Some(every) = std::env::var("OG_GPU_SERIAL")
+        .ok()
+        .and_then(|v| v.parse().ok())
+    {
+        og_render::Renderer::set_gpu_serial(every);
+    }
     // Compiled pipelines kept across runs where the backend can (Vulkan):
     // OG_PIPELINE_CACHE names the directory, `off` keeps none; by default
     // ~/.cache/origin-engine/pipelines.

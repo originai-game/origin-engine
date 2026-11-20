@@ -29,6 +29,11 @@ use std::cell::RefCell;
 const ROWS: usize = 4096;
 /// GPU passes told apart (a frame's passes past this go uncounted).
 const PASSES: usize = 64;
+/// Natively, one frame in this many runs serial while the record is on
+/// (`Renderer::set_gpu_serial`): each pass waits for the one before it,
+/// so its time alone is its cost even where passes overlap in the other
+/// frames. Those frames give only the passes' `(serial)` lines.
+const SERIAL_EVERY: u32 = 30;
 
 /// The CPU lines of a row, in report order.
 const CPU: [&str; 10] = [
@@ -70,6 +75,9 @@ struct Row {
     gpu: [f32; PASSES],
     /// Each pass's time in flight (begin to end, waits included).
     flight: [f32; PASSES],
+    /// A serial frame ([`SERIAL_EVERY`]): only its passes' `gpu` times
+    /// are reported, as their costs; nothing else of it is a real frame's.
+    serial: bool,
     compile_us: u32,
     /// Fades held at nothing this frame, and whether a pipeline made ahead
     /// of a hidden instance was still compiling (the hold's reason).
@@ -91,6 +99,7 @@ const EMPTY: Row = Row {
     gpu_idle: f32::NAN,
     gpu: [f32::NAN; PASSES],
     flight: [f32::NAN; PASSES],
+    serial: false,
     compile_us: 0,
     held: 0,
     compiling_ahead: false,
@@ -160,6 +169,13 @@ pub fn set(engine: u32, on: bool) {
         // The renderer's traffic belongs to the process: counted while any
         // engine records.
         og_render::traffic::set_clock((!p.is_empty()).then_some(now as fn() -> f64));
+        // Natively a frame in SERIAL_EVERY runs serial, unless the run is
+        // serial throughout (`og run --gpu-serial`). On the web a submit
+        // does not wait for the GPU, so no frame there is serial.
+        #[cfg(not(any(target_arch = "wasm32", feature = "publish")))]
+        if !whole_run_serial() {
+            og_render::Renderer::set_gpu_serial(if p.is_empty() { 0 } else { SERIAL_EVERY });
+        }
     });
 }
 
@@ -267,6 +283,7 @@ pub(crate) fn frame(
         let at = now();
         let mut row = std::mem::replace(&mut pf.open, EMPTY);
         row.frame = stats.frame;
+        row.serial = stats.serial && !whole_run_serial();
         row.tick = tick;
         row.interval = (at - pf.last_frame) as f32;
         pf.last_frame = at;
@@ -323,6 +340,12 @@ pub(crate) fn frame(
     });
 }
 
+/// Whether every frame of the run is serial (`og run --gpu-serial`,
+/// OG_GPU_SERIAL=1): its lines are those frames', as they are.
+fn whole_run_serial() -> bool {
+    cfg!(not(target_arch = "wasm32")) && std::env::var("OG_GPU_SERIAL").is_ok_and(|v| v == "1")
+}
+
 /// A report line: its name and how a row gives its value.
 type Line = (String, Box<dyn Fn(&Row) -> f32>);
 
@@ -357,7 +380,11 @@ pub fn report(engine: u32, budgets: &str) -> String {
             return json!({ "json": Value::Null, "text": "perf: not recording" }).to_string();
         };
         let n = (pf.written as usize).min(ROWS);
-        let rows: Vec<&Row> = (0..n).map(|k| &pf.rows[(pf.next + ROWS - n + k) % ROWS]).collect();
+        let all: Vec<&Row> = (0..n).map(|k| &pf.rows[(pf.next + ROWS - n + k) % ROWS]).collect();
+        // The sampled serial frames give the passes' costs alone; every
+        // other line is the real frames'.
+        let (serial_rows, rows): (Vec<&Row>, Vec<&Row>) = all.into_iter().partition(|r| r.serial);
+        let n = rows.len();
         // The lines: name and each row's value.
         let mut lines: Vec<Line> = vec![
             ("frame interval".into(), Box::new(|r: &Row| r.interval)),
@@ -397,7 +424,7 @@ pub fn report(engine: u32, budgets: &str) -> String {
         // CPU's wait for the GPU.
         // Under `--gpu-serial` every pass waits for the GPU as it encodes,
         // so the encode is the GPU's time too.
-        let serial = cfg!(not(target_arch = "wasm32")) && std::env::var_os("OG_GPU_SERIAL").is_some();
+        let serial = whole_run_serial();
         let effect = |name: &str| {
             matches!(name, "frame interval" | "gpu frame" | "gpu overlapped" | "cpu wait for gpu")
                 || (serial && name == "cpu render encode")
@@ -434,6 +461,36 @@ pub fn report(engine: u32, budgets: &str) -> String {
                 }
             );
         }
+        // Each pass's cost in isolation, from the serial frames: what the
+        // real frame's overlapped time is made of, pass by pass.
+        let mut costs = Vec::new();
+        if !serial_rows.is_empty() {
+            for (i, name) in pf.passes.iter().enumerate() {
+                let v = sorted(serial_rows.iter().map(|r| r.gpu[i]));
+                if !v.is_empty() {
+                    costs.push((name.as_str(), at(&v, 0.5), at(&v, 1.0)));
+                }
+            }
+            costs.sort_by(|a, b| b.1.total_cmp(&a.1));
+            let total: f64 = costs.iter().map(|c| c.1).sum();
+            let gpu_frame = medians[1];
+            text += &format!(
+                "gpu cost per pass, alone ({} serial frames, one in {SERIAL_EVERY}): {total:.2} ms in all, the real frame {gpu_frame:.2} ms\n",
+                serial_rows.len()
+            );
+            for (name, median, max) in costs.iter().filter(|c| c.1 >= 0.05) {
+                text += &format!(
+                    "  {name:<32} {:>9.2} {:>9.2}  {:>4.0}%\n",
+                    r2(*median),
+                    r2(*max),
+                    100.0 * median / total.max(1e-6)
+                );
+            }
+        }
+        let costs: Vec<Value> = costs
+            .iter()
+            .map(|(name, median, max)| json!({ "pass": name, "median": r2(*median), "max": r2(*max) }))
+            .collect();
         // Hitches: each with the line that grew most over its median, or
         // the pipeline compiled in it.
         let mut hitches = Vec::new();
@@ -485,7 +542,7 @@ pub fn report(engine: u32, budgets: &str) -> String {
         text += &sites_text;
         let drawn = |f: fn(&Row) -> f32| r2(at(&sorted(rows.iter().map(|r| f(r))), 0.5));
         let json = json!({
-            "frames": n, "lines": out_lines, "hitches": hitches, "sites": sites,
+            "frames": n, "lines": out_lines, "costs": costs, "hitches": hitches, "sites": sites,
             "draws": drawn(|r| r.draws as f32), "triangles": drawn(|r| r.triangles as f32),
         });
         json!({ "json": json, "text": text }).to_string()

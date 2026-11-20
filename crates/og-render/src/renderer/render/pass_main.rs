@@ -192,9 +192,31 @@ impl Renderer {
                 })
                 .forget_lifetime()
         };
-        let mut pass = begin(encoder, true, split || oit.is_some(), "main");
+        // A serial frame (`set_gpu_serial`) draws each class of draw in a
+        // render pass of its own, each waited for, so the perf record
+        // reads the main pass's cost by what it draws (`"main: scatter"`,
+        // timing.rs `split_queries`). Every pass loads and stores what
+        // the one before it left: the image is the same.
+        let serial = super::settings::gpu_serial(self.frame_index);
+        let mut pass = begin(
+            encoder,
+            true,
+            serial || split || oit.is_some(),
+            if serial { "main: opaque" } else { "main" },
+        );
         pass.set_bind_group(0, frame_bind_group, &[]);
         pass.set_bind_group(2, fx_group, &[]);
+        macro_rules! part {
+            ($label:literal) => {
+                if serial {
+                    drop(pass);
+                    self.serial_cut(encoder);
+                    pass = begin(encoder, false, true, $label);
+                    pass.set_bind_group(0, frame_bind_group, &[]);
+                    pass.set_bind_group(2, fx_group, &[]);
+                }
+            };
+        }
         ctx.draw_list(
             &mut pass,
             main_list,
@@ -207,6 +229,7 @@ impl Renderer {
         stats.draw_calls += main_list.ranges.len() as u32;
         // The clustered batches (meshlet_gpu.rs), each one draw of its
         // visible clusters.
+        part!("main: meshlets");
         if let Some(m) = self
             .visibility
             .meshlet
@@ -232,6 +255,7 @@ impl Renderer {
             );
             binder.reset(&mut pass);
         }
+        part!("main: skinned");
         stats.draw_calls += ctx.draw_skinned(
             &mut pass,
             skinned_visible,
@@ -243,6 +267,7 @@ impl Renderer {
             probe_binding,
             main_list.indirect,
         );
+        part!("main: terrain");
         if let Some(indices) = terrain_indices {
             pass.set_bind_group(3, self.world.terrain.fx.group(true), &[]);
             let (n, tris) = terrain::draw_levels(
@@ -258,6 +283,7 @@ impl Renderer {
             stats.terrain_triangles += tris;
             stats.triangles += tris;
         }
+        part!("main: scatter");
         let (n, copies) = self.world.scatter.draw(
             &mut pass,
             scatter::ScatterPass::Lit,
@@ -279,6 +305,7 @@ impl Renderer {
         stats.draw_calls += n;
         stats.scatter_draws += n;
         stats.scatter_copies += copies;
+        part!("main: grass");
         stats.draw_calls += self.world.grass.draw(
             &mut pass,
             grass::GrassPass::Lit,
@@ -312,6 +339,7 @@ impl Renderer {
             Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
             Background::Color(_) => None,
         };
+        part!("main: sky");
         if let Some(sky) = sky {
             pass.set_pipeline(sky);
             pass.set_bind_group(1, sky_group, &[]);
@@ -352,7 +380,19 @@ impl Renderer {
                 );
                 self.mips.record_chain(encoder, chain);
             }
-            pass = begin(encoder, false, oit.is_some(), "main (after water)");
+            if serial {
+                self.serial_cut(encoder);
+            }
+            pass = begin(
+                encoder,
+                false,
+                serial || oit.is_some(),
+                if serial {
+                    "main: water"
+                } else {
+                    "main (after water)"
+                },
+            );
             pass.set_bind_group(0, frame_bind_group, &[]);
             // Each surface and the fluids with their reflection probe (probe_select.rs).
             let mut binder = probe_select::Binder::new(probe_binding);
@@ -402,6 +442,7 @@ impl Renderer {
             None => {
                 // Transparent meshes and the billboards among them, back
                 // to front over the opaque scene.
+                part!("main: blended");
                 pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls += ctx.draw_blended(
                     &mut pass,

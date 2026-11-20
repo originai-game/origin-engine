@@ -45,17 +45,19 @@ impl Renderer {
             .map(|c| (c.n, c.b))
     }
 
-    /// Dev builds only, a profile's knob (`og run --gpu-serial`): whether
-    /// every render-graph pass waits for the one before it, for every
-    /// renderer in the process. The frame's command buffer is cut after
+    /// Dev builds only, a profile's knob (`og run --gpu-serial`, and
+    /// `og run --perf`'s sample): every `every`th frame (0: none, 1: every
+    /// frame) each render-graph pass waits for the one before it, for every
+    /// renderer in the process. That frame's command buffer is cut after
     /// each pass, submitted and waited for, so no two passes are in flight
     /// at once and each pass's time alone on the GPU (`GpuPass::ms`) is
     /// its cost in isolation; the frame is slower and its span no longer
-    /// the real frame's. What is drawn does not change. Not in a `publish`
-    /// build: nothing can turn it on there.
+    /// the real frame's ([`FrameStats::serial`] names it). What is drawn
+    /// does not change. Not in a `publish` build: nothing can turn it on
+    /// there.
     #[cfg(not(feature = "publish"))]
-    pub fn set_gpu_serial(serial: bool) {
-        GPU_SERIAL.store(serial, std::sync::atomic::Ordering::Relaxed);
+    pub fn set_gpu_serial(every: u32) {
+        GPU_SERIAL.store(every, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Dev builds only, a bisect's knob: whether GPU culling's command
@@ -321,15 +323,23 @@ fn render_scaled(out: (u32, u32), scale: f32, max: u32) -> (u32, u32) {
 
 /// [`Renderer::set_gpu_serial`]'s setting.
 #[cfg(not(feature = "publish"))]
-static GPU_SERIAL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static GPU_SERIAL: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
-/// Whether every render-graph pass waits for the one before it
-/// ([`Renderer::set_gpu_serial`]); never in a `publish` build.
-pub(super) fn gpu_serial() -> bool {
+/// Whether frame `frame` has every render-graph pass wait for the one
+/// before it ([`Renderer::set_gpu_serial`]); never in a `publish` build.
+pub(super) fn gpu_serial(frame: u64) -> bool {
     #[cfg(not(feature = "publish"))]
-    return GPU_SERIAL.load(std::sync::atomic::Ordering::Relaxed);
+    return match GPU_SERIAL.load(std::sync::atomic::Ordering::Relaxed) {
+        0 => false,
+        // From the every-th frame on, never the first: a run's first
+        // frame (its load) stays a real one.
+        every => (frame + 1).is_multiple_of(u64::from(every)),
+    };
     #[cfg(feature = "publish")]
-    false
+    {
+        let _ = frame;
+        false
+    }
 }
 
 /// [`Renderer::debug_cull_apart`]'s setting.

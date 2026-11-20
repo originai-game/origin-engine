@@ -65,6 +65,17 @@ GPU passes that ran together each count only their time alone, so the
 pass lines plus the overlap add up to `gpu frame`. A pass the GPU could
 not time is left out of a frame, never counted as 0.
 
+The time passes spend overlapped belongs to no one pass, so one frame in
+30 runs serially: each pass waits for the one before it, and the main and
+prepass passes are timed per draw class (opaque, meshlets, skinned,
+terrain, scatter, grass, sky, water and blended, as "main: terrain"). The
+table `gpu cost per pass, alone` lists those frames' costs, largest first,
+with their sum next to the real frame's span (JSON `costs`). That is what
+each pass costs by itself; the sum is usually less than the real frame,
+since passes that overlap slow each other down. The serial frames feed only
+that table, never the other lines. `og run --gpu-serial` runs every frame
+serially.
+
 A frame is GPU-bound when `gpu frame` is near `frame interval`, and
 CPU-bound when `cpu ticks` plus the render lines are. Start with the
 larger side's largest line.

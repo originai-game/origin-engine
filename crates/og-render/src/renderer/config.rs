@@ -741,6 +741,11 @@ pub struct FrameStats {
     pub foam_steps: u32,
     /// Frames rendered by this renderer before this one (drives the TAA jitter).
     pub frame: u64,
+    /// Whether each of its passes waited for the one before it
+    /// ([`Renderer::set_gpu_serial`]): its passes' GPU times are their
+    /// costs in isolation, and its span and CPU times are not a real
+    /// frame's.
+    pub serial: bool,
     /// Whether the GPU culled this frame ([`RenderDesc::culling`]).
     pub gpu_culling: bool,
     /// Opaque instances in view that nearer occluders hid (GPU culling).
