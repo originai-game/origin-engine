@@ -59,11 +59,7 @@ async function drain() {
 }
 async function applyFiles(w) {
   const t0 = performance.now();
-  const files = await Promise.all([...w.files.values()].map(async (f) => {
-    const url = new URL(f.path, base).href;
-    const r = await fetch(url, { cache: "no-store" });
-    return [url, new Uint8Array(await r.arrayBuffer())];
-  }));
+  const files = await fetchFiles([...w.files.keys()]);
   const fetched = performance.now();
   const r = await probe().devFiles(files);
   const applied = performance.now();
@@ -72,10 +68,45 @@ async function applyFiles(w) {
   const s = w.steps.files ?? {};
   // Save to frame: from the edited file's save (the server's clock read as this page's: the same machine, or near it) to the frame.
   const saveToFrameMs = s.savedAt ? Math.max(0, Date.now() - s.savedAt) : null;
-  const steps = { saveToCookedMs: s.saveToCookedMs, cookMs: s.cookMs, detectMs: s.detectMs, fetchMs: round(fetched - t0), applyMs: round(applied - fetched), workerMs: r?.ms ?? null, worker: r?.steps, frameMs: round(drawn - applied) };
+  const steps = { saveToCookedMs: s.saveToCookedMs, cookMs: s.cookMs, detectMs: s.detectMs, files: files.length, bytes: files.reduce((n, [, b]) => n + b.length, 0), fetchMs: round(fetched - t0), applyMs: round(applied - fetched), workerMs: r?.ms ?? null, worker: r?.steps, frameMs: round(drawn - applied) };
   const ok = !!r && !r.error;
   report("files", w, ok, saveToFrameMs ?? round(drawn - t0), steps, r?.error ?? (r?.warnings?.length ? r.warnings.join("\n") : undefined));
 }
+/** The files at `paths` (relative to the page), `[url, bytes]` each: one `_dev/files` request per few kilobytes of names, not one a file. */
+async function fetchFiles(paths) {
+  const batches = [];
+  let batch = [];
+  let size = 0;
+  for (const p of paths) {
+    if (batch.length && size + p.length > 4000) {
+      batches.push(batch);
+      batch = [];
+      size = 0;
+    }
+    batch.push(p);
+    size += p.length + 3;
+  }
+  if (batch.length) batches.push(batch);
+  const out = [];
+  await Promise.all(batches.map(async (names) => {
+    const url = new URL(`_dev/files?${names.map((n) => `f=${encodeURIComponent(n)}`).join("&")}`, base);
+    const body = new Uint8Array(await (await fetch(url, { cache: "no-store" })).arrayBuffer());
+    const view = new DataView(body.buffer, body.byteOffset, body.byteLength);
+    const text = new TextDecoder();
+    for (let at = 0; at < body.length; ) {
+      const n = view.getUint32(at, true);
+      const name = text.decode(body.subarray(at + 4, at + 4 + n));
+      at += 4 + n;
+      const len = view.getUint32(at, true);
+      at += 4;
+      if (len === 0xffffffff) continue;
+      out.push([new URL(name, base).href, body.slice(at, at + len)]);
+      at += len;
+    }
+  }));
+  return out;
+}
+
 async function applyCode(w) {
   const t0 = performance.now();
   let r = null;

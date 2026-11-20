@@ -905,7 +905,9 @@ and prints one line on stdout when ready:
   wss): text JSON, each message well under 1 MiB, since file bytes are
   fetched over HTTP. Server to page: `hello {build, seq, ready, error}`
   on connect; `files {seq, files: [{path, hash}], edits, steps}` (the
-  page fetches each path and applies them in place, `devFiles`);
+  page fetches them in one `GET _dev/files?f=<path>&f=…`, each file
+  framed as a u32 LE path length, the path, a u32 LE byte length and the
+  bytes, and applies them in place, `devFiles`);
   `code {seq, url, hash, edits, steps}` (the game's own code, bundled
   alone as build.ts `web-code`; the page imports it and the probe's
   `reload` swaps it in, `devCode`); `reload {build}`; `error {error,
@@ -917,10 +919,16 @@ and prints one line on stdout when ready:
   merged into one, the newest code bundle superseding older ones.
 - **Timings.** `window.__og_dev_reloads__` lists each applied change with
   its steps, save to frame. Files: `saveToCookedMs` (the watch, the cook)
-  + `fetchMs` + `applyMs` (the Worker's devFiles, `worker` its steps) +
+  + `fetchMs` (`files` and `bytes` fetched) + `applyMs` (the Worker's devFiles, `worker` its steps) +
   `frameMs`. Code: `saveToBundledMs` + `writtenToFrameMs` (`importMs`,
   `reloadMs` in the Worker, `frameMs`). Budgets: 1.5 s save to frame for
   an asset or UI edit, 300 ms from the code bundle written to the frame.
+- **Style packs.** After each cold build the server cooks every built-in
+  style pack the project's look does not use, once, in the background at
+  the lowest priority (`og-out/dev-web-warm/`, removed after), into the
+  shared cook cache (`OG_COOK_CACHE`, `~/.cache/origingame/cook-v1`). A
+  later `ui "<pack>"` edit takes its fonts, art and CSS from the cache
+  instead of cooking them, a few seconds the first time on a machine.
 - **The Stage's dev channel.** In the same document, over
   `window.postMessage(msg, location.origin)`, each side accepting only
   `event.source === window && event.origin === location.origin`, messages

@@ -16,6 +16,7 @@
 // Every URL the page uses is relative, so it may be served under a prefix (a proxy's ticket
 // path). The server's own routes are under `_dev/` (docs/web-export.md §og dev --web):
 //   GET  _dev/status   {ready, build, error, last?: {kind, ms, at, steps}}
+//   GET  _dev/files?f=cooked/<path>&f=…  a change's cooked files in one framed response
 //   WS   _dev/socket   text JSON, each message under 1 MiB (the page fetches file bytes over HTTP):
 //     server→page  {type:"hello", build, seq}             on connect; a new build: the page reloads
 //                  {type:"files", seq, files:[{path, hash}], edits, steps}
@@ -205,6 +206,7 @@ function startCooker(): void {
         } catch {
           continue;
         }
+        if (e.event === "watching") void warmPacks((e as { styles?: string | null }).styles ?? null);
         if (e.event !== "cook") continue;
         const edits = (e.changed ?? []).map((p) => (p.startsWith(project) ? relative(project, p).split(sep).join("/") : /^([A-Za-z]:)?[\\/]/.test(p) ? p : `assets/${p}`));
         // Save to cooked: from the newest edited file's time.
@@ -241,6 +243,49 @@ function startCooker(): void {
     const err = await new Response(proc.stderr).text();
     if (cooker === me && err.trim()) console.error(err.trim());
   })();
+}
+
+// ── warming: the other style packs, cooked once into the shared cook cache ──
+//
+// A look's `ui "<pack>"` edit cooks the new pack: its CSS, art and fonts, a few seconds the first
+// time on a machine (a font's atlas is about a second). After the cold build, each built-in pack
+// the project does not use is cooked once in the background, at the lowest priority, in a scratch
+// project with the project's own project.ogt and look (so the cook's options, and with them the
+// shared cache's keys, are the project's) and its `ui` line naming that pack. A later switch to it
+// finds its outputs in the cache (og-cook's own-input actions) and cooks in a fraction of a second.
+
+let warming: Promise<void> | null = null;
+function warmPacks(stylesDir: string | null): Promise<void> {
+  if (!stylesDir || warming) return warming ?? Promise.resolve();
+  warming = (async () => {
+    const projectText = readFileSync(join(project, "project.ogt"), "utf8");
+    const lookRel = /^\s*look\s+"([^"]+)"/m.exec(projectText)?.[1];
+    if (!lookRel || lookRel.startsWith("@")) return;
+    const lookFile = join(project, "assets", lookRel);
+    const lookText = stat(lookFile)?.isFile() ? readFileSync(lookFile, "utf8") : "";
+    const current = /^\s*ui\s+"([^"]+)"/m.exec(lookText)?.[1] ?? "default";
+    const packs = readdirSync(stylesDir)
+      .filter((d) => d !== "shared" && d !== current && stat(join(stylesDir, d))?.isDirectory() && readdirSync(join(stylesDir, d)).some((f) => f.endsWith(".css")))
+      .sort();
+    const entryRel = relative(project, entry);
+    for (const pack of packs) {
+      const dir = join(project, "og-out", "dev-web-warm", pack);
+      rmSync(dir, { recursive: true, force: true });
+      mkdirSync(dirname(join(dir, "assets", lookRel)), { recursive: true });
+      mkdirSync(dirname(join(dir, entryRel)), { recursive: true });
+      writeFileSync(join(dir, "project.ogt"), projectText);
+      const ui = /^\s*ui\s+"[^"]*"/m.test(lookText) ? lookText.replace(/^(\s*)ui\s+"[^"]*"/m, `$1ui "${pack}"`) : `${lookText.trimEnd()}\nui "${pack}"\n`;
+      writeFileSync(join(dir, "assets", lookRel), ui);
+      writeFileSync(join(dir, entryRel), "export default null;\n");
+      const t0 = performance.now();
+      const cmd = [og, "cook", dir, "--threads", "2"];
+      const p = Bun.spawn(process.platform === "win32" ? cmd : ["nice", "-n", "19", ...cmd], { cwd: project, stdout: "pipe", stderr: "pipe", env: process.env });
+      await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
+      console.log(`warmed the cook cache for ui "${pack}" in ${Math.round(performance.now() - t0)} ms`);
+      rmSync(dir, { recursive: true, force: true });
+    }
+  })().catch((e) => console.error(`warming the style packs: ${e}`));
+  return warming;
 }
 
 // ── code: the game's own bundle on each src/ edit ───────────────────────────
@@ -348,6 +393,26 @@ const server = Bun.serve({
     if (dev?.[1] === "socket") {
       if (srv.upgrade(req, { data: { seq: 0 } })) return undefined;
       return new Response("expected a WebSocket", { status: 426, headers: NO_STORE });
+    }
+    // A change's cooked files in one response (the relay carries a few requests at a time, so
+    // a pack's dozens of files fetched one by one took several round trips): `?f=cooked/<path>`
+    // repeated; each file as a u32 LE path length, the path (UTF-8), a u32 LE byte length and
+    // the bytes. A missing file has the byte length 0xffffffff and no bytes.
+    if (/(?:^|\/)_dev\/files$/.test(path)) {
+      const enc = new TextEncoder();
+      const parts: Uint8Array<ArrayBuffer>[] = [];
+      for (const f of url.searchParams.getAll("f")) {
+        if (!f.startsWith("cooked/") || f.split("/").includes("..")) return new Response("bad path", { status: 400, headers: NO_STORE });
+        const name = enc.encode(f) as Uint8Array<ArrayBuffer>;
+        const at = join(cookedDir, f.slice("cooked/".length));
+        const bytes = stat(at)?.isFile() ? new Uint8Array(readFileSync(at)) as Uint8Array<ArrayBuffer> : null;
+        const head = new DataView(new ArrayBuffer(4));
+        head.setUint32(0, name.length, true);
+        const len = new DataView(new ArrayBuffer(4));
+        len.setUint32(0, bytes ? bytes.length : 0xffffffff, true);
+        parts.push(new Uint8Array(head.buffer), name, new Uint8Array(len.buffer), ...(bytes ? [bytes] : []));
+      }
+      return new Response(new Blob(parts), { headers: { "content-type": "application/octet-stream", ...NO_STORE } });
     }
     if (dev?.[1] === "status") return Response.json({ ready, build, error: errorText(), ...(last ? { last } : {}) }, { headers: NO_STORE });
     if (!ready && !existsSync(join(out, "index.html"))) return new Response("og dev --web: building…", { status: 503, headers: { ...NO_STORE, "retry-after": "1" } });
