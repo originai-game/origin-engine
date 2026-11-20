@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "publish { pipelines }",
+      "summary": "On the web a frame's lit, prepass, terrain and water pipelines are compiled with only the optional lit features the frame uses (weather, local and area lights, decals, GI, caustics, toon, dissolve and the rest), as natively, instead of with every feature: a cold driver compiles each full lit pipeline for seconds, and a large scene's first frame waited for dozens of them. The full pipeline is asked for when a feature turns on or behind the play gate, and draws once it is compiled; captures and diagnostic views draw with it as before. Frames are the same."
+    }
+  ]
+}

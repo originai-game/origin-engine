@@ -30,8 +30,15 @@
 //! waiting for them: its bytes are a function of the world and the
 //! presentation state (docs/design.md §2.4), never of which variants have
 //! compiled, and the variants' binaries differ in their last bit.
-//! On the web every pipeline is the full one (the browser compiles them
-//! and the host's frame span waits for them asynchronously).
+//! On the web a frame draws with the variant for its features as well
+//! (made at its first use and asked of the browser asynchronously, like
+//! every pipeline there): a cold driver compiles each full lit variant for
+//! seconds, and a large scene's first frame waited for dozens of them. The
+//! full variant is asked for when a frame needs a feature its variant
+//! lacks, or when the renderer warms it behind the play gate, and draws
+//! once the browser has compiled it ([`Cell::usable`]); until then the
+//! variant draws, as natively. A frame that needs every feature (a
+//! capture's, a diagnostic view's) draws the full one.
 //!
 //! A renderer made without some of them ([`LitFeatures`],
 //! `RenderDesc::without`) has their overrides false in the text of every
@@ -42,8 +49,8 @@
 //! recorded, the shelter layer is not fitted), so a module that carries the
 //! code still skips it at its runtime test.
 
-// On the web every lit pipeline is the full variant: the variants'
-// machinery is native.
+// On the web the variants are made at their first use: starting them
+// ahead is native.
 #![cfg_attr(target_arch = "wasm32", allow(dead_code))]
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -313,6 +320,9 @@ pub(crate) trait Cell {
     fn ready(&self) -> Option<&Self::Value>;
     /// Its value, waited for or made now.
     fn get(&self) -> &Self::Value;
+    /// Whether it is made and the web host has compiled it, without making
+    /// it.
+    fn usable(&self) -> bool;
     /// Takes what the full variant `full` draws at (its sample count).
     fn follow(&self, _full: &Self) {}
 }
@@ -329,6 +339,9 @@ impl<T: crate::deferred::AnywhereOnce + 'static> Cell for Deferred<T> {
     fn get(&self) -> &T {
         Deferred::get(self)
     }
+    fn usable(&self) -> bool {
+        Deferred::usable(self)
+    }
 }
 
 impl<T: crate::deferred::AnywhereOnce + 'static> Cell for Sampled<T> {
@@ -342,6 +355,9 @@ impl<T: crate::deferred::AnywhereOnce + 'static> Cell for Sampled<T> {
     }
     fn get(&self) -> &T {
         Sampled::get(self)
+    }
+    fn usable(&self) -> bool {
+        Sampled::usable(self)
     }
     fn follow(&self, full: &Self) {
         self.set_samples(full.samples());
@@ -431,10 +447,7 @@ impl<C: Cell> Variants<C> {
     /// for, so what it draws never depends on what has compiled.
     pub(crate) fn get(&self, features: Features) -> &C::Value {
         #[cfg(target_arch = "wasm32")]
-        {
-            let _ = features;
-            self.full.get()
-        }
+        return self.made_at_use(features);
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Some(v) = self.full.ready() {
@@ -445,6 +458,35 @@ impl<C: Cell> Variants<C> {
             }
             self.start(features);
             self.lean.get().expect("started").1.get()
+        }
+    }
+
+    /// [`Variants::get`] on the web, where each variant is made at its
+    /// first use and compiled by the browser asynchronously: the full
+    /// variant once it is compiled ([`Cell::usable`]) or when the frame
+    /// needs every feature, else the variant for the frame's features.
+    #[cfg_attr(not(any(target_arch = "wasm32", test)), allow(dead_code))]
+    fn made_at_use(&self, features: Features) -> &C::Value {
+        let wanted = self.wanted(features);
+        if wanted == Features::ALL || self.full.usable() {
+            return self.full.get();
+        }
+        match self.lean.get() {
+            // A variant with more than the frame uses draws what it
+            // draws (the code it adds is skipped at its runtime test).
+            Some((have, lean)) if have.contains(wanted) => lean.get(),
+            // A feature turned on: the full variant is asked for, and
+            // the variant draws without it until that one is compiled.
+            Some((_, lean)) => {
+                self.full.get();
+                lean.get()
+            }
+            None => {
+                let lean = (self.make)(wanted);
+                lean.follow(&self.full);
+                let _ = self.lean.set((wanted, lean));
+                self.lean.get().expect("set above").1.get()
+            }
         }
     }
 
@@ -520,6 +562,62 @@ mod tests {
         assert_eq!(all.names().len(), LitFeatures::NAMED.len());
     }
 
+    /// On the web (a host that compiles pipelines asynchronously): a frame
+    /// draws with the variant for its features, never waiting for the full
+    /// one; a feature turned on later is drawn once the full variant is
+    /// compiled, the variant drawing without it meanwhile; a frame that
+    /// needs every feature draws the full one. Fails if the web compiled
+    /// the full variant for the first frame again, drew a stand-in still
+    /// compiling in place of a made variant, or never took the full one.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn on_the_web_a_frame_draws_its_variant_until_the_full_one_is_compiled() {
+        thread_local! {
+            static TICKETS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+            static COMPILED: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+        }
+        // Each pipeline made is a ticket; those up to COMPILED are compiled.
+        fn count() -> u32 {
+            TICKETS.with(|t| {
+                t.set(t.get() + 1);
+                t.get()
+            })
+        }
+        fn ready(ticket: u32) -> bool {
+            ticket <= COMPILED.with(|c| c.get())
+        }
+        fn compiling() -> bool {
+            TICKETS.with(|t| t.get()) > COMPILED.with(|c| c.get())
+        }
+        let source = "override OG_WEATHER: bool = true;\noverride OG_GI: bool = true;\n";
+        let declared = Features::declared(source);
+        let made = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let log = made.clone();
+        let v = Variants::new(declared, move |f: Features| {
+            log.lock().unwrap().push(f);
+            Deferred::anywhere(move || f)
+        });
+        crate::gpu::ready::set_pipeline_hooks(None, Some((count, ready, compiling)));
+        let first = *v.made_at_use(Features::NONE);
+        let later = *v.made_at_use(Features::WEATHER);
+        COMPILED.with(|c| c.set(u32::MAX));
+        let compiled = *v.made_at_use(Features::WEATHER);
+        let back = *v.made_at_use(Features::NONE);
+        crate::gpu::ready::set_pipeline_hooks(None, None);
+        let wanted = !declared;
+        assert_eq!(first, wanted, "the first frame draws its own variant");
+        assert_eq!(
+            later, wanted,
+            "drawn without the feature while the full one compiles"
+        );
+        assert_eq!((compiled, back), (Features::ALL, Features::ALL));
+        let full = v.made_at_use(Features::ALL);
+        assert_eq!(*full, Features::ALL);
+        // The full variant's cell exists from the start (unmade); made once asked.
+        assert_eq!(*made.lock().unwrap(), vec![Features::ALL, wanted]);
+        assert!(v.full().made());
+    }
+
     /// A frame lacking only a feature the module is made without draws the
     /// full variant: no variant is made for it.
     #[cfg(not(target_arch = "wasm32"))]
@@ -585,6 +683,9 @@ mod tests {
             }
             fn get(&self) -> &Features {
                 &self.0
+            }
+            fn usable(&self) -> bool {
+                false
             }
         }
         let v = Variants::new(Features::ALL, Pending);
