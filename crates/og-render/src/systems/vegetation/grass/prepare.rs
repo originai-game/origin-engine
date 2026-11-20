@@ -187,6 +187,16 @@ impl GrassRenderer {
             if self.generate[a].is_none() {
                 self.generate[a] = Some(self.make_generate(device, terrain_layout, td.arrayed()));
             }
+            // Its blades are generated each frame and drawn from that: while
+            // the web host still compiles the generate pipelines the field is
+            // left out, so no pass draws blades nothing generated
+            // (gpu/ready.rs).
+            if self.generate[a]
+                .as_ref()
+                .is_some_and(|(_, t)| !crate::gpu::ready::all(t))
+            {
+                continue;
+            }
             let cast = g.cast_shadows && scene.lighting.light.cast_shadows && sun_on;
             // With its shadow: the box swept along the sun's reach.
             let shadow = reach * g.tallest() * f32::from(u8::from(cast));

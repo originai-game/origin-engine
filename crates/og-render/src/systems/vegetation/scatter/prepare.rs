@@ -510,12 +510,15 @@ impl ScatterRenderer {
                     if streamed && !settle && gpu_budget == 0 {
                         continue;
                     }
+                    let place = self.place.as_mut().expect("planned with it");
+                    if !place.ready(device, terrain_layout, arrayed) {
+                        continue;
+                    }
                     gpu_budget = gpu_budget.saturating_sub(1);
                     self.built += 1;
-                    let place = self.place.as_mut().expect("planned with it");
                     let buffer = crate::scatter_place::ScatterPlace::chunk_buffer(device);
                     let group = place.chunk_group(device, &buffer);
-                    place.push(device, terrain_layout, (k, arrayed), plan);
+                    place.push((k, arrayed), plan);
                     // Its bounds: its rectangle over the data's height range.
                     let (h0, h1) = source.range();
                     let (center, radius) = crate::visibility::bounds::world_sphere(
