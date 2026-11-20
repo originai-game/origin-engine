@@ -30,6 +30,13 @@ impl ScatterRenderer {
         }
     }
 
+    /// Makes the full variant of one of its lit or prepass pipelines that
+    /// is not made yet (Renderer::warm).
+    pub(crate) fn warm(&self) -> bool {
+        use crate::deferred::Warm;
+        self.pipelines.values().any(|v| v.full().warm())
+    }
+
     pub(crate) fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -117,9 +124,11 @@ impl ScatterRenderer {
             "scatter shadow",
             &[p.shadow_layout, p.material_layout, &uniform_layout],
         );
+        let lit_source = (p.lit_wgsl)(&crate::hooks::default_hooks());
+        let declared = Features::declared(&lit_source);
         let lit_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("scatter"),
-            source: wgpu::ShaderSource::Wgsl((p.lit_wgsl)(&crate::hooks::default_hooks()).into()),
+            source: wgpu::ShaderSource::Wgsl(lit_source.into()),
         });
         let shadow_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("scatter shadow"),
@@ -151,6 +160,8 @@ impl ScatterRenderer {
             lit_fx_layout,
             shadow_layout,
             lit_module,
+            declared,
+            features: Features::ALL,
             shadow_module,
             hooked: HashMap::new(),
             lit_wgsl: p.lit_wgsl,

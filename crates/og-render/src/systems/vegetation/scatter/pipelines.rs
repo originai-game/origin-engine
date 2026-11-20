@@ -68,7 +68,7 @@ impl ScatterRenderer {
         }
         if pass == ScatterPass::Shadow {
             let set = if impostor {
-                crate::ShadowSet::new(|t| self.impostor_pipeline(device, pass, t))
+                self.card_shadows(device, false)
             } else {
                 // A local layer's pair only when a frame draws one (shadow_target.rs).
                 let (device, layout, module) = (
@@ -83,84 +83,53 @@ impl ScatterRenderer {
             self.shadow_pipelines.insert(key, set);
             return;
         }
-        if impostor {
-            let p = self.impostor_pipeline(device, pass, crate::ShadowTarget::Cascade);
-            self.pipelines.insert(key, p);
-            return;
-        }
-        let lit_module = match shader {
-            Some(sh) => &self.hooked[&sh],
-            None => &self.lit_module,
+        let (module, declared) = match shader {
+            Some(sh) => self.hooked[&sh].clone(),
+            None => (self.lit_module.clone(), self.declared),
         };
-        let buffers = [Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)];
-        let depth = |write| {
-            Some(wgpu::DepthStencilState {
-                format: crate::DEPTH_FORMAT,
-                depth_write_enabled: Some(write),
-                depth_compare: Some(wgpu::CompareFunction::Less),
-                stencil: Default::default(),
-                bias: Default::default(),
-            })
+        let (vs, fs, buffers, cull) = match impostor {
+            true => ("vs_impostor", "fs_impostor", IMPOSTOR_BUFFERS, None),
+            false => ("vs", "fs", MESH_BUFFERS, crate::cull_mode(side)),
         };
-        let target = |format| {
-            Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })
-        };
-        let p = match pass {
-            ScatterPass::Lit => crate::hdr_pipeline(
-                device,
-                crate::HdrPipeline {
-                    // opaque copies write alpha 1 (every sample); alpha-to-coverage materials their coverage
-                    alpha_to_coverage: true,
-                    label: "scatter",
-                    layout: &self.lit_fx_layout,
-                    module: lit_module,
-                    vs: "vs",
-                    fs: "fs",
-                    buffers: &buffers,
-                    cull: crate::cull_mode(side),
-                    depth_write: true,
-                    depth_compare: crate::LIT_DEPTH_COMPARE,
-                    blend: None,
-                    samples: self.samples,
+        let p = self.lit_variants(
+            device,
+            LitDesc {
+                label: match (impostor, pass) {
+                    (true, _) => "impostor",
+                    (false, ScatterPass::Prepass) => "scatter prepass",
+                    (false, _) => "scatter",
                 },
-            ),
-            ScatterPass::Prepass => {
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("scatter prepass"),
-                    layout: Some(&self.lit_fx_layout),
-                    vertex: wgpu::VertexState {
-                        module: lit_module,
-                        entry_point: Some("vs"),
-                        compilation_options: Default::default(),
-                        buffers: &buffers,
-                    },
-                    primitive: wgpu::PrimitiveState {
-                        cull_mode: crate::cull_mode(side),
-                        ..Default::default()
-                    },
-                    depth_stencil: depth(true),
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module: lit_module,
-                        entry_point: Some("fs_prepass"),
-                        compilation_options: Default::default(),
-                        targets: &[
-                            target(crate::post::GBUFFER_FORMAT),
-                            target(crate::post::LINDEPTH_FORMAT),
-                            target(crate::post::OUTLINE_FORMAT),
-                        ],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                })
-            }
-            ScatterPass::Shadow => unreachable!("made by mesh_shadow_pipeline"),
-        };
+                module,
+                declared,
+                vs,
+                fs,
+                buffers,
+                cull,
+            },
+            pass,
+        );
         self.pipelines.insert(key, p);
+    }
+
+    /// The lit or prepass `pass`'s pipeline of `d`, as the variant for the
+    /// frame's features and the full one (pipeline_features.rs): the
+    /// prepass's fragment entry is `d.fs` with `_prepass` (`fs_prepass` for
+    /// `fs`).
+    pub(super) fn lit_variants(
+        &self,
+        device: &wgpu::Device,
+        d: LitDesc,
+        pass: ScatterPass,
+    ) -> LitVariants {
+        let (device, layout, samples) = (device.clone(), self.lit_fx_layout.clone(), self.samples);
+        let declared = d.declared;
+        Variants::new(declared, move |features: Features| {
+            let (device, layout, d) = (device.clone(), layout.clone(), d.clone());
+            let constants = features.constants(declared);
+            Deferred::anywhere(move || {
+                lit_pipeline(&device, &layout, &d, pass, samples, &constants)
+            })
+        })
     }
 
     /// A scattered mesh's shadow pipeline into `target`: as shadow.wgsl's
@@ -202,199 +171,158 @@ impl ScatterRenderer {
         })
     }
 
-    /// An impostor pipeline (`impostor.wgsl`): the card has no vertex
-    /// buffer but the instances' (slot 0), and both faces drawn.
-    fn impostor_pipeline(
-        &self,
-        device: &wgpu::Device,
-        pass: ScatterPass,
-        // The shadow pass's (shadow_target.rs); the others ignore it.
-        shadow: crate::ShadowTarget,
-    ) -> wgpu::RenderPipeline {
-        let buffers = [Some(crate::INSTANCE_LAYOUT)];
-        let depth = Some(if pass == ScatterPass::Shadow {
-            shadow.depth()
-        } else {
-            wgpu::DepthStencilState {
-                format: crate::DEPTH_FORMAT,
-                depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::Less),
-                stencil: Default::default(),
-                bias: Default::default(),
-            }
-        });
-        let target = |format| {
-            Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })
+    /// An impostor's (`impostor_shadow.wgsl`) or a crowd card's
+    /// (`crowd_card_shadow.wgsl`) shadow pipelines: the card has no vertex
+    /// buffer but the instances' (slot 0), both faces cast, and a local
+    /// layer's pair is made when a frame draws one (shadow_target.rs).
+    pub(super) fn card_shadows(&self, device: &wgpu::Device, card: bool) -> crate::ShadowSet {
+        let (device, layout, module) = (
+            device.clone(),
+            self.shadow_layout.clone(),
+            self.shadow_module.clone(),
+        );
+        let (label, entry, buffers) = match card {
+            true => ("crowd card", "crowd_card", CARD_BUFFERS),
+            false => ("impostor", "impostor", IMPOSTOR_BUFFERS),
         };
-        let (layout, module, vs, fs, targets): (_, _, _, _, Vec<_>) = match pass {
-            ScatterPass::Lit => {
-                return crate::hdr_pipeline(
-                    device,
-                    crate::HdrPipeline {
-                        alpha_to_coverage: true,
-                        label: "impostor",
-                        layout: &self.lit_fx_layout,
-                        module: &self.lit_module,
-                        vs: "vs_impostor",
-                        fs: "fs_impostor",
-                        buffers: &buffers,
-                        cull: None,
-                        depth_write: true,
-                        depth_compare: crate::LIT_DEPTH_COMPARE,
-                        blend: None,
-                        samples: self.samples,
-                    },
-                );
-            }
-            ScatterPass::Prepass => (
-                &self.lit_fx_layout,
-                &self.lit_module,
-                "vs_impostor",
-                "fs_impostor_prepass",
-                vec![
-                    target(crate::post::GBUFFER_FORMAT),
-                    target(crate::post::LINDEPTH_FORMAT),
-                    target(crate::post::OUTLINE_FORMAT),
-                ],
-            ),
-            ScatterPass::Shadow => (
-                &self.shadow_layout,
-                &self.shadow_module,
-                "vs_impostor_shadow",
-                "fs_impostor_shadow",
-                vec![Some(shadow.color())],
-            ),
-        };
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("impostor"),
-            layout: Some(layout),
-            vertex: wgpu::VertexState {
-                module,
-                entry_point: Some(vs),
-                compilation_options: Default::default(),
-                buffers: &buffers,
-            },
-            primitive: Default::default(),
-            depth_stencil: depth,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module,
-                entry_point: Some(fs),
-                // Both faces cast (shadow_target.rs).
-                compilation_options: wgpu::PipelineCompilationOptions {
-                    constants: if pass == ScatterPass::Shadow {
-                        crate::ShadowTarget::constants(Side::Double)
-                    } else {
-                        &[]
-                    },
-                    ..Default::default()
-                },
-                targets: &targets,
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
+        crate::ShadowSet::lazy(move |target| {
+            card_shadow(&device, (&layout, &module), label, entry, buffers, target)
         })
     }
+}
 
-    /// A crowd card pipeline (`crowd_card.wgsl`): instance records of
-    /// [`CARD_LAYOUT`] (slot 0), indexed by the card quad, both faces.
-    pub(super) fn card_pipeline(
-        &self,
-        device: &wgpu::Device,
-        pass: ScatterPass,
-        // The shadow pass's (shadow_target.rs); the others ignore it.
-        shadow: crate::ShadowTarget,
-    ) -> wgpu::RenderPipeline {
-        let buffers = [Some(CARD_LAYOUT)];
-        let depth = Some(if pass == ScatterPass::Shadow {
-            shadow.depth()
-        } else {
-            wgpu::DepthStencilState {
-                format: crate::DEPTH_FORMAT,
-                depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::Less),
-                stencil: Default::default(),
-                bias: Default::default(),
-            }
-        });
-        let target = |format| {
-            Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })
-        };
-        let (layout, module, vs, fs, targets): (_, _, _, _, Vec<_>) = match pass {
-            ScatterPass::Lit => {
-                return crate::hdr_pipeline(
-                    device,
-                    crate::HdrPipeline {
-                        alpha_to_coverage: true,
-                        label: "crowd card",
-                        layout: &self.lit_fx_layout,
-                        module: &self.lit_module,
-                        vs: "vs_crowd_card",
-                        fs: "fs_crowd_card",
-                        buffers: &buffers,
-                        cull: None,
-                        depth_write: true,
-                        depth_compare: crate::LIT_DEPTH_COMPARE,
-                        blend: None,
-                        samples: self.samples,
-                    },
-                );
-            }
-            ScatterPass::Prepass => (
-                &self.lit_fx_layout,
-                &self.lit_module,
-                "vs_crowd_card",
-                "fs_crowd_card_prepass",
-                vec![
-                    target(crate::post::GBUFFER_FORMAT),
-                    target(crate::post::LINDEPTH_FORMAT),
-                    target(crate::post::OUTLINE_FORMAT),
-                ],
-            ),
-            ScatterPass::Shadow => (
-                &self.shadow_layout,
-                &self.shadow_module,
-                "vs_crowd_card_shadow",
-                "fs_crowd_card_shadow",
-                vec![Some(shadow.color())],
-            ),
-        };
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("crowd card"),
-            layout: Some(layout),
-            vertex: wgpu::VertexState {
-                module,
-                entry_point: Some(vs),
-                compilation_options: Default::default(),
-                buffers: &buffers,
+fn card_shadow(
+    device: &wgpu::Device,
+    (layout, module): (&wgpu::PipelineLayout, &wgpu::ShaderModule),
+    label: &'static str,
+    entry: &str,
+    buffers: &[Option<wgpu::VertexBufferLayout<'static>>],
+    target: crate::ShadowTarget,
+) -> wgpu::RenderPipeline {
+    let (vs, fs) = (format!("vs_{entry}_shadow"), format!("fs_{entry}_shadow"));
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some(label),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module,
+            entry_point: Some(&vs),
+            compilation_options: Default::default(),
+            buffers,
+        },
+        primitive: Default::default(),
+        depth_stencil: Some(target.depth()),
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module,
+            entry_point: Some(&fs),
+            // Both faces cast (shadow_target.rs).
+            compilation_options: wgpu::PipelineCompilationOptions {
+                constants: crate::ShadowTarget::constants(Side::Double),
+                ..Default::default()
             },
-            primitive: Default::default(),
-            depth_stencil: depth,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module,
-                entry_point: Some(fs),
-                // Both faces cast (shadow_target.rs).
-                compilation_options: wgpu::PipelineCompilationOptions {
-                    constants: if pass == ScatterPass::Shadow {
-                        crate::ShadowTarget::constants(Side::Double)
-                    } else {
-                        &[]
-                    },
-                    ..Default::default()
-                },
-                targets: &targets,
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        })
+            targets: &[Some(target.color())],
+        }),
+        multiview_mask: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
+    })
+}
+
+/// The scattered meshes', impostors' and crowd cards' vertex buffers.
+const MESH_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
+    &[Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)];
+const IMPOSTOR_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
+    &[Some(crate::INSTANCE_LAYOUT)];
+pub(super) const CARD_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] = &[Some(CARD_LAYOUT)];
+
+/// A lit or prepass pipeline of the scatter's lit module (or a material
+/// shader's): its entries, vertex buffers and culled face.
+#[derive(Clone)]
+pub(super) struct LitDesc {
+    pub label: &'static str,
+    pub module: wgpu::ShaderModule,
+    /// The features the module declares (pipeline_features.rs).
+    pub declared: Features,
+    pub vs: &'static str,
+    pub fs: &'static str,
+    pub buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>],
+    pub cull: Option<wgpu::Face>,
+}
+
+/// `d`'s `pass` pipeline with `constants` (the lit pass's into the HDR
+/// target at `samples`, the prepass's into the G-buffer).
+fn lit_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    d: &LitDesc,
+    pass: ScatterPass,
+    samples: u32,
+    constants: &[(&str, f64)],
+) -> wgpu::RenderPipeline {
+    if pass == ScatterPass::Lit {
+        return crate::hdr_pipeline_with(
+            device,
+            constants,
+            crate::HdrPipeline {
+                // opaque copies write alpha 1 (every sample); alpha-to-coverage materials their coverage
+                alpha_to_coverage: true,
+                label: d.label,
+                layout,
+                module: &d.module,
+                vs: d.vs,
+                fs: d.fs,
+                buffers: d.buffers,
+                cull: d.cull,
+                depth_write: true,
+                depth_compare: crate::LIT_DEPTH_COMPARE,
+                blend: None,
+                samples,
+            },
+        );
     }
+    let target = |format| {
+        Some(wgpu::ColorTargetState {
+            format,
+            blend: None,
+            write_mask: wgpu::ColorWrites::ALL,
+        })
+    };
+    let options = || wgpu::PipelineCompilationOptions {
+        constants,
+        ..Default::default()
+    };
+    let fs = format!("{}_prepass", d.fs);
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some(d.label),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: &d.module,
+            entry_point: Some(d.vs),
+            compilation_options: options(),
+            buffers: d.buffers,
+        },
+        primitive: wgpu::PrimitiveState {
+            cull_mode: d.cull,
+            ..Default::default()
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: crate::DEPTH_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: Default::default(),
+            bias: Default::default(),
+        }),
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: &d.module,
+            entry_point: Some(&fs),
+            compilation_options: options(),
+            targets: &[
+                target(crate::post::GBUFFER_FORMAT),
+                target(crate::post::LINDEPTH_FORMAT),
+                target(crate::post::OUTLINE_FORMAT),
+            ],
+        }),
+        multiview_mask: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
+    })
 }

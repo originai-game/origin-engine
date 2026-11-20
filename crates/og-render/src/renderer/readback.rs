@@ -68,6 +68,7 @@ impl Renderer {
             || self.glass.warm()
             || (WORLD_3D && self.world.water.warm())
             || (WORLD_3D && self.world.terrain.warm())
+            || (WORLD_3D && self.world.scatter.warm())
             || self.world.metaballs.warm()
             || (WORLD_3D && self.world.fluid3d.warm())
             || self.lines.warm()

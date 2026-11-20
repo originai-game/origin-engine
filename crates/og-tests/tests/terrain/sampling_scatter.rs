@@ -375,8 +375,12 @@ fn scattered_copies_take_the_decals_and_the_weather() {
         ..Default::default()
     };
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    // Captures: each draws with the full lit pipelines, where a display
+    // frame that turns a feature on draws without it until they compile
+    // (pipeline_features.rs).
     let mut capture = |s: &RenderScene| {
-        r.render(s, &RenderTarget::Offscreen).expect("render");
+        r.render_capture(s, &RenderTarget::Offscreen)
+            .expect("render");
         r.read_offscreen().expect("capture")
     };
     let bare = capture(&scene);

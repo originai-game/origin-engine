@@ -72,7 +72,7 @@ impl ScatterRenderer {
     ) -> (u32, u32) {
         let pipeline = |key: &(Option<usize>, Side, u8)| match kind {
             ScatterPass::Shadow => self.shadow_pipelines.get(key).map(|s| s.get(target)),
-            _ => self.pipelines.get(key),
+            _ => self.pipelines.get(key).map(|v| v.get(self.features)),
         };
         // The main camera's prepass and lit pass draw the copies the GPU
         // cull kept for it; the other passes those it listed for them.
