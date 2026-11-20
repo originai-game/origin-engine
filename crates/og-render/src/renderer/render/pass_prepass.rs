@@ -134,7 +134,7 @@ impl Renderer {
             let mesh = &self.cache.meshes[batch.mesh];
             let start = first as u64 * INSTANCE_STRIDE;
             let end = start + count as u64 * INSTANCE_STRIDE;
-            p.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
+            p.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
             p.set_vertex_buffer(1, instances.slice(start..end));
             p.set_vertex_buffer(2, prev.slice(start..end));
             if let Some(surface) = &mesh.surface {
@@ -250,7 +250,7 @@ impl Renderer {
                 let mesh = &self.cache.meshes[batch.mesh];
                 let start = first as u64 * INSTANCE_STRIDE;
                 let end = start + count as u64 * INSTANCE_STRIDE;
-                p.set_vertex_buffer(0, mesh.vertices.slice(..));
+                p.set_vertex_buffer(0, mesh.vertex_slice(false));
                 p.set_vertex_buffer(1, instances.slice(start..end));
                 p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
                 match (main_list.indirect, culled_gpu) {

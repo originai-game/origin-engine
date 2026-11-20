@@ -118,7 +118,7 @@ impl Renderer {
                 .filter_map(|&(mesh, material)| {
                     let m = &meshes[mesh];
                     Some(BakePart {
-                        vertices: &m.vertices,
+                        vertices: m.vertex_slice(false),
                         indices: &m.indices,
                         skin: skins[mesh].as_ref()?,
                         index_count: m.index_count,

@@ -462,7 +462,7 @@ impl ParticleRenderer {
         view: Option<&crate::frame::Frustum>,
         part: ParticlePart<'_>,
         texture_group: impl Fn(Option<crate::TextureHandle>) -> &'b wgpu::BindGroup,
-        mesh: impl Fn(crate::MeshHandle) -> Option<(&'b wgpu::Buffer, &'b wgpu::Buffer, u32)>,
+        mesh: impl Fn(crate::MeshHandle) -> Option<(wgpu::BufferSlice<'b>, &'b wgpu::Buffer, u32)>,
     ) -> u32 {
         let mut draws = 0;
         for s in frame.systems.iter().filter(|s| {
@@ -513,7 +513,7 @@ impl ParticleRenderer {
             }
             match s.mesh.map(&mesh) {
                 Some(Some((vertices, indices, count))) => {
-                    pass.set_vertex_buffer(1, vertices.slice(..));
+                    pass.set_vertex_buffer(1, vertices);
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
                     for (at, _, r) in ranges {
                         pass.set_vertex_buffer(0, buffer.slice(at..));

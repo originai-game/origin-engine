@@ -90,7 +90,7 @@ impl Renderer {
             let skin = self.cache.skins[batch.mesh]
                 .as_ref()
                 .expect("a skinned mesh");
-            pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            pass.set_vertex_buffer(0, mesh.vertex_slice(false));
             pass.set_vertex_buffer(2, skin.slice(..));
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
             match (batch.crowd, crowds) {

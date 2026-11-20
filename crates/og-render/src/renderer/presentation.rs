@@ -230,7 +230,7 @@ impl Renderer {
         let (targets, textures): (Vec<&GpuTexture>, Vec<&GpuTexture>) =
             self.cache.textures.iter().partition(|t| t.target);
         let mesh_bytes = |m: &GpuMesh| {
-            m.vertices.size()
+            m.pooled.map_or(m.vertices.size(), |_| 0)
                 + m.indices.size()
                 + m.compact.as_ref().map_or(0, |(b, _)| b.size())
                 + m.surface.as_ref().map_or(0, surface::SurfaceMesh::bytes)

@@ -50,12 +50,12 @@ impl<'f> DrawCtx<'f> {
     pub(super) fn scatter_mesh(
         &self,
         m: usize,
-    ) -> Option<(&'f wgpu::Buffer, &'f wgpu::Buffer, u32)> {
+    ) -> Option<(wgpu::BufferSlice<'f>, &'f wgpu::Buffer, u32)> {
         let &DrawCtx { r, .. } = self;
         r.cache
             .meshes
             .get(m)
-            .map(|g| (&g.vertices, &g.indices, g.index_count))
+            .map(|g| (g.vertex_slice(false), &g.indices, g.index_count))
     }
 
     /// A pass's effect group without the planar reflection, for its
@@ -480,7 +480,7 @@ impl<'f> DrawCtx<'f> {
             // A view's GPU-culled list: its pass's region and draws.
             let indirect = list.indirect.zip(culled_gpu);
             let instances = indirect.map_or(&r.instances.instance_buffer, |(_, gc)| &gc.instances);
-            pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
+            pass.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
             pass.set_vertex_buffer(1, instances.slice(range.clone()));
             pass.set_vertex_buffer(2, instances.slice(range));
             if let Some(surface) = &mesh.surface {

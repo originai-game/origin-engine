@@ -649,7 +649,9 @@ pub(crate) struct WaterDraw {
     /// The surface's world bounding sphere (its reflection probe: probe_select.rs).
     bounds: (Vec3, f32),
     /// Its mesh's vertex and index buffers and index count.
-    mesh: Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
+    /// Its vertices, indices, index count and first vertex (a mesh the
+    /// meshlet pool holds starts past 0).
+    mesh: Option<(wgpu::Buffer, wgpu::Buffer, u32, i32)>,
 }
 
 #[cfg(test)]

@@ -85,7 +85,10 @@ impl Renderer {
                         .meshes
                         .get(h.index())
                         .filter(|m| m.full)
-                        .map(|m| (m.vertices.clone(), m.indices.clone(), m.index_count))
+                        .map(|m| {
+                            let base = m.pooled.map_or(0, |(at, _)| at / 64) as i32;
+                            (m.vertices.clone(), m.indices.clone(), m.index_count, base)
+                        })
                 },
                 &|h| self.cache.textures.get(h.index()).map(|t| &t.view),
             ),

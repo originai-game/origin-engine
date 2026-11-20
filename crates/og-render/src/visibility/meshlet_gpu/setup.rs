@@ -198,8 +198,20 @@ impl MeshletGpu {
             | wgpu::BufferUsages::COPY_SRC
     }
 
-    /// Rebuilds the pools when the scene's clustered meshes changed.
-    pub fn sync(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, scene: &RenderScene) {
+    /// Rebuilds the pools when the scene's clustered meshes changed, or
+    /// one of them was uploaded again. The vertex pool is the one copy of
+    /// its meshes' f32 vertices: they are copied on the GPU from where
+    /// each is now (its own buffer, or the last pool), each at a base the
+    /// storage offset alignment divides, and each mesh then draws from its
+    /// range of the pool ([`crate::GpuMesh::pooled`]). A mesh a surface simulates
+    /// (it writes its own vertices) keeps its own buffer too.
+    pub fn sync(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        scene: &RenderScene,
+        meshes: &mut [crate::GpuMesh],
+    ) {
         let key: Vec<(usize, Arc<MeshClusters>)> = scene
             .mesh_clusters_all()
             .iter()
@@ -227,28 +239,45 @@ impl MeshletGpu {
                         _ => false,
                     })
         });
-        if same {
+        // A mesh uploaded again since (renderer/uploads.rs) left the pool.
+        let moved = self.pools.as_ref().is_some_and(|p| {
+            p.slots.keys().any(|&i| {
+                meshes
+                    .get(i)
+                    .is_some_and(|m| m.pooled.is_none() && m.surface.is_none())
+            })
+        });
+        if same && !moved {
             return;
         }
+        // Each base in whole vertices, so a mesh's range binds as storage.
+        let align = (u64::from(device.limits().min_storage_buffer_offset_alignment) / 64).max(1);
+        let vertex_bytes = std::mem::size_of::<crate::Vertex>() as u64;
+        // (mesh, source, its offset, the pool's offset, bytes) per mesh.
+        let mut copies: Vec<(usize, wgpu::Buffer, u64, u64, u64)> = Vec::new();
+        let mut vertex_count: u64 = 0;
         let mut slots = HashMap::new();
         let mut mesh_rows: Vec<[u32; 4]> = Vec::new();
         let mut cluster_rows: Vec<[u32; 4]> = Vec::new();
         let mut indices: Vec<u32> = Vec::new();
-        let mut vertices: Vec<crate::Vertex> = Vec::new();
         // The foliage regions (after every vertex) and, per foliage mesh,
         // its cluster rows' range and its region in `regions`.
         let mut regions: Vec<[f32; 4]> = Vec::new();
         let mut pointed: Vec<(std::ops::Range<usize>, u32)> = Vec::new();
         let mut foliage = Vec::new();
         for ((i, c), f) in key.iter().zip(&foliage_key) {
-            let Some(source) = scene.meshes().get(*i) else {
+            let (Some(source), Some(gpu)) = (scene.meshes().get(*i), meshes.get(*i)) else {
                 continue;
             };
+            if !gpu.full || source.vertices.is_empty() {
+                continue;
+            }
+            let base = vertex_count.next_multiple_of(align);
             let Some((mesh, rows)) = pool_rows(
                 c,
                 indices.len() as u32,
                 (cluster_rows.len() / CLUSTER_ROWS) as u32,
-                vertices.len() as u32,
+                base as u32,
             ) else {
                 continue;
             };
@@ -256,21 +285,18 @@ impl MeshletGpu {
             let bytes = ((indices.len() + c.indices.len()) * 4)
                 .max((cluster_rows.len() + rows.len()) * 16)
                 .max(
-                    (vertices.len() + source.vertices.len()) * 64
+                    (base as usize + source.vertices.len()) * 64
                         + (regions.len() + f_rows.as_ref().map_or(0, Vec::len)) * 16,
                 ) as u64;
             if bytes > self.max_binding {
                 break;
             }
-            // As the mesh's own buffer holds them (uploads.rs): with
-            // tangents generated where it has none.
-            if source.lacks_tangents() {
-                let mut m = source.clone();
-                m.generate_tangents();
-                vertices.extend_from_slice(&m.vertices);
-            } else {
-                vertices.extend_from_slice(&source.vertices);
-            }
+            // As the mesh's buffer holds them (uploads.rs, tangents made
+            // where it had none), copied from there.
+            let bytes = source.vertices.len() as u64 * vertex_bytes;
+            let (from, _) = gpu.pooled.unwrap_or((0, bytes));
+            copies.push((*i, gpu.vertices.clone(), from, base * vertex_bytes, bytes));
+            vertex_count = base + source.vertices.len() as u64;
             let most = c
                 .levels
                 .iter()
@@ -292,10 +318,37 @@ impl MeshletGpu {
         }
         // The regions follow the vertices (four vec4s each).
         for (range, region) in pointed {
-            pool_foliage(&mut cluster_rows[range], vertices.len() as u32 * 4 + region);
+            pool_foliage(&mut cluster_rows[range], vertex_count as u32 * 4 + region);
         }
-        let mut pool: Vec<u8> = bytemuck::cast_slice(&vertices).to_vec();
-        pool.extend_from_slice(bytemuck::cast_slice(&regions));
+        let regions_at = vertex_count * vertex_bytes;
+        let pool = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("meshlet vertex pool"),
+                size: (regions_at + regions.len() as u64 * 16).max(16),
+                // VERTEX: its meshes draw from it; COPY_SRC: the next pool
+                // copies them from it.
+                usage: storage_usage() | wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            },
+        );
+        if !regions.is_empty() {
+            crate::traffic::write_buffer(queue, &pool, regions_at, bytemuck::cast_slice(&regions));
+        }
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("meshlet vertex pool"),
+        });
+        for (_, source, from, to, bytes) in &copies {
+            encoder.copy_buffer_to_buffer(source, *from, &pool, *to, *bytes);
+        }
+        queue.submit([encoder.finish()]);
+        for &(i, _, _, to, bytes) in &copies {
+            let gpu = &mut meshes[i];
+            if gpu.surface.is_none() {
+                gpu.vertices = pool.clone();
+                gpu.pooled = Some((to, bytes));
+            }
+        }
         let make = |label: &str, bytes: &[u8]| {
             let b = buffer(device, label, bytes.len() as u64, storage_usage());
             crate::traffic::write_buffer(queue, &b, 0, bytes);
@@ -309,7 +362,7 @@ impl MeshletGpu {
             meshes: make("meshlet meshes", bytemuck::cast_slice(&mesh_rows)),
             clusters: make("meshlet clusters", bytemuck::cast_slice(&cluster_rows)),
             indices: make("meshlet indices", bytemuck::cast_slice(&indices)),
-            vertices: make("meshlet vertex pool", &pool),
+            vertices: pool,
         });
         self.cull_group = None;
         self.mesh_groups.clear();

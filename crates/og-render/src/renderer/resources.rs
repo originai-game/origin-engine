@@ -106,6 +106,11 @@ pub(crate) struct GpuMesh {
     /// The f32 vertices ([`Vertex`]); a 16-byte placeholder while `full`
     /// is false.
     pub(crate) vertices: wgpu::Buffer,
+    /// Where in `vertices` the mesh is, (byte offset, bytes), when
+    /// `vertices` is the meshlet path's vertex pool (meshlet_gpu setup.rs):
+    /// a clustered mesh's one copy of its f32 vertices, which its draws
+    /// and the meshlet passes both read. None: `vertices` is its own.
+    pub(crate) pooled: Option<(u64, u64)>,
     /// Whether `vertices` holds the mesh: false for a compact mesh no
     /// pipeline that reads [`Vertex`] has drawn yet ([`Renderer::ensure_full`]).
     pub(crate) full: bool,
@@ -132,13 +137,26 @@ pub(crate) struct FoliageMesh {
 impl GpuMesh {
     /// What a draw binds: the compact vertices for a [`Batch::compact`]
     /// draw, else the f32 ones.
-    pub(crate) fn vertex_buffer(&self, compact: bool) -> &wgpu::Buffer {
+    pub(crate) fn vertex_slice(&self, compact: bool) -> wgpu::BufferSlice<'_> {
         match &self.compact {
-            Some((buffer, _)) if compact => buffer,
+            Some((buffer, _)) if compact => buffer.slice(..),
             _ => {
                 debug_assert!(self.full, "a compact mesh's f32 vertices were not uploaded");
-                &self.vertices
+                match self.pooled {
+                    Some((at, bytes)) => self.vertices.slice(at..at + bytes),
+                    None => self.vertices.slice(..),
+                }
             }
+        }
+    }
+
+    /// Its f32 vertices as a storage binding (the meshlet draws').
+    pub(crate) fn vertex_binding(&self) -> wgpu::BufferBinding<'_> {
+        let (offset, size) = self.pooled.unwrap_or((0, self.vertices.size()));
+        wgpu::BufferBinding {
+            buffer: &self.vertices,
+            offset,
+            size: wgpu::BufferSize::new(size),
         }
     }
 }

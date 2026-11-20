@@ -138,11 +138,11 @@ impl WaterRenderer {
         for d in draws {
             pass.set_bind_group(1, &d.group, &[]);
             match &d.mesh {
-                Some((vertices, indices, count)) => {
+                Some((vertices, indices, count, base)) => {
                     pass.set_pipeline(mesh);
                     pass.set_vertex_buffer(0, vertices.slice(..));
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..*count, 0, 0..1);
+                    pass.draw_indexed(0..*count, *base, 0..1);
                 }
                 None => {
                     pass.set_pipeline(grid);
@@ -167,11 +167,11 @@ impl WaterRenderer {
             probes.at(pass, d.bounds.0, d.bounds.1);
             pass.set_bind_group(1, &d.group, &[]);
             match &d.mesh {
-                Some((vertices, indices, count)) => {
+                Some((vertices, indices, count, base)) => {
                     pass.set_pipeline(self.mesh_pipeline.get(features));
                     pass.set_vertex_buffer(0, vertices.slice(..));
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..*count, 0, 0..1);
+                    pass.draw_indexed(0..*count, *base, 0..1);
                 }
                 None => {
                     pass.set_pipeline(self.pipeline.get(features));

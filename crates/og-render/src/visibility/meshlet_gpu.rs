@@ -371,8 +371,8 @@ pub(crate) struct MeshletGpu {
         wgpu::BindGroup,
     )>,
     /// Per mesh: its draw group and what it binds (the buffers, and the
-    /// bytes of `items` its window binds).
-    mesh_groups: HashMap<usize, ((Vec<wgpu::Buffer>, u64), wgpu::BindGroup)>,
+    /// bytes of `items` its window binds, and where its vertices start).
+    mesh_groups: HashMap<usize, (DrawBound, wgpu::BindGroup)>,
     /// The bytes of `items` a draw group binds from a batch's first work
     /// item (its dynamic offset): the frame's largest batch's items.
     window: u64,
@@ -397,6 +397,10 @@ fn storage(
         count: None,
     }
 }
+
+/// What a mesh's draw group binds: its buffers, the bytes of `items` its
+/// window binds and where its vertices start.
+type DrawBound = (Vec<wgpu::Buffer>, (u64, u64));
 
 fn uniform(binding: u32, stages: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {

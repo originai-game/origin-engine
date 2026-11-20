@@ -105,6 +105,13 @@ impl Renderer {
             && scene.objects.meshlets
             && scene.mesh_clusters_all().iter().any(Option::is_some);
         if meshlet_on {
+            // The pool copies a clustered mesh's f32 vertices from its own
+            // buffer, which a compact mesh has only once asked for.
+            for i in (scene.mesh_clusters_all().iter().enumerate())
+                .filter_map(|(i, c)| c.is_some().then_some(i))
+            {
+                self.ensure_full(scene, i);
+            }
             let limits = self.device.limits();
             let max = limits
                 .max_storage_buffer_binding_size
@@ -118,7 +125,7 @@ impl Renderer {
                         self.world.wind_field.lean_view.clone(),
                     )
                 })
-                .sync(&self.device, &self.queue, scene);
+                .sync(&self.device, &self.queue, scene, &mut self.cache.meshes);
         }
         let mut meshlet_taken: Vec<u32> = match self.visibility.meshlet.as_ref() {
             Some(m) if meshlet_on => batches

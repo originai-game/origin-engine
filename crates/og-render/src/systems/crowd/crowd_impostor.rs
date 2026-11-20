@@ -52,7 +52,7 @@ pub(crate) struct AtlasKey {
 
 /// One part of a bake: its mesh's buffers and its material's group.
 pub(crate) struct BakePart<'a> {
-    pub vertices: &'a wgpu::Buffer,
+    pub vertices: wgpu::BufferSlice<'a>,
     pub indices: &'a wgpu::Buffer,
     pub skin: &'a wgpu::Buffer,
     pub index_count: u32,
@@ -336,7 +336,7 @@ impl CrowdImpostors {
             for (k, p) in parts.iter().enumerate() {
                 pass.set_bind_group(0, &self.group, &[(k as u64 * SLOT) as u32]);
                 pass.set_bind_group(1, p.material, &[]);
-                pass.set_vertex_buffer(0, p.vertices.slice(..));
+                pass.set_vertex_buffer(0, p.vertices);
                 pass.set_vertex_buffer(1, p.skin.slice(..));
                 pass.set_index_buffer(p.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..p.index_count, 0, 0..views * frames);

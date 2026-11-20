@@ -57,7 +57,7 @@ impl ScatterRenderer {
         kind: ScatterPass,
         all: &ScatterBatches,
         material_group: impl Fn(usize) -> Option<&'a wgpu::BindGroup>,
-        mesh: impl Fn(usize) -> Option<(&'a wgpu::Buffer, &'a wgpu::Buffer, u32)>,
+        mesh: impl Fn(usize) -> Option<(wgpu::BufferSlice<'a>, &'a wgpu::Buffer, u32)>,
         visible: impl Fn(Vec3, f32) -> bool,
         mut probes: Option<&mut crate::probe_select::Binder>,
         fx_group: Option<&wgpu::BindGroup>,
@@ -145,7 +145,7 @@ impl ScatterRenderer {
                         bound = true;
                     }
                     if !mesh_bound {
-                        pass.set_vertex_buffer(0, vertices.slice(..));
+                        pass.set_vertex_buffer(0, vertices);
                         pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
                         mesh_bound = true;
                     }

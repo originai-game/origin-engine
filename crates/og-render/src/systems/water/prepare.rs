@@ -26,7 +26,7 @@ impl WaterRenderer {
         caustic_grid: &wgpu::Buffer,
         mesh_buffers: &dyn Fn(
             crate::scene::MeshHandle,
-        ) -> Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
+        ) -> Option<(wgpu::Buffer, wgpu::Buffer, u32, i32)>,
         textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
     ) -> Vec<WaterDraw> {
         while self.slots.len() < waters.len() {
@@ -106,7 +106,7 @@ impl WaterRenderer {
             let mesh = water
                 .mesh
                 .and_then(mesh_buffers)
-                .or_else(|| river.map(|m| (m.vertices.clone(), m.indices.clone(), m.count)));
+                .or_else(|| river.map(|m| (m.vertices.clone(), m.indices.clone(), m.count, 0)));
             let field = height_field(water).filter(|_| mesh.is_none());
             if let Some(f) = field {
                 if slot

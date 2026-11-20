@@ -77,7 +77,7 @@ impl Renderer {
                 &[],
             );
             let mesh = &self.cache.meshes[batch.mesh];
-            pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            pass.set_vertex_buffer(0, mesh.vertex_slice(false));
             pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..mesh.index_count, 0, first..first + count);
             stats.draw_calls += 1;
@@ -112,7 +112,7 @@ impl Renderer {
                 let end = start + batch.count as u64 * skin::SKINNED_INSTANCE_STRIDE;
                 pass.set_vertex_buffer(1, records.slice(start..end));
                 let mesh = &self.cache.meshes[batch.mesh];
-                pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+                pass.set_vertex_buffer(0, mesh.vertex_slice(false));
                 pass.set_vertex_buffer(
                     2,
                     self.cache.skins[batch.mesh]

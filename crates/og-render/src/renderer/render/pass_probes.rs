@@ -322,7 +322,7 @@ impl Renderer {
                                 .meshes
                                 .get(m.index())
                                 .filter(|g| g.full)
-                                .map(|g| (&g.vertices, &g.indices, g.index_count))
+                                .map(|g| (g.vertex_slice(false), &g.indices, g.index_count))
                         },
                     );
                 }

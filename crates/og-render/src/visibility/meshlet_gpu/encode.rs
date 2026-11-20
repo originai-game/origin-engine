@@ -57,7 +57,7 @@ impl MeshletGpu {
         previous: &wgpu::Buffer,
         levels: &[u8],
         winds: ([crate::Wind; 2], [crate::foliage::FoliageWind; 2], f32),
-        vertices: impl Fn(usize) -> &'a wgpu::Buffer,
+        vertices: impl Fn(usize) -> wgpu::BufferBinding<'a>,
         occluder: impl Fn(&Batch) -> bool,
     ) -> Option<wgpu::CommandBuffer> {
         self.frame.clear();

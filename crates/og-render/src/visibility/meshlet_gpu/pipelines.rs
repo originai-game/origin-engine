@@ -180,7 +180,7 @@ impl MeshletGpu {
         device: &wgpu::Device,
         batches: &[Batch],
         (instances, previous): (&wgpu::Buffer, &wgpu::Buffer),
-        vertices: impl Fn(usize) -> &'a wgpu::Buffer,
+        vertices: impl Fn(usize) -> wgpu::BufferBinding<'a>,
     ) {
         let Some(pools) = self.pools.as_ref() else {
             return;
@@ -193,11 +193,11 @@ impl MeshletGpu {
                 self.items.clone(),
                 pools.clusters.clone(),
                 pools.indices.clone(),
-                v.clone(),
+                v.buffer.clone(),
                 previous.clone(),
                 pools.vertices.clone(),
             ];
-            let bound = (bound, self.window);
+            let bound = (bound, (self.window, v.offset));
             if self
                 .mesh_groups
                 .get(&mesh)
@@ -223,7 +223,10 @@ impl MeshletGpu {
                     },
                     entry(11, &pools.clusters),
                     entry(12, &pools.indices),
-                    entry(13, v),
+                    wgpu::BindGroupEntry {
+                        binding: 13,
+                        resource: wgpu::BindingResource::Buffer(v),
+                    },
                     entry(14, previous),
                     entry(17, &pools.vertices),
                     wgpu::BindGroupEntry {

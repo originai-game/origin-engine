@@ -30,10 +30,13 @@ impl Renderer {
             &wgpu::util::BufferInitDescriptor {
                 label: Some("vertices"),
                 contents: if bytes.is_empty() { &[0u8; 16] } else { bytes },
-                // STORAGE: the meshlet path pulls them (meshlet.wgsl).
+                // STORAGE: the meshlet path pulls them (meshlet.wgsl);
+                // COPY_SRC: a clustered mesh's are copied into its vertex
+                // pool, which then holds them alone (meshlet_gpu setup.rs).
                 usage: wgpu::BufferUsages::VERTEX
                     | wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::COPY_DST,
+                    | wgpu::BufferUsages::COPY_DST
+                    | wgpu::BufferUsages::COPY_SRC,
             },
         )
     }
@@ -81,6 +84,7 @@ impl Renderer {
             .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo) * 0.5));
         GpuMesh {
             vertices,
+            pooled: None,
             full,
             compact,
             indices,
@@ -135,6 +139,7 @@ impl Renderer {
         let surface = pipelines.mesh(&self.device, &self.queue, mesh, &vertices, level);
         GpuMesh {
             vertices,
+            pooled: None,
             indices,
             index_count: count as u32,
             full: true,
@@ -371,11 +376,11 @@ impl Renderer {
             };
             let vb: &[u8] = bytemuck::cast_slice(&mesh.vertices);
             let ib: &[u8] = bytemuck::cast_slice(&mesh.indices);
-            if !vb.is_empty()
-                && vb.len() as u64 == gpu.vertices.size()
-                && ib.len() as u64 == gpu.indices.size()
-            {
-                crate::traffic::write_buffer(&self.queue, &gpu.vertices, 0, vb);
+            // A pooled mesh is written where the pool holds it, for its
+            // draws and the meshlet passes at once.
+            let (at, held) = gpu.pooled.unwrap_or((0, gpu.vertices.size()));
+            if !vb.is_empty() && vb.len() as u64 == held && ib.len() as u64 == gpu.indices.size() {
+                crate::traffic::write_buffer(&self.queue, &gpu.vertices, at, vb);
                 crate::traffic::write_buffer(&self.queue, &gpu.indices, 0, ib);
                 let bounds = mesh
                     .bounds()

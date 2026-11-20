@@ -161,7 +161,7 @@ impl Renderer {
                 }
             }
             let mesh = &self.cache.meshes[batch.mesh];
-            pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
+            pass.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
             // The batch's instances as a buffer slice from its first.
             let start = first as u64 * INSTANCE_STRIDE;
             let instances = match (list.indirect, culled_gpu) {

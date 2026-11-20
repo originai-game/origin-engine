@@ -176,7 +176,7 @@ impl Renderer {
                     );
                     (w, f, self.world.wind_field.lean_cap())
                 },
-                |mesh| &meshes[mesh].vertices,
+                |mesh| meshes[mesh].vertex_binding(),
                 // No visibility buffer in a lean frame (`Visibility::lean`).
                 |b| !lean && materials[b.material].occluder,
             ));

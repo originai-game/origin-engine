@@ -544,7 +544,7 @@ impl GpuCulling {
                         }
                         let mesh = &meshes[x.mesh];
                         let start = self.region(g as u32, x.first) as u64 * INSTANCE_STRIDE;
-                        pass.set_vertex_buffer(0, mesh.vertex_buffer(x.compact).slice(..));
+                        pass.set_vertex_buffer(0, mesh.vertex_slice(x.compact));
                         pass.set_vertex_buffer(
                             1,
                             self.instances
