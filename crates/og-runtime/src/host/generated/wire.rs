@@ -3722,13 +3722,14 @@ pub enum Upscaler {
     #[default]
     Taau,
     Fsr3,
+    Auto,
 }
 
 impl Upscaler {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["taau", "fsr3"];
+    pub const NAMES: &'static [&'static str] = &["taau", "fsr3", "auto"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Taau, Self::Fsr3];
+    pub const ALL: &'static [Self] = &[Self::Taau, Self::Fsr3, Self::Auto];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]
@@ -30673,7 +30674,7 @@ pub mod record {
                 ssr_step_scale: 1.0_f32,
                 volumetric_step_scale: 1.0_f32,
                 msaa_samples: 4,
-                upscaler: Default::default(),
+                upscaler: Upscaler::Auto,
                 interpolate: true,
                 snap_distance: 10.0_f32,
             }

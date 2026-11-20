@@ -138,6 +138,29 @@ fn the_capabilities_report_the_tier_and_its_set() {
     }
     assert_eq!(caps["caps"]["compute"], compute);
     assert_eq!(caps["compute"], compute);
+    let fsr = json!(if compute {
+        vec!["taau", "fsr3"]
+    } else {
+        vec!["taau"]
+    });
+    assert_eq!(caps["upscalers"], fsr);
+    og_render::settle_pipelines();
+    set_render_backend(e, None).unwrap();
+    // FSR 3.1 is compute passes: the gl tier, which has none, draws TAAU.
+    let desc = render_desc(
+        e,
+        RenderDesc {
+            width: 64,
+            height: 64,
+            tier: og_render::Tier::Gl,
+            ..RenderDesc::default()
+        },
+    );
+    let renderer = og_render::Renderer::new_blocking(&desc).expect("a headless adapter");
+    set_render_backend(e, Some(Box::new(Made(renderer)))).unwrap();
+    let caps: Value = og_render_capabilities(e);
+    assert_eq!(caps["tier"], "gl");
+    assert_eq!(caps["upscalers"], json!(["taau"]));
     og_render::settle_pipelines();
     set_render_backend(e, None).unwrap();
 }

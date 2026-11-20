@@ -366,7 +366,7 @@ pub fn og_render_capabilities(world: u32) -> Value {
                 "gpuTimestamps": b.gpu_timing_absent().is_none(),
                 "planarReflections": info.as_ref().map_or(0, |i| i.planar_reflections),
                 "without": info.as_ref().map_or(Vec::new(), |i| i.without.names()),
-                "upscalers": crate::present::extract::UPSCALERS,
+                "upscalers": crate::present::extract::upscalers(info.as_ref().map_or(og_render::Caps::FULL, |i| i.caps)),
                 "transparency": info.as_ref().map_or("weighted", |i| crate::transparency_name(i.transparency)),
                 "gpuCrowds": info.as_ref().is_some_and(|i| i.gpu_crowds),
                 "visualSimulation": info.as_ref().is_some_and(|i| i.visual_simulation),

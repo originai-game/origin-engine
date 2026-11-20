@@ -23,14 +23,17 @@ feeds back into the simulation.
   set.
 - Low turns off the costly effects. A game that turns one back on under
   low gets it at half resolution or half its steps.
-- High is paid only by the effects the scene draws: FSR 3.1 (about 1 to
-  2 ms more than TAAU at 1080p and 1440p on an M4 Pro, sharper and
-  steadier in motion), doubled shadow maps, full-resolution AO, doubled
-  SSR and volumetric steps. A scene without those effects differs from
-  medium only by its shadow maps.
-- Automatic quality keeps the chosen upscaler while it lowers the render
-  scale, and draws `taau` once its preset steps cap quality at medium or
-  low.
+- The default upscaler, `auto`, draws FSR 3.1 while the render scale is
+  below 1 (automatic quality's too) and TAAU at 1: below 1 FSR keeps the
+  thin geometry and moving detail TAAU's one sample a pixel loses, at
+  about 1 to 2 ms more at 1080p and 1440p on an M4 Pro.
+- High is paid only by the effects the scene draws: FSR 3.1 at every
+  scale, doubled shadow maps, full-resolution AO, doubled SSR and
+  volumetric steps. A scene without those effects differs from medium
+  only by its shadow maps and its resolve at render scale 1.
+- Automatic quality lowers the render scale first, so `auto` switches to
+  FSR then; a preset step to medium keeps `auto`, one to low draws
+  `taau`.
 
 ## 2. Antialiasing, upscaling and transparency
 

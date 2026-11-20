@@ -6061,8 +6061,9 @@ export type TaaHistory = "bilinear" | "catmullRom";
  * See `render §2`.
  * - `"taau"`: The engine's TAA resolve with temporal upscaling: one pass, a neighbourhood clamp of the history and the RenderOptions.taaHistory filter, then RenderOptions.taaSharpen.
  * - `"fsr3"`: AMD FidelityFX Super Resolution 3.1's upscaler (MIT), in fp32 without subgroups so it runs alike on every host: depth-based disocclusion, thin-geometry locks, luma instability, Lanczos upsampling and RCAS sharpening (taaSharpen's strength); transparent surfaces feed its reactive mask.
+ * - `"auto"`: fsr3 while the scene is drawn smaller than the output (render scale below 1, automatic quality's included), where it keeps the thin and moving detail taau loses; taau at the output's size, which costs less. A device without fsr3 (RenderCapabilities.upscalers) draws taau.
  */
-export type Upscaler = "taau" | "fsr3";
+export type Upscaler = "taau" | "fsr3" | "auto";
 
 /**
  * An Upscaler field: the variant's index.
@@ -7163,7 +7164,7 @@ export declare function ToneMapping(value?: ToneMapping, options?: FieldOptions)
  * See `render §1`.
  * - `"medium"`: The full frame: every quality field at its default.
  * - `"low"`: The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles at half emission, half as many og.Vfx, no SSR, ambient occlusion or GI, FXAA for MSAA; for a game that turns one back on, half-resolution AO and half the reflection and fog steps.
- * - `"high"`: The full frame refined: FSR 3.1 as the temporal upscaler, shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps, twice the volumetric fog's slices (or raymarch steps) and twice the og.Vfx drawn at once.
+ * - `"high"`: The full frame refined: FSR 3.1 at every render scale, shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps, twice the volumetric fog's slices (or raymarch steps) and twice the og.Vfx drawn at once.
  */
 export type GraphicsQuality = "medium" | "low" | "high";
 
@@ -7449,8 +7450,10 @@ export interface RenderSettings {
    */
   msaaSamples: number;
   /**
-   * Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: taau (the default; the low and medium presets) or fsr3 (the high preset). A device lacking one (RenderCapabilities.upscalers) draws taau. Switching restarts the history next frame.
+   * Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: auto (the default and medium: fsr3 below scale 1, taau at it), taau (low) or fsr3 (high). A device lacking fsr3 (RenderCapabilities.upscalers) draws taau. Switching restarts the history.
    * See `render §1`.
+   *
+   * @default "auto"
    */
   upscaler: Upscaler;
   // ── Interpolation ──
@@ -10920,7 +10923,7 @@ export interface RenderCapabilities {
    */
   readonly without: readonly LitFeature[];
   /**
-   * The Upscaler variants this device draws under TAA: taau and fsr3 on every host and tier with a renderer (FSR 3.1 is ported in fp32 without subgroups, float atomics or device-wide coherence, so it needs neither shader-f16 nor subgroups, which Safari and Firefox lack), empty without one.
+   * The Upscaler variants this device draws under TAA: taau with any renderer, fsr3 where it has compute (every tier but gl: it needs no shader-f16 or subgroups and fits WebGPU's default limits); empty without a renderer. auto draws one of these.
    */
   readonly upscalers: readonly string[];
   // ── Transparency ──

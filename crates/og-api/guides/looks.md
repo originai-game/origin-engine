@@ -445,7 +445,7 @@ The quality rows:
 | ssrStepScale | 0.5 | 1 | 2 |
 | volumetricStepScale | 0.5 | 1 | 2 |
 | msaaSamples | 1 | 4 | 4 |
-| upscaler | taau | taau | fsr3 |
+| upscaler | taau | auto | fsr3 |
 
 ## 17. Display settings and automatic quality
 

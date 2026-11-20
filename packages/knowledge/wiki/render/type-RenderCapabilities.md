@@ -94,7 +94,7 @@ What the renderer can do on this device. Backend limits are reported here, never
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `without` | `readonly LitFeature[]` | `[]` | — | — | — | The optional lit features the renderer was made without (RenderOptions.without), in LitFeature's order: none of its lit shaders carries them and a scene that uses one draws without it. Empty by default and without a renderer. |
-| `upscalers` | `readonly string[]` | `[]` | — | — | — | The Upscaler variants this device draws under TAA: taau and fsr3 on every host and tier with a renderer (FSR 3.1 is ported in fp32 without subgroups, float atomics or device-wide coherence, so it needs neither shader-f16 nor subgroups, which Safari and Firefox lack), empty without one. |
+| `upscalers` | `readonly string[]` | `[]` | — | — | — | The Upscaler variants this device draws under TAA: taau with any renderer, fsr3 where it has compute (every tier but gl: it needs no shader-f16 or subgroups and fits WebGPU's default limits); empty without a renderer. auto draws one of these. |
 
 #### Transparency
 
@@ -181,7 +181,7 @@ struct RenderCapabilities {
   field planarReflections u32 "How many water surfaces draw a planar reflection in one frame: RenderOptions.planarReflections (1 by default, at most 2), 0 without a renderer or where world3d is false. A surface past it that asks reflects by the screen-space and sky reflections instead."
   group "Optional features"
   field without List.LitFeature "The optional lit features the renderer was made without (RenderOptions.without), in LitFeature's order: none of its lit shaders carries them and a scene that uses one draws without it. Empty by default and without a renderer."
-  field upscalers List.String "The Upscaler variants this device draws under TAA: taau and fsr3 on every host and tier with a renderer (FSR 3.1 is ported in fp32 without subgroups, float atomics or device-wide coherence, so it needs neither shader-f16 nor subgroups, which Safari and Firefox lack), empty without one."
+  field upscalers List.String "The Upscaler variants this device draws under TAA: taau with any renderer, fsr3 where it has compute (every tier but gl: it needs no shader-f16 or subgroups and fits WebGPU's default limits); empty without a renderer. auto draws one of these."
   group "Transparency"
   field transparency Transparency "What RenderOptions.transparency resolved to on this device: linkedList only where it was asked for and the device writes storage from fragment shaders with room for one more storage buffer in its lit pipelines; weighted otherwise and without a renderer."
   group "Crowds"
@@ -206,4 +206,4 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>Module `render` line 2948</sub>
+<sub>Module `render` line 2950</sub>

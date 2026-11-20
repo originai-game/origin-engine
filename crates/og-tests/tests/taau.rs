@@ -13,7 +13,9 @@
 //! remove).
 
 use glam::{Mat4, Vec3};
-use og_render::{Antialias, Culling, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
+use og_render::{
+    Antialias, Culling, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, Upscaler,
+};
 use og_tests::scenes;
 
 fn desc(antialias: Antialias) -> RenderDesc {
@@ -52,7 +54,9 @@ fn diff(a: &RgbaImage, b: &RgbaImage) -> f64 {
 #[test]
 #[ignore = "requires GPU"]
 fn taau_resolves_the_half_scale_scene_to_the_output() {
-    let scene = scenes::thin_geometry();
+    let mut scene = scenes::thin_geometry();
+    // TAAU itself: the default draws FSR below render scale 1 (fsr.rs).
+    scene.frame.quality.upscaler = Upscaler::Taau;
     let mut full = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
     assert_eq!(
         full.info().antialias,
@@ -104,6 +108,8 @@ fn moving_object(culling: Culling) {
         ..desc(antialias)
     };
     let mut scene = scenes::thin_geometry();
+    // TAAU itself: the default draws FSR below render scale 1 (fsr.rs).
+    scene.frame.quality.upscaler = Upscaler::Taau;
     let sphere = scene.objects.instances.len() - 1;
     let at = |f: u32| {
         Mat4::from_translation(Vec3::new(-2.0 + 0.2 * f as f32, 1.0, 1.0))
@@ -159,6 +165,8 @@ fn moving_object(culling: Culling) {
 fn a_vanished_bright_object_leaves_no_ghost_round_thin_detail() {
     use og_render::{Background, Camera, Exposure, Material, shapes};
     let mut scene = RenderScene::new();
+    // TAAU itself: the default draws FSR below render scale 1 (fsr.rs).
+    scene.frame.quality.upscaler = Upscaler::Taau;
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.lighting.environment.intensity = 0.0;
     scene.lighting.light.intensity = 0.0;

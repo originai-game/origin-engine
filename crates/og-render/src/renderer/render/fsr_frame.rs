@@ -24,11 +24,18 @@ impl Renderer {
         }: PrepareFsrInputs<'_>,
     ) -> bool {
         // FSR 3.1 in TAA's place (post/fsr.rs), where the quality asks for
-        // it and the frame is not supersampled.
+        // it (`Auto`: while the scene is drawn smaller than the output) and
+        // the frame is not supersampled.
         let post_size = self.history_size();
+        let upscaled = self.width < post_size.0 || self.height < post_size.1;
+        let asked = match scene.frame.quality.upscaler {
+            crate::Upscaler::Taau => false,
+            crate::Upscaler::Auto => upscaled,
+            crate::Upscaler::Fsr3 => true,
+        };
         let fsr = taa
             && self.info.caps.contains(Caps::COMPUTE)
-            && scene.frame.quality.upscaler == crate::Upscaler::Fsr3
+            && asked
             && self.width <= post_size.0
             && self.height <= post_size.1;
         let no_reactive = self.post.no_reactive.clone();

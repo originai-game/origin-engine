@@ -44,7 +44,8 @@ fn mean(image: &RgbaImage) -> f64 {
 /// At render scale 0.5 FSR resolves the quarter-pixel scene to the
 /// output in the `taa` pass, with no upscale after it; the converged
 /// frame is nearer the full-scale TAA frame than a bilinear upscale and
-/// differs from TAAU's (the choice is honoured).
+/// differs from TAAU's (the choice is honoured). The default (`Auto`)
+/// draws FSR's frame below render scale 1 and TAAU's at it.
 #[test]
 #[ignore = "requires GPU"]
 fn fsr_resolves_the_half_scale_scene_to_the_output() {
@@ -55,8 +56,25 @@ fn fsr_resolves_the_half_scale_scene_to_the_output() {
         Antialias::Taa,
         "GPU lacks TAA support"
     );
+    assert_eq!(scene.frame.quality.upscaler, Upscaler::Auto);
     let reference = draw(&mut full, &scene, 32);
+    // Two renderers' frames may differ in their last bits (which lit
+    // variants had compiled), so the same resolve is a difference far
+    // under the 0.05 that tells FSR's frame from TAAU's below.
+    scene.frame.quality.upscaler = Upscaler::Taau;
+    let mut renderer = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
+    let full_taau = draw(&mut renderer, &scene, 32);
+    assert!(
+        diff(&full_taau, &reference) < 0.01,
+        "Auto at render scale 1 is not TAAU"
+    );
+    scene.frame.quality.upscaler = Upscaler::Auto;
 
+    let mut by_default = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
+    by_default.set_render_scale(0.5);
+    let by_default = draw(&mut by_default, &scene, 64);
+
+    scene.frame.quality.upscaler = Upscaler::Taau;
     let mut taau = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
     taau.set_render_scale(0.5);
     let by_taau = draw(&mut taau, &scene, 64);
@@ -103,6 +121,10 @@ fn fsr_resolves_the_half_scale_scene_to_the_output() {
     assert!(
         diff(&by_fsr, &by_taau) > 0.05,
         "FSR's frame is TAAU's: the choice was ignored"
+    );
+    assert!(
+        diff(&by_default, &by_fsr) < 0.01,
+        "Auto below render scale 1 is not FSR"
     );
 }
 

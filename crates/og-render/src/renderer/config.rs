@@ -205,8 +205,15 @@ impl Antialias {
 pub enum Upscaler {
     /// The engine's TAA and TAAU (taa.wgsl): one fullscreen pass, a 3x3
     /// YCoCg clamp, a jitter-weighted sample per output pixel.
-    #[default]
     Taau,
+    /// FSR 3.1 while the scene is drawn smaller than the output (a render
+    /// scale below 1, automatic quality's included), where it keeps thin
+    /// geometry and moving detail that TAAU's one sample a pixel loses
+    /// (docs/design.md §11); TAAU at the output's size, where both only
+    /// antialias and TAAU converges faster for less. A device without
+    /// FSR ([`Caps::COMPUTE`]) draws TAAU.
+    #[default]
+    Auto,
     /// AMD FidelityFX Super Resolution 3.1's upscaler (post/fsr.rs, MIT):
     /// eight compute passes; Lanczos reconstruction, depth-based
     /// disocclusion, thin-feature locks, shading-change and luma-instability
