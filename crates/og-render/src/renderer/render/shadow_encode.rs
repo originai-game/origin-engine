@@ -116,6 +116,7 @@ impl DrawCtx<'_> {
                 None,
                 None,
                 false,
+                false,
                 self.card_source(g),
                 shadow,
             );

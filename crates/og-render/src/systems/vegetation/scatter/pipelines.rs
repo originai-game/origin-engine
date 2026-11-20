@@ -91,35 +91,41 @@ impl ScatterRenderer {
             true => ("vs_impostor", "fs_impostor", IMPOSTOR_BUFFERS, None),
             false => ("vs", "fs", MESH_BUFFERS, crate::cull_mode(side)),
         };
-        let p = self.lit_variants(
-            device,
-            LitDesc {
-                label: match (impostor, pass) {
-                    (true, _) => "impostor",
-                    (false, ScatterPass::Prepass) => "scatter prepass",
-                    (false, _) => "scatter",
-                },
-                module,
-                declared,
-                vs,
-                fs,
-                buffers,
-                cull,
+        let d = LitDesc {
+            label: match (impostor, pass) {
+                (true, _) => "impostor",
+                (false, ScatterPass::Prepass) => "scatter prepass",
+                (false, _) => "scatter",
             },
-            pass,
-        );
+            module,
+            declared,
+            vs,
+            fs,
+            buffers,
+            cull,
+        };
+        // Over the prepass's own depth (single-sampled), the lit pass's
+        // twin that tests it for equality ([`EQUAL_KIND`]).
+        if pass == ScatterPass::Lit && !impostor && self.samples == 1 {
+            let equal = self.lit_variants(device, d.clone(), pass, true);
+            let twin = (key.0, key.1, key.2 + EQUAL_KIND);
+            self.pipelines.insert(twin, equal);
+        }
+        let p = self.lit_variants(device, d, pass, false);
         self.pipelines.insert(key, p);
     }
 
     /// The lit or prepass `pass`'s pipeline of `d`, as the variant for the
     /// frame's features and the full one (pipeline_features.rs): the
     /// prepass's fragment entry is `d.fs` with `_prepass` (`fs_prepass` for
-    /// `fs`).
+    /// `fs`); with `equal`, the lit pass over the prepass's depth
+    /// ([`EQUAL_KIND`]).
     pub(super) fn lit_variants(
         &self,
         device: &wgpu::Device,
         d: LitDesc,
         pass: ScatterPass,
+        equal: bool,
     ) -> LitVariants {
         let (device, layout, samples) = (device.clone(), self.lit_fx_layout.clone(), self.samples);
         let declared = d.declared;
@@ -127,7 +133,7 @@ impl ScatterRenderer {
             let (device, layout, d) = (device.clone(), layout.clone(), d.clone());
             let constants = features.constants(declared);
             Deferred::anywhere(move || {
-                lit_pipeline(&device, &layout, &d, pass, samples, &constants)
+                lit_pipeline(&device, &layout, &d, (pass, equal), samples, &constants)
             })
         })
     }
@@ -249,12 +255,14 @@ pub(super) struct LitDesc {
 }
 
 /// `d`'s `pass` pipeline with `constants` (the lit pass's into the HDR
-/// target at `samples`, the prepass's into the G-buffer).
+/// target at `samples`, the prepass's into the G-buffer); `equal`: the lit
+/// pass's over the prepass's depth, which it tests for equality and leaves
+/// as it is ([`EQUAL_KIND`]).
 fn lit_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
     d: &LitDesc,
-    pass: ScatterPass,
+    (pass, equal): (ScatterPass, bool),
     samples: u32,
     constants: &[(&str, f64)],
 ) -> wgpu::RenderPipeline {
@@ -272,8 +280,11 @@ fn lit_pipeline(
                 fs: d.fs,
                 buffers: d.buffers,
                 cull: d.cull,
-                depth_write: true,
-                depth_compare: crate::LIT_DEPTH_COMPARE,
+                depth_write: !equal,
+                depth_compare: match equal {
+                    true => wgpu::CompareFunction::Equal,
+                    false => crate::LIT_DEPTH_COMPARE,
+                },
                 blend: None,
                 samples,
             },

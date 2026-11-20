@@ -268,6 +268,7 @@ impl Renderer {
             Some(&mut probe_select::Binder::new(probe_binding)),
             Some(fx_group),
             true,
+            shared_depth,
             cards,
             ShadowTarget::Cascade,
         );

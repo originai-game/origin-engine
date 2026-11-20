@@ -46,8 +46,10 @@ impl ScatterRenderer {
     /// frame bound by the caller): the chunks whose bounds `visible` keeps,
     /// with their copies' impostors, then the model impostors; `camera`:
     /// the main camera's pass, which draws what the GPU cull kept for it
-    /// (any other draws the cull's second set, where a chunk has one).
-    /// Answers the draws and the copies in the chunks drawn.
+    /// (any other draws the cull's second set, where a chunk has one);
+    /// `prepass_depth`: the lit pass goes on in the prepass's own depth
+    /// (`post::shares_prepass_depth`), whose copies it tests for equality
+    /// ([`EQUAL_KIND`]). Answers the draws and the copies in the chunks drawn.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw<'a>(
         &self,
@@ -60,6 +62,7 @@ impl ScatterRenderer {
         mut probes: Option<&mut crate::probe_select::Binder>,
         fx_group: Option<&wgpu::BindGroup>,
         camera: bool,
+        prepass_depth: bool,
         cards: CardSource<'_>,
         // What a shadow pass draws into (shadow_target.rs).
         target: crate::ShadowTarget,
@@ -95,10 +98,13 @@ impl ScatterRenderer {
                 continue;
             }
             let shader = b.shader.filter(|_| kind != ScatterPass::Shadow);
-            let (Some(group), Some(p)) = (
-                material_group(b.material),
-                pipeline(&(shader, b.side, kind as u8)),
-            ) else {
+            let equal = kind == ScatterPass::Lit && camera && prepass_depth && b.equal_depth;
+            let lit = (shader, b.side, kind as u8);
+            let p = match equal {
+                true => pipeline(&(lit.0, lit.1, lit.2 + EQUAL_KIND)).or_else(|| pipeline(&lit)),
+                false => pipeline(&lit),
+            };
+            let (Some(group), Some(p)) = (material_group(b.material), p) else {
                 continue;
             };
             if mesh(b.mesh).is_none() {

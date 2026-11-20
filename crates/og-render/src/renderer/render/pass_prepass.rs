@@ -200,6 +200,7 @@ impl Renderer {
             None,
             Some(fx_group),
             true,
+            false,
             cards,
             ShadowTarget::Cascade,
         );

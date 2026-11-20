@@ -468,6 +468,13 @@ const SLOT: u64 = (std::mem::size_of::<ScatterGpu>() as u64).next_multiple_of(25
 /// crowd cards'.
 const IMPOSTOR_KIND: u8 = 3;
 const CARD_KIND: u8 = 6;
+/// Past a lit pipeline's kind, its twin over the prepass's own depth
+/// (single-sampled, `post::shares_prepass_depth`): the prepass placed every
+/// copy's vertices with the same stage, so each fragment that survives meets
+/// its own depth exactly, and an Equal test with no depth write lets the GPU
+/// reject the hidden ones before shading them (a LessEqual test that writes
+/// depth from a shader that may discard shades every fragment first).
+const EQUAL_KIND: u8 = 9;
 
 /// A crowd card's record (crowd.rs `card_record`, `CardIn`): a skinned
 /// record's stride, its transform's columns, then (its place, flash, flash
@@ -582,6 +589,10 @@ pub(crate) struct ScatterBatch {
     pub shader: Option<usize>,
     pub cast_shadows: bool,
     pub side: Side,
+    /// Whether its lit pass may test the prepass's depth for equality
+    /// ([`EQUAL_KIND`]): its materials cut where the prepass's do (none
+    /// with alpha to coverage, which keeps the edge the prepass cuts).
+    equal_depth: bool,
     offset: u32,
     chunks: Vec<ChunkKey>,
     /// The mesh's coarser levels (`ScatterDraw::lods`): the scene's meshes.

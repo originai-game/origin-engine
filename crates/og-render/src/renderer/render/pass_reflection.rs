@@ -167,6 +167,7 @@ impl Renderer {
                 None,
                 Some(fx),
                 false,
+                false,
                 scatter::CardSource::Cpu,
                 ShadowTarget::Cascade,
             );

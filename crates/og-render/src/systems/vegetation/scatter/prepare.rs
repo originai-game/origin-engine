@@ -757,6 +757,13 @@ impl ScatterRenderer {
                 shader,
                 cast_shadows: d.cast_shadows,
                 side,
+                equal_depth: std::iter::once(d.material)
+                    .chain(d.lod_materials.into_iter().flatten())
+                    .all(|m| {
+                        scene
+                            .standard_material(m)
+                            .is_some_and(|m| m.alphaToCoverage == 0 || m.alphaTest <= 0.0)
+                    }),
                 offset: (si as u64 * SLOT) as u32,
                 chunks: keys,
                 sway,
@@ -861,7 +868,7 @@ impl ScatterRenderer {
                     buffers: CARD_BUFFERS,
                     cull: None,
                 };
-                let p = self.lit_variants(device, d, pass);
+                let p = self.lit_variants(device, d, pass, false);
                 self.pipelines.insert((None, Side::Double, kind), p);
             }
         }
