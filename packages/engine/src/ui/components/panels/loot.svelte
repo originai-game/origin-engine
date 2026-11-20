@@ -1,7 +1,6 @@
 <meta name="component" content="RpgLoot">
 <meta name="strings" content="./economy.en.ogt">
 <meta name="action:back" content="Close">
-<meta name="parts" content="RpgLoot.frame RpgLoot.band RpgLoot.kicker RpgLoot.title RpgLoot.items RpgLoot.row RpgLoot.socket RpgLoot.icon RpgLoot.detail RpgLoot.name RpgLoot.description RpgLoot.count RpgLoot.reason RpgLoot.take RpgLoot.actions RpgLoot.all RpgLoot.close RpgLoot.status RpgLoot.empty RpgLoot.caption RpgLoot.figure RpgLoot.well">
 <meta name="prop:title" content="string" data-default="" data-doc="The source's name; empty uses Loot.">
 <meta name="prop:items" content="list" data-default="[]" data-doc="Keyed { id, name, icon, count, description, available, reason, rarity }. rarity is common, uncommon, rare, epic, legendary or mythic (empty is common): the row's edge, the icon's socket and the name take its colour. The game supplies legality/capacity and removes collected rows after take or takeAll.">
 <meta name="prop:canTakeAll" content="bool" data-default="false" data-doc="The game permits taking the displayed items together. Empty/loading/busy never sends takeAll.">
@@ -23,55 +22,56 @@
   panel reports take (an item's key), takeAll and close (Close, or Escape
   and pad B anywhere in it). The rows scroll inside the height given.
 -->
-<section id="RpgLoot" part="RpgLoot.frame" data-layout="shell" data-gap="loose" aria-label={title || t("rpg.loot.title")} aria-busy={loading || busy} onback={close}>
+<section class="frame" id="RpgLoot" part="frame" layout="stack" fill gap="loose" aria-label={title || t("rpg.loot.title")} aria-busy={loading || busy} onback={close}>
   <div class="lit"></div>
-  <header part="RpgLoot.band" class="band" data-layout="stack" data-gap="hair">
-    <span part="RpgLoot.kicker" class="kicker">{items.length ? t("rpg.loot.kicker", { count: formatNumber(items.length) }) : t("rpg.loot.title")}</span>
-    <h2 part="RpgLoot.title">{title || t("rpg.loot.title")}</h2>
+  <header part="band" class="band" layout="stack" gap="hair">
+    <span part="kicker" class="kicker">{items.length ? t("rpg.loot.kicker", { count: formatNumber(items.length) }) : t("rpg.loot.title")}</span>
+    <h2 class="title" part="title">{title || t("rpg.loot.title")}</h2>
   </header>
-  {#if error}<p part="RpgLoot.status" class="alert" data-tone="danger" role="alert">{error}</p>{/if}
-  {#if loading || busy}<div part="RpgLoot.status RpgLoot.well" class="wait" data-layout="row" role="status"><Spinner name={busy ? t("rpg.economy.busy") : t("rpg.economy.loading")} /><span>{busy ? t("rpg.economy.busy") : t("rpg.economy.loading")}</span></div>{/if}
-  {#if items.length}<ul part="RpgLoot.items" data-layout="scroll" data-fill>
-    {#each items as item (item.id)}<li part="RpgLoot.row" class="row" data-rarity={item.rarity || 'common'} data-available={item.available}>
-      <div part="RpgLoot.socket" class="socket" data-layout="cover"><og-icon part="RpgLoot.icon" icon={item.icon}></og-icon></div>
-      <div part="RpgLoot.detail" class="detail" data-layout="stack" data-gap="hair" data-fill>
-        <div class="line" data-layout="row"><h3 part="RpgLoot.name" class="name" data-fill aria-label={item.name}>{item.name}</h3><span part="RpgLoot.count RpgLoot.figure" class="count">{t("rpg.loot.count", { count: formatNumber(item.count) })}</span></div>
-        {#if !item.available}<p part="RpgLoot.reason" class="reason" data-tone="danger">{item.reason || t("rpg.economy.unavailable")}</p>{:else if item.description}<p part="RpgLoot.description RpgLoot.caption" class="description">{item.description}</p>{/if}
+  {#if error}<p part="status" class="alert" tone="danger" role="alert">{error}</p>{/if}
+  {#if loading || busy}<div part="well" class="wait status" layout="row" role="status"><Spinner name={busy ? t("rpg.economy.busy") : t("rpg.economy.loading")} /><span>{busy ? t("rpg.economy.busy") : t("rpg.economy.loading")}</span></div>{/if}
+  {#if items.length}<ul class="items" part="items" layout="scroll" fill>
+    {#each items as item (item.id)}<li part="row" class="row" tier={item.rarity || 'common'} class:not-available={!(item.available)}>
+      <div part="socket" class="socket cover" layout="stack" fill><og-icon class="icon" part="icon" icon={item.icon}></og-icon></div>
+      <div part="detail" class="detail" layout="stack" gap="hair" fill>
+        <div class="line" layout="row"><h3 part="name" class="name" fill aria-label={item.name}>{item.name}</h3><span part="figure" class="count">{t("rpg.loot.count", { count: formatNumber(item.count) })}</span></div>
+        {#if !item.available}<p part="reason" class="reason" tone="danger">{item.reason || t("rpg.economy.unavailable")}</p>{:else if item.description}<p part="caption" class="description">{item.description}</p>{/if}
       </div>
-      <button part="RpgLoot.take" class="take" disabled={!item.available || loading || busy} aria-label={t("rpg.loot.takeItem", { name: item.name })} onclick={take}>{t("rpg.loot.take")}</button>
+      <button part="take" class="take" disabled={!item.available || loading || busy} aria-label={t("rpg.loot.takeItem", { name: item.name })} onclick={take}>{t("rpg.loot.take")}</button>
     </li>{/each}
-  </ul>{:else if !loading}<p part="RpgLoot.empty RpgLoot.caption" class="empty" role="status">{t("rpg.loot.empty")}</p>{/if}
-  <footer part="RpgLoot.actions" class="actions" data-layout="row"><button part="RpgLoot.close" class="act" aria-label={t("rpg.economy.close")} onclick={close}><kbd class="cap" data-action="back"></kbd><span>{t("rpg.economy.close")}</span></button><button part="RpgLoot.all" class="go act all" variant="primary" disabled={!items.length || !canTakeAll || loading || busy} onclick={takeAll}>{t("rpg.loot.all")}</button></footer>
+  </ul>{:else if !loading}<p part="caption" class="empty" role="status">{t("rpg.loot.empty")}</p>{/if}
+  <footer part="actions" class="actions" layout="row"><button part="close" class="act" aria-label={t("rpg.economy.close")} onclick={close}><kbd class="cap" data-action="back"></kbd><span>{t("rpg.economy.close")}</span></button><button part="all" class="go act all" variant="primary" disabled={!items.length || !canTakeAll || loading || busy} onclick={takeAll}>{t("rpg.loot.all")}</button></footer>
 </section>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* The frame: two corners cut, a lit top edge. */
-[part="RpgLoot.frame"] { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.frame { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 h2, h3, p { margin: 0; }
 .band { flex: none; width: stretch; }
 .kicker { font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); white-space: nowrap; }
-[part="RpgLoot.title"] { overflow-wrap: anywhere; }
+.title { overflow-wrap: anywhere; }
 .alert { flex: none; padding: var(--space-xs) var(--space-sm); background: var(--inv-alert-fill); box-shadow: var(--inv-alert-rim); }
 .wait { flex: none; padding: var(--space-sm); }
-[part="RpgLoot.items"] { list-style: none; margin: 0; padding: 0; gap: var(--space-xs); }
+.items { list-style: none; margin: 0; padding: 0; gap: var(--space-xs); }
 /* A row: the item's rarity on its leading edge, its icon in a socket. */
 .row { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); position: relative; flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-sm); row-gap: var(--space-xs); padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-rarity); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .row:hover { background: var(--inv-row-hover-fill); }
 .row:focus-within { background: var(--inv-row-on-fill); box-shadow: var(--inv-row-on-rim); }
-.row[data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
-.row[data-rarity=rare] { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
-.row[data-rarity=epic] { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
-.row[data-rarity=legendary] { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
-.row[data-rarity=mythic] { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
-.row[data-available=false] .socket, .row[data-available=false] .name, .row[data-available=false] .count { opacity: var(--disabled-content-opacity); }
+.row.rarity-uncommon { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
+.row.rarity-rare { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
+.row.rarity-epic { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
+.row.rarity-legendary { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
+.row.rarity-mythic { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
+.row.not-available .socket, .row.not-available .name, .row.not-available .count { opacity: var(--disabled-content-opacity); }
 .socket { flex: none; align-self: flex-start; inline-size: calc(48 * var(--font-step-px)); block-size: calc(48 * var(--font-step-px)); background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="RpgLoot.icon"] { inline-size: 78%; block-size: 78%; filter: var(--inv-slot-art-shadow); }
+.icon { inline-size: 78%; block-size: 78%; filter: var(--inv-slot-art-shadow); }
 .detail { min-width: 0; }
 /* The count sits on the name's line, whatever the lines under it wrap to. */
 .line { align-items: baseline; min-width: 0; }
 .name { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; line-clamp: 2; overflow: hidden; color: var(--inv-rarity); }
-.row[data-rarity=common] .name { color: var(--ink-bright); }
+.row.rarity-common .name { color: var(--ink-bright); }
 .count { flex: none; white-space: nowrap; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
 .reason { color: var(--inv-broken-ink); }
 .take { flex: none; min-block-size: var(--size-touch); }

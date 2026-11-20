@@ -1,6 +1,5 @@
 <meta name="component" content="Inbox">
 <meta name="strings" content="./meta.en.ogt">
-<meta name="parts" content="Inbox.frame Inbox.band Inbox.title Inbox.summary Inbox.layout Inbox.list Inbox.row Inbox.sender Inbox.subject Inbox.date Inbox.preview Inbox.badge Inbox.detail Inbox.body Inbox.attachments Inbox.attachment Inbox.icon Inbox.name Inbox.amount Inbox.state Inbox.actions Inbox.claim Inbox.delete Inbox.empty Inbox.caption Inbox.headline Inbox.figure">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses Inbox.">
 <meta name="prop:summary" content="string" data-default="" data-doc="The game's count or capacity wording, such as 2 unread · 8 / 50.">
 <meta name="prop:messages" content="list" data-default="[]" data-doc="Keyed { id, subject, sender, date, preview, body, unread, hasAttachments, claimable, claimed, expired, canDelete } messages. Text is plain, not HTML. The game updates read/claim/delete facts after intents.">
@@ -19,27 +18,27 @@
 <meta name="fixture:error" content='{"error":"Messages could not be loaded. Reconnect and try again."}'>
 <meta name="fixture:expired" content='{"selected":"old","messages":[{"id":"old","subject":"Rewards from the previous season","sender":"Season team","date":"1 Oct","preview":"The claim window has closed.","body":"These attachments have expired. See you next season.","unread":false,"hasAttachments":true,"claimable":false,"claimed":false,"expired":true,"canDelete":true}]}'>
 
-<section id="Inbox" part="Inbox.frame" data-layout="shell" data-gap="loose" aria-label={title || t("meta.inbox.title")} aria-busy={loading || busy}>
-  <header part="Inbox.band" class="band" data-layout="cluster"><h2 part="Inbox.title" data-fill>{title || t("meta.inbox.title")}</h2>{#if summary}<span part="Inbox.summary Inbox.caption" class="muted">{summary}</span>{/if}</header>
-  {#if loading}<div class="wait" data-layout="row" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
+<section id="Inbox" part="frame" layout="stack" fill gap="loose" aria-label={title || t("meta.inbox.title")} aria-busy={loading || busy}>
+  <header part="band" class="band" layout="wrap"><h2 part="title" fill>{title || t("meta.inbox.title")}</h2>{#if summary}<span part="caption" class="muted summary">{summary}</span>{/if}</header>
+  {#if loading}<div class="wait" layout="row" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
   {:else if error}<ErrorState body={error} />
   {:else if !messages.length}<EmptyState title={t("meta.inbox.empty")} icon="bag" />
-  {:else}<div part="Inbox.layout" class="layout" data-layout="grid" data-gap="loose">
-    <ul part="Inbox.list" class="list" data-layout="scroll" data-gap="tight" aria-label={t("meta.inbox.messages")}>
-      {#each messages as message (message.id)}<li><button part="Inbox.row" class="row" aria-pressed={message.id == selected} data-selected={message.id == selected} data-unread={message.unread} disabled={busy} onclick={choose}><div class="row-copy" data-layout="stack">
-        <span part="Inbox.sender Inbox.caption" class="muted">{message.sender}</span><span part="Inbox.subject Inbox.headline" class="subject" title={message.subject}>{message.subject}</span><span part="Inbox.preview Inbox.caption" class="muted">{message.preview}</span><div class="row-meta" data-layout="cluster"><span part="Inbox.date Inbox.caption" class="muted">{message.date}</span><span part="Inbox.badge" class="badge">{message.unread ? t("meta.inbox.unread") : t("meta.inbox.read")}</span>{#if message.hasAttachments}<og-icon part="Inbox.icon" class="icon" icon="bag"></og-icon>{/if}</div>
+  {:else}<div part="layout" class="layout grid" gap="loose">
+    <ul part="list" class="list" layout="scroll" gap="tight" aria-label={t("meta.inbox.messages")}>
+      {#each messages as message (message.id)}<li><button part="row" class="row" aria-pressed={message.id == selected} disabled={busy} onclick={choose} class:not-unread={!(message.unread)} class:unread={message.unread} state:selected={message.id == selected}><div class="row-copy" layout="stack">
+        <span part="caption" class="muted sender">{message.sender}</span><span part="headline" class="subject" title={message.subject}>{message.subject}</span><span part="caption" class="muted preview">{message.preview}</span><div class="row-meta" layout="wrap"><span part="caption" class="muted date">{message.date}</span><span part="badge" class="badge">{message.unread ? t("meta.inbox.unread") : t("meta.inbox.read")}</span>{#if message.hasAttachments}<og-icon part="icon" class="icon" icon="bag"></og-icon>{/if}</div>
       </div></button></li>{/each}
     </ul>
     <div class="reader">
-      {#if !selected}<p part="Inbox.empty Inbox.caption" class="muted">{t("meta.inbox.select")}</p>{/if}
-      {#each messages as message (message.id)}{#if message.id == selected}<article part="Inbox.detail" class="detail" data-layout="stack" aria-label={message.subject}>
-        <h3 part="Inbox.subject Inbox.headline">{message.subject}</h3><div class="row-meta" data-layout="cluster"><span part="Inbox.sender Inbox.caption" class="muted">{message.sender}</span><span part="Inbox.date Inbox.caption" class="muted">{message.date}</span></div><p part="Inbox.body" class="body">{message.body}</p>
-        {#if message.hasAttachments}<section part="Inbox.attachments" class="attachments" data-layout="stack" data-gap="tight" aria-label={t("meta.inbox.attachments")}><h4>{t("meta.inbox.attachments")}</h4><ul class="attachment-list" data-layout="stack" data-gap="tight">
-          {#each attachments as attachment (attachment.id)}{#if attachment.message == message.id}<li part="Inbox.attachment" class="attachment" data-layout="cluster"><og-icon part="Inbox.icon" class="icon" icon={attachment.icon}></og-icon><div part="Inbox.name">{attachment.name}</div><div part="Inbox.amount Inbox.figure" class="amount">{attachment.amount}</div></li>{/if}{/each}
-        </ul><span part="Inbox.state Inbox.caption" class="muted" data-state={message.expired ? 'expired' : message.claimed ? 'claimed' : 'available'}>{message.expired ? t("meta.inbox.expired") : message.claimed ? t("meta.claimed") : t("meta.available")}</span></section>{/if}
-        <footer part="Inbox.actions" class="actions" data-layout="cluster">
-          {#if message.hasAttachments}<button id="Claim" data-tone="reward" class="go" part="Inbox.claim" variant="primary" disabled={busy || !message.claimable || message.claimed || message.expired} onclick={claim}>{t("meta.inbox.claim")}</button>{/if}
-          {#if message.canDelete}<button id="Delete" part="Inbox.delete" disabled={busy} onclick={delete}>{t("meta.inbox.delete")}</button>{/if}
+      {#if !selected}<p part="caption" class="muted empty">{t("meta.inbox.select")}</p>{/if}
+      {#each messages as message (message.id)}{#if message.id == selected}<article part="detail" class="detail" layout="stack" aria-label={message.subject}>
+        <h3 class="subject" part="headline">{message.subject}</h3><div class="row-meta" layout="wrap"><span part="caption" class="muted sender">{message.sender}</span><span part="caption" class="muted date">{message.date}</span></div><p part="body" class="body">{message.body}</p>
+        {#if message.hasAttachments}<section part="attachments" class="attachments" layout="stack" gap="tight" aria-label={t("meta.inbox.attachments")}><h4>{t("meta.inbox.attachments")}</h4><ul class="attachment-list" layout="stack" gap="tight">
+          {#each attachments as attachment (attachment.id)}{#if attachment.message == message.id}<li part="attachment" class="attachment" layout="wrap"><og-icon part="icon" class="icon" icon={attachment.icon}></og-icon><div part="name">{attachment.name}</div><div part="figure" class="amount">{attachment.amount}</div></li>{/if}{/each}
+        </ul><span part="caption" class="muted state" class:state-claimed={(message.expired ? 'expired' : message.claimed ? 'claimed' : 'available') == 'claimed'} class:state-expired={(message.expired ? 'expired' : message.claimed ? 'claimed' : 'available') == 'expired'}>{message.expired ? t("meta.inbox.expired") : message.claimed ? t("meta.claimed") : t("meta.available")}</span></section>{/if}
+        <footer part="actions" class="actions" layout="wrap">
+          {#if message.hasAttachments}<button id="Claim" tone="reward" class="go" part="claim" variant="primary" disabled={busy || !message.claimable || message.claimed || message.expired} onclick={claim}>{t("meta.inbox.claim")}</button>{/if}
+          {#if message.canDelete}<button id="Delete" part="delete" disabled={busy} onclick={delete}>{t("meta.inbox.delete")}</button>{/if}
         </footer>
       </article>{/if}{/each}
     </div>
@@ -47,24 +46,25 @@
 </section>
 
 <style>
-:host { block-size: auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
+#Inbox { block-size: auto; }
 h2, h3, h4, p { margin: 0; overflow-wrap: anywhere; }
 .muted { overflow-wrap: anywhere; color: var(--quest-ink-quiet); }
 /* The count on a dark cut tag. */
-[part~="Inbox.summary"] { padding: var(--space-xxs) var(--space-sm); color: var(--ink-bright); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.summary { padding: var(--space-xxs) var(--space-sm); color: var(--ink-bright); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); }
 .list { max-block-size: var(--measure-xl); margin: 0; padding: var(--space-xxs); list-style: none; }
 /* A message: a card with two corners cut; unread carries a gold rail, the one open a gold wash. */
 .row { display: block; inline-size: stretch; padding: var(--space-sm) var(--space-md); text-align: start; background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.row[data-unread=true] { box-shadow: var(--quest-selected-rim); }
-.row[data-selected=true] { background: var(--alert-open-fill); box-shadow: var(--quest-selected-rim); }
-.row[data-unread=false] .subject { color: var(--quest-ink-quiet); }
+.row.unread { box-shadow: var(--quest-selected-rim); }
+.row:state(selected) { background: var(--alert-open-fill); box-shadow: var(--quest-selected-rim); }
+.row.not-unread .subject { color: var(--quest-ink-quiet); }
 .row-copy, .detail { align-items: start; }
 .row-copy { inline-size: stretch; }
 .subject { inline-size: stretch; font-weight: var(--quest-weight); overflow-wrap: anywhere; line-clamp: 1; text-overflow: ellipsis; }
 /* Read or unread, as a small word in the tag's colour. */
 .badge { font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-ink-faint); }
-.row[data-unread=true] .badge { color: var(--quest-gold); }
+.row.unread .badge { color: var(--quest-gold); }
 .icon { inline-size: var(--size-xs); block-size: var(--size-xs); flex: none; color: var(--quest-gold); }
 /* The open message in a sunken reader. */
 .reader { min-inline-size: 0; max-block-size: var(--measure-xl); overflow-y: auto; padding: var(--space-md) var(--space-lg); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--alert-reader-radius); corner-shape: var(--well-corner-shape); }
@@ -75,8 +75,8 @@ h4 { font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing
 /* An attachment: a dark cut chip, its icon in gold and its amount as a figure. */
 .attachment { flex-wrap: nowrap; align-items: center; padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-sm); background: var(--quest-well-fill); box-shadow: var(--quest-well-ready-rim); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .amount { font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--quest-gold); }
-[part~="Inbox.state"][data-state=expired] { color: var(--tone-danger); }
-[part~="Inbox.state"][data-state=claimed] { color: var(--tone-success); }
+.state.state-expired { color: var(--tone-danger); }
+.state.state-claimed { color: var(--tone-success); }
 .actions button { min-block-size: var(--touch-target); white-space: normal; }
 /* Claim: the reward's gold face. */
 .wait { padding: var(--space-lg); }

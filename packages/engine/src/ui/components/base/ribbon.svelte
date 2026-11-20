@@ -1,5 +1,4 @@
 <meta name="component" content="Ribbon">
-<meta name="parts" content="Ribbon.frame Ribbon.ribbon Ribbon.text">
 <meta name="prop:text" content="string" data-doc="The ribbon's words (NEW, SALE).">
 <meta name="prop:corner" content="string" data-doc="Where it sits: topRight (empty), topLeft, bottomRight, bottomLeft or center (a stamp).">
 <meta name="prop:tone" content="string" data-doc="Its tone: primary (empty), success, warn, danger or info.">
@@ -15,16 +14,16 @@
      of its own, so the card under it shows. A game puts the box in the
      corner it names of a positioned card that clips (`overflow: hidden`),
      and the card's own corner cuts the strip's ends. -->
-<div id="Corner" part="Ribbon.frame" class="bare" class:topLeft={corner == 'topLeft'} class:bottomRight={corner == 'bottomRight'} class:bottomLeft={corner == 'bottomLeft'} class:center={corner == 'center'}>
-  <div id="Ribbon" part="Ribbon.ribbon" data-layout="stack" data-gap="none" data-tone={tone || 'primary'} data-motion={corner == 'center' ? 'stamp' : 'enter'} role="status" aria-label={text}><span id="Text" class="text" part="Ribbon.text">{text}</span></div>
+<div id="Corner" part="frame" variant="bare" class:topLeft={corner == 'topLeft'} class:bottomRight={corner == 'bottomRight'} class:bottomLeft={corner == 'bottomLeft'} class:center={corner == 'center'}>
+  <div class="ribbon" id="Ribbon" part="ribbon" layout="stack" gap="none" tone={tone || 'primary'} play={corner == 'center' ? 'stamp' : 'enter'} role="status" aria-label={text}><span id="Text" class="text" part="text">{text}</span></div>
 </div>
 
 <style>
-:host { position: relative; inline-size: var(--size-4xl); block-size: calc(var(--size-xxl) + var(--space-lg)); overflow: hidden; pointer-events: none; }
-[part="Ribbon.ribbon"] { position: absolute; top: var(--space-lg); inset-inline-start: var(--space-3xl); width: var(--size-4xl); padding: var(--space-xxs) 0; align-items: center; rotate: 45deg; }
-.topLeft [part="Ribbon.ribbon"] { inset-inline-start: calc(var(--space-3xl) * -1); rotate: -45deg; }
-.bottomRight [part="Ribbon.ribbon"] { top: var(--size-xl); rotate: -45deg; }
-.bottomLeft [part="Ribbon.ribbon"] { top: var(--size-xl); inset-inline-start: calc(var(--space-3xl) * -1); rotate: 45deg; }
-.center [part="Ribbon.ribbon"] { top: calc(var(--space-xl) + var(--space-lg)); inset-inline-start: var(--space-lg); width: var(--size-3xl); rotate: -8deg; }
-[part="Ribbon.text"] { max-inline-size: calc(var(--size-4xl) - var(--space-3xl) * 2); white-space: nowrap; text-overflow: ellipsis; }
+#Corner { position: relative; inline-size: var(--size-4xl); block-size: calc(var(--size-xxl) + var(--space-lg)); overflow: hidden; pointer-events: none; }
+.ribbon { position: absolute; top: var(--space-lg); inset-inline-start: var(--space-3xl); width: var(--size-4xl); padding: var(--space-xxs) 0; align-items: center; rotate: 45deg; }
+.topLeft .ribbon { inset-inline-start: calc(var(--space-3xl) * -1); rotate: -45deg; }
+.bottomRight .ribbon { top: var(--size-xl); rotate: -45deg; }
+.bottomLeft .ribbon { top: var(--size-xl); inset-inline-start: calc(var(--space-3xl) * -1); rotate: 45deg; }
+.center .ribbon { top: calc(var(--space-xl) + var(--space-lg)); inset-inline-start: var(--space-lg); width: var(--size-3xl); rotate: -8deg; }
+.text { max-inline-size: calc(var(--size-4xl) - var(--space-3xl) * 2); white-space: nowrap; text-overflow: ellipsis; }
 </style>

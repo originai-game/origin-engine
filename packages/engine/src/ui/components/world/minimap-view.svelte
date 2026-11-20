@@ -1,6 +1,5 @@
 <meta name="component" content="MinimapView">
 <meta name="strings" content="./minimap-view.en.ogt">
-<meta name="parts" content="MinimapView.bezel MinimapView.glass MinimapView.grid MinimapView.marker MinimapView.player MinimapView.north MinimapView.badge">
 <meta name="prop:texture" content="number" data-doc="The map texture (og.load.texture); 0 draws the well with a grid.">
 <meta name="prop:centerX" content="number" data-doc="The map point at its centre (the player's), 0 to 1 across.">
 <meta name="prop:centerY" content="number" data-doc="The map point at its centre, 0 to 1 down.">
@@ -22,34 +21,35 @@
   kind is never told by colour alone. The zone's name sits on a plate
   under it. Reports pick (a tap on the glass).
 -->
-<div id="MinimapView" data-layout="stack" data-gap="tight" role="image" aria-label={zone || t("component.minimap-view.name")} class:square={square} style:--cx={centerX} style:--cy={centerY} style:--zoom={zoom} style:--heading={heading}>
-  <div id="Bezel" part="MinimapView.bezel">
-    <button id="Glass" part="MinimapView.glass" data-shape={square ? 'square' : 'round'} onclick={pick} aria-label={t("component.minimap-view.name")}>
+<div id="MinimapView" layout="stack" gap="tight" role="image" aria-label={zone || t("component.minimap-view.name")} class:square={square} style:--cx={centerX} style:--cy={centerY} style:--zoom={zoom} style:--heading={heading}>
+  <div id="Bezel" part="bezel">
+    <button id="Glass" part="glass" shape={square ? 'square' : 'round'} onclick={pick} aria-label={t("component.minimap-view.name")} class:shape-round={(square ? 'square' : 'round') == 'round'}>
       <div id="World" class:turning={rotate}>
-        {#if texture}<img id="Map" src={texture}>{:else}<div id="Grid" part="MinimapView.grid"></div>{/if}
+        {#if texture}<img id="Map" src={texture}>{:else}<div id="Grid" part="grid"></div>{/if}
         {#each markers as m (m.id)}
-          <div class="marker" part="MinimapView.marker" data-kind={m.kind} style:--x={m.x} style:--y={m.y} aria-label={m.label}>{#if m.kind == 'ping'}<div class="echo" data-motion="ping"></div>{/if}</div>
+          <div class="marker" part="marker" style:--x={m.x} style:--y={m.y} aria-label={m.label} class:kind-ally={(m.kind) == 'ally'} class:kind-enemy={(m.kind) == 'enemy'} class:kind-loot={(m.kind) == 'loot'} class:kind-objective={(m.kind) == 'objective'} class:kind-ping={(m.kind) == 'ping'} class:kind-poi={(m.kind) == 'poi'}>{#if m.kind == 'ping'}<div class="echo" play="ping"></div>{/if}</div>
         {/each}
       </div>
       {#if !square}<div class="ticks"></div>{/if}
       <div class="cone" class:turning={!rotate}></div>
-      <svg id="Player" part="MinimapView.player" viewBox="0 0 16 16" class:turning={!rotate}><path d="M8 1l6 13-6-3.5L2 14z"></path></svg>
+      <svg id="Player" part="player" viewBox="0 0 16 16" class:turning={!rotate}><path d="M8 1l6 13-6-3.5L2 14z"></path></svg>
+      <div id="GlassRim"></div>
     </button>
-    <span id="North" class="north" part="MinimapView.north">{t("component.minimap-view.north")}</span>
+    <span id="North" class="north" part="north">{t("component.minimap-view.north")}</span>
   </div>
-  {#if zone}<span id="Zone" part="MinimapView.badge">{zone}</span>{/if}
+  {#if zone}<span id="Zone" part="badge">{zone}</span>{/if}
 </div>
 
 <style>
-:host { align-items: center; color: var(--hud-ink); --side: var(--size-5xl); --rim: calc(5 * var(--font-step-px)); --pip: var(--map-pip); }
+#MinimapView { align-items: center; color: var(--hud-ink); --side: var(--size-5xl); --rim: calc(5 * var(--font-step-px)); --pip: var(--map-pip); }
 #Bezel { position: relative; width: calc(var(--side) + var(--rim) * 2); height: calc(var(--side) + var(--rim) * 2); padding: var(--rim); border-radius: var(--map-round); background: var(--map-bezel); box-shadow: var(--map-bezel-shadow); }
 .square #Bezel { border-radius: var(--map-square-bezel-round); }
 #Glass { position: relative; width: var(--side); height: var(--side); padding: 0; border: 0; overflow: hidden; border-radius: var(--map-round); background: var(--map-glass-well); box-shadow: none; }
 .square #Glass { border-radius: var(--map-square-glass-round); }
 /* The round glass is a circle whatever corner a pack gives its buttons: a
    bevel at a 50 % radius cuts it into a diamond inside its round bezel. */
-#Glass[data-shape=round], #Glass[data-shape=round]::part(base) { corner-shape: var(--map-round-corner-shape); }
-#Glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: var(--map-glass-rim); }
+#Glass.shape-round, #Glass.shape-round { corner-shape: var(--map-round-corner-shape); }
+#GlassRim { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; box-shadow: var(--map-glass-rim); }
 #World { position: absolute; top: 0; inset-inline-start: 0; width: var(--side); height: var(--side); transform-origin: 50% 50%; }
 #World.turning { rotate: calc(var(--heading) * -1deg); }
 #Map { position: absolute; width: calc(var(--side) / var(--zoom)); height: calc(var(--side) / var(--zoom)); inset-inline-start: calc(var(--side) / 2 - var(--cx) * var(--side) / var(--zoom)); top: calc(var(--side) / 2 - var(--cy) * var(--side) / var(--zoom)); }
@@ -59,11 +59,11 @@
 .cone.turning { rotate: calc(var(--heading) * 1deg); }
 /* A marker: its kind is its shape, at a size that follows the text. */
 .marker { position: absolute; width: var(--pip); height: var(--pip); inset-inline-start: calc(var(--side) / 2 + (var(--x) - var(--cx)) * var(--side) / var(--zoom) - var(--pip) / 2); top: calc(var(--side) / 2 + (var(--y) - var(--cy)) * var(--side) / var(--zoom) - var(--pip) / 2); }
-.marker[data-kind=ally], .marker[data-kind=poi] { border-radius: var(--map-round); background: var(--map-ally); box-shadow: var(--map-pip-ring); }
-.marker[data-kind=enemy] { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--map-enemy); }
-.marker[data-kind=objective] { --pip: var(--map-pip-objective); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--map-objective); filter: var(--map-quest-glow); }
-.marker[data-kind=loot] { --pip: calc(var(--map-pip) * 0.85); background: var(--map-loot); box-shadow: var(--map-pip-ring); }
-.marker[data-kind=ping] { --pip: calc(var(--map-pip) * 1.5); border-radius: var(--map-round); box-shadow: var(--map-ping-ring); }
+.marker.kind-ally, .marker.kind-poi { border-radius: var(--map-round); background: var(--map-ally); box-shadow: var(--map-pip-ring); }
+.marker.kind-enemy { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--map-enemy); }
+.marker.kind-objective { --pip: var(--map-pip-objective); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--map-objective); filter: var(--map-quest-glow); }
+.marker.kind-loot { --pip: calc(var(--map-pip) * 0.85); background: var(--map-loot); box-shadow: var(--map-pip-ring); }
+.marker.kind-ping { --pip: calc(var(--map-pip) * 1.5); border-radius: var(--map-round); box-shadow: var(--map-ping-ring); }
 .echo { position: absolute; inset: 0; border-radius: var(--map-round); box-shadow: var(--map-ping-ring); }
 #Player { position: absolute; top: calc(var(--side) / 2 - var(--map-pip-objective) * 0.75); inset-inline-start: calc(var(--side) / 2 - var(--map-pip-objective) * 0.75); width: calc(var(--map-pip-objective) * 1.5); height: calc(var(--map-pip-objective) * 1.5); fill: var(--map-player); filter: var(--map-player-glow); transform-origin: 50% 50%; }
 #Player.turning { rotate: calc(var(--heading) * 1deg); }

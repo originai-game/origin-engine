@@ -1,6 +1,5 @@
 <meta name="component" content="ListItem">
 <meta name="strings" content="./states.en.ogt">
-<meta name="parts" content="ListItem.row ListItem.well ListItem.picture ListItem.icon ListItem.body ListItem.headline ListItem.subtitle ListItem.trailing ListItem.figure ListItem.badge ListItem.mark ListItem.caption">
 <meta name="prop:title" content="string" data-default="" data-doc="The row's primary text.">
 <meta name="prop:subtitle" content="string" data-default="" data-doc="Optional secondary text, wrapping below the title.">
 <meta name="prop:icon" content="string" data-default="" data-doc="Optional leading icon, used when image is zero.">
@@ -22,27 +21,28 @@
      on the row while the words keep a measure beside it; a long value on a
      narrow row drops under the words instead, with its state, so the name
      is not squeezed into a column. -->
-<div data-layout="shell">
-<button id="ListItem" part="ListItem.row" class="item" aria-label={title} aria-description={subtitle} aria-pressed={selected} aria-busy={loading} disabled={disabled || loading} onclick={choose}>
-  <div class="face" data-layout="cluster" data-gap="loose">
-  {#if image || icon}<div part="ListItem.well" class="well" data-layout="cover">
-    {#if image}<img part="ListItem.picture" class="picture" src={image} alt="">
-    {:else}<og-icon part="ListItem.icon" class="icon" icon={icon}></og-icon>{/if}
+<div id="ListItemShell" layout="stack" fill>
+<button id="ListItem" part="row" class="item" aria-label={title} aria-description={subtitle} aria-pressed={selected} aria-busy={loading} disabled={disabled || loading} onclick={choose}>
+  <div class="face" layout="wrap" gap="loose">
+  {#if image || icon}<div part="well" class="well cover" layout="stack" fill>
+    {#if image}<img part="picture" class="picture" src={image} alt="">
+    {:else}<og-icon part="icon" class="icon" icon={icon}></og-icon>{/if}
   </div>{/if}
-  <div part="ListItem.body" class="body" data-layout="stack" data-gap="hair"><span part="ListItem.headline" class="title">{title}</span>{#if subtitle}<span part="ListItem.subtitle ListItem.caption" class="subtitle">{subtitle}</span>{/if}</div>
-  {#if value || badge || loading || selected}<div class="end" data-layout="row" data-gap="loose">
-    {#if value || badge}<div part="ListItem.trailing" class="trailing" data-layout="stack" data-gap="hair">
-      {#if value}<span part="ListItem.figure" class="value">{value}</span>{/if}
-      {#if badge}<span part="ListItem.badge" class="badge">{badge}</span>{/if}
+  <div part="body" class="body" layout="stack" gap="hair"><span part="headline" class="title">{title}</span>{#if subtitle}<span part="caption" class="subtitle">{subtitle}</span>{/if}</div>
+  {#if value || badge || loading || selected}<div class="end" layout="row" gap="loose">
+    {#if value || badge}<div part="trailing" class="trailing" layout="stack" gap="hair">
+      {#if value}<span part="figure" class="value">{value}</span>{/if}
+      {#if badge}<span part="badge" class="badge">{badge}</span>{/if}
     </div>{/if}
-    {#if loading}<Spinner size={20} name={t("base.loading")} />{:else if selected}<og-icon part="ListItem.mark" class="mark" data-tone="primary" data-motion="pop" icon="check"></og-icon>{/if}
+    {#if loading}<Spinner size={20} name={t("base.loading")} />{:else if selected}<og-icon part="mark" class="mark" tone="primary" play="pop" icon="check"></og-icon>{/if}
   </div>{/if}
   </div>
 </button>
 </div>
 
 <style>
-:host { block-size: auto; }
+.cover { justify-content: center; align-items: center; }
+#ListItemShell { block-size: auto; }
 .item { inline-size: stretch; min-block-size: var(--touch-target); padding: var(--space-sm) var(--space-md); text-align: start; --button-selected-fill: var(--row-selected-fill); --button-selected-shadow: var(--row-selected-edge); }
 .item:disabled { --headline-ink: var(--ink-disabled); --caption-ink: var(--ink-disabled); }
 .face { inline-size: stretch; }

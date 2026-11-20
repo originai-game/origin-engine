@@ -87,6 +87,7 @@
 </section>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 #RhythmSongSelect { inline-size: stretch; min-inline-size: 0; block-size: stretch; color: var(--hud-ink); }
 /* The heading stands straight over the art: condensed bold capitals with
    the HUD's stroke under the fill and one soft shadow. */
@@ -195,6 +196,4 @@ img.art { object-fit: cover; }
   #RhythmSongSelect { --layout-gap-loose: var(--layout-gap-tight); }
   .title { font-size: var(--select-size-title-compact); }
 }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 </style>

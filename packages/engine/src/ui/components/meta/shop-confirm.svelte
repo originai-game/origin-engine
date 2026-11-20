@@ -1,6 +1,5 @@
 <meta name="component" content="ShopConfirm">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="ShopConfirm.frame ShopConfirm.band ShopConfirm.title ShopConfirm.name ShopConfirm.art ShopConfirm.detail ShopConfirm.ledger ShopConfirm.price ShopConfirm.former ShopConfirm.after ShopConfirm.missing ShopConfirm.reason ShopConfirm.error ShopConfirm.actions ShopConfirm.figure ShopConfirm.caption">
 <meta name="prop:title" content="string" data-doc="The panel's heading, a small line over the offer's name; empty takes the group's (Confirm purchase).">
 <meta name="prop:name" content="string" data-doc="The offer's name.">
 <meta name="prop:icon" content="string" data-doc="The offer's icon in the style's or the game's atlas.">
@@ -37,36 +36,36 @@
   screen, a sheet at the foot of a phone, or the game's own modal) owns
   modality and focus.
 -->
-<section id="ShopConfirm" part="ShopConfirm.frame" data-layout="shell" data-rarity={rarity || 'common'} aria-label={title != '' ? title : t("general.confirm.name")} aria-busy={busy} onback={cancel}>
+<section class="frame" id="ShopConfirm" part="frame" layout="stack" fill tier={rarity || 'common'} aria-label={title != '' ? title : t("general.confirm.name")} aria-busy={busy} onback={cancel}>
   <div class="lit"></div>
-  <header part="ShopConfirm.band" data-layout="stack" data-gap="hair">
-    <h2 part="ShopConfirm.title" class="kicker">{title != '' ? title : t("general.confirm.name")}</h2>
-    <h3 part="ShopConfirm.name" class="name">{name}</h3>
+  <header class="band" part="band" layout="stack" gap="hair">
+    <h2 part="title" class="kicker">{title != '' ? title : t("general.confirm.name")}</h2>
+    <h3 part="name" class="name">{name}</h3>
   </header>
-  <div class="body" data-layout="scroll" data-gap="loose">
-    <div class="offer" data-layout="row" data-gap="loose">
-      <div part="ShopConfirm.art" class="socket" data-layout="cover"><og-icon class="art-icon" icon={icon}></og-icon></div>
-      {#if detail}<p part="ShopConfirm.detail" class="detail" data-fill>{detail}</p>{/if}
+  <div class="body" layout="scroll" gap="loose">
+    <div class="offer" layout="row" gap="loose">
+      <div part="art" class="socket cover" layout="stack" fill><og-icon class="art-icon" icon={icon}></og-icon></div>
+      {#if detail}<p part="detail" class="detail" fill>{detail}</p>{/if}
     </div>
-    <ul part="ShopConfirm.ledger" class="ledger" aria-label={t("general.confirm.cost")}>
-      {#each prices as p (p.id)}
-        <li class="entry" data-layout="stack" data-gap="tight" data-short={p.short}>
-          <div class="line" data-layout="row" data-gap="loose">
-            <span part="ShopConfirm.caption" class="key" data-fill>{t("general.shop.price")}</span>
-            <div part="ShopConfirm.price" class="price" data-layout="row" data-gap="hair">
+    <ul part="ledger" class="ledger" aria-label={t("general.confirm.cost")}>
+      {#each prices as p, i (p.id)}
+        <li class="entry" layout="stack" gap="tight" class:later={i >= 1} class:short={p.short}>
+          <div class="line" layout="row" gap="loose">
+            <span part="caption" class="key" fill>{t("general.shop.price")}</span>
+            <div part="price" class="price" layout="row" gap="hair">
               <og-icon class="currency" icon={p.icon}></og-icon>
-              {#if p.was}<span part="ShopConfirm.former" class="was">{p.was}</span>{/if}
-              <span part="ShopConfirm.figure" class="figure" aria-label={p.was ? t("general.shop.amountWas", { amount: p.amount, currency: p.label, was: p.was }) : t("general.shop.amount", { amount: p.amount, currency: p.label })}>{p.amount}</span>
+              {#if p.was}<span part="former" class="was">{p.was}</span>{/if}
+              <span part="figure" class="figure" aria-label={p.was ? t("general.shop.amountWas", { amount: p.amount, currency: p.label, was: p.was }) : t("general.shop.amount", { amount: p.amount, currency: p.label })}>{p.amount}</span>
             </div>
           </div>
           {#if p.short}
-            <div part="ShopConfirm.missing" class="line lack" data-layout="row" data-gap="loose" aria-label={p.missing ? t("general.confirm.missingSaid", { amount: p.missing, currency: p.label }) : t("general.confirm.shortOf", { currency: p.label })}>
-              <span class="key" data-fill>{t("general.confirm.shortOf", { currency: p.label })}</span>
+            <div part="missing" class="line lack" layout="row" gap="loose" aria-label={p.missing ? t("general.confirm.missingSaid", { amount: p.missing, currency: p.label }) : t("general.confirm.shortOf", { currency: p.label })}>
+              <span class="key" fill>{t("general.confirm.shortOf", { currency: p.label })}</span>
               {#if p.missing}<span class="more">{t("general.confirm.missing", { amount: p.missing })}</span>{/if}
             </div>
           {:else if p.after}
-            <div part="ShopConfirm.after" class="line" data-layout="row" data-gap="loose" aria-label={t("general.confirm.afterSaid", { currency: p.label, after: p.after })}>
-              <span part="ShopConfirm.caption" class="key" data-fill>{t("general.confirm.balance")}</span>
+            <div part="after" class="line" layout="row" gap="loose" aria-label={t("general.confirm.afterSaid", { currency: p.label, after: p.after })}>
+              <span part="caption" class="key" fill>{t("general.confirm.balance")}</span>
               <span class="balance">{p.after}</span>
             </div>
           {/if}
@@ -74,10 +73,10 @@
       {/each}
     </ul>
   </div>
-  {#if error}<p part="ShopConfirm.error" class="alert" role="alert">{error}</p>{/if}
-  <footer part="ShopConfirm.actions" class="actions" data-layout="stack" data-gap="tight">
-    {#if !canBuy && !busy && reason}<p part="ShopConfirm.reason" class="reason" role="status">{reason}</p>{/if}
-    <div class="buttons" data-layout="row" data-gap="tight">
+  {#if error}<p part="error" class="alert" role="alert">{error}</p>{/if}
+  <footer part="actions" class="actions" layout="stack" gap="tight">
+    {#if !canBuy && !busy && reason}<p part="reason" class="reason" role="status">{reason}</p>{/if}
+    <div class="buttons" layout="row" gap="tight">
       <button id="Cancel" class="act" variant="ghost" aria-label={t("general.confirm.cancel")} onclick={cancel}><kbd class="cap" data-action="back"></kbd><span>{t("general.confirm.cancel")}</span></button>
       <button id="Buy" class="act main go" variant="primary" disabled={!canBuy || busy} aria-busy={busy} aria-label={busy ? t("general.confirm.busy") : t("general.confirm.buy")} onclick={confirm}><span>{busy ? t("general.confirm.busy") : t("general.confirm.buy")}</span></button>
     </div>
@@ -85,17 +84,18 @@
 </section>
 
 <style>
-:host { inline-size: stretch; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; }
+.cover { justify-content: center; align-items: center; }
+#ShopConfirm { inline-size: stretch; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; }
 /* The frame: two corners cut, a lit top edge; the rarity dresses the socket. */
-[part="ShopConfirm.frame"] { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="ShopConfirm.frame"][data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
-[part="ShopConfirm.frame"][data-rarity=rare] { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
-[part="ShopConfirm.frame"][data-rarity=epic] { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
-[part="ShopConfirm.frame"][data-rarity=legendary] { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
-[part="ShopConfirm.frame"][data-rarity=mythic] { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
+.frame { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.frame.rarity-uncommon { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
+.frame.rarity-rare { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
+.frame.rarity-epic { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
+.frame.rarity-legendary { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
+.frame.rarity-mythic { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 h2, h3, p { margin: 0; }
-[part="ShopConfirm.band"] { width: stretch; flex: none; align-items: flex-start; justify-content: flex-start; text-align: start; }
+.band { width: stretch; flex: none; align-items: flex-start; justify-content: flex-start; text-align: start; }
 .kicker { font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); overflow-wrap: anywhere; }
 .name { font-size: var(--inv-figure-xl-size); font-weight: var(--inv-figure-weight); color: var(--ink-bright); overflow-wrap: anywhere; line-clamp: 3; overflow: hidden; }
 .body { flex: 0 1 auto; min-block-size: 0; width: stretch; }
@@ -106,7 +106,7 @@ h2, h3, p { margin: 0; }
 /* The ledger: a sunk well, one group of rows a currency, a rule between. */
 .ledger { flex: none; display: flex; flex-direction: column; width: stretch; margin: 0; padding: var(--space-xs) var(--space-sm); list-style: none; background: var(--shop-ledger-fill); box-shadow: var(--shop-ledger-rim); }
 .entry { width: stretch; padding-block: var(--space-xs); }
-.entry + .entry { border-block-start: var(--shop-foot-rule); }
+.entry.later { border-block-start: var(--shop-foot-rule); }
 .line { width: stretch; align-items: center; flex-wrap: wrap; row-gap: var(--space-xxs); }
 .key { min-width: 0; font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); overflow-wrap: anywhere; }
 .price { flex: none; max-width: stretch; min-width: 0; margin-inline-start: auto; align-items: center; font-size: var(--shop-price-lg-size); color: var(--ink-bright); }
@@ -115,7 +115,7 @@ h2, h3, p { margin: 0; }
 .currency { flex: none; inline-size: calc(20 * var(--font-step-px)); block-size: calc(20 * var(--font-step-px)); }
 .was { margin-inline-end: var(--space-xs); white-space: nowrap; font-size: var(--shop-was-size); font-weight: var(--inv-name-weight); }
 .balance, .more { flex: none; max-width: stretch; margin-inline-start: auto; text-align: end; overflow-wrap: anywhere; }
-[data-short=true] .price, .lack .key, .lack .more { color: var(--shop-short-ink); }
+.short .price, .lack .key, .lack .more { color: var(--shop-short-ink); }
 .alert { flex: none; width: stretch; padding: var(--space-xs) var(--space-sm); overflow-wrap: anywhere; background: var(--inv-alert-fill); box-shadow: var(--inv-alert-rim); }
 /* The buttons at the foot, the refusal in words over them. */
 .actions { flex: none; width: stretch; }
@@ -126,7 +126,7 @@ h2, h3, p { margin: 0; }
 .cap { flex: none; }
 /* A phone: a sheet, square at its foot, the socket smaller. */
 @media (width < 600px) {
-  [part="ShopConfirm.frame"] { border-radius: var(--inv-frame-cut) 0 0 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+  .frame { border-radius: var(--inv-frame-cut) 0 0 0; corner-shape: var(--cut-shape); clip-path: border-box; }
   .socket { inline-size: var(--shop-socket-compact-size); block-size: var(--shop-socket-compact-size); }
   .main { flex-grow: 1; }
 }

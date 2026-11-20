@@ -33,6 +33,7 @@
 </div>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 #OverlayBar { align-items: center; max-width: 100%; text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #Legend { --title-size: var(--title-small-size); width: var(--measure-sm); max-width: 100%; padding: var(--space-sm) var(--space-md); }
 .title { white-space: nowrap; }
@@ -43,5 +44,4 @@
 .art, .well { width: var(--size-lg); height: var(--size-lg); }
 .icon { width: var(--size-sm); height: var(--size-sm); }
 .name { white-space: nowrap; }
-.cover { justify-content: center; align-items: center; }
 </style>

@@ -68,6 +68,7 @@
 </article>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* The band carries the title over the scenery, so it wears neither fill nor rule of its own here. */
 .hero { width: stretch; flex: none; min-height: var(--size-xxl); padding: 0; border-bottom: 0; }
 .with-scenery .hero { min-height: calc(var(--size-xxl) * 2); }
@@ -117,6 +118,4 @@
   .actions { padding-inline: var(--space-md); }
   .actions button { flex: 1 1 auto; }
 }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 </style>

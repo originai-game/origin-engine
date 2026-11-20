@@ -1,6 +1,5 @@
 <meta name="component" content="Shop">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="Shop.frame Shop.band Shop.kicker Shop.title Shop.wallet Shop.balance Shop.tab Shop.count Shop.offer Shop.art Shop.name Shop.detail Shop.featured Shop.badge Shop.foot Shop.price Shop.former Shop.status Shop.bracket Shop.figure Shop.caption">
 <meta name="prop:title" content="string" data-doc="The shop's heading; empty takes the group's (Shop).">
 <meta name="prop:kicker" content="string" data-default="" data-doc="A small line over the title naming the place (Store, a merchant's town); empty hides it.">
 <meta name="prop:wallet" content="list" data-doc="The player's balances shown in the band, keyed rows of { id, icon, label, amount }: amount as the game formats it; label names the currency for a screen reader.">
@@ -36,102 +35,103 @@
   height it is given and scrolls inside it; narrow, it is two columns and
   the tabs scroll sideways.
 -->
-<section id="Shop" part="Shop.frame" data-layout="shell" aria-label={title != '' ? title : t("general.shop.name")} aria-busy={loading}>
+<section class="frame" id="Shop" part="frame" layout="stack" fill aria-label={title != '' ? title : t("general.shop.name")} aria-busy={loading}>
   <div class="lit"></div>
-  <header part="Shop.band" data-layout="cluster" data-gap="loose">
-    <div class="heading" data-layout="stack" data-gap="hair" data-fill>
-      {#if kicker}<span part="Shop.kicker" class="kicker">{kicker}</span>{/if}
-      <h2 part="Shop.title">{title != '' ? title : t("general.shop.name")}</h2>
+  <header class="band" part="band" layout="wrap" gap="loose">
+    <div class="heading" layout="stack" gap="hair" fill>
+      {#if kicker}<span part="kicker" class="kicker">{kicker}</span>{/if}
+      <h2 class="title" part="title">{title != '' ? title : t("general.shop.name")}</h2>
     </div>
-    {#if wallet.length}<ul part="Shop.wallet" data-layout="cluster" data-gap="tight" aria-label={t("general.shop.wallet")}>
+    {#if wallet.length}<ul class="wallet" part="wallet" layout="wrap" gap="tight" aria-label={t("general.shop.wallet")}>
       {#each wallet as w (w.id)}
-        <li part="Shop.balance" class="chip" data-layout="row" data-gap="tight" aria-label={t("general.shop.amount", { amount: w.amount, currency: w.label })}><og-icon class="chip-icon" icon={w.icon}></og-icon><span part="Shop.figure" class="figure">{w.amount}</span></li>
+        <li part="balance" class="chip" layout="row" gap="tight" aria-label={t("general.shop.amount", { amount: w.amount, currency: w.label })}><og-icon class="chip-icon" icon={w.icon}></og-icon><span part="figure" class="figure">{w.amount}</span></li>
       {/each}
     </ul>{/if}
   </header>
-  {#if tabs.length}<div class="tabs" data-layout="row" data-gap="tight" role="tablist" aria-label={t("general.shop.tabs")} ontabNext={tabNext} ontabPrev={tabPrev}>
+  {#if tabs.length}<div class="tabs" layout="row" gap="tight" role="tablist" aria-label={t("general.shop.tabs")} ontabNext={tabNext} ontabPrev={tabPrev}>
     <kbd class="cap" data-action="tabPrev"></kbd>
-    <div class="tabs-scroll" data-fill>
-      <div class="tabs-row" data-layout="row" data-gap="none">
+    <div class="tabs-scroll" fill>
+      <div class="tabs-row" layout="row" gap="none">
         {#each tabs as c (c.id)}
-          <button part="Shop.tab" variant="quiet" role="tab" aria-selected={c.id == tab} aria-label={c.label} onclick={choosetab}><span class="tab-label">{c.label}</span>{#if c.count > 0}<span part="Shop.count" class="count">{formatNumber(c.count)}</span>{/if}<span class="line"></span></button>
+          <button class="tab" part="tab" variant="quiet" role="tab" aria-selected={c.id == tab} aria-label={c.label} onclick={choosetab} state:selected={c.id == tab}><span class="tab-label">{c.label}</span>{#if c.count > 0}<span part="count" class="count">{formatNumber(c.count)}</span>{/if}<span class="line"></span></button>
         {/each}
       </div>
     </div>
     <kbd class="cap" data-action="tabNext"></kbd>
   </div>{/if}
   {#if error != ''}
-    <div class="state" data-layout="cover" data-fill role="alert"><og-icon class="state-mark" icon="close"></og-icon><p class="state-text">{error}</p><button id="Retry" class="secondary" onclick={retry}>{t("general.shop.retry")}</button></div>
+    <div class="state cover" layout="stack" fill role="alert"><og-icon class="state-mark" icon="close"></og-icon><p class="state-text">{error}</p><button id="Retry" class="secondary" onclick={retry}>{t("general.shop.retry")}</button></div>
   {:else if loading}
-    <div class="state" data-layout="cover" data-fill role="status"><Spinner name={t("general.shop.loading")} /><p class="state-text">{t("general.shop.loading")}</p></div>
+    <div class="state cover" layout="stack" fill role="status"><Spinner name={t("general.shop.loading")} /><p class="state-text">{t("general.shop.loading")}</p></div>
   {:else if offers.length}
-    <div class="grid-scroll" data-layout="scroll" data-fill>
+    <div class="grid-scroll" layout="scroll" fill>
       <div class="grid" role="grid" aria-label={title != '' ? title : t("general.shop.name")}>
         {#each offers as o (o.id)}
           {#if !o.soldOut && !o.owned && o.affordable}
-            <button part="Shop.offer" class="offer" role="gridcell" data-rarity={o.rarity || 'common'} data-featured={o.featured} data-sold-out={o.soldOut} data-owned={o.owned} data-affordable={o.affordable} aria-selected={o.id == selected} aria-label={o.name} onclick={buy}><div class="face" data-layout="stack" data-gap="tight">
-              <div part="Shop.art" class="art" data-layout="cover"><og-icon class="art-icon" icon={o.icon}></og-icon></div>
-              {#if o.featured}<span part="Shop.featured" class="ctag lead">{t("general.shop.featured")}</span>{/if}
-              {#if o.badge}<span part="Shop.badge" class="ctag end" data-tone={o.badgeTone}>{o.badge}</span>{/if}
-              <div class="text" data-layout="stack" data-gap="hair">
-                <p part="Shop.name" class="name">{o.name}</p>
-                {#if o.detail}<span part="Shop.detail Shop.caption" class="detail">{o.detail}</span>{/if}
+            <button part="offer" class="offer" role="gridcell" class:plain={!o.featured} tier={o.rarity || 'common'} data-sold-out={o.soldOut} data-owned={o.owned} data-affordable={o.affordable} aria-selected={o.id == selected} aria-label={o.name} onclick={buy} state:selected={o.id == selected} class:featured={o.featured}><div class="face" layout="stack" gap="tight">
+              <div part="art" class="art cover" layout="stack" fill><div class="art-glow"></div><og-icon class="art-icon" icon={o.icon}></og-icon></div>
+              {#if o.featured}<span part="featured" class="ctag" variant="lead">{t("general.shop.featured")}</span>{/if}
+              {#if o.badge}<span part="badge" class="ctag end" tone={o.badgeTone} class:tone-success={(o.badgeTone) == 'success'}>{o.badge}</span>{/if}
+              <div class="text" layout="stack" gap="hair">
+                <p part="name" class="name">{o.name}</p>
+                {#if o.detail}<span part="caption" class="detail">{o.detail}</span>{/if}
               </div>
-              <div part="Shop.foot" class="foot" data-layout="cluster" data-gap="tight" aria-label={t("general.shop.price")}>
+              <div part="foot" class="foot" layout="wrap" gap="tight" aria-label={t("general.shop.price")}>
                 {#each prices as p (p.id)}
                   {#if p.offer == o.id}
-                    <div part="Shop.price" class="price" data-layout="row" data-gap="hair" data-short={p.short}>
+                    <div part="price" class="price" layout="row" gap="hair" class:short={p.short}>
                       <og-icon class="currency" icon={p.icon}></og-icon>
-                      {#if p.was}<span part="Shop.former" class="was">{p.was}</span>{/if}
-                      <span part="Shop.figure" class="figure" aria-label={p.was ? t("general.shop.amountWas", { amount: p.amount, currency: p.label, was: p.was }) : t("general.shop.amount", { amount: p.amount, currency: p.label })}>{p.amount}</span>
+                      {#if p.was}<span part="former" class="was">{p.was}</span>{/if}
+                      <span part="figure" class="figure" aria-label={p.was ? t("general.shop.amountWas", { amount: p.amount, currency: p.label, was: p.was }) : t("general.shop.amount", { amount: p.amount, currency: p.label })}>{p.amount}</span>
                     </div>
                   {/if}
                 {/each}
               </div>
-            </div>{#if o.id == selected}<div part="Shop.bracket" class="bracket"></div>{/if}</button>
+            </div>{#if o.id == selected}<div part="bracket" class="bracket"></div>{/if}</button>
           {:else}
-            <button part="Shop.offer" class="offer" role="gridcell" data-refused={true} data-rarity={o.rarity || 'common'} data-featured={o.featured} data-sold-out={o.soldOut} data-owned={o.owned} data-affordable={o.affordable} aria-selected={o.id == selected} aria-disabled={true} aria-label={t("general.shop.refused", { name: o.name, status: o.soldOut ? t("general.shop.soldOut") : o.owned ? t("general.shop.owned") : t("general.shop.short") })}><div class="face" data-layout="stack" data-gap="tight">
-              <div part="Shop.art" class="art" data-layout="cover"><og-icon class="art-icon" icon={o.icon}></og-icon></div>
-              {#if o.featured}<span part="Shop.featured" class="ctag lead">{t("general.shop.featured")}</span>{/if}
-              {#if o.badge}<span part="Shop.badge" class="ctag end" data-tone={o.badgeTone}>{o.badge}</span>{/if}
-              <div class="text" data-layout="stack" data-gap="hair">
-                <p part="Shop.name" class="name">{o.name}</p>
-                {#if o.detail}<span part="Shop.detail Shop.caption" class="detail">{o.detail}</span>{/if}
+            <button part="offer" class="offer" role="gridcell" class:plain={!o.featured} tier={o.rarity || 'common'} data-sold-out={o.soldOut} data-owned={o.owned} data-affordable={o.affordable} aria-selected={o.id == selected} aria-disabled={true} aria-label={t("general.shop.refused", { name: o.name, status: o.soldOut ? t("general.shop.soldOut") : o.owned ? t("general.shop.owned") : t("general.shop.short") })} state:selected={o.id == selected} class:featured={o.featured} class:refused={true}><div class="face" layout="stack" gap="tight">
+              <div part="art" class="art cover" layout="stack" fill><div class="art-glow"></div><og-icon class="art-icon" icon={o.icon}></og-icon></div>
+              {#if o.featured}<span part="featured" class="ctag" variant="lead">{t("general.shop.featured")}</span>{/if}
+              {#if o.badge}<span part="badge" class="ctag end" tone={o.badgeTone} class:tone-success={(o.badgeTone) == 'success'}>{o.badge}</span>{/if}
+              <div class="text" layout="stack" gap="hair">
+                <p part="name" class="name">{o.name}</p>
+                {#if o.detail}<span part="caption" class="detail">{o.detail}</span>{/if}
               </div>
-              <div part="Shop.foot" class="foot" data-layout="cluster" data-gap="tight" aria-label={t("general.shop.price")}>
+              <div part="foot" class="foot" layout="wrap" gap="tight" aria-label={t("general.shop.price")}>
                 {#each prices as p (p.id)}
                   {#if p.offer == o.id}
-                    <div part="Shop.price" class="price" data-layout="row" data-gap="hair" data-short={p.short}>
+                    <div part="price" class="price" layout="row" gap="hair" class:short={p.short}>
                       <og-icon class="currency" icon={p.icon}></og-icon>
-                      {#if p.was}<span part="Shop.former" class="was">{p.was}</span>{/if}
-                      <span part="Shop.figure" class="figure" aria-label={p.was ? t("general.shop.amountWas", { amount: p.amount, currency: p.label, was: p.was }) : t("general.shop.amount", { amount: p.amount, currency: p.label })}>{p.amount}</span>
+                      {#if p.was}<span part="former" class="was">{p.was}</span>{/if}
+                      <span part="figure" class="figure" aria-label={p.was ? t("general.shop.amountWas", { amount: p.amount, currency: p.label, was: p.was }) : t("general.shop.amount", { amount: p.amount, currency: p.label })}>{p.amount}</span>
                     </div>
                   {/if}
                 {/each}
-                {#if o.soldOut}<div part="Shop.status" class="status" data-layout="row" data-gap="hair" data-kind="soldOut"><span>{t("general.shop.soldOut")}</span></div>{/if}
-                {#if o.owned && !o.soldOut}<div part="Shop.status" class="status" data-layout="row" data-gap="hair" data-kind="owned"><og-icon class="status-mark" icon="check"></og-icon><span>{t("general.shop.owned")}</span></div>{/if}
-                {#if !o.affordable && !o.soldOut && !o.owned}<div part="Shop.status" class="status" data-layout="row" data-gap="hair" data-kind="short"><span>{t("general.shop.short")}</span></div>{/if}
+                {#if o.soldOut}<div part="status" class="status" layout="row" gap="hair"><span>{t("general.shop.soldOut")}</span></div>{/if}
+                {#if o.owned && !o.soldOut}<div part="status" class="status" layout="row" gap="hair" class:kind-owned={true}><og-icon class="status-mark" icon="check"></og-icon><span>{t("general.shop.owned")}</span></div>{/if}
+                {#if !o.affordable && !o.soldOut && !o.owned}<div part="status" class="status" layout="row" gap="hair" class:kind-short={true}><span>{t("general.shop.short")}</span></div>{/if}
               </div>
-            </div>{#if o.id == selected}<div part="Shop.bracket" class="bracket"></div>{/if}</button>
+            </div>{#if o.id == selected}<div part="bracket" class="bracket"></div>{/if}</button>
           {/if}
         {/each}
       </div>
     </div>
   {:else}
-    <div class="state" data-layout="cover" data-fill role="status"><og-icon class="state-mark" icon="bag"></og-icon><p class="state-text">{t("general.shop.empty")}</p></div>
+    <div class="state cover" layout="stack" fill role="status"><og-icon class="state-mark" icon="bag"></og-icon><p class="state-text">{t("general.shop.empty")}</p></div>
   {/if}
 </section>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* The frame: two corners cut, a lit top edge. */
-[part="Shop.frame"] { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.frame { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
-[part="Shop.band"] { width: stretch; flex: none; align-items: flex-end; }
+.band { width: stretch; flex: none; align-items: flex-end; }
 .heading { min-width: 0; flex-basis: calc(120 * var(--font-step-px)); }
 .kicker { font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-[part="Shop.title"] { margin: 0; min-width: 0; overflow-wrap: anywhere; line-clamp: 2; overflow: hidden; }
+.title { margin: 0; min-width: 0; overflow-wrap: anywhere; line-clamp: 2; overflow: hidden; }
 /* The balances: a chip each, the currency's mark before its amount. */
-[part="Shop.wallet"] { margin: 0; padding: 0; list-style: none; justify-content: flex-end; max-width: stretch; }
+.wallet { margin: 0; padding: 0; list-style: none; justify-content: flex-end; max-width: stretch; }
 .chip { flex: none; max-width: stretch; align-items: center; padding: var(--space-xxs) var(--space-sm) var(--space-xxs) var(--space-xs); border-radius: var(--inv-chip-radius); background: var(--inv-chip-fill); box-shadow: var(--inv-chip-rim); }
 .chip-icon { flex: none; inline-size: calc(20 * var(--font-step-px)); block-size: calc(20 * var(--font-step-px)); }
 .figure { white-space: nowrap; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
@@ -142,51 +142,51 @@
 .cap { flex: none; }
 .tabs-scroll { min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; mask-image: var(--inv-tab-fade); }
 .tabs-row { padding-inline-end: var(--size-lg); }
-[part="Shop.tab"] { position: relative; flex: none; min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); gap: var(--space-xs); border-radius: 0; background: var(--inv-bare-fill); box-shadow: none; color: var(--inv-tab-ink); }
-[part="Shop.tab"][aria-selected=true] { color: var(--inv-tab-on-ink); }
+.tab { position: relative; flex: none; min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); gap: var(--space-xs); border-radius: 0; background: var(--inv-bare-fill); box-shadow: none; color: var(--inv-tab-ink); }
+.tab:state(selected) { color: var(--inv-tab-on-ink); }
 .line { position: absolute; inset-inline: var(--space-xs); bottom: 0; block-size: var(--stroke-thick); background: var(--inv-tab-line); box-shadow: var(--inv-tab-glow); opacity: 0; }
-[aria-selected=true] > .line { opacity: 1; }
+:state(selected) .line { opacity: 1; }
 .tab-label { white-space: nowrap; }
 .count { padding: 0 var(--space-xs); border-radius: var(--inv-chip-radius); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); background: var(--inv-tab-count-fill); color: var(--inv-kicker-ink); }
-[aria-selected=true] .count { background: var(--inv-tab-count-on-fill); color: var(--inv-accent-ink); }
+:state(selected) .count { background: var(--inv-tab-count-on-fill); color: var(--inv-accent-ink); }
 /* The grid: as many columns as fit, a featured tile two of them. */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--shop-tile-min-width), 1fr)); gap: var(--space-xs); width: stretch; padding: var(--space-xs); }
 /* A tile: cut at two corners, its rarity the light behind its art. */
 .offer { --inv-rarity: var(--common); position: relative; width: stretch; height: stretch; min-width: 0; padding: var(--space-xs) var(--space-xs) var(--space-sm); align-items: stretch; justify-content: flex-start; border: none; background: var(--shop-tile-fill); box-shadow: var(--shop-tile-rim); border-radius: var(--shop-tile-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .offer:hover, .offer:active { background: var(--shop-tile-fill); box-shadow: var(--shop-tile-hover-rim); }
-.offer[aria-selected=true] { box-shadow: var(--shop-tile-selected-rim); }
-.offer[data-featured=true] { grid-column: span 2; }
-.offer[data-rarity=uncommon] { --inv-rarity: var(--uncommon); }
-.offer[data-rarity=rare] { --inv-rarity: var(--rare); }
-.offer[data-rarity=epic] { --inv-rarity: var(--epic); }
-.offer[data-rarity=legendary] { --inv-rarity: var(--legendary); }
-.offer[data-rarity=mythic] { --inv-rarity: var(--mythic); }
+.offer:state(selected) { box-shadow: var(--shop-tile-selected-rim); }
+.offer.featured { grid-column: span 2; }
+.offer.rarity-uncommon { --inv-rarity: var(--uncommon); }
+.offer.rarity-rare { --inv-rarity: var(--rare); }
+.offer.rarity-epic { --inv-rarity: var(--epic); }
+.offer.rarity-legendary { --inv-rarity: var(--legendary); }
+.offer.rarity-mythic { --inv-rarity: var(--mythic); }
 .face { width: stretch; min-width: 0; }
 .art { position: relative; flex: none; width: stretch; block-size: var(--shop-art-height); color: var(--inv-rarity); background: var(--shop-art-fill); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.art::before { content: ""; position: absolute; inset: 0; background: var(--shop-art-glow); opacity: var(--shop-art-glow-opacity); }
+.art-glow { position: absolute; inset: 0; background: var(--shop-art-glow); opacity: var(--shop-art-glow-opacity); }
 .art-icon { position: relative; inline-size: var(--shop-art-size); block-size: var(--shop-art-size); filter: var(--inv-slot-art-shadow); }
-[data-refused=true] .art-icon { filter: var(--shop-art-refused); }
+.refused .art-icon { filter: var(--shop-art-refused); }
 /* Corner tags over the art: Featured at the leading corner, the game's
    badge at the other, each ending in an ellipsis before it meets the other. */
 .ctag { position: absolute; top: var(--space-sm); max-inline-size: calc(50% - var(--space-md)); padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .ctag.lead { inset-inline-start: var(--space-sm); color: var(--inv-accent-ink); background: var(--inv-accent); }
 .ctag.end { inset-inline-end: var(--space-sm); border-radius: 0; box-shadow: none; color: var(--shop-badge-ink); background: var(--shop-badge-fill); }
-.ctag.end[data-tone=success] { color: var(--inv-equipped-ink); background: var(--inv-equipped-fill); }
-.offer:not([data-featured=true]) .ctag.end { max-inline-size: calc(100% - var(--space-lg)); }
+.ctag.end.tone-success { color: var(--inv-equipped-ink); background: var(--inv-equipped-fill); }
+.offer.plain .ctag.end { max-inline-size: calc(100% - var(--space-lg)); }
 .text { width: stretch; min-width: 0; }
 .name { margin: 0; text-align: start; overflow-wrap: anywhere; font-size: var(--shop-tile-name-size); font-weight: var(--inv-figure-weight); line-height: 1.2; color: var(--ink-bright); }
-[data-refused=true] .name { color: var(--ink-label); }
+.refused .name { color: var(--ink-label); }
 .detail { text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* One ruled foot: the price, then why the game refuses it. */
 .foot { width: stretch; margin-block-start: auto; padding-block-start: var(--space-xs); align-items: center; border-block-start: var(--shop-foot-rule); }
 .price { flex: none; max-width: stretch; min-width: 0; align-items: center; font-size: var(--shop-price-size); color: var(--ink-bright); }
-.price[data-short=true] { color: var(--shop-short-ink); }
+.price.short { color: var(--shop-short-ink); }
 .price .figure { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .currency { flex: none; inline-size: calc(18 * var(--font-step-px)); block-size: calc(18 * var(--font-step-px)); }
 .was { margin-inline-end: var(--space-xs); white-space: nowrap; font-size: var(--shop-was-size); font-weight: var(--inv-name-weight); }
 .status { flex: none; margin-inline-start: auto; align-items: center; padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); white-space: nowrap; color: var(--shop-sold-ink); background: var(--shop-sold-fill); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.status[data-kind=owned] { color: var(--shop-owned-ink); background: var(--shop-owned-fill); }
-.status[data-kind=short] { color: var(--shop-short-ink); background: var(--shop-short-fill); }
+.status.kind-owned { color: var(--shop-owned-ink); background: var(--shop-owned-fill); }
+.status.kind-short { color: var(--shop-short-ink); background: var(--shop-short-fill); }
 .status-mark { flex: none; inline-size: var(--inv-tag-size); block-size: var(--inv-tag-size); }
 .bracket { position: absolute; inset: 0; background: var(--inv-bracket); filter: var(--inv-bracket-glow); pointer-events: none; }
 .state { width: stretch; padding: var(--space-lg); }
@@ -196,7 +196,7 @@
 /* Narrow: the balances under the title, two columns of tiles. */
 @container (width < 480px) {
   .heading { flex-basis: 100%; }
-  [part="Shop.wallet"] { justify-content: flex-start; }
+  .wallet { justify-content: flex-start; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .art { block-size: calc(var(--shop-art-height) * 0.62); }
   .art-icon { inline-size: calc(var(--shop-art-size) * 0.7); block-size: calc(var(--shop-art-size) * 0.7); }

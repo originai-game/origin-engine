@@ -1,6 +1,5 @@
 <meta name="component" content="CardFace">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardFace.frame CardFace.cost CardFace.art CardFace.name CardFace.type CardFace.text">
 <meta name="prop:name" content="string" data-doc="The card's name as the game words it (an upgraded card's name included).">
 <meta name="prop:cost" content="string" data-doc="Its cost as the game words it (2, X, 0); empty hides the cost gem (a relic, an unplayable curse).">
 <meta name="prop:icon" content="string" data-doc="Its art as an icon in the style's or the game's atlas, used when art is 0.">
@@ -24,42 +23,42 @@
   name takes two lines and the rules text four, each ending in an
   ellipsis at a whole line, and the art window yields its height to them.
 -->
-<div id="CardFace" part="CardFace.frame" class="bare" data-layout="stack" data-gap="hair" data-type={type} data-rarity={rarity} data-dim={dim}>
+<div class="frame" id="CardFace" part="frame" variant="bare" layout="stack" gap="hair" tier={rarity} class:type-attack={(type) == 'attack'} class:type-curse={(type) == 'curse'} class:type-power={(type) == 'power'} class:type-relic={(type) == 'relic'} class:type-skill={(type) == 'skill'} class:type-status={(type) == 'status'} class:dim={dim}>
   <div class="wash"></div>
-  <div part="CardFace.art" class="window" data-layout="row" data-gap="none"><div class="glow"></div>{#if art}<img class="picture" src={art} alt="">{:else}<og-icon class="icon" icon={icon}></og-icon>{/if}</div>
-  <p part="CardFace.name" class="name">{name}</p>
-  {#if typeLabel}<p part="CardFace.type" class="type">{typeLabel}</p>{/if}
-  {#if text}<p part="CardFace.text" class="text">{text}</p>{/if}
-  {#if cost}<div part="CardFace.cost" class="cost" data-layout="row" data-gap="none" aria-label={t("card.face.cost", { cost })}><span class="cost-figure">{cost}</span></div>{/if}
+  <div part="art" class="window" layout="row" gap="none"><div class="glow"></div>{#if art}<img class="picture" src={art} alt="">{:else}<og-icon class="icon" icon={icon}></og-icon>{/if}</div>
+  <p part="name" class="name">{name}</p>
+  {#if typeLabel}<p part="type" class="type">{typeLabel}</p>{/if}
+  {#if text}<p part="text" class="text">{text}</p>{/if}
+  {#if cost}<div part="cost" class="cost" layout="row" gap="none" aria-label={t("card.face.cost", { cost })}><span class="cost-figure">{cost}</span></div>{/if}
 </div>
 
 <style>
 /* The frame: cut at two corners, rimmed and washed in its type's colour. */
-:host { container-type: size; position: relative; inline-size: stretch; block-size: stretch; padding: var(--space-xs); overflow: hidden; border-radius: var(--tcg-face-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; background: var(--tcg-face-fill); box-shadow: var(--tcg-face-rim); color: var(--tcg-neutral); }
-[part="CardFace.frame"][data-type=attack] { color: var(--tcg-attack); }
-[part="CardFace.frame"][data-type=skill] { color: var(--tcg-skill); }
-[part="CardFace.frame"][data-type=power] { color: var(--tcg-power); }
-[part="CardFace.frame"][data-type=curse], [part="CardFace.frame"][data-type=status] { color: var(--tcg-curse); }
-[part="CardFace.frame"][data-type=relic] { color: var(--tcg-relic); }
+#CardFace { container-type: size; position: relative; inline-size: stretch; block-size: stretch; padding: var(--space-xs); overflow: hidden; border-radius: var(--tcg-face-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; background: var(--tcg-face-fill); box-shadow: var(--tcg-face-rim); color: var(--tcg-neutral); }
+.frame.type-attack { color: var(--tcg-attack); }
+.frame.type-skill { color: var(--tcg-skill); }
+.frame.type-power { color: var(--tcg-power); }
+.frame.type-curse, .frame.type-status { color: var(--tcg-curse); }
+.frame.type-relic { color: var(--tcg-relic); }
 .wash { position: absolute; inset: 0; background: var(--tcg-face-wash); opacity: 0.22; }
 /* The art window takes what the words leave, over its rarity's glow. */
 .window { position: relative; flex: 1 1 0; min-block-size: 18%; justify-content: center; align-items: center; overflow: hidden; border-radius: var(--tcg-window-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; background: var(--tcg-window-fill); color: var(--common); }
-[data-rarity=uncommon] .window { color: var(--uncommon); }
-[data-rarity=rare] .window { color: var(--rare); }
-[data-rarity=epic] .window { color: var(--epic); }
-[data-rarity=legendary] .window { color: var(--legendary); }
-[data-rarity=mythic] .window { color: var(--mythic); }
+.rarity-uncommon .window { color: var(--uncommon); }
+.rarity-rare .window { color: var(--rare); }
+.rarity-epic .window { color: var(--epic); }
+.rarity-legendary .window { color: var(--legendary); }
+.rarity-mythic .window { color: var(--mythic); }
 .glow { position: absolute; inset: 0; background: var(--tcg-window-glow); opacity: 0.45; }
 .picture { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .icon { position: relative; inline-size: 56%; block-size: 76%; color: var(--ink-bright); filter: var(--tcg-art-shadow); }
-[data-dim=true] .window, [data-dim=true] .wash { filter: var(--tcg-dim); }
-[part="CardFace.frame"][data-dim=true] { color: var(--tcg-dim-rim); }
+.dim .window, .dim .wash { filter: var(--tcg-dim); }
+.frame.dim { color: var(--tcg-dim-rim); }
 .name { position: relative; margin: 0; flex: none; padding: var(--space-xxs) var(--space-xs); text-align: center; overflow-wrap: anywhere; line-clamp: 2; overflow: hidden; font-size: var(--tcg-name-size); font-weight: var(--tcg-name-weight); line-height: 1.15; color: var(--ink-bright); background: var(--tcg-plate-fill); }
 .type { position: relative; margin: 0; flex: none; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--tcg-type-size); font-weight: var(--tcg-type-weight); letter-spacing: var(--tcg-type-tracking); text-transform: var(--tcg-type-transform); color: var(--tcg-neutral-ink); }
-[data-type=attack] .type { color: var(--tcg-attack-ink); }
-[data-type=skill] .type { color: var(--tcg-skill-ink); }
-[data-type=power] .type { color: var(--tcg-power-ink); }
-[data-type=curse] .type, [data-type=status] .type { color: var(--tcg-curse-ink); }
+.type-attack .type { color: var(--tcg-attack-ink); }
+.type-skill .type { color: var(--tcg-skill-ink); }
+.type-power .type { color: var(--tcg-power-ink); }
+.type-curse .type, .type-status .type { color: var(--tcg-curse-ink); }
 .text { position: relative; margin: 0; flex: none; padding: var(--space-xxs) var(--space-xs); text-align: center; overflow-wrap: anywhere; line-clamp: 4; overflow: hidden; font-size: var(--tcg-text-size); line-height: 1.3; color: var(--tcg-text-ink); background: var(--tcg-text-fill); }
 /* The cost: a hexagon gem over the top corner. */
 .cost { position: absolute; inset-inline-start: 0; top: 0; inline-size: var(--tcg-gem-size); block-size: calc(var(--tcg-gem-size) * 1.12); justify-content: center; align-items: center; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--tcg-gem-fill); color: var(--tcg-gem-ink); font-size: var(--tcg-gem-figure-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); }

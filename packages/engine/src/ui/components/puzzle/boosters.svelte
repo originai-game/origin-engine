@@ -1,6 +1,5 @@
 <meta name="component" content="PuzzleBoosters">
 <meta name="strings" content="./puzzle.en.ogt">
-<meta name="parts" content="PuzzleBoosters.frame PuzzleBoosters.booster PuzzleBoosters.socket PuzzleBoosters.count PuzzleBoosters.name PuzzleBoosters.state PuzzleBoosters.empty">
 <meta name="prop:boosters" content="list" data-doc="The boosters in tray order, keyed rows of { id, icon, name, count, available }: count how many the player holds, as the game counts them; available false when the game will not take it now (none left, not allowed on this level, a move in progress): the booster is disabled, sends nothing and says so.">
 <meta name="prop:armed" content="string" data-doc="The booster the game has armed (waiting for its target on the board); empty is none. Shown pressed and worded Armed.">
 <meta name="action:choose" content="Use">
@@ -20,56 +19,57 @@
   whether it applies, spends it and arms or fires it. Many boosters scroll
   across the tray; a narrow tray wraps them onto more rows.
 -->
-<nav id="PuzzleBoosters" part="PuzzleBoosters.frame" class="hud" data-layout="shell" aria-label={t("puzzle.boosters.name")}>
+<nav id="PuzzleBoosters" part="frame" variant="hud" layout="stack" fill aria-label={t("puzzle.boosters.name")}>
   {#if boosters.length}
-    <div class="tray-scroll" data-fill>
-      <div class="tray" data-layout="row" data-gap="tight" role="toolbar" aria-label={t("puzzle.boosters.name")}>
+    <div class="tray-scroll" fill>
+      <div class="tray" layout="row" gap="tight" role="toolbar" aria-label={t("puzzle.boosters.name")}>
         {#each boosters as b (b.id)}
-          <button part="PuzzleBoosters.booster" data-available={b.available} data-armed={b.available && b.id == armed} data-out={b.count == 0} aria-pressed={b.id == armed} disabled={!b.available} aria-label={!b.available ? t("puzzle.boosters.unavailable", { name: b.name }) : b.id == armed ? t("puzzle.boosters.armedName", { name: b.name, count: b.count }) : t("puzzle.boosters.count", { name: b.name, count: b.count })} onclick={choose}><div class="face" data-layout="stack" data-gap="hair">
-            {#if !b.available || b.id == armed}<span class="state" part="PuzzleBoosters.state" data-armed={b.available && b.id == armed}>{b.available ? t("puzzle.boosters.armed") : t("puzzle.boosters.locked")}</span>{:else}<div class="state-space"></div>{/if}
+          <button class="booster" part="booster" aria-pressed={b.id == armed} disabled={!b.available} aria-label={!b.available ? t("puzzle.boosters.unavailable", { name: b.name }) : b.id == armed ? t("puzzle.boosters.armedName", { name: b.name, count: b.count }) : t("puzzle.boosters.count", { name: b.name, count: b.count })} onclick={choose} class:armed={b.available && b.id == armed} class:not-available={!(b.available)} class:out={b.count == 0}><div class="face" layout="stack" gap="hair">
+            {#if !b.available || b.id == armed}<span class="state" part="state" class:armed={b.available && b.id == armed}>{b.available ? t("puzzle.boosters.armed") : t("puzzle.boosters.locked")}</span>{:else}<div class="state-space"></div>{/if}
             <div class="well">
-              <div part="PuzzleBoosters.socket" class="socket" data-layout="cover"><og-icon class="art" icon={b.icon}></og-icon></div>
-              <span class="count" part="PuzzleBoosters.count" data-out={b.count == 0}>{b.count == 0 ? '+' : t("puzzle.boosters.times", { count: formatNumber(b.count) })}</span>
+              <div part="socket" class="socket cover" layout="stack" fill><og-icon class="art" icon={b.icon}></og-icon></div>
+              <span class="count" part="count" class:out={b.count == 0}>{b.count == 0 ? '+' : t("puzzle.boosters.times", { count: formatNumber(b.count) })}</span>
             </div>
-            <span part="PuzzleBoosters.name" class="name">{b.name}</span>
+            <span part="name" class="name">{b.name}</span>
           </div></button>
         {/each}
       </div>
     </div>
   {:else}
-    <p part="PuzzleBoosters.empty" class="empty" role="status">{t("puzzle.boosters.empty")}</p>
+    <p part="empty" class="empty" role="status">{t("puzzle.boosters.empty")}</p>
   {/if}
 </nav>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
-:host { padding: var(--space-xs); }
+#PuzzleBoosters { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
+#PuzzleBoosters { padding: var(--space-xs); }
 .tray-scroll { overflow-x: auto; overflow-y: hidden; }
 .tray { width: max-content; min-width: 100%; justify-content: center; padding: var(--space-xs) var(--space-xxs) var(--space-xxs); }
-[part="PuzzleBoosters.booster"] { flex: none; width: max-content; min-width: calc(var(--size-xl) * 1.5); max-width: calc(var(--size-xl) * 2.5); min-height: var(--size-touch); padding: var(--space-xxs) var(--space-xs); border: none; border-radius: 0; background: var(--inv-bare-fill); box-shadow: none; }
+.booster { flex: none; width: max-content; min-width: calc(var(--size-xl) * 1.5); max-width: calc(var(--size-xl) * 2.5); min-height: var(--size-touch); padding: var(--space-xxs) var(--space-xs); border: none; border-radius: 0; background: var(--inv-bare-fill); box-shadow: none; }
 .face { align-items: center; min-width: 0; }
 .well { position: relative; width: var(--size-xl); height: var(--size-xl); }
 /* The socket: a round well; armed, lifted and ringed in the accent. */
 .socket { position: absolute; inset: 0; border-radius: var(--play-socket-radius); background: var(--play-socket-fill); box-shadow: var(--play-socket-rim); }
-[data-armed=true] .socket { translate: 0 calc(var(--play-lift) * -1); box-shadow: var(--play-armed-rim); }
+.armed .socket { translate: 0 calc(var(--play-lift) * -1); box-shadow: var(--play-armed-rim); }
 .art { width: 70%; height: 70%; filter: var(--inv-slot-art-shadow); }
-[data-available=false] .art { filter: var(--play-out-art); }
+.not-available .art { filter: var(--play-out-art); }
 /* The count on a dark tag at the socket's foot; none left, a gold +. */
 .count { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); color: var(--ink-bright); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.count[data-out=true] { color: var(--play-out-tag-ink); background: var(--play-out-tag-fill); }
+.count.out { color: var(--play-out-tag-ink); background: var(--play-out-tag-fill); }
 /* Armed or Unavailable in words on a tag over the socket, in the
    booster's own column, so it is never cut by the tray or a neighbour. */
 .state, .state-space { flex: none; block-size: calc(var(--hud-tag-size) * 1.45); margin-block-end: var(--space-xxs); }
 .state { padding: 0 var(--space-xxs); white-space: nowrap; line-height: 1.45; font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
-[data-armed=true] .state { color: var(--play-armed-tag-ink); background: var(--play-armed-ink); }
+.armed .state { color: var(--play-armed-tag-ink); background: var(--play-armed-ink); }
 .name { max-inline-size: calc(var(--size-xl) * 2); text-align: center; line-clamp: 2; overflow: hidden; font-size: var(--hud-tag-size); font-weight: var(--inv-name-weight); color: var(--ink-bright); }
-[data-armed=true] .name { color: var(--play-armed-ink); }
-[data-available=false] .name { color: var(--hud-label-ink); }
+.armed .name { color: var(--play-armed-ink); }
+.not-available .name { color: var(--hud-label-ink); }
 .empty { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; }
 @container (width < 600px) {
   .tray { width: stretch; min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: var(--space-xs); --layout-gap-tight: var(--layout-gap-hair); }
-  [part="PuzzleBoosters.booster"] { min-width: calc(var(--size-lg) * 1.9); max-width: none; }
+  .booster { min-width: calc(var(--size-lg) * 1.9); max-width: none; }
   .name { max-inline-size: calc(var(--size-lg) * 1.9); }
   .well { width: var(--size-lg); height: var(--size-lg); }
 }

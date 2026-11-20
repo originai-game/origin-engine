@@ -1,6 +1,5 @@
 <meta name="component" content="Chat">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="Chat.frame Chat.tab Chat.unread Chat.log Chat.message Chat.sender Chat.time Chat.text Chat.notice Chat.compose Chat.well Chat.label Chat.figure Chat.badge Chat.caption">
 <meta name="prop:channels" content="list" data-doc="The channels, keyed rows of { id, label, unread }: unread the count the game keeps, 0 hides its badge. Empty shows no tab row.">
 <meta name="prop:channel" content="string" data-doc="The channel shown.">
 <meta name="prop:messages" content="list" data-doc="The shown channel's messages, oldest first: keyed rows of { id, kind, sender, time, text }: kind player, own (the player's) or system; time as the game formats it; text wraps, and a long word breaks.">
@@ -23,30 +22,30 @@
   The log fills the height it is given and scrolls inside it, newest at
   the foot.
 -->
-<section id="Chat" part="Chat.frame" data-layout="shell" aria-label={t("general.chat.name")}>
+<section id="Chat" part="frame" layout="stack" fill aria-label={t("general.chat.name")}>
   {#if channels.length}<div class="tabs" role="tablist" aria-label={t("general.chat.channels")}>
     <div class="tabs-scroll">
-      <div class="tabs-row" data-layout="row" data-gap="hair">
+      <div class="tabs-row" layout="row" gap="hair">
         {#each channels as c (c.id)}
-          <button part="Chat.tab" variant="quiet" role="tab" aria-selected={c.id == channel} aria-label={c.unread > 0 ? t("general.chat.unread", { channel: c.label, count: c.unread }) : c.label} onclick={choosetab}><div data-layout="row" data-gap="tight"><span class="tab-label">{c.label}</span>{#if c.unread > 0}<p part="Chat.unread Chat.badge">{formatNumber(c.unread)}</p>{/if}</div></button>
+          <button class="tab" part="tab" variant="quiet" role="tab" aria-selected={c.id == channel} aria-label={c.unread > 0 ? t("general.chat.unread", { channel: c.label, count: c.unread }) : c.label} onclick={choosetab} state:selected={c.id == channel}><div layout="row" gap="tight"><span class="tab-label">{c.label}</span>{#if c.unread > 0}<p class="unread" part="badge">{formatNumber(c.unread)}</p>{/if}</div></button>
         {/each}
       </div>
     </div>
   </div>{/if}
-  <div part="Chat.well" class="well" data-layout="stack" data-gap="none" data-fill><div part="Chat.log" data-layout="scroll" data-from="end" data-gap="none" data-fill role="log" aria-label={t("general.chat.messages")} aria-live="polite">
+  <div part="well" class="well" layout="stack" gap="none" fill><div class="log" part="log" layout="scroll" reverse gap="none" fill role="log" aria-label={t("general.chat.messages")} aria-live="polite">
     {#if messages.length}
-      <ol class="messages" data-layout="stack" data-gap="tight">
+      <ol class="messages" layout="stack" gap="tight">
         {#each messages as m (m.id)}
-          <li part="Chat.message" data-layout="stack" data-gap="hair" data-kind={m.kind}>
-            {#if m.kind != 'system'}<div class="head" data-layout="row">
-              <p part="Chat.sender Chat.label" data-kind={m.kind}>{m.kind == 'own' ? t("general.chat.you") : m.sender}</p>
-              <p part="Chat.time Chat.figure Chat.caption">{m.time}</p>
-            </div>{:else}<div class="head" data-layout="row">
+          <li class="message" part="message" layout="stack" gap="hair" class:kind-own={(m.kind) == 'own'} class:kind-system={(m.kind) == 'system'}>
+            {#if m.kind != 'system'}<div class="head" layout="row">
+              <p class="sender" part="label" class:kind-own={(m.kind) == 'own'} class:kind-system={(m.kind) == 'system'}>{m.kind == 'own' ? t("general.chat.you") : m.sender}</p>
+              <p class="time figure" part="caption">{m.time}</p>
+            </div>{:else}<div class="head" layout="row">
               <og-icon class="mark" icon="bolt"></og-icon>
-              <p part="Chat.sender Chat.label" data-kind="system">{t("general.chat.system")}</p>
-              <p part="Chat.time Chat.figure Chat.caption">{m.time}</p>
+              <p class="sender" part="label" class:kind-system={true}>{t("general.chat.system")}</p>
+              <p class="time figure" part="caption">{m.time}</p>
             </div>{/if}
-            <p part="Chat.text" data-kind={m.kind}>{m.text}</p>
+            <p class="text" part="text" class:bubble={m.kind != 'system'} class:kind-own={(m.kind) == 'own'} class:kind-system={(m.kind) == 'system'}>{m.text}</p>
           </li>
         {/each}
       </ol>
@@ -54,10 +53,10 @@
       <p class="empty" role="status">{t("general.chat.empty")}</p>
     {/if}
   </div></div>
-  {#if notice}<p part="Chat.notice Chat.label" role="status">{notice}</p>{/if}
-  <form part="Chat.compose" data-layout="row" data-gap="tight" onsubmit={send}>
-    <input id="Draft" data-fill type="text" aria-label={t("general.chat.placeholder")} placeholder={t("general.chat.placeholder")} maxlength={maxLength} disabled={!canSend} bind:value={draft}>
-    <button id="Send" class="go" variant="primary" aria-label={t("general.chat.send")} disabled={!canSend}><div data-layout="row" data-gap="tight"><og-icon class="send-mark" icon="play"></og-icon><span class="send-label">{t("general.chat.send")}</span></div></button>
+  {#if notice}<p class="notice" part="label" role="status">{notice}</p>{/if}
+  <form class="compose" part="compose" layout="row" gap="tight" onsubmit={send}>
+    <input id="Draft" fill type="text" aria-label={t("general.chat.placeholder")} placeholder={t("general.chat.placeholder")} maxlength={maxLength} disabled={!canSend} bind:value={draft}>
+    <button id="Send" class="go" variant="primary" aria-label={t("general.chat.send")} disabled={!canSend}><div layout="row" gap="tight"><og-icon class="send-mark" icon="play"></og-icon><span class="send-label">{t("general.chat.send")}</span></div></button>
   </form>
 </section>
 
@@ -65,32 +64,32 @@
 .tabs { width: stretch; flex: none; padding-block-end: var(--space-xxs); }
 .tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; min-width: 0; }
 /* A channel: a cut tab; the one shown washed and lit gold along its foot. */
-[part="Chat.tab"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); color: var(--quest-ink-quiet); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="Chat.tab"][aria-selected=true] { color: var(--ink-bright); background: var(--social-tab-on-fill); box-shadow: var(--social-tab-on-rim); }
+.tab { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); color: var(--quest-ink-quiet); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.tab:state(selected) { color: var(--ink-bright); background: var(--social-tab-on-fill); box-shadow: var(--social-tab-on-rim); }
 .tab-label { white-space: nowrap; max-width: calc(var(--size-xxl) * 2.5); overflow: hidden; text-overflow: ellipsis; font-weight: var(--quest-weight); }
 /* Unread: a gold cut chip with a dark figure. */
-[part~="Chat.unread"] { margin: 0; min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; color: var(--quest-gold-ink); background: var(--quest-gold); font-weight: var(--hud-figure-weight); font-variant-numeric: var(--hud-figure-numeric); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.unread { margin: 0; min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; color: var(--quest-gold-ink); background: var(--quest-gold); font-weight: var(--hud-figure-weight); font-variant-numeric: var(--hud-figure-numeric); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* The log in a dark cut well; the log scrolls inside the well's rim. */
-[part="Chat.log"] { width: stretch; }
+.log { width: stretch; }
 .well { width: stretch; min-height: 0; padding: var(--space-xs) var(--stroke-thin); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--quest-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .messages { width: stretch; margin: 0; padding: var(--space-sm); list-style: none; }
-[part="Chat.message"] { width: stretch; padding: var(--space-xxs) 0; }
-[part="Chat.message"][data-kind=own] { align-items: flex-end; }
+.message { width: stretch; padding: var(--space-xxs) 0; }
+.message.kind-own { align-items: flex-end; }
 .head { width: stretch; align-items: baseline; }
-[part="Chat.message"][data-kind=own] .head { justify-content: flex-end; }
-[part="Chat.sender Chat.label"] { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: var(--quest-weight); color: var(--social-sender-ink); }
-[part="Chat.sender Chat.label"][data-kind=own] { color: var(--quest-gold); }
-[part="Chat.sender Chat.label"][data-kind=system] { color: var(--quest-ink-quiet); }
-[part~="Chat.time"] { margin: 0; flex: none; white-space: nowrap; color: var(--quest-ink-faint); font-variant-numeric: var(--hud-figure-numeric); }
+.message.kind-own .head { justify-content: flex-end; }
+.sender { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: var(--quest-weight); color: var(--social-sender-ink); }
+.sender.kind-own { color: var(--quest-gold); }
+.sender.kind-system { color: var(--quest-ink-quiet); }
+.time { margin: 0; flex: none; white-space: nowrap; color: var(--quest-ink-faint); font-variant-numeric: var(--hud-figure-numeric); }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--quest-gold); }
 /* A line on a cut chip; the player's own washed gold at the far side; a system line bare and quiet. */
-[part="Chat.text"] { margin: 0; text-align: start; overflow-wrap: anywhere; color: var(--ink-bright); }
-[part="Chat.text"]:not([data-kind=system]) { max-width: 88%; padding: var(--space-xs) var(--space-sm); background: var(--social-line-fill); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="Chat.message"][data-kind=own] [part="Chat.text"] { text-align: end; background: var(--social-own-fill); box-shadow: var(--social-own-rim); }
-[part="Chat.message"][data-kind=system] [part="Chat.text"] { max-width: stretch; padding: 0; color: var(--quest-ink-quiet); }
+.text { margin: 0; text-align: start; overflow-wrap: anywhere; color: var(--ink-bright); }
+.text.bubble { max-width: 88%; padding: var(--space-xs) var(--space-sm); background: var(--social-line-fill); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.message.kind-own .text { text-align: end; background: var(--social-own-fill); box-shadow: var(--social-own-rim); }
+.message.kind-system .text { max-width: stretch; padding: 0; color: var(--quest-ink-quiet); }
 .empty { margin: 0; padding: var(--space-lg); text-align: center; color: var(--quest-ink-quiet); }
-[part="Chat.notice Chat.label"] { margin: 0; flex: none; color: var(--alert-warn); }
-[part="Chat.compose"] { width: stretch; align-items: stretch; flex: none; }
+.notice { margin: 0; flex: none; color: var(--alert-warn); }
+.compose { width: stretch; align-items: stretch; flex: none; }
 #Draft { min-height: var(--size-touch); }
 #Send { flex: none; min-height: var(--size-touch); min-width: var(--size-touch); }
 .send-mark { width: var(--size-xs); height: var(--size-xs); }

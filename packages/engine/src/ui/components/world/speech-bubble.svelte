@@ -1,6 +1,5 @@
 <meta name="component" content="SpeechBubble">
 <meta name="strings" content="./world.en.ogt">
-<meta name="parts" content="SpeechBubble.frame SpeechBubble.box SpeechBubble.speaker SpeechBubble.line SpeechBubble.timer SpeechBubble.tail">
 <meta name="prop:entity" content="number" data-doc="Who speaks, by its bits (0: use at).">
 <meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it speaks from without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above the point (over the head).">
@@ -22,13 +21,13 @@
   Read only; the game decides when it shows and when it goes.
 -->
 <anchor id="SpeechBubble" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="shift" occlusion="none" priority="200">
-  <div id="Bubble" part="SpeechBubble.frame" class="bare" role="status" aria-label={speaker != '' ? t("world.speech.name", { speaker: speaker }) : text} data-reaction={reaction == '' ? 'friendly' : reaction} data-shout={shout}>
-    <div part="SpeechBubble.box" class="box">
-      {#if speaker != ''}<span part="SpeechBubble.speaker" class="speaker">{speaker}</span>{/if}
-      <p part="SpeechBubble.line" class="line">{text}</p>
-      {#if left >= 0}<div part="SpeechBubble.timer" class="timer"><div class="left" style:--left={left >= 1 ? 1 : left}></div></div>{/if}
+  <div id="Bubble" part="frame" variant="bare" role="status" aria-label={speaker != '' ? t("world.speech.name", { speaker: speaker }) : text} class:shout={shout} class:reaction-hostile={(reaction == '' ? 'friendly' : reaction) == 'hostile'} class:reaction-neutral={(reaction == '' ? 'friendly' : reaction) == 'neutral'} class:reaction-player={(reaction == '' ? 'friendly' : reaction) == 'player'}>
+    <div part="box" class="box">
+      {#if speaker != ''}<span part="speaker" class="speaker">{speaker}</span>{/if}
+      <p part="line" class="line">{text}</p>
+      {#if left >= 0}<div part="timer" class="timer"><div class="left" style:--left={left >= 1 ? 1 : left}></div></div>{/if}
     </div>
-    <div part="SpeechBubble.tail" class="tail"></div>
+    <div part="tail" class="tail"></div>
   </div>
 </anchor>
 
@@ -37,13 +36,13 @@
 /* The glass with a cut corner; a shout's rim warm. A text box: it grows
    with the text scale, its line wrapping at 27 characters. */
 .box { position: relative; display: flex; flex-direction: column; row-gap: calc(2 * var(--font-step-px)); min-inline-size: 0; max-inline-size: min(var(--world-speech-measure), var(--world-speech-room)); padding: calc(7 * var(--font-step-px)) calc(13 * var(--font-step-px)) calc(9 * var(--font-step-px)); box-sizing: border-box; font-size: var(--world-size-speech); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: 0 0 var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[data-shout=true] .box { box-shadow: var(--world-shout-rim); }
+.shout .box { box-shadow: var(--world-shout-rim); }
 .speaker { min-inline-size: 0; font-size: var(--world-size-title); font-weight: var(--hud-figure-weight); font-stretch: var(--world-caps-stretch); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); color: var(--world-friendly-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-[data-reaction=hostile] .speaker { color: var(--world-hostile-ink); }
-[data-reaction=neutral] .speaker { color: var(--world-neutral-ink); }
-[data-reaction=player] .speaker { color: var(--world-player-ink); }
+.reaction-hostile .speaker { color: var(--world-hostile-ink); }
+.reaction-neutral .speaker { color: var(--world-neutral-ink); }
+.reaction-player .speaker { color: var(--world-player-ink); }
 .line { margin: 0; line-height: 1.32; }
-[data-shout=true] .line { font-weight: var(--hud-figure-weight); font-stretch: var(--world-name-stretch); }
+.shout .line { font-weight: var(--hud-figure-weight); font-stretch: var(--world-name-stretch); }
 /* The time left: a thin line along the foot, draining. */
 .timer { position: absolute; left: calc(10 * var(--font-step-px)); right: calc(10 * var(--font-step-px)); bottom: calc(3 * var(--font-step-px)); block-size: var(--stroke-regular); background: var(--world-timer-well); }
 .left { block-size: 100%; inline-size: calc(var(--left) * 100%); background: var(--world-timer-fill); }

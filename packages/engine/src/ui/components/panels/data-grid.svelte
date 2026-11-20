@@ -1,6 +1,5 @@
 <meta name="component" content="DataGrid">
 <meta name="strings" content="./data-grid.en.ogt">
-<meta name="parts" content="DataGrid.frame DataGrid.band DataGrid.heading DataGrid.row DataGrid.value DataGrid.ghost DataGrid.error DataGrid.empty DataGrid.mark DataGrid.message DataGrid.hint DataGrid.retry DataGrid.well DataGrid.caption DataGrid.headline DataGrid.skeleton DataGrid.sheen">
 <meta name="prop:columns" content="list" data-doc="The headings, a keyed collection of { id, label, numeric }: numeric columns align to the end in tabular figures.">
 <meta name="prop:tracks" content="string" data-doc="The columns' widths as CSS grid tracks, one per column; empty shares the width equally between four. A numeric column's track holds its widest figure in text-scaled units (calc(96 * var(--font-step-px))), so it grows with the player's text size; a figure is never cut, and the text columns (fr) give way.">
 <meta name="prop:rows" content="list" data-doc="The rows, a keyed collection of { id, cells }: cells a keyed list of { id, text, numeric }, in the columns' order. Only the rows in view are built.">
@@ -19,32 +18,32 @@
      condensed and tabular. The chosen row is washed in the accent from its
      leading edge. In a narrow shell each row becomes a two-line card: the
      first column and the last on one line, the rest as a caption under. -->
-<section id="DataGrid" part="DataGrid.frame" class="bare" data-layout="stack" data-gap="none" role="grid" aria-label={label} aria-busy={loading} style:--tracks={tracks || "1fr 1fr 1fr 1fr"}>
-  <div id="Head" part="DataGrid.band" class="small" role="row">
-    {#each columns as c (c.id)}<span part="DataGrid.heading DataGrid.caption" class="heading" class:numeric={c.numeric} role="columnheader">{c.label}</span>{/each}
+<section id="DataGrid" part="frame" variant="bare" layout="stack" gap="none" role="grid" aria-label={label} aria-busy={loading} style:--tracks={tracks || "1fr 1fr 1fr 1fr"}>
+  <div id="Head" part="band" variant="small" role="row">
+    {#each columns as c, i (c.id)}<span part="caption" class="heading" class:numeric={c.numeric} class:first={i == 0} class:last={i == columns.length - 1} class:middle={i > 0 && i < columns.length - 1} role="columnheader">{c.label}</span>{/each}
   </div>
   {#if loading}
-    <div id="Loading" data-layout="stack" data-gap="none" role="status" aria-label={t("component.data-grid.loading")}>
-      <div class="ghost-row"><div part="DataGrid.ghost DataGrid.skeleton" class="ghost"><div part="DataGrid.sheen" data-motion="shimmer"></div></div></div><div class="ghost-row"><div part="DataGrid.ghost DataGrid.skeleton" class="ghost"><div part="DataGrid.sheen" data-motion="shimmer"></div></div></div><div class="ghost-row"><div part="DataGrid.ghost DataGrid.skeleton" class="ghost"><div part="DataGrid.sheen" data-motion="shimmer"></div></div></div><div class="ghost-row"><div part="DataGrid.ghost DataGrid.skeleton" class="ghost"><div part="DataGrid.sheen" data-motion="shimmer"></div></div></div>
+    <div id="Loading" layout="stack" gap="none" role="status" aria-label={t("component.data-grid.loading")}>
+      <div class="ghost-row"><div part="skeleton" class="ghost"><div part="sheen" play="shimmer"></div></div></div><div class="ghost-row"><div part="skeleton" class="ghost"><div part="sheen" play="shimmer"></div></div></div><div class="ghost-row"><div part="skeleton" class="ghost"><div part="sheen" play="shimmer"></div></div></div><div class="ghost-row"><div part="skeleton" class="ghost"><div part="sheen" play="shimmer"></div></div></div>
     </div>
   {:else if error}
-    <div id="Error" part="DataGrid.error" data-layout="stack" role="alert" aria-label={error}>
-      <div part="DataGrid.mark DataGrid.well" class="mark danger" data-layout="cover"><og-icon icon="close" data-tone="danger"></og-icon></div>
-      <p part="DataGrid.message DataGrid.headline" class="title">{error}</p>
-      <button id="Retry" part="DataGrid.retry" class="go" variant="primary" onclick={retry}>{t("component.data-grid.retry")}</button>
+    <div id="Error" part="error" layout="stack" role="alert" aria-label={error}>
+      <div part="well" class="mark danger cover" layout="stack" fill><og-icon icon="close" tone="danger"></og-icon></div>
+      <p part="headline" class="title message">{error}</p>
+      <button id="Retry" part="retry" class="go" variant="primary" onclick={retry}>{t("component.data-grid.retry")}</button>
     </div>
   {:else if !rows.length}
-    <div id="Empty" part="DataGrid.empty" data-layout="stack" role="status">
-      <div part="DataGrid.mark DataGrid.well" class="mark" data-layout="cover"><og-icon icon="bag"></og-icon></div>
-      <p part="DataGrid.message DataGrid.headline" class="title">{empty || t("component.data-grid.empty")}</p>
-      {#if hint}<p part="DataGrid.hint DataGrid.caption" class="hint">{hint}</p>{/if}
+    <div id="Empty" part="empty" layout="stack" role="status">
+      <div part="well" class="mark cover" layout="stack" fill><og-icon icon="bag"></og-icon></div>
+      <p part="headline" class="title message">{empty || t("component.data-grid.empty")}</p>
+      {#if hint}<p part="caption" class="hint">{hint}</p>{/if}
     </div>
   {:else}
     <list id="Rows">
       {#each rows as r (r.id)}
-        <button id="Row" part="DataGrid.row" class="row" variant="quiet" role="row" aria-selected={r.id == selected} onclick={choose}>
+        <button id="Row" part="row" class="row" variant="quiet" role="row" aria-selected={r.id == selected} onclick={choose}>
           <div class="cells">
-            {#each r.cells as c, i (c.id)}{#if i == 1}<div class="break"></div>{/if}<span part="DataGrid.value" class="cell" class:numeric={c.numeric} role="gridcell">{c.text}</span>{/each}
+            {#each r.cells as c, i (c.id)}{#if i == 1}<div class="break"></div>{/if}<span part="value" class="cell" class:numeric={c.numeric} class:first={i == 0} class:last={i == r.cells.length - 1} class:middle={i > 0 && i < r.cells.length - 1} role="gridcell">{c.text}</span>{/each}
           </div>
         </button>
       {/each}
@@ -53,7 +52,8 @@
 </section>
 
 <style>
-:host { inline-size: stretch; container-type: inline-size; --row-fill: none; --row-hover-fill: var(--data-row-hover-fill); --row-pressed-fill: var(--data-row-pressed-fill); --row-selected-fill: var(--data-row-selected-fill); --row-selected-edge: var(--data-row-selected-edge); --row-radius: 0px; }
+.cover { justify-content: center; align-items: center; }
+#DataGrid { inline-size: stretch; container-type: inline-size; --row-fill: none; --row-hover-fill: var(--data-row-hover-fill); --row-pressed-fill: var(--data-row-pressed-fill); --row-selected-fill: var(--data-row-selected-fill); --row-selected-edge: var(--data-row-selected-edge); --row-radius: 0px; }
 #DataGrid { background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-panel-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); }
 #Head, .cells { display: grid; grid-template-columns: var(--tracks); column-gap: var(--space-md); width: stretch; min-width: 0; }
 #Head { padding: var(--space-sm) var(--space-md); border-block-end: var(--data-rule-line); }
@@ -63,7 +63,7 @@
 #Rows { width: stretch; height: var(--size-6xl); }
 .row { width: stretch; min-block-size: var(--row); padding: var(--space-xs) var(--space-md); justify-content: start; min-width: 0; border-block-end: var(--data-rule-line); }
 .cell { width: stretch; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; color: var(--hud-ink-dim); }
-.cell:first-child { color: var(--hud-ink); font-weight: var(--data-name-weight); }
+.cell.first { color: var(--hud-ink); font-weight: var(--data-name-weight); }
 /* A figure is never cut: an ellipsis on a number is wrong data. */
 .cell.numeric { text-align: end; text-overflow: clip; overflow: visible; color: var(--hud-ink); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
 #Empty, #Error { width: stretch; align-items: center; padding: var(--space-xl); --layout-gap: var(--layout-gap-loose); }
@@ -82,12 +82,12 @@
   #Head, .cells { display: flex; flex-wrap: wrap; column-gap: var(--space-md); row-gap: var(--space-xxs); align-items: baseline; }
   .heading, .cell { flex: none; width: auto; order: 3; }
   /* The name gives way to the figure, which keeps its whole width. */
-  .heading:first-child, .cell:first-child { flex: 1 1 0; order: 0; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-  .heading:last-child, .cell:last-child { order: 1; }
+  .heading.first, .cell.first { flex: 1 1 0; order: 0; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .heading.last, .cell.last { order: 1; }
   /* A break after them puts the rest on the caption line. */
   .break { display: block; flex: 0 0 100%; order: 2; block-size: 0; }
-  .heading:not(:first-child):not(:last-child) { display: none; }
-  .cell:not(:first-child):not(:last-child) { font-size: var(--hud-label-size); }
+  .heading.middle { display: none; }
+  .cell.middle { font-size: var(--hud-label-size); }
   .row { padding-block: var(--space-sm); }
 }
 </style>

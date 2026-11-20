@@ -1,6 +1,5 @@
 <meta name="component" content="Pips">
 <meta name="strings" content="./pips.en.ogt">
-<meta name="parts" content="Pips.frame Pips.units Pips.unit Pips.empty Pips.full Pips.state Pips.loading Pips.caption Pips.figure Pips.badge">
 <meta name="prop:label" content="string" data-default="" data-doc="The resource's name; empty uses Resource.">
 <meta name="prop:icon" content="string" data-default="heart" data-doc="The atlas icon for a unit: heart, bullet, bolt or a game's own icon.">
 <meta name="prop:items" content="list" data-doc="Keyed units { id, value, label }: value is the filled fraction, 0 to 1; label names the unit for accessibility. The game supplies capacity, ordering and fractional units, with no fixed maximum.">
@@ -18,24 +17,24 @@
      empty unit is its socket; a full one is cut to its fraction and wears
      the tone. Unavailable, the units lose their colour and dim, full ones
      still brighter than their sockets. -->
-<div id="Pips" part="Pips.frame" class="bare" data-layout="cluster" class:off={disabled} role="group" aria-label={label || t("base.pips.resource")} aria-busy={loading} aria-disabled={disabled}>
-  <div part="Pips.caption" class="label">{label || t("base.pips.resource")}</div>
-  {#if loading}<div part="Pips.loading" data-layout="row" data-gap="tight"><Spinner size={18} name={t("base.pips.loading")} /><div part="Pips.state Pips.caption" role="status">{t("base.pips.loading")}</div></div>
+<div id="Pips" part="frame" variant="bare" layout="wrap" class:off={disabled} role="group" aria-label={label || t("base.pips.resource")} aria-busy={loading} aria-disabled={disabled}>
+  <div part="caption" class="label">{label || t("base.pips.resource")}</div>
+  {#if loading}<div part="loading" layout="row" gap="tight"><Spinner size={18} name={t("base.pips.loading")} /><div class="state" part="caption" role="status">{t("base.pips.loading")}</div></div>
   {:else}
-    {#if items.length}<div part="Pips.units" data-layout="cluster" data-gap="hair">
+    {#if items.length}<div part="units" layout="wrap" gap="hair">
       {#each items as item (item.id)}
-        <div class="unit" part="Pips.unit" role="meter" aria-label={item.label || label || t("base.pips.resource")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={item.value < 0 ? 0 : item.value > 1 ? 1 : item.value} aria-valuetext={formatPercent(item.value < 0 ? 0 : item.value > 1 ? 1 : item.value)} style:--value={item.value}>
-          <og-icon part="Pips.empty" class="empty" icon={icon}></og-icon>
-          <og-icon part="Pips.full Pips.figure" class="full" data-tone={disabled ? null : tone || null} icon={icon}></og-icon>
+        <div class="unit" part="unit" role="meter" aria-label={item.label || label || t("base.pips.resource")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={item.value < 0 ? 0 : item.value > 1 ? 1 : item.value} aria-valuetext={formatPercent(item.value < 0 ? 0 : item.value > 1 ? 1 : item.value)} style:--value={item.value}>
+          <og-icon part="empty" class="empty" icon={icon}></og-icon>
+          <og-icon part="figure" class="full" tone={disabled ? null : tone || null} icon={icon}></og-icon>
         </div>
       {/each}
-    </div>{:else}<div part="Pips.state Pips.caption">{t("base.pips.empty")}</div>{/if}
-    {#if disabled}<div part="Pips.state Pips.badge">{t("base.pips.disabled")}</div>{/if}
+    </div>{:else}<div class="state" part="caption">{t("base.pips.empty")}</div>{/if}
+    {#if disabled}<div class="state" part="badge">{t("base.pips.disabled")}</div>{/if}
   {/if}
 </div>
 
 <style>
-:host { max-inline-size: 100%; }
+#Pips { max-inline-size: 100%; }
 .unit { position: relative; inline-size: var(--pip-size, var(--size-sm)); block-size: var(--pip-size, var(--size-sm)); }
 .empty, .full { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
 .empty { color: var(--pip-empty-ink); }

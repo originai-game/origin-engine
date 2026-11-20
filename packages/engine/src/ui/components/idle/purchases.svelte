@@ -1,6 +1,5 @@
 <meta name="component" content="IdlePurchases">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdlePurchases.frame IdlePurchases.band IdlePurchases.socket IdlePurchases.title IdlePurchases.amount IdlePurchases.row IdlePurchases.name IdlePurchases.effect IdlePurchases.cost IdlePurchases.badge IdlePurchases.figure IdlePurchases.caption IdlePurchases.fade">
 <meta name="prop:title" content="string" data-doc="The list's heading; empty takes the group's (Upgrades).">
 <meta name="prop:amounts" content="list" data-doc="The buy amounts offered, keyed rows of { id, label }: label the amount as the game words it (it wins; empty reads the key max as Max and any other key as ×key: ×1, ×10, ×100). An empty list hides the choice.">
 <meta name="prop:amount" content="string" data-doc="The buy amount chosen, one of the amounts' keys.">
@@ -21,40 +20,40 @@
   is affordable and neither maxed nor locked, and each refused state is a
   word (Not enough, Maxed, Locked). It fills its height and scrolls.
 -->
-<section id="IdlePurchases" part="IdlePurchases.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("idle.purchases.name")}>
+<section class="frame" id="IdlePurchases" part="frame" layout="stack" fill gap="loose" aria-label={title != '' ? title : t("idle.purchases.name")}>
   <div class="lit"></div>
-  <header part="IdlePurchases.band" data-layout="cluster" data-gap="loose">
-    <h2 part="IdlePurchases.title" data-fill>{title != '' ? title : t("idle.purchases.name")}</h2>
+  <header class="band" part="band" layout="wrap" gap="loose">
+    <h2 class="title" part="title" fill>{title != '' ? title : t("idle.purchases.name")}</h2>
     {#if amounts.length}
-    <div class="amounts" data-layout="row" data-gap="hair" role="radiogroup" aria-label={t("idle.purchases.amount")}>
+    <div class="amounts" layout="row" gap="hair" role="radiogroup" aria-label={t("idle.purchases.amount")}>
       {#each amounts as a (a.id)}
-        <button part="IdlePurchases.amount" role="radio" aria-checked={a.id == amount} data-amount={a.id} onclick={chooseamount}>{a.label ? a.label : a.id == 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a.id })}</button>
+        <button class="amount" part="amount" role="radio" data-amount={a.id} onclick={chooseamount} class:checked={a.id == amount}>{a.label ? a.label : a.id == 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a.id })}</button>
       {/each}
     </div>
     {/if}
   </header>
   {#if upgrades.length}
-    <div class="rows-shell" data-layout="stack" data-gap="none" data-fill>
-    <div class="rows-scroll" data-layout="scroll" data-gap="none">
-      <ul class="rows" data-layout="stack" data-gap="tight" aria-label={title != '' ? title : t("idle.purchases.name")}>
+    <div class="rows-shell" layout="stack" gap="none" fill>
+    <div class="rows-scroll" layout="scroll" gap="none">
+      <ul class="rows" layout="stack" gap="tight" aria-label={title != '' ? title : t("idle.purchases.name")}>
         {#each upgrades as u (u.id)}
-          <li part="IdlePurchases.row" data-layout="row" data-gap="loose" aria-label={u.name} data-affordable={u.affordable} data-maxed={u.maxed} data-locked={u.locked}>
-            <div part="IdlePurchases.socket" class="art" data-layout="cover"><og-icon class="icon" icon={u.locked ? 'lock' : u.icon}></og-icon></div>
-            <div class="body" data-layout="stack" data-gap="hair" data-fill>
-              <div class="line" data-layout="row">
-                <span part="IdlePurchases.name" class="name">{u.name}</span>
-                {#if u.level > 0}<span part="IdlePurchases.badge" data-tag="level">{t("idle.purchases.level", { level: formatNumber(u.level) })}</span>{/if}
+          <li class="row" part="row" layout="row" gap="loose" aria-label={u.name} data-maxed={u.maxed} state:locked={u.locked} class:not-affordable={!(u.affordable)}>
+            <div part="socket" class="art cover" layout="stack" fill><og-icon class="icon" icon={u.locked ? 'lock' : u.icon}></og-icon></div>
+            <div class="body" layout="stack" gap="hair" fill>
+              <div class="line" layout="row">
+                <span part="name" class="name">{u.name}</span>
+                {#if u.level > 0}<span class="badge" part="badge" class:tag-level={true}>{t("idle.purchases.level", { level: formatNumber(u.level) })}</span>{/if}
               </div>
-              <p part="IdlePurchases.effect IdlePurchases.caption">{u.effect}</p>
+              <p class="effect" part="caption">{u.effect}</p>
             </div>
-            <div class="end" data-layout="stack" data-gap="tight">
-              {#if u.maxed}<span part="IdlePurchases.badge" data-tag="maxed">{t("idle.purchases.maxed")}</span>{/if}
-              {#if !u.maxed && u.locked}<span part="IdlePurchases.badge" data-tag="locked">{t("idle.purchases.locked")}</span>{/if}
-              {#if !u.maxed && !u.locked && !u.affordable}<span part="IdlePurchases.badge" data-tag="short">{t("idle.purchases.short")}</span>{/if}
+            <div class="end" layout="stack" gap="tight">
+              {#if u.maxed}<span class="badge status" part="badge">{t("idle.purchases.maxed")}</span>{/if}
+              {#if !u.maxed && u.locked}<span class="badge status" part="badge">{t("idle.purchases.locked")}</span>{/if}
+              {#if !u.maxed && !u.locked && !u.affordable}<span class="badge status" part="badge" class:tag-short={true}>{t("idle.purchases.short")}</span>{/if}
               {#if !u.maxed}
-              <button id="Buy" class="go" variant="primary" disabled={!u.affordable || u.maxed || u.locked} aria-label={u.cost ? t("idle.purchases.buyFor", { name: u.name, cost: u.cost }) : t("idle.purchases.buyNamed", { name: u.name })} data-affordable={u.affordable} onclick={buy}><div class="buy" data-layout="stack" data-gap="none">
-                {#if u.count}<span class="count" part="IdlePurchases.figure">{u.count}</span>{/if}
-                {#if u.cost}<div part="IdlePurchases.cost IdlePurchases.figure" data-layout="row" data-gap="hair"><og-icon class="cost-icon" icon={u.costIcon}></og-icon><span class="cost-figure">{u.cost}</span></div>{:else}<span class="buy-word">{t("idle.purchases.buy")}</span>{/if}
+              <button id="Buy" class="go" variant="primary" disabled={!u.affordable || u.maxed || u.locked} aria-label={u.cost ? t("idle.purchases.buyFor", { name: u.name, cost: u.cost }) : t("idle.purchases.buyNamed", { name: u.name })} onclick={buy} class:not-affordable={!(u.affordable)}><div class="buy" layout="stack" gap="none">
+                {#if u.count}<span class="count" part="figure">{u.count}</span>{/if}
+                {#if u.cost}<div class="cost" part="figure" layout="row" gap="hair"><og-icon class="cost-icon" icon={u.costIcon}></og-icon><span class="cost-figure">{u.cost}</span></div>{:else}<span class="buy-word">{t("idle.purchases.buy")}</span>{/if}
               </div></button>
               {/if}
             </div>
@@ -62,56 +61,57 @@
         {/each}
       </ul>
     </div>
-    <div class="scroll-fade" part="IdlePurchases.fade" data-anchor="bottom-edge"></div>
+    <div class="scroll-fade" part="fade" anchor="bottom-edge"></div>
     </div>
   {:else}
-    <p class="empty-text" part="IdlePurchases.caption" role="status">{t("idle.purchases.empty")}</p>
+    <p class="empty-text" part="caption" role="status">{t("idle.purchases.empty")}</p>
   {/if}
 </section>
 
 <style>
-:host { inline-size: stretch; block-size: stretch; min-block-size: 0; }
+.cover { justify-content: center; align-items: center; }
+#IdlePurchases { inline-size: stretch; block-size: stretch; min-block-size: 0; }
 /* The frame: two corners cut, a lit top edge (the shop family's look). */
-[part="IdlePurchases.frame"] { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.frame { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
-[part="IdlePurchases.band"] { width: stretch; flex: none; align-items: flex-end; }
-[part="IdlePurchases.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.band { width: stretch; flex: none; align-items: flex-end; }
+.title { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 /* The amounts: segments in a well, the chosen one lit. */
 .amounts { flex: none; padding: var(--space-xxs); border-radius: var(--inv-seg-radius); background: var(--inv-chip-fill); box-shadow: var(--inv-chip-rim); }
-[part="IdlePurchases.amount"] { min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); border-radius: var(--inv-seg-radius); background: var(--inv-bare-fill); box-shadow: none; color: var(--inv-tab-ink); }
-[part="IdlePurchases.amount"][aria-checked=true] { color: var(--inv-tab-on-ink); background: var(--inv-tab-count-fill); box-shadow: var(--inv-tag-rim); }
+.amount { min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); border-radius: var(--inv-seg-radius); background: var(--inv-bare-fill); box-shadow: none; color: var(--inv-tab-ink); }
+.amount.checked { color: var(--inv-tab-on-ink); background: var(--inv-tab-count-fill); box-shadow: var(--inv-tag-rim); }
 .rows-shell { position: relative; min-block-size: 0; }
 .rows-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 .rows { width: stretch; margin: 0; padding: 0; padding-block-end: var(--space-lg); list-style: none; }
 /* A row: cut at two corners, its socket, words, then its state and Buy. */
-[part="IdlePurchases.row"] { padding: var(--space-xs) var(--space-sm); align-items: center; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-accent); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="IdlePurchases.row"][data-locked=true] .art, [part="IdlePurchases.row"][data-locked=true] .body { opacity: var(--disabled-content-opacity); }
+.row { padding: var(--space-xs) var(--space-sm); align-items: center; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-accent); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.row:state(locked) .art, .row:state(locked) .body { opacity: var(--disabled-content-opacity); }
 .art { flex: none; inline-size: calc(48 * var(--font-step-px)); block-size: calc(48 * var(--font-step-px)); background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .icon { width: 64%; height: 64%; filter: var(--inv-slot-art-shadow); }
 .body { min-width: 0; }
 .line { width: stretch; min-width: 0; align-items: center; }
 .name { flex: 0 1 auto; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--shop-tile-name-size); font-weight: var(--inv-name-weight); color: var(--ink-bright); }
-[part~="IdlePurchases.effect"] { margin: 0; text-align: start; overflow-wrap: anywhere; }
+.effect { margin: 0; text-align: start; overflow-wrap: anywhere; }
 /* Small words: the level as a chip; a refusal in its tone on a wash of it. */
-[part="IdlePurchases.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); border-radius: var(--inv-chip-radius); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); color: var(--ink-label); background: var(--inv-tab-count-fill); box-shadow: none; }
-[part="IdlePurchases.badge"]:not([data-tag=level]) { letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); color: var(--shop-sold-ink); background: var(--shop-sold-fill); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="IdlePurchases.badge"][data-tag=short] { color: var(--shop-short-ink); background: var(--shop-short-fill); }
+.badge { flex: none; white-space: nowrap; padding: 0 var(--space-xs); border-radius: var(--inv-chip-radius); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); color: var(--ink-label); background: var(--inv-tab-count-fill); box-shadow: none; }
+.badge.status { letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); color: var(--shop-sold-ink); background: var(--shop-sold-fill); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.badge.tag-short { color: var(--shop-short-ink); background: var(--shop-short-fill); }
 .end { flex: none; align-items: flex-end; max-width: 50%; }
 /* Buy: how many over what they cost; refused, a wash of the danger. */
 #Buy { min-height: var(--size-touch); min-width: var(--shop-buy-width); max-width: stretch; padding: var(--space-xxs) var(--space-sm); }
-#Buy[data-affordable=false] { --button-primary-fill: var(--shop-buy-refused-fill); --button-primary-shadow: var(--shop-buy-refused-rim); color: var(--shop-short-ink); }
+#Buy.not-affordable { --button-primary-fill: var(--shop-buy-refused-fill); --button-primary-shadow: var(--shop-buy-refused-rim); color: var(--shop-short-ink); }
 .buy { align-items: center; min-width: 0; max-width: stretch; --figure-ink: currentColor; }
 .count { white-space: nowrap; font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); opacity: 0.8; }
-[part="IdlePurchases.cost IdlePurchases.figure"] { min-width: 0; max-width: stretch; align-items: center; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); }
+.cost { min-width: 0; max-width: stretch; align-items: center; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); }
 .cost-icon { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .cost-figure { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .empty-text { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; }
 /* A narrow panel (a phone, or a side column on a wide screen) puts the
    amounts under the title and each row's price and Buy under its name. */
 @container (width < 560px) {
-  [part="IdlePurchases.band"] .amounts { flex: 1 0 100%; }
-  [part="IdlePurchases.amount"] { flex: 1; min-width: 0; }
-  [part="IdlePurchases.row"] { flex-wrap: wrap; }
+  .band .amounts { flex: 1 0 100%; }
+  .amount { flex: 1; min-width: 0; }
+  .row { flex-wrap: wrap; }
   .art { inline-size: calc(40 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
   .body { flex: 1 1 0; }
   .end { flex: 1 0 100%; max-width: stretch; flex-direction: row; justify-content: flex-end; align-items: center; }

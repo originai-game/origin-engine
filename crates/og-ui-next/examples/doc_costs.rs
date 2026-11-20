@@ -41,6 +41,15 @@ fn main() {
         "components/racing",
         "components/strategy",
         "components/rhythm",
+        "components/arena",
+        "components/base",
+        "components/card",
+        "components/idle",
+        "components/meta",
+        "components/panels",
+        "components/puzzle",
+        "components/world",
+        "controls",
     ] {
         let root = format!("packages/engine/src/ui/{dir}");
         let mut files: Vec<String> = std::fs::read_dir(&root)

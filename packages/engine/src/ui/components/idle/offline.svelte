@@ -1,6 +1,5 @@
 <meta name="component" content="IdleOffline">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdleOffline.frame IdleOffline.band IdleOffline.kicker IdleOffline.title IdleOffline.away IdleOffline.figure IdleOffline.label IdleOffline.haul IdleOffline.socket IdleOffline.amount IdleOffline.name">
 <meta name="prop:title" content="string" data-doc="The panel's heading; empty takes the group's (Welcome back).">
 <meta name="prop:away" content="string" data-doc="How long the player was away, as the game words it (it wins; empty shows seconds as a duration: 1h 2m).">
 <meta name="prop:seconds" content="number" data-doc="How long the player was away, in seconds, when away is empty.">
@@ -21,44 +20,45 @@
   asks under its word. The game computes the haul and applies it. Many
   currencies wrap and the haul scrolls.
 -->
-<section id="IdleOffline" part="IdleOffline.frame" data-layout="stack" data-gap="loose" aria-label={title != '' ? title : t("idle.offline.name")}>
+<section class="frame" id="IdleOffline" part="frame" layout="stack" gap="loose" aria-label={title != '' ? title : t("idle.offline.name")}>
   <div class="lit"></div>
-  <header part="IdleOffline.band" data-layout="stack" data-gap="none">
-    <span part="IdleOffline.kicker" class="kicker">{t("idle.offline.kicker")}</span>
-    <h2 part="IdleOffline.title">{title != '' ? title : t("idle.offline.name")}</h2>
+  <header class="band" part="band" layout="stack" gap="none">
+    <span part="kicker" class="kicker">{t("idle.offline.kicker")}</span>
+    <h2 class="title" part="title">{title != '' ? title : t("idle.offline.name")}</h2>
   </header>
-  <div part="IdleOffline.away" class="away" data-layout="cluster" data-gap="tight" role="status" aria-label={t("idle.offline.away", { time: away != '' ? away : formatDuration(seconds) })}>
-    <span part="IdleOffline.figure" class="figure">{away != '' ? away : formatDuration(seconds)}</span>
-    <span part="IdleOffline.label" class="label">{t("idle.offline.awayLabel")}</span>
+  <div part="away" class="away" layout="wrap" gap="tight" role="status" aria-label={t("idle.offline.away", { time: away != '' ? away : formatDuration(seconds) })}>
+    <span part="figure" class="figure">{away != '' ? away : formatDuration(seconds)}</span>
+    <span part="label" class="label">{t("idle.offline.awayLabel")}</span>
   </div>
   {#if earned.length}
-    <div class="body" data-layout="scroll" data-gap="none">
-      <ul class="haul" data-layout="cluster" data-gap="tight" aria-label={t("idle.offline.earned")}>
+    <div class="body" layout="scroll" gap="none">
+      <ul class="haul" layout="wrap" gap="tight" aria-label={t("idle.offline.earned")}>
         {#each earned as e (e.id)}
-          <li part="IdleOffline.haul" data-layout="stack" data-gap="none" aria-label={t("idle.offline.row", { name: e.name, amount: e.amount })}>
-            <div part="IdleOffline.socket" class="socket" data-layout="cover"><og-icon class="icon" icon={e.icon}></og-icon></div>
-            <span part="IdleOffline.amount" class="amount">{e.amount}</span>
-            <span part="IdleOffline.name" class="name">{e.name}</span>
+          <li class="haul" part="haul" layout="stack" gap="none" aria-label={t("idle.offline.row", { name: e.name, amount: e.amount })}>
+            <div part="socket" class="socket cover" layout="stack" fill><og-icon class="icon" icon={e.icon}></og-icon></div>
+            <span part="amount" class="amount">{e.amount}</span>
+            <span part="name" class="name">{e.name}</span>
           </li>
         {/each}
       </ul>
     </div>
   {:else}
-    <p class="empty-text" part="IdleOffline.label" role="status">{t("idle.offline.empty")}</p>
+    <p class="empty-text" part="label" role="status">{t("idle.offline.empty")}</p>
   {/if}
-  <footer class="actions" data-layout="cluster">
-    {#if canDouble}<button id="Double" variant="secondary" onclick={double}><div class="double" data-layout="stack" data-gap="none"><span>{t("idle.offline.double")}</span>{#if doubleText != ''}<span class="double-text">{doubleText}</span>{/if}</div></button>{/if}
-    <button id="Collect" data-tone="reward" class="go" variant="primary" onclick={collect}><span>{t("idle.offline.collect")}</span></button>
+  <footer class="actions" layout="wrap">
+    {#if canDouble}<button id="Double" variant="secondary" onclick={double}><div class="double" layout="stack" gap="none"><span>{t("idle.offline.double")}</span>{#if doubleText != ''}<span class="double-text">{doubleText}</span>{/if}</div></button>{/if}
+    <button id="Collect" tone="reward" class="go" variant="primary" onclick={collect}><span>{t("idle.offline.collect")}</span></button>
   </footer>
 </section>
 
 <style>
-:host { inline-size: stretch; min-inline-size: 0; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; }
-[part="IdleOffline.frame"] { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.cover { justify-content: center; align-items: center; }
+#IdleOffline { inline-size: stretch; min-inline-size: 0; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; }
+.frame { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 .kicker { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--inv-kicker-size); font-weight: var(--hud-label-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--hud-label-ink); }
-[part="IdleOffline.band"] { width: stretch; flex: none; align-items: flex-start; }
-[part="IdleOffline.title"] { margin: 0; text-align: start; overflow-wrap: anywhere; }
+.band { width: stretch; flex: none; align-items: flex-start; }
+.title { margin: 0; text-align: start; overflow-wrap: anywhere; }
 /* The time away, large, its word beside it. */
 .away { flex: none; align-items: baseline; }
 .figure { min-width: 0; overflow-wrap: anywhere; font-size: var(--play-figure-lg-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--ink-bright); }
@@ -66,7 +66,7 @@
 .body { overflow-y: auto; flex: 0 1 auto; min-height: 0; }
 .haul { width: stretch; margin: 0; padding: 0; list-style: none; }
 /* A haul socket: glowing gold from its foot, cut at two corners. */
-[part="IdleOffline.haul"] { flex: 1 1 0; align-items: center; min-inline-size: calc(var(--size-xl) * 1.7); max-inline-size: calc(var(--size-xl) * 3); padding: var(--space-xs); background: var(--play-haul-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.haul { flex: 1 1 0; align-items: center; min-inline-size: calc(var(--size-xl) * 1.7); max-inline-size: calc(var(--size-xl) * 3); padding: var(--space-xs); background: var(--play-haul-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .socket { inline-size: var(--size-lg); block-size: var(--size-lg); }
 .icon { width: 100%; height: 100%; filter: var(--inv-slot-art-shadow); }
 .amount { max-inline-size: 100%; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--play-figure-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--ink-bright); }
@@ -81,6 +81,6 @@
 @media (pointer: coarse) { .actions button { flex: 1; } }
 @container (width < 560px) {
   .actions button { flex: 1; min-width: 0; }
-  [part="IdleOffline.haul"] { min-inline-size: calc(var(--size-xl) * 1.4); }
+  .haul { min-inline-size: calc(var(--size-xl) * 1.4); }
 }
 </style>

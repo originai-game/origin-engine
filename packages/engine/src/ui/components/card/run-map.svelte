@@ -1,6 +1,5 @@
 <meta name="component" content="CardRunMap">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardRunMap.frame CardRunMap.band CardRunMap.title CardRunMap.floor CardRunMap.board CardRunMap.legend CardRunMap.row">
 <meta name="prop:title" content="string" data-doc="The map's heading (the act's name).">
 <meta name="prop:floor" content="string" data-doc="Where the run stands as the game words it (Floor 6 of 15); empty hides it.">
 <meta name="prop:nodes" content="list" data-doc="The rooms, NodeGraph's nodes: keyed rows of { id, x, y, label, icon, state, shape, team }. A room's kind is its icon and shape (fight sword circle, elite skull diamond, rest fire square, shop coin square, event flag hex, treasure gem hex, boss crown diamond, or the game's own) and its label; state is done (visited), current (where the player stands), available (reachable next, the game's answer) or locked (out of reach).">
@@ -26,14 +25,14 @@
   choice; the map reports NodeGraph's pick (a room's key) and its zoom,
   pinch and pan.
 -->
-<section id="CardRunMap" part="CardRunMap.frame" class="bare" data-layout="shell" aria-label={title || t("card.map.name")}>
-  <header part="CardRunMap.band" class="band" data-layout="stack" data-gap="tight"><h2 part="CardRunMap.title" class="title">{title}</h2>{#if floor}<span part="CardRunMap.floor" class="floor">{floor}</span>{/if}</header>
-  <div part="CardRunMap.board" class="board" data-layout="row" data-fill>
+<section id="CardRunMap" part="frame" variant="bare" layout="stack" fill aria-label={title || t("card.map.name")}>
+  <header part="band" class="band" layout="stack" gap="tight"><h2 part="title" class="title">{title}</h2>{#if floor}<span part="floor" class="floor">{floor}</span>{/if}</header>
+  <div part="board" class="board" layout="row" fill>
     <NodeGraph nodes={nodes} links={links} view={view} zoom={zoom} panX={panX} panY={panY} selected={selected} name={title || t("card.map.name")} />
   </div>
-  {#if legend.length}<div part="CardRunMap.legend" class="legend" data-layout="cluster" data-gap="loose" role="list" aria-label={t("card.map.legend")}>
+  {#if legend.length}<div part="legend" class="legend" layout="wrap" gap="loose" role="list" aria-label={t("card.map.legend")}>
     {#each legend as l (l.id)}
-      <div part="CardRunMap.row" class="key" data-layout="row" data-gap="tight" role="listitem"><div class="mark" data-shape={l.shape == 'diamond' ? 'diamond' : 'circle'} data-layout="center"><og-icon class="legend-icon" icon={l.icon}></og-icon></div><span class="legend-label">{l.label}</span></div>
+      <div part="row" class="key" layout="row" gap="tight" role="listitem"><div class="mark" shape={l.shape == 'diamond' ? 'diamond' : 'circle'} layout="center" class:shape-diamond={(l.shape == 'diamond' ? 'diamond' : 'circle') == 'diamond'}><og-icon class="legend-icon" icon={l.icon}></og-icon></div><span class="legend-label">{l.label}</span></div>
     {/each}
   </div>{/if}
 </section>
@@ -45,7 +44,7 @@
    gold, a visited room ringed gold), and the roles it leaves to its
    container (the rooms' shadow and rim width, the paths' width and dash,
    a chosen or hovered room ringed white). */
-:host { inline-size: stretch; block-size: stretch; min-block-size: 0; container-type: inline-size; color: var(--hud-ink);
+#CardRunMap { inline-size: stretch; block-size: stretch; min-block-size: 0; container-type: inline-size; color: var(--hud-ink);
   --cell-shadow: var(--map-room-shadow); --cell-rim-width: var(--map-room-rim-width);
   --cell-selected-rim: var(--map-room-open); --cell-hover-shadow: var(--map-room-open-glow); --highlight: var(--map-room-open);
   --link-width: var(--map-path-width); --link-dash: var(--map-path-dash); }
@@ -59,8 +58,8 @@
 .key { flex: none; align-items: center; white-space: nowrap; }
 /* Each legend mark is a small room: the same shape, the same icon. */
 .mark { width: var(--map-legend-room); height: var(--map-legend-room); flex: none; justify-content: center; border-radius: var(--map-round); background: var(--map-room-fill); box-shadow: var(--map-legend-room-rim); }
-.mark[data-shape=diamond] { border-radius: var(--map-diamond-round); rotate: 45deg; }
-.mark[data-shape=diamond] .legend-icon { rotate: -45deg; }
+.mark.shape-diamond { border-radius: var(--map-diamond-round); rotate: 45deg; }
+.mark.shape-diamond .legend-icon { rotate: -45deg; }
 .legend-icon { width: 60%; height: 60%; color: var(--map-room-ink); }
 /* A room, its icon and its caption follow the text size up to a share of
    the graph's width and height (NodeGraph is their container), so a phone's map at a large text size keeps its rooms

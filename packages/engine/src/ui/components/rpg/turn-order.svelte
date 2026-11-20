@@ -26,6 +26,7 @@
 </section>
 
 <style>
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
 /* Drawn over the scene: the style's tag halo holds its text there. */
 #RpgTurnOrder { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #RpgTurnOrder { inline-size: stretch; align-items: center; }

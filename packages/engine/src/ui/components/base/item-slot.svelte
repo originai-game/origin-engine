@@ -1,6 +1,5 @@
 <meta name="component" content="ItemSlot">
 <meta name="strings" content="./item-slot.en.ogt">
-<meta name="parts" content="ItemSlot.frame ItemSlot.cell ItemSlot.icon ItemSlot.plus ItemSlot.loading ItemSlot.count ItemSlot.cooldown ItemSlot.remaining ItemSlot.figure ItemSlot.key ItemSlot.state ItemSlot.badge ItemSlot.fill ItemSlot.caption">
 <meta name="prop:name" content="string" data-default="" data-doc="The item name, also its accessible name and tooltip. Empty slots use the localized empty-slot name.">
 <meta name="prop:icon" content="string" data-default="" data-doc="An atlas icon. Empty is no item art.">
 <meta name="prop:count" content="number" data-default="1" data-doc="The quantity; a badge appears above 1.">
@@ -23,29 +22,30 @@
 
 <!-- Reports choose. In a keyed collection the intent keeps its enclosing
      row key; otherwise the game's stable component instance identifies it. -->
-<div id="ItemSlot" part="ItemSlot.frame" class="bare" data-layout="stack" data-gap="tight">
-  <button id="Slot" part="ItemSlot.cell" class:cooling={cooldown > 0 && !empty && !loading} data-rarity={rarity} data-empty={empty} aria-label={t("base.item-slot.label", { name: name || t("base.item-slot.empty"), state: loading ? t("base.item-slot.loading") : locked ? t("base.item-slot.locked") : disabled ? t("base.item-slot.disabled") : cooldown > 0 ? t("base.item-slot.cooldown", { time: formatCountdown(cooldown) }) : empty ? t("base.item-slot.empty") : t("base.item-slot.count", { count }) })} aria-pressed={selected} aria-busy={loading} title={name} disabled={disabled || locked || loading} onclick={choose}>
-    {#if icon && !empty && !loading}<og-icon part="ItemSlot.icon" icon={icon}></og-icon>{/if}
-    {#if (empty || !icon) && !loading}<og-icon part="ItemSlot.plus ItemSlot.caption" class="plus" icon="plus"></og-icon>{/if}
-    {#if loading}<div part="ItemSlot.loading" data-layout="cover"><Spinner name={t("base.item-slot.loading")} /></div>{/if}
-    {#if cooldown > 0 && !empty && !loading}<div part="ItemSlot.cooldown ItemSlot.fill" class="cooldown" style:--remaining={cooldownMax > 0 ? cooldown / cooldownMax : 0}></div><div part="ItemSlot.remaining ItemSlot.figure" class="remaining" data-anchor="center">{formatCountdown(cooldown)}</div>{/if}
-    {#if count > 1 && !empty && !loading}<div part="ItemSlot.count ItemSlot.badge" class="count">{formatNumber(count)}</div>{/if}
-    {#if keyLabel}<div part="ItemSlot.key ItemSlot.badge" class="key">{keyLabel}</div>{/if}
-    {#if (locked || disabled) && !loading}<div part="ItemSlot.state ItemSlot.badge" class="state">{locked ? t("base.item-slot.locked") : t("base.item-slot.disabled")}</div>{/if}
+<div id="ItemSlot" part="frame" variant="bare" layout="stack" gap="tight">
+  <button class="cell" id="Slot" part="cell" class:cooling={cooldown > 0 && !empty && !loading} tier={rarity} data-empty={empty} aria-label={t("base.item-slot.label", { name: name || t("base.item-slot.empty"), state: loading ? t("base.item-slot.loading") : locked ? t("base.item-slot.locked") : disabled ? t("base.item-slot.disabled") : cooldown > 0 ? t("base.item-slot.cooldown", { time: formatCountdown(cooldown) }) : empty ? t("base.item-slot.empty") : t("base.item-slot.count", { count }) })} aria-pressed={selected} aria-busy={loading} title={name} disabled={disabled || locked || loading} onclick={choose}>
+    {#if icon && !empty && !loading}<og-icon class="icon" part="icon" icon={icon}></og-icon>{/if}
+    {#if (empty || !icon) && !loading}<og-icon part="caption" class="plus" icon="plus"></og-icon>{/if}
+    {#if loading}<div class="loading cover" part="loading" layout="stack" fill><Spinner name={t("base.item-slot.loading")} /></div>{/if}
+    {#if cooldown > 0 && !empty && !loading}<div part="fill" class="cooldown" style:--remaining={cooldownMax > 0 ? cooldown / cooldownMax : 0}></div><div layout="center" part="figure" class="remaining" anchor="fill">{formatCountdown(cooldown)}</div>{/if}
+    {#if count > 1 && !empty && !loading}<div part="badge" class="count">{formatNumber(count)}</div>{/if}
+    {#if keyLabel}<div part="badge" class="key">{keyLabel}</div>{/if}
+    {#if (locked || disabled) && !loading}<div part="badge" class="state">{locked ? t("base.item-slot.locked") : t("base.item-slot.disabled")}</div>{/if}
   </button>
-  {#if showName}<span part="ItemSlot.caption" class="name">{name || (loading ? t("base.item-slot.loading") : t("base.item-slot.empty"))}</span>{/if}
+  {#if showName}<span part="caption" class="name">{name || (loading ? t("base.item-slot.loading") : t("base.item-slot.empty"))}</span>{/if}
 </div>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* The slot grows with the player's text scale, as the badges and the state
    word in it do, so they keep their place around the icon and the word its
    room: 96 px at 100 % text (--font-step-px is one CSS px there). A game's
    --item-slot-size is taken as given. */
-:host { --slot: var(--item-slot-size, calc(96 * var(--font-step-px))); inline-size: var(--slot); }
-[part="ItemSlot.cell"] { position: relative; inline-size: 100%; block-size: var(--slot); min-block-size: var(--size-touch); padding: var(--space-sm); overflow: hidden; }
-[part="ItemSlot.icon"] { inline-size: 64%; block-size: 64%; }
+#ItemSlot { --slot: var(--item-slot-size, calc(96 * var(--font-step-px))); inline-size: var(--slot); }
+.cell { position: relative; inline-size: 100%; block-size: var(--slot); min-block-size: var(--size-touch); padding: var(--space-sm); overflow: hidden; }
+.icon { inline-size: 64%; block-size: 64%; }
 .plus { inline-size: 36%; block-size: 36%; }
-.cooling [part="ItemSlot.icon"] { opacity: var(--cell-cooling-opacity); }
+.cooling .icon { opacity: var(--cell-cooling-opacity); }
 .cooldown { position: absolute; inset-inline: 0; bottom: 0; block-size: clamp(0%, calc(var(--remaining) * 100%), 100%); --fill-color: var(--scrim); --fill-gloss: none; pointer-events: none; }
 .count, .key { position: absolute; padding-inline: var(--space-xs); }
 .count { inset-inline-end: var(--space-xxs); bottom: var(--space-xxs); }
@@ -54,6 +54,6 @@
 /* In a slot a game makes narrower than the word, the word ends in an
    ellipsis inside its chip; the slot's accessible name carries it whole. */
 .state { position: absolute; inset-inline: var(--space-xxs); bottom: var(--space-xxs); padding: var(--space-xxs); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-[part="ItemSlot.loading"] { position: absolute; inset: 0; --spinner-size: calc(var(--slot) * 0.4); }
+.loading { position: absolute; inset: 0; --spinner-size: calc(var(--slot) * 0.4); }
 .name { text-align: center; overflow-wrap: anywhere; }
 </style>

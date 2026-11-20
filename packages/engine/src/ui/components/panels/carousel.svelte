@@ -1,6 +1,5 @@
 <meta name="component" content="Carousel">
 <meta name="strings" content="./carousel.en.ogt">
-<meta name="parts" content="Carousel.frame Carousel.cell Carousel.art Carousel.well Carousel.title Carousel.body Carousel.prev Carousel.next Carousel.dot Carousel.lit Carousel.picture Carousel.caption">
 <meta name="prop:pages" content="list" data-doc="The pages: each { id, title, body, image }, image a texture handle (0: none).">
 <meta name="prop:index" content="number" data-doc="The current page, from 0 (its dot lit).">
 <meta name="prop:label" content="string" data-doc="What a screen reader calls it.">
@@ -11,30 +10,30 @@
 <!-- Pages of art on the HUD plate: the current one ringed in the accent,
      its neighbours set back; the place is a row of leaning pips between
      cut arrow keys. -->
-<div id="Carousel" part="Carousel.frame" data-layout="stack" class="bare" role="region" aria-label={label || t("component.carousel.name")} style:--index={index} style:--count={pages.length}>
-  <div id="Viewport" data-layout="row" data-gap="loose">
-    {#if !pages.length}<p class="empty body" part="Carousel.body Carousel.caption" role="status">{t("component.carousel.empty")}</p>{/if}
+<div id="Carousel" part="frame" layout="stack" variant="bare" role="region" aria-label={label || t("component.carousel.name")} style:--index={index} style:--count={pages.length}>
+  <div id="Viewport" layout="row" gap="loose">
+    {#if !pages.length}<p class="empty body" part="caption" role="status">{t("component.carousel.empty")}</p>{/if}
     {#each pages as page (page.id)}
-      <div part="Carousel.cell" class="page" data-layout="stack" data-gap="tight">
-        {#if page.image}<img part="Carousel.art Carousel.picture" class="art" src={page.image}>
-        {:else}<div part="Carousel.well" class="well"></div>{/if}
-        {#if page.title}<span part="Carousel.title" class="title">{page.title}</span>{/if}
-        {#if page.body}<span part="Carousel.body Carousel.caption" class="body">{page.body}</span>{/if}
+      <div part="cell" class="page" layout="stack" gap="tight">
+        {#if page.image}<img part="picture" class="art" src={page.image}>
+        {:else}<div part="well" class="well"></div>{/if}
+        {#if page.title}<span part="title" class="title">{page.title}</span>{/if}
+        {#if page.body}<span part="caption" class="body">{page.body}</span>{/if}
       </div>
     {/each}
   </div>
-  <div id="Controls" data-layout="row" data-gap="loose">
-    <button id="Prev" part="Carousel.prev" aria-label={t("component.carousel.prev")} disabled={pages.length < 2} onclick={prev}><og-icon icon="back"></og-icon></button>
-    <div id="Dots" data-layout="row">
-      {#each pages as page (page.id)}<div part="Carousel.dot" class="dot"></div>{/each}
-      {#if pages.length}<div id="Lit" part="Carousel.lit Carousel.dot" data-motion="change" data-og-overlap="*"></div>{/if}
+  <div id="Controls" layout="row" gap="loose">
+    <button id="Prev" part="prev" aria-label={t("component.carousel.prev")} disabled={pages.length < 2} onclick={prev}><og-icon icon="back"></og-icon></button>
+    <div id="Dots" layout="row">
+      {#each pages as page (page.id)}<div part="dot" class="dot"></div>{/each}
+      {#if pages.length}<div class="lit" id="Lit" part="dot" play="change" data-og-overlap="*"></div>{/if}
     </div>
-    <button id="Next" part="Carousel.next" aria-label={t("component.carousel.next")} disabled={pages.length < 2} onclick={next}><og-icon id="NextIcon" icon="back"></og-icon></button>
+    <button id="Next" part="next" aria-label={t("component.carousel.next")} disabled={pages.length < 2} onclick={next}><og-icon id="NextIcon" icon="back"></og-icon></button>
   </div>
 </div>
 
 <style>
-:host { inline-size: var(--measure-md); max-inline-size: 100%; align-items: center; }
+#Carousel { inline-size: var(--measure-md); max-inline-size: 100%; align-items: center; }
 #Carousel { padding: var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-panel-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); }
 /* One page fills the window; the next waits beyond its edge, scrolled to. */
 #Viewport { inline-size: 100%; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; }

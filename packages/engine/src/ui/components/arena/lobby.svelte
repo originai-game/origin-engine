@@ -1,6 +1,5 @@
 <meta name="component" content="ArenaLobby">
 <meta name="strings" content="./arena.en.ogt">
-<meta name="parts" content="ArenaLobby.frame ArenaLobby.band ArenaLobby.title ArenaLobby.row ArenaLobby.portrait ArenaLobby.name ArenaLobby.badge ArenaLobby.state ArenaLobby.picture ArenaLobby.label ArenaLobby.headline ArenaLobby.caption">
 <meta name="prop:title" content="string" data-doc="The lobby's heading (the match's name); empty takes the kit's (Lobby).">
 <meta name="prop:detail" content="string" data-doc="A line beside the heading as the game words it (Ranked · 2 v 2, Waiting for the host); empty hides it.">
 <meta name="prop:slots" content="list" data-doc="The lobby's seats in the game's order, keyed rows of { id, name, portrait, icon, open, host, ready, local }: open the seat is free (an Invite button reporting invite with the seat's key, when canInvite); portrait a texture (0 shows the icon); host marks the host (Host); ready Ready or Not ready in words; local the local player (You).">
@@ -25,33 +24,33 @@
   (unready), and for the host Start match (start), disabled until the game
   allows it. The game owns seats, readiness and when a match may start.
 -->
-<section id="ArenaLobby" part="ArenaLobby.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("arena.lobby.title")}>
-  <header part="ArenaLobby.band" class="band" data-layout="cluster" data-gap="loose"><h2 part="ArenaLobby.title">{title != '' ? title : t("arena.lobby.title")}</h2>{#if detail != ''}<span class="detail" part="ArenaLobby.caption">{detail}</span>{/if}</header>
+<section class="frame" id="ArenaLobby" part="frame" layout="stack" fill gap="loose" aria-label={title != '' ? title : t("arena.lobby.title")}>
+  <header part="band" class="band" layout="wrap" gap="loose"><h2 class="title" part="title">{title != '' ? title : t("arena.lobby.title")}</h2>{#if detail != ''}<span class="detail" part="caption">{detail}</span>{/if}</header>
   {#if slots.length}
-    <div class="list" data-layout="scroll" data-fill>
-      <div class="rows" data-layout="stack" data-gap="tight" role="list" aria-label={t("arena.lobby.players")}>
+    <div class="list" layout="scroll" fill>
+      <div class="rows" layout="stack" gap="tight" role="list" aria-label={t("arena.lobby.players")}>
         {#each slots as s (s.id)}
-          <div part="ArenaLobby.row" data-layout="row" role="listitem" aria-current={s.local} data-open={s.open} data-local={s.local}>
-            <div part="ArenaLobby.portrait ArenaLobby.picture" class="portrait" data-layout="ratio" data-open={s.open}><div class="well" data-layout="ratio">{#if s.portrait && !s.open}<img class="art" src={s.portrait} alt="">{:else}<og-icon class="glyph" icon={s.open ? 'plus' : s.icon}></og-icon>{/if}</div></div>
-            <div class="who" data-layout="stack" data-gap="hair" data-fill>
-              <span part="ArenaLobby.name ArenaLobby.headline" class="name">{s.open ? t("arena.lobby.open") : s.name}</span>
+          <div class="row" part="row" layout="row" role="listitem" aria-current={s.local} class:local={s.local} class:open={s.open}>
+            <div part="picture" class="portrait ratio" class:open={s.open}><div class="well ratio">{#if s.portrait && !s.open}<img class="art" src={s.portrait} alt="">{:else}<og-icon class="glyph" icon={s.open ? 'plus' : s.icon}></og-icon>{/if}</div></div>
+            <div class="who" layout="stack" gap="hair" fill>
+              <span part="headline" class="name">{s.open ? t("arena.lobby.open") : s.name}</span>
               {#if s.host || s.local}
-              <div class="tags" data-layout="row" data-gap="hair">
-                {#if s.host}<span part="ArenaLobby.badge" class="tag" data-tag="host">{t("arena.lobby.host")}</span>{/if}
-                {#if s.local}<span part="ArenaLobby.badge" class="tag" data-tag="you">{t("arena.you")}</span>{/if}
+              <div class="tags" layout="row" gap="hair">
+                {#if s.host}<span part="badge" class="tag" class:tag-host={true}>{t("arena.lobby.host")}</span>{/if}
+                {#if s.local}<span part="badge" class="tag" class:tag-you={true}>{t("arena.you")}</span>{/if}
               </div>
               {/if}
             </div>
-            {#if !s.open}<div part="ArenaLobby.state ArenaLobby.label" class="state" data-layout="row" data-gap="hair" data-tone={s.ready ? 'success' : 'neutral'} data-ready={s.ready}><og-icon class="check" icon={s.ready ? 'check' : 'clock'}></og-icon><span>{s.ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</span></div>{/if}
+            {#if !s.open}<div part="label" class="state" layout="row" gap="hair" tone={s.ready ? 'success' : 'neutral'} class:ready={s.ready}><og-icon class="check" icon={s.ready ? 'check' : 'clock'}></og-icon><span>{s.ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</span></div>{/if}
             {#if s.open && canInvite}<button id="Invite" variant="ghost" onclick={invite}><og-icon class="check" icon="plus"></og-icon><span>{t("arena.lobby.invite")}</span></button>{/if}
           </div>
         {/each}
       </div>
     </div>
   {:else}
-    <p class="empty-text" part="ArenaLobby.caption" role="status">{t("arena.lobby.empty")}</p>
+    <p class="empty-text" part="caption" role="status">{t("arena.lobby.empty")}</p>
   {/if}
-  <footer class="actions" data-layout="cluster">
+  <footer class="actions" layout="wrap">
     {#if isReady}
       <button id="Unready" variant="ghost" aria-label={t("arena.lobby.unready")} disabled={!canReady} onclick={unready} ondetails={unready}><kbd class="key" data-action="details"></kbd><span>{t("arena.lobby.unready")}</span></button>
     {:else}
@@ -62,40 +61,42 @@
 </section>
 
 <style>
+.ratio { display: flex; align-items: center; justify-content: center; aspect-ratio: var(--layout-ratio); overflow: hidden; }
+.ratio img { inline-size: 100%; block-size: 100%; object-fit: cover; }
 /* The lobby on a smoked cut card: a seat is a cut row of dark glass with
    an octagon portrait, the local player's lit along its top in the
    accent, an open seat a faint wash; Ready is green, with a glow. */
-:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; color: var(--hud-ink); }
-[part="ArenaLobby.frame"] { box-sizing: border-box; padding: var(--space-lg); border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="ArenaLobby.band"] { width: stretch; align-items: baseline; flex: none; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
-[part="ArenaLobby.title"] { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; }
+#ArenaLobby { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; color: var(--hud-ink); }
+.frame { box-sizing: border-box; padding: var(--space-lg); border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-card-rim); border-radius: var(--party-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.band { width: stretch; align-items: baseline; flex: none; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.title { margin: 0; min-inline-size: 0; font-size: var(--hud-size-md); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: none; white-space: normal; overflow-wrap: break-word; }
 .detail { min-width: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); overflow-wrap: break-word; }
 .list { overflow-y: auto; flex: 1; min-height: 0; -og-scroll-fade: var(--space-xl); }
 .rows { width: stretch; }
-[part="ArenaLobby.row"] { padding: var(--space-xs) var(--space-sm); min-height: var(--size-touch); color: var(--hud-ink); background: var(--result-row-fill); box-shadow: var(--party-seat-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="ArenaLobby.row"][data-local=true] { box-shadow: var(--hud-plate-lit-rim); }
-[part="ArenaLobby.row"][data-open=true] { background: var(--party-open-row); }
-[part="ArenaLobby.portrait ArenaLobby.picture"] { flex: none; box-sizing: border-box; padding: var(--stroke-thick); border: 0; border-radius: 0; background: var(--hud-edge); box-shadow: none; clip-path: var(--hud-octagon); overflow: hidden; inline-size: var(--party-portrait); block-size: var(--party-portrait); }
-[part="ArenaLobby.portrait ArenaLobby.picture"][data-open=true] { padding: var(--stroke-hairline); background: var(--party-open-edge); }
+.row { padding: var(--space-xs) var(--space-sm); min-height: var(--size-touch); color: var(--hud-ink); background: var(--result-row-fill); box-shadow: var(--party-seat-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.row.local { box-shadow: var(--hud-plate-lit-rim); }
+.row.open { background: var(--party-open-row); }
+.portrait { flex: none; box-sizing: border-box; padding: var(--stroke-thick); border: 0; border-radius: 0; background: var(--hud-edge); box-shadow: none; clip-path: var(--hud-octagon); overflow: hidden; inline-size: var(--party-portrait); block-size: var(--party-portrait); }
+.portrait.open { padding: var(--stroke-hairline); background: var(--party-open-edge); }
 .well { inline-size: stretch; block-size: stretch; clip-path: var(--hud-octagon); background: var(--party-open-fill); }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .glyph { width: var(--size-sm); height: var(--size-sm); color: var(--hud-ink); }
-[data-open=true] .glyph { color: var(--hud-ink-dim); }
+.open .glyph { color: var(--hud-ink-dim); }
 .who { min-width: 0; }
 .name { text-align: start; font-size: var(--hud-size-name); line-height: 1.15; font-weight: var(--hud-figure-weight); color: var(--hud-ink); overflow-wrap: break-word; }
-[data-open=true] .name { color: var(--hud-ink-dim); }
+.open .name { color: var(--hud-ink-dim); }
 .tags { flex-wrap: wrap; }
 .tag { flex: none; padding: 0 var(--space-xs); border: 0; font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; white-space: nowrap; }
-.tag[data-tag=host] { color: var(--party-gold-ink); background: var(--hud-key-gold-fill); box-shadow: none; }
-.tag[data-tag=you] { color: var(--party-go-ink); background: var(--hud-accent); box-shadow: none; }
-[part="ArenaLobby.state ArenaLobby.label"] { flex: none; white-space: nowrap; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink-dim); }
-[part="ArenaLobby.state ArenaLobby.label"][data-ready=true] { color: var(--party-ready); filter: var(--party-ready-glow); }
+.tag.tag-host { color: var(--party-gold-ink); background: var(--hud-key-gold-fill); box-shadow: none; }
+.tag.tag-you { color: var(--party-go-ink); background: var(--hud-accent); box-shadow: none; }
+.state { flex: none; white-space: nowrap; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink-dim); }
+.state.ready { color: var(--party-ready); filter: var(--party-ready-glow); }
 .check { width: var(--size-xs); height: var(--size-xs); }
 button { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --button-radius: var(--hud-plate-cut) 0; --button-corner-shape: var(--cut-shape); }
 button:hover { background: var(--party-button-hover-fill); }
 button:focus-visible { box-shadow: var(--party-focus-rim); }
 button:disabled { opacity: 0.45; }
-button > span { color: inherit; font-weight: inherit; }
+button span { color: inherit; font-weight: inherit; }
 #Invite { flex: none; min-height: var(--size-md); gap: var(--space-xxs); padding: 0 var(--space-md); }
 .empty-text { margin: 0; padding: var(--space-lg); text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); }
 .actions { width: stretch; flex: none; justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
@@ -104,13 +105,13 @@ button > span { color: inherit; font-weight: inherit; }
 @media (pointer: coarse) { .key { display: none; } }
 /* The lobby sits in a panel: its own width, not the screen's, tightens it. */
 @container (width < 600px) {
-  [part="ArenaLobby.frame"] { padding: var(--space-sm); }
-  [part="ArenaLobby.row"] { --layout-gap: var(--layout-gap-tight); flex-wrap: wrap; padding: var(--space-xxs) var(--space-xs); }
-  [part="ArenaLobby.portrait ArenaLobby.picture"] { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
+  .frame { padding: var(--space-sm); }
+  .row { --layout-gap: var(--layout-gap-tight); flex-wrap: wrap; padding: var(--space-xxs) var(--space-xs); }
+  .portrait { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
   /* The name and its tags keep a width of their own; when the state or
      Invite does not fit beside them it takes the line under, at its end. */
   .who { flex: 1 1 calc(96 * var(--font-step-px)); }
-  [part="ArenaLobby.state ArenaLobby.label"], #Invite { margin-inline-start: auto; }
+  .state, #Invite { margin-inline-start: auto; }
   /* The actions share the width; when their words do not fit side by side, each takes a line. */
   .actions { flex-wrap: wrap; }
   .actions button { flex: 1 1 auto; }

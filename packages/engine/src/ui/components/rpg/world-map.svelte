@@ -50,6 +50,7 @@
 </figure>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 #RpgWorldMap { position: relative; margin: 0; container-type: inline-size; color: var(--hud-ink); --pin: var(--map-marker); }
 .sheet { position: relative; width: stretch; overflow: hidden; }
 .land { position: absolute; left: 0; top: 0; width: calc(var(--zoom) * 100%); height: calc(var(--zoom) * 100%); translate: var(--pan-x) var(--pan-y); }
@@ -110,6 +111,4 @@
   .legend:dir(rtl) { left: var(--space-xs); right: var(--space-xs); }
   .here { left: var(--space-xs); top: var(--space-xs); font-size: var(--map-name-compact-size); }
 }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 </style>

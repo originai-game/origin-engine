@@ -1,6 +1,5 @@
 <meta name="component" content="Chart">
 <meta name="strings" content="./chart.en.ogt">
-<meta name="parts" content="Chart.frame Chart.title Chart.subtitle Chart.tick Chart.grid Chart.bar Chart.area Chart.line Chart.label Chart.plate Chart.caption Chart.fill Chart.series Chart.gridline">
 <meta name="prop:title" content="string" data-doc="A title over it; empty is none.">
 <meta name="prop:subtitle" content="string" data-doc="A line under the title.">
 <meta name="prop:max" content="number" data-default="1" data-doc="The value axis' top (its bottom is 0).">
@@ -13,26 +12,26 @@
 <!-- A HUD plate: a small accent line over the title, the bars leaning as
      the HUD's meters do and lit along their top, the line series in gold
      over them, and the axis in faint tabular figures. -->
-<div id="Chart" part="Chart.frame" class="bare" data-layout="stack" data-gap="tight" role="figure" aria-label={title || t("component.chart.name")}>
-  {#if title}<span id="Title" part="Chart.title">{title}</span>{/if}
-  {#if subtitle}<span id="Subtitle" part="Chart.subtitle Chart.caption" class="subtitle">{subtitle}</span>{/if}
-  <div id="Body" data-layout="row" data-gap="tight">
+<div id="Chart" part="frame" variant="bare" layout="stack" gap="tight" role="figure" aria-label={title || t("component.chart.name")}>
+  {#if title}<span id="Title" part="title">{title}</span>{/if}
+  {#if subtitle}<span id="Subtitle" part="caption" class="subtitle">{subtitle}</span>{/if}
+  <div id="Body" layout="row" gap="tight">
     <div id="Axis">
-      {#each ticks as tick (tick.id)}<span part="Chart.tick Chart.caption" class="tick" style:--at={tick.at}>{tick.label}</span>{/each}
+      {#each ticks as tick (tick.id)}<span part="caption" class="tick" style:--at={tick.at}>{tick.label}</span>{/each}
     </div>
-    <div id="Plot" data-fill>
-      {#if !bars.length && !line}<p class="empty" part="Chart.label Chart.caption" role="status">{t("component.chart.empty")}</p>{/if}
-      {#each ticks as tick (tick.id)}<div part="Chart.grid Chart.plate Chart.gridline" class="grid" data-og-overlap="*" style:--at={tick.at}></div>{/each}
-      <div id="Bars" data-layout="row">
+    <div id="Plot" fill>
+      {#if !bars.length && !line}<p class="empty label" part="caption" role="status">{t("component.chart.empty")}</p>{/if}
+      {#each ticks as tick (tick.id)}<div part="gridline" class="grid plate" data-og-overlap="*" style:--at={tick.at}></div>{/each}
+      <div id="Bars" layout="row">
         {#each bars as bar (bar.id)}
-          <div class="column" data-layout="stack" data-gap="none" data-fill aria-label={bar.label + " " + formatNumber(bar.value)}>
-            <div part="Chart.bar Chart.fill" class="bar" class:tinted={!!bar.color} style:--v={bar.value / max} style:--c={bar.color}></div>
+          <div class="column" layout="stack" gap="none" fill aria-label={bar.label + " " + formatNumber(bar.value)}>
+            <div part="fill" class="bar" class:tinted={!!bar.color} style:--v={bar.value / max} style:--c={bar.color}></div>
           </div>
         {/each}
       </div>
       {#if line}<svg id="Line" viewBox="0 0 350 180">
-        {#if area}<path id="Area" part="Chart.area" d={line + " L322 180 L25 180 Z"}></path>{/if}
-        <path id="Stroke" part="Chart.line Chart.series" d={line} fill="none"></path>
+        {#if area}<path id="Area" part="area" d={line + " L322 180 L25 180 Z"}></path>{/if}
+        <path class="line" id="Stroke" part="series" d={line} fill="none"></path>
       </svg>{/if}
     </div>
   </div>
@@ -41,13 +40,13 @@
          bars than names fit under, every other bar is named, and every
          third in a narrow chart. -->
     <div id="Ticks" class:dense={bars.length > 8} style:--n={bars.length}>
-      {#each bars as bar, i (bar.id)}<span part="Chart.label Chart.caption" class="category" style:--i={i}>{bar.label}</span>{/each}
+      {#each bars as bar, i (bar.id)}<span part="caption" class="category label" class:even={i % 2 == 1} class:third={i % 3 == 0} style:--i={i}>{bar.label}</span>{/each}
     </div>
   </div>
 </div>
 
 <style>
-:host { inline-size: var(--measure-lg); max-inline-size: 100%; container-type: inline-size; --series-color: var(--hud-gold); --gridline-ink: var(--data-rule); }
+#Chart { inline-size: var(--measure-lg); max-inline-size: 100%; container-type: inline-size; --series-color: var(--hud-gold); --gridline-ink: var(--data-rule); }
 #Chart { padding: var(--space-md) var(--space-lg) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-panel-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); }
 #Title { font-size: var(--hud-size-sm); font-weight: var(--data-title-weight); color: var(--hud-ink); overflow-wrap: anywhere; }
 .subtitle { order: -1; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent); overflow-wrap: anywhere; }
@@ -65,9 +64,9 @@
 #Categories { padding: 0 var(--space-md) 0 calc(var(--size-md) + var(--space-xs) + var(--space-sm)); }
 .category { position: absolute; top: 0; inset-inline-start: calc((var(--i) + 0.5) * (100% + var(--space-xs)) / var(--n) - var(--space-xs) / 2); translate: -50% 0; white-space: nowrap; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); font-stretch: var(--hud-figure-stretch); color: var(--data-head-ink); }
 #Ticks { position: relative; inline-size: 100%; block-size: calc(var(--hud-label-size) * 1.5); }
-.dense .category:nth-child(even) { display: none; }
+.dense .category.even { display: none; }
 @container (width < 520px) {
-  .dense .category:nth-child(even) { display: block; }
-  .dense .category:not(:nth-child(3n + 1)) { display: none; }
+  .dense .category { display: none; }
+  .dense .category.third { display: block; }
 }
 </style>

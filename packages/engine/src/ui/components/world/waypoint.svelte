@@ -1,6 +1,5 @@
 <meta name="component" content="Waypoint">
 <meta name="strings" content="./world.en.ogt">
-<meta name="parts" content="Waypoint.frame Waypoint.pin Waypoint.name Waypoint.distance Waypoint.chevron">
 <meta name="prop:entity" content="number" data-doc="What it marks, by its bits (0: use at).">
 <meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it marks without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above the point.">
@@ -28,13 +27,13 @@
   as near and far.
 -->
 <anchor id="Waypoint" entity={entity || null} at={at} offset={"0 " + height + " 0"} clamp="edge" arrow-size="0" avoid="player" declutter="shift" priority="500">
-  <div id="Mark" part="Waypoint.frame" class="bare" data-kind={kind == '' ? 'objective' : kind} data-range={range == '' ? 'mid' : range} data-way={edge == '' ? 'none' : edge} aria-label={label != '' ? label : distance}>
-    {#if edge != ''}<span part="Waypoint.chevron" class="chevron"></span>{/if}
-    <span part="Waypoint.pin" class="pin"><span class="core"></span></span>
+  <div id="Mark" part="frame" variant="bare" aria-label={label != '' ? label : distance} class:kind-ally={(kind == '' ? 'objective' : kind) == 'ally'} class:kind-danger={(kind == '' ? 'objective' : kind) == 'danger'} class:kind-loot={(kind == '' ? 'objective' : kind) == 'loot'} class:kind-ping={(kind == '' ? 'objective' : kind) == 'ping'} class:range-far={(range == '' ? 'mid' : range) == 'far'} class:range-near={(range == '' ? 'mid' : range) == 'near'} class:way-left={(edge == '' ? 'none' : edge) == 'left'} class:way-right={(edge == '' ? 'none' : edge) == 'right'}>
+    {#if edge != ''}<span part="chevron" class="chevron"></span>{/if}
+    <span part="pin" class="pin"><span class="core"></span></span>
     {#if (label != '' && range != 'far') || distance != ''}
       <div class="words">
-        {#if label != '' && range != 'far'}<span part="Waypoint.name" class="label">{label}</span>{/if}
-        {#if distance != ''}<span part="Waypoint.distance" class="distance">{distance}<span class="units">{units}</span></span>{/if}
+        {#if label != '' && range != 'far'}<span part="name" class="label">{label}</span>{/if}
+        {#if distance != ''}<span part="distance" class="distance">{distance}<span class="units">{units}</span></span>{/if}
       </div>
     {/if}
   </div>
@@ -42,28 +41,28 @@
 
 <style>
 #Mark { display: flex; flex-direction: column; align-items: center; row-gap: calc(3 * var(--font-step-px)); color: var(--hud-gold); }
-#Mark[data-kind=ping] { color: var(--hud-rare); }
-#Mark[data-kind=danger] { color: var(--world-hostile-ink); }
-#Mark[data-kind=ally] { color: var(--world-friendly-ink); }
-#Mark[data-kind=loot] { color: var(--hud-epic); }
-#Mark[data-range=far] { opacity: var(--world-far-opacity); }
+#Mark.kind-ping { color: var(--hud-rare); }
+#Mark.kind-danger { color: var(--world-hostile-ink); }
+#Mark.kind-ally { color: var(--world-friendly-ink); }
+#Mark.kind-loot { color: var(--hud-epic); }
+#Mark.range-far { opacity: var(--world-far-opacity); }
 /* Off screen: the chevron, the pin and the words in a row. */
-#Mark[data-way=left], #Mark[data-way=right] { flex-direction: row; column-gap: calc(5 * var(--font-step-px)); }
-#Mark[data-way=right] { flex-direction: row-reverse; }
+#Mark.way-left, #Mark.way-right { flex-direction: row; column-gap: calc(5 * var(--font-step-px)); }
+#Mark.way-right { flex-direction: row-reverse; }
 .words { display: flex; flex-direction: column; align-items: center; row-gap: calc(2 * var(--font-step-px)); min-inline-size: 0; }
-[data-way=left] .words { align-items: flex-start; }
-[data-way=right] .words { align-items: flex-end; }
+.way-left .words { align-items: flex-start; }
+.way-right .words { align-items: flex-end; }
 /* The pin: a lit diamond with a dark core; art, it keeps its size. */
 .pin { position: relative; flex: none; inline-size: var(--world-pin-size); block-size: var(--world-pin-size); margin: var(--space-xs); rotate: 45deg; background: currentColor; box-shadow: var(--world-pin-rim); }
-[data-range=near] .pin { box-shadow: var(--world-pin-near-rim); }
-[data-kind=ping] .pin { animation: var(--world-ping-motion); }
+.range-near .pin { box-shadow: var(--world-pin-near-rim); }
+.kind-ping .pin { animation: var(--world-ping-motion); }
 .core { position: absolute; inset: 32%; background: var(--world-pin-core); }
 .chevron { flex: none; inline-size: var(--world-chevron-width); block-size: var(--world-chevron-height); background: currentColor; filter: var(--world-pin-glow); clip-path: polygon(100% 0, 0 50%, 100% 100%, 55% 50%); }
-[data-way=right] .chevron { scale: -1 1; }
+.way-right .chevron { scale: -1 1; }
 /* The name: the kind's ink in tracked capitals, over the scene. */
 .label { min-inline-size: 0; max-inline-size: calc(200 * var(--font-step-px)); font-size: var(--world-size-caps); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--world-caps-stretch); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 /* The distance on a dark tag; a short figure, always whole. */
 .distance { flex: none; padding: calc(1 * var(--font-step-px)) calc(6 * var(--font-step-px)); font-size: var(--world-size-distance); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); white-space: nowrap; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .units { margin-inline-start: var(--stroke-hairline); font-size: var(--world-size-units); color: var(--hud-ink-dim); }
-@media (prefers-reduced-motion: reduce) { [data-kind=ping] .pin { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .kind-ping .pin { animation: none; } }
 </style>

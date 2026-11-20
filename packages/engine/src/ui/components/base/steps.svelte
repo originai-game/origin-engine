@@ -1,6 +1,5 @@
 <meta name="component" content="Steps">
 <meta name="strings" content="./states.en.ogt">
-<meta name="parts" content="Steps.frame Steps.title Steps.list Steps.step Steps.item Steps.row Steps.mark Steps.dot Steps.track Steps.fill Steps.headline Steps.detail Steps.state Steps.caption Steps.empty">
 <meta name="prop:title" content="string" data-default="" data-doc="Optional visible heading; the accessible fallback is Progress steps.">
 <meta name="prop:steps" content="list" data-default="[]" data-doc="Keyed { id, label, detail, number, state, disabled } rows. number is the game's formatted marker, state upcoming/current/done/error. The game chooses order and allowed navigation.">
 <meta name="prop:column" content="bool" data-default="false" data-doc="Stack steps vertically instead of a wrapping horizontal sequence.">
@@ -15,31 +14,32 @@
      one (full once the step is done) and its words. It lies along a row
      and stands up as a column where `column` asks or the container is
      narrow. -->
-<div data-layout="shell">
-<nav id="Steps" part="Steps.frame" class="bare" data-layout="stack" data-gap="loose" class:column={column} aria-label={title || t("base.steps.title")}>
-  {#if title}<h3 part="Steps.title" class="title">{title}</h3>{/if}
-  <ol part="Steps.list" class="steps">
-    {#each steps as step (step.id)}<li part="Steps.step" class="step" data-state={step.state}>
-      <button part="Steps.item Steps.row" class="item" disabled={step.disabled} aria-current={step.state == 'current' ? 'step' : null} aria-label={step.label} aria-description={step.detail} onclick={choose}>
+<div id="StepsShell" layout="stack" fill>
+<nav id="Steps" part="frame" variant="bare" layout="stack" gap="loose" class:column={column} aria-label={title || t("base.steps.title")}>
+  {#if title}<h3 part="title" class="title">{title}</h3>{/if}
+  <ol part="list" class="steps">
+    {#each steps as step, i (step.id)}<li part="step" class="step" class:last={i == steps.length - 1} class:state-done={(step.state) == 'done'} class:state-upcoming={(step.state) == 'upcoming'}>
+      <button part="row" class="item" disabled={step.disabled} aria-current={step.state == 'current' ? 'step' : null} aria-label={step.label} aria-description={step.detail} onclick={choose}>
         <div class="face">
           <div class="rail">
-            <div part="Steps.mark Steps.dot" class="mark" data-layout="cover" data-tone={step.state == 'done' ? 'success' : step.state == 'error' ? 'danger' : step.state == 'current' ? 'primary' : null} data-motion={step.state == 'current' ? 'pop' : null}>{#if step.state == 'done' || step.state == 'error'}<og-icon class="icon" icon={step.state == 'done' ? 'check' : 'close'}></og-icon>{:else}<span>{step.number}</span>{/if}</div>
-            <div part="Steps.track" class="reach"><div part="Steps.fill" class="done" data-tone="success"></div></div>
+            <div part="dot" class="mark cover" layout="stack" fill tone={step.state == 'done' ? 'success' : step.state == 'error' ? 'danger' : step.state == 'current' ? 'primary' : null} play={step.state == 'current' ? 'pop' : null}>{#if step.state == 'done' || step.state == 'error'}<og-icon class="icon" icon={step.state == 'done' ? 'check' : 'close'}></og-icon>{:else}<span>{step.number}</span>{/if}</div>
+            <div part="track" class="reach"><div part="fill" class="done" tone="success"></div></div>
           </div>
-          <div class="copy" data-layout="stack" data-gap="hair">
-            <span part="Steps.state Steps.caption" class="state" data-tone={step.state == 'done' ? 'success' : step.state == 'error' ? 'danger' : step.state == 'current' ? 'primary' : null}>{step.state == 'done' ? t("base.steps.done") : step.state == 'error' ? t("base.steps.error") : step.state == 'current' ? t("base.steps.current") : t("base.steps.upcoming")}</span>
-            <span part="Steps.headline" class="label">{step.label}</span>
-            {#if step.detail}<span part="Steps.detail Steps.caption" class="detail">{step.detail}</span>{/if}
+          <div class="copy" layout="stack" gap="hair">
+            <span part="caption" class="state" tone={step.state == 'done' ? 'success' : step.state == 'error' ? 'danger' : step.state == 'current' ? 'primary' : null}>{step.state == 'done' ? t("base.steps.done") : step.state == 'error' ? t("base.steps.error") : step.state == 'current' ? t("base.steps.current") : t("base.steps.upcoming")}</span>
+            <span part="headline" class="label">{step.label}</span>
+            {#if step.detail}<span part="caption" class="detail">{step.detail}</span>{/if}
           </div>
         </div>
       </button>
-    </li>{:else}<li part="Steps.empty Steps.caption" class="empty" role="status">{t("base.steps.empty")}</li>{/each}
+    </li>{:else}<li part="caption" class="empty" role="status">{t("base.steps.empty")}</li>{/each}
   </ol>
 </nav>
 </div>
 
 <style>
-:host { block-size: auto; }
+.cover { justify-content: center; align-items: center; }
+#StepsShell { block-size: auto; }
 .title { --title-size: var(--title-small-size); }
 .steps { display: flex; margin: 0; padding: 0; list-style: none; }
 .step { display: flex; flex: 1 1 0; min-inline-size: 0; }
@@ -48,13 +48,13 @@
 .face { display: grid; align-self: flex-start; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm) var(--space-md); inline-size: stretch; }
 .rail { display: flex; align-items: center; gap: var(--space-xs); }
 .mark { flex: none; inline-size: var(--size-md); block-size: var(--size-md); }
-.step[data-state=upcoming] .mark { --dot-fill: var(--well-fill); --dot-rim: var(--cell-rim); --dot-rim-width: var(--cell-rim-width); --dot-ink: var(--ink-label); }
-.step[data-state=upcoming] .item { --headline-ink: var(--ink-label); }
+.step.state-upcoming .mark { --dot-fill: var(--well-fill); --dot-rim: var(--cell-rim); --dot-rim-width: var(--cell-rim-width); --dot-ink: var(--ink-label); }
+.step.state-upcoming .item { --headline-ink: var(--ink-label); }
 .icon { inline-size: var(--size-xs); block-size: var(--size-xs); }
 .reach { display: flex; flex: 1 1 0; min-inline-size: var(--space-md); block-size: var(--stroke-thick); margin-inline-end: calc(var(--space-xs) - var(--space-sm) * 2); overflow: hidden; --track-fill: var(--cell-rim); --track-shadow: none; }
 .done { flex: 0 0 0; }
-.step[data-state=done] .done { flex: 1 1 0; }
-.step:last-child .reach { visibility: hidden; }
+.step.state-done .done { flex: 1 1 0; }
+.step.last .reach { visibility: hidden; }
 .copy { min-inline-size: 0; }
 .label, .detail, .state { overflow-wrap: anywhere; }
 .column .steps { flex-direction: column; }

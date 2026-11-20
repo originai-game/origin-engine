@@ -72,6 +72,7 @@
 </section>
 
 <style>
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
 /* After the song, over the blurred stage: the song's name, the grade set
    huge and slanted in the result's lit fill beside its marks, the score on
    a cut HUD plate, the max combo and accuracy on plates, and the tally,

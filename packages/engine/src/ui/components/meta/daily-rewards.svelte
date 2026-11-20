@@ -1,6 +1,5 @@
 <meta name="component" content="DailyRewards">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="DailyRewards.frame DailyRewards.band DailyRewards.title DailyRewards.refresh DailyRewards.day DailyRewards.label DailyRewards.amount DailyRewards.state DailyRewards.cell DailyRewards.figure">
 <meta name="prop:title" content="string" data-doc="The calendar's heading; empty takes the group's (Daily rewards).">
 <meta name="prop:refresh" content="string" data-doc="When the next day's reward opens, as the game words it; empty hides it.">
 <meta name="prop:days" content="list" data-doc="The calendar's days in order: keyed rows of { id, label, icon, amount, state, milestone }: label the day in words (Day 1); amount the reward in words (x100); state claimed, today, upcoming or missed, each shown by its own word: the game sends claimed for today once its reward is taken; milestone a big reward, lit violet with a ribbon.">
@@ -23,34 +22,34 @@
   narrow panel, three on a phone, where a last day alone on its row takes
   the whole row.
 -->
-<section id="DailyRewards" part="DailyRewards.frame" data-layout="shell" aria-label={title != '' ? title : t("general.rewards.name")}>
-  <header part="DailyRewards.band" data-layout="cluster" data-gap="loose">
-    <h2 part="DailyRewards.title" data-fill>{title != '' ? title : t("general.rewards.name")}</h2>
-    {#if refresh}<div part="DailyRewards.refresh DailyRewards.label" class="timer" data-layout="row" data-gap="tight" role="timer" aria-label={refresh}><og-icon class="mark" icon="clock"></og-icon><span class="refresh-text">{refresh}</span></div>{/if}
+<section id="DailyRewards" part="frame" layout="stack" fill aria-label={title != '' ? title : t("general.rewards.name")}>
+  <header class="band" part="band" layout="wrap" gap="loose">
+    <h2 class="title" part="title" fill>{title != '' ? title : t("general.rewards.name")}</h2>
+    {#if refresh}<div part="label" class="timer refresh" layout="row" gap="tight" role="timer" aria-label={refresh}><og-icon class="mark" icon="clock"></og-icon><span class="refresh-text">{refresh}</span></div>{/if}
   </header>
-  <div class="days-scroll" data-layout="scroll" data-fill>
-    <ol class="days" data-layout="grid" data-gap="tight">
-      {#each days as d (d.id)}
-        <li class="slot" data-layout="row" data-gap="none">
+  <div class="days-scroll" layout="scroll" fill>
+    <ol class="days grid" gap="tight">
+      {#each days as d, i (d.id)}
+        <li class="slot" layout="row" gap="none" class:alone={i % 3 == 0 && i == days.length - 1}>
           {#if d.state == 'today' && canClaim}
-            <button part="DailyRewards.day DailyRewards.cell" class="day" data-state={d.state} data-milestone={d.milestone} aria-current="date" aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: t("general.rewards.claim") })} onclick={claim}><div class="face" data-layout="stack" data-gap="none">
-              <p part="DailyRewards.label" class="head">{d.label}</p>
-              <div class="art" data-layout="cover" data-fill><og-icon class="reward" icon={d.icon} data-principal></og-icon></div>
-              <p part="DailyRewards.amount DailyRewards.figure" class="amount">{d.amount}</p>
-              <div part="DailyRewards.state DailyRewards.label" class="foot" data-layout="row" data-gap="hair" data-state={d.state} data-motion="pop">
+            <button part="cell" class="day" aria-current="date" aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: t("general.rewards.claim") })} onclick={claim} class:state-claimed={(d.state) == 'claimed'} class:state-missed={(d.state) == 'missed'} class:state-today={(d.state) == 'today'} class:milestone={d.milestone}><div class="face" layout="stack" gap="none">
+              <p part="label" class="head">{d.label}</p>
+              <div class="art cover" layout="stack" fill><og-icon class="reward" icon={d.icon} data-principal></og-icon></div>
+              <p part="figure" class="amount">{d.amount}</p>
+              <div part="label" class="foot state" layout="row" gap="hair" play="pop" class:state-claimed={(d.state) == 'claimed'} class:state-missed={(d.state) == 'missed'} class:state-today={(d.state) == 'today'}>
                 <og-icon class="mark" icon="star"></og-icon>
                 <span class="state-text">{t("general.rewards.claim")}</span>
               </div>
             </div></button>
           {:else}
-            <div part="DailyRewards.day DailyRewards.cell" class="day" data-layout="row" data-gap="none" role="group" data-state={d.state} data-milestone={d.milestone} aria-current={d.state == 'today' ? 'date' : 'false'} aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: d.state == 'claimed' ? t("general.rewards.claimed") : d.state == 'missed' ? t("general.rewards.missed") : d.state == 'today' ? t("general.rewards.today") : t("general.rewards.upcoming") })}><div class="face" data-layout="stack" data-gap="none">
-              <p part="DailyRewards.label" class="head">{d.label}</p>
-              <div class="art" data-layout="overlay" data-fill>
-                <div class="art-icon" data-layout="cover" data-anchor="fill"><og-icon class="reward" icon={d.icon} data-principal></og-icon></div>
-                {#if d.state == 'claimed'}<div class="stamp" data-layout="cover" data-anchor="center" data-motion="stamp"><og-icon class="stamp-mark" icon="check" data-principal></og-icon></div>{/if}
+            <div part="cell" class="day" layout="row" gap="none" role="group" aria-current={d.state == 'today' ? 'date' : 'false'} aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: d.state == 'claimed' ? t("general.rewards.claimed") : d.state == 'missed' ? t("general.rewards.missed") : d.state == 'today' ? t("general.rewards.today") : t("general.rewards.upcoming") })} class:state-claimed={(d.state) == 'claimed'} class:state-missed={(d.state) == 'missed'} class:state-today={(d.state) == 'today'} class:milestone={d.milestone}><div class="face" layout="stack" gap="none">
+              <p part="label" class="head">{d.label}</p>
+              <div class="art" layout="overlay" fill>
+                <div class="art-icon cover" layout="stack" anchor="fill"><og-icon class="reward" icon={d.icon} data-principal></og-icon></div>
+                {#if d.state == 'claimed'}<div class="stamp cover" layout="stack" anchor="fill" play="stamp"><og-icon class="stamp-mark" icon="check" data-principal></og-icon></div>{/if}
               </div>
-              <p part="DailyRewards.amount DailyRewards.figure" class="amount">{d.amount}</p>
-              <div part="DailyRewards.state DailyRewards.label" class="foot" data-layout="row" data-gap="hair" data-state={d.state}>
+              <p part="figure" class="amount">{d.amount}</p>
+              <div part="label" class="foot state" layout="row" gap="hair" class:state-claimed={(d.state) == 'claimed'} class:state-missed={(d.state) == 'missed'} class:state-today={(d.state) == 'today'}>
                 {#if d.state != 'upcoming'}<og-icon class="mark" icon={d.state == 'claimed' ? 'check' : d.state == 'missed' ? 'close' : 'star'}></og-icon>{/if}
                 <span class="state-text">{d.state == 'claimed' ? t("general.rewards.claimed") : d.state == 'missed' ? t("general.rewards.missed") : d.state == 'today' ? t("general.rewards.today") : t("general.rewards.upcoming")}</span>
               </div>
@@ -64,10 +63,12 @@
 </section>
 
 <style>
-[part="DailyRewards.band"] { width: stretch; flex: none; }
+.cover { justify-content: center; align-items: center; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
+.band { width: stretch; flex: none; }
 /* The title keeps its words whole and takes its own width first: the tag
    wraps under it when both do not fit. */
-[part="DailyRewards.title"] { margin: 0; flex: 1 1 auto; }
+.title { margin: 0; flex: 1 1 auto; }
 /* The next reward's time on a dark cut tag. */
 .timer { max-width: stretch; padding: var(--space-xxs) var(--space-sm); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .refresh-text { text-align: end; min-inline-size: 0; overflow-wrap: anywhere; color: var(--ink-bright); }
@@ -86,26 +87,26 @@
 .foot { width: stretch; justify-content: center; padding: var(--space-xxs); font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-ink-faint); }
 .state-text { text-align: center; min-inline-size: 0; overflow-wrap: anywhere; }
 /* Taken: the art and amount dim under a check stamp; the foot in the success colour. */
-.day[data-state=claimed] .art-icon, .day[data-state=claimed] .amount { opacity: var(--quest-day-dim-opacity); }
-.day[data-state=claimed] .foot { color: var(--tone-success); background: var(--quest-day-taken-foot-fill); }
+.day.state-claimed .art-icon, .day.state-claimed .amount { opacity: var(--quest-day-dim-opacity); }
+.day.state-claimed .foot { color: var(--tone-success); background: var(--quest-day-taken-foot-fill); }
 .stamp { width: var(--size-xl); height: var(--size-xl); border-radius: var(--quest-stamp-radius); background: var(--quest-stamp-fill); color: var(--quest-stamp-ink); box-shadow: var(--quest-stamp-shadow); rotate: -8deg; }
 .stamp-mark { width: var(--size-sm); height: var(--size-sm); }
 /* Missed: hatched, its word in danger. */
-.day[data-state=missed] { background: var(--quest-day-missed-fill); }
-.day[data-state=missed] .art-icon, .day[data-state=missed] .amount { opacity: var(--quest-day-dim-opacity); }
-.day[data-state=missed] .foot { color: var(--tone-danger); background: var(--quest-day-missed-foot-fill); }
+.day.state-missed { background: var(--quest-day-missed-fill); }
+.day.state-missed .art-icon, .day.state-missed .amount { opacity: var(--quest-day-dim-opacity); }
+.day.state-missed .foot { color: var(--tone-danger); background: var(--quest-day-missed-foot-fill); }
 /* A milestone: violet, with a ribbon. */
-.day[data-milestone=true] { background: var(--quest-day-milestone-fill); box-shadow: var(--quest-day-milestone-rim); }
-.day[data-milestone=true] .head { color: var(--quest-day-milestone-ink); background: var(--quest-day-milestone-head-fill); }
-.day[data-milestone=true] .reward { color: var(--quest-day-milestone-ink); filter: var(--quest-day-milestone-glow); }
+.day.milestone { background: var(--quest-day-milestone-fill); box-shadow: var(--quest-day-milestone-rim); }
+.day.milestone .head { color: var(--quest-day-milestone-ink); background: var(--quest-day-milestone-head-fill); }
+.day.milestone .reward { color: var(--quest-day-milestone-ink); filter: var(--quest-day-milestone-glow); }
 .ribbon { position: absolute; inset-inline-end: 0; top: calc(var(--size-md) + var(--space-xxs)); padding: 0 var(--space-xs) 0 var(--space-sm); font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--quest-ribbon-ink); background: var(--quest-ribbon-fill); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% 100%, var(--quest-cut-sm) 100%, 0 50%); pointer-events: none; }
 /* Today: lit gold, a gold header and foot. */
-.day[data-state=today] { background: var(--quest-day-today-fill); box-shadow: var(--quest-day-today-rim); }
-.day[data-state=today] .head { color: var(--quest-gold-ink); background: var(--quest-gold); }
-.day[data-state=today] .reward { color: var(--quest-gold); filter: var(--quest-socket-glow); }
-.day[data-state=today] .foot { color: var(--quest-gold-ink); background: var(--quest-claim-fill); }
-button.day[data-state=today]:hover { box-shadow: var(--quest-day-today-hover-rim); }
-button.day[data-state=today]:active { background: var(--quest-day-today-fill); }
+.day.state-today { background: var(--quest-day-today-fill); box-shadow: var(--quest-day-today-rim); }
+.day.state-today .head { color: var(--quest-gold-ink); background: var(--quest-gold); }
+.day.state-today .reward { color: var(--quest-gold); filter: var(--quest-socket-glow); }
+.day.state-today .foot { color: var(--quest-gold-ink); background: var(--quest-claim-fill); }
+button.day.state-today:hover { box-shadow: var(--quest-day-today-hover-rim); }
+button.day.state-today:active { background: var(--quest-day-today-fill); }
 @container (width < 760px) {
   .days { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .day { min-height: calc(var(--size-xxl) * 1.6); }
@@ -116,7 +117,7 @@ button.day[data-state=today]:active { background: var(--quest-day-today-fill); }
 @container (width < 400px) {
   .days { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   /* A last day alone on its row takes the whole row. */
-  .slot:nth-child(3n+1):last-child { grid-column: 1 / -1; }
+  .slot.alone { grid-column: 1 / -1; }
   /* A narrow tile keeps its state word whole: the mark above it, no tracking. */
   .foot { flex-direction: column; letter-spacing: normal; }
   .state-text { white-space: nowrap; }

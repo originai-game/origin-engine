@@ -27,6 +27,7 @@
 </div>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* Drawn over the scene: the style's tag halo holds its text there. */
 #RpgVitals { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #RpgVitals { position: relative; inline-size: fit-content; }
@@ -49,7 +50,5 @@
   .frame.plate-large .bars { width: calc(var(--size-xxl) * 1.7); }
   .frame.plate-large .bar { height: calc(var(--space-md) * 1.2); }
 }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 .bars.roomy { row-gap: var(--layout-gap-tight); }
 </style>

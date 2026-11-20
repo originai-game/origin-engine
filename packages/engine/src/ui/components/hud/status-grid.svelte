@@ -40,6 +40,7 @@
 </div>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* Drawn over the scene: the style's tag halo holds its text there. */
 #StatusGrid { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #Buffs, #Debuffs { max-width: var(--measure-sm); margin: 0; padding: 0; list-style: none; align-items: flex-start; }
@@ -58,5 +59,4 @@
 .badge { padding: 0 var(--space-xxs); }
 .figure { --figure-size: var(--font-step-sm); white-space: nowrap; }
 #Count { --figure-shadow: var(--tag-halo); }
-.cover { justify-content: center; align-items: center; }
 </style>

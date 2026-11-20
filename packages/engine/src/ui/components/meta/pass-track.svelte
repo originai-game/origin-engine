@@ -1,6 +1,5 @@
 <meta name="component" content="PassTrack">
 <meta name="strings" content="./meta.en.ogt">
-<meta name="parts" content="PassTrack.frame PassTrack.band PassTrack.kicker PassTrack.title PassTrack.upgrade PassTrack.level PassTrack.progress PassTrack.track PassTrack.fill PassTrack.rewards PassTrack.lane PassTrack.reward PassTrack.tier PassTrack.art PassTrack.name PassTrack.amount PassTrack.detail PassTrack.state PassTrack.claim PassTrack.caption PassTrack.figure">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses Season pass.">
 <meta name="prop:season" content="string" data-default="" data-doc="The game's season name, a kicker over the title.">
 <meta name="prop:refresh" content="string" data-default="" data-doc="The game's already formatted time remaining, after the season in the kicker; no clock runs here.">
@@ -34,52 +33,52 @@
   reward's state; the track reports claim (a reward's key), upgrade and
   retry.
 -->
-<section id="PassTrack" part="PassTrack.frame" data-layout="shell" data-gap="loose" aria-label={title || t("meta.pass.title")} aria-busy={loading}>
+<section class="frame" id="PassTrack" part="frame" layout="stack" fill gap="loose" aria-label={title || t("meta.pass.title")} aria-busy={loading}>
   <div class="lit"></div>
-  <header part="PassTrack.band" class="band" data-layout="cluster" data-gap="loose">
-    <div class="heading" data-layout="stack" data-gap="hair" data-fill>
-      {#if season || refresh}<span part="PassTrack.kicker" class="kicker">{season && refresh ? t("meta.pass.kicker", { season, refresh }) : season || refresh}</span>{/if}
-      <h2 part="PassTrack.title">{title || t("meta.pass.title")}</h2>
+  <header part="band" class="band" layout="wrap" gap="loose">
+    <div class="heading" layout="stack" gap="hair" fill>
+      {#if season || refresh}<span part="kicker" class="kicker">{season && refresh ? t("meta.pass.kicker", { season, refresh }) : season || refresh}</span>{/if}
+      <h2 part="title">{title || t("meta.pass.title")}</h2>
     </div>
-    {#if !premiumUnlocked && upgradeLabel}<button id="Upgrade" part="PassTrack.upgrade" class="upgrade go" data-tone="reward" variant="primary" disabled={disabled || loading || !!error} onclick={upgrade}>{upgradeLabel}</button>{/if}
+    {#if !premiumUnlocked && upgradeLabel}<button id="Upgrade" part="upgrade" class="upgrade go" tone="reward" variant="primary" disabled={disabled || loading || !!error} onclick={upgrade}>{upgradeLabel}</button>{/if}
   </header>
-  {#if loading}<div class="wait" data-layout="row" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
+  {#if loading}<div class="wait" layout="row" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
   {:else if error}<ErrorState body={error} />
   {:else if !rewards.length}<EmptyState title={t("meta.pass.empty")} icon="bag" />
   {:else}
-    <div class="body" data-layout="scroll" data-gap="loose" data-fill>
-    <div part="PassTrack.progress" class="progress" data-layout="row" data-gap="loose">
-      {#if level}<div part="PassTrack.level" class="level" data-layout="cover" aria-label={t("meta.pass.level", { level })}><span>{level}</span></div>{/if}
-      <div class="meter" data-layout="stack" data-gap="tight" data-fill>
-        <div class="meter-line" data-layout="row" data-gap="tight"><span part="PassTrack.caption" class="key" data-fill>{t("meta.pass.progress")}</span><span part="PassTrack.figure" class="figure">{progressText || formatPercent(progress)}</span></div>
-        <div part="PassTrack.track" class="bar" role="meter" aria-label={t("meta.pass.progress")} aria-valuetext={progressText || formatPercent(progress)} style:--fill={progress > 1 ? 1 : progress < 0 ? 0 : progress}><div part="PassTrack.fill" class="bar-fill"></div></div>
+    <div class="body" layout="scroll" gap="loose" fill>
+    <div part="progress" class="progress" layout="row" gap="loose">
+      {#if level}<div part="level" class="level cover" layout="stack" fill aria-label={t("meta.pass.level", { level })}><span>{level}</span></div>{/if}
+      <div class="meter" layout="stack" gap="tight" fill>
+        <div class="meter-line" layout="row" gap="tight"><span part="caption" class="key" fill>{t("meta.pass.progress")}</span><span part="figure" class="figure">{progressText || formatPercent(progress)}</span></div>
+        <div part="track" class="bar" role="meter" aria-label={t("meta.pass.progress")} aria-valuetext={progressText || formatPercent(progress)} style:--fill={progress > 1 ? 1 : progress < 0 ? 0 : progress}><div part="fill" class="bar-fill"></div></div>
       </div>
     </div>
-    <div part="PassTrack.rewards" class="lanes" role="group" aria-label={t("meta.pass.rewards")}>
-      <div class="lane-h" data-lane="premium"><span>{t("meta.pass.premium")}</span>{#if !premiumUnlocked}<span part="PassTrack.caption" class="sub">{t("meta.locked")}</span>{/if}</div>
-      <ol part="PassTrack.lane" class="lane" data-layout="row" data-gap="tight" data-lane="premium" aria-label={t("meta.pass.premiumRewards")}>
-        {#each rewards as r (r.id)}{#if r.premium}<li part="PassTrack.reward" class="tile" data-layout="stack" data-gap="tight" data-premium={true} data-state={r.state} data-ready={r.state == 'available' && premiumUnlocked} aria-label={t("meta.pass.reward", { tier: r.tier, name: r.name, state: r.state == 'claimed' ? t("meta.claimed") : r.state == 'available' && premiumUnlocked ? t("meta.available") : t("meta.locked") })}>
-          <span part="PassTrack.tier" class="tier">{t("meta.pass.tier", { tier: r.tier })}</span>
-          <og-icon part="PassTrack.art" class="art" icon={r.icon}></og-icon>
-          <span part="PassTrack.name" class="name">{r.name}</span>
-          {#if r.amount}<span part="PassTrack.amount" class="amount">{r.amount}</span>{/if}
-          {#if r.detail}<p part="PassTrack.detail" class="detail">{r.detail}</p>{/if}
-          {#if r.state == 'claimed'}<div part="PassTrack.state" class="state" data-layout="row" data-gap="hair" data-kind="claimed"><og-icon class="mark" icon="check"></og-icon>{t("meta.claimed")}</div>
-          {:else if r.state == 'available' && premiumUnlocked}<button part="PassTrack.claim" class="claim go" data-tone="reward" variant="primary" disabled={disabled} onclick={claim}>{t("meta.claim")}</button>
-          {:else}<div part="PassTrack.state" class="state" data-layout="row" data-gap="hair" data-kind="locked">{t("meta.locked")}</div>{/if}
+    <div part="rewards" class="lanes" role="group" aria-label={t("meta.pass.rewards")}>
+      <div class="lane-h" class:lane-premium={true}><span>{t("meta.pass.premium")}</span>{#if !premiumUnlocked}<span part="caption" class="sub">{t("meta.locked")}</span>{/if}</div>
+      <ol part="lane" class="lane" layout="row" gap="tight" aria-label={t("meta.pass.premiumRewards")} class:lane-premium={true}>
+        {#each rewards as r (r.id)}{#if r.premium}<li part="reward" class="tile" layout="stack" gap="tight" aria-label={t("meta.pass.reward", { tier: r.tier, name: r.name, state: r.state == 'claimed' ? t("meta.claimed") : r.state == 'available' && premiumUnlocked ? t("meta.available") : t("meta.locked") })} class:premium={true} class:not-ready={!(r.state == 'available' && premiumUnlocked)} class:ready={r.state == 'available' && premiumUnlocked} class:state-claimed={(r.state) == 'claimed'}>
+          <span part="tier" class="tier">{t("meta.pass.tier", { tier: r.tier })}</span>
+          <og-icon part="art" class="art" icon={r.icon}></og-icon>
+          <span part="name" class="name">{r.name}</span>
+          {#if r.amount}<span part="amount" class="amount">{r.amount}</span>{/if}
+          {#if r.detail}<p part="detail" class="detail">{r.detail}</p>{/if}
+          {#if r.state == 'claimed'}<div part="state" class="state" layout="row" gap="hair" class:kind-claimed={true}><og-icon class="mark" icon="check"></og-icon>{t("meta.claimed")}</div>
+          {:else if r.state == 'available' && premiumUnlocked}<button part="claim" class="claim go" tone="reward" variant="primary" disabled={disabled} onclick={claim}>{t("meta.claim")}</button>
+          {:else}<div part="state" class="state" layout="row" gap="hair">{t("meta.locked")}</div>{/if}
         </li>{/if}{/each}
       </ol>
-      <div class="lane-h" data-lane="free"><span>{t("meta.pass.free")}</span></div>
-      <ol part="PassTrack.lane" class="lane" data-layout="row" data-gap="tight" data-lane="free" aria-label={t("meta.pass.freeRewards")}>
-        {#each rewards as r (r.id)}{#if !r.premium}<li part="PassTrack.reward" class="tile" data-layout="stack" data-gap="tight" data-premium={false} data-state={r.state} data-ready={r.state == 'available'} aria-label={t("meta.pass.reward", { tier: r.tier, name: r.name, state: r.state == 'claimed' ? t("meta.claimed") : r.state == 'available' ? t("meta.available") : t("meta.locked") })}>
-          <span part="PassTrack.tier" class="tier">{t("meta.pass.tier", { tier: r.tier })}</span>
-          <og-icon part="PassTrack.art" class="art" icon={r.icon}></og-icon>
-          <span part="PassTrack.name" class="name">{r.name}</span>
-          {#if r.amount}<span part="PassTrack.amount" class="amount">{r.amount}</span>{/if}
-          {#if r.detail}<p part="PassTrack.detail" class="detail">{r.detail}</p>{/if}
-          {#if r.state == 'claimed'}<div part="PassTrack.state" class="state" data-layout="row" data-gap="hair" data-kind="claimed"><og-icon class="mark" icon="check"></og-icon>{t("meta.claimed")}</div>
-          {:else if r.state == 'available'}<button part="PassTrack.claim" class="claim go" data-tone="reward" variant="primary" disabled={disabled} onclick={claim}>{t("meta.claim")}</button>
-          {:else}<div part="PassTrack.state" class="state" data-layout="row" data-gap="hair" data-kind="locked">{t("meta.locked")}</div>{/if}
+      <div class="lane-h"><span>{t("meta.pass.free")}</span></div>
+      <ol part="lane" class="lane" layout="row" gap="tight" aria-label={t("meta.pass.freeRewards")}>
+        {#each rewards as r (r.id)}{#if !r.premium}<li part="reward" class="tile" layout="stack" gap="tight" aria-label={t("meta.pass.reward", { tier: r.tier, name: r.name, state: r.state == 'claimed' ? t("meta.claimed") : r.state == 'available' ? t("meta.available") : t("meta.locked") })} class:premium={false} class:not-ready={!(r.state == 'available')} class:ready={r.state == 'available'} class:state-claimed={(r.state) == 'claimed'}>
+          <span part="tier" class="tier">{t("meta.pass.tier", { tier: r.tier })}</span>
+          <og-icon part="art" class="art" icon={r.icon}></og-icon>
+          <span part="name" class="name">{r.name}</span>
+          {#if r.amount}<span part="amount" class="amount">{r.amount}</span>{/if}
+          {#if r.detail}<p part="detail" class="detail">{r.detail}</p>{/if}
+          {#if r.state == 'claimed'}<div part="state" class="state" layout="row" gap="hair" class:kind-claimed={true}><og-icon class="mark" icon="check"></og-icon>{t("meta.claimed")}</div>
+          {:else if r.state == 'available'}<button part="claim" class="claim go" tone="reward" variant="primary" disabled={disabled} onclick={claim}>{t("meta.claim")}</button>
+          {:else}<div part="state" class="state" layout="row" gap="hair">{t("meta.locked")}</div>{/if}
         </li>{/if}{/each}
       </ol>
     </div>
@@ -88,9 +87,10 @@
 </section>
 
 <style>
-:host { inline-size: stretch; }
+.cover { justify-content: center; align-items: center; }
+#PassTrack { inline-size: stretch; }
 /* The frame: two corners cut, a lit top edge. */
-[part="PassTrack.frame"] { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.frame { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 h2 { margin: 0; overflow-wrap: anywhere; }
 .band { width: stretch; flex: none; align-items: flex-end; }
@@ -114,23 +114,24 @@ h2 { margin: 0; overflow-wrap: anywhere; }
    the name sits over its lane. */
 .lanes { display: grid; grid-template-columns: var(--shop-lane-width) minmax(0, 1fr); column-gap: var(--space-sm); row-gap: var(--space-sm); width: stretch; min-block-size: 0; }
 .lane-h { display: flex; flex-direction: column; justify-content: center; gap: var(--space-xxs); padding-inline-start: var(--space-sm); font-weight: var(--inv-figure-weight); color: var(--ink-label); border-inline-start: var(--shop-free-rule); }
-.lane-h[data-lane=premium] { color: var(--shop-premium-ink); border-inline-start: var(--shop-premium-rule); }
+.lane-h.lane-premium { color: var(--shop-premium-ink); border-inline-start: var(--shop-premium-rule); }
 .sub { color: var(--inv-kicker-ink); }
 .lane { min-width: 0; margin: 0; padding: var(--space-xxs); list-style: none; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-snap-type: x proximity; mask-image: var(--shop-lane-fade); padding-inline-end: var(--size-lg); }
 /* A tile: cut at two corners; premium washed and rimmed in gold; ready
    ringed in the family's light. */
 .tile { flex: 1 0 var(--shop-tier-width); min-inline-size: var(--shop-tier-width); align-items: center; padding: var(--space-xs); scroll-snap-align: start; text-align: center; background: var(--shop-tile-fill); box-shadow: var(--shop-tile-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.tile[data-premium=true] { background: var(--shop-premium-tile); box-shadow: var(--shop-premium-rim); }
-.tile[data-ready=true] { box-shadow: var(--shop-ready-rim); }
+.tile.premium { background: var(--shop-premium-tile); box-shadow: var(--shop-premium-rim); }
+.tile.ready { box-shadow: var(--shop-ready-rim); }
 .tier { align-self: flex-start; font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); white-space: nowrap; }
 .art { flex: none; inline-size: var(--shop-tier-art-size); block-size: var(--shop-tier-art-size); filter: var(--inv-slot-art-shadow); }
-.tile[data-state=claimed] .art { opacity: var(--shop-tier-claimed-opacity); }
-.tile[data-ready=false]:not([data-state=claimed]) .art { filter: var(--shop-art-refused); }
+.tile.state-claimed .art { opacity: var(--shop-tier-claimed-opacity); }
+.tile.not-ready .art { filter: var(--shop-art-refused); }
+.tile.state-claimed .art { filter: none; }
 .name { max-width: stretch; font-weight: var(--inv-name-weight); color: var(--ink-bright); overflow-wrap: anywhere; }
 .detail { margin: 0; max-width: stretch; font-size: var(--inv-tag-size); color: var(--ink-label); overflow-wrap: anywhere; }
 .amount { font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); color: var(--ink-bright); white-space: nowrap; }
 .state { align-items: center; margin-block-start: auto; padding: var(--space-xxs) var(--space-xs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); white-space: nowrap; color: var(--shop-sold-ink); background: var(--shop-sold-fill); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.state[data-kind=claimed] { color: var(--shop-owned-ink); background: var(--shop-owned-fill); }
+.state.kind-claimed { color: var(--shop-owned-ink); background: var(--shop-owned-fill); }
 .mark { flex: none; inline-size: var(--inv-tag-size); block-size: var(--inv-tag-size); }
 .claim { margin-block-start: auto; width: stretch; min-block-size: var(--size-touch); white-space: normal; }
 .wait { padding: var(--space-lg); }

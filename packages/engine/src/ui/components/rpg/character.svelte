@@ -60,6 +60,7 @@
 </section>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* The character sheet on a smoked cut card: an octagon portrait beside
    the name in condensed capitals, the figure standing in a glow between
    two columns of cut slots (each in its rarity, the chosen one ringed in
@@ -110,6 +111,4 @@
 /* A short screen (a desktop at large text): smaller slots, so the doll can give height to the attributes. */
 @media (600px <= width) and (500px <= height < 800px) { .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } .column { --layout-gap-tight: var(--layout-gap-hair); } }
 @media (600px <= width) and (500px <= height < 800px) { .attr-mark { display: none; } .attributes { --layout-gap-loose: var(--layout-gap); } }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 </style>

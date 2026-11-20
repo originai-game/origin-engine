@@ -1,6 +1,5 @@
 <meta name="component" content="IdlePrestige">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdlePrestige.frame IdlePrestige.band IdlePrestige.kicker IdlePrestige.title IdlePrestige.socket IdlePrestige.label IdlePrestige.figure IdlePrestige.row IdlePrestige.name IdlePrestige.readout IdlePrestige.requirement IdlePrestige.tag IdlePrestige.track IdlePrestige.fill IdlePrestige.confirm">
 <meta name="prop:title" content="string" data-doc="The panel's heading; empty takes the group's (Prestige).">
 <meta name="prop:currency" content="string" data-doc="The prestige currency's name (Souls).">
 <meta name="prop:icon" content="string" data-doc="The prestige currency's icon.">
@@ -29,49 +28,49 @@
   B while asking). Cancel comes first so no key resets by accident. The
   game decides whether a reset is allowed and what it gives.
 -->
-<section id="IdlePrestige" part="IdlePrestige.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("idle.prestige.name")} data-met={met} data-confirming={confirming}>
+<section class="frame" id="IdlePrestige" part="frame" layout="stack" fill gap="loose" aria-label={title != '' ? title : t("idle.prestige.name")} data-confirming={confirming} class:met={met}>
   <div class="lit"></div>
-  <header part="IdlePrestige.band" data-layout="stack" data-gap="none">
-    <span part="IdlePrestige.kicker" class="kicker">{t("idle.prestige.kicker")}</span>
-    <h2 part="IdlePrestige.title">{title != '' ? title : t("idle.prestige.name")}</h2>
+  <header class="band" part="band" layout="stack" gap="none">
+    <span part="kicker" class="kicker">{t("idle.prestige.kicker")}</span>
+    <h2 class="title" part="title">{title != '' ? title : t("idle.prestige.name")}</h2>
   </header>
-  <div class="body" data-layout="scroll" data-gap="none">
-    <div class="body-inner" data-layout="stack" data-gap="loose">
-      <div class="totals" data-layout="row" data-gap="loose">
-        <div part="IdlePrestige.socket" class="socket" data-layout="cover"><og-icon class="currency-icon" icon={icon}></og-icon></div>
-        <div class="total" data-layout="stack" data-gap="none" data-fill>
-          <span class="label" part="IdlePrestige.label">{t("idle.prestige.held", { currency: currency })}</span>
-          <span part="IdlePrestige.figure" class="figure" data-tag="held">{held}</span>
+  <div class="body" layout="scroll" gap="none">
+    <div class="body-inner" layout="stack" gap="loose">
+      <div class="totals" layout="row" gap="loose">
+        <div part="socket" class="socket cover" layout="stack" fill><og-icon class="currency-icon" icon={icon}></og-icon></div>
+        <div class="total" layout="stack" gap="none" fill>
+          <span class="label" part="label">{t("idle.prestige.held", { currency: currency })}</span>
+          <span part="figure" class="figure">{held}</span>
         </div>
-        <div class="total gain" data-layout="stack" data-gap="none">
-          <span class="label" part="IdlePrestige.label">{t("idle.prestige.gain")}</span>
-          <span part="IdlePrestige.figure" class="figure" data-tag="gain">{gain}</span>
+        <div class="total gain" layout="stack" gap="none">
+          <span class="label" part="label">{t("idle.prestige.gain")}</span>
+          <span part="figure" class="figure" class:tag-gain={true}>{gain}</span>
         </div>
       </div>
       {#if rows.length}
-      <ul class="rows" data-layout="stack" data-gap="hair" aria-label={t("idle.prestige.bonus")}>
+      <ul class="rows" layout="stack" gap="hair" aria-label={t("idle.prestige.bonus")}>
         {#each rows as r (r.id)}
-          <li part="IdlePrestige.row" data-layout="row" data-gap="tight" aria-label={t("idle.prestige.rowName", { label: r.label, now: r.now, after: r.after })}>
+          <li class="row" part="row" layout="row" gap="tight" aria-label={t("idle.prestige.rowName", { label: r.label, now: r.now, after: r.after })}>
             <og-icon class="row-icon" icon={r.icon}></og-icon>
-            <span part="IdlePrestige.name" class="name" data-fill>{r.label}</span>
-            <div class="readouts" data-layout="row" data-gap="tight">
-              <span part="IdlePrestige.readout" class="readout" data-tag="now">{r.now}</span>
+            <span part="name" class="name" fill>{r.label}</span>
+            <div class="readouts" layout="row" gap="tight">
+              <span part="readout" class="readout">{r.now}</span>
               <og-icon class="row-arrow" icon="play"></og-icon>
-              <span part="IdlePrestige.readout" class="readout" data-tag="after">{r.after}</span>
+              <span part="readout" class="readout" class:tag-after={true}>{r.after}</span>
             </div>
           </li>
         {/each}
       </ul>
       {/if}
       {#if requirement != ''}
-      <div part="IdlePrestige.requirement" data-layout="stack" data-gap="tight" data-met={met}>
-        <div class="req-line" data-layout="row" data-gap="tight">
-          <span class="req-text" data-fill>{requirement}</span>
-          <div part="IdlePrestige.tag" class="tag" data-met={met} data-layout="row" data-gap="hair"><og-icon class="req-mark" icon={met ? 'check' : 'lock'}></og-icon><span>{met ? t("idle.prestige.met") : t("idle.prestige.notMet")}</span></div>
+      <div class="requirement" part="requirement" layout="stack" gap="tight" class:met={met}>
+        <div class="req-line" layout="row" gap="tight">
+          <span class="req-text" fill>{requirement}</span>
+          <div part="tag" class="tag" layout="row" gap="hair" class:met={met}><og-icon class="req-mark" icon={met ? 'check' : 'lock'}></og-icon><span>{met ? t("idle.prestige.met") : t("idle.prestige.notMet")}</span></div>
         </div>
         {#if progress >= 0}
-        <div class="bar-line" data-layout="row" data-gap="tight">
-          <div part="IdlePrestige.track" class="track" data-fill role="progressbar" aria-label={t("idle.prestige.progress")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={progress * 100} aria-valuetext={progressText != '' ? progressText : formatPercent(progress)}><div part="IdlePrestige.fill" class="fill" data-met={met} style:--value={progress > 1 ? 1 : progress}></div></div>
+        <div class="bar-line" layout="row" gap="tight">
+          <div part="track" class="track" fill role="progressbar" aria-label={t("idle.prestige.progress")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={progress * 100} aria-valuetext={progressText != '' ? progressText : formatPercent(progress)}><div part="fill" class="fill" style:--value={progress > 1 ? 1 : progress} class:met={met}></div></div>
           <span class="progress-text">{progressText != '' ? progressText : formatPercent(progress)}</span>
         </div>
         {/if}
@@ -80,27 +79,28 @@
     </div>
   </div>
   {#if confirming}
-    <div part="IdlePrestige.confirm" data-layout="stack" data-gap="loose" role="alertdialog" aria-label={t("idle.prestige.ask", { gain: gain, currency: currency })} onback={cancel}>
+    <div class="confirm" part="confirm" layout="stack" gap="loose" role="alertdialog" aria-label={t("idle.prestige.ask", { gain: gain, currency: currency })} onback={cancel}>
       <p class="ask">{t("idle.prestige.ask", { gain: gain, currency: currency })}</p>
-      <div class="actions" data-layout="cluster">
+      <div class="actions" layout="wrap">
         <button id="Cancel" variant="ghost" onclick={cancel}><span>{t("idle.prestige.cancel")}</span></button>
         <button id="Confirm" variant="danger" onclick={confirm}><span>{t("idle.prestige.confirm")}</span></button>
       </div>
     </div>
   {:else}
-    <div class="actions" data-layout="cluster">
+    <div class="actions" layout="wrap">
       <button id="Request" class="go" variant="primary" disabled={!met} onclick={request}><og-icon class="button-icon" icon={icon}></og-icon><span>{t("idle.prestige.request")}</span></button>
     </div>
   {/if}
 </section>
 
 <style>
-:host { inline-size: stretch; block-size: auto; min-inline-size: 0; max-block-size: 100%; min-block-size: 0; }
-[part="IdlePrestige.frame"] { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.cover { justify-content: center; align-items: center; }
+#IdlePrestige { inline-size: stretch; block-size: auto; min-inline-size: 0; max-block-size: 100%; min-block-size: 0; }
+.frame { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 .kicker { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--inv-kicker-size); font-weight: var(--hud-label-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--hud-label-ink); }
-[part="IdlePrestige.band"] { width: stretch; flex: none; align-items: flex-start; }
-[part="IdlePrestige.title"] { margin: 0; max-inline-size: 100%; overflow-wrap: anywhere; }
+.band { width: stretch; flex: none; align-items: flex-start; }
+.title { margin: 0; max-inline-size: 100%; overflow-wrap: anywhere; }
 .body { overflow-y: auto; flex: 0 1 auto; min-height: 0; }
 .body-inner { width: stretch; }
 /* What the player holds and what a reset gives, the gain in epic purple. */
@@ -111,28 +111,28 @@
 .gain { align-items: flex-end; max-width: 50%; }
 .label { overflow-wrap: anywhere; max-inline-size: 100%; font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); color: var(--hud-label-ink); }
 .figure { max-inline-size: 100%; overflow-wrap: anywhere; font-size: var(--play-figure-lg-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--ink-bright); }
-.figure[data-tag=gain] { text-align: end; color: var(--play-epic-ink); }
+.figure.tag-gain { text-align: end; color: var(--play-epic-ink); }
 .rows { width: stretch; margin: 0; padding: 0; list-style: none; }
-[part="IdlePrestige.row"] { width: stretch; align-items: center; padding: var(--space-xxs) var(--space-sm); min-height: var(--size-md); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.row { width: stretch; align-items: center; padding: var(--space-xxs) var(--space-sm); min-height: var(--size-md); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .row-icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .name { flex: 1; min-width: 0; text-align: start; overflow-wrap: anywhere; font-weight: var(--inv-name-weight); color: var(--ink-bright); }
 .readouts { flex: none; justify-content: flex-end; align-items: center; }
 .readout { white-space: nowrap; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-label-ink); }
-.readout[data-tag=after] { font-size: var(--play-figure-size); color: var(--play-epic-ink); }
+.readout.tag-after { font-size: var(--play-figure-size); color: var(--play-epic-ink); }
 .row-arrow { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--hud-label-ink); }
 .row-arrow:dir(rtl) { scale: -1 1; }
 /* The requirement in a well: its words, Ready or Not yet on a tag, its bar. */
-[part="IdlePrestige.requirement"] { padding: var(--space-sm); background: var(--play-well-fill); box-shadow: var(--play-well-rim); }
+.requirement { padding: var(--space-sm); background: var(--play-well-fill); box-shadow: var(--play-well-rim); }
 .req-line, .bar-line { width: stretch; align-items: center; }
 .req-text { flex: 1; min-width: 0; text-align: start; overflow-wrap: anywhere; color: var(--ink-bright); }
 .tag { flex: none; align-items: center; padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); background: var(--hud-tag-fill); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.tag[data-met=true] { color: var(--play-auto-ink); background: var(--play-auto-fill); }
+.tag.met { color: var(--play-auto-ink); background: var(--play-auto-fill); }
 .req-mark { width: calc(var(--size-xs) * 0.75); height: calc(var(--size-xs) * 0.75); flex: none; }
 .track { position: relative; min-width: var(--size-lg); block-size: calc(10 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); }
 .fill { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--play-cycle-fill); }
-.fill[data-met=true] { background: var(--play-ready-fill); }
+.fill.met { background: var(--play-ready-fill); }
 .progress-text { flex: none; max-width: 50%; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-label-ink); }
-[part="IdlePrestige.confirm"] { flex: none; padding: var(--space-md); background: var(--play-well-fill); box-shadow: var(--play-low-rim); }
+.confirm { flex: none; padding: var(--space-md); background: var(--play-well-fill); box-shadow: var(--play-low-rim); }
 .ask { margin: 0; overflow-wrap: anywhere; color: var(--ink-bright); }
 .actions { width: stretch; flex: none; justify-content: flex-end; }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
@@ -142,7 +142,7 @@
 /* A narrow panel (a phone, or a side column on a wide screen) wraps each
    row's figures under its name; the actions share the width. */
 @container (width < 560px) {
-  [part="IdlePrestige.row"] { flex-wrap: wrap; padding: var(--space-xxs) var(--space-xs); }
+  .row { flex-wrap: wrap; padding: var(--space-xxs) var(--space-xs); }
   .readouts { flex: 1 0 100%; }
   .actions button { flex: 1; min-width: 0; }
 }

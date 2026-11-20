@@ -18,6 +18,8 @@
 </section>
 
 <style>
+.cover { justify-content: center; align-items: center; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
 /* Drawn over the scene: the style's tag halo holds its text there. */
 #RpgCommands { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #RpgCommands { inline-size: stretch; }
@@ -27,6 +29,4 @@
 .face { inline-size: 100%; block-size: 100%; }
 .command-mark { width: var(--size-lg); height: var(--size-lg); }
 @media (width < 600px), (height < 500px) { .plates { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); } }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 </style>

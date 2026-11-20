@@ -91,6 +91,7 @@
 </section>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* The garage: the shown car's picture fills the page under a shade that
    holds the words over it; its class in the accent over its name in large
    slanted capitals, the arrows and the count under them; the ratings and
@@ -162,6 +163,4 @@
   .side { width: stretch; flex: none; padding: var(--space-sm); --layout-gap-wide: var(--layout-gap); }
   .actions { width: stretch; }
 }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 </style>

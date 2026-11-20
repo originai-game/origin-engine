@@ -52,6 +52,7 @@
 </section>
 
 <style>
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
 /* The loadout over the scene: the title in large condensed capitals, a
    category's name over a rule, each item a cut plate of smoked glass (the
    chosen one ringed in the accent and washed in it), Equipped on a green

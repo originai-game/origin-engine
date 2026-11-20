@@ -1,6 +1,5 @@
 <meta name="component" content="ErrorState">
 <meta name="strings" content="./states.en.ogt">
-<meta name="parts" content="ErrorState.frame ErrorState.disc ErrorState.dot ErrorState.mark ErrorState.headline ErrorState.body ErrorState.code ErrorState.badge ErrorState.actions ErrorState.retry ErrorState.dismiss">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses Something went wrong.">
 <meta name="prop:body" content="string" data-default="" data-doc="The game's explanation and recovery advice.">
 <meta name="prop:code" content="string" data-default="" data-doc="Optional support reference; never a raw exception or credential.">
@@ -19,21 +18,22 @@
      danger (quieter than the action it leads to): what went
      wrong, the support reference set apart as a code, then retry (the
      primary action) and the way out. -->
-<section id="ErrorState" part="ErrorState.frame" data-layout="stack" data-motion="enter" role="alert" aria-busy={busy} aria-label={title || t("base.error.title")}>
-  <div part="ErrorState.disc ErrorState.dot" class="disc" data-layout="cover" data-motion="pop"><og-icon part="ErrorState.mark" class="mark" data-tone="danger" icon="close"></og-icon></div>
-  <div class="words" data-layout="stack" data-gap="tight">
-    <h3 part="ErrorState.headline" class="title">{title || t("base.error.title")}</h3>
-    {#if body}<p part="ErrorState.body" class="body">{body}</p>{/if}
-    {#if code}<p part="ErrorState.code ErrorState.badge" class="code">{code}</p>{/if}
+<section id="ErrorState" part="frame" layout="stack" play="enter" role="alert" aria-busy={busy} aria-label={title || t("base.error.title")}>
+  <div part="dot" class="disc cover" layout="stack" fill play="pop"><og-icon part="mark" class="mark" tone="danger" icon="close"></og-icon></div>
+  <div class="words" layout="stack" gap="tight">
+    <h3 part="headline" class="title">{title || t("base.error.title")}</h3>
+    {#if body}<p part="body" class="body">{body}</p>{/if}
+    {#if code}<p part="badge" class="code">{code}</p>{/if}
   </div>
-  {#if canRetry || dismissLabel}<div part="ErrorState.actions" class="actions" data-layout="cluster">
-    {#if canRetry}<button id="Retry" part="ErrorState.retry" class="go" variant="primary" disabled={busy} onclick={retry}>{#if busy}<Spinner size={16} name={t("base.error.busy")} />{/if}<span class="retry">{busy ? t("base.error.busy") : retryLabel || t("base.error.retry")}</span></button>{/if}
-    {#if dismissLabel}<button id="Dismiss" part="ErrorState.dismiss" disabled={busy} onclick={dismiss}>{dismissLabel}</button>{/if}
+  {#if canRetry || dismissLabel}<div part="actions" class="actions" layout="wrap">
+    {#if canRetry}<button id="Retry" part="retry" class="go" variant="primary" disabled={busy} onclick={retry}>{#if busy}<Spinner size={16} name={t("base.error.busy")} />{/if}<span class="retry">{busy ? t("base.error.busy") : retryLabel || t("base.error.retry")}</span></button>{/if}
+    {#if dismissLabel}<button id="Dismiss" part="dismiss" disabled={busy} onclick={dismiss}>{dismissLabel}</button>{/if}
   </div>{/if}
 </section>
 
 <style>
-:host { align-items: center; padding: var(--space-xl); text-align: center; --layout-gap: var(--layout-gap-wide); --frame-fill: var(--well-fill); --frame-shadow: var(--well-shadow); --frame-rim-width: 0px; --frame-radius: var(--card-radius); }
+.cover { justify-content: center; align-items: center; }
+#ErrorState { align-items: center; padding: var(--space-xl); text-align: center; --layout-gap: var(--layout-gap-wide); --frame-fill: var(--well-fill); --frame-shadow: var(--well-shadow); --frame-rim-width: 0px; --frame-radius: var(--card-radius); }
 .disc { flex: none; inline-size: var(--size-xl); block-size: var(--size-xl); --dot-fill: var(--dot-alert-fill); --dot-rim: var(--dot-alert-rim); --dot-rim-width: var(--stroke-thin); }
 .mark { inline-size: var(--size-md); block-size: var(--size-md); }
 .words { align-items: center; max-inline-size: var(--measure-lg); }

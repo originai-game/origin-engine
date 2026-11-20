@@ -1,6 +1,5 @@
 <meta name="component" content="InteractionPrompt">
 <meta name="strings" content="./world.en.ogt">
-<meta name="parts" content="InteractionPrompt.frame InteractionPrompt.cap InteractionPrompt.key InteractionPrompt.ring InteractionPrompt.plate InteractionPrompt.verb InteractionPrompt.object InteractionPrompt.reason">
 <meta name="prop:entity" content="number" data-doc="What it is over, by its bits (0: use at).">
 <meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it sits over without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above the point.">
@@ -30,15 +29,15 @@
   when it shows and what the input does; read only.
 -->
 <anchor id="InteractionPrompt" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="shift" avoid="danger" occlusion="none" priority="300" max-distance={maxDistance}>
-  <div id="Prompt" part="InteractionPrompt.frame" class="bare" role="status" aria-disabled={disabled} data-pressed={pressed} data-done={hold >= 1} data-disabled={disabled} data-pad={pad}>
-    <div part="InteractionPrompt.cap" class="cap">
-      {#if hold >= 0}<svg part="InteractionPrompt.ring" class="ring" viewBox="0 0 36 36" role="meter" aria-label={t("world.prompt.hold")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={hold}><circle class="disc" cx="18" cy="18" r="18"></circle><circle class="sweep" cx="18" cy="18" r="16" pathLength="100" style:--hold={hold >= 1 ? 1 : hold}></circle></svg>{/if}
-      {#if action != ''}<kbd part="InteractionPrompt.key" class="key" data-action={action}></kbd>{:else}<kbd part="InteractionPrompt.key" class="key">{key}</kbd>{/if}
+  <div id="Prompt" part="frame" variant="bare" role="status" aria-disabled={disabled} class:not-pressed={!(pressed)} class:pressed={pressed} state:done={hold >= 1} class:pad={pad} class:disabled={disabled}>
+    <div part="cap" class="cap">
+      {#if hold >= 0}<svg part="ring" class="ring" viewBox="0 0 36 36" role="meter" aria-label={t("world.prompt.hold")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={hold}><circle class="disc" cx="18" cy="18" r="18"></circle><circle class="sweep" cx="18" cy="18" r="16" pathLength="100" style:--hold={hold >= 1 ? 1 : hold}></circle></svg>{/if}
+      {#if action != ''}<kbd part="key" class="key" data-action={action}></kbd>{:else}<kbd part="key" class="key">{key}</kbd>{/if}
     </div>
-    <div part="InteractionPrompt.plate" class="plate">
-      <span part="InteractionPrompt.verb" class="verb">{verb}</span>
-      {#if name != ''}<span part="InteractionPrompt.object" class="object">{name}</span>{/if}
-      {#if disabled && reason != ''}<div part="InteractionPrompt.reason" class="reason"><og-icon class="lock" icon="lock"></og-icon><span class="why">{reason}</span></div>{/if}
+    <div part="plate" class="plate">
+      <span part="verb" class="verb">{verb}</span>
+      {#if name != ''}<span part="object" class="object">{name}</span>{/if}
+      {#if disabled && reason != ''}<div part="reason" class="reason"><og-icon class="lock" icon="lock"></og-icon><span class="why">{reason}</span></div>{/if}
     </div>
   </div>
 </anchor>
@@ -51,24 +50,24 @@
 .ring { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; rotate: -90deg; filter: var(--world-hold-glow); }
 .disc { fill: var(--world-hold-disc); }
 .sweep { fill: none; stroke: var(--world-hold-ring); stroke-width: 3; stroke-dasharray: 100; stroke-dashoffset: calc(100 - var(--hold) * 100); }
-[data-pressed=false] .sweep { transition: var(--world-hold-drain); }
+.not-pressed .sweep { transition: var(--world-hold-drain); }
 .key { display: inline-block; min-inline-size: calc(26 * var(--font-step-px)); block-size: calc(26 * var(--font-step-px)); padding: 0 calc(5 * var(--font-step-px)); box-sizing: border-box; text-align: center; font-size: var(--hud-size-feed); line-height: calc(26 * var(--font-step-px)); font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); }
-[data-pressed=true] .key { translate: 0 var(--space-xxs); background: var(--hud-key-lit-fill); box-shadow: var(--hud-key-lit-shadow); }
-[data-done=true] .key { background: var(--hud-key-lit-fill); box-shadow: var(--hud-key-lit-shadow); }
-[data-pad=true] .key { inline-size: calc(26 * var(--font-step-px)); min-inline-size: 0; padding: 0; color: var(--world-pad-ink); background: var(--world-pad-fill); border-radius: var(--dot-radius); box-shadow: var(--world-pad-rim); }
-[data-disabled=true] .key { color: var(--world-key-off-ink); background: var(--world-key-off-fill); }
+.pressed .key { translate: 0 var(--space-xxs); background: var(--hud-key-lit-fill); box-shadow: var(--hud-key-lit-shadow); }
+:state(done) .key { background: var(--hud-key-lit-fill); box-shadow: var(--hud-key-lit-shadow); }
+.pad .key { inline-size: calc(26 * var(--font-step-px)); min-inline-size: 0; padding: 0; color: var(--world-pad-ink); background: var(--world-pad-fill); border-radius: var(--dot-radius); box-shadow: var(--world-pad-rim); }
+.disabled .key { color: var(--world-key-off-ink); background: var(--world-key-off-fill); }
 /* The plate: the HUD's glass with a cut corner, tucked under the cap. A
    text box: it grows with the text scale. */
 .plate { display: flex; flex-direction: column; min-inline-size: 0; margin-inline-start: calc(-10 * var(--font-step-px)); padding: calc(4 * var(--font-step-px)) calc(12 * var(--font-step-px)) calc(5 * var(--font-step-px)) calc(16 * var(--font-step-px)); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: 0 0 var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .verb { font-size: var(--world-size-name); line-height: 1.15; font-weight: var(--hud-figure-weight); font-stretch: var(--world-caps-stretch); letter-spacing: var(--world-caps-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; }
-[data-disabled=true] .verb { color: var(--hud-ink-dim); }
+.disabled .verb { color: var(--hud-ink-dim); }
 .object { min-inline-size: 0; max-inline-size: calc(200 * var(--font-step-px)); font-size: var(--world-size-title); line-height: 1.2; font-weight: var(--hud-label-weight); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .reason { display: flex; align-items: center; column-gap: calc(4 * var(--font-step-px)); min-inline-size: 0; font-size: var(--world-size-title); line-height: 1.2; font-weight: var(--hud-figure-weight); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); color: var(--world-hostile-ink); white-space: nowrap; }
 .lock { flex: none; inline-size: var(--world-mark-size); block-size: var(--world-mark-size); }
 .why { min-inline-size: 0; max-inline-size: calc(200 * var(--font-step-px)); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   #Prompt { animation: none; }
-  [data-pressed=true] .key { translate: none; }
-  [data-pressed=false] .sweep { transition: none; }
+  .pressed .key { translate: none; }
+  .not-pressed .sweep { transition: none; }
 }
 </style>

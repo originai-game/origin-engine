@@ -16,6 +16,7 @@
 </div>
 
 <style>
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
 #ProgressRing { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #ProgressRing { display: grid; grid-template-columns: 1fr; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-items: center; }
 .ring { grid-area: 1 / 1; width: var(--size-lg); height: var(--size-lg); }

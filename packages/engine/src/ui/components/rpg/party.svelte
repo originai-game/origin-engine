@@ -13,7 +13,7 @@
 -->
 <section id="RpgParty" part="frame" variant="bare" aria-label={t("rpg.party.name")}>
   {#if members.length}
-    <div class="cards grid" role="listbox" aria-label={t("rpg.party.name")}>
+    <div gap="base" class="cards grid" role="listbox" aria-label={t("rpg.party.name")}>
       {#each members as m (m.id)}
         <button class="cell" part="cell" role="option" data-down={m.down} aria-selected={m.id == selected} aria-label={m.name} onclick={choose}><div class="face" layout="stack" gap="hair">
           <div class="picture">{#if m.portrait}<img class="portrait" src={m.portrait} alt="">{/if}</div>
@@ -30,6 +30,8 @@
 </section>
 
 <style>
+.cover { justify-content: center; align-items: center; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
 /* Drawn over the scene: the style's tag halo holds its text there. */
 #RpgParty { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #RpgParty { inline-size: stretch; }
@@ -49,6 +51,4 @@
 .empty-text { margin: 0; }
 @media (height < 500px) { .picture { aspect-ratio: 2.4; } }
 @media (600px <= width) and (500px <= height < 800px) { .picture { aspect-ratio: 2; } }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 </style>

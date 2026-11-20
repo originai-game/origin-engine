@@ -60,6 +60,4 @@
   .title { font-size: var(--hud-size-sm); }
   .byline { font-size: var(--hud-size-xs); }
 }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 </style>

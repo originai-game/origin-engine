@@ -1,6 +1,5 @@
 <meta name="component" content="Nameplate">
 <meta name="strings" content="./world.en.ogt">
-<meta name="parts" content="Nameplate.frame Nameplate.level Nameplate.icon Nameplate.name Nameplate.subtitle Nameplate.state Nameplate.health Nameplate.ghost Nameplate.fill Nameplate.shield Nameplate.percent Nameplate.wing Nameplate.bracket Nameplate.cast Nameplate.spell Nameplate.time Nameplate.castbar">
 <meta name="prop:entity" content="number" data-doc="The unit it sits over, by its bits (0: use at).">
 <meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it sits over without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above the point (its head).">
@@ -45,41 +44,41 @@
   game owns every figure and state.
 -->
 <anchor id="Nameplate" entity={entity || null} at={at} offset={"0 " + height + " 0"} occlusion="fade" clamp="contain" clamp-margin="24" declutter="stack" priority={targeted ? 1100 : (boss || castName != '' ? 400 : 100)} max-distance={maxDistance}>
-  <div id="Plate" part="Nameplate.frame" class="bare" aria-label={name} data-reaction={reaction == '' ? 'neutral' : reaction} data-elite={elite || boss} data-boss={boss} data-targeted={targeted} data-low={health >= 0 && health <= 0.25 && !dead} data-dead={dead} data-compact={compact}>
+  <div id="Plate" part="frame" variant="bare" aria-label={name} class:boss={boss} class:compact={compact} class:targeted={targeted} class:elite={elite || boss} class:dead={dead} class:reaction-friendly={(reaction == '' ? 'neutral' : reaction) == 'friendly'} class:reaction-hostile={(reaction == '' ? 'neutral' : reaction) == 'hostile'} class:reaction-player={(reaction == '' ? 'neutral' : reaction) == 'player'} class:low={health >= 0 && health <= 0.25 && !dead}>
     {#if !compact}
       <div class="head">
-        {#if level != ''}<div part="Nameplate.level" class="level" aria-label={t("world.nameplate.level", { level: level })}><span>{level}</span></div>{:else}{#if boss}<div part="Nameplate.level" class="level" aria-label={t("world.nameplate.boss")}><og-icon class="skull" icon="skull"></og-icon></div>{/if}{/if}
-        {#if icon}<og-icon part="Nameplate.icon" class="icon" icon={icon}></og-icon>{/if}
-        <span part="Nameplate.name" class="name">{name}</span>
+        {#if level != ''}<div part="level" class="level" aria-label={t("world.nameplate.level", { level: level })}><span>{level}</span></div>{:else}{#if boss}<div part="level" class="level" aria-label={t("world.nameplate.boss")}><og-icon class="skull" icon="skull"></og-icon></div>{/if}{/if}
+        {#if icon}<og-icon part="icon" class="icon" icon={icon}></og-icon>{/if}
+        <span part="name" class="name">{name}</span>
       </div>
-      {#if title != ''}<span part="Nameplate.subtitle" class="subtitle">{title}</span>{/if}
-      {#if dead && lootable}<span part="Nameplate.state" class="state" role="status">{t("world.nameplate.lootable")}</span>{/if}
+      {#if title != ''}<span part="subtitle" class="subtitle">{title}</span>{/if}
+      {#if dead && lootable}<span part="state" class="state" role="status">{t("world.nameplate.lootable")}</span>{/if}
     {/if}
     {#if health >= 0 && !dead}
       <div class="vitals">
-        {#if (elite || boss) && !compact && !targeted}<span part="Nameplate.wing" class="wing"></span>{/if}
-        <div part="Nameplate.health" class="bar" role="meter" aria-label={t("world.nameplate.health")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={health} aria-valuetext={formatPercent(health)} style:--hp={health >= 1 ? 1 : health} style:--shield={shield}>
+        {#if (elite || boss) && !compact && !targeted}<span part="wing" class="wing"></span>{/if}
+        <div part="health" class="bar" role="meter" aria-label={t("world.nameplate.health")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={health} aria-valuetext={formatPercent(health)} style:--hp={health >= 1 ? 1 : health} style:--shield={shield}>
           <div class="well">
-            <div part="Nameplate.ghost" class="ghost"></div>
-            <div part="Nameplate.fill" class="fill"></div>
-            {#if shield > 0}<div part="Nameplate.shield" class="shield"></div>{/if}
+            <div part="ghost" class="ghost"></div>
+            <div part="fill" class="fill"></div>
+            {#if shield > 0}<div part="shield" class="shield"></div>{/if}
             <div class="quarters"></div>
           </div>
           {#if health <= 0.25}<div class="alarm"></div>{/if}
         </div>
-        {#if (elite || boss) && !compact && !targeted}<span part="Nameplate.wing" class="wing end"></span>{/if}
-        {#if (boss || health <= 0.25) && !compact}<span part="Nameplate.percent" class="percent">{formatPercent(health)}</span>{/if}
-        {#if targeted}<div class="brackets"><span part="Nameplate.bracket" class="bracket"></span><span part="Nameplate.bracket" class="bracket end"></span></div>{/if}
+        {#if (elite || boss) && !compact && !targeted}<span part="wing" class="wing end"></span>{/if}
+        {#if (boss || health <= 0.25) && !compact}<span part="percent" class="percent">{formatPercent(health)}</span>{/if}
+        {#if targeted}<div class="brackets"><span part="bracket" class="bracket"></span><span part="bracket" class="bracket end"></span></div>{/if}
       </div>
     {/if}
     {#if castName != '' && !compact && !dead}
-      <div part="Nameplate.cast" class="cast" data-state={castState == '' ? 'casting' : castState} role="status" aria-label={castState == 'locked' ? t("world.nameplate.uninterruptible", { spell: castName }) : (castState == 'interrupted' ? t("world.nameplate.interrupted") : t("world.nameplate.casting", { spell: castName }))}>
+      <div part="cast" class="cast" role="status" aria-label={castState == 'locked' ? t("world.nameplate.uninterruptible", { spell: castName }) : (castState == 'interrupted' ? t("world.nameplate.interrupted") : t("world.nameplate.casting", { spell: castName }))} class:state-interrupted={(castState == '' ? 'casting' : castState) == 'interrupted'} class:state-locked={(castState == '' ? 'casting' : castState) == 'locked'}>
         <div class="spell-line">
           <og-icon class="mark" icon={castState == 'locked' ? 'shield' : (castState == 'interrupted' ? 'close' : 'bolt')}></og-icon>
-          <span part="Nameplate.spell" class="spell">{castState == 'interrupted' ? t("world.nameplate.interrupted") : castName}</span>
-          {#if castTime != '' && castState != 'interrupted'}<span part="Nameplate.time" class="time">{castTime}</span>{/if}
+          <span part="spell" class="spell">{castState == 'interrupted' ? t("world.nameplate.interrupted") : castName}</span>
+          {#if castTime != '' && castState != 'interrupted'}<span part="time" class="time">{castTime}</span>{/if}
         </div>
-        <div part="Nameplate.castbar" class="castbar" style:--cast={castState == 'interrupted' ? 1 : (castProgress >= 1 ? 1 : castProgress)}><div class="cast-fill"></div></div>
+        <div part="castbar" class="castbar" style:--cast={castState == 'interrupted' ? 1 : (castProgress >= 1 ? 1 : castProgress)}><div class="cast-fill"></div></div>
       </div>
     {/if}
   </div>
@@ -89,51 +88,51 @@
 /* Over the scene: one stroke under the fill and one soft shadow. */
 #Plate { --bw: var(--world-bar-width); --bh: var(--world-bar-height); display: flex; flex-direction: column; align-items: center; row-gap: calc(2 * var(--font-step-px)); inline-size: max-content; max-inline-size: var(--world-nameplate-room); color: var(--hud-ink); line-height: 1.12; }
 .name, .subtitle, .state, .percent, .spell-line { text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
-#Plate[data-boss=true] { --bw: var(--world-boss-bar-width); --bh: var(--world-boss-bar-height); }
-#Plate[data-compact=true] { --bw: var(--world-compact-bar-width); --bh: var(--world-compact-bar-height); }
-#Plate[data-targeted=true] { scale: var(--world-target-scale); max-inline-size: calc(var(--world-nameplate-room) / var(--world-target-scale)); }
+#Plate.boss { --bw: var(--world-boss-bar-width); --bh: var(--world-boss-bar-height); }
+#Plate.compact { --bw: var(--world-compact-bar-width); --bh: var(--world-compact-bar-height); }
+#Plate.targeted { scale: var(--world-target-scale); max-inline-size: calc(var(--world-nameplate-room) / var(--world-target-scale)); }
 .head { display: flex; align-items: center; justify-content: center; column-gap: calc(4 * var(--font-step-px)); max-inline-size: 100%; min-inline-size: 0; }
 /* The level chip: a dark tag; an elite's or a boss's gold. */
 .level { flex: none; display: flex; align-items: center; justify-content: center; min-inline-size: calc(19 * var(--font-step-px)); block-size: calc(16 * var(--font-step-px)); padding: 0 calc(4 * var(--font-step-px)); box-sizing: border-box; font-size: var(--world-size-level); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; -webkit-text-stroke-width: 0; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[data-elite=true] .level { color: var(--world-elite-chip-ink); background: var(--world-elite-chip-fill); box-shadow: none; }
-[data-dead=true] .level { opacity: 0.5; }
+.elite .level { color: var(--world-elite-chip-ink); background: var(--world-elite-chip-fill); box-shadow: none; }
+.dead .level { opacity: 0.5; }
 .skull { inline-size: calc(11 * var(--font-step-px)); block-size: calc(11 * var(--font-step-px)); }
 .icon { flex: none; inline-size: calc(14 * var(--font-step-px)); block-size: calc(14 * var(--font-step-px)); }
 /* The name in its reaction's ink; a boss's in tracked capitals; the
    target's white; a dead unit's grey. A long one scrolls on one line. */
 .name { flex: 0 1 auto; min-inline-size: 0; max-inline-size: calc(150 * var(--font-step-px)); font-size: var(--world-size-name); font-weight: var(--hud-label-weight); font-stretch: var(--world-name-stretch); color: var(--world-neutral-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-[data-reaction=hostile] .name { color: var(--world-hostile-ink); }
-[data-reaction=friendly] .name { color: var(--world-friendly-ink); }
-[data-reaction=player] .name { color: var(--world-player-ink); }
-[data-boss=true] .name { max-inline-size: calc(200 * var(--font-step-px)); font-size: var(--world-size-boss); font-weight: var(--hud-figure-weight); font-stretch: var(--world-caps-stretch); letter-spacing: var(--world-caps-tracking); text-transform: var(--hud-label-transform); }
-[data-targeted=true] .name { color: var(--hud-ink); }
-[data-dead=true] .name { color: var(--world-dead-ink); }
+.reaction-hostile .name { color: var(--world-hostile-ink); }
+.reaction-friendly .name { color: var(--world-friendly-ink); }
+.reaction-player .name { color: var(--world-player-ink); }
+.boss .name { max-inline-size: calc(200 * var(--font-step-px)); font-size: var(--world-size-boss); font-weight: var(--hud-figure-weight); font-stretch: var(--world-caps-stretch); letter-spacing: var(--world-caps-tracking); text-transform: var(--hud-label-transform); }
+.targeted .name { color: var(--hud-ink); }
+.dead .name { color: var(--world-dead-ink); }
 .subtitle { min-inline-size: 0; max-inline-size: min(100%, calc(190 * var(--font-step-px))); font-size: var(--world-size-title); font-weight: var(--hud-label-weight); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-[data-dead=true] .subtitle { color: var(--world-dead-ink); }
+.dead .subtitle { color: var(--world-dead-ink); }
 .state { font-size: var(--world-size-title); font-weight: var(--hud-figure-weight); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-gold); white-space: nowrap; }
 /* The health: a skewed well with its rim; inside it the ghost, the fill,
    the shield and the quarter cuts. The bar is art and keeps its size. */
 .vitals { position: relative; display: flex; align-items: center; column-gap: calc(5 * var(--font-step-px)); }
 .bar { position: relative; flex: none; inline-size: var(--bw); block-size: var(--bh); transform: skewX(var(--bar-skew)); box-shadow: var(--world-bar-rim); }
-[data-elite=true] .bar { box-shadow: var(--world-elite-rim); }
-[data-targeted=true] .bar { box-shadow: var(--world-target-rim); }
-[data-targeted=true][data-elite=true] .bar { box-shadow: var(--world-target-elite-rim); }
+.elite .bar { box-shadow: var(--world-elite-rim); }
+.targeted .bar { box-shadow: var(--world-target-rim); }
+.targeted.elite .bar { box-shadow: var(--world-target-elite-rim); }
 .well { position: absolute; inset: 0; overflow: hidden; background: var(--bar-well); }
 .ghost, .fill, .shield, .quarters { position: absolute; top: 0; bottom: 0; left: 0; }
 .ghost { inline-size: calc(var(--hp) * 100%); background: var(--world-ghost); transition: var(--world-ghost-motion); }
 .fill { inline-size: calc(var(--hp) * 100%); background: var(--world-neutral-fill); }
-[data-reaction=hostile] .fill { background: var(--world-hostile-fill); }
-[data-reaction=friendly] .fill { background: var(--world-friendly-fill); }
-[data-reaction=player] .fill { background: var(--world-player-fill); }
+.reaction-hostile .fill { background: var(--world-hostile-fill); }
+.reaction-friendly .fill { background: var(--world-friendly-fill); }
+.reaction-player .fill { background: var(--world-player-fill); }
 .shield { left: calc(var(--hp) * 100%); inline-size: calc(var(--shield) * 100%); background: var(--hud-shield-fill); }
 .quarters { right: 0; background: var(--world-quarters); }
 /* Low: the rim turns danger and breathes. */
 .alarm { position: absolute; inset: 0; box-shadow: var(--world-low-rim); animation: var(--world-low-motion); }
 .wing { flex: none; inline-size: var(--world-wing-width); block-size: var(--world-wing-height); background: var(--hud-gold); filter: var(--world-mark-shadow); clip-path: polygon(100% 0, 0 50%, 100% 100%, 70% 50%); }
 .wing.end { scale: -1 1; }
-[data-boss=true] .wing { inline-size: var(--world-boss-wing-width); block-size: var(--world-boss-wing-height); }
+.boss .wing { inline-size: var(--world-boss-wing-width); block-size: var(--world-boss-wing-height); }
 .percent { flex: none; font-size: var(--hud-tag-size); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
-[data-low=true] .percent { color: var(--world-hostile-ink); }
+.low .percent { color: var(--world-hostile-ink); }
 /* The target's brackets, outside the bar; they close as it is chosen. */
 .brackets { position: absolute; top: 0; bottom: 0; left: calc(-1 * var(--world-bracket-reach)); right: calc(-1 * var(--world-bracket-reach)); display: flex; align-items: center; justify-content: space-between; animation: var(--world-bracket-motion); }
 .bracket { flex: none; inline-size: var(--world-bracket-width); block-size: var(--world-bracket-height); background: var(--hud-ink); filter: var(--world-mark-shadow); clip-path: polygon(0 0, 100% 50%, 0 100%, 35% 50%); }
@@ -147,17 +146,17 @@
 .time { flex: none; letter-spacing: 0; font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); }
 .castbar { position: relative; block-size: var(--world-cast-height); overflow: hidden; background: var(--bar-well); box-shadow: var(--world-cast-rim); }
 .cast-fill { position: absolute; left: 0; top: 0; bottom: 0; inline-size: calc(var(--cast) * 100%); background: var(--world-cast-fill); box-shadow: var(--world-cast-glow); }
-[data-state=locked] .spell-line { color: var(--world-locked-ink); }
-[data-state=locked] .castbar { box-shadow: var(--world-locked-rim); }
-[data-state=locked] .cast-fill { background: var(--world-locked-fill); box-shadow: none; }
-[data-state=interrupted] .spell-line { color: var(--hud-ink); }
-[data-state=interrupted] .castbar { box-shadow: var(--world-interrupted-rim); }
-[data-state=interrupted] .cast-fill { background: var(--world-interrupted-fill); box-shadow: none; }
+.state-locked .spell-line { color: var(--world-locked-ink); }
+.state-locked .castbar { box-shadow: var(--world-locked-rim); }
+.state-locked .cast-fill { background: var(--world-locked-fill); box-shadow: none; }
+.state-interrupted .spell-line { color: var(--hud-ink); }
+.state-interrupted .castbar { box-shadow: var(--world-interrupted-rim); }
+.state-interrupted .cast-fill { background: var(--world-interrupted-fill); box-shadow: none; }
 /* On a phone the plate is a little denser. */
 @media (width < 600px) {
   #Plate { --bw: calc(var(--world-bar-width) * var(--world-density-compact)); }
-  #Plate[data-boss=true] { --bw: calc(var(--world-boss-bar-width) * var(--world-density-compact)); }
-  #Plate[data-compact=true] { --bw: calc(var(--world-compact-bar-width) * var(--world-density-compact)); }
+  #Plate.boss { --bw: calc(var(--world-boss-bar-width) * var(--world-density-compact)); }
+  #Plate.compact { --bw: calc(var(--world-compact-bar-width) * var(--world-density-compact)); }
 }
 /* Reduced motion: the low rim holds still, the ghost and brackets jump. */
 @media (prefers-reduced-motion: reduce) {

@@ -29,6 +29,7 @@
 </div>
 
 <style>
+.cover { justify-content: center; align-items: center; }
 /* Drawn over the scene: the style's tag halo holds its text there. */
 #RadialMenu { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 /* The wheel is two --size-4xl across; every offset below is a share of that. */
@@ -49,5 +50,4 @@
 .chosen .label { --ink-label: var(--on-primary); }
 .centre { width: var(--size-xxl); height: var(--size-xxl); --well-radius: var(--radius-capsule); padding: var(--space-sm); }
 #Detail, .detail { text-align: center; pointer-events: none; }
-.cover { justify-content: center; align-items: center; }
 </style>

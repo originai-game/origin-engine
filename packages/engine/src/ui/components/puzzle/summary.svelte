@@ -1,6 +1,5 @@
 <meta name="component" content="PuzzleSummary">
 <meta name="strings" content="./puzzle.en.ogt">
-<meta name="parts" content="PuzzleSummary.frame PuzzleSummary.band PuzzleSummary.title PuzzleSummary.level PuzzleSummary.stars PuzzleSummary.earned PuzzleSummary.record PuzzleSummary.breakdown PuzzleSummary.row PuzzleSummary.rowLabel PuzzleSummary.rowValue PuzzleSummary.total PuzzleSummary.actions PuzzleSummary.next PuzzleSummary.retry PuzzleSummary.menu PuzzleSummary.label PuzzleSummary.card PuzzleSummary.caption PuzzleSummary.badge PuzzleSummary.figure">
 <meta name="prop:result" content="string" data-doc="How the level ended: win or lose.">
 <meta name="prop:level" content="string" data-doc="The level's name as the game words it (Level 12); empty hides it.">
 <meta name="prop:score" content="number" data-doc="The final score, as the game counts it.">
@@ -26,35 +25,35 @@
   (only when canNext), retry and menu (also Escape or pad B). The game
   computes the score, the stars and what comes next.
 -->
-<section id="PuzzleSummary" part="PuzzleSummary.frame PuzzleSummary.card" data-layout="stack" data-gap="loose" data-result={result} aria-label={result == 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onback={menu}>
-  <header part="PuzzleSummary.band" data-layout="stack" data-gap="hair" data-result={result}>
-    <h2 part="PuzzleSummary.title">{result == 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")}</h2>
-    {#if level}<p class="level" part="PuzzleSummary.level PuzzleSummary.label PuzzleSummary.caption">{level}</p>{/if}
+<section class="frame" id="PuzzleSummary" part="card" layout="stack" gap="loose" aria-label={result == 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onback={menu} class:result-lose={(result) == 'lose'}>
+  <header class="band" part="band" layout="stack" gap="hair" class:result-lose={(result) == 'lose'}>
+    <h2 class="title" part="title">{result == 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")}</h2>
+    {#if level}<p class="level label" part="caption">{level}</p>{/if}
   </header>
-  <div part="PuzzleSummary.stars" data-layout="stack" data-gap="tight" data-result={result}>
-    {#if thresholds.length}<div class="medals">{#each thresholds as th, i (th.id)}<svg class="medal" class:lit={i < stars} style:--i={i} viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>{/each}</div>{/if}
+  <div class="stars" part="stars" layout="stack" gap="tight" class:result-lose={(result) == 'lose'}>
+    {#if thresholds.length}<div class="medals">{#each thresholds as th, i (th.id)}<svg class="medal" class:lit={i < stars} class:centre={i == 1 && thresholds.length == 3} style:--i={i} viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path></svg>{/each}</div>{/if}
     <StarBar value={score} max={scoreMax} stars={thresholds} label="" valueText="" compact={false} --tag-halo="none" />
-    <span part="PuzzleSummary.earned PuzzleSummary.label PuzzleSummary.caption" class="earned">{t("puzzle.summary.stars", { stars: stars, max: maxStars })}</span>
-    {#if record}<span class="record" part="PuzzleSummary.record PuzzleSummary.label PuzzleSummary.badge" data-tone="success">{t("puzzle.summary.record")}</span>{/if}
+    <span part="caption" class="earned label">{t("puzzle.summary.stars", { stars: stars, max: maxStars })}</span>
+    {#if record}<span class="record label" part="badge" tone="success">{t("puzzle.summary.record")}</span>{/if}
   </div>
-  {#if rows.length}<div class="breakdown-shell" data-layout="overlay" data-fill>
-  <div part="PuzzleSummary.breakdown" data-layout="scroll" role="table" aria-label={t("puzzle.summary.breakdown")}>
+  {#if rows.length}<div class="breakdown-shell" layout="overlay" fill>
+  <div class="breakdown" part="breakdown" layout="scroll" role="table" aria-label={t("puzzle.summary.breakdown")}>
     {#each rows as r (r.id)}
-      <div part="PuzzleSummary.row" data-layout="row" data-gap="loose" role="row">
-        <span part="PuzzleSummary.rowLabel" data-fill role="rowheader">{r.label}</span>
-        <span class="row-value" part="PuzzleSummary.rowValue PuzzleSummary.figure" role="cell">{r.value}</span>
+      <div class="row" part="row" layout="row" gap="loose" role="row">
+        <span class="rowLabel" part="rowLabel" fill role="rowheader">{r.label}</span>
+        <span class="row-value rowValue" part="figure" role="cell">{r.value}</span>
       </div>
     {/each}
-    {#if total}<div class="total" part="PuzzleSummary.total PuzzleSummary.label PuzzleSummary.row" data-layout="row" data-gap="loose" role="row">
-      <span class="total-label" data-fill role="rowheader">{t("puzzle.summary.total")}</span>
-      <span class="total-value" part="PuzzleSummary.figure" role="cell">{total}</span>
+    {#if total}<div class="total label row" part="row" layout="row" gap="loose" role="row">
+      <span class="total-label" fill role="rowheader">{t("puzzle.summary.total")}</span>
+      <span class="total-value" part="figure" role="cell">{total}</span>
     </div>{/if}
   </div>
   </div>{/if}
-  <div part="PuzzleSummary.actions" data-layout="switcher" data-gap="tight">
-    <button id="Menu" part="PuzzleSummary.menu" data-fill aria-label={t("puzzle.summary.menu")} onclick={menu}>{t("puzzle.summary.menu")}</button>
-    <button id="Retry" part="PuzzleSummary.retry" data-fill class:primary={!canNext} aria-label={t("puzzle.summary.retry")} onclick={retry}>{t("puzzle.summary.retry")}</button>
-    {#if canNext}<button id="Next" part="PuzzleSummary.next" data-fill class="go" variant="primary" aria-label={t("puzzle.summary.next")} onclick={next}>{t("puzzle.summary.next")}</button>{/if}
+  <div class="actions" part="actions" layout="wrap" gap="tight">
+    <button id="Menu" part="menu" fill aria-label={t("puzzle.summary.menu")} onclick={menu}>{t("puzzle.summary.menu")}</button>
+    <button id="Retry" part="retry" fill class:primary={!canNext} aria-label={t("puzzle.summary.retry")} onclick={retry}>{t("puzzle.summary.retry")}</button>
+    {#if canNext}<button id="Next" part="next" fill class="go" variant="primary" aria-label={t("puzzle.summary.next")} onclick={next}>{t("puzzle.summary.next")}</button>{/if}
   </div>
 </section>
 
@@ -64,16 +63,16 @@
    the result's lit fill, the level's name, the stars the game awarded as
    large lit glyphs (the middle one raised, each popping in turn), the
    score on the star bar, the breakdown in a recess, and Next in green. */
-:host { inline-size: stretch; max-inline-size: calc(var(--measure-lg) * 1.1); max-block-size: stretch; min-block-size: 0; padding: var(--space-xl) var(--space-xl) var(--space-lg); --layout-switch-at: var(--measure-xs); background: var(--result-card-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--result-card-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="PuzzleSummary.band"] { flex: none; align-items: center; padding: 0; border: 0; min-block-size: 0; background: none; }
-[part="PuzzleSummary.title"] { margin: 0; text-align: center; font-size: var(--result-size-title-compact); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: transparent; background: var(--result-won-fill); background-clip: var(--hud-text-clip); filter: var(--result-won-glow); }
-[data-result=lose] [part="PuzzleSummary.title"] { background: var(--result-lost-fill); background-clip: var(--hud-text-clip); filter: var(--result-lost-glow); }
+#PuzzleSummary { inline-size: stretch; max-inline-size: calc(var(--measure-lg) * 1.1); max-block-size: stretch; min-block-size: 0; padding: var(--space-xl) var(--space-xl) var(--space-lg); --layout-switch-at: var(--measure-xs); background: var(--result-card-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--result-card-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.band { flex: none; align-items: center; padding: 0; border: 0; min-block-size: 0; background: none; }
+.title { margin: 0; text-align: center; font-size: var(--result-size-title-compact); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: transparent; background: var(--result-won-fill); background-clip: var(--hud-text-clip); filter: var(--result-won-glow); }
+.result-lose .title { background: var(--result-lost-fill); background-clip: var(--hud-text-clip); filter: var(--result-lost-glow); }
 .level { margin: 0; align-self: stretch; text-align: center; line-clamp: 2; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
-[part="PuzzleSummary.stars"] { flex: none; align-items: center; }
+.stars { flex: none; align-items: center; }
 /* The stars: the style's star glyph, an earned one filled and glowing. */
 .medals { display: flex; align-items: flex-end; justify-content: center; gap: var(--space-sm); }
 .medal { inline-size: var(--result-size-star); block-size: var(--result-size-star); fill: var(--star-empty-fill); stroke: var(--star-empty-edge); stroke-width: var(--star-edge-width); stroke-linejoin: round; }
-.medal:nth-child(2):nth-last-child(2) { inline-size: var(--result-size-star-lead); block-size: var(--result-size-star-lead); margin-block-end: var(--space-md); }
+.medal.centre { inline-size: var(--result-size-star-lead); block-size: var(--result-size-star-lead); margin-block-end: var(--space-md); }
 .medal.lit { fill: var(--star-fill-solid); stroke: var(--star-edge); filter: var(--star-glow); animation: var(--pop-motion); animation-delay: var(--result-star-delay); }
 .earned, .record { white-space: nowrap; }
 .earned { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
@@ -81,22 +80,22 @@
 .breakdown-shell { flex-basis: auto; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
 /* The breakdown scrolls only when it has more than fits: its edge then fades
    into the recess, so more below shows, and at rest its last row is whole. */
-[part="PuzzleSummary.breakdown"] { padding: var(--space-xs) var(--space-md); -og-scroll-fade: var(--space-xl); }
+.breakdown { padding: var(--space-xs) var(--space-md); -og-scroll-fade: var(--space-xl); }
 .total { margin-block-start: var(--space-xs); border-block-start: var(--result-divider); }
-[part~="PuzzleSummary.row"] { align-items: baseline; padding: var(--space-xs) 0; background: none; }
-[part~="PuzzleSummary.row"]:hover { background: none; }
-[part="PuzzleSummary.rowLabel"], .total-label { text-align: start; color: var(--hud-ink); }
+.row { align-items: baseline; padding: var(--space-xs) 0; background: none; }
+.row:hover { background: none; }
+.rowLabel, .total-label { text-align: start; color: var(--hud-ink); }
 .total-label { font-weight: var(--hud-figure-weight); }
 .row-value, .total-value { flex: none; text-align: end; white-space: nowrap; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); }
 .total-value { font-size: var(--hud-size-md); color: var(--hud-gold); }
-[part="PuzzleSummary.actions"] { flex: none; justify-content: center; }
-[part="PuzzleSummary.actions"] button { min-height: var(--size-touch); }
+.actions { flex: none; justify-content: center; }
+.actions button { min-height: var(--size-touch); }
 /* Next: the way on, in green. */
 @media (width < 600px) {
-  :host { padding: var(--space-lg) var(--space-md) var(--space-md); --layout-gap-loose: var(--layout-gap-tight); }
-  [part="PuzzleSummary.actions"] { --layout-gap-tight: var(--layout-gap-hair); }
+  #PuzzleSummary { padding: var(--space-lg) var(--space-md) var(--space-md); --layout-gap-loose: var(--layout-gap-tight); }
+  .actions { --layout-gap-tight: var(--layout-gap-hair); }
   .medal { inline-size: var(--result-size-star-compact); block-size: var(--result-size-star-compact); }
-  .medal:nth-child(2):nth-last-child(2) { inline-size: var(--result-size-star-lead-compact); block-size: var(--result-size-star-lead-compact); margin-block-end: var(--space-sm); }
+  .medal.centre { inline-size: var(--result-size-star-lead-compact); block-size: var(--result-size-star-lead-compact); margin-block-end: var(--space-sm); }
 }
 @media (prefers-reduced-motion: reduce) {
   .medal.lit { animation: none; }

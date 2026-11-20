@@ -1,6 +1,5 @@
 <meta name="component" content="IdleGenerators">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdleGenerators.frame IdleGenerators.band IdleGenerators.kicker IdleGenerators.title IdleGenerators.row IdleGenerators.socket IdleGenerators.level IdleGenerators.name IdleGenerators.owned IdleGenerators.rate IdleGenerators.track IdleGenerators.fill IdleGenerators.time IdleGenerators.tag IdleGenerators.fade">
 <meta name="prop:title" content="string" data-doc="The list's heading; empty takes the group's (Generators).">
 <meta name="prop:generators" content="list" data-doc="The producers in the game's order, keyed rows of { id, icon, name, owned, rate, cycle, cycleText, level, boost, auto, locked }: owned how many the player has (a number, compacted; 0 hides it); rate what it yields as the game words it (+1.2K/s; on a locked row what unlocks it); cycle the running cycle 0 to 1 (negative hides the bar); cycleText the time left as the game words it (empty shows the percent); level its level (0 hides it); boost a multiplier as the game words it (×2; empty hides it); auto it runs by itself (named Auto); locked not yet available (named Locked, disabled).">
 <meta name="prop:selected" content="string" data-doc="The generator the player last chose, selected; empty is none.">
@@ -20,66 +19,67 @@
   greyed, and says Locked with what unlocks it. It fills its height and
   scrolls, its foot fading while there is more.
 -->
-<section id="IdleGenerators" part="IdleGenerators.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("idle.generators.name")}>
+<section class="frame" id="IdleGenerators" part="frame" layout="stack" fill gap="loose" aria-label={title != '' ? title : t("idle.generators.name")}>
   <div class="lit"></div>
-  <header part="IdleGenerators.band" data-layout="stack" data-gap="none">
-    <span part="IdleGenerators.kicker" class="kicker">{t("idle.generators.kicker")}</span>
-    <h2 part="IdleGenerators.title">{title != '' ? title : t("idle.generators.name")}</h2>
+  <header class="band" part="band" layout="stack" gap="none">
+    <span part="kicker" class="kicker">{t("idle.generators.kicker")}</span>
+    <h2 class="title" part="title">{title != '' ? title : t("idle.generators.name")}</h2>
   </header>
   {#if generators.length}
-    <div class="rows-shell" data-layout="stack" data-gap="none" data-fill>
-    <div class="rows-scroll" data-layout="scroll" data-gap="none">
-      <div class="rows" data-layout="stack" data-gap="tight" role="listbox" aria-label={title != '' ? title : t("idle.generators.name")}>
+    <div class="rows-shell" layout="stack" gap="none" fill>
+    <div class="rows-scroll" layout="scroll" gap="none">
+      <div class="rows" layout="stack" gap="tight" role="listbox" aria-label={title != '' ? title : t("idle.generators.name")}>
         {#each generators as g (g.id)}
-          <button part="IdleGenerators.row" role="option" aria-selected={g.id == selected} aria-label={g.locked ? t("idle.generators.lockedName", { name: g.name, what: g.rate }) : g.level > 0 ? t("idle.generators.levelName", { name: g.name, level: formatNumber(g.level) }) : g.name} aria-disabled={g.locked} disabled={g.locked} data-locked={g.locked} data-auto={g.auto} data-boosted={!!g.boost} onclick={choose}><div class="face" data-layout="row" data-gap="loose">
+          <button class="row" part="row" role="option" aria-selected={g.id == selected} aria-label={g.locked ? t("idle.generators.lockedName", { name: g.name, what: g.rate }) : g.level > 0 ? t("idle.generators.levelName", { name: g.name, level: formatNumber(g.level) }) : g.name} aria-disabled={g.locked} disabled={g.locked} data-auto={g.auto} data-boosted={!!g.boost} onclick={choose} state:selected={g.id == selected} state:locked={g.locked}><div class="face" layout="row" gap="loose">
             <div class="art">
-              <div part="IdleGenerators.socket" class="socket" data-layout="cover"><og-icon class="icon" icon={g.icon}></og-icon></div>
-              {#if !g.locked && g.level > 0}<div part="IdleGenerators.level" class="level" data-layout="center"><span>{formatNumber(g.level)}</span></div>{/if}
+              <div part="socket" class="socket cover" layout="stack" fill><og-icon class="icon" icon={g.icon}></og-icon></div>
+              {#if !g.locked && g.level > 0}<div part="level" class="level" layout="center"><span>{formatNumber(g.level)}</span></div>{/if}
             </div>
-            <div class="body" data-layout="stack" data-gap="hair" data-fill>
-              <div class="line" data-layout="row" data-gap="tight">
-                <span part="IdleGenerators.name" class="name">{g.name}</span>
-                {#if !g.locked && g.owned > 0}<span part="IdleGenerators.owned" class="owned">{t("idle.generators.owned", { owned: formatCompact(g.owned) })}</span>{/if}
-                <span class="spacer" data-fill></span>
-                {#if !g.locked}<span part="IdleGenerators.rate" class="rate">{g.rate}</span>{/if}
+            <div class="body" layout="stack" gap="hair" fill>
+              <div class="line" layout="row" gap="tight">
+                <span part="name" class="name">{g.name}</span>
+                {#if !g.locked && g.owned > 0}<span part="owned" class="owned">{t("idle.generators.owned", { owned: formatCompact(g.owned) })}</span>{/if}
+                <span class="spacer" fill></span>
+                {#if !g.locked}<span part="rate" class="rate">{g.rate}</span>{/if}
               </div>
-              <div class="line" data-layout="row" data-gap="tight">
+              <div class="line" layout="row" gap="tight">
                 {#if !g.locked && g.cycle >= 0}
-                  <div part="IdleGenerators.track" class="track" data-fill role="progressbar" aria-label={t("idle.generators.cycle")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={g.cycle * 100} aria-valuetext={g.cycleText ? g.cycleText : formatPercent(g.cycle)}><div part="IdleGenerators.fill" class="fill" style:--value={g.cycle > 1 ? 1 : g.cycle}></div></div>
-                  <span part="IdleGenerators.time" class="time">{g.cycleText ? g.cycleText : formatPercent(g.cycle)}</span>
-                {:else}<span class="spacer" data-fill></span>{/if}
-                {#if !g.locked && g.boost}<span part="IdleGenerators.tag" class="tag" data-tag="boost">{g.boost}</span>{/if}
-                {#if !g.locked && g.auto}<span part="IdleGenerators.tag" class="tag" data-tag="auto">{t("idle.generators.auto")}</span>{/if}
-                {#if g.locked}<div part="IdleGenerators.tag" class="tag" data-tag="locked" data-layout="row" data-gap="hair"><span>{t("idle.generators.locked")}</span><span class="dot"></span><span class="unlock">{g.rate}</span></div>{/if}
+                  <div part="track" class="track" fill role="progressbar" aria-label={t("idle.generators.cycle")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={g.cycle * 100} aria-valuetext={g.cycleText ? g.cycleText : formatPercent(g.cycle)}><div part="fill" class="fill" style:--value={g.cycle > 1 ? 1 : g.cycle}></div></div>
+                  <span part="time" class="time">{g.cycleText ? g.cycleText : formatPercent(g.cycle)}</span>
+                {:else}<span class="spacer" fill></span>{/if}
+                {#if !g.locked && g.boost}<span part="tag" class="tag" class:tag-boost={true}>{g.boost}</span>{/if}
+                {#if !g.locked && g.auto}<span part="tag" class="tag" class:tag-auto={true}>{t("idle.generators.auto")}</span>{/if}
+                {#if g.locked}<div part="tag" class="tag" layout="row" gap="hair" class:tag-locked={true}><span>{t("idle.generators.locked")}</span><span class="dot"></span><span class="unlock">{g.rate}</span></div>{/if}
               </div>
             </div>
           </div></button>
         {/each}
       </div>
     </div>
-    <div class="scroll-fade" part="IdleGenerators.fade" data-anchor="bottom-edge"></div>
+    <div class="scroll-fade" part="fade" anchor="bottom-edge"></div>
     </div>
   {:else}
-    <p class="empty-text" part="IdleGenerators.kicker" role="status">{t("idle.generators.empty")}</p>
+    <p class="empty-text" part="kicker" role="status">{t("idle.generators.empty")}</p>
   {/if}
 </section>
 
 <style>
-:host { inline-size: stretch; block-size: stretch; min-block-size: 0; }
-[part="IdleGenerators.frame"] { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.cover { justify-content: center; align-items: center; }
+#IdleGenerators { inline-size: stretch; block-size: stretch; min-block-size: 0; }
+.frame { position: relative; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 .kicker { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--inv-kicker-size); font-weight: var(--hud-label-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--hud-label-ink); }
-[part="IdleGenerators.band"] { width: stretch; flex: none; align-items: flex-start; }
-[part="IdleGenerators.title"] { margin: 0; max-inline-size: 100%; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.band { width: stretch; flex: none; align-items: flex-start; }
+.title { margin: 0; max-inline-size: 100%; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .rows-shell { position: relative; min-block-size: 0; }
 .rows-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 .rows { padding: var(--space-xxs); padding-block-end: var(--space-lg); }
 /* A row: cut at two corners, the chosen one washed in the accent. */
-[part="IdleGenerators.row"] { width: stretch; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); min-width: 0; border: none; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); color: var(--ink-bright); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[part="IdleGenerators.row"][aria-selected=true] { background: var(--inv-row-on-fill); box-shadow: var(--inv-row-on-rim); }
-[part="IdleGenerators.row"][data-locked=true] { color: var(--ink-bright); }
-[data-locked=true] .art, [data-locked=true] .name { opacity: var(--disabled-content-opacity); }
-[data-locked=true] .icon { filter: var(--play-locked-art); }
+.row { width: stretch; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); min-width: 0; border: none; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); color: var(--ink-bright); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.row:state(selected) { background: var(--inv-row-on-fill); box-shadow: var(--inv-row-on-rim); }
+.row:state(locked) { color: var(--ink-bright); }
+:state(locked) .art, :state(locked) .name { opacity: var(--disabled-content-opacity); }
+:state(locked) .icon { filter: var(--play-locked-art); }
 .face { width: stretch; align-items: center; }
 .art { position: relative; flex: none; inline-size: var(--size-lg); block-size: var(--size-lg); }
 .socket { position: absolute; inset: 0; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
@@ -97,15 +97,15 @@
 .fill { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--play-cycle-fill); }
 .time { flex: none; white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-label-ink); }
 .tag { flex: none; padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); background: var(--hud-tag-fill); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.tag[data-tag=auto] { color: var(--play-auto-ink); background: var(--play-auto-fill); }
-.tag[data-tag=boost] { color: var(--play-boost-ink); background: var(--play-boost-fill); }
-.tag[data-tag=locked] { min-width: 0; max-width: stretch; align-items: center; }
+.tag.tag-auto { color: var(--play-auto-ink); background: var(--play-auto-fill); }
+.tag.tag-boost { color: var(--play-boost-ink); background: var(--play-boost-fill); }
+.tag.tag-locked { min-width: 0; max-width: stretch; align-items: center; }
 .dot { flex: none; inline-size: calc(3 * var(--font-step-px)); block-size: calc(3 * var(--font-step-px)); background: currentColor; }
 .unlock { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .empty-text { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; }
 /* A narrow panel (a phone, or a side column on a wide screen) tightens the rows. */
 @container (width < 560px) {
-  [part="IdleGenerators.row"] { padding: var(--space-xs); }
+  .row { padding: var(--space-xs); }
   .face { --layout-gap-loose: var(--layout-gap-tight); }
   .art { inline-size: var(--size-md); block-size: var(--size-md); }
 }

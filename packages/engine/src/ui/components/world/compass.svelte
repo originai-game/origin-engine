@@ -1,16 +1,15 @@
 <meta name="component" content="Compass">
 <meta name="strings" content="./compass.en.ogt">
-<meta name="parts" content="Compass.frame Compass.window Compass.poi Compass.distance Compass.notch Compass.badge Compass.readout Compass.figure">
 <meta name="prop:heading" content="number" data-doc="The player's heading in radians clockwise from north, 0 to 2π.">
 <meta name="prop:pois" content="list" data-doc="Its points: each { id, bearing, distance, kind, icon, label }, bearing in radians clockwise from north (0 to 2π), distance in m (negative: none), kind objective, ping, enemy, ally, loot or poi.">
 <meta name="prop:units" content="string" data-doc="The distance's unit (m).">
 <meta name="fixture:default" content='{"heading":0.733,"units":"m","pois":[{"id":"quest","bearing":0.9,"distance":240,"kind":"objective","icon":"star","label":"Quest"},{"id":"camp","bearing":0.15,"distance":85,"kind":"poi","icon":"flag","label":"Camp"},{"id":"foe","bearing":1.6,"distance":-1,"kind":"enemy","icon":"","label":"Enemy"}]}'>
 
-<div id="Compass" part="Compass.frame" class="bare" data-layout="stack" data-gap="none" role="status" aria-label={t("component.compass.name")} aria-valuetext={formatNumber(heading * 57.29578) + "°"}>
-  <div class="heading" part="Compass.readout" data-layout="stack" data-gap="none">
-    <span id="Bearing" part="Compass.badge">{(heading * 57.29578 < 9.5 ? '00' : heading * 57.29578 < 99.5 ? '0' : '') + formatNumber(heading * 57.29578) + "°"}</span>
+<div id="Compass" part="frame" variant="bare" layout="stack" gap="none" role="status" aria-label={t("component.compass.name")} aria-valuetext={formatNumber(heading * 57.29578) + "°"}>
+  <div class="heading readout" part="readout" layout="stack" gap="none">
+    <span id="Bearing" part="badge">{(heading * 57.29578 < 9.5 ? '00' : heading * 57.29578 < 99.5 ? '0' : '') + formatNumber(heading * 57.29578) + "°"}</span>
   </div>
-  <div id="Window" part="Compass.window Compass.frame" class="hud bare">
+  <div class="window" id="Window" part="frame" variant="hud">
     <div id="Band"></div>
     <div id="Strip" style:--h={heading}>
       <span class="point cardinal" style:--at={0}>{t("component.compass.n")}</span>
@@ -40,14 +39,14 @@
       <div id="Minor" class="ticks"></div>
       <div id="Major" class="ticks"></div>
       {#each pois as poi (poi.id)}
-        <div part="Compass.poi" class="poi" class:objective={poi.kind == 'objective'} class:ping={poi.kind == 'ping'} class:enemy={poi.kind == 'enemy'} class:ally={poi.kind == 'ally'} class:loot={poi.kind == 'loot'} style:--b={poi.bearing} aria-label={poi.label}>
-          <div class="copy back" data-layout="stack" data-gap="none">{#if poi.icon}<og-icon class="mark" icon={poi.icon}></og-icon>{:else}<div class="mark diamond"></div>{/if}{#if poi.distance >= 0}<span part="Compass.distance Compass.figure" class="distance">{formatNumber(poi.distance) + units}</span>{/if}</div>
-          <div class="copy" data-layout="stack" data-gap="none">{#if poi.icon}<og-icon class="mark" icon={poi.icon}></og-icon>{:else}<div class="mark diamond"></div>{/if}{#if poi.distance >= 0}<span part="Compass.distance Compass.figure" class="distance">{formatNumber(poi.distance) + units}</span>{/if}</div>
-          <div class="copy ahead" data-layout="stack" data-gap="none">{#if poi.icon}<og-icon class="mark" icon={poi.icon}></og-icon>{:else}<div class="mark diamond"></div>{/if}{#if poi.distance >= 0}<span part="Compass.distance Compass.figure" class="distance">{formatNumber(poi.distance) + units}</span>{/if}</div>
+        <div part="poi" class="poi" class:objective={poi.kind == 'objective'} class:ping={poi.kind == 'ping'} class:enemy={poi.kind == 'enemy'} class:ally={poi.kind == 'ally'} class:loot={poi.kind == 'loot'} style:--b={poi.bearing} aria-label={poi.label}>
+          <div class="copy back" layout="stack" gap="none">{#if poi.icon}<og-icon class="mark" icon={poi.icon}></og-icon>{:else}<div class="mark diamond"></div>{/if}{#if poi.distance >= 0}<span part="figure" class="distance">{formatNumber(poi.distance) + units}</span>{/if}</div>
+          <div class="copy" layout="stack" gap="none">{#if poi.icon}<og-icon class="mark" icon={poi.icon}></og-icon>{:else}<div class="mark diamond"></div>{/if}{#if poi.distance >= 0}<span part="figure" class="distance">{formatNumber(poi.distance) + units}</span>{/if}</div>
+          <div class="copy ahead" layout="stack" gap="none">{#if poi.icon}<og-icon class="mark" icon={poi.icon}></og-icon>{:else}<div class="mark diamond"></div>{/if}{#if poi.distance >= 0}<span part="figure" class="distance">{formatNumber(poi.distance) + units}</span>{/if}</div>
         </div>
       {/each}
     </div>
-    <div id="Notch" part="Compass.notch"></div>
+    <div id="Notch" part="notch"></div>
   </div>
 </div>
 
@@ -61,7 +60,7 @@
    120 degrees. The band is as tall as what stands on it: a cardinal
    letter (--hud-size-cardinal), then its ticks (2 steps under the letter, 10 tall, 4 off the
    band's foot), so the letter never sits on a tick at any size. */
-:host { align-items: center; inline-size: var(--measure-xl); max-inline-size: 100%; container-type: inline-size; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --band: calc(var(--hud-size-cardinal) + 16 * var(--font-step-px)); }
+#Compass { align-items: center; inline-size: var(--measure-xl); max-inline-size: 100%; container-type: inline-size; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --band: calc(var(--hud-size-cardinal) + 16 * var(--font-step-px)); }
 #Window { position: relative; inline-size: 100%; block-size: calc(var(--band) + 34 * var(--font-step-px)); overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); --w: 100cqi; }
 #Band { position: absolute; inset-inline: 0; top: 0; block-size: var(--band); background: var(--hud-compass-fill); }
 #Strip { position: absolute; top: 0; bottom: 0; inset-inline-start: 50%; inline-size: calc(var(--w) * 9); translate: calc(var(--h) * var(--w) * -0.4774648 - var(--w) * 3) 0; }
@@ -92,11 +91,11 @@
 .loot .diamond { background: var(--hud-epic); }
 .distance { font-size: var(--hud-size-xs); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); white-space: nowrap; text-shadow: var(--tag-halo); }
 /* The heading on a tag in the accent; the caret under the ticks. */
-[part="Compass.readout"] { align-items: center; margin-block-end: calc(-4 * var(--font-step-px)); position: relative; z-index: 1; }
+.readout { align-items: center; margin-block-end: calc(-4 * var(--font-step-px)); position: relative; z-index: 1; }
 #Bearing { padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.35; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-key-ink); background: var(--hud-accent); border: 0; box-shadow: none; -webkit-text-stroke-width: 0; text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 #Notch { position: absolute; top: calc(var(--band) - 4 * var(--font-step-px)); inset-inline-start: calc(50% - 6 * var(--font-step-px)); inline-size: calc(12 * var(--font-step-px)); block-size: calc(8 * var(--font-step-px)); background: var(--hud-accent); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 @media (width < 600px) {
-  :host { --hud-size-cardinal: var(--hud-size-sm); }
+  #Compass { --hud-size-cardinal: var(--hud-size-sm); }
   /* Room under the band for a mark and its distance (1 + 12 + 14.3 steps). */
   #Window { block-size: calc(var(--band) + 30 * var(--font-step-px)); }
   .copy { top: calc(var(--band) + 1 * var(--font-step-px)); row-gap: 0; }

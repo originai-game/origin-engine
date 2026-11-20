@@ -26,6 +26,8 @@
 </nav>
 
 <style>
+.cover { justify-content: center; align-items: center; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
 /* The menu's top bar: its screens as tracked capitals over a rule, the
    chosen one washed and underlined in the accent; Close a cut plate. */
 #RpgMenuBar { inline-size: stretch; color: var(--hud-ink); }
@@ -43,6 +45,4 @@
 .face { inline-size: 100%; block-size: 100%; }
 .close-mark { width: 50%; height: 50%; }
 @media (width < 600px), (height < 500px) { #RpgMenuBar { --layout-gap-loose: var(--layout-gap-tight); } .menu-tabs { grid-auto-columns: max-content; width: max-content; } .menu-fade { display: block; } .tab { padding-inline: var(--space-md); font-size: var(--hud-size-xs); letter-spacing: var(--result-tab-tracking-compact); } }
-.cover { justify-content: center; align-items: center; }
-.cover { justify-content: center; align-items: center; }
 </style>

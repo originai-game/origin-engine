@@ -21,7 +21,7 @@
   <header class="band" part="band" layout="row"><h2 class="title" part="title">{title != '' ? title : t("rhythm.difficulty.title")}</h2></header>
   {#if levels.length}
     <div class="list" layout="scroll" gap="none">
-      <div class="tiles grid" role="listbox" aria-label={t("rhythm.difficulty.list")}>
+      <div gap="base" class="tiles grid" role="listbox" aria-label={t("rhythm.difficulty.list")}>
         {#each levels as l (l.id)}
           <button part="row" class="tile" role="option" aria-selected={l.id == selected} aria-label={t("rhythm.difficulty.ratingName", { label: l.label, rating: l.rating })} disabled={l.locked} data-locked={l.locked} onclick={choose} state:selected={l.id == selected} class:tier-easy={(l.tier) == 'easy'} class:tier-expert={(l.tier) == 'expert'} class:tier-hard={(l.tier) == 'hard'} class:tier-master={(l.tier) == 'master'} class:tier-special={(l.tier) == 'special'} class:tier={l.tier}><i class="strip"></i><div class="face" layout="stack" gap="none">
             <div class="head" layout="row" gap="tight"><span part="name" class="name">{l.label}</span>
@@ -42,6 +42,7 @@
 </section>
 
 <style>
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
 #RhythmDifficulty { inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); --lean: var(--select-tile-lean); }
 .band { width: stretch; flex: none; min-height: 0; padding: 0; border: 0; background: none; }
 .title { margin: 0; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }

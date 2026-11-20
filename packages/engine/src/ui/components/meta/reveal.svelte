@@ -1,6 +1,5 @@
 <meta name="component" content="Reveal">
 <meta name="strings" content="./meta.en.ogt">
-<meta name="parts" content="Reveal.frame Reveal.band Reveal.kicker Reveal.title Reveal.body Reveal.seal Reveal.status Reveal.rewards Reveal.reward Reveal.socket Reveal.amount Reveal.dot Reveal.rarity Reveal.name Reveal.actions Reveal.open Reveal.skip Reveal.continue Reveal.caption">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses Rewards.">
 <meta name="prop:kicker" content="string" data-default="" data-doc="A small line over the title naming where the rewards come from (Expedition rewards); empty hides it.">
 <meta name="prop:body" content="string" data-default="" data-doc="Optional explanation under the sealed prize.">
@@ -33,39 +32,40 @@
   its key. The game owns the roll, the timing and the rewards; the panel
   reports open, skip, inspect, continue and retry.
 -->
-<section id="Reveal" part="Reveal.frame" data-layout="shell" data-gap="loose" data-state={state} aria-label={title || t("meta.reveal.title")} aria-busy={state == 'loading' || state == 'revealing'}>
+<section class="frame" id="Reveal" part="frame" layout="stack" fill gap="loose" data-state={state} aria-label={title || t("meta.reveal.title")} aria-busy={state == 'loading' || state == 'revealing'}>
   <div class="lit"></div>
-  <header part="Reveal.band" class="band" data-layout="stack" data-gap="hair">
-    {#if kicker}<span part="Reveal.kicker" class="kicker">{kicker}</span>{/if}
-    <h2 part="Reveal.title">{title || t("meta.reveal.title")}</h2>
+  <header part="band" class="band" layout="stack" gap="hair">
+    {#if kicker}<span part="kicker" class="kicker">{kicker}</span>{/if}
+    <h2 part="title">{title || t("meta.reveal.title")}</h2>
   </header>
   {#if error}<ErrorState body={error} />
-  {:else if state == 'loading' || state == 'revealing'}<div part="Reveal.status" class="status" data-layout="stack" data-gap="loose" data-fill role="status"><Spinner name={state == 'loading' ? t("meta.loading") : t("meta.reveal.revealing")} /><span>{state == 'loading' ? t("meta.loading") : t("meta.reveal.revealing")}</span></div>
+  {:else if state == 'loading' || state == 'revealing'}<div part="status" class="status" layout="stack" gap="loose" fill role="status"><Spinner name={state == 'loading' ? t("meta.loading") : t("meta.reveal.revealing")} /><span>{state == 'loading' ? t("meta.loading") : t("meta.reveal.revealing")}</span></div>
   {:else if state == 'revealed'}
-    <div class="rewards-scroll" data-layout="scroll" data-fill>
-      <ul part="Reveal.rewards" class="rewards" aria-label={title || t("meta.reveal.title")}>
-        {#each rewards as reward (reward.id)}<li class="slot"><button part="Reveal.reward" class="reward" data-rarity={reward.rarity || 'common'} disabled={disabled} aria-label={t("meta.reveal.reward", { name: reward.name, rarity: reward.rarity == 'mythic' ? t("meta.rarity.mythic") : reward.rarity == 'legendary' ? t("meta.rarity.legendary") : reward.rarity == 'epic' ? t("meta.rarity.epic") : reward.rarity == 'rare' ? t("meta.rarity.rare") : reward.rarity == 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onclick={inspect}><div class="face" data-layout="stack" data-gap="tight">
-          <div part="Reveal.socket" class="socket" data-layout="cover"><og-icon class="art" icon={reward.icon}></og-icon><div class="bar"></div>{#if reward.amount}<span part="Reveal.amount" class="amount">{reward.amount}</span>{/if}{#if reward.fresh}<div part="Reveal.dot" class="fresh" aria-label={t("meta.new")}></div>{/if}</div>
-          <span part="Reveal.rarity" class="rarity">{reward.rarity == 'mythic' ? t("meta.rarity.mythic") : reward.rarity == 'legendary' ? t("meta.rarity.legendary") : reward.rarity == 'epic' ? t("meta.rarity.epic") : reward.rarity == 'rare' ? t("meta.rarity.rare") : reward.rarity == 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common")}</span>
-          <span part="Reveal.name" class="name">{reward.name}</span>
+    <div class="rewards-scroll" layout="scroll" fill>
+      <ul part="rewards" class="rewards" aria-label={title || t("meta.reveal.title")}>
+        {#each rewards as reward (reward.id)}<li class="slot"><button part="reward" class="reward" tier={reward.rarity || 'common'} disabled={disabled} aria-label={t("meta.reveal.reward", { name: reward.name, rarity: reward.rarity == 'mythic' ? t("meta.rarity.mythic") : reward.rarity == 'legendary' ? t("meta.rarity.legendary") : reward.rarity == 'epic' ? t("meta.rarity.epic") : reward.rarity == 'rare' ? t("meta.rarity.rare") : reward.rarity == 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onclick={inspect}><div class="face" layout="stack" gap="tight">
+          <div part="socket" class="socket cover" layout="stack" fill><og-icon class="art" icon={reward.icon}></og-icon><div class="bar"></div>{#if reward.amount}<span part="amount" class="amount">{reward.amount}</span>{/if}{#if reward.fresh}<div part="dot" class="fresh" aria-label={t("meta.new")}></div>{/if}</div>
+          <span part="rarity" class="rarity">{reward.rarity == 'mythic' ? t("meta.rarity.mythic") : reward.rarity == 'legendary' ? t("meta.rarity.legendary") : reward.rarity == 'epic' ? t("meta.rarity.epic") : reward.rarity == 'rare' ? t("meta.rarity.rare") : reward.rarity == 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common")}</span>
+          <span part="name" class="name">{reward.name}</span>
         </div></button></li>{:else}<li class="none"><EmptyState title={t("meta.reveal.empty")} icon="bag" /></li>{/each}
       </ul>
     </div>
   {:else}
-    <div part="Reveal.seal" class="seal" data-layout="cover" data-fill><og-icon class="prize" icon={icon || 'bag'}></og-icon></div>
-    {#if body}<p part="Reveal.body Reveal.caption" class="body">{body}</p>{/if}
+    <div part="seal" class="seal cover" layout="stack" fill><og-icon class="prize" icon={icon || 'bag'}></og-icon></div>
+    {#if body}<p part="caption" class="body">{body}</p>{/if}
   {/if}
-  {#if !error}<footer part="Reveal.actions" class="actions" data-layout="row" data-gap="tight">
-    {#if state == 'sealed'}<button id="Open" data-tone="reward" part="Reveal.open" class="act go" variant="primary" disabled={disabled} aria-label={t("meta.reveal.open")} onclick={open}><kbd class="cap" data-action="details"></kbd><span>{t("meta.reveal.open")}</span></button>
-    {:else if state == 'revealing' && canSkip}<button id="Skip" part="Reveal.skip" class="act" disabled={disabled} aria-label={t("meta.reveal.skip")} onclick={skip}><kbd class="cap" data-action="back"></kbd><span>{t("meta.reveal.skip")}</span></button>
-    {:else if state == 'revealed'}<button id="Continue" part="Reveal.continue" class="act go" variant="primary" disabled={disabled} aria-label={continueLabel || t("meta.continue")} onclick={continue}><kbd class="cap" data-action="details"></kbd><span>{continueLabel || t("meta.continue")}</span></button>{/if}
+  {#if !error}<footer part="actions" class="actions" layout="row" gap="tight">
+    {#if state == 'sealed'}<button id="Open" tone="reward" part="open" class="act go" variant="primary" disabled={disabled} aria-label={t("meta.reveal.open")} onclick={open}><kbd class="cap" data-action="details"></kbd><span>{t("meta.reveal.open")}</span></button>
+    {:else if state == 'revealing' && canSkip}<button id="Skip" part="skip" class="act" disabled={disabled} aria-label={t("meta.reveal.skip")} onclick={skip}><kbd class="cap" data-action="back"></kbd><span>{t("meta.reveal.skip")}</span></button>
+    {:else if state == 'revealed'}<button id="Continue" part="continue" class="act go" variant="primary" disabled={disabled} aria-label={continueLabel || t("meta.continue")} onclick={continue}><kbd class="cap" data-action="details"></kbd><span>{continueLabel || t("meta.continue")}</span></button>{/if}
   </footer>{/if}
 </section>
 
 <style>
-:host { inline-size: stretch; }
+.cover { justify-content: center; align-items: center; }
+#Reveal { inline-size: stretch; }
 /* The frame: two corners cut, a lit top edge. */
-[part="Reveal.frame"] { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.frame { position: relative; min-block-size: 0; border-radius: var(--inv-frame-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 h2, p { margin: 0; overflow-wrap: anywhere; }
 .band { flex: none; width: stretch; align-items: center; justify-content: flex-start; text-align: center; }
@@ -81,11 +81,11 @@ h2, p { margin: 0; overflow-wrap: anywhere; }
 .none { flex: 1; }
 .reward { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); width: stretch; padding: 0; border: none; border-radius: 0; background: var(--inv-bare-fill); box-shadow: none; }
 .reward:hover, .reward:active { background: var(--inv-bare-fill); box-shadow: none; }
-.reward[data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
-.reward[data-rarity=rare] { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
-.reward[data-rarity=epic] { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
-.reward[data-rarity=legendary] { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
-.reward[data-rarity=mythic] { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
+.reward.rarity-uncommon { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
+.reward.rarity-rare { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
+.reward.rarity-epic { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
+.reward.rarity-legendary { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
+.reward.rarity-mythic { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
 .face { width: stretch; align-items: center; text-align: center; }
 .socket { position: relative; inline-size: var(--shop-reward-size); max-inline-size: stretch; aspect-ratio: 1; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .reward { --inv-base-rim: var(--inv-socket-rim); }

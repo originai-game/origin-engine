@@ -1,5 +1,4 @@
 <meta name="component" content="Telegraph">
-<meta name="parts" content="Telegraph.area Telegraph.wash Telegraph.sweep Telegraph.rim">
 <meta name="prop:entity" content="number" data-doc="Its caster, by its bits (0: use at).">
 <meta name="prop:at" content="string" data-default="0 0 0" data-doc="Its origin on the ground without an entity (x y z).">
 <meta name="prop:shape" content="string" data-doc="Its area: circle (empty), cone, line or ring.">
@@ -24,10 +23,10 @@
   Read only; the game owns the timing and the hit.
 -->
 <ground id="Telegraph" danger entity={entity || null} at={at} size={(radius * 2) + " " + (radius * 2)} rotation={"0 " + direction + " 0"}>
-  <div id="Area" part="Telegraph.area" data-shape={shape == '' ? 'circle' : shape} data-friendly={friendly} data-hit={hit} style:--p={progress <= 0 ? 0 : (progress >= 1 ? 1 : progress)} style:--a={angle} style:--w={width} style:--inner={inner}>
-    <div part="Telegraph.wash" class="wash"></div>
-    <div part="Telegraph.sweep" class="sweep"></div>
-    <div part="Telegraph.rim" class="rim"></div>
+  <div id="Area" part="area" shape={shape == '' ? 'circle' : shape} style:--p={progress <= 0 ? 0 : (progress >= 1 ? 1 : progress)} style:--a={angle} style:--w={width} style:--inner={inner} class:friendly={friendly} class:shape-cone={(shape == '' ? 'circle' : shape) == 'cone'} class:shape-line={(shape == '' ? 'circle' : shape) == 'line'} class:shape-ring={(shape == '' ? 'circle' : shape) == 'ring'} class:hit={hit}>
+    <div part="wash" class="wash"></div>
+    <div part="sweep" class="sweep"></div>
+    <div part="rim" class="rim"></div>
     {#if shape == 'cone'}<div class="side"></div><div class="side end"></div>{/if}
   </div>
 </ground>
@@ -37,32 +36,32 @@
    the caster at its centre, a cone or a line facing up the box. */
 #Telegraph { inline-size: var(--measure-xs); block-size: var(--measure-xs); }
 #Area { position: relative; inline-size: var(--measure-xs); block-size: var(--measure-xs); filter: var(--world-telegraph-glow); }
-#Area[data-friendly=true] { filter: var(--world-telegraph-ally-glow); }
+#Area.friendly { filter: var(--world-telegraph-ally-glow); }
 .wash, .sweep, .rim { position: absolute; box-sizing: border-box; border-radius: var(--world-round); }
 /* The wash: faint, hatched for an enemy. */
 .wash { inset: 0; background: var(--world-telegraph-wash-fill); }
-[data-friendly=true] .wash { background: var(--world-telegraph-ally-wash-fill); }
+.friendly .wash { background: var(--world-telegraph-ally-wash-fill); }
 /* The fill, from the caster out to the rim; its edge pale. */
 .sweep { left: calc(50% - var(--p) * 50%); top: calc(50% - var(--p) * 50%); inline-size: calc(var(--p) * 100%); block-size: calc(var(--p) * 100%); border: var(--world-telegraph-lead-border); background: var(--world-telegraph-sweep-fill); }
-[data-friendly=true] .sweep { border: var(--world-telegraph-ally-lead-border); background: var(--world-telegraph-ally-sweep-fill); }
+.friendly .sweep { border: var(--world-telegraph-ally-lead-border); background: var(--world-telegraph-ally-sweep-fill); }
 .rim { inset: 0; border: var(--world-telegraph-rim-border); }
-[data-friendly=true] .rim { border: var(--world-telegraph-ally-rim-border); }
+.friendly .rim { border: var(--world-telegraph-ally-rim-border); }
 /* A cone: the circle cut to its angle, the sides drawn. */
-[data-shape=cone] .wash, [data-shape=cone] .sweep, [data-shape=cone] .rim { mask-image: conic-gradient(from calc(var(--a) * -0.5deg), #000 0 calc(var(--a) * 1deg), transparent 0); }
+.shape-cone .wash, .shape-cone .sweep, .shape-cone .rim { mask-image: conic-gradient(from calc(var(--a) * -0.5deg), #000 0 calc(var(--a) * 1deg), transparent 0); }
 .side { position: absolute; left: calc(50% - var(--stroke-thick) / 2); top: 0; inline-size: var(--stroke-thick); block-size: 50%; background: var(--world-telegraph); transform-origin: 50% 100%; rotate: calc(var(--a) * -0.5deg); }
-[data-friendly=true] .side { background: var(--world-telegraph-ally); }
+.friendly .side { background: var(--world-telegraph-ally); }
 .side.end { rotate: calc(var(--a) * 0.5deg); }
 /* A line: a strip from the caster up the box, the fill growing along it. */
-[data-shape=line] .wash, [data-shape=line] .rim { left: calc(50% - var(--w) * 50%); right: auto; top: 0; bottom: 50%; inline-size: calc(var(--w) * 100%); border-radius: 0; }
-[data-shape=line] .sweep { left: calc(50% - var(--w) * 50%); top: calc(50% - var(--p) * 50%); inline-size: calc(var(--w) * 100%); block-size: calc(var(--p) * 50%); border-radius: 0; border-inline-width: 0; border-block-end-width: 0; }
+.shape-line .wash, .shape-line .rim { left: calc(50% - var(--w) * 50%); right: auto; top: 0; bottom: 50%; inline-size: calc(var(--w) * 100%); border-radius: 0; }
+.shape-line .sweep { left: calc(50% - var(--w) * 50%); top: calc(50% - var(--p) * 50%); inline-size: calc(var(--w) * 100%); block-size: calc(var(--p) * 50%); border-radius: 0; border-inline-width: 0; border-block-end-width: 0; }
 /* A ring: the safe middle cut out, the fill growing from it outward. */
 #Area { --reach: calc(var(--inner) + (1 - var(--inner)) * var(--p)); }
-[data-shape=ring] .wash, [data-shape=ring] .rim { mask-image: radial-gradient(closest-side, transparent calc(var(--inner) * 100%), #000 calc(var(--inner) * 100%)); }
-[data-shape=ring] .sweep { left: calc(50% - var(--reach) * 50%); top: calc(50% - var(--reach) * 50%); inline-size: calc(var(--reach) * 100%); block-size: calc(var(--reach) * 100%); mask-image: radial-gradient(closest-side, transparent calc(var(--inner) / var(--reach) * 100%), #000 calc(var(--inner) / var(--reach) * 100%)); }
+.shape-ring .wash, .shape-ring .rim { mask-image: radial-gradient(closest-side, transparent calc(var(--inner) * 100%), #000 calc(var(--inner) * 100%)); }
+.shape-ring .sweep { left: calc(50% - var(--reach) * 50%); top: calc(50% - var(--reach) * 50%); inline-size: calc(var(--reach) * 100%); block-size: calc(var(--reach) * 100%); mask-image: radial-gradient(closest-side, transparent calc(var(--inner) / var(--reach) * 100%), #000 calc(var(--inner) / var(--reach) * 100%)); }
 /* The hit: a flash, then the fade. */
-#Area[data-hit=true] { filter: var(--world-telegraph-hit-glow); animation: var(--world-impact-motion); }
-[data-hit=true] .sweep { background: var(--world-telegraph-hit-fill); }
-[data-hit=true] .rim { border: var(--world-telegraph-hit-border); }
-[data-hit=true] .side { background: var(--hud-ink); }
-@media (prefers-reduced-motion: reduce) { #Area[data-hit=true] { animation: none; } }
+#Area.hit { filter: var(--world-telegraph-hit-glow); animation: var(--world-impact-motion); }
+.hit .sweep { background: var(--world-telegraph-hit-fill); }
+.hit .rim { border: var(--world-telegraph-hit-border); }
+.hit .side { background: var(--hud-ink); }
+@media (prefers-reduced-motion: reduce) { #Area.hit { animation: none; } }
 </style>
