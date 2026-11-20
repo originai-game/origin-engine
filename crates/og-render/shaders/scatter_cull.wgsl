@@ -21,9 +21,10 @@
 // before it is in both.
 //
 // One workgroup per chunk of at most 1024 copies (scatter.rs CHUNK_CELLS
-// squared): each lane takes four consecutive copies, a prefix sum over the
-// lanes gives each its place in each region, so the lists keep the chunk's
-// order on every run.
+// squared), all of a frame's chunks whose copies share a page of the pool
+// in one dispatch: each lane takes four consecutive copies, a prefix sum
+// over the lanes gives each its place in each region, so the lists keep
+// the chunk's order on every run.
 
 // scatter_cull.rs ViewGpu.
 struct CullView {
@@ -43,10 +44,17 @@ struct CullItem {
   extent: vec4<f32>,        // xy: the terrain's size (its space), zw: the second and third levels' errors (m, at a copy's scale of 1)
   bins: vec4<u32>,          // x: the places each region holds, y: the mesh's levels (1 to 3), z: 1 with a card region, w: the sets (1: the main camera's only)
   bands: vec4<u32>,         // x: the first level the main camera's set has a region for, y: how many it has (0: no copy draws its mesh), zw: the second set's
+  source: vec4<u32>,        // x: the chunk's first vector in its page of the pool (`copies`)
+};
+
+// scatter_cull.rs ITEM_SLOT: a chunk's row, one per workgroup.
+struct CullRow {
+  @size(256) item: CullItem,
 };
 
 @group(0) @binding(0) var<uniform> view: CullView;
-@group(0) @binding(1) var<uniform> item: CullItem;
+// The dispatch's chunks, a workgroup each.
+@group(0) @binding(1) var<storage, read> items: array<CullRow>;
 @group(0) @binding(2) var<storage, read_write> list: array<vec4<f32>>;
 // Per chunk two sets of 20 words (CULL_SET_WORDS): three indexed indirect
 // draws, one per level (index count, instances, first index, base vertex,
@@ -54,7 +62,9 @@ struct CullItem {
 // first vertex, first instance), then a pad holding the chunk's copies.
 @group(0) @binding(3) var<storage, read_write> draws: array<u32>;
 @group(0) @binding(4) var pyramid: texture_2d<f32>;
-// The chunk's copies (instances.rs GpuTransform, four vectors each).
+// A page of the pool the chunks' copies live in (scatter_cull.rs
+// ChunkPool): each chunk's copies (instances.rs GpuTransform, four vectors
+// each) from its `source`, a placed chunk's count after them.
 @group(1) @binding(0) var<storage, read> copies: array<vec4<f32>>;
 @group(2) @binding(0) var density_map: texture_2d<f32>;
 @group(2) @binding(1) var density_sampler: sampler;
@@ -62,6 +72,14 @@ struct CullItem {
 const CULL_LANES: u32 = 256u;
 const CULL_PER_LANE: u32 = 4u;
 const CULL_SET_WORDS: u32 = 20u;
+
+// The workgroup's chunk.
+var<private> item: CullItem;
+
+// Vector `c` of the chunk's copy `k`.
+fn cull_copy(k: u32, c: u32) -> vec4<f32> {
+  return copies[item.source.x + k * 4u + c];
+}
 
 fn cull_outside(c: vec3<f32>, r: f32) -> bool {
   for (var i = 0; i < 6; i++) {
@@ -81,8 +99,8 @@ fn cull_occluded(c: vec3<f32>, r: f32) -> bool {
 // The regions copy `k` of the chunk is listed in, a bit each: x in the
 // main camera's set, y in the second.
 fn cull_regions(k: u32) -> vec2<u32> {
-  let v0 = copies[k * 4u];
-  let v2 = copies[k * 4u + 2u];
+  let v0 = cull_copy(k, 0u);
+  let v2 = cull_copy(k, 2u);
   let at = v2.yzw;
   let scale = length(v0.xyz);
   let flat = at.xz - view.camera.xz;
@@ -129,11 +147,12 @@ fn cull_count(mask: u32) -> vec4<u32> {
 }
 
 @compute @workgroup_size(256)
-fn cull(@builtin(local_invocation_index) lane: u32) {
+fn cull(@builtin(local_invocation_index) lane: u32, @builtin(workgroup_id) chunk: vec3<u32>) {
+  item = items[chunk.x].item;
   var n = item.item.y;
   if (item.mesh.y == 1u) {
     // scatter_place.wgsl PLACE_TAIL: its indexed draw's instances.
-    n = min(bitcast<u32>(copies[4096u].y), n);
+    n = min(bitcast<u32>(cull_copy(1024u, 0u).y), n);
   }
   var kept: array<vec2<u32>, CULL_PER_LANE>;
   var mine: array<vec4<u32>, 2>;
@@ -166,7 +185,7 @@ fn cull(@builtin(local_invocation_index) lane: u32) {
         if ((kept[j][s] & (1u << r)) == 0u) { continue; }
         let to = item.item.x + (before + r) * item.bins.x + at[r];
         for (var c = 0u; c < 4u; c++) {
-          list[to * 4u + c] = copies[k * 4u + c];
+          list[to * 4u + c] = cull_copy(k, c);
         }
         at[r] += 1u;
       }

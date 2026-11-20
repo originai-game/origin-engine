@@ -36,14 +36,8 @@ impl ScatterRenderer {
         let Some(cull) = &mut self.cull else {
             return queries;
         };
-        let groups: Vec<&wgpu::BindGroup> = self
-            .culled_chunks
-            .iter()
-            .filter_map(|k| self.chunks.get(k)?.cull_group.as_ref())
-            .collect();
-        debug_assert_eq!(groups.len(), self.culled_chunks.len());
         let q0 = encoder.used();
-        cull.encode(device, queue, encoder, view, &groups, textures);
+        cull.encode(device, queue, encoder, view, textures);
         timed("cull: scatter", q0, encoder);
         queries
     }
@@ -161,12 +155,13 @@ impl ScatterRenderer {
                             pass.draw_indexed_indirect(args, offset);
                         }
                         None => {
-                            pass.set_vertex_buffer(1, buffer.slice(..));
+                            pass.set_vertex_buffer(1, buffer.slice(c.offset..));
                             match c.placed {
                                 // Its job wrote its count into its draw.
-                                Some(_) => {
-                                    pass.draw_indexed_indirect(buffer, crate::scatter_place::TAIL)
-                                }
+                                Some(_) => pass.draw_indexed_indirect(
+                                    buffer,
+                                    c.offset + crate::scatter_place::TAIL,
+                                ),
                                 None => pass.draw_indexed(0..count, 0, 0..c.count),
                             }
                         }
@@ -214,9 +209,10 @@ impl ScatterRenderer {
                         pass.draw_indirect(args, offset);
                     }
                     None => {
-                        pass.set_vertex_buffer(0, buffer.slice(..));
+                        pass.set_vertex_buffer(0, buffer.slice(c.offset..));
                         match c.placed {
-                            Some(_) => pass.draw_indirect(buffer, crate::scatter_place::TAIL + 20),
+                            Some(_) => pass
+                                .draw_indirect(buffer, c.offset + crate::scatter_place::TAIL + 20),
                             None => pass.draw(0..IMPOSTOR_CARD_VERTICES, 0..c.count),
                         }
                     }

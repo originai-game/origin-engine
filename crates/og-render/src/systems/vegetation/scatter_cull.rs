@@ -15,7 +15,13 @@
 //! mesh's vertices. Such a scatter also lists a second set, culled by the
 //! distance and the density map alone, which the shadow passes, the probe
 //! faces and the reflections draw (coarser, [`LOD_PIXELS_OFF_CAMERA`]);
-//! any other keeps its chunks' whole lists there. Nothing is read
+//! any other keeps its chunks' whole lists there.
+//!
+//! The chunks' copies live in the pool's pages ([`ChunkPool`]), a slot a
+//! chunk, so the frame's chunks are culled in a dispatch per page of the
+//! pool (and of the list, and per density map), a workgroup per chunk:
+//! a dispatch per chunk ran one after another (Metal's compute encoder
+//! orders them), each one workgroup on one core. Nothing is read
 //! back: the counts live on the GPU (van Muijden, *GPU-Based Procedural
 //! Placement in Horizon Zero Dawn*, GDC 2017: placement on the CPU here,
 //! or on the GPU for a scatter that asks (`scatter_place.rs`, whose chunks
@@ -43,8 +49,45 @@ pub const LOD_PIXELS: f32 = 2.0;
 pub const LOD_PIXELS_OFF_CAMERA: f32 = 8.0;
 /// Bytes a copy takes (instances.rs `GpuTransform`).
 pub(crate) const COPY_BYTES: u64 = std::mem::size_of::<crate::instances::GpuTransform>() as u64;
-/// A chunk's uniform slot (the dynamic offset's alignment).
+/// A chunk's row in the items (`CullRow` in the shader): a dispatch's
+/// first row is bound at its offset, which storage aligns to 256.
 const ITEM_SLOT: u64 = 256;
+/// A chunk's slot in the pool: a placed chunk's copies, count and draws
+/// (`scatter_place::CHUNK_BYTES`), at an offset storage may bind.
+pub(crate) const SLOT_BYTES: u64 = crate::scatter_place::CHUNK_BYTES.next_multiple_of(256);
+/// The slots of the pool's first page; each next page has twice as many,
+/// up to what one storage binding may be.
+const FIRST_PAGE_SLOTS: u64 = 16;
+
+/// A chunk's place in the pool ([`ChunkPool`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Slot {
+    pub page: u32,
+    pub index: u32,
+}
+
+impl Slot {
+    /// Its first byte in its page.
+    pub fn offset(&self) -> u64 {
+        u64::from(self.index) * SLOT_BYTES
+    }
+}
+
+/// The pages the chunks' copies live in, a slot each, so the cull reads a
+/// page's chunks through one binding: each page is a buffer the chunks are
+/// placed into (vertex, storage, indirect) and its group as the cull reads
+/// it, with its free slots (the lowest taken first).
+pub(crate) struct ChunkPool {
+    pages: Vec<(wgpu::Buffer, wgpu::BindGroup, Vec<u32>)>,
+}
+
+impl ChunkPool {
+    /// A page's slots: twice the last's, within one storage binding.
+    fn page_slots(page: usize, limits: &wgpu::Limits) -> u64 {
+        let most = (page_copies(limits) * COPY_BYTES / SLOT_BYTES).max(1);
+        (FIRST_PAGE_SLOTS << page.min(32)).min(most)
+    }
+}
 
 /// The most copies one page of the list holds on a device: what one
 /// storage binding and one buffer may be, whichever is less. A frame's
@@ -112,6 +155,7 @@ pub(crate) struct ItemGpu {
     extent: [f32; 4],
     bins: [u32; 4],
     bands: [u32; 4],
+    source: [u32; 4],
 }
 
 /// One chunk to cull this frame, as the scatter renderer plans it.
@@ -122,6 +166,8 @@ pub(crate) struct CullItem {
     /// triangles alone.
     pub id: u64,
     pub first_part: bool,
+    /// Where its copies are in the pool.
+    pub slot: Slot,
     /// The terrain's space from the frame's, and its size there.
     pub to_terrain: Mat4,
     pub extent: glam::Vec2,
@@ -315,9 +361,12 @@ pub(crate) struct ScatterCull {
     /// Compiled on the compile workers (deferred.rs) from its creation.
     pipeline: crate::deferred::Deferred<wgpu::ComputePipeline>,
     shared_layout: wgpu::BindGroupLayout,
-    pub chunk_layout: wgpu::BindGroupLayout,
+    chunk_layout: wgpu::BindGroupLayout,
     map_layout: wgpu::BindGroupLayout,
+    /// The chunks' copies.
+    pool: ChunkPool,
     view: wgpu::Buffer,
+    /// The frame's chunks' rows, in the order of their dispatches.
     items: wgpu::Buffer,
     item_cap: u64,
     /// The copy list in pages, each within the device's binding limit
@@ -329,9 +378,12 @@ pub(crate) struct ScatterCull {
     no_pyramid: wgpu::TextureView,
     white: wgpu::TextureView,
     sampler: wgpu::Sampler,
-    /// This frame's chunks: their uniform rows written, their maps, where
-    /// they draw from.
+    /// This frame's chunks: their rows written, their maps, where they
+    /// draw from.
     frame: Vec<(Option<crate::TextureHandle>, Culled)>,
+    /// This frame's dispatches: their list page, pool page and map, and
+    /// their rows (the first, how many).
+    dispatches: Vec<Dispatch>,
     /// Each item's draws' args copied after the cull (`Culled::slot`),
     /// which draws read instead of `draws` on WebKit (`indirect_own.rs`);
     /// `None` elsewhere.
@@ -422,6 +474,64 @@ struct CountReadback {
     copied: Option<(u64, Vec<(u64, bool)>)>,
     /// Copied into this frame, not yet mapped.
     unmapped: bool,
+}
+
+/// One dispatch of the cull: the chunks of rows `first..first + count`,
+/// which share a page of the list and of the pool and a density map.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Dispatch {
+    list: u32,
+    pool: u32,
+    map: Option<crate::TextureHandle>,
+    first: u32,
+    count: u32,
+}
+
+/// The workgroups one dispatch may have along x (WebGPU's least limit).
+const MAX_DISPATCH_CHUNKS: u32 = 65_535;
+
+/// The dispatches for chunks of `keys` (each one's list page, pool page
+/// and map): each key's chunks together in the order first met, in their
+/// own order within it. Answers the dispatches, their rows given in turn,
+/// and each chunk's row.
+fn dispatches(keys: &[(u32, u32, Option<crate::TextureHandle>)]) -> (Vec<Dispatch>, Vec<u32>) {
+    let mut out: Vec<Dispatch> = Vec::new();
+    let mut members: Vec<Vec<usize>> = Vec::new();
+    for (k, &(list, pool, map)) in keys.iter().enumerate() {
+        match out
+            .iter()
+            .position(|d| (d.list, d.pool, d.map) == (list, pool, map))
+        {
+            Some(i) => members[i].push(k),
+            None => {
+                out.push(Dispatch {
+                    list,
+                    pool,
+                    map,
+                    first: 0,
+                    count: 0,
+                });
+                members.push(vec![k]);
+            }
+        }
+    }
+    let mut rows = vec![0u32; keys.len()];
+    let mut split = Vec::with_capacity(out.len());
+    let mut next = 0u32;
+    for (d, chunks) in out.iter().zip(&members) {
+        for part in chunks.chunks(MAX_DISPATCH_CHUNKS as usize) {
+            for &k in part {
+                rows[k] = next;
+                next += 1;
+            }
+            split.push(Dispatch {
+                first: next - part.len() as u32,
+                count: part.len() as u32,
+                ..*d
+            });
+        }
+    }
+    (split, rows)
 }
 
 /// Readbacks in flight at most: a frame's that finds none free is not read.
@@ -565,11 +675,9 @@ impl ScatterCull {
                 entry(
                     1,
                     wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: true,
-                        min_binding_size: wgpu::BufferSize::new(
-                            std::mem::size_of::<ItemGpu>() as u64
-                        ),
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(ITEM_SLOT),
                     },
                 ),
                 entry(2, buffer(rw, false)),
@@ -646,7 +754,7 @@ impl ScatterCull {
                 std::mem::size_of::<ViewGpu>() as u64,
                 uniform,
             ),
-            items: make("scatter cull items", ITEM_SLOT * 64, uniform),
+            items: make("scatter cull items", ITEM_SLOT * 64, Self::items_usage()),
             item_cap: 64,
             pages: Vec::new(),
             lod: [0.0; 2],
@@ -658,6 +766,7 @@ impl ScatterCull {
             shared_layout,
             chunk_layout,
             map_layout,
+            pool: ChunkPool { pages: Vec::new() },
             no_pyramid: texture_1x1(device, queue, wgpu::TextureFormat::R32Float, &[0; 4]),
             white: texture_1x1(device, queue, wgpu::TextureFormat::Rgba8Unorm, &[255; 4]),
             sampler: device.create_sampler(&wgpu::SamplerDescriptor {
@@ -667,6 +776,7 @@ impl ScatterCull {
                 ..Default::default()
             }),
             frame: Vec::new(),
+            dispatches: Vec::new(),
             per_draw: per_draw.then(Default::default),
             owners: Vec::new(),
             counts: CountReadbacks::default(),
@@ -676,6 +786,10 @@ impl ScatterCull {
     /// The list page `at` draws from.
     pub fn list(&self, at: &Culled) -> &wgpu::Buffer {
         &self.pages[at.page as usize].0
+    }
+
+    fn items_usage() -> wgpu::BufferUsages {
+        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST
     }
 
     fn list_usage() -> wgpu::BufferUsages {
@@ -693,20 +807,52 @@ impl ScatterCull {
         self.pipeline.compiled()
     }
 
-    /// A chunk's copies as the cull reads them (its buffer has STORAGE).
-    pub(crate) fn chunk_group(
-        &self,
-        device: &wgpu::Device,
-        copies: &wgpu::Buffer,
-    ) -> wgpu::BindGroup {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("scatter cull chunk"),
+    /// A free slot of the pool for a chunk's copies, a page added when
+    /// every one is taken.
+    pub(crate) fn alloc(&mut self, device: &wgpu::Device) -> Slot {
+        let pages = &mut self.pool.pages;
+        if let Some(page) = pages.iter().position(|p| !p.2.is_empty()) {
+            let index = pages[page].2.pop().expect("a free slot");
+            return Slot {
+                page: page as u32,
+                index,
+            };
+        }
+        let slots = ChunkPool::page_slots(pages.len(), &device.limits());
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("scatter chunks"),
+            size: slots * SLOT_BYTES,
+            usage: wgpu::BufferUsages::VERTEX
+                | wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::INDIRECT
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("scatter cull chunks"),
             layout: &self.chunk_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: copies.as_entire_binding(),
+                resource: buffer.as_entire_binding(),
             }],
-        })
+        });
+        // The lowest slot on top, taken first.
+        let free: Vec<u32> = (1..slots as u32).rev().collect();
+        pages.push((buffer, group, free));
+        Slot {
+            page: pages.len() as u32 - 1,
+            index: 0,
+        }
+    }
+
+    /// Gives a chunk's slot back once nothing draws it.
+    pub(crate) fn free(&mut self, slot: Slot) {
+        self.pool.pages[slot.page as usize].2.push(slot.index);
+    }
+
+    /// The page `slot` is in.
+    pub(crate) fn chunks(&self, slot: Slot) -> &wgpu::Buffer {
+        &self.pool.pages[slot.page as usize].0
     }
 
     /// Plans this frame's chunks, in order: their uniform rows, the list
@@ -719,6 +865,7 @@ impl ScatterCull {
         (view_proj, height, bias): (Mat4, u32, f32),
     ) -> Vec<Culled> {
         self.frame.clear();
+        self.dispatches.clear();
         self.owners = items.iter().map(|i| (i.id, i.first_part)).collect();
         let n = items.len() as u64;
         if n == 0 {
@@ -745,7 +892,7 @@ impl ScatterCull {
             self.items = make(
                 "scatter cull items",
                 ITEM_SLOT * self.item_cap,
-                wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                Self::items_usage(),
             );
             self.draws = make(
                 "scatter cull draws",
@@ -770,6 +917,11 @@ impl ScatterCull {
                 None => self.pages.push((page, cap)),
             }
         }
+        let keys: Vec<_> = (items.iter().zip(&placed))
+            .map(|(i, &(page, _))| (page, i.slot.page, i.density_map))
+            .collect();
+        let (dispatches, row_of) = dispatches(&keys);
+        self.dispatches = dispatches;
         let mut rows = vec![0u8; (ITEM_SLOT * n) as usize];
         let mut out = Vec::with_capacity(items.len());
         for (k, i) in items.iter().enumerate() {
@@ -807,8 +959,9 @@ impl ScatterCull {
                     bands[k][1].first,
                     bands[k][1].count,
                 ],
+                source: [(i.slot.offset() / 16) as u32, 0, 0, 0],
             };
-            let at = k * ITEM_SLOT as usize;
+            let at = row_of[k] as usize * ITEM_SLOT as usize;
             rows[at..at + std::mem::size_of::<ItemGpu>()].copy_from_slice(bytemuck::bytes_of(&gpu));
             let culled = Culled {
                 item: k as u32,
@@ -825,15 +978,14 @@ impl ScatterCull {
         out
     }
 
-    /// Culls this frame's chunks (`groups`: each one's copies, in the order
-    /// [`Self::prepare`] was given them) into the list and the draws.
+    /// Culls this frame's chunks, as [`Self::prepare`] planned them, into
+    /// the list and the draws.
     pub(crate) fn encode<'t>(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         encoder: &mut crate::Encoder,
         view: &CullView,
-        groups: &[&wgpu::BindGroup],
         textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
     ) {
         if self.frame.is_empty() {
@@ -859,14 +1011,8 @@ impl ScatterCull {
             lod: [self.lod[0], self.lod[1], 0.0, 0.0],
         };
         queue.write_buffer(&self.view, 0, bytemuck::bytes_of(&gpu));
-        // One group per page of the list the frame's chunks fill.
-        let pages = self
-            .frame
-            .iter()
-            .map(|(_, at)| at.page + 1)
-            .max()
-            .unwrap_or(0);
-        let shared = |list: &wgpu::Buffer| {
+        // One group per dispatch: its page of the list and its rows.
+        let shared = |d: &Dispatch| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("scatter cull"),
                 layout: &self.shared_layout,
@@ -879,13 +1025,13 @@ impl ScatterCull {
                         binding: 1,
                         resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                             buffer: &self.items,
-                            offset: 0,
-                            size: wgpu::BufferSize::new(std::mem::size_of::<ItemGpu>() as u64),
+                            offset: u64::from(d.first) * ITEM_SLOT,
+                            size: wgpu::BufferSize::new(u64::from(d.count) * ITEM_SLOT),
                         }),
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
-                        resource: list.as_entire_binding(),
+                        resource: self.pages[d.list as usize].0.as_entire_binding(),
                     },
                     wgpu::BindGroupEntry {
                         binding: 3,
@@ -900,10 +1046,6 @@ impl ScatterCull {
                 ],
             })
         };
-        let shared: Vec<wgpu::BindGroup> = self.pages[..pages as usize]
-            .iter()
-            .map(|(list, _)| shared(list))
-            .collect();
         let map_group = |m: Option<crate::TextureHandle>| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("scatter cull map"),
@@ -929,18 +1071,22 @@ impl ScatterCull {
                 maps.push((*m, map_group(*m)));
             }
         }
+        let shared: Vec<wgpu::BindGroup> = self.dispatches.iter().map(shared).collect();
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("scatter cull"),
             timestamp_writes: None,
         });
         pass.set_pipeline(&self.pipeline);
-        for (k, (group, (m, at))) in groups.iter().zip(&self.frame).enumerate() {
-            let map = &maps.iter().find(|(h, _)| h == m).expect("made above").1;
-            let shared = &shared[at.page as usize];
-            pass.set_bind_group(0, shared, &[(k as u64 * ITEM_SLOT) as u32]);
-            pass.set_bind_group(1, *group, &[]);
+        for (d, shared) in self.dispatches.iter().zip(&shared) {
+            let map = &maps
+                .iter()
+                .find(|(h, _)| *h == d.map)
+                .expect("made above")
+                .1;
+            pass.set_bind_group(0, shared, &[]);
+            pass.set_bind_group(1, &self.pool.pages[d.pool as usize].1, &[]);
             pass.set_bind_group(2, map, &[]);
-            pass.dispatch_workgroups(1, 1, 1);
+            pass.dispatch_workgroups(d.count, 1, 1);
         }
         drop(pass);
         if let Some(own) = &self.per_draw {
@@ -1045,7 +1191,7 @@ mod tests {
         };
         assert_eq!(size("CullView"), std::mem::size_of::<ViewGpu>());
         assert_eq!(size("CullItem"), std::mem::size_of::<ItemGpu>());
-        assert!(std::mem::size_of::<ItemGpu>() as u64 <= ITEM_SLOT);
+        assert_eq!(size("CullRow") as u64, ITEM_SLOT, "a row per slot");
         assert_eq!(
             COPY_BYTES, 64,
             "four vectors per copy, as the shader reads them"
@@ -1097,6 +1243,7 @@ mod tests {
         let item = |reach, card_from| CullItem {
             id: 0,
             first_part: true,
+            slot: Slot::default(),
             to_terrain: Mat4::IDENTITY,
             extent: glam::Vec2::ONE,
             copies: 8,
@@ -1150,6 +1297,43 @@ mod tests {
         assert_eq!(paginate(std::iter::empty(), 10), (vec![], vec![0]));
     }
 
+    /// A frame's chunks are culled in one dispatch per page of the list,
+    /// page of the pool and map, however their keys interleave, each chunk
+    /// in one row of its own; a dispatch past the workgroup limit splits.
+    #[test]
+    fn chunks_sharing_their_pages_and_map_are_culled_in_one_dispatch() {
+        let keys = [
+            (0, 0, None),
+            (0, 1, None),
+            (0, 0, None),
+            (1, 1, None),
+            (0, 1, None),
+        ];
+        let (d, rows) = dispatches(&keys);
+        let run = |list, pool, first, count| Dispatch {
+            list,
+            pool,
+            map: None,
+            first,
+            count,
+        };
+        assert_eq!(d, [run(0, 0, 0, 2), run(0, 1, 2, 2), run(1, 1, 4, 1)]);
+        assert_eq!(rows, [0, 2, 1, 4, 3]);
+        let many = vec![(0, 0, None); MAX_DISPATCH_CHUNKS as usize + 2];
+        let (d, rows) = dispatches(&many);
+        assert_eq!(
+            d,
+            [
+                run(0, 0, 0, MAX_DISPATCH_CHUNKS),
+                run(0, 0, MAX_DISPATCH_CHUNKS, 2)
+            ]
+        );
+        assert_eq!(
+            rows[MAX_DISPATCH_CHUNKS as usize + 1],
+            MAX_DISPATCH_CHUNKS + 1
+        );
+    }
+
     /// A frame whose copies outgrow what one storage binding may be culls
     /// into pages the device can bind (First Light's woods on WebGPU's
     /// 128 MiB drew no frame), each chunk wholly in one.
@@ -1173,6 +1357,7 @@ mod tests {
             .map(|k| CullItem {
                 id: 0,
                 first_part: true,
+                slot: Slot::default(),
                 to_terrain: Mat4::IDENTITY,
                 extent: glam::Vec2::splat(64.0),
                 copies: 600 + 37 * (k % 11),
@@ -1204,6 +1389,23 @@ mod tests {
                 "{at:?} past its page"
             );
         }
+        // The chunks' pool, too: its pages within the binding, every slot
+        // a chunk's own, a freed one taken again first.
+        let slots: Vec<Slot> = (0..40).map(|_| cull.alloc(&device)).collect();
+        assert!(
+            cull.pool.pages.len() > 1,
+            "{} page(s)",
+            cull.pool.pages.len()
+        );
+        for (buffer, ..) in &cull.pool.pages {
+            assert!(buffer.size() <= binding, "a pool page of {}", buffer.size());
+        }
+        for (k, s) in slots.iter().enumerate() {
+            assert!(!slots[..k].contains(s), "{s:?} given twice");
+            assert!(s.offset() + SLOT_BYTES <= cull.chunks(*s).size());
+        }
+        cull.free(slots[3]);
+        assert_eq!(cull.alloc(&device), slots[3]);
     }
 
     /// A perspective view's level distance is its pixels per metre at a

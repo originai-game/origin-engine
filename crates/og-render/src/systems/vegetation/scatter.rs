@@ -548,9 +548,12 @@ struct ChunkKey {
 }
 
 struct Chunk {
+    /// Its copies (none: it has none) from `offset`: a page of the GPU
+    /// cull's pool at its `slot` (`scatter_cull.rs` ChunkPool), or its own
+    /// buffer without compute.
     buffer: Option<wgpu::Buffer>,
-    /// Its copies as the GPU cull reads them (`scatter_cull.rs`).
-    cull_group: Option<wgpu::BindGroup>,
+    offset: u64,
+    slot: Option<crate::scatter_cull::Slot>,
     /// Its copies on the CPU: 0 for a chunk placed on the GPU, whose count
     /// and draws follow its copies in its buffer (`Placed`).
     count: u32,
@@ -753,9 +756,8 @@ pub(crate) struct ScatterRenderer {
     /// their capacity in bytes.
     card_quad: wgpu::Buffer,
     card_instances: Option<(wgpu::Buffer, u64)>,
-    /// The GPU cull (with compute) and this frame's culled chunks, in order.
+    /// The GPU cull (with compute), whose pool holds the chunks' copies.
     cull: Option<crate::scatter_cull::ScatterCull>,
-    culled_chunks: Vec<ChunkKey>,
     /// The GPU placement (with compute) and this frame's placed chunks, in
     /// the order of their jobs.
     place: Option<crate::scatter_place::ScatterPlace>,

@@ -195,7 +195,6 @@ impl ScatterRenderer {
             cull: p
                 .compute
                 .then(|| crate::scatter_cull::ScatterCull::new(device, queue, p.indirect_per_draw)),
-            culled_chunks: Vec::new(),
             place: p
                 .compute
                 .then(|| crate::scatter_place::ScatterPlace::new(device)),

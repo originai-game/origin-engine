@@ -1,6 +1,19 @@
 use super::*;
 
 impl ScatterRenderer {
+    /// Keeps the chunks `keep` answers true for, the others' slots given
+    /// back to the cull's pool.
+    fn retain_chunks(&mut self, keep: impl Fn(&ChunkKey, &Chunk) -> bool) {
+        let cull = &mut self.cull;
+        self.chunks.retain(|k, c| {
+            let kept = keep(k, c);
+            if !kept && let (Some(cull), Some(slot)) = (cull.as_mut(), c.slot) {
+                cull.free(slot);
+            }
+            kept
+        });
+    }
+
     /// Groups the scene's model impostors by atlas, uploads their
     /// transforms and writes each group's uniform at the slots after the
     /// scatters'.
@@ -111,12 +124,11 @@ impl ScatterRenderer {
         self.built = 0;
         // A frame that recorded jobs and failed before encoding them: their
         // chunks are placed again.
+        if self.place.as_ref().is_some_and(|p| p.pending()) {
+            let placed = std::mem::take(&mut self.placed_chunks);
+            self.retain_chunks(|k, _| !placed.contains(k));
+        }
         if let Some(place) = &mut self.place {
-            if place.pending() {
-                for k in &self.placed_chunks {
-                    self.chunks.remove(k);
-                }
-            }
             place.begin();
         }
         self.placed_chunks.clear();
@@ -215,7 +227,6 @@ impl ScatterRenderer {
             cpu_cards,
             scene.world.scatters.len() + groups.len(),
         );
-        self.culled_chunks.clear();
         let mut cull_items = Vec::new();
         // Per batch, per chunk, its item among `cull_items`.
         let mut planned: Vec<Vec<Option<usize>>> = Vec::new();
@@ -224,7 +235,8 @@ impl ScatterRenderer {
             if let Some(cull) = &mut self.cull {
                 cull.prepare(device, queue, &[], (view_proj, height, lod_bias));
             }
-            self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
+            let frame = self.frame;
+            self.retain_chunks(|_, c| frame - c.used < KEEP_FRAMES);
             self.shared.clear();
             return ScatterBatches {
                 scatters: batches,
@@ -499,7 +511,7 @@ impl ScatterRenderer {
                         p.index_count = index_count;
                         queue.write_buffer(
                             b,
-                            crate::scatter_place::TAIL,
+                            c.offset + crate::scatter_place::TAIL,
                             bytemuck::bytes_of(&index_count),
                         );
                     }
@@ -517,8 +529,11 @@ impl ScatterRenderer {
                     }
                     gpu_budget = gpu_budget.saturating_sub(1);
                     self.built += 1;
-                    let buffer = crate::scatter_place::ScatterPlace::chunk_buffer(device);
-                    let group = place.chunk_group(device, &buffer);
+                    // Placement runs with compute, as the cull does.
+                    let cull = self.cull.as_mut().expect("with the placement");
+                    let slot = cull.alloc(device);
+                    let buffer = cull.chunks(slot).clone();
+                    let group = place.chunk_group(device, &buffer, slot.offset());
                     place.push((k, arrayed), plan);
                     // Its bounds: its rectangle over the data's height range.
                     let (h0, h1) = source.range();
@@ -528,13 +543,13 @@ impl ScatterRenderer {
                         Vec3::new(b.x.min(half.x), h1, b.y.min(half.y)),
                     );
                     let grow = mesh_r * s.scale[1].max(s.scale[0]);
-                    let cull_group = self.cull.as_ref().map(|c| c.chunk_group(device, &buffer));
                     self.placed_chunks.push(key.clone());
                     self.chunks.insert(
                         key.clone(),
                         Chunk {
                             buffer: Some(buffer),
-                            cull_group,
+                            offset: slot.offset(),
+                            slot: Some(slot),
                             count: 0,
                             placed: Some(Placed { group, index_count }),
                             center,
@@ -594,27 +609,31 @@ impl ScatterRenderer {
                 };
                 let transforms: Vec<crate::instances::GpuTransform> =
                     placed.iter().map(crate::instances::gpu_transform).collect();
-                let buffer = (!transforms.is_empty()).then(|| {
-                    crate::buffer_init(
-                        device,
-                        queue,
-                        &wgpu::util::BufferInitDescriptor {
+                let contents: &[u8] = bytemuck::cast_slice(&transforms);
+                // With the cull, a slot of its pool; without, its own buffer.
+                let (buffer, slot) = match &mut self.cull {
+                    _ if transforms.is_empty() => (None, None),
+                    Some(cull) => {
+                        let slot = cull.alloc(device);
+                        let buffer = cull.chunks(slot).clone();
+                        queue.write_buffer(&buffer, slot.offset(), contents);
+                        (Some(buffer), Some(slot))
+                    }
+                    None => {
+                        let desc = wgpu::util::BufferInitDescriptor {
                             label: Some("scatter chunk"),
-                            contents: bytemuck::cast_slice(&transforms),
-                            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
-                        },
-                    )
-                });
-                let cull_group = self
-                    .cull
-                    .as_ref()
-                    .zip(buffer.as_ref())
-                    .map(|(cull, b)| cull.chunk_group(device, b));
+                            contents,
+                            usage: wgpu::BufferUsages::VERTEX,
+                        };
+                        (Some(crate::buffer_init(device, queue, &desc)), None)
+                    }
+                };
                 self.chunks.insert(
                     key.clone(),
                     Chunk {
                         buffer,
-                        cull_group,
+                        offset: slot.map_or(0, |s| s.offset()),
+                        slot,
                         count: transforms.len() as u32,
                         placed: None,
                         center,
@@ -697,14 +716,14 @@ impl ScatterRenderer {
                 .iter()
                 .map(|k| {
                     let c = self.chunks.get(k)?;
-                    c.cull_group.as_ref()?;
+                    let slot = c.slot?;
                     if !off_camera && !view.intersects_sphere(c.center, c.radius + sway) {
                         return None;
                     }
-                    self.culled_chunks.push(k.clone());
                     cull_items.push(crate::scatter_cull::CullItem {
                         id: d.id,
                         first_part: d.with.is_none(),
+                        slot,
                         to_terrain: t.transform.inverse(),
                         extent: layout.size,
                         copies: c.count,
@@ -747,7 +766,8 @@ impl ScatterRenderer {
                     .map(|i| i.material.index()),
             });
         }
-        self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
+        let frame = self.frame;
+        self.retain_chunks(|_, c| frame - c.used < KEEP_FRAMES);
         if let Some(place) = &mut self.place {
             place.upload(device, queue);
         }
@@ -761,7 +781,6 @@ impl ScatterRenderer {
         {
             crate::gpu::ready::hold();
             cull_items.clear();
-            self.culled_chunks.clear();
             batches.clear();
             planned.clear();
         }

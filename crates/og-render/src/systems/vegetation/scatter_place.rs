@@ -37,7 +37,7 @@ const MAX_STAGE_BITS: u64 = 1 << 22;
 /// (scatter_place.wgsl `PLACE_TAIL`): an indexed indirect draw, then a
 /// plain one (a card's).
 pub(crate) const TAIL: u64 = MAX_CHUNK_COPIES as u64 * COPY_BYTES;
-/// A placed chunk's buffer: its copies and its draws.
+/// A placed chunk's copies and draws (its slot in the cull's pool).
 pub(crate) const CHUNK_BYTES: u64 = TAIL + 48;
 /// A job row's slot (the dynamic offset's alignment).
 const ROW_SLOT: u64 = std::mem::size_of::<JobGpu>().next_multiple_of(256) as u64;
@@ -337,32 +337,25 @@ impl ScatterPlace {
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST
     }
 
-    /// A placed chunk's buffer: its copies (vertex and storage) and its
-    /// draws (indirect).
-    pub(crate) fn chunk_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("scatter chunk (placed)"),
-            size: CHUNK_BYTES,
-            usage: wgpu::BufferUsages::VERTEX
-                | wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::INDIRECT
-                | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
-    }
-
-    /// The chunk's buffer as a job writes it.
+    /// The chunk's copies and draws as a job writes them: its
+    /// [`CHUNK_BYTES`] from `offset` in `buffer` (its slot in the cull's
+    /// pool, `scatter_cull::ChunkPool`).
     pub(crate) fn chunk_group(
         &self,
         device: &wgpu::Device,
         buffer: &wgpu::Buffer,
+        offset: u64,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("scatter place chunk"),
             layout: &self.chunk_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: buffer.as_entire_binding(),
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer,
+                    offset,
+                    size: wgpu::BufferSize::new(CHUNK_BYTES),
+                }),
             }],
         })
     }
