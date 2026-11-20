@@ -706,12 +706,11 @@
   --cartoon-spring-soft: -og-spring(420ms, 0.35);
   --cartoon-swell: 1.06;
 
-  font-family: "Cartoon Text", "Cartoon Fallback", ui-rounded, sans-serif;
-  font-weight: 500;
-  /* A number, so every line box follows its own font size, which follows
-     the player's text scale. */
-  line-height: 1.35;
-  color: var(--ink);
+  /* The text the root sets, in --font-body. The line height is a number, so
+     every line box follows its own font size, which follows the player's
+     text scale (the steps' px line heights would not). */
+  --font-weight-body: 500;
+  --line-height-body: 1.35;
 
   /* ── The HUD over the scene: thick white edges with an ink outline,
      candy colours (a hot-pink foe, a lime boon, a cherry life bar, a

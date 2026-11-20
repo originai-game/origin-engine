@@ -89,10 +89,6 @@ h1, h2, p { margin: 0; }
 #Play { --button-font-size: calc(20 * var(--font-step-px)); --button-tracking: var(--font-tracking-sm); --button-transform: uppercase;  }
 #Play, #Play { min-inline-size: calc(240 * var(--font-step-px)); block-size: var(--control-lg); }
 /* Only the plate is cut; the focus ring stays whole around it. */
-@media (600px <= width < 1024px) and (height >= 600px) {
-  #Screen { padding-inline: var(--space-xxl); }
-  #Modes { grid-template-columns: repeat(2, minmax(0, 1fr)); block-size: auto; }
-}
 #Screen:size(compact) { row-gap: var(--space-md); padding: var(--space-lg) var(--space-lg) var(--space-md); }
 #Rule:size(compact) { display: none; }
 #Body:size(compact) { padding: var(--space-md); row-gap: var(--space-xxs); }

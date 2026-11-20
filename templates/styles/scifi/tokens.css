@@ -635,11 +635,10 @@
   /* A nameplate's cast bar carries the spell's name in the ink, so it is a
      deep amber where --warn would put white on yellow. */
 
-  font-family: "Scifi Text", sans-serif;
-  /* A number, so every line box follows its own font size, which follows the
-     player's text scale (the steps' px line heights would not). */
-  line-height: 1.35;
-  color: var(--ink);
+  /* The text the root sets, in --font-body. The line height is a number, so
+     every line box follows its own font size, which follows the player's
+     text scale (the steps' px line heights would not). */
+  --line-height-body: 1.35;
 
   /* ── The HUD over the scene: cyan glass edges with a hard keyline, an
      electric cyan accent, magenta-red for a foe, a white-cyan life bar,

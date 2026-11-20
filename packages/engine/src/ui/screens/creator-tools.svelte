@@ -85,9 +85,6 @@ button.compact { padding-inline: calc(var(--space-md) - var(--button-border-widt
 #CataloguePanel { grid-area: catalogue; }
 .label { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--data-head-ink); }
 .title { font-size: var(--hud-size-sm); font-weight: var(--data-title-weight); color: var(--hud-ink); line-clamp: 1; text-overflow: ellipsis; }
-@media (600px <= width < 1024px) and (height >= 600px) {
-  #Body { grid-template-columns: var(--measure-xs) 1fr var(--measure-sm); }
-}
 button:size(narrow), button.compact:size(narrow), button:size(narrow), button.compact:size(narrow) { block-size: var(--control-md); }
 button:size(narrow), button.compact:size(narrow) { padding: 0 var(--space-lg); }
 button.compact:size(narrow) { padding-inline: calc(var(--space-lg) - var(--button-border-width)); }

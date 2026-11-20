@@ -132,6 +132,7 @@
     --font-tracking-wide: 0.12em;
     --font-tracking-xl: 0.1em;
     --font-tracking-xs: 0.02em;
+    --font-weight-body: var(--font-weight-regular);
     --font-weight-bold: 700;
     --font-weight-medium: 500;
     --font-weight-regular: 400;

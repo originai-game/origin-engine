@@ -14,6 +14,10 @@
   --font-scale-sm-line-height: 20px;
   --font-scale-body-size: 14px;
   --font-scale-body-line-height: 20px;
+  /* The text the root sets in --font-body: the body step's weight and line
+     height (a pack may give a number instead). */
+  --font-weight-body: var(--font-weight-regular);
+  --line-height-body: var(--font-scale-body-line-height);
   --font-scale-reading-size: 15px;
   --font-scale-reading-line-height: 24px;
   --font-scale-base-size: 16px;

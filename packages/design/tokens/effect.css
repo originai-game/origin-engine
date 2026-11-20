@@ -59,9 +59,17 @@
      not yet earned, `spent` used up or defeated. */
   --filter-locked: grayscale(1) brightness(0.7);
   --filter-spent: saturate(0) brightness(0.55);
+  /* How much a glass plate saturates what it blurs: more by day, where
+     the scene behind it is pale. */
+  --surface-saturation: 200%;
+  /* The stand-in scene a HUD preview sits on: a pale sky over a sand
+     floor by day, dusk over dark earth at night. */
+  --scene-backdrop: linear-gradient(180deg, #bcd8ee, #eef0ea 50%, #ddd2bd 50%, #b8a88a);
 }
 
 :root[data-scheme=dark] {
+  --surface-saturation: 120%;
+  --scene-backdrop: linear-gradient(180deg, #9cc7e8, #e2e6df 50%, #4b4038 50%, #16120e);
   --shadow-edge: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
   --shadow-raised: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
   --shadow-float: inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 8px 24px -8px rgb(0 0 0 / 0.6);

@@ -42,9 +42,7 @@
 
 <style>
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); }
-#Page { overflow-y: auto; padding: var(--space-lg); background: linear-gradient(180deg, #9cc7e8, #e2e6df 50%, #4b4038 50%, #16120e); }
-/* The light scheme is drawn for a light scene: a pale sky over a sand floor. */
-@media (prefers-color-scheme: light) { #Page { background: linear-gradient(180deg, #bcd8ee, #eef0ea 50%, #ddd2bd 50%, #b8a88a); } }
+#Page { overflow-y: auto; padding: var(--space-lg); background: var(--scene-backdrop); }
 #Upper { position: relative; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: start; }
 .bar, #Compass { inline-size: stretch; }
 #TopMid { align-items: center; }

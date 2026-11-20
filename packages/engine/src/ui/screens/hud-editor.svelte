@@ -14,8 +14,7 @@
 </div>
 
 <style>
-#RootEditor { --surface-saturation: 120%; position: relative; block-size: stretch; }
-@media (prefers-color-scheme: light) { #RootEditor { --surface-saturation: 200%; } }
+#RootEditor { position: relative; block-size: stretch; }
 p { margin: 0; }
 /* The hint over the top on a cut glass plate, like the pause menu's
    status, and the game's editor dock at the foot, each centred. */
