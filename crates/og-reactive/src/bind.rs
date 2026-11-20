@@ -125,6 +125,11 @@ pub trait Env {
         let value = self.lookup(root)?;
         get_path(&value, rest).map(|value| value.into_owned())
     }
+    /// Whether the UI's box or input is of `class` (`:size()`, `:touch`).
+    fn screen(&self, class: Screen) -> bool {
+        let _ = class;
+        false
+    }
     /// The full locale tag formats and plurals follow, including script and region.
     fn language(&self) -> &str {
         "en"
@@ -432,6 +437,9 @@ pub enum Expr {
     /// A CSS attribute selector's value test on the value's text; null
     /// (an absent attribute) never matches.
     AttrTest(Box<Expr>, AttrTest),
+    /// `:size(narrow)` and the like: a class of the UI's own box or input,
+    /// read from [`Env::screen`].
+    Screen(Screen),
     /// `:lang(…)` on a language tag; `None` reads the locale ([`Env::language`]).
     Lang(Option<Box<Expr>>, Vec<String>),
     /// `:dir(rtl)` (true) or `:dir(ltr)` on a `dir` value; `None`, or a
@@ -449,6 +457,32 @@ pub enum Expr {
     /// (`viewBox="0 0 360 240"`, `"0,0, 360,240"`), split at whitespace
     /// and commas; a word that is not a number is null.
     Numbers(Box<Expr>),
+}
+
+/// A class of the UI's own box (`:size(…)`) or of its input (`:touch`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Screen {
+    /// Narrower than 600 px.
+    Narrow,
+    /// Shorter than 500 px: a phone on its side.
+    Short,
+    /// Narrow or short.
+    Compact,
+    /// The player touches the screen (no fine pointer).
+    Touch,
+}
+
+impl Screen {
+    /// Whether a box of `width` × `height` CSS px, touched or not, is of
+    /// this class.
+    pub fn holds(self, width: f32, height: f32, touch: bool) -> bool {
+        match self {
+            Screen::Narrow => width < 600.0,
+            Screen::Short => height < 500.0,
+            Screen::Compact => width < 600.0 || height < 500.0,
+            Screen::Touch => touch,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -731,7 +765,7 @@ impl Expr {
     /// Every path it reads, in order (a document's static structure).
     pub fn paths(&self, out: &mut Vec<String>) {
         match self {
-            Expr::Lit(_) | Expr::Interaction(_) | Expr::InteractionAt { .. } => {}
+            Expr::Lit(_) | Expr::Interaction(_) | Expr::InteractionAt { .. } | Expr::Screen(_) => {}
             Expr::Path(p) => out.push(p.clone()),
             Expr::Translate(key, args) => {
                 key.paths(out);
@@ -787,6 +821,7 @@ impl Expr {
                     .unwrap_or_else(|| scope.env.language().to_string());
                 Value::Bool(ranges.iter().any(|r| lang_matches(r, &tag)))
             }
+            Expr::Screen(class) => Value::Bool(scope.env.screen(*class)),
             Expr::Dir(value, rtl) => {
                 let written = value.as_ref().map(|v| text(&v.eval(scope)));
                 let is_rtl = match written.as_deref() {

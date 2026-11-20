@@ -96,6 +96,10 @@ mod op {
     pub const PAINT: u8 = 37;
     pub const STROKE: u8 = 38;
     pub const STROKE_WIDTH: u8 = 39;
+    /// Of the sides a declaration sets (bits of `v[0]`: top, right,
+    /// bottom, left), those that add the HUD's safe-area inset (`v[1]`);
+    /// code 0: `inset`, 1: `padding`.
+    pub const SAFE: u8 = 20;
 }
 
 /// A length's kind in a step's code.
@@ -127,6 +131,43 @@ pub struct Record {
     pub paint: Rgba,
     pub stroke: Rgba,
     pub stroke_width: f32,
+    /// The sides of its `inset` (0) and `padding` (1) that add the HUD's
+    /// safe-area inset (`env(-og-hud-inset-left)`), bits top, right,
+    /// bottom, left: the one runtime input a record leaves open.
+    pub safe: [u8; 2],
+}
+
+impl Record {
+    /// Its layout with the HUD's safe-area `insets` (top, right, bottom,
+    /// left) added where its rules read them.
+    pub fn layout_in(&self, insets: [f32; 4]) -> CompactStyle {
+        if self.safe == [0; 2] {
+            return self.layout.clone();
+        }
+        let mut s = taffy::Style::from(&self.layout);
+        let add = |mask: u8, k: usize| if mask & (1 << k) != 0 { insets[k] } else { 0.0 };
+        let [t, r, b, l] = [0, 1, 2, 3].map(|k| add(self.safe[0], k));
+        let grow = |v: &mut LengthPercentageAuto, by: f32| {
+            if by != 0.0 && !v.is_auto() {
+                *v = LengthPercentageAuto::length(v.into_raw().value() + by);
+            }
+        };
+        grow(&mut s.inset.top, t);
+        grow(&mut s.inset.right, r);
+        grow(&mut s.inset.bottom, b);
+        grow(&mut s.inset.left, l);
+        let [t, r, b, l] = [0, 1, 2, 3].map(|k| add(self.safe[1], k));
+        let pad = |v: &mut taffy::LengthPercentage, by: f32| {
+            if by != 0.0 {
+                *v = taffy::LengthPercentage::length(v.into_raw().value() + by);
+            }
+        };
+        pad(&mut s.padding.top, t);
+        pad(&mut s.padding.right, r);
+        pad(&mut s.padding.bottom, b);
+        pad(&mut s.padding.left, l);
+        CompactStyle::from(&s)
+    }
 }
 
 impl Default for Record {
@@ -141,6 +182,7 @@ impl Default for Record {
             paint: [0.0, 0.0, 0.0, 1.0],
             stroke: [0.0; 4],
             stroke_width: 1.0,
+            safe: [0; 2],
         }
     }
 }
@@ -425,6 +467,7 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::DIRECTION => l.set_flex_direction(DIRECTIONS[c]),
         op::WRAP => l.set_flex_wrap(WRAPS[c]),
         op::GAP => l.set_gap(a, b),
+        op::SAFE => r.safe[c & 1] = (r.safe[c & 1] & !(a as u8)) | b as u8,
         op::PAD => {
             l.set_pad_top(a);
             l.set_pad_right(b);
@@ -578,6 +621,63 @@ fn set_sides(steps: &mut Vec<Step>, o: u8, which: &[usize], x: f32) {
 
 /// Expands one declaration into steps; false when it is not taken.
 pub(crate) fn expand(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
+    // The HUD's safe-area inset is the one value a record leaves to
+    // runtime: compile it as 0, and after each `inset` or `padding`
+    // declaration write which of the sides it sets read it.
+    let sides = |n: &str| match n {
+        "top" | "padding-top" => 1,
+        "right" | "padding-right" => 2,
+        "bottom" | "padding-bottom" => 4,
+        "left" | "padding-left" => 8,
+        "padding-inline" => 10,
+        "padding-block" => 5,
+        _ => 15,
+    };
+    let target = match name {
+        "inset" | "top" | "right" | "bottom" | "left" => Some(0),
+        n if n.starts_with("padding") => Some(1),
+        _ => None,
+    };
+    if let Some(target) = target {
+        const ENV: &str = "env(-og-hud-inset-";
+        let (mut text, mut rest, mut mask) = (String::new(), v, 0u8);
+        while let Some(at) = rest.find(ENV) {
+            text.push_str(&rest[..at]);
+            let after = &rest[at + ENV.len()..];
+            let Some(end) = after.find(')') else {
+                return false;
+            };
+            let Some(k) = ["top", "right", "bottom", "left"]
+                .iter()
+                .position(|s| *s == &after[..end])
+            else {
+                return false;
+            };
+            mask |= 1 << k;
+            text.push_str("0px");
+            rest = &after[end + 1..];
+        }
+        let v = if mask == 0 {
+            v
+        } else {
+            text.push_str(rest);
+            text.as_str()
+        };
+        if !expand_value(steps, name, v) {
+            return false;
+        }
+        let set = sides(name);
+        steps.push(step(
+            op::SAFE,
+            target,
+            [f32::from(set), f32::from(mask & set), 0.0, 0.0],
+        ));
+        return true;
+    }
+    expand_value(steps, name, v)
+}
+
+fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
     let mut push = |o: u8, code: u8, x: [f32; 4]| {
         steps.push(step(o, code, x));
         true

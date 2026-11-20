@@ -104,7 +104,7 @@ pub(super) fn substitute(expr: &mut Expr, scope: &BTreeMap<String, Expr>) -> Res
         return Ok(());
     }
     match expr {
-        Expr::Lit(_) | Expr::Interaction(_) | Expr::InteractionAt { .. } => {}
+        Expr::Lit(_) | Expr::Interaction(_) | Expr::InteractionAt { .. } | Expr::Screen(_) => {}
         Expr::Path(p) => {
             let (root, rest) = p.split_once('.').unwrap_or((p.as_str(), ""));
             if let Some(value) = scope.get(root) {

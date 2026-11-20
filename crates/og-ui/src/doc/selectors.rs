@@ -99,6 +99,9 @@ pub enum PseudoClass {
     Dir(bool),
     /// `:state(name)`: the element's `state:name={…}` is truthy.
     Custom(Atom),
+    /// `:size(narrow|short|compact)` and `:touch`: a class of the UI's own
+    /// box or input (og-ui-next).
+    Screen(crate::bind::Screen),
     /// `:defined`: every element is.
     Defined,
     /// `:any-link` and `:link`: an `<a>` or `<area>` with an `href`.
@@ -146,6 +149,12 @@ impl ToCss for PseudoClass {
                 dest.write_str(")")
             }
             PseudoClass::Dir(rtl) => dest.write_str(if *rtl { ":dir(rtl)" } else { ":dir(ltr)" }),
+            PseudoClass::Screen(s) => dest.write_str(match s {
+                crate::bind::Screen::Narrow => ":size(narrow)",
+                crate::bind::Screen::Short => ":size(short)",
+                crate::bind::Screen::Compact => ":size(compact)",
+                crate::bind::Screen::Touch => ":touch",
+            }),
             PseudoClass::Custom(name) => {
                 dest.write_str(":state(")?;
                 name.to_css(dest)?;
@@ -356,6 +365,7 @@ impl<'i> sp::Parser<'i> for OgParser {
             "heading" => Ok(PseudoClass::Heading(Box::default())),
             "has-slotted" => Ok(PseudoClass::HasSlotted),
             "any-link" | "link" => Ok(PseudoClass::AnyLink),
+            "touch" => Ok(PseudoClass::Screen(crate::bind::Screen::Touch)),
             _ => Err(message(format!(
                 "unsupported pseudo-class :{name}; see the selector list in docs/ui.md §2.4"
             ))),
@@ -387,6 +397,20 @@ impl<'i> sp::Parser<'i> for OgParser {
                 }
             }
             "state" => Ok(PseudoClass::Custom(input.expect_ident()?.as_ref().into())),
+            "size" => {
+                use crate::bind::Screen;
+                let word = input.expect_ident()?.to_ascii_lowercase();
+                Ok(PseudoClass::Screen(match word.as_str() {
+                    "narrow" => Screen::Narrow,
+                    "short" => Screen::Short,
+                    "compact" => Screen::Compact,
+                    _ => {
+                        return Err(message(format!(
+                            ":size() takes narrow, short or compact, not {word}"
+                        )));
+                    }
+                }))
+            }
             "heading" => {
                 let levels = input.parse_comma_separated(|input| {
                     let level = input.expect_integer()?;
@@ -690,6 +714,7 @@ fn host_features<'a>(
                 Expr::Lang(None, ranges.to_vec())
             }
             Component::NonTSPseudoClass(PseudoClass::Dir(rtl)) => Expr::Dir(None, *rtl),
+            Component::NonTSPseudoClass(PseudoClass::Screen(s)) => Expr::Screen(*s),
             Component::Negation(_) | Component::Is(_) | Component::Where(_) => {
                 let mut any = Expr::Lit(false.into());
                 for inner in nested(c) {
@@ -1288,6 +1313,7 @@ fn condition(
                         _ => Expr::Dir(None, *rtl),
                     }
                 }
+                Component::NonTSPseudoClass(PseudoClass::Screen(s)) => Expr::Screen(*s),
                 Component::NonTSPseudoClass(PseudoClass::Custom(name)) => {
                     match attrs.iter().find(|a| a.name == format!("state:{}", name.0)) {
                         Some(attr) if attr.bound => {

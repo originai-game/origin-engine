@@ -301,6 +301,8 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
             return false;
         }
         match pc {
+            // The old core has no screen classes.
+            PseudoClass::Screen(_) => false,
             PseudoClass::State(state) => self.facts.states.contains(state),
             PseudoClass::Lang(ranges) => {
                 let tag = self.inherited("lang");
@@ -784,6 +786,7 @@ impl Profile {
                 }
             }
             Component::NonTSPseudoClass(pc) => match pc {
+                PseudoClass::Screen(_) => {}
                 PseudoClass::State(state) => {
                     self.states.insert(*state);
                 }
@@ -906,6 +909,7 @@ impl Profile {
                 Expr::Interaction(s) | Expr::InteractionAt { state: s, .. } => {
                     out.insert(*s);
                 }
+                Expr::Screen(_) => {}
                 Expr::Not(a)
                 | Expr::Neg(a)
                 | Expr::Format(_, a)

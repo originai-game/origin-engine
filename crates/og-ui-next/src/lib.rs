@@ -140,6 +140,7 @@ mod tests {
              <svg viewBox=\"0 0 4 4\"><circle cx=\"2\" cy=\"2\" r=\"2\" fill=\"none\"/></svg></div>\n\
              <style>\n.card { --slot: 48px; padding: 2px; }\n.card .label { width: var(--slot); }\n\
              .label:dir(rtl) { padding: 4px; }\n\
+             .label:size(short) { padding: 6px; }\n\
              .card.lit { padding: 9px; }\n</style>",
         )
         .unwrap();
@@ -227,6 +228,45 @@ mod tests {
             (label_rec.opacity, rare.opacity),
             (1.0, 0.25),
             "a bound tier picks its surface"
+        );
+        // 844×390: short, not narrow; the condition is the size class.
+        let landscape = s.record(label, |c| match &s.conditions[c as usize] {
+            og_ui::bind::Expr::Screen(k) => k.holds(844.0, 390.0, true),
+            _ => false,
+        });
+        assert_eq!(
+            taffy::Style::from(&landscape.layout).padding.top,
+            taffy::LengthPercentage::length(6.0),
+            ":size(short) holds on a phone on its side"
+        );
+        assert!(!og_ui::bind::Screen::Narrow.holds(844.0, 390.0, true));
+        assert!(og_ui::bind::Screen::Compact.holds(390.0, 844.0, true));
+    }
+
+    #[test]
+    fn the_hud_safe_area_inset_is_added_at_layout_on_the_sides_that_read_it() {
+        let sheet = style::Sheet::compile(
+            ".c { position: absolute; left: calc(env(-og-hud-inset-left) + 8px); top: 4px; \
+             padding: 2px calc(env(-og-hud-inset-right) + 1px) 2px 2px; }",
+            &Tokens::default(),
+        );
+        assert!(sheet.skipped.is_empty(), "{:?}", sheet.skipped);
+        let r = sheet.record(&[sheet.name(".c").unwrap()], style::State::Base);
+        let s = taffy::Style::from(&r.layout_in([5.0, 7.0, 0.0, 30.0]));
+        assert_eq!(
+            (s.inset.left, s.inset.top),
+            (
+                taffy::LengthPercentageAuto::length(38.0),
+                taffy::LengthPercentageAuto::length(4.0)
+            ),
+            "left reads the inset, top does not"
+        );
+        assert_eq!(
+            (s.padding.right, s.padding.left),
+            (
+                taffy::LengthPercentage::length(8.0),
+                taffy::LengthPercentage::length(2.0)
+            )
         );
     }
 
