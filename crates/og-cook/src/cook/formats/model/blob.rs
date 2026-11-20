@@ -74,6 +74,10 @@ pub struct ModelNotes {
     /// LOD 0 triangles and vertices of every primitive, summed.
     pub triangles: usize,
     pub vertices: usize,
+    /// Each cooked primitive in blob order: its glTF mesh and primitive
+    /// index, and the glTF vertex each cooked vertex came from (what the
+    /// `#anim` blob's skin and morph streams are indexed by).
+    pub sources: Vec<(usize, usize, Vec<u32>)>,
 }
 
 pub struct LodTexture {
@@ -273,6 +277,7 @@ pub fn cook(
     // Triangle primitives that cooked to no geometry (every triangle
     // degenerate, or none left by the art contract).
     let mut emptied: Vec<String> = Vec::new();
+    let mut sources = Vec::new();
     for mesh in doc.meshes() {
         let first = prims.len() as u32;
         for (pi, prim) in mesh.primitives().enumerate() {
@@ -450,6 +455,7 @@ pub fn cook(
                             material: material as u32,
                         });
                     }
+                    sources.push((mesh.index(), pi, std::mem::take(&mut c.sources)));
                     prims.push(c.row);
                 }
                 None => {
@@ -802,6 +808,7 @@ pub fn cook(
             notes,
             triangles: tris,
             vertices,
+            sources,
         },
     ))
 }

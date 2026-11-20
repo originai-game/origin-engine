@@ -910,7 +910,7 @@ fn plan_model<'a>(
             s.rel.clone(),
             format::Model::NAME,
             st,
-            Box::new(ModelJob(prepared)),
+            Box::new(ModelJob(prepared.clone())),
         ),
     );
     if s.fracture.is_some() {
@@ -1006,7 +1006,7 @@ fn plan_model<'a>(
                         format!("{}#anim", s.rel),
                         format::Animation::NAME,
                         st,
-                        Box::new(AnimationJob(s, a)),
+                        Box::new(AnimationJob(prepared.clone(), a)),
                     ),
                 );
             }
@@ -1159,16 +1159,19 @@ impl Job for ImpostorJob<'_> {
     }
 }
 
-/// A model's animation clips.
-struct AnimationJob<'a>(&'a Source, anim::AnimSettings);
+/// A model's animation clips, with the skin and morph streams of the
+/// primitives its model cook made.
+struct AnimationJob<'a>(std::sync::Arc<PreparedModel<'a>>, anim::AnimSettings);
 
 impl Job for AnimationJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let AnimationJob(s, a) = self;
+        let AnimationJob(prepared, a) = self;
         let Exec { options, .. } = ex;
+        let s = prepared.source;
         let g = s.gltf.as_ref().expect("loaded");
         let mesh = mesh_for(s, options)?;
-        anim::cook(g, &s.bytes, &mesh, a, p.stamp, &assets_root(s))
+        let primitives = &prepared.get(options)?.notes.sources;
+        anim::cook(g, &s.bytes, &mesh, a, p.stamp, &assets_root(s), primitives)
     }
 }
 

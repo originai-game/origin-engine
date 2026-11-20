@@ -782,6 +782,8 @@ fn quantize_weights(w: [f32; 4]) -> [u16; 4] {
 /// `rig` setting or detected) and written after the model's own clips; the
 /// `mirror` clips (own or a library's) after those, mirrored on the
 /// model's skeleton (`og_anim::mirror`), so nothing mirrors at run time.
+/// `primitives` are the model cook's [`model::ModelNotes::sources`], which
+/// the skin and morph streams are indexed by.
 pub fn cook(
     src: &GltfSource,
     bytes: &[u8],
@@ -789,16 +791,17 @@ pub fn cook(
     settings: &AnimSettings,
     stamp: u64,
     root: &Path,
+    primitives: &[(usize, usize, Vec<u32>)],
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     if settings.libraries.is_empty() && settings.mirrors.is_empty() {
-        return cook_with(src, bytes, mesh, settings, stamp, &[]);
+        return cook_with(src, bytes, mesh, settings, stamp, &[], Some(primitives));
     }
     // Retargeting reads the clips as resampled, never as compressed.
     let exact = AnimSettings {
         compress: false,
         ..settings.clone()
     };
-    let (own_blob, _) = cook_with(src, bytes, mesh, &exact, stamp, &[])?;
+    let (own_blob, _) = cook_with(src, bytes, mesh, &exact, stamp, &[], None)?;
     let own = og_anim::cooked::CookedAnimation::from_bytes("model#anim", &own_blob)
         .map_err(|e| CookError(e.to_string()))?;
     let mut extra: Vec<og_anim::ClipAsset> = Vec::new();
@@ -829,7 +832,7 @@ pub fn cook(
             compress: false,
             ..lib_settings.clone()
         };
-        let (lib_blob, _) = cook_with(&lib_src, &lib_bytes, mesh, &lib_exact, 0, &[])?;
+        let (lib_blob, _) = cook_with(&lib_src, &lib_bytes, mesh, &lib_exact, 0, &[], None)?;
         let library = og_anim::cooked::CookedAnimation::from_bytes("library#anim", &lib_blob)
             .map_err(|e| fail(e.to_string()))?;
         let source_map =
@@ -873,13 +876,16 @@ pub fn cook(
         notes.push(format!("clip '{from}' mirrored as '{name}'"));
         extra.push(m);
     }
-    let (blob, mut own_notes) = cook_with(src, bytes, mesh, settings, stamp, &extra)?;
+    let (blob, mut own_notes) =
+        cook_with(src, bytes, mesh, settings, stamp, &extra, Some(primitives))?;
     own_notes.extend(notes);
     Ok((blob, own_notes))
 }
 
 /// The blob of a glTF with `extra` clips (already bound to its nodes)
-/// after its own.
+/// after its own, with the skin and morph streams of `primitives` (the
+/// model cook's, [`model::ModelNotes::sources`]); without
+/// them, a blob only read for its skeleton and clips.
 fn cook_with(
     src: &GltfSource,
     bytes: &[u8],
@@ -887,6 +893,7 @@ fn cook_with(
     settings: &AnimSettings,
     stamp: u64,
     extra: &[og_anim::ClipAsset],
+    primitives: Option<&[(usize, usize, Vec<u32>)]>,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let doc = &src.doc;
     let json = json(bytes);
@@ -1101,16 +1108,16 @@ fn cook_with(
     }
 
     // Per-vertex data of the cooked primitives, indexed as the model blob
-    // indexes them (model.rs cooks the same primitives in the same order).
+    // indexes them: `primitives` are the model cook's own, in its order.
     let mut skin_streams = Vec::new();
     let mut skin_data: Vec<u8> = Vec::new();
     let mut morphs = Vec::new();
     let mut targets = Vec::new();
     let mut morph_data: Vec<u8> = Vec::new();
-    let default_material = doc.materials().count() as u32;
-    let uv_plan = model::uv_plan(src);
-    let mut cooked_index = 0u32;
-    for m in doc.meshes() {
+    for (index, (mi, pi, sources)) in primitives.unwrap_or_default().iter().enumerate() {
+        let index = index as u32;
+        let m = doc.meshes().nth(*mi).expect("the model cook's mesh");
+        let prim = m.primitives().nth(*pi).expect("the model cook's primitive");
         let target_names: Vec<String> = json
             .as_ref()
             .and_then(|j| {
@@ -1127,143 +1134,118 @@ fn cook_with(
             })
             .unwrap_or_default();
         let default_weights: Vec<f32> = m.weights().map(|w| w.to_vec()).unwrap_or_default();
-        for (pi, prim) in m.primitives().enumerate() {
-            if prim.mode() != gltf::mesh::Mode::Triangles {
-                continue;
-            }
-            let material = prim
-                .material()
-                .index()
-                .map_or(default_material, |i| i as u32);
-            let normal_mapped = prim.material().normal_texture().is_some();
-            let what = format!("mesh '{}' primitive {pi}", m.name().unwrap_or(""));
-            let Some(cooked) = model::cook_primitive(
-                src,
-                std::slice::from_ref(&prim),
-                material,
-                normal_mapped,
-                mesh,
-                false,
-                uv_plan.bake.get(&(m.index(), pi)).copied(),
-            )
-            .map_err(|e| CookError(format!("{what}: {e}")))?
-            else {
-                continue;
-            };
-            let index = cooked_index;
-            cooked_index += 1;
-            let vertex_count = cooked.sources.len();
-            let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
-            if let (Some(j), Some(w)) = (reader.read_joints(0), reader.read_weights(0)) {
-                let j: Vec<[u16; 4]> = j.into_u16().collect();
-                let w: Vec<[f32; 4]> = w.into_f32().collect();
-                let mut packed = Vec::with_capacity(vertex_count * 16);
-                for &s in &cooked.sources {
-                    let (jj, ww) = (
-                        j.get(s as usize).copied().unwrap_or_default(),
-                        w.get(s as usize).copied().unwrap_or_default(),
-                    );
-                    let q = quantize_weights(ww);
-                    for v in jj {
-                        packed.extend_from_slice(&v.to_le_bytes());
-                    }
-                    for v in q {
-                        packed.extend_from_slice(&v.to_le_bytes());
-                    }
+        let what = format!("mesh '{}' primitive {pi}", m.name().unwrap_or(""));
+        let vertex_count = sources.len();
+        let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
+        if let (Some(j), Some(w)) = (reader.read_joints(0), reader.read_weights(0)) {
+            let j: Vec<[u16; 4]> = j.into_u16().collect();
+            let w: Vec<[f32; 4]> = w.into_f32().collect();
+            let mut packed = Vec::with_capacity(vertex_count * 16);
+            for &s in sources {
+                let (jj, ww) = (
+                    j.get(s as usize).copied().unwrap_or_default(),
+                    w.get(s as usize).copied().unwrap_or_default(),
+                );
+                let q = quantize_weights(ww);
+                for v in jj {
+                    packed.extend_from_slice(&v.to_le_bytes());
                 }
-                let enc = model::encode_vertices(&packed, vertex_count, 16)
-                    .map_err(|e| CookError(format!("{what}: {e}")))?;
-                while !skin_data.len().is_multiple_of(4) {
-                    skin_data.push(0);
+                for v in q {
+                    packed.extend_from_slice(&v.to_le_bytes());
                 }
-                skin_streams.push(SkinStreamRow {
-                    primitive: index,
-                    mesh: m.index() as u32,
-                    vertex_count: vertex_count as u32,
-                    data_offset: skin_data.len() as u32,
-                    data_size: enc.len() as u32,
-                });
-                skin_data.extend_from_slice(&enc);
             }
-            let morph: Vec<(Deltas, Option<Deltas>)> = reader
-                .read_morph_targets()
-                .map(|(p, n, _)| {
-                    (
-                        p.map(|p| p.collect()).unwrap_or_default(),
-                        n.map(|n| n.collect()),
-                    )
-                })
-                .collect();
-            if !morph.is_empty() {
-                let normals = morph.iter().all(|t| t.1.is_some());
-                let stride = if normals { 24 } else { 12 };
-                // Sparse: per target only the vertices it moves (any bit
-                // of a delta set), with their indices.
-                let mut packed = Vec::new();
-                let mut indices: Vec<u8> = Vec::new();
-                let mut moved = 0u32;
-                let target_first = targets.len() as u32;
-                for (t, (p, n)) in morph.iter().enumerate() {
-                    let first = moved;
-                    for (v, &s) in cooked.sources.iter().enumerate() {
-                        let dp = p.get(s as usize).copied().unwrap_or_default();
-                        let dn = n
-                            .as_ref()
-                            .and_then(|n| n.get(s as usize))
-                            .copied()
-                            .unwrap_or_default();
-                        let nonzero = |d: &[f32; 3]| d.iter().any(|x| x.to_bits() != 0);
-                        if !nonzero(&dp) && !(normals && nonzero(&dn)) {
-                            continue;
-                        }
-                        dp.iter()
+            let enc = model::encode_vertices(&packed, vertex_count, 16)
+                .map_err(|e| CookError(format!("{what}: {e}")))?;
+            while !skin_data.len().is_multiple_of(4) {
+                skin_data.push(0);
+            }
+            skin_streams.push(SkinStreamRow {
+                primitive: index,
+                mesh: m.index() as u32,
+                vertex_count: vertex_count as u32,
+                data_offset: skin_data.len() as u32,
+                data_size: enc.len() as u32,
+            });
+            skin_data.extend_from_slice(&enc);
+        }
+        let morph: Vec<(Deltas, Option<Deltas>)> = reader
+            .read_morph_targets()
+            .map(|(p, n, _)| {
+                (
+                    p.map(|p| p.collect()).unwrap_or_default(),
+                    n.map(|n| n.collect()),
+                )
+            })
+            .collect();
+        if !morph.is_empty() {
+            let normals = morph.iter().all(|t| t.1.is_some());
+            let stride = if normals { 24 } else { 12 };
+            // Sparse: per target only the vertices it moves (any bit
+            // of a delta set), with their indices.
+            let mut packed = Vec::new();
+            let mut indices: Vec<u8> = Vec::new();
+            let mut moved = 0u32;
+            let target_first = targets.len() as u32;
+            for (t, (p, n)) in morph.iter().enumerate() {
+                let first = moved;
+                for (v, &s) in sources.iter().enumerate() {
+                    let dp = p.get(s as usize).copied().unwrap_or_default();
+                    let dn = n
+                        .as_ref()
+                        .and_then(|n| n.get(s as usize))
+                        .copied()
+                        .unwrap_or_default();
+                    let nonzero = |d: &[f32; 3]| d.iter().any(|x| x.to_bits() != 0);
+                    if !nonzero(&dp) && !(normals && nonzero(&dn)) {
+                        continue;
+                    }
+                    dp.iter()
+                        .for_each(|x| packed.extend_from_slice(&x.to_le_bytes()));
+                    if normals {
+                        dn.iter()
                             .for_each(|x| packed.extend_from_slice(&x.to_le_bytes()));
-                        if normals {
-                            dn.iter()
-                                .for_each(|x| packed.extend_from_slice(&x.to_le_bytes()));
-                        }
-                        indices.extend_from_slice(&(v as u32).to_le_bytes());
-                        moved += 1;
                     }
-                    let (name_offset, name_len) =
-                        strings.add(target_names.get(t).map_or("", |s| s.as_str()));
-                    targets.push(TargetRow {
-                        name_offset,
-                        name_len,
-                        default_weight: default_weights.get(t).copied().unwrap_or(0.0),
-                        moved_first: first,
-                        moved_count: moved - first,
-                    });
+                    indices.extend_from_slice(&(v as u32).to_le_bytes());
+                    moved += 1;
                 }
-                let mut put = |bytes: &[u8], stride: usize| -> Result<(u32, u32), CookError> {
-                    if moved == 0 {
-                        return Ok((morph_data.len() as u32, 0));
-                    }
-                    let enc = model::encode_vertices(bytes, moved as usize, stride)
-                        .map_err(|e| CookError(format!("{what}: {e}")))?;
-                    while !morph_data.len().is_multiple_of(4) {
-                        morph_data.push(0);
-                    }
-                    let at = morph_data.len() as u32;
-                    morph_data.extend_from_slice(&enc);
-                    Ok((at, enc.len() as u32))
-                };
-                let (data_offset, data_size) = put(&packed, stride)?;
-                let (index_offset, index_size) = put(&indices, 4)?;
-                morphs.push(MorphRow {
-                    primitive: index,
-                    mesh: m.index() as u32,
-                    vertex_count: vertex_count as u32,
-                    target_first,
-                    target_count: morph.len() as u32,
-                    normals: normals as u32,
-                    data_offset,
-                    data_size,
-                    moved,
-                    index_offset,
-                    index_size,
+                let (name_offset, name_len) =
+                    strings.add(target_names.get(t).map_or("", |s| s.as_str()));
+                targets.push(TargetRow {
+                    name_offset,
+                    name_len,
+                    default_weight: default_weights.get(t).copied().unwrap_or(0.0),
+                    moved_first: first,
+                    moved_count: moved - first,
                 });
             }
+            let mut put = |bytes: &[u8], stride: usize| -> Result<(u32, u32), CookError> {
+                if moved == 0 {
+                    return Ok((morph_data.len() as u32, 0));
+                }
+                let enc = model::encode_vertices(bytes, moved as usize, stride)
+                    .map_err(|e| CookError(format!("{what}: {e}")))?;
+                while !morph_data.len().is_multiple_of(4) {
+                    morph_data.push(0);
+                }
+                let at = morph_data.len() as u32;
+                morph_data.extend_from_slice(&enc);
+                Ok((at, enc.len() as u32))
+            };
+            let (data_offset, data_size) = put(&packed, stride)?;
+            let (index_offset, index_size) = put(&indices, 4)?;
+            morphs.push(MorphRow {
+                primitive: index,
+                mesh: m.index() as u32,
+                vertex_count: vertex_count as u32,
+                target_first,
+                target_count: morph.len() as u32,
+                normals: normals as u32,
+                data_offset,
+                data_size,
+                moved,
+                index_offset,
+                index_size,
+            });
         }
     }
     notes.push(format!(
