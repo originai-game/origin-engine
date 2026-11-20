@@ -1128,6 +1128,7 @@ const FALLBACKS: &str = r#"
     border-width: var(--dropdown-list-rim-width); border-style: solid; border-color: var(--dropdown-list-rim);
     border-radius: var(--dropdown-list-radius);
     background: var(--dropdown-list-fill, revert-layer);
+    backdrop-filter: var(--dropdown-list-glass, none);
     box-shadow: var(--dropdown-list-shadow);
   }
   select::part(option):hover { background: var(--dropdown-option-hover-fill, revert-layer); }

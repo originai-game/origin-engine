@@ -334,7 +334,9 @@
     --chip-radius: var(--radius-card);
     --details-icon: 16px;
     --dpad-size: 132px;
-    --dropdown-list-fill: linear-gradient(180deg, var(--color-glass-hi), var(--color-glass) 96px, var(--color-glass-lo));
+    --dropdown-list-fill: linear-gradient(180deg, var(--color-glass-hi), var(--color-glass) 96px, var(--color-glass-lo)), var(--dropdown-list-ground);
+    --dropdown-list-glass: none;
+    --dropdown-list-ground: oklch(from var(--color-glass) l c h / 1);
     --dropdown-list-radius: var(--panel-radius);
     --dropdown-list-rim: var(--color-rim);
     --dropdown-list-rim-width: var(--panel-border-width);
@@ -3008,6 +3010,7 @@
     border-width: var(--dropdown-list-rim-width); border-style: solid; border-color: var(--dropdown-list-rim);
     border-radius: var(--dropdown-list-radius);
     background: var(--dropdown-list-fill, revert-layer);
+    backdrop-filter: var(--dropdown-list-glass, none);
     box-shadow: var(--dropdown-list-shadow);
   }
   select::part(option):hover { background: var(--dropdown-option-hover-fill, revert-layer); }

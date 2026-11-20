@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "UI: an open select's list is opaque by default, so the labels under it no longer read through its rows. The default style's list gradient now lies on a ground of its own (`--dropdown-list-ground`); a style that wants a translucent list sets its own `--dropdown-list-fill` and a blur behind it with `--dropdown-list-glass`."
+  ]
+}
