@@ -328,7 +328,7 @@ pub fn cook_project_with_texture_cache(
         mut early_errors,
         mut consumed,
         components,
-    } = scan_sources(assets_dir, &cook_index, threads)?;
+    } = scan_sources(assets_dir, &cook_index, threads, !options.publish)?;
     laps.lap("scan");
     let imported = import(&mut sources, &mut consumed, texture_cache, threads);
     laps.lap("import");

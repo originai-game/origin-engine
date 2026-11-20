@@ -560,15 +560,59 @@ pub fn og_load_document(world: u32, path: String) -> Result<(), String> {
     }
 }
 
+/// A development build: puts the default style a development cook from a
+/// checkout carries (`@ui/base`, the source tree's when it is not the
+/// compiled one; og-cook's `ui_components::base_css`) in effect for the
+/// process, or the compiled one again when the bundle carries none. A
+/// pack-less UI takes its part sheet at once; packs and documents read
+/// before keep theirs until they are read again. Answers whether the
+/// default style changed.
+#[cfg(not(feature = "publish"))]
+pub(crate) fn apply_base(eng: &Engine) -> Result<bool, String> {
+    const PACK: &str = "@ui/base";
+    let css = {
+        let assets = eng.assets.borrow();
+        match assets.blob(PACK) {
+            Ok((bytes, bundle)) => {
+                let text = bundle
+                    .style_text(PACK, bytes.bytes())
+                    .map_err(|e| e.to_string())?;
+                let files: Vec<(String, String)> = serde_json::from_str(&text)
+                    .map_err(|e| format!("{PACK}: CSS pack sources: {e}"))?;
+                files.into_iter().next().map(|(_, css)| css)
+            }
+            Err(_) => None,
+        }
+    };
+    let changed =
+        og_ui::set_base_css(css.as_deref()).map_err(|e| format!("{PACK}: {e} (the default style stays)"))?;
+    if changed
+        && let Some(ui) = eng.state.borrow().ui.clone()
+        && ui.lock().styled_by(None)
+    {
+        ui.lock().reset_part_css();
+    }
+    Ok(changed)
+}
+
 /// After a hot reload (`og dev`): every document whose cooked output
 /// changed is read again and replaces its definition in place, and every
 /// style the UI is configured with that changed is applied again; the
-/// UI's state (the layer stack, focus, motion) is kept.
+/// UI's state (the layer stack, focus, motion) is kept. In a development
+/// build an edited default style ([`apply_base`]) reads every style and
+/// document again.
 pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
     let mut failed = Vec::new();
     let loaded = with(eng.id, |d| d.loaded.clone());
     let ui = eng.state.borrow().ui.clone();
     let Some(ui) = ui else { return failed };
+    #[cfg(not(feature = "publish"))]
+    let rebased = apply_base(eng).unwrap_or_else(|e| {
+        failed.push(format!("og dev: {e}"));
+        false
+    });
+    #[cfg(feature = "publish")]
+    let rebased = false;
     for l in loaded {
         let now = hash_of(eng, &l.id);
         // An edited .riv reloads its document's artboards too.
@@ -634,7 +678,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
     for (i, id) in styles {
         let now = hash_of(eng, &id);
         let before = with(eng.id, |d| d.styles.get(&i).copied());
-        if before.is_none_or(|b| b == now) {
+        if before.is_none_or(|b| b == now) && !rebased {
             continue;
         }
         match super::ui_config::read_style(eng, &id) {
@@ -650,6 +694,14 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
         && let Err(reason) = super::og_ui_configure(eng.id, Some("{}".into()))
     {
         failed.push(format!("og dev: the style did not apply: {reason}"));
+    }
+    // Without a pack nothing above read the documents against the new
+    // default style's role rules.
+    if rebased
+        && configured_style(eng).is_none()
+        && let Err(reason) = restyle_loaded(eng)
+    {
+        failed.push(format!("og dev: the default style did not apply: {reason}"));
     }
     failed
 }

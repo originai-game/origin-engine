@@ -28,6 +28,16 @@ use std::sync::OnceLock;
 /// The reserved id prefix of the built-in documents' files.
 pub const PREFIX: &str = "@ui/";
 
+/// The default style as a development cook from a checkout carries it
+/// ([`base_css`]): og-ui's `set_base_css` puts it in the compiled one's
+/// place in a development build.
+pub const BASE: &str = "@ui/base/default.css";
+
+// The generator gen-theme.sh runs, so the cook reads the tokens as it does.
+#[allow(dead_code, unused_imports)]
+#[path = "../../../og-ui/scripts/theme_codegen.rs"]
+mod theme_codegen;
+
 /// The directories under `src/ui` that hold built-in documents.
 const ROOTS: [&str; 3] = ["components/", "controls/", "screens/"];
 
@@ -156,6 +166,61 @@ pub fn ui_dir() -> Option<&'static Path> {
         ui(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui"))
     })
     .as_deref()
+}
+
+/// The default style as the checkout's source tree has it, when that is
+/// not the style this cook was compiled with, and the files it is read
+/// from (inputs of the cook either way; none outside a checkout). It is
+/// `crates/og-ui/default.css`, or, when a token file
+/// (`packages/design/tokens/*.css`) is newer than it, what gen-theme.sh
+/// would write there from the tokens. A published game never carries it:
+/// its default style is the compiled one.
+pub fn base_css() -> (Result<Option<&'static [u8]>, String>, Vec<PathBuf>) {
+    let Some(root) = ui_dir().and_then(|d| d.ancestors().nth(4)) else {
+        return (Ok(None), Vec::new());
+    };
+    let (tokens, file) = (
+        root.join("packages/design/tokens"),
+        root.join("crates/og-ui/default.css"),
+    );
+    if !tokens.is_dir() || !file.is_file() {
+        return (Ok(None), Vec::new());
+    }
+    let mut inputs: Vec<PathBuf> = std::fs::read_dir(&tokens)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "css"))
+        .collect();
+    inputs.sort();
+    let modified = |p: &Path| std::fs::metadata(p).and_then(|m| m.modified()).ok();
+    let generate = inputs.iter().any(|t| modified(t) > modified(&file));
+    inputs.push(file.clone());
+    let css = if generate {
+        theme_codegen::load(&tokens)
+            .and_then(|t| theme_codegen::generate_css(&t))
+            .map_err(|e| format!("{}: {e}", tokens.display()))
+    } else {
+        std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))
+    };
+    let css = css.map(|css| {
+        (css != og_ui::DEFAULT_CSS).then(|| {
+            // Kept for the process (`og dev` cooks in it again and again),
+            // each distinct text once.
+            static KEPT: std::sync::Mutex<Vec<&'static [u8]>> = std::sync::Mutex::new(Vec::new());
+            let mut kept = KEPT.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            match kept.iter().find(|k| **k == css.as_bytes()) {
+                Some(k) => *k,
+                None => {
+                    let k: &'static [u8] = Box::leak(css.into_bytes().into_boxed_slice());
+                    kept.push(k);
+                    k
+                }
+            }
+        })
+    });
+    (css, inputs)
 }
 
 /// Where the built-in file `id` (`@ui/components/rpg/rpg.en.ogt`) is read

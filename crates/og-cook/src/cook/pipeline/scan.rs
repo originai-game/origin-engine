@@ -68,7 +68,7 @@ pub(crate) fn code_ui_ids(root: &Path) -> BTreeSet<String> {
 }
 
 pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
-    scan_with(assets_dir, &|path| std::fs::read(path), 1)
+    scan_with(assets_dir, &|path| std::fs::read(path), 1, false)
 }
 
 /// The kind of a file whose extension alone says it.
@@ -110,6 +110,7 @@ pub(crate) fn scan_with(
     assets_dir: &Path,
     read_file: &(impl Fn(&Path) -> std::io::Result<Vec<u8>> + Sync),
     threads: usize,
+    development: bool,
 ) -> Result<Scan, CookError> {
     let mut files = Vec::new();
     walk(assets_dir, "", &mut files)
@@ -224,10 +225,28 @@ pub(crate) fn scan_with(
             builtins.insert(f.id().to_string(), f.bytes());
         }
     }
+    // A development cook from a checkout: the default style as the source
+    // tree has it, when that is not the compiled one (a token or
+    // default.css edit not yet built into the engine).
+    let mut base_inputs = Vec::new();
+    if development
+        && (files.iter().any(|(id, _)| ext(id) == "svelte")
+            || builtins.keys().any(|id| ext(id) == "svelte"))
+    {
+        let (css, inputs) = ui_components::base_css();
+        base_inputs = inputs;
+        match css {
+            Ok(Some(css)) => {
+                builtins.insert(ui_components::BASE.to_string(), css);
+            }
+            Ok(None) => {}
+            Err(e) => early_errors.push((ui_components::BASE.into(), "style", e)),
+        }
+    }
     for id in builtins.keys() {
         files.push((id.clone(), assets_dir.join(id)));
     }
-    let external = builtins
+    let mut external: Vec<PathBuf> = builtins
         .keys()
         .filter_map(|id| {
             look::style_path(id)
@@ -235,6 +254,7 @@ pub(crate) fn scan_with(
                 .or_else(|| ui_components::path(id).ok())
         })
         .collect();
+    external.extend(base_inputs);
     let read = |rel: &str, path: &Path| -> Result<Vec<u8>, CookError> {
         match builtins.get(rel) {
             Some(b) => Ok(b.to_vec()),
