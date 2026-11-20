@@ -274,6 +274,14 @@ export function drawnWhole<T>(f: () => T): T {
   }
 }
 
+/**
+ * The pipelines asked for asynchronously so far and how many of them are made (or refused): both
+ * only go up (og-render's pipeline_counts; the splash's "41/96").
+ */
+export function counted(): { requested: number; ready: number } {
+  return { requested: tickets, ready: tickets - pending };
+}
+
 /** Render pipelines asked for asynchronously and not made yet. */
 export function compiling(): number {
   return pending;

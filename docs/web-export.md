@@ -596,7 +596,7 @@ the game (any site, any origin) hears the same as messages.
 
 | Event | `detail` | When |
 |---|---|---|
-| `og:progress` | `{ value, stage, fraction }` | the boot's bar: `value` 0 to 1 over every stage, `fraction` within `stage` (`wasm`, `bundle`, `fetch`, `transcode`, `ready`, `prime`, `present`) |
+| `og:progress` | `{ value, stage, fraction, ready?, requested? }` | the boot's bar: `value` 0 to 1 over every stage, `fraction` within `stage` (`wasm`, `bundle`, `fetch`, `transcode`, `ready`, `prime`, `present`); with `present`, the first frame's pipelines `ready` of those `requested` (each only goes up) |
 | `og:stage` | `{ id, fraction, label }` | the game's own stage (og.loading.stage), from GameDesc.start on |
 | `og:ready` | `{ lanes, tier }` | the engine is running (before its first frame) |
 | `og:first-frame` | none | the first frame is drawn |

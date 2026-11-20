@@ -19,8 +19,8 @@ export class Gate {
   #coveredWarmLeft = true;
   /** While the first frame waits for the platform's first answers (settle.ts): a resize then draws nothing yet. */
   settling = false;
-  /** The first frame drawn again behind the gate until it draws the whole scene: how often, since when, the most pipelines compiling. */
-  #waiting = { frames: 0, since: 0, most: 0, again: 0 as ReturnType<typeof setTimeout> | 0 };
+  /** The first frame drawn again behind the gate until it draws the whole scene: how often, since when. */
+  #waiting = { frames: 0, since: 0, again: 0 as ReturnType<typeof setTimeout> | 0 };
 
   constructor(run: Run) {
     this.#run = run;
@@ -148,9 +148,12 @@ export class Gate {
         if (this.#frameWaits()) {
           if (!waiting.since) waiting.since = performance.now();
           waiting.frames++;
+          // The pipelines ready of those requested (each count only goes up; the page's bar never
+          // goes back): the splash's "Preparing graphics 41/96".
           const bar = () => {
-            waiting.most = Math.max(waiting.most, pipelines.compiling());
-            self.postMessage({ type: "progress", value: onBar("present", 1 - pipelines.compiling() / Math.max(1, waiting.most)), stage: "present" });
+            const { requested, ready } = pipelines.counted();
+            const fraction = requested ? ready / requested : 0;
+            self.postMessage({ type: "progress", value: onBar("present", fraction), fraction, stage: "present", count: [ready, requested] });
           };
           bar();
           const poll = () => {

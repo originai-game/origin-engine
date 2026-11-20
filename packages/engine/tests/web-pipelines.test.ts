@@ -136,11 +136,14 @@ test("frame pipelines compile asynchronously, PER_TASK a task, their modules mad
   p.enable(true);
   const shared = device.createShaderModule({ code: "lit" });
   expect(made("createShaderModule").length).toBe(0);
+  const before = p.counted();
   p.frameSpan(true);
   const stands = [0, 1, 2, 3, 4].map((i) => device.createRenderPipeline(desc(shared, `p${i}`)));
   expect(made("createRenderPipeline").length).toBe(0);
   expect(made("createRenderPipelineAsync").length).toBe(0);
   expect(p.compiling()).toBe(5);
+  // The splash's count: five more requested, none of them ready yet.
+  expect(p.counted()).toEqual({ requested: before.requested + 5, ready: before.ready });
 
   // A pass encoded in the span meanwhile skips the stand-in's draws and draws after a made pipeline.
   const pass = new FakePass();
@@ -168,6 +171,7 @@ test("frame pipelines compile asynchronously, PER_TASK a task, their modules mad
   expect(made("createRenderPipelineAsync").length).toBe(5);
   expect(made("createShaderModule").length).toBe(1);
   expect(p.compiling()).toBe(0);
+  expect(p.counted()).toEqual({ requested: before.requested + 5, ready: before.requested + 5 });
 
   const after = new FakePass();
   after.setPipeline(stands[3]);

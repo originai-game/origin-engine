@@ -432,6 +432,22 @@ pub fn settle_pipelines() {
     }
 }
 
+/// The jobs handed to the compile workers so far, and those made (or
+/// cancelled before a worker took them): [`crate::pipeline_counts`].
+#[cfg(not(target_arch = "wasm32"))]
+static STARTED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+#[cfg(not(target_arch = "wasm32"))]
+static FINISHED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// [`STARTED`] and [`FINISHED`].
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn worker_counts() -> (u32, u32) {
+    use std::sync::atomic::Ordering::Relaxed;
+    // Finished first: never more made than asked.
+    let finished = FINISHED.load(Relaxed);
+    (STARTED.load(Relaxed).max(finished), finished)
+}
+
 /// Runs `make` on the compile workers, in the order started within its
 /// priority (a frame starts its longest compiles first).
 #[cfg(not(target_arch = "wasm32"))]
@@ -440,8 +456,10 @@ fn spawn<T: Send + 'static>(
     make: impl FnOnce() -> T + Send + 'static,
 ) -> Pending<T> {
     let (answer, pending) = std::sync::mpsc::channel();
+    STARTED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let job: Job = Box::new(move || {
         let made = std::panic::catch_unwind(std::panic::AssertUnwindSafe(make));
+        FINISHED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let _ = answer.send(made);
     });
     let pool = pool();
@@ -475,8 +493,12 @@ fn cancel(id: u64) -> Option<Job> {
         let i = q.frame.iter().position(|(j, _)| *j == id);
         i.and_then(|i| q.frame.remove(i)).map(|(_, job)| job)
     };
-    if job.is_some() && q.idle() {
-        pool.idle.notify_all();
+    if job.is_some() {
+        // Never made: it counts as settled.
+        FINISHED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if q.idle() {
+            pool.idle.notify_all();
+        }
     }
     job
 }

@@ -33,4 +33,4 @@ fn stage {
 }
 ```
 
-<sub>Module `loading` line 34</sub>
+<sub>Module `loading` line 36</sub>

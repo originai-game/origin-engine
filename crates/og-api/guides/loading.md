@@ -606,6 +606,36 @@ const Arrive = defineSystem("Arrive", { reads: [og.SceneChanged], writes: [Trave
   (`loading.scrim`, `loading.frame`, `loading.title`).
 - The opening load is §13 (og.loading); this is every load after it.
 
+### Pipelines behind the loading screen
+
+A level's first frames compile its shaders' pipelines. On the web a cold
+driver takes seconds over each, and a large scene compiles dozens: keep
+them behind the loading screen, not in play.
+
+```ts
+// Once the level is spawned (after og.SceneChanged, or in start):
+og.render.compile(world);
+// The loading screen's bar, each tick:
+const s = og.loading.status(world);
+ui.writable("progress", 0).set(s.pipelinesRequested ? s.pipelinesReady / s.pipelinesRequested : 0);
+// Uncover once nothing is left:
+if (og.loading.idle(world)) og.loading.done(world);
+```
+
+- og.render.compile compiles a few pipelines a frame in the background:
+  every model, light and terrain the world draws now, wherever the
+  camera points, with every lit feature, so rain or a lamp switched on
+  later draws at once. A model or effect spawned after it compiles when
+  it first draws: spawn a level's content before calling it.
+- pipelinesRequested and pipelinesReady only go up; a bar of their ratio
+  can jump back when a frame asks for more, so show the count
+  (`41/96`) or never let the bar go back.
+- og.loading.idle stays false until compile has made everything and
+  nothing compiles. The play gate does the same for the first scene, and
+  the engine splash counts it ("Preparing graphics 41/96").
+- It is presentation: never wait on it in a tick's logic in a networked
+  game, as with og.scene.progress.
+
 ## 13. Loading screens
 
 project.ogt picks who draws the loading screen:
@@ -629,7 +659,8 @@ publish {
 | `page` | nothing: the hosting page draws its loader | the canvas hidden, the clock running, until og.loading.done; then the gate (with `gate tap`) |
 
 - Report stages with og.loading.stage (`{ id, fraction, label }`) and
-  end with og.loading.done once og.loading.idle is true. Until then a
+  end with og.loading.done once og.loading.idle is true (after
+  og.render.compile, §12, its pipelines are made too). Until then a
   `page` screen keeps the canvas hidden while the frames prepare their
   pipelines and textures.
 - With `game`, the first screen the game shows is its loading screen:

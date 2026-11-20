@@ -56,6 +56,7 @@ impl Renderer {
             ])
             || self.lights.ibl.warm()
             || self.warm_plain_lit()
+            || self.warm_full_lit()
             || deferred::warm_one(&[
                 &self.strips.ribbon_pipelines[0],
                 &self.strips.ribbon_pipelines[1],
@@ -72,6 +73,18 @@ impl Renderer {
             || self.world.metaballs.warm()
             || (WORLD_3D && self.world.fluid3d.warm())
             || self.lines.warm()
+    }
+
+    /// The full variant of a batch's lit pipeline that a frame has drawn
+    /// with its variant only (pipeline_features.rs): made here, a feature
+    /// that turns on later draws at once instead of after its compile.
+    fn warm_full_lit(&mut self) -> bool {
+        use crate::deferred::Warm;
+        let lit = &self.lit;
+        lit.pbr_pipelines
+            .values()
+            .chain(lit.lean_pipelines.values())
+            .any(|v| v.full().warm())
     }
 
     /// The plain material's lit and shadow pipelines (front faces, opaque),

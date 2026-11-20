@@ -29,6 +29,8 @@ module loading {
     field label String "Its label."
     field done bool "Whether the game called og.loading.done."
     field idle bool "As og.loading.idle answers."
+    field pipelinesRequested u32 "Pipelines the renderer has asked to compile off the frame so far (on the web those asked of the browser asynchronously, natively those given to the compile workers): with pipelinesReady, a loading screen's count, such as 41/96. Only goes up; 0 without a renderer or where pipelines compile in the frame."
+    field pipelinesReady u32 "How many of them are compiled. Only goes up; equal to pipelinesRequested when none compiles."
   }
 
   fn stage {

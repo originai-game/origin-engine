@@ -44,12 +44,63 @@ fn idle(eng: &Engine) -> bool {
     let now = crate::present::reveal::tick(eng);
     let drawing = {
         let rs = eng.render.borrow();
-        rs.decoded.preparing() || rs.reveal.active(now)
+        rs.decoded.preparing() || rs.reveal.active(now) || rs.compile || compiling(&rs)
     };
     !drawing
         && !eng.assets.borrow().stream.preparing()
         && !crate::world::remote::pending(eng)
         && hooks().is_none_or(|h| h.loading_idle(eng.id))
+}
+
+/// The renderer's pipelines compiled off the frame, and how many are made
+/// (og-render's `pipeline_counts`); none without a renderer.
+fn pipelines(rs: &crate::present::extract::RenderState) -> (u32, u32) {
+    if rs.backend.is_some() {
+        og_render::pipeline_counts()
+    } else {
+        (0, 0)
+    }
+}
+
+fn compiling(rs: &crate::present::extract::RenderState) -> bool {
+    let (requested, ready) = pipelines(rs);
+    ready < requested
+}
+
+/// At most this many pipelines compile at once for og.render.compile, so
+/// the ones a frame needs are not queued behind all of them.
+const COMPILING: u32 = 8;
+/// At most this many made a frame: natively each is made on the frame's
+/// thread, and the loading screen keeps drawing.
+const MADE_A_FRAME: u32 = 4;
+
+/// After a frame was drawn: what og.render.compile asked for, a few
+/// pipelines a frame, until the renderer has none left to make.
+pub(crate) fn compile_step(rs: &mut crate::present::extract::RenderState) {
+    if !rs.compile {
+        return;
+    }
+    let Some(backend) = rs.backend.as_mut() else {
+        rs.compile = false;
+        return;
+    };
+    for _ in 0..MADE_A_FRAME {
+        let (requested, ready) = og_render::pipeline_counts();
+        if requested - ready >= COMPILING {
+            return;
+        }
+        if !backend.warm() {
+            rs.compile = false;
+            return;
+        }
+    }
+}
+
+/// `og.render.compile`.
+pub fn og_render_compile(world: u32) {
+    if let Ok(eng) = engine(world) {
+        eng.render.borrow_mut().compile = true;
+    }
 }
 
 /// `og.loading.stage`.
@@ -105,7 +156,10 @@ pub fn og_loading_status(world: u32) -> LoadingStatus {
         return LoadingStatus::default();
     };
     let r = eng.modules.loading.0.borrow().clone();
+    let (pipelines_requested, pipelines_ready) = pipelines(&eng.render.borrow());
     LoadingStatus {
+        pipelines_requested,
+        pipelines_ready,
         screen: screen(&eng),
         stage: r.stage,
         fraction: r.fraction,

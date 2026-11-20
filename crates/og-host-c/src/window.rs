@@ -486,6 +486,9 @@ impl RenderBackend for WindowBackend {
             .then(|| self.renderer.read_offscreen().ok())
             .flatten()
     }
+    fn warm(&mut self) -> bool {
+        self.renderer.warm()
+    }
     fn presents(&self) -> bool {
         true
     }

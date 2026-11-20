@@ -989,6 +989,11 @@ unsafe extern "C" fn og_render_snap_camera(args: *const crate::OgValue, out: *mu
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_render_compile(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as RenderApi>::og_render_compile(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_render_reveal(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as RenderApi>::og_render_reveal(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3760,6 +3765,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_camera_kick", arity: 3, call: og_camera_kick },
     crate::Symbol { name: c"og_render_snap", arity: 2, call: og_render_snap },
     crate::Symbol { name: c"og_render_snap_camera", arity: 1, call: og_render_snap_camera },
+    crate::Symbol { name: c"og_render_compile", arity: 1, call: og_render_compile },
     crate::Symbol { name: c"og_render_reveal", arity: 3, call: og_render_reveal },
     crate::Symbol { name: c"og_render_ribbon", arity: 2, call: og_render_ribbon },
     crate::Symbol { name: c"og_render_sprite", arity: 2, call: og_render_sprite },

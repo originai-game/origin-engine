@@ -400,6 +400,8 @@ export interface HostAbi<A, V> {
   og_render_snap(world: number, entity: number): string;
   /** `og.render.snapCamera` */
   og_render_snap_camera(world: number): void;
+  /** `og.render.compile` */
+  og_render_compile(world: number): void;
   /** `og.render.reveal` */
   og_render_reveal(world: number, entity: number, seconds: number): string;
   /** `og.render.ribbon` */
@@ -1577,6 +1579,7 @@ export const SYMBOLS: readonly string[] = [
   "og_camera_kick",
   "og_render_snap",
   "og_render_snap_camera",
+  "og_render_compile",
   "og_render_reveal",
   "og_render_ribbon",
   "og_render_sprite",

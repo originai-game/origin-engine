@@ -110,6 +110,9 @@ impl RenderBackend for OffscreenBackend {
     /// The loop's frame: at the size the window asked for since the last
     /// one (as the web host takes its canvas's), drawn offscreen, then
     /// shown in the window when one draws this engine's frames.
+    fn warm(&mut self) -> bool {
+        self.renderer.warm()
+    }
     fn render(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         #[cfg(any(target_os = "macos", target_os = "linux", windows))]
         if let Some((w, h)) = self.frames.as_mut().and_then(|f| f.take_resize()) {

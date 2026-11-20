@@ -151,6 +151,9 @@ pub(crate) struct RenderState {
     pub kept_models: KeptModels,
     /// The models and proxies fading in (`crate::present::reveal`).
     pub reveal: crate::present::reveal::Reveal,
+    /// og.render.compile asked for the renderer's pipelines, and some are
+    /// still to make: each frame makes a few ([`crate::present::loading`]).
+    pub compile: bool,
     /// The models' wind (og.Model.sway): their tops and the wind copies
     /// of their materials (`wind.rs`).
     pub wind: wind::WindModels,
@@ -294,6 +297,7 @@ impl RenderState {
             lod_drawn: IdMap::new(),
             kept_models: KeptModels::default(),
             reveal: Default::default(),
+            compile: false,
             wind: Default::default(),
             probe_bakes: Default::default(),
             fonts: Vec::new(),

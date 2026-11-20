@@ -237,7 +237,9 @@ pub use present::geometry::{
     og_render_torus_geometry, og_render_tube_geometry, og_render_update_geometry,
 };
 pub use present::light2d_at::og_render_light2d_at;
-pub use present::loading::{og_loading_done, og_loading_idle, og_loading_stage, og_loading_status};
+pub use present::loading::{
+    og_loading_done, og_loading_idle, og_loading_stage, og_loading_status, og_render_compile,
+};
 pub use present::ui_draw::{og_load_ui_material, og_load_vector};
 pub use present::views::{
     og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,

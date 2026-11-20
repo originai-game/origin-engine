@@ -198,8 +198,8 @@ export const LOADING_SOURCE = "origin-engine";
 
 const zh = /^zh\b/i.test(globalThis.navigator?.language ?? "");
 const T = zh
-  ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", noWebGpu: "此浏览器不支持 WebGPU", noWebGpuDetail: "本游戏需要 WebGPU，而此浏览器没有。请用最新版的 Chrome 或 Edge（Windows、macOS、ChromeOS，或 Android 12 及以上）、Safari 26 及以上（macOS、iOS、iPadOS），或 Windows 与 macOS 上的 Firefox 打开。", noWebGpuAdapterTitle: "没有可供 WebGPU 使用的显卡", noWebGpuAdapter: "此浏览器支持 WebGPU，但没有可用的显卡：请在浏览器设置中开启硬件加速，或更新显卡驱动后重新打开。", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installOffer: "安装{name}，离线也能玩", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
-  : { loading: "Loading", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", noWebGpu: "This browser does not support WebGPU", noWebGpuDetail: "This game runs on WebGPU, which this browser does not have. Open it in a current Chrome or Edge (Windows, macOS, ChromeOS, or Android 12 and later), Safari 26 or later (macOS, iOS, iPadOS), or Firefox on Windows or macOS.", noWebGpuAdapterTitle: "No graphics adapter for WebGPU", noWebGpuAdapter: "This browser has WebGPU but found no graphics adapter it may use: turn on hardware acceleration in the browser's settings, or update the graphics driver, then open the game again.", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installOffer: "Install {name} to play offline", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", back: "Back", madeWith: "Made with Origin Engine" };
+  ? { loading: "正在加载", graphics: "正在准备画面", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", noWebGpu: "此浏览器不支持 WebGPU", noWebGpuDetail: "本游戏需要 WebGPU，而此浏览器没有。请用最新版的 Chrome 或 Edge（Windows、macOS、ChromeOS，或 Android 12 及以上）、Safari 26 及以上（macOS、iOS、iPadOS），或 Windows 与 macOS 上的 Firefox 打开。", noWebGpuAdapterTitle: "没有可供 WebGPU 使用的显卡", noWebGpuAdapter: "此浏览器支持 WebGPU，但没有可用的显卡：请在浏览器设置中开启硬件加速，或更新显卡驱动后重新打开。", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installOffer: "安装{name}，离线也能玩", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
+  : { loading: "Loading", graphics: "Preparing graphics", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", noWebGpu: "This browser does not support WebGPU", noWebGpuDetail: "This game runs on WebGPU, which this browser does not have. Open it in a current Chrome or Edge (Windows, macOS, ChromeOS, or Android 12 and later), Safari 26 or later (macOS, iOS, iPadOS), or Firefox on Windows or macOS.", noWebGpuAdapterTitle: "No graphics adapter for WebGPU", noWebGpuAdapter: "This browser has WebGPU but found no graphics adapter it may use: turn on hardware acceleration in the browser's settings, or update the graphics driver, then open the game again.", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installOffer: "Install {name} to play offline", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", back: "Back", madeWith: "Made with Origin Engine" };
 
 export function readConfig(doc: Document = document): ShellConfig {
   const text = doc.getElementById("og-config")?.textContent ?? "{}";
@@ -506,15 +506,19 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   let phase: "loading" | "gate" | "playing" | "failed" = "loading";
   let caption = T.loading;
   const STAGE_CLASS: Record<string, string> = { wasm: "fetch", bundle: "fetch", fetch: "fetch", transcode: "transcode", ready: "prime", prime: "prime", present: "present" };
-  const setProgress = (value: number, stage?: string, fraction?: number) => {
-    if (stage !== undefined) emit("og:progress", { value, stage, fraction: fraction ?? value });
-    // Fork s61: the stage's caption, when the build names one (og-config stageLabels).
+  const setProgress = (value: number, stage?: string, fraction?: number, count?: readonly [number, number]) => {
+    if (stage !== undefined) emit("og:progress", count ? { value, stage, fraction: fraction ?? value, ready: count[0], requested: count[1] } : { value, stage, fraction: fraction ?? value });
+    // Fork s61: the stage's caption, when the build names one (og-config stageLabels); the first
+    // frame's pipelines say so by default, counted ("Preparing graphics 41/96").
     const named = stage === undefined ? undefined : config.stageLabels?.[STAGE_CLASS[stage] ?? stage];
     if (named) caption = named;
+    else if (stage === "present") caption = T.graphics;
+    // The count moves on its own: a pipeline asked for adds to it without moving the bar on.
+    if (count && label) label.textContent = `${caption} ${count[0]}/${count[1]}`;
     if (value <= progress) return;
     progress = Math.min(1, value);
     boot?.setAttribute("aria-valuenow", String(Math.round(progress * 100)));
-    if (label) label.textContent = `${caption} ${Math.round(progress * 100)}%`;
+    if (label && !count) label.textContent = `${caption} ${Math.round(progress * 100)}%`;
     player.loading(progress);
     showProgress();
   };
@@ -766,7 +770,7 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       dprCap: config.dprCap,
       ...(config.pipelines ? { pipelines: config.pipelines } : {}),
       ...(config.expect.wasm + config.expect.cooked > 0 ? { expect: config.expect } : {}),
-      onProgress: (v, stage, fraction) => setProgress(v, stage, fraction),
+      onProgress: (v, stage, fraction, count) => setProgress(v, stage, fraction, count),
       onStage: (id, fraction, text) => {
         if (id === "done") {
           emit("og:loaded");

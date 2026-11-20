@@ -475,6 +475,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
             // The fades held for pipelines this frame made ahead.
             rs.reveal.drawn(frame.compiling_ahead);
         }
+        crate::present::loading::compile_step(rs);
         super::assets::release_uploaded_textures(eng, rs);
         std::mem::take(&mut rs.notes)
     };

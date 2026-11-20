@@ -219,6 +219,9 @@ macro_rules! __og_host_bindings_present {
             fn og_render_snap_camera(&self, world: u32) {
                 $crate::og_render_snap_camera(world)
             }
+            fn og_render_compile(&self, world: u32) {
+                $crate::og_render_compile(world)
+            }
             fn og_render_text(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_render_text(world, desc))
             }

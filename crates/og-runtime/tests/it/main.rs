@@ -115,6 +115,8 @@ mod raycast_record_cost;
 mod region_volume;
 #[path = "../remote_images.rs"]
 mod remote_images;
+#[path = "../render_compile.rs"]
+mod render_compile;
 #[path = "../render_interpolation.rs"]
 mod render_interpolation;
 #[path = "../render_origin.rs"]

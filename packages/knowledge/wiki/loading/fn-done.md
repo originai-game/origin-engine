@@ -31,4 +31,4 @@ fn done {
 }
 ```
 
-<sub>Module `loading` line 42</sub>
+<sub>Module `loading` line 44</sub>

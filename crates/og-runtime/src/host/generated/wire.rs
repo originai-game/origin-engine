@@ -28773,6 +28773,8 @@ pub struct LoadingStatus {
     pub label: String,
     pub done: bool,
     pub idle: bool,
+    pub pipelines_requested: u32,
+    pub pipelines_ready: u32,
 }
 
 impl Default for LoadingStatus {
@@ -28784,6 +28786,8 @@ impl Default for LoadingStatus {
             label: Default::default(),
             done: Default::default(),
             idle: Default::default(),
+            pipelines_requested: Default::default(),
+            pipelines_ready: Default::default(),
         }
     }
 }
@@ -28801,6 +28805,8 @@ impl FromJson for LoadingStatus {
             label: field(o, "label", d.label)?,
             done: field(o, "done", d.done)?,
             idle: field(o, "idle", d.idle)?,
+            pipelines_requested: field(o, "pipelinesRequested", d.pipelines_requested)?,
+            pipelines_ready: field(o, "pipelinesReady", d.pipelines_ready)?,
         })
     }
 }
@@ -28814,6 +28820,8 @@ impl ToJson for LoadingStatus {
         o.insert("label".into(), self.label.to_json());
         o.insert("done".into(), self.done.to_json());
         o.insert("idle".into(), self.idle.to_json());
+        o.insert("pipelinesRequested".into(), self.pipelines_requested.to_json());
+        o.insert("pipelinesReady".into(), self.pipelines_ready.to_json());
         Value::Object(o)
     }
 }

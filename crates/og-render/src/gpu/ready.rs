@@ -76,6 +76,24 @@ pub fn pipelines_held() -> bool {
     HELD.with(|h| h.get())
 }
 
+/// The pipelines compiled off the frame so far, and how many of them are
+/// made: on the web those asked of the browser asynchronously (the host's
+/// tickets) and those of them it has made or refused; natively the jobs
+/// handed to the compile workers (deferred.rs) and those finished. Both
+/// only go up, and are equal when nothing compiles: a loading screen's
+/// count (og.loading.status).
+pub fn pipeline_counts() -> (u32, u32) {
+    if let Some((count, ready, _)) = READY.with(|c| c.get()) {
+        let asked = count();
+        // A ticket once ready stays ready.
+        return (asked, (1..=asked).filter(|&t| ready(t)).count() as u32);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    return crate::deferred::worker_counts();
+    #[cfg(target_arch = "wasm32")]
+    (0, 0)
+}
+
 /// Whether the host still compiles any pipeline it was asked for.
 pub(crate) fn compiling() -> bool {
     READY

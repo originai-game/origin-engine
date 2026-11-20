@@ -6,7 +6,7 @@ What is drawn: meshes with materials. Draws are instanced by (geometry, material
 
 - **TypeScript**: functions are the namespace `og.render`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `RenderOptions`, `StandardMaterialDesc`, `og.Mesh`, `og.DirectionalLight`, `og.SpotLight`, `og.RenderSettings`, `og.PostEffects`, `og.Lighting2D`, `og.Light2D`, `og.Occluder2D`, `og.LightMask2D`, `og.Decal`, `og.ParticleSystem`, `og.Sprite`, `BoxGeometryDesc`, `PlaneGeometryDesc`, `SphereGeometryDesc`, `og.render.boxGeometry`, `og.render.planeGeometry`, `og.render.sphereGeometry`, `og.render.standardMaterial`, `CylinderGeometryDesc`, `og.render.cylinderGeometry`; 198 more are advanced (`og api show render --all`).
+- **Core** (what most games use): `RenderOptions`, `StandardMaterialDesc`, `og.Mesh`, `og.DirectionalLight`, `og.SpotLight`, `og.RenderSettings`, `og.PostEffects`, `og.Lighting2D`, `og.Light2D`, `og.Occluder2D`, `og.LightMask2D`, `og.Decal`, `og.ParticleSystem`, `og.Sprite`, `BoxGeometryDesc`, `PlaneGeometryDesc`, `SphereGeometryDesc`, `og.render.boxGeometry`, `og.render.planeGeometry`, `og.render.sphereGeometry`, `og.render.standardMaterial`, `CylinderGeometryDesc`, `og.render.cylinderGeometry`; 199 more are advanced (`og api show render --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -57,6 +57,7 @@ module render {
 | [`og.Interpolation`](render/record-Interpolation.md) | component |  | How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. |
 | [`og.render.snap`](render/fn-snap.md) | function | `(world: World, entity: Entity): Result<void>` | Draw entity, and everything under it through og.Parent, at its tick transform on the frames until the next tick instead of blending from where it was (RenderSettings.interpolate): call it on the tick… |
 | [`og.render.snapCamera`](render/fn-snapCamera.md) | function | `(world: World): void` | Draw og.Camera at its tick pose on the frames until the next tick instead of blending from where it was: a cut. |
+| [`og.render.compile`](render/fn-compile.md) | function | `(world: World): void` | Compile every pipeline the renderer will draw this world with, as three.js renderer.compileAsync: a few each frame from the next one on, in the background, so a level never waits on a compile once it… |
 | [`og.render.reveal`](render/fn-reveal.md) | function | `(world: World, entity: Entity, seconds: number): Result<void>` | Set the fade-in of entity's og.Model or light when streaming brings it into view. |
 | [`Lut`](render/type-Lut.md) | handle |  | A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file). |
 | [`EnvironmentMap`](render/type-EnvironmentMap.md) | handle |  | A prefiltered HDR environment map for Environment.map, from og.load.environment (an `.ogt` of `type environment` naming an equirectangular `.hdr` or `.exr`, a KTX2 cube map, or six face images). |
@@ -359,7 +360,7 @@ column Texture {
 }
 ```
 
-<sub>Module `render` line 919</sub>
+<sub>Module `render` line 927</sub>
 
 ```ogt
 column Lut {
@@ -370,7 +371,7 @@ column Lut {
 }
 ```
 
-<sub>Module `render` line 926</sub>
+<sub>Module `render` line 934</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -381,7 +382,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>Module `render` line 933</sub>
+<sub>Module `render` line 941</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -392,7 +393,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>Module `render` line 1006</sub>
+<sub>Module `render` line 1014</sub>
 
 ```ogt
 column EffectMaterial {
@@ -403,7 +404,7 @@ column EffectMaterial {
 }
 ```
 
-<sub>Module `render` line 1013</sub>
+<sub>Module `render` line 1021</sub>
 
 ```ogt
 column AoMethod {
@@ -414,7 +415,7 @@ column AoMethod {
 }
 ```
 
-<sub>Module `render` line 1029</sub>
+<sub>Module `render` line 1037</sub>
 
 ```ogt
 column AoResolution {
@@ -425,7 +426,7 @@ column AoResolution {
 }
 ```
 
-<sub>Module `render` line 1042</sub>
+<sub>Module `render` line 1050</sub>
 
 ```ogt
 column DofQuality {
@@ -436,7 +437,7 @@ column DofQuality {
 }
 ```
 
-<sub>Module `render` line 1055</sub>
+<sub>Module `render` line 1063</sub>
 
 ```ogt
 column ScreenBlur {
@@ -447,7 +448,7 @@ column ScreenBlur {
 }
 ```
 
-<sub>Module `render` line 1070</sub>
+<sub>Module `render` line 1078</sub>
 
 ```ogt
 column Blend {
@@ -458,7 +459,7 @@ column Blend {
 }
 ```
 
-<sub>Module `render` line 1083</sub>
+<sub>Module `render` line 1091</sub>
 
 ```ogt
 column SpriteFacing {
@@ -469,7 +470,7 @@ column SpriteFacing {
 }
 ```
 
-<sub>Module `render` line 1098</sub>
+<sub>Module `render` line 1106</sub>
 
 ```ogt
 column GiMethod {
@@ -480,7 +481,7 @@ column GiMethod {
 }
 ```
 
-<sub>Module `render` line 1533</sub>
+<sub>Module `render` line 1541</sub>
 
 ```ogt
 column Palette {
@@ -491,7 +492,7 @@ column Palette {
 }
 ```
 
-<sub>Module `render` line 1605</sub>
+<sub>Module `render` line 1613</sub>
 
 ```ogt
 column Look {
@@ -502,7 +503,7 @@ column Look {
 }
 ```
 
-<sub>Module `render` line 1612</sub>
+<sub>Module `render` line 1620</sub>
 
 ```ogt
 column DitherPattern {
@@ -513,7 +514,7 @@ column DitherPattern {
 }
 ```
 
-<sub>Module `render` line 1629</sub>
+<sub>Module `render` line 1637</sub>
 
 ```ogt
 column MaterialSurface {
@@ -524,7 +525,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>Module `render` line 1644</sub>
+<sub>Module `render` line 1652</sub>
 
 ```ogt
 column OutlinePlace {
@@ -535,7 +536,7 @@ column OutlinePlace {
 }
 ```
 
-<sub>Module `render` line 1658</sub>
+<sub>Module `render` line 1666</sub>
 
 ```ogt
 column StyliseSpace {
@@ -546,7 +547,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>Module `render` line 1673</sub>
+<sub>Module `render` line 1681</sub>
 
 ```ogt
 column PosterizeMode {
@@ -557,7 +558,7 @@ column PosterizeMode {
 }
 ```
 
-<sub>Module `render` line 1686</sub>
+<sub>Module `render` line 1694</sub>
 
 ```ogt
 column HalftoneMode {
@@ -568,7 +569,7 @@ column HalftoneMode {
 }
 ```
 
-<sub>Module `render` line 1700</sub>
+<sub>Module `render` line 1708</sub>
 
 ```ogt
 column HalftoneRegion {
@@ -579,7 +580,7 @@ column HalftoneRegion {
 }
 ```
 
-<sub>Module `render` line 1714</sub>
+<sub>Module `render` line 1722</sub>
 
 ```ogt
 column Light2DKind {
@@ -590,7 +591,7 @@ column Light2DKind {
 }
 ```
 
-<sub>Module `render` line 2165</sub>
+<sub>Module `render` line 2173</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -601,7 +602,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 3042</sub>
+<sub>Module `render` line 3050</sub>
 
 ```ogt
 column Shader {
@@ -612,7 +613,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 3092</sub>
+<sub>Module `render` line 3100</sub>
 
 ```ogt
 column LineMode {
@@ -623,7 +624,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3898</sub>
+<sub>Module `render` line 3906</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -634,7 +635,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 4109</sub>
+<sub>Module `render` line 4117</sub>
 
 ```ogt
 column RenderTarget {
@@ -645,7 +646,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 4118</sub>
+<sub>Module `render` line 4126</sub>
 
 ```ogt
 column Post {
@@ -656,7 +657,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4258</sub>
+<sub>Module `render` line 4266</sub>
 
 ## Constants
 
@@ -672,28 +673,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>Module `render` line 2295</sub>
+<sub>Module `render` line 2303</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2959</sub>
+<sub>Module `render` line 2967</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2960</sub>
+<sub>Module `render` line 2968</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2961</sub>
+<sub>Module `render` line 2969</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 3034</sub>
+<sub>Module `render` line 3042</sub>

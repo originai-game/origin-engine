@@ -901,6 +901,14 @@ module render {
     returns Void
   }
 
+  fn compile {
+    doc "Compile every pipeline the renderer will draw this world with, as three.js renderer.compileAsync: a few each frame from the next one on, in the background, so a level never waits on a compile once its loading screen is gone. Call it behind a loading screen (after og.scene.change, or once the level's models are spawned) and keep the screen up until og.loading.idle is true; og.loading.status counts the pipelines (pipelinesRequested, pipelinesReady) for its bar. It covers the pipelines of everything the world draws now, wherever the camera points, with every lit feature (so rain or a decal that starts later draws at once) and the compute the frames run; a model, material or effect spawned afterwards compiles when it first draws. The play gate does the same behind the gate for the first scene. Presentation only, as og.render.snap: nothing a tick reads changes. Natively and without asynchronous pipelines it makes them on the frame's thread, a few a frame."
+    guide "loading §12"
+    aliases "compileAsync, warm up shaders, prewarm pipelines, shader precompile, PSO precaching, Unity ShaderVariantCollection.WarmUp, Unreal PSO precache"
+    param world World "The world whose renderer compiles."
+    returns Void
+  }
+
   fn reveal {
     doc "Set the fade-in of entity's og.Model or light when streaming brings it into view. By default an entity a cell spawned, and a model or HLOD proxy hidden while its textures were prepared, is dithered in over 0.4 s; a light ramps its intensity instead. seconds is the fade's length; 0 draws it whole at once. On a cell (og.StreamCell) it sets everything the cell spawns that has no setting of its own, and the cell's proxies. Presentation only, as og.render.snap: never in the world, world_hash or a snapshot; it lasts while the entity lives."
     guide "world §5"

@@ -98,17 +98,18 @@ export const UPLOAD_BUDGET = 4 * 1024 * 1024;
 
 /**
  * Fork s61: each boot stage's share of the progress bar, so it does not sit at 100 % once the
- * bytes are in: the download (wasm, bundle, fetch) 0-70 %, the Basis transcode 70-85 %, the first
- * tick 85-92 %, the first frame (its pipelines) 92-100 %.
+ * bytes are in: the download (wasm, bundle, fetch) 0-50 %, the Basis transcode 50-60 %, the first
+ * tick 60-65 %, the first frame (its pipelines, counted ready of requested) 65-100 %: on a cold
+ * driver a large scene's compile is most of the wait.
  */
 export const BOOT_SPANS: Readonly<Record<string, readonly [number, number]>> = {
-  wasm: [0, 0.7],
-  bundle: [0, 0.7],
-  fetch: [0, 0.7],
-  transcode: [0.7, 0.85],
-  ready: [0.85, 0.85],
-  prime: [0.85, 0.92],
-  present: [0.92, 1],
+  wasm: [0, 0.5],
+  bundle: [0, 0.5],
+  fetch: [0, 0.5],
+  transcode: [0.5, 0.6],
+  ready: [0.6, 0.6],
+  prime: [0.6, 0.65],
+  present: [0.65, 1],
 };
 
 /** A stage's fraction (0 to 1) as a place on the whole bar. */

@@ -7511,6 +7511,7 @@ export interface Interpolation {
 
 
 
+
 /**
  * A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file).
  *
@@ -35010,6 +35011,14 @@ export interface LoadingStatus {
   readonly done: boolean;
   /** As og.loading.idle answers. */
   readonly idle: boolean;
+  /**
+   * Pipelines the renderer has asked to compile off the frame so far (on the web those asked of the browser asynchronously, natively those given to the compile workers): with pipelinesReady, a loading screen's count, such as 41/96. Only goes up; 0 without a renderer or where pipelines compile in the frame.
+   */
+  readonly pipelinesRequested: number;
+  /**
+   * How many of them are compiled. Only goes up; equal to pipelinesRequested when none compiles.
+   */
+  readonly pipelinesReady: number;
 }
 
 
@@ -35846,6 +35855,13 @@ export declare namespace og {
      * @param world The world whose renderer draws it.
      */
     function snapCamera(world: World): void;
+    /**
+     * Compile every pipeline the renderer will draw this world with, as three.js renderer.compileAsync: a few each frame from the next one on, in the background, so a level never waits on a compile once its loading screen is gone. Call it behind a loading screen (after og.scene.change, or once the level's models are spawned) and keep the screen up until og.loading.idle is true; og.loading.status counts the pipelines (pipelinesRequested, pipelinesReady) for its bar. It covers the pipelines of everything the world draws now, wherever the camera points, with every lit feature (so rain or a decal that starts later draws at once) and the compute the frames run; a model, material or effect spawned afterwards compiles when it first draws. The play gate does the same behind the gate for the first scene. Presentation only, as og.render.snap: nothing a tick reads changes. Natively and without asynchronous pipelines it makes them on the frame's thread, a few a frame.
+     * See `loading §12`.
+     *
+     * @param world The world whose renderer compiles.
+     */
+    function compile(world: World): void;
     /**
      * Set the fade-in of entity's og.Model or light when streaming brings it into view. By default an entity a cell spawned, and a model or HLOD proxy hidden while its textures were prepared, is dithered in over 0.4 s; a light ramps its intensity instead. seconds is the fade's length; 0 draws it whole at once. On a cell (og.StreamCell) it sets everything the cell spawns that has no setting of its own, and the cell's proxies. Presentation only, as og.render.snap: never in the world, world_hash or a snapshot; it lasts while the entity lives.
      * See `world §5`.

@@ -28,4 +28,4 @@ fn status {
 }
 ```
 
-<sub>Module `loading` line 55</sub>
+<sub>Module `loading` line 57</sub>

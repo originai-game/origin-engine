@@ -131,7 +131,8 @@ export interface ShellOptions {
   /** project.ogt's text: its tick, seed, scenes and scene fill what GameDesc leaves unset (CreateOptions.project). */
   readonly project?: string;
   /** Boot progress, 0 to 1, with the stage (`wasm`, `bundle`, `fetch`, `transcode`, `ready`). */
-  readonly onProgress?: (value: number, stage: string, fraction?: number) => void;
+  /** `count`: with `present`, the first frame's pipelines ready of those requested. */
+  readonly onProgress?: (value: number, stage: string, fraction?: number, count?: readonly [number, number]) => void;
   /** A loading stage the game reported (og.loading.stage; `done` for og.loading.done), from the boot on. */
   readonly onStage?: (id: string, fraction: number, label: string) => void;
   /** The page draws the loading screen (project.ogt `loading page`): the canvas stays hidden, its frames preparing, until og.loading.done. */
@@ -264,8 +265,8 @@ export class Shell {
       }
       // Fork s61: the stages after "ready" (the first tick, the first frame's pipelines) move the bar too.
       if (m.type === "progress") {
-        const p = m as unknown as { value?: number; stage?: string; fraction?: number };
-        this.#onProgress?.(p.value ?? 0, p.stage ?? "", p.fraction);
+        const p = m as unknown as { value?: number; stage?: string; fraction?: number; count?: [number, number] };
+        this.#onProgress?.(p.value ?? 0, p.stage ?? "", p.fraction, p.count);
         return;
       }
       // Fork s61: the game's own loading stages (its loading screen's, after the engine's).
