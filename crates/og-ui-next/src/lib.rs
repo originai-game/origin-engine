@@ -13,6 +13,7 @@ pub mod sheet;
 pub mod style;
 pub mod text;
 pub mod tokens;
+pub mod tree;
 
 pub use tokens::Tokens;
 
@@ -132,6 +133,51 @@ mod tests {
         );
         assert_eq!(s.inset.top, taffy::LengthPercentageAuto::length(9.0));
         assert_eq!(s.inset.bottom, taffy::LengthPercentageAuto::length(0.0));
+    }
+
+    #[test]
+    fn a_side_one_element_sets_reaches_no_other_element() {
+        let doc = og_ui::UiDocument::parse(
+            "t.svelte",
+            "<meta name=\"component\" content=\"t\">\n<div><div id=\"A\"></div><div id=\"B\"></div></div>\n\
+             <style>\n#A { position: absolute; top: 16px; left: 16px; padding-top: 4px; row-gap: 5px; overflow-y: scroll; }\n\
+             #B { position: absolute; right: 0; padding-left: 2px; column-gap: 3px; overflow-x: hidden; }\n</style>",
+        )
+        .unwrap();
+        let tokens = Tokens::default();
+        let d = doc::DocStyle::compile(&doc, &tokens, &style::Sheet::compile("", &tokens));
+        let at = |id: &str| {
+            let k = d
+                .nodes
+                .iter()
+                .position(|n| doc.nodes[n.node as usize].id == id)
+                .unwrap();
+            taffy::Style::from(&d.record(k, |_| false).layout)
+        };
+        let b = at("B");
+        assert_eq!(b.inset.top, taffy::LengthPercentageAuto::auto(), "A's top");
+        assert_eq!(
+            b.inset.left,
+            taffy::LengthPercentageAuto::auto(),
+            "A's left"
+        );
+        assert_eq!(b.inset.right, taffy::LengthPercentageAuto::length(0.0));
+        assert_eq!(
+            b.padding.top,
+            taffy::LengthPercentage::length(0.0),
+            "A's padding"
+        );
+        assert_eq!(
+            b.gap.height,
+            taffy::LengthPercentage::length(0.0),
+            "A's row gap"
+        );
+        assert_eq!(b.gap.width, taffy::LengthPercentage::length(3.0));
+        assert_eq!(b.overflow.y, taffy::Overflow::Visible, "A's overflow");
+        assert_eq!(b.overflow.x, taffy::Overflow::Hidden);
+        let a = at("A");
+        assert_eq!(a.inset.right, taffy::LengthPercentageAuto::auto());
+        assert_eq!(a.overflow.y, taffy::Overflow::Scroll);
     }
 
     #[test]

@@ -253,6 +253,10 @@ pub struct Record {
     /// bottom, left: the one runtime input a record leaves open.
     pub safe: [u8; 2],
     pub text: Text,
+    /// Its ink was set by its own rules; else it inherits its parent's.
+    pub inked: bool,
+    /// `position: fixed`: placed against the viewport.
+    pub fixed: bool,
 }
 
 impl Record {
@@ -302,6 +306,8 @@ impl Default for Record {
             stroke_width: 1.0,
             safe: [0; 2],
             text: Text::default(),
+            inked: false,
+            fixed: false,
         }
     }
 }
@@ -585,19 +591,47 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         }
         op::DIRECTION => l.set_flex_direction(DIRECTIONS[c]),
         op::WRAP => l.set_flex_wrap(WRAPS[c]),
-        op::GAP => l.set_gap(a, b),
+        op::GAP => {
+            // Code: the axes it sets (bit 0 column, bit 1 row); 0 both.
+            let m = if s.code == 0 { 3 } else { s.code };
+            let g = l.gap();
+            let keep = |v: taffy::LengthPercentage| v.into_raw().value();
+            l.set_gap(
+                if m & 1 != 0 { a } else { keep(g.width) },
+                if m & 2 != 0 { b } else { keep(g.height) },
+            );
+        }
         op::SAFE => r.safe[c & 1] = (r.safe[c & 1] & !(a as u8)) | b as u8,
+        // Code: the sides it sets (top, right, bottom, left); 0 all four.
         op::PAD => {
-            l.set_pad_top(a);
-            l.set_pad_right(b);
-            l.set_pad_bottom(cc);
-            l.set_pad_left(d);
+            let m = if s.code == 0 { 15 } else { s.code };
+            if m & 1 != 0 {
+                l.set_pad_top(a);
+            }
+            if m & 2 != 0 {
+                l.set_pad_right(b);
+            }
+            if m & 4 != 0 {
+                l.set_pad_bottom(cc);
+            }
+            if m & 8 != 0 {
+                l.set_pad_left(d);
+            }
         }
         op::MARGIN => {
-            l.set_margin_top(a);
-            l.set_margin_right(b);
-            l.set_margin_bottom(cc);
-            l.set_margin_left(d);
+            let m = if s.code == 0 { 15 } else { s.code };
+            if m & 1 != 0 {
+                l.set_margin_top(a);
+            }
+            if m & 2 != 0 {
+                l.set_margin_right(b);
+            }
+            if m & 4 != 0 {
+                l.set_margin_bottom(cc);
+            }
+            if m & 8 != 0 {
+                l.set_margin_left(d);
+            }
         }
         op::WIDTH => l.set_width(dim(s)),
         op::HEIGHT => l.set_height(dim(s)),
@@ -605,20 +639,25 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::MIN_H => l.set_min_height(lpa(s)),
         op::MAX_W => l.set_max_width(lpa(s)),
         op::MAX_H => l.set_max_height(lpa(s)),
-        op::ABSOLUTE => l.set_position_absolute(),
+        op::ABSOLUTE => {
+            l.set_position_absolute();
+            r.fixed = s.code == 1;
+        }
         op::INSET => {
-            let side = |k: usize| {
+            // The sides it sets over those the record has.
+            let had = l.inset();
+            let side = |k: usize, was: LengthPercentageAuto| {
                 if s.code & (1 << k) != 0 {
                     LengthPercentageAuto::length(s.v[k])
                 } else {
-                    LengthPercentageAuto::auto()
+                    was
                 }
             };
             l.set_absolute_inset(Rect {
-                top: side(0),
-                right: side(1),
-                bottom: side(2),
-                left: side(3),
+                top: side(0, had.top),
+                right: side(1, had.right),
+                bottom: side(2, had.bottom),
+                left: side(3, had.left),
             });
         }
         op::ALIGN => l.set_align_items(ALIGNS[c]),
@@ -627,7 +666,10 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::SHRINK => l.set_flex_shrink(a),
         op::BASIS => l.set_flex_basis(dim(s)),
         op::FILL => r.fill = s.v,
-        op::INK => r.ink = s.v,
+        op::INK => {
+            r.ink = s.v;
+            r.inked = true;
+        }
         op::RADIUS => r.radius = a,
         op::OPACITY => r.opacity = a,
         op::FONT_SIZE => {
@@ -637,7 +679,13 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::OVERFLOW => {
             use taffy::Overflow as O;
             let o = |k: u8| [O::Visible, O::Clip, O::Hidden, O::Scroll][usize::from(k & 3)];
-            r.layout.set_overflow(o(s.code), o(s.code >> 2));
+            // A step of an old blob names no axes: both.
+            let axes = if a == 0.0 { 3 } else { a as u8 };
+            let had = taffy::CoreStyle::overflow(&r.layout);
+            r.layout.set_overflow(
+                if axes & 1 != 0 { o(s.code) } else { had.x },
+                if axes & 2 != 0 { o(s.code >> 2) } else { had.y },
+            );
         }
         op::ASPECT => r.layout.set_aspect_ratio((a > 0.0).then_some(a)),
         op::WEIGHT => {
@@ -763,16 +811,17 @@ fn index<T: Copy>(table: &[(&str, T)], v: &str) -> Option<u8> {
 
 /// Lays the step a side-wise property (`padding-left`, `margin-inline`)
 /// sets over the last full one of `op`, or a new one from zero.
+/// A step of `o` that sets the sides `which` to `x` and leaves the others
+/// as the element's earlier rules set them (a step never reads another
+/// step: the array holds every element's).
 fn set_sides(steps: &mut Vec<Step>, o: u8, which: &[usize], x: f32) {
-    let mut v = steps
-        .iter()
-        .rev()
-        .find(|s| s.op == o)
-        .map_or([0.0; 4], |s| s.v);
+    let mut v = [0.0; 4];
+    let mut mask = 0u8;
     for &k in which {
         v[k] = x;
+        mask |= 1 << k;
     }
-    steps.push(step(o, 0, v));
+    steps.push(step(o, mask, v));
 }
 
 /// Expands one declaration into steps; false when it is not taken.
@@ -834,12 +883,6 @@ pub(crate) fn expand(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
 }
 
 fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
-    // A single overflow axis keeps the other's last value.
-    let last_overflow = steps
-        .iter()
-        .rev()
-        .find(|s| s.op == op::OVERFLOW)
-        .map_or(0, |s| s.code);
     let mut push = |o: u8, code: u8, x: [f32; 4]| {
         steps.push(step(o, code, x));
         true
@@ -864,13 +907,10 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
         },
         "row-gap" | "column-gap" => {
             let Some(x) = px(v) else { return false };
-            let mut g = steps
-                .iter()
-                .rev()
-                .find(|s| s.op == op::GAP)
-                .map_or([0.0; 4], |s| s.v);
-            g[usize::from(name == "row-gap")] = x;
-            steps.push(step(op::GAP, 0, g));
+            let row = usize::from(name == "row-gap");
+            let mut g = [0.0; 4];
+            g[row] = x;
+            steps.push(step(op::GAP, 1 << row, g));
             true
         }
         "padding" => sides(v).is_some_and(|s| push(op::PAD, 0, s)),
@@ -922,29 +962,27 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
             length(v).is_some_and(|(k, x)| push(o, k, [x, 0.0, 0.0, 0.0]))
         }
         "position" => match v {
-            "fixed" | "absolute" => push(op::ABSOLUTE, 0, [0.0; 4]),
+            "absolute" => push(op::ABSOLUTE, 0, [0.0; 4]),
+            // Code 1: placed against the viewport, not its parent.
+            "fixed" => push(op::ABSOLUTE, 1, [0.0; 4]),
             "relative" | "static" => true,
             _ => false,
         },
         "top" | "right" | "bottom" | "left" | "inset" => {
-            let mut last = steps
-                .iter()
-                .rev()
-                .find(|s| s.op == op::INSET)
-                .copied()
-                .unwrap_or(step(op::INSET, 0, [0.0; 4]));
-            if name == "inset" {
+            // Only the sides it names: fold keeps the element's others.
+            let last = if name == "inset" {
                 let Some(s) = sides(v) else { return false };
-                last = step(op::INSET, 0b1111, s);
+                step(op::INSET, 0b1111, s)
             } else {
                 let k = ["top", "right", "bottom", "left"]
                     .iter()
                     .position(|s| *s == name)
                     .unwrap();
                 let Some(x) = px(v) else { return false };
-                last.v[k] = x;
-                last.code |= 1 << k;
-            }
+                let mut v = [0.0; 4];
+                v[k] = x;
+                step(op::INSET, 1 << k, v)
+            };
             steps.push(last);
             true
         }
@@ -1105,13 +1143,13 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
                 Some(None) => return false,
                 None => x,
             };
-            // A single axis keeps the other's last value.
-            let c = match name {
-                "overflow-x" => (last_overflow & !3) | x,
-                "overflow-y" => (last_overflow & 3) | (x << 2),
-                _ => x | (y << 2),
+            // `v[0]`: the axes it sets (1 x, 2 y); fold keeps the other.
+            let (c, axes) = match name {
+                "overflow-x" => (x, 1.0),
+                "overflow-y" => (x << 2, 2.0),
+                _ => (x | (y << 2), 3.0),
             };
-            push(op::OVERFLOW, c, [0.0; 4])
+            push(op::OVERFLOW, c, [axes, 0.0, 0.0, 0.0])
         }
         "aspect-ratio" => {
             let v = v.trim_start_matches("auto").trim();
