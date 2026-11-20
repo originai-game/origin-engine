@@ -14,7 +14,7 @@
 // (wasm-profile.ts): those stay in the primary, so such a game loads none.
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { devNull, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withoutNames } from "./wasm-symbols.ts";
@@ -102,7 +102,7 @@ const plain = (name: string) => name.replace(/\[[0-9a-f]{6,}\]/g, "");
 /** Binaryen's call graph of `wasmFile`: each function's direct callees. */
 export function callGraph(wasmFile: string): Map<string, string[]> {
   const calls = new Map<string, string[]>();
-  for (const line of run("wasm-opt", [...FEATURES, "--print-call-graph", wasmFile, "-o", "/dev/null"]).split("\n")) {
+  for (const line of run("wasm-opt", [...FEATURES, "--print-call-graph", wasmFile, "-o", devNull]).split("\n")) {
     const m = /^\s*"(.+)" -> "(.+)";/.exec(line);
     if (m) (calls.get(m[1]!) ?? calls.set(m[1]!, []).get(m[1]!)!).push(m[2]!);
   }

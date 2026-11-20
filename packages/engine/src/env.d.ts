@@ -41,6 +41,7 @@ declare module "node:fs" {
 }
 
 declare module "node:os" {
+  export const devNull: string;
   export function networkInterfaces(): Record<string, Array<{ address: string; family: string | number; internal: boolean }> | undefined>;
   export function tmpdir(): string;
 }
