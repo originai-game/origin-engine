@@ -20,7 +20,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { inline-size: stretch; }
 [part="RpgCommands.band"] { justify-content: center; flex: none; }
 .plates { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; }

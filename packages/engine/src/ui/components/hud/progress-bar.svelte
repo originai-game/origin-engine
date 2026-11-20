@@ -28,7 +28,7 @@
 /* Drawn over the scene: the style's tag halo holds its text there, and its
    words take the scene's opaque ink (a translucent ink lets the halo show
    through the glyphs). */
-:host { text-shadow: var(--tag-halo); --ink-label: var(--scene-ink); --figure-ink: var(--scene-ink); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); --ink-label: var(--scene-ink); --figure-ink: var(--scene-ink); }
 /* A bar fills the width its container gives it. */
 :host { inline-size: stretch; min-inline-size: 0; --tone: var(--primary); --fill-color: var(--tone); --layout-anchor-inset: 0; }
 .success { --tone: var(--success); }

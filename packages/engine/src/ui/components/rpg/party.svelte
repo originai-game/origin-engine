@@ -31,7 +31,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { inline-size: stretch; }
 .cards { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; width: stretch; }
 [part="RpgParty.cell"] { position: relative; width: stretch; padding: var(--space-xs); align-items: stretch; justify-content: flex-start; min-width: 0; }

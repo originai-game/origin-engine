@@ -1,0 +1,6 @@
+{
+  "fixed": [
+    "Built-in UI: HUD text holds over any scene, in any style and scheme. A figure drawn over the scene now wears the style's halo (`--scene-halo`, which the HUD components set beside their `text-shadow`) where a style's `--figure-shadow` used to replace it, so the score no longer vanishes on a light scheme; a figure on a plate, row or cell keeps the style's shadow. The HUD's text outline (`--hud-stroke-color`) is drawn at 90 % rather than 62 %, so figures over bright bar fills (a party's health and mana) read, and the compass's distances take the halo.",
+    "Built-in UI: rhythm results keep room under the score for its comma's descender, which overlapped New best and the old best under it."
+  ]
+}

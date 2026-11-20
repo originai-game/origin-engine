@@ -303,7 +303,7 @@
   --role-hud-ink: var(--ink-bright);
   --role-hud-ink-dim: var(--ink-muted);
   --role-hud-stroke-width: calc(3 * var(--font-step-px));
-  --role-hud-stroke-color: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.62);
+  --role-hud-stroke-color: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.9);
   --role-hud-shadow: 0 0 calc(6 * var(--font-step-px)) rgb(255 255 255 / 0.7);
   --role-hud-figure-weight: var(--font-weight-bold);
   --role-hud-figure-stretch: 78%;
@@ -2249,7 +2249,7 @@
   --role-bar-notch: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92);
   --role-hud-ink: rgb(255 255 255);
   --role-hud-ink-dim: rgb(255 255 255 / 0.66);
-  --role-hud-stroke-color: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62);
+  --role-hud-stroke-color: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.9);
   --role-hud-shadow: 0 calc(2 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.55);
   --role-hud-label-ink: rgb(255 255 255 / 0.78);
   --role-hud-plate-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.84), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.88));

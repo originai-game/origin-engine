@@ -28,7 +28,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { inline-size: stretch; align-items: center; }
 .track { width: stretch; }
 .end { width: var(--size-sm); height: var(--size-md); flex: none; }

@@ -88,7 +88,7 @@
 .ally .diamond { background: var(--hud-ally); }
 .loot .mark { color: var(--hud-epic); }
 .loot .diamond { background: var(--hud-epic); }
-.distance { font-size: var(--hud-size-xs); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); white-space: nowrap; text-shadow: var(--hud-shadow); }
+.distance { font-size: var(--hud-size-xs); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); white-space: nowrap; text-shadow: var(--tag-halo); }
 /* The heading on a tag in the accent; the caret under the ticks. */
 [part="Compass.readout"] { align-items: center; margin-block-end: calc(-4 * var(--font-step-px)); position: relative; z-index: 1; }
 #Bearing { padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.35; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-key-ink); background: var(--hud-accent); border: 0; box-shadow: none; -webkit-text-stroke-width: 0; text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }

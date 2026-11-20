@@ -18,7 +18,7 @@
 </button>
 
 <style>
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #Face { inline-size: 100%; block-size: 100%; }
 /* Over the scene it is the style's scene cell. */
 :host { width: var(--size-lg); height: var(--size-lg); padding: 0; overflow: hidden; --cell-fill: var(--cell-scene-fill); --cell-rim: var(--cell-scene-rim); --cell-shadow: var(--cell-scene-shadow); --cell-empty-shadow: var(--cell-scene-shadow); }

@@ -17,7 +17,7 @@
 </div>
 
 <style>
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { grid-template-columns: 1fr; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-items: center; }
 [part="ProgressRing.ring"] { grid-area: 1 / 1; width: var(--size-lg); height: var(--size-lg); }
 [part="ProgressRing.figure"] { grid-area: 1 / 1; --figure-size: var(--font-step-sm); white-space: nowrap; }

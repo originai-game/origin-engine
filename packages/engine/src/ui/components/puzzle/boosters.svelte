@@ -43,7 +43,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { padding: var(--space-xs); }
 .tray-scroll { overflow-x: auto; overflow-y: hidden; }
 .tray { width: max-content; min-width: 100%; justify-content: center; padding: var(--space-xs) var(--space-xxs) var(--space-xxs); }

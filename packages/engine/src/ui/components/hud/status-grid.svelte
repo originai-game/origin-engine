@@ -42,7 +42,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #Buffs, #Debuffs { max-width: var(--measure-sm); margin: 0; padding: 0; list-style: none; align-items: flex-start; }
 .tile { align-items: center; min-width: calc(var(--size-md) + var(--space-xs)); --edge: var(--cell-scene-rim); }
 .debuff { --edge: var(--danger); }

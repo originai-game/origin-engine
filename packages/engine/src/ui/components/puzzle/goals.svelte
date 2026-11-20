@@ -62,7 +62,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { block-size: auto; }
 .counters { align-items: stretch; padding: var(--space-xs); }
 /* Moves or time: a big figure over its word in a cut well; low, amber. */

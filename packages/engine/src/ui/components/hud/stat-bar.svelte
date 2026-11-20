@@ -38,7 +38,7 @@
 </div>
 
 <style>
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { inline-size: 100%; --meter: var(--health); --fill-color: var(--meter); --layout-anchor-inset: 0; }
 .mana { --meter: var(--mana); --fill-color: var(--meter); }
 .stamina { --meter: var(--success); --fill-color: var(--meter); }

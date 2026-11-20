@@ -20,7 +20,7 @@
 </div>
 
 <style>
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { align-items: center; --meter: var(--health); --fill-color: var(--meter); --layout-anchor-inset: 0; }
 .mana { --meter: var(--mana); --fill-color: var(--meter); }
 [part~="OrbMeter.orb"] { width: var(--size-xxl); height: var(--size-xxl); overflow: hidden; --well-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--line-strong); }

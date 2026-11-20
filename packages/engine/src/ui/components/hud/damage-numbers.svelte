@@ -10,7 +10,7 @@
 </div>
 
 <style>
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 .hit { --figure-size: var(--font-step-xl); --figure-shadow: var(--tag-halo); }
 .hit.tinted { --figure-ink: var(--tint); }
 </style>

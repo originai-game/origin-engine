@@ -28,7 +28,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { inline-size: stretch; align-items: center; }
 [part="RpgEnemyInfo.band"] { width: stretch; justify-content: center; flex: none; }
 [part~="RpgEnemyInfo.name"], .enemy-level { margin: 0; text-align: center; }

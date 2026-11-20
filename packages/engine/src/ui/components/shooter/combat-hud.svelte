@@ -34,7 +34,7 @@
 /* The HUD keeps to the corners and the centre: vitals bottom left, ammunition
    bottom right, the feed top right, the reticle and hit directions centred.
    Edges sit inside the safe area, so a phone's notch and home bar stay clear. */
-:host { position: fixed; inset: 0; pointer-events: none; --edge: var(--space-xl); --layout-anchor-inset: var(--edge); text-shadow: var(--tag-halo); }
+:host { position: fixed; inset: 0; pointer-events: none; --edge: var(--space-xl); --layout-anchor-inset: var(--edge); text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 @media (width < 600px) { :host { --edge: var(--space-md); } }
 #Damage { width: calc(var(--size-xxl) * 3); height: calc(var(--size-xxl) * 3); }
 #Feed { right: calc(env(safe-area-inset-right) + var(--edge)); top: calc(env(safe-area-inset-top) + var(--edge)); max-width: calc(100% - var(--edge) * 2); }

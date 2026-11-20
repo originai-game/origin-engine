@@ -21,7 +21,7 @@
 </div>
 
 <style>
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { align-items: center; padding: var(--space-sm) var(--space-lg); --fill-color: var(--figure-ink); }
 [part~="HudTimer.label"] { white-space: nowrap; }
 [part="HudTimer.ring"] { width: var(--size-sm); height: var(--size-sm); }

@@ -27,7 +27,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { align-items: center; --bar: var(--measure-xs); --star: var(--size-md); --fill-color: var(--gold); --layout-anchor-inset: 0; }
 .compact { --bar: var(--size-4xl); --star: var(--size-sm); }
 [part="StarBar.figure"] { --figure-size: var(--font-step-2xl); white-space: nowrap; }

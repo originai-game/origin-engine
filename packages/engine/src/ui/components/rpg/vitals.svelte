@@ -29,7 +29,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { position: relative; inline-size: fit-content; }
 .ring { width: var(--size-xl); height: var(--size-xl); flex: none; overflow: hidden; --picture-radius: var(--radius-capsule); }
 [part="RpgVitals.frame"][data-plate=large] .ring { width: calc(var(--size-xxl) * 1.6); height: calc(var(--size-xxl) * 1.6); }

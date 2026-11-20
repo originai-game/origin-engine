@@ -271,13 +271,17 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where(button.go.primary[data-tone=confirm]:enabled) { filter: var(--action-confirm-glow); }
   /* A surface with a fill of its own holds its text: the halo a document
      drawn over the scene sets (`text-shadow: var(--tag-halo)`, inherited)
-     stops at it. A bare frame has no fill and passes it on. */
+     stops at it, and so does `--scene-halo`. A bare frame has no fill and
+     passes both on. */
   :where([part$=".frame"]:not(.bare), [part$=".band"], [part$=".row"], [part$=".cell"], [part$=".card"],
-         [part$=".badge"], [part$=".well"], [part$=".tab"], button, badge) { text-shadow: none; }
+         [part$=".badge"], [part$=".well"], [part$=".tab"], button, badge) { text-shadow: none; --scene-halo: initial; }
   :where([part$=".figure"], [part$=".badge"]) { font-variant-numeric: tabular-nums; }
   /* A figure's size and weight are unset by default; a component sets
      --figure-size and --figure-weight on a figure that stands above the rest. */
-  :where([part$=".figure"]) { font-size: var(--figure-size, revert-layer); font-weight: var(--figure-weight, revert-layer); font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow, revert-layer); }
+  /* A figure wears the style's --figure-shadow, but over the scene the halo
+     (`--scene-halo`, which a document drawn over the scene sets beside its
+     text-shadow) holds it in any style and scheme. */
+  :where([part$=".figure"]) { font-size: var(--figure-size, revert-layer); font-weight: var(--figure-weight, revert-layer); font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--scene-halo, var(--figure-shadow, revert-layer)); }
   :where([part$=".headline"]) { font: var(--headline-text); font-weight: var(--headline-weight); color: var(--headline-ink); }
   :where([part$=".caption"]) { font: var(--caption-text); color: var(--caption-ink); }
   :where([part$=".dot"]) {

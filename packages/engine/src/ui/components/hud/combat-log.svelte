@@ -19,7 +19,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 [part="RpgCombatLog.band"] { flex: none; }
 .scroll-shell { --fade-size: var(--space-lg); }
 .lines { padding-block-end: var(--fade-size); }

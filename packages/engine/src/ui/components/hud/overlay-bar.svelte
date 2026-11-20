@@ -34,7 +34,7 @@
 </div>
 
 <style>
-:host { align-items: center; max-width: 100%; text-shadow: var(--tag-halo); }
+:host { align-items: center; max-width: 100%; text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #Legend { --title-size: var(--title-small-size); width: var(--measure-sm); max-width: 100%; padding: var(--space-sm) var(--space-md); }
 [part="OverlayBar.title"] { white-space: nowrap; }
 [part~="OverlayBar.ramp"] { height: var(--space-sm); --fill-gloss: none; }

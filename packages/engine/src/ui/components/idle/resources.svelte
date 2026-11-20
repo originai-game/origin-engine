@@ -52,7 +52,7 @@
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 :host { inline-size: stretch; }
 .chips { width: stretch; margin: 0; padding: 0; list-style: none; min-width: 0; }
 /* A chip: cut at two corners; a full store rimmed in gold. */

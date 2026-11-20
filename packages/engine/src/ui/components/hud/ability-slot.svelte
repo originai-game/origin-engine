@@ -42,7 +42,7 @@
 </div>
 
 <style>
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 #Face { inline-size: 100%; block-size: 100%; --layout-anchor-inset: var(--space-xxs); }
 /* The slot grows with the player's text scale, as the text in it does,
    so its icon, badges and ring keep their proportions:

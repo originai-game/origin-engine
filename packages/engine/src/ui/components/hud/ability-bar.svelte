@@ -27,7 +27,7 @@
 </ul>
 
 <style>
-:host { text-shadow: var(--tag-halo); }
+:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
 .face { inline-size: 100%; block-size: 100%; --layout-anchor-inset: var(--space-xxs); }
 /* The slots grow with the player's text scale, as AbilitySlot's do:
    --text-px is one CSS px at 100 % text. */
