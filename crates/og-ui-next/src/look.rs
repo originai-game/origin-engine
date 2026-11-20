@@ -60,6 +60,34 @@ impl Look {
     }
 }
 
+/// The default style's tokens: the design language's token files, then
+/// the old default style's (`og_ui::DEFAULT_CSS`, which holds the
+/// generated theme's tokens) until the switch removes it.
+pub fn default_tokens() -> String {
+    let mut css = String::new();
+    for f in [
+        include_str!("../../../packages/design/tokens/seed.css"),
+        include_str!("../../../packages/design/tokens/color.css"),
+        include_str!("../../../packages/design/tokens/role.css"),
+        include_str!("../../../packages/design/tokens/derived.css"),
+        include_str!("../../../packages/design/tokens/contrast.css"),
+        include_str!("../../../packages/design/tokens/state.css"),
+        include_str!("../../../packages/design/tokens/space.css"),
+        include_str!("../../../packages/design/tokens/density.css"),
+        include_str!("../../../packages/design/tokens/type.css"),
+        include_str!("../../../packages/design/tokens/effect.css"),
+        include_str!("../../../packages/design/tokens/motion.css"),
+        og_ui::DEFAULT_CSS,
+    ] {
+        css += f;
+        css.push('\n');
+    }
+    css
+}
+
+/// The default surfaces sheet.
+pub const DEFAULT_SURFACES: &str = include_str!("../default/surfaces.css");
+
 #[cfg(test)]
 mod tests {
     use super::*;

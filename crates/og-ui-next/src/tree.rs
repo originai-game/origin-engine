@@ -667,6 +667,16 @@ impl Tree {
     /// Drains the queue, refolds what changed, lays out and paints. The
     /// fonts measure text; `icons` draws icons.
     pub fn frame(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) -> Frame {
+        let mut out = self.commit();
+        let (laid_out, painted) = self.present(fonts, icons);
+        out.laid_out = laid_out;
+        out.painted = painted;
+        out
+    }
+
+    /// The queue's ops applied and the changed records folded again: what
+    /// a frame does before layout.
+    pub fn commit(&mut self) -> Frame {
         let mut out = Frame::default();
         queue::drain(self.id, &mut self.ops);
         out.ops = self.ops.len();
@@ -726,17 +736,23 @@ impl Tree {
             self.dirty = dirty;
             self.paint = true;
         }
+        out
+    }
+
+    /// Lays out what is dirty and paints again when anything changed:
+    /// whether it laid out, and whether it painted.
+    pub fn present(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) -> (bool, bool) {
         let (w, h) = self.env.size.get();
         let m = &fonts.body.metrics;
-        out.laid_out = self.arena.layout(w, h, &mut |t, run, width| {
+        let laid_out = self.arena.layout(w, h, &mut |t, run, width| {
             crate::text::measure(m, t, run, width)
         });
-        if out.laid_out || self.paint {
+        let painted = laid_out || self.paint;
+        if painted {
             self.repaint(fonts, icons);
             self.paint = false;
-            out.painted = true;
         }
-        out
+        (laid_out, painted)
     }
 
     fn rebuild(&mut self, b: u32) {

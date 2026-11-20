@@ -139,10 +139,23 @@ fn main() {
             Default::default(),
             "an unchanged frame does nothing"
         );
+        let value: serde_json::Value = format!("06:{:02}", 55 + run % 4).into();
         let a0 = allocations();
         let t = Instant::now();
-        queue::set(stores[1].1, format!("06:{:02}", 55 + run % 4).into());
-        let changed = tree.frame(&fonts, &icons);
+        queue::set(stores[1].1, value);
+        let a1 = allocations();
+        let mut changed = tree.commit();
+        let a2 = allocations();
+        let (l, p) = tree.present(&fonts, &icons);
+        (changed.laid_out, changed.painted) = (l, p);
+        if run == 0 {
+            println!(
+                "one change: write {} commit {} present {}",
+                a1 - a0,
+                a2 - a1,
+                allocations() - a2
+            );
+        }
         one.push(t.elapsed().as_secs_f64() * 1e3);
         one_alloc = allocations() - a0;
         if run == 0 {
