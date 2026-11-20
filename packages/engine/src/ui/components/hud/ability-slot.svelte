@@ -62,8 +62,9 @@
 .ultimate #Art { --well-radius: var(--radius-capsule); }
 #Icon { width: 66%; height: 66%; }
 .ultimate #Icon { width: 50%; height: 50%; }
-/* While it cools the art steps back, so the seconds left read over it. */
-#Slot.cooling #Icon { opacity: var(--opacity-dim); }
+/* While it cools, the sweep alone darkens the share still to run: the
+   art is not dimmed under it as well, and the seconds read over both on
+   their halo. */
 #Slot.tinted #Art { --well-fill: var(--well-alert-fill); }
 #Slot.full { --cell-active-rim: var(--gold); }
 #Ultimate, #Sweep, #Slash { inline-size: 100%; block-size: 100%; }
@@ -83,7 +84,8 @@
 #Cost { --badge-ink: var(--mana); --badge-fill: var(--scene-plate); }
 #Cost.short { --badge-ink: var(--tone-danger); }
 #Charges { min-width: var(--size-xs); }
-#Count { --figure-size: var(--font-step-sm); --figure-ink: var(--scene-ink); --figure-shadow: var(--tag-halo); }
+/* The count stands inside the art's well, a step off its rim. */
+#Count { --layout-anchor-inset: calc(var(--cell-scene-inset) + var(--space-xs)); --figure-size: var(--font-step-sm); --figure-ink: var(--scene-ink); --figure-shadow: var(--tag-halo); }
 #Pips { width: calc(var(--ranks) * var(--space-md) - var(--space-xs)); height: var(--space-xs); mask-image: repeating-linear-gradient(90deg, #000 0 var(--space-sm), transparent 0 var(--space-md)); }
 #Ranked { width: calc(var(--level) * var(--space-md) - var(--space-xs)); height: var(--space-xs); --fill-color: var(--gold); }
 /* The cap sits under the slot, over the scene: it is the scene's plate in

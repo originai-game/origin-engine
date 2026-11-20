@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "AbilitySlot",
+      "summary": "A cooling slot's art is darkened once, by the sweep, instead of dimmed under it as well, so the art still reads; a quick item's count stands a step inside the art's well instead of on the slot's rim."
+    }
+  ]
+}
