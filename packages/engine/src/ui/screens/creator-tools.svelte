@@ -74,7 +74,11 @@ button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-m
 #TreePanel { box-shadow: var(--hud-plate-rim), inset calc(-1 * var(--stroke-thin)) 0 0 rgb(from var(--hud-accent) r g b / 0.35); }
 #InspectorPanel { box-shadow: var(--hud-plate-rim), inset var(--stroke-thin) 0 0 rgb(from var(--hud-accent) r g b / 0.35); }
 .fill { flex: 1; min-block-size: 0; }
-#Scroll { overflow-y: auto; }
+/* A panel's scroller fades out over its foot, where its content pads as much,
+   so a control running past the edge reads as more below, never as cut, and
+   the last one scrolled into view stands clear of the fade. */
+#Scroll { overflow-y: auto; mask-image: linear-gradient(180deg, #000 calc(100% - var(--space-lg)), transparent); }
+#ScrollInspector { padding-block-end: var(--space-lg); }
 #TreePanel { grid-area: tree; }
 #View { grid-area: view; }
 #Tabs { grid-area: tabs; display: none; gap: var(--space-xs); padding: var(--space-sm); }
@@ -90,7 +94,9 @@ button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-m
   button::part(base), button.compact::part(base) { padding: 0 var(--space-lg); }
   button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-lg) - var(--button-border-width)); }
   /* One column no wider than the screen (it shrinks below its content). */
-  #Body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr auto var(--measure-sm); grid-template-areas: "view" "tabs" "panel"; }
+  /* The open panel takes the larger share of the height and the view the
+     rest, so the inspector's controls stand whole above the screen's foot. */
+  #Body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 2fr) auto minmax(var(--measure-sm), 3fr); grid-template-areas: "view" "tabs" "panel"; }
   /* The tabs: one strip that scrolls sideways, never wrapping, each tab a
      finger's target that keeps its whole name. A focus move scrolls its
      tab into view with a neighbour's edge showing beside it. */
