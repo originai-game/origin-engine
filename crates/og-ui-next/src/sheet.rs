@@ -17,7 +17,9 @@ fn collect<'a>(css: &'a str, out: &mut Vec<(&'a str, &'a str)>) {
     while i < bytes.len() {
         match bytes[i] {
             b'/' if bytes.get(i + 1) == Some(&b'*') => {
-                let end = css[i + 2..].find("*/").map_or(bytes.len(), |e| i + 2 + e + 2);
+                let end = css[i + 2..]
+                    .find("*/")
+                    .map_or(bytes.len(), |e| i + 2 + e + 2);
                 if css[start..i].trim().is_empty() {
                     start = end;
                 }
@@ -53,7 +55,9 @@ pub fn declarations(body: &str) -> impl Iterator<Item = (&str, &str)> {
         let colon = d.find(':')?;
         let name = d[..colon].trim();
         let value = d[colon + 1..].trim();
-        let value = value.strip_suffix("!important").map_or(value, str::trim_end);
+        let value = value
+            .strip_suffix("!important")
+            .map_or(value, str::trim_end);
         (!name.is_empty()).then_some((name, value))
     })
 }
