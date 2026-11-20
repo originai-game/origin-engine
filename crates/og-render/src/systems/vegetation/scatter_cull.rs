@@ -89,6 +89,14 @@ impl ChunkPool {
     }
 }
 
+/// A capacity for `need`: an eighth more, so a list that grows by a few
+/// copies a frame is not made again each frame, and growth stays
+/// geometric. The next power of two left up to half a list unused (First
+/// Light: 128 MB of lists made at boot).
+fn headroom(need: u64) -> u64 {
+    need + need.div_ceil(8)
+}
+
 /// The most copies one page of the list holds on a device: what one
 /// storage binding and one buffer may be, whichever is less. A frame's
 /// chunks fill pages in order, none split across two, so a scatter of any
@@ -912,7 +920,7 @@ impl ScatterCull {
             )
         };
         if self.item_cap < n {
-            self.item_cap = n.next_power_of_two();
+            self.item_cap = headroom(n);
             self.items = make(
                 "scatter cull items",
                 ITEM_SLOT * self.item_cap,
@@ -934,7 +942,7 @@ impl ScatterCull {
             if self.pages.get(p).is_some_and(|&(_, cap)| cap >= need) {
                 continue;
             }
-            let cap = need.next_power_of_two().min(limit);
+            let cap = headroom(need).min(limit);
             let page = make("scatter cull list", cap * COPY_BYTES, Self::list_usage());
             match self.pages.get_mut(p) {
                 Some(slot) => *slot = (page, cap),
