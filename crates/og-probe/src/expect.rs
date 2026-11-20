@@ -703,6 +703,11 @@ impl Probe {
             r.reason = "no renderer, timings.".to_string() + path + " unchecked";
             return;
         }
+        if path.split('.').next() == Some("triangles")
+            && let Some(t) = self.host.triangles.as_ref().and_then(|read| read())
+        {
+            self.set_triangles(t);
+        }
         let state = self.state(world);
         check_path(
             r,

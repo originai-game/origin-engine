@@ -563,6 +563,7 @@ fn the_cull_counts_what_the_camera_drew_by_scatter() {
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     let mut stats = r.render(&scene, &RenderTarget::Offscreen).expect("render");
     for _ in 0..8 {
+        r.finish_stats(&mut stats);
         if r.scatter_counts().is_some_and(|c| !c.scatters.is_empty()) {
             break;
         }

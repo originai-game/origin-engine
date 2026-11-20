@@ -28252,7 +28252,7 @@ export interface ProbeTimings {
    */
   readonly gpuPasses: readonly ProbeTiming[];
   /**
-   * Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer.
+   * Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer. Read from the GPU when asked: natively the frame's own; on the web the call asks for the next frame's, which a later call reports (the GPU-culled part is missing before).
    */
   readonly triangles: number;
 }

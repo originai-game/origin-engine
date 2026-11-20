@@ -204,6 +204,7 @@ impl Renderer {
                                 .filter(|_| gpu_cull)
                                 .and_then(|gc| gc.pyramid()),
                             frame: self.frame_index,
+                            counts: self.visibility.culling_counts,
                         },
                         &|h| textures.get(h.index()).map(|t| &t.view),
                         terrain_draws,

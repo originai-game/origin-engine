@@ -422,7 +422,6 @@ impl RenderBackend for WindowBackend {
         if let Some((w, h)) = RESIZE.take() {
             self.renderer.resize(w, h);
         }
-        self.renderer.request_culling_counts();
         self.window.pre_present_notify();
         match self.renderer.render(scene, &RenderTarget::Surface) {
             Ok(s) => self.stats = s,
@@ -449,6 +448,9 @@ impl RenderBackend for WindowBackend {
     }
     fn gpu_timing_absent(&self) -> Option<&'static str> {
         self.renderer.gpu_timing_absent()
+    }
+    fn read_counts(&mut self) {
+        self.renderer.finish_stats(&mut self.stats);
     }
     fn frame_stats(&self) -> og_render::FrameStats {
         self.stats

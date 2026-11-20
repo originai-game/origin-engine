@@ -148,9 +148,6 @@ impl RenderBackend for CanvasBackend {
             p.landed = p.req.is_ready();
             kept
         });
-        // GPU culling's counts come back a frame or two late, read
-        // back only when asked: the probe's triangles are its.
-        self.renderer.request_culling_counts();
         match self.renderer.render(scene, &RenderTarget::Surface) {
             Ok(s) => {
                 self.stats = s;
@@ -226,6 +223,9 @@ impl RenderBackend for CanvasBackend {
     }
     fn sprite_shader_errors(&self) -> Vec<(usize, String)> {
         self.renderer.sprite_shader_errors()
+    }
+    fn read_counts(&mut self) {
+        self.renderer.request_culling_counts();
     }
     fn scatter_counts(&self) -> Option<og_render::ScatterCounts> {
         self.renderer.scatter_counts().cloned()

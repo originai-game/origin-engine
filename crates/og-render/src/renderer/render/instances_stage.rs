@@ -72,7 +72,7 @@ impl Renderer {
         // Upload instances, previous transforms, skinned data, strips and
         // sprites. With GPU culling the sorted instances go to its buffer and
         // this one holds only the transparent draws.
-        let copy_counts = std::mem::take(&mut self.visibility.culling_counts);
+        let copy_counts = self.visibility.culling_counts;
         let (cull_commands, gpu_counts) = if gpu_cull {
             let (commands, counts) = self.encode_gpu_cull(GpuCullInputs {
                 scene,

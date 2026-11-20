@@ -259,11 +259,12 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
         "dump_render",
         og_probe::CommandDesc {
             usage: "dump_render[:path]".into(),
-            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), its draw calls (`draws`, every pass), blended instances and draws (`transparent`, `transparentDraws`), sprite draws, particle systems with their slots and CPU-simulated live particles (`particles`: systems, capacity, cpu), the og.Vfx drawn and left out past RenderSettings.maxVfx or maxVfxParticles (`vfx`: drawn, dropped) and trail strips and segments, render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, its og.TerrainScatter copies (`scatter`: the main pass's chunk draws and the chunks built for the frame; with the GPU cull, per scatter entity the chunks it took, the copies placed in them, the copies the main camera drew at each level of detail and as the impostor's card, and their triangles, counted on the GPU `countsLag` frames earlier; scatters null without it), its HLOD (`hlod`: the scenes' trees walked, the proxies drawn, those of them for cells not loaded, and the models they drew in place of), and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), its draw calls (`draws`, every pass), blended instances and draws (`transparent`, `transparentDraws`), sprite draws, particle systems with their slots and CPU-simulated live particles (`particles`: systems, capacity, cpu), the og.Vfx drawn and left out past RenderSettings.maxVfx or maxVfxParticles (`vfx`: drawn, dropped) and trail strips and segments, render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, its og.TerrainScatter copies (`scatter`: the main pass's chunk draws and the chunks built for the frame; with the GPU cull, per scatter entity the chunks it took, the copies placed in them, the copies the main camera drew at each level of detail and as the impostor's card, and their triangles, counted on the GPU and read back when asked: natively the frame's own, on the web the frame after the call that first asked, `countsLag` frames earlier; scatters null without the GPU cull or before a read lands), its HLOD (`hlod`: the scenes' trees walked, the proxies drawn, those of them for cells not loaded, and the models they drew in place of), and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
         },
         0,
         move |_world, _args| {
             let eng = crate::engine::engine(engine)?;
+            read_counts(&eng);
             let st = eng.state.borrow();
             let rs = eng.render.borrow();
             let transparency = st.frame.transparency();
@@ -364,6 +365,24 @@ pub(crate) enum NameOp {
 /// in first, views are retired (`moving`: whether `f` may move column
 /// memory), the timings are current; afterwards names given meanwhile go in,
 /// and the log joins the engine's.
+/// The GPU's counts of the last frame drawn (its triangles, culling and
+/// scatter), read for a probe call that reports them: they stay on the GPU
+/// otherwise. Natively they are read at once; on the web the call asks for
+/// the next frame's, which a later call reports (null before).
+pub(crate) fn read_counts(eng: &Engine) {
+    let Ok(mut rs) = eng.render.try_borrow_mut() else {
+        return;
+    };
+    if let Some(b) = rs.backend.as_mut() {
+        b.read_counts();
+        let frame = b.frame_stats();
+        drop(rs);
+        if let Ok(mut st) = eng.state.try_borrow_mut() {
+            st.frame = frame;
+        }
+    }
+}
+
 pub(crate) fn with_probe<T>(
     eng: &Engine,
     moving: bool,
@@ -558,6 +577,12 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         tier: "none".into(),
         engine: eng.id,
     }));
+    // A check of timings.triangles reads the last frame's GPU counts.
+    probe.set_triangle_reader(move || {
+        let eng = crate::engine::engine(id).ok()?;
+        read_counts(&eng);
+        eng.state.try_borrow().ok().map(|st| st.frame.triangles)
+    });
     // A world.restore asked for during a tick applies as the tick ends.
     probe.set_after_tick(Box::new(move |world| {
         crate::author::trace::after_tick(id, world);

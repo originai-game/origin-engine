@@ -16,7 +16,7 @@ The fixed timings head of state().
 | `systems` | `readonly ProbeTiming[]` | `[]` | — | — | — | The last tick's systems in run order, each with its milliseconds. |
 | `passes` | `readonly ProbeTiming[]` | `[]` | — | — | — | The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer). |
 | `gpuPasses` | `readonly ProbeTiming[]` | `[]` | — | — | — | The render passes of the newest frame the GPU timed (a frame or two behind `passes`), each with its milliseconds alone on the GPU (no other pass in flight: waits and overlap excluded); a pass it could not time is left out; empty without timestamp queries (RenderCapabilities.gpuTimestamps). |
-| `triangles` | `number` | `0` | — | — | — | Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer. |
+| `triangles` | `number` | `0` | — | — | — | Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer. Read from the GPU when asked: natively the frame's own; on the web the call asks for the next frame's, which a later call reports (the GPU-culled part is missing before). |
 
 ```ogt
 struct ProbeTimings {
@@ -33,7 +33,7 @@ struct ProbeTimings {
   field systems List.ProbeTiming "The last tick's systems in run order, each with its milliseconds."
   field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer)."
   field gpuPasses List.ProbeTiming "The render passes of the newest frame the GPU timed (a frame or two behind `passes`), each with its milliseconds alone on the GPU (no other pass in flight: waits and overlap excluded); a pass it could not time is left out; empty without timestamp queries (RenderCapabilities.gpuTimestamps)."
-  field triangles u32 "Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer."
+  field triangles u32 "Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer. Read from the GPU when asked: natively the frame's own; on the web the call asks for the next frame's, which a later call reports (the GPU-culled part is missing before)."
 }
 ```
 

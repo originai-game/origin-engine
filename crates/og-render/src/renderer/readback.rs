@@ -9,13 +9,13 @@ use super::*;
 pub const CAPTURE_WARMUP: u64 = 8;
 
 impl Renderer {
-    /// Reads the next frame's GPU culling counts back (`culled`,
+    /// Reads the next frame's GPU counts back: the culling's (`culled`,
     /// `occluded`, `triangles`, `shadow_casters` and the triangle counts
-    /// in and out of view; see
-    /// [`FrameStats::counts_lag`]), for one frame: a frame rendered
-    /// without a request copies none, so the stats keep the newest
-    /// requested frame's. Natively [`Renderer::finish_stats`] needs no
-    /// request for the last frame rendered.
+    /// in and out of view; see [`FrameStats::counts_lag`]) and the
+    /// scatter's ([`Renderer::scatter_counts`]), for one frame. A frame
+    /// rendered without a request reads none back, so the counts stay on
+    /// the GPU until someone asks. Natively [`Renderer::finish_stats`]
+    /// needs no request: it reads the last frame's at once.
     pub fn request_culling_counts(&mut self) {
         self.visibility.culling_counts = true;
     }
@@ -139,8 +139,13 @@ impl Renderer {
     /// not the last one rendered.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn finish_stats(&mut self, stats: &mut FrameStats) -> bool {
+        self.world.scatter.finish_counts(&self.device, &self.queue);
         if !stats.gpu_culling {
             return false;
+        }
+        // Already the frame's own (a second read of the same frame).
+        if stats.counts_lag == 0 {
+            return true;
         }
         let Some((exact, given)) = self
             .visibility

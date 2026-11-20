@@ -355,6 +355,10 @@ pub(crate) struct CullView<'a> {
     pub pyramid: Option<(&'a wgpu::TextureView, u32)>,
     /// The renderer's frame, which its counts are read back as.
     pub frame: u64,
+    /// Whether the frame's counts were asked for
+    /// ([`crate::Renderer::request_culling_counts`]): copied to a readback
+    /// only then.
+    pub counts: bool,
 }
 
 pub(crate) struct ScatterCull {
@@ -390,6 +394,8 @@ pub(crate) struct ScatterCull {
     per_draw: Option<crate::indirect_own::OwnArgs>,
     /// This frame's chunks' scatters ([`CullItem::id`], `first_part`), in order.
     owners: Vec<(u64, bool)>,
+    /// The last frame whose chunks were culled ([`Self::finish`]).
+    counted: Option<u64>,
     /// The main camera's counts, read back a frame or two after the cull.
     pub(crate) counts: CountReadbacks,
 }
@@ -542,7 +548,7 @@ impl CountReadbacks {
     fn copy(
         &mut self,
         device: &wgpu::Device,
-        encoder: &mut crate::Encoder,
+        encoder: &mut wgpu::CommandEncoder,
         draws: &wgpu::Buffer,
         frame: u64,
         owners: &[(u64, bool)],
@@ -790,6 +796,7 @@ impl ScatterCull {
             dispatches: Vec::new(),
             per_draw: per_draw.then(Default::default),
             owners: Vec::new(),
+            counted: None,
             counts: CountReadbacks::default(),
         }
     }
@@ -1123,8 +1130,49 @@ impl ScatterCull {
                 }
             }
         }
-        self.counts
-            .copy(device, encoder, &self.draws, view.frame, &self.owners);
+        self.counted = Some(view.frame);
+        if view.counts {
+            self.counts
+                .copy(device, encoder, &self.draws, view.frame, &self.owners);
+        }
+    }
+
+    /// Natively: the last frame culled's counts, read now (blocking),
+    /// copied from its draws when the frame asked for none.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn finish(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let Some(frame) = self.counted else { return };
+        if self
+            .counts
+            .latest
+            .as_ref()
+            .is_some_and(|l| l.frame >= frame)
+        {
+            return;
+        }
+        if !self
+            .counts
+            .slots
+            .iter()
+            .any(|r| r.copied.as_ref().is_some_and(|c| c.0 == frame))
+        {
+            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("scatter cull counts"),
+            });
+            self.counts
+                .copy(device, &mut encoder, &self.draws, frame, &self.owners);
+            queue.submit(Some(encoder.finish()));
+            self.counts.after_submit();
+        }
+        while self.counts.slots.iter().any(|r| {
+            r.copied.as_ref().is_some_and(|c| c.0 == frame)
+                && r.mapped.lock().unwrap_or_else(|e| e.into_inner()).is_none()
+        }) {
+            if crate::traffic::poll(device, wgpu::PollType::wait_indefinitely()).is_err() {
+                return;
+            }
+        }
+        self.counts.poll();
     }
 
     /// After the frame's submit: maps the counts the cull copied.

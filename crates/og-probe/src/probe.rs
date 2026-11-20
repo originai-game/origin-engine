@@ -443,6 +443,7 @@ impl Probe {
         input.attach(world)?;
         Ok(Probe {
             host: state::Host {
+                triangles: None,
                 engine: ENGINE_VERSION.to_owned(),
                 input,
                 capture: None,
@@ -575,6 +576,13 @@ impl Probe {
     /// keep their remaining delays ([`Probe::shift_schedule`]).
     pub fn set_after_tick(&mut self, after: AfterTickFn) {
         self.clock.after_tick = Some(after);
+    }
+
+    /// How a check of `timings.triangles` reads the last frame's from the
+    /// GPU (its counts stay there until asked): `None` from the reader
+    /// keeps the triangles last set.
+    pub fn set_triangle_reader(&mut self, read: impl Fn() -> Option<u64> + 'static) {
+        self.host.triangles = Some(Box::new(read));
     }
 
     /// Work the host does as every tick starts, just before the step (after

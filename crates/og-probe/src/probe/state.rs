@@ -12,6 +12,9 @@ pub(crate) struct Host {
     pub(crate) ui: Option<Box<dyn UiTree>>,
     pub(super) reloader: Option<Box<dyn Reloader>>,
     pub(crate) facts: Option<FactsFn>,
+    /// Reads the last frame's triangles from the GPU for a check of them
+    /// ([`super::Probe::set_triangle_reader`]).
+    pub(crate) triangles: Option<Box<dyn Fn() -> Option<u64>>>,
     /// The frame as data and picking ([`Probe::set_scene_view`]).
     pub(crate) scene_view: Option<Box<dyn SceneView>>,
     /// The boot scene's write-back ([`Probe::set_scene_writer`]).

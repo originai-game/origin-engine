@@ -38,9 +38,6 @@ impl OffscreenBackend {
     /// the scene again on this frame, so the game goes on.
     fn draw(&mut self, scene: &og_render::RenderScene) -> Result<(), String> {
         self.recreate()?;
-        // GPU culling's counts come back a frame or two late, read back
-        // only when asked: the probe's triangles are its.
-        self.renderer.request_culling_counts();
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
             .map(|s| {
@@ -202,6 +199,9 @@ impl RenderBackend for OffscreenBackend {
     fn visibility_buffer_refused(&self) -> Option<String> {
         self.renderer.visibility_buffer_refused().map(str::to_owned)
     }
+    fn read_counts(&mut self) {
+        self.renderer.finish_stats(&mut self.stats);
+    }
     fn frame_stats(&self) -> og_render::FrameStats {
         self.stats
     }
@@ -241,7 +241,6 @@ impl RenderBackend for OffscreenBackend {
         let image = self
             .recreate()
             .and_then(|()| {
-                self.renderer.request_culling_counts();
                 self.renderer
                     .render_capture(scene, &og_render::RenderTarget::Offscreen)
                     .map(|s| self.stats = s)

@@ -16,6 +16,14 @@ impl ScatterRenderer {
         }
     }
 
+    /// Natively: the last frame culled's counts, read now (blocking).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn finish_counts(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        if let Some(cull) = &mut self.cull {
+            cull.finish(device, queue);
+        }
+    }
+
     /// The GPU cull's newest counts ([`crate::ScatterCounts`]).
     pub(crate) fn counts(&self) -> Option<&crate::ScatterCounts> {
         self.cull.as_ref()?.counts.latest.as_ref()

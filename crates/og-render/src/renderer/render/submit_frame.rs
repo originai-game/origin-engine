@@ -111,6 +111,9 @@ impl Renderer {
             gc.after_submit();
         }
         self.world.scatter.after_submit();
+        // A request covers the frame submitted (instances_stage, the
+        // scatter's cull).
+        self.visibility.culling_counts = false;
         if let (Some(t), Some(c)) = (self.gpu_timer.as_mut(), self.clock) {
             t.after_submit(
                 &self.queue,

@@ -585,6 +585,9 @@ pub fn answer_call(id: u32, call: &og_probe::rpc::Call) -> String {
     {
         return json!({ "jsonrpc": "2.0", "id": call.id, "error": { "code": og_probe::rpc::INTERNAL_ERROR, "message": e } }).to_string();
     }
+    // An external call may report the last frame's GPU counts
+    // (`state().timings.triangles`, dump_render): read them now.
+    rprobe::read_counts(&eng);
     let answer = rprobe::with_probe(&eng, true, |p, w| rprobe::answer(p, w, call));
     let swapped = answer.as_ref().is_ok_and(|a| a.1);
     let registered = rprobe::after_reload(&eng, swapped);

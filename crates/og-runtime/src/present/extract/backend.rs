@@ -86,6 +86,13 @@ pub trait RenderBackend {
     fn frame_stats(&self) -> og_render::FrameStats {
         og_render::FrameStats::default()
     }
+    /// Reads the GPU's counts of the last frame (culling and scatter,
+    /// og-render's `Renderer::finish_stats`) into [`Self::frame_stats`] and
+    /// [`Self::scatter_counts`], for a probe call that reads them. They
+    /// stay on the GPU otherwise. Native hosts read them at once
+    /// (blocking, between ticks); the web host asks for the next frame's,
+    /// which a later call reads (null before).
+    fn read_counts(&mut self) {}
     /// Reflection probe `id`'s capture read back (og-render's
     /// `Renderer::read_reflection_probe`): native hosts, for `og bake probes`.
     fn read_reflection_probe(&self, _id: u64) -> Option<Result<og_render::ProbeCapture, String>> {
