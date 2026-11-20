@@ -522,6 +522,9 @@ pub(crate) struct ProjectGame {
     /// `frames "https://events.example.com"`: the origins remote
     /// `<iframe>`s may load from (og_ui::doc::frames); none by default.
     pub frames: Vec<String>,
+    /// `uiCore next`: the game's documents run on og-ui's new core
+    /// (og-ui-next, the ui-rewrite branch) instead of og-ui's.
+    pub ui_next: bool,
 }
 
 /// Reads `tick`, `seed`, `scenes`, `scene`, `look` and `saveVersion` from project.ogt's
@@ -605,6 +608,23 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         .and_then(|v| v.as_word().or_else(|| v.as_str()))
         .map(str::to_string);
     let frames = og_ui::doc::frames::project_origins(b).map_err(|e| format!("project.ogt:{e}"))?;
+    let ui_next = match b.get("uiCore") {
+        None => false,
+        Some(e) => match e
+            .values
+            .first()
+            .and_then(|v| v.as_word().or_else(|| v.as_str()))
+        {
+            Some("next") => true,
+            Some("current") => false,
+            _ => {
+                return Err(format!(
+                    "project.ogt:{}: `uiCore` is `next` (og-ui's new core) or `current`",
+                    e.line
+                ));
+            }
+        },
+    };
     Ok(ProjectGame {
         tick,
         seed,
@@ -614,6 +634,7 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         save_version,
         loading,
         frames,
+        ui_next,
     })
 }
 

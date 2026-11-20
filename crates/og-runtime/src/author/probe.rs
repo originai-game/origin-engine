@@ -408,7 +408,11 @@ pub(crate) fn with_probe<T>(
     {
         // Names and times only: system_info copies every declaration, a
         // tenth of a millisecond of every web frame.
-        let systems = world.system_ms();
+        let mut systems = world.system_ms();
+        // og-ui's new core: og.ui.next.build / frame / commit / layout.
+        if let Some(next) = &eng.render.borrow().ui_next {
+            systems.extend(next.timings());
+        }
         let st = eng.state.borrow();
         let passes = st.pass_ms.iter().map(|p| (p.name.clone(), p.ms)).collect();
         probe.set_timing_detail(systems, passes, st.gpu_ms.clone());

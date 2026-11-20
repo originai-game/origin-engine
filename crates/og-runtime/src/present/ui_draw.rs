@@ -54,6 +54,9 @@ impl og_probe::UiTree for MaterialProbe {
             }).collect::<Vec<_>>() })
         }).collect();
         extra.insert("materials".into(), json!(materials));
+        if let Some(next) = &render.ui_next {
+            extra.insert("next".into(), next.probe());
+        }
         Some(extra)
     }
 }

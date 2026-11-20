@@ -25,6 +25,8 @@ zmij = "1"
 og-physics = { path = "../og-physics", default-features = false }
 og-audio = { path = "../og-audio" }
 og-ui = { path = "../og-ui", default-features = false }
+# og-ui's new core, for a project with `uiCore next` (the ui-rewrite branch).
+og-ui-next = { path = "../og-ui-next" }
 og-input = { path = "../og-input" }
 og-anim = { path = "../og-anim" }
 og-timeline = { path = "../og-timeline" }

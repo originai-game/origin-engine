@@ -18,7 +18,8 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     rs.scene.look.range_limit = ui.range_limit();
     let frame = ui.frame();
     let world_frame = ui.world_frame();
-    if frame.items.is_empty() && world_frame.batches.is_empty() {
+    let next_empty = rs.ui_next.as_ref().is_none_or(|n| n.frame.items.is_empty());
+    if frame.items.is_empty() && world_frame.batches.is_empty() && next_empty {
         return;
     }
     // The UI alone writes the overlay it makes: it can name what it made
@@ -51,6 +52,10 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     } else {
         frame.emit_shifted(&desc, overlay, &|key| shifts.get(&key).copied());
     }
+    // The documents on og-ui's new core, over og-ui's (present/ui_next.rs).
+    if let Some(next) = &rs.ui_next {
+        next.frame.emit_shifted(&desc, overlay, &|_| None);
+    }
     // Mass elements no element owns (docs/ui.md §1), under the UI.
     world_frame.emit(og_render::UI_OVERLAY_LAYER, overlay);
     crate::present::extract::draw_other_pages(overlay, first_text, &rs.ui_pages);
@@ -80,6 +85,10 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
             use std::hash::{Hash, Hasher};
             let mut key = std::hash::DefaultHasher::new();
             frame.generation.hash(&mut key);
+            rs.ui_next
+                .as_ref()
+                .map(|n| n.frame.generation)
+                .hash(&mut key);
             [w.to_bits(), h.to_bits()].hash(&mut key);
             let mut moved: Vec<(u64, [u32; 2])> = shifts
                 .iter()

@@ -217,7 +217,14 @@ pub(crate) fn mount_back(
                     feed.before_end(ctx, &mut ui);
                     BUILDING.with(|b| b.set(None));
                     let frame = ui.end();
-                    let out = (frame.warnings.clone(), frame.missing_glyphs.clone());
+                    let mut out = (frame.warnings.clone(), frame.missing_glyphs.clone());
+                    // The documents on og-ui's new core lay out and paint
+                    // after og-ui's frame (present/ui_next.rs).
+                    if let Ok(eng) = engine(engine_id)
+                        && let Some(next) = &mut eng.render.borrow_mut().ui_next
+                    {
+                        out.0.extend(next.end(&ui, &crate::author::probe::now_ms));
+                    }
                     // The on-screen controls documents laid out feed their
                     // actions from the next tick's sample (docs/ui.md §3.3).
                     if let Some(zones) = ui.take_control_zones() {

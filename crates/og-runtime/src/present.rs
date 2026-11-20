@@ -23,5 +23,6 @@ pub(crate) mod presentation;
 pub(crate) mod probes;
 pub(crate) mod reveal;
 pub(crate) mod ui_draw;
+pub(crate) mod ui_next;
 pub(crate) mod vfx;
 pub(crate) mod views;
