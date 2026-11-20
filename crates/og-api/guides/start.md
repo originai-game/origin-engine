@@ -20,9 +20,29 @@ having written project.ogt with `engine "<this version>"`, `look
 "looks/<id>.ogt"` and the `create` block, and `assets/looks/<id>.ogt`
 extending the chosen look.
 
-The choices made at creation sit in project.ogt's `create` block: `genre`,
-`view`, `look`, `mood`, `ui`, `platform`, `input`, `players`, `lang`,
-`music`. They are constraints and hints, not settings:
+The first choice is `--form`: `2d`, `2.5d` or `3d` for a game, `film` for
+an interactive film.
+
+- A game's `view` is one of its form's: `side-2d` or `top-down-2d` for
+  2d, `isometric-2.5d` for 2.5d, `third-person-3d` or `first-person-3d`
+  for 3d. Without one it is the genre's usual view in that form. A form and
+  view that disagree, or a look that does not draw them (pixel in 3d), exit
+  1 naming the looks that do.
+- `film` writes the same skeleton plus a film to replace: the story in
+  `assets/story/film.yarn`, a segment per film node in `assets/segments/`,
+  a placeholder stream in `assets/clips/`, and a `src/main.ts` that loads
+  the story and the film and starts it paused (film §1 to §4). A film has
+  no `genre`, `view` or `players`; passing one exits 1.
+- `--variant <name>` picks one of the look's variants (looks), written into
+  the look file; its mood is the default mood.
+
+`og new --creation` prints every choice, its labels and the rules between
+them as JSON, and writes nothing.
+
+The choices made at creation sit in project.ogt's `create` block: `form`,
+`genre`, `view`, `look`, `variant`, `mood`, `ui`, `platform`, `input`,
+`players`, `lang`, `music` (a film's has no `genre`, `view` or `players`).
+They are constraints and hints, not settings:
 
 - Nothing reads them at run time. `view side-2d` does not make the game 2D,
   `players online-lockstep` does not open a room, `lang zh` installs no

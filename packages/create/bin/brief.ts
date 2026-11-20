@@ -1547,8 +1547,8 @@ export interface AudioBriefInput {
   readonly music: string;
   /** `CREATION_CHOICES.mood`: bright, dark, warm, cold, soft, high-contrast. */
   readonly mood: string;
-  /** `CREATION_CHOICES.genre`. */
-  readonly genre: string;
+  /** `CREATION_CHOICES.genre`; absent for an interactive film (create block `form "film"`), which has none. */
+  readonly genre?: string;
   /** The game in one line; the prompts carry it as written. */
   readonly premise?: string;
 }
@@ -1626,6 +1626,7 @@ export interface SfxPresetBrief {
 export interface AudioBrief {
   readonly music: MusicStyle;
   readonly mood: string;
+  /** The input's genre, or `film` for an interactive film. */
   readonly genre: string;
   readonly premise: string;
   /** The direction every request shares (instruments, texture, tempo), one statement per line. */
@@ -1703,6 +1704,9 @@ const GENRES: Readonly<Record<string, GenreSpec>> = {
   "open-world": { cues: [["day", "explore", 96, 0.4, -0.1], ["night", "calm", 64, 0.25, -0.3], ["danger", "action", 48, 0.8, 0.2]], sfx: [["footstep", 6], ["swing", 3], ["hit", 3], ["hurt", 2], ["pickup", 2], ["door"], ["discover"], ["wind-loop"]] },
 };
 
+/** An interactive film's (og.film): its scores under the footage, and the choice window's sounds. */
+const FILM: GenreSpec = { cues: [["scene", "calm", 48, 0.35, -0.1], ["tension", "action", 32, 0.7, 0.1], ["choice", "stinger", 2, 0.6, 0]], sfx: [["choice-open"], ["choice-pick"], ["choice-lock"], ["qte"]] };
+
 /** Each effect's description, length (s), bus and the preset that stands in for it. */
 const EFFECTS: Readonly<Record<string, readonly [what: string, seconds: number, bus: "sfx" | "ui", preset: SfxPreset | null]>> = {
   "ui-hover": ["a tiny soft tick as focus moves to a button, quiet", 0.06, "ui", "click"],
@@ -1765,6 +1769,10 @@ const EFFECTS: Readonly<Record<string, readonly [what: string, seconds: number, 
   "round-start": ["a round begins, a gong or bell", 1, "sfx", "levelup"],
   discover: ["a new place discovered, a short wondrous chime", 1, "sfx", "levelup"],
   "wind-loop": ["outdoor wind ambience, seamless loop", 4, "sfx", null],
+  "choice-open": ["a choice window opening over the footage, a soft rising swell", 0.5, "ui", "select"],
+  "choice-pick": ["a choice taken, a clear confirming tone", 0.2, "ui", "select"],
+  "choice-lock": ["the choice window closing, a short muted lock", 0.3, "ui", "back"],
+  qte: ["a quick-time prompt appearing, an urgent bright hit", 0.25, "ui", "click"],
 };
 
 const MUSIC_FORMAT: AudioFormat = { container: "ogg", sampleRate: 48000, channels: 2, lufs: -16, peakDb: -1 };
@@ -1788,18 +1796,20 @@ function known<T extends string>(what: string, value: string, keys: readonly T[]
  * The audio a game needs, as requests for a generator: one per music cue
  * and per sound effect, in the game's music style and mood, each with the
  * file it goes to and the format to deliver, and the procedural presets
- * that stand in until the files exist. Pure; throws naming the values for
- * an unknown style, mood or genre.
+ * that stand in until the files exist. Without a genre, the brief is an
+ * interactive film's (scores and choice sounds; `genre` reads `film`).
+ * Pure; throws naming the values for an unknown style, mood or genre.
  */
 export function audioBrief(input: AudioBriefInput): AudioBrief {
   const music = known("music", input.music, MUSIC_STYLES);
   const mood = known("mood", input.mood, Object.keys(AUDIO_MOODS));
-  const genre = known("genre", input.genre, Object.keys(GENRES));
+  const genre = input.genre === undefined ? "film" : known("genre", input.genre, Object.keys(GENRES));
   const premise = (input.premise ?? "").trim();
   const s = STYLES[music];
   const m = AUDIO_MOODS[mood]!;
-  const g = GENRES[genre]!;
-  const about = premise ? `for a ${genre.replace(/-/g, " ")} game: ${premise}` : `for a ${genre.replace(/-/g, " ")} game`;
+  const g = input.genre === undefined ? FILM : GENRES[genre]!;
+  const what = input.genre === undefined ? "an interactive film" : `a ${genre.replace(/-/g, " ")} game`;
+  const about = premise ? `for ${what}: ${premise}` : `for ${what}`;
   const direction = [
     `Music style: ${music}. ${s.instruments[0]!.toUpperCase()}${s.instruments.slice(1)}.`,
     `Texture: ${s.texture}.`,
@@ -1868,13 +1878,17 @@ const ROLE_WORDS: Readonly<Record<MusicRole, string>> = {
   stinger: "short stinger that plays over the loop at a highlight",
 };
 
-/** The audio choices of a project's create block (project.ogt): `music`, `mood` and `genre`. */
+/** The audio choices of a project's create block (project.ogt): `music`, `mood` and `genre`, which a film (`form "film"`) has none of. */
 export function readAudioChoices(projectDir: string): AudioBriefInput {
   const text = readFileSync(join(projectDir, "project.ogt"), "utf8");
   const block = /^create[ \t]*\{([\s\S]*?)^\}/m.exec(text)?.[1];
   if (!block) throw new Error(`${join(projectDir, "project.ogt")} has no create block: pass music, mood and genre (og new --music --mood --genre)`);
   const field = (k: string) => new RegExp(`^\\s*${k}\\s+"([^"]*)"`, "m").exec(block)?.[1];
   const music = field("music"), mood = field("mood"), genre = field("genre");
+  if (field("form") === "film") {
+    if (!music || !mood) throw new Error("the create block lacks music or mood");
+    return { music, mood };
+  }
   if (!music || !mood || !genre) throw new Error("the create block lacks music, mood or genre");
   return { music, mood, genre };
 }

@@ -392,6 +392,16 @@ test("an unknown style, mood or genre is refused with the values; a project's cr
   const dir = mkdtempSync(join(tmpdir(), "og-audio-"));
   writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\ncreate {\n  genre "idle"\n  mood "cold"\n  music "folk"\n}\n');
   expect(readAudioChoices(dir)).toEqual({ music: "folk", mood: "cold", genre: "idle" });
+  // A film has no genre: its block reads without one, a game's never does.
+  writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\ncreate {\n  form "film"\n  mood "dark"\n  music "orchestral"\n}\n');
+  expect(readAudioChoices(dir)).toEqual({ music: "orchestral", mood: "dark" });
+  const film = audioBrief(readAudioChoices(dir));
+  expect(film.genre).toBe("film");
+  expect(film.cues.map((c) => c.id)).toEqual(["title", "scene", "tension", "choice", "victory", "defeat"]);
+  expect(film.sfx.map((e) => e.id)).toContain("choice-pick");
+  expect(film.cues[1]!.prompt).toContain("for an interactive film");
+  writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\ncreate {\n  form "3d"\n  mood "dark"\n  music "orchestral"\n}\n');
+  expect(() => readAudioChoices(dir)).toThrow("lacks music, mood or genre");
   writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\n');
   expect(() => readAudioChoices(dir)).toThrow("no create block");
   rmSync(dir, { recursive: true, force: true });

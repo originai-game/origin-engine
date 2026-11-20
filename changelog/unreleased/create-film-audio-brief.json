@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "audioBrief, readAudioChoices",
+      "summary": "An interactive film (create block `form \"film\"`) has no genre: readAudioChoices reads its music and mood alone, and audioBrief without a genre briefs a film's scores (scene, tension, a choice stinger) and choice-window sounds, its `genre` reading `film`. `brief audio` in a film project no longer needs --genre."
+    }
+  ]
+}
