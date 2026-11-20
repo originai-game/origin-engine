@@ -259,6 +259,9 @@ fn lit_pipeline(
     constants: &[(&str, f64)],
 ) -> wgpu::RenderPipeline {
     if pass == ScatterPass::Lit {
+        // EXPERIMENT (scatter-exp, not for landing): the lit pass tests the
+        // prepass's depth for equality and writes none.
+        let equal = std::env::var("OG_SCATTER_EXP").is_ok_and(|e| e.contains("equal"));
         return crate::hdr_pipeline_with(
             device,
             constants,
@@ -272,8 +275,12 @@ fn lit_pipeline(
                 fs: d.fs,
                 buffers: d.buffers,
                 cull: d.cull,
-                depth_write: true,
-                depth_compare: crate::LIT_DEPTH_COMPARE,
+                depth_write: !equal,
+                depth_compare: if equal {
+                    wgpu::CompareFunction::Equal
+                } else {
+                    crate::LIT_DEPTH_COMPARE
+                },
                 blend: None,
                 samples,
             },

@@ -64,6 +64,14 @@ impl ScatterRenderer {
         // What a shadow pass draws into (shadow_target.rs).
         target: crate::ShadowTarget,
     ) -> (u32, u32) {
+        // EXPERIMENT (scatter-exp, not for landing): skip one pass's copies.
+        let exp = std::env::var("OG_SCATTER_EXP").unwrap_or_default();
+        if camera
+            && ((exp.contains("nomain") && kind == ScatterPass::Lit)
+                || (exp.contains("noprepass") && kind == ScatterPass::Prepass))
+        {
+            return (0, 0);
+        }
         let pipeline = |key: &(Option<usize>, Side, u8)| match kind {
             ScatterPass::Shadow => self.shadow_pipelines.get(key).map(|s| s.get(target)),
             _ => self.pipelines.get(key).map(|v| v.get(self.features)),
