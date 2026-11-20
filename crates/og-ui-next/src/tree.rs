@@ -130,7 +130,8 @@ pub struct Tree {
     pub items: Vec<DrawItem>,
     /// Bumped each time `items` change.
     pub generation: u64,
-    abs: Vec<(f32, f32, bool)>,
+    /// Each element's place on screen, whether it shows, and its depth.
+    abs: Vec<(f32, f32, bool, i32)>,
 }
 
 static NEXT_TREE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
@@ -897,14 +898,18 @@ impl Tree {
         for e in 0..self.els.len() {
             let el = &self.els[e];
             let b = self.arena.box_of(el.node);
-            let (px, py, pv) = if el.arena_parent == NONE {
-                (0.0, 0.0, true)
+            let (px, py, pv, pd) = if el.arena_parent == NONE {
+                (0.0, 0.0, true, -1)
             } else {
                 self.abs[el.arena_parent as usize]
             };
+            // Painter levels: an element over its parent, its text over its
+            // own fill (og-render draws a level's text before its shapes).
+            let depth = pd + 1;
+            let (under, over) = (2 * depth, 2 * depth + 1);
             let visible = pv && !el.dead && el.hidden == 0 && el.eff.opacity > 0.0;
             let (x, y) = (px + b.x, py + b.y);
-            self.abs.push((x, y, visible));
+            self.abs.push((x, y, visible, depth));
             if !visible {
                 continue;
             }
@@ -913,12 +918,15 @@ impl Tree {
             if r.fill[3] > 0.0 {
                 let mut c = r.fill;
                 c[3] *= alpha;
-                self.items.push(item(DrawCmd::Quad {
-                    rect: Rect::new(x, y, b.w, b.h),
-                    radius: r.radius.min(b.w.min(b.h) / 2.0),
-                    color: c,
-                    clip,
-                }));
+                self.items.push(item(
+                    under,
+                    DrawCmd::Quad {
+                        rect: Rect::new(x, y, b.w, b.h),
+                        radius: r.radius.min(b.w.min(b.h) / 2.0),
+                        color: c,
+                        clip,
+                    },
+                ));
             }
             let mut ink = el.eff.ink;
             ink[3] *= alpha;
@@ -931,20 +939,24 @@ impl Tree {
                             .as_ref()
                             .map_or((0.8, -0.2), |f| (f.metrics.ascender, f.metrics.descender));
                         let top = y + (b.h - (asc - desc) * size) / 2.0;
-                        self.items.push(item(text_cmd(
-                            0,
-                            x + (b.w - size) / 2.0,
-                            top + asc * size,
-                            size,
-                            ch.to_string(),
-                            ink,
-                            f,
-                            clip,
-                            0.0,
-                        )));
+                        self.items.push(item(
+                            over,
+                            text_cmd(
+                                0,
+                                x + (b.w - size) / 2.0,
+                                top + asc * size,
+                                size,
+                                ch.to_string(),
+                                ink,
+                                f,
+                                clip,
+                                0.0,
+                            ),
+                        ));
                     }
-                    Some((IconCell::Image(t, uv), pictures)) => {
-                        self.items.push(item(DrawCmd::Image {
+                    Some((IconCell::Image(t, uv), pictures)) => self.items.push(item(
+                        under,
+                        DrawCmd::Image {
                             rect: Rect::new(
                                 x + (b.w - size) / 2.0,
                                 y + (b.h - size) / 2.0,
@@ -959,8 +971,8 @@ impl Tree {
                                 ink
                             },
                             clip,
-                        }))
-                    }
+                        },
+                    )),
                     // The engine's own set (Lucide), drawn as og-ui draws it.
                     Some((IconCell::Builtin(name), _)) => {
                         let rect =
@@ -969,7 +981,7 @@ impl Tree {
                         self.items.extend(
                             og_ui::builtin_icon(name, rect, clip, color, &og_ui::Theme::default())
                                 .into_iter()
-                                .map(item),
+                                .map(|c| item(under, c)),
                         );
                     }
                     None => {}
@@ -1014,17 +1026,20 @@ impl Tree {
                         2 => lb.w - l.width,
                         _ => 0.0,
                     };
-                    self.items.push(item(text_cmd(
-                        e as u64 + 1,
-                        lx + dx,
-                        top + m.ascender * size,
-                        size,
-                        l.text,
-                        ink,
-                        font,
-                        clip,
-                        if size > 0.0 { tracking / size } else { 0.0 },
-                    )));
+                    self.items.push(item(
+                        over,
+                        text_cmd(
+                            e as u64 + 1,
+                            lx + dx,
+                            top + m.ascender * size,
+                            size,
+                            l.text,
+                            ink,
+                            font,
+                            clip,
+                            if size > 0.0 { tracking / size } else { 0.0 },
+                        ),
+                    ));
                     if let Some(DrawItem {
                         cmd:
                             DrawCmd::Text {
@@ -1049,7 +1064,7 @@ impl Tree {
             let c = &self.docs[ins.doc as usize];
             el.style != NONE && c.doc.nodes[c.style.nodes[el.style as usize].node as usize].id == id
         })?;
-        let (x, y, _) = *self.abs.get(e)?;
+        let (x, y, _, _) = *self.abs.get(e)?;
         let b = self.arena.box_of(self.els[e].node);
         Some((x, y, b.w, b.h))
     }
@@ -1068,9 +1083,9 @@ impl Tree {
     }
 }
 
-fn item(cmd: DrawCmd) -> DrawItem {
+fn item(level: i32, cmd: DrawCmd) -> DrawItem {
     DrawItem {
-        level: og_ui::LAYER_BASE,
+        level,
         cmd,
         transform: og_ui::Affine::IDENTITY,
     }
@@ -1136,6 +1151,45 @@ mod tests {
         let face = tree.find("Face").unwrap();
         let art = tree.find("Art").unwrap();
         assert_eq!(art, face, "the art covers its face");
+    }
+
+    /// A text paints over the panel it sits on: og-render draws a level's
+    /// texts before its shapes, so the text takes a higher level.
+    #[test]
+    fn a_text_paints_over_its_panel() {
+        let doc = UiDocument::parse(
+            "p.svelte",
+            "<meta name=\"component\" content=\"p\">\n\
+             <section id=\"P\"><span id=\"T\">06:54</span></section>\n\
+             <style>\n#P { background: #102030; padding: 8px; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: &crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [doc]);
+        tree.resize(200.0, 200.0);
+        tree.mount("p", &[]).unwrap();
+        let fonts = og_ui::Fonts {
+            body: og_ui::UiFont {
+                handle: Some(og_draw::FontHandle::from_index(0)),
+                metrics: og_text::text::FontMetrics::fixed(0.5),
+            },
+            ..Default::default()
+        };
+        tree.frame(&fonts, &IconAtlas::default());
+        let level = |text: bool| {
+            tree.items
+                .iter()
+                .find(|i| matches!(i.cmd, DrawCmd::Text { .. }) == text)
+                .map(|i| i.level)
+                .unwrap()
+        };
+        assert!(level(true) > level(false), "the text over its panel");
     }
 
     /// An icon no atlas names draws from the engine's built-in set.
