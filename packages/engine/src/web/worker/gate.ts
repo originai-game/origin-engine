@@ -166,6 +166,8 @@ export class Gate {
         }
         if (waiting.since) console.info(`renderer: the first frame waited ${Math.round(performance.now() - waiting.since)} ms (${waiting.frames} frames behind the gate)`);
         run.firstFrame = true;
+        // From now a dispatch still compiling makes its pipeline instead of skipping the frame's rest.
+        pipelines.gate(false);
         run.boot.phase("present");
         post(run.boot.firstFrame());
         this.#warmBehindGate();
