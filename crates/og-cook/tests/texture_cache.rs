@@ -406,6 +406,17 @@ fn shared_texture_results_reuse_invalidate_recover_and_match_uncached_bytes() {
         let (r, bytes) = cook(&second, Some(&cache), &options);
         assert!(hit(&r));
         assert_eq!(bytes, expected);
+        // The model blob is keyed by the project's inputs, which include
+        // files outside the project (the built-in UI's manifest).
+        if gltf {
+            assert!(
+                r.assets
+                    .iter()
+                    .flat_map(|a| &a.notes)
+                    .any(|n| n == "model.gltf: shared cook cache hit"),
+                "the model blob is shared too"
+            );
+        }
         // A hit says what the cook said (its notes), then that it was a hit.
         let said = |r: &Report| -> Vec<String> {
             r.assets

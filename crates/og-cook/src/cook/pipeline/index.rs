@@ -407,8 +407,15 @@ impl Index {
     }
 
     pub fn content_key(&self) -> Option<String> {
+        // The files outside the project this cook read (style packs,
+        // built-in documents) key it too; an unsettled one keys nothing.
+        let external = match &*self.external.lock().expect("index lock") {
+            External::Read(read) => read.clone(),
+            External::Kept => self.saved.lock().expect("index lock").external.clone(),
+            External::Unsettled => return None,
+        };
         let mut content = Vec::new();
-        for (path, expected) in self.inputs.as_ref()? {
+        for (path, expected) in self.inputs.as_ref()?.iter().chain(&external) {
             let known = self
                 .saved
                 .lock()
@@ -421,13 +428,10 @@ impl Index {
                 Some(hash) => hash,
                 None => blake3::hash(&self.read(path).ok()?).to_hex().to_string(),
             };
-            content.push((
-                path.strip_prefix(&self.root)
-                    .ok()?
-                    .to_string_lossy()
-                    .into_owned(),
-                hash,
-            ));
+            // An input outside the project (the engine's UI manifest, the
+            // motion model, a style pack's file) by its whole path.
+            let name = path.strip_prefix(&self.root).unwrap_or(path);
+            content.push((name.to_string_lossy().into_owned(), hash));
         }
         Some(cache::key(
             "project-inputs",
