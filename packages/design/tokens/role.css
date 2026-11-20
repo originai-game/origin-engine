@@ -248,26 +248,34 @@
   --role-dot-alert-fill: rgb(from var(--danger) r g b / 0.06);
   --role-dot-alert-rim: var(--danger);
 
-  /* Track and fill: a meter's groove and the part of it that is full. A
+  /* Track and fill: a meter's groove and the part of it that is full,
+     the one meter (`bar` below) wherever a component names its parts. A
      component names what the fill measures by setting `--fill-color` on
      the meter (`--fill-color: var(--mana)`); `--fill-gloss` is the light
      over it, an image layer (`none` for a flat fill). */
-  --role-track-fill: var(--color-tile);
+  --role-track-fill: var(--bar-well);
   --role-track-radius: var(--meter-radius);
-  --role-track-shadow: var(--shadow-sunk);
+  --role-track-shadow: var(--bar-rim);
   --role-fill-color: var(--primary);
-  --role-fill-gloss: linear-gradient(180deg, rgb(255 255 255 / 0.34), rgb(255 255 255 / 0.06) 46%, transparent 52%, rgb(0 0 0 / 0.2));
+  --role-fill-gloss: var(--bar-gloss);
 
-  /* Bar: a meter that stands over the scene (a health, mana or boss bar, a
-     HUD's progress). It leans forward (`skew`, its figures stand upright),
-     its groove is a dark well with one lit rim and its fill is lit along
-     the top, so it reads over sky and snow alike. A loss leaves a warm
-     ghost that holds (`ghost-motion`'s delay) and then drains. Healing on
-     its way is striped. Under its critical mark the rim glows in danger. */
+  /* Bar: the one meter, every built-in's (a health, mana or boss bar, a
+     quest's, a deck's or a download's progress), over the scene or in a
+     frame. It leans forward (`skew`, its figures stand upright), its
+     groove is a dark well with one lit rim (a style's `--meter-track-fill`
+     and `--meter-track-shadow` dress it), and its fill is lit along the
+     top by a sheen that only adds light, so the fill keeps its colour in
+     every style. A meter whose blocks mean something draws its own
+     notches (`notch`); one marked `data-meter=plain` (a buffer, a sweep)
+     is flat. A loss leaves a warm ghost that holds (`ghost-motion`'s
+     delay) and then drains. Healing on its way is striped. Under its
+     critical mark the rim glows in danger. */
   --role-bar-skew: -22deg;
-  --role-bar-well: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.72);
-  --role-bar-rim: 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.22), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.14), 0 var(--space-xxs) var(--space-xs) rgb(0 0 0 / 0.45);
-  --role-bar-gloss: linear-gradient(180deg, rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.08) 42%, transparent 50%, rgb(0 0 0 / 0.18));
+  --role-bar-well: var(--meter-track-fill, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.72));
+  --role-bar-rim: var(--meter-track-shadow, 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.22), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.14), 0 var(--space-xxs) var(--space-xs) rgb(0 0 0 / 0.45));
+  --role-bar-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0.1) 42%, transparent 52%);
+  --role-bar-gloss: var(--bar-sheen);
+  --role-bar-plain-gloss: none;
   --role-bar-ghost: linear-gradient(90deg, oklch(from var(--hud-gold) 0.949 calc(c * 0.36) calc(h - 3) / 0.15), oklch(from var(--hud-gold) 0.949 calc(c * 0.36) calc(h - 3) / 0.85));
   --role-bar-ghost-motion: inline-size 350ms var(--motion-easing-exit) 450ms, block-size 350ms var(--motion-easing-exit) 450ms;
   --role-bar-pending: repeating-linear-gradient(115deg, rgb(from var(--tone-heal) r g b / 0.85) 0 var(--space-xs), rgb(from var(--tone-heal) r g b / 0.4) var(--space-xs) calc(var(--space-xs) * 2));

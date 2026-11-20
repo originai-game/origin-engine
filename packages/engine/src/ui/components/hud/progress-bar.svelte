@@ -10,7 +10,7 @@
 <meta name="prop:tone" content="string" data-doc="The fill's tone: primary (empty), success, warn, danger or info.">
 <meta name="fixture:default" content='{"value":0.42,"buffer":0.6,"label":"Downloading","valueText":"","showValue":true,"indeterminate":false,"tone":""}'>
 
-<div id="ProgressBar" data-layout="stack" data-gap="tight" role="progressbar" aria-label={label || t("component.progress-bar.name")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={value * 100} aria-valuetext={valueText || formatPercent(value)} aria-busy={indeterminate} class:done={value >= 1 && !indeterminate} class:indeterminate={indeterminate} class:success={tone == 'success'} class:warn={tone == 'warn'} class:danger={tone == 'danger'} class:info={tone == 'info'}>
+<div id="ProgressBar" data-layout="stack" data-gap="tight" role="progressbar" aria-label={label || t("component.progress-bar.name")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={value * 100} aria-valuetext={valueText || formatPercent(value)} aria-busy={indeterminate} data-meter={indeterminate ? "plain" : null} class:done={value >= 1 && !indeterminate} class:indeterminate={indeterminate} class:success={tone == 'success'} class:warn={tone == 'warn'} class:danger={tone == 'danger'} class:info={tone == 'info'}>
   {#if label || showValue}
     <div id="Head" data-layout="row">
       <span id="Label" class="label" part="ProgressBar.label" data-fill="true">{label}</span>

@@ -410,6 +410,8 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([part$=".grip"]) { border-radius: var(--radius-capsule); background: var(--grip-fill); }
   /* A notch: a hairline mark across a meter (a segment's end, a rank). */
   :where([part$=".notch"]) { pointer-events: none; background: var(--notch-ink); }
+  /* A plain meter (a buffer, a sweep): the one meter, flat. */
+  :where([data-meter=plain]) { --bar-gloss: var(--bar-plain-gloss); --fill-gloss: var(--bar-plain-gloss); }
   /* A zone marked on the world or a board (a placement's footprint): a
      rim and a wash of its tone; a danger zone is hatched. */
   :where([part$=".zone"]) { --zone-color: var(--zone-ink); border: var(--zone-rim-width) solid var(--zone-color); background: color-mix(in srgb, var(--zone-color) var(--zone-wash), transparent); }

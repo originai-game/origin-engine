@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "Built-in UI: every meter is one meter. A component's `.track` and `.fill` parts now draw as the HUD's bar (`--track-fill` is `--bar-well`, `--track-shadow` is `--bar-rim`, `--fill-gloss` is `--bar-gloss`), and the bar's light is a sheen that only adds light (`--bar-sheen`), so a fill keeps its colour in every style. A style pack's `--meter-track-fill` and `--meter-track-shadow` now dress the bar's groove as well as the core `<meter>`'s. A meter marked `data-meter=plain` (ProgressBar while indeterminate) is flat (`--bar-plain-gloss`)."
+  ]
+}
