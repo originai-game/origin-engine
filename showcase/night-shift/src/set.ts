@@ -8,6 +8,10 @@ import { NEON } from "./palette.ts";
 import { mat, must, pitch, place, rgb, shapes, tex, v3, yaw } from "./util.ts";
 import type { Shapes } from "./util.ts";
 
+// The signs' and lanterns' lights never move: marked static, so a look
+// that sets RenderSettings.staticLightReach shades each per pixel only
+// near itself (the stall's spot casts a shadow and stays whole).
+
 /** A neon sign with the rect light it throws: `art` (a glyph on black, under textures/signs/) glowing on a panel on a wall facing `facing` degrees about +Y (0 faces +Z, the camera). */
 function sign(world: World, s: Shapes, name: string, art: string, at: { x: number; y: number; z: number }, w: number, h: number, color: Color, facing: number, power = 3.5): Entity {
   const glyph = tex(world, `textures/signs/${art}.png`);
@@ -15,7 +19,7 @@ function sign(world: World, s: Shapes, name: string, art: string, at: { x: numbe
   const e = place(world, s.quad, panel, { name, at: v3(at.x, at.y, at.z), size: v3(w, h, 1), turn: yaw(facing), shadow: false });
   // The rect light faces along its local -Z: turned half a turn from the panel, a hand in front of it.
   const light = must(world.spawn({ name: `${name}-light`, parent: e, position: v3(0, 0, 0.05), quaternion: yaw(180) }));
-  must(world.insert(light, og.RectLight, { color, intensity: power * 1.2, width: w, height: h }));
+  must(world.insert(light, og.RectLight, { color, intensity: power * 1.2, width: w, height: h, static: true }));
   return e;
 }
 
@@ -24,7 +28,7 @@ function lantern(world: World, name: string, x: number, y: number, z: number, co
   const k = size / 1.32;
   const e = must(world.instantiate(must(og.load.gltf(world, "models/lantern.glb", { castShadow: false })), { name, position: v3(x, y, z), scale: v3(k, k, k) }));
   const light = must(world.spawn({ name: `${name}-light`, parent: e, position: v3(0, 0, 0) }));
-  must(world.insert(light, og.PointLight, { color, intensity: 7, distance: 9 }));
+  must(world.insert(light, og.PointLight, { color, intensity: 7, distance: 9, static: true }));
   return e;
 }
 
@@ -73,7 +77,7 @@ export function buildSet(world: World): void {
   }
   // The stall's warm interior: a strip lamp under the awning.
   const strip = must(world.spawn({ name: "stall-lamp", position: v3(-3.6, 2.35, 3.1), quaternion: pitch(-90) }));
-  must(world.insert(strip, og.RectLight, { color: NEON.amber, intensity: 4, width: 1.6, height: 3.6 }));
+  must(world.insert(strip, og.RectLight, { color: NEON.amber, intensity: 4, width: 1.6, height: 3.6, static: true }));
   // The stall's glow spilling over the street: the courier's warm key.
   const spill = must(world.spawn({ name: "stall-spill", position: v3(-2.0, 2.3, 3.6), quaternion: og.transform.lookAt(v3(-2.0, 2.3, 3.6), v3(0.9, 0.9, 4.7)) }));
   must(world.insert(spill, og.SpotLight, { color: NEON.amber, intensity: 40, distance: 14, angle: 0.75, penumbra: 0.7, castShadow: true }));
