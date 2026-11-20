@@ -19,12 +19,10 @@
 #Draw { flex: none; }
 #Hand { flex: 1; min-width: 0; height: stretch; }
 #Spent { flex: none; }
-@media (width < 600px) {
-  #Page { padding: var(--space-sm); }
-  #Field { display: none; }
-  #Foot { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; grid-template-areas: "draw spent" "hand hand"; flex: 1; height: auto; min-height: 0; align-items: start; gap: var(--space-xs); }
-  #Draw { grid-area: draw; }
-  #Spent { grid-area: spent; justify-self: end; }
-  #Hand { grid-area: hand; width: stretch; }
-}
+#Page:size(compact) { padding: var(--space-sm); }
+#Field:size(compact) { display: none; }
+#Foot:size(compact) { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; grid-template-areas: "draw spent" "hand hand"; flex: 1; height: auto; min-height: 0; align-items: start; gap: var(--space-xs); }
+#Draw:size(compact) { grid-area: draw; }
+#Spent:size(compact) { grid-area: spent; justify-self: end; }
+#Hand:size(compact) { grid-area: hand; width: stretch; }
 </style>

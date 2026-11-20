@@ -66,7 +66,7 @@
 .body { overflow-y: auto; flex: 0 1 auto; min-height: 0; }
 .haul { width: stretch; margin: 0; padding: 0; list-style: none; }
 /* A haul socket: glowing gold from its foot, cut at two corners. */
-.haul { flex: 1 1 0; align-items: center; min-inline-size: calc(var(--size-xl) * 1.7); max-inline-size: calc(var(--size-xl) * 3); padding: var(--space-xs); background: var(--play-haul-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+li.haul { flex: 1 1 0; align-items: center; min-inline-size: calc(var(--size-xl) * 1.7); max-inline-size: calc(var(--size-xl) * 3); padding: var(--space-xs); background: var(--play-haul-fill); box-shadow: var(--inv-row-rim); border-radius: var(--inv-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .socket { inline-size: var(--size-lg); block-size: var(--size-lg); }
 .icon { width: 100%; height: 100%; filter: var(--inv-slot-art-shadow); }
 .amount { max-inline-size: 100%; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--play-figure-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--ink-bright); }
@@ -80,5 +80,5 @@
 .double-text { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; font-size: var(--hud-tag-size); }
 .actions button:touch { flex: 1; }
 .actions button:size(compact) { flex: 1; min-width: 0; }
-.haul:size(compact) { min-inline-size: calc(var(--size-xl) * 1.4); }
+li.haul:size(compact) { min-inline-size: calc(var(--size-xl) * 1.4); }
 </style>

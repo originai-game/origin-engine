@@ -62,7 +62,7 @@
 #Body { width: stretch; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
 /* The scrollbar is drawn on the right in either direction, so the room beside it is
    on the right too. */
-#Groups { width: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; --layout-tile: calc(var(--size-xxl) * 3); align-content: start; }
+#Groups { width: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); --layout-tile: calc(var(--size-xxl) * 3); align-content: start; }
 .group { min-width: 0; }
 .category { margin: 0; padding-block-end: var(--space-xs); font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); color: var(--hud-ink); box-shadow: var(--party-rule-strong); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
 .item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); min-width: 0; border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-tile-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
@@ -86,7 +86,7 @@
 #Empty { margin: 0; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); }
 /* The bottom edge fades while there is more to scroll, so a cut row reads as more below. */
 #Fade { grid-column: 1 / -1; position: sticky; bottom: 0; margin-top: calc(var(--fade-size) * -1); opacity: 0; }
-@container scroll-state(scrollable: bottom) { #Fade { opacity: 1; } }
+#Groups:state(more) #Fade { opacity: 1; }
 #Actions { justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
 #Actions button { min-height: var(--size-touch); gap: var(--space-xs); padding: 0 var(--space-lg); border: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--party-button-fill); box-shadow: var(--party-button-rim); text-shadow: none; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --button-radius: var(--hud-plate-cut) 0; --button-corner-shape: var(--cut-shape); min-width: calc(var(--size-xxl) * 1.25); }
 #Actions button:hover { background: var(--party-button-hover-fill); }

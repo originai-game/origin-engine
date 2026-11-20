@@ -16,14 +16,10 @@
 #Side { display: flex; flex-direction: column; height: stretch; min-height: 0; gap: var(--space-lg); }
 #Confirm { width: stretch; flex: none; }
 #Rewards { width: stretch; flex: 1; min-height: 0; }
-@media (width < 600px) {
-  #Page { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-sm); }
-  /* The confirmation is a sheet at the foot, its buttons pinned; the
-     shop takes what is left above it. */
-  #Page { padding-block-end: 0; }
-  #Shop { width: stretch; flex: 1; min-height: 0; }
-  #Side { width: stretch; height: auto; flex: none; min-height: 0; max-height: 60%; }
-  #Confirm { flex: none; min-height: 0; }
-  #Rewards { display: none; }
-}
+#Page:size(compact) { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-sm); }
+#Page:size(compact) { padding-block-end: 0; }
+#Shop:size(compact) { width: stretch; flex: 1; min-height: 0; }
+#Side:size(compact) { width: stretch; height: auto; flex: none; min-height: 0; max-height: 60%; }
+#Confirm:size(compact) { flex: none; min-height: 0; }
+#Rewards:size(compact) { display: none; }
 </style>

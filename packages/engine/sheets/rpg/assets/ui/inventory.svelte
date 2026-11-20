@@ -13,16 +13,12 @@
 #Bag { flex: 38; min-width: 0; height: stretch; min-height: 0; }
 #Card { flex: 30; min-width: 0; height: stretch; min-height: 0; }
 #Hero { flex: 32; min-width: 0; height: stretch; min-height: 0; }
-@media (width < 600px) {
-  #Page { flex-direction: column; gap: var(--space-sm); margin: calc(env(safe-area-inset-top) * -1) 0 calc(env(safe-area-inset-bottom) * -1); padding: calc(env(safe-area-inset-top) + var(--space-sm)) var(--space-sm) calc(env(safe-area-inset-bottom) + var(--space-sm)); height: calc(100% + env(safe-area-inset-top) + env(safe-area-inset-bottom)); }
-  #Bag { flex: 58; width: stretch; height: auto; min-height: 0; }
-  #Card { flex: 42; width: stretch; height: auto; }
-  #Hero { display: none; }
-}
-@media (height < 600px) and (orientation: landscape) {
-  #Page { gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
-  #Bag { flex: 58; }
-  #Card { flex: 42; }
-  #Hero { display: none; }
-}
+#Page:size(compact) { flex-direction: column; gap: var(--space-sm); margin: calc(env(safe-area-inset-top) * -1) 0 calc(env(safe-area-inset-bottom) * -1); padding: calc(env(safe-area-inset-top) + var(--space-sm)) var(--space-sm) calc(env(safe-area-inset-bottom) + var(--space-sm)); height: calc(100% + env(safe-area-inset-top) + env(safe-area-inset-bottom)); }
+#Bag:size(compact) { flex: 58; width: stretch; height: auto; min-height: 0; }
+#Card:size(compact) { flex: 42; width: stretch; height: auto; }
+#Hero:size(compact) { display: none; }
+#Page:size(short) { gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
+#Bag:size(short) { flex: 58; }
+#Card:size(short) { flex: 42; }
+#Hero:size(short) { display: none; }
 </style>

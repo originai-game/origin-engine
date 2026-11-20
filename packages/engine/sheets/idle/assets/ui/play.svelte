@@ -18,9 +18,7 @@
 #Main { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-xl); }
 #Generators { flex: 1; min-width: 0; height: stretch; }
 #Shop { flex: 1; min-width: 0; height: stretch; }
-@media (width < 600px) {
-  #Page { gap: var(--space-sm); padding: var(--space-sm); }
-  #Main { flex-direction: column; gap: var(--space-sm); }
-  #Generators, #Shop { flex: 1; min-height: 0; width: stretch; height: auto; }
-}
+#Page:size(compact) { gap: var(--space-sm); padding: var(--space-sm); }
+#Main:size(compact) { flex-direction: column; gap: var(--space-sm); }
+#Generators:size(compact), #Shop:size(compact) { flex: 1; min-height: 0; width: stretch; height: auto; }
 </style>

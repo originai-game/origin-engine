@@ -28,6 +28,19 @@ fn main() {
     for s in &surfaces.skipped {
         println!("surfaces.css skips {s}");
     }
+    // Each built-in pack's surfaces over its tokens.
+    for pack in ["fantasy", "scifi", "cartoon"] {
+        let mut t = tokens.clone();
+        t.over(&read(&format!("templates/styles/{pack}/tokens.css")));
+        let s = og_ui_next::style::Sheet::compile(
+            &read(&format!("templates/styles/{pack}/surfaces.css")),
+            &t,
+        );
+        println!("{pack} pack: {} tokens, {} skips", t.len(), s.skipped.len());
+        for k in &s.skipped {
+            println!("{pack}/surfaces.css skips {k}");
+        }
+    }
     // First Light's HUD, then every document of the directories rewritten
     // so far (`@ui/<dir>/<file>` is a document's id).
     let mut docs = vec![(
@@ -60,6 +73,37 @@ fn main() {
         files.sort();
         for f in files {
             docs.push((format!("@ui/{dir}/{f}"), format!("{root}/{f}")));
+        }
+    }
+    // The screens, Night Shift's HUD and the gallery's sheet pages.
+    let mut roots = vec![(
+        "@ui/screens".to_string(),
+        "packages/engine/src/ui/screens".to_string(),
+    )];
+    roots.push((
+        "night-shift/ui".to_string(),
+        "showcase/night-shift/assets/ui".to_string(),
+    ));
+    let sheets = "packages/engine/sheets";
+    let mut names: Vec<String> = std::fs::read_dir(sheets)
+        .unwrap_or_else(|e| panic!("{sheets}: {e}"))
+        .filter_map(|e| e.ok()?.file_name().into_string().ok())
+        .collect();
+    names.sort();
+    for n in names {
+        roots.push((format!("{n}/ui"), format!("{sheets}/{n}/assets/ui")));
+    }
+    for (prefix, root) in roots {
+        let Ok(dir) = std::fs::read_dir(&root) else {
+            continue;
+        };
+        let mut files: Vec<String> = dir
+            .filter_map(|e| e.ok()?.file_name().into_string().ok())
+            .filter(|n| n.ends_with(".svelte"))
+            .collect();
+        files.sort();
+        for f in files {
+            docs.push((format!("{prefix}/{f}"), format!("{root}/{f}")));
         }
     }
     let mut skips: BTreeMap<Skip, usize> = BTreeMap::new();

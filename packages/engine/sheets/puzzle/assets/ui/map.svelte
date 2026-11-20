@@ -22,9 +22,7 @@
    flowers), and leaves the map path's side at full brightness. */
 #Shade { position: absolute; inset-block: 0; inset-inline-end: 0; width: 58%; background: linear-gradient(90deg, rgb(4 8 16 / 0), rgb(4 8 16 / 0.78) 22%, rgb(4 8 16 / 0.84)); }
 #Shade:dir(rtl) { background: linear-gradient(270deg, rgb(4 8 16 / 0), rgb(4 8 16 / 0.78) 22%, rgb(4 8 16 / 0.84)); }
-@media (width < 600px) {
-  #Page { padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-sm)) calc(env(-og-hud-inset-bottom) + var(--space-sm)) calc(env(-og-hud-inset-left) + var(--space-sm)); }
-  #Summary, #Shade { display: none; }
-  #Path { width: stretch; }
-}
+#Page:size(compact) { padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-sm)) calc(env(-og-hud-inset-bottom) + var(--space-sm)) calc(env(-og-hud-inset-left) + var(--space-sm)); }
+#Summary:size(compact), #Shade:size(compact) { display: none; }
+#Path:size(compact) { width: stretch; }
 </style>

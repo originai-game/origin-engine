@@ -1,5 +1,4 @@
 <meta name="component" content="data-list">
-<meta name="parts" content="data-list.frame data-list.row data-list.label data-list.figure data-list.note">
 <meta name="prop:rows" content="list" data-doc="The rows, a keyed collection of { id, title, detail, value }.">
 <meta name="prop:loading" content="bool" data-doc="Rows are on their way: a busy line instead of the empty one.">
 <meta name="prop:empty" content="string" data-doc="What an empty list says.">
@@ -8,17 +7,17 @@
 <meta name="fixture:default" content="{&quot;loading&quot;:false,&quot;empty&quot;:&quot;Nothing here yet&quot;,&quot;busy&quot;:&quot;Loading…&quot;,&quot;rows&quot;:[{&quot;id&quot;:&quot;a&quot;,&quot;title&quot;:&quot;Copper ore&quot;,&quot;detail&quot;:&quot;Mined in the north pit&quot;,&quot;value&quot;:&quot;×12&quot;},{&quot;id&quot;:&quot;b&quot;,&quot;title&quot;:&quot;Silk&quot;,&quot;detail&quot;:&quot;Bought in Harrow&quot;,&quot;value&quot;:&quot;×3&quot;}]}">
 
 <!-- A HUD plate of rows: a name, its detail and its figure. -->
-<section id="DataList" part="data-list.frame" class="bare" aria-busy={loading}>
+<section id="DataList" part="frame" variant="bare" aria-busy={loading}>
   <list id="Rows">
     {#each rows as r (r.id)}
-      <button id="Row" part="data-list.row" class="row" onclick={choose}>
+      <button id="Row" part="row" class="row" onclick={choose}>
         <div class="face">
-          <div class="text"><p class="title">{r.title}</p><small class="detail" part="data-list.label">{r.detail}</small></div>
-          <p class="value" part="data-list.figure">{r.value}</p>
+          <div class="text"><p class="title">{r.title}</p><small class="detail" part="label">{r.detail}</small></div>
+          <p class="value" part="figure">{r.value}</p>
         </div>
       </button>
     {:else}
-      <p id="Empty" part="data-list.note" class="note">{loading ? busy : empty}</p>
+      <p id="Empty" part="note" class="note">{loading ? busy : empty}</p>
     {/each}
   </list>
 </section>

@@ -30,10 +30,8 @@
 #Left { display: flex; flex-direction: column; align-items: flex-start; flex: 1; min-width: 0; gap: var(--space-lg); }
 #Inspect { flex: 1; min-width: 0; }
 .plate { display: flex; width: stretch; min-width: 0; box-sizing: border-box; padding: var(--space-sm) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
-@media (width < 600px) {
-  #Columns { flex-direction: column; gap: var(--space-md);
+#Columns:size(compact) { flex-direction: column; gap: var(--space-md);
     padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-sm)) calc(env(-og-hud-inset-bottom) + var(--space-sm)) calc(env(-og-hud-inset-left) + var(--space-sm)); }
-  #Left, #Inspect { width: stretch; flex: none; }
-  #Left { gap: var(--space-md); }
-}
+#Left:size(compact), #Inspect:size(compact) { width: stretch; flex: none; }
+#Left:size(compact) { gap: var(--space-md); }
 </style>

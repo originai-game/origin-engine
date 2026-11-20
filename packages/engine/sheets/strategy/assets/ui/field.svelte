@@ -69,23 +69,19 @@
    alerts; the battlefield in the middle is left clear; at the foot the
    control groups, the small minimap in its corner beside the compact
    panel, and the command card across the width. */
-@media (width < 600px) {
-  #Hud { column-gap: var(--space-sm); row-gap: var(--space-xs);
+#Hud:size(compact) { column-gap: var(--space-sm); row-gap: var(--space-xs);
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas: "res res" "corner corner" "alerts alerts" "field field" "groups groups" "map panel" "cmds cmds";
     padding: calc(env(-og-hud-inset-top) + var(--space-xs)) calc(env(-og-hud-inset-right) + var(--space-sm)) calc(env(-og-hud-inset-bottom) + var(--space-xs)) calc(env(-og-hud-inset-left) + var(--space-sm)); }
-  #Top, #Foot { display: contents; }
-  #Resources { grid-area: res; }
-  #Alerts { grid-area: alerts; }
-  /* The wave and the clock share a row at any text scale: the clock keeps
-     its words whole and the wave takes the rest, its name scrolling. */
-  #Corner { justify-content: space-between; }
-  #Wave { flex: 1 1 0; }
-  #Clock { flex: none; }
-  #Groups { grid-area: groups; }
-  #Map { align-self: stretch; }
-  #Panel { grid-area: panel; align-self: end; row-gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); }
-  #Cmds { justify-content: stretch; }
-}
+#Top:size(compact), #Foot:size(compact) { display: contents; }
+#Resources:size(compact) { grid-area: res; }
+#Alerts:size(compact) { grid-area: alerts; }
+#Corner:size(compact) { justify-content: space-between; }
+#Wave:size(compact) { flex: 1 1 0; }
+#Clock:size(compact) { flex: none; }
+#Groups:size(compact) { grid-area: groups; }
+#Map:size(compact) { align-self: stretch; }
+#Panel:size(compact) { grid-area: panel; align-self: end; row-gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); }
+#Cmds:size(compact) { justify-content: stretch; }
 </style>

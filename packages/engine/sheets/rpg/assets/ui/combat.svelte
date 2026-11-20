@@ -33,23 +33,19 @@
 #Foot { display: flex; width: stretch; flex: none; align-items: flex-end; gap: var(--space-lg); }
 #Party { flex: 1; min-width: 0; }
 #Commands { flex: none; width: 44%; }
-@media (width < 600px) {
-  #Hud { padding: var(--space-xs) var(--space-sm) 0; gap: var(--space-xs); }
-  #Top { flex-wrap: wrap; gap: var(--space-xs); }
-  #Log { display: none; }
-  #Turns { width: 100%; flex: none; }
-  #Goal { width: 100%; }
-  #Enemy { width: 100%; }
-  #Foot { flex-direction: column; gap: var(--space-xs); }
-  #Party, #Commands { width: 100%; flex: none; }
-}
-@media (height < 500px) {
-  #Hud { display: grid; grid-template-columns: minmax(0, 1fr) 34%; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "turns enemy" ". enemy" "party commands"; column-gap: var(--space-md); row-gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
-  #Top, #Mid, #Foot { display: contents; }
-  #Log, #Goal { display: none; }
-  #Turns { grid-area: turns; }
-  #Enemy { grid-area: enemy; width: stretch; align-self: start; }
-  #Party { grid-area: party; align-self: end; }
-  #Commands { grid-area: commands; width: stretch; align-self: end; }
-}
+#Hud:size(compact) { padding: var(--space-xs) var(--space-sm) 0; gap: var(--space-xs); }
+#Top:size(compact) { flex-wrap: wrap; gap: var(--space-xs); }
+#Log:size(compact) { display: none; }
+#Turns:size(compact) { width: 100%; flex: none; }
+#Goal:size(compact) { width: 100%; }
+#Enemy:size(compact) { width: 100%; }
+#Foot:size(compact) { flex-direction: column; gap: var(--space-xs); }
+#Party:size(compact), #Commands:size(compact) { width: 100%; flex: none; }
+#Hud:size(short) { display: grid; grid-template-columns: minmax(0, 1fr) 34%; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "turns enemy" ". enemy" "party commands"; column-gap: var(--space-md); row-gap: var(--space-xs); padding: var(--space-sm) var(--space-md); }
+#Top:size(short), #Mid:size(short), #Foot:size(short) { display: contents; }
+#Log:size(short), #Goal:size(short) { display: none; }
+#Turns:size(short) { grid-area: turns; }
+#Enemy:size(short) { grid-area: enemy; width: stretch; align-self: start; }
+#Party:size(short) { grid-area: party; align-self: end; }
+#Commands:size(short) { grid-area: commands; width: stretch; align-self: end; }
 </style>

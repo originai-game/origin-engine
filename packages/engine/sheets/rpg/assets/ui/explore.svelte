@@ -65,12 +65,10 @@
 #Loot { flex: 1 1 0; align-self: flex-end; }
 #Hints { flex: 1 1 0; padding-bottom: var(--space-xs); }
 #Xp { grid-area: xp; display: flex; margin-inline: calc(-1 * (env(-og-hud-inset-left) + var(--space-xl))) calc(-1 * (env(-og-hud-inset-right) + var(--space-xl))); }
-@media (width >= 600px) {
-  #Left, #Middle, #Right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-  #Left { row-gap: var(--space-sm); align-items: flex-start; }
-  #Middle { align-items: center; }
-  #Right { row-gap: var(--space-xs); align-items: flex-end; }
-}
+#Left:not(:size(narrow)), #Middle:not(:size(narrow)), #Right:not(:size(narrow)) { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#Left:not(:size(narrow)) { row-gap: var(--space-sm); align-items: flex-start; }
+#Middle:not(:size(narrow)) { align-items: center; }
+#Right:not(:size(narrow)) { row-gap: var(--space-xs); align-items: flex-end; }
 #Leader, #Effects, #Companions, #Loot, #Boss, #Prompt, #Skills, #Map, #Quest, #Combo, #Hints { display: flex; min-width: 0; max-width: 100%; }
 #Effects { padding-left: calc(80 * var(--font-step-px)); }
 #Companions { padding-top: var(--space-xs); }
@@ -96,27 +94,25 @@
    nothing else shares (the newest figure stands right of the lock-on);
    then the combo, the prompt, the skill bar and the experience line. The
    loot feed and the input hints are left out. */
-@media (width < 600px) {
-  #Hud { column-gap: var(--space-sm); row-gap: var(--space-xs);
+#Hud:size(compact) { column-gap: var(--space-sm); row-gap: var(--space-xs);
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas: "boss boss" "leader map" "effects map" "companions companions" "quest quest" "fight fight" "combo combo" "prompt prompt" "skills skills" "xp xp";
     padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-md)) env(-og-hud-inset-bottom) calc(env(-og-hud-inset-left) + var(--space-md)); }
-  #Left, #Middle, #Right, #Foot { display: contents; }
-  #Xp { margin-inline: calc(-1 * (env(-og-hud-inset-left) + var(--space-md))) calc(-1 * (env(-og-hud-inset-right) + var(--space-md))); }
-  #Boss { grid-area: boss; padding-bottom: var(--space-xs); }
-  #Leader { grid-area: leader; align-items: center; }
-  #Map { grid-area: map; align-items: flex-start; }
-  #Effects { grid-area: effects; padding-left: 0; }
-  #Companions { grid-area: companions; padding-top: 0; }
-  #Quest { grid-area: quest; padding-top: 0; }
-  #Loot { display: none; }
-  #Combo { grid-area: combo; margin-top: 0; padding-bottom: 0; justify-content: flex-end; }
-  #Prompt { grid-area: prompt; margin-top: 0; padding-bottom: 0; }
-  #Skills { grid-area: skills; padding-bottom: var(--space-xs); }
-  #Hints { display: none; }
-  #Fight { grid-area: fight; }
-  #Lock { left: calc(50% - var(--size-xxl) * 0.3); top: calc(var(--space-lg) + 12 * var(--font-step-px)); }
-  #Dealt { left: calc(50% + 32 * var(--font-step-px)); }
-}
+#Left:size(compact), #Middle:size(compact), #Right:size(compact), #Foot:size(compact) { display: contents; }
+#Xp:size(compact) { margin-inline: calc(-1 * (env(-og-hud-inset-left) + var(--space-md))) calc(-1 * (env(-og-hud-inset-right) + var(--space-md))); }
+#Boss:size(compact) { grid-area: boss; padding-bottom: var(--space-xs); }
+#Leader:size(compact) { grid-area: leader; align-items: center; }
+#Map:size(compact) { grid-area: map; align-items: flex-start; }
+#Effects:size(compact) { grid-area: effects; padding-left: 0; }
+#Companions:size(compact) { grid-area: companions; padding-top: 0; }
+#Quest:size(compact) { grid-area: quest; padding-top: 0; }
+#Loot:size(compact) { display: none; }
+#Combo:size(compact) { grid-area: combo; margin-top: 0; padding-bottom: 0; justify-content: flex-end; }
+#Prompt:size(compact) { grid-area: prompt; margin-top: 0; padding-bottom: 0; }
+#Skills:size(compact) { grid-area: skills; padding-bottom: var(--space-xs); }
+#Hints:size(compact) { display: none; }
+#Fight:size(compact) { grid-area: fight; }
+#Lock:size(compact) { left: calc(50% - var(--size-xxl) * 0.3); top: calc(var(--space-lg) + 12 * var(--font-step-px)); }
+#Dealt:size(compact) { left: calc(50% + 32 * var(--font-step-px)); }
 </style>

@@ -42,13 +42,11 @@
 #Judge { grid-area: judge; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; container-type: size; }
 #Fever { grid-area: fever; display: flex; justify-content: flex-end; min-height: 0; }
 #Keys { grid-area: keys; display: flex; min-width: 0; }
-@media (width < 600px) {
-  #Hud { column-gap: var(--space-sm); row-gap: var(--space-sm);
+#Hud:size(compact) { column-gap: var(--space-sm); row-gap: var(--space-sm);
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-rows: auto auto auto auto minmax(0, 1fr) 11% auto;
     grid-template-areas: "song song song" "score score score" "chain chain chain" "timing timing timing" "life judge fever" "band band band" "keys keys keys";
     padding: calc(env(safe-area-inset-top) + var(--space-md)) var(--space-md) calc(env(safe-area-inset-bottom) + var(--space-sm)); }
-  #Chain { justify-content: flex-start; padding-top: 0; }
-  #Timing { align-self: auto; }
-}
+#Chain:size(compact) { justify-content: flex-start; padding-top: 0; }
+#Timing:size(compact) { align-self: auto; }
 </style>

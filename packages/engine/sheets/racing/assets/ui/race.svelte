@@ -13,7 +13,7 @@
   <div id="Hud">
     <div id="Left">
       <div id="Lap"><RacingLapHud lap={$lapHud_default.lap} laps={$lapHud_default.laps} position={$lapHud_default.position} racers={$lapHud_default.racers} gained={$lapHud_default.gained} current={$lapHud_default.current} best={$lapHud_default.best} last={$lapHud_default.last} sector={$lapHud_default.sector} split={$lapHud_default.split} splitState={$lapHud_default.splitState} freshBest={$lapHud_default.freshBest} finalLap={$lapHud_default.finalLap} timeLeft={$lapHud_default.timeLeft} timeTotal={$lapHud_default.timeTotal} /></div>
-      <div id="Tower"><RacingStandings title={$standings_default.title} rows={$standings_default_rows} /></div>
+      <div id="Tower"><RacingStandings title={$standings_default.title} hasPlayer={$standings_default.hasPlayer} rows={$standings_default_rows} /></div>
     </div>
     <div id="Middle">
       <div id="Call"><RacingBanner kind={$banner_default.kind} figure={$banner_default.figure} text={$banner_default.text} at={$banner_default.at} place={$banner_default.place} detail={$banner_default.detail} /></div>
@@ -57,15 +57,11 @@
 #Middle { grid-area: middle; }
 #Right { grid-area: right; }
 #Foot { grid-area: foot; display: flex; align-items: flex-end; column-gap: var(--space-xl); min-width: 0; }
-@media (width >= 600px) {
-  #Left, #Middle, #Right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-  #Left { row-gap: var(--space-xl); align-items: flex-start; }
-  #Middle { row-gap: var(--space-lg); align-items: center; }
-  /* The call takes the middle column's whole width, so a short call fits
-     whole at a large text scale. */
-  #Call { align-self: stretch; }
-  #Right { align-items: flex-end; justify-content: space-between; row-gap: var(--space-lg); }
-}
+#Left:not(:size(narrow)), #Middle:not(:size(narrow)), #Right:not(:size(narrow)) { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#Left:not(:size(narrow)) { row-gap: var(--space-xl); align-items: flex-start; }
+#Middle:not(:size(narrow)) { row-gap: var(--space-lg); align-items: center; }
+#Call:not(:size(narrow)) { align-self: stretch; }
+#Right:not(:size(narrow)) { align-items: flex-end; justify-content: space-between; row-gap: var(--space-lg); }
 #Lap, #Tower, #Call, #Bonus, #Map, #Pedals, #Car, #Boost, #Gauge { display: flex; min-width: 0; max-width: 100%; }
 /* The tower takes the height left in its column as a size container, so
    at a large text scale it keeps the rows round the player whole. */
@@ -80,23 +76,19 @@
    road, the lower middle where the car drives, is left clear. At the foot
    the track map, the nitro meter and the tyres stacked at the left beside
    the tachometer. The pedals are left out. */
-@media (width < 600px) {
-  #Hud { column-gap: var(--space-md); row-gap: var(--space-xs);
+#Hud:size(compact) { column-gap: var(--space-md); row-gap: var(--space-xs);
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas: "lap lap" "tower tower" "call call" "bonus bonus" "road road" "map gauge" "boost gauge" "car gauge";
     padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-md)) calc(env(-og-hud-inset-bottom) + var(--space-sm)) calc(env(-og-hud-inset-left) + var(--space-md)); }
-  #Left, #Middle, #Right, #Foot { display: contents; }
-  #Lap { grid-area: lap; }
-  /* The tower takes its rows' height here (the desktop column's share and
-     size container do not apply). */
-  #Tower { grid-area: tower; flex: none; min-height: auto; align-self: auto; container-type: normal; }
-  #Call { grid-area: call; }
-  #Bonus { grid-area: bonus; }
-  #Pedals { display: none; }
-  #Map { grid-area: map; align-self: end; }
-  #Boost { grid-area: boost; margin-left: 0; padding-bottom: 0; align-self: end; }
-  #Car { grid-area: car; align-self: end; }
-  #Gauge { grid-area: gauge; align-self: end; }
-}
+#Left:size(compact), #Middle:size(compact), #Right:size(compact), #Foot:size(compact) { display: contents; }
+#Lap:size(compact) { grid-area: lap; }
+#Tower:size(compact) { grid-area: tower; flex: none; min-height: auto; align-self: auto; container-type: normal; }
+#Call:size(compact) { grid-area: call; }
+#Bonus:size(compact) { grid-area: bonus; }
+#Pedals:size(compact) { display: none; }
+#Map:size(compact) { grid-area: map; align-self: end; }
+#Boost:size(compact) { grid-area: boost; margin-left: 0; padding-bottom: 0; align-self: end; }
+#Car:size(compact) { grid-area: car; align-self: end; }
+#Gauge:size(compact) { grid-area: gauge; align-self: end; }
 </style>

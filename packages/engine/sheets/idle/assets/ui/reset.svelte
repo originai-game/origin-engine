@@ -4,7 +4,7 @@
      welcome-back panel, then both in their long forms (long names, huge
      numbers, many rows, an unmet requirement). On a phone they stack. -->
 <scroll id="Page">
-  <div id="Grid" data-alone={$page == 'offline'}>
+  <div id="Grid" class:alone={$page == 'offline'}>
     {#if $page != 'offline'}
     <div class="slot"><IdlePrestige title={$prestige_confirming.title} currency={$prestige_confirming.currency} icon={$prestige_confirming.icon} held={$prestige_confirming.held} gain={$prestige_confirming.gain} rows={$prestige_confirming_rows} requirement={$prestige_confirming.requirement} progress={$prestige_confirming.progress} progressText={$prestige_confirming.progressText} met={$prestige_confirming.met} confirming={$prestige_confirming.confirming} /></div>
     {/if}
@@ -20,9 +20,7 @@
 #Page { width: stretch; height: stretch; }
 #Grid { display: grid; width: stretch; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xl); padding: var(--space-xl); }
 .slot { min-width: 0; }
-#Grid[data-alone=true] { height: stretch; grid-template-columns: minmax(0, 1fr); }
-#Grid[data-alone=true] .slot { height: stretch; min-height: 0; }
-@media (width < 600px) {
-  #Grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-md); padding: var(--space-sm); }
-}
+#Grid.alone { height: stretch; grid-template-columns: minmax(0, 1fr); }
+#Grid.alone .slot { height: stretch; min-height: 0; }
+#Grid:size(compact) { grid-template-columns: minmax(0, 1fr); gap: var(--space-md); padding: var(--space-sm); }
 </style>

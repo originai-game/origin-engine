@@ -1,6 +1,5 @@
 <meta name="component" content="styleSheet">
 <meta name="strings" content="./sheet.en.ogt">
-<meta name="parts" content="Sheet.card Sheet.frame Sheet.cell">
 <meta name="prop:page" content="string" data-doc="The page shown: controls (buttons and toggles in every state), fields (tabs, text, select, stepper and range in every state), surfaces (type, frames and slots) or overlays (dialog, disclosures, meters and badges).">
 <meta name="fixture:default" content='{"page":"controls"}'>
 <meta name="fixture:fields" content='{"page":"fields"}'>
@@ -9,7 +8,7 @@
 
 <!--
   A style pack's core-control state sheet (docs/ui.md §6.2), rendered with
-  the core default and with each pack by `og ui sheet <pack>`. Controls
+  the core default and with each pack by `og ui sheet <pack id="styleSheet">`. Controls
   (each button variant and toggle) and fields (tabs, text, select, stepper,
   range): a row per control, a captioned box per state, seven abreast on a
   desktop and two on a phone. Hover, pressed and focus-visible are forced
@@ -75,15 +74,15 @@
       <h2 class="caption">{t("sheet.group.frames")}</h2>
       <div id="FrameRow" class="wrap">
         <panel id="PanelFrame" class="frame"><p class="title">{t("sheet.frame.panel")}</p><p class="muted">{t("sheet.frame.note")}</p></panel>
-        <div id="CardFrame" part="Sheet.card" class="frame"><p class="title">{t("sheet.frame.card")}</p><p class="muted">{t("sheet.frame.note")}</p></div>
-        <div id="TooltipFrame" part="Sheet.frame" class="frame" role="tooltip"><p class="title">{t("sheet.frame.tooltip")}</p><p class="muted">{t("sheet.frame.tip")}</p></div>
-        <div id="HudFrame" part="Sheet.frame" class="frame hud"><og-icon icon="heart"></og-icon><span class="numeric">{t("sheet.hud")}</span></div>
+        <div id="CardFrame" part="card" class="frame"><p class="title">{t("sheet.frame.card")}</p><p class="muted">{t("sheet.frame.note")}</p></div>
+        <div id="TooltipFrame" part="frame" class="frame" role="tooltip"><p class="title">{t("sheet.frame.tooltip")}</p><p class="muted">{t("sheet.frame.tip")}</p></div>
+        <div id="HudFrame" part="frame" class="frame" variant="hud"><og-icon icon="heart"></og-icon><span class="numeric">{t("sheet.hud")}</span></div>
       </div>
       <div id="Slots" class="wrap" role="list" aria-label={t("sheet.slots")}>
-        <div id="SlotEmpty" part="Sheet.cell" class="slot" data-empty="true" role="listitem" aria-label={t("sheet.slot.empty")}></div>
-        <div id="SlotItem" part="Sheet.cell" class="slot" data-rarity="epic" role="listitem" aria-label={t("sheet.slot.item")}><og-icon icon="sword"></og-icon></div>
-        <div id="SlotStack" part="Sheet.cell" class="slot" role="listitem" aria-label={t("sheet.slot.stack")}><og-icon icon="potion"></og-icon><badge class="count" tone="neutral">12</badge></div>
-        <div id="SlotLocked" part="Sheet.cell" class="slot" data-locked="true" aria-disabled="true" role="listitem" aria-label={t("sheet.slot.locked")}><og-icon icon="lock"></og-icon></div>
+        <div id="SlotEmpty" part="cell" class="slot" data-empty="true" role="listitem" aria-label={t("sheet.slot.empty")}></div>
+        <div id="SlotItem" part="cell" class="slot" tier="epic" role="listitem" aria-label={t("sheet.slot.item")}><og-icon icon="sword"></og-icon></div>
+        <div id="SlotStack" part="cell" class="slot" role="listitem" aria-label={t("sheet.slot.stack")}><og-icon icon="potion"></og-icon><badge class="count" tone="neutral">12</badge></div>
+        <div id="SlotLocked" part="cell" class="slot" data-locked="true" aria-disabled="true" role="listitem" aria-label={t("sheet.slot.locked")}><og-icon icon="lock"></og-icon></div>
       </div>
     </section>
     </div>
@@ -216,37 +215,37 @@
     <section id="checkbox" class="field-row" aria-label={t("sheet.row.checkbox")}>
       <h3 class="label">{t("sheet.row.checkbox")}</h3>
       <div id="checkbox-boxes" class="boxes">
-        <div id="checkbox-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><input id="checkbox-rest" class="cell rest" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
-        <div id="checkbox-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><input id="checkbox-hover" class="cell hover" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
-        <div id="checkbox-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><input id="checkbox-pressed" class="cell pressed" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
-        <div id="checkbox-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><input id="checkbox-focus" class="cell focus" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
-        <div id="checkbox-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><input id="checkbox-selected" class="cell selected" type="checkbox" checked aria-label={t("sheet.row.checkbox")} /></div>
-        <div id="checkbox-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><input id="checkbox-disabled" class="cell disabled" type="checkbox" disabled aria-label={t("sheet.row.checkbox")} /></div>
-        <div id="checkbox-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><input id="checkbox-selected-disabled" class="cell selected-disabled" type="checkbox" checked disabled aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><input id="checkbox-rest" class="cell rest choice" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><input id="checkbox-hover" class="cell hover choice" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><input id="checkbox-pressed" class="cell pressed choice" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><input id="checkbox-focus" class="cell focus choice" type="checkbox" aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><input id="checkbox-selected" class="cell selected choice" type="checkbox" checked aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><input id="checkbox-disabled" class="cell disabled choice" type="checkbox" disabled aria-label={t("sheet.row.checkbox")} /></div>
+        <div id="checkbox-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><input id="checkbox-selected-disabled" class="cell selected-disabled choice" type="checkbox" checked disabled aria-label={t("sheet.row.checkbox")} /></div>
       </div>
     </section>
     <section id="switch" class="field-row" aria-label={t("sheet.row.switch")}>
       <h3 class="label">{t("sheet.row.switch")}</h3>
       <div id="switch-boxes" class="boxes">
-        <div id="switch-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><input id="switch-rest" class="cell rest" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
-        <div id="switch-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><input id="switch-hover" class="cell hover" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
-        <div id="switch-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><input id="switch-pressed" class="cell pressed" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
-        <div id="switch-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><input id="switch-focus" class="cell focus" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
-        <div id="switch-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><input id="switch-selected" class="cell selected" type="checkbox" switch checked aria-label={t("sheet.row.switch")} /></div>
-        <div id="switch-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><input id="switch-disabled" class="cell disabled" type="checkbox" switch disabled aria-label={t("sheet.row.switch")} /></div>
-        <div id="switch-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><input id="switch-selected-disabled" class="cell selected-disabled" type="checkbox" switch checked disabled aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><input id="switch-rest" class="cell rest choice" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><input id="switch-hover" class="cell hover choice" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><input id="switch-pressed" class="cell pressed choice" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><input id="switch-focus" class="cell focus choice" type="checkbox" switch aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><input id="switch-selected" class="cell selected choice" type="checkbox" switch checked aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><input id="switch-disabled" class="cell disabled choice" type="checkbox" switch disabled aria-label={t("sheet.row.switch")} /></div>
+        <div id="switch-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><input id="switch-selected-disabled" class="cell selected-disabled choice" type="checkbox" switch checked disabled aria-label={t("sheet.row.switch")} /></div>
       </div>
     </section>
     <section id="radio" class="field-row" aria-label={t("sheet.row.radio")}>
       <h3 class="label">{t("sheet.row.radio")}</h3>
       <div id="radio-boxes" class="boxes">
-        <div id="radio-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><input id="radio-rest" class="cell rest" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
-        <div id="radio-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><input id="radio-hover" class="cell hover" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
-        <div id="radio-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><input id="radio-pressed" class="cell pressed" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
-        <div id="radio-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><input id="radio-focus" class="cell focus" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
-        <div id="radio-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><input id="radio-selected" class="cell selected" type="radio" value="a" checked aria-label={t("sheet.row.radio")} /></div>
-        <div id="radio-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><input id="radio-disabled" class="cell disabled" type="radio" value="a" disabled aria-label={t("sheet.row.radio")} /></div>
-        <div id="radio-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><input id="radio-selected-disabled" class="cell selected-disabled" type="radio" value="a" checked disabled aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-rest-box" class="box rest"><small class="state">{t("sheet.state.rest")}</small><input id="radio-rest" class="cell rest choice" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-hover-box" class="box hover"><small class="state">{t("sheet.state.hover")}</small><input id="radio-hover" class="cell hover choice" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-pressed-box" class="box pressed"><small class="state">{t("sheet.state.pressed")}</small><input id="radio-pressed" class="cell pressed choice" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-focus-box" class="box focus"><small class="state">{t("sheet.state.focus")}</small><input id="radio-focus" class="cell focus choice" type="radio" value="a" aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-selected-box" class="box selected"><small class="state">{t("sheet.state.selected")}</small><input id="radio-selected" class="cell selected choice" type="radio" value="a" checked aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-disabled-box" class="box disabled"><small class="state">{t("sheet.state.disabled")}</small><input id="radio-disabled" class="cell disabled choice" type="radio" value="a" disabled aria-label={t("sheet.row.radio")} /></div>
+        <div id="radio-selected-disabled-box" class="box selected-disabled"><small class="state">{t("sheet.state.selected-disabled")}</small><input id="radio-selected-disabled" class="cell selected-disabled choice" type="radio" value="a" checked disabled aria-label={t("sheet.row.radio")} /></div>
       </div>
     </section>
   </scroll>
@@ -272,17 +271,15 @@
 .box .cell { width: stretch; justify-self: start; }
 .box .na { width: var(--space-lg); }
 /* A toggle keeps its own size: stretched, its track would run into the next box. */
-.box input[type=checkbox], .box input[type=radio] { width: auto; align-self: start; }
+.box input.choice { width: auto; align-self: start; }
 .state { overflow-wrap: normal; word-break: normal; }
 /* A pressed range shows its value above the knob: room for it. */
 #range-boxes { margin-top: var(--space-lg); }
-@media (hover: none) {
-  #StyleSheet, #FieldSheet { padding: var(--space-md); }
-  .hover, .focus { display: none; }
-  .boxes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm) var(--space-md); }
-  .box.absent { display: none; }
-  .field-row { margin-bottom: var(--space-sm); }
-}
+#StyleSheet:touch, #FieldSheet:touch { padding: var(--space-md); }
+.hover:touch, .focus:touch { display: none; }
+.boxes:touch { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm) var(--space-md); }
+.box.absent:touch { display: none; }
+.field-row:touch { margin-bottom: var(--space-sm); }
 
 .surfaces { display: grid; width: stretch; grid-template-columns: 1fr 1fr; gap: var(--space-xl); align-content: start; }
 .group { gap: var(--space-md); width: stretch; }
@@ -303,9 +300,7 @@
 .actions { display: flex; gap: var(--space-sm); justify-content: end; }
 meter, progress { width: stretch; }
 .meters { display: grid; grid-template-columns: auto 1fr; gap: var(--space-sm) var(--space-md); align-items: center; width: stretch; }
-@media (width < 900px) {
-  #SurfaceSheet, #OverlaySheet { padding: var(--space-md); }
-  .surfaces { grid-template-columns: 1fr; gap: var(--space-lg); }
-  .frame { width: 10rem; }
-}
+#SurfaceSheet:size(compact), #OverlaySheet:size(compact) { padding: var(--space-md); }
+.surfaces:size(compact) { grid-template-columns: 1fr; gap: var(--space-lg); }
+.frame:size(compact) { width: 10rem; }
 </style>

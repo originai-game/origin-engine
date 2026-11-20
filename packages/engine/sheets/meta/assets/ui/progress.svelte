@@ -14,10 +14,8 @@
 #Achievements { grid-area: ach; height: stretch; min-height: 0; }
 #Quests { grid-area: quests; height: stretch; min-height: 0; }
 #Rewards { grid-area: rewards; height: stretch; min-height: 0; }
-@media (width < 600px) {
-  #Page { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-sm); overflow: hidden; }
-  #Rewards { display: none; }
-  #Achievements { width: stretch; height: 52%; flex: none; }
-  #Quests { width: stretch; flex: 1; min-height: 0; }
-}
+#Page:size(compact) { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-sm); overflow: hidden; }
+#Rewards:size(compact) { display: none; }
+#Achievements:size(compact) { width: stretch; height: 52%; flex: none; }
+#Quests:size(compact) { width: stretch; flex: 1; min-height: 0; }
 </style>

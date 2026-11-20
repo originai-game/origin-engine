@@ -38,9 +38,7 @@
 #MenuBox { position: relative; display: flex; }
 .half { flex: 1 1 0; min-width: 0; display: flex; }
 #Radial { flex: 1 1 0; min-width: 0; position: relative; height: calc(var(--size-xxl) * 5); }
-@media (width < 600px) {
-  #Column { gap: var(--space-md); padding: var(--space-xs); padding-top: env(safe-area-inset-top); }
-  #Row, #Row2, #Row3 { flex-direction: column; align-items: stretch; gap: var(--space-md); }
-  #Grid, #Side, .half, #Radial { flex: none; }
-}
+#Column:size(compact) { gap: var(--space-md); padding: var(--space-xs); padding-top: env(safe-area-inset-top); }
+#Row:size(compact), #Row2:size(compact), #Row3:size(compact) { flex-direction: column; align-items: stretch; gap: var(--space-md); }
+#Grid:size(compact), #Side:size(compact), .half:size(compact), #Radial:size(compact) { flex: none; }
 </style>

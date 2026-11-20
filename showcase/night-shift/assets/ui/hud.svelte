@@ -38,8 +38,6 @@
 #Clock { grid-area: clock; justify-self: center; align-self: start; }
 #Parcel { grid-area: parcel; align-self: start; display: flex; flex-direction: column; gap: var(--space-sm); }
 #Keys { grid-area: keys; justify-self: center; align-self: end; }
-@media (width < 700px) {
-  #Hud { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "map clock" "parcel parcel" "keys keys"; grid-template-rows: auto auto 1fr; gap: var(--space-sm); padding: var(--space-sm); }
-  #Keys { display: none; }
-}
+#Hud:size(compact) { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "map clock" "parcel parcel" "keys keys"; grid-template-rows: auto auto 1fr; gap: var(--space-sm); padding: var(--space-sm); }
+#Keys:size(compact) { display: none; }
 </style>

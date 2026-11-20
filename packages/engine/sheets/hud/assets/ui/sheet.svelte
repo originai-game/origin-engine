@@ -75,7 +75,7 @@
 </div>
 
 <style>
-:root { display: flex; flex-direction: column; gap: var(--space-xl); padding: calc(env(safe-area-inset-top) + var(--space-lg)) var(--space-lg) calc(env(safe-area-inset-bottom) + var(--space-lg)); block-size: stretch; overflow-y: auto; background: var(--backdrop); }
+#Page { display: flex; flex-direction: column; gap: var(--space-xl); padding: calc(env(safe-area-inset-top) + var(--space-lg)) var(--space-lg) calc(env(safe-area-inset-bottom) + var(--space-lg)); block-size: stretch; overflow-y: auto; background: var(--backdrop); }
 header { display: flex; flex-direction: column; gap: var(--space-xs); }
 .eyebrow { font: var(--text-caption); color: var(--ink-muted); letter-spacing: var(--type-caption-tracking); }
 h1 { margin: 0; font: var(--text-xl2); }
@@ -86,5 +86,6 @@ section { display: flex; flex-direction: column; gap: var(--space-lg); padding: 
 .row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-lg); }
 .touch { grid-column: 1 / -1; }
 .wide { grid-column: 1 / -1; }
-@media (width < 600px) { :root { gap: var(--space-lg); } .instruments { grid-template-columns: minmax(0, 1fr); } }
+#Page:size(compact) { gap: var(--space-lg); }
+.instruments:size(compact) { grid-template-columns: minmax(0, 1fr); }
 </style>

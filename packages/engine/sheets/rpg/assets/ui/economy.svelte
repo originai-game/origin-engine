@@ -1,8 +1,8 @@
 <meta name="component" content="EconomyPage">
 
-<main class="page">
+<main id="EconomyPage" class="page">
   <h1>Economy · {$scenario}</h1>
-  <div class="panel" data-page={$page}>
+  <div class="panel" class:page-crafting={($page) == 'crafting'}>
     {#if $page == 'crafting'}
       <RpgCrafting title="Alchemist’s bench" recipes={$shownRecipes} selected={$scenario == 'missing' ? 'elixir' : 'draught'} ingredients={$shownIngredients} quantity={1} canIncrease={true} cost="10 gold" loading={$scenario == 'loading'} busy={$scenario == 'busy'} error={$scenario == 'missing' ? 'Not enough ingredients.' : ''} />
     {:else if $page == 'trade'}
@@ -17,5 +17,5 @@
 .page { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; align-items: center; gap: var(--space-md); padding: var(--space-lg); background: var(--panel); color: var(--ink); }
 h1 { margin: 0; font-size: var(--font-step-lg); }
 .panel { inline-size: min(100%, var(--measure-lg)); flex: 1; min-block-size: 0; }
-.panel[data-page=crafting] { inline-size: min(100%, calc(820 * var(--font-step-px))); }
+.panel.page-crafting { inline-size: min(100%, calc(820 * var(--font-step-px))); }
 </style>

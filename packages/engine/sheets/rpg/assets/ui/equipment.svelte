@@ -27,23 +27,18 @@
 #Foot { display: flex; width: stretch; flex: none; gap: var(--space-md); align-items: center; }
 #Foot button { width: calc(var(--size-xxl) * 2.6); }
 #FootGap { flex: 1; }
-@media (width < 600px) {
-  #Page { padding: 0 var(--space-sm) var(--space-sm); gap: var(--space-sm); }
-  #Body { flex-direction: column; gap: var(--space-sm); }
-  #Hero { flex: 60; width: stretch; height: auto; }
-  #Stats { flex: 40; width: stretch; height: auto; }
-  #Foot { flex-wrap: wrap; gap: var(--space-xs); }
-  #Foot button { width: calc(50% - var(--space-xs) / 2); }
-  /* Two to a row on a phone: a step smaller and tighter, so AUTO-EQUIP fits whole at 150 % text. */
-  button.foot::part(base) { padding: 0 var(--space-sm); font-size: 0.9286em; letter-spacing: 0.04em; }
-  #FootGap { display: none; }
-}
-@media (height < 500px) {
-  #Page { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "menu menu" "body foot"; column-gap: var(--space-sm); row-gap: var(--space-xs); padding: 0 var(--space-md) var(--space-sm); }
-  #Menu { grid-area: menu; }
-  #Body { grid-area: body; height: stretch; gap: var(--space-sm); }
-  #Foot { grid-area: foot; flex-direction: column; justify-content: flex-end; gap: var(--space-xs); }
-  #Foot button { width: calc(var(--size-xxl) * 2); }
-  #FootGap { display: none; }
-}
+#Page:size(compact) { padding: 0 var(--space-sm) var(--space-sm); gap: var(--space-sm); }
+#Body:size(compact) { flex-direction: column; gap: var(--space-sm); }
+#Hero:size(compact) { flex: 60; width: stretch; height: auto; }
+#Stats:size(compact) { flex: 40; width: stretch; height: auto; }
+#Foot:size(compact) { flex-wrap: wrap; gap: var(--space-xs); }
+#Foot button:size(compact) { width: calc(50% - var(--space-xs) / 2); }
+button.foot:size(compact) { padding: 0 var(--space-sm); font-size: 0.9286em; letter-spacing: 0.04em; }
+#FootGap:size(compact) { display: none; }
+#Page:size(short) { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "menu menu" "body foot"; column-gap: var(--space-sm); row-gap: var(--space-xs); padding: 0 var(--space-md) var(--space-sm); }
+#Menu:size(short) { grid-area: menu; }
+#Body:size(short) { grid-area: body; height: stretch; gap: var(--space-sm); }
+#Foot:size(short) { grid-area: foot; flex-direction: column; justify-content: flex-end; gap: var(--space-xs); }
+#Foot button:size(short) { width: calc(var(--size-xxl) * 2); }
+#FootGap:size(short) { display: none; }
 </style>

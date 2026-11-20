@@ -1,5 +1,5 @@
 <meta name="component" content="ArenaSocialSheet">
-<main>
+<main id="ArenaSocialSheet">
   {#if $page == 'ready'}
     <ArenaReady title={$vm.title} detail={$vm.detail} timeText={$vm.timeText} players={$rows} response={$vm.response} canRespond={$vm.canRespond} closed={$vm.closed} loading={$vm.loading} />
   {:else}{#if $page == 'vote'}
@@ -9,6 +9,6 @@
   {/if}{/if}
 </main>
 <style>
-:host { display: flex; flex-direction: column; align-items: center; inline-size: stretch; block-size: stretch; padding: var(--space-lg); background: var(--panel); }
+#ArenaSocialSheet { display: flex; flex-direction: column; align-items: center; inline-size: stretch; block-size: stretch; padding: var(--space-lg); background: var(--panel); }
 main { display: flex; flex-direction: column; inline-size: stretch; max-inline-size: 640px; block-size: stretch; }
 </style>

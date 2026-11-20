@@ -17,8 +17,6 @@
 #Shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgb(4 6 12 / 0.8), rgb(4 6 12 / 0.5) 50%, rgb(4 6 12 / 0.6)), linear-gradient(0deg, rgb(4 6 12 / 0.8), transparent 30%); }
 #Songs { position: relative; flex: 1; min-height: 0; width: stretch; }
 #Charts { position: relative; flex: none; width: stretch; }
-@media (width < 600px) {
-  #Page { gap: var(--space-sm); padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-sm)) calc(env(-og-hud-inset-bottom) + var(--space-sm)) calc(env(-og-hud-inset-left) + var(--space-sm)); }
-  #Shade { background: linear-gradient(180deg, rgb(4 6 12 / 0.55), rgb(4 6 12 / 0.85) 40%, rgb(4 6 12 / 0.92)); }
-}
+#Page:size(compact) { gap: var(--space-sm); padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-sm)) calc(env(-og-hud-inset-bottom) + var(--space-sm)) calc(env(-og-hud-inset-left) + var(--space-sm)); }
+#Shade:size(compact) { background: linear-gradient(180deg, rgb(4 6 12 / 0.55), rgb(4 6 12 / 0.85) 40%, rgb(4 6 12 / 0.92)); }
 </style>

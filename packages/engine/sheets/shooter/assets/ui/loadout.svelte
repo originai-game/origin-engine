@@ -10,12 +10,8 @@
 #Main { flex: 1; min-width: 0; min-height: 0; }
 #Feed { flex: none; width: calc(var(--size-xxl) * 4); }
 /* A landscape phone: a tighter frame and a narrower feed leave the list its width. */
-@media (height < 600px) and (orientation: landscape) {
-  #Page { padding: calc(env(safe-area-inset-top) + var(--space-md)) var(--space-lg) var(--space-md) var(--space-lg); gap: var(--space-lg); }
-  #Feed { width: calc(var(--size-xxl) * 3); }
-}
-@media (width < 600px) {
-  #Page { flex-direction: column; padding: calc(env(safe-area-inset-top) + var(--space-md)) var(--space-md) var(--space-md) var(--space-md); gap: var(--space-md); }
-  #Feed { order: -1; width: stretch; }
-}
+#Page:size(short) { padding: calc(env(safe-area-inset-top) + var(--space-md)) var(--space-lg) var(--space-md) var(--space-lg); gap: var(--space-lg); }
+#Feed:size(short) { width: calc(var(--size-xxl) * 3); }
+#Page:size(compact) { flex-direction: column; padding: calc(env(safe-area-inset-top) + var(--space-md)) var(--space-md) var(--space-md) var(--space-md); gap: var(--space-md); }
+#Feed:size(compact) { order: -1; width: stretch; }
 </style>

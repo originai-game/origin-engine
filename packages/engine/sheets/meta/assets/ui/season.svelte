@@ -14,10 +14,8 @@
 #Pass { grid-area: pass; height: stretch; min-height: 0; }
 #Sealed { grid-area: sealed; height: stretch; min-height: 0; }
 #Revealed { grid-area: revealed; height: stretch; min-height: 0; }
-@media (width < 600px) {
-  #Page { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-sm); overflow: hidden; }
-  #Pass { flex: none; }
-  #Sealed { display: none; }
-  #Revealed { flex: 1; min-height: 0; height: auto; }
-}
+#Page:size(compact) { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-sm); overflow: hidden; }
+#Pass:size(compact) { flex: none; }
+#Sealed:size(compact) { display: none; }
+#Revealed:size(compact) { flex: 1; min-height: 0; height: auto; }
 </style>

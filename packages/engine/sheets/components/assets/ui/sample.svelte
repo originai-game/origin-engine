@@ -1,7 +1,6 @@
 <meta name="component" content="UngroupedSamplePage">
-<meta name="parts" content="Sheet.card">
 
-<section class="page">
+<section id="UngroupedSamplePage" class="page">
   <h1 class="caption">{$caption}</h1>
   <div class="stage">
     {#if $member == 'breadcrumbs'}
@@ -19,7 +18,7 @@
     {:else if $member == 'nodeGraph'}
       <NodeGraph nodes={$sample_nodes} links={$sample_links} view={$sample.view} zoom={$sample.zoom} panX={$sample.panX} panY={$sample.panY} selected={$sample.selected} name={$sample.name} />
     {:else if $member == 'ribbon'}
-      <div class="host" part="Sheet.card" class:low={$sample.corner == 'bottomRight' || $sample.corner == 'bottomLeft'}><p class="host-name">Ember Blade</p><p class="host-note">Legendary sword</p><div class="pin" class:topLeft={$sample.corner == 'topLeft'} class:bottomRight={$sample.corner == 'bottomRight'} class:bottomLeft={$sample.corner == 'bottomLeft'} class:center={$sample.corner == 'center'}><Ribbon text={$sample.text} corner={$sample.corner} tone={$sample.tone} /></div></div>
+      <div class="host" part="card" class:low={$sample.corner == 'bottomRight' || $sample.corner == 'bottomLeft'}><p class="host-name">Ember Blade</p><p class="host-note">Legendary sword</p><div class="pin" class:topLeft={$sample.corner == 'topLeft'} class:bottomRight={$sample.corner == 'bottomRight'} class:bottomLeft={$sample.corner == 'bottomLeft'} class:center={$sample.corner == 'center'}><Ribbon text={$sample.text} corner={$sample.corner} tone={$sample.tone} /></div></div>
     {:else if $member == 'skeletonGroup'}
       <SkeletonGroup shape={$sample.shape} items={$sample_items} name={$sample.name} />
     {:else if $member == 'spinner'}
@@ -60,7 +59,7 @@
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; padding: var(--space-lg); gap: var(--space-lg); overflow: auto; }
+#UngroupedSamplePage { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; padding: var(--space-lg); gap: var(--space-lg); overflow: auto; }
 .caption { margin: 0; font: var(--text-lg); color: var(--ink-muted); }
 .stage { position: relative; display: flex; flex-direction: column; align-items: start; flex: 1; gap: var(--space-md); }
 .meter { inline-size: calc(var(--size-xxl) * 6); max-inline-size: 100%; }
@@ -76,5 +75,5 @@
 .pin.bottomRight { top: auto; bottom: 0; }
 .pin.bottomLeft { top: auto; bottom: 0; right: auto; left: 0; }
 .pin.center { top: 50%; left: 50%; right: auto; translate: -50% -50%; }
-@media (width < 600px) { :host { padding: var(--space-sm); padding-top: env(safe-area-inset-top); } }
+#UngroupedSamplePage:size(compact) { padding: var(--space-sm); padding-top: env(safe-area-inset-top); }
 </style>

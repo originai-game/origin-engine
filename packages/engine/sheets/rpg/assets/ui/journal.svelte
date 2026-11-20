@@ -28,19 +28,15 @@
 #Detail { grid-area: detail; height: stretch; min-height: 0; }
 #Talk { grid-area: talk; height: stretch; min-height: 0; }
 #Party, #Turns, #Fade { display: none; }
-@media (width < 600px) {
-  #Page { position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: var(--space-md); overflow: hidden; margin-top: calc(env(safe-area-inset-top) * -1); height: calc(100% + env(safe-area-inset-top)); padding: calc(env(safe-area-inset-top) + var(--space-sm)) var(--space-sm) 0; }
-  #Compass, #Detail, #Talk { display: none; }
-  #Party, #Turns { display: block; width: stretch; flex: none; }
-  #Middle { width: stretch; flex: none; gap: var(--space-md); }
-  #Map { height: calc(var(--size-xxl) * 2.3); flex: none; }
-  #Place { height: calc(var(--size-xxl) * 2.25); flex: none; }
-  #Log { width: stretch; height: auto; flex: none; }
-  #Fade { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--size-xxl) * 1.5); pointer-events: none; }
-}
-@media (height < 500px) {
-  #Page { grid-template-columns: 25% 1fr 25%; grid-template-rows: minmax(0, 1fr); grid-template-areas: "log middle detail"; column-gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
-  #Compass, #Talk { display: none; }
-  #Place { height: 56%; }
-}
+#Page:size(compact) { position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: var(--space-md); overflow: hidden; margin-top: calc(env(safe-area-inset-top) * -1); height: calc(100% + env(safe-area-inset-top)); padding: calc(env(safe-area-inset-top) + var(--space-sm)) var(--space-sm) 0; }
+#Compass:size(compact), #Detail:size(compact), #Talk:size(compact) { display: none; }
+#Party:size(compact), #Turns:size(compact) { display: block; width: stretch; flex: none; }
+#Middle:size(compact) { width: stretch; flex: none; gap: var(--space-md); }
+#Map:size(compact) { height: calc(var(--size-xxl) * 2.3); flex: none; }
+#Place:size(compact) { height: calc(var(--size-xxl) * 2.25); flex: none; }
+#Log:size(compact) { width: stretch; height: auto; flex: none; }
+#Fade:size(compact) { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--size-xxl) * 1.5); pointer-events: none; }
+#Page:size(short) { grid-template-columns: 25% 1fr 25%; grid-template-rows: minmax(0, 1fr); grid-template-areas: "log middle detail"; column-gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
+#Compass:size(short), #Talk:size(short) { display: none; }
+#Place:size(short) { height: 56%; }
 </style>

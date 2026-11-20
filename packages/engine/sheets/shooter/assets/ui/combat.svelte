@@ -54,11 +54,9 @@
 #Hud { position: relative; display: grid; width: stretch; height: stretch; box-sizing: border-box; column-gap: var(--space-xl);
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   padding: calc(env(-og-hud-inset-top) + var(--space-lg)) calc(env(-og-hud-inset-right) + var(--space-xl)) calc(env(-og-hud-inset-bottom) + var(--space-lg)) calc(env(-og-hud-inset-left) + var(--space-xl)); }
-@media (width >= 600px) {
-  #Left, #Middle, #Right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-  #Left { row-gap: var(--space-sm); }
-  #Right { row-gap: var(--space-xs); align-items: flex-end; }
-}
+#Left:not(:size(narrow)), #Middle:not(:size(narrow)), #Right:not(:size(narrow)) { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#Left:not(:size(narrow)) { row-gap: var(--space-sm); }
+#Right:not(:size(narrow)) { row-gap: var(--space-xs); align-items: flex-end; }
 #Squad, #Objective, #Effects, #Vitals, #Radar, #Round, #Feed, #Pickups, #Ammo, #Compass, #Abilities { display: flex; min-width: 0; }
 #Objective { padding-top: var(--space-sm); }
 #Effects { margin-top: auto; padding-left: calc(78 * var(--font-step-px)); }
@@ -66,7 +64,7 @@
 #Abilities { margin-top: auto; justify-content: center; }
 #Radar, #Feed, #Ammo { justify-content: flex-end; }
 #Round { margin-top: var(--space-xs); }
-#Round > * { width: calc(var(--size-5xl) * 0.8); }
+#Round { width: calc(var(--size-5xl) * 0.8); }
 #Pickups { flex: 1 1 auto; align-items: center; justify-content: flex-end; }
 /* The aim: a point at the screen's centre; the incoming damage rings it,
    the reticle sits on it, the damage dealt stands up and to its right and
@@ -82,31 +80,26 @@
    the aim's band, which nothing else
    shares; then the ability bar, the effects beside the ammunition, and
    the vitals across the foot. The pickup feed is left out on a phone. */
-@media (width < 600px) {
-  #Hud { column-gap: var(--space-sm); row-gap: var(--space-xs);
+#Hud:size(compact) { column-gap: var(--space-sm); row-gap: var(--space-xs);
     grid-template-columns: repeat(7, minmax(0, 1fr));
     grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas: "compass compass compass compass compass radar radar" "round round round round round round round" "feed feed feed feed feed feed feed" "objective objective objective objective objective objective objective" "squad squad squad squad squad squad squad" ". . . . . . ." "abilities abilities abilities abilities abilities abilities abilities" "effects effects effects ammo ammo ammo ammo" "vitals vitals vitals vitals vitals vitals vitals";
     padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-md)) calc(env(-og-hud-inset-bottom) + var(--space-sm)) calc(env(-og-hud-inset-left) + var(--space-md)); }
-  #Left, #Middle, #Right { display: contents; }
-  #Compass { grid-area: compass; }
-  #Radar { grid-area: radar; align-items: flex-start; }
-  #Round { grid-area: round; margin-top: 0; align-items: flex-start; }
-  #Round > * { width: auto; }
-  #Radar { justify-content: flex-end; }
-  #Feed { grid-area: feed; align-items: flex-start; }
-  #Objective { grid-area: objective; padding-top: 0; }
-  #Squad { grid-area: squad; }
-  #Pickups { display: none; }
-  #Abilities { grid-area: abilities; margin-top: 0; }
-  #Effects { grid-area: effects; margin-top: 0; padding-left: 0; align-items: flex-end; }
-  #Ammo { grid-area: ammo; align-items: flex-end; }
-  #Vitals { grid-area: vitals; }
-  /* The aim's column: the prompt takes its width under the reticle; the
-     damage dealt stands above and right of it, clear of the
-     hit marks. */
-  #Aim { --column: calc(var(--size-xxl) * 3); --ring: calc(var(--size-xxl) * 1.1); }
-  #Dealt { left: calc(var(--size-xxl) * 0.4); bottom: calc(-4 * var(--font-step-px)); }
-  #Prompt { top: var(--space-xxl); left: calc(var(--column) / -2); width: var(--column); }
-}
+#Left:size(compact), #Middle:size(compact), #Right:size(compact) { display: contents; }
+#Compass:size(compact) { grid-area: compass; }
+#Radar:size(compact) { grid-area: radar; align-items: flex-start; }
+#Round:size(compact) { grid-area: round; margin-top: 0; align-items: flex-start; }
+#Round:size(compact) { width: auto; }
+#Radar:size(compact) { justify-content: flex-end; }
+#Feed:size(compact) { grid-area: feed; align-items: flex-start; }
+#Objective:size(compact) { grid-area: objective; padding-top: 0; }
+#Squad:size(compact) { grid-area: squad; }
+#Pickups:size(compact) { display: none; }
+#Abilities:size(compact) { grid-area: abilities; margin-top: 0; }
+#Effects:size(compact) { grid-area: effects; margin-top: 0; padding-left: 0; align-items: flex-end; }
+#Ammo:size(compact) { grid-area: ammo; align-items: flex-end; }
+#Vitals:size(compact) { grid-area: vitals; }
+#Aim:size(compact) { --column: calc(var(--size-xxl) * 3); --ring: calc(var(--size-xxl) * 1.1); }
+#Dealt:size(compact) { left: calc(var(--size-xxl) * 0.4); bottom: calc(-4 * var(--font-step-px)); }
+#Prompt:size(compact) { top: var(--space-xxl); left: calc(var(--column) / -2); width: var(--column); }
 </style>

@@ -31,8 +31,6 @@
 .row { display: flex; flex: 1; min-height: 0; }
 .cell { display: flex; flex: 1; min-width: 0; min-height: 0; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18); }
 .cell og-icon { width: 78%; height: 78%; }
-@media (width < 600px) {
-  #Page { gap: var(--space-xs); padding: var(--space-xs); }
-  #Hud, #Board, #Tray { width: stretch; }
-}
+#Page:size(compact) { gap: var(--space-xs); padding: var(--space-xs); }
+#Hud:size(compact), #Board:size(compact), #Tray:size(compact) { width: stretch; }
 </style>

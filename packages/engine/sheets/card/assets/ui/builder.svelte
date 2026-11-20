@@ -12,9 +12,7 @@
 #Page { display: flex; width: stretch; height: stretch; gap: var(--space-lg); padding: var(--space-xl); background: var(--backdrop); }
 #Library { flex: 1; min-width: 0; height: stretch; }
 #Deck { width: 30%; height: stretch; }
-@media (width < 600px) {
-  #Page { flex-direction: column; gap: var(--space-sm); padding: var(--space-sm); }
-  #Library { width: stretch; flex: none; height: 58%; }
-  #Deck { width: stretch; flex: 1; min-height: 0; }
-}
+#Page:size(compact) { flex-direction: column; gap: var(--space-sm); padding: var(--space-sm); }
+#Library:size(compact) { width: stretch; flex: none; height: 58%; }
+#Deck:size(compact) { width: stretch; flex: 1; min-height: 0; }
 </style>

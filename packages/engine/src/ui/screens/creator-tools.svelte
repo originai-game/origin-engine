@@ -1,6 +1,5 @@
 <meta name="screen" content="creator-tools" data-layer="menu" data-focus="" data-under="none" data-input="all" data-pause="false" data-capture="true" data-remember="true" data-back="exit">
 <meta name="strings" content="./creator-tools.en.ogt">
-<meta name="parts" content="creator-tools.frame creator-tools.label creator-tools.title">
 <meta name="prop:tool" content="string" data-doc="select, move, rotate or scale.">
 <meta name="prop:playing" content="bool" data-doc="The world is playing.">
 <meta name="prop:selected" content="string" data-doc="The selected object's name (empty: none).">
@@ -14,7 +13,7 @@
      capital titles. On a phone the panel tabs are one strip that scrolls
      sideways, each a finger's target; a focus move scrolls its tab into view. -->
 <div id="Editor">
-  <div id="Toolbar" part="creator-tools.frame" class="hud" role="toolbar">
+  <div id="Toolbar" part="frame" variant="hud" role="toolbar">
     <button id="Select" variant="ghost" class="compact" class:selection-off={tool != "select"} class:selection-on={tool == "select"}>{t("screen.creator-tools.select")}</button>
     <button id="Move" variant="ghost" class="compact" class:selection-off={tool != "move"} class:selection-on={tool == "move"}>{t("screen.creator-tools.move")}</button>
     <button id="Rotate" variant="ghost" class="compact" class:selection-off={tool != "rotate"} class:selection-on={tool == "rotate"}>{t("screen.creator-tools.rotate")}</button>
@@ -25,8 +24,8 @@
     <button id="Save" class="compact" disabled={!dirty} onclick={save}>{t("screen.common.save")}</button>
   </div>
   <div id="Body">
-    <section id="TreePanel" part="creator-tools.frame" class="hud panel" class:chosen={panel == 'hierarchy'}>
-      <h2 id="TreePanelTitle" part="creator-tools.label">{t("screen.creator-tools.hierarchy")}</h2>
+    <section id="TreePanel" part="frame" class="panel" variant="hud" class:chosen={panel == 'hierarchy'}>
+      <h2 class="label" id="TreePanelTitle" part="label">{t("screen.creator-tools.hierarchy")}</h2>
       <div id="TreePanelHierarchy" class="fill">{@render treePanelHierarchy?.()}</div>
     </section>
     <div id="View">{@render view?.()}</div>
@@ -35,34 +34,34 @@
       <button id="TabsInspector" class="compact tab" variant="ghost" class:on={panel == "inspector"} aria-current={panel == "inspector"}>{t("screen.creator-tools.inspector")}</button>
       <button id="TabsCatalogue" class="compact tab" variant="ghost" class:on={panel == "catalogue"} aria-current={panel == "catalogue"}>{t("screen.creator-tools.catalogue")}</button>
     </div>
-    <section id="InspectorPanel" part="creator-tools.frame" class="hud panel" class:chosen={panel == 'inspector'}>
-      <h2 id="Selected" part="creator-tools.title">{selected}</h2>
+    <section id="InspectorPanel" part="frame" class="panel" variant="hud" class:chosen={panel == 'inspector'}>
+      <h2 class="title" id="Selected" part="title">{selected}</h2>
       <div id="Scroll" class="fill">
         <div id="ScrollInspector">{@render scrollInspector?.()}</div>
       </div>
     </section>
-    <section id="CataloguePanel" part="creator-tools.frame" class="hud panel" class:chosen={panel == 'catalogue'}>
-      <h2 id="CataloguePanelTitle" part="creator-tools.label">{t("screen.creator-tools.catalogue")}</h2>
+    <section id="CataloguePanel" part="frame" class="panel" variant="hud" class:chosen={panel == 'catalogue'}>
+      <h2 class="label" id="CataloguePanelTitle" part="label">{t("screen.creator-tools.catalogue")}</h2>
       <div id="CataloguePanelCatalogue" class="fill">{@render cataloguePanelCatalogue?.()}</div>
     </section>
   </div>
 </div>
 
 <style>
-:root { display: flex; flex-direction: column; block-size: stretch; color: var(--hud-ink); }
+#Editor { display: flex; flex-direction: column; block-size: stretch; color: var(--hud-ink); }
 h2 { margin: 0; }
-.compact, .compact::part(base) { block-size: var(--control-sm); }
-.compact::part(base) { padding: 0 var(--space-md); }
-button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-md) - var(--button-border-width)); }
+.compact, .compact { block-size: var(--control-sm); }
+.compact { padding: 0 var(--space-md); }
+button.compact { padding-inline: calc(var(--space-md) - var(--button-border-width)); }
 #Toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); --plate-fill: var(--hud-plate-fill); --plate-shadow: var(--hud-plate-rim); --plate-radius: 0px; }
 #Undo { margin-inline-start: auto; }
 /* The tools: one segmented switch, the chosen tool washed in the accent
    with a lit foot; the others keep their words' ink and lose their rim. */
 #Select, #Move, #Rotate, #Scale { --button-radius: 0px; --button-ghost-ink: var(--hud-ink-dim); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); }
 #Select, #Move, #Rotate, #Scale { background: var(--data-well); box-shadow: var(--data-well-rim); }
-#Toolbar button.selection-off::part(base) { border-color: transparent; }
+#Toolbar button.selection-off { border-color: transparent; }
 #Toolbar button.selection-on { background: rgb(from var(--hud-accent) r g b / 0.2); box-shadow: inset 0 calc(-2 * var(--stroke-hairline)) 0 var(--hud-accent), var(--data-well-rim); --button-ghost-ink: var(--hud-accent); }
-#Toolbar button.selection-on::part(base) { border-color: transparent; }
+#Toolbar button.selection-on { border-color: transparent; }
 #Play.run-playing { opacity: 0.8; }
 /* The hierarchy, the view and the inspector side by side, the catalogue
    under the view; on a portrait phone the view over one chosen panel. */
@@ -84,28 +83,20 @@ button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-m
 #Tabs { grid-area: tabs; display: none; gap: var(--space-xs); padding: var(--space-sm); }
 #InspectorPanel { grid-area: inspector; }
 #CataloguePanel { grid-area: catalogue; }
-[part="creator-tools.label"] { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--data-head-ink); }
-[part="creator-tools.title"] { font-size: var(--hud-size-sm); font-weight: var(--data-title-weight); color: var(--hud-ink); line-clamp: 1; text-overflow: ellipsis; }
+.label { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--data-head-ink); }
+.title { font-size: var(--hud-size-sm); font-weight: var(--data-title-weight); color: var(--hud-ink); line-clamp: 1; text-overflow: ellipsis; }
 @media (600px <= width < 1024px) and (height >= 600px) {
   #Body { grid-template-columns: var(--measure-xs) 1fr var(--measure-sm); }
 }
-@media (width < 600px) and (orientation: portrait) {
-  button, button.compact, button::part(base), button.compact::part(base) { block-size: var(--control-md); }
-  button::part(base), button.compact::part(base) { padding: 0 var(--space-lg); }
-  button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-lg) - var(--button-border-width)); }
-  /* One column no wider than the screen (it shrinks below its content). */
-  /* The open panel takes the larger share of the height and the view the
-     rest, so the inspector's controls stand whole above the screen's foot. */
-  #Body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 2fr) auto minmax(var(--measure-sm), 3fr); grid-template-areas: "view" "tabs" "panel"; }
-  /* The tabs: one strip that scrolls sideways, never wrapping, each tab a
-     finger's target that keeps its whole name. A focus move scrolls its
-     tab into view with a neighbour's edge showing beside it. */
-  #Tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; min-inline-size: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); }
-  .tab, .tab.compact, .tab::part(base), .tab.compact::part(base) { block-size: var(--touch-target); }
-  .tab { flex: none; scroll-margin-inline: var(--space-xl); white-space: nowrap; --button-radius: 0px; --button-ghost-ink: var(--hud-ink-dim); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); }
-  .tab::part(base) { border-color: transparent; }
-  .tab.on { background: rgb(from var(--hud-accent) r g b / 0.2); box-shadow: inset 0 calc(-2 * var(--stroke-hairline)) 0 var(--hud-accent); --button-ghost-ink: var(--hud-accent); }
-  #TreePanel, #InspectorPanel, #CataloguePanel { grid-area: panel; display: none; }
-  #TreePanel.chosen, #InspectorPanel.chosen, #CataloguePanel.chosen { display: flex; }
-}
+button:size(narrow), button.compact:size(narrow), button:size(narrow), button.compact:size(narrow) { block-size: var(--control-md); }
+button:size(narrow), button.compact:size(narrow) { padding: 0 var(--space-lg); }
+button.compact:size(narrow) { padding-inline: calc(var(--space-lg) - var(--button-border-width)); }
+#Body:size(narrow) { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 2fr) auto minmax(var(--measure-sm), 3fr); grid-template-areas: "view" "tabs" "panel"; }
+#Tabs:size(narrow) { display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; min-inline-size: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); }
+.tab:size(narrow), .tab.compact:size(narrow), .tab:size(narrow), .tab.compact:size(narrow) { block-size: var(--touch-target); }
+.tab:size(narrow) { flex: none; scroll-margin-inline: var(--space-xl); white-space: nowrap; --button-radius: 0px; --button-ghost-ink: var(--hud-ink-dim); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); }
+.tab:size(narrow) { border-color: transparent; }
+.tab.on:size(narrow) { background: rgb(from var(--hud-accent) r g b / 0.2); box-shadow: inset 0 calc(-2 * var(--stroke-hairline)) 0 var(--hud-accent); --button-ghost-ink: var(--hud-accent); }
+#TreePanel:size(narrow), #InspectorPanel:size(narrow), #CataloguePanel:size(narrow) { grid-area: panel; display: none; }
+#TreePanel.chosen:size(narrow), #InspectorPanel.chosen:size(narrow), #CataloguePanel.chosen:size(narrow) { display: flex; }
 </style>

@@ -1,6 +1,5 @@
 <meta name="screen" content="tutorial" data-layer="popover" data-focus="" data-under="none" data-input="all" data-pause="false" data-capture="false" data-remember="true" data-back="skip">
 <meta name="strings" content="./tutorial.en.ogt">
-<meta name="parts" content="tutorial.frame tutorial.title tutorial.text tutorial.step tutorial.track tutorial.fill">
 <meta name="prop:title" content="string" data-doc="The step's title.">
 <meta name="prop:text" content="string" data-doc="What to do.">
 <meta name="prop:step" content="number" data-doc="The step, from 1.">
@@ -17,20 +16,20 @@
 <div id="Tutorial">
   <div id="Highlight">{@render highlight?.()}</div>
   {#if target}
-    <og-spotlight id="Spot" class="card" part="tutorial.frame" open target={target}>{@render card()}</og-spotlight>
+    <og-spotlight id="Spot" class="card" part="frame" open target={target}>{@render card()}</og-spotlight>
   {:else}
-    <section id="Card" class="card" part="tutorial.frame">{@render card()}</section>
+    <section id="Card" class="card" part="frame">{@render card()}</section>
   {/if}
 </div>
 
 {#snippet card()}
   <header id="Head">
-    <p id="Step" part="tutorial.step">{t("screen.tutorial.Step", { step: step, steps: steps })}</p>
-    <div id="Track" part="tutorial.track"><div id="Fill" part="tutorial.fill" style:--at={step / steps}></div></div>
+    <p class="step" id="Step" part="step">{t("screen.tutorial.Step", { step: step, steps: steps })}</p>
+    <div class="track" id="Track" part="track"><div class="fill" id="Fill" part="fill" style:--at={step / steps}></div></div>
   </header>
   {#if texture != 0}<art id="Art" kind="tutorial" src={texture}></art>{/if}
-  <h2 id="Title" part="tutorial.title">{title}</h2>
-  <p id="Text" part="tutorial.text">{text}</p>
+  <h2 class="title" id="Title" part="title">{title}</h2>
+  <p class="text" id="Text" part="text">{text}</p>
   <div id="Hint">{@render hint?.()}</div>
   <footer id="Foot">
     <button id="Skip" variant="quiet" onclick={skip}>{t("screen.tutorial.skip")}</button>
@@ -39,7 +38,7 @@
 {/snippet}
 
 <style>
-:root { position: relative; block-size: stretch; }
+#Tutorial { position: relative; block-size: stretch; }
 #Highlight { position: absolute; inset: 0; }
 h2, p { margin: 0; }
 /* The card: a dense smoked plate lit in the accent, at the spotlight's
@@ -50,23 +49,21 @@ h2, p { margin: 0; }
 #Card { display: flex; flex-direction: column; position: absolute; inset-inline-start: bind(x); top: bind(y); }
 /* The step count as a kicker, the lesson's progress a thin lit line beside it. */
 #Head { display: flex; align-items: center; column-gap: var(--space-md); }
-[part="tutorial.step"] { flex: none; font-size: var(--hud-label-size); font-weight: var(--font-weight-bold); letter-spacing: var(--hud-label-tracking); text-transform: uppercase; font-variant-numeric: tabular-nums; color: var(--front-accent); }
-[part="tutorial.step"]:lang(zh, ja, ko) { font-size: calc(14 * var(--font-step-px)); letter-spacing: 0; }
-[part="tutorial.track"] { flex: 1 1 auto; min-inline-size: var(--space-xl); block-size: calc(4 * var(--font-step-px)); background: var(--hud-pip-off); }
-[part="tutorial.fill"] { inline-size: calc(var(--at) * 100%); block-size: 100%; background: var(--hud-pip-on); box-shadow: var(--hud-pip-glow); }
-[part="tutorial.title"] { font-size: calc(24 * var(--font-step-px)); line-height: var(--font-leading-tight); font-weight: var(--font-weight-bold); font-stretch: var(--front-stretch); letter-spacing: var(--font-tracking-xs); color: var(--front-ink); }
-[part="tutorial.text"] { font-size: var(--dialog-body-size); line-height: var(--font-leading-normal); color: var(--front-ink-dim); }
+.step { flex: none; font-size: var(--hud-label-size); font-weight: var(--font-weight-bold); letter-spacing: var(--hud-label-tracking); text-transform: uppercase; font-variant-numeric: tabular-nums; color: var(--front-accent); }
+.step:lang(zh, ja, ko) { font-size: calc(14 * var(--font-step-px)); letter-spacing: 0; }
+.track { flex: 1 1 auto; min-inline-size: var(--space-xl); block-size: calc(4 * var(--font-step-px)); background: var(--hud-pip-off); }
+.fill { inline-size: calc(var(--at) * 100%); block-size: 100%; background: var(--hud-pip-on); box-shadow: var(--hud-pip-glow); }
+.title { font-size: calc(24 * var(--font-step-px)); line-height: var(--font-leading-tight); font-weight: var(--font-weight-bold); font-stretch: var(--front-stretch); letter-spacing: var(--font-tracking-xs); color: var(--front-ink); }
+.text { font-size: var(--dialog-body-size); line-height: var(--font-leading-normal); color: var(--front-ink-dim); }
 /* Skip at the line's start, Next at its end; they wrap where the card is
    too narrow for both. */
 #Foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-sm); margin-block-start: var(--space-xs); }
 #Skip { --button-ink: var(--front-ink-dim); --button-quiet-ink: var(--front-ink-dim); --button-quiet-hover-ink: var(--front-ink); margin-inline-start: calc(var(--space-md) * -1); }
-#Skip, #Skip::part(base), #Next, #Next::part(base) { min-block-size: var(--touch-target); }
+#Skip, #Skip, #Next, #Next { min-block-size: var(--touch-target); }
 #Next { margin-inline-start: auto; min-inline-size: calc(120 * var(--font-step-px)); }
 button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: var(--dialog-label-size); --button-tracking: var(--font-tracking-lg); --button-transform: uppercase; }
-button.plate::part(base) { border-width: 0; border-radius: var(--dialog-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+button.plate { border-width: 0; border-radius: var(--dialog-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* Chinese, Japanese and Korean have no capitals to track: the label is set a step larger instead. */
 button.plate:lang(zh, ja, ko) { --button-font-size: var(--dialog-label-cjk-size); --button-tracking: 0; }
-@media (width < 600px) and (orientation: portrait) {
-  #Card { inset-inline: var(--space-md); inline-size: auto; max-inline-size: none; }
-}
+#Card:size(narrow) { inset-inline: var(--space-md); inline-size: auto; max-inline-size: none; }
 </style>

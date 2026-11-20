@@ -1,5 +1,5 @@
 <meta name="component" content="CurrencyStates">
-<section>
+<section id="CurrencyStates">
   <h1>Currency</h1>
   <p>Balances, capacity, loading and unavailable states</p>
   <div class="examples">
@@ -12,9 +12,9 @@
   </div>
 </section>
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; overflow-y: auto; padding: var(--space-lg); gap: var(--space-sm); background: var(--panel); color: var(--ink); }
+#CurrencyStates { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; overflow-y: auto; padding: var(--space-lg); gap: var(--space-sm); background: var(--panel); color: var(--ink); }
 h1, p { margin: 0; }
 p { color: var(--ink-muted); }
 .examples { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); }
-@media (width < 600px) { .examples { grid-template-columns: 1fr; } }
+.examples:size(compact) { grid-template-columns: 1fr; }
 </style>

@@ -1,5 +1,4 @@
 <meta name="component" content="tree">
-<meta name="parts" content="tree.row">
 <meta name="prop:rows" content="list" data-doc="The visible rows in order, a keyed collection of { id, label, depth (0 at the top), open (true, false, or null for a leaf), selected }; the game flattens the tree as it opens and closes.">
 <meta name="prop:label" content="string" data-doc="The tree's accessible name.">
 <meta name="action:toggle" content="Open or close">
@@ -12,7 +11,7 @@
 <div id="Frame">
 <list id="Tree" role="tree" aria-label={label}>
   {#each rows as r (r.id)}
-    <div class="row" class:leaf={r.open == null} part="tree.row" role="treeitem" aria-level={r.depth + 1} aria-selected={r.selected} aria-expanded={r.open} style:--depth={r.depth}>
+    <div class="row" class:leaf={r.open == null} part="row" role="treeitem" aria-selected={r.selected} aria-expanded={r.open} style:--depth={r.depth} class:level-1={(r.depth + 1) == '1'} state:selected={r.selected}><div class="row-before"></div>
       <button id="Twisty" class="twisty" variant="quiet" hidden={r.open == null} onclick={toggle} aria-label={r.label}><og-icon icon={r.open ? "chevronDown" : "chevronRight"}/></button>
       <button id="Item" class="item" variant="quiet" onclick={choose}>{r.label}</button>
     </div>
@@ -30,19 +29,19 @@
    chosen row is washed in the accent from its leading edge. */
 .row { position: relative; display: flex; width: stretch; box-sizing: border-box; align-items: start; gap: var(--space-xxs); padding-inline: var(--space-sm) var(--space-md); padding-inline-start: calc(var(--space-sm) + min(var(--depth), 4) * var(--indent) + var(--twisty-room)); --indent: var(--type-body-size); --twisty-room: 0px; }
 /* An indent guide: a faint line down the middle of its level's step. */
-.row::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: calc(var(--space-sm) + (min(var(--depth), 4) - 0.5) * var(--indent)); inline-size: var(--stroke-hairline); background: var(--data-guide); }
-.row[aria-level="1"]::before { display: none; }
+.row .row-before { position: absolute; inset-block: 0; inset-inline-start: calc(var(--space-sm) + (min(var(--depth), 4) - 0.5) * var(--indent)); inline-size: var(--stroke-hairline); background: var(--data-guide); }
+.row.level-1 .row-before { display: none; }
 .twisty { flex: none; width: var(--control-sm); --button-quiet-ink: var(--hud-ink-dim); }
 /* The twisty is its chevron alone: a pack's button padding would leave the
    chevron no width. */
-.twisty::part(base) { padding-inline: 0; }
+.twisty { padding-inline: 0; }
 /* A leaf has no twisty and keeps its room, so its name lines up with its
    siblings' that open. */
 .leaf { --twisty-room: calc(var(--control-sm) + var(--space-xxs)); }
 /* A name longer than its row wraps inside it, at any word and inside a
    word with no break (an identifier): it is never cut by the screen. */
 .item { flex: 1; min-width: 0; justify-content: start; text-align: start; white-space: normal; overflow-wrap: anywhere; --button-quiet-ink: var(--hud-ink); }
-.row[aria-selected="true"] .item { --button-quiet-ink: var(--hud-accent); font-weight: var(--data-name-weight); }
+.row:state(selected) .item { --button-quiet-ink: var(--hud-accent); font-weight: var(--data-name-weight); }
 /* A wrapped name keeps clear of its row's frame above and below. */
-.item::part(base) { padding-block: var(--button-wrap-pad, var(--space-sm)); }
+.item { padding-block: var(--button-wrap-pad, var(--space-sm)); }
 </style>

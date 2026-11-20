@@ -17,11 +17,9 @@
 
 <style>
 #Page { display: grid; width: stretch; height: stretch; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-md); padding: var(--space-lg); }
-#Page > div { height: stretch; min-height: 0; }
-@media (width < 600px) {
-  #Page { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-sm); overflow: hidden; }
-  #Page > div { width: stretch; height: auto; flex: 1; min-height: 0; }
-  #ShopError { flex: none; }
-  #AchEmpty, #QuestsEmpty, #QuestsLoading, #ChatMuted, #FriendsEmpty { display: none; }
-}
+#Page div { height: stretch; min-height: 0; }
+#Page:size(compact) { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-sm); overflow: hidden; }
+#Page div:size(compact) { width: stretch; height: auto; flex: 1; min-height: 0; }
+#ShopError:size(compact) { flex: none; }
+#AchEmpty:size(compact), #QuestsEmpty:size(compact), #QuestsLoading:size(compact), #ChatMuted:size(compact), #FriendsEmpty:size(compact) { display: none; }
 </style>

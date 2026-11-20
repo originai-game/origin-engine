@@ -25,7 +25,7 @@
 
   <ul id="Party">
     {#each $companions as m (m.id)}
-    <li class="member" data-fallen={m.fallen}>
+    <li class="member" class:fallen={m.fallen}>
       <HudPortrait portrait={m.portrait} dimmed={m.fallen} />
       <div class="member-bars">
         <span class="member-name">{m.name}</span>
@@ -51,7 +51,7 @@
       </div>
     </div>
     <ul id="Strip">
-      {#each $slots as s (s.id)}<li class="slot" data-kind={s.kind}><HudSlot name={s.name} icon={s.icon} glyph={s.glyph} key={s.key} kind={s.kind} cooldown={s.cooldown} time={s.time} count={s.count} ready={s.ready} unaffordable={s.unaffordable} reason={s.reason} charges={s.charges} chargesMax={s.chargesMax} charge={s.charge} /></li>{/each}
+      {#each $slots as s (s.id)}<li class="slot" class:kind-item={(s.kind) == 'item'}><HudSlot name={s.name} icon={s.icon} glyph={s.glyph} key={s.key} kind={s.kind} cooldown={s.cooldown} time={s.time} count={s.count} ready={s.ready} unaffordable={s.unaffordable} reason={s.reason} charges={s.charges} chargesMax={s.chargesMax} charge={s.charge} /></li>{/each}
     </ul>
   </div>
 </div>
@@ -74,7 +74,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 /* The party, a column of small frames on the left. */
 #Party { position: absolute; top: calc(30% - 40 * var(--font-step-px)); left: var(--space-xl); display: flex; flex-direction: column; gap: var(--space-sm); inline-size: calc(200 * var(--font-step-px)); max-inline-size: 40%; --hud-portrait-size: calc(36 * var(--font-step-px)); }
 .member { display: flex; align-items: center; gap: var(--space-xs); }
-.member[data-fallen=true] { opacity: 0.6; }
+.member.fallen { opacity: 0.6; }
 .member-bars { display: flex; flex-direction: column; gap: calc(3 * var(--font-step-px)); flex: 1 1 0; min-inline-size: 0; --hud-bar-size: calc(7 * var(--font-step-px)); }
 .member-mana { --hud-bar-size: calc(4 * var(--font-step-px)); }
 
@@ -94,15 +94,13 @@ ul { margin: 0; padding: 0; list-style: none; }
 #Strip { display: flex; align-items: flex-end; gap: calc(6 * var(--font-step-px)); --hud-slot-size: calc(var(--size-xl) * 0.75); }
 
 /* On a phone the dock stacks, the party and the side drop to the essentials. */
-@media (width < 600px) {
-  #Target { inline-size: calc(100% - 2 * var(--space-md)); top: var(--space-sm); }
-  #Party { left: var(--space-md); top: calc(110 * var(--font-step-px)); inline-size: calc(150 * var(--font-step-px)); }
-  #Side { right: var(--space-md); bottom: calc(220 * var(--font-step-px)); max-inline-size: 60%; }
-  #Hints { display: none; }
-  #Dock { flex-direction: column; align-items: stretch; gap: var(--space-sm); inline-size: calc(100% - 2 * var(--space-md)); }
-  #Player { inline-size: auto; }
-  #PlayerPortrait { --hud-portrait-size: calc(48 * var(--font-step-px)); }
-  #Strip { justify-content: center; --hud-slot-size: calc(var(--size-xl) * 0.55); }
-  .slot[data-kind=item] { display: none; }
-}
+#Target:size(compact) { inline-size: calc(100% - 2 * var(--space-md)); top: var(--space-sm); }
+#Party:size(compact) { left: var(--space-md); top: calc(110 * var(--font-step-px)); inline-size: calc(150 * var(--font-step-px)); }
+#Side:size(compact) { right: var(--space-md); bottom: calc(220 * var(--font-step-px)); max-inline-size: 60%; }
+#Hints:size(compact) { display: none; }
+#Dock:size(compact) { flex-direction: column; align-items: stretch; gap: var(--space-sm); inline-size: calc(100% - 2 * var(--space-md)); }
+#Player:size(compact) { inline-size: auto; }
+#PlayerPortrait:size(compact) { --hud-portrait-size: calc(48 * var(--font-step-px)); }
+#Strip:size(compact) { justify-content: center; --hud-slot-size: calc(var(--size-xl) * 0.55); }
+.slot.kind-item:size(compact) { display: none; }
 </style>

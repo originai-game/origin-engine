@@ -48,10 +48,10 @@
   </div>
 </div>
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; padding: var(--space-md); gap: var(--space-md); background: var(--backdrop); }
+#Page { display: flex; flex-direction: column; inline-size: stretch; padding: var(--space-md); gap: var(--space-md); background: var(--backdrop); }
 h1 { margin: 0; font: var(--text-lg); }
 h2 { margin: 0; font: var(--text-body); }
 .columns { display: grid; grid-template-columns: repeat(2, 1fr); align-items: start; gap: var(--space-md); }
 section { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md); }
-@media (width < 600px) { .columns { grid-template-columns: 1fr; } }
+.columns:size(compact) { grid-template-columns: 1fr; }
 </style>

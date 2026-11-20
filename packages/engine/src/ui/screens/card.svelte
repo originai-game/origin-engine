@@ -1,5 +1,4 @@
 <meta name="component" content="card">
-<meta name="parts" content="card.frame card.image card.title card.body">
 <meta name="prop:title" content="string" data-doc="Its heading.">
 <meta name="prop:body" content="string" data-doc="A line or two under the heading; empty: none.">
 <meta name="prop:image" content="string" data-doc="A picture the game registered (UiDesc.images) across its top; empty: none.">
@@ -7,18 +6,18 @@
 <meta name="action:open" content="Open">
 <meta name="fixture:default" content="{&quot;title&quot;:&quot;Ember Blade&quot;,&quot;body&quot;:&quot;Burns on hit. Two-handed.&quot;,&quot;image&quot;:&quot;&quot;,&quot;badge&quot;:&quot;New&quot;}">
 
-<article id="Card" part="card.frame" class="bare">
+<article id="Card" part="frame" variant="bare">
   <button id="Hit" class="hit" onclick={open} aria-label={title}>
     <div id="Face">
-    <img id="Image" part="card.image" src={image} alt="" hidden={image == ""}>
+    <img id="Image" part="image" src={image} alt="" hidden={image == ""}>
     <div id="Head">
-      <h3 id="Title" part="card.title">{title}</h3>
+      <h3 id="Title" part="title">{title}</h3>
       <badge id="Badge" hidden={badge == ""}>{badge}</badge>
     </div>
-    <p id="Body" part="card.body" hidden={body == ""}>{body}</p>
+    <p id="Body" part="body" hidden={body == ""}>{body}</p>
     </div>
   </button>
-  <footer id="Actions" data-layout="cluster">{@render actions?.()}</footer>
+  <footer id="Actions" layout="wrap">{@render actions?.()}</footer>
 </article>
 
 <style>

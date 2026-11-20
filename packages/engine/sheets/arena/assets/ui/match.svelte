@@ -29,9 +29,7 @@
 #Hud { display: flex; width: stretch; }
 #Score { flex: 1 1 0; min-width: 0; }
 #Versus { flex: 1 1 0; min-width: 0; }
-@media (width < 600px) {
-  #Column { gap: var(--space-md); padding: var(--space-xs); padding-top: env(safe-area-inset-top); }
-  #Boards { flex-direction: column; align-items: stretch; gap: var(--space-md); }
-  #Score, #Versus { flex: none; }
-}
+#Column:size(compact) { gap: var(--space-md); padding: var(--space-xs); padding-top: env(safe-area-inset-top); }
+#Boards:size(compact) { flex-direction: column; align-items: stretch; gap: var(--space-md); }
+#Score:size(compact), #Versus:size(compact) { flex: none; }
 </style>

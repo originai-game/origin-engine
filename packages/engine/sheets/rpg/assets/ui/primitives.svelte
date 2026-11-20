@@ -1,6 +1,6 @@
 <meta name="component" content="PrimitivesPage">
 
-<section class="page">
+<section id="PrimitivesPage" class="page">
   <h1>Items and players</h1>
   <p class="intro">Selectable items keep their count, shortcut and cooldown readable. Locked, loading and unavailable slots do not activate.</p>
   <h2>Item slots</h2>
@@ -76,5 +76,6 @@ h1, h2, .intro { margin: 0; }
 .target { display: flex; align-items: center; gap: var(--space-sm); inline-size: calc(300 * var(--font-step-px)); max-inline-size: 100%; --hud-portrait-size: calc(52 * var(--font-step-px)); }
 .target-bars { display: flex; flex-direction: column; gap: var(--space-xxs); flex: 1 1 0; min-inline-size: 0; }
 .target-name { align-self: flex-end; font-size: var(--hud-size-name); font-weight: var(--hud-label-weight); text-shadow: var(--hud-shadow); }
-.quick { display: flex; gap: var(--space-md); --hud-slot-size: calc(var(--size-xl) * 0.6); }@media (width < 600px) { .page { gap: var(--space-sm); } .gallery { gap: var(--space-md); --avatar-size: var(--size-xl); } }
+.quick { display: flex; gap: var(--space-md); --hud-slot-size: calc(var(--size-xl) * 0.6); }.page:size(compact) { gap: var(--space-sm); }
+.gallery:size(compact) { gap: var(--space-md); --avatar-size: var(--size-xl); }
 </style>
