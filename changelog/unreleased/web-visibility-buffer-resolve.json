@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "RenderCapabilities.visibilityBuffer",
+      "summary": "On the web a clustered og.Model seen small (its clusters under about 24 pixels, as a distant building is, and more often below render scale 1, automatic quality's included) no longer loses whole patches of its surface. The visibility buffer's resolve asked the device about its pipelines again every frame, and the browser answers on a later frame, so the resolve was never drawn and the clusters handed to it were left out of the frame. Native hosts were not affected."
+    }
+  ]
+}

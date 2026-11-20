@@ -335,6 +335,19 @@ impl VisBuffer {
         if self.refused.is_some() {
             return;
         }
+        // Only pipelines not made yet are asked for, under scopes of their
+        // own: scopes pushed again each frame over made pipelines would
+        // leave the web (whose device answers on a later frame) a pending
+        // answer at every draw, and the soft clusters the cull handed the
+        // visibility buffer would never be resolved.
+        let effects: Vec<bool> = effects
+            .into_iter()
+            .filter(|e| !self.lit.contains_key(e))
+            .collect();
+        let prepass = prepass && self.prepass.is_none();
+        if effects.is_empty() && !prepass {
+            return;
+        }
         // Inner first: a validation error, else the driver's own (internal).
         let internal = device.push_error_scope(wgpu::ErrorFilter::Internal);
         let validation = device.push_error_scope(wgpu::ErrorFilter::Validation);
@@ -370,7 +383,7 @@ impl VisBuffer {
                 )
             });
         }
-        if prepass && self.prepass.is_none() {
+        if prepass {
             self.prepass = Some(crate::prepass_pipeline(
                 device,
                 (&layout, &layout),
