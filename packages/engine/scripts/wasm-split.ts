@@ -90,6 +90,83 @@ export function moduleOf(name: string, rules: Array<[string, RegExp[]]>): string
   return null;
 }
 
+interface Table {
+  modules: Record<string, string[]>;
+  roots: string[];
+  entries: string[];
+}
+
+/** A name without its crates' disambiguators (`og_runtime[1a2b3c…]` → `og_runtime`), as wasm-modules.json's patterns read it. */
+const plain = (name: string) => name.replace(/\[[0-9a-f]{6,}\]/g, "");
+
+/** Binaryen's call graph of `wasmFile`: each function's direct callees. */
+export function callGraph(wasmFile: string): Map<string, string[]> {
+  const calls = new Map<string, string[]>();
+  for (const line of run("wasm-opt", [...FEATURES, "--print-call-graph", wasmFile, "-o", "/dev/null"]).split("\n")) {
+    const m = /^\s*"(.+)" -> "(.+)";/.exec(line);
+    if (m) (calls.get(m[1]!) ?? calls.set(m[1]!, []).get(m[1]!)!).push(m[2]!);
+  }
+  return calls;
+}
+
+/** Whether a name reaches its module only through a std generic's type argument (`<alloc::…<og_story::…>>::new`): a body the linker may have folded with other instances. */
+function generic(name: string): boolean {
+  const first = CRATE.exec(name);
+  CRATE.lastIndex = 0;
+  return first !== null && STD.has(first[1]!);
+}
+
+/**
+ * Moves out of `assigned` (function → module) each generic function
+ * ([`generic`]) that a function outside its module calls: the linker folds
+ * identical instances under one name, so spade's `RawVec::grow` can be the
+ * body story's or the engine's code calls too, and leaving it in nav would
+ * load nav there. Repeated until nothing moves (a moved function's own
+ * generic callees then have a caller in the primary).
+ */
+export function keepShared(assigned: Map<string, string>, calls: Map<string, string[]>): void {
+  const callers = new Map<string, string[]>();
+  for (const [f, gs] of calls) for (const g of gs) (callers.get(g) ?? callers.set(g, []).get(g)!).push(f);
+  for (let moved = true; moved; ) {
+    moved = false;
+    for (const [f, m] of assigned) {
+      if (!generic(f)) continue;
+      if ((callers.get(f) ?? []).some((c) => assigned.get(c) !== m)) {
+        assigned.delete(f);
+        moved = true;
+      }
+    }
+  }
+}
+
+/**
+ * Every function a frame, a canvas attach or a geometry call reaches by
+ * direct calls (wasm-modules.json `roots`), from Binaryen's call graph,
+ * stopping at its `entries`: the calls into a module the engine makes only
+ * once the game uses it (each guarded in og-runtime). These stay in the
+ * primary whatever their names, so no game's frame calls into a module it
+ * does not use (a body the linker folded under a module type's name
+ * included). An entry no function is named any more is an error: its
+ * guard's boundary moved.
+ */
+export function framePath(wasmFile: string, names: string[], table: Table, calls: Map<string, string[]>): Set<string> {
+  const roots = table.roots.map((p) => new RegExp(p));
+  const entries = table.entries.map((p) => new RegExp(p));
+  const missing = table.entries.filter((_, i) => !names.some((n) => entries[i]!.test(plain(n))));
+  if (missing.length) throw new Error(`wasm-modules.json entries name no function of ${wasmFile}: ${missing.join(", ")} (inlined or renamed: name the guarded call that replaced it)`);
+  const seen = new Set(names.filter((n) => roots.some((r) => r.test(plain(n)))));
+  if (seen.size === 0) throw new Error(`wasm-modules.json roots name no function of ${wasmFile}`);
+  const queue = [...seen];
+  while (queue.length) {
+    for (const g of calls.get(queue.pop()!) ?? []) {
+      if (seen.has(g) || entries.some((e) => e.test(plain(g)))) continue;
+      seen.add(g);
+      queue.push(g);
+    }
+  }
+  return seen;
+}
+
 /** Where a module's split modules sit beside it. */
 export const moduleDir = (lanes: boolean) => (lanes ? "modules-lanes" : "modules");
 
@@ -99,7 +176,7 @@ export function splitEngine(bound: string, out: string, profile: "2d" | "3d" = "
   const dir = moduleDir(lanes);
   const wasmFile = join(bound, `${stem}_bg.wasm`);
   const named = new Uint8Array(readFileSync(wasmFile));
-  const table = JSON.parse(readFileSync(join(here, "wasm-modules.json"), "utf8")) as { modules: Record<string, string[]> };
+  const table = JSON.parse(readFileSync(join(here, "wasm-modules.json"), "utf8")) as Table;
   const rules = Object.entries(table.modules).map(([m, ps]) => [m, ps.map((p) => new RegExp(p))] as [string, RegExp[]]);
   const work = mkdtempSync(join(tmpdir(), "og-split-"));
   try {
@@ -118,12 +195,17 @@ export function splitEngine(bound: string, out: string, profile: "2d" | "3d" = "
       else if (line.startsWith("Splitting out")) keeping = false;
       else if (keeping && line.startsWith("+ ")) keep.add(line.slice(2));
     }
-    const groups = new Map<string, string[]>();
-    for (const name of functionNames(named)) {
-      if (keep.has(name)) continue;
-      const m = moduleOf(name, rules);
-      if (m) (groups.get(m) ?? groups.set(m, []).get(m)!).push(name);
+    const names = functionNames(named);
+    const calls = callGraph(wasmFile);
+    for (const name of framePath(wasmFile, names, table, calls)) keep.add(name);
+    const assigned = new Map<string, string>();
+    for (const name of names) {
+      const m = keep.has(name) ? null : moduleOf(name, rules);
+      if (m) assigned.set(name, m);
     }
+    keepShared(assigned, calls);
+    const groups = new Map<string, string[]>();
+    for (const [name, m] of assigned) (groups.get(m) ?? groups.set(m, []).get(m)!).push(name);
     const manifest = join(work, "manifest.txt");
     writeFileSync(manifest, [...groups].map(([m, fns]) => `${m}\n${fns.join("\n")}\n`).join("\n"));
     const split = join(work, "split");

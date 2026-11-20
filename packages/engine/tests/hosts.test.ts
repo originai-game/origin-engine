@@ -101,6 +101,18 @@ for (const profile of ["3d", "2d"]) {
     for (const m of ["nav", "motion", "destruction", "video"]) expect(late.modules).not.toContain(m);
     expect(early.modules).toEqual(["destruction", "motion", "nav", "physics", "story", "video"]);
   }, 180_000);
+
+  // A game that uses none of them loads none: its meshes, ticks, frames and
+  // snapshot never call into a module (tests/support/module-free.ts throws
+  // on any load, naming the module).
+  test.skipIf(STALE_WASM || NO_SPLIT)(`a ${profile} game using no optional module loads none of the split publish module's modules`, () => {
+    const r = Bun.spawnSync(["bun", "tests/support/module-free.ts", "--profile", profile], { cwd: pkg });
+    const out = new TextDecoder().decode(r.stdout);
+    if (r.exitCode !== 0) throw new Error(`${new TextDecoder().decode(r.stderr)}${out}`);
+    const run = JSON.parse(out.trim().split("\n").pop()!) as { tick: number; modules: string[] };
+    expect(run.modules).toEqual([]);
+    expect(run.tick).toBeGreaterThan(30);
+  }, 120_000);
 }
 
 for (const profile of ["3d", "2d"]) {

@@ -327,9 +327,16 @@ A single-threaded publish module is split (Binaryen's `wasm-split`, pinned by
 the primary, which boots, and one module per optional capability:
 `physics`, `story` (with og.film), `nav` (with og.ai), `motion`,
 `destruction` and `video` (`scripts/wasm-modules.json` assigns the
-functions). Every function a game using none of them runs, profiled by
-`scripts/wasm-profile.ts`, stays in the primary, so such a game loads
-none. The lanes modules and the remote-frame twins ship whole: a lanes
+functions). What a game using none of them runs stays in the primary,
+so such a game loads none: every function its ticks, snapshots and
+restores run (profiled by `scripts/wasm-profile.ts`), and every function
+a frame, a canvas attach or a geometry call reaches by direct calls
+(`roots`, from Binaryen's call graph), whatever its name, up to the
+`entries`: the engine's calls into a module that run only once the game
+uses it (og.motion once og.MotionAgent is registered, a dynamic geometry's
+update, the physics debug view, a playing video's stream). A generated
+geometry is not handed to physics until a collider names it. The split
+fails when an entry names no function any more. The lanes modules and the remote-frame twins ship whole: a lanes
 pool Worker instantiates the module again, so each of its modules would
 have to be loaded into every Worker's instance too (open work).
 

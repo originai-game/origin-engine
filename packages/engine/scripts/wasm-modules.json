@@ -1,11 +1,50 @@
 {
-  "//": "The engine wasm's split modules (docs/web-export.md §Modules): each module takes the functions whose demangled path, from its first non-std crate on, matches one of its patterns; the first module that matches wins. scripts/wasm-split.ts keeps in the primary every function a game using none of them runs (wasm-profile.ts), so such a game loads none.",
+  "//": "The engine wasm's split modules (docs/web-export.md \u00a7Modules): each module takes the functions whose demangled path, from its first non-std crate on, matches one of its patterns; the first module that matches wins. scripts/wasm-split.ts keeps in the primary every function a game using none of them runs (wasm-profile.ts) and every function `roots` reach up to `entries`, so such a game loads none.",
   "modules": {
-    "video": ["^og_video::", "^og_runtime::bind::video"],
-    "story": ["^og_story::", "^og_runtime::bind::(story|film)"],
-    "nav": ["^og_ai::", "^spade::", "^rstar::", "^og_runtime::bind::(nav|ai|agents|sight)"],
-    "motion": ["^og_anim::motion", "^og_runtime::bind::motion"],
-    "destruction": ["^og_physics::destruction", "^og_runtime::bind::destruction"],
-    "physics": ["^rapier3d::", "^parry3d::", "^rapier2d::", "^parry2d::", "^og_physics::", "^nalgebra::", "^simba::", "^robust::"]
-  }
+    "video": [
+      "^og_video::",
+      "^og_runtime::bind::video"
+    ],
+    "story": [
+      "^og_story::",
+      "^og_runtime::bind::(story|film)"
+    ],
+    "nav": [
+      "^og_ai::",
+      "^spade::",
+      "^rstar::",
+      "^og_runtime::bind::(nav|ai|agents|sight)"
+    ],
+    "motion": [
+      "^og_anim::motion",
+      "^og_runtime::bind::motion"
+    ],
+    "destruction": [
+      "^og_physics::destruction",
+      "^og_runtime::bind::destruction"
+    ],
+    "physics": [
+      "^rapier3d::",
+      "^parry3d::",
+      "^rapier2d::",
+      "^parry2d::",
+      "^og_physics::",
+      "^nalgebra::",
+      "^simba::",
+      "^robust::"
+    ]
+  },
+  "//roots": "The engine's calls every game makes whatever it uses (scripts/wasm-split.ts framePath): a frame, a canvas attach, a geometry. Every function they reach by direct calls stays in the primary, stopping at `entries`.",
+  "roots": [
+    "^og_engine_frame$",
+    "og_web_attach_canvas",
+    "^og_render_[a-z0-9_]+_geometry$"
+  ],
+  "//entries": "The calls those make into a module only once the game uses it, each guarded in og-runtime (names without crate hashes): og.motion once og.MotionAgent is registered (engine/tick.rs render); set_mesh for a dynamic geometry's update, a streamed model's proxy and a destructible's hulls (generated geometry goes to physics' mesh source, bind/modules.rs note_mesh); the physics debug view; a video's stream once a video plays.",
+  "entries": [
+    "^og_runtime::bind::motion::present::tick::catch_up$",
+    "^og_runtime::bind::modules::set_mesh$",
+    "^(<og_physics::PhysicsSystem>::debug_lines|og_physics::dim[23]::debug_lines::lines)$",
+    "^<og_runtime::bind::video::StreamSource>::poll$"
+  ]
 }
