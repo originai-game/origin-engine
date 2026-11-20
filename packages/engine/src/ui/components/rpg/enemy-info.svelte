@@ -34,9 +34,11 @@
 [part~="RpgEnemyInfo.name"], .enemy-level { margin: 0; text-align: center; }
 .picture { width: min(46%, var(--size-5xl)); aspect-ratio: 1; overflow: hidden; }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
-.bar { position: relative; align-self: stretch; height: calc(var(--space-md) * 1.4); min-block-size: var(--size-sm); justify-content: center; overflow: hidden; --fill-color: var(--health); }
+/* The one meter: it leans forward in its well, its figure upright
+   over it. */
+.bar { position: relative; align-self: stretch; height: calc(var(--space-md) * 1.4); min-block-size: var(--size-sm); justify-content: center; overflow: hidden; margin-inline: var(--space-xs); transform: skewX(var(--bar-skew)); border-radius: 0; background: var(--bar-well); box-shadow: var(--bar-rim); --fill-color: var(--bar-danger); }
 .bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); }
-.bar-figure { position: relative; padding-inline: var(--space-xs); }
+.bar-figure { position: relative; padding-inline: var(--space-xs); transform: skewX(calc(-1 * var(--bar-skew))); background: none; box-shadow: none; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .effects { width: stretch; margin: 0; padding: 0; list-style: none; }
 [part="RpgEnemyInfo.row"] { inline-size: 100%; }
 .effect-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }

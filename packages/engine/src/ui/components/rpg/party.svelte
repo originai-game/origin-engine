@@ -42,10 +42,12 @@
 .seal { position: absolute; inset-inline-start: var(--space-xs); top: var(--space-xs); width: var(--size-md); height: max-content; min-height: var(--size-md); }
 .seal og-icon { width: var(--size-xs); height: var(--size-xs); }
 .member-name { padding: var(--space-xxs) var(--space-xs); text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.bar { position: relative; height: calc(var(--space-md) * 1.25); min-block-size: var(--size-sm); justify-content: center; overflow: hidden; --fill-color: var(--health); }
+/* The one meter: it leans forward in its well, its figure upright
+   over it. */
+.bar { position: relative; height: calc(var(--space-md) * 1.25); min-block-size: var(--size-sm); justify-content: center; overflow: hidden; margin-inline: var(--space-xs); transform: skewX(var(--bar-skew)); border-radius: 0; background: var(--bar-well); box-shadow: var(--bar-rim); --fill-color: var(--health); }
 .bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); }
 .mana { --fill-color: var(--mana); }
-.bar-figure { position: relative; white-space: nowrap; padding-inline: var(--space-xs); }
+.bar-figure { position: relative; white-space: nowrap; padding-inline: var(--space-xs); transform: skewX(calc(-1 * var(--bar-skew))); background: none; box-shadow: none; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .empty-text { margin: 0; }
 @media (height < 500px) { .picture { aspect-ratio: 2.4; } }
 @media (600px <= width) and (500px <= height < 800px) { .picture { aspect-ratio: 2; } }

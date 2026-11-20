@@ -34,9 +34,10 @@
 .end { width: var(--size-sm); height: var(--size-md); flex: none; }
 .turns { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; margin: 0; padding: var(--space-xs) 0; list-style: none; }
 [part="RpgTurnOrder.cell"] { align-items: center; padding: var(--space-xs); }
-.ring { width: stretch; max-width: var(--size-xxl); aspect-ratio: 1; overflow: hidden; --picture-radius: var(--radius-capsule); }
+.ring { width: stretch; max-width: var(--size-xxl); aspect-ratio: 1; overflow: hidden; padding: calc(2 * var(--font-step-px)); border-radius: 0; clip-path: var(--hud-octagon); background: var(--hud-edge); filter: var(--hud-lift); }
+.ring .portrait { clip-path: var(--hud-octagon); background: var(--hud-plate-fill); }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .round-rule { width: stretch; }
-.round-title { flex: none; padding: var(--space-xs) var(--space-xl); white-space: nowrap; --badge-text: var(--text-lg); }
+.round-title { flex: none; padding: var(--space-xs) var(--space-xl); white-space: nowrap; --badge-text: var(--text-lg); border-radius: 0; background: var(--hud-tag-fill); box-shadow: var(--hud-plate-lit-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
 @media (height < 500px) { .ring { max-width: var(--size-xl); } .turns { padding: 0; } .round-title { padding: 0 var(--space-lg); } }
 </style>

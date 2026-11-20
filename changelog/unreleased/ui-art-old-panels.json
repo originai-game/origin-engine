@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "RpgParty, RpgEnemyInfo and RpgTurnOrder wear the HUD's grammar instead of the old soft card: the party's and the enemy's health and mana bars lean in the bar's well (their figures upright, in the HUD's ink with its stroke), the enemy's health is the bar's danger red, the turn order's portraits are the leader's lit octagons, and the round sits on a cut HUD tag instead of a capsule. Each follows the style's bar and HUD tokens."
+  ]
+}
