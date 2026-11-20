@@ -1,0 +1,27 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "KillfeedRow",
+      "summary": "One elimination of a killfeed as a block a game lays out itself (hud/killfeed-row): the killer, the weapon's silhouette or its name, the victim and a skull for a headshot on a smoked plate, the player's own row tinted and lit in the HUD's accent. Killfeed is built from it."
+    },
+    {
+      "member": "--hud-feed-rim, --hud-feed-cut, --hud-feed-self-fill, --hud-feed-self-fill-start, --hud-ally-plate, --hud-ally-plate-rim, --hud-foe-plate, --hud-foe-plate-rim",
+      "summary": "HUD roles for a feed row's rim and cut corner, the player's own feed row, and a side's score plate in its colour; a style pack sets them like the other --hud-* roles."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "ShooterVitals, ShooterSquad, ShooterRound, ShooterEffects, ShooterAbilities, Killfeed",
+      "summary": "The shooter HUD reaches the look of shipped shooters and is built from the HUD's blocks: the vitals and each squadmate sit on a smoked plate with an HudPortrait and HudBar shield cells over a health bar that is lit along its length; the round's time stands on a lit plate between the two sides' scores on plates in their colours, and pulses when urgent; the effects are HudEffect and the ability bar HudSlot, its ultimate ring in the HUD's accent; the killfeed's rows are plates with redrawn weapon silhouettes and a skull for a headshot. The cartoon pack's plates and bars are candy in an ink outline, with lime health."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "ShooterVitals, ShooterSquad, ShooterEffects, ShooterAbilities, Killfeed parts",
+      "change": "The shooter HUD's plates are built from blocks, so their inner parts are the blocks' parts: ShooterVitals.face and ShooterSquad.face are HudPortrait.face, ShooterVitals.ghost and ShooterSquad.ghost are HudBar.ghost; ShooterEffects.tile, .art, .timer and .time are HudEffect.tile, .art, .timer and .time; ShooterAbilities.slot, .art, .cooldown, .time, .count, .key, .ring and .charge are HudSlot.slot, .art, .cooldown, .time, .count, .key, .ring and .time; Killfeed.name, .weapon, .glyph, .headshot and .edge are KillfeedRow's. ShooterVitals gains ShooterVitals.plate. A headshot is a skull, not the HS tag, and the strings shooter.killfeed.hs, shooter.effects.effect, shooter.abilities.charge and shooter.abilities.count are gone (the blocks' own strings say them).",
+      "fix": "In a style pack or a game's CSS, restyle the named inner parts through the blocks' parts (HudPortrait.face, HudBar.ghost, HudEffect.*, HudSlot.*, KillfeedRow.*); the plates' outer parts (frame, mate, portrait, shield, health, effect, ability, row) are unchanged. Drop translations of the four removed strings.",
+      "find": ["ShooterVitals.face", "ShooterVitals.ghost", "ShooterSquad.face", "ShooterSquad.ghost", "ShooterEffects.tile", "ShooterEffects.art", "ShooterEffects.timer", "ShooterEffects.time", "ShooterAbilities.slot", "ShooterAbilities.art", "ShooterAbilities.cooldown", "ShooterAbilities.time", "ShooterAbilities.count", "ShooterAbilities.key", "ShooterAbilities.ring", "ShooterAbilities.charge", "Killfeed.name", "Killfeed.weapon", "Killfeed.glyph", "Killfeed.headshot", "Killfeed.edge", "shooter.killfeed.hs", "shooter.effects.effect", "shooter.abilities.charge", "shooter.abilities.count"]
+    }
+  ]
+}

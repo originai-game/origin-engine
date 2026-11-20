@@ -697,10 +697,23 @@
     "id": "@ui/components/hud/killfeed.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "KillfeedRow"
+    ],
     "files": [
       "@ui/components/hud/killfeed.en.ogt",
       "@ui/components/hud/killfeed.svelte"
+    ],
+    "imports": []
+  },
+  "KillfeedRow": {
+    "id": "@ui/components/hud/killfeed-row.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/hud/killfeed-row.svelte",
+      "@ui/components/hud/killfeed.en.ogt"
     ],
     "imports": []
   },
@@ -1705,7 +1718,9 @@
     "id": "@ui/components/shooter/abilities.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "HudSlot"
+    ],
     "files": [
       "@ui/components/shooter/abilities.svelte",
       "@ui/components/shooter/shooter.en.ogt"
@@ -1727,7 +1742,9 @@
     "id": "@ui/components/shooter/effects.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "HudEffect"
+    ],
     "files": [
       "@ui/components/shooter/effects.svelte",
       "@ui/components/shooter/shooter.en.ogt"
@@ -1793,7 +1810,10 @@
     "id": "@ui/components/shooter/squad.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "HudBar",
+      "HudPortrait"
+    ],
     "files": [
       "@ui/components/shooter/shooter.en.ogt",
       "@ui/components/shooter/squad.svelte"
@@ -1804,7 +1824,10 @@
     "id": "@ui/components/shooter/vitals.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "HudBar",
+      "HudPortrait"
+    ],
     "files": [
       "@ui/components/shooter/shooter.en.ogt",
       "@ui/components/shooter/vitals.svelte"

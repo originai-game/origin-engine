@@ -3,6 +3,8 @@
 <div id="Sheet">
   {#if $page == 'loadout'}
     <LoadoutPage />
+  {:else if $page == 'blocks'}
+    <BlocksPage />
   {:else}
     <CombatPage />
   {/if}

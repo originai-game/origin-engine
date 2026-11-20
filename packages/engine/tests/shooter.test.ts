@@ -479,7 +479,14 @@ test("The HUD members show what the game told them, in words as well as colour",
   check("ShooterAbilities", "ready", ["z"], ["100%"]);
   check("AmmoCounter", "default", ["hollow smg", "32", "2", "24", "120", "vk-7 carbine", "auto"]);
   check("AmmoCounter", "low", ["2", "brace-12"], ["hollow smg"]);
-  check("Killfeed", "default", ["you", "vanta", "hs"], ["vk-7 carbine"]);
+  check("Killfeed", "default", ["you", "vanta"], ["vk-7 carbine"]);
   check("Killfeed", "words", ["brace-12", "halden"], ["pike .50"]);
+  // A headshot is a skull a reader hears named, on the headshot rows only.
+  const skulls = (fixture: string): number => {
+    const e = hudMember("Killfeed", fixture);
+    try { return elements(e).filter((x) => x.width > 0 && x.name?.toLowerCase() === "headshot").length; } finally { e.destroy(); }
+  };
+  expect(skulls("default")).toBe(1);
+  expect(skulls("empty")).toBe(0);
   check("Compass", "default", ["042°", "n", "ne", "e", "85m"]);
 });

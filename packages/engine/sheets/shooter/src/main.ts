@@ -5,7 +5,7 @@
 // components by name, as a game does, with fixture stores; loading a page
 // loads them.
 //
-// Commands: style:<fantasy|default>, page:<combat|loadout>; for motion clips (`og
+// Commands: style:<fantasy|scifi|cartoon|default>, page:<combat|loadout|blocks>; for motion clips (`og
 // render --keyframes`), hit:<kind> replays the hit mark, damage:<id>:<angle>
 // :<strength>:<kind> adds an incoming hit, heal:<id> removes one, and
 // reduced:<on|off> sets reduced motion.
@@ -13,7 +13,7 @@
 import { og, type World } from "@origingame/engine";
 import { ART, COMBAT, FEED, LOADOUT } from "./fixtures.ts";
 
-const PAGES = ["combat", "loadout"] as const;
+const PAGES = ["combat", "loadout", "blocks"] as const;
 const HITS = ["none", "hit", "headshot", "kill", "shieldBreak"] as const;
 const KINDS = ["normal", "shield", "critical"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
@@ -34,6 +34,7 @@ function withArt<T>(value: T): T {
 const DOCUMENTS = [
   "ui/combat.svelte",
   "ui/loadout.svelte",
+  "ui/blocks.svelte",
   "ui/sheet.svelte",
 ];
 

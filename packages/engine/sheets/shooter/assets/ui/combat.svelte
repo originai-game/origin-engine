@@ -76,6 +76,23 @@
 #Reticle { position: absolute; left: calc(var(--size-xxl) / -2); top: calc(var(--size-xxl) / -2); }
 #Dealt { position: absolute; left: calc(32 * var(--font-step-px)); bottom: calc(14 * var(--font-step-px)); }
 #Prompt { position: absolute; top: calc(var(--size-xl) * 1.1); left: calc(var(--size-5xl) * -1); width: calc(var(--size-5xl) * 2); display: flex; justify-content: center; }
+/* On a phone on its side the columns stay, but the members are compact
+   and the middle column takes no more than a third of the width, so the
+   side columns keep room for names; the effects sit beside the vitals'
+   portrait no longer, and the pickup feed is left out. */
+@media (height < 500px) and (width >= 600px) {
+  #Hud { column-gap: var(--space-md); grid-template-columns: minmax(0, 1fr) minmax(0, 34%) minmax(0, 1fr);
+    padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-lg)) calc(env(-og-hud-inset-bottom) + var(--space-sm)) calc(env(-og-hud-inset-left) + var(--space-lg)); }
+  #Left { row-gap: var(--space-xs); }
+  #Objective { padding-top: 0; }
+  #Effects { padding-left: 0; }
+  #Round { margin-top: 0; }
+  #Round > * { width: auto; }
+  #Pickups { display: none; }
+  #Ammo { margin-top: auto; }
+  #Aim { --ring: calc(var(--size-xxl) * 1.6); }
+  #Prompt { top: var(--size-xl); }
+}
 /* On a phone the columns dissolve into full-width rows: the compass and
    the radar, the round on its own row, the killfeed's newest row across
    the width, the objective in play, the squad's plates side by side; then

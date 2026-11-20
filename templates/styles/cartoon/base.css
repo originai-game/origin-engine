@@ -743,6 +743,24 @@
   --hud-feed-edge: #ffd23f;
   --hud-pip-on: #ffd23f;
   --hud-lift: drop-shadow(0 calc(4 * var(--font-step-px)) 0 rgb(36 26 90 / 0.85));
+  /* The plates and bars are candy too: a glossy indigo slab in an ink
+     outline, an ink well under every bar, lime health over a bubble-blue
+     shield, and the sides' scores on solid candy blocks. */
+  --hud-plate-fill: linear-gradient(180deg, rgb(255 255 255 / 0.16), transparent 46%), linear-gradient(180deg, #4b3cc4, #2c2286);
+  --hud-plate-lit-rim: inset 0 0 0 calc(2 * var(--font-step-px)) #241a5a, inset 0 calc(5 * var(--font-step-px)) 0 #ffd23f;
+  --bar-well: linear-gradient(180deg, #1a1248, #2e2484);
+  --hud-health-fill: linear-gradient(180deg, rgb(255 255 255 / 0.5), transparent 45%), linear-gradient(90deg, #4fc72a, #9cf25a);
+  --hud-health-glow: none;
+  --hud-feed-fill: linear-gradient(270deg, rgb(52 40 150 / 0.96), rgb(52 40 150 / 0.72));
+  --hud-feed-fill-start: linear-gradient(90deg, rgb(52 40 150 / 0.96), rgb(52 40 150 / 0.72));
+  --hud-feed-self-fill: linear-gradient(270deg, #6a56f0, rgb(84 66 214 / 0.82));
+  --hud-feed-self-fill-start: linear-gradient(90deg, #6a56f0, rgb(84 66 214 / 0.82));
+  --hud-feed-rim: inset 0 0 0 calc(2 * var(--font-step-px)) #241a5a;
+  --hud-feed-cut: calc(10 * var(--font-step-px));
+  --hud-ally-plate: linear-gradient(180deg, rgb(255 255 255 / 0.4), transparent 46%), #3fb6ff;
+  --hud-ally-plate-rim: inset 0 0 0 calc(2 * var(--font-step-px)) #241a5a, inset 0 calc(-5 * var(--font-step-px)) 0 #1f7fd0;
+  --hud-foe-plate: linear-gradient(180deg, rgb(255 255 255 / 0.4), transparent 46%), #ff3b6b;
+  --hud-foe-plate-rim: inset 0 0 0 calc(2 * var(--font-step-px)) #241a5a, inset 0 calc(-5 * var(--font-step-px)) 0 #c41f4a;
 }
 
 /* The light scheme: a day sky, cream panels and indigo ink; the same

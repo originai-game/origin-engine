@@ -6,7 +6,8 @@ version 1
 # built-in components by name, as a game does; each screen names its style
 # and page. combat is the normal page (the combat HUD over a bright sky and
 # a dark ground), loadout the stress page (long names, locked and equipped
-# slots, a dense killfeed). The -default screens review the same pages in
+# slots, a dense killfeed), blocks a game's own HUD laid out from the HUD's
+# blocks alone. The -default screens review the same pages in
 # the core default style.
 name "Shooter kit sheet"
 id "shooter-sheet"
@@ -20,4 +21,6 @@ ui {
   screen "loadout-fantasy" "style:fantasy;page:loadout"
   screen "combat-default" "style:default;page:combat"
   screen "loadout-default" "style:default;page:loadout"
+  screen "blocks-fantasy" "style:fantasy;page:blocks"
+  screen "blocks-default" "style:default;page:blocks"
 }
