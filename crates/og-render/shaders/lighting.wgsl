@@ -402,10 +402,18 @@ fn local_bias(light: LocalLight) -> f32 {
   return 1.0 - light.cone.w;
 }
 
+// Whether lit surfaces filter local shadows with [`local_wide`] (64 reads a
+// shadowed light) or the 2x2 PCF (4 reads). A module of thin blades sets
+// it false in its source (grass/renderer.rs): a blade is narrower than the
+// map's texel, its own plane is no receiver plane for the wide filter's
+// slope, and the field's blades break any edge the wide filter smooths.
+override OG_WIDE_LOCAL_SHADOWS: bool = true;
+
 // Local shadows store distance / range; the fragment compares its own,
-// filtered with [`local_wide`] (`local_shadow_lookup`'s `wide`).
+// filtered with [`local_wide`] (`local_shadow_lookup`'s `wide`) or, without
+// OG_WIDE_LOCAL_SHADOWS, the 2x2 PCF.
 fn local_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
-  return local_shadow_lookup(light, p, n, true);
+  return local_shadow_lookup(light, p, n, OG_WIDE_LOCAL_SHADOWS);
 }
 
 // The local lights' filter for lit surfaces: contact hardening between

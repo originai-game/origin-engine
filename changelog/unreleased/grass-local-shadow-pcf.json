@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Grass",
+      "summary": "Grass under a shadowed point or spot light draws faster: its blades read that light's shadow through a 2x2 filter instead of the 8x8 contact-hardening one other surfaces use (a blade is narrower than a shadow texel, and a field breaks the edge up anyway). About 1.2 ms of a 2560x1440 frame on The Last Light; the grass looks the same."
+    }
+  ]
+}

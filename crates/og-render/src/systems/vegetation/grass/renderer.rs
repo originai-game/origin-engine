@@ -19,6 +19,14 @@ pub(crate) fn lit_source() -> String {
         ],
         &crate::Capability::OPAQUE_SURFACE,
     )
+    // The 2x2 PCF for local lights' shadows (lighting.wgsl): the wide
+    // filter's 64 reads a shadowed light were a third of a blade's
+    // fragment, for a contact-hardened edge the blades break up anyway.
+    .replacen(
+        "override OG_WIDE_LOCAL_SHADOWS: bool = true;",
+        "override OG_WIDE_LOCAL_SHADOWS: bool = false;",
+        1,
+    )
 }
 
 /// The grass shadow module.
