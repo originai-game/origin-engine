@@ -2981,6 +2981,35 @@ References: `ui-debug-1280`, `ui-debug-390`.
 layer stack: each element in a visual state or animating, with its
 states, what moves, what plays and whether it is leaving.
 
+### 6.5 UI gallery
+
+`bun packages/engine/src/node/ui-gallery.ts [--port P] [--host H] [--og
+<og>]` serves, in a checkout, one development page with every built-in
+component and HUD element: the review sheets (`packages/engine/sheets/`,
+all but `style`) as categories, their pages, the style packs of
+`templates/styles` (a sheet takes those its `STYLES` names), the light
+and dark schemes and five viewports. Each sheet is copied to
+`target/ui-gallery/<sheet>` and exported with `og build` (development)
+when first opened; the engine runs in the viewer's browser, so the
+serving machine needs no GPU.
+
+While the page is open, an edit under the sheet, `packages/engine/src/ui`,
+`templates/styles`, `packages/design/tokens` or `crates/og-ui/default.css`
+is cooked (`og cook`, incremental), the changed cooked files go to the
+page, and the probe's reload swaps them in with the world kept (the dev
+page's `__runtime_probe__.devFiles`). A sheet's TypeScript rebuilds it.
+Only Rust needs og and the wasm rebuilt (`packages/engine/scripts/build.sh`).
+
+A development cook from a checkout carries the default style as the
+source tree has it when that is not the compiled one: `default.css`, or,
+when a token file is newer than it, what `gen-theme.sh` would write from
+the tokens (a hand edit to `default.css` is then dropped, as
+`gen-theme.sh` would drop it: port it to `scripts/theme_css.rs`). A
+development runtime puts it in the compiled one's place
+(`og_ui::set_base_css`) and reads its packs and documents again. A
+publish cook and a publish build never carry or read it: they draw the
+compiled `DEFAULT_CSS`, and `theme.rs` stays generated and drift-checked.
+
 ## 7. Maintenance boundaries
 
 The integration owner owns shared schema, labels, looks, creation,
