@@ -665,11 +665,13 @@ impl ScatterRenderer {
             if let Some(sh) = shader
                 && !self.hooked.contains_key(&sh)
             {
+                let source = (self.lit_wgsl)(&hooks_of(sh));
+                let declared = Features::declared(&source);
                 let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("scatter (material shader)"),
-                    source: wgpu::ShaderSource::Wgsl((self.lit_wgsl)(&hooks_of(sh)).into()),
+                    source: wgpu::ShaderSource::Wgsl(source.into()),
                 });
-                self.hooked.insert(sh, module);
+                self.hooked.insert(sh, (module, declared));
             }
             for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
                 self.pipeline(device, shader, side, pass, false);
@@ -831,13 +833,22 @@ impl ScatterRenderer {
         for pass in [ScatterPass::Lit, ScatterPass::Prepass] {
             let kind = pass as u8 + CARD_KIND;
             if !self.pipelines.contains_key(&(None, Side::Double, kind)) {
-                let p = self.card_pipeline(device, pass, crate::ShadowTarget::Cascade);
+                let d = LitDesc {
+                    label: "crowd card",
+                    module: self.lit_module.clone(),
+                    declared: self.declared,
+                    vs: "vs_crowd_card",
+                    fs: "fs_crowd_card",
+                    buffers: CARD_BUFFERS,
+                    cull: None,
+                };
+                let p = self.lit_variants(device, d, pass);
                 self.pipelines.insert((None, Side::Double, kind), p);
             }
         }
         let key = (None, Side::Double, ScatterPass::Shadow as u8 + CARD_KIND);
         if !self.shadow_pipelines.contains_key(&key) {
-            let set = crate::ShadowSet::new(|t| self.card_pipeline(device, ScatterPass::Shadow, t));
+            let set = self.card_shadows(device, true);
             self.shadow_pipelines.insert(key, set);
         }
         out

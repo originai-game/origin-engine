@@ -173,6 +173,19 @@ fn the_features_left_out_are_in_no_pipeline_and_not_drawn() {
         0,
         "a scene that uses none of them changed"
     );
+    // So do the scattered copies, their impostors, the model impostors and
+    // the crowds' cards (their lit and prepass variants, scatter.rs).
+    for name in ["impostor-scatter", "impostors", "crowd-lods"] {
+        let (desc, scene, frames) = built(name);
+        assert_eq!(
+            max_diff(
+                &render(&desc, LitFeatures::NONE, &scene, frames).0,
+                &render(&desc, every(), &scene, frames).0
+            ),
+            0,
+            "{name}: a scene that uses none of them changed"
+        );
+    }
     assert!(warnings().lock().unwrap().is_empty(), "{:?}", warnings());
 
     // The weather still reaches every surface, but no lit module the

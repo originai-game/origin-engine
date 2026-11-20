@@ -37,11 +37,13 @@
 //! sways as smoothly as its first minute, and the previous frame's are
 //! kept for the motion vectors. A chunk's bounds grow by the furthest lean.
 
+use crate::deferred::Deferred;
 use crate::ground::{
     Ground, GroundDraw, GroundGpu, MAX_TERRAIN_LAYERS, Terrain, TerrainData, TerrainSource,
     TileGround, horizontal_scale, smoothstep,
 };
 use crate::material::Side;
+use crate::pipeline_features::{Features, Variants};
 use crate::scene::{MaterialHandle, MeshHandle};
 use crate::terrain_tiles::TerrainLayout;
 use glam::{Mat3, Mat4, Vec2, Vec3};
@@ -54,6 +56,7 @@ mod placement;
 mod prepare;
 mod renderer;
 mod source;
+use pipelines::{CARD_BUFFERS, LitDesc};
 pub(crate) use placement::*;
 use renderer::*;
 pub(crate) use source::{scatter_lit_source, scatter_shadow_source};
@@ -695,19 +698,30 @@ pub(crate) struct ScatterPipelines<'a> {
     pub indirect_per_draw: bool,
 }
 
+/// A lit or prepass pipeline as its variants.
+type LitVariants = Variants<Deferred<wgpu::RenderPipeline>>;
+
 /// Draws [`ScatterDraw`]s from cached chunks.
 pub(crate) struct ScatterRenderer {
     /// Shared by lit and prepass shading, including projected wet gloss.
     lit_fx_layout: wgpu::PipelineLayout,
     shadow_layout: wgpu::PipelineLayout,
     lit_module: wgpu::ShaderModule,
+    /// The features the lit module declares (pipeline_features.rs).
+    declared: Features,
     shadow_module: wgpu::ShaderModule,
     /// The lit module with each material shader's hooks (the scene's
-    /// shader index), made when a scatter's material first uses it.
-    hooked: HashMap<usize, wgpu::ShaderModule>,
+    /// shader index), made when a scatter's material first uses it, with
+    /// the features it declares.
+    hooked: HashMap<usize, (wgpu::ShaderModule, Features)>,
     lit_wgsl: Box<dyn Fn(&str) -> String + Send + Sync>,
     samples: u32,
-    pipelines: HashMap<(Option<usize>, Side, u8), wgpu::RenderPipeline>,
+    /// The lit and prepass kinds' pipelines, each as the variant for the
+    /// frame's features and the full one (pipeline_features.rs).
+    pipelines: HashMap<(Option<usize>, Side, u8), LitVariants>,
+    /// The features the frame's lit and prepass pipelines draw with (the
+    /// renderer's `frame_features`: every one in a capture).
+    pub features: Features,
     /// The shadow kinds' pipelines, one per target (shadow_target.rs).
     shadow_pipelines: HashMap<(Option<usize>, Side, u8), crate::ShadowSet>,
     uniform_layout: wgpu::BindGroupLayout,
