@@ -6,27 +6,65 @@
 use rustc_hash::FxHashMap;
 
 /// The token table: each name's value with every `var()` substituted.
+/// A scheme's blocks (`:root.light`, `:root[data-scheme=dark]`) are kept
+/// apart as that scheme's overlay; [`Tokens::scheme`] lays them over the
+/// base, so a scheme is a second table, never a cascade.
 #[derive(Clone, Debug, Default)]
 pub struct Tokens {
     ids: FxHashMap<Box<str>, u32>,
     raw: Vec<Box<str>>,
     resolved: Vec<Option<Box<str>>>,
+    schemes: Vec<(Box<str>, Overlay)>,
+}
+
+/// A scheme's declarations, in order, raw.
+type Overlay = Vec<(Box<str>, Box<str>)>;
+
+/// The scheme a block's prelude names: `light` for `:root.light` or
+/// `:root[data-scheme=light]`, none for a plain block.
+fn scheme_of(prelude: &str) -> Option<&str> {
+    let rest = prelude.trim().strip_prefix(":root")?;
+    if let Some(name) = rest.strip_prefix('.') {
+        return Some(name.trim());
+    }
+    let inner = rest.strip_prefix("[data-scheme=")?.strip_suffix(']')?;
+    Some(inner.trim_matches(|c| c == '"' || c == '\''))
 }
 
 impl Tokens {
     /// The custom properties declared in `css` (every block's, the last
-    /// declaration of a name winning), resolved.
+    /// declaration of a name winning), resolved; a scheme's blocks become
+    /// its overlay.
     pub fn parse(css: &str) -> Tokens {
         let mut t = Tokens::default();
-        for (_, body) in crate::sheet::blocks(css) {
-            for (name, value) in crate::sheet::declarations(body) {
-                if name.starts_with("--") {
-                    t.set_raw(name, value);
+        t.read(css);
+        t.resolve();
+        t
+    }
+
+    fn read(&mut self, css: &str) {
+        for (prelude, body) in crate::sheet::blocks(css) {
+            let decls = crate::sheet::declarations(body).filter(|(n, _)| n.starts_with("--"));
+            match scheme_of(prelude) {
+                Some(scheme) => {
+                    let at = match self.schemes.iter().position(|(s, _)| &**s == scheme) {
+                        Some(at) => at,
+                        None => {
+                            self.schemes.push((scheme.into(), Vec::new()));
+                            self.schemes.len() - 1
+                        }
+                    };
+                    self.schemes[at]
+                        .1
+                        .extend(decls.map(|(n, v)| (n.into(), v.into())));
+                }
+                None => {
+                    for (name, value) in decls {
+                        self.set_raw(name, value);
+                    }
                 }
             }
         }
-        t.resolve();
-        t
     }
 
     fn set_raw(&mut self, name: &str, value: &str) {
@@ -39,16 +77,33 @@ impl Tokens {
         }
     }
 
-    /// Lays `over`'s tokens over these (a pack's over the defaults).
+    /// Lays `over`'s tokens over these (a pack's over the defaults), its
+    /// scheme blocks over each scheme's overlay.
     pub fn over(&mut self, over: &str) {
-        for (_, body) in crate::sheet::blocks(over) {
-            for (name, value) in crate::sheet::declarations(body) {
-                if name.starts_with("--") {
-                    self.set_raw(name, value);
-                }
+        self.read(over);
+        self.resolve();
+    }
+
+    /// The schemes the table has an overlay for, in the order first read.
+    pub fn schemes(&self) -> impl Iterator<Item = &str> {
+        self.schemes.iter().map(|(s, _)| &**s)
+    }
+
+    /// The table in `scheme`: every layer's base, then every layer's
+    /// overlay for it (as `:root.light` outranks `:root` whatever the
+    /// order), resolved. A scheme with no overlay is the base.
+    pub fn scheme(&self, scheme: &str) -> Tokens {
+        let mut t = Tokens {
+            schemes: Vec::new(),
+            ..self.clone()
+        };
+        if let Some((_, decls)) = self.schemes.iter().find(|(s, _)| &**s == scheme) {
+            for (name, value) in decls {
+                t.set_raw(name, value);
             }
         }
-        self.resolve();
+        t.resolve();
+        t
     }
 
     fn resolve(&mut self) {
@@ -217,4 +272,37 @@ pub(crate) fn matching_brace(text: &str, from: usize) -> Option<usize> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const PACK: &str = "@font-face { font-family: \"X\"; src: url(x.ttf); }\n\
+        :root {\n  /* the pack's palette: dark */\n  --seed: #102030;\n  --ink: var(--seed);\n}\n\
+        :root.light {\n  /* by day */\n  --seed: #f0e0d0;\n}";
+
+    #[test]
+    fn a_comment_with_an_apostrophe_loses_no_token() {
+        let t = Tokens::parse(PACK);
+        assert_eq!(t.get("--seed"), Some("#102030"));
+        assert_eq!(t.get("--ink"), Some("#102030"));
+    }
+
+    #[test]
+    fn a_light_block_is_its_own_table_over_every_layer() {
+        let mut t = Tokens::parse(
+            ":root { --seed: #fff; --rim: #111; --ground: #eee; }\n\
+             :root[data-scheme=dark] { --rim: #999; }",
+        );
+        t.over(PACK);
+        assert_eq!(t.get("--seed"), Some("#102030"), "the base stays dark");
+        assert_eq!(t.get("--ground"), Some("#eee"));
+        let light = t.scheme("light");
+        assert_eq!(light.get("--seed"), Some("#f0e0d0"));
+        assert_eq!(light.get("--ink"), Some("#f0e0d0"), "its users re-resolve");
+        assert_eq!(t.scheme("dark").get("--rim"), Some("#999"));
+        assert_eq!(t.scheme("dark").get("--seed"), Some("#102030"));
+        assert_eq!(t.schemes().collect::<Vec<_>>(), ["dark", "light"]);
+    }
 }

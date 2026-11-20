@@ -48,10 +48,11 @@ fn collect<'a>(css: &'a str, out: &mut Vec<(&'a str, &'a str)>) {
     }
 }
 
-/// A block's declarations as name and value, in order; `!important` and
-/// surrounding space trimmed.
+/// A block's declarations as name and value, in order; comments around
+/// them, `!important` and surrounding space trimmed.
 pub fn declarations(body: &str) -> impl Iterator<Item = (&str, &str)> {
     split_top(body, b';').filter_map(|d| {
+        let d = trim_comments(d);
         let colon = d.find(':')?;
         let name = d[..colon].trim();
         let value = d[colon + 1..].trim();
@@ -62,13 +63,39 @@ pub fn declarations(body: &str) -> impl Iterator<Item = (&str, &str)> {
     })
 }
 
-/// `text` split on `sep` outside parentheses and quotes.
+/// `text` without the space and `/* … */` comments at either end.
+fn trim_comments(mut text: &str) -> &str {
+    loop {
+        let t = text.trim();
+        if let Some(rest) = t.strip_prefix("/*") {
+            text = rest.find("*/").map_or("", |e| &rest[e + 2..]);
+        } else if t.ends_with("*/") && t.len() >= 4 {
+            match t[..t.len() - 2].rfind("/*") {
+                Some(open) => text = &t[..open],
+                None => return t,
+            }
+        } else {
+            return t;
+        }
+    }
+}
+
+/// `text` split on `sep` outside parentheses, quotes and comments (a
+/// comment's apostrophe opens no quote).
 pub fn split_top(text: &str, sep: u8) -> impl Iterator<Item = &str> {
     let bytes = text.as_bytes();
     let mut depth = 0i32;
     let mut quote = 0u8;
     let mut cuts = vec![0usize];
-    for (i, &b) in bytes.iter().enumerate() {
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if quote == 0 && b == b'/' && bytes.get(i + 1) == Some(&b'*') {
+            i = text[i + 2..]
+                .find("*/")
+                .map_or(bytes.len(), |e| i + 2 + e + 2);
+            continue;
+        }
         match b {
             b'"' | b'\'' if quote == 0 => quote = b,
             q if q == quote && quote != 0 => quote = 0,
@@ -77,6 +104,7 @@ pub fn split_top(text: &str, sep: u8) -> impl Iterator<Item = &str> {
             s if s == sep && depth == 0 && quote == 0 => cuts.push(i + 1),
             _ => {}
         }
+        i += 1;
     }
     cuts.push(bytes.len() + 1);
     (0..cuts.len() - 1).map(move |k| {
@@ -84,4 +112,20 @@ pub fn split_top(text: &str, sep: u8) -> impl Iterator<Item = &str> {
         let b = (cuts[k + 1] - 1).min(text.len());
         &text[a..b]
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn comments_hide_their_quotes_and_separators() {
+        let body = "\n  /* the pack's seeds; one per role */\n  --a: 1px;\n  \
+                    --b: url(\"x;y\"); /* trailing: note */\n  --c: 3px /* why */;\n  /* last: */";
+        let got: Vec<_> = declarations(body).collect();
+        assert_eq!(
+            got,
+            [("--a", "1px"), ("--b", "url(\"x;y\")"), ("--c", "3px")]
+        );
+    }
 }
