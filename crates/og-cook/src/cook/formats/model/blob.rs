@@ -272,6 +272,25 @@ pub fn cook(
     let mut bvh_nodes: Vec<BvhNodeRow> = Vec::new();
     let mut bvh_tris: Vec<u32> = Vec::new();
     let lod_meshes = msft_lod(doc, &mut notes);
+    // The meshes only MSFT_lod names: cooked as their full mesh's levels,
+    // so none of them a mesh of its own as well (no node draws one).
+    let level_only: std::collections::BTreeSet<usize> = {
+        let levels: std::collections::BTreeSet<usize> =
+            lod_meshes.values().flatten().copied().collect();
+        let named: std::collections::BTreeSet<usize> = doc
+            .nodes()
+            .filter_map(|n| n.extension_value("MSFT_lod")?.get("ids")?.as_array().cloned())
+            .flatten()
+            .filter_map(|i| i.as_u64())
+            .map(|i| i as usize)
+            .collect();
+        let drawn: std::collections::BTreeSet<usize> = doc
+            .nodes()
+            .filter(|n| !named.contains(&n.index()))
+            .filter_map(|n| n.mesh().map(|m| m.index()))
+            .collect();
+        levels.difference(&drawn).copied().collect()
+    };
     let mut changes = Vec::new();
     let mut hulls: Vec<u8> = Vec::new();
     // Triangle primitives that cooked to no geometry (every triangle
@@ -280,7 +299,11 @@ pub fn cook(
     let mut sources = Vec::new();
     for mesh in doc.meshes() {
         let first = prims.len() as u32;
-        for (pi, prim) in mesh.primitives().enumerate() {
+        let primitives = mesh
+            .primitives()
+            .enumerate()
+            .filter(|_| !level_only.contains(&mesh.index()));
+        for (pi, prim) in primitives {
             let what = format!("mesh '{}' primitive {pi}", mesh.name().unwrap_or(""));
             if prim.mode() != gltf::mesh::Mode::Triangles {
                 notes.push(format!(

@@ -383,6 +383,33 @@ fn counts(p: &Plant) -> (u64, u64) {
 /// Grows `p`. `detail` (0..1, 1 as written) draws the same plant with
 /// fewer sections, sides and leaves (each leaf larger, to cover as much).
 pub fn plant(p: &Plant, detail: f64) -> Result<PlantMesh, String> {
+    grow(p, detail, Leafing::Thinned)
+}
+
+/// The same plant as a coarser level of detail: its wood at `detail` (as
+/// [`plant`]'s) and each blade as its kite, two triangles through its
+/// base, its widest row and its tip; every leaf and petal where it grows,
+/// or with `thin` every `1 / detail`th leaf, each larger, as [`plant`]'s.
+/// A level that drops leaves cannot stand in for few long blades (a
+/// reed's, a grass's) up close: the ones it keeps must grow longer to
+/// cover as much, so the tuft changes height; a kite moves none of its
+/// outline's ends.
+pub fn plant_level(p: &Plant, detail: f64, thin: bool) -> Result<PlantMesh, String> {
+    grow(p, detail, if thin { Leafing::ThinnedKites } else { Leafing::Kites })
+}
+
+/// How a level draws the leaves and petals.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Leafing {
+    /// Every `1 / detail`th leaf, each larger, each blade whole.
+    Thinned,
+    /// Every leaf, each blade a kite.
+    Kites,
+    /// Every `1 / detail`th leaf, each larger, each blade a kite.
+    ThinnedKites,
+}
+
+fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
     let levels = (p.levels as usize).min(LEVELS - 1);
     let (branches, leaves) = counts(p);
     if branches > MAX_BRANCHES || leaves > MAX_LEAVES {
@@ -569,8 +596,10 @@ pub fn plant(p: &Plant, detail: f64) -> Result<PlantMesh, String> {
     for limb in &limbs {
         wood(&mut out, limb, stride, detail);
     }
+    let kite = leafing != Leafing::Thinned;
     if let Some(lv) = &p.leaves {
         // Fewer leaves cover as much: each as much larger in area.
+        let stride = if leafing == Leafing::Kites { 1 } else { stride };
         let scale = (stride as f64).sqrt();
         for leaf in leaf_list.iter().step_by(stride) {
             let u = colour.next_f64() as f32;
@@ -582,7 +611,10 @@ pub fn plant(p: &Plant, detail: f64) -> Result<PlantMesh, String> {
             let (len, width) = (leaf.size * scale, leaf.size * scale * lv.width);
             let q = skyward(leaf.q, lv.facing, rolling.range(-0.5, 0.5));
             match lv.shape {
-                LeafShape::Blade => blade(&mut out, leaf.origin, q, len, width, LEAF, c, wind),
+                LeafShape::Blade => {
+                    let outline = (LEAF, kite);
+                    blade(&mut out, leaf.origin, q, len, width, outline, c, wind)
+                }
                 LeafShape::Card => card(&mut out, leaf.origin, q, len, width, c, wind),
                 LeafShape::Cross => {
                     card(&mut out, leaf.origin, leaf.q, len, width, c, wind);
@@ -610,7 +642,7 @@ pub fn plant(p: &Plant, detail: f64) -> Result<PlantMesh, String> {
                     q,
                     flower.size,
                     flower.size * f.width,
-                    PETAL,
+                    (PETAL, kite),
                     c,
                     wind,
                 );
@@ -725,7 +757,8 @@ const LEAF: Outline = ([(0.3, 0.92, 0.95), (0.68, 0.74, 1.05)], 1.0);
 const PETAL: Outline = ([(0.45, 0.62, 0.95), (0.84, 1.0, 1.03)], 1.0);
 
 /// A leaf or petal cupped along its midrib, darker at its stem: six
-/// vertices, four triangles.
+/// vertices, four triangles; as a kite (`kite`), its widest row alone:
+/// four vertices, two triangles.
 #[allow(clippy::too_many_arguments)]
 fn blade(
     out: &mut PlantMesh,
@@ -733,12 +766,18 @@ fn blade(
     q: DQuat,
     length: f64,
     width: f64,
-    (rows, tip): Outline,
+    ((rows, tip), kite): (Outline, bool),
     color: [f32; 3],
     wind: [f32; 8],
 ) {
     let (w, cup) = (0.5 * width, 0.12 * width);
     let mut verts = vec![(DVec3::ZERO, DVec3::Z, [0.5, 1.0], 0.7)];
+    let widest = if rows[1].1 > rows[0].1 { 1 } else { 0 };
+    let rows = rows
+        .iter()
+        .enumerate()
+        .filter(|&(k, _)| !kite || k == widest)
+        .map(|(_, r)| *r);
     for (along, across, shade) in rows {
         for side in [-1.0, 1.0] {
             verts.push((
@@ -755,15 +794,11 @@ fn blade(
         [0.5, 0.0],
         1.12,
     ));
-    piece(
-        out,
-        origin,
-        q,
-        &verts,
-        &[0, 2, 1, 1, 2, 4, 1, 4, 3, 3, 4, 5],
-        color,
-        wind,
-    );
+    let tris: &[u32] = match kite {
+        true => &[0, 2, 1, 1, 2, 3],
+        false => &[0, 2, 1, 1, 2, 4, 1, 4, 3, 3, 4, 5],
+    };
+    piece(out, origin, q, &verts, tris, color, wind);
 }
 
 /// A quad for a leaf texture, its stem at the bottom of the image.
