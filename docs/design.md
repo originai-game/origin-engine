@@ -1342,18 +1342,24 @@ into an output-sized history) or `fsr3`, AMD FidelityFX Super Resolution
 3.1's upscaler ported to WGSL (MIT, `third_party/fidelityfx/`, whose README
 lists every deviation), with the order-independent transparency's coverage
 as its reactive mask. FSR runs in fp32 without subgroups or `shader-f16`, so
-one shader serves every host and tier; `RenderCapabilities.upscalers` names
-both everywhere. Other web upscalers (pmndrs/upscaler, three.js `TAAUNode`,
+one shader serves every tier with compute (all but `gl`), within WebGPU's
+default limits; `RenderCapabilities.upscalers` names it there. Other web upscalers (pmndrs/upscaler, three.js `TAAUNode`,
 Arm ASR, Snapdragon GSR 2) beat neither, so none is ported.
 
 **The choice.** FSR 3.1 is the better picture whenever something moves and
 steadier everywhere; TAAU is mostly cheaper (FSR costs about 0.65 ms to
 1.05 ms more at 1080p on thin geometry), converges faster after a cut and is
-as good on grass and particles. So the default, low and medium presets use
-TAAU (also every native run's resolve at render scale 1), and high uses FSR
-3.1; a game sets `RenderSettings.upscaler` itself at any preset. Automatic
-quality keeps the upscaler while it lowers the render scale and draws TAAU
-once it caps the quality at medium or low. The measurements are
+as good on particles. Below render scale 1 the gap is what a player sees:
+TAAU takes one sample per output pixel and clamps the history to the 3x3
+around it, so a pole thinner than a scene pixel fades and a wire steps
+while the camera pans (on `fsr::compare` at scale 0.67, panning thin
+geometry: crop error 9.0 against FSR's 5.7; panning grass, 28.4 dB against
+33.7). So the default and medium presets use `auto`, FSR 3.1 below render
+scale 1 and TAAU at it (where both only antialias: every native run's
+resolve); low uses TAAU and high FSR 3.1 at every scale; a game sets
+`RenderSettings.upscaler` itself at any preset. Automatic quality lowers the
+render scale first, so `auto` turns to FSR as it does, keeps `auto` when
+it caps the quality at medium and draws TAAU at low. The measurements are
 `fsr::compare` and `fsr::cost` (`crates/og-tests/tests/fsr.rs`, ignored, run
 by hand on a GPU); their numbers go in reports.
 

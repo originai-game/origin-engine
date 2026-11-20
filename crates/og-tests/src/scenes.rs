@@ -574,6 +574,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "taau" => |g, _| {
             g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Taa;
+            // TAAU itself, the fallback where FSR does not run (the
+            // default draws FSR below render scale 1: tests/fsr.rs).
+            g.scene.frame.quality.upscaler = og_render::Upscaler::Taau;
             g.render_scale = 0.5;
             g.frames = 64;
             Ok(())
@@ -583,6 +586,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         "taau-moving" => |g, _| {
             g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Taa;
+            // TAAU itself, the fallback where FSR does not run (the
+            // default draws FSR below render scale 1: tests/fsr.rs).
+            g.scene.frame.quality.upscaler = og_render::Upscaler::Taau;
             g.render_scale = 0.5;
             g.frames = 24;
             g.update = Some(crate::shadow_scenes::pan_and_roll_sphere);

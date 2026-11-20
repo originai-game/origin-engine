@@ -97,9 +97,10 @@ pub struct RenderQuality {
     /// (TAA, FXAA, none, or FXAA for want of a multisampled HDR format)
     /// it is 1, and one sample is drawn whatever this says.
     pub msaa_samples: u32,
-    /// The temporal resolve under TAA ([`crate::Upscaler`]): the engine's
-    /// TAAU (the default, medium and low) or FSR 3.1 (high), sharper and
-    /// steadier in motion at more GPU time (docs/design.md §11).
+    /// The temporal resolve under TAA ([`crate::Upscaler`]): FSR 3.1 below
+    /// render scale 1 and TAAU at it (`Auto`: the default and medium), TAAU
+    /// alone (low) or FSR 3.1 alone (high), which is sharper and steadier
+    /// in motion at more GPU time (docs/design.md §11).
     pub upscaler: crate::Upscaler,
 }
 
@@ -122,7 +123,7 @@ impl Default for RenderQuality {
             ssr_step_scale: 1.0,
             volumetric_step_scale: 1.0,
             msaa_samples: crate::MSAA_SAMPLES,
-            upscaler: crate::Upscaler::Taau,
+            upscaler: crate::Upscaler::Auto,
         }
     }
 }
@@ -307,7 +308,9 @@ mod tests {
             ..RenderQuality::default()
         };
         assert_eq!(full.capped(QualityPreset::Medium).ao_resolution, None);
-        // FSR is high's and costlier than TAAU: a medium cap draws TAAU.
+        // FSR at every scale is high's: a medium cap draws it below render
+        // scale 1 only (automatic quality lowers the scale before the
+        // preset), and a low cap never.
         assert_eq!(high.upscaler, crate::Upscaler::Fsr3);
         assert_eq!(
             high.capped(QualityPreset::High).upscaler,
@@ -315,6 +318,10 @@ mod tests {
         );
         assert_eq!(
             high.capped(QualityPreset::Medium).upscaler,
+            crate::Upscaler::Auto
+        );
+        assert_eq!(
+            high.capped(QualityPreset::Low).upscaler,
             crate::Upscaler::Taau
         );
     }

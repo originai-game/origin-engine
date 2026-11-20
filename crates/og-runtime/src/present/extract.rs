@@ -63,16 +63,26 @@ pub(crate) fn ao_resolution_setting(r: Option<og_render::AoResolution>) -> &'sta
     }]
 }
 
-/// The IDL `Upscaler`'s variants, in order: RenderSettings.upscaler and
-/// RenderCapabilities.upscalers.
-pub(crate) const UPSCALERS: &[&str] = &["taau", "fsr3"];
+/// The IDL `Upscaler`'s variants, in order (RenderSettings.upscaler).
+const UPSCALERS: &[&str] = &["taau", "fsr3", "auto"];
 
 /// RenderSettings.upscaler's variant for a quality's upscaler.
 pub(crate) fn upscaler_setting(u: og_render::Upscaler) -> &'static str {
     UPSCALERS[match u {
         og_render::Upscaler::Taau => 0,
         og_render::Upscaler::Fsr3 => 1,
+        og_render::Upscaler::Auto => 2,
     }]
+}
+
+/// RenderCapabilities.upscalers: the upscalers a device with `caps` draws
+/// (FSR 3.1 is compute passes; `auto` draws one of these).
+pub(crate) fn upscalers(caps: og_render::Caps) -> &'static [&'static str] {
+    if caps.contains(og_render::Caps::COMPUTE) {
+        &UPSCALERS[..2]
+    } else {
+        &UPSCALERS[..1]
+    }
 }
 
 /// The layouts of the drawing components the engine registered.

@@ -73,7 +73,7 @@ The fields og.render.applyQuality writes from a graphics preset.
 | `ssrStepScale` | `number` | `1` | 0 … 32 | — | — | PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 128 steps for the default 64, finer contact with thin and distant reflected surfaces at a higher GPU time. PostEffects keeps its steps. |
 | `volumetricStepScale` | `number` | `1` | 0 … 4 | — | — | An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame. See `render §7`. |
 | `msaaSamples` | `number` | `4` | 1 … 4 | — | — | Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it: 1 where the device resolved no MSAA, which draws one sample whatever this says. Changing it remakes the multisampled targets and pipelines next frame. See `render §2`. |
-| `upscaler` | `Upscaler` | `"taau"` | — | — | — | Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: taau (the default; the low and medium presets) or fsr3 (the high preset). A device lacking one (RenderCapabilities.upscalers) draws taau. Switching restarts the history next frame. See `render §1`. |
+| `upscaler` | `Upscaler` | `"auto"` | — | — | — | Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: auto (the default and medium: fsr3 below scale 1, taau at it), taau (low) or fsr3 (high). A device lacking fsr3 (RenderCapabilities.upscalers) draws taau. Switching restarts the history. See `render §1`. |
 
 #### Interpolation
 
@@ -238,7 +238,8 @@ resource RenderSettings {
     max 4
     guide "render §2"
   }
-  field upscaler Upscaler "Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: taau (the default; the low and medium presets) or fsr3 (the high preset). A device lacking one (RenderCapabilities.upscalers) draws taau. Switching restarts the history next frame." {
+  field upscaler Upscaler "Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: auto (the default and medium: fsr3 below scale 1, taau at it), taau (low) or fsr3 (high). A device lacking fsr3 (RenderCapabilities.upscalers) draws taau. Switching restarts the history." {
+    default auto
     guide "render §1"
   }
   group "Interpolation"
@@ -255,4 +256,4 @@ resource RenderSettings {
 }
 ```
 
-<sub>Module `render` line 699</sub>
+<sub>Module `render` line 700</sub>

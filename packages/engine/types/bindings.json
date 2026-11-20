@@ -9932,7 +9932,7 @@
         {
           "name": "upscaler",
           "column": "Upscaler",
-          "default": "taau"
+          "default": "auto"
         },
         {
           "name": "interpolate",

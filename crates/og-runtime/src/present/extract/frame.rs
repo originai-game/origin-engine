@@ -294,6 +294,7 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
             upscaler: match s.upscaler {
                 crate::host::wire::Upscaler::Taau => og_render::Upscaler::Taau,
                 crate::host::wire::Upscaler::Fsr3 => og_render::Upscaler::Fsr3,
+                crate::host::wire::Upscaler::Auto => og_render::Upscaler::Auto,
             },
         };
     } else {

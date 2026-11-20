@@ -126,6 +126,7 @@ fn as_fields(quality: &str, q: RenderQuality) -> Value {
         "upscaler": match q.upscaler {
             og_render::Upscaler::Taau => "taau",
             og_render::Upscaler::Fsr3 => "fsr3",
+            og_render::Upscaler::Auto => "auto",
         },
     })
 }
@@ -167,7 +168,7 @@ fn apply_quality_writes_the_presets_row_and_the_renderer_reads_it() {
             json!({ "quality": "medium", "rectShadows": true, "shadowedLights": 8, "shadowCascades": 3, "shadowMapScale": 1.0,
                 "volumetricFog": true, "softParticles": true, "particleEmission": 1.0, "maxVfx": 64, "maxVfxParticles": 65536, "screenSpaceReflections": true,
                 "ambientOcclusion": true, "aoResolution": "postEffects", "ssrStepScale": 1.0,
-                "volumetricStepScale": 1.0, "msaaSamples": 4, "upscaler": "taau" }),
+                "volumetricStepScale": 1.0, "msaaSamples": 4, "upscaler": "auto" }),
         ),
     ];
     for (preset, row) in table {
