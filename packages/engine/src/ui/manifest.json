@@ -3,7 +3,9 @@
     "id": "@ui/components/hud/ability-bar.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "AbilitySlot"
+    ],
     "files": [
       "@ui/components/hud/ability-bar.en.ogt",
       "@ui/components/hud/ability-bar.svelte"

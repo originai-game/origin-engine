@@ -106,6 +106,51 @@
   --role-cell-scene-shadow: 0 0 0 var(--stroke-hairline) var(--shadow-45), var(--shadow-plate);
   --role-cell-scene-inset: var(--space-xxs);
   --role-cell-scene-well-radius: calc(var(--radius-card) - var(--space-xxs) - var(--stroke-hairline));
+  /* The orb meter: a glass vessel in a bezel over the scene, the same in
+     both schemes, built in layers a pack sets one by one. Its side grows
+     with the text. The bezel: `rim` its metal, `rim-fill` the light across
+     it (a pack's own metal, flat or an image, replaces it), `rim-width`,
+     `rim-shadow` its keyline and the shadow it casts, `radius` and
+     `corner-shape` its outline (the socket and glass follow), and
+     `ornament` an image a pack lays over it, `ornament-outset` past its
+     edge. The socket the glass sits in: `socket-fill`, `socket-width`.
+     The glass: `light` its highlights' colour, `glass-shadow` the lip
+     of light inside its edge (it follows the outline), `gleam`, `shade` and
+     `depth` how strong the highlights, the sphere's shade and the liquid's
+     depth are (0 is none: a flat orb). The liquid: `health` and `mana`
+     its colours, `swell` the second wave behind (0 is none) and
+     `surface-width` the line along its top. `figure-size` and
+     `figure-shadow` set the value. A pack may also name
+     --orb-meter-well (the glass's depth; unset, it takes the liquid's hue)
+     and --orb-meter-figure-ink (unset, the ink that reads on the well). */
+  --role-orb-meter-size: calc(112 * var(--font-step-px));
+  --role-orb-meter-radius: var(--radius-capsule);
+  --role-orb-meter-corner-shape: round;
+  --role-orb-meter-rim: var(--cell-scene-rim);
+  --role-orb-meter-rim-width: calc(6 * var(--font-step-px));
+  --role-orb-meter-rim-fill: linear-gradient(160deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0) 45%, rgb(0 0 0 / 0) 55%, rgb(0 0 0 / 0.6)), var(--orb-meter-rim);
+  --role-orb-meter-rim-shadow: 0 0 0 var(--stroke-hairline) color-mix(in oklab, var(--orb-meter-rim) 30%, var(--color-shadow)), 0 var(--space-xxs) var(--space-xs) var(--shadow-45);
+  --role-orb-meter-socket-width: calc(3 * var(--font-step-px));
+  --role-orb-meter-socket-fill: color-mix(in oklab, var(--orb-meter-rim) 18%, var(--color-shadow));
+  --role-orb-meter-ornament: none;
+  --role-orb-meter-ornament-outset: 0px;
+  --role-orb-meter-health: var(--health);
+  --role-orb-meter-mana: var(--mana);
+  --role-orb-meter-light: rgb(from var(--color-sheen) r g b / 1);
+  --role-orb-meter-glass-shadow: inset 0 0 0 var(--stroke-hairline) rgb(from var(--orb-meter-light) r g b / 0.28);
+  --role-orb-meter-gleam: 1;
+  --role-orb-meter-shade: 1;
+  --role-orb-meter-depth: 1;
+  --role-orb-meter-swell: 1;
+  --role-orb-meter-surface-width: 1.4;
+  --role-orb-meter-figure-size: var(--font-step-3xl);
+  --role-orb-meter-figure-shadow: 0 var(--stroke-hairline) var(--space-xxs) var(--color-shadow), 0 0 var(--space-xs) var(--color-shadow);
+  /* An ability slot's side: alone, and in an ability bar, where the slots
+     shrink alike down to `slot-min` (a touch target) when the bar is given
+     less room, and under that break into lines. */
+  --role-ability-slot-size: calc(48 * var(--font-step-px));
+  --role-ability-bar-slot-size: calc(56 * var(--font-step-px));
+  --role-ability-bar-slot-min: calc(44 * var(--font-step-px));
   /* The six rarity colours (`--common` … `--mythic`): each a status colour
      here; a style names its own. A cell holding something of a rarity
      (`data-rarity`) wears its colour as a rim, as light rising from its
@@ -1980,7 +2025,9 @@
      smaller. A sidebar's side is `sidebar-width` wide until its content
      would be under `sidebar-content-min`; a switcher lays its children in
      one row while its container is at least `switch-at` wide; a grid's
-     tiles are at least `tile` wide; a centre keeps to `measure`; a ratio
+     tiles are at least `tile` wide; a strip's `data-fit` children are each
+     `strip-item` wide and shrink alike, down to `strip-item-min`, where
+     the strip is narrower; a centre keeps to `measure`; a ratio
      frame holds `ratio`; an anchor sits `anchor-inset` from its edges. */
   --role-layout-gap: var(--space-sm);
   --role-layout-gap-hair: var(--space-xxs);
@@ -1991,6 +2038,8 @@
   --role-layout-sidebar-content-min: 50%;
   --role-layout-switch-at: 420px;
   --role-layout-tile: 140px;
+  --role-layout-strip-item: 56px;
+  --role-layout-strip-item-min: 40px;
   --role-layout-measure: var(--measure-lg);
   --role-layout-ratio: 1;
   --role-layout-anchor-inset: var(--space-xs);

@@ -163,12 +163,13 @@ documents written before the rule carry their remaining count in
 
 Its layout comes from the style too where a shared shape fits: an element
 asks for a primitive with `data-layout` (`stack`, `row`, `cluster`,
-`sidebar`, `switcher`, `grid`, `cover`, `center`, `ratio`, `shell`,
+`sidebar`, `switcher`, `grid`, `strip`, `cover`, `center`, `ratio`, `shell`,
 `scroll`, `overlay`) and spaces its children by a step, `data-gap`
 (`none`, `hair`, `tight`, `loose`, `wide`; the default between tight and
 loose), never by a size (docs/ui.md §3.1 Role parts). A child marks its
 place with `data-side` (a sidebar's side), `data-fill` (takes the rest; a
-sidebar's main part, a switcher's shared children),
+sidebar's main part, a switcher's shared children), `data-fit` (a strip's
+blocks, each the strip's item size and shrinking alike),
 `data-principal` (a cover's middle) or `data-anchor` (an overlay's
 corner, edge, centre or `fill`). The primitives wrap by their container's
 width, so a component works in a sidebar and full width; a `shell` root is
@@ -195,7 +196,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 
 | Component (document) | Parts |
 | --- | --- |
-| `AbilityBar` (`hud/ability-bar.svelte`) | `frame`, `cell` (a button: `.active` `.cooling` `.locked` `.tinted` `:disabled`), `well`, `icon`, `figure`, `badge` (`.short`), `label` |
+| `AbilityBar` (`hud/ability-bar.svelte`) | `frame` (a strip of `AbilitySlot`, whose parts dress each slot) |
 | `AbilitySlot` (`hud/ability-slot.svelte`) | `frame` (`.ultimate`), `cell` (a button: `.active` `.cooling` `.full` `.locked` `.off` `.tinted` `:disabled`), `well`, `icon`, `ultimate`, `figure`, `percent`, `badge` (`.short`), `track`, `fill`, `label` |
 | `ActionButton` (`hud/action-button.svelte`) | `disc` (a button: `.primary` `:disabled`), `charge`, `icon`, `text` |
 | `ActionHints` (`hud/action-hints.svelte`) | `frame`, `row` (a button), `cap`, `label` |
@@ -219,7 +220,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `Minimap` (`world/minimap.svelte`) | `frame`, `marker` (`.accent` `.danger` `.info` `.player` `.success` `.warn`), `label`, `cell`, `grid` (only without a texture) |
 | `Nameplate` (`world/nameplate.svelte`) | `frame` (`.boss` `.friendly` `.hostile` `.player` `.targeted`), `icon`, `badge`, `name`, `subtitle`, `well`, `fill`, `shield`, `cast`, `spell` |
 | `NodeGraph` (`panels/node-graph.svelte`) | `well`, `link` (`.active`), `node` (a button: `.active` `.ally` `.current` `.diamond` `.done` `.enemy` `.hex` `.locked` `.selected` `.square` `[aria-disabled]` `:disabled`), `icon`, `label` |
-| `OrbMeter` (`hud/orb-meter.svelte`) | `orb`, `fill`, `value`, `label` |
+| `OrbMeter` (`hud/orb-meter.svelte`) | `orb`, `bezel`, `socket`, `glass`, `ornament`, `fill`, `value`, `label`; each layer is set through `--orb-meter-*` (docs/ui.md §3.1 Role parts) |
 | `OverheadBars` (`world/overhead-bars.svelte`) | `bar` (`.tinted`) |
 | `OverlayBar` (`hud/overlay-bar.svelte`) | `frame`, `title`, `ramp`, `label`, `bar`, `option` (a button: `[aria-pressed]`), `art`, `well`, `icon`, `name` |
 | `PathLine` (`world/path-line.svelte`) | `line` (`.invalid`), `badge` |

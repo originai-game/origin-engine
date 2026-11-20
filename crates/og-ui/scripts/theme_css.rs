@@ -510,6 +510,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([data-layout=cluster]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--layout-gap); }
   :where([data-layout=sidebar]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
   :where([data-layout=switcher]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
+  :where([data-layout=strip]) { display: flex; align-items: flex-start; justify-content: center; max-inline-size: 100%; gap: var(--layout-gap); }
   :where([data-layout=grid]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); gap: var(--layout-gap); }
   :where([data-layout=cover]) { display: flex; flex-direction: column; align-items: safe center; justify-content: safe center; block-size: stretch; gap: var(--layout-gap); overflow-y: auto; }
   :where([data-layout=cover] > [data-principal]) { margin-block: auto; }
@@ -536,6 +537,18 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([data-layout=sidebar] > [data-side]) { flex: 1 1 var(--layout-sidebar-width); }
   :where([data-layout=sidebar] > [data-fill]) { flex: 999 1 0; min-inline-size: var(--layout-sidebar-content-min); }
   :where([data-layout=switcher] > [data-fill]) { flex: 1 1 calc((var(--layout-switch-at) - 100%) * 999); }
+  /* A strip is one line of like things (ability slots, party frames,
+     quick items): its `data-fit` children are each --layout-strip-item
+     wide, so the strip is as wide as what it holds, and where it is given
+     less they shrink alike, down to --layout-strip-item-min. */
+  :where([data-layout=strip] > [data-fit]) { flex: 0 1 auto; inline-size: var(--layout-strip-item); min-inline-size: var(--layout-strip-item-min); }
+  /* Told how many it holds (`data-wraps` and --layout-strip-count), a
+     strip never overflows: where its blocks would go under their minimum
+     it breaks into lines as even as can be, each line's blocks sharing
+     its room alike. Its width is its blocks' and the gaps between them
+     (--layout-strip-gap, which follows `data-gap`). */
+  :where([data-layout=strip][data-wraps]) { flex-wrap: balance; --layout-strip-gap: var(--layout-gap); inline-size: calc(var(--layout-strip-count) * (var(--layout-strip-item) + var(--layout-strip-gap)) - var(--layout-strip-gap)); }
+  :where([data-layout=strip][data-wraps] > [data-fit]) { flex: 1 1 var(--layout-strip-item-min); inline-size: auto; min-inline-size: 0; max-inline-size: var(--layout-strip-item); }
   /* An overlay lays its `data-anchor` children over itself, each at a
      corner, an edge, its middle, or across it. A sidebar's side is its
      `data-side` child and the rest its `data-fill` child; a switcher's
@@ -564,6 +577,11 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([data-layout][data-gap=tight]) { gap: var(--layout-gap-tight); }
   :where([data-layout][data-gap=loose]) { gap: var(--layout-gap-loose); }
   :where([data-layout][data-gap=wide]) { gap: var(--layout-gap-wide); }
+  :where([data-layout=strip][data-gap=none]) { --layout-strip-gap: 0px; }
+  :where([data-layout=strip][data-gap=hair]) { --layout-strip-gap: var(--layout-gap-hair); }
+  :where([data-layout=strip][data-gap=tight]) { --layout-strip-gap: var(--layout-gap-tight); }
+  :where([data-layout=strip][data-gap=loose]) { --layout-strip-gap: var(--layout-gap-loose); }
+  :where([data-layout=strip][data-gap=wide]) { --layout-strip-gap: var(--layout-gap-wide); }
   /* A phone on its side: bands and titles one step down. */
   @media (height < 500px) {
     :where([part$=".band"]) { min-height: var(--band-small-height); padding-top: 0; padding-bottom: 0; }

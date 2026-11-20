@@ -1869,7 +1869,7 @@ Layout is the style's as well. An element asks for a shape by meaning with
 `data-fill` child, stacked once that would be under
 `--layout-sidebar-content-min`), `switcher` (its `data-fill` children in
 one row while it is at least `--layout-switch-at` wide, stacked below), `grid` (tiles at least
-`--layout-tile` wide, `repeat(auto-fill, minmax(…, 1fr))`), `cover`
+`--layout-tile` wide, `repeat(auto-fill, minmax(…, 1fr))`), `strip` (one line of like blocks, ability slots or party frames: its `data-fit` children are each `--layout-strip-item` wide, so the strip is as wide as what it holds, and where it is given less they shrink alike, down to `--layout-strip-item-min`; with `data-wraps` and its count in `--layout-strip-count` it breaks into lines instead of going under that minimum, so it never overflows its place), `cover`
 (safely centred in its height, scrolling overflow, a `data-principal`
 child in the middle), `center`
 (kept to `--layout-measure`, safely centred across), `ratio` (an `--layout-ratio` frame, square unless set, its image
@@ -1929,6 +1929,8 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `headline`, `caption` | `--headline-text/weight/ink`, `--headline-card-text` (a headline in a card, its title), `--caption-text/ink` | |
 | `dot` | `--dot-fill/ink/rim/rim-width/radius` | `data-tone` fills it, and what it holds takes the fill's contrast |
 | `track`, `fill` | `--track-fill/radius/shadow`, `--fill-color/gloss`; a meter sets `--fill-color` for what it measures | `data-tone` on a fill |
+| the orb meter's layers (`OrbMeter`: bezel, socket, glass, ornament, liquid, value) | `--orb-meter-size/radius/corner-shape`, `--orb-meter-rim/rim-fill/rim-width/rim-shadow`, `--orb-meter-socket-fill/socket-width`, `--orb-meter-ornament/ornament-outset` (an image a pack lays over the bezel; none by default), `--orb-meter-light/glass-shadow/gleam/shade/depth` (the glass's lip of light, which follows the outline; 0 for the last three is a flat orb), `--orb-meter-health/mana/swell/surface-width`, `--orb-meter-figure-size/figure-shadow`; unset by default: `--orb-meter-well` (the glass takes its liquid's hue), `--orb-meter-figure-ink` (the ink that reads on the well) | |
+| an ability slot's side | `--ability-slot-size` (alone; an instance's style prop sets it, `100%` in a strip), `--ability-bar-slot-size/slot-min` (in an `AbilityBar`) | |
 | text over the scene (StatusGrid's time left, Nameplate's name and subtitle, Waypoint's label and distance) | `--tag-halo` its outline, `--tag-fill/pad/radius` a ground of its own (none in the default style) | |
 | text over a warn fill (Nameplate's spell) | `--ink-on-warn` | |
 | `label`, `heading` | `--label-font/tracking/transform`, `--ink-label` | |
@@ -1953,7 +1955,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `cell`, `dot` shape | `--cell-done-rim`, `--cell-active-rim/shadow` | `data-shape` round, square, hex (and diamond for a dot); `data-done`, `data-active` on a cell |
 | any row, cell, card or frame | `--disabled-content-opacity`, `--down-opacity` | disabled: its picture, icon and figure dim (a frame's words too); `data-down`: all of it dims |
 | a meter's `fill` | `--fill-ghost-color`, `--ghost-motion` | `data-ghost` (the loss left behind, shrinking after) |
-| `data-layout`, `data-gap` | `--layout-gap`, `--layout-gap-hair/tight/loose/wide`, `--layout-sidebar-width/sidebar-content-min/switch-at/tile/measure/ratio/anchor-inset` | `data-side`, `data-principal`, `data-fill`, `data-anchor` on a child |
+| `data-layout`, `data-gap` | `--layout-gap`, `--layout-gap-hair/tight/loose/wide`, `--layout-sidebar-width/sidebar-content-min/switch-at/tile/strip-item/strip-item-min/strip-count/measure/ratio/anchor-inset` | `data-side`, `data-principal`, `data-fill`, `data-fit`, `data-anchor` on a child; `data-wraps` on a strip |
 | any role part | `--team1`, `--team2` | `data-team=a` and `data-team=b`: the team's colour as its ink and rim |
 
 `--mark-*` are the small signs a pack supplies as images and `--sfx-*`

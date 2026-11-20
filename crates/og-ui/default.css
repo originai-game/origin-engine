@@ -452,6 +452,9 @@
     --tooltip-corner-shape: bevel;
     --tooltip-radius: var(--radius-field);
     --tooltip-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft), var(--shadow-panel);
+    --ability-bar-slot-min: calc(44 * var(--font-step-px));
+    --ability-bar-slot-size: calc(56 * var(--font-step-px));
+    --ability-slot-size: calc(48 * var(--font-step-px));
     --action-confirm-fill: linear-gradient(180deg, rgb(255 255 255 / 0.42), transparent 48%), var(--hud-boon);
     --action-confirm-glow: drop-shadow(0 0 calc(16 * var(--font-step-px)) rgb(from var(--hud-boon) r g b / 0.45));
     --action-confirm-hover-fill: linear-gradient(180deg, rgb(255 255 255 / 0.62), rgb(255 255 255 / 0.14) 60%), var(--hud-boon);
@@ -1094,6 +1097,8 @@
     --layout-ratio: 1;
     --layout-sidebar-content-min: 50%;
     --layout-sidebar-width: 220px;
+    --layout-strip-item: 56px;
+    --layout-strip-item-min: 40px;
     --layout-switch-at: 420px;
     --layout-tile: 140px;
     --legendary: var(--warn);
@@ -1203,6 +1208,28 @@
     --mark-triangle: none;
     --mythic: var(--danger);
     --notch-ink: var(--line-strong);
+    --orb-meter-corner-shape: round;
+    --orb-meter-depth: 1;
+    --orb-meter-figure-shadow: 0 var(--stroke-hairline) var(--space-xxs) var(--color-shadow), 0 0 var(--space-xs) var(--color-shadow);
+    --orb-meter-figure-size: var(--font-step-3xl);
+    --orb-meter-glass-shadow: inset 0 0 0 var(--stroke-hairline) rgb(from var(--orb-meter-light) r g b / 0.28);
+    --orb-meter-gleam: 1;
+    --orb-meter-health: var(--health);
+    --orb-meter-light: rgb(from var(--color-sheen) r g b / 1);
+    --orb-meter-mana: var(--mana);
+    --orb-meter-ornament: none;
+    --orb-meter-ornament-outset: 0px;
+    --orb-meter-radius: var(--radius-capsule);
+    --orb-meter-rim: var(--cell-scene-rim);
+    --orb-meter-rim-fill: linear-gradient(160deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0) 45%, rgb(0 0 0 / 0) 55%, rgb(0 0 0 / 0.6)), var(--orb-meter-rim);
+    --orb-meter-rim-shadow: 0 0 0 var(--stroke-hairline) color-mix(in oklab, var(--orb-meter-rim) 30%, var(--color-shadow)), 0 var(--space-xxs) var(--space-xs) var(--shadow-45);
+    --orb-meter-rim-width: calc(6 * var(--font-step-px));
+    --orb-meter-shade: 1;
+    --orb-meter-size: calc(112 * var(--font-step-px));
+    --orb-meter-socket-fill: color-mix(in oklab, var(--orb-meter-rim) 18%, var(--color-shadow));
+    --orb-meter-socket-width: calc(3 * var(--font-step-px));
+    --orb-meter-surface-width: 1.4;
+    --orb-meter-swell: 1;
     --party-ban: calc(44 * var(--font-step-px));
     --party-ban-art: grayscale(1) brightness(0.6);
     --party-ban-strike: linear-gradient(135deg, transparent 46%, var(--hud-foe) 46%, var(--hud-foe) 54%, transparent 54%);
@@ -3815,6 +3842,7 @@
   :where([data-layout=cluster]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--layout-gap); }
   :where([data-layout=sidebar]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
   :where([data-layout=switcher]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
+  :where([data-layout=strip]) { display: flex; align-items: flex-start; justify-content: center; max-inline-size: 100%; gap: var(--layout-gap); }
   :where([data-layout=grid]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); gap: var(--layout-gap); }
   :where([data-layout=cover]) { display: flex; flex-direction: column; align-items: safe center; justify-content: safe center; block-size: stretch; gap: var(--layout-gap); overflow-y: auto; }
   :where([data-layout=cover] > [data-principal]) { margin-block: auto; }
@@ -3841,6 +3869,18 @@
   :where([data-layout=sidebar] > [data-side]) { flex: 1 1 var(--layout-sidebar-width); }
   :where([data-layout=sidebar] > [data-fill]) { flex: 999 1 0; min-inline-size: var(--layout-sidebar-content-min); }
   :where([data-layout=switcher] > [data-fill]) { flex: 1 1 calc((var(--layout-switch-at) - 100%) * 999); }
+  /* A strip is one line of like things (ability slots, party frames,
+     quick items): its `data-fit` children are each --layout-strip-item
+     wide, so the strip is as wide as what it holds, and where it is given
+     less they shrink alike, down to --layout-strip-item-min. */
+  :where([data-layout=strip] > [data-fit]) { flex: 0 1 auto; inline-size: var(--layout-strip-item); min-inline-size: var(--layout-strip-item-min); }
+  /* Told how many it holds (`data-wraps` and --layout-strip-count), a
+     strip never overflows: where its blocks would go under their minimum
+     it breaks into lines as even as can be, each line's blocks sharing
+     its room alike. Its width is its blocks' and the gaps between them
+     (--layout-strip-gap, which follows `data-gap`). */
+  :where([data-layout=strip][data-wraps]) { flex-wrap: balance; --layout-strip-gap: var(--layout-gap); inline-size: calc(var(--layout-strip-count) * (var(--layout-strip-item) + var(--layout-strip-gap)) - var(--layout-strip-gap)); }
+  :where([data-layout=strip][data-wraps] > [data-fit]) { flex: 1 1 var(--layout-strip-item-min); inline-size: auto; min-inline-size: 0; max-inline-size: var(--layout-strip-item); }
   /* An overlay lays its `data-anchor` children over itself, each at a
      corner, an edge, its middle, or across it. A sidebar's side is its
      `data-side` child and the rest its `data-fill` child; a switcher's
@@ -3869,6 +3909,11 @@
   :where([data-layout][data-gap=tight]) { gap: var(--layout-gap-tight); }
   :where([data-layout][data-gap=loose]) { gap: var(--layout-gap-loose); }
   :where([data-layout][data-gap=wide]) { gap: var(--layout-gap-wide); }
+  :where([data-layout=strip][data-gap=none]) { --layout-strip-gap: 0px; }
+  :where([data-layout=strip][data-gap=hair]) { --layout-strip-gap: var(--layout-gap-hair); }
+  :where([data-layout=strip][data-gap=tight]) { --layout-strip-gap: var(--layout-gap-tight); }
+  :where([data-layout=strip][data-gap=loose]) { --layout-strip-gap: var(--layout-gap-loose); }
+  :where([data-layout=strip][data-gap=wide]) { --layout-strip-gap: var(--layout-gap-wide); }
   /* A phone on its side: bands and titles one step down. */
   @media (height < 500px) {
     :where([part$=".band"]) { min-height: var(--band-small-height); padding-top: 0; padding-bottom: 0; }

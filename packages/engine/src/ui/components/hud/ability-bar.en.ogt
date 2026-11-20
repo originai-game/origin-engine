@@ -3,5 +3,3 @@ version 1
 ---
 locale "en"
 string "component.ability-bar.name" "Abilities"
-string "component.ability-bar.ready" "Ready"
-string "component.ability-bar.locked" "Locked"

@@ -730,6 +730,127 @@ fn an_ability_slot_grows_with_the_text_and_keeps_its_readouts_apart() {
     }
 }
 
+/// An ability bar is a strip of AbilitySlot blocks, one a row of its slots
+/// (docs/ui.md §3.1: a `strip`). A press on a slot reaches the game as
+/// `use` with that slot's key, so the game knows which was pressed, and
+/// where the bar is given less room than its slots ask for they shrink
+/// alike on one line, inside it, and where they would go under their
+/// minimum the bar breaks into lines.
+///
+/// Ways it could fail: a component's action inside another's `{#each}` row
+/// sent without the row's key, or a strip that wraps while its blocks
+/// still fit, overflows its place or shrinks some blocks and not others.
+#[test]
+fn an_ability_bar_names_the_slot_pressed_and_fits_its_room() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let doc = docs
+        .iter()
+        .find(|d| d.path == "src/ui/components/hud/ability-bar.svelte")
+        .expect("ability-bar.svelte");
+    let slots_of = |ui: &Ui| {
+        let mut slots: Vec<_> = ui
+            .elements()
+            .iter()
+            .filter(|e| e.path.ends_with("/Slot"))
+            .map(|e| (e.x, e.y, e.width, e.height))
+            .collect();
+        slots.sort_by(|a, b| a.0.total_cmp(&b.0));
+        slots
+    };
+
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+    preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
+    let slots = slots_of(&ui);
+    assert_eq!(slots.len(), 5, "the fixture's five slots");
+    assert!(
+        slots.iter().all(|s| (s.2 - 56.0).abs() < 0.5),
+        "with room, each slot is the strip's item size: {slots:?}"
+    );
+    // The second slot is the fixture's `w`.
+    let at = og_core::glam::Vec2::new(slots[1].0 + slots[1].2 / 2.0, slots[1].1 + slots[1].3 / 2.0);
+    let mut events = Vec::new();
+    let _ = ui.take_doc_events();
+    for (pressed, released) in [(true, false), (false, true), (false, false)] {
+        ui.begin(
+            InputFrame {
+                pointer: at,
+                pointer_inside: true,
+                down: pressed,
+                pressed,
+                released,
+                ..InputFrame::default()
+            },
+            Viewport::new(1280.0, 720.0),
+        );
+        ui.build_retained_documents(&messages).unwrap();
+        ui.end();
+        events.extend(ui.take_doc_events());
+    }
+    assert!(
+        events.iter().any(|e| e.name == "use" && e.row_key == "w"),
+        "the press is `use` of row w: {events:?}"
+    );
+
+    // Ten slots, each given a place between the bar's 24 px paddings.
+    let mut props = doc.props.clone();
+    let five = props["slots"].as_array().unwrap().clone();
+    let mut ten = five.clone();
+    for slot in &five {
+        let mut again = slot.clone();
+        again["id"] = serde_json::json!(format!("{}2", slot["id"].as_str().unwrap()));
+        ten.push(again);
+    }
+    props["slots"] = serde_json::Value::Array(ten);
+    let crowded = EngineDocument {
+        path: doc.path.clone(),
+        doc: doc.doc.clone(),
+        props,
+    };
+    let slots_at = |width: f32| {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+        preview(&mut ui, &docs, &crowded, &messages, width, 720.0);
+        slots_of(&ui)
+    };
+    // 512 px of room: (512 - 9 gaps of 4) / 10 each, on one line (to the
+    // whole pixel a grown block is laid at).
+    let slots = slots_at(560.0);
+    assert_eq!(slots.len(), 10);
+    let (first, last) = (slots[0], slots[9]);
+    assert!(
+        slots
+            .iter()
+            .all(|s| (s.2 - 47.6).abs() < 1.0 && (s.1 - first.1).abs() < 0.5),
+        "the slots share the room alike on one line: {slots:?}"
+    );
+    assert!(
+        first.0 >= 24.0 - 0.5 && last.0 + last.2 <= 560.0 - 24.0 + 0.5,
+        "inside the bar's place: {slots:?}"
+    );
+    // 342 px of room holds seven at the 44 px minimum: the bar breaks into
+    // lines, and no slot goes under the minimum, over its size or outside.
+    let slots = slots_at(390.0);
+    assert_eq!(slots.len(), 10);
+    let mut lines: Vec<f32> = slots.iter().map(|s| s.1).collect();
+    lines.sort_by(f32::total_cmp);
+    lines.dedup_by(|a, b| (*a - *b).abs() < 0.5);
+    assert_eq!(lines.len(), 2, "two lines of slots: {slots:?}");
+    assert!(
+        slots.iter().all(|s| s.2 >= 44.0 - 0.5
+            && s.2 <= 56.0 + 0.5
+            && s.0 >= 24.0 - 0.5
+            && s.0 + s.2 <= 390.0 - 24.0 + 0.5),
+        "every slot keeps its size inside the bar's place: {slots:?}"
+    );
+    for (i, a) in slots.iter().enumerate() {
+        for b in &slots[i + 1..] {
+            let apart =
+                a.0 + a.2 <= b.0 + 0.5 || b.0 + b.2 <= a.0 + 0.5 || (a.1 - b.1).abs() >= a.3 - 0.5;
+            assert!(apart, "no slot lies over another: {a:?} {b:?}");
+        }
+    }
+}
 /// The default style marks a table's current row: the arena scoreboard
 /// fills the local player's row (`aria-current`) with the chosen wash
 /// (`--chosen-fill`), whatever corner shape a style gives rows. The teams

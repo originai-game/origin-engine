@@ -12,7 +12,6 @@ arena/spectator.svelte	ArenaSpectator.name ArenaSpectator.headline	1
 arena/versus.svelte	ArenaVersus.name ArenaVersus.headline	2
 arena/versus.svelte	ArenaVersus.rank ArenaVersus.label ArenaVersus.caption	2
 arena/vote.svelte	ArenaVote.name ArenaVote.headline	1
-hud/ability-bar.svelte	AbilityBar.label AbilityBar.badge	1
 hud/ability-slot.svelte	AbilitySlot.label AbilitySlot.badge	1
 hud/ability-slot.svelte	AbilitySlot.well AbilitySlot.track	1
 hud/hud-timer.svelte	HudTimer.label HudTimer.caption	1

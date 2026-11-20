@@ -3644,3 +3644,70 @@ fn svg_current_color_and_anchored_labels() {
         "a label anchored in the middle: {n:?} in {o:?}"
     );
 }
+
+/// A strip told how many blocks it holds (`data-wraps` with
+/// `--layout-strip-count`) never overflows its place: with room it is as
+/// wide as its blocks and their gaps, with less its blocks shrink alike on
+/// one line, and where they would go under their minimum it breaks into
+/// even lines. The same in a row, in a column and in a parent that takes
+/// its content's width.
+///
+/// Ways it could fail: the width counted with the default gap when
+/// `data-gap` set another, lines broken at the blocks' full size (so they
+/// never shrink), or one line kept and the blocks left over the edge.
+#[test]
+fn a_strip_told_its_count_breaks_into_even_lines() {
+    let blocks = |id: &str, n: usize| {
+        (1..=n)
+            .map(|i| format!(r#"<div id="{id}{i}" data-fit></div>"#))
+            .collect::<String>()
+    };
+    let d = mounted(
+        ui_with_font(test_font()),
+        r#"<div id="Root">
+  <div id="RowP"><div id="A" data-layout="strip" data-wraps="true" data-gap="tight" style="--layout-strip-count: 12">ITEMSA</div></div>
+  <div id="ColP"><div id="B" data-layout="strip" data-wraps="true" data-gap="tight" style="--layout-strip-count: 10">ITEMSB</div></div>
+  <div id="FitP"><div id="Fit"><div id="C" data-layout="strip" data-wraps="true" data-gap="tight" style="--layout-strip-count: 5">ITEMSC</div></div></div>
+</div>
+<style>#Root { display: flex; flex-direction: column; width: 500px; } #RowP { display: flex; width: stretch; } #ColP { display: flex; flex-direction: column; } #FitP { display: flex; justify-content: center; } #Fit { display: flex; flex-direction: column; flex: 0 1 auto; min-width: 0; } [data-fit] { height: 10px; }</style>"#
+            .replace("ITEMSA", &blocks("A", 12))
+            .replace("ITEMSB", &blocks("B", 10))
+            .replace("ITEMSC", &blocks("C", 5))
+            .as_str(),
+        &[],
+        Viewport::new(800.0, 600.0),
+    );
+    let row = |id: &str, n: usize| -> Vec<_> {
+        (1..=n).map(|i| at(&d.ui, &format!("{id}{i}"))).collect()
+    };
+    // Twelve 40 px minimums and eleven 4 px gaps are 524 px: over 500.
+    let a = row("A", 12);
+    assert!(
+        a[..6].iter().all(|e| e.y == a[0].y)
+            && a[6..].iter().all(|e| e.y == a[6].y)
+            && a[6].y > a[0].y,
+        "twelve blocks in 500 px are two lines of six: {a:?}"
+    );
+    assert!(
+        a.iter()
+            .all(|e| e.width == 56.0 && e.x >= 0.0 && e.x + e.width <= 500.0),
+        "each at its full size, inside the strip: {a:?}"
+    );
+    assert_eq!(a[1].x - a[0].x - a[0].width, 4.0, "a tight gap apart");
+    // Ten fit on one line under their size: (500 - 9 * 4) / 10 each.
+    let b = row("B", 10);
+    assert!(
+        b.iter()
+            .all(|e| e.y == b[0].y && (e.width - 46.4).abs() < 1.0)
+            && b[9].x + b[9].width <= 500.5,
+        "ten blocks share one 500 px line alike: {b:?}"
+    );
+    // With room the strip is its blocks and gaps wide: 5 * 56 + 4 * 4.
+    let (c, fit) = (at(&d.ui, "C"), at(&d.ui, "Fit"));
+    assert!(
+        c.width == 296.0
+            && fit.width == 296.0
+            && row("C", 5).iter().all(|e| e.width == 56.0 && e.y == c.y),
+        "five blocks on one line, the strip as wide as they: {c:?}"
+    );
+}
