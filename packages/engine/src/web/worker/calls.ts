@@ -86,15 +86,20 @@ export function callsOf(run: Run): Calls {
       return run.trace.document(run.engine, { tier: run.lastTier, lanes: run.lanes });
     },
     /**
-     * A development build's hot reload (`og dev --web`): the cooked files a re-cook changed
-     * (`[path, bytes]`, each path as the boot put it) replace those the engine holds, then the
-     * probe's `reload` swaps them in as `og dev` does natively: a document, a style or the
-     * default style whose cooked output changed applies in place, the world kept. Answers the
-     * reload's report, or null when it was refused (the reason in the log).
+     * A development build's live edit (the UI gallery): the cooked files a re-cook changed
+     * (`[path, bytes]`, each path as the boot put it) replace those the engine holds, and what
+     * they change is read again in place (og_runtime::dev_refresh): a document, a style or the
+     * default style, the world, the code and the UI kept. No hot reload: a code change needs the
+     * probe's `reload`. Answers `{ ms, putMs, steps, warnings }` timed in the Worker, or
+     * `{ error }`.
      */
     devFiles: (e, [files]) => {
+      const t0 = performance.now();
       for (const [path, bytes] of files as Array<[string, Uint8Array]>) run.glue?.og_web_put_file(path, bytes);
-      return e.probe.reload();
+      const putMs = performance.now() - t0;
+      const refreshed = run.glue?.og_web_dev_refresh?.(e.id);
+      if (refreshed === undefined) return { error: "this engine module has no live edit (a publish build)" };
+      return { ...(JSON.parse(refreshed) as Record<string, unknown>), putMs: Math.round(putMs * 10) / 10 };
     },
     probe: (e, [member, ...rest]) => {
       const f = (e.probe as unknown as Record<string, unknown>)[String(member)];

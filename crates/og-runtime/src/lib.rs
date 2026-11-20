@@ -63,6 +63,8 @@ pub use present::glyphs::glyphs_pending;
 
 pub use author::memory::memory_report;
 #[cfg(not(feature = "publish"))]
+pub use author::probe::dev_refresh;
+#[cfg(not(feature = "publish"))]
 pub use author::record::{render_frame, render_restore, render_snapshot};
 pub use author::trace::{
     BEFORE_ENGINE as TRACE_BEFORE_ENGINE, set as trace_set, take as trace_take,

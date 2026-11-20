@@ -600,12 +600,27 @@ pub(crate) fn apply_base(eng: &Engine) -> Result<bool, String> {
 /// style the UI is configured with that changed is applied again; the
 /// UI's state (the layer stack, focus, motion) is kept. In a development
 /// build an edited default style ([`apply_base`]) reads every style and
-/// document again.
-pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
+/// document again. `fresh_ui`: the UI is a new one (a hot reload's
+/// rebuilt world), so the configured style is applied to it whatever
+/// changed; otherwise only what changed is read again. Each step's time
+/// goes to `laps`.
+pub(crate) fn refresh(
+    eng: &Engine,
+    fresh_ui: bool,
+    laps: &mut Vec<(&'static str, f64)>,
+) -> Vec<String> {
     let mut failed = Vec::new();
     let loaded = with(eng.id, |d| d.loaded.clone());
     let ui = eng.state.borrow().ui.clone();
     let Some(ui) = ui else { return failed };
+    let mut lap = {
+        let mut t = crate::author::probe::now_ms();
+        move |laps: &mut Vec<(&'static str, f64)>, name| {
+            let now = crate::author::probe::now_ms();
+            laps.push((name, now - t));
+            t = now;
+        }
+    };
     #[cfg(not(feature = "publish"))]
     let rebased = apply_base(eng).unwrap_or_else(|e| {
         failed.push(format!("og dev: {e}"));
@@ -613,6 +628,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
     });
     #[cfg(feature = "publish")]
     let rebased = false;
+    lap(laps, "base");
     for l in loaded {
         let now = hash_of(eng, &l.id);
         // An edited .riv reloads its document's artboards too.
@@ -665,6 +681,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
             Err(e) => failed.push(format!("og dev: {e} (the old document stays)")),
         }
     }
+    lap(laps, "documents");
     // Styles: an edited one is parsed again and the UI configured again.
     let styles: Vec<(usize, String)> = eng
         .assets
@@ -690,7 +707,8 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
             Err(e) => failed.push(format!("og dev: {e} (the old style stays)")),
         }
     }
-    if (changed || configured_style(eng).is_some())
+    lap(laps, "styles");
+    if (changed || (fresh_ui && configured_style(eng).is_some()))
         && let Err(reason) = super::og_ui_configure(eng.id, Some("{}".into()))
     {
         failed.push(format!("og dev: the style did not apply: {reason}"));
@@ -703,6 +721,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
     {
         failed.push(format!("og dev: the default style did not apply: {reason}"));
     }
+    lap(laps, "restyle");
     failed
 }
 

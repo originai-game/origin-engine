@@ -856,21 +856,57 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) -> Result<(), String> {
     rs.fx.anim = Some(a.anim.clone());
     rs.feel.feel = Some((a.feel.clone(), a.feel_records.clone()));
     drop(rs);
-    // `og dev` cooks an asset edit before it rebuilds the bundle: a model
-    // whose cooked output changed loads again under the handle it had.
+    refresh_assets(eng, true, &mut Vec::new());
+    crate::engine::run_ui_registration(eng, a.game.ui_setup)
+}
+
+/// What a re-cook changed, applied in place: `og dev` cooks an asset edit
+/// before it rebuilds the bundle. Each bundle's manifest is read again; a
+/// model whose cooked output changed loads again under the handle it had;
+/// a timeline plays its edit from the time it had; a UI document or style
+/// whose cooked output changed applies in place, the UI's state kept
+/// (docs/ui.md §6). `fresh_ui`: the UI is a hot reload's new one. Each
+/// step's time goes to `laps`.
+fn refresh_assets(eng: &Engine, fresh_ui: bool, laps: &mut Vec<(&'static str, f64)>) {
+    let mut t = now_ms();
+    let mut lap = |laps: &mut Vec<(&'static str, f64)>, name| {
+        let now = now_ms();
+        laps.push((name, now - t));
+        t = now;
+    };
     let (_, failed) = crate::world::assets::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
+    lap(laps, "manifests");
     let failed = crate::present::ui_draw::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
-    // And a timeline whose cooked output changed plays its edit from the
-    // time it had (its playback is the og.timeline state block, restored).
     let failed = crate::bind::timeline::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
-    // And a UI document or style whose cooked output changed applies in
-    // place, the UI's state kept (docs/ui.md §6).
-    let failed = crate::bind::modules::docs::refresh(eng);
+    lap(laps, "materials");
+    let failed = crate::bind::modules::docs::refresh(eng, fresh_ui, laps);
     eng.state.borrow_mut().warnings.extend(failed);
-    crate::engine::run_ui_registration(eng, a.game.ui_setup)
+}
+
+/// A development build's asset refresh without a hot reload: when a re-cook
+/// changed only assets (a UI document, a style, the default style, a
+/// texture), the world, the bundle's code and the UI stay and only what
+/// the cooked outputs changed is read again ([`refresh_assets`]). The UI
+/// gallery's live edits take this path; a code change still needs the
+/// probe's `reload`. Answers `{ ms, steps: { <step>: ms }, warnings }`.
+#[cfg(not(feature = "publish"))]
+pub fn dev_refresh(engine: u32) -> Result<Value, String> {
+    let eng = crate::engine::engine(engine)?;
+    let t0 = now_ms();
+    let before = eng.state.borrow().warnings.len();
+    let mut laps = Vec::new();
+    refresh_assets(&eng, false, &mut laps);
+    let warnings: Vec<String> = eng.state.borrow().warnings[before..].to_vec();
+    let steps: serde_json::Map<String, Value> = laps
+        .into_iter()
+        .map(|(name, ms)| (name.to_string(), json!((ms * 10.0).round() / 10.0)))
+        .collect();
+    Ok(
+        json!({ "ms": ((now_ms() - t0) * 10.0).round() / 10.0, "steps": steps, "warnings": warnings }),
+    )
 }
 
 /// One JSON-RPC call through the probe, with the runtime's additions to

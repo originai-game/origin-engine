@@ -235,6 +235,8 @@ export interface WebExtras {
   og_web_lanes?(): string;
   /** What the engine holds (the probe's `memory`, ProbeMemory), as JSON. */
   og_web_memory?(engine: number): string;
+  /** A development module's live edit: the files put since applied in place, without a hot reload (`{ ms, steps, warnings }` or `{ error }`). */
+  og_web_dev_refresh?(engine: number): string;
   /** The device the attached renderer runs on: its WebGPU limits and features, whether it is a fallback adapter (JSON, null before attaching). */
   og_web_gpu?(engine: number): string;
   /** Make one pipeline no frame used yet (og-render's Renderer::warm); false when none is left. */

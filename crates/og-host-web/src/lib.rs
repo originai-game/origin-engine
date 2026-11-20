@@ -184,6 +184,17 @@ pub fn og_web_memory(engine: u32) -> String {
     og_runtime::memory_report(engine).to_string()
 }
 
+/// A development build's live edit (the UI gallery, `__runtime_probe__.devFiles`):
+/// the re-cooked files the Worker put applied in place, without a hot
+/// reload (og_runtime::dev_refresh). JSON: `{ ms, steps, warnings }` or `{ error }`.
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_web_dev_refresh(engine: u32) -> String {
+    og_runtime::dev_refresh(engine)
+        .unwrap_or_else(|e| serde_json::json!({ "error": e }))
+        .to_string()
+}
+
 /// The WebGPU limits a crash report and a boot sample carry (field telemetry,
 /// docs/web-export.md §Telemetry; `shell/telemetry.ts` GPU_LIMITS), each with
 /// the device's value.
