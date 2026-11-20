@@ -155,9 +155,13 @@ export function skeletonFiles(): string[] {
   return skeleton;
 }
 
-/** The film skeleton's directory: what `form film` adds over template/ (og api show film). */
+/** The film skeleton, what `form film` adds over template/ (og api show film): templates/film in a checkout, the package's film/ once packed. */
 export function filmDir(): string {
-  return join(dirname(fileURLToPath(import.meta.url)), "../film");
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (const candidate of [join(here, "..", "..", "..", "templates", "film"), join(here, "..", "film")]) {
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(`no film skeleton next to ${here}; reinstall the engine distribution`);
 }
 
 /**
@@ -212,6 +216,11 @@ export function create(options: CreateOptions): Created {
   for (const name of new Set(choices.lang.map((l) => fontPackFor(l, readPacks(packs))).filter((n) => n !== undefined))) {
     const missing = missingPins(packs, `fonts/${name}`);
     if (missing.length) throw new Error(`${missing.length} pinned file(s) of the checkout's templates/fonts/${name} are not installed (${missing[0]}); run bun scripts/assets.ts ensure templates`);
+  }
+  // The film's placeholder clip is pinned like the fonts (templates/og-assets.json).
+  if (choices.form === "film") {
+    const missing = missingPins(filmDir(), "film");
+    if (missing.length) throw new Error(`${missing.length} pinned file(s) of the checkout's templates/film are not installed (${missing[0]}); run bun scripts/assets.ts ensure templates`);
   }
   const template = templateDir();
   const written: string[] = [];

@@ -1,4 +1,5 @@
 # og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/film/assets/clips/opening.mp4
 /fonts/arabic/NotoSansArabic-Regular.ttf
 /fonts/chinese-simplified/NotoSansSC-Regular.ttf
 /fonts/chinese-traditional/NotoSansTC-Regular.ttf

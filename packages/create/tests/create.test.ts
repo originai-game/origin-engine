@@ -317,3 +317,19 @@ test("the creation document matches the options, and a release cannot ship an un
   const printed = Bun.spawnSync(["bun", join(pkg, "bin/create.ts"), "--creation"]);
   expect(JSON.parse(new TextDecoder().decode(printed.stdout))).toEqual(JSON.parse(JSON.stringify(doc)));
 });
+
+test("in a checkout missing the film's pinned clip, form film refuses with the one fix and writes nothing", () => {
+  const root = join(scratch, "unfetched-film");
+  const repo = join(pkg, "..", "..");
+  for (const part of ["bin", "template", "package.json"]) cpSync(join(pkg, part), join(root, "packages/create", part), { recursive: true });
+  cpSync(join(repo, "packages/knowledge/looks"), join(root, "packages/knowledge/looks"), { recursive: true });
+  cpSync(join(repo, "templates/og-assets.json"), join(root, "templates/og-assets.json"));
+  cpSync(join(repo, "templates/fonts/latin"), join(root, "templates/fonts/latin"), { recursive: true });
+  cpSync(join(repo, "templates/film"), join(root, "templates/film"), { recursive: true, filter: (s) => !s.endsWith(".mp4") });
+  const r = Bun.spawnSync(["bun", join(root, "packages/create/bin/create.ts"), "film-unfetched", "--form", "film", "--lang", "en", "--no-prompt"], { cwd: scratch });
+  const err = new TextDecoder().decode(r.stderr);
+  expect(r.exitCode).toBe(1);
+  expect(err).toContain("film/assets/clips/opening.mp4");
+  expect(err).toContain("run bun scripts/assets.ts ensure templates");
+  expect(existsSync(join(scratch, "film-unfetched"))).toBe(false);
+});

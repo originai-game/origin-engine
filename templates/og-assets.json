@@ -2,6 +2,12 @@
   "version": 1,
   "files": [
     {
+      "path": "film/assets/clips/opening.mp4",
+      "sha256": "079652b17b2a36df7b7363601b281cf629e9e651d65d5b1f10bf6376caa90137",
+      "size": 3838,
+      "visibility": "public"
+    },
+    {
       "path": "fonts/arabic/NotoSansArabic-Regular.ttf",
       "sha256": "7c6accbb8df37e870e1bdf98648163e069a98f7bbbbe020b3be9b52ce31b6dd9",
       "size": 176436,

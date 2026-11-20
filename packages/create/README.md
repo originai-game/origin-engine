@@ -36,7 +36,9 @@ interactive film (`og api show film`): creation writes the same skeleton
 plus `assets/story/film.yarn` (three film nodes, two endings),
 `assets/segments/opening.ogt` and `ending.ogt`, a placeholder
 `assets/clips/opening.ogt` stream and an entry that loads and starts the
-film paused. A film has no `genre`, `view` or `players`; giving one is
+film paused (from `templates/film`, packed as `film/`; the clip is pinned in
+`templates/og-assets.json`, so a checkout runs `bun scripts/assets.ts ensure
+templates` first). A film has no `genre`, `view` or `players`; giving one is
 refused. The look must draw the form (its catalogue `views`; every look
 styles a film), and `--variant` must be one of the look's; a variant's mood
 is the default mood.
