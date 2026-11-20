@@ -479,7 +479,10 @@ fn sites(frames: usize) -> (Value, String) {
     let name = |s: &Site| {
         let file = s.at.file();
         let file = file.rsplit_once("src/").map_or(file, |(_, f)| f);
-        format!("{file}:{}", s.at.line())
+        match s.name() {
+            "" => format!("{file}:{}", s.at.line()),
+            label => format!("{label} ({file}:{})", s.at.line()),
+        }
     };
     let mut out = Vec::new();
     let mut text = String::new();

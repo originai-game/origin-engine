@@ -62,6 +62,30 @@ pub struct Site {
     /// The frames ([`take_frame`]'s count) of its first and last event.
     pub first_frame: u64,
     pub last_frame: u64,
+    /// A pipeline's label (its descriptor's, cut to fit): one builder
+    /// makes many pipelines, so a pipeline's site is its builder and label.
+    name: [u8; NAME],
+}
+
+const NAME: usize = 40;
+
+impl Site {
+    /// The pipeline's label; empty for the other kinds.
+    pub fn name(&self) -> &str {
+        let n = self.name.iter().position(|&b| b == 0).unwrap_or(NAME);
+        std::str::from_utf8(&self.name[..n]).unwrap_or("")
+    }
+}
+
+fn name_of(label: Option<&str>) -> [u8; NAME] {
+    let mut out = [0u8; NAME];
+    let s = label.unwrap_or("");
+    let mut n = s.len().min(NAME);
+    while !s.is_char_boundary(n) {
+        n -= 1;
+    }
+    out[..n].copy_from_slice(&s.as_bytes()[..n]);
+    out
 }
 
 const SITES: usize = 512;
@@ -141,6 +165,10 @@ fn now() -> Option<f64> {
 }
 
 fn count(at: &'static Location<'static>, kind: Kind, bytes: u64, ms: f64) {
+    count_named(at, kind, bytes, ms, [0; NAME]);
+}
+
+fn count_named(at: &'static Location<'static>, kind: Kind, bytes: u64, ms: f64, name: [u8; NAME]) {
     let mut s = state();
     let t = &mut s.frame;
     match kind {
@@ -163,10 +191,13 @@ fn count(at: &'static Location<'static>, kind: Kind, bytes: u64, ms: f64) {
         }
     }
     let frame = s.frames;
-    let start = (std::ptr::from_ref(at) as usize >> 3) % SITES;
+    let start = (std::ptr::from_ref(at) as usize >> 3).wrapping_add(
+        name.iter()
+            .fold(0usize, |h, &b| h.wrapping_mul(31).wrapping_add(b as usize)),
+    ) % SITES;
     for i in (start..SITES).chain(0..start) {
         match &mut s.sites[i] {
-            Some(site) if std::ptr::eq(site.at, at) && site.kind == kind => {
+            Some(site) if std::ptr::eq(site.at, at) && site.kind == kind && site.name == name => {
                 site.count += 1;
                 site.bytes += bytes;
                 site.ms += ms;
@@ -183,6 +214,7 @@ fn count(at: &'static Location<'static>, kind: Kind, bytes: u64, ms: f64) {
                     ms,
                     first_frame: frame,
                     last_frame: frame,
+                    name,
                 });
                 return;
             }
@@ -284,11 +316,12 @@ pub fn create_render_pipeline(
     #[allow(clippy::disallowed_methods)]
     let p = device.create_render_pipeline(desc);
     if let Some(t0) = t0 {
-        count(
+        count_named(
             at,
             Kind::Pipeline,
             0,
             now().map_or(0.0, |t| (t - t0).max(0.0)),
+            name_of(desc.label),
         );
     }
     p
@@ -305,11 +338,12 @@ pub fn create_compute_pipeline(
     #[allow(clippy::disallowed_methods)]
     let p = device.create_compute_pipeline(desc);
     if let Some(t0) = t0 {
-        count(
+        count_named(
             at,
             Kind::Pipeline,
             0,
             now().map_or(0.0, |t| (t - t0).max(0.0)),
+            name_of(desc.label),
         );
     }
     p
