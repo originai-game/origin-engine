@@ -17,12 +17,25 @@ gives each command's flags.
 | type-check | `og check` | after every edit; `og run`, `og test` and `og build` run it first |
 | run once | `og run --headless --commands "1:dump_world;2:quit"` | to see what the world holds |
 | live | `og dev` | while iterating on looks, UI and feel: hot reload keeps the world |
+| live on the web | `og dev --web` | the same in a browser: the page at `http://127.0.0.1:47810/` |
 | test | `og test` | before claiming anything works |
 | build | `og build --publish` | before handing the game over |
 
 - `og dev` reports each reload against a 300 ms budget. A reload over it
   usually means a large `src/` file or an asset cooked on every save;
   split the file or move the asset's generation into the cook.
+- `og dev --web` serves the development web build (the inspector on F1,
+  Tune, Pause and Step, every probe member on `__runtime_probe__`) and
+  pushes each save to the open page over `_dev/socket`: an asset or UI
+  edit is cooked alone and applied in place, a `src/` edit bundles the
+  game's own code and swaps it in with the world kept (snapshot, swap,
+  restore), so a store's initial value or a `start` change shows only
+  after a restart; only a `project.ogt` change reloads the page. A cook,
+  bundle or type error stays on the page's console and in
+  `_dev/status` (`{ready, build, error, last}`) until fixed; the server
+  keeps running. `window.__og_dev_reloads__` lists each change applied
+  with its steps, save to frame; the budget is 1.5 s for an asset or UI
+  edit and 300 ms from the code bundle written to the frame.
 - `og check` warnings are findings, not noise: the locale-font warning
   (screens §6) and the determinism warnings (determinism §1) each name their fix.
 - A failing `og test` is read from its first failure: the tick, the

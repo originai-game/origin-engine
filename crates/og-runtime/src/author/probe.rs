@@ -832,6 +832,8 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) -> Result<(), String> {
         st.save_version = a.game.save_version;
         st.warnings.extend(a.warnings);
         st.physics = Some(a.mounted.physics.clone());
+        // The same UI the old bundle drew (bind/modules/ui_config.rs new_ui), at the new game's rate.
+        a.mounted.ui.lock().set_ticks_per_second(a.game.tick);
         st.ui = Some(a.mounted.ui.clone());
         st.actions = Some(a.mounted.actions.clone());
         st.anim = Some(a.anim.clone());
