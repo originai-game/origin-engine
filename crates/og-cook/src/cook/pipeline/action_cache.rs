@@ -54,6 +54,7 @@ fn entry(
     options: &CookOptions,
     project_key: Option<&str>,
 ) -> Option<(cache::Store, String)> {
+    let own_input = matches!(job, Some(Action::Input(..)));
     let input = match job {
         Some(Action::Never) => None,
         Some(Action::Input(bytes, settings, _)) => Some((bytes, settings)),
@@ -62,6 +63,12 @@ fn entry(
     directory.zip(input).map(|(dir, (bytes, settings))| {
         let mut options = options.clone();
         options.threads = 0;
+        // The game's component schemas pack scenes, which are the project's
+        // actions; an output of its own input never reads them, so a code
+        // edit or another game still shares it.
+        if own_input {
+            options.schemas.clear();
+        }
         let options = format!(
             "{options:?} {:?} {:?}",
             super::texture::encoder_name(&options.texture),

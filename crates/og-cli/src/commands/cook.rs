@@ -19,7 +19,8 @@
 //! reviewer's eyes, never into assets/. `--watch` cooks, then cooks again
 //! whenever a file under assets/ changes, printing each cooked asset's time
 //! and the cook's against the 300 ms reload budget (`--exit-after N` stops
-//! after N of them; `--json` prints one JSON line per cook).
+//! after N of them; `--json` prints one JSON line per cook, after a
+//! `watching` line naming the root and the built-in styles' directory).
 //!
 //! Colour textures cook as project.ogt's `cook { color_textures etc1s|uastc
 //! }` says (etc1s without it); the web export's cook (`og build`, `og run
@@ -473,7 +474,13 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
     if json {
         println!(
             "{}",
-            serde_json::json!({ "event": "watching", "root": root.display().to_string(), "budgetMs": budget })
+            serde_json::json!({
+                "event": "watching",
+                "root": root.display().to_string(),
+                "budgetMs": budget,
+                // Where the built-in style packs (`ui "<pack>"`) are read from, null without them.
+                "styles": og_cook::cook::look::styles_dir().map(|d| d.display().to_string()),
+            })
         );
     } else {
         println!(
@@ -543,6 +550,8 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
                         // one walk of the watched trees, and seen to reported.
                         "detectMs": detect_ms.round(), "walkMs": walk_ms.round(),
                         "reportMs": (started.elapsed().as_secs_f64() * 1000.0).round(),
+                        // The cook's own stages (index, plan, outputs, write…), ms each.
+                        "stages": r.stages.iter().map(|s| serde_json::json!([s.name, (s.ms * 10.0).round() / 10.0])).collect::<Vec<_>>(),
                     })
                 );
             }

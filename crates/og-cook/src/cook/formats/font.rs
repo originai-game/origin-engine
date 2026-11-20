@@ -10,8 +10,8 @@
 //! draws a shaped run as.
 
 use super::{
-    CookError, Cx, Exec, FontSettings, Job, KindDef, Out, Palette, PlanState, Planned, Source,
-    font_settings, stamp,
+    Action, CookError, Cx, Exec, FontSettings, Job, KindDef, Out, Palette, PlanState, Planned,
+    Source, font_settings, stamp,
 };
 use crate::format::{self, *};
 use crate::ktx2;
@@ -1388,6 +1388,14 @@ impl Job for FontJob<'_> {
         let Exec { threads, .. } = ex;
         let threads = *threads;
         cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
+    }
+
+    /// The atlas is the font file's and its settings' alone: one cooked
+    /// face serves every project that imports it the same way (a built-in
+    /// style pack's fonts, first cooked when a look switches to the pack).
+    fn action(&self) -> Action<'_> {
+        let FontJob(s, f) = self;
+        Action::Input(s.bytes.as_slice(), format!("font {f:?}"), false)
     }
 }
 

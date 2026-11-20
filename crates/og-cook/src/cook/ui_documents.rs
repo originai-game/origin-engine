@@ -2,8 +2,8 @@
 //! cooked into its one blob.
 
 use super::{
-    BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, execute,
-    format, hash_bytes, stamp, strings,
+    Action, BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets,
+    execute, format, hash_bytes, stamp, strings,
 };
 
 pub(crate) static STYLE: KindDef = KindDef {
@@ -22,9 +22,13 @@ fn plan_style<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Cx { known, .. } = *cx;
+    let Cx {
+        known,
+        texture_cache,
+        ..
+    } = *cx;
     let PlanState { parsed_refs, .. } = state;
-    let refs: Vec<String> = pack_assets(&s.rel, &s.bytes)
+    let refs: Vec<String> = pack_assets(&s.rel, &s.bytes, texture_cache)
         .into_iter()
         .inspect(|r| {
             parsed_refs
@@ -44,10 +48,12 @@ fn plan_style<'a>(
 }
 
 /// The assets a pack's CSS names (`url()`), by its directory and sources,
-/// kept for the process: a long-running cook reads a pack again only when
-/// its CSS changed. A pack that does not parse names none (its job reports
-/// why).
-fn pack_assets(rel: &str, bytes: &[u8]) -> Vec<String> {
+/// kept for the process and in the shared cook cache: a long-running cook
+/// reads a pack again only when its CSS changed, and a look switching to a
+/// built-in pack another cook already planned (`og dev --web` warms them)
+/// does not parse its CSS (half a second for a large pack). A pack that
+/// does not parse names none (its job reports why).
+fn pack_assets(rel: &str, bytes: &[u8], cache: Option<&std::path::Path>) -> Vec<String> {
     use std::collections::HashMap;
     static KEPT: std::sync::Mutex<Option<HashMap<u64, Vec<String>>>> = std::sync::Mutex::new(None);
     let mut key = og_core::hash::StableHasher::new();
@@ -62,11 +68,28 @@ fn pack_assets(rel: &str, bytes: &[u8]) -> Vec<String> {
     {
         return found.clone();
     }
-    let assets = serde_json::from_slice(bytes)
-        .map_err(|e| e.to_string())
-        .and_then(|files| og_ui::style_pack::StylePack::parse(rel, files))
-        .map(|pack| pack.assets)
-        .unwrap_or_default();
+    let stored = cache.map(|dir| {
+        (
+            super::cache::Store::new(dir.to_owned()),
+            super::cache::key("style pack assets", &[b"CSS pack 1", rel.as_bytes(), bytes]),
+        )
+    });
+    let found = stored
+        .as_ref()
+        .and_then(|(store, key)| serde_json::from_slice::<Vec<String>>(&store.action(key)?.0).ok());
+    let assets = found.unwrap_or_else(|| {
+        let assets: Vec<String> = serde_json::from_slice(bytes)
+            .map_err(|e| e.to_string())
+            .and_then(|files| og_ui::style_pack::StylePack::parse(rel, files))
+            .map(|pack| pack.assets)
+            .unwrap_or_default();
+        if let Some((store, key)) = &stored
+            && let Ok(json) = serde_json::to_vec(&assets)
+        {
+            let _ = store.put_action(key, &json, &[]);
+        }
+        assets
+    });
     KEPT.lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .get_or_insert_with(HashMap::new)
@@ -121,6 +144,14 @@ impl Job for StyleJob<'_> {
                 pack.assets.len()
             )],
         ))
+    }
+
+    /// The blob is the pack's text alone (its assets are checked, not
+    /// read, and their presence is in the stamp): every project with the
+    /// pack shares it.
+    fn action(&self) -> Action<'_> {
+        let StyleJob(s) = self;
+        Action::Input(s.bytes.as_slice(), format!("style {}", s.rel), false)
     }
 }
 

@@ -499,3 +499,66 @@ fn shared_texture_results_reuse_invalidate_recover_and_match_uncached_bytes() {
     }
     std::fs::remove_dir_all(root).unwrap();
 }
+
+/// A font and a texture are their own input's alone: another game, whose
+/// code declares other components, takes them from the shared cache as
+/// they were cooked (a look switching to a built-in pack cooks its fonts
+/// once per machine, not once per project or per code edit).
+#[test]
+fn own_input_results_are_shared_across_games_and_their_schemas() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("own-input-cache-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let cache = root.join("cache");
+    let font = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/ui-text/assets/fonts/EBGaramond-Medium.ttf");
+    let game = |name: &str, component: &str| {
+        let p = root.join(name);
+        project(&p, 30, false, false);
+        std::fs::create_dir_all(p.join("assets/fonts")).unwrap();
+        std::fs::copy(&font, p.join("assets/fonts/body.ttf")).unwrap();
+        let options = CookOptions {
+            threads: 1,
+            schemas: vec![og_core::reflect::Schema {
+                name: component.into(),
+                version: 1,
+                doc: String::new(),
+                fields: vec![og_core::reflect::FieldSchema::new(
+                    "hp",
+                    og_core::reflect::FieldType::string(16).unwrap(),
+                )],
+            }],
+            ..CookOptions::default()
+        };
+        let r = cook_project_with_texture_cache(&p, &options, Some(&cache)).unwrap();
+        assert!(r.ok(), "{:?}", r.errors());
+        let notes: Vec<String> = r.assets.iter().flat_map(|a| a.notes.clone()).collect();
+        let bytes = |id: &str| {
+            let o = r
+                .assets
+                .iter()
+                .flat_map(|a| &a.outputs)
+                .find(|o| o.id == id)
+                .unwrap();
+            std::fs::read(p.join("cooked").join(&o.file)).unwrap()
+        };
+        (notes, bytes("fonts/body.ttf"), bytes("texture.png"))
+    };
+    let (first, font_a, texture_a) = game("a", "Health");
+    assert!(!first.iter().any(|n| n.contains("cache hit")), "{first:?}");
+    let (second, font_b, texture_b) = game("b", "Mana");
+    assert!(
+        second
+            .iter()
+            .any(|n| n == "fonts/body.ttf: shared cook cache hit"),
+        "the font is shared: {second:?}"
+    );
+    assert!(
+        second
+            .iter()
+            .any(|n| n == "texture.png: shared texture cache hit"),
+        "the texture is shared whatever the game's components: {second:?}"
+    );
+    assert_eq!(font_a, font_b);
+    assert_eq!(texture_a, texture_b);
+}
