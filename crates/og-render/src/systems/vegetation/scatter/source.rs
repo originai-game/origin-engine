@@ -24,7 +24,11 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
             crate::wind::WIND_COMMON_WGSL,
             crate::wind::WIND_LEAN_WGSL,
             crate::trample::READ_WGSL,
-            crate::foliage::WGSL,
+            if crate::WORLD_3D {
+                crate::foliage::WGSL
+            } else {
+                ""
+            },
             wgsl3d!("scatter_common.wgsl"),
             wgsl3d!("scatter.wgsl"),
             wgsl3d!("impostor_common.wgsl"),

@@ -144,25 +144,26 @@ impl Trample {
     }
 
     pub(crate) fn new(device: &wgpu::Device, compute: bool) -> Trample {
+        let side = if compute { N } else { 1 };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("grass trample"),
             size: wgpu::Extent3d {
-                width: N,
-                height: N,
+                width: side,
+                height: side,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: FORMAT,
-            usage: if compute {
-                wgpu::TextureUsages::TEXTURE_BINDING
-                    | wgpu::TextureUsages::STORAGE_BINDING
-                    | wgpu::TextureUsages::COPY_SRC
-                    | wgpu::TextureUsages::COPY_DST
-            } else {
-                wgpu::TextureUsages::TEXTURE_BINDING
-            },
+            // Terrain binds the absent map as read-only storage too.
+            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::STORAGE_BINDING
+                | if compute {
+                    wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST
+                } else {
+                    wgpu::TextureUsages::empty()
+                },
             view_formats: &[],
         });
         let view = texture.create_view(&Default::default());

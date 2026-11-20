@@ -43,7 +43,7 @@ import { fileURLToPath } from "node:url";
 import { settingsOf, sizesOf, webBuild, type BuildManifest } from "../../src/node/web-build.ts";
 import { Browser, chromePath, type Page as CdpPage } from "./cdp.ts";
 import { Safari, safariDriverPath, type SafariPage } from "./webdriver.ts";
-import { serve } from "./serve.ts";
+import { preloads, serve } from "./serve.ts";
 import { LANES_POOL_DEADLINE_MS } from "../../src/web/host.ts";
 import { cookProject } from "../support/og-bin.ts";
 
@@ -183,6 +183,20 @@ try {
       const label = `${game} ${backend}`;
       const server = serve({ dist: builds[game]!.dist, isolate: true });
       const log: string[] = [];
+      // The engine forwards Worker logs to the shell, not the page console.
+      preloads.set(server.port, [`
+        window.__gpuErrors = [];
+        window.Worker = class extends Worker {
+          constructor(...args) {
+            super(...args);
+            this.addEventListener('message', ({data}) => {
+              if (data.type === 'log') {
+                window.__gpuErrors.push(...data.lines.filter(line => line.includes('[og] WebGPU error:')));
+              }
+            });
+          }
+        };
+      `]);
       const page = await browser.open(`http://127.0.0.1:${server.port}/game/index.html`, log);
       try {
         const t = await load(page);
@@ -202,11 +216,14 @@ try {
         const playShot = save(`${game}-${backend}-play.png`, await page.screenshot());
         const errors = log.filter((l) => /^(error|exception)/.test(l));
         check(errors.length === 0, `${label}: no console errors`, errors.slice(0, 5));
+        const gpuErrors = await page.eval<string[]>("window.__gpuErrors");
+        check(gpuErrors.length === 0, `${label}: no Worker WebGPU validation errors`, gpuErrors);
         results[label] = { ...t, isolated, ticksAfterTap: Number(after) - before, gate: gateShot, play: playShot };
       } catch (e) {
         check(false, `${label}: loads`, { error: String(e), log: log.slice(-20) });
       } finally {
         await page.send("Page.close").catch(() => {});
+        preloads.delete(server.port);
         server.stop();
       }
     }
