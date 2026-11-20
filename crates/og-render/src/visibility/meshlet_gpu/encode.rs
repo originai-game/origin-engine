@@ -175,18 +175,12 @@ impl MeshletGpu {
         ) {
             self.held.views.invalidate();
         }
-        write_held(
-            queue,
-            &self.views,
-            &mut self.held.views,
-            bytemuck::cast_slice(&planes),
-        );
-        write_held(
-            queue,
-            &self.batches,
-            &mut self.held.batches,
-            bytemuck::cast_slice(&rows),
-        );
+        self.held
+            .views
+            .write_all(queue, &self.views, bytemuck::cast_slice(&planes));
+        self.held
+            .batches
+            .write_all(queue, &self.batches, bytemuck::cast_slice(&rows));
         let draw_args: Vec<[u32; 4]> = rows
             .iter()
             .map(|_| [(CLUSTER_TRIANGLES * 3) as u32, 0, 0, 0])
@@ -219,11 +213,10 @@ impl MeshletGpu {
         let mut both = vec![0u8; PARAMS_SLOT as usize + std::mem::size_of::<Params>()];
         both[..std::mem::size_of::<Params>()].copy_from_slice(bytemuck::bytes_of(&params(first)));
         both[PARAMS_SLOT as usize..].copy_from_slice(bytemuck::bytes_of(&params(second)));
-        write_held(queue, &self.params, &mut self.held.params, &both);
-        write_held(
+        self.held.params.write_all(queue, &self.params, &both);
+        self.held.draw_params.write_all(
             queue,
             &self.draw_params,
-            &mut self.held.draw_params,
             bytemuck::bytes_of(&DrawParams {
                 flags: [scene.objects.lod_debug as u32, 0, 0, 0],
                 wind: winds.1,

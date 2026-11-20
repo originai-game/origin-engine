@@ -66,6 +66,17 @@ impl DirtyUpload {
         written
     }
 
+    /// [`DirtyUpload::write`] with every byte of `bytes` drawn: the blocks
+    /// that differ from what the buffer holds. Returns the bytes written.
+    pub fn write_all(&mut self, queue: &wgpu::Queue, buffer: &wgpu::Buffer, bytes: &[u8]) -> u64 {
+        self.write(
+            queue,
+            buffer,
+            bytes,
+            std::slice::from_ref(&(0..bytes.len())),
+        )
+    }
+
     /// The block runs [`DirtyUpload::write`] writes, taken as written:
     /// `held` and `known` describe the buffer after them.
     fn runs(&mut self, bytes: &[u8], drawn: &[Range<usize>]) -> Vec<(usize, usize)> {

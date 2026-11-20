@@ -79,23 +79,6 @@ impl GpuCulling {
         grown
     }
 
-    /// Writes `data` to `buffer` where it differs from what `held` says
-    /// the buffer holds (a table the cull only reads).
-    fn write_held<T: bytemuck::Pod>(
-        queue: &wgpu::Queue,
-        buffer: &wgpu::Buffer,
-        held: &mut crate::upload::DirtyUpload,
-        data: &[T],
-    ) {
-        let bytes: &[u8] = bytemuck::cast_slice(data);
-        held.write(
-            queue,
-            buffer,
-            bytes,
-            std::slice::from_ref(&(0..bytes.len())),
-        );
-    }
-
     /// The frame's culling: uploads the sorted `transforms` and the batch
     /// table, and encodes both stages, the occluders' depth and the
     /// pyramid. Without an `Occluders` pass (see [`Self::primed`]) the
@@ -357,12 +340,13 @@ impl GpuCulling {
                 }
             })
             .collect();
-        Self::write_held(queue, &self.batches, &mut self.held.batches, &table);
-        Self::write_held(
+        self.held
+            .batches
+            .write_all(queue, &self.batches, bytemuck::cast_slice(&table));
+        self.held.view.write_all(
             queue,
             &self.view,
-            &mut self.held.view,
-            &view_proj.to_cols_array(),
+            bytemuck::cast_slice(&view_proj.to_cols_array()),
         );
         self.occlusion = occlusion;
         let pyramid = self.pyramid.as_ref().filter(|_| occlusion);
@@ -401,7 +385,9 @@ impl GpuCulling {
         ) {
             self.held.passes.invalidate();
         }
-        Self::write_held(queue, &self.passes, &mut self.held.passes, &table);
+        self.held
+            .passes
+            .write_all(queue, &self.passes, bytemuck::cast_slice(&table));
         for ((buffer, held), (which, base)) in self
             .params
             .iter()
@@ -420,7 +406,7 @@ impl GpuCulling {
                     ],
                     view_proj: view_proj.to_cols_array_2d(),
                 };
-                Self::write_held(queue, buffer, held, std::slice::from_ref(&params));
+                held.write_all(queue, buffer, bytemuck::bytes_of(&params));
             }
         }
         if self.groups.is_none() {

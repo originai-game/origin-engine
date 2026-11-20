@@ -446,22 +446,6 @@ struct HeldTables {
     batches: crate::upload::DirtyUpload,
 }
 
-/// Writes `bytes` to `buffer` from its start where they differ from what
-/// `held` says it holds.
-fn write_held(
-    queue: &wgpu::Queue,
-    buffer: &wgpu::Buffer,
-    held: &mut crate::upload::DirtyUpload,
-    bytes: &[u8],
-) {
-    held.write(
-        queue,
-        buffer,
-        bytes,
-        std::slice::from_ref(&(0..bytes.len())),
-    );
-}
-
 fn grow(
     device: &wgpu::Device,
     buf: &mut wgpu::Buffer,
