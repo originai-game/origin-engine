@@ -15,7 +15,9 @@
 // in place (`__runtime_probe__.devFiles`, no hot reload: the world, the code and the UI stay): a
 // document, a pack, a token or default.css edit shows without restarting anything. A development cook carries the default style as the source
 // tree has it (og-cook `ui_components::base_css`, og-ui `set_base_css`); a publish build keeps
-// the compiled one. A change to a sheet's TypeScript rebuilds it and reloads the frame. Only a
+// the compiled one. An edit to the default style's generator (crates/og-ui/scripts/theme_*.rs),
+// or to a token while that is newer than og, runs gen-theme.sh's generator, so default.css never
+// lags the checkout. A change to a sheet's TypeScript rebuilds it and reloads the frame. Only a
 // change to the engine's Rust needs a rebuild of og and the wasm (packages/engine/scripts/build.sh).
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -275,6 +277,51 @@ async function poll(): Promise<void> {
   }
 }
 setInterval(() => void poll(), 30);
+
+// The default style's generator (crates/og-ui/scripts/theme_*.rs) is Rust compiled into og: a
+// cook regenerates the default style from edited tokens only while the checkout's generator is
+// the one og was built with, and otherwise reads default.css as gen-theme.sh last wrote it. So a
+// generator edit, or a token edit while the generator is newer than og, runs gen-theme.sh's
+// generator (theme.rs, default.css, tokens.json, as the drift check wants them; seconds, since
+// cargo rebuilds og-ui for it), and the cook shows the default.css it writes. Any other token
+// edit the cook regenerates itself. One run at a time; edits during one run it once more.
+const themeDirs = [join(repo, "crates", "og-ui", "scripts"), join(repo, "packages", "design", "tokens")];
+const themeStamps = (): Map<string, string> => {
+  const out = new Map<string, string>();
+  for (const d of themeDirs) for (const [k, v] of stamps(d)) out.set(join(d, k), v);
+  return out;
+};
+let seenTheme = themeStamps();
+let theming: Promise<void> | null = null;
+let rethemed = false;
+function regenerate(edits: string[]): void {
+  if (theming) {
+    rethemed = true;
+    return;
+  }
+  theming = (async () => {
+    do {
+      rethemed = false;
+      const t0 = performance.now();
+      const args = ["packages/design/tokens", "crates/og-ui/src/theme.rs", "crates/og-ui/default.css", "packages/design/tokens.json"];
+      const proc = Bun.spawn(["cargo", "run", "-q", "-p", "og-ui", "--example", "gen-theme", "--", ...args], { cwd: repo, stdout: "pipe", stderr: "pipe", env: process.env });
+      const [code, err] = await Promise.all([proc.exited, new Response(proc.stderr).text()]).catch((e) => [-1, String(e)] as const);
+      const ms = Math.round(performance.now() - t0);
+      if (code === 0) console.log(`${edits.join(", ")}: gen-theme wrote default.css in ${ms} ms`);
+      else tell({ type: "error", sheet: active, edits, error: `gen-theme failed (the default style stays as default.css has it): ${String(err).trim()}` });
+    } while (rethemed);
+  })().finally(() => {
+    theming = null;
+  });
+}
+setInterval(() => {
+  const now = themeStamps();
+  const edits = changed(seenTheme, now).filter((p) => /theme_\w+\.rs$|\.css$/.test(p));
+  seenTheme = now;
+  const built = stat(og)?.mtimeMs ?? Infinity;
+  const stale = [...now.keys()].some((p) => /theme_\w+\.rs$/.test(p) && (stat(p)?.mtimeMs ?? 0) > built);
+  if (edits.some((p) => p.endsWith(".rs")) || (edits.length && stale)) regenerate(edits.map((p) => relative(repo, p)));
+}, 100);
 
 // ── serving ─────────────────────────────────────────────────────────────────
 

@@ -38,6 +38,25 @@ pub const BASE: &str = "@ui/base/default.css";
 #[path = "../../../og-ui/scripts/theme_codegen.rs"]
 mod theme_codegen;
 
+/// That generator's sources as this cook was compiled with them, by file
+/// under `crates/og-ui/scripts`: a checkout whose generator differs (a
+/// rule added to theme_css.rs since og was built) is not regenerated with
+/// this one ([`base_css`]).
+const GENERATOR: [(&str, &str); 3] = [
+    (
+        "theme_codegen.rs",
+        include_str!("../../../og-ui/scripts/theme_codegen.rs"),
+    ),
+    (
+        "theme_css.rs",
+        include_str!("../../../og-ui/scripts/theme_css.rs"),
+    ),
+    (
+        "theme_tokens.rs",
+        include_str!("../../../og-ui/scripts/theme_tokens.rs"),
+    ),
+];
+
 /// The directories under `src/ui` that hold built-in documents.
 const ROOTS: [&str; 3] = ["components/", "controls/", "screens/"];
 
@@ -240,9 +259,12 @@ pub fn engine_sources() -> Vec<PathBuf> {
 /// not the style this cook was compiled with, and the files it is read
 /// from (inputs of the cook either way; none outside a checkout). It is
 /// `crates/og-ui/default.css`, or, when a token file
-/// (`packages/design/tokens/*.css`) is newer than it, what gen-theme.sh
-/// would write there from the tokens. A published game never carries it:
-/// its default style is the compiled one.
+/// (`packages/design/tokens/*.css`) is newer than it and the checkout's
+/// generator (`crates/og-ui/scripts`) is the one this cook was compiled
+/// with, what gen-theme.sh would write there from the tokens. With another
+/// generator only gen-theme.sh writes it (the UI gallery runs it): this
+/// cook's would drop the rules added since. A published game never
+/// carries it: its default style is the compiled one.
 pub fn base_css() -> (Result<Option<&'static [u8]>, String>, Vec<PathBuf>) {
     let Some(root) = ui_dir().and_then(|d| d.ancestors().nth(4)) else {
         return (Ok(None), Vec::new());
@@ -263,7 +285,13 @@ pub fn base_css() -> (Result<Option<&'static [u8]>, String>, Vec<PathBuf>) {
         .collect();
     inputs.sort();
     let modified = |p: &Path| std::fs::metadata(p).and_then(|m| m.modified()).ok();
-    let generate = inputs.iter().any(|t| modified(t) > modified(&file));
+    let scripts = root.join("crates/og-ui/scripts");
+    let compiled = GENERATOR.iter().all(|(name, text)| {
+        std::fs::read_to_string(scripts.join(name))
+            .is_ok_and(|now| now.replace('\r', "") == text.replace('\r', ""))
+    });
+    let generate = compiled && inputs.iter().any(|t| modified(t) > modified(&file));
+    inputs.extend(GENERATOR.iter().map(|(name, _)| scripts.join(name)));
     inputs.push(file.clone());
     let css = if generate {
         theme_codegen::load(&tokens)

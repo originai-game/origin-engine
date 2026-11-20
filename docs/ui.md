@@ -3008,9 +3008,15 @@ needs og and the wasm rebuilt (`packages/engine/scripts/build.sh`).
 
 A development cook from a checkout carries the default style as the
 source tree has it when that is not the compiled one: `default.css`, or,
-when a token file is newer than it, what `gen-theme.sh` would write from
-the tokens (a hand edit to `default.css` is then dropped, as
-`gen-theme.sh` would drop it: port it to `scripts/theme_css.rs`). A
+when a token file is newer than it and the checkout's generator
+(`crates/og-ui/scripts/theme_*.rs`) is the one og was built with, what
+`gen-theme.sh` would write from the tokens (a hand edit to `default.css`
+is then dropped, as `gen-theme.sh` would drop it: port it to
+`scripts/theme_css.rs`). With another generator the cook reads
+`default.css`: og's would drop the rules added since. The gallery runs the
+generator (`gen-theme.sh`, seconds) on a generator edit, and on a token
+edit while the generator is newer than og, so `default.css` follows the
+checkout's rules without rebuilding og. A
 development runtime puts it in the compiled one's place
 (`og_ui::set_base_css`) and reads its packs and documents again. A
 publish cook and a publish build never carry or read it: they draw the
