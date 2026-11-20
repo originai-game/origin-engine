@@ -23,8 +23,10 @@ const WGSL: &str = wgsl_library!("fxpost_uniform.wgsl", "contact.wgsl");
 /// The lights' masks for a screen of `size` pixels: one u32 key per pixel
 /// and light row (contact.wgsl `masks`), zeroed. Four bytes a pixel, as
 /// the rgba8unorm mask each light had; kept across frames (the keys carry
-/// their frame), so it is the graph's own buffer, not a transient.
-pub(crate) fn mask_buffer(device: &wgpu::Device, size: (u32, u32)) -> wgpu::Buffer {
+/// their frame), so the passes keep it ([`ContactPasses::masks`]), not the
+/// graph's transients. A key needs all 32 bits (the frame's tag, how near
+/// the line is, the value) for `atomicMax` to keep the nearest line.
+fn mask_buffer(device: &wgpu::Device, size: (u32, u32)) -> wgpu::Buffer {
     crate::traffic::create_buffer(
         device,
         &wgpu::BufferDescriptor {
@@ -310,6 +312,9 @@ pub(crate) struct ContactPasses {
     /// 255; at 1 the masks are cleared first, so no key of a frame 255
     /// tags back outranks the frame's own.
     frame: u32,
+    /// The masks ([`mask_buffer`]) and the screen they are for: made once
+    /// per size, whatever rebinds the graph.
+    masks: std::cell::RefCell<Option<((u32, u32), wgpu::Buffer)>>,
 }
 
 impl ContactPasses {
@@ -406,6 +411,17 @@ impl ContactPasses {
             lights: Vec::new(),
             size: (0, 0),
             frame: 0,
+            masks: Default::default(),
+        }
+    }
+
+    /// The lights' masks for a screen of `size` pixels, made when the size
+    /// changes.
+    pub(crate) fn masks(&self, device: &wgpu::Device, size: (u32, u32)) -> wgpu::Buffer {
+        let mut held = self.masks.borrow_mut();
+        match &*held {
+            Some((at, masks)) if *at == size => masks.clone(),
+            _ => held.insert((size, mask_buffer(device, size))).1.clone(),
         }
     }
 

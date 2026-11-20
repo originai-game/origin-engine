@@ -18,7 +18,7 @@ impl ContactShadows {
         }
         let passes = cx.passes;
         let c = &passes.contact;
-        let masks = contact::mask_buffer(cx.device, (cx.cfg.width, cx.cfg.height));
+        let masks = c.masks(cx.device, (cx.cfg.width, cx.cfg.height));
         let dispatch = wgpu::BindingResource::Buffer(wgpu::BufferBinding {
             buffer: &c.buffer,
             offset: 0,
