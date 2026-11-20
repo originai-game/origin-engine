@@ -96,6 +96,9 @@ pub enum InteractionState {
     /// `:volume-locked`: the platform refuses volume changes. The engine
     /// mixes its own sound, so none ever is.
     VolumeLocked,
+    /// `:state(more)` on a scroller its element does not bind: its content
+    /// runs past its end. The core sets it from layout and scroll offset.
+    More,
 }
 
 /// What the host gives a binding beyond its viewmodel.

@@ -312,6 +312,17 @@ impl Arena {
     pub fn box_of(&self, id: Id) -> BoxLayout {
         self.store.box_layout(self.nodes[id as usize].slot)
     }
+
+    /// Whether `id`'s children run past the end of its content box, as a
+    /// scroller at offset 0 has more below.
+    pub fn runs_past_end(&self, id: Id) -> bool {
+        let b = self.box_of(id);
+        let end = b.h - b.inset[3];
+        self.nodes[id as usize].children.iter().any(|&c| {
+            let k = self.box_of(c);
+            k.h > 0.0 && k.y + k.h > end + 0.5
+        })
+    }
 }
 
 /// Reconciles `i`'s subtree into the store, post-order; its slot and

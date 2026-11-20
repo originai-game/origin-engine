@@ -44,12 +44,17 @@ struct Compiled {
     /// A condition reads no store (`:size()`, `:dir()`): it is evaluated
     /// when its element's record is folded.
     fixed: Vec<bool>,
+    /// The scrollers a condition asks `:state(more)` of: (condition,
+    /// document node).
+    more: Vec<(u32, u32)>,
 }
 
 /// One instance of a document: the conditions its elements hold.
 struct Inst {
     doc: u32,
     holds: Vec<u64>,
+    /// Its scrollers (document nodes) whose content runs past their end.
+    more: Vec<u32>,
 }
 
 /// The effective look an element passes to its children.
@@ -173,12 +178,49 @@ fn derive(e: Expr, reads: Reads, env: Rc<Surface>) -> u32 {
     })
 }
 
-fn eval_static(e: &Expr, env: &Surface) -> bool {
+/// What a fixed condition reads: the surface, and the instance's
+/// scrollers with more below.
+struct Fixed<'a> {
+    surface: &'a Surface,
+    more: &'a [u32],
+}
+
+impl og_ui::bind::Env for Fixed<'_> {
+    fn screen(&self, class: Screen) -> bool {
+        self.surface.screen(class)
+    }
+    fn interaction_at(&self, node: usize, state: og_ui::bind::InteractionState) -> bool {
+        state == og_ui::bind::InteractionState::More && self.more.contains(&(node as u32))
+    }
+}
+
+fn eval_static(e: &Expr, env: &Fixed) -> bool {
     og_ui::bind::truthy(&e.eval(&Scope {
         vm: &Value::Null,
         locals: Vec::new(),
         env,
     }))
+}
+
+/// The scroller nodes `e` asks `:state(more)` of.
+fn more_of(e: &Expr, out: &mut Vec<u32>) {
+    match e {
+        Expr::InteractionAt {
+            node,
+            state: og_ui::bind::InteractionState::More,
+        } => out.push(*node as u32),
+        Expr::Not(a) | Expr::Neg(a) => more_of(a, out),
+        Expr::Bin(_, a, b) => {
+            more_of(a, out);
+            more_of(b, out);
+        }
+        Expr::If(a, b, c) => {
+            more_of(a, out);
+            more_of(b, out);
+            more_of(c, out);
+        }
+        _ => {}
+    }
 }
 
 impl Tree {
@@ -243,11 +285,18 @@ impl Tree {
                 p.is_empty()
             })
             .collect();
+        let mut more = Vec::new();
+        for (k, c) in style.conditions.iter().enumerate() {
+            let mut nodes = Vec::new();
+            more_of(c, &mut nodes);
+            more.extend(nodes.into_iter().map(|n| (k as u32, n)));
+        }
         self.docs.push(Compiled {
             doc,
             style,
             style_of,
             fixed,
+            more,
         });
         let d = self.docs.len() as u32 - 1;
         self.by_name.insert(name.into(), d);
@@ -280,6 +329,7 @@ impl Tree {
         self.insts.push(Inst {
             doc: d,
             holds: vec![0; conds.div_ceil(64)],
+            more: Vec::new(),
         });
         // The document's own derived values, in order.
         let derived = self.docs[d as usize].doc.derived.clone();
@@ -564,9 +614,13 @@ impl Tree {
         }
         let ins = &self.insts[inst as usize];
         let c = &self.docs[ins.doc as usize];
+        let env = Fixed {
+            surface: &self.env,
+            more: &ins.more,
+        };
         c.style.record(style as usize, |cond| {
             if c.fixed[cond as usize] {
-                eval_static(&c.style.conditions[cond as usize], &self.env)
+                eval_static(&c.style.conditions[cond as usize], &env)
             } else {
                 ins.holds[(cond / 64) as usize] & (1 << (cond % 64)) != 0
             }
@@ -747,12 +801,69 @@ impl Tree {
         let laid_out = self.arena.layout(w, h, &mut |t, run, width| {
             crate::text::measure(m, t, run, width)
         });
+        // A scroller's `:state(more)` follows its layout: when one moved,
+        // what reads it is folded and laid out again in the same frame.
+        if laid_out && self.scrolled() {
+            self.commit();
+            self.arena.layout(w, h, &mut |t, run, width| {
+                crate::text::measure(m, t, run, width)
+            });
+        }
         let painted = laid_out || self.paint;
         if painted {
             self.repaint(fonts, icons);
             self.paint = false;
         }
         (laid_out, painted)
+    }
+
+    /// Sets each asked scroller's `:state(more)` from its layout and
+    /// queues the elements that read one that changed.
+    fn scrolled(&mut self) -> bool {
+        let mut moved = false;
+        for e in 0..self.els.len() {
+            let el = &self.els[e];
+            if el.dead || el.style == NONE {
+                continue;
+            }
+            let ins = &self.insts[el.inst as usize];
+            let c = &self.docs[ins.doc as usize];
+            if c.more.is_empty() {
+                continue;
+            }
+            let node = c.style.nodes[el.style as usize].node;
+            if !c.more.iter().any(|&(_, n)| n == node) {
+                continue;
+            }
+            let more = self.arena.runs_past_end(el.node);
+            let inst = el.inst;
+            let more_now = &mut self.insts[inst as usize].more;
+            if more_now.contains(&node) == more {
+                continue;
+            }
+            if more {
+                more_now.push(node);
+            } else {
+                more_now.retain(|&n| n != node);
+            }
+            moved = true;
+            let d = self.insts[inst as usize].doc as usize;
+            for r in 0..self.els.len() as u32 {
+                let el = &self.els[r as usize];
+                if el.inst != inst || el.style == NONE || el.dead {
+                    continue;
+                }
+                let c = &self.docs[d];
+                let [at, len] = c.style.nodes[el.style as usize].spans;
+                let reads = c.style.spans[at as usize..(at + len) as usize]
+                    .iter()
+                    .any(|s| c.more.iter().any(|&(k, n)| k == s.condition && n == node));
+                if reads {
+                    self.queue(r);
+                }
+            }
+        }
+        moved
     }
 
     fn rebuild(&mut self, b: u32) {
@@ -980,5 +1091,56 @@ fn text_cmd(
         weight: 0.0,
         glow: None,
         placements: Vec::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::look::Layer;
+
+    /// A scroller's `:state(more)` holds while its content runs past its
+    /// end, and lets go when the content fits again.
+    #[test]
+    fn a_scroller_has_more_while_its_content_runs_past_its_end() {
+        let doc = UiDocument::parse(
+            "s.svelte",
+            "<meta name=\"component\" content=\"s\">\n\
+             <div id=\"G\" layout=\"stack\">{#if long}<div id=\"Tall\"></div>{/if}<div id=\"F\"></div></div>\n\
+             <style>\n#G { height: 40px; overflow-y: auto; }\n#Tall { height: 100px; flex-shrink: 0; }\n\
+             #F { height: 4px; opacity: 0.25; }\n#G:state(more) #F { opacity: 1; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: &crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [doc]);
+        tree.resize(200.0, 200.0);
+        let long = queue::signal(true.into());
+        tree.mount("s", &[("long", long)]).unwrap();
+        let fonts = og_ui::Fonts::default();
+        let icons = IconAtlas::default();
+        let opacity = |t: &Tree| {
+            let e = t.els.iter().position(|el| {
+                let c = &t.docs[t.insts[el.inst as usize].doc as usize];
+                el.style != NONE
+                    && c.doc.nodes[c.style.nodes[el.style as usize].node as usize].id == "F"
+            });
+            t.els[e.unwrap()].record.opacity
+        };
+        tree.frame(&fonts, &icons);
+        assert_eq!(opacity(&tree), 1.0, "100px in a 40px scroller has more");
+        queue::set(long, false.into());
+        tree.frame(&fonts, &icons);
+        assert_eq!(opacity(&tree), 0.25, "4px fits: no more");
+        assert_eq!(
+            tree.frame(&fonts, &icons),
+            Frame::default(),
+            "and it settles"
+        );
     }
 }

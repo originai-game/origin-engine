@@ -1329,6 +1329,12 @@ fn condition(
                             )
                         }
                         Some(attr) => Expr::Lit(custom_state_on(&attr.value.clone().into()).into()),
+                        // The one built-in custom state: a scroller with
+                        // more below, which the layout answers.
+                        None if name.0 == "more" => Expr::InteractionAt {
+                            node: index,
+                            state: InteractionState::More,
+                        },
                         None => Expr::Lit(false.into()),
                     }
                 }
