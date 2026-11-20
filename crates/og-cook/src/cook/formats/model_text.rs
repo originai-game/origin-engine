@@ -991,6 +991,7 @@ fn placed_geometry(block: &Block, what: &str, line: usize, detail: f64) -> Resul
 /// translucency (the cook's `impostor::translucency` and the cooked
 /// material read its factor).
 const DIFFUSE_TRANSMISSION: &str = "KHR_materials_diffuse_transmission";
+const MSFT_LOD: &str = "MSFT_lod";
 
 /// A leaf material's glTF `extras`, `{ "ogFoliage": { … } }` with the
 /// members that differ from none (og-bundle's `leaf_season` and the
@@ -1191,7 +1192,13 @@ pub(crate) fn textures(images: &[String]) -> (serde_json::Value, serde_json::Val
 /// The extensions a model's JSON uses, by name, sorted.
 pub(crate) fn extensions_used(json: &serde_json::Value) -> Vec<String> {
     let mut out = std::collections::BTreeSet::new();
-    for m in json["materials"].as_array().into_iter().flatten() {
+    let nodes = json["nodes"].as_array().into_iter().flatten();
+    for m in json["materials"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .chain(nodes)
+    {
         for k in m["extensions"]
             .as_object()
             .into_iter()
@@ -1507,6 +1514,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                     Some((&grown.wood_wind, false)),
                 )];
                 drawn += grown.wood.triangle_count();
+                let mut leaf = None;
                 if !grown.leaves.indices.is_empty() {
                     let mut own = serde_json::json!({
                         "name": format!("{name} leaves"),
@@ -1525,18 +1533,62 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                     if let Some(extras) = foliage_extras(look.dome_normals, &look.season) {
                         own["extras"] = extras;
                     }
-                    let leaf = named(look.leaf, own)?;
+                    let material = named(look.leaf, own)?;
                     primitives.push(write_primitive(
                         &mut bin,
                         &grown.leaves,
-                        leaf,
+                        material,
                         Some((&grown.leaf_wind, true)),
                     ));
                     drawn += grown.leaves.triangle_count();
+                    leaf = Some(material);
                 }
                 meshes.push(serde_json::json!({ "name": name, "primitives": primitives }));
                 let mut n = node(&name, &Placement::default());
                 n["mesh"] = (meshes.len() - 1).into();
+                // Its leaves' coarser level grown, not decimated (MSFT_lod):
+                // an edge collapse cannot thin a blade without merging
+                // blades, and a level that drops leaves must grow the rest
+                // (a tuft of few long blades changes height). The level is
+                // every blade as its kite (og-geom's `plant_level`), whose
+                // corners are the full blade's, and the full wood: both weld
+                // to the full mesh's vertices, so the level adds none. The
+                // wood stays whole: a collapse along a thin open stem costs
+                // almost nothing in its sides' planes, so a simplified one
+                // shortens and bends the stems (a reed's moved half a metre,
+                // 0.19 m with their ends locked).
+                let mut ids = Vec::new();
+                let kites = og_geom::plant_level(&desc, detail)
+                    .map_err(|x| format!("plant '{name}': {x}"))?;
+                if let Some(material) = leaf
+                    && kites.leaves.triangle_count() < grown.leaves.triangle_count()
+                {
+                    let primitives = vec![
+                        write_primitive(
+                            &mut bin,
+                            &grown.wood,
+                            wood,
+                            Some((&grown.wood_wind, false)),
+                        ),
+                        write_primitive(
+                            &mut bin,
+                            &kites.leaves,
+                            material,
+                            Some((&kites.leaf_wind, true)),
+                        ),
+                    ];
+                    let label = format!("{name} lod 1");
+                    meshes.push(serde_json::json!({ "name": label, "primitives": primitives }));
+                    let mut l = node(&label, &Placement::default());
+                    l["mesh"] = (meshes.len() - 1).into();
+                    // A level is no part of the scene: only the node's extension names it.
+                    nodes.push(l);
+                    children.push(Vec::new());
+                    ids.push(nodes.len() - 1);
+                }
+                if !ids.is_empty() {
+                    n["extensions"] = serde_json::json!({ MSFT_LOD: { "ids": ids } });
+                }
                 add_node(n, None, &mut nodes, &mut children, &mut roots);
             }
             // A `fracture` block: the cook cuts the built model into chunks

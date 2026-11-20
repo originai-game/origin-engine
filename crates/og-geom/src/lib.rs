@@ -34,7 +34,7 @@ pub use frames::{Frame, frenet_frames};
 pub use lathe::{Lathe, lathe};
 pub use merge::{Mirror, Part, merge};
 pub use path2::{Path2, Shape};
-pub use plant::{Flowers, Growth, LeafShape, Leaves, Level, Plant, PlantMesh, plant};
+pub use plant::{Flowers, Growth, LeafShape, Leaves, Level, Plant, PlantMesh, plant, plant_level};
 pub use polyhedron::{Polyhedron, dodecahedron, icosahedron, octahedron, polyhedron, tetrahedron};
 pub use shape::{ShapePoints, shape_geometry};
 pub use sweep::{Key, Sweep, sweep};

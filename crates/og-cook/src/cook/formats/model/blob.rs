@@ -272,13 +272,44 @@ pub fn cook(
     let mut bvh_nodes: Vec<BvhNodeRow> = Vec::new();
     let mut bvh_tris: Vec<u32> = Vec::new();
     let lod_meshes = msft_lod(doc, &mut notes);
+    // The nodes MSFT_lod names are levels, not nodes of the model.
+    let level_nodes: std::collections::BTreeSet<usize> = doc
+        .nodes()
+        .filter_map(|n| {
+            n.extension_value("MSFT_lod")?
+                .get("ids")?
+                .as_array()
+                .cloned()
+        })
+        .flatten()
+        .filter_map(|i| i.as_u64())
+        .map(|i| i as usize)
+        .collect();
+    // The meshes only MSFT_lod names: cooked as their full mesh's levels,
+    // so none of them a mesh of its own as well (no node draws one).
+    let level_only: std::collections::BTreeSet<usize> = {
+        let levels: std::collections::BTreeSet<usize> =
+            lod_meshes.values().flatten().copied().collect();
+        let drawn: std::collections::BTreeSet<usize> = doc
+            .nodes()
+            .filter(|n| !level_nodes.contains(&n.index()))
+            .filter_map(|n| n.mesh().map(|m| m.index()))
+            .collect();
+        levels.difference(&drawn).copied().collect()
+    };
     let mut changes = Vec::new();
     let mut hulls: Vec<u8> = Vec::new();
     // Triangle primitives that cooked to no geometry (every triangle
     // degenerate, or none left by the art contract).
     let mut emptied: Vec<String> = Vec::new();
     let mut sources = Vec::new();
+    // Each glTF mesh's cooked index (NONE for a level-only one).
+    let mut mesh_index = vec![NONE; doc.meshes().count()];
     for mesh in doc.meshes() {
+        if level_only.contains(&mesh.index()) {
+            continue;
+        }
+        mesh_index[mesh.index()] = meshes.len() as u32;
         let first = prims.len() as u32;
         for (pi, prim) in mesh.primitives().enumerate() {
             let what = format!("mesh '{}' primitive {pi}", mesh.name().unwrap_or(""));
@@ -474,7 +505,22 @@ pub fn cook(
     }
 
     let NodeOrder { new_index, rows } = node_order(doc, &mut |s| strings.add(s))?;
-    let nodes = rows;
+    // A level's node draws nothing of its own; the others' meshes by
+    // their cooked index.
+    let mut nodes = rows;
+    for (row, old) in nodes.iter_mut().zip(new_index.iter().enumerate().fold(
+        vec![0usize; new_index.len()],
+        |mut by_new, (old, &new)| {
+            by_new[new as usize] = old;
+            by_new
+        },
+    )) {
+        if level_nodes.contains(&old) || row.mesh == NONE {
+            row.mesh = NONE;
+        } else {
+            row.mesh = mesh_index[row.mesh as usize];
+        }
+    }
     // Skinned mesh nodes' bind poses, by cooked node (format's NodeBindRow).
     let skin_binds: Vec<NodeBindRow> = super::skin_binds(src)
         .into_iter()

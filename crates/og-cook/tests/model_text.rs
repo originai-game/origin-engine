@@ -10,8 +10,10 @@
 //! detail of a text model are measured otherwise than a glTF's (or not at
 //! all); a part placed three times is three meshes; the budgets are only
 //! reported, not enforced; a plant's leaves lose their wind (the anchors
-//! follow other vertices after the weld), are simplified, or are drawn as
-//! bark is (one face, no light through them); a plant's mistakes cook.
+//! follow other vertices after the weld), are simplified or thinned, or
+//! are drawn as bark is (one face, no light through them); a plant's
+//! coarser level is a mesh of its own, adds vertices or moves its stems; a
+//! plant's mistakes cook.
 
 use glam::Vec3;
 use og_cook::runtime::Bundle;
@@ -303,16 +305,16 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
         flutter = flutter.max(lf[i as usize].leaf[3]);
     }
 
-    // With distance they are thinned, not simplified: a level keeps every
-    // second leaf of the one before, whole, and draws each as much larger
-    // about its anchor, so the crown covers as much with half the
-    // triangles; its error is how far that moved the farthest corner. It
-    // draws the full mesh's own vertices larger (its leaf scale): the
-    // levels add none.
-    assert_eq!(leaves.lods.len(), 3, "the mesh, a half and a quarter");
+    // With distance each blade is drawn as its kite, not simplified or
+    // thinned: the level keeps every leaf and petal where it grows, each
+    // in half the triangles, through the full blade's own corners (the
+    // level adds no vertices and moves no leaf, so its leaf scale is 1),
+    // and its error is the blade's cup and outline it drops: under a tenth
+    // of the largest leaf (0.2 at up to 1.7 times), where thinning moved
+    // corners by a third of one.
+    assert_eq!(leaves.lods.len(), 2, "the mesh and its kites");
     let full: std::collections::BTreeSet<u32> = level(0).iter().copied().collect();
     assert_eq!(full.len(), leaves.vertices.len(), "a level added vertices");
-    let drawn = |l: usize, i: u32| anchor(i) + (at(i) - anchor(i)) * leaves.lods[l].leaf_scale;
     let leaves_of = |l: usize| -> std::collections::BTreeSet<[u32; 8]> {
         let key = |&i: &u32| {
             let f = &lf[i as usize];
@@ -320,30 +322,26 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
         };
         level(l).iter().map(key).collect()
     };
-    let area = |l: usize| -> f32 {
-        let p = |i: u32| drawn(l, i);
-        let tri = |t: &[u32]| 0.5 * (p(t[1]) - p(t[0])).cross(p(t[2]) - p(t[0])).length();
-        level(l).chunks(3).map(tri).sum()
-    };
-    for (l, stride) in [(1, 2usize), (2, 4)] {
-        let (kept, before) = (leaves_of(l), leaves_of(l - 1));
-        assert!(kept.is_subset(&before), "level {l} grew a leaf");
-        assert_eq!(kept.len(), leaves_of(0).len().div_ceil(stride), "level {l}");
-        let scale = leaves.lods[l].leaf_scale;
-        assert!(
-            (scale - (stride as f32).sqrt()).abs() < 1e-6,
-            "level {l}: {scale}"
-        );
-        let cover = area(l) / area(0);
-        assert!((cover - 1.0).abs() < 0.15, "level {l} covers {cover}");
-        let reach = level(l).iter().map(|&i| (drawn(l, i) - anchor(i)).length());
-        let moved = reach.fold(0.0, f32::max) * (1.0 - 1.0 / (stride as f32).sqrt());
-        let error = leaves.lods[l].error;
-        assert!(
-            (error - moved).abs() < 1e-4,
-            "level {l}: {error} for {moved}"
-        );
-    }
+    assert_eq!(
+        leaves_of(1),
+        leaves_of(0),
+        "the kites dropped or grew a leaf"
+    );
+    assert!(
+        level(1).len() * 10 < level(0).len() * 6,
+        "{} of {}",
+        level(1).len(),
+        level(0).len()
+    );
+    assert_eq!(leaves.lods[1].leaf_scale, 1.0);
+    let error = leaves.lods[1].error;
+    assert!(error > 0.0 && error < 0.034, "the kites' error is {error}");
+    // The wood is drawn whole at that level: a simplified stem shortens.
+    assert_eq!(wood.lods.len(), 2);
+    assert_eq!(
+        (wood.lods[1].count, wood.lods[1].error),
+        (wood.lods[0].count, 0.0)
+    );
     assert!(flutter > 0.5, "no leaf flutters: {flutter}");
 
     // Their materials: bark as any opaque one, the leaves lit from both
@@ -365,26 +363,12 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
         model.mesh_foliage(1).unwrap(),
     );
     assert_eq!((mw.top, mw.canopy_center), (ml.top, ml.canopy_center));
-    // The top is the full meshes': the thinned levels' larger leaves
-    // reach past it, and the plant must sway the same at every level.
+    // The top is the full meshes', and the kites reach no further.
     let reach = |i: &u32| at(*i).y;
     let top = level(0).iter().map(reach).fold(wood.max.y, f32::max);
     assert!((mw.top - top).abs() < 1e-3 && top > 1.0, "{} {top}", mw.top);
-    let far = level(2).iter().map(|&i| drawn(2, i).y).fold(top, f32::max);
-    assert!(far > top + 1e-3);
-    // og-render draws each level's leaves at its scale, and a level made a
-    // mesh of its own (a scattered copy's) has them where it draws them.
-    assert_eq!(
-        ml.level_scales,
-        leaves.lods.iter().map(|l| l.leaf_scale).collect::<Vec<_>>()
-    );
-    let compact = leaves.mesh_compact(2);
-    let compact_top = compact
-        .vertices
-        .iter()
-        .map(|v| v.position[1])
-        .fold(f32::MIN, f32::max);
-    assert!((compact_top - far).abs() < 1e-4, "{compact_top} {far}");
+    assert!(level(1).iter().map(reach).fold(f32::MIN, f32::max) <= top);
+    assert_eq!(ml.level_scales, vec![1.0; 2]);
     assert!(mw.canopy_center.y > 0.4 && mw.canopy_center.y < top);
     assert!(mw.validate(wood.vertices.len()).is_ok());
     assert!(ml.validate(leaves.vertices.len()).is_ok());

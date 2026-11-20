@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "type model plant",
+      "summary": "A plant's coarser level of detail is grown, not decimated: every leaf and petal drawn as its two-triangle kite through the full blade's corners, beside the whole wood. The simplifier shortened thin stems (a reed's level error was 0.55 m, so scattered grass never left its full mesh) and thinning moved leaf corners a third of a leaf; the kite level errs by millimetres to a few centimetres, adds no vertices, and draws blades in half the triangles. The plant's levels are one level fewer (the mesh and its kites). A glTF's MSFT_lod level meshes are cooked as levels only, no longer also as meshes of their own."
+    }
+  ]
+}
