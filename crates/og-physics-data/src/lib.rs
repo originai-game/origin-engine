@@ -27,6 +27,36 @@ pub struct MeshDesc {
     pub indices: Vec<[u32; 3]>,
 }
 
+impl MeshDesc {
+    /// Refuses geometry no collider can be built from: no positions, a
+    /// triangle indexing past them, or a non-finite position. What
+    /// `PhysicsSystem::set_mesh` checks, and what a host checks when it
+    /// leaves the mesh to physics' mesh source until a collider names it.
+    pub fn check(&self, handle: u64) -> og_core::Result<()> {
+        use og_core::{Error, ErrorKind};
+        if self.positions.is_empty() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("mesh {handle} has no positions"),
+            ));
+        }
+        let n = self.positions.len() as u32;
+        if let Some(t) = self.indices.iter().find(|t| t.iter().any(|&i| i >= n)) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("mesh {handle}: triangle {t:?} indexes past its {n} positions"),
+            ));
+        }
+        if self.positions.iter().any(|p| !p.is_finite()) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("mesh {handle} has a non-finite position"),
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// A SHAPE_TRIMESH collider's shape over `mesh` at scale 1, as a collider
 /// naming the mesh builds it (rapier's triangle mesh with its BVH), in
 /// bytes for the cook to put beside the mesh: [`PhysicsSystem::set_baked_trimesh`]

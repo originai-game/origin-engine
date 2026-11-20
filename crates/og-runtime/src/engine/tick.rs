@@ -432,10 +432,19 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     // frames reproduce run to run. A display frame, or a scripted one
     // (`og run --commands`, whose captures settle og.motion themselves),
     // never waits: the world goes on while results are late.
+    // og.motion only once the game named it (its og.MotionAgent registered,
+    // engine/lazy.rs): before that it has no agents and no goals, and a game
+    // that never does never reaches the motion module (docs/web-export.md
+    // §Modules).
+    let motion = eng
+        .world()
+        .is_ok_and(|w| w.id_by_name(crate::bind::motion::AGENT).is_ok());
     if eng.render.borrow().display.recorded {
         settle_textures(eng);
-        crate::bind::motion::present::settle(eng);
-    } else {
+        if motion {
+            crate::bind::motion::present::settle(eng);
+        }
+    } else if motion {
         crate::bind::motion::present::step(eng);
     }
     let mut passes = Vec::new();

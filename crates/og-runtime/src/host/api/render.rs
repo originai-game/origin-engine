@@ -568,7 +568,7 @@ pub(crate) fn add_geometry(
         assets::handle(rs.geometries.len() - 1)
     };
     if physics {
-        super::modules::set_mesh(&eng, handle, super::modules::mesh_of(&mesh))?;
+        super::modules::note_mesh(&eng, handle, super::modules::mesh_of(&mesh))?;
     }
     Ok(json!(handle as f64))
 }

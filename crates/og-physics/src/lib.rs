@@ -420,25 +420,7 @@ impl PhysicsSystem {
     /// made from the mesh at the next step; the same geometry again changes
     /// nothing.
     pub fn set_mesh(&self, handle: u64, mesh: MeshDesc) -> Result<()> {
-        if mesh.positions.is_empty() {
-            return Err(Error::new(
-                ErrorKind::Invalid,
-                format!("mesh {handle} has no positions"),
-            ));
-        }
-        let n = mesh.positions.len() as u32;
-        if let Some(t) = mesh.indices.iter().find(|t| t.iter().any(|&i| i >= n)) {
-            return Err(Error::new(
-                ErrorKind::Invalid,
-                format!("mesh {handle}: triangle {t:?} indexes past its {n} positions"),
-            ));
-        }
-        if mesh.positions.iter().any(|p| !p.is_finite()) {
-            return Err(Error::new(
-                ErrorKind::Invalid,
-                format!("mesh {handle} has a non-finite position"),
-            ));
-        }
+        mesh.check(handle)?;
         let mut shared = lock(&self.shared);
         if shared.meshes.get(&handle).is_some_and(|m| **m == mesh) {
             return Ok(());

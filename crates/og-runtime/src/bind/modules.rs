@@ -638,6 +638,18 @@ pub(crate) fn set_mesh(eng: &Engine, handle: u64, mesh: MeshDesc) -> Result<(), 
     Ok(())
 }
 
+/// Remembers generated geometry `handle` as a physics mesh without handing
+/// it to physics: a convex or triangle-mesh collider that names it takes it
+/// from physics' mesh source ([`geometry_mesh`]) the first time it is built,
+/// the same geometry [`set_mesh`] would have given. A game that never makes
+/// such a collider never reaches the physics module (docs/web-export.md
+/// §Modules). Refused as [`set_mesh`] refuses it.
+pub(crate) fn note_mesh(eng: &Engine, handle: u64, mesh: MeshDesc) -> Result<(), String> {
+    mesh.check(handle).map_err(err)?;
+    eng.state.borrow_mut().physics_meshes.insert(handle, mesh);
+    Ok(())
+}
+
 /// Gives the engine's physics a triangle-mesh collider the cook baked for
 /// geometry `handle`, and remembers it, so a hot reload's new physics gets
 /// it too. Without 3D physics (a 2D build) there is nothing to take it.
