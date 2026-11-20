@@ -42,6 +42,10 @@
 //! the running code. Each prints its latency (build, handoff, start); with
 //! `--exit-after` restarts count with reloads. og itself is not restarted:
 //! an og-cli change takes the next `og dev`.
+//!
+//! `--web [--host H]` serves the development web build instead and pushes
+//! each edit to the open page ([`web_dev`], src/node/dev-web.ts,
+//! docs/web-export.md §og dev --web).
 
 use crate::check::{Checker, Report};
 use crate::project::{self, Project};
@@ -55,7 +59,9 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 
 pub const BUDGET_MS: f64 = 300.0;
-const USAGE: &str = "usage: og dev [project] [--port P] [--exit-after N] [--json] [--engine]";
+const USAGE: &str = "usage: og dev [project] [--port P] [--exit-after N] [--json] [--engine]\n       og dev [project] --web [--port P] [--host H]";
+/// `--web`'s port when none is given.
+const WEB_PORT: &str = "47810";
 /// How often `--engine` looks at the engine's sources.
 const ENGINE_POLL: Duration = Duration::from_millis(250);
 
@@ -420,15 +426,83 @@ fn stop_group(group: Target) {
     let _ = group;
 }
 
+/// `og dev --web`: the project's development web build served on `host:port`
+/// with every edit pushed to the open page (src/node/dev-web.ts; guide
+/// testing §og dev --web). It cooks and builds once, then keeps one
+/// `og cook --watch` and bundles the game's code on each src/ change; a cook,
+/// bundle or type error is reported on the page and in `_dev/status`, never
+/// an exit. Signals reach the server's whole process group, as the native
+/// loop's do.
+fn web_dev(p: &Project, package: &Path, port: &str, host: &str) -> ExitCode {
+    let settings = match crate::publish::settings(&p.root.join("project.ogt")) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("og dev --web: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let og = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("og"));
+    let mut cmd = project::bun(package, "src/node/dev-web.ts");
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+    cmd.arg("--project")
+        .arg(&p.root)
+        .arg("--entry")
+        .arg(p.root.join(&p.entry))
+        .arg("--port")
+        .arg(port)
+        .arg("--host")
+        .arg(host)
+        .arg("--og")
+        .arg(&og)
+        .arg("--settings")
+        .arg(settings.to_string())
+        .env("OG_ENGINE_PACKAGE", package);
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("og dev --web: {} ({e})", project::NO_BUN);
+            return ExitCode::FAILURE;
+        }
+    };
+    let group = Target::Group(child.id());
+    relay::start(group);
+    loop {
+        if let Some(sig) = relay::received() {
+            relay::finish(group, sig, Duration::from_secs(3), || {
+                matches!(child.try_wait(), Ok(Some(_)))
+            });
+        }
+        if let Ok(Some(status)) = child.try_wait() {
+            relay::stop();
+            stop_group(group);
+            return project::exit_of(status);
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
 pub fn run(args: &[&str]) -> ExitCode {
     let mut project = ".".to_string();
     let mut port = crate::probe::DEFAULT_PORT.to_string();
     let mut exit_after: Option<usize> = None;
     let mut json = false;
     let mut engine_mode = false;
+    let mut web = false;
+    let mut port_given = false;
+    let mut host = "127.0.0.1".to_string();
     let mut i = 0;
     while i < args.len() {
         match args[i] {
+            "--web" => web = true,
+            "--host" => {
+                let Some(v) = args.get(i + 1) else {
+                    eprintln!("og dev: --host needs a value. {USAGE}");
+                    return ExitCode::from(2);
+                };
+                host = v.to_string();
+                i += 1;
+            }
             "--port" | "--exit-after" => {
                 let Some(v) = args.get(i + 1) else {
                     eprintln!("og dev: {} needs a value. {USAGE}", args[i]);
@@ -436,6 +510,7 @@ pub fn run(args: &[&str]) -> ExitCode {
                 };
                 if args[i] == "--port" {
                     port = v.to_string();
+                    port_given = true;
                 } else {
                     exit_after = v.parse().ok();
                     if exit_after.is_none() {
@@ -475,6 +550,18 @@ pub fn run(args: &[&str]) -> ExitCode {
     };
     if let Some(n) = project::pin_notice(&p, &package) {
         eprintln!("og dev: {n}");
+    }
+    if web {
+        if engine_mode || exit_after.is_some() {
+            eprintln!("og dev --web: --engine and --exit-after are the native loop's. {USAGE}");
+            return ExitCode::from(2);
+        }
+        return web_dev(
+            &p,
+            &package,
+            if port_given { &port } else { WEB_PORT },
+            &host,
+        );
     }
     let bundle = match crate::run::prepare(&p, &package, false, json) {
         Ok(b) => b,

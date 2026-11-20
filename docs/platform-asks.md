@@ -215,7 +215,11 @@ a `source` outside `assets/` or not ending in `.ogt`, and answers nothing.
 It advertises this in its `hello` reply as `capabilities: ["scene_saved"]`.
 Until then the shell's save routing (`shell/wire.ts` `routeSavedScenes`)
 downloads each scene as a `.ogt` file named by its source, since a web page
-writes no files.
+writes no files. Under `og dev --web` (docs/web-export.md §og dev --web) the
+page is the same and the Stage's write reaches the open page as an
+ordinary edit: the server's cook picks it up and pushes it back. The
+Stage may answer each event with `{ og: "probe", v: 1, kind:
+"scene_saved_result", ok, error? }`; the page does not read it yet.
 
 ## The inspector's prefab Apply and Revert on a web page
 

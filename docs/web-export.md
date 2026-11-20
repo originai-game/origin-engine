@@ -879,6 +879,64 @@ Their options are in `og build --help`, `og run --help` and
 - `og doctor` reports no renderer as `none`, not as a problem (docs/ci.md
   §Switches in the environment).
 
+### og dev --web
+
+`og dev [project] --web [--port P] [--host H]` (default
+`127.0.0.1:47810`; `src/node/dev-web.ts`, `src/node/dev-web-client.js`)
+serves the project's development build from `og-out/dev-web/` and keeps
+it live. It is the platform Stage's dev server: Origin Server runs
+`og dev . --web --port $PORT --host 127.0.0.1` as a supervised service and
+proxies it on its relay. It stays up through cook, bundle and type errors
+and prints one line on stdout when ready:
+`{"event":"ready","url":"http://127.0.0.1:<port>/","build":"<id>","error":null}`.
+
+- **HTTP.** Every URL the page uses is relative, so it is served at `/`
+  or under any prefix (a proxy's ticket path). The entry keeps
+  `<meta name="og-player" content="frame page">` and the og-probe wire to
+  `window.__OG_STAGE_HOST__`; every response is `no-store` and there is no
+  service worker. `cooked/<path>` is the project's live cooked bundle;
+  the server's own routes are under `_dev/` (nothing under `__og`).
+- **`GET _dev/status`** answers
+  `{ready, build, error, last?: {kind: "files"|"code"|"reload", ms, at, steps}}`.
+  `build` changes only on a cold restart (the first build, a
+  `project.ogt` change); `error` is the current cook, bundle or type
+  error, else null.
+- **`_dev/socket`** (`new URL("_dev/socket", document.baseURI)`, ws or
+  wss): text JSON, each message well under 1 MiB, since file bytes are
+  fetched over HTTP. Server to page: `hello {build, seq, ready, error}`
+  on connect; `files {seq, files: [{path, hash}], edits, steps}` (the
+  page fetches each path and applies them in place, `devFiles`);
+  `code {seq, url, hash, edits, steps}` (the game's own code, bundled
+  alone as build.ts `web-code`; the page imports it and the probe's
+  `reload` swaps it in, `devCode`); `reload {build}`; `error {error,
+  edits}` (null: cleared). Page to server: `hello {build, seq}` on each
+  (re)connect, where `seq` is the last change it applied: the same build
+  gets what it missed, another build `reload`; `applied {seq, kind, ok,
+  ms, steps, error?}`. The page reconnects with backoff (250 ms doubling
+  to 5 s). Changes apply one at a time; those that arrive meanwhile are
+  merged into one, the newest code bundle superseding older ones.
+- **Timings.** `window.__og_dev_reloads__` lists each applied change with
+  its steps, save to frame. Files: `saveToCookedMs` (the watch, the cook)
+  + `fetchMs` + `applyMs` (the Worker's devFiles, `worker` its steps) +
+  `frameMs`. Code: `saveToBundledMs` + `writtenToFrameMs` (`importMs`,
+  `reloadMs` in the Worker, `frameMs`). Budgets: 1.5 s save to frame for
+  an asset or UI edit, 300 ms from the code bundle written to the frame.
+- **The Stage's dev channel.** In the same document, over
+  `window.postMessage(msg, location.origin)`, each side accepting only
+  `event.source === window && event.origin === location.origin`, messages
+  `{og: "dev", v: 1, from: "page"|"host", type, id?, …}`: the page sends
+  `hello {inspector: true, keep: false, engine}` every 250 ms, at most 20
+  times, until the host answers `hello {}`; the host's `inspector
+  {open}` opens or closes the inspector, and the page sends `inspector
+  {open}` whenever it changes, F1 included. Version 1 has no Keep (the
+  overlay's own Keep stays) and sends no `edits`.
+- **Save.** The inspector's Save posts `scene_saved` on the og-probe wire
+  (docs/platform-asks.md #22); the Stage writes the files into the
+  checkout and this server's cook takes them as ordinary edits. The
+  server writes no project file itself. A prefab's Apply and Revert need
+  the Stage's `read_source` (#23), which the page does not call yet: on a
+  web page they still say the source is not readable here.
+
 ## Packaging
 
 ```sh

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og dev --web",
+      "summary": "Serves a project's development web build (inspector, Tune, Pause and Step, the probe) with every save pushed to the open page over one WebSocket: assets and UI cooked alone and applied in place, src/ bundled alone and swapped in with the world kept, a page reload only when project.ogt changes; each change's steps on window.__og_dev_reloads__ and the server's state on _dev/status (testing guide §1)."
+    }
+  ]
+}
