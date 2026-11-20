@@ -17,6 +17,7 @@ import type { ModuleHost } from "../../src/web/split.ts";
 
 const argv = process.argv.slice(2);
 const profile = argv.includes("--profile") ? argv[argv.indexOf("--profile") + 1]! : "3d";
+if (profile !== "3d" && profile !== "2d") throw new Error(`--profile ${profile}: 3d or 2d`);
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const dir = join(pkg, "dist", profile === "2d" ? "web-publish-2d" : "web-publish");
 const refuse = (name: string): never => {
