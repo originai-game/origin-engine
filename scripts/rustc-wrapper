@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # The rustc wrapper .cargo/config.toml names, as a path in the checkout so
 # a fresh one builds before scripts/install-tools.sh has run: cargo calls
 # it as `rustc-wrapper <rustc> <args...>`. With og-sccache-wrap and sccache
@@ -7,6 +7,9 @@
 # Windows runs only an .exe as the wrapper: there cargo finds
 # scripts/rustc-wrapper.exe, the og-sccache-wrap that install-tools.sh puts
 # beside this file.
+# bash, not sh: dash drops environment variables whose names are not shell
+# identifiers, such as the CARGO_BIN_EXE_og-cook cargo sets for a test of a
+# hyphenated binary.
 if command -v og-sccache-wrap >/dev/null 2>&1 && command -v "${OG_SCCACHE:-sccache}" >/dev/null 2>&1; then
   exec og-sccache-wrap "$@"
 fi
