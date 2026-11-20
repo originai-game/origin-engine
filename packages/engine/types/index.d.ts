@@ -150,7 +150,9 @@ export type ComponentProps<C> = C extends keyof UiComponents ? UiComponents[C]["
 
 /** Every column kind, from the IDL's `column` declarations. */
 export interface ColumnKinds {
-  /** A 32-bit float, the default numeric field. */
+  /**
+   * A 32-bit float, the default numeric field. It reads back what was written rounded to 32 bits (6.9 reads 6.9000001), so a value compared with a JavaScript number, such as a clock run to a target hour, is an f64.
+   */
   f32: { readonly array: Float32Array; readonly stride: 1; readonly value: number };
   /** A 64-bit float, for accumulated values that must not drift, such as elapsed time. */
   f64: { readonly array: Float64Array; readonly stride: 1; readonly value: number };
@@ -1213,7 +1215,7 @@ export interface FieldOptions {
 }
 
 /**
- * A 32-bit float, the default numeric field.
+ * A 32-bit float, the default numeric field. It reads back what was written rounded to 32 bits (6.9 reads 6.9000001), so a value compared with a JavaScript number, such as a clock run to a target hour, is an f64.
  *
  * A `f32` field: stored in a `Float32Array` with stride 1.
  * @param value The field's default; omitted, the column's zero value.

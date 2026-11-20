@@ -5,7 +5,7 @@
 // the weights towards the chosen state, and what is drawn is the weighted
 // mean of the states' tables below. A switch made halfway through another
 // carries on from where the air is.
-import { WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, defineResource, defineSystem, f32, og, u32 } from "@origingame/engine";
+import { WEATHER_NONE, WEATHER_RAIN, WEATHER_SNOW, defineResource, defineSystem, f32, f64, og, u32 } from "@origingame/engine";
 import type { Color, World } from "@origingame/engine";
 import { must } from "./must.ts";
 
@@ -23,7 +23,7 @@ export const Climate = defineResource("Climate", {
   weather: u32(0), season: u32(1), time: u32(0),
   clear: f32(1), rain: f32(), storm: f32(), fog: f32(), snow: f32(),
   spring: f32(), summer: f32(1), autumn: f32(), winter: f32(),
-  hour: f32(HOURS[0]),
+  hour: f64(HOURS[0]),
   /** 1 until the season as it stands has been put on the land. */
   stale: u32(1),
 });
@@ -130,7 +130,7 @@ export const Seasons = defineSystem("Seasons", {
   step(weights, WEATHERS, climate.weather, time.dt / WEATHER_SECONDS);
   const turned = step(weights, SEASONS, climate.season, time.dt / SEASON_SECONDS);
   // The hour is stored in 32 bits: against the goal as written, 23.2 held there reads as a day away.
-  const goal = Math.fround(HOURS[climate.time]!), ahead = (goal - climate.hour + 24) % 24, pace = HOURS_PER_SECOND * time.dt;
+  const goal = HOURS[climate.time]!, ahead = (goal - climate.hour + 24) % 24, pace = HOURS_PER_SECOND * time.dt;
   climate.hour = ahead <= pace ? goal : (climate.hour + pace) % 24;
 
   if (turned || climate.stale === 1) {

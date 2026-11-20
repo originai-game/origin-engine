@@ -20,7 +20,7 @@ module reflect {
   }
 
   column f32 {
-    doc "A 32-bit float, the default numeric field."
+    doc "A 32-bit float, the default numeric field. It reads back what was written rounded to 32 bits (6.9 reads 6.9000001), so a value compared with a JavaScript number, such as a clock run to a target hour, is an f64."
     array Float32Array
     stride 1
     value f32

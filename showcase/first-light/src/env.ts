@@ -2,7 +2,7 @@
 // how the sky, the light, the fog and the wind ease from one choice to the
 // next. Every choice is world state in the Scene resource, so a capture
 // script, a replay and a save all land on the same frame.
-import { og, defineEvent, defineResource, defineSystem, f32, math, u32 } from "@origingame/engine";
+import { og, defineEvent, defineResource, defineSystem, f64, math, u32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { must } from "./util.ts";
 
@@ -18,7 +18,7 @@ const HOURS = [6.9, 12.4, 18.55, 23.4];
 const SETTLE = 6, CLOCK = 3.2;
 
 /** What the player chose, the hour drawn now, and which kinds of switch they have made (bits: weather 1, season 2, night 4). */
-export const Scene = defineResource("Scene", { weather: u32(0), season: u32(1), time: u32(0), hud: u32(1), hour: f32(HOURS[0]!), falling: u32(0), seen: u32(0) });
+export const Scene = defineResource("Scene", { weather: u32(0), season: u32(1), time: u32(0), hud: u32(1), hour: f64(HOURS[0]!), falling: u32(0), seen: u32(0) });
 
 /** A hotbar slot pressed: 0 weather, 1 season, 2 time. */
 export const Pick = defineEvent("Pick", { which: u32(0, { min: 0, max: 2 }) });

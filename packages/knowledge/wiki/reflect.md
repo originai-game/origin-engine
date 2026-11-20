@@ -52,7 +52,7 @@ Each is a factory, `f32(value?, options?)`, that makes one field of a component 
 
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
-| <a id="column-f32"></a>`f32` | `number` | `Float32Array` | 1 | A 32-bit float, the default numeric field. |
+| <a id="column-f32"></a>`f32` | `number` | `Float32Array` | 1 | A 32-bit float, the default numeric field. It reads back what was written rounded to 32 bits (6.9 reads 6.9000001), so a value compared with a JavaScript number, such as a clock run to a target hour, is an f64. |
 | <a id="column-f64"></a>`f64` | `number` | `Float64Array` | 1 | A 64-bit float, for accumulated values that must not drift, such as elapsed time. |
 | <a id="column-u32"></a>`u32` | `number` | `Uint32Array` | 1 | A 32-bit unsigned integer: counters, flags, indices. |
 | <a id="column-i32"></a>`i32` | `number` | `Int32Array` | 1 | A 32-bit signed integer. |
@@ -67,7 +67,7 @@ Each is a factory, `f32(value?, options?)`, that makes one field of a component 
 
 ```ogt
 column f32 {
-  doc "A 32-bit float, the default numeric field."
+  doc "A 32-bit float, the default numeric field. It reads back what was written rounded to 32 bits (6.9 reads 6.9000001), so a value compared with a JavaScript number, such as a clock run to a target hour, is an f64."
   array Float32Array
   stride 1
   value f32
