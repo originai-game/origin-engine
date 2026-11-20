@@ -56,7 +56,7 @@
 /* The key cap that spends the charge. */
 .key { max-inline-size: stretch; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); -webkit-text-stroke-width: 0; text-shadow: none; overflow-wrap: anywhere; }
 .key[data-ready=true] { background: var(--hud-key-lit-fill); box-shadow: var(--hud-key-lit-shadow); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { min-block-size: 0; }
   #Meter { inline-size: calc(16 * var(--font-step-px)); }
 }

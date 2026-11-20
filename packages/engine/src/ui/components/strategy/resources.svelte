@@ -52,7 +52,7 @@
 .empty { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; }
 /* On a phone the bar takes the width: the stockpiles spread across one
    row, or two at a large text scale, smaller. */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { inline-size: stretch; justify-content: space-between; column-gap: calc(8 * var(--font-step-px)); row-gap: calc(4 * var(--font-step-px)); padding: calc(4 * var(--font-step-px)) calc(10 * var(--font-step-px)); }
   .resource { column-gap: calc(4 * var(--font-step-px)); }
   .picture, .glyph { inline-size: var(--size-xs); block-size: var(--size-xs); }

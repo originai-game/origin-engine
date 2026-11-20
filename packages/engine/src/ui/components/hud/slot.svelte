@@ -95,7 +95,7 @@
 /* Under a touch screen the slots are the controls: no key caps. */
 @media (pointer: coarse) { .key { display: none; } }
 /* On a phone its figures and pips are smaller. */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   .time { font-size: var(--hud-size-sm); }
   [data-kind=ultimate] .time { font-size: var(--hud-size-xs); }
   .charges { --pip: calc(9 * var(--font-step-px)); block-size: calc(3 * var(--font-step-px)); }

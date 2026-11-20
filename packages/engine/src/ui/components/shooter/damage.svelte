@@ -35,7 +35,7 @@
 .hit + .hit .call { display: none; }
 .hit + .hit .amount { font-size: var(--hud-size-md); }
 .hit + .hit + .hit { margin-inline-start: calc(64 * var(--font-step-px)); opacity: 0.6; }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   .amount { font-size: var(--hud-size-damage-compact); }
   .call { letter-spacing: normal; }
   .hit + .hit { display: none; }

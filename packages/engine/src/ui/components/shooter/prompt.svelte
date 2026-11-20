@@ -29,5 +29,5 @@
 .action { min-inline-size: 0; font-size: var(--hud-size-sm); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .reason { flex: none; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-foe); white-space: nowrap; }
 .disabled .action, .disabled .key { opacity: 0.55; }
-@media (width < 600px) { .action { font-size: var(--hud-size-xs); } }
+@media (width < 600px), (height < 500px) { .action { font-size: var(--hud-size-xs); } }
 </style>

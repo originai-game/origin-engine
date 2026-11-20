@@ -60,16 +60,20 @@
 .health .fill { background: var(--hud-health-fill); }
 .cuts { background: var(--bar-notch); mask-image: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--cells) - 2 * var(--font-step-px)), #000 calc(100% / var(--cells) - 2 * var(--font-step-px)) calc(100% / var(--cells))); }
 .ghost { inline-size: calc(var(--ghost) * 100%); block-size: 100%; background: var(--bar-ghost); transition: var(--bar-ghost-motion); }
-/* On a phone the plates stand side by side, each compact: a small
-   portrait beside the name over the bars, the state on a tag under
-   them. */
-@media (width < 600px) {
-  :host { flex-direction: row; inline-size: stretch; column-gap: var(--space-md); }
-  .mate { flex: 1 1 0; }
-  .mate { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "portrait name" "portrait shield" "portrait health" "status status"; column-gap: calc(4 * var(--font-step-px)); row-gap: calc(3 * var(--font-step-px)); }
-  .portrait { align-self: start; inline-size: calc(28 * var(--font-step-px)); block-size: calc(28 * var(--font-step-px)); }
+/* Short of room (a phone, or a phone on its side) each plate is compact:
+   a small portrait beside the name over thinner bars. */
+@media (width < 600px), (height < 500px) {
+  .mate { column-gap: calc(4 * var(--font-step-px)); row-gap: calc(3 * var(--font-step-px)); }
+  .portrait { inline-size: calc(28 * var(--font-step-px)); block-size: calc(28 * var(--font-step-px)); }
   .callsign { font-size: var(--hud-size-xs); }
   .bar { block-size: calc(4 * var(--font-step-px)); }
+}
+/* On an upright phone the plates stand side by side, the state on a tag
+   under the bars. */
+@media (width < 600px) {
+  :host { flex-direction: row; inline-size: stretch; column-gap: var(--space-md); }
+  .mate { flex: 1 1 0; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "portrait name" "portrait shield" "portrait health" "status status"; }
+  .portrait { align-self: start; }
   .status { padding: 0 calc(3 * var(--font-step-px)); font-size: var(--hud-tag-size); letter-spacing: normal; -webkit-text-stroke-width: 0; text-shadow: none; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 }
 </style>

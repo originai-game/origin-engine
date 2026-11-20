@@ -42,6 +42,13 @@
 #Judge { grid-area: judge; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; container-type: size; }
 #Fever { grid-area: fever; display: flex; justify-content: flex-end; min-height: 0; }
 #Keys { grid-area: keys; display: flex; min-width: 0; }
+/* On a phone on its side the same rows, tighter: the members are compact
+   and the band under the judgement takes a smaller share of the height. */
+@media (height < 500px) and (width >= 600px) {
+  #Hud { row-gap: var(--space-xs); grid-template-rows: auto minmax(0, 1fr) 9% auto;
+    padding: calc(env(safe-area-inset-top) + var(--space-sm)) var(--space-xl) calc(env(safe-area-inset-bottom) + var(--space-xs)); }
+  #Chain { padding-top: 0; }
+}
 @media (width < 600px) {
   #Hud { column-gap: var(--space-sm); row-gap: var(--space-sm);
     grid-template-columns: auto minmax(0, 1fr) auto;

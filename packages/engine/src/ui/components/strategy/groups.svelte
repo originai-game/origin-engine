@@ -38,7 +38,7 @@
 .count { flex: none; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 [data-alert=true] .count { color: var(--hud-gold); }
 /* The key cap stays under a touch screen too: it names the group. */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { column-gap: calc(4 * var(--font-step-px)); }
   .group::part(base) { padding: calc(2 * var(--font-step-px)) calc(7 * var(--font-step-px)); }
   .count { font-size: var(--hud-size-xs); }

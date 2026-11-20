@@ -48,7 +48,7 @@
 .hit + .hit { margin-block-start: calc(28 * var(--font-step-px)); opacity: 0.85; }
 .hit + .hit + .hit { margin-inline-start: calc(220 * var(--font-step-px)); margin-block-start: 0; opacity: 0.7; }
 .hit + .hit + .hit .amount { font-size: var(--hud-size-md); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   .amount { font-size: var(--hud-size-md); }
   [data-kind=critical] .amount { font-size: var(--hud-size-crit-compact); }
   .call { font-size: var(--hud-tag-size); letter-spacing: normal; }

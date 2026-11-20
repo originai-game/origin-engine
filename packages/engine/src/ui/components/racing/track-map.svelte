@@ -53,7 +53,7 @@
 .length { flex: none; max-inline-size: 50%; margin-inline-start: auto; padding: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* On a phone the map is smaller and its name line goes (it has no room
    under a map that small). */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { --map: var(--hud-map-compact); }
   #Under { display: none; }
 }

@@ -90,6 +90,28 @@
 #Lock { position: absolute; left: calc(50% - var(--size-xxl) * 0.45); top: calc(var(--space-lg) + 60 * var(--font-step-px)); }
 #Dealt { position: absolute; display: flex; left: calc(50% - 120 * var(--font-step-px)); right: 0; top: max(var(--space-lg), calc(50% - 130 * var(--font-step-px))); }
 #Heal { position: absolute; display: flex; left: 20%; bottom: var(--space-xl); }
+/* On a phone on its side the columns stay over the foot, with a height
+   budget: the members are compact (the leader's plate, the companions in
+   a row, the quest's step in play), the effects stand under the leader
+   rather than beside its portrait, and the foot holds the skill bar alone
+   (the loot feed and the input hints are left out), so no column reaches
+   down into it. */
+@media (height < 500px) and (width >= 600px) {
+  #Hud { column-gap: var(--space-lg); row-gap: 0;
+    grid-template-columns: fit-content(30%) minmax(0, 1fr) fit-content(32%);
+    padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-lg)) env(-og-hud-inset-bottom) calc(env(-og-hud-inset-left) + var(--space-lg)); }
+  #Xp { margin-inline: calc(-1 * (env(-og-hud-inset-left) + var(--space-lg))) calc(-1 * (env(-og-hud-inset-right) + var(--space-lg))); }
+  #Left { row-gap: var(--space-xs); }
+  #Effects { padding-left: 0; }
+  #Companions { padding-top: 0; }
+  #Quest { padding-top: 0; }
+  #Loot, #Hints { display: none; }
+  #Foot { justify-content: center; padding-bottom: var(--space-xxs); }
+  #Prompt { padding-bottom: var(--space-xs); }
+  #Lock { top: calc(var(--space-sm) + 24 * var(--font-step-px)); }
+  #Dealt { top: var(--space-xs); }
+  #Heal { bottom: var(--space-sm); }
+}
 /* On a phone the columns dissolve into full-width rows: the boss's bar
    across the top, the leader and its effects beside the minimap, the
    companions side by side, the step in play; then the fight's band, which

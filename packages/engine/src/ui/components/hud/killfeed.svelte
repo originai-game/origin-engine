@@ -55,8 +55,9 @@
    its side, with the width for more, the three newest (where more rows
    would cover the play area round the aim); the rest stay in the log for
    a reader. */
-@media (width < 600px) {
-  .row:nth-child(n + 2) { display: none; }
+@media (width < 600px) { .row:nth-child(n + 2) { display: none; } }
+/* Short of room either way, the rows are compact. */
+@media (width < 600px), (height < 500px) {
   .row { padding-inline-start: var(--space-sm); }
   .name { font-size: var(--hud-size-xs); }
   .glyph { inline-size: calc(26 * var(--font-step-px)); block-size: calc(10 * var(--font-step-px)); }

@@ -82,7 +82,7 @@
 .low #HealthFill { background: var(--hud-low-fill); box-shadow: var(--hud-low-glow); }
 .low #Health { box-shadow: var(--bar-critical-rim); animation: var(--pulse-motion); }
 .low .value { color: var(--hud-empty-ink); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { column-gap: var(--space-sm); inline-size: stretch; }
   #Portrait { inline-size: calc(40 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
   .value { font-size: var(--hud-size-sm); }

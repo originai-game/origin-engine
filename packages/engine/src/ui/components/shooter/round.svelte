@@ -47,7 +47,7 @@
 .ours { color: var(--hud-ally); }
 .theirs { color: var(--hud-foe); }
 .dash { align-self: center; inline-size: calc(10 * var(--font-step-px)); block-size: calc(2 * var(--font-step-px)); background: var(--hud-ink-dim); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { flex-wrap: wrap; row-gap: var(--space-xxs); justify-content: flex-start; }
   .spacer { display: none; }
   #Plate { flex-wrap: wrap; }

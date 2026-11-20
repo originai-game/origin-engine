@@ -42,7 +42,7 @@
 [data-rarity=rare] .count { color: var(--hud-rare); }
 [data-rarity=epic] .count { color: var(--hud-epic); }
 [data-rarity=legendary] .count { color: var(--hud-legendary); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   .entry:nth-child(n + 2) { display: none; }
   .art { inline-size: calc(18 * var(--font-step-px)); block-size: calc(18 * var(--font-step-px)); }
   .item, .count { font-size: var(--hud-size-xs); }

@@ -23,5 +23,5 @@
 
 <style>
 :host { margin: 0; padding: 0; list-style: none; column-gap: calc(8 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); }
-@media (width < 600px) { :host { column-gap: calc(6 * var(--font-step-px)); } }
+@media (width < 600px), (height < 500px) { :host { column-gap: calc(6 * var(--font-step-px)); } }
 </style>

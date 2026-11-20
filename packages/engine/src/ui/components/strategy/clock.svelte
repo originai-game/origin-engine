@@ -27,7 +27,7 @@
 .time { flex: none; font-size: var(--hud-size-readout); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-shadow: var(--hud-shadow); }
 .speed { flex: none; min-inline-size: calc(22 * var(--font-step-px)); padding: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); text-align: center; white-space: nowrap; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 [data-paused=true] .speed { color: var(--hud-gold); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { inline-size: stretch; column-gap: calc(6 * var(--font-step-px)); padding: calc(4 * var(--font-step-px)) calc(10 * var(--font-step-px)); }
   .label { font-size: var(--hud-size-label-compact); letter-spacing: normal; }
   .time { font-size: var(--hud-size-readout-compact); }

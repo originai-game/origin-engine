@@ -69,7 +69,7 @@
 .low .value { color: var(--hud-harm); }
 /* On a phone the plate is compact: a smaller portrait and thinner bars
    across the row's width. */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { column-gap: var(--space-sm); inline-size: stretch; }
   #Portrait { --hud-portrait-size: calc(44 * var(--font-step-px)); }
   #Body { row-gap: calc(4 * var(--font-step-px)); }

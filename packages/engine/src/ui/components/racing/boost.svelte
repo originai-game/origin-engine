@@ -46,7 +46,7 @@
 .fill { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--hud-shield-fill); }
 [data-firing=true] .fill { box-shadow: var(--hud-shield-glow); }
 .cuts { background: var(--bar-notch); mask-image: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--cells) - 3 * var(--font-step-px)), #000 calc(100% / var(--cells) - 3 * var(--font-step-px)) calc(100% / var(--cells))); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { inline-size: stretch; column-gap: calc(6 * var(--font-step-px)); }
   .icon { inline-size: calc(24 * var(--font-step-px)); block-size: calc(24 * var(--font-step-px)); }
   .label { letter-spacing: normal; }

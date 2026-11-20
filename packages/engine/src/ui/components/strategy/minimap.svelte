@@ -46,7 +46,7 @@
 /* An alert: a red ring with a glow round the place. */
 .ping { position: absolute; --ring: calc(18 * var(--font-step-px)); inline-size: var(--ring); block-size: var(--ring); left: calc(var(--x) * 100% - var(--ring) / 2); top: calc(var(--y) * 100% - var(--ring) / 2); border-radius: var(--hud-radar-radius); box-shadow: var(--hud-ping-ring); }
 /* On a phone the tile is smaller, in its corner. */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { --side: var(--size-xxl); }
   .dot { --pip: calc(4 * var(--font-step-px)); }
   .dot[data-base=true] { --pip: calc(7 * var(--font-step-px)); }

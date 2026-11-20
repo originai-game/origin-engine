@@ -56,7 +56,7 @@
 .chart[data-tier=expert] { background: var(--chart-expert); }
 .chart[data-tier=master] { background: var(--chart-master); }
 .chart[data-tier=special] { background: var(--chart-special); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   #Jacket { inline-size: calc(56 * var(--font-step-px)); block-size: calc(56 * var(--font-step-px)); }
   .title { font-size: var(--hud-size-sm); }
   .byline { font-size: var(--hud-size-xs); }

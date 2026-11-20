@@ -65,6 +65,16 @@
    under its cards, the barracks queue. */
 #Panel { display: flex; flex-direction: column; row-gap: var(--space-md); width: stretch; min-width: 0; box-sizing: border-box; padding: var(--space-md) var(--space-lg); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
 #Queue { display: flex; min-width: 0; }
+/* On a phone on its side the same rows round the battlefield, tighter:
+   the members are compact and the panel's padding and gaps shrink, so the
+   foot row keeps inside the screen in every pack's type. */
+@media (height < 500px) and (width >= 600px) {
+  #Hud { row-gap: var(--space-xs);
+    padding: calc(env(-og-hud-inset-top) + var(--space-sm)) calc(env(-og-hud-inset-right) + var(--space-lg)) calc(env(-og-hud-inset-bottom) + var(--space-sm)) calc(env(-og-hud-inset-left) + var(--space-lg)); }
+  #Top { row-gap: var(--space-xs); }
+  #Foot { row-gap: var(--space-xs); }
+  #Panel { row-gap: var(--space-xs); padding: var(--space-xs) var(--space-md); }
+}
 /* On a phone: the resources across the top, the wave and the clock, the
    alerts; the battlefield in the middle is left clear; at the foot the
    control groups, the small minimap in its corner beside the compact

@@ -23,5 +23,5 @@
 <style>
 :host { align-items: flex-start; row-gap: calc(5 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); }
 .entry { flex: none; max-inline-size: 100%; min-inline-size: 0; }
-@media (width < 600px) { .entry:nth-child(n + 2) { display: none; } }
+@media (width < 600px), (height < 500px) { .entry:nth-child(n + 2) { display: none; } }
 </style>

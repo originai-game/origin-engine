@@ -83,7 +83,7 @@
 #ReloadTrack { flex: 1; block-size: calc(4 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); }
 #ReloadFill { inline-size: calc(var(--progress) * 100%); block-size: 100%; background: var(--hud-pip-on); }
 #Prompt { color: var(--hud-empty-ink); animation: var(--pulse-motion); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { inline-size: auto; row-gap: calc(2 * var(--font-step-px)); }
   #Modes { display: none; }
   #Weapon { flex-wrap: wrap; justify-content: flex-end; }

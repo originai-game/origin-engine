@@ -48,7 +48,7 @@
 [data-low=true] .fill { background: var(--hud-low-fill); box-shadow: var(--hud-low-glow); }
 .reading { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .pit { max-inline-size: 100%; min-inline-size: 0; padding: 0 calc(8 * var(--font-step-px)); font-size: var(--hud-label-size); line-height: 1.6; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; color: var(--hud-key-ink); background: var(--hud-gold); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { row-gap: calc(3 * var(--font-step-px)); }
   .title, .pit { letter-spacing: normal; }
   /* The tags name their tyres: the heading over them goes. */

@@ -83,5 +83,5 @@
   .rays { display: none; }
   .halo, .title, .value { animation: none; }
 }
-@media (width < 600px) { .value { font-size: var(--alert-size-level-compact); } .halo { width: calc(var(--alert-size-level-compact) * 2.2); height: calc(var(--alert-size-level-compact) * 2.2); } .rays { width: calc(var(--alert-size-level-compact) * 3.8); height: calc(var(--alert-size-level-compact) * 3.8); } }
+@media (width < 600px), (height < 500px) { .value { font-size: var(--alert-size-level-compact); } .halo { width: calc(var(--alert-size-level-compact) * 2.2); height: calc(var(--alert-size-level-compact) * 2.2); } .rays { width: calc(var(--alert-size-level-compact) * 3.8); height: calc(var(--alert-size-level-compact) * 3.8); } }
 </style>

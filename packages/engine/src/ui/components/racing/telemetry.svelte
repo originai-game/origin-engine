@@ -80,7 +80,7 @@
 #Box { align-items: center; justify-content: center; column-gap: calc(8 * var(--font-step-px)); max-inline-size: 100%; min-inline-size: 0; margin-block-start: calc(4 * var(--font-step-px)); }
 .gear { flex: none; padding: 0 calc(8 * var(--font-step-px)); font-size: var(--hud-size-sm); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; color: var(--hud-accent-ink); background: var(--hud-accent); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* On a phone the dial is smaller and its figures go (the ticks stay). */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { --side: var(--hud-dial-compact); }
   .mark { display: none; }
   .tick { block-size: calc(5 * var(--font-step-px)); }

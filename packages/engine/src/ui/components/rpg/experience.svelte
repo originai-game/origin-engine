@@ -23,5 +23,5 @@
 .caption { align-self: flex-start; max-inline-size: 100%; padding-inline: var(--space-xl); min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 #Line { inline-size: 100%; block-size: calc(6 * var(--font-step-px)); background: var(--hud-line-well); }
 #Lit { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--hud-xp-fill); box-shadow: var(--hud-xp-glow); }
-@media (width < 600px) { #Line { block-size: calc(4 * var(--font-step-px)); } .caption { padding-inline: var(--space-md); letter-spacing: normal; } }
+@media (width < 600px), (height < 500px) { #Line { block-size: calc(4 * var(--font-step-px)); } .caption { padding-inline: var(--space-md); letter-spacing: normal; } }
 </style>

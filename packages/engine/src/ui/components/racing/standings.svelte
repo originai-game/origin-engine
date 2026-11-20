@@ -74,7 +74,7 @@
 }
 /* On a phone the tower keeps the player's row and the rows either side of
    it, slimmer (the first three when no row is the player's). */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { inline-size: stretch; }
   .rows { row-gap: calc(2 * var(--font-step-px)); }
   .row { display: none; column-gap: calc(6 * var(--font-step-px)); padding-inline-end: calc(8 * var(--font-step-px)); }

@@ -33,7 +33,7 @@
 .skill[data-kind=item] + .skill:not([data-kind=item]) { margin-inline-start: calc(10 * var(--font-step-px)); }
 .skill[data-kind=ultimate] { margin-inline-start: calc(6 * var(--font-step-px)); }
 /* On a phone the skills and the ultimate fit the width; the items drop. */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { column-gap: calc(6 * var(--font-step-px)); --s: calc(var(--size-xl) * 0.6); --ult: calc(var(--size-xl) * 0.85); }
   .skill[data-kind=item] { display: none; }
   .skill[data-kind=item] + .skill:not([data-kind=item]) { margin-inline-start: 0; }

@@ -96,7 +96,7 @@
    and pulses. */
 .invulnerable #Fill { filter: var(--hud-unready); }
 .critical #Health { box-shadow: var(--bar-critical-rim); animation: var(--pulse-motion); }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { row-gap: calc(4 * var(--font-step-px)); }
   .boss { font-size: var(--hud-size-boss-compact); }
   .epithet { display: none; }

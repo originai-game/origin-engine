@@ -120,7 +120,7 @@
 /* On a phone the panel is compact: a smaller portrait, the name and its
    line, and one row of whole cards: the first four and a +n tile counting
    the rest; the stats go. */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { --portrait: var(--size-lg); --card: var(--size-md); column-gap: calc(8 * var(--font-step-px)); }
   .lead { row-gap: calc(3 * var(--font-step-px)); }
   .health { block-size: calc(5 * var(--font-step-px)); }

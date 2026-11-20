@@ -95,7 +95,7 @@
 /* On a phone: the place smaller, the lap and the places gained beside it,
    then the lap time running over the best lap and the delta; the last lap
    is left out. */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { row-gap: calc(8 * var(--font-step-px)); inline-size: stretch; }
   .place { font-size: var(--hud-size-place-compact); }
   .of { font-size: var(--hud-size-md); }
@@ -115,5 +115,11 @@
   .last .label, .last .end { display: none; }
   .label { letter-spacing: normal; }
   .delta, .split .label { margin-block-start: 0; }
+}
+/* On a phone on its side the column is narrow: the split takes a line of
+   its own, its name at the start and its delta at the end. */
+@media (height < 500px) and (width >= 600px) {
+  #Times { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "cl ct ct" "bl bt bt" "sl sl sd"; }
+  .split .label { justify-self: start; }
 }
 </style>

@@ -62,7 +62,7 @@
 .key { min-inline-size: calc(22 * var(--font-step-px)); max-inline-size: calc(var(--s) * 1.3); padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 /* Under a touch screen the slots are the controls: no key caps. */
 @media (pointer: coarse) { .key { display: none; } }
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { column-gap: calc(8 * var(--font-step-px)); --s: calc(36 * var(--font-step-px)); --ult: calc(44 * var(--font-step-px)); }
   .time { font-size: var(--hud-size-sm); }
   [data-ultimate=true] .time { font-size: var(--hud-size-xs); }

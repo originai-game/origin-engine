@@ -52,7 +52,7 @@
 /* On a phone the plates stand side by side, each compact: the name over
    the bars, no portrait, so a short name fits whole at a large text scale
    (they wrap only when it cannot). */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { flex-direction: row; flex-wrap: wrap; inline-size: stretch; column-gap: var(--space-md); row-gap: var(--space-sm); }
   /* The rows start at the plate's top and keep their own heights (the row
      stretches every plate to the tallest one's height; stretched rows

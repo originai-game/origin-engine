@@ -65,7 +65,7 @@
 .scale-row { flex-wrap: wrap; row-gap: var(--space-xxs); justify-content: space-between; }
 #Scale { order: -1; flex: 1 1 100%; }
 /* On a phone the tally runs as one line of pairs over a full-width scale. */
-@media (width < 600px) {
+@media (width < 600px), (height < 500px) {
   :host { inline-size: stretch; }
   .tally { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-md); }
   .row { --layout-gap-wide: var(--space-xs); }
