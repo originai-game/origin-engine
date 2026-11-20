@@ -99,9 +99,12 @@ fn a_replaced_mesh_draws_its_new_shape() {
             coarse.clone(),
             og_render::SimulationSurface::SoftBody
         ));
-        let stats = r
+        // The counts stay on the GPU until a reader asks for them.
+        r.request_culling_counts();
+        let mut stats = r
             .render(&s, &RenderTarget::Offscreen)
             .expect("surface render");
+        r.finish_stats(&mut stats);
         assert_eq!(stats.triangles, triangles);
         assert!(
             stats.prepass_draws > 0,
