@@ -70,9 +70,11 @@ namespace CPPSPMD_NAME(basisu_kernels_namespace)
             vint delta_cr = dr * 128 - delta_l;
             vint delta_cb = db * 128 - delta_l;
 
-            vint id = ((delta_l * delta_l) >> 7) +
-               ((((delta_cr * delta_cr) >> 7) * 26) >> 7) +
-               ((((delta_cb * delta_cb) >> 7) * 3) >> 7);
+            // Chroma squares fit uint32_t, not int32_t. Shift their bits
+            // logically, matching color_distance's non-negative metric.
+            vint id = vuint_shift_right(delta_l * delta_l, 7) +
+               vuint_shift_right(vuint_shift_right(delta_cr * delta_cr, 7) * 26, 7) +
+               vuint_shift_right(vuint_shift_right(delta_cb * delta_cb, 7) * 3, 7);
 
             *pDistance += reduce_add(id);
             if (*pDistance >= early_out_err)
@@ -90,9 +92,9 @@ namespace CPPSPMD_NAME(basisu_kernels_namespace)
             int dg = base_g - g;
             int db = base_b - b;
 
-            int delta_l = dr * 27 + dg * 92 + db * 9;
-            int delta_cr = dr * 128 - delta_l;
-            int delta_cb = db * 128 - delta_l;
+            int64_t delta_l = dr * 27 + dg * 92 + db * 9;
+            int64_t delta_cr = dr * 128 - delta_l;
+            int64_t delta_cb = db * 128 - delta_l;
 
             int id = ((delta_l * delta_l) >> 7) +
                ((((delta_cr * delta_cr) >> 7) * 26) >> 7) +
@@ -195,9 +197,9 @@ namespace CPPSPMD_NAME(basisu_kernels_namespace)
          vint delta_cr = dr * 128 - delta_l;
          vint delta_cb = db * 128 - delta_l;
 
-         vint id = VINT_SHIFT_RIGHT(delta_l * delta_l, 7) +
-            VINT_SHIFT_RIGHT(VINT_SHIFT_RIGHT(delta_cr * delta_cr, 7) * 26, 7) +
-            VINT_SHIFT_RIGHT(VINT_SHIFT_RIGHT(delta_cb * delta_cb, 7) * 3, 7);
+         vint id = vuint_shift_right(delta_l * delta_l, 7) +
+            vuint_shift_right(vuint_shift_right(delta_cr * delta_cr, 7) * 26, 7) +
+            vuint_shift_right(vuint_shift_right(delta_cb * delta_cb, 7) * 3, 7);
 
          return id;
       }
@@ -261,9 +263,9 @@ namespace CPPSPMD_NAME(basisu_kernels_namespace)
                int dg = base_g - g;
                int db = base_b - b;
 
-               int delta_l = dr * 27 + dg * 92 + db * 9;
-               int delta_cr = dr * 128 - delta_l;
-               int delta_cb = db * 128 - delta_l;
+               int64_t delta_l = dr * 27 + dg * 92 + db * 9;
+               int64_t delta_cr = dr * 128 - delta_l;
+               int64_t delta_cb = db * 128 - delta_l;
 
                int id = ((delta_l * delta_l) >> 7) +
                   ((((delta_cr * delta_cr) >> 7) * 26) >> 7) +
@@ -388,9 +390,9 @@ namespace CPPSPMD_NAME(basisu_kernels_namespace)
          vint delta_cr = dr * 128 - delta_l;
          vint delta_cb = db * 128 - delta_l;
 
-         vint id = VINT_SHIFT_RIGHT(delta_l * delta_l, 7) +
-            VINT_SHIFT_RIGHT(VINT_SHIFT_RIGHT(delta_cr * delta_cr, 7) * 26, 7) +
-            VINT_SHIFT_RIGHT(VINT_SHIFT_RIGHT(delta_cb * delta_cb, 7) * 3, 7);
+         vint id = vuint_shift_right(delta_l * delta_l, 7) +
+            vuint_shift_right(vuint_shift_right(delta_cr * delta_cr, 7) * 26, 7) +
+            vuint_shift_right(vuint_shift_right(delta_cb * delta_cb, 7) * 3, 7);
 
          return id;
       }
@@ -446,9 +448,9 @@ namespace CPPSPMD_NAME(basisu_kernels_namespace)
                int dg = base_g - g;
                int db = base_b - b;
 
-               int delta_l = dr * 27 + dg * 92 + db * 9;
-               int delta_cr = dr * 128 - delta_l;
-               int delta_cb = db * 128 - delta_l;
+               int64_t delta_l = dr * 27 + dg * 92 + db * 9;
+               int64_t delta_cr = dr * 128 - delta_l;
+               int64_t delta_cb = db * 128 - delta_l;
 
                int id = ((delta_l * delta_l) >> 7) +
                   ((((delta_cr * delta_cr) >> 7) * 26) >> 7) +

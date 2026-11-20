@@ -177,7 +177,7 @@ pub fn encoder_name(opts: &TextureOptions) -> Result<String, CookError> {
     #[cfg(feature = "basis")]
     if !opts.force_toktx {
         return Ok(
-            "basisu 1.16 (basis-universal crate, UASTC level as set, fp-contract=off)".into(),
+            "basisu 1.16 (basis-universal crate, UASTC level as set, SSE colour distance fixed, fp-contract=off)".into(),
         );
     }
     let _ = opts;

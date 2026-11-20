@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook: colour textures and video posters",
+      "summary": "ETC1S's SSE colour-distance kernels now agree with the scalar encoder for saturated colours instead of producing negative errors and aborting debug cooks. SSE acceleration stays enabled. Texture cache keys change so previously encoded results are rebuilt."
+    }
+  ]
+}
