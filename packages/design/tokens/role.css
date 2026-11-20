@@ -130,7 +130,7 @@
   /* Card: a surface inside a frame that holds one thing (an article, an
      entry, a step, an offer), set apart by its rim: the frame's own glass
      a step nearer, lit across its top. */
-  --role-card-fill: linear-gradient(180deg, var(--color-lit-soft), transparent 48px), var(--color-card);
+  --role-card-fill: linear-gradient(180deg, var(--color-lit-soft), transparent 48px), var(--entry-fill);
   --role-card-rim: var(--color-rim-soft);
   --role-card-rim-width: var(--stroke-hairline);
   --role-card-selected-rim: var(--primary);
@@ -138,6 +138,15 @@
   --role-card-corner-shape: bevel;
   --role-card-shadow: inset 0 1px 0 0 var(--color-lit-soft);
   --role-card-pad: var(--space-md);
+
+  /* Entry: a row that stands alone in a list (an achievement, a quest,
+     a message, a chat line, a card in a deck): the frame's glass a step
+     nearer, opaque, since a white wash over dark glass blends in linear
+     light to a grey slab. One locked, hidden or missed wears faint
+     stripes of the glass's own grain (`entry-dim-fill`). */
+  --role-entry-fill: linear-gradient(90deg, var(--color-entry-hi), var(--color-entry-lo));
+  --role-entry-grain: repeating-linear-gradient(135deg, var(--color-entry-grain) 0 calc(2 * var(--font-step-px)), transparent calc(2 * var(--font-step-px)) calc(10 * var(--font-step-px)));
+  --role-entry-dim-fill: var(--entry-grain), var(--entry-fill);
 
   /* Action: the one main thing a screen or component asks the player to do
      (Play, Continue, Buy, Equip), on every built-in one: a plate in the
@@ -612,11 +621,11 @@
   --role-quest-cut-sm: calc(6 * var(--font-step-px));
   /* An entry (a quest, an achievement, a day) and one with a reward
      waiting, washed gold from its leading edge with a gold bar on it. */
-  --role-quest-entry-fill: linear-gradient(180deg, var(--color-lit-soft), transparent calc(48 * var(--font-step-px))), var(--color-card);
+  --role-quest-entry-fill: linear-gradient(180deg, var(--color-lit-soft), transparent calc(48 * var(--font-step-px))), var(--entry-fill);
   --role-quest-entry-rim: inset 0 0 0 var(--stroke-hairline) var(--color-rim), inset 0 var(--stroke-hairline) 0 var(--color-lit-soft);
-  --role-quest-ready-fill: linear-gradient(90deg, rgb(from var(--hud-gold) r g b / 0.14), transparent 60%), var(--color-card);
+  --role-quest-ready-fill: linear-gradient(90deg, rgb(from var(--hud-gold) r g b / 0.14), transparent 60%), var(--entry-fill);
   --role-quest-ready-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-gold) r g b / 0.45), inset calc(3 * var(--font-step-px)) 0 0 var(--hud-gold);
-  --role-quest-locked-fill: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.03) 0 calc(6 * var(--font-step-px)), transparent calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px))), var(--color-card);
+  --role-quest-locked-fill: var(--entry-dim-fill);
   --role-quest-taken-opacity: 0.66;
   /* The claim button: a gold face with a lit lip and a glow. */
   --role-quest-claim-fill: var(--action-reward-fill);
@@ -658,7 +667,7 @@
   --role-quest-day-milestone-ink: oklch(from var(--epic) 0.861 calc(c * 0.39) calc(h - 13));
   --role-quest-day-milestone-head-fill: oklch(from var(--epic) 0.725 calc(c * 0.81) calc(h - 15) / 0.28);
   --role-quest-day-milestone-glow: drop-shadow(0 0 calc(12 * var(--font-step-px)) oklch(from var(--epic) 0.725 calc(c * 0.81) calc(h - 15) / 0.8));
-  --role-quest-day-missed-fill: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.025) 0 calc(6 * var(--font-step-px)), transparent calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px))), oklch(from var(--seed-neutral) 0.22 calc(min(c, 0.04) * 0.72) h / 0.95);
+  --role-quest-day-missed-fill: var(--entry-grain), oklch(from var(--seed-neutral) 0.22 calc(min(c, 0.04) * 0.72) h / 0.95);
   --role-quest-day-missed-foot-fill: oklch(from var(--hud-foe) 0.736 calc(c * 0.76) h / 0.08);
   --role-quest-day-taken-foot-fill: rgb(from var(--hud-boon) r g b / 0.08);
   --role-quest-day-dim-opacity: 0.35;
@@ -861,7 +870,7 @@
   --role-alert-danger-wash: linear-gradient(90deg, rgb(from var(--danger) r g b / 0.22), transparent 46%);
   /* The open message in the inbox (a gold wash over the card) and the
      sunken reader beside the list. */
-  --role-alert-open-fill: linear-gradient(90deg, rgb(from var(--hud-gold) r g b / 0.16), rgb(255 255 255 / 0.04) 70%), var(--color-card);
+  --role-alert-open-fill: linear-gradient(90deg, rgb(from var(--hud-gold) r g b / 0.16), rgb(255 255 255 / 0.04) 70%), var(--entry-fill);
   --role-alert-reader-radius: var(--radius-card);
   /* The rule under a banner's title and its glow. */
   --role-alert-rule: linear-gradient(90deg, transparent, var(--hud-gold) 30%, oklch(from var(--hud-gold) 0.972 calc(c * 0.28) calc(h + 7)) 50%, var(--hud-gold) 70%, transparent);
@@ -890,7 +899,7 @@
      A chat line on a cut chip, the player's own washed gold; the channel
      shown lit gold along its foot; another player's name in the info
      colour. */
-  --role-social-line-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.347 calc(min(c, 0.04) * 1.24) h / 0.9), oklch(from var(--seed-neutral) 0.29 min(c, 0.04) h / 0.9));
+  --role-social-line-fill: var(--entry-fill);
   --role-social-own-fill: var(--chosen-fill);
   --role-social-own-rim: var(--chosen-edge);
   --role-social-tab-on-fill: var(--chosen-tab-fill);
@@ -1034,7 +1043,7 @@
      the muted ink, which meets the contrast floor; never the faint one. */
   --role-tcg-label-ink: var(--ink-muted);
   --role-tcg-unowned: grayscale(1) brightness(0.4);
-  --role-tcg-hatch: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.06) 0 calc(6 * var(--font-step-px)), transparent calc(6 * var(--font-step-px)) calc(12 * var(--font-step-px)));
+  --role-tcg-hatch: var(--entry-grain);
   --role-tcg-gem-fill: linear-gradient(180deg, oklch(from var(--hud-accent) 0.967 calc(c * 0.29) calc(h - 8)), var(--hud-accent));
   --role-tcg-gem-ink: oklch(from var(--hud-accent) 0.164 calc(c * 0.17) calc(h + 21));
   --role-tcg-gem-size: calc(30 * var(--font-step-px));
@@ -1071,11 +1080,11 @@
   --role-tcg-count-size: calc(16 * var(--font-step-px));
   /* The deck list's rows: the card's type as a rail on the leading edge
      (currentColor), the shown row in the accent; the steps quiet glass. */
-  --role-tcg-row-fill: rgb(255 255 255 / 0.035);
+  --role-tcg-row-fill: var(--entry-fill);
   --role-tcg-row-rail: inset var(--stroke-thick) 0 0 currentColor;
   --role-tcg-row-on-fill: var(--chosen-fill);
   --role-tcg-row-on-rim: inset var(--stroke-thick) 0 0 currentColor, inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-accent) r g b / 0.5);
-  --role-tcg-step-fill: rgb(255 255 255 / 0.06);
+  --role-tcg-step-fill: var(--color-entry-lo);
   --role-tcg-step-rim: inset 0 0 0 var(--stroke-hairline) var(--color-rim);
   --role-tcg-size-fill: var(--bar-gloss), var(--hud-accent);
   --role-tcg-size-over-fill: var(--bar-gloss), var(--danger);

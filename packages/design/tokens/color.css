@@ -87,7 +87,10 @@
      `select-hi` to `select-lo` the wash across a chosen row: the
      primary's on a light ground; on a dark one the glass a step lighter,
      since a pale primary washed over dark glass in linear light is a
-     grey slab (the row's edge carries the primary there). Opaque
+     grey slab (the row's edge carries the primary there); `entry-hi` to
+     `entry-lo` an entry's ground (a row that stands alone: the glass a
+     step nearer, never a white wash) and `entry-grain` the faint stripes
+     of one that is locked or missed. Opaque
      wherever nothing shows through, since the engine blends in linear
      light. */
   --color-glass-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h / 0.97);
@@ -105,6 +108,9 @@
   --color-tile: oklch(from var(--seed-neutral) 0.925 min(c, 0.03) h);
   --color-tile-pressed: oklch(from var(--seed-neutral) 0.88 min(c, 0.03) h);
   --color-card: oklch(from var(--seed-neutral) 1 min(c, 0.02) h / 0.72);
+  --color-entry-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h / 0.82);
+  --color-entry-lo: oklch(from var(--seed-neutral) 0.975 min(c, 0.02) h / 0.66);
+  --color-entry-grain: oklch(from var(--seed-neutral) 0.9 min(c, 0.03) h / 0.5);
   --color-raised-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h);
   --color-raised-lo: oklch(from var(--seed-neutral) 0.945 min(c, 0.03) h);
   --color-raised-hover-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h);
@@ -232,6 +238,9 @@
   --color-tile: oklch(from var(--seed-neutral) 0.165 min(c, 0.04) h);
   --color-tile-pressed: oklch(from var(--seed-neutral) 0.12 min(c, 0.04) h);
   --color-card: oklch(from var(--seed-neutral) 0.36 min(c, 0.05) h / 0.42);
+  --color-entry-hi: oklch(from var(--seed-neutral) 0.265 min(c, 0.04) h / 0.88);
+  --color-entry-lo: oklch(from var(--seed-neutral) 0.205 min(c, 0.04) h / 0.74);
+  --color-entry-grain: oklch(from var(--seed-neutral) 0.31 min(c, 0.04) h / 0.55);
   --color-raised-hi: oklch(from var(--seed-neutral) 0.4 min(c, 0.04) h);
   --color-raised-lo: oklch(from var(--seed-neutral) 0.3 min(c, 0.04) h);
   --color-raised-hover-hi: oklch(from var(--seed-neutral) 0.47 min(c, 0.04) h);
