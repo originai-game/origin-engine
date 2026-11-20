@@ -31,7 +31,7 @@
 </section>
 
 <style>
-:host { inline-size: stretch; min-inline-size: 0; container-type: inline-size; color: var(--hud-ink); align-items: stretch; background: var(--map-card-fill-flat); box-shadow: var(--hud-plate-rim); --cut: calc(var(--hud-plate-cut) * 2); border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+:host { inline-size: stretch; min-inline-size: 0; container-type: inline-size; color: var(--hud-ink); align-items: stretch; background: var(--map-card-fill-flat); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-panel-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .pic { flex: none; inline-size: 34%; min-block-size: stretch; }
 .picture { width: 100%; height: 100%; object-fit: cover; }
 .fade { background: var(--map-picture-fade); }

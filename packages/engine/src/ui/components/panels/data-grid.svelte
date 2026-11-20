@@ -54,7 +54,7 @@
 
 <style>
 :host { inline-size: stretch; container-type: inline-size; --row-fill: none; --row-hover-fill: var(--data-row-hover-fill); --row-pressed-fill: var(--data-row-pressed-fill); --row-selected-fill: var(--data-row-selected-fill); --row-selected-edge: var(--data-row-selected-edge); --row-radius: 0px; }
-#DataGrid { background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: calc(2 * var(--hud-plate-cut)) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); }
+#DataGrid { background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-panel-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; color: var(--hud-ink); }
 #Head, .cells { display: grid; grid-template-columns: var(--tracks); column-gap: var(--space-md); width: stretch; min-width: 0; }
 #Head { padding: var(--space-sm) var(--space-md); border-block-end: var(--data-rule-line); }
 .heading { white-space: nowrap; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--data-head-ink); }

@@ -1181,7 +1181,13 @@ fn look_declarations(source: &str, roles: &std::collections::BTreeSet<String>) -
             if !look || matches!(property, "border-collapse" | "border-spacing") {
                 continue;
             }
-            if RESETS.contains(&value) || role_var(value) {
+            // A cut can leave individual corners square without taking
+            // its nonzero radius away from the style pack's role token.
+            let role_corners = property == "border-radius"
+                && value
+                    .split_ascii_whitespace()
+                    .all(|corner| matches!(corner, "0" | "0px") || role_var(corner));
+            if RESETS.contains(&value) || role_var(value) || role_corners {
                 continue;
             }
             found.push(format!("{property}: {value}"));

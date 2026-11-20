@@ -51,7 +51,7 @@
 </figure>
 
 <style>
-:host { position: relative; margin: 0; container-type: inline-size; color: var(--hud-ink); --pin: var(--map-marker); --cut: var(--hud-plate-cut); }
+:host { position: relative; margin: 0; container-type: inline-size; color: var(--hud-ink); --pin: var(--map-marker); }
 .sheet { position: relative; width: stretch; overflow: hidden; }
 .land { position: absolute; left: 0; top: 0; width: calc(var(--zoom) * 100%); height: calc(var(--zoom) * 100%); translate: var(--pan-x) var(--pan-y); }
 .terrain { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -82,13 +82,13 @@
 .bar { width: calc(var(--pin) * 0.11); height: calc(var(--pin) * 0.3); }
 .spot { width: calc(var(--pin) * 0.11); height: calc(var(--pin) * 0.11); }
 /* The name: white on a small cut plate under the pin, at any kind. */
-.name { position: absolute; left: 50%; top: calc(50% + var(--pin) / 2 + var(--space-xs)); translate: -50% 0; padding: calc(2 * var(--font-step-px)) var(--space-xs); white-space: nowrap; font-size: var(--map-name-size); font-weight: var(--hud-label-weight); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.name { position: absolute; left: 50%; top: calc(50% + var(--pin) / 2 + var(--space-xs)); translate: -50% 0; padding: calc(2 * var(--font-step-px)) var(--space-xs); white-space: nowrap; font-size: var(--map-name-size); font-weight: var(--hud-label-weight); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .marker[aria-selected=true] .name { top: calc(50% + var(--map-marker-on) * 0.8 + var(--space-xs)); font-size: var(--map-name-on-size); }
 /* The caption and the legend: cut plates over the art. */
-.here { position: absolute; left: var(--space-sm); top: var(--space-sm); align-items: center; padding: var(--space-xxs) var(--space-sm); margin: 0; font-size: var(--hud-size-xs); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.here { position: absolute; left: var(--space-sm); top: var(--space-sm); align-items: center; padding: var(--space-xxs) var(--space-sm); margin: 0; font-size: var(--hud-size-xs); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .here:dir(rtl) { left: auto; right: var(--space-sm); }
 .here-mark { width: var(--map-legend-mark); height: var(--map-legend-mark); flex: none; border-radius: var(--map-round); background: var(--map-player); box-shadow: var(--map-way-glow); }
-.legend { position: absolute; left: var(--space-sm); bottom: var(--space-sm); max-width: calc(100% - var(--space-sm) * 2); align-items: center; padding: var(--space-xxs) var(--space-md); font-size: var(--hud-size-xs); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.legend { position: absolute; left: var(--space-sm); bottom: var(--space-sm); max-width: calc(100% - var(--space-sm) * 2); align-items: center; padding: var(--space-xxs) var(--space-md); font-size: var(--hud-size-xs); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .legend:dir(rtl) { left: auto; right: var(--space-sm); }
 .key { flex: none; align-items: center; white-space: nowrap; }
 /* Each legend mark draws its marker's shape. */

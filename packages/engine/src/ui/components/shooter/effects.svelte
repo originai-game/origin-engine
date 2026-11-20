@@ -26,12 +26,12 @@
 </ul>
 
 <style>
-:host { margin: 0; padding: 0; list-style: none; max-inline-size: stretch; color: var(--hud-ink); --cut: calc(5 * var(--font-step-px)); }
+:host { margin: 0; padding: 0; list-style: none; max-inline-size: stretch; color: var(--hud-ink); }
 .effect { align-items: center; row-gap: calc(3 * var(--font-step-px)); filter: var(--hud-lift); }
 /* The tile: the edge is its fill, the art inset inside it. */
-.tile { inline-size: calc(32 * var(--font-step-px)); block-size: calc(32 * var(--font-step-px)); background: var(--hud-boon); border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --layout-anchor-inset: calc(2 * var(--font-step-px)); }
+.tile { inline-size: calc(32 * var(--font-step-px)); block-size: calc(32 * var(--font-step-px)); background: var(--hud-boon); border-radius: var(--hud-effect-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --layout-anchor-inset: calc(2 * var(--font-step-px)); }
 [data-harmful=true] .tile { background: var(--hud-harm); }
-.art, .blank, .timer { border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.art, .blank, .timer { border-radius: var(--hud-effect-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .art { object-fit: cover; }
 .blank { background: var(--hud-plate-fill); }
 .glyph { inline-size: 60%; block-size: 60%; color: var(--hud-ink); }

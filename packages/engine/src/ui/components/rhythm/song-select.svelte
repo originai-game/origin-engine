@@ -88,7 +88,7 @@
 </section>
 
 <style>
-:host { inline-size: stretch; min-inline-size: 0; block-size: stretch; color: var(--hud-ink); --cut: var(--select-row-cut); }
+:host { inline-size: stretch; min-inline-size: 0; block-size: stretch; color: var(--hud-ink); }
 /* The heading stands straight over the art: condensed bold capitals with
    the HUD's stroke under the fill and one soft shadow. */
 [part="RhythmSongSelect.band"] { width: stretch; flex: none; min-height: 0; padding: 0; border: 0; background: none; }
@@ -98,7 +98,7 @@
 .rows { width: stretch; padding-block: var(--space-xs); padding-inline: var(--space-xxs) var(--space-sm); }
 /* A song: a cut plate of dark glass fading to the right; the selected one
    steps in, washed in the accent from its leading edge. */
-.row { width: stretch; min-width: 0; min-height: var(--size-touch); padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); border: 0; color: var(--hud-ink); background: var(--select-row-fill); box-shadow: var(--select-row-rim); border-radius: var(--cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; transition: var(--change-motion); }
+.row { width: stretch; min-width: 0; min-height: var(--size-touch); padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); border: 0; color: var(--hud-ink); background: var(--select-row-fill); box-shadow: var(--select-row-rim); border-radius: var(--select-row-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; transition: var(--change-motion); }
 .row:hover { background: var(--select-row-hover-fill); box-shadow: var(--select-row-hover-rim); }
 .row:focus-visible { box-shadow: var(--select-row-focus-rim); }
 .row[aria-selected=true] { margin-inline-start: var(--select-row-step); width: auto; align-self: stretch; padding-block: var(--space-sm); background: var(--select-row-on-fill); box-shadow: var(--select-row-on-rim); scroll-initial-target: nearest; scroll-margin-block-start: calc(var(--size-touch) * 1.2); }

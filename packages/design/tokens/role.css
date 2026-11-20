@@ -338,6 +338,8 @@
   --role-hud-plate-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.936 min(c, 0.04) h / 0.84), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.88));
   --role-hud-plate-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.18), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.55);
   --role-hud-plate-cut: calc(6 * var(--font-step-px));
+  --role-hud-panel-cut: calc(2 * var(--hud-plate-cut));
+  --role-hud-effect-cut: calc(5 * var(--font-step-px));
   --role-hud-plate-lit-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-accent) r g b / 0.45), inset 0 calc(2 * var(--stroke-hairline)) 0 var(--hud-accent);
   /* HUD tag: a solid chip behind a small figure (a timer, a stack, a
      modifier), so it reads where a stroke would clog it. */
