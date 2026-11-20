@@ -141,6 +141,11 @@
   --role-orb-meter-gleam: 1;
   --role-orb-meter-shade: 1;
   --role-orb-meter-depth: 1;
+  /* The glass's light: the gleam over the liquid, the depth darkening
+     its foot and the shade at the sphere's rim. */
+  --role-orb-meter-lume-fill: radial-gradient(50% 50% at 50% 50%, var(--orb-meter-light), transparent);
+  --role-orb-meter-depth-fill: linear-gradient(180deg, transparent 35%, var(--color-shadow));
+  --role-orb-meter-shade-fill: radial-gradient(60% 60% at 50% 42%, transparent 55%, var(--color-shadow));
   --role-orb-meter-swell: 1;
   --role-orb-meter-surface-width: 1.4;
   --role-orb-meter-figure-size: var(--font-step-3xl);
