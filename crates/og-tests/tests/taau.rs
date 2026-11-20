@@ -13,9 +13,7 @@
 //! remove).
 
 use glam::{Mat4, Vec3};
-use og_render::{
-    Antialias, Culling, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, Upscaler,
-};
+use og_render::{Antialias, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, Upscaler};
 use og_tests::scenes;
 
 fn desc(antialias: Antialias) -> RenderDesc {
@@ -97,16 +95,10 @@ fn taau_resolves_the_half_scale_scene_to_the_output() {
 #[test]
 #[ignore = "requires GPU"]
 fn a_moving_object_takes_its_history_along_its_motion_vectors() {
-    for culling in [Culling::Auto, Culling::Gpu] {
-        moving_object(culling);
-    }
+    moving_object();
 }
 
-fn moving_object(culling: Culling) {
-    let desc = |antialias| RenderDesc {
-        culling,
-        ..desc(antialias)
-    };
+fn moving_object() {
     let mut scene = scenes::thin_geometry();
     // TAAU itself: the default draws FSR below render scale 1 (fsr.rs).
     scene.frame.quality.upscaler = Upscaler::Taau;
@@ -142,11 +134,11 @@ fn moving_object(culling: Culling) {
     let still = draw(&mut fresh, &scene, 1);
     let (d_with, d_without) = (diff(&a.unwrap(), &still), diff(&b.unwrap(), &still));
     println!(
-        "{culling:?}: mean byte difference from a fresh frame: with motion {d_with:.2}, without {d_without:.2}"
+        "mean byte difference from a fresh frame: with motion {d_with:.2}, without {d_without:.2}"
     );
     assert!(
         d_with < d_without,
-        "{culling:?}: motion vectors {d_with}, camera only {d_without}"
+        "motion vectors {d_with}, camera only {d_without}"
     );
 }
 

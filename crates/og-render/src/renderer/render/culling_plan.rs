@@ -94,24 +94,13 @@ impl Renderer {
                     self.info.point_shadows,
                 ));
         // The batches the meshlet path draws in the camera pass. It follows
-        // GPU culling, so it runs in a frame that culls on the GPU anyway:
-        // by its instances (`Culling::Auto` from GPU_CULLING_MIN_INSTANCES,
-        // `Culling::Gpu` always) or for its crowds. Below that a clustered
-        // batch draws as any mesh, culled on the CPU, at the level
-        // og-runtime picked for its model, as the meshlet path draws it.
-        // Never with stylise's object pass, which redraws the camera list's
-        // instances. Its cluster pools (meshlet_gpu.rs) are made by the
-        // first frame that runs it.
-        // A foliage mesh sways and follows the year only on the meshlet
-        // path (meshlet_sway.wgsl), so a frame that draws one culls on the
-        // GPU under `Culling::Auto` however few its instances, as crowds do.
-        let foliage_gpu = self.visibility.indirect
-            && self.visibility.desc_culling != Culling::Cpu
-            && batches.iter().any(|b| b.foliage);
-        self.visibility.foliage_only =
-            foliage_gpu && !crowd_gpu && !self.gpu_culls(sorted + skinned_n);
-        let meshlet_on = self.visibility.indirect
-            && (self.gpu_culls(sorted + skinned_n) || crowd_gpu || foliage_gpu)
+        // GPU culling, which every device with compute and indirect draws
+        // takes (a device without them, the GL tier, draws a clustered
+        // batch as any mesh, culled on the CPU, at the level og-runtime
+        // picked for its model). Never with stylise's object pass, which
+        // redraws the camera list's instances. Its cluster pools
+        // (meshlet_gpu.rs) are made by the first frame that runs it.
+        let meshlet_on = self.gpu_culls()
             && !object_space
             && scene.objects.meshlets
             && scene.mesh_clusters_all().iter().any(Option::is_some);
@@ -164,10 +153,8 @@ impl Renderer {
             meshlet_taken.clear();
             meshlet_items = 0;
         }
-        // Crowds on the GPU path (`crowd_gpu`, checked to fit) and foliage
-        // turn GPU culling on under `Culling::Auto` however few the
-        // instances.
-        let gpu_cull = (self.gpu_culls(sorted + skinned_n) || crowd_gpu || foliage_gpu)
+        self.visibility.lean = !crowd_gpu && sorted + skinned_n < OCCLUSION_MIN_INSTANCES;
+        let gpu_cull = self.gpu_culls()
             && (!batches.is_empty() || skinned_n > 0 || crowd_gpu)
             && {
                 let limits = self.device.limits();

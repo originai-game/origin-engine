@@ -7,8 +7,7 @@
 //! with the caster's height, and FXAA and TAA's sharpening work on edges.
 
 use og_render::{
-    Culling, FrameStats, PointShadows, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,
-    Tonemap,
+    FrameStats, PointShadows, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, Tonemap,
 };
 use og_tests::compare::{Tolerance, compare};
 use og_tests::{scenes, shadow_scenes};
@@ -343,14 +342,14 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
     // Sparse: a few props, cheaper to draw again than to put back. Dense:
     // a finely tessellated ball among them, worth keeping in every layer
     // it is in.
-    for (culling, dense) in [
-        (Culling::Cpu, false),
-        (Culling::Cpu, true),
-        (Culling::Gpu, false),
-        (Culling::Gpu, true),
-    ] {
+    for (cpu, dense) in [(true, false), (true, true), (false, false), (false, true)] {
+        let culling = if cpu { "cpu" } else { "gpu" };
         let desc = RenderDesc {
-            culling,
+            without_downlevel: if cpu {
+                og_render::wgpu::DownlevelFlags::INDIRECT_EXECUTION
+            } else {
+                og_render::wgpu::DownlevelFlags::empty()
+            },
             ..scenes::base_desc()
         };
         let mut scene = scenes::point_spot_lights();
@@ -389,7 +388,7 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
         let fresh = frame(&desc, &scene, 1).0;
         for (i, s) in stats.iter().enumerate() {
             println!(
-                "{culling:?} dense {dense} frame {i}: {} shadow passes, {} cached, {} casters drawn",
+                "{culling} dense {dense} frame {i}: {} shadow passes, {} cached, {} casters drawn",
                 s.shadow_passes, s.shadow_cached, s.shadow_casters
             );
         }
@@ -406,16 +405,16 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
         // GPU culling counts its casters on the GPU and reads none back
         // here (`counts_lag` unset): the CPU path checks the counts, both
         // check which layers are kept and the frames.
-        let counts = culling == Culling::Cpu;
+        let counts = cpu;
         let first = &stats[0];
         for s in &stats[1..=11] {
             assert!(
                 s.shadow_cached > 0 && s.shadow_cached < passes,
-                "{culling:?} dense {dense}: {s:?}"
+                "{culling} dense {dense}: {s:?}"
             );
             assert!(
                 !counts || (s.shadow_casters > 0 && s.shadow_casters < first.shadow_casters),
-                "{culling:?} dense {dense}: {s:?} against {first:?}"
+                "{culling} dense {dense}: {s:?} against {first:?}"
             );
         }
         if dense {
@@ -424,21 +423,21 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
             // ones the mover does not reach, the same every frame.
             let held = stats[1].shadow_cached;
             for s in &stats[3..=11] {
-                assert!(s.shadow_cached > held, "{culling:?}: {s:?}");
+                assert!(s.shadow_cached > held, "{culling}: {s:?}");
             }
         }
         // Static again at frame 12: the layers its sphere reaches redraw.
         assert!(
             stats[12].shadow_cached < passes,
-            "{culling:?}: {:?}",
+            "{culling}: {:?}",
             stats[12]
         );
         // Nothing drawn from frame 13 on.
         let last = stats.last().expect("frames");
         assert_eq!(last.shadow_passes, passes);
-        assert_eq!(last.shadow_cached, passes, "{culling:?}: every layer kept");
+        assert_eq!(last.shadow_cached, passes, "{culling}: every layer kept");
         if counts {
-            assert_eq!(last.shadow_casters, 0, "{culling:?}: nothing drawn");
+            assert_eq!(last.shadow_casters, 0, "{culling}: nothing drawn");
         }
         let exact = Tolerance {
             channel: 1,
@@ -455,10 +454,9 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
                 &exact,
             )
             .expect("same size");
-            println!("{culling:?} dense {dense} cached against {name}: {diff:?}");
-            diff.check(&exact).unwrap_or_else(|e| {
-                panic!("{culling:?} dense {dense}: cached against {name}: {e}")
-            });
+            println!("{culling} dense {dense} cached against {name}: {diff:?}");
+            diff.check(&exact)
+                .unwrap_or_else(|e| panic!("{culling} dense {dense}: cached against {name}: {e}"));
         }
     }
 }

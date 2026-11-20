@@ -293,14 +293,16 @@ pub struct RenderDesc {
     /// Where particles simulate: in compute, or on the CPU
     /// ([`ParticleSimulation::Cpu`]).
     pub particles: ParticleSimulation,
-    /// Where instances are culled: in compute with indirect draws for large
-    /// scenes (frustum and occlusion), or on the CPU ([`Culling`]).
-    pub culling: Culling,
     /// Adapter features the renderer treats as absent, so a device that
     /// lacks them is reproducible on one that has them (the fallbacks'
     /// tests: `INDIRECT_FIRST_INSTANCE` takes crowds off the GPU-driven
     /// path, [`RenderInfo::gpu_crowds`]). Empty by default.
     pub without_features: wgpu::Features,
+    /// Downlevel flags the renderer treats as absent, as
+    /// `without_features`: `INDIRECT_EXECUTION` reproduces a device that
+    /// culls on the CPU (the GL tier's path) on one that culls on the GPU.
+    /// Empty by default.
+    pub without_downlevel: wgpu::DownlevelFlags,
     /// Every GPU-culled indirect draw reads its args from a buffer of its
     /// own, as on WebKit, where it always does
     /// ([`RenderInfo::indirect_per_draw`]): reproduces that path on any
@@ -371,35 +373,13 @@ pub struct RenderDesc {
 
 pub use og_render_data::MAX_PLANAR_REFLECTIONS;
 
-/// Where instances are culled ([`RenderDesc::culling`]).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum Culling {
-    /// As [`Culling::Gpu`] for a frame of at least
-    /// [`GPU_CULLING_MIN_INSTANCES`] instances (not skinned), else on the
-    /// CPU: a small frame's CPU culling costs less than the GPU path's
-    /// fixed per-frame work.
-    #[default]
-    Auto,
-    /// On the GPU where the adapter has compute and indirect draws (each
-    /// pass's frustum, and for the camera the depth of last frame's
-    /// visible occluders), whatever the frame's size, else on the CPU. A
-    /// frame with object motion blur, or more instances than one storage
-    /// binding holds, is culled on the CPU.
-    Gpu,
-    /// Always on the CPU (frustum only).
-    Cpu,
-}
-
-/// The instances (not skinned) from which [`Culling::Auto`] culls a frame
-/// on the GPU. Measured on an M4 Pro (the former test sample
-/// at 40,000 instances the GPU path saved about 1.1 ms of `render` per
-/// frame natively (city-street, median 6.40 to 5.27 ms) and 0.6 ms on
-/// WebGPU, while on scenes of tens of instances it cost 0.4 to 1 ms more
-/// per frame (point-spot-lights 1.0 to 1.6 ms against 0.6 ms, showcase
-/// 3.5 to 6.1 against 3.2). The CPU test costs about 40 ns per instance
-/// at that size, so the fixed cost breaks even between about 10,000 and
-/// 25,000 instances; 16,384 sits between, below the city's 40,000.
-pub const GPU_CULLING_MIN_INSTANCES: u32 = 16_384;
+/// The instances (not skinned, no crowd) from which a frame culled on the
+/// GPU also runs occlusion and the visibility buffer. Below it their fixed
+/// cost per pixel and their pipelines outweigh what they hide: First Light
+/// (a few hundred instances, foliage) drew 5.3 ms slower per frame and
+/// made 0.8 s more pipelines at load with them (M4 Pro, 2560x1440). The
+/// GPU path's own frustum cull runs whatever the count.
+pub const OCCLUSION_MIN_INSTANCES: u32 = 16_384;
 
 impl Default for RenderDesc {
     fn default() -> Self {
@@ -417,8 +397,8 @@ impl Default for RenderDesc {
             shadow_cascades: MAX_CASCADES,
             texture_compression: TextureCompression::Auto,
             particles: ParticleSimulation::Auto,
-            culling: Culling::Auto,
             without_features: wgpu::Features::empty(),
+            without_downlevel: wgpu::DownlevelFlags::empty(),
             indirect_per_draw: false,
             point_shadows: PointShadows::Auto,
             taa_history: TaaHistory::Bilinear,

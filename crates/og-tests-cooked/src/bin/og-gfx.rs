@@ -26,9 +26,9 @@
 //! `OG_GFX_QUALITY=low|medium|high` draws the scene at a graphics preset
 //! (`RenderQuality::preset`, what `og.render.applyQuality` writes); unset,
 //! the scene's own quality (the default, medium's).
-//! `OG_GFX_CULLING=cpu|gpu|auto` sets the scene's `Culling`: `cpu` culls on
-//! the CPU, `gpu` on the GPU whatever the scene's size, `auto` (the default) on the GPU from
-//! `og_render::GPU_CULLING_MIN_INSTANCES` instances.
+//! `OG_GFX_CULLING=cpu` culls on the CPU, as a device without indirect
+//! draws does (`RenderDesc::without_downlevel`); `gpu` (the default) on the
+//! GPU where the device can.
 //! `OG_GFX_COMPACT=1` sets every mesh of the scene to
 //! `VertexEncoding::Compact` (16-byte vertices where a plain material draws
 //! it; quantised, so the frame is close to the reference, not equal).
@@ -301,11 +301,11 @@ fn run(
 ) -> Result<String, String> {
     let mut built = scenes::build(name)?;
     match std::env::var("OG_GFX_CULLING").as_deref() {
-        Ok("cpu") => built.desc.culling = og_render::Culling::Cpu,
-        Ok("gpu") => built.desc.culling = og_render::Culling::Gpu,
-        Ok("auto") => built.desc.culling = og_render::Culling::Auto,
-        Err(_) => {}
-        Ok(other) => return Err(format!("OG_GFX_CULLING={other}: cpu, gpu or auto")),
+        Ok("cpu") => {
+            built.desc.without_downlevel = og_render::wgpu::DownlevelFlags::INDIRECT_EXECUTION
+        }
+        Ok("gpu") | Err(_) => {}
+        Ok(other) => return Err(format!("OG_GFX_CULLING={other}: cpu or gpu")),
     }
     if std::env::var_os("OG_GFX_DEBUG_CASCADES").is_some() {
         built.scene.frame.debug = og_render::DebugView::Cascades;

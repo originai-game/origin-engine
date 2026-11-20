@@ -217,8 +217,7 @@ fn transmission_absorbs_over_the_geometric_path_or_authored_fallback() {
                         0,
                     ));
             }
-            let mut desc = scenes::base_desc();
-            desc.culling = og_render::Culling::Gpu;
+            let desc = scenes::base_desc();
             let mut renderer = Renderer::new_blocking(&desc).expect("GPU cull renderer");
             renderer
                 .render(&scene, &RenderTarget::Offscreen)

@@ -14,7 +14,7 @@
 //! manifest ([`og_gfx_text_manifest`]) and each file under `cooked/`
 //! ([`og_gfx_text_file`]) before it opens them.
 //! [`og_gfx_cpu_culling`] makes the scenes opened after it cull on the CPU
-//! (`Culling::Cpu`, as `OG_GFX_CULLING=cpu` does natively). The
+//! (as a device without indirect draws, `OG_GFX_CULLING=cpu` natively). The
 //! comparison and the timing are the runner's
 //! (`packages/engine/tests/web/reference-gfx.ts`).
 
@@ -165,15 +165,14 @@ mod web {
     }
 
     /// Whether the scenes opened from now on cull on the CPU
-    /// (`Culling::Cpu`) rather than on the GPU where the adapter can.
+    /// (as a device without indirect draws) rather than on the GPU.
     #[wasm_bindgen]
     pub fn og_gfx_cpu_culling(cpu: bool) {
         CPU_CULLING.with(|c| c.set(cpu));
     }
 
     /// Cuts every scene opened from now on down, to bisect a frame that
-    /// draws wrong on one backend: a comma list of `gpu` (GPU culling
-    /// whatever the frame's size), `keep:<n>` (the first n instances of the
+    /// draws wrong on one backend: a comma list of `keep:<n>` (the first n instances of the
     /// first instance's mesh, the rest kept), `first` (only the first
     /// instance's mesh), `noshadow` (the sun casts none), `nomeshlets` (no
     /// batch draws through the meshlet path), `apart` (the cull submitted
@@ -195,7 +194,6 @@ mod web {
             let scene = &mut built.scene;
             let mesh = scene.objects.instances.first().map(|i| i.mesh);
             match knob.split_once(':') {
-                None if knob == "gpu" => built.desc.culling = og_render::Culling::Gpu,
                 None if knob == "first" => scene.objects.instances.retain(|i| Some(i.mesh) == mesh),
                 None if knob == "noshadow" => scene.lighting.light.cast_shadows = false,
                 None if knob == "nomeshlets" => scene.objects.meshlets = false,
@@ -267,7 +265,7 @@ mod web {
         built.desc.backend = Backend::WebGpu;
         cut_down(&mut built).map_err(err)?;
         if CPU_CULLING.with(Cell::get) {
-            built.desc.culling = og_render::Culling::Cpu;
+            built.desc.without_downlevel = og_render::wgpu::DownlevelFlags::INDIRECT_EXECUTION;
         }
         let mut renderer = Renderer::new(&built.desc).await.map_err(err)?;
         GPU_ERRORS.with(|e| e.borrow_mut().clear());

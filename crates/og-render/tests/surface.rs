@@ -249,7 +249,7 @@ fn generated_surfaces_take_the_made_material_and_keep_the_zero_strength_frame() 
 #[ignore = "requires GPU"]
 fn triangle_facing_not_the_shading_normal_selects_the_lit_side() {
     use og_render::meshlet::{Cluster, ClusterLevel, MeshClusters};
-    use og_render::{Culling, MaterialShader, ShaderMode, Side, StandardMaterial};
+    use og_render::{MaterialShader, ShaderMode, Side, StandardMaterial};
     let desc = RenderDesc {
         width: 64,
         height: 64,
@@ -319,10 +319,6 @@ fn triangle_facing_not_the_shading_normal_selects_the_lit_side() {
         scene.lighting.light.intensity = 3.0;
         scene.lighting.light.cast_shadows = false;
         scene.lighting.environment.intensity = 0.0;
-        let desc = RenderDesc {
-            culling: Culling::Gpu,
-            ..desc
-        };
         let image = render_to_rgba(&desc, &scene).expect("renderer");
         image.pixels[(32 * 64 + 32) * 4]
     };

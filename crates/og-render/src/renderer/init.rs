@@ -651,7 +651,7 @@ impl Renderer {
             pass_ms: Vec::new(),
             stage_ms: Vec::new(),
             gpu_timer: None,
-            visibility: Visibility::new(desc.culling, indirect),
+            visibility: Visibility::new(indirect),
             shadows: Shadows::new(
                 (cascade_map, local_map),
                 shadow_size,

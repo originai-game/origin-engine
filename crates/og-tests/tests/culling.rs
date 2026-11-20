@@ -1,7 +1,8 @@
 //! GPU-driven culling (og-render's cull_gpu.rs) against the CPU path it
 //! replaces for large scenes: the same scene rendered for several frames
-//! with `Culling::Gpu` (the GPU path whatever the scene's size, so the
-//! small scenes cover every culled pass) and with `Culling::Cpu` gives the
+//! on the GPU (every device with indirect draws, whatever the scene's size,
+//! so the small scenes cover every culled pass) and on the CPU (a device
+//! without them, `RenderDesc::without_downlevel`) gives the
 //! same picture (no channel off by more than 2 outside 0.01 % of the
 //! pixels, RMSE at most 0.002: far tighter than the gfx references'
 //! tolerance, which would hide a missing object), the same frustum counts,
@@ -12,7 +13,7 @@
 //! rows are hidden as well. The frames and a stats line per scene
 //! are written under the test's output directory.
 
-use og_render::{Culling, FrameStats, RenderTarget, Renderer, RgbaImage};
+use og_render::{FrameStats, RenderTarget, Renderer, RgbaImage};
 use og_tests::compare::{Tolerance, compare};
 use og_tests::gfx;
 use og_tests::scenes;
@@ -32,15 +33,32 @@ struct Run {
     gpu_frames: Vec<bool>,
 }
 
-/// Renders `frames` frames of the scene `name` with `culling`.
-fn render(name: &str, culling: Culling, frames: u32) -> Run {
-    render_with(name, frames, |d| d.culling = culling)
+/// Renders `frames` frames of the scene `name`, on the CPU path (a device
+/// without indirect draws) when `cpu`.
+fn render(name: &str, cpu: bool, frames: u32) -> Run {
+    render_with(name, frames, |d| {
+        if cpu {
+            d.without_downlevel = og_render::wgpu::DownlevelFlags::INDIRECT_EXECUTION;
+        }
+    })
 }
 
 /// Renders `frames` frames of the scene `name` with its desc changed by `f`.
 fn render_with(name: &str, frames: u32, f: impl Fn(&mut og_render::RenderDesc)) -> Run {
     let mut built = scenes::build(name).expect("scene");
     f(&mut built.desc);
+    // A frame of fewer instances leaves occlusion out
+    // (og_render::OCCLUSION_MIN_INSTANCES): the crowd's scene is padded
+    // past it with copies far behind the camera, culled on both paths, so
+    // the wall's occlusion of the crowd runs.
+    if name == "crowd-culling"
+        && let Some(first) = built.scene.objects.instances.first().cloned()
+    {
+        let far = glam::Mat4::from_translation(glam::Vec3::new(0.0, -1.0e4, 1.0e4));
+        for _ in 0..og_render::OCCLUSION_MIN_INSTANCES {
+            built.scene.add_instance(first.mesh, first.material, far);
+        }
+    }
     let mut renderer = Renderer::new_blocking(&built.desc).expect("renderer");
     let mut stats = FrameStats::default();
     let mut gpu_frames = Vec::new();
@@ -110,22 +128,22 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
     let mut log = String::new();
     let mut failures = Vec::new();
     for &(name, frames) in SCENES {
-        let gpu_run = render(name, Culling::Gpu, frames);
-        let cpu_run = render(name, Culling::Cpu, frames);
+        let gpu_run = render(name, false, frames);
+        let cpu_run = render(name, true, frames);
         let (gpu, g) = (&gpu_run.image, &gpu_run.stats);
         let (cpu, c) = (&cpu_run.image, &cpu_run.stats);
         gfx::save_png(&dir.join(format!("{name}.gpu.png")), gpu).expect("save");
         gfx::save_png(&dir.join(format!("{name}.cpu.png")), cpu).expect("save");
         assert!(
             cpu_run.gpu_frames.iter().all(|&x| !x),
-            "{name}: Culling::Cpu culls on the CPU every frame: {:?}",
+            "{name}: a device without indirect draws culls on the CPU every frame: {:?}",
             cpu_run.gpu_frames
         );
         // Every adapter the gate runs on (Metal, Vulkan, lavapipe) has
         // compute and indirect draws.
         assert!(
             gpu_run.gpu_frames.iter().all(|&x| x),
-            "{name}: Culling::Gpu culls on the GPU on every frame: {:?}",
+            "{name}: the device culls on the GPU on every frame: {:?}",
             gpu_run.gpu_frames
         );
         // The paths differ only by rounding (instance order within a batch
@@ -220,7 +238,6 @@ fn gpu_culling_draws_the_cpu_paths_frame() {
 fn crowd_cards_draw_the_far_members_and_only_them() {
     let run = |cards: bool, crowd: bool| {
         let mut built = scenes::build("crowd-lods").expect("scene");
-        built.desc.culling = Culling::Gpu;
         for c in &mut built.scene.objects.crowds {
             if !cards {
                 c.impostor = None;

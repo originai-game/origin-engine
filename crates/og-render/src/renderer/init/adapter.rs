@@ -42,7 +42,7 @@ impl Renderer {
         // under the tier's ceiling (caps.rs): every decision below about
         // the device reads these.
         let adapter_features = adapter.features() - desc.without_features;
-        let adapter_flags = adapter.get_downlevel_capabilities().flags;
+        let adapter_flags = adapter.get_downlevel_capabilities().flags - desc.without_downlevel;
         let caps =
             Caps::of(adapter_features, adapter_flags, &adapter.limits()) & desc.tier.ceiling();
         let adapter_features = caps.features(adapter_features);

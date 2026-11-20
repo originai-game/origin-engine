@@ -180,7 +180,6 @@ impl Renderer {
         // instances on the CPU); else as skinned instances.
         let crowd_gpu = crowd_frame.len() > 0
             && self.world.crowd_indirect
-            && self.visibility.desc_culling != Culling::Cpu
             && scene.frame.views.is_empty()
             && no_probe_due
             && crowd_batches.iter().all(|b| !b.transparent)

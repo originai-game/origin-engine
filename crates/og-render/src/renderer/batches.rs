@@ -337,10 +337,9 @@ pub(crate) struct InstanceRecords {
 /// draws and meshlets every view registers into.
 pub(crate) struct Visibility {
     pub(crate) cull_inside: CullScratch,
-    /// Where instances are culled ([`RenderDesc::culling`]), whether the
-    /// adapter can on the GPU (compute and indirect draws), and the GPU
+    /// Whether the device culls on the GPU (compute and indirect draws:
+    /// every tier but the GL tier, which culls on the CPU), and the GPU
     /// path's state once a frame used it.
-    pub(crate) desc_culling: Culling,
     pub(crate) indirect: bool,
     pub(crate) gpu_cull: Option<cull_gpu::GpuCulling>,
     /// The meshlet path (meshlet_gpu.rs), once a scene has a clustered mesh.
@@ -348,11 +347,9 @@ pub(crate) struct Visibility {
     /// Whether the next frame's GPU culling counts are read back
     /// ([`Renderer::request_culling_counts`]).
     pub(crate) culling_counts: bool,
-    /// This frame culls on the GPU for its foliage alone (below the
-    /// instance count `Culling::Auto` culls there from, and no crowd): the
-    /// meshlet pulls sway and age its leaves, and the stages that pay off
-    /// only with many instances, occlusion and the visibility buffer's
-    /// software rasteriser, are left out (each costs the frame's pixels
-    /// whatever it draws).
-    pub(crate) foliage_only: bool,
+    /// This frame culls too few instances for the stages that pay off only
+    /// with many ([`OCCLUSION_MIN_INSTANCES`], and no crowd): occlusion
+    /// and the visibility buffer's software rasteriser are left out (each
+    /// costs the frame's pixels whatever it draws).
+    pub(crate) lean: bool,
 }

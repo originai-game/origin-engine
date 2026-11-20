@@ -404,8 +404,10 @@ follow:
   second renderer.
 
 Quality presets (`low`, `medium`, `high`, `autoQuality`) are a player's
-choice inside a tier and unrelated to this. The CPU culling and particle
-paths remain options on every device. The engine is GPU only on every host:
+choice inside a tier and unrelated to this. Culling has one path per
+device: GPU-driven wherever the device has compute and indirect draws,
+whatever the frame's size, and on the CPU only on a device without them
+(the GL tier). The CPU particle path remains an option on every device. The engine is GPU only on every host:
 a player's device without a GPU is not supported and no feature adds a CPU
 fallback for one. Developer tooling runs without a GPU: the logic tests and
 the probe's CPU description of a frame.

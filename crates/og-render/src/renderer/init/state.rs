@@ -7,15 +7,14 @@ impl Visibility {
     /// Where the frame culls ([`RenderDesc::culling`]) and whether the
     /// adapter can on the GPU (init/adapter.rs); the GPU paths are made by
     /// the first frame that uses them.
-    pub(super) fn new(desc_culling: Culling, indirect: bool) -> Visibility {
+    pub(super) fn new(indirect: bool) -> Visibility {
         Visibility {
             cull_inside: CullScratch::default(),
-            desc_culling,
             indirect,
             gpu_cull: None,
             meshlet: None,
             culling_counts: false,
-            foliage_only: false,
+            lean: false,
         }
     }
 }

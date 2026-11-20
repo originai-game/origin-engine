@@ -156,7 +156,7 @@ impl Renderer {
                     .collect()
             };
             let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
-            let foliage_only = self.visibility.foliage_only;
+            let lean = self.visibility.lean;
             commands.extend(m.encode(
                 &self.device,
                 &self.queue,
@@ -177,9 +177,8 @@ impl Renderer {
                     (w, f, self.world.wind_field.lean_cap())
                 },
                 |mesh| &meshes[mesh].vertices,
-                // No visibility buffer in a frame that culls on the GPU
-                // for its foliage alone (`Visibility::foliage_only`).
-                |b| !foliage_only && materials[b.material].occluder,
+                // No visibility buffer in a lean frame (`Visibility::lean`).
+                |b| !lean && materials[b.material].occluder,
             ));
             if !m.frame.is_empty() {
                 m.ensure_pipelines(

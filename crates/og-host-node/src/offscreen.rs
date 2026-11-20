@@ -304,10 +304,10 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
             height: height.max(1),
             // OG_GFX_CULLING=cpu culls on the CPU, as og-gfx does: lanes.test.ts
             // needs the CPU cull, which GPU culling skips.
-            culling: if std::env::var("OG_GFX_CULLING").is_ok_and(|v| v == "cpu") {
-                og_render::Culling::Cpu
+            without_downlevel: if std::env::var("OG_GFX_CULLING").is_ok_and(|v| v == "cpu") {
+                og_render::wgpu::DownlevelFlags::INDIRECT_EXECUTION
             } else {
-                og_render::Culling::Auto
+                og_render::wgpu::DownlevelFlags::empty()
             },
             ..og_render::RenderDesc::default()
         },

@@ -1,9 +1,9 @@
 //! GPU-driven culling: the frustum and occlusion tests,
 //! the compaction of the visible instances and the draws' instance counts
-//! run in compute, and every mesh pass submits indexed indirect draws. The
-//! CPU path ([`crate::Renderer::cull`]) stays for small frames
-//! ([`crate::Culling::Auto`]), [`crate::Culling::Cpu`] and for frames this
-//! cannot take (buffers over the device limits).
+//! run in compute, and every mesh pass submits indexed indirect draws, on
+//! every device with compute and indirect draws whatever the frame's size.
+//! The CPU path ([`crate::Renderer::cull`]) is the GL tier's (no compute)
+//! and takes frames this cannot (buffers over the device limits).
 //!
 //! The skinned instances and baked crowds are culled beside the instances
 //! ([`SkinnedCull`]): each one's posed world box (its joints' bind boxes

@@ -240,15 +240,10 @@ fn canvas_stats(t: &TextureData) -> [f32; 2] {
 }
 
 impl Renderer {
-    /// Whether `sorted` instances are culled on the GPU as far as the
-    /// renderer's culling choice goes (the frame may still fall back: its
-    /// motion blur, an empty frame, buffers over the device's limits).
-    fn gpu_culls(&self, sorted: u32) -> bool {
+    /// Whether the frame's instances are culled on the GPU as far as the
+    /// device goes (the frame may still cull on the CPU: an empty frame,
+    /// buffers over the device's limits).
+    fn gpu_culls(&self) -> bool {
         self.visibility.indirect
-            && match self.visibility.desc_culling {
-                Culling::Auto => sorted >= GPU_CULLING_MIN_INSTANCES,
-                Culling::Gpu => true,
-                Culling::Cpu => false,
-            }
     }
 }

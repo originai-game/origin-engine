@@ -65,14 +65,17 @@ fn meshlet_forest_tints_coarser_levels_farther() {
 #[test]
 #[ignore = "requires GPU"]
 fn a_moving_instance_takes_its_history_along_on_every_culling_path() {
-    use og_render::{
-        Antialias, Culling, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,
-    };
-    let desc = |culling| RenderDesc {
+    use og_render::{Antialias, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
+    // On the CPU path (`cpu`: a device without indirect draws) or the GPU's.
+    let desc = |cpu: bool| RenderDesc {
         width: 320,
         height: 180,
         antialias: Antialias::Taa,
-        culling,
+        without_downlevel: if cpu {
+            og_render::wgpu::DownlevelFlags::INDIRECT_EXECUTION
+        } else {
+            og_render::wgpu::DownlevelFlags::empty()
+        },
         ..og_tests::scenes::base_desc()
     };
     let draw = |r: &mut Renderer, scene: &RenderScene| -> RgbaImage {
@@ -88,9 +91,9 @@ fn a_moving_instance_takes_its_history_along_on_every_culling_path() {
             / a.pixels.len() as f64
     };
     for (name, culling, meshlets) in [
-        ("cpu", Culling::Cpu, false),
-        ("gpu", Culling::Gpu, false),
-        ("meshlets", Culling::Gpu, true),
+        ("cpu", true, false),
+        ("gpu", false, false),
+        ("meshlets", false, true),
     ] {
         let mut scene = og_tests_cooked::meshlet_scenes::near_scene(meshlets).expect("the tree");
         // Instance 0 is the hills (the ground is a terrain); the rest are

@@ -1453,12 +1453,6 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         | "aurora-breakup"
         | "live-sky" => |g, name| {
             g.scene = crate::sky_scenes::sky_scene(name);
-            // Its canopy reaches the weather map through the meshlet path,
-            // which follows GPU culling: `Culling::Auto` keeps that for
-            // frames of GPU_CULLING_MIN_INSTANCES instances, and this has 48.
-            if name == "weather-shelter-meshlet" {
-                g.desc.culling = og_render::Culling::Gpu;
-            }
             // Where it rains, the rain fills the view over these frames.
             if matches!(
                 name,

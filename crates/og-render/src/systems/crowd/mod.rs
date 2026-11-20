@@ -59,7 +59,7 @@
 //! names its previous clip's frame, so its motion vectors need no previous
 //! baked palette (skin.rs, the palette buffer's layout).
 //!
-//! **The CPU path.** A frame culled on the CPU (`Culling::Cpu`, a device
+//! **The CPU path.** A frame culled on the CPU (a device
 //! without compute, indirect first instances or room for the crowd's
 //! records), or one with secondary views or reflection probe faces (whose
 //! skinned lists are the CPU's), draws its crowds through the skinned

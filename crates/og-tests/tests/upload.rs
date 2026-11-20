@@ -6,7 +6,7 @@
 //! And only what a draw reads: the CPU path's sorted records that no list
 //! draws whole are not written.
 
-use og_render::{Culling, FrameStats, RenderTarget, Renderer};
+use og_render::{FrameStats, RenderTarget, Renderer};
 use og_tests::scenes;
 
 fn frame(renderer: &mut Renderer, scene: &og_render::RenderScene) -> FrameStats {
@@ -26,7 +26,7 @@ fn frame(renderer: &mut Renderer, scene: &og_render::RenderScene) -> FrameStats 
 #[ignore = "requires GPU"]
 fn only_the_records_a_draw_reads_are_uploaded() {
     let mut built = scenes::build("spheres-20k").expect("scene");
-    built.desc.culling = Culling::Cpu;
+    built.desc.without_downlevel = og_render::wgpu::DownlevelFlags::INDIRECT_EXECUTION;
     built.scene.lighting.light.cast_shadows = false;
     // Looking past the field's edge.
     let camera = &mut built.scene.frame.camera;

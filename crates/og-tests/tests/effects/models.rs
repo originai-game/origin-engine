@@ -332,12 +332,8 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
         }
         n
     };
-    for (name, textured, culling) in [
-        ("lean", false, og_render::Culling::Auto),
-        ("textured", true, og_render::Culling::Auto),
-        ("gpu-cull", false, og_render::Culling::Gpu),
-    ] {
-        let desc = RenderDesc { culling, ..small() };
+    for (name, textured) in [("lean", false), ("textured", true)] {
+        let desc = small();
         // Two frames each: GPU culling's occluders are the frame before's.
         let shot = |reveal: Option<f32>, tick: u64| {
             let mut scene = build(textured, reveal, tick);
