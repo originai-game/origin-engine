@@ -4,7 +4,7 @@
 
 <div id="DamageNumbers">
   {#each hits as hit (hit.id)}
-    <anchor part="figure" class="hit" data-motion="float" class:tinted={!!hit.color} entity={hit.entity || null} at={hit.at} mass="damage" value={hit.amount} style:--tint={hit.color}></anchor>
+    <anchor part="figure" class="hit" play="float" class:tinted={!!hit.color} entity={hit.entity || null} at={hit.at} mass="damage" value={hit.amount} style:--tint={hit.color}></anchor>
   {/each}
 </div>
 

@@ -16,7 +16,7 @@
       {#each items as item (item.id)}<li class="entry" part="row" layout="row">
         {#if item.icon}<og-icon class="icon" part="icon" icon={item.icon}></og-icon>{/if}
         <div class="description" layout="stack" gap="hair" fill><div class="name" part="name">{item.name}</div>{#if item.detail}<div class="detail" part="caption">{item.detail}</div>{/if}</div>
-        <div class="quantity" part="figure" data-trend={item.quantity < 0 ? 'down' : 'up'}>{item.quantity > 0 ? '+' : ''}{formatNumber(item.quantity)}</div>
+        <div class="quantity" part="figure" trend={item.quantity < 0 ? 'down' : 'up'}>{item.quantity > 0 ? '+' : ''}{formatNumber(item.quantity)}</div>
       </li>{/each}
     </ol>
     {#if !items.length}<div class="state" part="caption">{t("hud.pickup-feed.empty")}</div>{/if}

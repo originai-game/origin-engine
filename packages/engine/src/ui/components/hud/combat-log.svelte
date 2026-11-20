@@ -11,7 +11,7 @@
   <header class="band" variant="small" part="band" layout="row"><h3 part="title">{t("rpg.log.name")}</h3></header>
   <div class="scroll-shell" layout="overlay" fill><div class="lines" layout="scroll" anchor="fill">
     {#each lines as l (l.id)}
-      <div class="row" part="row" layout="stack" gap="hair" data-tone={l.tone}><span class="line-text">{l.text}</span>{#if l.detail}<span class="line-detail" part="caption">{l.detail}</span>{/if}</div>
+      <div class="row" part="row" layout="stack" gap="hair" tone={l.tone}><span class="line-text">{l.text}</span>{#if l.detail}<span class="line-detail" part="caption">{l.detail}</span>{/if}</div>
     {/each}
   </div><div part="fade" anchor="bottom-edge"></div></div>
 </section>

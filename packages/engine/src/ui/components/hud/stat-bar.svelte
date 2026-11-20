@@ -63,6 +63,7 @@
    of its maximum; a broken shield draws nothing. */
 #Shield { inline-size: calc(var(--shield) * 100%); block-size: 34%; --fill-color: var(--bar-shield); --fill-gloss: none; }
 #Blocks { background: var(--bar-notch); mask-image: repeating-linear-gradient(90deg, transparent 0% calc(var(--block) * 100% - 0.8%), #000 calc(var(--block) * 100% - 0.8%) calc(var(--block) * 100%)); }
+#StatBar:dir(rtl) #Blocks { scale: -1 1; }
 /* The value inside stands upright in the leaning bar. */
 #Inside { align-items: center; block-size: 100%; padding-inline: var(--space-sm); line-height: 1; transform: skewX(calc(-1 * var(--bar-skew))); }
 .figure { --figure-size: var(--font-step-sm); --figure-weight: var(--bar-figure-weight); font-stretch: var(--bar-figure-stretch); white-space: nowrap; }

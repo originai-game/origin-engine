@@ -6,7 +6,7 @@
 <meta name="action:use" content="Use">
 <meta name="fixture:default" content='{"remaining":3.2,"total":8,"icon":"bolt","label":"Dash"}'>
 
-<button id="Cooldown" part="cell" data-motion={remaining <= 0 ? 'pop' : null} aria-label={label} class:ready={remaining <= 0} disabled={remaining > 0} onclick={use}>
+<button id="Cooldown" part="cell" play={remaining <= 0 ? 'pop' : null} aria-label={label} class:ready={remaining <= 0} disabled={remaining > 0} onclick={use}>
   <div id="Face" layout="overlay" gap="none">
     <og-icon layout="center" id="Icon" part="icon" anchor="fill" icon={icon}></og-icon>
     {#if remaining > 0}<svg id="Sweep" anchor="fill" viewBox="0 0 56 56">

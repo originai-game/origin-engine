@@ -32,6 +32,7 @@
 
 <style>
 #HudLootEntry { inline-size: fit-content; align-items: center; max-inline-size: 100%; min-inline-size: 0; padding-inline-end: var(--space-md); color: var(--hud-ink); background: var(--hud-feed-fill-start); --layout-anchor-inset: 0; }
+#HudLootEntry:dir(rtl) { background: var(--hud-feed-fill); }
 #HudLootEntry.fading { opacity: 0.55; }
 /* The edge at the screen's side, tinted by rarity. */
 .edge { flex: none; align-self: stretch; inline-size: var(--hud-feed-edge-width); margin-inline-end: var(--space-xs); background: var(--hud-feed-edge); }

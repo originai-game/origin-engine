@@ -17,7 +17,7 @@
         <div class="upright" layout="stack" gap="hair">
           <og-icon class="icon" icon={item.icon}></og-icon>
           <span class="label" part="label">{item.label}</span>
-          {#if item.cost}<div class="cost" layout="row" gap="hair" data-tone={item.unaffordable ? 'danger' : 'warn'} class:short={item.unaffordable}><og-icon class="coin" icon="coin"></og-icon><span class="price" part="figure" data-tone={item.unaffordable ? 'danger' : 'warn'}>{item.cost}</span></div>{/if}
+          {#if item.cost}<div class="cost" layout="row" gap="hair" tone={item.unaffordable ? 'danger' : 'warn'} class:short={item.unaffordable}><og-icon class="coin" icon="coin"></og-icon><span class="price" part="figure" tone={item.unaffordable ? 'danger' : 'warn'}>{item.cost}</span></div>{/if}
         </div>
       </button>
     </div>

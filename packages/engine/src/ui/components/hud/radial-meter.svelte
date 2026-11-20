@@ -7,14 +7,14 @@
 <meta name="prop:name" content="string" data-doc="What a screen reader calls it; empty is Stamina.">
 <meta name="fixture:default" content='{"value":1.4,"wheels":2,"exhausted":false,"hidden":false,"name":""}'>
 
-<div id="RadialMeter" data-motion="change" role="meter" aria-label={name || t("component.radial-meter.stamina")} aria-valuemin="0" aria-valuemax={wheels} aria-valuenow={value} class:exhausted={exhausted} class:gone={hidden}>
+<div id="RadialMeter" play="change" role="meter" aria-label={name || t("component.radial-meter.stamina")} aria-valuemin="0" aria-valuemax={wheels} aria-valuenow={value} class:exhausted={exhausted} class:gone={hidden}>
   <svg class="wheels" id="Wheels" part="wheels" viewBox="0 0 56 56">
     <circle class="track" part="track" cx="28" cy="28" r="17" fill="none" stroke-width="7"></circle>
-    <circle class="fill" part="fill" data-tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="17" fill="none" stroke-width="7" pathLength="1" stroke-dasharray={(value >= 1 ? 1 : value) + " 1"} transform="rotate(-90 28 28)"></circle>
+    <circle class="fill" part="fill" tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="17" fill="none" stroke-width="7" pathLength="1" stroke-dasharray={(value >= 1 ? 1 : value) + " 1"} transform="rotate(-90 28 28)"></circle>
     <circle class="track outer" part="track" cx="28" cy="28" r="23" fill="none" stroke-width="3" opacity={wheels >= 2 ? 1 : 0}></circle>
-    <circle class="fill" part="fill" data-tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="23" fill="none" stroke-width="3" pathLength="1" stroke-dasharray={(value - 1 >= 1 ? 1 : (value - 1 <= 0 ? 0 : value - 1)) + " 1"} transform="rotate(-90 28 28)"></circle>
+    <circle class="fill" part="fill" tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="23" fill="none" stroke-width="3" pathLength="1" stroke-dasharray={(value - 1 >= 1 ? 1 : (value - 1 <= 0 ? 0 : value - 1)) + " 1"} transform="rotate(-90 28 28)"></circle>
     <circle class="track outer" part="track" cx="28" cy="28" r="27" fill="none" stroke-width="2" opacity={wheels >= 3 ? 1 : 0}></circle>
-    <circle class="fill" part="fill" data-tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="27" fill="none" stroke-width="2" pathLength="1" stroke-dasharray={(value - 2 >= 1 ? 1 : (value - 2 <= 0 ? 0 : value - 2)) + " 1"} transform="rotate(-90 28 28)"></circle>
+    <circle class="fill" part="fill" tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="27" fill="none" stroke-width="2" pathLength="1" stroke-dasharray={(value - 2 >= 1 ? 1 : (value - 2 <= 0 ? 0 : value - 2)) + " 1"} transform="rotate(-90 28 28)"></circle>
   </svg>
 </div>
 

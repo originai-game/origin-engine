@@ -13,7 +13,7 @@
 <div id="Combo" part="frame" variant="hud" layout="stack" gap="tight" role="status" data-state={state}>
   <div class="heading" part="heading">{label || t("hud.combo.name")}</div>
   <div class="figures" layout="wrap"><div class="count figure" part="figure">{formatNumber(count < 0 ? 0 : count)}</div><div class="multiplier figure" part="figure">{t("hud.combo.multiplier", { value: multiplier })}</div></div>
-  <div class="state" part="caption" data-tone={state == 'broken' ? 'danger' : state == 'active' ? 'success' : null}>{state == 'broken' ? t("hud.combo.broken") : state == 'active' ? t("hud.combo.active") : t("hud.combo.idle")}</div>
+  <div class="state" part="caption" tone={state == 'broken' ? 'danger' : state == 'active' ? 'success' : null}>{state == 'broken' ? t("hud.combo.broken") : state == 'active' ? t("hud.combo.active") : t("hud.combo.idle")}</div>
   {#if remaining >= 0}<progress class="timer" id="Timer" part="timer" value={remaining < 0 ? 0 : remaining > 1 ? 1 : remaining} aria-label={t("hud.combo.window")}></progress>{/if}
 </div>
 

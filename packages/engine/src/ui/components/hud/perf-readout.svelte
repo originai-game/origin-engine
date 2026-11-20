@@ -13,7 +13,7 @@
 <meta name="fixture:unknown" content='{"fps":-1,"frameMs":-1,"ping":-1,"loss":-1,"status":"offline"}'>
 
 <div id="PerfReadout" part="frame" variant="hud" layout="stack" gap="tight" role="group" aria-label={t("hud.perf-readout.name")} data-status={status}>
-  <div class="state" part="caption" data-tone={status == 'degraded' ? 'warn' : status == 'online' ? 'success' : null} role="status">{status == 'online' ? t("hud.perf-readout.online") : status == 'connecting' ? t("hud.perf-readout.connecting") : status == 'degraded' ? t("hud.perf-readout.degraded") : t("hud.perf-readout.offline")}</div>
+  <div class="state" part="caption" tone={status == 'degraded' ? 'warn' : status == 'online' ? 'success' : null} role="status">{status == 'online' ? t("hud.perf-readout.online") : status == 'connecting' ? t("hud.perf-readout.connecting") : status == 'degraded' ? t("hud.perf-readout.degraded") : t("hud.perf-readout.offline")}</div>
   <ul class="metrics" part="metrics" layout="wrap" gap="loose">
     <li part="metric" layout="stack" gap="hair"><div class="label" part="caption">{t("hud.perf-readout.fps")}</div><div class="figure" part="figure">{fps >= 0 ? formatNumber(fps) : t("hud.perf-readout.unknown")}</div></li>
     <li part="metric" layout="stack" gap="hair"><div class="label" part="caption">{t("hud.perf-readout.frame")}</div><div class="figure" part="figure">{frameMs >= 0 ? t("hud.perf-readout.ms", { value: frameMs }) : t("hud.perf-readout.unknown")}</div></li>

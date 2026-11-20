@@ -38,6 +38,7 @@
 <style>
 #Killfeed { align-items: flex-end; row-gap: calc(5 * var(--font-step-px)); pointer-events: none; max-inline-size: 100%; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .row { align-items: center; max-inline-size: 100%; min-inline-size: 0; padding: 0; padding-inline-start: var(--space-md); background: var(--hud-feed-fill); }
+.row:dir(rtl) { background: var(--hud-feed-fill-start); }
 .name { flex: 0 1 auto; min-inline-size: 0; padding-block: calc(3 * var(--font-step-px)); font-size: var(--hud-size-feed); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 /* Sides by colour and by place: the killer always leads the row. */
 .name.ally { color: var(--hud-ally); }

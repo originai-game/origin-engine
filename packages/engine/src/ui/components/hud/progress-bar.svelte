@@ -18,8 +18,8 @@
   {/if}
   <div id="Track" part="track" layout="overlay" style:--value={value} style:--buffer={buffer}>
     {#if !indeterminate}<div class="buffer" id="Buffer" part="fill" anchor="top-start"></div>{/if}
-    <div id="Fill" part="fill" anchor="top-start" data-motion={indeterminate ? 'shimmer' : null}></div>
-    {#if !indeterminate && value < 1}<div id="Sheen" part="sheen" anchor="top-start" data-motion="shimmer"></div>{/if}
+    <div id="Fill" part="fill" anchor="top-start" play={indeterminate ? 'shimmer' : null}></div>
+    {#if !indeterminate && value < 1}<div id="Sheen" part="sheen" anchor="top-start" play="shimmer"></div>{/if}
   </div>
 </div>
 

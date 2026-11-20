@@ -37,7 +37,7 @@
       </div>
     </button>
   {/if}
-  <div class="state" part="caption" data-tone={state == 'success' ? 'success' : state == 'failure' || state == 'expired' ? 'danger' : null} role="status">{state == 'success' ? t("hud.qte-prompt.success") : state == 'failure' ? t("hud.qte-prompt.failure") : state == 'expired' ? t("hud.qte-prompt.expired") : state == 'waiting' ? t("hud.qte-prompt.waiting") : disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}</div>
+  <div class="state" part="caption" tone={state == 'success' ? 'success' : state == 'failure' || state == 'expired' ? 'danger' : null} role="status">{state == 'success' ? t("hud.qte-prompt.success") : state == 'failure' ? t("hud.qte-prompt.failure") : state == 'expired' ? t("hud.qte-prompt.expired") : state == 'waiting' ? t("hud.qte-prompt.waiting") : disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}</div>
   <div class="timeLabel" part="caption">{t("hud.qte-prompt.time")}</div>
   <progress class="timer" id="Timer" part="timer" value={remaining < 0 ? 0 : remaining > 1 ? 1 : remaining} aria-label={t("hud.qte-prompt.time")}></progress>
   {#if mode == 'mash'}<div class="progressLabel" part="caption">{t("hud.qte-prompt.progress")}</div><progress class="progress" id="Progress" part="progress" value={progress < 0 ? 0 : progress > 1 ? 1 : progress} aria-label={t("hud.qte-prompt.progress")}></progress>{/if}

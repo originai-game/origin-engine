@@ -11,7 +11,7 @@
     {#each buffs as e (e.id)}
       <li class="tile" layout="stack" gap="hair" class:expiring={e.expiring} aria-label={e.name}>
         <div class="face cell cover" part="cell" layout="stack" fill gap="none">
-          <og-icon class="icon" data-motion={e.expiring ? 'pulse' : null} icon={e.icon}></og-icon>
+          <og-icon class="icon" play={e.expiring ? 'pulse' : null} icon={e.icon}></og-icon>
           {#if e.duration > 0}<svg class="sweep" anchor="fill" viewBox="0 0 32 32"><circle part="sweep" cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
         </div>
         {#if e.stacks > 1 || e.remaining > 0}<div class="details" layout="row" gap="tight">
@@ -26,7 +26,7 @@
     {#each debuffs as e (e.id)}
       <li class="tile debuff" layout="stack" gap="hair" class:expiring={e.expiring} class:magic={e.type == 'magic'} class:curse={e.type == 'curse'} class:poison={e.type == 'poison'} class:disease={e.type == 'disease'} class:bleed={e.type == 'bleed'} aria-label={e.name}>
         <div class="face cell cover" part="cell" layout="stack" fill gap="none">
-          <og-icon class="icon" data-motion={e.expiring ? 'pulse' : null} icon={e.icon}></og-icon>
+          <og-icon class="icon" play={e.expiring ? 'pulse' : null} icon={e.icon}></og-icon>
           {#if e.duration > 0}<svg class="sweep" anchor="fill" viewBox="0 0 32 32"><circle part="sweep" cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
           <div class="notch" part="dot" anchor="top-start"></div>
         </div>

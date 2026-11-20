@@ -8,9 +8,9 @@
 <meta name="fixture:default" content='{"value":0.62,"spinning":false,"label":"","name":"","tone":""}'>
 
 <div class="grid" id="ProgressRing" gap="none" role="progressbar" aria-label={name || (spinning ? t("component.progress-ring.loading") : t("component.progress-ring.name"))} aria-valuemin="0" aria-valuemax="100" aria-valuenow={value * 100} aria-busy={spinning} class:spinning={spinning} class:success={tone == 'success'} class:warn={tone == 'warn'} class:danger={tone == 'danger'} class:info={tone == 'info'}>
-  <svg class="ring" id="Ring" part="ring" data-motion={spinning ? 'spin' : null} viewBox="0 0 48 48">
+  <svg class="ring" id="Ring" part="ring" play={spinning ? 'spin' : null} viewBox="0 0 48 48">
     <circle id="Track" part="track" cx="24" cy="24" r="21" fill="none" stroke-width="5"></circle>
-    <circle id="Fill" part="fill" data-tone={tone} cx="24" cy="24" r="21" fill="none" stroke-width="5" stroke-linecap="round" pathLength="1" stroke-dasharray={spinning ? "0.3 1" : value + " 1"} transform="rotate(-90 24 24)"></circle>
+    <circle id="Fill" part="fill" tone={tone} cx="24" cy="24" r="21" fill="none" stroke-width="5" stroke-linecap="round" pathLength="1" stroke-dasharray={spinning ? "0.3 1" : value + " 1"} transform="rotate(-90 24 24)"></circle>
   </svg>
   {#if !spinning || label}<span class="figure" id="Label" part="figure">{label || formatPercent(value)}</span>{/if}
 </div>

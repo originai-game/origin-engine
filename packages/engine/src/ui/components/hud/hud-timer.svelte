@@ -13,9 +13,9 @@
   <div id="Body" layout="row">
     {#if countdown && total > 0}<svg class="ring" id="Ring" part="ring" viewBox="0 0 22 22">
       <circle class="track" part="track" cx="11" cy="11" r="9.5" fill="none" stroke-width="3"></circle>
-      <circle id="Left" part="fill" data-tone={countdown && seconds <= warnAt ? seconds <= warnAt / 3 ? 'danger' : 'warn' : null} cx="11" cy="11" r="9.5" fill="none" stroke-width="3" pathLength="1" stroke-dasharray={(seconds / total) + " 1"} transform="rotate(-90 11 11)"></circle>
+      <circle id="Left" part="fill" tone={countdown && seconds <= warnAt ? seconds <= warnAt / 3 ? 'danger' : 'warn' : null} cx="11" cy="11" r="9.5" fill="none" stroke-width="3" pathLength="1" stroke-dasharray={(seconds / total) + " 1"} transform="rotate(-90 11 11)"></circle>
     </svg>{/if}
-    <span class="figure" id="Time" part="figure" data-tone={countdown && seconds <= warnAt ? seconds <= warnAt / 3 ? 'danger' : 'warn' : null} data-motion={paused ? 'pulse' : countdown && seconds <= warnAt / 3 ? 'beat' : null}>{formatCountdown(seconds)}</span>
+    <span class="figure" id="Time" part="figure" tone={countdown && seconds <= warnAt ? seconds <= warnAt / 3 ? 'danger' : 'warn' : null} play={paused ? 'pulse' : countdown && seconds <= warnAt / 3 ? 'beat' : null}>{formatCountdown(seconds)}</span>
   </div>
 </div>
 
