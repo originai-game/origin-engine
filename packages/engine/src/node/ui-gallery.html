@@ -119,7 +119,11 @@ let reapply = false;
 async function apply() {
   if (applying) { reapply = true; return applying; }
   applying = (async () => {
-    do { reapply = false; await applyNow(); } while (reapply);
+    do {
+      reapply = false;
+      // A failed run does not drop the switch made during it.
+      try { await applyNow(); } catch (e) { log(`switch: ${e?.message ?? e}`, "err"); }
+    } while (reapply);
   })().finally(() => { applying = null; });
   return applying;
 }
