@@ -28246,7 +28246,7 @@ export interface ProbeTimings {
    */
   readonly passes: readonly ProbeTiming[];
   /**
-   * The render passes of the newest frame the GPU timed (a frame or two behind `passes`), each with its own GPU milliseconds (passes run at once may sum past the frame); a pass it could not time is left out; empty without timestamp queries (RenderCapabilities.gpuTimestamps).
+   * The render passes of the newest frame the GPU timed (a frame or two behind `passes`), each with its milliseconds alone on the GPU (no other pass in flight: waits and overlap excluded); a pass it could not time is left out; empty without timestamp queries (RenderCapabilities.gpuTimestamps).
    */
   readonly gpuPasses: readonly ProbeTiming[];
   /**

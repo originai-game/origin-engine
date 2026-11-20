@@ -28,6 +28,18 @@ pub(super) struct GraphRun<'a, 'f> {
 }
 
 impl Renderer {
+    /// With every pass waiting for the one before it
+    /// ([`Renderer::set_gpu_serial`]), what was encoded so far runs to its
+    /// end before the next pass is encoded.
+    fn serial_cut(&self, encoder: &mut Encoder) {
+        #[cfg(not(feature = "publish"))]
+        if super::settings::gpu_serial() {
+            encoder.cut(&self.device, &self.queue);
+        }
+        #[cfg(feature = "publish")]
+        let _ = encoder;
+    }
+
     /// Encodes the compute nodes the graph begins with (pre_graph.rs), in
     /// its order, each where the device has its needs and checked against
     /// them as it encodes, and against the device alone again after it.
@@ -47,6 +59,7 @@ impl Renderer {
             .take_while(|p| p.pre_graph())
             .collect();
         for pass in pre {
+            self.serial_cut(encoder);
             encoder.expect(caps, pass.needs());
             pass_queries.extend(self.encode_pre_graph_pass(pass, encoder, inputs));
             encoder.expect(caps, caps);
@@ -80,6 +93,9 @@ impl Renderer {
         let mut tail = None;
         for &pass in self.graph.order() {
             let timed = pass.timed();
+            if timed != Timed::OwnQueries {
+                self.serial_cut(encoder);
+            }
             match timed {
                 // Encoded before the frame's draws (`execute_pre_graph`).
                 Timed::OwnQueries => continue,

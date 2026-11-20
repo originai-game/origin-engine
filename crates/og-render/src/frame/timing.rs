@@ -16,15 +16,25 @@
 //! pass measured only the marker (every pass read a few microseconds on
 //! Apple silicon).
 //!
-//! A render-graph pass is reported by its own time: when each pass it
-//! opened ran on the GPU, from its beginning to its end
-//! ([`GpuPass::busy`], overlapping ones merged), and their length
-//! ([`GpuPass::ms`]). Passes the GPU ran at once each report their whole
-//! time, so a frame's passes may sum past it; the frame's span is its own
-//! ([`GpuFrame::ms`], the first beginning to the last end). Laid back to
-//! back in queue order instead (each pass from the end of the one before
-//! it), a pass that overlapped an earlier, longer one read 0 and the one
-//! it overlapped took its time.
+//! A render-graph pass's cost is its time alone on the GPU
+//! ([`GpuPass::alone`], [`GpuPass::ms`]): the stretches between its own
+//! passes' beginnings and ends when no other pass's ran. Its beginning to
+//! its end ([`GpuPass::busy`], [`GpuPass::in_flight_ms`]) is not its cost:
+//! Metal samples a pass's beginning as its encoder starts, so a pass
+//! encoded behind a long one is in flight from there while it waits (on an
+//! M4 Pro a 90.7 ms frame's small post passes read about 20 ms each that
+//! way, 413 ms in all). Time in which two or more passes were in flight is
+//! the frame's overlapped time ([`GpuFrame::overlapped_ms`]) and time with
+//! none its idle time ([`GpuFrame::idle`]): the passes' alone time, the
+//! overlapped and the idle sum exactly to the frame's span ([`GpuFrame::ms`],
+//! its first beginning to its last end). What an overlapped stretch cost
+//! each pass in it no timestamp says: a feature's cost is the difference
+//! of the frame's span with it and without it (`og cost`), and a pass's in
+//! isolation is its alone time when every pass waits for the one before it
+//! (`og run --gpu-serial`, [`crate::Renderer::set_gpu_serial`]). Laid back
+//! to back in queue order instead (each pass from the end of the one
+//! before it), a pass that overlapped an earlier, longer one read 0 and
+//! the one it overlapped took its time.
 //!
 //! A pass that cannot be timed on its own says why ([`GpuUntimed`]) and
 //! has no time, never 0 ms: it opened no render or compute pass (copies
@@ -68,6 +78,9 @@ pub struct GpuFrame {
     pub submitted: f64,
     /// The render-graph passes, in queue order.
     pub passes: Vec<GpuPass>,
+    /// Its milliseconds with no pass in flight, between its first
+    /// timestamp and its last.
+    pub idle: f64,
 }
 
 /// One render-graph pass of a [`GpuFrame`]: when it ran on the GPU, or
@@ -77,8 +90,12 @@ pub struct GpuPass {
     pub name: String,
     /// When the passes it opened ran: each from its beginning to its end,
     /// in milliseconds after the frame's first timestamp, in order, those
-    /// that overlapped merged. Empty when it is [`GpuPass::untimed`].
+    /// that overlapped merged: its time in flight, waits included. Empty
+    /// when it is [`GpuPass::untimed`].
     pub busy: Vec<(f64, f64)>,
+    /// The stretches of `busy` in which no other pass was in flight: its
+    /// time alone on the GPU, in order.
+    pub alone: Vec<(f64, f64)>,
     /// Why it has no time of its own, or `None` when it has.
     pub untimed: Option<GpuUntimed>,
 }
@@ -107,9 +124,18 @@ impl GpuUntimed {
 }
 
 impl GpuPass {
-    /// The pass's own GPU milliseconds (the length of [`GpuPass::busy`]),
-    /// or `None` when it is untimed.
+    /// The pass's milliseconds alone on the GPU (the length of
+    /// [`GpuPass::alone`]), or `None` when it is untimed.
     pub fn ms(&self) -> Option<f64> {
+        self.untimed
+            .is_none()
+            .then(|| self.alone.iter().map(|(b, e)| e - b).sum())
+    }
+
+    /// The pass's milliseconds in flight, from its passes' beginnings to
+    /// their ends (the length of [`GpuPass::busy`]): waits included, not
+    /// its cost. `None` when it is untimed.
+    pub fn in_flight_ms(&self) -> Option<f64> {
         self.untimed
             .is_none()
             .then(|| self.busy.iter().map(|(b, e)| e - b).sum())
@@ -124,6 +150,14 @@ impl GpuFrame {
             .filter_map(|p| p.busy.last())
             .map(|b| b.1)
             .fold(0.0, f64::max)
+    }
+
+    /// Its milliseconds with two or more passes in flight: what is left of
+    /// its span after the passes' alone time and the idle time, so the
+    /// three sum to [`GpuFrame::ms`].
+    pub fn overlapped_ms(&self) -> f64 {
+        let alone: f64 = self.passes.iter().filter_map(GpuPass::ms).sum();
+        (self.ms() - alone - self.idle).max(0.0)
     }
 }
 
@@ -355,6 +389,20 @@ impl Encoder {
             label: desc.label,
             timestamp_writes,
         })
+    }
+
+    /// Submits what was encoded so far and waits for the GPU to finish
+    /// it, then goes on in a new command buffer
+    /// (`Renderer::set_gpu_serial`): what comes after begins on an idle
+    /// GPU. The frame's timestamp queries go on in the same set.
+    #[cfg(not(feature = "publish"))]
+    pub fn cut(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let next = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("frame (serial)"),
+        });
+        queue.submit(Some(std::mem::replace(&mut self.raw, next).finish()));
+        #[cfg(not(target_arch = "wasm32"))]
+        let _ = device.poll(wgpu::PollType::wait_indefinitely());
     }
 
     /// `wgpu::CommandEncoder::finish`.
@@ -654,8 +702,8 @@ impl GpuTimer {
 /// A frame's passes from its timestamps: pass `k` the frame's encoder
 /// began wrote queries `2k` and `2k + 1`, and a render-graph pass lists
 /// the queries of the passes it opened. Each graph pass is busy over its
-/// own passes' beginnings and ends, overlaps merged (the module's
-/// documentation); a pair with a query the GPU left at 0 is not read. A
+/// own passes' beginnings and ends, overlaps merged, and alone where no
+/// other was (the module's documentation); a pair with a query the GPU left at 0 is not read. A
 /// graph pass with no pair read is untimed, with why. A frame with no
 /// query read is no frame (`None`).
 fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> Option<GpuFrame> {
@@ -670,11 +718,10 @@ fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> Option<GpuFrame> {
     let read: Vec<Vec<(u64, u64)>> = p.passes.iter().map(|(_, r)| pairs(r)).collect();
     let first = read.iter().flatten().map(|s| s.0).min()?;
     let ms = |ticks: u64| ticks.saturating_sub(first) as f64 * period_ns / 1e6;
-    let passes = p
-        .passes
+    // Each graph pass's stretches in flight, overlaps merged.
+    let busy: Vec<Vec<(u64, u64)>> = read
         .into_iter()
-        .zip(read)
-        .map(|((name, r), mut pairs)| {
+        .map(|mut pairs| {
             pairs.sort_unstable();
             let mut busy: Vec<(u64, u64)> = Vec::with_capacity(pairs.len());
             for (b, e) in pairs {
@@ -683,6 +730,37 @@ fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> Option<GpuFrame> {
                     _ => busy.push((b, e)),
                 }
             }
+            busy
+        })
+        .collect();
+    // Between each two neighbouring instants any pass begins or ends, the
+    // passes in flight: one alone takes the stretch, none leaves it idle.
+    let mut cuts: Vec<u64> = busy.iter().flatten().flat_map(|&(b, e)| [b, e]).collect();
+    cuts.sort_unstable();
+    cuts.dedup();
+    let mut alone: Vec<Vec<(u64, u64)>> = vec![Vec::new(); busy.len()];
+    let mut idle = 0u64;
+    for w in cuts.windows(2) {
+        let (from, to) = (w[0], w[1]);
+        let mut in_flight = busy
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.iter().any(|&(b, e)| b <= from && to <= e))
+            .map(|(k, _)| k);
+        match (in_flight.next(), in_flight.next()) {
+            (None, _) => idle += to - from,
+            (Some(k), None) => match alone[k].last_mut() {
+                Some(last) if last.1 == from => last.1 = to,
+                _ => alone[k].push((from, to)),
+            },
+            _ => {}
+        }
+    }
+    let passes = p
+        .passes
+        .into_iter()
+        .zip(busy.into_iter().zip(alone))
+        .map(|((name, r), (busy, alone))| {
             let untimed = if !busy.is_empty() {
                 None
             } else if !r.is_empty() {
@@ -695,6 +773,7 @@ fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> Option<GpuFrame> {
             GpuPass {
                 name,
                 busy: busy.into_iter().map(|(b, e)| (ms(b), ms(e))).collect(),
+                alone: alone.into_iter().map(|(b, e)| (ms(b), ms(e))).collect(),
                 untimed,
             }
         })
@@ -703,6 +782,7 @@ fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> Option<GpuFrame> {
         frame: p.frame,
         submitted: p.submitted,
         passes,
+        idle: idle as f64 * period_ns / 1e6,
     })
 }
 
@@ -710,64 +790,128 @@ fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> Option<GpuFrame> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn each_pass_reports_its_own_time_and_overlapping_passes_keep_theirs() {
-        let p = || Pending {
+    fn pending(passes: Vec<(&str, Range<u32>)>, queries: u32) -> Pending {
+        Pending {
             frame: 7,
-            passes: vec![
-                ("Cull".into(), 0..2),
-                ("Cascade0".into(), 2..4),
-                ("Main".into(), 4..8),
-                ("Bloom".into(), 8..8),
-                ("Tonemap".into(), 8..10),
-                ("Late".into(), QUERIES..QUERIES),
-            ],
-            queries: 10,
+            passes: passes.into_iter().map(|(n, r)| (n.into(), r)).collect(),
+            queries,
             submitted: 100.0,
             resolved: true,
+        }
+    }
+
+    /// 10 ns a tick: 1 ms is 100 000 ticks; 1 is the frame's first.
+    fn at(ms: f64) -> u64 {
+        1 + (ms * 100_000.0).round() as u64
+    }
+
+    #[test]
+    fn a_pass_costs_its_time_alone_and_untimed_passes_say_why() {
+        let p = || {
+            pending(
+                vec![
+                    ("Cull", 0..2),
+                    ("Cascade0", 2..4),
+                    ("Main", 4..8),
+                    ("Bloom", 8..8),
+                    ("Tonemap", 8..10),
+                    ("Late", QUERIES..QUERIES),
+                ],
+                10,
+            )
         };
-        // 10 ns a tick: 1 ms is 100 000 ticks. The cull runs 0 to 8 ms
-        // and the cascade, which needs nothing of it, runs at once, 1 to
-        // 4 ms: laid back to back in queue order the cascade read 0 ms.
-        // Main opened two passes, the second begun before the first ended
-        // (an Apple GPU overlapping encoders): one stretch. Bloom opened
-        // none; Tonemap's end was left at 0 by the GPU; Late came after
-        // the frame's queries ran out: untimed, each with why.
+        // The cull runs 0 to 8 ms and the cascade, which needs nothing of
+        // it, 1 to 4 ms beside it: laid back to back in queue order the
+        // cascade read 0 ms and the cull 8. Alone, the cull has 0 to 1 and
+        // 4 to 8 (5 ms), the cascade none; 1 to 4 is overlapped. Main
+        // opened two passes, the second begun before the first ended: one
+        // stretch, 9 to 12, after 1 ms idle. Bloom opened none; Tonemap's
+        // end was left at 0 by the GPU; Late came after the frame's
+        // queries ran out: untimed, each with why.
         let f = frame_of(
             p(),
             &[
-                1, 800_001, 100_001, 400_001, 800_001, 1_000_001, 950_001, 1_100_001, 1_100_001, 0,
+                at(0.0),
+                at(8.0),
+                at(1.0),
+                at(4.0),
+                at(9.0),
+                at(11.0),
+                at(10.5),
+                at(12.0),
+                at(12.0),
+                0,
             ],
             10.0,
         )
         .expect("a frame with queries read");
-        assert_eq!(f.frame, 7);
-        let got: Vec<(&str, Option<f64>, Option<GpuUntimed>)> = f
+        type Row<'a> = (&'a str, Option<f64>, Option<f64>, Option<GpuUntimed>);
+        let got: Vec<Row> = f
             .passes
             .iter()
-            .map(|p| (p.name.as_str(), p.ms(), p.untimed))
+            .map(|p| (p.name.as_str(), p.ms(), p.in_flight_ms(), p.untimed))
             .collect();
         assert_eq!(
             got,
             [
-                ("Cull", Some(8.0), None),
-                ("Cascade0", Some(3.0), None),
-                ("Main", Some(3.0), None),
-                ("Bloom", None, Some(GpuUntimed::NoGpuPass)),
-                ("Tonemap", None, Some(GpuUntimed::NotWritten)),
-                ("Late", None, Some(GpuUntimed::QueriesFull)),
+                ("Cull", Some(5.0), Some(8.0), None),
+                ("Cascade0", Some(0.0), Some(3.0), None),
+                ("Main", Some(3.0), Some(3.0), None),
+                ("Bloom", None, None, Some(GpuUntimed::NoGpuPass)),
+                ("Tonemap", None, None, Some(GpuUntimed::NotWritten)),
+                ("Late", None, None, Some(GpuUntimed::QueriesFull)),
             ]
         );
-        assert_eq!(f.passes[1].busy, [(1.0, 4.0)]);
-        assert_eq!(f.passes[2].busy, [(8.0, 11.0)]);
+        assert_eq!(f.passes[0].alone, [(0.0, 1.0), (4.0, 8.0)]);
+        assert_eq!(f.passes[2].busy, [(9.0, 12.0)]);
         assert_eq!(
             f.ms(),
-            11.0,
+            12.0,
             "the frame's span, first beginning to last end"
         );
+        assert_eq!((f.overlapped_ms(), f.idle), (3.0, 1.0));
         // Every query left at 0 (none written): no frame, not one of
         // untimed passes.
         assert_eq!(frame_of(p(), &[0; 10], 10.0), None);
+    }
+
+    /// The M4 Pro's case: Metal samples each post pass's beginning as its
+    /// encoder starts, just after the main pass's, so each waits in flight
+    /// beside it and its beginning to its end read about 20 ms (a 90.7 ms
+    /// frame's passes summed to 413 ms). Alone, each costs only what it
+    /// ran after the one before it ended, and the passes, the overlapped
+    /// and the idle time sum to the frame.
+    #[test]
+    fn a_pass_waiting_behind_another_costs_none_of_the_wait() {
+        let posts = 16u32;
+        let mut passes = vec![("main", 0..2)];
+        let mut ticks = vec![at(0.0), at(90.0)];
+        let names: Vec<String> = (0..posts).map(|k| format!("post{k}")).collect();
+        for k in 0..posts {
+            let q = 2 + 2 * k;
+            passes.push((names[k as usize].as_str(), q..q + 2));
+            // Encoded behind main: begun at 70 ms + a little, ended in
+            // turn after main, 0.04 ms each.
+            ticks.push(at(70.0 + 0.001 * f64::from(k)));
+            ticks.push(at(90.0 + 0.04 * f64::from(k + 1)));
+        }
+        let f = frame_of(pending(passes, 2 + 2 * posts), &ticks, 10.0).expect("a frame");
+        let span = f.ms();
+        assert!((span - 90.64).abs() < 1e-6, "{span}");
+        let in_flight: f64 = f.passes.iter().filter_map(GpuPass::in_flight_ms).sum();
+        assert!(
+            in_flight > 400.0,
+            "the waits, as begin to end read them: {in_flight}"
+        );
+        let alone: f64 = f.passes.iter().filter_map(GpuPass::ms).sum();
+        assert!(alone <= span, "alone {alone} past the frame's {span}");
+        assert!((f.passes[0].ms().unwrap() - 70.0).abs() < 1e-6);
+        // The last post runs alone once the others ended; every other
+        // one overlaps the posts behind it.
+        let last = f.passes.last().unwrap().ms().unwrap();
+        assert!((last - 0.04).abs() < 1e-6, "{last}");
+        let sum = alone + f.overlapped_ms() + f.idle;
+        assert!((sum - span).abs() < 1e-9, "{sum} for a span of {span}");
     }
 }
 

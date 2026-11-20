@@ -10,8 +10,8 @@
 mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
-    create, dev, doctor, explore, export, fmt, frame, i18n, mcp, migrate, prefab, probe, render,
-    replay, run, serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import,
+    cost, create, dev, doctor, explore, export, fmt, frame, i18n, mcp, migrate, prefab, probe,
+    render, replay, run, serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import,
     vfx_preview, video, world_server,
 };
 mod api_lookup;
@@ -97,6 +97,11 @@ commands:
                       NVIDIA's FLIP of the two (mean, percentiles, max), its heat map (default
                       <render>.flip.png) and its worst regions, each reference | render | heat
                       enlarged in <heat>-<n>.png (the captures guide)
+  cost [project] --off \"<og run options>\" [--on \"<og run options>\"] [--runs N] [--ticks A..B] [--json]
+      [-- <og run options for both>]
+                      what a feature costs the real frame: og run --trace with it on and off, at
+                      least 4 runs a side alternating, the median GPU frame span of each side with
+                      its range and the load, and their difference (the render guide)
   migrate three <file.ts> [--out <file.ts> | --write] [--json]
                       rewrite a three.js file towards og where the mapping is mechanical (geometries,
                       materials, meshes, lights, the scene graph, transforms, the camera, texture
@@ -418,6 +423,7 @@ fn main() -> ExitCode {
         ["explore", rest @ ..] => explore::run(rest),
         ["render", rest @ ..] => render::run(rest),
         ["compare", rest @ ..] => compare::run(rest),
+        ["cost", rest @ ..] => cost::run(rest),
         ["migrate", rest @ ..] => migrate::run(rest),
         ["relay", rest @ ..] => serve_relay::run(rest),
         ["world-server", rest @ ..] => world_server::run(rest),

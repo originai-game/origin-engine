@@ -1,6 +1,6 @@
 //! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
 //! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
-//! [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--capture-only] [--forks N] [--json] [--no-check]`
+//! [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--capture-only] [--forks N] [--json] [--no-check]`
 //!
 //! Cooks the project, type-checks it (crate::check: a type error stops the
 //! run before anything is bundled, its diagnostics printed, or with
@@ -21,7 +21,11 @@
 //! or with `--clock <UTC ms>` a clock that starts there and moves with the
 //! ticks (reproducible, as playtests run). `--trace out.json` writes the
 //! run in the Chrome trace format (`trace.rs`): the cook, each tick with its
-//! systems, each frame with its render passes, each load. `--profile
+//! systems, each frame with its render passes, each load; with
+//! `--gpu-serial` every render-graph pass waits for the one before it, so a
+//! pass's time alone on the GPU is its cost in isolation (the frame is
+//! slower: a feature's cost in the real frame is `og cost`'s; never in a
+//! publish build, whose engine has no such switch). `--profile
 //! out.cpuprofile` samples the game's TypeScript (and the engine's package
 //! under it) while it runs, bun's CPU profiler: a `.cpuprofile` opens in
 //! Chrome's and VS Code's profile views, a path ending `.md` is the same
@@ -50,7 +54,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/|https://<host>:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/|https://<host>:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -68,6 +72,8 @@ pub struct RunArgs {
     pub trace: Option<std::path::PathBuf>,
     /// `--profile`: the CPU profile's path (absolute).
     pub profile: Option<std::path::PathBuf>,
+    /// `--gpu-serial`: every render-graph pass waits for the one before it.
+    pub gpu_serial: bool,
     /// Native-only options given (refused with `--device`).
     native: Vec<String>,
 }
@@ -84,6 +90,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
         device: None,
         trace: None,
         profile: None,
+        gpu_serial: false,
         native: Vec::new(),
     };
     let mut device_forward = Vec::new();
@@ -105,6 +112,10 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             }
             "--no-check" => {
                 r.check = false;
+                r.native.push(args[i].into());
+            }
+            "--gpu-serial" => {
+                r.gpu_serial = true;
                 r.native.push(args[i].into());
             }
             "--no-render" | "--capture-only" => {
@@ -332,8 +343,12 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(trace) = &a.trace {
         cmd.arg("--trace").arg(trace).arg("--trace-append");
     }
-    // A profile is of this run's own process, never the resident host's.
-    if a.profile.is_none() {
+    if a.gpu_serial {
+        cmd.env("OG_GPU_SERIAL", "1");
+    }
+    // A profile or a serial GPU is this run's own process's, never the
+    // resident host's.
+    if a.profile.is_none() && !a.gpu_serial {
         match crate::session::try_run(&p.root, &package, &cmd) {
             Ok(Some(code)) => return code,
             Ok(None) => {}

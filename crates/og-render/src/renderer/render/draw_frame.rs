@@ -646,7 +646,7 @@ impl Renderer {
         LocalFacePass::upload(self, &mut frames.local_face, ());
         stages.end("world, lights, shadows");
         // The GPU culling's encode and the instance records (instances_stage.rs).
-        let instance_uploads = self.upload_instances(UploadInstancesInputs {
+        let mut instance_uploads = self.upload_instances(UploadInstancesInputs {
             scene,
             cam: &cam,
             batches: &batches,
@@ -1027,6 +1027,18 @@ impl Renderer {
             terrain_draws: &world_frame.terrain_draws,
             grass_frame: &world_frame.grass_frame,
         };
+        // Every pass waiting for the one before it (`set_gpu_serial`): the
+        // debris' and GPU culling's command buffers, which the frame's
+        // follow, run first, in a submit of their own.
+        if super::settings::gpu_serial() {
+            self.queue.submit(
+                instance_uploads
+                    .debris_commands
+                    .take()
+                    .into_iter()
+                    .chain(std::mem::take(&mut instance_uploads.cull_commands)),
+            );
+        }
         self.execute_pre_graph(&mut encoder, &pre_graph, &mut pass_queries);
         stages.end("compute before the graph");
         let transmission_view = self
