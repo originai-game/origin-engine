@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Grass",
+      "summary": "Grass draws faster: each blade's colour shade, patch, dry clump, gust sheen and the field's mean light are worked out once per blade when the blades are generated, instead of at every vertex of the lit draw. The frames are the same (about 2 ms a frame on The Last Light at 2560×1440 on an M4 Pro)."
+    }
+  ]
+}

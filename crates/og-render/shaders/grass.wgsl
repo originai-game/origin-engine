@@ -18,6 +18,9 @@
 // 2026 Gediminas Mikelenas: the full notice is in grass_common.wgsl and
 // third_party/bevy-grass/LICENSE.
 
+// The blades' own lit terms, two to a blade (grass_generate.wgsl grass_look).
+@group(1) @binding(2) var<storage, read> grass_looks: array<vec4<f32>>;
+
 struct GrassOut {
   @builtin(position) clip: vec4<f32>,
   @location(0) world: vec3<f32>,
@@ -79,11 +82,10 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> Grass
   // (Ghost of Tsushima's far blades take the terrain's normal).
   o.far = smoothstep(0.2, 0.8, distance(r.blade.root, grass.eye.xyz) / max(grass.variation.w, 1e-3));
   let kind = r.blade.kind * 2u;
-  let to_eye = select(normalize(grass.eye.xyz - r.blade.root), -grass.forward.xyz, grass.eye.w > 0.5);
-  let mean = grass_mean(grass.canopy.x, grass.canopy.y, grass.base_color.w, vec3<f32>(0.0, 1.0, 0.0), to_eye, grass.sun.xyz);
-  let average = grass_mean_color(grass.kinds[kind].rgb, grass.kinds[kind + 1u].rgb, mean.t);
-  o.mean = vec3<f32>(mean.sun, mean.sky, mean.through);
-  o.color = mix(grass_color(r.blade, v.t), average, 0.6 * o.far) * grass_gust_sheen(grass.wind, r.blade.root.xz + grass.wind.time.zw, GRASS_GUST_SHEEN);
+  let look = array<vec4<f32>, 2>(grass_looks[2u * r.index], grass_looks[2u * r.index + 1u]);
+  let average = grass_mean_color(grass.kinds[kind].rgb, grass.kinds[kind + 1u].rgb, look[0].w);
+  o.mean = look[1].xyz;
+  o.color = mix(grass_color(r.blade, v.t, look), average, 0.6 * o.far) * look[0].z;
   o.shading = vec3<f32>(grass_occlusion(max(v.world.y - r.blade.root.y, 0.0)), grass_sheen(v.t), v.t);
   o.above = max(v.world.y - r.blade.root.y, 0.0);
   o.local = v.world - r.blade.root;

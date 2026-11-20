@@ -42,6 +42,7 @@ struct GrassUniform {
 
 struct GrassRef {
   blade: GrassBlade,
+  index: u32,   // in grass_blades (and grass_looks, two to a blade)
   lod: u32,
   local: u32,   // the vertex within the level's strip
 };
@@ -51,7 +52,8 @@ fn grass_ref(vertex_index: u32, instance_index: u32) -> GrassRef {
   r.lod = min(vertex_index / GRASS_LOD_STRIDE, 2u);
   r.local = vertex_index % GRASS_LOD_STRIDE;
   let first = grass_blades[0];
-  r.blade = grass_unpack(grass_blades[first[r.lod] + instance_index], grass.origin, grass.limits.x);
+  r.index = first[r.lod] + instance_index;
+  r.blade = grass_unpack(grass_blades[r.index], grass.origin, grass.limits.x);
   return r;
 }
 
@@ -131,19 +133,16 @@ fn grass_vertex(r: GrassRef, eye: GrassEye) -> GrassVertex {
 
 // The colour of a blade at `t`: dark roots to bright tips, brighter or
 // darker per clump and a little per blade, in patches several metres
-// across, a share of the clumps dry and the tips drying.
-fn grass_color(b: GrassBlade, t: f32) -> vec3<f32> {
-  let v = grass.variation.x;
-  let shade = mix(1.0 - 0.35 * v, 1.0 + 0.25 * v, b.clump) * (1.0 + v * (0.2 * b.seed - 0.1));
+// across, a share of the clumps dry and the tips drying. `look` is the
+// blade's own (grass_generate.wgsl grass_look: its shade, its patch's,
+// and whether its clump is dry).
+fn grass_color(b: GrassBlade, t: f32, look: array<vec4<f32>, 2>) -> vec3<f32> {
+  let shade = look[0].x;
   var c = mix(grass.kinds[b.kind * 2u].rgb, grass.kinds[b.kind * 2u + 1u].rgb, pow(t, 0.7)) * shade;
-  // Patches: the noise, turned so its lattice does not run along the world's axes.
-  let at = (b.root.xz + grass.wind.time.zw) / max(grass.variation.z, 0.1);
-  let patch_uv = vec2<f32>(at.x * 0.83 - at.y * 0.56, at.x * 0.56 + at.y * 0.83);
-  let patch_noise = wind_noise(patch_uv + vec2<f32>(91.0, 47.0));
-  c *= mix(1.0, mix(0.85, 1.12, patch_noise), v);
+  c *= look[0].y;
   // Dry clumps (a share `dryness` of them) and dry tips.
   let dryness = grass.variation.y;
-  let dry_clump = grass_dry(b.clump, b.root.xz + grass.wind.time.zw, dryness);
+  let dry_clump = look[1].w;
   let dry_tip = dryness * smoothstep(0.45, 1.0, t) * (0.4 + 1.2 * grass_random(b, 0x7d1u));
   let dry = grass.dry_color.rgb * shade * mix(0.6, 1.0, pow(t, 0.7));
   c = mix(c, dry, clamp(max(dry_clump * 0.75, dry_tip), 0.0, 1.0));

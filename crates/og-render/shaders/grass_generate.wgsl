@@ -51,6 +51,13 @@ struct GrassGen {
   maps: vec4<f32>,      // 1 where the field has x a type map, y a density map, z a height map; w the clearings
   clearing: array<mat4x4<f32>, 16>,  // the frame's to each og.ScatterClearing's box (its centre at local 0)
   clearing_half: array<vec4<f32>, 16>,  // xyz: each box's half extent along its own axes
+  // What the lit draw's blades are coloured and lit by (GrassUniform's,
+  // grass_look): the camera's forward, towards the sun, x colour
+  // variation, y dryness, z patch size (m), w translucency, and the canopy.
+  forward: vec4<f32>,
+  sun: vec4<f32>,
+  look: vec4<f32>,
+  canopy: vec4<f32>,
   wind: WindField,
 };
 
@@ -71,6 +78,8 @@ struct GrassGen {
 @group(0) @binding(7) var wind_tex: texture_2d<f32>;
 // The trample map (trample.rs; wind_lean.wgsl vegetation_trample).
 @group(0) @binding(8) var trample_tex: texture_2d<f32>;
+// Two per blade, beside `instances` (grass_look; grass.wgsl `vs` reads them).
+@group(0) @binding(9) var<storage, read_write> looks: array<vec4<f32>>;
 // The field's maps over the terrain's extent (Grass.typeMap, densityMap,
 // heightMap; white without), sampled linearly.
 @group(2) @binding(0) var grass_type_map: texture_2d<f32>;
@@ -366,6 +375,26 @@ fn scan(@builtin(local_invocation_index) lane: u32) {
   }
 }
 
+// What the lit draw takes of a blade that is the same at each of its
+// vertices, worked out once here instead of at every vertex (grass.wgsl
+// `vs`, grass_blade.wgsl grass_color): x its clump's shade, y its
+// patch's, z the gusts' sheen on it, w the field's mean `t` from it; then
+// the field's mean sun, sky and through from it, and w 1 in a dry clump.
+fn grass_look(b: GrassBlade) -> array<vec4<f32>, 2> {
+  let v = gen.look.x;
+  let shade = mix(1.0 - 0.35 * v, 1.0 + 0.25 * v, b.clump) * (1.0 + v * (0.2 * b.seed - 0.1));
+  // Patches: the noise, turned so its lattice does not run along the world's axes.
+  let at = (b.root.xz + gen.wind.time.zw) / max(gen.look.z, 0.1);
+  let patch_uv = vec2<f32>(at.x * 0.83 - at.y * 0.56, at.x * 0.56 + at.y * 0.83);
+  let patch_noise = wind_noise(patch_uv + vec2<f32>(91.0, 47.0));
+  let patched = mix(1.0, mix(0.85, 1.12, patch_noise), v);
+  let dry_clump = grass_dry(b.clump, b.root.xz + gen.wind.time.zw, gen.look.y);
+  let to_eye = select(normalize(gen.eye.xyz - b.root), -gen.forward.xyz, gen.eye.w > 0.5);
+  let mean = grass_mean(gen.canopy.x, gen.canopy.y, gen.look.w, vec3<f32>(0.0, 1.0, 0.0), to_eye, gen.sun.xyz);
+  let sheen = grass_gust_sheen(gen.wind, b.root.xz + gen.wind.time.zw, GRASS_GUST_SHEEN);
+  return array<vec4<f32>, 2>(vec4<f32>(shade, patched, sheen, mean.t), vec4<f32>(mean.sun, mean.sky, mean.through, dry_clump));
+}
+
 var<workgroup> lane_lods: array<u32, 64>;
 var<workgroup> placed: array<u32, 3>;
 
@@ -385,7 +414,14 @@ fn compact(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocation_in
         rank += select(0u, 1u, lane_lods[j] == lod);
       }
       let at = placed[lod] + rank;
-      if (at < draws[lod * 5u + 1u]) { instances[header[lod] + at] = words; }
+      if (at < draws[lod * 5u + 1u]) {
+        let i = header[lod] + at;
+        instances[i] = words;
+        // As the draws unpack it (grass_blade.wgsl grass_ref).
+        let look = grass_look(grass_unpack(words, gen.origin, gen.clump.z));
+        looks[2u * i] = look[0];
+        looks[2u * i + 1u] = look[1];
+      }
     }
     workgroupBarrier();
     if (lane < 3u) {

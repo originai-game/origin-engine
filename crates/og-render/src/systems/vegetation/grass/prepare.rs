@@ -43,6 +43,13 @@ impl GrassRenderer {
             (blade_cap as u64 + 1) * 16,
             wgpu::BufferUsages::STORAGE,
         );
+        // The lit draw's per-blade terms, two vectors a blade beside each
+        // in `instances` (grass_generate.wgsl grass_look).
+        let looks = make(
+            "grass looks",
+            (blade_cap as u64 + 1) * 32,
+            wgpu::BufferUsages::STORAGE,
+        );
         let draws = make(
             "grass draws",
             60,
@@ -87,12 +94,16 @@ impl GrassRenderer {
             binding: 8,
             resource: wgpu::BindingResource::TextureView(&self.trample),
         });
+        gen_entries.push(wgpu::BindGroupEntry {
+            binding: 9,
+            resource: looks.as_entire_binding(),
+        });
         let gen_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("grass generate"),
             layout: &self.gen_layout,
             entries: &gen_entries,
         });
-        let draw_group = group("grass", &self.draw_layout, &[&draw, &instances]);
+        let draw_group = group("grass", &self.draw_layout, &[&draw, &instances, &looks]);
         let f = FieldGpu {
             generator,
             draw,
@@ -223,6 +234,9 @@ impl GrassRenderer {
             let lod = DistanceLod::for_radius(g.distance);
             let extent = g.distance + g.tallest() * 4.0 + CHUNK;
             let origin = view.camera.extend(extent).to_array();
+            let proj = view.frame.proj;
+            let per_pixel = 2.0 / (proj.y_axis.y.abs().max(1e-6) * view.height.max(1) as f32);
+            let [base_color, tip_color, dry_color, variation] = look_gpu(&g);
             let planes = frustum.planes();
             let generator = GenGpu {
                 planes: std::array::from_fn(|i| {
@@ -276,6 +290,14 @@ impl GrassRenderer {
                 ],
                 clearing,
                 clearing_half,
+                // As the draw's (below): grass_look works out its lit terms.
+                forward: view.frame.forward.extend(per_pixel).to_array(),
+                sun: l.extend(f32::from(u8::from(sun_on))).to_array(),
+                look: [variation[0], variation[1], variation[2], base_color[3]],
+                canopy: {
+                    let [extinction, top] = canopy(&g);
+                    [extinction, top, 0.0, 0.0]
+                },
                 counts: [
                     slices.len() as u32,
                     f.blade_cap,
@@ -284,14 +306,11 @@ impl GrassRenderer {
                 ],
                 wind,
             };
-            let proj = view.frame.proj;
-            let per_pixel = 2.0 / (proj.y_axis.y.abs().max(1e-6) * view.height.max(1) as f32);
-            let [base_color, tip_color, dry_color, variation] = look_gpu(&g);
             let draw = DrawGpu {
                 view_proj: view.frame.view_proj.to_cols_array_2d(),
                 prev_view_proj: view.prev_view_proj.to_cols_array_2d(),
                 eye: generator.eye,
-                forward: view.frame.forward.extend(per_pixel).to_array(),
+                forward: generator.forward,
                 origin,
                 limits: [
                     HEIGHT_RANGE,
@@ -307,7 +326,7 @@ impl GrassRenderer {
                         snow_weight(scene)
                     },
                 ],
-                sun: l.extend(f32::from(u8::from(sun_on))).to_array(),
+                sun: generator.sun,
                 shape: [
                     g.tallest(),
                     g.widest(),
@@ -321,10 +340,7 @@ impl GrassRenderer {
                 rows: [lod_rows[0], lod_rows[1], lod_rows[2], 0],
                 // The canopy the sun crosses to reach a blade's lower part
                 // (grass.wgsl grass_canopy).
-                canopy: {
-                    let [extinction, top] = canopy(&g);
-                    [extinction, top, 0.0, 0.0]
-                },
+                canopy: generator.canopy,
                 kinds: kinds_draw(&g),
                 wind,
             };
