@@ -506,7 +506,7 @@ impl<C: Cell> Variants<C> {
             if self.wants_far(features) {
                 return self.far().get();
             }
-            return self.made_at_use(features & Features::ALL);
+            self.made_at_use(features & Features::ALL)
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
