@@ -21,6 +21,8 @@ export class Gate {
   settling = false;
   /** The first frame drawn again behind the gate until it draws the whole scene: how often, since when. */
   #waiting = { frames: 0, since: 0, again: 0 as ReturnType<typeof setTimeout> | 0 };
+  /** Whether the first played tick's work was done behind the gate (og_web_warm_tick, once). */
+  #tickWarmed = false;
 
   constructor(run: Run) {
     this.#run = run;
@@ -61,21 +63,6 @@ export class Gate {
     if (!warm || !run.rendering) return;
     const began = performance.now();
     let made = 0;
-    // First, what the first played frame would do for the first time (its UI documents built,
-    // the height fields' chunk shapes, their code compiled): one task, before the pipelines.
-    const tick = () => {
-      if (run.crashed || !run.engine) return;
-      if (run.playing) return step();
-      const t0 = performance.now();
-      try {
-        run.glue?.og_web_warm_tick?.(run.engine.id);
-      } catch (e) {
-        run.crash(e instanceof Error ? e.message : String(e));
-        return;
-      }
-      console.info(`renderer: the first played tick's work made behind the gate in ${Math.round(performance.now() - t0)} ms`);
-      setTimeout(step, 0);
-    };
     const step = () => {
       if (run.crashed || !run.engine) return;
       // Play stopped the warm-up: its counts so far, over the first frame's.
@@ -101,7 +88,7 @@ export class Gate {
         this.#reportPipelines(made);
       }
     };
-    setTimeout(tick, 0);
+    setTimeout(step, 0);
   }
 
   /** Textures still drawn from their stand-ins (s63), or font-pack faces the locale's chain still fetches. */
@@ -180,6 +167,22 @@ export class Gate {
           };
           if (!waiting.again) waiting.again = setTimeout(poll, pipelines.compiling() > 0 ? 50 : 0);
           run.flushLog();
+          return;
+        }
+        // The first frame is whole. Before the gate opens, the first played tick's work
+        // (og_runtime::warm_tick: the UI built on a copy, drawn once so its pipelines and glyphs are
+        // made, the height fields' chunk shapes), its pipelines waited for as the frame's own: Play
+        // never opens on a HUD whose pipelines are still to compile.
+        if (!this.#tickWarmed && run.glue?.og_web_warm_tick) {
+          this.#tickWarmed = true;
+          const t0 = performance.now();
+          run.glue.og_web_warm_tick(engine.id);
+          console.info(`renderer: the first played tick's work made behind the gate in ${Math.round(performance.now() - t0)} ms`);
+          run.flushLog();
+          waiting.again = setTimeout(() => {
+            waiting.again = 0;
+            this.present();
+          }, 0);
           return;
         }
         if (waiting.since) console.info(`renderer: the first frame waited ${Math.round(performance.now() - waiting.since)} ms (${waiting.frames} frames behind the gate)`);

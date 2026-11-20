@@ -413,7 +413,7 @@ fn settle_textures(eng: &Engine) {
 
 /// Draws the frame, between the last two ticks at `alpha`
 /// (`super::interpolate`) or at the tick (`None`).
-fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
+pub(crate) fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     if eng.render.borrow().backend.is_none() {
         return Ok(false);
     }

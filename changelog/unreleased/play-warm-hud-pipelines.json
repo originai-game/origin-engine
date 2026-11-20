@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.render.compile",
+      "summary": "On the web the first frames after Play no longer stall on the HUD. Before the play gate offers Play, and once after og.render.compile, the engine draws a copy of the UI once, so the pipelines and glyphs the HUD draws with are made, and the splash counts them (\"Preparing graphics n/m\"): Play no longer opens while a HUD pipeline still compiles, which drew the HUD seconds into play. The copy is built a few times so the browser optimises the UI's code before the first played tick builds the real UI. The world, the UI, its stores and events are unchanged."
+    }
+  ]
+}

@@ -635,11 +635,14 @@ if (og.loading.idle(world)) og.loading.done(world);
   the engine splash counts it ("Preparing graphics 41/96").
 - After the next frame it also does, once and without a tick, the work
   a level's first played frame would do for the first time: the UI's
-  documents are built, laid out and painted on a copy of the UI, and
-  physics builds the chunk shapes of its height fields. The play gate
-  does the same behind its Play button. That frame then reuses compiled
-  code, shaped text and the chunk shapes instead of stalling on them;
-  the world, the UI, its stores and its events stay exactly as they were.
+  documents are built, laid out and painted on a copy of the UI and that
+  copy is drawn once, so the HUD's pipelines and glyphs are made too;
+  physics builds the chunk shapes of its height fields. Its pipelines
+  count in pipelinesRequested, so idle waits for them. The play gate does
+  the same before it offers Play, and the splash counts those pipelines.
+  The first played frame then reuses compiled code, shaped text, glyphs
+  and the chunk shapes instead of stalling on them; the world, the UI,
+  its stores and its events stay exactly as they were.
 - It is presentation: never wait on it in a tick's logic in a networked
   game, as with og.scene.progress.
 
