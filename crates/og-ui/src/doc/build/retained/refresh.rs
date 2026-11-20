@@ -1086,11 +1086,20 @@ impl RetainedHost {
             None => Vec::new(),
         };
         // The inherited values it hands down that changed (`None`: its
-        // first style, every one).
+        // first style, every one), among those its descendants read: only
+        // they move anything, and a root whose tokens changed (a scheme or
+        // viewport switch) would otherwise compare every token per element.
         let changed: Option<Vec<String>> = previous.map(|previous| {
+            let read = self.inherited.get(identity);
             previous
                 .computed
-                .changed(&values.cascade.computed)
+                .changed_among(
+                    &values.cascade.computed,
+                    read.into_iter()
+                        .flatten()
+                        .filter(|(_, readers)| !readers.is_empty())
+                        .map(|(name, _)| name),
+                )
                 .into_iter()
                 .cloned()
                 .collect()

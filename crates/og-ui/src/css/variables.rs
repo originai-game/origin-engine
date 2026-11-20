@@ -339,6 +339,41 @@ impl Computed {
             .collect()
     }
 
+    /// Of `names`, those whose [`Self::dependency`] differs between these
+    /// values and `other` (as [`Self::changed`] would name them), looked up
+    /// one by one: an element whose descendants read a few names compares
+    /// those, not every token of a root whose base changed.
+    pub fn changed_among<'a>(
+        &self,
+        other: &Computed,
+        names: impl IntoIterator<Item = &'a String>,
+    ) -> Vec<&'a String> {
+        if self.same(other) {
+            return Vec::new();
+        }
+        let contexts = [
+            (self, other),
+            (
+                self.before.as_deref().unwrap_or(self),
+                other.before.as_deref().unwrap_or(other),
+            ),
+            (
+                self.after.as_deref().unwrap_or(self),
+                other.after.as_deref().unwrap_or(other),
+            ),
+        ];
+        names
+            .into_iter()
+            .filter(|name| {
+                contexts
+                    .iter()
+                    .any(|(a, b)| a.dependency(name) != b.dependency(name))
+                    || self.animation_tainted.contains(*name)
+                        != other.animation_tainted.contains(*name)
+            })
+            .collect()
+    }
+
     pub fn dependency(&self, name: &str) -> Option<&str> {
         self.properties
             .get(name)
@@ -833,6 +868,9 @@ mod tests {
         assert_eq!(names(&la, &lb), ["--w", "--z"]);
         lb.insert("--x".into(), v("11"));
         assert_eq!(names(&la, &lb), ["--w", "--x", "--z"]);
+        let read: Vec<String> = ["--x", "--y", "--q"].map(String::from).into();
+        let among: Vec<&String> = la.changed_among(&lb, &read);
+        assert_eq!(among, ["--x"]);
     }
 
     #[test]
