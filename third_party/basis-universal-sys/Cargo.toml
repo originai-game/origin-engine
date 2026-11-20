@@ -12,6 +12,10 @@
 # evaluating their remaining pixels or transcoding them to BC7. Encoded
 # mips remain identical (og-cook tests/textures.rs); no search/quality
 # settings change. Retain this optimization when updating the dependency.
+# build.rs also enables basisu's SSE 4.1 kernels on x86-64 (only
+# basisu_kernels_sse.cpp is compiled for SSE 4.1; basisu picks them at run
+# time): the ETC1S searches compute the same integers, so the bytes match
+# the scalar build's.
 [package]
 name = "basis-universal-sys"
 version = "0.3.1"

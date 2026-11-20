@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook: colour textures and LOD surfaces",
+      "summary": "ETC1S encoding (colour textures, LOD surfaces) takes about a third less time on x86-64: the cook's basisu now has its SSE 4.1 kernels, which it picks at run time. The cooked bytes are identical to before and to other hosts'; Night Shift's ETC1S textures take 89 s of cook time instead of 138 s."
+    }
+  ]
+}

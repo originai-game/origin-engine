@@ -26,9 +26,16 @@ fn main() {
     // This is a patched path dependency: native source/header edits must
     // invalidate the archive as well as changes to this build script.
     println!("cargo:rerun-if-changed=vendor");
-    build_with_common_settings()
-        .define("BASISD_SUPPORT_KTX2_ZSTD", "0")
-        //.define("BASISU_SUPPORT_SSE", "1") TODO: expose this in a futher release
+    // x86-64: basisu's SSE 4.1 kernels (ETC1S selector and colour-distance
+    // searches), chosen at run time by its CPU check; only their file is
+    // compiled for SSE 4.1. They compute the scalar paths' integers, so the
+    // bytes match every other host.
+    let sse = std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("x86_64");
+    let mut main = build_with_common_settings();
+    if sse {
+        main.define("BASISU_SUPPORT_SSE", "1");
+    }
+    main.define("BASISD_SUPPORT_KTX2_ZSTD", "0")
         .flag_if_supported("--std=c++11")
         .file("vendor/basis_universal/encoder/pvpngreader.cpp")
         .file("vendor/basis_universal/encoder/jpgd.cpp")
@@ -38,7 +45,6 @@ fn main() {
         .file("vendor/basis_universal/encoder/basisu_resample_filters.cpp")
         .file("vendor/basis_universal/encoder/basisu_pvrtc1_4.cpp")
         .file("vendor/basis_universal/encoder/basisu_opencl.cpp")
-        .file("vendor/basis_universal/encoder/basisu_kernels_sse.cpp")
         .file("vendor/basis_universal/encoder/basisu_gpu_texture.cpp")
         .file("vendor/basis_universal/encoder/basisu_frontend.cpp")
         .file("vendor/basis_universal/encoder/basisu_etc.cpp")
@@ -51,6 +57,18 @@ fn main() {
         .file("vendor/transcoding_wrapper.cpp")
         .file("vendor/encoding_wrapper.cpp")
         .compile("basisuniversal");
+    // After the library, which calls into it (static archives link in order).
+    let mut kernels = build_with_common_settings();
+    kernels
+        .flag_if_supported("--std=c++11")
+        .file("vendor/basis_universal/encoder/basisu_kernels_sse.cpp");
+    if sse {
+        kernels.define("BASISU_SUPPORT_SSE", "1");
+        if !kernels.get_compiler().is_like_msvc() {
+            kernels.flag("-msse4.1");
+        }
+    }
+    kernels.compile("basisuniversal_kernels");
 
     // We regenerate binding code and check it in. (See generate_bindings.sh)
 }
