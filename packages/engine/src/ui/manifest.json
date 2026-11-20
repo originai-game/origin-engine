@@ -1249,6 +1249,17 @@
     ],
     "imports": []
   },
+  "RpgBar": {
+    "id": "@ui/components/rpg/bar.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/bar.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
   "RpgCharacter": {
     "id": "@ui/components/rpg/character.svelte",
     "screen": false,
@@ -1297,7 +1308,10 @@
     "id": "@ui/components/rpg/companions.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "RpgBar",
+      "RpgPortrait"
+    ],
     "files": [
       "@ui/components/rpg/companions.svelte",
       "@ui/components/rpg/rpg.en.ogt"
@@ -1411,7 +1425,10 @@
     "id": "@ui/components/rpg/leader.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "RpgBar",
+      "RpgPortrait"
+    ],
     "files": [
       "@ui/components/rpg/leader.svelte",
       "@ui/components/rpg/rpg.en.ogt"
@@ -1497,6 +1514,16 @@
     ],
     "imports": []
   },
+  "RpgPortrait": {
+    "id": "@ui/components/rpg/portrait.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/portrait.svelte"
+    ],
+    "imports": []
+  },
   "RpgPrompt": {
     "id": "@ui/components/rpg/prompt.svelte",
     "screen": false,
@@ -1541,11 +1568,24 @@
     ],
     "imports": []
   },
+  "RpgSkillSlot": {
+    "id": "@ui/components/rpg/skill-slot.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/rpg.en.ogt",
+      "@ui/components/rpg/skill-slot.svelte"
+    ],
+    "imports": []
+  },
   "RpgSkills": {
     "id": "@ui/components/rpg/skills.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "RpgSkillSlot"
+    ],
     "files": [
       "@ui/components/rpg/rpg.en.ogt",
       "@ui/components/rpg/skills.svelte"

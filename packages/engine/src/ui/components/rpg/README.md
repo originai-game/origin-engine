@@ -25,6 +25,15 @@ The game feeds its current auto setting back through `auto`.
 
 ## Structure and appearance
 
+The action HUD's plates are built from three blocks, which a game also
+uses by name to lay out a plate of its own: `RpgPortrait` (the octagon
+portrait), `RpgBar` (one leaning bar: health with its ghost, mana,
+stamina in cells, experience) and `RpgSkillSlot` (one slot of the skill
+bar). `RpgLeader`, `RpgCompanions` and `RpgSkills` only place and size
+them: a block's size is a token (`--rpg-portrait-size`,
+`--rpg-bar-size`, `--rpg-skill-slot-size`) set on the place it is given,
+where it inherits.
+
 Each member is HTML with component CSS in the `og-components` layer.
 `:host` owns the root dimensions; shared `data-layout` and `data-gap`
 primitives arrange the interior. Component CSS keeps sizes and placement.
@@ -72,6 +81,8 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgEnemyInfo` | `name`, `portrait`, `level`, `health`, `healthMax`, `effects` keyed `{ id, icon, label, tone }` | none |
 | `RpgCommands` | `commands` keyed `{ id, label, icon, enabled }`, `selected` | `choose` (row key; a disabled command sends nothing) |
 | `RpgLeader` | `name`, `level`, `portrait`, `health`, `healthMax`, `ghost`, `mana`, `manaMax`, `stamina`, `staminaMax`, `segment` (stamina per cell), `low` | none |
+| `RpgPortrait` (block) | `portrait`, `dimmed`; its side is `--rpg-portrait-size` | none |
+| `RpgBar` (block) | `value`, `max`, `kind` (health, mana, stamina, xp), `ghost`, `segment` (value per cell), `low`, `name`; as wide as its place, `--rpg-bar-size` thick | none |
 | `RpgEffects` | `effects` keyed `{ id, name, icon, glyph, remaining, label, harmful }` | none |
 | `RpgCompanions` | `members` keyed `{ id, name, portrait, health, healthMax, ghost, mana, manaMax, key, fallen }`, `low` | none |
 | `RpgMinimap` | `map` (texture), `centerX`, `centerY`, `zoom`, `heading`, `blips` keyed `{ id, kind (ally, foe, boss, objective), x, y, label }`, `place`, `clock` | none |
@@ -81,6 +92,7 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgLootFeed` | `items` keyed `{ id, name, icon, glyph, rarity, label, quantity, currency, fading }`, newest first | none |
 | `RpgPrompt` | `key`, `text`, `disabled`, `reason` | none |
 | `RpgSkills` | `slots` keyed `{ id, name, icon, glyph, key, kind (skill, item, ultimate), cooldown, time, count, ready, unaffordable, reason, charges, chargesMax, charge }` | none |
+| `RpgSkillSlot` (block) | one slot's `name`, `icon`, `glyph`, `key`, `kind`, `cooldown`, `time`, `count`, `ready`, `unaffordable`, `reason`, `charges`, `chargesMax`, `charge`; its side is `--rpg-skill-slot-size` | none |
 | `RpgHints` | `hints` keyed `{ id, key, label }` | none |
 | `RpgExperience` | `level`, `value` (0–1 to the next level) | none |
 
@@ -109,16 +121,19 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgStats` (`stats.svelte`) | `frame`, `band`, `title`, `row` |
 | `RpgTurnOrder` (`turn-order.svelte`) | `frame`, `cell` (`[aria-current]` `[data-acting]` `[data-down]` `[data-side]`), `title` |
 | `RpgVitals` (`vitals.svelte`) | `frame` (`[data-down]` `[data-plate]`) |
-| `RpgLeader` (`leader.svelte`) | `frame` (`.low`), `portrait`, `face`, `hero`, `level`, `value`, `max`, `health`, `ghost`, `mana`, `stamina` |
+| `RpgLeader` (`leader.svelte`) | `frame` (`.low`), `portrait`, `hero`, `level`, `value`, `max`, `health`, `mana`, `stamina` (the places of its `RpgPortrait` and `RpgBar` blocks) |
+| `RpgPortrait` (`portrait.svelte`) | `rim` (`.dimmed`), `face` |
+| `RpgBar` (`bar.svelte`) | `groove` (`.mana` `.stamina` `.xp` `.low`), `ghost`, `lit`, `cuts` |
 | `RpgEffects` (`effects.svelte`) | `frame`, `effect` (`[data-harmful]`), `tile`, `art`, `timer`, `time` |
-| `RpgCompanions` (`companions.svelte`) | `frame`, `member` (`[data-fallen]` `.low`), `portrait`, `face`, `callsign`, `fallen`, `health`, `ghost`, `mana`, `key` |
+| `RpgCompanions` (`companions.svelte`) | `frame`, `member` (`[data-fallen]` `.low`), `portrait`, `callsign`, `fallen`, `health`, `mana`, `key` (`portrait`, `health` and `mana` are the places of its blocks) |
 | `RpgMinimap` (`minimap.svelte`) | `frame`, `scope`, `map`, `blip` (`[data-kind]`), `self`, `north`, `place`, `clock` |
 | `RpgLockOn` (`lock-on.svelte`) | `frame` (`[data-locked]`), `ring` |
 | `RpgHits` (`hits.svelte`) | `frame`, `hit` (`[data-kind]`), `call`, `amount`, `kind` |
 | `RpgCombo` (`combo.svelte`) | `frame`, `count`, `word`, `decay`, `lit`, `bonus` |
 | `RpgLootFeed` (`loot-feed.svelte`) | `frame`, `entry` (`[data-rarity]` `[data-fading]`), `art`, `item`, `rarity`, `count` |
 | `RpgPrompt` (`prompt.svelte`) | `frame` (`.disabled`), `key`, `action`, `reason` |
-| `RpgSkills` (`skills.svelte`) | `frame`, `skill` (`[data-kind]` `[data-ready]` `[data-unaffordable]`), `slot`, `art`, `cooldown`, `edge`, `time`, `reason`, `count`, `charges`, `pip`, `ring`, `key` |
+| `RpgSkills` (`skills.svelte`) | `frame`, `skill` (`[data-kind]`, the place of an `RpgSkillSlot`) |
+| `RpgSkillSlot` (`skill-slot.svelte`) | `skill` (`[data-kind]` `[data-ready]` `[data-unaffordable]`), `slot`, `art`, `cooldown`, `edge`, `time`, `reason`, `count`, `charges`, `pip`, `ring`, `key` |
 | `RpgHints` (`hints.svelte`) | `frame`, `hint`, `key`, `action` |
 | `RpgExperience` (`experience.svelte`) | `frame`, `reading`, `line`, `lit` |
 | `RpgWorldMap` (`world-map.svelte`) | `frame`, `marker` (a button: `[aria-selected]` `[data-kind]` `:disabled`), `row` (`[data-kind]`), `plate` (a marker's name), `caption` |
