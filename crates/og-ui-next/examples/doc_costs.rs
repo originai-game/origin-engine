@@ -23,6 +23,8 @@ fn main() {
     }
     css += &read("crates/og-ui/default.css");
     let tokens = Tokens::parse(&css);
+    // The default surfaces sheet does not exist until the sheets move.
+    let surfaces = og_ui_next::style::Sheet::default();
     let docs = [
         ("ui/hud.svelte", "showcase/first-light/assets/ui/hud.svelte"),
         (
@@ -42,7 +44,7 @@ fn main() {
     for (id, path) in docs {
         let doc = UiDocument::parse(id, &read(path)).unwrap_or_else(|e| panic!("{id}: {e:?}"));
         let t = Instant::now();
-        let s = DocStyle::compile(&doc, &tokens);
+        let s = DocStyle::compile(&doc, &tokens, &surfaces);
         let us = t.elapsed().as_secs_f64() * 1e6;
         println!(
             "{id}: {} elements, {} spans ({} conditional), {} steps, compiled in {us:.0} us",

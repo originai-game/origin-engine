@@ -5,11 +5,16 @@
 //! rules become flat step spans: an unconditional base, then each
 //! conditional span with the index of its condition, in cascade order.
 //! An element's custom properties (`--slot: 48px`) resolve at compile time
-//! into the tokens its subtree reads. At runtime a record is the base
-//! folded with the spans whose condition bits are set: no matching, no
-//! substitution, no strings.
+//! into the tokens its subtree reads. Beneath its rules lie its layout
+//! fields ([`prim::Fields`]) and its surface's record: the style's
+//! surfaces sheet read under its `part`, `variant` and `tier`
+//! (`.frame.hud:hover`, `.cell.rare`).
+//! At runtime a record is the element's spans folded in cascade order,
+//! each while its condition holds: no matching, no substitution, no
+//! strings.
 
-use crate::style::{self, Record, Step};
+use crate::prim;
+use crate::style::{self, Record, Sheet, State, Step};
 use crate::tokens::Tokens;
 use bytemuck::{Pod, Zeroable};
 use og_ui::doc::{NodeKind, UiDocument};
@@ -20,7 +25,7 @@ use og_ui::doc::{NodeKind, UiDocument};
 pub struct NodeStyle {
     /// Its document node's index.
     pub node: u32,
-    /// Its spans: the first is the base (condition `u32::MAX`).
+    /// Its spans, in cascade order.
     pub spans: [u32; 2],
 }
 
@@ -40,6 +45,8 @@ pub enum Skip {
     Structural,
     /// Under `@media` or `@container`.
     Query,
+    /// A layout attribute with a value the compiler does not take.
+    Field(prim::Unknown),
     /// A property or value the compiler does not take.
     Declaration(String),
 }
@@ -57,22 +64,106 @@ pub struct DocStyle {
 
 const ALWAYS: u32 = u32::MAX;
 
+/// What the compile reads beside the document.
+struct Cx<'a> {
+    tokens: &'a Tokens,
+    surfaces: &'a Sheet,
+    scale: prim::Scale,
+}
+
 impl DocStyle {
-    /// Compiles `doc`'s element styles against `tokens`.
-    pub fn compile(doc: &UiDocument, tokens: &Tokens) -> DocStyle {
+    /// Compiles `doc`'s element styles against `tokens` and the style's
+    /// `surfaces`.
+    pub fn compile(doc: &UiDocument, tokens: &Tokens, surfaces: &Sheet) -> DocStyle {
         let mut out = DocStyle::default();
         let mut local = Vec::new();
-        out.visit(doc, doc.root, tokens, &mut local);
+        let cx = Cx {
+            tokens,
+            surfaces,
+            scale: prim::Scale::of(tokens),
+        };
+        out.visit(doc, doc.root, &cx, &mut local);
         out
+    }
+
+    /// Closes the steps from `from` into a span under `condition`.
+    fn span(&mut self, condition: u32, from: u32) {
+        let n = self.steps.len() as u32 - from;
+        if n > 0 {
+            self.spans.push(Span {
+                condition,
+                steps: [from, n],
+            });
+        }
+    }
+
+    /// The element's layout fields and surface record.
+    fn own(&mut self, n: &og_ui::doc::DocNode, cx: &Cx) {
+        let mut fields = prim::Fields::default();
+        let (mut part, mut variant, mut tier) = (None, None, None);
+        for (name, e) in &n.selector_attrs {
+            let og_ui::bind::Expr::Lit(v) = e else {
+                continue;
+            };
+            let text = match v {
+                serde_json::Value::String(s) => s.as_str(),
+                serde_json::Value::Bool(true) => "true",
+                serde_json::Value::Bool(false) => "false",
+                _ => continue,
+            };
+            match name.as_str() {
+                "part" => part = Some(text),
+                "variant" => variant = Some(text),
+                "tier" => tier = Some(text),
+                name => {
+                    if let Err(u) = fields.set(name, text) {
+                        self.skipped.push(Skip::Field(u));
+                    }
+                }
+            }
+        }
+        let from = self.steps.len() as u32;
+        fields.steps(&cx.scale, &mut self.steps);
+        let Some(part) = part.and_then(|p| cx.surfaces.name(&format!(".{p}"))) else {
+            return self.span(ALWAYS, from);
+        };
+        let names: Vec<u32> = std::iter::once(part)
+            .chain(
+                [variant, tier]
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|v| cx.surfaces.name(&format!(".{v}"))),
+            )
+            .collect();
+        let mut states = Vec::new();
+        cx.surfaces.each(&names, |state, steps| match state {
+            State::Base => self.steps.extend_from_slice(steps),
+            state => states.push((state, steps)),
+        });
+        self.span(ALWAYS, from);
+        for (state, steps) in states {
+            use og_ui::bind::InteractionState as I;
+            let s = match state {
+                State::Hover => I::Hover,
+                State::Active => I::Active,
+                State::Focus => I::FocusVisible,
+                _ => I::Disabled,
+            };
+            let from = self.steps.len() as u32;
+            self.steps.extend_from_slice(steps);
+            self.conditions.push(og_ui::bind::Expr::Interaction(s));
+            self.span(self.conditions.len() as u32 - 1, from);
+        }
     }
 
     fn visit(
         &mut self,
         doc: &UiDocument,
         i: usize,
-        tokens: &Tokens,
+        cx: &Cx,
         local: &mut Vec<(Box<str>, Box<str>)>,
     ) {
+        let tokens = cx.tokens;
         let Some(n) = doc.nodes.get(i) else { return };
         let mark = local.len();
         if matches!(n.kind, NodeKind::Element(_)) {
@@ -91,14 +182,12 @@ impl DocStyle {
                 }
             }
             let first = self.spans.len() as u32;
+            self.own(n, cx);
             let base = self.steps.len() as u32;
             for rule in n.rules.iter().filter(|r| r.condition.is_none()) {
                 self.rule(rule, tokens, local);
             }
-            self.spans.push(Span {
-                condition: ALWAYS,
-                steps: [base, self.steps.len() as u32 - base],
-            });
+            self.span(ALWAYS, base);
             for rule in n.rules.iter().filter(|r| r.condition.is_some()) {
                 let from = self.steps.len() as u32;
                 if !self.rule(rule, tokens, local) {
@@ -116,7 +205,7 @@ impl DocStyle {
             });
         }
         for &c in &n.children {
-            self.visit(doc, c, tokens, local);
+            self.visit(doc, c, cx, local);
         }
         local.truncate(mark);
     }

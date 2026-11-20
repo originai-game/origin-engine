@@ -30,6 +30,18 @@ pub enum State {
     Disabled = 4,
 }
 
+impl State {
+    fn from_u32(v: u32) -> State {
+        match v {
+            1 => State::Hover,
+            2 => State::Active,
+            3 => State::Focus,
+            4 => State::Disabled,
+            _ => State::Base,
+        }
+    }
+}
+
 /// A linear RGBA colour.
 pub type Rgba = [f32; 4];
 
@@ -215,6 +227,19 @@ impl Sheet {
             };
             if !expand(&mut self.steps, name, v.trim()) {
                 self.skipped.push(format!("{name}: {value}"));
+            }
+        }
+    }
+
+    /// The steps of each rule whose names are all in `names`, in sheet
+    /// order, with the state it applies under.
+    pub fn each<'s>(&'s self, names: &[u32], mut f: impl FnMut(State, &'s [Step])) {
+        for rule in &self.rules {
+            if self.needs[span(rule.needs)]
+                .iter()
+                .all(|n| names.contains(n))
+            {
+                f(State::from_u32(rule.state), &self.steps[span(rule.steps)]);
             }
         }
     }

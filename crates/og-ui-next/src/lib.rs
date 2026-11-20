@@ -6,6 +6,7 @@
 
 pub mod arena;
 pub mod doc;
+pub mod prim;
 pub mod sheet;
 pub mod style;
 pub mod tokens;
@@ -130,16 +131,23 @@ mod tests {
     }
 
     #[test]
-    fn a_documents_rules_compile_per_element_with_conditions_and_its_own_custom_properties() {
+    fn a_documents_rules_compile_per_element_over_its_layout_fields_and_surface() {
         let doc = og_ui::UiDocument::parse(
             "t.svelte",
             "<meta name=\"component\" content=\"t\">\n<meta name=\"prop:on\" content=\"bool\">\n\
-             <div id=\"Box\" class=\"card\" class:lit={on}><span class=\"label\">Hi</span></div>\n\
+             <div id=\"Box\" class=\"card\" class:lit={on} layout=\"row\" gap=\"tight\" \
+             part=\"frame\" variant=\"hud\"><span class=\"label\">Hi</span></div>\n\
              <style>\n.card { --slot: 48px; padding: 2px; }\n.card .label { width: var(--slot); }\n\
              .card.lit { padding: 9px; }\n</style>",
         )
         .unwrap();
-        let s = doc::DocStyle::compile(&doc, &Tokens::default());
+        let tokens = Tokens::parse(":root { --layout-gap-tight: 3px; }");
+        let surfaces = style::Sheet::compile(
+            ".frame { padding: 1px; flex-wrap: wrap; } .frame.hud:hover { background: #ff0000; } \
+             .frame.bare { flex-wrap: wrap-reverse; }",
+            &tokens,
+        );
+        let s = doc::DocStyle::compile(&doc, &tokens, &surfaces);
         let card = s
             .nodes
             .iter()
@@ -152,10 +160,31 @@ mod tests {
             .position(|n| doc.nodes[n.node as usize].parent == card_node)
             .expect("the label, the card's element child");
         let pad = |r: &style::Record| taffy::Style::from(&r.layout).padding.top;
+        let base = s.record(card, |_| false);
         assert_eq!(
-            pad(&s.record(card, |_| false)),
-            taffy::LengthPercentage::length(2.0)
+            pad(&base),
+            taffy::LengthPercentage::length(2.0),
+            "the document's rule over its surface's"
         );
+        let t = taffy::Style::from(&base.layout);
+        assert_eq!(
+            (t.display, t.flex_direction, t.gap.width),
+            (
+                taffy::Display::Flex,
+                taffy::FlexDirection::Row,
+                taffy::LengthPercentage::length(3.0)
+            ),
+            "layout=row gap=tight"
+        );
+        assert_eq!(
+            t.flex_wrap,
+            taffy::FlexWrap::Wrap,
+            "the frame surface over the layout field, without the other variant's rule"
+        );
+        assert_eq!(base.fill, [0.0; 4]);
+        let hover = og_ui::bind::Expr::Interaction(og_ui::bind::InteractionState::Hover);
+        let hovered = s.record(card, |c| s.conditions[c as usize] == hover);
+        assert_eq!(hovered.fill[0], 1.0, ".frame.hud:hover while hovered");
         assert_eq!(
             pad(&s.record(card, |_| true)),
             taffy::LengthPercentage::length(9.0),

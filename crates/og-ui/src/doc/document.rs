@@ -155,14 +155,10 @@ impl UiDocument {
                 && let PropValue::Lit(Lit::Str(name)) = &p.value
             {
                 // A part list (`part="Bag.portrait Bag.picture"`): each name.
+                // The new core's surfaces (`part="frame"`) need no `parts`
+                // line.
                 for name in name.split_ascii_whitespace() {
                     used_parts.push(name.to_string());
-                    if !self.parts.iter().any(|p| p == name) {
-                        errors.push(format!(
-                            "line {}: the part '{name}' is not in the document's `parts` line",
-                            p.line
-                        ));
-                    }
                 }
             }
             if !self.props.is_empty() {

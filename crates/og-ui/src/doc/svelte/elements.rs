@@ -1075,16 +1075,24 @@ impl Parser {
             // `:state(name)` (CSS custom states, `state:name={…}`). `lang`
             // and `dir` are HTML's global attributes: an element that does
             // not reflect them itself (a field's `lang` picks its keyboard)
-            // still has them for its selectors.
+            // still has them for its selectors. The new core's layout fields
+            // (`layout`, `gap`, `anchor`, `fill`, `reverse`) and surface
+            // (`variant`, `tier`) are read from the same facts by og-ui-next;
+            // on SVG `fill` is already `svgFill` here.
             let reflected = schema::prop(&name)
                 .is_some_and(|(_, p)| internal.is_none_or(|kind| p.applies(kind)));
+            let field = matches!(
+                name.as_str(),
+                "layout" | "gap" | "anchor" | "fill" | "reverse" | "variant" | "tier"
+            );
             if !component
                 && model.is_none()
-                && !reflected
-                && (matches!(a.name.as_str(), "lang" | "dir")
-                    || (schema::prop(&name).is_none()
-                        && (a.name.starts_with("data-")
-                            || a.name.strip_prefix("state:").is_some_and(identifier))))
+                && (field
+                    || !reflected && matches!(a.name.as_str(), "lang" | "dir")
+                    || !reflected
+                        && (schema::prop(&name).is_none()
+                            && (a.name.starts_with("data-")
+                                || a.name.strip_prefix("state:").is_some_and(identifier))))
             {
                 if a.bound {
                     expression(&a.value, a.at)?;
