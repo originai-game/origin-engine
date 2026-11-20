@@ -263,22 +263,26 @@ impl Sheet {
         }
     }
 
-    /// The steps of each rule whose names are all in `names`, in sheet
-    /// order, with what it applies under.
-    pub fn each<'s>(&'s self, names: &[u32], mut f: impl FnMut(Under<&'s str>, &'s [Step])) {
+    /// Every rule in sheet order: the names it needs, what it applies
+    /// under and its steps.
+    pub fn rules<'s>(&'s self, mut f: impl FnMut(&'s [u32], Under<&'s str>, &'s [Step])) {
         for rule in &self.rules {
-            if self.needs[span(rule.needs)]
-                .iter()
-                .all(|n| names.contains(n))
-            {
-                let under = if rule.state & CUSTOM != 0 {
-                    Under::Custom(&*self.names[(rule.state & !CUSTOM) as usize])
-                } else {
-                    Under::State(State::from_u32(rule.state))
-                };
-                f(under, &self.steps[span(rule.steps)]);
-            }
+            let under = if rule.state & CUSTOM != 0 {
+                Under::Custom(&*self.names[(rule.state & !CUSTOM) as usize])
+            } else {
+                Under::State(State::from_u32(rule.state))
+            };
+            f(
+                &self.needs[span(rule.needs)],
+                under,
+                &self.steps[span(rule.steps)],
+            );
         }
+    }
+
+    /// The text of name `id` (`.frame`).
+    pub fn name_of(&self, id: u32) -> &str {
+        &self.names[id as usize]
     }
 
     /// The record of an element with these names in this state: the base

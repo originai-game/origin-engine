@@ -136,16 +136,18 @@ mod tests {
             "t.svelte",
             "<meta name=\"component\" content=\"t\">\n<meta name=\"prop:on\" content=\"bool\">\n\
              <div id=\"Box\" class=\"card\" class:lit={on} layout=\"row\" gap=\"tight\" \
-             part=\"frame\" variant=\"hud\" state:done={on}><span class=\"label\">Hi</span>\
+             part=\"frame\" variant=\"hud\" state:done={on}><span class=\"label\" tone=\"danger\" play=\"pulse\" tier={on}>Hi</span>\
              <svg viewBox=\"0 0 4 4\"><circle cx=\"2\" cy=\"2\" r=\"2\" fill=\"none\"/></svg></div>\n\
              <style>\n.card { --slot: 48px; padding: 2px; }\n.card .label { width: var(--slot); }\n\
+             .label:dir(rtl) { padding: 4px; }\n\
              .card.lit { padding: 9px; }\n</style>",
         )
         .unwrap();
         let tokens = Tokens::parse(":root { --layout-gap-tight: 3px; }");
         let surfaces = style::Sheet::compile(
             ".frame { padding: 1px; flex-wrap: wrap; } .frame.hud:hover { background: #ff0000; } \
-             .frame.bare { flex-wrap: wrap-reverse; } .frame:state(done) { opacity: 0.5; }",
+             .frame.bare { flex-wrap: wrap-reverse; } .frame:state(done) { opacity: 0.5; } \
+             .danger { color: #ff0000; } .rare { opacity: 0.25; }",
             &tokens,
         );
         let s = doc::DocStyle::compile(&doc, &tokens, &surfaces);
@@ -204,6 +206,28 @@ mod tests {
             .size
             .width;
         assert_eq!(w, taffy::Dimension::length(48.0));
+        let label_rec = s.record(label, |_| false);
+        assert_eq!(
+            label_rec.ink[0], 1.0,
+            "tone=danger picks the .danger surface"
+        );
+        let rtl = s.record(label, |c| {
+            matches!(s.conditions[c as usize], og_ui::bind::Expr::Dir(_, true))
+        });
+        assert_eq!(
+            taffy::Style::from(&rtl.layout).padding.top,
+            taffy::LengthPercentage::length(4.0),
+            ":dir(rtl) is a condition on the direction"
+        );
+        let rare = s.record(label, |c| {
+            matches!(&s.conditions[c as usize],
+                og_ui::bind::Expr::Bin(og_ui::bind::Op::Eq, _, v) if **v == og_ui::bind::Expr::Lit("rare".into()))
+        });
+        assert_eq!(
+            (label_rec.opacity, rare.opacity),
+            (1.0, 0.25),
+            "a bound tier picks its surface"
+        );
     }
 
     #[test]

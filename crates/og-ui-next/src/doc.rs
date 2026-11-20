@@ -64,6 +64,9 @@ pub struct DocStyle {
 
 const ALWAYS: u32 = u32::MAX;
 
+/// The attributes whose values name a surface (`.cell.hud.rare.round`).
+const SURFACE_NAMES: [&str; 7] = ["part", "variant", "tier", "tone", "shape", "team", "trend"];
+
 /// What the compile reads beside the document.
 struct Cx<'a> {
     tokens: &'a Tokens,
@@ -99,24 +102,33 @@ impl DocStyle {
 
     /// The element's layout fields and surface record.
     fn own(&mut self, n: &og_ui::doc::DocNode, cx: &Cx) {
+        use og_ui::bind::{Expr, InteractionState as I, Op};
         let mut fields = prim::Fields::default();
-        let (mut part, mut variant, mut tier) = (None, None, None);
+        // Its surface names written as literals, and the bindings that
+        // pick one (`variant={bare ? 'bare' : 'hud'}`, `tier={rarity}`).
+        let mut names: Vec<u32> = Vec::new();
+        let mut bound: Vec<&Expr> = Vec::new();
         // On SVG `fill` is its paint, not the layout field.
         let svg = matches!(n.kind, NodeKind::Element(k) if k.svg());
         for (name, e) in &n.selector_attrs {
-            let og_ui::bind::Expr::Lit(v) = e else {
-                continue;
-            };
-            let text = match v {
-                serde_json::Value::String(s) => s.as_str(),
-                serde_json::Value::Bool(true) => "true",
-                serde_json::Value::Bool(false) => "false",
-                _ => continue,
+            let surface = SURFACE_NAMES.contains(&name.as_str());
+            let text = match e {
+                Expr::Lit(serde_json::Value::String(s)) => s.as_str(),
+                Expr::Lit(serde_json::Value::Bool(true)) => "true",
+                Expr::Lit(serde_json::Value::Bool(false)) => "false",
+                Expr::Lit(_) => continue,
+                e => {
+                    if surface {
+                        bound.push(e);
+                    }
+                    continue;
+                }
             };
             match name.as_str() {
-                "part" => part = Some(text),
-                "variant" => variant = Some(text),
-                "tier" => tier = Some(text),
+                _ if surface => names.extend(
+                    text.split_ascii_whitespace()
+                        .filter_map(|v| cx.surfaces.name(&format!(".{v}"))),
+                ),
                 "fill" if svg => {}
                 name => {
                     if let Err(u) = fields.set(name, text) {
@@ -127,49 +139,87 @@ impl DocStyle {
         }
         let from = self.steps.len() as u32;
         fields.steps(&cx.scale, &mut self.steps);
-        let Some(part) = part.and_then(|p| cx.surfaces.name(&format!(".{p}"))) else {
-            return self.span(ALWAYS, from);
-        };
-        let names: Vec<u32> = std::iter::once(part)
-            .chain(
-                [variant, tier]
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|v| cx.surfaces.name(&format!(".{v}"))),
-            )
-            .collect();
-        let mut states = Vec::new();
-        cx.surfaces.each(&names, |under, steps| match under {
-            Under::State(State::Base) => self.steps.extend_from_slice(steps),
-            under => states.push((under, steps)),
-        });
         self.span(ALWAYS, from);
-        for (under, steps) in states {
-            use og_ui::bind::{Expr, InteractionState as I, Op};
-            let condition = match under {
-                Under::State(State::Hover) => Expr::Interaction(I::Hover),
-                Under::State(State::Active) => Expr::Interaction(I::Active),
-                Under::State(State::Focus) => Expr::Interaction(I::FocusVisible),
-                Under::State(_) => Expr::Interaction(I::Disabled),
+        if names.is_empty() && bound.is_empty() {
+            return;
+        }
+        // The rules that apply, each with its condition: a name it needs
+        // that is not written holds while one of the bindings gives it.
+        let mut taken: Vec<(usize, Option<Expr>, &[Step])> = Vec::new();
+        cx.surfaces.rules(|needs, under, steps| {
+            let mut cond: Option<Expr> = None;
+            let and = |c: &mut Option<Expr>, e: Expr| {
+                *c = Some(match c.take() {
+                    None => e,
+                    Some(a) => Expr::Bin(Op::And, Box::new(a), Box::new(e)),
+                })
+            };
+            for &need in needs {
+                if names.contains(&need) {
+                    continue;
+                }
+                let value = &cx.surfaces.name_of(need)[1..];
+                let any = bound
+                    .iter()
+                    .map(|&e| {
+                        Expr::Bin(
+                            Op::Eq,
+                            Box::new(e.clone()),
+                            Box::new(Expr::Lit(value.into())),
+                        )
+                    })
+                    .reduce(|a, b| Expr::Bin(Op::Or, Box::new(a), Box::new(b)));
+                let Some(any) = any else { return };
+                and(&mut cond, any);
+            }
+            let state = match under {
+                Under::State(State::Base) => None,
+                Under::State(State::Hover) => Some(Expr::Interaction(I::Hover)),
+                Under::State(State::Active) => Some(Expr::Interaction(I::Active)),
+                Under::State(State::Focus) => Some(Expr::Interaction(I::FocusVisible)),
+                Under::State(State::Disabled) => Some(Expr::Interaction(I::Disabled)),
                 // A custom state holds while the element's binding of it
                 // is set and not "false", as the parser reads `:state()`.
                 Under::Custom(name) => {
                     let key = format!("state:{name}");
                     let Some((_, e)) = n.selector_attrs.iter().find(|(k, _)| *k == key) else {
-                        continue;
+                        return;
                     };
                     let not_false = Expr::Bin(
                         Op::Ne,
                         Box::new(e.clone()),
                         Box::new(Expr::Lit("false".into())),
                     );
-                    Expr::Bin(Op::And, Box::new(e.clone()), Box::new(not_false))
+                    Some(Expr::Bin(Op::And, Box::new(e.clone()), Box::new(not_false)))
                 }
             };
+            if let Some(st) = state {
+                and(&mut cond, st);
+            }
+            // Class-only specificity: its names, and its state.
+            let weight = needs.len() + usize::from(!matches!(under, Under::State(State::Base)));
+            taken.push((weight, cond, steps));
+        });
+        // Stable: sheet order among rules of one weight.
+        taken.sort_by_key(|(w, _, _)| *w);
+        for (_, cond, steps) in taken {
             let from = self.steps.len() as u32;
             self.steps.extend_from_slice(steps);
-            self.conditions.push(condition);
-            self.span(self.conditions.len() as u32 - 1, from);
+            match cond {
+                None => match self.spans.last_mut() {
+                    // Consecutive unconditional rules share one span.
+                    Some(last)
+                        if last.condition == ALWAYS && last.steps[0] + last.steps[1] == from =>
+                    {
+                        last.steps[1] += steps.len() as u32;
+                    }
+                    _ => self.span(ALWAYS, from),
+                },
+                Some(c) => {
+                    self.conditions.push(c);
+                    self.span(self.conditions.len() as u32 - 1, from);
+                }
+            }
         }
     }
 
@@ -234,6 +284,12 @@ impl DocStyle {
         tokens: &Tokens,
         local: &[(Box<str>, Box<str>)],
     ) -> bool {
+        // The old default style's global rules (`[data-motion=pulse]`,
+        // `[part$=".frame"]`) are not the new core's: its fields and
+        // surfaces replace them, and they are deleted at the switch.
+        if rule.structure.as_ref().is_some_and(|s| s.global) {
+            return false;
+        }
         if rule.structure.is_some() || !rule.instance_states.is_empty() {
             self.skipped.push(Skip::Structural);
             return false;

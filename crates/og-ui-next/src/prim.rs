@@ -53,6 +53,24 @@ pub enum Anchor {
     BottomEdge,
 }
 
+/// A named motion an element plays (`play="pulse"`): read here, animated
+/// by the motion head's springs and loops.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Motion {
+    Enter,
+    Exit,
+    Pop,
+    Stamp,
+    Beat,
+    Pulse,
+    Spin,
+    Ping,
+    Shimmer,
+    Float,
+    Change,
+}
+
 /// An element's layout fields.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct Fields {
@@ -63,6 +81,7 @@ pub struct Fields {
     pub fill: bool,
     /// Lays its children out from the end.
     pub reverse: bool,
+    pub play: Option<Motion>,
 }
 
 /// An attribute the compiler did not take, with its value.
@@ -105,6 +124,22 @@ impl Fields {
                     "bottom-end" => Anchor::BottomEnd,
                     "top-edge" => Anchor::TopEdge,
                     "bottom-edge" => Anchor::BottomEdge,
+                    _ => return Err(bad()),
+                })
+            }
+            "play" => {
+                self.play = Some(match value {
+                    "enter" => Motion::Enter,
+                    "exit" => Motion::Exit,
+                    "pop" => Motion::Pop,
+                    "stamp" => Motion::Stamp,
+                    "beat" => Motion::Beat,
+                    "pulse" => Motion::Pulse,
+                    "spin" => Motion::Spin,
+                    "ping" => Motion::Ping,
+                    "shimmer" => Motion::Shimmer,
+                    "float" => Motion::Float,
+                    "change" => Motion::Change,
                     _ => return Err(bad()),
                 })
             }

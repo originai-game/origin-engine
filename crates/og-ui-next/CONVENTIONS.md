@@ -21,6 +21,7 @@ they are not CSS-visible, and no selector matches them.
 | `anchor` | `fill` `top-start` `top-end` `bottom-start` `bottom-end` `top-edge` `bottom-edge` | out of flow, at that corner or edge, `--layout-anchor-inset` in (`fill` and the edges: 0) |
 | `fill` | (present) | takes the room its parent has left: `flex: 1 1 0`, min size 0 |
 | `reverse` | (present) | lays its children out from the end (`row-reverse`, `column-reverse`, `wrap-reverse`) |
+| `play` | `enter` `exit` `pop` `stamp` `beat` `pulse` `spin` `ping` `shimmer` `float` `change` | the named motion it plays (read now, animated by the motion head); replaces `data-motion` (`motion` stays the transition prop) |
 
 The field is the element's lowest style: its sheet's rules override it.
 Anything else (alignment, a fixed size, a grid) is an ordinary declaration
@@ -31,11 +32,21 @@ on a class.
 `part` names the element's surface: `frame`, `band`, `title`, `row`,
 `cell`, `card`, `badge`, `well`, `figure`, `tab`, `dot`, `fade` and so on,
 unqualified (`part="frame"`, not `part="AbilitySlot.frame"`). No `parts`
-meta line. Two attributes pick the surface's variant:
+meta line. Six more attributes name the surface's variants, all in one
+namespace of surface names:
 
 - `variant`: `hud`, `bare`, `lead`, `small`, … (was a class on the part).
 - `tier`: `common`, `uncommon`, `rare`, `epic`, `legendary`, `mythic` (was
   `data-rarity`).
+- `tone`: `danger`, `warn`, `success`, `reward`, … (was `data-tone`).
+- `shape`: `round`, `square`, `hex`, `diamond`, … (was `data-shape`).
+- `team`, `trend` (were `data-team`, `data-trend`).
+
+Each may be literal or bound (`tier={rarity}`, `variant={bare ? 'bare' :
+'hud'}`): a bound one compiles to conditional spans, one per surface rule
+whose name it could give. A rule may name a tone or shape without a part
+(`.danger { … }`), which dresses any element with that tone. Specificity
+is the number of names plus one for a state, then sheet order.
 
 A surface's record comes from the style's surfaces sheet, written as
 compound class selectors over the part, variant and tier names:
@@ -65,7 +76,7 @@ A `.svelte` document's `<style>` may use:
 
 Not taken: attribute selectors (`[data-…]`, `[aria-…]`), `:where`, `:is`,
 `:not`, `:has`, `:host`, `::part`, `:global`, `@media`, `@container`,
-sibling combinators and structural pseudo-classes. Every `var()` resolves
+sibling combinators and structural pseudo-classes. `:dir(rtl)` is taken. Every `var()` resolves
 at cook time; only the tokens a `style:--x` binding reads ship to runtime.
 
 ## States
@@ -117,6 +128,9 @@ runtime switches tables. No `::part`, no global rules.
 | `part="Comp.frame"` + `parts` meta line | `part="frame"` |
 | `class="hud"` / `"bare"` / `"lead"` / `"small"` on a part | `variant="…"` |
 | `data-rarity="rare"` | `tier="rare"` |
+| `data-tone`, `data-shape`, `data-team`, `data-trend` | `tone`, `shape`, `team`, `trend` |
+| `data-motion="pulse"` | `play="pulse"` |
+| `:dir(rtl)` | unchanged: a condition on the direction |
 | `[aria-selected=true]`, `[data-done=true]`, … | `state:selected={…}` and `:state(selected)` |
 | `:where([part$=".frame"]…)` rules in default.css | `.frame…` in `default/surfaces.css` |
 | `::part(…)` in a pack | the pack's `surfaces.css` |

@@ -1076,14 +1076,23 @@ impl Parser {
             // and `dir` are HTML's global attributes: an element that does
             // not reflect them itself (a field's `lang` picks its keyboard)
             // still has them for its selectors. The new core's layout fields
-            // (`layout`, `gap`, `anchor`, `fill`, `reverse`) and surface
-            // (`variant`, `tier`) are read from the same facts by og-ui-next;
+            // (`layout`, `gap`, `anchor`, `fill`, `reverse`, `play`) and
+            // surface names (`variant`, `tier`, `tone`, `shape`, `team`, `trend`) are read from the same facts by og-ui-next;
             // on SVG `fill` is already `svgFill` here.
             let reflected = schema::prop(&name)
                 .is_some_and(|(_, p)| internal.is_none_or(|kind| p.applies(kind)));
             let field = matches!(
                 name.as_str(),
-                "layout" | "gap" | "anchor" | "fill" | "reverse" | "variant" | "tier"
+                "layout"
+                    | "gap"
+                    | "anchor"
+                    | "fill"
+                    | "reverse"
+                    | "play"
+                    | "variant"
+                    | "tier"
+                    | "tone"
+                    | "shape"
             );
             if !component
                 && model.is_none()
