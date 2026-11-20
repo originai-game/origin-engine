@@ -176,7 +176,9 @@ pub fn tail(whole: &[u8], stamp: u64) -> Result<(Vec<u8>, String), CookError> {
 pub fn encoder_name(opts: &TextureOptions) -> Result<String, CookError> {
     #[cfg(feature = "basis")]
     if !opts.force_toktx {
-        return Ok("basisu 1.16 (basis-universal crate, UASTC level as set, fp-contract=off)".into());
+        return Ok(
+            "basisu 1.16 (basis-universal crate, UASTC level as set, fp-contract=off)".into(),
+        );
     }
     let _ = opts;
     toktx_version().map(|v| format!("toktx {v}"))
