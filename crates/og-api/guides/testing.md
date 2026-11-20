@@ -313,7 +313,11 @@ prints the whole answer frame, `{jsonrpc, id, result}` or
 then one `build` event: `ok`, `out` (the absolute directory written),
 `publish`, `files` (`{path, bytes, compressed, codec}` each), `total`,
 `downloads`, `probe` (`{build, members}`) and `manifest` (the build's
-`og-build.json`). A failed build prints its event with `ok: false` and a
+`og-build.json`). `codec` names what `compressed` measures: `brotli-11`
+(brotli -q 11, what a host serves) for a `--publish` build, `brotli-5`
+for a development build (measured in seconds rather than minutes, and
+about 30% above -q 11 for the engine module), `gzip-9` where the brotli
+CLI is missing. Judge download size on a publish build. A failed build prints its event with `ok: false` and a
 `reason`, and exits 1. The play page is `<out>/<manifest.entry>`.
 
 **Where outputs land.** A build is written to `--out`, else project.ogt's

@@ -44,8 +44,9 @@
 // play.<hash>.js; og-build.json's `names` maps each plain name to its file.
 //
 // The bytes depend only on the inputs: no dates, no absolute paths, files in
-// sorted order. Prints a size table (bytes and brotli -q 11, or gzip -9
-// without the brotli CLI), then what a player downloads (downloadsOf: each
+// sorted order. Prints a size table (bytes and brotli -q 11 for --publish,
+// brotli -q 5 otherwise, gzip -9 without the brotli CLI; SizeRow.codec says
+// which), then what a player downloads (downloadsOf: each
 // page's boot, the lanes and the single-threaded page, and what comes
 // later); with --json one JSON line:
 //   { event: "build", ok, out, publish, files: [{ path, bytes, compressed, codec }], total, downloads, probe: { build, members }, manifest }
@@ -116,7 +117,14 @@ export interface SizeRow {
   readonly path: string;
   readonly bytes: number;
   readonly compressed: number;
-  readonly codec: "brotli-11" | "gzip-9";
+  /**
+   * What `compressed` measures: `brotli-11` (brotli -q 11, a publish build:
+   * the size gate's and the release report's codec), `brotli-5` (brotli -q 5,
+   * a development build: seconds for the development engine, where -q 11
+   * takes minutes; its engine module comes out about 30% larger than at
+   * -q 11) or `gzip-9` (without the brotli CLI).
+   */
+  readonly codec: "brotli-11" | "brotli-5" | "gzip-9";
 }
 
 /** project.ogt's `publish` block as og checked it (crates/og-cli/src/project.rs). */
@@ -422,8 +430,8 @@ export interface DownloadSum {
 }
 
 /**
- * What a player downloads, as the size gate counts it (each file's brotli
- * -q 11 size, gzip -9 without the brotli CLI): the boot of each page the
+ * What a player downloads, as the size gate counts it (each file's size in
+ * the size table's codec, SizeRow.codec): the boot of each page the
  * build serves, everything fetched before its first frame, and what comes
  * later. A page takes one engine module: the lanes module when the page is
  * cross-origin isolated and the build ships it, else the single-threaded
@@ -646,7 +654,7 @@ export async function engineFacts(): Promise<Record<string, unknown>> {
     const dir = join(ENGINE_ROOT, "dist", name);
     if (!existsSync(dir)) continue;
     const files = walk(dir).filter((path) => !path.endsWith(".d.ts") && !path.endsWith(".map"));
-    const sizes = await sizesOfFiles(files);
+    const sizes = await sizesOfFiles(files, name !== "web");
     files.forEach((path, i) => {
       facts[sizeKey(sizes[i]!.codec, new Uint8Array(readFileSync(path)))] = { size: sizes[i]!.size, codec: sizes[i]!.codec };
     });
@@ -668,12 +676,24 @@ function probeKey(glue: string, wasm: string, profile: "2d" | "3d"): string {
   return `probe:${profile}:${sha256(new Uint8Array(readFileSync(glue)))}:${sha256(new Uint8Array(readFileSync(wasm)))}`;
 }
 
+/**
+ * The brotli quality a build's sizes are measured at: 11, what a host serves
+ * and the size gate counts, for a publish build; 5 for a development build.
+ * Quality 11 of the 61 MB development engine takes a core for over five
+ * minutes, quality 5 about 3 s (12.96 MB against -q 11's 9.85 MB). A
+ * development build's sizes only orient: its engine is not the one a player
+ * downloads, and its codec says it is not -q 11.
+ */
+function brotliQuality(publish: boolean): 11 | 5 {
+  return publish ? 11 : 5;
+}
+
 /** Each file compressed as it is served, the files at once, one per core. */
-async function sizesOfFiles(paths: readonly string[]): Promise<Array<{ bytes: number; size: number; codec: SizeRow["codec"] }>> {
+async function sizesOfFiles(paths: readonly string[], publish: boolean): Promise<Array<{ bytes: number; size: number; codec: SizeRow["codec"] }>> {
   const sizes = new Array<{ bytes: number; size: number; codec: SizeRow["codec"] }>(paths.length);
   let next = 0;
   const worker = async () => {
-    for (let i = next++; i < paths.length; i = next++) sizes[i] = await compressedSize(new Uint8Array(readFileSync(paths[i]!)));
+    for (let i = next++; i < paths.length; i = next++) sizes[i] = await compressedSize(new Uint8Array(readFileSync(paths[i]!)), brotliQuality(publish));
   };
   const workers = Math.min(paths.length, availableParallelism());
   buildTrace("size-workers", { workers, files: paths.length });
@@ -681,17 +701,18 @@ async function sizesOfFiles(paths: readonly string[]): Promise<Array<{ bytes: nu
   return sizes;
 }
 
-async function compressedSize(bytes: Uint8Array): Promise<{ bytes: number; size: number; codec: SizeRow["codec"] }> {
+async function compressedSize(bytes: Uint8Array, quality: 11 | 5): Promise<{ bytes: number; size: number; codec: SizeRow["codec"] }> {
   const brotli = Boolean(Bun.which("brotli"));
-  const key = sizeKey(brotli ? "brotli-11" : "gzip-9", bytes);
+  const codec: SizeRow["codec"] = brotli ? `brotli-${quality}` : "gzip-9";
+  const key = sizeKey(codec, bytes);
   const hit = factGet(key) as { size: number; codec: SizeRow["codec"] } | undefined;
   buildTrace("size-fact", { key, hit: hit !== undefined, bytes: bytes.length });
   if (hit) return { bytes: bytes.length, ...hit };
   let out: { size: number; codec: SizeRow["codec"] } | null = null;
   if (brotli) {
-    const p = Bun.spawn(["brotli", "-q", "11", "-c"], { stdin: bytes, stdout: "pipe", stderr: "ignore" });
+    const p = Bun.spawn(["brotli", "-q", String(quality), "-c"], { stdin: bytes, stdout: "pipe", stderr: "ignore" });
     const [code, compressed] = await Promise.all([p.exited, new Response(p.stdout).arrayBuffer()]);
-    if (code === 0) out = { size: compressed.byteLength, codec: "brotli-11" };
+    if (code === 0) out = { size: compressed.byteLength, codec };
   }
   out ??= { size: Bun.gzipSync(bytes, { level: 9 }).length, codec: "gzip-9" };
   factPut(key, out);
@@ -1254,14 +1275,16 @@ export interface BuildSizes {
 
 /**
  * The size table of a build in `out`: what a player can fetch, each file
- * compressed as it is served. Source maps are the developer's (and a
- * publish build's are never served). Measured apart from webBuild, which
- * does not need it: brotli -q 11 of an engine module takes a core for a
- * minute or more, so the files are compressed at once, one per core.
+ * compressed as it is served: brotli -q 11 for a publish build, -q 5
+ * otherwise (brotliQuality; each row's codec says which). Source maps are
+ * the developer's (and a publish build's are never served). Measured apart
+ * from webBuild, which does not need it: brotli -q 11 of an engine module
+ * takes a core for a minute or more, so the files are compressed at once,
+ * one per core.
  */
-export async function sizesOf(out: string): Promise<BuildSizes> {
+export async function sizesOf(out: string, publish: boolean): Promise<BuildSizes> {
   const paths = walk(out).filter((path) => !path.endsWith(".map"));
-  const sizes = await sizesOfFiles(paths);
+  const sizes = await sizesOfFiles(paths, publish);
   const files: SizeRow[] = paths.map((path, i) => ({ path: relative(out, path), bytes: sizes[i]!.bytes, compressed: sizes[i]!.size, codec: sizes[i]!.codec }));
   const total = files.reduce((t, f) => ({ bytes: t.bytes + f.bytes, compressed: t.compressed + f.compressed }), { bytes: 0, compressed: 0 });
   return { files, total, downloads: downloadsOf(files) };
@@ -1307,7 +1330,7 @@ if (import.meta.main) {
     process.stderr.write(`og build: ${b.reason}\n`);
     process.exit(1);
   }
-  const sizes = await sizesOf(b.out);
+  const sizes = await sizesOf(b.out, b.publish);
   buildTrace("sizes-complete", { files: sizes.files.length, ...sizes.total });
   if (argv.includes("--json")) process.stdout.write(JSON.stringify({ event: "build", ok: b.ok, out: b.out, publish: b.publish, ...sizes, probe: b.probe, manifest: b.manifest }) + "\n");
   else {

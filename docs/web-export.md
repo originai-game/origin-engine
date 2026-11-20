@@ -823,7 +823,9 @@ Their options are in `og build --help`, `og run --help` and
 
 - `og build` writes into `--out`, else `publish.out`, else
   `<project>/dist`, and prints each file's compressed size and what a
-  player downloads (`downloadsOf` in `src/node/web-build.ts`). Compressed
+  player downloads (`downloadsOf` in `src/node/web-build.ts`): brotli -q 11
+  for `--publish`, brotli -q 5 for a development build, whose -q 11 over
+  the development engine takes minutes (each row's `codec`). Compressed
   sizes and probe reads are cached by sha256 in `dist/build-facts.json`
   for the engine's own modules and in `~/.cache/origingame/build-v1/`
   otherwise (`OG_BUILD_CACHE` names another directory; `off` keeps

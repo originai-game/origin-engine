@@ -75,7 +75,7 @@ for (const game of ["runner", "match3"]) {
   const dist = join(work, game);
   const b = await webBuild(project, join(project, "src", "main.ts"), dist, true, settingsOf(project));
   if (!b.ok) throw new Error(b.reason);
-  builds[game] = { dist, manifest: b.manifest!, ...(await sizesOf(dist)) };
+  builds[game] = { dist, manifest: b.manifest!, ...(await sizesOf(dist, true)) };
   // og-build.json names every file with its bytes and sha256.
   const m = b.manifest!;
   const bad = m.files.filter((f) => {
