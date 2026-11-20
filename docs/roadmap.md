@@ -78,8 +78,8 @@ band for buoyancy) and wgpu 31 (unpublished). Ray tracing is a non-goal.
   then the GL tier for WeChat iOS and older devices, then Douyin, Alipay
   and others on the same adapter.
 - **Loaded on demand:** physics, story, nav, motion, destruction and
-  video load from the CDN on demand in the single-threaded publish module;
-  the lanes module and the GPU extras are next (§Structure).
+  video load from the CDN on demand in the publish and lanes modules
+  (§Structure). Not planned: splitting the GPU extras (below).
 - **Determinism for every game:** report iteration over containers filled
   in arrival order, report the lint at publish and packaging, ask the
   platform for a `connect-src` policy on the play origin, check that both
@@ -124,8 +124,14 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   The thread-locals left are the process's roots, named where they are
   declared (`engine.rs`); nothing an engine owns is kept on the thread.
 - **Optional runtime modules (§2.1):** the publish and lanes modules are
-  split and load on demand (docs/web-export.md §Modules); open: the GPU
-  extras (a first-frame profile from the L4).
+  split and load on demand (docs/web-export.md §Modules). Not planned: a
+  GPU-extras module (vegetation, water, terrain, particles, softbody,
+  crowd, fluids, GI, lightmaps and probes, SSR, OIT, sky media, fields).
+  Measured on the 3D lanes module (2026-11-20): it would cut at most
+  0.28 MB brotli of 7.92 MB, and 0.24 MB of that is reached by direct calls
+  from `Renderer::render` every frame, so it would need a guarded entry
+  per system through the render loop; the extras' WGSL text (0.23 MB
+  brotli) is data, which wasm-split cannot move.
 - **One host implementation (§2.1):** native counterparts of the web
   host's TypeScript services, with the native shell.
 - **og-cook** links `og-ui` for its parsers behind the `cook` feature; no
