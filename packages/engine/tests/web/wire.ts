@@ -8,7 +8,7 @@
 // For the runner archetype's dev build (every member) and publish build (the
 // player members), each cross-origin isolated (the request ring) and not
 // (postMessage), and each built twice, with the frame pipelines' mode picked
-// at the adapter (`auto`, the default: sync on a desktop GPU, async on a mobile one) and with
+// at the adapter (`auto`, the default: sync on Apple GPUs, async otherwise) and with
 // `publish { pipelines async }`, and the publish build again with `publish { pipelines sync }` and
 // `publish { pipelines prewarm }`, it asserts: the unsolicited hello; hello, tick, state,
 // entities, entity, capture (full and fitted) and record answers in the
@@ -178,9 +178,9 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
     // not silently slower. With sync none did and the renderer opened no span.
     const pl = await page.evalChild<{ async: number; sync: number; fallback: number; spans: number; bypassed?: string; mode?: string; reason?: string } | null>("localhost", "__runtime_probe__.boot?.pipelines ?? null");
     check(!!pl, `${label}: the probe's boot counts the render pipelines`, pl);
-    // Auto (the default) picks at the adapter: async for a mobile GPU's vendor (PowerVR, Mali, Adreno), sync for any other.
+    // Auto (the default) keeps Apple GPUs synchronous and compiles asynchronously on every other GPU.
     const vendor = await page.evalChild<string>("localhost", "navigator.gpu.requestAdapter().then((a) => a?.info?.vendor ?? '')");
-    const ran = pipelines === "auto" ? (["img-tec", "arm", "qualcomm"].includes(vendor) ? "async" : "sync") : pipelines;
+    const ran = pipelines === "auto" ? (vendor.toLowerCase() === "apple" ? "sync" : "async") : pipelines;
     check(!!pl && pl.mode === ran && (pipelines === "auto" ? /^auto: /.test(pl.reason ?? "") : pl.reason === `publish { pipelines ${pipelines} }`), `${label}: the probe's boot says the pipelines run ${ran} and why`, { vendor, pl });
     if (ran === "async") check(!!pl && pl.spans > 0 && pl.async > 0 && !pl.bypassed, `${label}: the frame pipelines compile through createRenderPipelineAsync`, pl);
     else if (ran === "prewarm") {
