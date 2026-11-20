@@ -54,6 +54,29 @@ mod tests {
     }
 
     #[test]
+    fn an_empty_element_keeps_its_own_size_and_padding() {
+        let mut a = arena::Arena::new();
+        let mut row = CompactStyle::default();
+        row.set_flex_direction(taffy::FlexDirection::Row);
+        row.set_align_items(taffy::AlignItems::FLEX_START);
+        let r = a.element(0, row);
+        let mut bar = CompactStyle::default();
+        bar.set_size(taffy::Size {
+            width: taffy::Dimension::length(30.0),
+            height: taffy::Dimension::length(12.0),
+        });
+        let sized = a.element(r, bar);
+        let mut pad = CompactStyle::default();
+        pad.set_padding_all(6.0);
+        let padded = a.element(r, pad);
+        a.layout(1280.0, 720.0, &mut measure);
+        let b = a.box_of(sized);
+        assert_eq!((b.w, b.h), (30.0, 12.0), "its width and height");
+        let p = a.box_of(padded);
+        assert_eq!((p.w, p.h), (12.0, 12.0), "its padding alone");
+    }
+
+    #[test]
     fn a_sheet_compiles_to_records_with_tokens_resolved_and_states_over_the_base() {
         let tokens = Tokens::parse(":root { --space-lg: 12px; --panel: #336699; }");
         let sheet = style::Sheet::compile(

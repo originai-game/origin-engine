@@ -5,7 +5,7 @@
 //! traversal, no layout and no allocation.
 
 use rune_taffy::{BoxLayout, CompactStyle, LayoutStore, SlotId};
-use taffy::{AvailableSpace, LayoutInput, LayoutOutput, Size};
+use taffy::{AvailableSpace, LayoutInput, Size};
 
 /// An element's index in its arena.
 pub type Id = u32;
@@ -255,34 +255,40 @@ impl Arena {
                 width: AvailableSpace::Definite(width),
                 height: AvailableSpace::Definite(height),
             },
-            |input: LayoutInput, ctx: Option<usize>, _style: &CompactStyle| {
-                let text = ctx.and_then(|i| nodes[i].text.as_ref());
-                let Some((text, run)) = text else {
-                    return LayoutOutput::HIDDEN;
-                };
-                let avail = input
-                    .known_dimensions
-                    .width
-                    .or(match input.available_space.width {
-                        AvailableSpace::Definite(w) => Some(w),
-                        _ => None,
-                    });
-                let n = &nodes[ctx.expect("a text leaf")];
-                let key = avail.map_or(u32::MAX, |w| w.to_bits().min(EMPTY - 1));
-                let mut memo = n.memo.get();
-                let (w, h) = match memo.iter().find(|m| m.0 == key) {
-                    Some(&(_, w, h)) => (w, h),
-                    None => {
-                        let (w, h) = measure(text, run, avail);
-                        memo = [(key, w, h), memo[0]];
-                        n.memo.set(memo);
-                        (w, h)
-                    }
-                };
-                LayoutOutput::from_outer_size(Size {
-                    width: input.known_dimensions.width.unwrap_or(w),
-                    height: input.known_dimensions.height.unwrap_or(h),
-                })
+            |input: LayoutInput, ctx: Option<usize>, style: &CompactStyle| {
+                // Every leaf gets its own size, padding and limits from its
+                // style; a text leaf's content is its measured run.
+                let text = ctx.and_then(|i| nodes[i].text.as_ref().map(|t| (i, t)));
+                taffy::compute_leaf_layout(
+                    input,
+                    style,
+                    |_, _| 0.0,
+                    |known, avail| {
+                        let Some((i, (text, run))) = text else {
+                            return Size::ZERO;
+                        };
+                        let avail = known.width.or(match avail.width {
+                            AvailableSpace::Definite(w) => Some(w),
+                            _ => None,
+                        });
+                        let n = &nodes[i];
+                        let key = avail.map_or(u32::MAX, |w| w.to_bits().min(EMPTY - 1));
+                        let mut memo = n.memo.get();
+                        let (w, h) = match memo.iter().find(|m| m.0 == key) {
+                            Some(&(_, w, h)) => (w, h),
+                            None => {
+                                let (w, h) = measure(text, run, avail);
+                                memo = [(key, w, h), memo[0]];
+                                n.memo.set(memo);
+                                (w, h)
+                            }
+                        };
+                        Size {
+                            width: known.width.unwrap_or(w),
+                            height: known.height.unwrap_or(h),
+                        }
+                    },
+                )
             },
         );
         self.dirty = false;
