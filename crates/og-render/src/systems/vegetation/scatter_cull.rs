@@ -380,6 +380,8 @@ pub(crate) struct ScatterCull {
     view: wgpu::Buffer,
     /// The frame's chunks' rows, in the order of their dispatches.
     items: wgpu::Buffer,
+    /// What `items` holds, so a frame writes only the blocks that changed.
+    items_held: crate::upload::DirtyUpload,
     item_cap: u64,
     /// The copy list in pages, each within the device's binding limit
     /// ([`page_copies`]), with its capacity in copies.
@@ -780,6 +782,7 @@ impl ScatterCull {
                 uniform,
             ),
             items: make("scatter cull items", ITEM_SLOT * 64, Self::items_usage()),
+            items_held: Default::default(),
             item_cap: 64,
             pages: Vec::new(),
             lod: [0.0; 2],
@@ -926,6 +929,7 @@ impl ScatterCull {
                 ITEM_SLOT * self.item_cap,
                 Self::items_usage(),
             );
+            self.items_held.invalidate();
             self.draws = make(
                 "scatter cull draws",
                 DRAW_WORDS * 4 * self.item_cap,
@@ -1006,7 +1010,7 @@ impl ScatterCull {
             out.push(culled);
             self.frame.push((i.density_map, culled));
         }
-        crate::traffic::write_buffer(queue, &self.items, 0, &rows);
+        self.items_held.write_all(queue, &self.items, &rows);
         out
     }
 

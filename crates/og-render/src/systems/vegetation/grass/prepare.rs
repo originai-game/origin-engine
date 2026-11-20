@@ -100,6 +100,7 @@ impl GrassRenderer {
             generator,
             draw,
             slices: slices_buf,
+            slices_held: Default::default(),
             draws,
             slice_cap,
             blade_cap,
@@ -220,7 +221,7 @@ impl GrassRenderer {
             }
             let slot = frame.fields.len();
             self.field_gpu(device, slot, slices.len() as u32);
-            let f = &self.fields[slot];
+            let f = &mut self.fields[slot];
             let along = horizontal_scale(t.transform);
             let layout = FieldLayout::new(&g, along);
             let lod = DistanceLod::for_radius(g.distance);
@@ -333,7 +334,8 @@ impl GrassRenderer {
             };
             crate::traffic::write_buffer(queue, &f.generator, 0, bytemuck::bytes_of(&generator));
             crate::traffic::write_buffer(queue, &f.draw, 0, bytemuck::bytes_of(&draw));
-            crate::traffic::write_buffer(queue, &f.slices, 0, bytemuck::cast_slice(&slices));
+            let bytes: &[u8] = bytemuck::cast_slice(&slices);
+            f.slices_held.write_all(queue, &f.slices, bytes);
             let view_of =
                 |m: Option<crate::TextureHandle>| m.and_then(textures).unwrap_or(&self.white);
             let maps = device.create_bind_group(&wgpu::BindGroupDescriptor {

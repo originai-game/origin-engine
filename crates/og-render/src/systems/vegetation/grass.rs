@@ -274,6 +274,8 @@ struct FieldGpu {
     generator: wgpu::Buffer,
     draw: wgpu::Buffer,
     slices: wgpu::Buffer,
+    /// What `slices` holds, so a frame writes only the blocks that changed.
+    slices_held: crate::upload::DirtyUpload,
     draws: wgpu::Buffer,
     /// Slices and blades the buffers hold.
     slice_cap: u32,
