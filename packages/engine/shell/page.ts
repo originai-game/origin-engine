@@ -852,6 +852,11 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // `devFiles`: a development build's hot reload of re-cooked files (`[path, bytes][]`), swapped in
   // by the probe's reload with the world kept (worker/calls.ts); the UI gallery's live edits use it.
   if (config.build === "dev") probe["devFiles"] = (files: Array<[string, Uint8Array]>) => shell.call("devFiles", files);
+  // `devCode`: `og dev --web`'s code edit, the game's code bundle at an absolute URL imported and
+  // swapped in by the probe's reload (worker/calls.ts).
+  if (config.build === "dev") probe["devCode"] = (url: string) => shell.call("devCode", url);
+  // `devInspector`: opens or closes the inspector (`og dev --web`'s Stage channel).
+  if (config.build === "dev") probe["devInspector"] = (open: boolean) => shell.call("inspector", open);
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
   // The played frames' display intervals and engine work, ms (`og run --device` reads them; `true` resets).
   (globalThis as Record<string, unknown>)[TIMINGS_GLOBAL] = (reset?: boolean) => shell.call("timings", reset === true);

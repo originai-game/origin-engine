@@ -169,7 +169,14 @@ export function startWorker(game: GameToken): void {
         run.pumpInput(performance.now());
         const call = calls[data.method];
         if (!call) throw new Error(`unknown call '${data.method}'`);
-        self.postMessage({ type: "result", id: data.id, value: call(engine, data.args) });
+        const value = call(engine, data.args);
+        // An async call (devCode's import) answers when it settles.
+        if (value instanceof Promise) {
+          value.then(
+            (v) => self.postMessage({ type: "result", id: data.id, value: v }),
+            (e) => self.postMessage({ type: "result", id: data.id, error: e instanceof Error ? e.message : String(e) }),
+          );
+        } else self.postMessage({ type: "result", id: data.id, value });
       } catch (e) {
         self.postMessage({ type: "result", id: data.id, error: e instanceof Error ? e.message : String(e) });
       }
