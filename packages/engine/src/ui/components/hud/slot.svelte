@@ -5,7 +5,7 @@
 <meta name="prop:icon" content="number" data-doc="Its art, a texture (og.load.texture); 0 draws the glyph in its place.">
 <meta name="prop:glyph" content="string" data-doc="An icon of the atlas, drawn when there is no art; empty is none.">
 <meta name="prop:key" content="string" data-doc="The input as the game names it (1, Q), on a key cap under the slot; empty is none.">
-<meta name="prop:kind" content="string" data-default="skill" data-doc="skill, item (a consumable, its count on a tag) or ultimate (a hexagon inside a gold ring that fills with its charge).">
+<meta name="prop:kind" content="string" data-default="skill" data-doc="skill, item (a consumable, its count on a tag) or ultimate (a hexagon inside a ring, gold by default (--hud-slot-ring), that fills with its charge).">
 <meta name="prop:cooldown" content="number" data-doc="The share of its cooldown still to run, 0 to 1: a dark sweep with a lit leading edge; 0 is none.">
 <meta name="prop:time" content="string" data-doc="The cooldown left as the game words it (12), over the sweep; empty is none.">
 <meta name="prop:count" content="number" data-doc="How many are left, on a tag at the slot's corner; 0 shows none.">
@@ -80,11 +80,12 @@
 /* The reason stands on the slot in short capitals; a word per line when
    the slot is narrower than the phrase (No / mana). */
 .reason { max-inline-size: 100%; max-block-size: 84%; font-size: var(--hud-size-reason); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: normal; text-transform: var(--hud-label-transform); text-align: center; color: var(--hud-mana-ink); overflow: hidden; text-shadow: var(--hud-shadow); }
-/* The ultimate's ring: a well and the charge as a lit gold arc. */
+/* The ultimate's ring: a well and the charge as a lit arc, gold unless
+   the place sets --hud-slot-ring. */
 .dial { inline-size: 100%; block-size: 100%; }
 .well, .lit { stroke-width: 6; }
 .well { stroke: var(--hud-ring-well); }
-.lit { stroke: var(--hud-gold); }
+.lit { stroke: var(--hud-slot-ring); }
 /* Charge pips over the slot: one leaning step per charge, the held ones lit. */
 .charges { --pip: calc(12 * var(--font-step-px)); inline-size: calc(var(--n) * var(--pip)); max-inline-size: var(--side); block-size: calc(5 * var(--font-step-px)); margin-block-end: calc(5 * var(--font-step-px)); transform: skewX(var(--bar-skew)); background: var(--hud-pip-off); mask-image: repeating-linear-gradient(90deg, #000 0 calc(100% / var(--n) - 3 * var(--font-step-px)), transparent calc(100% / var(--n) - 3 * var(--font-step-px)) calc(100% / var(--n))); --layout-anchor-inset: 0; }
 .pip { inline-size: calc(var(--on) * 100%); block-size: 100%; background: var(--hud-pip-on); box-shadow: var(--hud-pip-glow); }

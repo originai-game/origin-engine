@@ -91,7 +91,7 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgCommands` | `commands` keyed `{ id, label, icon, enabled }`, `selected` | `choose` (row key; a disabled command sends nothing) |
 | `RpgLeader` | `name`, `level`, `portrait`, `health`, `healthMax`, `ghost`, `mana`, `manaMax`, `stamina`, `staminaMax`, `segment` (stamina per cell), `low` | none |
 | `HudPortrait` (block) | `portrait`, `dimmed`; its side is `--hud-portrait-size` | none |
-| `HudBar` (block) | `value`, `max`, `kind` (health, mana, stamina, xp), `ghost`, `segment` (value per cell), `low`, `showValue` (its figure over it), `name`; as wide as its place, `--hud-bar-size` thick, filled by its kind's `--hud-*-fill` and `--hud-*-glow`, which its place may set | none |
+| `HudBar` (block) | `value`, `max`, `kind` (health, mana, stamina, shield, xp), `ghost`, `segment` (value per cell), `low`, `showValue` (its figure over it), `name`; as wide as its place, `--hud-bar-size` thick, filled by its kind's `--hud-*-fill` and `--hud-*-glow`, which its place may set | none |
 | `RpgEffects` | `effects` keyed `{ id, name, icon, glyph, remaining, label, harmful }` | none |
 | `HudEffect` (block) | one effect's `name`, `icon`, `glyph`, `remaining`, `label`, `harmful` | none |
 | `RpgCompanions` | `members` keyed `{ id, name, portrait, health, healthMax, ghost, mana, manaMax, key, fallen }`, `low` | none |

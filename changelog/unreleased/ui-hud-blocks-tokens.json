@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "HudBar kind shield",
+      "summary": "HudBar measures a shield too (kind shield: --hud-shield-fill and --hud-shield-glow, in cells with segment), so a shooter's armour bar is the same block as an RPG's health bar."
+    },
+    {
+      "member": "--hud-slot-ring, --hud-effect-harm-ink",
+      "summary": "One token each for a HudSlot ultimate's ring (gold by default) and a harmful HudEffect's tag ink (--hud-harm by default), so a HUD family sets its own on the place it gives the block."
+    }
+  ]
+}

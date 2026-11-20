@@ -157,6 +157,10 @@
   --role-hud-portrait-size: calc(38 * var(--font-step-px));
   --role-hud-bar-size: calc(6 * var(--font-step-px));
   --role-hud-slot-size: calc(var(--size-xl) * 0.8);
+  /* A slot's ultimate ring and an effect's harmful tag ink: one token
+     each, so a family (a shooter's accent ring) sets them on its place. */
+  --role-hud-slot-ring: var(--hud-gold);
+  --role-hud-effect-harm-ink: var(--hud-harm);
   /* The six rarity colours (`--common` … `--mythic`): each a status colour
      here; a style names its own. A cell holding something of a rarity
      (`data-rarity`) wears its colour as a rim, as light rising from its
