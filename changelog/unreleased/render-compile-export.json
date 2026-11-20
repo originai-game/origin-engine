@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.render.compile",
+      "summary": "Exports the declared pipeline preparation call on the TypeScript runtime for both hosts."
+    }
+  ]
+}
