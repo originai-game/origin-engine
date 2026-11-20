@@ -376,9 +376,11 @@ codegen-units = 16
 # cook's UASTC bytes followed what a thread had run before: the upstream fix,
 # carried until a basis-universal-sys release has it
 # (third_party/basis-universal-sys/Cargo.toml, crates/og-cook/README.md
-# §Determinism).
+# §Determinism). basis-universal's set_uastc_quality_level ORed the level
+# over the default, so level 1 encoded as 3 (third_party/basis-universal/Cargo.toml).
 [patch.crates-io]
 basis-universal-sys = { path = "third_party/basis-universal-sys" }
+basis-universal = { path = "third_party/basis-universal" }
 glamx = { path = "third_party/glamx" }
 # Segmenters from the host, so ICU's dictionaries load with a locale (third_party/parley_engine/PATCHED.md).
 parley_engine = { path = "third_party/parley_engine" }

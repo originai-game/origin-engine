@@ -1,0 +1,31 @@
+# basis-universal 0.3.1 (crates.io), with one fix:
+# CompressorParams::set_uastc_quality_level ORed the level into the pack
+# flags over the default level the constructor sets (2), so level 1 encoded
+# as 3 (slower) and 0 as 2. It now replaces the level bits
+# (cPackUASTCLevelMask). Upstream (aclysma/basis-universal-rs) still ORs.
+# Only the library is kept (no tests' assets, examples or dev-dependencies).
+# The root Cargo.toml's [patch.crates-io] puts it in place of the crates.io
+# one; drop it when a basis-universal release carries the fix.
+[package]
+edition = "2018"
+name = "basis-universal"
+version = "0.3.1"
+authors = ["Philip Degarmo <aclysma@gmail.com>"]
+description = "Bindings for the basis-universal Supercompressed GPU Texture Codec by Binomial"
+homepage = "https://github.com/aclysma/basis-universal-rs"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/aclysma/basis-universal-rs"
+
+[dependencies.basis-universal-sys]
+version = "0.3.1"
+
+[dependencies.bitflags]
+version = "1.2.1"
+
+[dependencies.lazy_static]
+version = "1.4.0"
+
+# Upstream's own unused re-exports, left as published.
+[lints.rust]
+unused_imports = "allow"
