@@ -572,12 +572,15 @@ say what it cost the frame. Three numbers, each for its question:
   GPU frame span, its range and the machine's load, and their
   difference. The off side's options turn the feature off (a `--setup`
   action or `--commands` the game answers); hold the camera with the
-  common ones and read a window with `--ticks A..B`. A difference
+  common ones, give the run's length with og run's `--ticks N` among
+  them and read a window with `--ticks A..B`. A difference
   inside the runs' range is no difference; rerun on a quiet machine.
 - **Where a frame went:** `ProbeTimings.gpuPasses` and the trace's gpu
   thread give each pass's time alone on the GPU (nothing else in
   flight). The passes' alone time, the frame's `overlapped` and its
-  `idle` sum to the frame's span (`args` of `gpu frame N`). A pass's
+  `idle` sum to the frame's span (`args` of `gpu frame N`). Pick a
+  window's frames by their `ts` against the ticks' `ts`: every span's
+  `ts` is on the trace's one clock. A pass's
   `(in flight)` span on the `gpu in flight` threads includes waits:
   never its cost.
 - **What a pass costs by itself:** `og run --gpu-serial --trace` makes

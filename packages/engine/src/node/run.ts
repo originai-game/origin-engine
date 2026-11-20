@@ -20,8 +20,9 @@
 //   fails the run. og.platform's store and fake are outside the snapshot:
 //   each fork puts back their state as the snapshot's tick left it.
 //
-// - Without --commands, --port or --watch: advance --ticks N at once and print
-//   the world hash (M2's hello world).
+// - Without --commands, --port, --watch or --trace: advance --ticks N at once
+//   and print the world hash (M2's hello world). With --trace (and a
+//   renderer) the run takes the --ticks one frame each, as a script does.
 // - With --commands: the script is scheduled through og-probe at tick 0 and
 //   the run takes one tick per frame until `quit`, --ticks, or the script's
 //   last step has run. Outputs (`screenshot`, `dump_*`, `help`) are written
@@ -285,7 +286,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const project = projectText(control.inputRoot ?? root);
     const profile = projectProfile(project);
     if (sharedTokenFile !== undefined && shared === undefined) fail("--shared-token-file goes with --shared <ws://host:port/>");
-    const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined || shared !== undefined || handoffFile !== undefined;
+    // A traced run that renders takes its --ticks one frame each: a trace is of the frames, and ticks advanced at once
+    // draw none.
+    const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined || shared !== undefined || handoffFile !== undefined || (tracePath !== undefined && render && ticks !== undefined);
     // With a renderer, GameDesc.start runs once it is attached (as the web Worker
     // does), so og.render.capabilities reports the play surface's size there.
     const deferStart = probing && render;

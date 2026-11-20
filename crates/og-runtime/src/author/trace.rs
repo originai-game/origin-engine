@@ -211,7 +211,9 @@ pub(crate) fn gpu_frames(engine: u32, frames: &[og_render::GpuFrame]) {
                 // The GPU starts a frame once it is submitted and the one
                 // before it is done.
                 let at = f.submitted.max(tr.gpu_end);
-                let args = json!({ "frame": f.frame, "submitted": f.submitted });
+                // No `submitted`: it is on the engine's clock, which the host
+                // moves only `ts` off (`take`); the frame's `ts` is it.
+                let args = json!({ "frame": f.frame });
                 // A pass's end and the frame's are the same sum (at + the
                 // same value): one rounding, so a pass never leaves it.
                 let end = at + f.ms();

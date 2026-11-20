@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og run --trace",
+      "summary": "A traced run with --ticks and no --commands now takes its ticks one frame each, so its trace has the frames and their GPU passes; it advanced them at once and drew none, and `og cost` then reported no GPU timestamps. The gpu frame and pass spans no longer carry `args.submitted`, which was on the engine's clock, not the trace's: select a frame by its `ts`."
+    }
+  ]
+}

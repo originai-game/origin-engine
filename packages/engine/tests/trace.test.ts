@@ -48,7 +48,7 @@ test("a trace laid end to end fails the check, one with recorded starts passes",
 gpuTest("og run --trace lays every span where it ran: systems, passes, GPU passes and lane jobs", () => {
   const out = join(mkdtempSync(join(tmpdir(), "og-trace-")), "trace.json");
   const r = Bun.spawnSync(
-    [ogBin(), "run", "game.ts", "--headless", "--ticks", "20", "--commands", "0:pause;0:resume", "--no-check", "--trace", out, "--json"],
+    [ogBin(), "run", "game.ts", "--headless", "--ticks", "20", "--no-check", "--trace", out, "--json"],
     { cwd: fixture, env: { ...process.env, OG_LANES: "4", OG_GFX_CULLING: "cpu" } },
   );
   const stdout = new TextDecoder().decode(r.stdout);
