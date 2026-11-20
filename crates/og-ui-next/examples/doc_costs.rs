@@ -23,8 +23,11 @@ fn main() {
     }
     css += &read("crates/og-ui/default.css");
     let tokens = Tokens::parse(&css);
-    // The default surfaces sheet does not exist until the sheets move.
-    let surfaces = og_ui_next::style::Sheet::default();
+    let surfaces =
+        og_ui_next::style::Sheet::compile(&read("crates/og-ui-next/default/surfaces.css"), &tokens);
+    for s in &surfaces.skipped {
+        println!("surfaces.css skips {s}");
+    }
     // First Light's HUD, then every document of the directories rewritten
     // so far (`@ui/<dir>/<file>` is a document's id).
     let mut docs = vec![(

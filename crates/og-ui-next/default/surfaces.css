@@ -1,0 +1,211 @@
+/* The default style's surfaces: what each part wears, by its part name,
+   its variant (hud, bare, lead, small), its tier (common … mythic) and
+   one state. Each selector is one compound of names (CONVENTIONS.md
+   §Surfaces); the record lies under a document's own rules. Every value
+   is a role token (packages/design/tokens/role.css), so a pack restyles
+   a part by its tokens and, where it needs another shape, by its own
+   surfaces sheet.
+
+   Not here yet: the tones (damage … primary), teams, trends, shapes
+   (round, square, hex, diamond) and shared motions (pulse, shimmer …)
+   the old default dressed from data-tone, data-team, data-trend,
+   data-shape and data-motion. They wait on the core's typed form for
+   them; until then a document sets them in its own sheet. */
+
+/* Frame: a panel a component stands in. `hud` makes it a plate, the
+   lighter surface a HUD sits on over the scene; `bare` only lays its
+   children out and wears nothing. */
+.frame {
+  box-sizing: border-box;
+  padding: var(--frame-pad);
+  border: var(--frame-rim-width) solid var(--frame-rim);
+  border-radius: var(--frame-radius); corner-shape: var(--frame-corner-shape);
+  background: var(--frame-fill);
+  box-shadow: var(--frame-shadow);
+  backdrop-filter: var(--frame-glass, none);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.frame.hud {
+  padding: var(--plate-pad);
+  border: var(--plate-rim-width) solid var(--plate-rim);
+  border-radius: var(--plate-radius); corner-shape: var(--plate-corner-shape);
+  background: var(--plate-fill);
+  box-shadow: var(--plate-shadow);
+  backdrop-filter: var(--plate-glass, none);
+}
+.frame.bare { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; backdrop-filter: none; }
+.frame:disabled { color: var(--ink-disabled); }
+
+/* Band: a screen's or a panel's head. Its title's size is the inherited
+   --title-size, so the title needs no descendant rule. */
+.band {
+  min-height: var(--band-height);
+  padding: var(--band-pad);
+  border-bottom: var(--band-rule-width) solid var(--band-rule);
+  background: var(--band-fill);
+  box-shadow: var(--band-shadow);
+}
+.band.lead { justify-content: flex-start; background: var(--band-lead-fill); --title-size: var(--title-lead-size); }
+.band.small { min-height: var(--band-small-height); padding: var(--band-small-pad); background: var(--band-small-fill); --title-size: var(--title-small-size); }
+
+.title {
+  margin: 0;
+  font-family: var(--title-font);
+  font-size: var(--title-size);
+  font-weight: var(--title-weight);
+  line-height: var(--font-leading-tight);
+  letter-spacing: var(--title-tracking);
+  text-transform: var(--title-transform);
+  color: var(--title-ink);
+  text-shadow: var(--title-shadow, none);
+}
+
+/* Row: one line of a list. */
+.row { border-radius: var(--row-radius); corner-shape: var(--row-corner-shape); background: var(--row-fill); color: var(--ink); transition: var(--change-motion); }
+.row:hover { background: var(--row-hover-fill); }
+.row:active { background: var(--row-pressed-fill); }
+.row:state(selected) { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); color: var(--ink-selected); }
+.row:disabled { background: var(--row-fill); color: var(--ink-disabled); }
+.row:state(done) { color: var(--ink-done); }
+.row:state(down) { opacity: var(--down-opacity); }
+
+/* Cell: a slot, a tile, a node on a board. `hud` is a socket over the
+   scene; a tier lights it in its rarity. */
+.cell {
+  box-sizing: border-box;
+  border: var(--cell-rim-width) solid var(--cell-rim);
+  border-radius: var(--cell-radius); corner-shape: var(--cell-corner-shape);
+  background: var(--cell-fill);
+  box-shadow: var(--cell-shadow);
+  color: var(--ink);
+  transition: var(--change-motion);
+}
+.cell.hud { border-color: var(--cell-scene-rim); background: var(--cell-scene-fill); box-shadow: var(--cell-scene-shadow); }
+.cell:hover { box-shadow: var(--cell-hover-shadow); }
+.cell:active { background: var(--cell-pressed-fill); scale: var(--cell-pressed-scale); }
+.cell:state(selected) { border-color: var(--cell-selected-rim); }
+.cell.common { background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); }
+.cell.uncommon { background: var(--cell-uncommon-fill); box-shadow: var(--cell-uncommon-shadow); }
+.cell.rare { background: var(--cell-rare-fill); box-shadow: var(--cell-rare-shadow); }
+.cell.epic { background: var(--cell-epic-fill); box-shadow: var(--cell-epic-shadow); }
+.cell.legendary { background: var(--cell-legendary-fill); box-shadow: var(--cell-legendary-shadow); }
+.cell.mythic { background: var(--cell-mythic-fill); box-shadow: var(--cell-mythic-shadow); }
+.cell:state(empty) { box-shadow: var(--cell-empty-shadow); }
+/* A locked cell is still read (what it would do, why it is locked) and
+   does not give under a press; only a disabled one fades its words. */
+.cell:state(locked) { box-shadow: var(--cell-empty-shadow); scale: 1; }
+.cell:disabled { box-shadow: var(--cell-empty-shadow); color: var(--ink-disabled); scale: 1; }
+.cell:state(done) { border-color: var(--cell-done-rim); }
+.cell:state(active) { border-color: var(--cell-active-rim); box-shadow: var(--cell-active-shadow); }
+.cell:state(down) { opacity: var(--down-opacity); }
+
+/* Card: a framed choice; its headline is one step up from a row's name. */
+.card {
+  box-sizing: border-box;
+  padding: var(--card-pad);
+  border: var(--card-rim-width) solid var(--card-rim);
+  border-radius: var(--card-radius); corner-shape: var(--card-corner-shape);
+  background: var(--card-fill);
+  box-shadow: var(--card-shadow);
+  transition: var(--change-motion);
+  --headline-text: var(--headline-card-text);
+}
+.card:state(selected) { border-color: var(--card-selected-rim); }
+.card:state(down) { opacity: var(--down-opacity); }
+
+/* Badge: a small count or label on its own ground. `hud` stands over the
+   scene on the scene plate. */
+.badge {
+  padding: var(--badge-pad);
+  font: var(--badge-text);
+  font-family: var(--figure-font);
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--badge-radius); corner-shape: var(--badge-corner-shape);
+  background: var(--badge-fill);
+  box-shadow: var(--badge-shadow);
+  color: var(--badge-ink);
+  transition: var(--change-motion);
+}
+.badge.hud { background: var(--scene-plate); color: var(--scene-ink); }
+
+/* Well: a recess art or a meter sits in. `hud` takes the scene socket's
+   radius. */
+.well { border-radius: var(--well-radius); corner-shape: var(--well-corner-shape); background: var(--well-fill); box-shadow: var(--well-shadow); }
+.well.hud { border-radius: var(--cell-scene-well-radius); }
+
+/* Figure: a number. Its size and weight are a component's
+   (--figure-size, --figure-weight); `hud` reads over the scene in the
+   scene's ink and halo. */
+.figure {
+  font-size: var(--figure-size);
+  font-weight: var(--figure-weight);
+  font-family: var(--figure-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--figure-ink);
+  text-shadow: var(--figure-shadow, none);
+}
+.figure.hud { color: var(--scene-ink); text-shadow: var(--tag-halo); }
+
+.headline { font: var(--headline-text); font-weight: var(--headline-weight); color: var(--headline-ink); }
+.caption { font: var(--caption-text); color: var(--caption-ink); }
+.label { font-family: var(--label-font); letter-spacing: var(--label-tracking); text-transform: var(--label-transform); color: var(--ink-label); }
+.heading { font-family: var(--label-font); letter-spacing: var(--label-tracking); text-transform: var(--label-transform); color: var(--ink-label); }
+
+/* Name: a player's, an item's, a character's. Unset in the default style,
+   where the component's own type stands; a pack sets the tokens. */
+.name { font-family: var(--name-font); font-size: var(--name-size); letter-spacing: var(--name-tracking); text-transform: var(--name-transform); color: var(--name-ink); text-shadow: var(--name-shadow); }
+.name:state(selected) { color: var(--name-selected-ink, var(--name-ink)); }
+
+/* Picture: a portrait, an avatar, a jacket, art. */
+.picture { background: var(--picture-fill); border: var(--picture-rim-width, 0px) solid var(--picture-rim, transparent); border-radius: var(--picture-radius); box-shadow: var(--picture-shadow); }
+.picture:state(muted) { opacity: var(--picture-muted-opacity); }
+
+.dot { box-sizing: border-box; border: var(--dot-rim-width) solid var(--dot-rim); border-radius: var(--dot-radius); background: var(--dot-fill); color: var(--dot-ink); }
+
+/* A component's tab wears the core tabs' hooks. */
+.tab { background: var(--tabs-tab-fill); color: var(--tabs-tab-ink); font-family: var(--tabs-font); letter-spacing: var(--tabs-tracking); text-transform: var(--tabs-transform); transition: var(--change-motion); }
+.tab:hover { background: var(--tabs-tab-hover-fill, var(--tabs-tab-fill)); }
+.tab:state(selected) { background: var(--tabs-tab-selected-fill); color: var(--tabs-tab-selected-ink); }
+
+/* Meters: a track and its fill. A fill's colour is --fill-color, which a
+   component or a tone sets; `ghost` is what a loss leaves behind,
+   shrinking after it; `plain` is flat (a buffer, a sweep). */
+.track { border-radius: var(--track-radius); background: var(--track-fill); box-shadow: var(--track-shadow); }
+.fill { background: var(--fill-gloss), var(--fill-color); }
+.fill.ghost { --fill-color: var(--fill-ghost-color); transition: var(--ghost-motion); }
+.fill.plain { --fill-gloss: var(--bar-plain-gloss); }
+.sweep { pointer-events: none; background: var(--sweep-ink); }
+.notch { pointer-events: none; background: var(--notch-ink); }
+
+/* Text over the scene: its halo, and a ground of its own where a pack
+   gives one. */
+.tag { text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
+
+/* A former value (a price before its discount): struck and quieter. */
+.former { text-decoration: line-through; color: var(--former-ink); }
+
+/* A ribbon: a strip of strong colour (a sale, a new item, a rank) whose
+   ink is the readable contrast of its fill. */
+.ribbon { padding: var(--ribbon-pad); border-radius: var(--ribbon-radius); background: var(--ribbon-fill); color: contrast-color(var(--ribbon-fill)); font: var(--ribbon-text); }
+
+/* A skeleton stands in for content still loading; its sheen sweeps
+   across it (with `.shimmer`), cut to its box. */
+.skeleton { position: relative; overflow: hidden; border-radius: var(--skeleton-radius); background: var(--skeleton-fill); }
+.sheen { position: absolute; top: 0; bottom: 0; left: 0; inline-size: var(--sheen-width); pointer-events: none; background: linear-gradient(90deg, transparent, var(--sheen-fill), transparent); }
+
+/* A divider a player drags (a split view's) and its grip. */
+.divider { background: var(--divider-fill); }
+.divider:hover { background: var(--divider-hover-fill); }
+.grip { border-radius: var(--radius-capsule); background: var(--grip-fill); }
+.gridline { background: var(--gridline-ink); }
+
+/* A zone marked on the world or a board (a placement's footprint): a rim
+   and a wash of its tone; a danger zone is hatched. */
+.zone { --zone-color: var(--zone-ink); border: var(--zone-rim-width) solid var(--zone-color); background: color-mix(in srgb, var(--zone-color) var(--zone-wash), transparent); }
+
+/* A fade: the cue that a scroller holds more, a band from clear to the
+   surface it sits on, pointing into the scroller from its edge; `top`
+   runs the other way. */
+.fade { block-size: var(--fade-size); pointer-events: none; background: linear-gradient(transparent, var(--fade-fill)); }
+.fade.top { background: linear-gradient(var(--fade-fill), transparent); }
