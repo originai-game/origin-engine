@@ -33,7 +33,7 @@ const rgb = (r: number, g: number, b: number): Color => ({ r, g, b });
 
 // What each weather does to the sky, the air and the sea.
 const AIR = [
-  /* clear */ { cover: 0.46, cloud: 0.03, grey: 1, haze: 0.00005, mist: 0.0022, veil: 0.08, rain: 0, snow: 0, wind: 8, sea: 12.3, swell: 1.8, chop: 0.9, lightning: 0, warmth: 0, colour: 0 },
+  /* clear */ { cover: 0.46, cloud: 0.03, grey: 1, haze: 0.00005, mist: 0.00015, veil: 0.08, rain: 0, snow: 0, wind: 8, sea: 12.3, swell: 1.8, chop: 0.9, lightning: 0, warmth: 0, colour: 0 },
   /* rain  */ { cover: 0.86, cloud: 0.05, grey: 0.62, haze: 0.0016, mist: 0.012, veil: 0.2, rain: 1, snow: 0, wind: 12, sea: 15, swell: 2, chop: 0.95, lightning: 0, warmth: -0.22, colour: -0.12 },
   /* storm */ { cover: 1, cloud: 0.08, grey: 0.36, haze: 0.003, mist: 0.02, veil: 0.25, rain: 1.6, snow: 0, wind: 22, sea: 20, swell: 2.4, chop: 1, lightning: 30, warmth: -0.34, colour: -0.2 },
   /* fog   */ { cover: 0.7, cloud: 0.03, grey: 0.86, haze: 0.011, mist: 0.05, veil: 1, rain: 0, snow: 0, wind: 2.5, sea: 6, swell: 0.8, chop: 0.6, lightning: 0, warmth: -0.12, colour: -0.16 },
