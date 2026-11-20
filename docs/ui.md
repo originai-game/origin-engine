@@ -2993,12 +2993,18 @@ and dark schemes and five viewports. Each sheet is copied to
 when first opened; the engine runs in the viewer's browser, so the
 serving machine needs no GPU.
 
-While the page is open, an edit under the sheet, `packages/engine/src/ui`,
-`templates/styles`, `packages/design/tokens` or `crates/og-ui/default.css`
-is cooked (`og cook`, incremental), the changed cooked files go to the
-page, and the probe's reload swaps them in with the world kept (the dev
-page's `__runtime_probe__.devFiles`). A sheet's TypeScript rebuilds it.
-Only Rust needs og and the wasm rebuilt (`packages/engine/scripts/build.sh`).
+While the page is open, one `og cook --watch` per sheet cooks an edit
+under the sheet, `packages/engine/src/ui`, `templates/styles`,
+`packages/design/tokens` or `crates/og-ui/default.css` (incremental; a
+parsed document or pack is kept by content, so an edit parses only the
+changed file and what imports it). The changed cooked files go to the
+page, and the dev page's `__runtime_probe__.devFiles` applies them in
+place: no hot reload, the world and the bundle stay; only the changed
+documents, the styles and the default style are read again. One swap runs
+at a time and edits that land meanwhile go in the next one; a newer
+switch of style, scheme or page supersedes one still waiting. The page's
+log shows each step's time. A sheet's TypeScript rebuilds it. Only Rust
+needs og and the wasm rebuilt (`packages/engine/scripts/build.sh`).
 
 A development cook from a checkout carries the default style as the
 source tree has it when that is not the compiled one: `default.css`, or,

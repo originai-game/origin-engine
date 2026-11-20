@@ -110,8 +110,21 @@ function renderNav() {
   }
 }
 
-/** The page, style and scheme the switches name, as the sheet's commands. */
+/**
+ * The page, style and scheme the switches name, as the sheet's commands. One runs at a time and
+ * switches made meanwhile collapse into one more run with the newest state, so they never stack.
+ */
+let applying = null;
+let reapply = false;
 async function apply() {
+  if (applying) { reapply = true; return applying; }
+  applying = (async () => {
+    do { reapply = false; await applyNow(); } while (reapply);
+  })().finally(() => { applying = null; });
+  return applying;
+}
+
+async function applyNow() {
   const p = probe();
   if (!ready || !p) return;
   const s = sheetOf(state.sheet);
@@ -135,49 +148,91 @@ async function waitProbe() {
   throw new Error("the engine did not start in 60 s");
 }
 
+/** Bumped by every open, so an older open that is still loading stops at its next step. */
+let opened = 0;
 async function open(name, page) {
   if (!name) return;
+  const epoch = ++opened;
   ready = false;
   state.sheet = name; state.page = page ?? sheetOf(name)?.pages[0] ?? null;
   if (!sheetOf(name).styles.includes(state.style)) state.style = sheetOf(name).styles[0];
   saveHash(); renderNav(); fit();
   veil(`Building ${name}…`);
   const r = await fetch(`/api/open/${name}`).then((r) => r.json());
+  if (epoch !== opened) return;
   if (!r.ok) { veil(""); return log(`${name}: ${r.error}`, "err"); }
   veil(`Starting the engine…`);
   const t0 = performance.now();
   frame.src = `/s/${name}/index.html`;
   await new Promise((r) => (frame.onload = r));
+  if (epoch !== opened) return;
   try {
     await waitProbe();
+    if (epoch !== opened) return;
     ready = true;
     await apply();
     veil("");
     log(`${name} started in ${Math.round(performance.now() - t0)} ms`);
   } catch (e) {
+    if (epoch !== opened) return;
     veil("");
     log(`${name}: ${e.message}`, "err");
   }
 }
 
-/** The server's re-cooked files into the open frame, then the probe's reload swaps them in. */
+/**
+ * The server's re-cooked files into the open frame, applied in place (devFiles: no hot reload).
+ * One swap at a time: an edit that lands while one runs waits, and the edits that land meanwhile
+ * go in one swap, so a burst of saves never stacks; a newer one supersedes what still waits.
+ */
+let swapping = false;
+let waiting = null;
 async function swap(event) {
+  if (event.sheet !== state.sheet) return;
+  if (swapping) {
+    waiting = waiting ? { ...event, edits: [...new Set([...waiting.edits, ...event.edits])], files: [...new Set([...waiting.files, ...event.files])], cookMs: waiting.cookMs + event.cookMs } : event;
+    return;
+  }
+  swapping = true;
+  try {
+    await swapNow(event);
+  } finally {
+    swapping = false;
+  }
+  if (waiting) {
+    const next = waiting;
+    waiting = null;
+    void swap(next).catch((err) => log(String(err), "err"));
+  }
+}
+
+async function swapNow(event) {
   const p = probe();
   if (!ready || !p?.devFiles || event.sheet !== state.sheet) return;
   const t0 = performance.now();
   const root = new URL(".", frame.contentWindow.location.href).href.replace(/\/$/, "");
   const files = await Promise.all(event.files.map(async (f) => [`${root}/cooked/${f}`, new Uint8Array(await (await fetch(`/s/${state.sheet}/cooked/${f}`, { cache: "no-store" })).arrayBuffer())]));
   const fetched = performance.now();
-  const report = await p.devFiles(files);
+  const r = await p.devFiles(files);
   const swapped = performance.now();
-  // The first frame drawn after the swap: two display frames of the page.
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  const total = event.cookMs + (performance.now() - t0);
-  const ok = report !== null && report !== false;
-  const timing = { cookMs: event.cookMs, fetchMs: Math.round(fetched - t0), swapMs: Math.round(swapped - fetched), totalMs: Math.round(total) };
-  window.__gallery_last_reload__ = { edits: event.edits, files: event.files.length, ok, ...timing };
-  log(`${event.edits.join(", ")}: ${ok ? "reloaded" : "refused (the frame's log has why)"} in ${timing.totalMs} ms (cook ${timing.cookMs} + fetch ${timing.fetchMs} + swap ${timing.swapMs}; ${event.files.length} file(s))`, ok ? "ok" : "err");
-  if (ok) await apply();
+  // The first frame drawn after it: the frame's next animation frame once the Worker answered.
+  await new Promise((done) => frame.contentWindow.requestAnimationFrame(() => frame.contentWindow.requestAnimationFrame(done)));
+  const drawn = performance.now();
+  const ok = r && !r.error;
+  const steps = Object.entries(r?.steps ?? {}).map(([k, v]) => `${k} ${v}`).join(", ");
+  const timing = {
+    serverMs: event.serverMs ?? event.cookMs,
+    cookMs: event.cookMs,
+    fetchMs: Math.round(fetched - t0),
+    workerMs: r?.ms ?? null,
+    callMs: Math.round(swapped - fetched),
+    frameMs: Math.round(drawn - swapped),
+  };
+  timing.totalMs = Math.round((event.serverMs ?? event.cookMs) + (drawn - t0));
+  window.__gallery_last_reload__ = { edits: event.edits, files: event.files.length, ok, steps: r?.steps, ...timing };
+  window.__gallery_reloads__ = [...(window.__gallery_reloads__ ?? []), window.__gallery_last_reload__];
+  log(`${event.edits.join(", ")}: ${ok ? "applied" : `refused: ${r?.error ?? r?.warnings}`} in ${timing.totalMs} ms (save→cooked ${timing.serverMs} [cook ${timing.cookMs}] + fetch ${timing.fetchMs} + apply ${timing.callMs} [${steps}] + frame ${timing.frameMs}; ${event.files.length} file(s))`, ok ? "ok" : "err");
+  if (r?.warnings?.length) log(r.warnings.join("\n"), "err");
 }
 
 new EventSource("/api/events").onmessage = (m) => {

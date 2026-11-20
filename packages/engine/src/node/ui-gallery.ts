@@ -8,12 +8,12 @@
 // development build: every probe member) when it is first opened. The page runs the engine in
 // the browser (WebGPU), so the serving machine needs no GPU.
 //
-// While the page is open the server watches the sheet, the built-in documents
-// (packages/engine/src/ui), the style packs (templates/styles), the design tokens
-// (packages/design/tokens) and the default CSS (crates/og-ui/default.css). An edit is re-cooked
-// (`og cook`, incremental), the changed cooked files are pushed to the page, and the probe's
-// reload swaps them in with the world kept: a document, a pack, a token or default.css edit
-// shows without restarting anything. A development cook carries the default style as the source
+// While the page is open, one long-running `og cook --watch` per open sheet watches the sheet's
+// copy, the built-in documents (packages/engine/src/ui), the style packs (templates/styles), the
+// design tokens (packages/design/tokens) and the default CSS (crates/og-ui/default.css), and
+// cooks only what an edit changed. The changed cooked files go to the page, which applies them
+// in place (`__runtime_probe__.devFiles`, no hot reload: the world, the code and the UI stay): a
+// document, a pack, a token or default.css edit shows without restarting anything. A development cook carries the default style as the source
 // tree has it (og-cook `ui_components::base_css`, og-ui `set_base_css`); a publish build keeps
 // the compiled one. A change to a sheet's TypeScript rebuilds it and reloads the frame. Only a
 // change to the engine's Rust needs a rebuild of og and the wasm (packages/engine/scripts/build.sh).
@@ -22,7 +22,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync,
 import { dirname, join, relative, resolve, sep } from "node:path";
 
 declare const Bun: {
-  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe"; env: Record<string, string | undefined> }): { exited: Promise<number>; stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array> };
+  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe"; env: Record<string, string | undefined> }): { exited: Promise<number>; kill(): void; stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array> };
   file(path: string): Blob;
   serve(o: { port: number; hostname: string; idleTimeout: number; fetch(req: Request): Response | Promise<Response> }): unknown;
 };
@@ -155,7 +155,7 @@ const built = new Map<string, Promise<string | null>>();
 /** Exports the sheet once (`og build`, development): null, or why it failed. */
 function build(name: string, again = false): Promise<string | null> {
   if (!again && built.has(name)) return built.get(name)!;
-  const p = queue(async () => {
+  const p = (async () => {
     sync(name);
     const r = await runOg(["build", join(work, name), "--out", join(work, name, "dist"), "--no-check"]);
     if (!r.ok) return r.out.trim();
@@ -164,78 +164,117 @@ function build(name: string, again = false): Promise<string | null> {
     writeFileSync(index, readFileSync(index, "utf8").replace(/"gate":"tap"/, '"gate":"none"').replace(/"madeWith":true/, '"madeWith":false'));
     console.log(`built ${name} in ${Math.round(r.ms)} ms`);
     return null;
-  });
+  })();
   built.set(name, p);
   return p;
 }
 
-let tail: Promise<unknown> = Promise.resolve();
-/** One og at a time: a cook and a build of the same copy never overlap. */
-function queue<T>(job: () => Promise<T>): Promise<T> {
-  const next = tail.then(job, job);
-  tail = next.catch(() => undefined);
-  return next;
-}
-
 // ── watching ────────────────────────────────────────────────────────────────
+//
+// The open sheet has one long-running cook (`og cook --watch --json`): it watches the copy's
+// assets and the engine's built-in documents, styles, tokens and default CSS itself, and keeps
+// what it parsed, so an edit cooks only what it changed. This server copies the sheet's own
+// edits into the copy and tells the page which cooked files each cook changed.
 
-const engineRoots = [join(pkg, "src", "ui"), join(repo, "templates", "styles"), join(repo, "packages", "design", "tokens"), join(repo, "crates", "og-ui", "default.css")];
-function engineStamps(): Map<string, string> {
-  const m = new Map<string, string>();
-  for (const r of engineRoots) {
-    const s = stat(r);
-    if (s?.isFile()) m.set(r, `${s.size}:${Math.floor(s.mtimeMs)}`);
-    else for (const [k, v] of stamps(r)) m.set(join(r, k), v);
-  }
-  return m;
+interface Cooker {
+  name: string;
+  proc: { kill(): void; exited: Promise<number> };
+  /** The cooked files as the last cook left them. */
+  cooked: Map<string, string>;
 }
-
+let cooker: Cooker | null = null;
 let active: string | null = null;
-let seenEngine = engineStamps();
 let seenSheet = new Map<string, string>();
 const clients = new Set<ReadableStreamDefaultController<string>>();
 function tell(event: unknown): void {
   for (const c of clients) c.enqueue(`data: ${JSON.stringify(event)}\n\n`);
 }
 
+function stopCooker(): void {
+  cooker?.proc.kill();
+  cooker = null;
+}
+
+/** The newest modification time of `paths` (absolute, or under the copy's assets/), ms since the epoch. */
+function newest(name: string, paths: string[]): number {
+  let at = 0;
+  for (const p of paths) {
+    const s = stat(p.startsWith("/") || /^[A-Za-z]:/.test(p) ? p : join(work, name, "assets", p));
+    if (s) at = Math.max(at, s.mtimeMs);
+  }
+  return at;
+}
+
+function startCooker(name: string): void {
+  stopCooker();
+  const proc = Bun.spawn([og, "cook", join(work, name), "--watch", "--json"], { cwd: repo, stdout: "pipe", stderr: "pipe", env: { ...process.env, OG_ENGINE_PACKAGE: pkg } });
+  const me: Cooker = { name, proc, cooked: stamps(join(work, name, "cooked")) };
+  cooker = me;
+  void (async () => {
+    const decoder = new TextDecoder();
+    let buffered = "";
+    for await (const chunk of proc.stdout as unknown as AsyncIterable<Uint8Array>) {
+      buffered += decoder.decode(chunk, { stream: true });
+      let nl: number;
+      while ((nl = buffered.indexOf("\n")) >= 0) {
+        const line = buffered.slice(0, nl);
+        buffered = buffered.slice(nl + 1);
+        if (cooker !== me) return;
+        let e: { event?: string; ok?: boolean; changed?: string[]; ms?: number; errors?: unknown[] };
+        try {
+          e = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        if (e.event !== "cook") continue;
+        const now = stamps(join(work, name, "cooked"));
+        const files = changed(me.cooked, now);
+        me.cooked = now;
+        const edits = (e.changed ?? []).map((p) => (p.startsWith(repo) ? relative(repo, p) : p));
+        // Save to cooked: from the newest edited file's time (the watch's poll and the cook).
+        const saved = newest(name, e.changed ?? []);
+        const serverMs = saved ? Math.max(0, Math.round(Date.now() - saved)) : null;
+        if (e.ok === false) tell({ type: "error", sheet: name, edits, error: (e.errors ?? []).map(String).join("\n") });
+        else tell({ type: "files", sheet: name, edits, files, cookMs: Math.round(e.ms ?? 0), serverMs });
+        console.log(`${edits.join(", ")}: cooked ${files.length} file(s) in ${Math.round(e.ms ?? 0)} ms (saved to cooked ${serverMs} ms)`);
+      }
+    }
+  })();
+  void (async () => {
+    const err = await new Response(proc.stderr).text();
+    if (cooker === me && err.trim()) console.error(err.trim());
+  })();
+}
+
 let polling = false;
+/** The sheet's own edits: assets copied for the cook to see, code rebuilt. */
 async function poll(): Promise<void> {
   if (polling || !active) return;
   polling = true;
   try {
     const name = active;
-    const engineNow = engineStamps();
     const sheetNow = stamps(join(sheetsDir, name));
-    const edits = [...changed(seenEngine, engineNow).map((p) => relative(repo, p)), ...changed(seenSheet, sheetNow).map((p) => `packages/engine/sheets/${name}/${p}`)];
+    const edits = changed(seenSheet, sheetNow);
     if (!edits.length) return;
-    const saved = performance.now();
-    const code = changed(seenSheet, sheetNow).some((p) => p.startsWith("src/") || p === "project.ogt");
-    seenEngine = engineNow;
     seenSheet = sheetNow;
     // Every other sheet cooks the edit when it is next opened.
     for (const other of built.keys()) if (other !== name) built.delete(other);
-    if (code) {
-      tell({ type: "building", sheet: name, edits });
+    if (edits.some((p) => p.startsWith("src/") || p === "project.ogt")) {
+      const t0 = performance.now();
+      const shown = edits.map((p) => `packages/engine/sheets/${name}/${p}`);
+      tell({ type: "building", sheet: name, edits: shown });
+      stopCooker();
       const why = await build(name, true);
-      tell(why ? { type: "error", sheet: name, edits, error: why } : { type: "rebuilt", sheet: name, edits, ms: Math.round(performance.now() - saved) });
+      if (active === name) startCooker(name);
+      tell(why ? { type: "error", sheet: name, edits: shown, error: why } : { type: "rebuilt", sheet: name, edits: shown, ms: Math.round(performance.now() - t0) });
       return;
     }
-    const cooked = join(work, name, "cooked");
-    const r = await queue(async () => {
-      sync(name);
-      const before = stamps(cooked);
-      const cook = await runOg(["cook", join(work, name)]);
-      return { cook, files: changed(before, stamps(cooked)) };
-    });
-    const cookMs = Math.round(performance.now() - saved);
-    if (!r.cook.ok) tell({ type: "error", sheet: name, edits, error: r.cook.out.trim() });
-    else tell({ type: "files", sheet: name, edits, files: r.files, cookMs });
-    console.log(`${edits.join(", ")}: cooked ${r.files.length} file(s) in ${cookMs} ms`);
+    sync(name);
   } finally {
     polling = false;
   }
 }
-setInterval(() => void poll(), 150);
+setInterval(() => void poll(), 30);
 
 // ── serving ─────────────────────────────────────────────────────────────────
 
@@ -273,9 +312,10 @@ Bun.serve({
       if (active !== name) {
         active = name;
         seenSheet = stamps(join(sheetsDir, name));
-        seenEngine = engineStamps();
+        stopCooker();
       }
       const why = await build(name);
+      if (!why && active === name && cooker?.name !== name) startCooker(name);
       return why ? Response.json({ ok: false, error: why }, { status: 500 }) : Response.json({ ok: true });
     }
     const served = path.match(/^\/s\/([\w-]+)\/(.*)$/);
