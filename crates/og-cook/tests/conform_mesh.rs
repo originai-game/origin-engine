@@ -729,10 +729,13 @@ fn sparse_atlas_repacking_relocates_geometry_and_every_map_together() {
                 glam::Vec2::new(lo.x - 1.5, (lo.y + hi.y) * 0.5),
             ] {
                 let at = (p.y.floor() as usize * 64 + p.x.floor() as usize) * 4;
-                assert_eq!(
-                    &texture.rgba[at..at + 4],
-                    &expected,
-                    "map {map}, island gutter {col},{row}"
+                // A gutter block mixes the island with the empty atlas;
+                // UASTC is lossy there. Two byte steps still distinguish
+                // every island (50 or 60 apart) and the swapped data map.
+                let actual = &texture.rgba[at..at + 4];
+                assert!(
+                    actual.iter().zip(expected).all(|(&a, e)| a.abs_diff(e) <= 2),
+                    "map {map}, island gutter {col},{row}: {actual:?} vs {expected:?}"
                 );
             }
         }
