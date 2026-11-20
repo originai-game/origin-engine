@@ -106,16 +106,24 @@ pub fn og_render_compile(world: u32) {
     }
 }
 
+/// How many times [`warm_tick`] builds the UI on a copy: the first compiles
+/// its code, the later ones run it enough that the web's wasm engine
+/// optimises the hot paths (it tiers a function up by how much it ran), so
+/// the first played tick builds the real UI on optimised code.
+const WARM_BUILDS: u32 = 3;
+
 /// Behind the play gate and for og.render.compile, outside a tick: the
 /// first-use work of what a played tick reaches, done ahead so the first
 /// played frame does not do it. The game's UI documents are built, laid out
-/// and painted once on a copy of the UI (with no input), and the physics
+/// and painted on a copy of the UI (with no input, [`WARM_BUILDS`] times),
+/// and the copy is drawn once in place of the UI, so the frame path makes
+/// the pipelines and glyphs it draws with; the UI is put back. The physics
 /// builds a query view of the world, which makes its height fields' chunk
-/// shapes into the cache its step takes them from. Neither runs a game
+/// shapes into the cache its step takes them from. None of it runs a game
 /// system or a tick: the world, the UI, its stores and every queue a tick
 /// reads are as they were, so the ticks after it are the same. What it
-/// leaves is caches: compiled code, shaped text, memoised styles and the
-/// chunk shapes, each a function of what it was made from.
+/// leaves is caches: compiled code, shaped text, memoised styles, glyphs,
+/// pipelines and the chunk shapes, each a function of what it was made from.
 pub fn warm_tick(id: u32) {
     let Ok(eng) = engine(id) else { return };
     if eng.stepping.get() {
@@ -125,16 +133,25 @@ pub fn warm_tick(id: u32) {
         let st = eng.state.borrow();
         (st.ui.clone(), st.physics.clone())
     };
-    if let Some(ui) = ui {
-        let viewport = crate::bind::modules::viewport_of(id);
-        let mut copy = ui.lock().clone();
-        copy.begin(og_ui::InputFrame::default(), viewport);
-        copy.build_layers(&crate::bind::modules::docs::env(id));
-        copy.end();
-    }
     if let (Some(physics), Ok(world)) = (physics, eng.world()) {
         // A world without the physics settings has nothing to build.
         let _ = physics.query(world);
+    }
+    let Some(ui) = ui else { return };
+    let viewport = crate::bind::modules::viewport_of(id);
+    let env = crate::bind::modules::docs::env(id);
+    let mut copy = ui.lock().clone();
+    for _ in 0..WARM_BUILDS {
+        copy = ui.lock().clone();
+        copy.begin(og_ui::InputFrame::default(), viewport);
+        copy.build_layers(&env);
+        copy.end();
+    }
+    if eng.render.borrow().backend.is_some() {
+        std::mem::swap(&mut *ui.lock(), &mut copy);
+        // A frame that fails here fails again as the next one, which reports it.
+        let _ = crate::engine::tick::render(&eng, None);
+        std::mem::swap(&mut *ui.lock(), &mut copy);
     }
 }
 

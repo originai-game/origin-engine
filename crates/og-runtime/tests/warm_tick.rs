@@ -1,7 +1,8 @@
 //! The play gate's warm-up (og_runtime::warm_tick, also run by
 //! og.render.compile): outside a tick it builds the game's UI documents on
-//! a copy of the UI and has physics build its height fields' chunk shapes,
-//! so the first played frame does not pay for them.
+//! a copy of the UI, draws that copy once in the UI's place, and has physics
+//! build its height fields' chunk shapes, so the first played frame does
+//! not pay for them.
 //!
 //! Two engines run the same world: a screen document, a collision terrain of
 //! two chunks and boxes dropped onto it. One is warmed before its first
@@ -9,16 +10,18 @@
 //!
 //! Ways this could fail: the warm-up builds the real UI instead of a copy
 //! (its mounts, triggers, stores, control zones or doc events change, so
-//! the UI dump differs); it moves the physics (a collider inserted out of
+//! the UI dump or the snapshot's presentation differs), or does not put the
+//! UI back after drawing the copy; it moves the physics (a collider inserted out of
 //! order, a chunk shape that is not the step's own), so the boxes land
 //! elsewhere and the world hash differs; or it touches what a snapshot
 //! keeps, so the snapshots differ.
 #![cfg(not(feature = "profile2d"))]
 
+use og_render::{RenderScene, RgbaImage};
 use og_runtime::{
-    Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_dump,
+    Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_engine_probe_dump,
     og_engine_probe_snapshot, og_game_game, og_host_begin_bundle, og_terrain_load, og_world_insert,
-    og_world_spawn, set_hooks, set_viewport, warm_tick,
+    og_world_spawn, set_hooks, set_render_backend, warm_tick,
 };
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -91,6 +94,25 @@ impl Hooks for Disk {
     }
 }
 
+/// A renderer that draws nothing: the warm-up's frame goes through the
+/// whole frame path but the GPU.
+struct Blank;
+
+impl RenderBackend for Blank {
+    fn tier(&self) -> String {
+        "test".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (640, 360)
+    }
+    fn render(&mut self, _: &RenderScene) -> Result<(), String> {
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {
+        None
+    }
+}
+
 fn value(text: String) -> Value {
     let v: Value = serde_json::from_str(&text).expect("wire JSON");
     assert_eq!(v["ok"], json!(true), "{text}");
@@ -134,7 +156,7 @@ fn run(warm: bool) -> Run {
     let game = og_game_game(Some(r#"{"seed":5}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
-    set_viewport(e, json!({ "width": 640, "height": 360 })).unwrap();
+    set_render_backend(e, Some(Box::new(Blank))).unwrap();
     let info = value(og_runtime::host_impl::answer(og_terrain_load(
         e,
         "terrain/hill.ogt".into(),

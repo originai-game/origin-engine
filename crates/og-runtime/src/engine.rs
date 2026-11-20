@@ -21,7 +21,7 @@ pub(crate) use dispatch::{
 };
 pub use dispatch::{begin_bundle, command};
 use dispatch::{run_condition, run_hook, run_system};
-mod tick;
+pub(crate) mod tick;
 #[cfg(not(feature = "publish"))]
 pub(crate) use tick::advance_probe;
 pub use tick::{advance, answer_call, call_rpc, frame, take_log, take_outputs};
