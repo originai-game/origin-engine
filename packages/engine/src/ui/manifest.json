@@ -524,6 +524,70 @@
     ],
     "imports": []
   },
+  "HudBar": {
+    "id": "@ui/components/hud/bar.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/hud/bar.en.ogt",
+      "@ui/components/hud/bar.svelte"
+    ],
+    "imports": []
+  },
+  "HudEffect": {
+    "id": "@ui/components/hud/effect.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/hud/effect.en.ogt",
+      "@ui/components/hud/effect.svelte"
+    ],
+    "imports": []
+  },
+  "HudHint": {
+    "id": "@ui/components/hud/hint.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/hud/hint.svelte"
+    ],
+    "imports": []
+  },
+  "HudLootEntry": {
+    "id": "@ui/components/hud/loot-entry.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/hud/loot-entry.en.ogt",
+      "@ui/components/hud/loot-entry.svelte"
+    ],
+    "imports": []
+  },
+  "HudPortrait": {
+    "id": "@ui/components/hud/portrait.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/hud/portrait.svelte"
+    ],
+    "imports": []
+  },
+  "HudSlot": {
+    "id": "@ui/components/hud/slot.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/hud/slot.en.ogt",
+      "@ui/components/hud/slot.svelte"
+    ],
+    "imports": []
+  },
   "HudTimer": {
     "id": "@ui/components/hud/hud-timer.svelte",
     "screen": false,
@@ -1249,17 +1313,6 @@
     ],
     "imports": []
   },
-  "RpgBar": {
-    "id": "@ui/components/rpg/bar.svelte",
-    "screen": false,
-    "control": null,
-    "uses": [],
-    "files": [
-      "@ui/components/rpg/bar.svelte",
-      "@ui/components/rpg/rpg.en.ogt"
-    ],
-    "imports": []
-  },
   "RpgCharacter": {
     "id": "@ui/components/rpg/character.svelte",
     "screen": false,
@@ -1309,8 +1362,8 @@
     "screen": false,
     "control": null,
     "uses": [
-      "RpgBar",
-      "RpgPortrait"
+      "HudBar",
+      "HudPortrait"
     ],
     "files": [
       "@ui/components/rpg/companions.svelte",
@@ -1355,23 +1408,12 @@
     ],
     "imports": []
   },
-  "RpgEffect": {
-    "id": "@ui/components/rpg/effect.svelte",
-    "screen": false,
-    "control": null,
-    "uses": [],
-    "files": [
-      "@ui/components/rpg/effect.svelte",
-      "@ui/components/rpg/rpg.en.ogt"
-    ],
-    "imports": []
-  },
   "RpgEffects": {
     "id": "@ui/components/rpg/effects.svelte",
     "screen": false,
     "control": null,
     "uses": [
-      "RpgEffect"
+      "HudEffect"
     ],
     "files": [
       "@ui/components/rpg/effects.svelte",
@@ -1384,7 +1426,7 @@
     "screen": false,
     "control": null,
     "uses": [
-      "RpgBar"
+      "HudBar"
     ],
     "files": [
       "@ui/components/rpg/enemy-info.svelte",
@@ -1403,22 +1445,12 @@
     ],
     "imports": []
   },
-  "RpgHint": {
-    "id": "@ui/components/rpg/hint.svelte",
-    "screen": false,
-    "control": null,
-    "uses": [],
-    "files": [
-      "@ui/components/rpg/hint.svelte"
-    ],
-    "imports": []
-  },
   "RpgHints": {
     "id": "@ui/components/rpg/hints.svelte",
     "screen": false,
     "control": null,
     "uses": [
-      "RpgHint"
+      "HudHint"
     ],
     "files": [
       "@ui/components/rpg/hints.svelte",
@@ -1453,8 +1485,8 @@
     "screen": false,
     "control": null,
     "uses": [
-      "RpgBar",
-      "RpgPortrait"
+      "HudBar",
+      "HudPortrait"
     ],
     "files": [
       "@ui/components/rpg/leader.svelte",
@@ -1486,23 +1518,12 @@
     ],
     "imports": []
   },
-  "RpgLootEntry": {
-    "id": "@ui/components/rpg/loot-entry.svelte",
-    "screen": false,
-    "control": null,
-    "uses": [],
-    "files": [
-      "@ui/components/rpg/loot-entry.svelte",
-      "@ui/components/rpg/rpg.en.ogt"
-    ],
-    "imports": []
-  },
   "RpgLootFeed": {
     "id": "@ui/components/rpg/loot-feed.svelte",
     "screen": false,
     "control": null,
     "uses": [
-      "RpgLootEntry"
+      "HudLootEntry"
     ],
     "files": [
       "@ui/components/rpg/loot-feed.svelte",
@@ -1537,7 +1558,7 @@
     "screen": false,
     "control": null,
     "uses": [
-      "RpgBar"
+      "HudBar"
     ],
     "files": [
       "@ui/components/rpg/party.svelte",
@@ -1553,16 +1574,6 @@
     "files": [
       "@ui/components/rpg/place-card.svelte",
       "@ui/components/rpg/rpg.en.ogt"
-    ],
-    "imports": []
-  },
-  "RpgPortrait": {
-    "id": "@ui/components/rpg/portrait.svelte",
-    "screen": false,
-    "control": null,
-    "uses": [],
-    "files": [
-      "@ui/components/rpg/portrait.svelte"
     ],
     "imports": []
   },
@@ -1610,23 +1621,12 @@
     ],
     "imports": []
   },
-  "RpgSkillSlot": {
-    "id": "@ui/components/rpg/skill-slot.svelte",
-    "screen": false,
-    "control": null,
-    "uses": [],
-    "files": [
-      "@ui/components/rpg/rpg.en.ogt",
-      "@ui/components/rpg/skill-slot.svelte"
-    ],
-    "imports": []
-  },
   "RpgSkills": {
     "id": "@ui/components/rpg/skills.svelte",
     "screen": false,
     "control": null,
     "uses": [
-      "RpgSkillSlot"
+      "HudSlot"
     ],
     "files": [
       "@ui/components/rpg/rpg.en.ogt",

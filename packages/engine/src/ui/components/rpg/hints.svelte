@@ -7,14 +7,14 @@
 <meta name="fixture:overflow" content='{"hints":[{"id":"a","key":"Left Shoulder + Right Shoulder","label":"Switch the locked target to the next enemy in sight"},{"id":"b","key":"B","label":"Dodge"}]}'>
 
 <!--
-  Input hints at the screen's foot: a row of RpgHint blocks, each a key
+  Input hints at the screen's foot: a row of HudHint blocks, each a key
   cap and what it does in small tracked capitals. The row only spaces
-  them; a game lays RpgHint out itself anywhere else. Read only; hidden
+  them; a game lays HudHint out itself anywhere else. Read only; hidden
   under a touch screen.
 -->
 <ul id="RpgHints" part="RpgHints.frame" class="hud bare" data-layout="cluster" aria-label={t("rpg.hints.name")}>
   {#each hints as h (h.id)}
-  <li part="RpgHints.hint" class="hint" data-layout="row"><RpgHint key={h.key} label={h.label} /></li>
+  <li part="RpgHints.hint" class="hint" data-layout="row"><HudHint key={h.key} label={h.label} /></li>
   {/each}
 </ul>
 

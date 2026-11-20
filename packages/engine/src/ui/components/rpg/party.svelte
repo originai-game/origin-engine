@@ -8,7 +8,7 @@
 
 <!--
   The party as a row of portrait cards: a level seal, the portrait, the
-  name, and a health and a mana RpgBar with their figures, in the page's
+  name, and a health and a mana HudBar with their figures, in the page's
   health and mana colours. Reports choose (a member's key). The cards
   share the width evenly.
 -->
@@ -20,8 +20,8 @@
           <div class="picture">{#if m.portrait}<img class="portrait" src={m.portrait} alt="">{/if}</div>
           <div class="seal" part="RpgParty.badge" data-layout="cover" data-gap="none" aria-label={m.down ? t("rpg.party.down") : t("rpg.party.level", { level: m.level })}>{#if !m.down}<span class="seal-lv">{t("rpg.party.lv")}</span><span class="seal-level">{formatNumber(m.level)}</span>{:else}<og-icon icon="skull"></og-icon>{/if}</div>
           <span class="member-name" part="RpgParty.headline">{m.name}</span>
-          <div class="bar" part="RpgParty.health"><RpgBar value={m.health} max={m.healthMax} kind="health" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
-          <div class="bar mana" part="RpgParty.mana"><RpgBar value={m.mana} max={m.manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
+          <div class="bar" part="RpgParty.health"><HudBar value={m.health} max={m.healthMax} kind="health" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
+          <div class="bar mana" part="RpgParty.mana"><HudBar value={m.mana} max={m.manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
         </div></button>
       {/each}
     </div>
@@ -45,7 +45,7 @@
 .member-name { padding: var(--space-xxs) var(--space-xs); text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 /* Each bar's place: thick enough for its figure, filled in the page's
    health and mana instead of the HUD's. */
-.bar { margin-inline: var(--space-xs); --rpg-bar-size: max(calc(var(--space-md) * 1.25), var(--size-sm)); --hud-life-fill: var(--fill-gloss), var(--health); --hud-life-glow: none; }
+.bar { margin-inline: var(--space-xs); --hud-bar-size: max(calc(var(--space-md) * 1.25), var(--size-sm)); --hud-life-fill: var(--fill-gloss), var(--health); --hud-life-glow: none; }
 .mana { --hud-mana-fill: var(--fill-gloss), var(--mana); --hud-mana-glow: none; }
 .empty-text { margin: 0; }
 @media (height < 500px) { .picture { aspect-ratio: 2.4; } }

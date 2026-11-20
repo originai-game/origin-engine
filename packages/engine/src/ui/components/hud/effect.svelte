@@ -1,6 +1,6 @@
-<meta name="component" content="RpgEffect">
-<meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgEffect.effect RpgEffect.tile RpgEffect.art RpgEffect.timer RpgEffect.time">
+<meta name="component" content="HudEffect">
+<meta name="strings" content="./effect.en.ogt">
+<meta name="parts" content="HudEffect.effect HudEffect.tile HudEffect.art HudEffect.timer HudEffect.time">
 <meta name="prop:name" content="string" data-doc="What a reader calls it (Haste).">
 <meta name="prop:icon" content="number" data-doc="Its art, a texture (og.load.texture); 0 draws the glyph in its place.">
 <meta name="prop:glyph" content="string" data-doc="An icon of the atlas, drawn when there is no art; empty is none.">
@@ -14,18 +14,18 @@
 <meta name="fixture:overflow" content='{"name":"Searing brand of the Ninefold Gate","icon":0,"glyph":"fire","remaining":0.1,"label":"×99 59.9","harmful":true}'>
 
 <!--
-  One buff or debuff of the RPG HUD, a block an effects row is built
+  One buff or debuff of a HUD, a block an effects row is built
   from: a small tile with two corners cut, its edge green for a boon and
   red for a harm, the time still to run as a dark radial sweep over its
   art and its time or stacks on a tag under it. The game owns every
   timer; read only.
 -->
-<div id="RpgEffect" part="RpgEffect.effect" data-layout="stack" data-gap="none" role="group" data-harmful={harmful} aria-label={label ? t("rpg.effects.effect", { name: name, label: label }) : name}>
-  <div part="RpgEffect.tile" class="tile" data-layout="overlay">
-    {#if icon}<img part="RpgEffect.art" class="art" data-anchor="fill" src={icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if glyph}<og-icon class="glyph" icon={glyph}></og-icon>{/if}</div>{/if}
-    {#if remaining >= 0}<div part="RpgEffect.timer" class="timer" data-anchor="fill" style:--left={remaining >= 1 ? 1 : remaining}></div>{/if}
+<div id="HudEffect" part="HudEffect.effect" data-layout="stack" data-gap="none" role="group" data-harmful={harmful} aria-label={label ? t("hud.effect.label", { name: name, label: label }) : name}>
+  <div part="HudEffect.tile" class="tile" data-layout="overlay">
+    {#if icon}<img part="HudEffect.art" class="art" data-anchor="fill" src={icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if glyph}<og-icon class="glyph" icon={glyph}></og-icon>{/if}</div>{/if}
+    {#if remaining >= 0}<div part="HudEffect.timer" class="timer" data-anchor="fill" style:--left={remaining >= 1 ? 1 : remaining}></div>{/if}
   </div>
-  {#if label}<span part="RpgEffect.time" class="tag">{label}</span>{/if}
+  {#if label}<span part="HudEffect.time" class="tag">{label}</span>{/if}
 </div>
 
 <style>

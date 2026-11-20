@@ -22,14 +22,14 @@
 
 <!--
   The party leader's vitals at the screen's top corner, built from the RPG
-  HUD's blocks: an RpgPortrait in a large octagon, the name and level,
-  health as a figure over its most, and three RpgBar: a fat health bar
+  HUD's blocks: an HudPortrait in a large octagon, the name and level,
+  health as a figure over its most, and three HudBar: a fat health bar
   that leaves a warm ghost when it drops and turns to danger when low, a
   mana bar and a stamina bar cut into cells. A game that wants another
   plate lays the same blocks out itself. Read only.
 -->
 <section id="RpgLeader" part="RpgLeader.frame" class="hud bare" data-layout="row" role="group" aria-label={name != '' ? name : t("rpg.party.health")} class:low={healthMax > 0 && health <= healthMax * low}>
-  <div id="Portrait" part="RpgLeader.portrait"><RpgPortrait portrait={portrait} dimmed={false} /></div>
+  <div id="Portrait" part="RpgLeader.portrait"><HudPortrait portrait={portrait} dimmed={false} /></div>
   <div id="Body" data-layout="stack" data-fill>
     <div id="Head" data-layout="row" data-gap="tight">
       <div id="Who" data-layout="row" data-gap="tight">
@@ -41,16 +41,16 @@
         <span part="RpgLeader.max" class="max">{t("rpg.leader.max", { max: formatNumber(healthMax) })}</span>
       </div>{/if}
     </div>
-    <div id="Health" part="RpgLeader.health"><RpgBar value={health} max={healthMax} kind="health" ghost={ghost} segment={0} low={healthMax > 0 && health <= healthMax * low} name="" /></div>
-    {#if manaMax > 0}<div id="Mana" part="RpgLeader.mana"><RpgBar value={mana} max={manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={false} name="" /></div>{/if}
-    {#if staminaMax > 0}<div id="Stamina" part="RpgLeader.stamina"><RpgBar value={stamina} max={staminaMax} kind="stamina" ghost={0} segment={segment} low={false} showValue={false} name="" /></div>{/if}
+    <div id="Health" part="RpgLeader.health"><HudBar value={health} max={healthMax} kind="health" ghost={ghost} segment={0} low={healthMax > 0 && health <= healthMax * low} name="" /></div>
+    {#if manaMax > 0}<div id="Mana" part="RpgLeader.mana"><HudBar value={mana} max={manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={false} name="" /></div>{/if}
+    {#if staminaMax > 0}<div id="Stamina" part="RpgLeader.stamina"><HudBar value={stamina} max={staminaMax} kind="stamina" ghost={0} segment={segment} low={false} showValue={false} name="" /></div>{/if}
   </div>
 </section>
 
 <style>
 :host { align-items: center; column-gap: calc(12 * var(--font-step-px)); inline-size: calc(330 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 /* The portrait's place: a large one, lifted off the scene. */
-#Portrait { flex: none; filter: var(--hud-lift); --rpg-portrait-size: calc(68 * var(--font-step-px)); }
+#Portrait { flex: none; filter: var(--hud-lift); --hud-portrait-size: calc(68 * var(--font-step-px)); }
 #Body { min-inline-size: 0; row-gap: calc(5 * var(--font-step-px)); }
 /* The name and level take the row first; the figure stands at its end and
    goes under them when they need its room, so a short name never shrinks
@@ -63,19 +63,19 @@
 .value { flex: none; font-size: var(--hud-size-title); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 .max { flex: none; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink-dim); white-space: nowrap; }
 /* The bars' places, each shorter and thinner than the one above it. */
-#Health { inline-size: 100%; --rpg-bar-size: calc(16 * var(--font-step-px)); }
-#Mana { inline-size: 86%; --rpg-bar-size: calc(8 * var(--font-step-px)); }
-#Stamina { inline-size: 72%; --rpg-bar-size: calc(6 * var(--font-step-px)); }
+#Health { inline-size: 100%; --hud-bar-size: calc(16 * var(--font-step-px)); }
+#Mana { inline-size: 86%; --hud-bar-size: calc(8 * var(--font-step-px)); }
+#Stamina { inline-size: 72%; --hud-bar-size: calc(6 * var(--font-step-px)); }
 .low .value { color: var(--hud-harm); }
 /* On a phone the plate is compact: a smaller portrait and thinner bars
    across the row's width. */
 @media (width < 600px) {
   :host { column-gap: var(--space-sm); inline-size: stretch; }
-  #Portrait { --rpg-portrait-size: calc(44 * var(--font-step-px)); }
+  #Portrait { --hud-portrait-size: calc(44 * var(--font-step-px)); }
   #Body { row-gap: calc(4 * var(--font-step-px)); }
   .name, .value { font-size: var(--hud-size-sm); }
-  #Health { --rpg-bar-size: calc(12 * var(--font-step-px)); }
-  #Mana { --rpg-bar-size: calc(6 * var(--font-step-px)); }
-  #Stamina { --rpg-bar-size: calc(5 * var(--font-step-px)); }
+  #Health { --hud-bar-size: calc(12 * var(--font-step-px)); }
+  #Mana { --hud-bar-size: calc(6 * var(--font-step-px)); }
+  #Stamina { --hud-bar-size: calc(5 * var(--font-step-px)); }
 }
 </style>

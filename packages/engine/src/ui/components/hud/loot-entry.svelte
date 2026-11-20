@@ -1,6 +1,6 @@
-<meta name="component" content="RpgLootEntry">
-<meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgLootEntry.entry RpgLootEntry.edge RpgLootEntry.art RpgLootEntry.item RpgLootEntry.rarity RpgLootEntry.count">
+<meta name="component" content="HudLootEntry">
+<meta name="strings" content="./loot-entry.en.ogt">
+<meta name="parts" content="HudLootEntry.entry HudLootEntry.edge HudLootEntry.art HudLootEntry.item HudLootEntry.rarity HudLootEntry.count">
 <meta name="prop:name" content="string" data-doc="The item's name (Ember Blade).">
 <meta name="prop:icon" content="number" data-doc="Its art, a texture (og.load.texture); 0 draws the glyph in its place.">
 <meta name="prop:glyph" content="string" data-doc="An icon of the atlas, drawn when there is no art; empty is none.">
@@ -16,19 +16,19 @@
 <meta name="fixture:overflow" content='{"name":"Greatsword of the Ninefold Gate, Forged in the Ashen Vale","icon":0,"glyph":"sword","rarity":"legendary","label":"Legendary artefact","quantity":123456,"currency":false,"fading":false}'>
 
 <!--
-  One row of the RPG HUD's loot feed, a block a feed is built from: an
+  One row of a HUD's loot feed, a block a feed is built from: an
   icon, the item's name, its rarity on a tag and the count gained, on a
   dark glass that fades toward the middle with its edge at the screen's
   side tinted by rarity; a fading row dims. Read only.
 -->
-<div id="RpgLootEntry" part="RpgLootEntry.entry" data-layout="row" data-gap="tight" role="group" data-rarity={rarity} data-fading={fading} aria-label={quantity > 0 ? t("rpg.lootfeed.row", { name: name, quantity: currency ? t("rpg.lootfeed.gain", { quantity: formatNumber(quantity) }) : t("rpg.lootfeed.count", { quantity: formatNumber(quantity) }) }) : name}>
-  <div part="RpgLootEntry.edge" class="edge"></div>
-  <div part="RpgLootEntry.art" class="art" data-layout="overlay">
+<div id="HudLootEntry" part="HudLootEntry.entry" data-layout="row" data-gap="tight" role="group" data-rarity={rarity} data-fading={fading} aria-label={quantity > 0 ? t("hud.loot-entry.row", { name: name, quantity: currency ? t("hud.loot-entry.gain", { quantity: formatNumber(quantity) }) : t("hud.loot-entry.count", { quantity: formatNumber(quantity) }) }) : name}>
+  <div part="HudLootEntry.edge" class="edge"></div>
+  <div part="HudLootEntry.art" class="art" data-layout="overlay">
     {#if icon}<img class="picture" data-anchor="fill" src={icon} alt="">{:else}{#if glyph}<og-icon class="glyph" data-anchor="fill" icon={glyph}></og-icon>{/if}{/if}
   </div>
-  <span part="RpgLootEntry.item" class="item">{name}</span>
-  {#if label}<span part="RpgLootEntry.rarity" class="tag">{label}</span>{/if}
-  {#if quantity > 0}<span part="RpgLootEntry.count" class="count">{currency ? t("rpg.lootfeed.gain", { quantity: formatNumber(quantity) }) : t("rpg.lootfeed.count", { quantity: formatNumber(quantity) })}</span>{/if}
+  <span part="HudLootEntry.item" class="item">{name}</span>
+  {#if label}<span part="HudLootEntry.rarity" class="tag">{label}</span>{/if}
+  {#if quantity > 0}<span part="HudLootEntry.count" class="count">{currency ? t("hud.loot-entry.gain", { quantity: formatNumber(quantity) }) : t("hud.loot-entry.count", { quantity: formatNumber(quantity) })}</span>{/if}
 </div>
 
 <style>

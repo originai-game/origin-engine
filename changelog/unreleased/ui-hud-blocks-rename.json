@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "RpgPortrait, RpgBar, RpgSkillSlot, RpgEffect, RpgHint, RpgLootEntry",
+      "change": "The HUD's blocks are every HUD family's, not the RPG kit's: they are now HudPortrait, HudBar, HudSlot, HudEffect, HudHint and HudLootEntry (src/ui/components/hud/), with their parts renamed alike (RpgBar.groove is HudBar.groove, RpgSkillSlot.art is HudSlot.art, and so on) and their size tokens --hud-portrait-size, --hud-bar-size and --hud-slot-size. Their props, strings and look are unchanged. The RPG assemblies (RpgLeader, RpgCompanions, RpgSkills, RpgParty, RpgEnemyInfo, RpgEffects, RpgHints, RpgLootFeed) keep their names and are built on them.",
+      "fix": "Rename the components in a page and the parts in a style pack or a game's CSS: RpgPortrait to HudPortrait, RpgBar to HudBar, RpgSkillSlot to HudSlot, RpgEffect to HudEffect, RpgHint to HudHint, RpgLootEntry to HudLootEntry; --rpg-portrait-size to --hud-portrait-size, --rpg-bar-size to --hud-bar-size, --rpg-skill-slot-size to --hud-slot-size.",
+      "find": ["RpgPortrait", "RpgBar", "RpgSkillSlot", "RpgEffect", "RpgHint", "RpgLootEntry", "--rpg-portrait-size", "--rpg-bar-size", "--rpg-skill-slot-size"]
+    }
+  ]
+}

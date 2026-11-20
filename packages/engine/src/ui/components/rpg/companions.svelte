@@ -11,8 +11,8 @@
 
 <!--
   The leader's companions under the leader's vitals, built from the RPG
-  HUD's blocks: each a small RpgPortrait, the name over a thin health
-  RpgBar with its ghost and a thinner mana RpgBar, and the key that
+  HUD's blocks: each a small HudPortrait, the name over a thin health
+  HudBar with its ghost and a thinner mana HudBar, and the key that
   switches to them on a cap at the plate's end. A fallen companion's
   plate dims with a Fallen tag. The game owns every value and state;
   read only.
@@ -20,13 +20,13 @@
 <section id="RpgCompanions" part="RpgCompanions.frame" class="hud bare" data-layout="stack" role="group" aria-label={t("rpg.party.name")}>
   {#each members as m (m.id)}
   <div part="RpgCompanions.member" class="member" data-fallen={m.fallen} class:low={!m.fallen && m.healthMax > 0 && m.health <= m.healthMax * low} role="group" aria-label={m.fallen ? t("rpg.companions.member", { name: m.name, state: t("rpg.companions.fallen") }) : m.name}>
-    <div class="portrait" part="RpgCompanions.portrait"><RpgPortrait portrait={m.portrait} dimmed={m.fallen} /></div>
+    <div class="portrait" part="RpgCompanions.portrait"><HudPortrait portrait={m.portrait} dimmed={m.fallen} /></div>
     <div class="who" data-layout="row" data-gap="tight">
       <span part="RpgCompanions.callsign" class="name">{m.name}</span>
       {#if m.fallen}<span part="RpgCompanions.fallen" class="fallen">{t("rpg.companions.fallen")}</span>{/if}
     </div>
-    <div part="RpgCompanions.health" class="health"><RpgBar value={m.health} max={m.healthMax} kind="health" ghost={m.ghost} segment={0} low={!m.fallen && m.healthMax > 0 && m.health <= m.healthMax * low} name="" /></div>
-    {#if m.manaMax > 0 && !m.fallen}<div part="RpgCompanions.mana" class="mana"><RpgBar value={m.mana} max={m.manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={false} name="" /></div>{/if}
+    <div part="RpgCompanions.health" class="health"><HudBar value={m.health} max={m.healthMax} kind="health" ghost={m.ghost} segment={0} low={!m.fallen && m.healthMax > 0 && m.health <= m.healthMax * low} name="" /></div>
+    {#if m.manaMax > 0 && !m.fallen}<div part="RpgCompanions.mana" class="mana"><HudBar value={m.mana} max={m.manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={false} name="" /></div>{/if}
     {#if m.key}<span part="RpgCompanions.key" class="key">{m.key}</span>{/if}
   </div>
   {/each}
@@ -43,8 +43,8 @@
 .fallen { flex: none; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-harm); white-space: nowrap; }
 /* Thin leaning bars: health and its ghost over a shorter mana bar. A
    companion's low bar glows and does not pulse; the leader's does. */
-.health { grid-area: health; inline-size: 100%; --rpg-bar-size: calc(6 * var(--font-step-px)); --pulse-motion: none; }
-.mana { grid-area: mana; inline-size: 80%; --rpg-bar-size: calc(4 * var(--font-step-px)); }
+.health { grid-area: health; inline-size: 100%; --hud-bar-size: calc(6 * var(--font-step-px)); --pulse-motion: none; }
+.mana { grid-area: mana; inline-size: 80%; --hud-bar-size: calc(4 * var(--font-step-px)); }
 /* The key cap that switches to the companion. */
 .key { grid-area: key; align-self: center; min-inline-size: calc(22 * var(--font-step-px)); max-inline-size: calc(72 * var(--font-step-px)); padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); -webkit-text-stroke-width: 0; text-shadow: none; white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 /* Under a touch screen a plate is the control: no key caps. */
@@ -65,8 +65,8 @@
   .who { display: contents; }
   .name { grid-area: who; }
   .fallen { grid-area: mana; justify-self: start; letter-spacing: normal; }
-  .health { --rpg-bar-size: calc(5 * var(--font-step-px)); }
-  .mana { --rpg-bar-size: calc(3 * var(--font-step-px)); }
+  .health { --hud-bar-size: calc(5 * var(--font-step-px)); }
+  .mana { --hud-bar-size: calc(3 * var(--font-step-px)); }
   .key { display: none; }
 }
 </style>

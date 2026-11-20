@@ -1,0 +1,9 @@
+type strings
+version 1
+---
+locale "en"
+string "hud.bar.health" "Health"
+string "hud.bar.mana" "Mana"
+string "hud.bar.stamina" "Stamina"
+string "hud.bar.xp" "Experience"
+string "hud.bar.figure" "{now} / {max}"

@@ -1,5 +1,5 @@
-<meta name="component" content="RpgHint">
-<meta name="parts" content="RpgHint.hint RpgHint.key RpgHint.action">
+<meta name="component" content="HudHint">
+<meta name="parts" content="HudHint.hint HudHint.key HudHint.action">
 <meta name="prop:key" content="string" data-doc="The input as the game names it (Tab, Space), on a key cap; empty is none.">
 <meta name="prop:label" content="string" data-doc="What it does (Target), in small tracked capitals.">
 <meta name="fixture:default" content='{"key":"Tab","label":"Target"}'>
@@ -7,13 +7,13 @@
 <meta name="fixture:overflow" content='{"key":"Left Shoulder + Right Shoulder","label":"Switch the locked target to the next enemy in sight"}'>
 
 <!--
-  One input hint of the RPG HUD, a block a hint row is built from: a key
+  One input hint of a HUD, a block a hint row is built from: a key
   cap and what it does in small tracked capitals. Read only; hidden under
   a touch screen, where the controls on screen say it.
 -->
-<div id="RpgHint" part="RpgHint.hint" data-layout="row" data-gap="tight">
-  {#if key}<span part="RpgHint.key" class="key">{key}</span>{/if}
-  <span part="RpgHint.action" class="action">{label}</span>
+<div id="HudHint" part="HudHint.hint" data-layout="row" data-gap="tight">
+  {#if key}<span part="HudHint.key" class="key">{key}</span>{/if}
+  <span part="HudHint.action" class="action">{label}</span>
 </div>
 
 <style>

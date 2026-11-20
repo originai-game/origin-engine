@@ -8,15 +8,15 @@
 <meta name="fixture:overflow" content='{"items":[{"id":"long","name":"Greatsword of the Ninefold Gate, Forged in the Ashen Vale","icon":0,"glyph":"sword","rarity":"legendary","label":"Legendary artefact","quantity":123456,"currency":false,"fading":false}]}'>
 
 <!--
-  The loot feed low on the screen's side: a column of RpgLootEntry blocks,
+  The loot feed low on the screen's side: a column of HudLootEntry blocks,
   newest first, each an icon, the item's name, its rarity on a tag and the
   count gained on a dark glass with its edge tinted by rarity. The feed
   slides a new row in, fades an old one out and trims on a phone; a game
-  that wants another feed lays RpgLootEntry out itself. Read only.
+  that wants another feed lays HudLootEntry out itself. Read only.
 -->
 <section id="RpgLootFeed" part="RpgLootFeed.frame" class="hud bare" data-layout="stack" role="log" aria-label={t("rpg.lootfeed.name")}>
   {#each items as p (p.id)}
-  <div part="RpgLootFeed.entry" class="entry" data-layout="row" data-rarity={p.rarity} data-fading={p.fading} in:fly={{ x: -24, duration: 200 }} out:fade={{ duration: 300 }} animate:flip={{ duration: 200 }}><RpgLootEntry name={p.name} icon={p.icon} glyph={p.glyph} rarity={p.rarity} label={p.label} quantity={p.quantity} currency={p.currency} fading={p.fading} /></div>
+  <div part="RpgLootFeed.entry" class="entry" data-layout="row" data-rarity={p.rarity} data-fading={p.fading} in:fly={{ x: -24, duration: 200 }} out:fade={{ duration: 300 }} animate:flip={{ duration: 200 }}><HudLootEntry name={p.name} icon={p.icon} glyph={p.glyph} rarity={p.rarity} label={p.label} quantity={p.quantity} currency={p.currency} fading={p.fading} /></div>
   {/each}
 </section>
 

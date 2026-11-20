@@ -9,16 +9,16 @@
 <meta name="fixture:overflow" content='{"slots":[{"id":"a","name":"A","icon":0,"glyph":"potion","key":"Left Shoulder","kind":"item","cooldown":0,"time":"","count":12345,"ready":false,"unaffordable":false,"reason":"","charges":0,"chargesMax":0,"charge":0},{"id":"b","name":"B","icon":0,"glyph":"bolt","key":"Right Trigger","kind":"skill","cooldown":0.5,"time":"1:02:44","count":0,"ready":false,"unaffordable":false,"reason":"","charges":0,"chargesMax":0,"charge":0},{"id":"c","name":"C","icon":0,"glyph":"skull","key":"Dpad Up","kind":"skill","cooldown":0,"time":"","count":0,"ready":false,"unaffordable":true,"reason":"Not enough soul essence","charges":0,"chargesMax":0,"charge":0},{"id":"d","name":"D","icon":0,"glyph":"star","key":"Y","kind":"skill","cooldown":0,"time":"","count":0,"ready":true,"unaffordable":false,"reason":"","charges":7,"chargesMax":9,"charge":0},{"id":"e","name":"E","icon":0,"glyph":"map","key":"B","kind":"skill","cooldown":0,"time":"","count":0,"ready":false,"unaffordable":false,"reason":"","charges":0,"chargesMax":0,"charge":0},{"id":"f","name":"F","icon":0,"glyph":"gem","key":"X","kind":"skill","cooldown":0,"time":"","count":0,"ready":false,"unaffordable":false,"reason":"","charges":0,"chargesMax":0,"charge":0},{"id":"u","name":"U","icon":0,"glyph":"fire","key":"Left Stick + Right Stick","kind":"ultimate","cooldown":0,"time":"","count":0,"ready":false,"unaffordable":false,"reason":"","charges":0,"chargesMax":0,"charge":0.999}]}'>
 
 <!--
-  The ability bar at the foot of the screen, a row of RpgSkillSlot blocks:
+  The ability bar at the foot of the screen, a row of HudSlot blocks:
   the consumables in smaller slots, set apart before the skills, then each
   skill, and the ultimate, larger, at the end. The slot draws itself (its
-  cooldown, cost, charges and key cap are RpgSkillSlot's); the bar only
-  sizes and spaces them. A game that wants another bar lays RpgSkillSlot
+  cooldown, cost, charges and key cap are HudSlot's); the bar only
+  sizes and spaces them. A game that wants another bar lays HudSlot
   out itself. The game owns every cooldown, cost and charge; read only.
 -->
 <ul id="RpgSkills" part="RpgSkills.frame" class="hud bare" data-layout="row" aria-label={t("rpg.skills.name")}>
   {#each slots as s (s.id)}
-  <li part="RpgSkills.skill" class="skill" data-kind={s.kind}><RpgSkillSlot name={s.name} icon={s.icon} glyph={s.glyph} key={s.key} kind={s.kind} cooldown={s.cooldown} time={s.time} count={s.count} ready={s.ready} unaffordable={s.unaffordable} reason={s.reason} charges={s.charges} chargesMax={s.chargesMax} charge={s.charge} /></li>
+  <li part="RpgSkills.skill" class="skill" data-kind={s.kind}><HudSlot name={s.name} icon={s.icon} glyph={s.glyph} key={s.key} kind={s.kind} cooldown={s.cooldown} time={s.time} count={s.count} ready={s.ready} unaffordable={s.unaffordable} reason={s.reason} charges={s.charges} chargesMax={s.chargesMax} charge={s.charge} /></li>
   {/each}
 </ul>
 
@@ -26,9 +26,9 @@
 :host { margin: 0; padding: 0; list-style: none; align-items: flex-end; column-gap: calc(10 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); --s: calc(var(--size-xl) * 0.8); --item: calc(var(--size-xl) * 0.7); --ult: calc(var(--size-xl) * 1.3); }
 /* A slot's place: the skills' size, the consumables smaller, the ultimate
    larger. */
-.skill { flex: 0 1 auto; min-inline-size: 0; --rpg-skill-slot-size: var(--s); }
-.skill[data-kind=item] { --rpg-skill-slot-size: var(--item); }
-.skill[data-kind=ultimate] { --rpg-skill-slot-size: var(--ult); }
+.skill { flex: 0 1 auto; min-inline-size: 0; --hud-slot-size: var(--s); }
+.skill[data-kind=item] { --hud-slot-size: var(--item); }
+.skill[data-kind=ultimate] { --hud-slot-size: var(--ult); }
 /* The consumables are set apart from the skills; the ultimate a little too. */
 .skill[data-kind=item] + .skill:not([data-kind=item]) { margin-inline-start: calc(10 * var(--font-step-px)); }
 .skill[data-kind=ultimate] { margin-inline-start: calc(6 * var(--font-step-px)); }

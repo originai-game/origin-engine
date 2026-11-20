@@ -30,10 +30,11 @@ type Event = { mount: string; path: string; rowKey: string; kind: string; name: 
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
 const COMPONENTS = join(ENGINE, "src/ui/components");
-// The rpg kit, and the pieces of it every genre uses, filed by function.
+// The rpg kit, the HUD blocks it is built from, and the pieces of it every
+// genre uses, filed by function.
 const FILES = [
   ...readdirSync(join(COMPONENTS, "rpg")).filter((f) => f.endsWith(".svelte")).map((f) => join(COMPONENTS, "rpg", f)),
-  ...["hud/combat-log", "hud/quest-tracker", "panels/backpack", "panels/item-card", "panels/quest-log", "panels/conversation"].map((p) => join(COMPONENTS, `${p}.svelte`)),
+  ...["hud/portrait", "hud/bar", "hud/slot", "hud/effect", "hud/hint", "hud/loot-entry", "hud/combat-log", "hud/quest-tracker", "panels/backpack", "panels/item-card", "panels/quest-log", "panels/conversation"].map((p) => join(COMPONENTS, `${p}.svelte`)),
 ];
 const STYLES = join(ENGINE, "../../templates/styles");
 // The packs the group is dressed by. Every test runs in the first; each

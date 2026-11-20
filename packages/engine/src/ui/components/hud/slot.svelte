@@ -1,6 +1,6 @@
-<meta name="component" content="RpgSkillSlot">
-<meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgSkillSlot.skill RpgSkillSlot.slot RpgSkillSlot.art RpgSkillSlot.cooldown RpgSkillSlot.edge RpgSkillSlot.time RpgSkillSlot.reason RpgSkillSlot.count RpgSkillSlot.charges RpgSkillSlot.pip RpgSkillSlot.ring RpgSkillSlot.key">
+<meta name="component" content="HudSlot">
+<meta name="strings" content="./slot.en.ogt">
+<meta name="parts" content="HudSlot.skill HudSlot.slot HudSlot.art HudSlot.cooldown HudSlot.edge HudSlot.time HudSlot.reason HudSlot.count HudSlot.charges HudSlot.pip HudSlot.ring HudSlot.key">
 <meta name="prop:name" content="string" data-doc="What a reader calls it (Ember slash).">
 <meta name="prop:icon" content="number" data-doc="Its art, a texture (og.load.texture); 0 draws the glyph in its place.">
 <meta name="prop:glyph" content="string" data-doc="An icon of the atlas, drawn when there is no art; empty is none.">
@@ -24,37 +24,37 @@
 <meta name="fixture:overflow" content='{"name":"Thunderous riposte of the Ninefold Gate","icon":0,"glyph":"bolt","key":"Right Trigger","kind":"skill","cooldown":0.5,"time":"1:02:44","count":12345,"ready":false,"unaffordable":false,"reason":"","charges":7,"chargesMax":9,"charge":0}'>
 
 <!--
-  One slot of the RPG HUD's skill bar, a block a bar is built from: the
+  One slot of a HUD's skill bar, a block a bar is built from: the
   art in an octagon with a lit edge, its cooldown a dark radial sweep with
   a lit leading edge and the time left, a slot that cannot be paid for
   greyed with its reason on it, charge pips over a slot that holds
   charges, a consumable's count on a tag, and the ultimate in a hexagon
   inside a gold ring that fills with its charge; a key cap under it. Its
-  side is --rpg-skill-slot-size; a bar sets it on the place it gives the
+  side is --hud-slot-size; a bar sets it on the place it gives the
   slot. It is as wide as its own content wherever it stands, so the art
   and the key cap are one column of the slot's width. The game owns every cooldown, cost and charge; read only.
 -->
-<div id="RpgSkillSlot" part="RpgSkillSlot.skill" data-layout="stack" data-gap="none" role="group" data-kind={kind} data-ready={ready || (kind == 'ultimate' && charge >= 1)} data-unaffordable={unaffordable} data-cooling={cooldown > 0 || (kind == 'ultimate' && charge < 1)} aria-label={unaffordable && reason ? t("rpg.skills.slot", { name: name, state: reason }) : name}>
-  {#if chargesMax > 0}<div part="RpgSkillSlot.charges" class="charges" data-layout="overlay" role="meter" aria-label={t("rpg.skills.charges")} aria-valuemin="0" aria-valuemax={chargesMax} aria-valuenow={charges <= 0 ? 0 : charges} style:--n={chargesMax} style:--on={charges <= 0 ? 0 : charges >= chargesMax ? 1 : charges / chargesMax}><div part="RpgSkillSlot.pip" class="pip" data-anchor="top-start"></div></div>{/if}
+<div id="HudSlot" part="HudSlot.skill" data-layout="stack" data-gap="none" role="group" data-kind={kind} data-ready={ready || (kind == 'ultimate' && charge >= 1)} data-unaffordable={unaffordable} data-cooling={cooldown > 0 || (kind == 'ultimate' && charge < 1)} aria-label={unaffordable && reason ? t("hud.slot.state", { name: name, state: reason }) : name}>
+  {#if chargesMax > 0}<div part="HudSlot.charges" class="charges" data-layout="overlay" role="meter" aria-label={t("hud.slot.charges")} aria-valuemin="0" aria-valuemax={chargesMax} aria-valuenow={charges <= 0 ? 0 : charges} style:--n={chargesMax} style:--on={charges <= 0 ? 0 : charges >= chargesMax ? 1 : charges / chargesMax}><div part="HudSlot.pip" class="pip" data-anchor="top-start"></div></div>{/if}
   <div class="holder" data-layout="overlay">
-    {#if kind == 'ultimate'}<div part="RpgSkillSlot.ring" class="ring" data-anchor="fill" role="meter" aria-label={t("rpg.skills.charge")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={charge <= 0 ? 0 : charge >= 1 ? 100 : charge * 100}><svg class="dial" viewBox="0 0 100 100"><path class="well" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none"></path><path class="lit" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none" pathLength="1" stroke-dasharray={(charge <= 0 ? 0 : charge >= 1 ? 1 : charge) + " 1"}></path></svg></div>{/if}
-    <div part="RpgSkillSlot.slot" class="slot" data-anchor="center" data-layout="overlay">
-      {#if icon}<img part="RpgSkillSlot.art" class="art" data-anchor="fill" src={icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if glyph}<og-icon class="glyph" icon={glyph}></og-icon>{/if}</div>{/if}
-      {#if cooldown > 0}<div part="RpgSkillSlot.cooldown" class="cooldown" data-anchor="fill" style:--left={cooldown >= 1 ? 1 : cooldown}></div><div part="RpgSkillSlot.edge" class="edge" data-anchor="fill" style:--left={cooldown >= 1 ? 1 : cooldown}></div>{/if}
+    {#if kind == 'ultimate'}<div part="HudSlot.ring" class="ring" data-anchor="fill" role="meter" aria-label={t("hud.slot.charge")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={charge <= 0 ? 0 : charge >= 1 ? 100 : charge * 100}><svg class="dial" viewBox="0 0 100 100"><path class="well" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none"></path><path class="lit" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none" pathLength="1" stroke-dasharray={(charge <= 0 ? 0 : charge >= 1 ? 1 : charge) + " 1"}></path></svg></div>{/if}
+    <div part="HudSlot.slot" class="slot" data-anchor="center" data-layout="overlay">
+      {#if icon}<img part="HudSlot.art" class="art" data-anchor="fill" src={icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if glyph}<og-icon class="glyph" icon={glyph}></og-icon>{/if}</div>{/if}
+      {#if cooldown > 0}<div part="HudSlot.cooldown" class="cooldown" data-anchor="fill" style:--left={cooldown >= 1 ? 1 : cooldown}></div><div part="HudSlot.edge" class="edge" data-anchor="fill" style:--left={cooldown >= 1 ? 1 : cooldown}></div>{/if}
       {#if unaffordable}<div class="veil" data-anchor="fill"></div>{/if}
-      {#if cooldown > 0 && time}<span part="RpgSkillSlot.time" class="time" data-anchor="center">{time}</span>{/if}
-      {#if unaffordable && reason && cooldown <= 0}<span part="RpgSkillSlot.reason" class="reason" data-anchor="center">{reason}</span>{/if}
-      {#if kind == 'ultimate' && charge < 1}<span part="RpgSkillSlot.time" class="time" data-anchor="center">{formatPercent(charge <= 0 ? 0 : charge)}</span>{/if}
+      {#if cooldown > 0 && time}<span part="HudSlot.time" class="time" data-anchor="center">{time}</span>{/if}
+      {#if unaffordable && reason && cooldown <= 0}<span part="HudSlot.reason" class="reason" data-anchor="center">{reason}</span>{/if}
+      {#if kind == 'ultimate' && charge < 1}<span part="HudSlot.time" class="time" data-anchor="center">{formatPercent(charge <= 0 ? 0 : charge)}</span>{/if}
     </div>
-    {#if count > 0}<span part="RpgSkillSlot.count" class="count" data-anchor="top-end">{t("rpg.skills.count", { count: formatNumber(count) })}</span>{/if}
+    {#if count > 0}<span part="HudSlot.count" class="count" data-anchor="top-end">{t("hud.slot.count", { count: formatNumber(count) })}</span>{/if}
   </div>
-  {#if key}<span part="RpgSkillSlot.key" class="key">{key}</span>{/if}
+  {#if key}<span part="HudSlot.key" class="key">{key}</span>{/if}
 </div>
 
 <style>
 /* The slot is art: it keeps its size at any text scale, and its figures
    and key cap follow the text. */
-:host { inline-size: fit-content; max-inline-size: 100%; align-items: center; row-gap: calc(5 * var(--font-step-px)); color: var(--hud-ink); filter: var(--hud-lift); --side: var(--rpg-skill-slot-size); }
+:host { inline-size: fit-content; max-inline-size: 100%; align-items: center; row-gap: calc(5 * var(--font-step-px)); color: var(--hud-ink); filter: var(--hud-lift); --side: var(--hud-slot-size); }
 .holder { inline-size: var(--side); block-size: var(--side); --layout-anchor-inset: 0; }
 /* The slot: an octagon whose fill is its lit edge, the art inset inside. */
 .slot { container-type: size; inline-size: var(--side); block-size: var(--side); clip-path: var(--hud-octagon); background: var(--hud-edge); --layout-anchor-inset: calc(2 * var(--font-step-px)); }

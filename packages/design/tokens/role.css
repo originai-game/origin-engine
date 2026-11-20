@@ -154,9 +154,9 @@
   /* The RPG HUD's blocks: a portrait's side, a bar's thickness and a
      skill slot's side (art: it keeps its size at any text scale). A plate
      sets them on the place it gives a block, where they inherit. */
-  --role-rpg-portrait-size: calc(38 * var(--font-step-px));
-  --role-rpg-bar-size: calc(6 * var(--font-step-px));
-  --role-rpg-skill-slot-size: calc(var(--size-xl) * 0.8);
+  --role-hud-portrait-size: calc(38 * var(--font-step-px));
+  --role-hud-bar-size: calc(6 * var(--font-step-px));
+  --role-hud-slot-size: calc(var(--size-xl) * 0.8);
   /* The six rarity colours (`--common` … `--mythic`): each a status colour
      here; a style names its own. A cell holding something of a rarity
      (`data-rarity`) wears its colour as a rim, as light rising from its

@@ -25,21 +25,21 @@ The game feeds its current auto setting back through `auto`.
 
 ## Structure and appearance
 
-The action HUD's plates are built from three blocks, which a game also
-uses by name to lay out a plate of its own: `RpgPortrait` (the octagon
-portrait), `RpgBar` (one leaning bar: health with its ghost, mana,
+The action HUD's plates are built from the HUD's blocks (`../hud/`, shared
+by every HUD family), which a game also uses by name to lay out a plate of its own: `HudPortrait` (the octagon
+portrait), `HudBar` (one leaning bar: health with its ghost, mana,
 stamina in cells, experience; `showValue` stands its figure over it) and
-`RpgSkillSlot` (one slot of the skill bar). `RpgLeader`, `RpgCompanions`
+`HudSlot` (one slot of the skill bar). `RpgLeader`, `RpgCompanions`
 and `RpgSkills` only place and size them: a block's size is a token
-(`--rpg-portrait-size`, `--rpg-bar-size`, `--rpg-skill-slot-size`) set on
+(`--hud-portrait-size`, `--hud-bar-size`, `--hud-slot-size`) set on
 the place it is given, where it inherits. The rows of the action HUD
-are built from blocks the same way: `RpgEffects` is a row of `RpgEffect`
-(one buff or debuff tile), `RpgHints` a row of `RpgHint` (one key cap and
-its action) and `RpgLootFeed` a column of `RpgLootEntry` (one looted
+are built from blocks the same way: `RpgEffects` is a row of `HudEffect`
+(one buff or debuff tile), `RpgHints` a row of `HudHint` (one key cap and
+its action) and `RpgLootFeed` a column of `HudLootEntry` (one looted
 row); the row or column only spaces them (the feed also slides a row in,
 fades it out and trims on a phone), and a game lays the same blocks out
 anywhere else. `RpgVitals` and `RpgExperience` stay whole. `RpgParty` and `RpgEnemyInfo`
-draw their bars with `RpgBar` too, thick enough for the figure and filled
+draw their bars with `HudBar` too, thick enough for the figure and filled
 in the page's health, mana and danger: a place may set the fill tokens
 of the bar's kind (`--hud-life-fill` and `--hud-life-glow`, and so on).
 
@@ -90,22 +90,22 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgEnemyInfo` | `name`, `portrait`, `level`, `health`, `healthMax`, `effects` keyed `{ id, icon, label, tone }` | none |
 | `RpgCommands` | `commands` keyed `{ id, label, icon, enabled }`, `selected` | `choose` (row key; a disabled command sends nothing) |
 | `RpgLeader` | `name`, `level`, `portrait`, `health`, `healthMax`, `ghost`, `mana`, `manaMax`, `stamina`, `staminaMax`, `segment` (stamina per cell), `low` | none |
-| `RpgPortrait` (block) | `portrait`, `dimmed`; its side is `--rpg-portrait-size` | none |
-| `RpgBar` (block) | `value`, `max`, `kind` (health, mana, stamina, xp), `ghost`, `segment` (value per cell), `low`, `showValue` (its figure over it), `name`; as wide as its place, `--rpg-bar-size` thick, filled by its kind's `--hud-*-fill` and `--hud-*-glow`, which its place may set | none |
+| `HudPortrait` (block) | `portrait`, `dimmed`; its side is `--hud-portrait-size` | none |
+| `HudBar` (block) | `value`, `max`, `kind` (health, mana, stamina, xp), `ghost`, `segment` (value per cell), `low`, `showValue` (its figure over it), `name`; as wide as its place, `--hud-bar-size` thick, filled by its kind's `--hud-*-fill` and `--hud-*-glow`, which its place may set | none |
 | `RpgEffects` | `effects` keyed `{ id, name, icon, glyph, remaining, label, harmful }` | none |
-| `RpgEffect` (block) | one effect's `name`, `icon`, `glyph`, `remaining`, `label`, `harmful` | none |
+| `HudEffect` (block) | one effect's `name`, `icon`, `glyph`, `remaining`, `label`, `harmful` | none |
 | `RpgCompanions` | `members` keyed `{ id, name, portrait, health, healthMax, ghost, mana, manaMax, key, fallen }`, `low` | none |
 | `RpgMinimap` | `map` (texture), `centerX`, `centerY`, `zoom`, `heading`, `blips` keyed `{ id, kind (ally, foe, boss, objective), x, y, label }`, `place`, `clock` | none |
 | `RpgLockOn` | `target` (empty: nothing locked) | none |
 | `RpgHits` | `hits` keyed `{ id, amount, kind (normal, critical, burn, heal, miss), call, word }`, newest first | none |
 | `RpgCombo` | `count`, `word`, `remaining` (the chain's window, 0–1), `multiplier` | none |
 | `RpgLootFeed` | `items` keyed `{ id, name, icon, glyph, rarity, label, quantity, currency, fading }`, newest first | none |
-| `RpgLootEntry` (block) | one row's `name`, `icon`, `glyph`, `rarity`, `label`, `quantity`, `currency`, `fading` | none |
+| `HudLootEntry` (block) | one row's `name`, `icon`, `glyph`, `rarity`, `label`, `quantity`, `currency`, `fading` | none |
 | `RpgPrompt` | `key`, `text`, `disabled`, `reason` | none |
 | `RpgSkills` | `slots` keyed `{ id, name, icon, glyph, key, kind (skill, item, ultimate), cooldown, time, count, ready, unaffordable, reason, charges, chargesMax, charge }` | none |
-| `RpgSkillSlot` (block) | one slot's `name`, `icon`, `glyph`, `key`, `kind`, `cooldown`, `time`, `count`, `ready`, `unaffordable`, `reason`, `charges`, `chargesMax`, `charge`; its side is `--rpg-skill-slot-size` | none |
+| `HudSlot` (block) | one slot's `name`, `icon`, `glyph`, `key`, `kind`, `cooldown`, `time`, `count`, `ready`, `unaffordable`, `reason`, `charges`, `chargesMax`, `charge`; its side is `--hud-slot-size` | none |
 | `RpgHints` | `hints` keyed `{ id, key, label }` | none |
-| `RpgHint` (block) | one hint's `key`, `label` | none |
+| `HudHint` (block) | one hint's `key`, `label` | none |
 | `RpgExperience` | `level`, `value` (0–1 to the next level) | none |
 
 ## Parts
@@ -122,10 +122,10 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgCombatLog` (`../hud/combat-log.svelte`) | `frame`, `band`, `title`, `row` (`[data-tone]`), `fade` |
 | `RpgCommands` (`commands.svelte`) | `frame`, `band`, `title`, `cell` (a button: `.primary` `[aria-selected]` `:disabled`) |
 | `RpgConversation` (`../panels/conversation.svelte`) | `frame`, `name`, `row` (a button: `[aria-selected]` `[data-used]`), `controls`, `backlog`, `skip`, `auto` (`[aria-pressed]`) |
-| `RpgEnemyInfo` (`enemy-info.svelte`) | `frame`, `band`, `title`, `name`, `row` (`[data-tone]`), `health` (the place of its `RpgBar`) |
+| `RpgEnemyInfo` (`enemy-info.svelte`) | `frame`, `band`, `title`, `name`, `row` (`[data-tone]`), `health` (the place of its `HudBar`) |
 | `RpgItemCard` (`../panels/item-card.svelte`) | `frame` (`[data-rarity]`), `hero`, `band`, `kicker`, `name`, `line`, `lead`, `delta` (`[data-trend]`), `current`, `stats`, `row`, `lore`, `actions`, `reason` |
 | `RpgMenuBar` (`menu-bar.svelte`) | `frame`, `tab` (a button: `[aria-selected]`) |
-| `RpgParty` (`party.svelte`) | `frame`, `cell` (a button: `[aria-selected]` `[data-down]`), `health`, `mana` (the places of its `RpgBar` blocks) |
+| `RpgParty` (`party.svelte`) | `frame`, `cell` (a button: `[aria-selected]` `[data-down]`), `health`, `mana` (the places of its `HudBar` blocks) |
 | `RpgPlaceCard` (`place-card.svelte`) | `frame`, `name`, `caption` |
 | `RpgQuestDetail` (`quest-detail.svelte`) | `frame`, `band`, `title`, `row` (`[data-done]` `[data-optional]` `[data-step]`), `reward`, `scenery` |
 | `RpgQuestLog` (`../panels/quest-log.svelte`) | `frame`, `band`, `title`, `heading`, `row` (a button: `[aria-selected]` `[data-done]` `[data-fresh]` `[data-tracked]`) |
@@ -133,23 +133,23 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgStats` (`stats.svelte`) | `frame`, `band`, `title`, `row` |
 | `RpgTurnOrder` (`turn-order.svelte`) | `frame`, `cell` (`[aria-current]` `[data-acting]` `[data-down]` `[data-side]`), `title` |
 | `RpgVitals` (`vitals.svelte`) | `frame` (`[data-down]` `[data-plate]`) |
-| `RpgLeader` (`leader.svelte`) | `frame` (`.low`), `portrait`, `hero`, `level`, `value`, `max`, `health`, `mana`, `stamina` (the places of its `RpgPortrait` and `RpgBar` blocks) |
-| `RpgPortrait` (`portrait.svelte`) | `rim` (`.dimmed`), `face` |
-| `RpgBar` (`bar.svelte`) | `groove` (`.mana` `.stamina` `.xp` `.low`), `ghost`, `lit`, `cuts`, `figure` |
-| `RpgEffects` (`effects.svelte`) | `frame`, `effect` (`[data-harmful]`, the place of an `RpgEffect`) |
-| `RpgEffect` (`effect.svelte`) | `effect` (`[data-harmful]`), `tile`, `art`, `timer`, `time` |
+| `RpgLeader` (`leader.svelte`) | `frame` (`.low`), `portrait`, `hero`, `level`, `value`, `max`, `health`, `mana`, `stamina` (the places of its `HudPortrait` and `HudBar` blocks) |
+| `HudPortrait` (`../hud/portrait.svelte`) | `rim` (`.dimmed`), `face` |
+| `HudBar` (`../hud/bar.svelte`) | `groove` (`.mana` `.stamina` `.xp` `.low`), `ghost`, `lit`, `cuts`, `figure` |
+| `RpgEffects` (`effects.svelte`) | `frame`, `effect` (`[data-harmful]`, the place of an `HudEffect`) |
+| `HudEffect` (`../hud/effect.svelte`) | `effect` (`[data-harmful]`), `tile`, `art`, `timer`, `time` |
 | `RpgCompanions` (`companions.svelte`) | `frame`, `member` (`[data-fallen]` `.low`), `portrait`, `callsign`, `fallen`, `health`, `mana`, `key` (`portrait`, `health` and `mana` are the places of its blocks) |
 | `RpgMinimap` (`minimap.svelte`) | `frame`, `scope`, `map`, `blip` (`[data-kind]`), `self`, `north`, `place`, `clock` |
 | `RpgLockOn` (`lock-on.svelte`) | `frame` (`[data-locked]`), `ring` |
 | `RpgHits` (`hits.svelte`) | `frame`, `hit` (`[data-kind]`), `call`, `amount`, `kind` |
 | `RpgCombo` (`combo.svelte`) | `frame`, `count`, `word`, `decay`, `lit`, `bonus` |
-| `RpgLootFeed` (`loot-feed.svelte`) | `frame`, `entry` (`[data-rarity]` `[data-fading]`, the place of an `RpgLootEntry`) |
-| `RpgLootEntry` (`loot-entry.svelte`) | `entry` (`[data-rarity]` `[data-fading]`), `edge`, `art`, `item`, `rarity`, `count` |
+| `RpgLootFeed` (`loot-feed.svelte`) | `frame`, `entry` (`[data-rarity]` `[data-fading]`, the place of an `HudLootEntry`) |
+| `HudLootEntry` (`../hud/loot-entry.svelte`) | `entry` (`[data-rarity]` `[data-fading]`), `edge`, `art`, `item`, `rarity`, `count` |
 | `RpgPrompt` (`prompt.svelte`) | `frame` (`.disabled`), `key`, `action`, `reason` |
-| `RpgSkills` (`skills.svelte`) | `frame`, `skill` (`[data-kind]`, the place of an `RpgSkillSlot`) |
-| `RpgSkillSlot` (`skill-slot.svelte`) | `skill` (`[data-kind]` `[data-ready]` `[data-unaffordable]`), `slot`, `art`, `cooldown`, `edge`, `time`, `reason`, `count`, `charges`, `pip`, `ring`, `key` |
-| `RpgHints` (`hints.svelte`) | `frame`, `hint` (the place of an `RpgHint`) |
-| `RpgHint` (`hint.svelte`) | `hint`, `key`, `action` |
+| `RpgSkills` (`skills.svelte`) | `frame`, `skill` (`[data-kind]`, the place of an `HudSlot`) |
+| `HudSlot` (`../hud/slot.svelte`) | `skill` (`[data-kind]` `[data-ready]` `[data-unaffordable]`), `slot`, `art`, `cooldown`, `edge`, `time`, `reason`, `count`, `charges`, `pip`, `ring`, `key` |
+| `RpgHints` (`hints.svelte`) | `frame`, `hint` (the place of an `HudHint`) |
+| `HudHint` (`../hud/hint.svelte`) | `hint`, `key`, `action` |
 | `RpgExperience` (`experience.svelte`) | `frame`, `reading`, `line`, `lit` |
 | `RpgWorldMap` (`world-map.svelte`) | `frame`, `marker` (a button: `[aria-selected]` `[data-kind]` `:disabled`), `row` (`[data-kind]`), `plate` (a marker's name), `caption` |
 
