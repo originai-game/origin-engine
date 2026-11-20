@@ -1,6 +1,5 @@
 <meta name="component" content="RhythmChain">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmChain.frame RhythmChain.legend RhythmChain.multiplier RhythmChain.steps RhythmChain.step">
 <meta name="prop:multiplier" content="string" data-doc="The score multiplier as the game words it (×4); empty hides the chain.">
 <meta name="prop:step" content="number" data-doc="How many of the steps to the next multiplier are lit.">
 <meta name="prop:steps" content="number" data-default="8" data-doc="The steps to the next multiplier; 0 hides the strip (at its top multiplier).">
@@ -15,24 +14,24 @@
   The score chain: a lit plate with the multiplier, and beside it the
   steps to the next one as leaning pips. The game counts both; read only.
 -->
-<section id="RhythmChain" part="RhythmChain.frame" class="hud bare" data-layout="row" data-gap="tight" role="group" aria-label={t("rhythm.chain.name", { multiplier: multiplier })}>
+<section id="RhythmChain" part="frame" variant="hud" layout="row" gap="tight" role="group" aria-label={t("rhythm.chain.name", { multiplier: multiplier })}>
   {#if multiplier != ''}
   {#key hit}
-  <div id="Plate" data-layout="row" data-gap="tight" data-motion="pop">
-    <span part="RhythmChain.legend" class="label">{t("rhythm.chain.label")}</span>
-    <span part="RhythmChain.multiplier" class="multiplier">{multiplier}</span>
+  <div id="Plate" layout="row" gap="tight" play="pop">
+    <span part="legend" class="label">{t("rhythm.chain.label")}</span>
+    <span part="multiplier" class="multiplier">{multiplier}</span>
   </div>
   {/key}
   {#if steps > 0}
-  <div id="Steps" part="RhythmChain.steps" data-layout="overlay" role="meter" aria-label={t("rhythm.chain.steps")} aria-valuemin="0" aria-valuemax={steps} aria-valuenow={step < 0 ? 0 : step > steps ? steps : step} style:--pips={steps} style:--lit={step <= 0 ? 0 : step >= steps ? 1 : step / steps}>
-    <div id="Lit" part="RhythmChain.step" data-anchor="top-start"></div>
+  <div id="Steps" part="steps" layout="overlay" role="meter" aria-label={t("rhythm.chain.steps")} aria-valuemin="0" aria-valuemax={steps} aria-valuenow={step < 0 ? 0 : step > steps ? steps : step} style:--pips={steps} style:--lit={step <= 0 ? 0 : step >= steps ? 1 : step / steps}>
+    <div id="Lit" part="step" anchor="top-start"></div>
   </div>
   {/if}
   {/if}
 </section>
 
 <style>
-:host { align-items: center; max-inline-size: stretch; --layout-anchor-inset: 0; }
+#RhythmChain { align-items: center; max-inline-size: stretch; --layout-anchor-inset: 0; }
 /* The plate: smoked glass, two corners cut, a lit top edge in the accent. */
 #Plate { flex: none; align-items: baseline; padding: var(--space-xxs) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .label { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; }

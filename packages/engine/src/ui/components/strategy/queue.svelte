@@ -1,6 +1,5 @@
 <meta name="component" content="StrategyQueue">
 <meta name="strings" content="./strategy.en.ogt">
-<meta name="parts" content="StrategyQueue.frame StrategyQueue.title StrategyQueue.slot StrategyQueue.art StrategyQueue.sweep StrategyQueue.time StrategyQueue.badge StrategyQueue.open StrategyQueue.count StrategyQueue.state StrategyQueue.reason">
 <meta name="prop:title" content="string" data-doc="What produces, as the game words it (Barracks queue); empty takes the kit's (Production).">
 <meta name="prop:items" content="list" data-doc="The queue in the game's order, first in production, keyed rows of { id, name, picture, icon, count, progress, timeText, state, reason }: name for a reader; picture a texture (og.load.texture), 0 draws icon from the atlas; count a stack of the same order (×2, shown above 1); progress 0 to 1 done, a dark sweep over the first order's art for what is still to run; timeText its time left as the game words it (0:08), on the first order's tile, empty none; state building, waiting, paused or blocked (data-state; paused and blocked are also words after the tiles); reason why it is blocked (Need 3 supply), empty none.">
 <meta name="prop:queued" content="number" data-doc="Orders queued, as the game counts them (stacks included), shown over limit on a tag.">
@@ -22,44 +21,44 @@
   Reports cancel (a tile's key); the game owns costs, times, refunds and
   the limit.
 -->
-<section id="StrategyQueue" part="StrategyQueue.frame" class="hud bare" aria-label={title != '' ? title : t("strategy.queue.title")} data-full={full}>
-  <span part="StrategyQueue.title" class="title">{title != '' ? title : t("strategy.queue.title")}</span>
+<section id="StrategyQueue" part="frame" variant="hud" aria-label={title != '' ? title : t("strategy.queue.title")} class:full={full}>
+  <span part="title" class="title">{title != '' ? title : t("strategy.queue.title")}</span>
   <div class="slots" role="group" aria-label={t("strategy.queue.items")}>
-    {#each items as q (q.id)}
-      <button part="StrategyQueue.slot" class="slot" aria-label={t("strategy.queue.cancel", { name: q.name })} aria-description={q.reason ? q.reason : q.timeText} data-state={q.state} onclick={cancel}><div class="face">
-        {#if q.picture}<img part="StrategyQueue.art" class="art" src={q.picture} alt="">{:else}<div part="StrategyQueue.art" class="blank-art"><og-icon class="mark" icon={q.icon}></og-icon></div>{/if}
-        {#if q.state != 'waiting'}<div part="StrategyQueue.sweep" class="sweep" style:--done={q.progress <= 0 ? 0 : q.progress >= 1 ? 1 : q.progress}></div>{/if}
-        {#if q.state != 'waiting' && q.timeText}<div class="run" style:--chars={q.timeText.length}><span part="StrategyQueue.time" class="time">{q.timeText}</span></div>{/if}
-        {#if q.count > 1}<span part="StrategyQueue.badge" class="stack">{t("strategy.queue.stack", { count: q.count })}</span>{/if}
+    {#each items as q, i (q.id)}
+      <button part="slot" class="slot" class:first={i == 0} aria-label={t("strategy.queue.cancel", { name: q.name })} aria-description={q.reason ? q.reason : q.timeText} onclick={cancel} class:state-blocked={(q.state) == 'blocked'} class:state-paused={(q.state) == 'paused'}><div class="face">
+        {#if q.picture}<img part="art" class="art" src={q.picture} alt="">{:else}<div part="art" class="blank-art"><og-icon class="mark" icon={q.icon}></og-icon></div>{/if}
+        {#if q.state != 'waiting'}<div part="sweep" class="sweep" style:--done={q.progress <= 0 ? 0 : q.progress >= 1 ? 1 : q.progress}></div>{/if}
+        {#if q.state != 'waiting' && q.timeText}<div class="run" style:--chars={q.timeText.length}><span part="time" class="time">{q.timeText}</span></div>{/if}
+        {#if q.count > 1}<span part="badge" class="stack">{t("strategy.queue.stack", { count: q.count })}</span>{/if}
       </div></button>
     {/each}
-    {#if limit > queued}<div part="StrategyQueue.open" class="open" style:--open={limit - queued > 12 ? 12 : limit - queued}></div>{/if}
+    {#if limit > queued}<div part="open" class="open" style:--open={limit - queued > 12 ? 12 : limit - queued}></div>{/if}
   </div>
-  {#if limit > 0}<span part="StrategyQueue.count" class="capacity" data-full={full} aria-label={t("strategy.queue.capacityName", { count: queued, limit: limit })}>{full ? t("strategy.queue.fullCount", { count: queued, limit: limit }) : t("strategy.queue.capacity", { count: queued, limit: limit })}</span>{:else}{#if full}<span part="StrategyQueue.count" class="capacity" data-full="true">{t("strategy.queue.full")}</span>{/if}{/if}
+  {#if limit > 0}<span part="count" class="capacity" aria-label={t("strategy.queue.capacityName", { count: queued, limit: limit })} class:full={full}>{full ? t("strategy.queue.fullCount", { count: queued, limit: limit }) : t("strategy.queue.capacity", { count: queued, limit: limit })}</span>{:else}{#if full}<span part="count" class="capacity" class:full={true}>{t("strategy.queue.full")}</span>{/if}{/if}
   {#each items as q (q.id)}
     {#if q.state == 'paused' || q.state == 'blocked'}
-      <span part="StrategyQueue.state" class="state" data-state={q.state} role="status">{q.state == 'paused' ? t("strategy.queue.paused") : t("strategy.queue.blocked")}</span>
-      {#if q.reason}<span part="StrategyQueue.reason" class="reason">{q.reason}</span>{/if}
+      <span part="state" class="state" role="status" class:state-blocked={(q.state) == 'blocked'} class:state-paused={(q.state) == 'paused'}>{q.state == 'paused' ? t("strategy.queue.paused") : t("strategy.queue.blocked")}</span>
+      {#if q.reason}<span part="reason" class="reason">{q.reason}</span>{/if}
     {/if}
   {/each}
   {#if !items.length}<span class="empty-text" role="status">{t("strategy.queue.empty")}</span>{/if}
 </section>
 
 <style>
-:host { --first: calc(var(--size-md) * 1.1); --tile: calc(var(--size-md) * 0.84); --gap: calc(6 * var(--font-step-px)); display: flex; flex-wrap: wrap; align-items: center; column-gap: calc(10 * var(--font-step-px)); row-gap: calc(4 * var(--font-step-px)); inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); }
+#StrategyQueue { --first: calc(var(--size-md) * 1.1); --tile: calc(var(--size-md) * 0.84); --gap: calc(6 * var(--font-step-px)); display: flex; flex-wrap: wrap; align-items: center; column-gap: calc(10 * var(--font-step-px)); row-gap: calc(4 * var(--font-step-px)); inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); }
 .title { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .slots { display: flex; align-items: center; column-gap: var(--gap); flex: 0 1 auto; min-inline-size: 0; overflow: hidden; }
 /* A tile: its fill is its lit edge, the art inset; the first order's tile
    is larger. The tiles are art and keep their size at any text scale. */
 .slot { flex: none; inline-size: var(--tile); block-size: var(--tile); min-inline-size: 0; color: var(--hud-ink); }
-.slot:first-child { inline-size: var(--first); block-size: var(--first); }
-.slot::part(base) { padding: calc(2 * var(--font-step-px)); border: 0; background: var(--hud-edge); box-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.slot[data-state=blocked]::part(base) { background: var(--hud-harm); }
+.slot.first { inline-size: var(--first); block-size: var(--first); }
+.slot { padding: calc(2 * var(--font-step-px)); border: 0; background: var(--hud-edge); box-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.slot.state-blocked { background: var(--hud-harm); }
 .face { container-type: size; position: relative; inline-size: stretch; block-size: stretch; overflow: hidden; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .art { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .blank-art { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; display: flex; align-items: center; justify-content: center; background: var(--hud-plate-fill); }
 .mark { inline-size: 60%; block-size: 60%; color: var(--hud-glyph); }
-.slot[data-state=blocked] .art { filter: var(--hud-unready); }
+.slot.state-blocked .art { filter: var(--hud-unready); }
 /* What is still to run: a dark sweep turning clockwise from the top. */
 .sweep { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; background: var(--hud-sweep); mask-image: conic-gradient(transparent calc(var(--done) * 360deg), #000 0); }
 /* The time on the tile: the cooldown's size, a share of its container,
@@ -71,14 +70,14 @@
 /* The free places: empty tiles, one per place, drawn as one strip. */
 .open { flex: none; inline-size: calc(var(--open) * (var(--tile) + var(--gap)) - var(--gap)); block-size: var(--tile); background: var(--hud-slot-empty); mask-image: repeating-linear-gradient(90deg, #000 0 var(--tile), transparent var(--tile) calc(var(--tile) + var(--gap))); }
 .capacity, .state { flex: none; padding: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.capacity[data-full=true] { color: var(--hud-gold); }
-.state[data-state=paused] { color: var(--hud-gold); }
-.state[data-state=blocked] { color: var(--hud-harm); }
+.capacity.full { color: var(--hud-gold); }
+.state.state-paused { color: var(--hud-gold); }
+.state.state-blocked { color: var(--hud-harm); }
 .reason { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-harm); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .empty-text { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-size-xs); color: var(--hud-ink-dim); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 /* On a phone the row is compact: smaller tiles, the title short. */
 @media (width < 600px) {
-  :host { --first: var(--size-md); --tile: calc(var(--size-md) * 0.78); --gap: calc(4 * var(--font-step-px)); column-gap: calc(6 * var(--font-step-px)); }
+  #StrategyQueue { --first: var(--size-md); --tile: calc(var(--size-md) * 0.78); --gap: calc(4 * var(--font-step-px)); column-gap: calc(6 * var(--font-step-px)); }
   .title { font-size: var(--hud-size-label-compact); letter-spacing: normal; }
 }
 </style>

@@ -1,6 +1,5 @@
 <meta name="component" content="ShooterSquad">
 <meta name="strings" content="./shooter.en.ogt">
-<meta name="parts" content="ShooterSquad.frame ShooterSquad.mate ShooterSquad.portrait ShooterSquad.face ShooterSquad.callsign ShooterSquad.status ShooterSquad.shield ShooterSquad.health ShooterSquad.ghost">
 <meta name="prop:members" content="list" data-doc="The player's squadmates in the game's order, keyed rows of { id, name, portrait, status, state, shield, shieldMax, health, healthMax, ghost }: portrait a texture (0: the person glyph); status the state as the game words it (Reviving), empty for none; state ok, down, reviving or out (on data-state: down and out dim the plate, reviving inks the status in the shield's blue); shieldMax 0 hides the shield bar; ghost the health before the latest loss.">
 <meta name="prop:segment" content="number" data-default="25" data-doc="Shield per cell of each shield bar (25).">
 <meta name="fixture:default" content='{"segment":25,"members":[{"id":"moraine","name":"Moraine","portrait":0,"status":"Reviving","state":"reviving","shield":50,"shieldMax":100,"health":38,"healthMax":100,"ghost":64},{"id":"quill","name":"Quill","portrait":0,"status":"","state":"ok","shield":100,"shieldMax":100,"health":100,"healthMax":100,"ghost":0}]}'>
@@ -14,43 +13,43 @@
   over a thin health bar with its ghost. The game owns every value and
   state; read only.
 -->
-<section id="ShooterSquad" part="ShooterSquad.frame" class="hud bare" data-layout="stack" role="group" aria-label={t("shooter.squad.name")}>
+<section id="ShooterSquad" part="frame" variant="hud" layout="stack" role="group" aria-label={t("shooter.squad.name")}>
   {#each members as m (m.id)}
-  <div part="ShooterSquad.mate" class="mate" data-state={m.state} role="group" aria-label={m.status ? t("shooter.squad.mate", { name: m.name, status: m.status }) : m.name}>
-    <div class="portrait" part="ShooterSquad.portrait" data-layout="overlay">
-      {#if m.portrait}<img class="face" part="ShooterSquad.face" data-anchor="fill" src={m.portrait} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center"><og-icon class="glyph" icon="person"></og-icon></div>{/if}
+  <div part="mate" class="mate" role="group" aria-label={m.status ? t("shooter.squad.mate", { name: m.name, status: m.status }) : m.name} class:state-down={(m.state) == 'down'} class:state-out={(m.state) == 'out'} class:state-reviving={(m.state) == 'reviving'}>
+    <div class="portrait" part="portrait" layout="overlay">
+      {#if m.portrait}<img class="face" part="face" anchor="fill" src={m.portrait} alt="">{:else}<div class="blank" anchor="fill" layout="center"><og-icon class="glyph" icon="person"></og-icon></div>{/if}
     </div>
-    <span part="ShooterSquad.callsign" class="callsign">{m.name}</span>
-    {#if m.status}<span part="ShooterSquad.status" class="status">{m.status}</span>{/if}
+    <span part="callsign" class="callsign">{m.name}</span>
+    {#if m.status}<span part="status" class="status">{m.status}</span>{/if}
       {#if m.shieldMax > 0}
-      <div part="ShooterSquad.shield" class="bar shield" data-layout="overlay" style:--value={m.shield <= 0 ? 0 : m.shield >= m.shieldMax ? 1 : m.shield / m.shieldMax} style:--cells={segment > 0 ? m.shieldMax / segment : 1}>
-        <div class="fill" data-anchor="top-start"></div>
-        <div class="cuts" data-anchor="fill"></div>
+      <div part="shield" class="bar shield" layout="overlay" style:--value={m.shield <= 0 ? 0 : m.shield >= m.shieldMax ? 1 : m.shield / m.shieldMax} style:--cells={segment > 0 ? m.shieldMax / segment : 1}>
+        <div class="fill" anchor="top-start"></div>
+        <div class="cuts" anchor="fill"></div>
       </div>
       {/if}
-      <div part="ShooterSquad.health" class="bar health" data-layout="overlay" role="meter" aria-label={t("shooter.vitals.health")} aria-valuemin="0" aria-valuemax={m.healthMax} aria-valuenow={m.health} style:--value={m.health <= 0 ? 0 : m.health >= m.healthMax ? 1 : m.health / m.healthMax} style:--ghost={m.ghost <= m.health ? 0 : m.ghost >= m.healthMax ? 1 : m.ghost / m.healthMax}>
-        <div part="ShooterSquad.ghost" class="ghost" data-anchor="top-start"></div>
-        <div class="fill" data-anchor="top-start"></div>
+      <div part="health" class="bar health" layout="overlay" role="meter" aria-label={t("shooter.vitals.health")} aria-valuemin="0" aria-valuemax={m.healthMax} aria-valuenow={m.health} style:--value={m.health <= 0 ? 0 : m.health >= m.healthMax ? 1 : m.health / m.healthMax} style:--ghost={m.ghost <= m.health ? 0 : m.ghost >= m.healthMax ? 1 : m.ghost / m.healthMax}>
+        <div part="ghost" class="ghost" anchor="top-start"></div>
+        <div class="fill" anchor="top-start"></div>
       </div>
   </div>
   {/each}
 </section>
 
 <style>
-:host { row-gap: calc(10 * var(--font-step-px)); inline-size: calc(220 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
+#ShooterSquad { row-gap: calc(10 * var(--font-step-px)); inline-size: calc(220 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 /* A plate: the portrait beside the name and state over the bars. */
 .mate { display: grid; grid-template-columns: auto minmax(0, auto) minmax(0, 1fr); grid-template-areas: "portrait name status" "portrait shield shield" "portrait health health"; column-gap: calc(10 * var(--font-step-px)); row-gap: calc(4 * var(--font-step-px)); align-items: baseline; min-inline-size: 0; --layout-anchor-inset: 0; }
-.mate[data-state=down], .mate[data-state=out] { opacity: 0.6; }
+.mate.state-down, .mate.state-out { opacity: 0.6; }
 /* The portrait: an octagon with a lit edge, the art inset inside it. */
 .portrait { grid-area: portrait; align-self: center; inline-size: calc(40 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); clip-path: var(--hud-octagon); background: var(--hud-edge); --layout-anchor-inset: calc(2 * var(--font-step-px)); }
 .face, .blank { clip-path: var(--hud-octagon); background: var(--hud-plate-fill); }
 .face { object-fit: cover; }
-.mate[data-state=out] .face { filter: var(--hud-unready); }
+.mate.state-out .face { filter: var(--hud-unready); }
 .glyph { inline-size: 50%; block-size: 50%; color: var(--hud-ink-dim); }
 .callsign { grid-area: name; min-inline-size: 0; font-size: var(--hud-size-name); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .status { grid-area: status; justify-self: start; max-inline-size: 100%; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-.mate[data-state=reviving] .status { color: var(--hud-ally); }
-.mate[data-state=down] .status, .mate[data-state=out] .status { color: var(--hud-foe); }
+.mate.state-reviving .status { color: var(--hud-ally); }
+.mate.state-down .status, .mate.state-out .status { color: var(--hud-foe); }
 /* Thin leaning bars: the shield cut into cells over health and its ghost. */
 .shield { grid-area: shield; }
 .health { grid-area: health; }
@@ -64,7 +63,7 @@
    portrait beside the name over the bars, the state on a tag under
    them. */
 @media (width < 600px) {
-  :host { flex-direction: row; inline-size: stretch; column-gap: var(--space-md); }
+  #ShooterSquad { flex-direction: row; inline-size: stretch; column-gap: var(--space-md); }
   .mate { flex: 1 1 0; }
   .mate { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "portrait name" "portrait shield" "portrait health" "status status"; column-gap: calc(4 * var(--font-step-px)); row-gap: calc(3 * var(--font-step-px)); }
   .portrait { align-self: start; inline-size: calc(28 * var(--font-step-px)); block-size: calc(28 * var(--font-step-px)); }

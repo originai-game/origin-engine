@@ -34,7 +34,14 @@ fn main() {
         "ui/hud.svelte".to_string(),
         "showcase/first-light/assets/ui/hud.svelte".to_string(),
     )];
-    for dir in ["components/hud"] {
+    for dir in [
+        "components/hud",
+        "components/rpg",
+        "components/shooter",
+        "components/racing",
+        "components/strategy",
+        "components/rhythm",
+    ] {
         let root = format!("packages/engine/src/ui/{dir}");
         let mut files: Vec<String> = std::fs::read_dir(&root)
             .unwrap_or_else(|e| panic!("{root}: {e}"))
@@ -48,7 +55,14 @@ fn main() {
     }
     let mut skips: BTreeMap<Skip, usize> = BTreeMap::new();
     for (id, path) in &docs {
-        let doc = UiDocument::parse(id, &read(path)).unwrap_or_else(|e| panic!("{id}: {e:?}"));
+        // A document the parser refuses is reported and the rest go on.
+        let doc = match UiDocument::parse(id, &read(path)) {
+            Ok(doc) => doc,
+            Err(e) => {
+                println!("{id}: refused: {e:?}");
+                continue;
+            }
+        };
         let t = Instant::now();
         let s = DocStyle::compile(&doc, &tokens, &surfaces);
         let us = t.elapsed().as_secs_f64() * 1e6;

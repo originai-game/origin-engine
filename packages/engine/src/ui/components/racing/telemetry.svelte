@@ -1,6 +1,5 @@
 <meta name="component" content="RacingTelemetry">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingTelemetry.frame RacingTelemetry.dial RacingTelemetry.track RacingTelemetry.fill RacingTelemetry.redline RacingTelemetry.tick RacingTelemetry.mark RacingTelemetry.face RacingTelemetry.lights RacingTelemetry.speed RacingTelemetry.units RacingTelemetry.gear RacingTelemetry.mode RacingTelemetry.badge">
 <meta name="prop:speed" content="number" data-doc="The speed as the game measures it, already in its units (a whole number reads best).">
 <meta name="prop:units" content="string" data-doc="The speed's unit as the game words it (km/h, mph); shown under the figure and read with it.">
 <meta name="prop:gear" content="string" data-doc="The gear as the game names it: R, N, 1 to 8; on a tag in the HUD's accent; empty hides it.">
@@ -25,46 +24,46 @@
   the gear on a lit tag with the gearbox's mode. The game decides every
   figure, the lights and the shift cue; read only.
 -->
-<div id="RacingTelemetry" part="RacingTelemetry.frame" class="hud bare" role="group" aria-label={t("racing.telemetry.name")} data-shift={shift} data-redline={redline > 0 && rpm >= redline}>
-  <div id="Gauge" data-layout="overlay" role="meter" aria-label={t("racing.telemetry.rpm")} aria-valuemin="0" aria-valuemax={rpmMax} aria-valuenow={rpm} aria-valuetext={t("racing.telemetry.rpmValue", { rpm: rpm })}>
-    <svg part="RacingTelemetry.dial" class="dial" data-anchor="fill" viewBox="0 0 120 120">
-      <circle class="well" part="RacingTelemetry.track" cx="60" cy="60" r="55" fill="none" stroke-width="8" pathLength="1" stroke-dasharray="0.75 1" transform="rotate(135 60 60)"></circle>
-      <circle class="rev" part="RacingTelemetry.fill" cx="60" cy="60" r="55" fill="none" stroke-width="8" pathLength="1" stroke-dasharray={(rpmMax > 0 ? (rpm >= rpmMax ? 0.75 : rpm <= 0 ? 0 : 0.75 * rpm / rpmMax) : 0) + " 1"} transform="rotate(135 60 60)"></circle>
-      {#if redline > 0 && rpmMax > 0 && redline < rpmMax}<circle class="red" part="RacingTelemetry.redline" cx="60" cy="60" r="55" fill="none" stroke-width="8" pathLength="1" stroke-dasharray={"0 " + (0.75 * redline / rpmMax) + " " + (0.75 - 0.75 * redline / rpmMax) + " 1"} transform="rotate(135 60 60)"></circle>{/if}
+<div id="RacingTelemetry" part="frame" variant="hud" role="group" aria-label={t("racing.telemetry.name")} data-shift={shift} class:redline={redline > 0 && rpm >= redline}>
+  <div id="Gauge" layout="overlay" role="meter" aria-label={t("racing.telemetry.rpm")} aria-valuemin="0" aria-valuemax={rpmMax} aria-valuenow={rpm} aria-valuetext={t("racing.telemetry.rpmValue", { rpm: rpm })}>
+    <svg part="dial" class="dial" anchor="fill" viewBox="0 0 120 120">
+      <circle class="well" part="track" cx="60" cy="60" r="55" fill="none" stroke-width="8" pathLength="1" stroke-dasharray="0.75 1" transform="rotate(135 60 60)"></circle>
+      <circle class="rev" part="fill" cx="60" cy="60" r="55" fill="none" stroke-width="8" pathLength="1" stroke-dasharray={(rpmMax > 0 ? (rpm >= rpmMax ? 0.75 : rpm <= 0 ? 0 : 0.75 * rpm / rpmMax) : 0) + " 1"} transform="rotate(135 60 60)"></circle>
+      {#if redline > 0 && rpmMax > 0 && redline < rpmMax}<circle class="red" part="redline" cx="60" cy="60" r="55" fill="none" stroke-width="8" pathLength="1" stroke-dasharray={"0 " + (0.75 * redline / rpmMax) + " " + (0.75 - 0.75 * redline / rpmMax) + " 1"} transform="rotate(135 60 60)"></circle>{/if}
     </svg>
-    <div class="ring" data-anchor="fill">
+    <div class="ring" anchor="fill">
       {#each scale as s (s.id)}
-        <div part="RacingTelemetry.tick" class="tick" data-red={redline > 0 && s.value >= redline} style:--at={rpmMax > 0 ? (s.value <= 0 ? 0 : s.value >= rpmMax ? 1 : s.value / rpmMax) : 0}></div>
-        <span part="RacingTelemetry.mark" class="mark" data-red={redline > 0 && s.value >= redline} style:--at={rpmMax > 0 ? (s.value <= 0 ? 0 : s.value >= rpmMax ? 1 : s.value / rpmMax) : 0}>{s.label}</span>
+        <div part="tick" class="tick" style:--at={rpmMax > 0 ? (s.value <= 0 ? 0 : s.value >= rpmMax ? 1 : s.value / rpmMax) : 0} class:red={redline > 0 && s.value >= redline}></div>
+        <span part="mark" class="mark" style:--at={rpmMax > 0 ? (s.value <= 0 ? 0 : s.value >= rpmMax ? 1 : s.value / rpmMax) : 0} class:red={redline > 0 && s.value >= redline}>{s.label}</span>
       {/each}
     </div>
-    <div part="RacingTelemetry.face" id="Face" data-anchor="center" data-layout="stack" role="group" aria-label={t("racing.telemetry.speed", { speed: speed, units: units })}>
-      {#if lights >= 0}<div part="RacingTelemetry.lights" id="Lights" data-layout="overlay" role="meter" aria-label={t("racing.telemetry.lights")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={lights >= 1 ? 100 : lights * 100} style:--lit={lights >= 1 ? 1 : lights}><div class="off" data-anchor="fill"></div><div class="on" data-anchor="fill"></div></div>{/if}
-      <span part="RacingTelemetry.speed" class="speed">{formatNumber(speed)}</span>
-      <span part="RacingTelemetry.units" class="units">{units}</span>
-      {#if gear != '' || mode != '' || shift}<div id="Box" data-layout="row">
-        {#if gear != ''}<span part="RacingTelemetry.gear" class="gear" role="image" aria-label={t("racing.telemetry.gearValue", { gear: gear })}>{gear}</span>{/if}
-        {#if shift}<span part="RacingTelemetry.badge" class="shift" role="status">{t("racing.telemetry.shift")}</span>{:else if mode != ''}<span part="RacingTelemetry.mode" class="mode">{mode}</span>{/if}
+    <div part="face" id="Face" anchor="fill" layout="stack" role="group" aria-label={t("racing.telemetry.speed", { speed: speed, units: units })}>
+      {#if lights >= 0}<div part="lights" id="Lights" layout="overlay" role="meter" aria-label={t("racing.telemetry.lights")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={lights >= 1 ? 100 : lights * 100} style:--lit={lights >= 1 ? 1 : lights}><div class="off" anchor="fill"></div><div class="on" anchor="fill"></div></div>{/if}
+      <span part="speed" class="speed">{formatNumber(speed)}</span>
+      <span part="units" class="units">{units}</span>
+      {#if gear != '' || mode != '' || shift}<div id="Box" layout="row">
+        {#if gear != ''}<span part="gear" class="gear" role="image" aria-label={t("racing.telemetry.gearValue", { gear: gear })}>{gear}</span>{/if}
+        {#if shift}<span part="badge" class="shift" role="status">{t("racing.telemetry.shift")}</span>{:else if mode != ''}<span part="mode" class="mode">{mode}</span>{/if}
       </div>{/if}
     </div>
   </div>
 </div>
 
 <style>
-:host { --side: calc(230 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; color: var(--hud-ink); }
+#RacingTelemetry { --side: calc(230 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; color: var(--hud-ink); }
 #Gauge { inline-size: var(--side); block-size: var(--side); max-inline-size: stretch; --layout-anchor-inset: 0; }
 .dial { inline-size: 100%; block-size: 100%; filter: var(--hud-rev-glow); }
 .well { stroke: var(--hud-rev-well); }
 .rev { stroke: var(--hud-rev-fill); }
 .red { stroke: var(--hud-redline); }
-[data-redline=true] .red { stroke: var(--hud-redline-lit); }
+.redline .red { stroke: var(--hud-redline-lit); }
 /* The figures inside the arc and a tick by each, from the arc's start at
    the lower left round to its end at the lower right. */
 .tick, .mark { position: absolute; --a: calc((var(--at) * 270 - 135) * 1deg); }
 .tick { --r: calc(var(--side) * 0.405); inline-size: calc(2 * var(--font-step-px)); block-size: calc(7 * var(--font-step-px)); left: calc(50% + sin(var(--a)) * var(--r) - 1 * var(--font-step-px)); top: calc(50% - cos(var(--a)) * var(--r) - 3.5 * var(--font-step-px)); transform: rotate(var(--a)); background: var(--hud-tick); }
-.tick[data-red=true] { background: var(--hud-redline-lit); }
+.tick.red { background: var(--hud-redline-lit); }
 .mark { --r: calc(var(--side) * 0.35); left: calc(50% + sin(var(--a)) * var(--r)); top: calc(50% - cos(var(--a)) * var(--r)); transform: translate(-50%, -50%); font-size: var(--hud-label-size); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
-.mark[data-red=true] { color: var(--hud-redline-lit); }
+.mark.red { color: var(--hud-redline-lit); }
 /* The face: dark glass with a lit top edge, the readout on it. The face is
    the speed's size container: the speed's type step is held to a share of
    its width, so the figure stays inside the face at any text scale. */
@@ -81,7 +80,7 @@
 .gear { flex: none; padding: 0 calc(8 * var(--font-step-px)); font-size: var(--hud-size-sm); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; color: var(--hud-accent-ink); background: var(--hud-accent); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* On a phone the dial is smaller and its figures go (the ticks stay). */
 @media (width < 600px) {
-  :host { --side: var(--hud-dial-compact); }
+  #RacingTelemetry { --side: var(--hud-dial-compact); }
   .mark { display: none; }
   .tick { block-size: calc(5 * var(--font-step-px)); }
   #Face { row-gap: calc(1 * var(--font-step-px)); padding: calc(3 * var(--font-step-px)); }

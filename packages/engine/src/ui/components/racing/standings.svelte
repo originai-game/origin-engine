@@ -1,6 +1,5 @@
 <meta name="component" content="RacingStandings">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingStandings.frame RacingStandings.row RacingStandings.place RacingStandings.car RacingStandings.name RacingStandings.gap RacingStandings.badge">
 <meta name="prop:title" content="string" data-doc="The tower's name for a reader; empty takes the kit's (Standings). Not drawn.">
 <meta name="prop:rows" content="list" data-doc="The running order as the game ranks it, keyed rows of { id, position, name, gap, color, player, state }: position the place shown in its box; gap the interval as the game words it (+1.204, +1 lap; the leader's empty gap reads Leader); color the car's or team's colour as a CSS colour, on a stripe beside the name (empty: a neutral stripe); player marks the local player's row (lit in the HUD's accent, aria-current); state racing, pitting, retired or finished, each a word on a tag (Pit, DNF, Fin), a retired row dimmed.">
 <meta name="fixture:default" content='{"title":"","rows":[{"id":"okafor","position":1,"name":"M. Okafor","gap":"","color":"#ffd24a","player":false,"state":"racing"},{"id":"lindqvist","position":2,"name":"S. Lindqvist","gap":"+1.204","color":"#4f7bff","player":false,"state":"racing"},{"id":"you","position":3,"name":"You","gap":"+1.861","color":"#ff4d5e","player":true,"state":"racing"},{"id":"castellanos","position":4,"name":"R. Castellanos","gap":"+0.337","color":"#55e39a","player":false,"state":"racing"},{"id":"nakamura","position":5,"name":"T. Nakamura","gap":"+2.950","color":"#c98bff","player":false,"state":"pitting"}]}'>
@@ -19,28 +18,28 @@
   word on a tag. On a phone it collapses to the leader and the rows
   either side of the player. Read only.
 -->
-<section id="RacingStandings" part="RacingStandings.frame" class="hud bare" data-layout="stack" aria-label={title != '' ? title : t("racing.standings.name")}>
+<section id="RacingStandings" part="frame" variant="hud" layout="stack" aria-label={title != '' ? title : t("racing.standings.name")}>
   {#if rows.length}
-    <div class="list" data-layout="scroll">
-      <div class="rows" data-layout="stack" role="list" aria-label={title != '' ? title : t("racing.standings.name")}>
-        {#each rows as r (r.id)}
-          <div part="RacingStandings.row" class="row" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state} style:--hud-car={r.color ? r.color : null}>
-            <span part="RacingStandings.place" class="place">{formatNumber(r.position)}</span>
-            <span part="RacingStandings.car" class="car"></span>
-            <span part="RacingStandings.name" class="name">{r.name}</span>
-            {#if r.state != 'racing'}<span part="RacingStandings.badge" class="state" data-state={r.state} aria-label={r.state == 'pitting' ? t("racing.standings.pittingName") : (r.state == 'retired' ? t("racing.standings.retiredName") : t("racing.standings.finishedName"))}>{r.state == 'pitting' ? t("racing.standings.pitting") : (r.state == 'retired' ? t("racing.standings.retired") : t("racing.standings.finished"))}</span>{/if}
-            {#if r.gap || (r.position == 1 && r.state != 'retired')}<span part="RacingStandings.gap" class="gap" data-leader={!r.gap}>{r.gap ? r.gap : t("racing.standings.leader")}</span>{/if}
+    <div class="list" layout="scroll">
+      <div class="rows" layout="stack" role="list" aria-label={title != '' ? title : t("racing.standings.name")}>
+        {#each rows as r, i (r.id)}
+          <div part="row" class="row" class:first={i == 0} class:beside={!r.player && ((i > 0 && rows[i - 1]['player']) || (i + 1 < rows.length && rows[i + 1]['player']))} role="listitem" aria-current={r.player} aria-label={r.name} style:--hud-car={r.color ? r.color : null} class:state-pitting={(r.state) == 'pitting'} class:state-retired={(r.state) == 'retired'} class:player={r.player}>
+            <span part="place" class="place">{formatNumber(r.position)}</span>
+            <span part="car" class="car"></span>
+            <span part="name" class="name">{r.name}</span>
+            {#if r.state != 'racing'}<span part="badge" class="state" aria-label={r.state == 'pitting' ? t("racing.standings.pittingName") : (r.state == 'retired' ? t("racing.standings.retiredName") : t("racing.standings.finishedName"))} class:state-pitting={(r.state) == 'pitting'} class:state-retired={(r.state) == 'retired'}>{r.state == 'pitting' ? t("racing.standings.pitting") : (r.state == 'retired' ? t("racing.standings.retired") : t("racing.standings.finished"))}</span>{/if}
+            {#if r.gap || (r.position == 1 && r.state != 'retired')}<span part="gap" class="gap" class:leader={!r.gap}>{r.gap ? r.gap : t("racing.standings.leader")}</span>{/if}
           </div>
         {/each}
       </div>
     </div>
   {:else}
-    <p class="empty" part="RacingStandings.badge" role="status">{t("racing.standings.empty")}</p>
+    <p class="empty" part="badge" role="status">{t("racing.standings.empty")}</p>
   {/if}
 </section>
 
 <style>
-:host { inline-size: calc(250 * var(--font-step-px)); max-inline-size: stretch; max-block-size: stretch; color: var(--hud-ink); }
+#RacingStandings { inline-size: calc(250 * var(--font-step-px)); max-inline-size: stretch; max-block-size: stretch; color: var(--hud-ink); }
 .list { inline-size: stretch; min-block-size: 0; }
 .rows { inline-size: stretch; row-gap: calc(4 * var(--font-step-px)); }
 /* A row: the place's box, the car's stripe, the name and the gap, on
@@ -50,15 +49,15 @@
 .car { flex: none; inline-size: calc(5 * var(--font-step-px)); block-size: calc(20 * var(--font-step-px)); background: var(--hud-car); }
 .name { flex: 1 1 auto; min-inline-size: 0; font-size: var(--hud-size-name); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .gap { flex: none; font-size: var(--hud-size-name); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
-.gap[data-leader=true] { color: var(--hud-ink-dim); }
+.gap.leader { color: var(--hud-ink-dim); }
 .state { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.state[data-state=pitting] { color: var(--hud-gold); }
-.state[data-state=retired] { color: var(--hud-harm); }
-.row[data-state=retired] { opacity: 0.6; }
+.state.state-pitting { color: var(--hud-gold); }
+.state.state-retired { color: var(--hud-harm); }
+.row.state-retired { opacity: 0.6; }
 /* The player's row, lit in the accent with ink to match. */
-.row[data-player=true] { color: var(--hud-accent-ink); background: var(--hud-player-fill); }
-.row[data-player=true] .place { background: var(--hud-place-player-fill); }
-.row[data-player=true] .gap { color: var(--hud-accent-ink); }
+.row.player { color: var(--hud-accent-ink); background: var(--hud-player-fill); }
+.row.player .place { background: var(--hud-place-player-fill); }
+.row.player .gap { color: var(--hud-accent-ink); }
 .empty { margin: 0; padding: calc(4 * var(--font-step-px)) var(--space-sm); font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); background: var(--hud-feed-fill-start); white-space: nowrap; }
 /* In a size container too short for the tower (a page that gives it the
    height left in its column, at a large text scale) it keeps the leader
@@ -66,19 +65,19 @@
    alone, so no row is cut. */
 @container (height < 11rem) {
   .row { display: none; }
-  .row:first-child, .row[data-player=true], .row[data-player=true] + .row, .row:has(+ .row[data-player=true]) { display: flex; }
+  .row.first, .row.player, .row.beside { display: flex; }
 }
 @container (height < 6.5rem) {
-  .row[data-player=true] + .row, .row:has(+ .row[data-player=true]) { display: none; }
-  .row:first-child { display: flex; }
+  .row.beside { display: none; }
+  .row.first { display: flex; }
 }
 /* On a phone the tower keeps the player's row and the rows either side of
-   it, slimmer (the first three when no row is the player's). */
+   it, slimmer. */
 @media (width < 600px) {
-  :host { inline-size: stretch; }
+  #RacingStandings { inline-size: stretch; }
   .rows { row-gap: calc(2 * var(--font-step-px)); }
   .row { display: none; column-gap: calc(6 * var(--font-step-px)); padding-inline-end: calc(8 * var(--font-step-px)); }
-  .row[data-player=true], .row[data-player=true] + .row, .row:has(+ .row[data-player=true]), .rows:not(:has(.row[data-player=true])) .row:nth-child(-n+3) { display: flex; }
+  .row.player, .row.beside { display: flex; }
   .place { inline-size: calc(24 * var(--font-step-px)); line-height: calc(20 * var(--font-step-px)); font-size: var(--hud-size-xs); }
   .car { block-size: calc(14 * var(--font-step-px)); }
   .name, .gap { font-size: var(--hud-size-xs); }

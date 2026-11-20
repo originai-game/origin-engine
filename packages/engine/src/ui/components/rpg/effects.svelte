@@ -1,6 +1,5 @@
 <meta name="component" content="RpgEffects">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgEffects.frame RpgEffects.effect">
 <meta name="prop:effects" content="list" data-doc="The buffs and debuffs on a character in the game's order, keyed rows of { id, name, icon, glyph, remaining, label, harmful }: name for a reader; icon a texture (0: the glyph, an icon name, in its place); remaining the share of its time still to run, 0 to 1 (a dark radial sweep over the art; negative: no timer); label its time or stacks as the game words it, on a tag (0:12, ×3), empty for none; harmful a debuff (on data-harmful, never colour alone: the edge and the tag's ink both change).">
 <meta name="fixture:default" content='{"effects":[{"id":"haste","name":"Haste","icon":0,"glyph":"bolt","remaining":0.7,"label":"0:12","harmful":false},{"id":"ward","name":"Rune ward","icon":0,"glyph":"shield","remaining":0.42,"label":"×3","harmful":false},{"id":"hex","name":"Hex","icon":0,"glyph":"skull","remaining":0.3,"label":"4.2","harmful":true}]}'>
 <meta name="fixture:untimed" content='{"effects":[{"id":"blessed","name":"Blessed","icon":0,"glyph":"star","remaining":-1,"label":"","harmful":false}]}'>
@@ -15,13 +14,13 @@
   tag. The row only spaces them; a game that wants another arrangement
   lays HudEffect out itself. The game owns every timer; read only.
 -->
-<ul id="RpgEffects" part="RpgEffects.frame" class="hud bare" data-layout="cluster" data-gap="tight" aria-label={t("rpg.effects.name")}>
+<ul id="RpgEffects" part="frame" variant="hud" layout="wrap" gap="tight" aria-label={t("rpg.effects.name")}>
   {#each effects as e (e.id)}
-  <li part="RpgEffects.effect" class="effect" data-harmful={e.harmful}><HudEffect name={e.name} icon={e.icon} glyph={e.glyph} remaining={e.remaining} label={e.label} harmful={e.harmful} /></li>
+  <li part="effect" class="effect" data-harmful={e.harmful}><HudEffect name={e.name} icon={e.icon} glyph={e.glyph} remaining={e.remaining} label={e.label} harmful={e.harmful} /></li>
   {/each}
 </ul>
 
 <style>
-:host { margin: 0; padding: 0; list-style: none; column-gap: calc(8 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); }
-@media (width < 600px) { :host { column-gap: calc(6 * var(--font-step-px)); } }
+#RpgEffects { margin: 0; padding: 0; list-style: none; column-gap: calc(8 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); }
+@media (width < 600px) { #RpgEffects { column-gap: calc(6 * var(--font-step-px)); } }
 </style>

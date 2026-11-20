@@ -1,6 +1,5 @@
 <meta name="component" content="RacingTrackMap">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingTrackMap.frame RacingTrackMap.map RacingTrackMap.road RacingTrackMap.line RacingTrackMap.driven RacingTrackMap.start RacingTrackMap.car RacingTrackMap.self RacingTrackMap.name RacingTrackMap.length">
 <meta name="prop:path" content="string" data-doc="The track's racing line as an SVG path (d) in the map's 260 by 220 box; empty draws no road.">
 <meta name="prop:driven" content="string" data-doc="The part of the lap the player has driven, as an SVG path in the same box, lit in the HUD's accent; empty draws none.">
 <meta name="prop:startX" content="number" data-doc="The start line's place in the box, across.">
@@ -21,24 +20,24 @@
   over them; the track's name and length under it. The game gives the
   shape and every position in the map's box; read only.
 -->
-<section id="RacingTrackMap" part="RacingTrackMap.frame" class="hud bare" data-layout="stack" role="group" aria-label={name != '' ? name : t("racing.map.name")}>
-  <svg part="RacingTrackMap.map" class="map" viewBox="0 0 260 220" role="image" aria-label={t("racing.map.name")}>
-    {#if path != ''}<path part="RacingTrackMap.road" class="road" d={path} fill="none" stroke-width="16" stroke-linejoin="round"></path>
-    <path part="RacingTrackMap.line" class="line" d={path} fill="none" stroke-width="5" stroke-linejoin="round"></path>{/if}
-    {#if driven != ''}<path part="RacingTrackMap.driven" class="driven" d={driven} fill="none" stroke-width="5" stroke-linecap="round"></path>{/if}
-    {#if path != ''}<rect part="RacingTrackMap.start" class="start" x="-8" y="-2.5" width="16" height="5" transform={"translate(" + startX + " " + startY + ") rotate(" + startAngle + ")"}></rect>{/if}
+<section id="RacingTrackMap" part="frame" variant="hud" layout="stack" role="group" aria-label={name != '' ? name : t("racing.map.name")}>
+  <svg part="map" class="map" viewBox="0 0 260 220" role="image" aria-label={t("racing.map.name")}>
+    {#if path != ''}<path part="road" class="road" d={path} fill="none" stroke-width="16" stroke-linejoin="round"></path>
+    <path part="line" class="line" d={path} fill="none" stroke-width="5" stroke-linejoin="round"></path>{/if}
+    {#if driven != ''}<path part="driven" class="driven" d={driven} fill="none" stroke-width="5" stroke-linecap="round"></path>{/if}
+    {#if path != ''}<rect part="start" class="start" x="-8" y="-2.5" width="16" height="5" transform={"translate(" + startX + " " + startY + ") rotate(" + startAngle + ")"}></rect>{/if}
     {#each cars as c (c.id)}
-      {#if c.player}<path part="RacingTrackMap.self" class="self" d="M0 -10 L8 8 L0 4 L-8 8 Z" stroke-width="2" stroke-linejoin="round" transform={"translate(" + c.x + " " + c.y + ") rotate(" + c.heading + ")"} aria-label={c.name}></path>{:else}<circle part="RacingTrackMap.car" class="car" cx={c.x} cy={c.y} r="7" stroke-width="2" style:--hud-car={c.color ? c.color : null} aria-label={c.name}></circle>{/if}
+      {#if c.player}<path part="self" class="self" d="M0 -10 L8 8 L0 4 L-8 8 Z" stroke-width="2" stroke-linejoin="round" transform={"translate(" + c.x + " " + c.y + ") rotate(" + c.heading + ")"} aria-label={c.name}></path>{:else}<circle part="car" class="car" cx={c.x} cy={c.y} r="7" stroke-width="2" style:--hud-car={c.color ? c.color : null} aria-label={c.name}></circle>{/if}
     {/each}
   </svg>
-  {#if name != '' || length != ''}<div id="Under" data-layout="row">
-    {#if name != ''}<span part="RacingTrackMap.name" class="name">{name}</span>{/if}
-    {#if length != ''}<span part="RacingTrackMap.length" class="length" aria-label={t("racing.map.length") + " " + length}>{length}</span>{/if}
+  {#if name != '' || length != ''}<div id="Under" layout="row">
+    {#if name != ''}<span part="name" class="name">{name}</span>{/if}
+    {#if length != ''}<span part="length" class="length" aria-label={t("racing.map.length") + " " + length}>{length}</span>{/if}
   </div>{/if}
 </section>
 
 <style>
-:host { --map: calc(220 * var(--font-step-px)); inline-size: var(--map); max-inline-size: stretch; row-gap: calc(4 * var(--font-step-px)); color: var(--hud-ink); }
+#RacingTrackMap { --map: calc(220 * var(--font-step-px)); inline-size: var(--map); max-inline-size: stretch; row-gap: calc(4 * var(--font-step-px)); color: var(--hud-ink); }
 /* The map's box is sized from its width in the viewBox's proportion (og
    reads an auto height as the viewBox's height, not its proportion). */
 .map { inline-size: 100%; block-size: auto; filter: var(--hud-lift); }
@@ -54,7 +53,7 @@
 /* On a phone the map is smaller and its name line goes (it has no room
    under a map that small). */
 @media (width < 600px) {
-  :host { --map: var(--hud-map-compact); }
+  #RacingTrackMap { --map: var(--hud-map-compact); }
   #Under { display: none; }
 }
 </style>

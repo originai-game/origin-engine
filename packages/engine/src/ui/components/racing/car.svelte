@@ -1,6 +1,5 @@
 <meta name="component" content="RacingCar">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingCar.frame RacingCar.title RacingCar.tyre RacingCar.fuel RacingCar.bar RacingCar.fill RacingCar.reading RacingCar.badge">
 <meta name="prop:tyres" content="list" data-doc="The tyres in the game's order (front left, front right, rear left, rear right), keyed rows of { id, label, text, state }: label and text as the game words them (FL, 92); state good, worn or bad, a green, gold or red ink on the tag. Two to a line. Empty hides the tyres.">
 <meta name="prop:fuel" content="number" data-default="-1" data-doc="The fuel left, 0 to 1; negative hides the fuel.">
 <meta name="prop:fuelText" content="string" data-doc="The fuel as the game words it (18 L · 4 laps), after the bar; empty for none.">
@@ -18,38 +17,38 @@
   game's words after it (danger and Fuel low when it runs low), and Box
   this lap when the team calls the car in. Read only.
 -->
-<section id="RacingCar" part="RacingCar.frame" class="hud bare" data-layout="stack" role="group" aria-label={t("racing.car.name")} data-low={fuelLow} data-pit={pit}>
-  {#if tyres.length}<span part="RacingCar.title" class="title heading">{t("racing.car.tyres")}</span>
+<section id="RacingCar" part="frame" variant="hud" layout="stack" role="group" aria-label={t("racing.car.name")} data-pit={pit} class:low={fuelLow}>
+  {#if tyres.length}<span part="title" class="title heading">{t("racing.car.tyres")}</span>
   <div class="tyres" role="list" aria-label={t("racing.car.tyres")}>
-    {#each tyres as y (y.id)}<span part="RacingCar.tyre" class="tyre" role="listitem" data-state={y.state}>{y.label} {y.text}</span>{/each}
+    {#each tyres as y (y.id)}<span part="tyre" class="tyre" role="listitem" class:state-bad={(y.state) == 'bad'} class:state-good={(y.state) == 'good'} class:state-worn={(y.state) == 'worn'}>{y.label} {y.text}</span>{/each}
   </div>{/if}
-  {#if fuel >= 0}<div part="RacingCar.fuel" class="fuel" data-layout="row" role="meter" aria-label={t("racing.car.fuel")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={fuel >= 1 ? 100 : fuel * 100} aria-valuetext={fuelText}>
-    <span part="RacingCar.title" class="title">{fuelLow ? t("racing.car.fuelLow") : t("racing.car.fuel")}</span>
-    <div part="RacingCar.bar" class="bar" data-layout="overlay" style:--value={fuel >= 1 ? 1 : fuel}><div part="RacingCar.fill" class="fill" data-anchor="top-start"></div></div>
-    {#if fuelText != ''}<span part="RacingCar.reading" class="reading">{fuelText}</span>{/if}
+  {#if fuel >= 0}<div part="fuel" class="fuel" layout="row" role="meter" aria-label={t("racing.car.fuel")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={fuel >= 1 ? 100 : fuel * 100} aria-valuetext={fuelText}>
+    <span part="title" class="title">{fuelLow ? t("racing.car.fuelLow") : t("racing.car.fuel")}</span>
+    <div part="bar" class="bar" layout="overlay" style:--value={fuel >= 1 ? 1 : fuel}><div part="fill" class="fill" anchor="top-start"></div></div>
+    {#if fuelText != ''}<span part="reading" class="reading">{fuelText}</span>{/if}
   </div>{/if}
-  {#if pit}<span part="RacingCar.badge" class="pit" role="status">{t("racing.car.pit")}</span>{/if}
+  {#if pit}<span part="badge" class="pit" role="status">{t("racing.car.pit")}</span>{/if}
 </section>
 
 <style>
-:host { row-gap: calc(6 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; align-items: flex-start; color: var(--hud-ink); }
+#RacingCar { row-gap: calc(6 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; align-items: flex-start; color: var(--hud-ink); }
 .title { max-inline-size: 100%; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .tyres { display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); gap: calc(5 * var(--font-step-px)); max-inline-size: 100%; }
 .tyre { min-inline-size: 0; padding: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.tyre[data-state=good] { color: var(--hud-boon); }
-.tyre[data-state=worn] { color: var(--hud-gold); }
-.tyre[data-state=bad] { color: var(--hud-harm); }
+.tyre.state-good { color: var(--hud-boon); }
+.tyre.state-worn { color: var(--hud-gold); }
+.tyre.state-bad { color: var(--hud-harm); }
 .fuel { align-items: center; column-gap: calc(8 * var(--font-step-px)); max-inline-size: 100%; min-inline-size: 0; }
 .fuel .title { flex: none; }
-[data-low=true] .fuel .title { color: var(--hud-harm); }
+.low .fuel .title { color: var(--hud-harm); }
 .bar { flex: none; inline-size: calc(70 * var(--font-step-px)); block-size: calc(6 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); --layout-anchor-inset: 0; }
 .fill { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--hud-health-fill); }
-[data-low=true] .bar { box-shadow: var(--bar-critical-rim); }
-[data-low=true] .fill { background: var(--hud-low-fill); box-shadow: var(--hud-low-glow); }
+.low .bar { box-shadow: var(--bar-critical-rim); }
+.low .fill { background: var(--hud-low-fill); box-shadow: var(--hud-low-glow); }
 .reading { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .pit { max-inline-size: 100%; min-inline-size: 0; padding: 0 calc(8 * var(--font-step-px)); font-size: var(--hud-label-size); line-height: 1.6; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; color: var(--hud-key-ink); background: var(--hud-gold); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 @media (width < 600px) {
-  :host { row-gap: calc(3 * var(--font-step-px)); }
+  #RacingCar { row-gap: calc(3 * var(--font-step-px)); }
   .title, .pit { letter-spacing: normal; }
   /* The tags name their tyres: the heading over them goes. */
   .heading { display: none; }

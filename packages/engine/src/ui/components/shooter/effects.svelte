@@ -1,6 +1,5 @@
 <meta name="component" content="ShooterEffects">
 <meta name="strings" content="./shooter.en.ogt">
-<meta name="parts" content="ShooterEffects.frame ShooterEffects.effect ShooterEffects.tile ShooterEffects.art ShooterEffects.timer ShooterEffects.time">
 <meta name="prop:effects" content="list" data-doc="The effects on the player in the game's order, keyed rows of { id, name, icon, glyph, remaining, label, harmful }: name for a reader; icon a texture (0: the glyph, an icon name, in its place); remaining the share of its time still to run, 0 to 1 (a dark sweep over the art; negative: no timer); label its time or stacks as the game words it, on a tag (0:12, ×3), empty for none; harmful a debuff (a danger edge and tag; on data-harmful, never colour alone: the tag's ink and the edge both change).">
 <meta name="fixture:default" content='{"effects":[{"id":"haste","name":"Haste","icon":0,"glyph":"bolt","remaining":0.7,"label":"0:12","harmful":false},{"id":"fury","name":"Fury","icon":0,"glyph":"sword","remaining":0.35,"label":"×3 4.2","harmful":false},{"id":"burn","name":"Burning","icon":0,"glyph":"fire","remaining":0.55,"label":"6","harmful":true}]}'>
 <meta name="fixture:untimed" content='{"effects":[{"id":"armor","name":"Armored","icon":0,"glyph":"shield","remaining":-1,"label":"","harmful":false}]}'>
@@ -13,24 +12,24 @@
   still to run as a dark sweep over its art and its time or stacks on a
   tag under it. The game owns every timer; read only.
 -->
-<ul id="ShooterEffects" part="ShooterEffects.frame" class="hud bare" data-layout="cluster" data-gap="tight" aria-label={t("shooter.effects.name")}>
+<ul id="ShooterEffects" part="frame" variant="hud" layout="wrap" gap="tight" aria-label={t("shooter.effects.name")}>
   {#each effects as e (e.id)}
-  <li part="ShooterEffects.effect" class="effect" data-layout="stack" data-gap="none" data-harmful={e.harmful} aria-label={e.label ? t("shooter.effects.effect", { name: e.name, label: e.label }) : e.name}>
-    <div part="ShooterEffects.tile" class="tile" data-layout="overlay">
-      {#if e.icon}<img part="ShooterEffects.art" class="art" data-anchor="fill" src={e.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if e.glyph}<og-icon class="glyph" icon={e.glyph}></og-icon>{/if}</div>{/if}
-      {#if e.remaining >= 0}<div part="ShooterEffects.timer" class="timer" data-anchor="fill" style:--left={e.remaining >= 1 ? 1 : e.remaining}></div>{/if}
+  <li part="effect" class="effect" layout="stack" gap="none" aria-label={e.label ? t("shooter.effects.effect", { name: e.name, label: e.label }) : e.name} class:harmful={e.harmful}>
+    <div part="tile" class="tile" layout="overlay">
+      {#if e.icon}<img part="art" class="art" anchor="fill" src={e.icon} alt="">{:else}<div class="blank" anchor="fill" layout="center">{#if e.glyph}<og-icon class="glyph" icon={e.glyph}></og-icon>{/if}</div>{/if}
+      {#if e.remaining >= 0}<div part="timer" class="timer" anchor="fill" style:--left={e.remaining >= 1 ? 1 : e.remaining}></div>{/if}
     </div>
-    {#if e.label}<span part="ShooterEffects.time" class="tag">{e.label}</span>{/if}
+    {#if e.label}<span part="time" class="tag">{e.label}</span>{/if}
   </li>
   {/each}
 </ul>
 
 <style>
-:host { margin: 0; padding: 0; list-style: none; max-inline-size: stretch; color: var(--hud-ink); }
+#ShooterEffects { margin: 0; padding: 0; list-style: none; max-inline-size: stretch; color: var(--hud-ink); }
 .effect { align-items: center; row-gap: calc(3 * var(--font-step-px)); filter: var(--hud-lift); }
 /* The tile: the edge is its fill, the art inset inside it. */
 .tile { inline-size: calc(32 * var(--font-step-px)); block-size: calc(32 * var(--font-step-px)); background: var(--hud-boon); border-radius: var(--hud-effect-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; --layout-anchor-inset: calc(2 * var(--font-step-px)); }
-[data-harmful=true] .tile { background: var(--hud-harm); }
+.harmful .tile { background: var(--hud-harm); }
 .art, .blank, .timer { border-radius: var(--hud-effect-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .art { object-fit: cover; }
 .blank { background: var(--hud-plate-fill); }
@@ -38,6 +37,6 @@
 /* The time run out is dark; the sweep turns clockwise from the top. */
 .timer { background: var(--hud-sweep); mask-image: conic-gradient(transparent calc(var(--left) * 360deg), #000 0); }
 .tag { max-inline-size: calc(56 * var(--font-step-px)); padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[data-harmful=true] .tag { color: var(--hud-foe); }
+.harmful .tag { color: var(--hud-foe); }
 @media (width < 600px) { .tile { inline-size: calc(24 * var(--font-step-px)); block-size: calc(24 * var(--font-step-px)); } .tag { padding: 0 calc(3 * var(--font-step-px)); } }
 </style>

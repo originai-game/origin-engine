@@ -1,6 +1,5 @@
 <meta name="component" content="StrategySelection">
 <meta name="strings" content="./strategy.en.ogt">
-<meta name="parts" content="StrategySelection.frame StrategySelection.portrait StrategySelection.health StrategySelection.fill StrategySelection.vital StrategySelection.name StrategySelection.count StrategySelection.line StrategySelection.status StrategySelection.stat StrategySelection.roster StrategySelection.cell StrategySelection.art StrategySelection.meter StrategySelection.badge StrategySelection.more">
 <meta name="prop:name" content="string" data-doc="The selected unit's or building's name, or the focused subgroup's (Men-at-Arms); empty shows Nothing selected.">
 <meta name="prop:count" content="number" data-doc="How many of it are selected (×12, shown above 1).">
 <meta name="prop:kind" content="string" data-doc="unit or building (data-kind on the frame).">
@@ -28,36 +27,36 @@
   the focused one lit. Reports choose (a card's key: show that unit or
   subgroup). The game owns every figure and what the panel shows.
 -->
-<section id="StrategySelection" part="StrategySelection.frame" class="hud bare" aria-label={name != '' ? name : t("strategy.selection.title")} data-kind={kind}>
+<section id="StrategySelection" part="frame" variant="hud" aria-label={name != '' ? name : t("strategy.selection.title")} data-kind={kind}>
   {#if name != ''}
     <div class="lead">
-      <div part="StrategySelection.portrait" class="portrait"><div class="portrait-face">{#if portrait}<img class="art" src={portrait} alt="">{:else}<og-icon class="mark" icon={icon}></og-icon>{/if}</div></div>
+      <div part="portrait" class="portrait"><div class="portrait-face">{#if portrait}<img class="art" src={portrait} alt="">{:else}<og-icon class="mark" icon={icon}></og-icon>{/if}</div></div>
       {#if healthMax > 0}
-        <div part="StrategySelection.health" class="health" role="meter" aria-label={t("strategy.selection.health")} aria-valuemin="0" aria-valuemax={healthMax} aria-valuenow={health <= 0 ? 0 : health} data-tone={health / healthMax <= 0.3 ? 'low' : (health / healthMax <= 0.6 ? 'hurt' : 'ok')} style:--fill={health <= 0 ? 0 : health >= healthMax ? 1 : health / healthMax}><div part="StrategySelection.fill" class="fill"></div></div>
-        <div part="StrategySelection.vital" class="vital"><span class="vital-now">{formatNumber(health)}</span><span class="vital-max">{t("strategy.selection.healthMax", { max: healthMax })}</span></div>
+        <div part="health" class="health" role="meter" aria-label={t("strategy.selection.health")} aria-valuemin="0" aria-valuemax={healthMax} aria-valuenow={health <= 0 ? 0 : health} tone={health / healthMax <= 0.3 ? 'low' : (health / healthMax <= 0.6 ? 'hurt' : 'ok')} style:--fill={health <= 0 ? 0 : health >= healthMax ? 1 : health / healthMax} class:tone-hurt={(health / healthMax <= 0.3 ? 'low' : (health / healthMax <= 0.6 ? 'hurt' : 'ok')) == 'hurt'} class:tone-low={(health / healthMax <= 0.3 ? 'low' : (health / healthMax <= 0.6 ? 'hurt' : 'ok')) == 'low'}><div part="fill" class="fill"></div></div>
+        <div part="vital" class="vital"><span class="vital-now">{formatNumber(health)}</span><span class="vital-max">{t("strategy.selection.healthMax", { max: healthMax })}</span></div>
       {/if}
     </div>
     <div class="main">
       <div class="head">
         <div class="titles">
-          <div class="name-line"><span part="StrategySelection.name" class="unit-name">{name}</span>{#if count > 1}<span part="StrategySelection.count" class="count">{t("strategy.selection.count", { count: count })}</span>{/if}</div>
-          {#if line != ''}<span part="StrategySelection.line" class="line">{line}</span>{/if}
+          <div class="name-line"><span part="name" class="unit-name">{name}</span>{#if count > 1}<span part="count" class="count">{t("strategy.selection.count", { count: count })}</span>{/if}</div>
+          {#if line != ''}<span part="line" class="line">{line}</span>{/if}
         </div>
         {#if stats.length || status != ''}<div class="stats" role="list" aria-label={t("strategy.selection.stats")}>
-          {#if status != ''}<span part="StrategySelection.status" class="status" role="status">{status}</span>{/if}
-          {#each stats as s (s.id)}<span part="StrategySelection.stat" class="stat" role="listitem" aria-label={t("strategy.selection.stat", { label: s.label, value: s.value })}>{t("strategy.selection.stat", { label: s.label, value: s.value })}</span>{/each}
+          {#if status != ''}<span part="status" class="status" role="status">{status}</span>{/if}
+          {#each stats as s (s.id)}<span part="stat" class="stat" role="listitem" aria-label={t("strategy.selection.stat", { label: s.label, value: s.value })}>{t("strategy.selection.stat", { label: s.label, value: s.value })}</span>{/each}
         </div>{/if}
       </div>
       {#if units.length > 1}
-        <div part="StrategySelection.roster" class="roster" role="listbox" aria-label={t("strategy.selection.units")} style:--n={units.length}>
+        <div part="roster" class="roster" role="listbox" aria-label={t("strategy.selection.units")} style:--n={units.length}>
           {#each units as u, i (u.id)}
-            <button part="StrategySelection.cell" class="card" data-past={i >= 4} role="option" aria-selected={u.id == focused} aria-label={u.name} aria-description={t("strategy.selection.unitValue", { count: u.count, now: u.health, max: u.healthMax })} data-kind={u.kind} onclick={choose}><div class="card-face">
-              {#if u.portrait}<img part="StrategySelection.art" class="art" src={u.portrait} alt="">{:else}<div part="StrategySelection.art" class="blank-art"><og-icon class="card-mark" icon={u.icon}></og-icon></div>{/if}
-              {#if u.count > 1}<span part="StrategySelection.badge" class="stack">{t("strategy.selection.count", { count: u.count })}</span>{/if}
-              <div part="StrategySelection.meter" class="meter" data-tone={u.healthMax > 0 && u.health / u.healthMax <= 0.3 ? 'low' : (u.healthMax > 0 && u.health / u.healthMax <= 0.6 ? 'hurt' : 'ok')} style:--fill={u.healthMax <= 0 || u.health <= 0 ? 0 : u.health >= u.healthMax ? 1 : u.health / u.healthMax}><div class="meter-fill"></div></div>
+            <button part="cell" class="card" role="option" aria-selected={u.id == focused} aria-label={u.name} aria-description={t("strategy.selection.unitValue", { count: u.count, now: u.health, max: u.healthMax })} data-kind={u.kind} onclick={choose} state:selected={u.id == focused} class:past={i >= 4}><div class="card-face">
+              {#if u.portrait}<img part="art" class="art" src={u.portrait} alt="">{:else}<div part="art" class="blank-art"><og-icon class="card-mark" icon={u.icon}></og-icon></div>{/if}
+              {#if u.count > 1}<span part="badge" class="stack">{t("strategy.selection.count", { count: u.count })}</span>{/if}
+              <div part="meter" class="meter" tone={u.healthMax > 0 && u.health / u.healthMax <= 0.3 ? 'low' : (u.healthMax > 0 && u.health / u.healthMax <= 0.6 ? 'hurt' : 'ok')} style:--fill={u.healthMax <= 0 || u.health <= 0 ? 0 : u.health >= u.healthMax ? 1 : u.health / u.healthMax} class:tone-hurt={(u.healthMax > 0 && u.health / u.healthMax <= 0.3 ? 'low' : (u.healthMax > 0 && u.health / u.healthMax <= 0.6 ? 'hurt' : 'ok')) == 'hurt'} class:tone-low={(u.healthMax > 0 && u.health / u.healthMax <= 0.3 ? 'low' : (u.healthMax > 0 && u.health / u.healthMax <= 0.6 ? 'hurt' : 'ok')) == 'low'}><div class="meter-fill"></div></div>
             </div></button>
           {/each}
-          {#if units.length > 4}<div part="StrategySelection.more" class="more" role="status" aria-label={t("strategy.selection.more", { n: units.length - 4 })}><span class="more-count">{t("strategy.selection.moreCount", { n: units.length - 4 })}</span></div>{/if}
+          {#if units.length > 4}<div part="more" class="more" role="status" aria-label={t("strategy.selection.more", { n: units.length - 4 })}><span class="more-count">{t("strategy.selection.moreCount", { n: units.length - 4 })}</span></div>{/if}
         </div>
       {/if}
     </div>
@@ -67,7 +66,7 @@
 </section>
 
 <style>
-:host { --portrait: calc(var(--size-xl) * 1.35); --card: calc(var(--size-sm) * 1.25); display: flex; align-items: flex-start; column-gap: calc(14 * var(--font-step-px)); inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); }
+#StrategySelection { --portrait: calc(var(--size-xl) * 1.35); --card: calc(var(--size-sm) * 1.25); display: flex; align-items: flex-start; column-gap: calc(14 * var(--font-step-px)); inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); }
 /* The portrait, its health bar and figures. The portrait is art: it keeps
    its size at any text scale. */
 .lead { display: flex; flex-direction: column; align-items: stretch; row-gap: calc(5 * var(--font-step-px)); flex: none; min-inline-size: var(--portrait); }
@@ -77,8 +76,8 @@
 .mark { inline-size: 55%; block-size: 55%; color: var(--hud-glyph); filter: var(--hud-glyph-shadow); }
 .health { position: relative; block-size: calc(7 * var(--font-step-px)); overflow: hidden; background: var(--bar-well); box-shadow: var(--bar-rim); }
 .fill { position: absolute; left: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--hud-unit-fill); }
-[data-tone=hurt] > .fill { background: var(--hud-unit-hurt-fill); }
-[data-tone=low] > .fill { background: var(--hud-unit-low-fill); }
+.tone-hurt .fill { background: var(--hud-unit-hurt-fill); }
+.tone-low .fill { background: var(--hud-unit-low-fill); }
 .vital { display: flex; justify-content: center; align-items: baseline; column-gap: calc(3 * var(--font-step-px)); }
 .vital-now { flex: none; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 .vital-max { flex: none; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; color: var(--hud-ink-dim); }
@@ -99,8 +98,8 @@
    size at any text scale. */
 .roster { --slot: calc(var(--card) + 4 * var(--font-step-px)); --all: calc(var(--n) * var(--slot) - 4 * var(--font-step-px)); --half: calc((var(--n) + 1) / 2 * var(--slot) - 4 * var(--font-step-px)); display: flex; flex-wrap: wrap; align-content: flex-start; gap: calc(4 * var(--font-step-px)); min-inline-size: 0; max-inline-size: calc(var(--half) + clamp(0px, (100cqi - var(--all)) * 1000, var(--all) - var(--half))); max-block-size: calc(var(--card) * 2 + 4 * var(--font-step-px)); overflow-y: auto; }
 .card { flex: none; padding: 0; border: 0; border-radius: 0; inline-size: var(--card); block-size: var(--card); min-inline-size: 0; color: var(--hud-ink); }
-.card::part(base) { padding: calc(2 * var(--font-step-px)); border: 0; background: var(--hud-edge); box-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.card[aria-selected=true]::part(base) { background: var(--hud-ready-edge); }
+.card { padding: calc(2 * var(--font-step-px)); border: 0; background: var(--hud-edge); box-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.card:state(selected) { background: var(--hud-ready-edge); }
 /* The face is sized from the card: an option button's content box gives
    a stretched or percentage child no width. */
 .card-face { position: relative; inline-size: calc(var(--card) - 4 * var(--font-step-px)); block-size: calc(var(--card) - 4 * var(--font-step-px)); overflow: hidden; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
@@ -114,14 +113,14 @@
 /* A card's health: a thin bar inset at its foot. */
 .meter { position: absolute; left: calc(3 * var(--font-step-px)); right: calc(3 * var(--font-step-px)); bottom: calc(3 * var(--font-step-px)); block-size: calc(3 * var(--font-step-px)); overflow: hidden; background: var(--hud-line-well); }
 .meter-fill { position: absolute; left: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--hud-boon); }
-[data-tone=hurt] > .meter-fill { background: var(--hud-gold); }
-[data-tone=low] > .meter-fill { background: var(--hud-harm); }
+.tone-hurt .meter-fill { background: var(--hud-gold); }
+.tone-low .meter-fill { background: var(--hud-harm); }
 .empty-text { flex: 1 1 auto; margin: 0; padding: calc(16 * var(--font-step-px)); text-align: center; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 /* On a phone the panel is compact: a smaller portrait, the name and its
    line, and one row of whole cards: the first four and a +n tile counting
    the rest; the stats go. */
 @media (width < 600px) {
-  :host { --portrait: var(--size-lg); --card: var(--size-md); column-gap: calc(8 * var(--font-step-px)); }
+  #StrategySelection { --portrait: var(--size-lg); --card: var(--size-md); column-gap: calc(8 * var(--font-step-px)); }
   .lead { row-gap: calc(3 * var(--font-step-px)); }
   .health { block-size: calc(5 * var(--font-step-px)); }
   .vital-max { display: none; }
@@ -131,7 +130,7 @@
   .line { font-size: var(--hud-size-label-compact); letter-spacing: normal; }
   .stats { display: none; }
   .roster { flex-wrap: nowrap; max-inline-size: none; max-block-size: none; overflow: hidden; }
-  .card[data-past=true] { display: none; }
+  .card.past { display: none; }
   .more { display: flex; }
 }
 </style>

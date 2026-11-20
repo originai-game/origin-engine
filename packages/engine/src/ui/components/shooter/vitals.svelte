@@ -1,6 +1,5 @@
 <meta name="component" content="ShooterVitals">
 <meta name="strings" content="./shooter.en.ogt">
-<meta name="parts" content="ShooterVitals.frame ShooterVitals.portrait ShooterVitals.face ShooterVitals.callsign ShooterVitals.rank ShooterVitals.value ShooterVitals.max ShooterVitals.shield ShooterVitals.health ShooterVitals.ghost">
 <meta name="prop:name" content="string" data-doc="The player's name as the game words it; empty hides it.">
 <meta name="prop:level" content="number" data-doc="The player's level beside the name; 0 hides it.">
 <meta name="prop:portrait" content="number" data-doc="The player's portrait texture (og.load.texture); 0 shows the person glyph in its place.">
@@ -24,36 +23,36 @@
   most, a shield bar cut into cells over a fat health bar that leaves a
   warm ghost when it drops and turns to danger when low. Read only.
 -->
-<section id="ShooterVitals" part="ShooterVitals.frame" class="hud bare" data-layout="row" role="group" aria-label={t("shooter.vitals.name")} class:low={health <= healthMax * low}>
-  <div id="Portrait" part="ShooterVitals.portrait" data-layout="overlay">
-    {#if portrait}<img id="Face" part="ShooterVitals.face" data-anchor="fill" src={portrait} alt="">{:else}<div id="Blank" data-anchor="fill" data-layout="center"><og-icon id="Glyph" icon="person"></og-icon></div>{/if}
+<section id="ShooterVitals" part="frame" variant="hud" layout="row" role="group" aria-label={t("shooter.vitals.name")} class:low={health <= healthMax * low}>
+  <div id="Portrait" part="portrait" layout="overlay">
+    {#if portrait}<img id="Face" part="face" anchor="fill" src={portrait} alt="">{:else}<div id="Blank" anchor="fill" layout="center"><og-icon id="Glyph" icon="person"></og-icon></div>{/if}
   </div>
-  <div id="Body" data-layout="stack" data-fill>
-    <div id="Head" data-layout="row" data-gap="tight">
-      <div id="Who" data-layout="row" data-gap="tight">
-        {#if name != ''}<span part="ShooterVitals.callsign" class="callsign">{name}</span>{/if}
-        {#if level > 0}<span part="ShooterVitals.rank" class="rank">{t("shooter.vitals.level", { level: level })}</span>{/if}
+  <div id="Body" layout="stack" fill>
+    <div id="Head" layout="row" gap="tight">
+      <div id="Who" layout="row" gap="tight">
+        {#if name != ''}<span part="callsign" class="callsign">{name}</span>{/if}
+        {#if level > 0}<span part="rank" class="rank">{t("shooter.vitals.level", { level: level })}</span>{/if}
       </div>
-      <div id="Reading" data-layout="row" data-gap="tight">
-        <span part="ShooterVitals.value" class="value">{formatNumber(health)}</span>
-        <span part="ShooterVitals.max" class="max">{t("shooter.vitals.max", { max: formatNumber(healthMax) })}</span>
+      <div id="Reading" layout="row" gap="tight">
+        <span part="value" class="value">{formatNumber(health)}</span>
+        <span part="max" class="max">{t("shooter.vitals.max", { max: formatNumber(healthMax) })}</span>
       </div>
     </div>
     {#if shieldMax > 0}
-    <div id="Shield" part="ShooterVitals.shield" class="bar" data-layout="overlay" role="meter" aria-label={t("shooter.vitals.shield")} aria-valuemin="0" aria-valuemax={shieldMax} aria-valuenow={shield} style:--value={shield <= 0 ? 0 : shield >= shieldMax ? 1 : shield / shieldMax} style:--cells={segment > 0 ? shieldMax / segment : 1}>
-      <div id="ShieldFill" class="fill" data-anchor="top-start"></div>
-      <div class="cuts" data-anchor="fill"></div>
+    <div id="Shield" part="shield" class="bar" layout="overlay" role="meter" aria-label={t("shooter.vitals.shield")} aria-valuemin="0" aria-valuemax={shieldMax} aria-valuenow={shield} style:--value={shield <= 0 ? 0 : shield >= shieldMax ? 1 : shield / shieldMax} style:--cells={segment > 0 ? shieldMax / segment : 1}>
+      <div id="ShieldFill" class="fill" anchor="top-start"></div>
+      <div class="cuts" anchor="fill"></div>
     </div>
     {/if}
-    <div id="Health" part="ShooterVitals.health" class="bar" data-layout="overlay" role="meter" aria-label={t("shooter.vitals.health")} aria-valuemin="0" aria-valuemax={healthMax} aria-valuenow={health} style:--value={health <= 0 ? 0 : health >= healthMax ? 1 : health / healthMax} style:--ghost={ghost <= health ? 0 : ghost >= healthMax ? 1 : ghost / healthMax}>
-      <div id="Ghost" part="ShooterVitals.ghost" data-anchor="top-start"></div>
-      <div id="HealthFill" class="fill" data-anchor="top-start"></div>
+    <div id="Health" part="health" class="bar" layout="overlay" role="meter" aria-label={t("shooter.vitals.health")} aria-valuemin="0" aria-valuemax={healthMax} aria-valuenow={health} style:--value={health <= 0 ? 0 : health >= healthMax ? 1 : health / healthMax} style:--ghost={ghost <= health ? 0 : ghost >= healthMax ? 1 : ghost / healthMax}>
+      <div id="Ghost" part="ghost" anchor="top-start"></div>
+      <div id="HealthFill" class="fill" anchor="top-start"></div>
     </div>
   </div>
 </section>
 
 <style>
-:host { align-items: flex-end; column-gap: calc(14 * var(--font-step-px)); inline-size: calc(330 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --layout-anchor-inset: 0; }
+#ShooterVitals { align-items: flex-end; column-gap: calc(14 * var(--font-step-px)); inline-size: calc(330 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --layout-anchor-inset: 0; }
 /* The portrait: an octagon with a lit edge, the art inset inside it. */
 #Portrait { flex: none; --layout-anchor-inset: calc(2 * var(--font-step-px)); inline-size: calc(64 * var(--font-step-px)); block-size: calc(64 * var(--font-step-px)); clip-path: var(--hud-octagon); background: var(--hud-edge); filter: var(--hud-lift); }
 #Face, #Blank { clip-path: var(--hud-octagon); background: var(--hud-plate-fill); }
@@ -83,7 +82,7 @@
 .low #Health { box-shadow: var(--bar-critical-rim); animation: var(--pulse-motion); }
 .low .value { color: var(--hud-empty-ink); }
 @media (width < 600px) {
-  :host { column-gap: var(--space-sm); inline-size: stretch; }
+  #ShooterVitals { column-gap: var(--space-sm); inline-size: stretch; }
   #Portrait { inline-size: calc(40 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
   .value { font-size: var(--hud-size-sm); }
   #Shield { block-size: calc(6 * var(--font-step-px)); }

@@ -1,6 +1,5 @@
 <meta name="component" content="ShooterObjectives">
 <meta name="strings" content="./shooter.en.ogt">
-<meta name="parts" content="ShooterObjectives.frame ShooterObjectives.legend ShooterObjectives.goal ShooterObjectives.marker ShooterObjectives.text ShooterObjectives.progress">
 <meta name="prop:label" content="string" data-doc="The block's heading as the game words it; empty takes the component's Objective.">
 <meta name="prop:goals" content="list" data-doc="The objectives in the game's order, keyed rows of { id, text, tag, current }: text the objective as the game words it; tag its progress or time on a tag (2 / 3, 0:45), empty for none; current the one in play (lit; the others are dimmed). The game owns progress and completion.">
 <meta name="fixture:default" content='{"label":"","goals":[{"id":"relay","text":"Secure the relay tower","tag":"2 / 3","current":true},{"id":"catwalk","text":"Hold the catwalk","tag":"0:45","current":false}]}'>
@@ -14,21 +13,21 @@
   dimmed under it with theirs (a phone shows the one in play alone). Read
   only.
 -->
-<section id="ShooterObjectives" part="ShooterObjectives.frame" class="hud bare" data-layout="stack" role="group" aria-label={label != '' ? label : t("shooter.objective.label")}>
+<section id="ShooterObjectives" part="frame" variant="hud" layout="stack" role="group" aria-label={label != '' ? label : t("shooter.objective.label")}>
   {#if goals.length}
-  <span part="ShooterObjectives.legend" class="legend">{label != '' ? label : t("shooter.objective.label")}</span>
+  <span part="legend" class="legend">{label != '' ? label : t("shooter.objective.label")}</span>
   {#each goals as g (g.id)}
-  <div part="ShooterObjectives.goal" class="goal" data-layout="row" data-gap="tight" class:current={g.current}>
-    <div part="ShooterObjectives.marker" class="marker"></div>
-    <span part="ShooterObjectives.text" class="text">{g.text}</span>
-    {#if g.tag}<span part="ShooterObjectives.progress" class="tag">{g.tag}</span>{/if}
+  <div part="goal" class="goal" layout="row" gap="tight" class:current={g.current}>
+    <div part="marker" class="marker"></div>
+    <span part="text" class="text">{g.text}</span>
+    {#if g.tag}<span part="progress" class="tag">{g.tag}</span>{/if}
   </div>
   {/each}
   {/if}
 </section>
 
 <style>
-:host { row-gap: calc(6 * var(--font-step-px)); inline-size: calc(280 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
+#ShooterObjectives { row-gap: calc(6 * var(--font-step-px)); inline-size: calc(280 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .legend { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; min-inline-size: 0; }
 .goal { min-inline-size: 0; opacity: 0.66; }
 .goal.current { opacity: 1; }
@@ -39,7 +38,8 @@
 .current .text { font-size: var(--hud-size-sm); }
 .tag { flex: none; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; -webkit-text-stroke-width: 0; text-shadow: none; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 @media (width < 600px) {
-  :host { inline-size: stretch; }
-  .legend, .goal:not(.current) { display: none; }
+  #ShooterObjectives { inline-size: stretch; }
+  .legend, .goal { display: none; }
+  .goal.current { display: flex; }
 }
 </style>

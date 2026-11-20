@@ -6,30 +6,29 @@
 <meta name="prop:selected" content="string" data-doc="The slot id selected now (empty: none).">
 <meta name="action:details" content="Equip">
 <meta name="action:back" content="Back">
-<meta name="parts" content="Loadout.item Loadout.category Loadout.detail Loadout.price Loadout.label Loadout.cell Loadout.figure Loadout.title Loadout.headline Loadout.caption Loadout.badge Loadout.fade">
 <meta name="fixture:default" content='{"title":"","selected":"strider","categories":[{"id":"primary","label":""},{"id":"secondary","label":""},{"id":"melee","label":""}],"slots":[{"id":"strider","category":"primary","name":"Strider AR","icon":"sword","detail":"25 / 75","equipped":true,"locked":false,"cost":"2,900"},{"id":"halcyon","category":"primary","name":"Halcyon","icon":"sword","detail":"30 / 90","equipped":false,"locked":false,"cost":"2,900"},{"id":"pike","category":"primary","name":"Pike .50","icon":"sword","detail":"5 / 10","equipped":false,"locked":true,"cost":"4,700"},{"id":"wren","category":"secondary","name":"Wren Pistol","icon":"bolt","detail":"15 / 45","equipped":true,"locked":false,"cost":"500"},{"id":"knife","category":"melee","name":"Field Knife","icon":"sword","detail":"","equipped":true,"locked":false,"cost":""}]}'>
 <meta name="fixture:empty" content='{"title":"","selected":"","categories":[{"id":"primary","label":""}],"slots":[]}'>
 
-<section id="Loadout" data-layout="shell" data-gap="wide" aria-label={title != '' ? title : t("shooter.loadout.title")}>
-  <h2 id="Title" part="Loadout.title">{title != '' ? title : t("shooter.loadout.title")}</h2>
-  <div id="Body" data-layout="grid" data-gap="wide" data-fill>
-  <div id="Groups" data-layout="grid" data-gap="wide" data-fill>
+<section id="Loadout" layout="stack" fill gap="wide" aria-label={title != '' ? title : t("shooter.loadout.title")}>
+  <h2 id="Title" part="title">{title != '' ? title : t("shooter.loadout.title")}</h2>
+  <div class="grid" id="Body" gap="wide" fill>
+  <div class="grid" id="Groups" gap="wide" fill>
     {#each categories as c (c.id)}
-      <section class="group" data-layout="stack" aria-label={c.label ? c.label : t("shooter.loadout.category." + c.id)}>
-        <h3 class="category" part="Loadout.category Loadout.label">{c.label ? c.label : t("shooter.loadout.category." + c.id)}</h3>
-        <div class="items" data-layout="stack" data-gap="tight">
+      <section class="group" layout="stack" aria-label={c.label ? c.label : t("shooter.loadout.category." + c.id)}>
+        <h3 class="category" part="label">{c.label ? c.label : t("shooter.loadout.category." + c.id)}</h3>
+        <div class="items" layout="stack" gap="tight">
           {#each slots as s (s.id)}
             {#if s.category == c.id}
-              <button class="item" part="Loadout.item Loadout.cell" aria-selected={s.id == selected} aria-label={s.name} class:equipped={s.equipped} class:locked={s.locked} disabled={s.locked} onclick={select} ondetails={equip}><div class="face" data-layout="row" data-gap="loose">
+              <button class="item" part="cell" aria-selected={s.id == selected} aria-label={s.name} class:equipped={s.equipped} class:locked={s.locked} disabled={s.locked} onclick={select} ondetails={equip} state:selected={s.id == selected}><div class="face" layout="row" gap="loose">
                 <og-icon class="icon" icon={s.locked ? 'lock' : s.icon}></og-icon>
-                <div class="text" data-layout="stack" data-gap="hair" data-fill>
-                  <span class="name" part="Loadout.headline">{s.name}</span>
-                  {#if s.detail || s.equipped}<div class="sub" data-layout="cluster" data-gap="hair">
-                    {#if s.detail}<span class="detail" part="Loadout.detail Loadout.figure">{s.detail}</span>{/if}
-                    {#if s.equipped}<span class="badge" part="Loadout.badge" data-tone="success">{t("shooter.loadout.equipped")}</span>{/if}
+                <div class="text" layout="stack" gap="hair" fill>
+                  <span class="name" part="headline">{s.name}</span>
+                  {#if s.detail || s.equipped}<div class="sub" layout="wrap" gap="hair">
+                    {#if s.detail}<span class="detail" part="figure">{s.detail}</span>{/if}
+                    {#if s.equipped}<span class="badge" part="badge" tone="success">{t("shooter.loadout.equipped")}</span>{/if}
                   </div>{/if}
                 </div>
-                {#if s.cost}<div class="cost" data-layout="row" data-gap="hair"><og-icon class="coin" icon="coin"></og-icon><span class="price" part="Loadout.price Loadout.figure">{s.cost}</span></div>{/if}
+                {#if s.cost}<div class="cost" layout="row" gap="hair"><og-icon class="coin" icon="coin"></og-icon><span class="price" part="figure">{s.cost}</span></div>{/if}
               </div></button>
             {/if}
           {/each}
@@ -37,11 +36,11 @@
       </section>
     {/each}
     {#if slots.length == 0}
-      <p id="Empty" part="Loadout.caption">{t("shooter.loadout.empty")}</p>
+      <p id="Empty" part="caption">{t("shooter.loadout.empty")}</p>
     {/if}
-    <div id="Fade" part="Loadout.fade"></div>
+    <div id="Fade" part="fade"></div>
   </div>
-  <footer id="Actions" data-layout="cluster">
+  <footer id="Actions" layout="wrap">
     <button id="Back" variant="ghost" aria-label={t("shooter.loadout.back")} onclick={back} onback={back}><kbd id="BackKey" data-action="back"></kbd><span id="BackLabel">{t("shooter.loadout.back")}</span></button>
     {#each slots as s (s.id)}
       {#if s.id == selected}
@@ -57,7 +56,7 @@
    category's name over a rule, each item a cut plate of smoked glass (the
    chosen one ringed in the accent and washed in it), Equipped on a green
    tag, the price in gold; names wrap on whole words. */
-:host { color: var(--hud-ink); }
+#Loadout { color: var(--hud-ink); }
 #Title { margin: 0; font-size: var(--party-size-hero); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); text-shadow: var(--front-shadow); overflow-wrap: break-word; }
 #Body { width: stretch; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
 /* The scrollbar is drawn on the right in either direction, so the room beside it is
@@ -68,7 +67,7 @@
 .item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); min-width: 0; border: 0; color: var(--hud-ink); background: var(--party-card-fill); box-shadow: var(--party-tile-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .item:hover { box-shadow: var(--party-tile-hover-rim); }
 .item:focus-visible { box-shadow: var(--party-focus-rim); }
-.item[aria-selected=true] { background: var(--party-card-on-fill); box-shadow: var(--party-on-rim); }
+.item:state(selected) { background: var(--party-card-on-fill); box-shadow: var(--party-on-rim); }
 .item:disabled { color: var(--hud-ink-dim); }
 .face { width: stretch; }
 .icon { flex: none; width: var(--size-sm); height: var(--size-sm); color: inherit; }
@@ -92,10 +91,10 @@
 #Actions button:hover { background: var(--party-button-hover-fill); }
 #Actions button:focus-visible { box-shadow: var(--party-focus-rim); }
 #Actions button:disabled { opacity: 0.45; }
-#Actions button > span { color: inherit; font-weight: inherit; }
+#Actions button span { color: inherit; font-weight: inherit; }
 #BackKey, #EquipKey { color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }
 @media (width < 600px) {
-  :host { --layout-gap-wide: var(--layout-gap-loose); }
+  #Loadout { --layout-gap-wide: var(--layout-gap-loose); }
   #Title { font-size: var(--party-size-hero-compact); }
   #Groups { padding-right: var(--space-xs); }
   #Actions button { flex: 1 1 auto; }
@@ -104,7 +103,7 @@
    and the actions stand beside the list, at its end under the thumb, so the
    list keeps the page's height. */
 @media (height < 600px) and (orientation: landscape) {
-  :host { --layout-gap-wide: var(--layout-gap); }
+  #Loadout { --layout-gap-wide: var(--layout-gap); }
   #Title { font-size: var(--party-size-hero-compact); }
   #Body { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
   #Groups { grid-template-columns: minmax(0, 1fr); }

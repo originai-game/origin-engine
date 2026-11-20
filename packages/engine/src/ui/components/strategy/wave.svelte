@@ -1,6 +1,5 @@
 <meta name="component" content="StrategyWave">
 <meta name="strings" content="./strategy.en.ogt">
-<meta name="parts" content="StrategyWave.frame StrategyWave.plate StrategyWave.icon StrategyWave.label StrategyWave.time StrategyWave.bar StrategyWave.fill StrategyWave.state StrategyWave.badge StrategyWave.row StrategyWave.mark StrategyWave.name StrategyWave.count StrategyWave.call StrategyWave.reward">
 <meta name="prop:wave" content="number" data-doc="The wave on now or coming, from 1.">
 <meta name="prop:waves" content="number" data-doc="Waves in the level; 0 is an endless run (no total shown).">
 <meta name="prop:name" content="string" data-doc="The wave's name as the game words it (Siege), after its number; empty none.">
@@ -29,46 +28,46 @@
   and Call early with what it pays. Reports callEarly; the game owns the
   timing, the wave's makeup and the reward.
 -->
-<section id="StrategyWave" part="StrategyWave.frame" class="hud bare" aria-label={t("strategy.wave.name")} data-phase={phase} data-final={finalWave} data-near={phase == 'countdown' && next >= 0 && next <= warnAt}>
-  <div id="Plate" part="StrategyWave.plate">
-    {#if icon}<img part="StrategyWave.icon" class="icon" src={icon} alt="">{/if}
+<section id="StrategyWave" part="frame" variant="hud" aria-label={t("strategy.wave.name")} data-final={finalWave} class:phase-done={(phase) == 'done'} class:near={phase == 'countdown' && next >= 0 && next <= warnAt}>
+  <div id="Plate" part="plate">
+    {#if icon}<img part="icon" class="icon" src={icon} alt="">{/if}
     <div class="main">
       <div class="head">
-        <span part="StrategyWave.label" class="label">{waves > 0 ? (name != '' ? t("strategy.wave.titleOfNamed", { wave: wave, waves: waves, name: name }) : t("strategy.wave.titleOf", { wave: wave, waves: waves })) : (name != '' ? t("strategy.wave.titleNamed", { wave: wave, name: name }) : t("strategy.wave.title", { wave: wave }))}</span>
-        {#if finalWave}<span part="StrategyWave.badge" class="final">{t("strategy.wave.final")}</span>{/if}
+        <span part="label" class="label">{waves > 0 ? (name != '' ? t("strategy.wave.titleOfNamed", { wave: wave, waves: waves, name: name }) : t("strategy.wave.titleOf", { wave: wave, waves: waves })) : (name != '' ? t("strategy.wave.titleNamed", { wave: wave, name: name }) : t("strategy.wave.title", { wave: wave }))}</span>
+        {#if finalWave}<span part="badge" class="final">{t("strategy.wave.final")}</span>{/if}
       </div>
       {#if phase == 'countdown' && next >= 0}
         <div class="clock" role="timer" aria-label={t("strategy.wave.next")} aria-valuetext={formatCountdown(next)}>
-          <span part="StrategyWave.time" class="time">{formatCountdown(next)}</span>
-          {#if nextTotal > 0}<div part="StrategyWave.bar" class="bar" style:--left={next >= nextTotal ? 1 : next / nextTotal}><div part="StrategyWave.fill" class="fill"></div></div>{/if}
+          <span part="time" class="time">{formatCountdown(next)}</span>
+          {#if nextTotal > 0}<div part="bar" class="bar" style:--left={next >= nextTotal ? 1 : next / nextTotal}><div part="fill" class="fill"></div></div>{/if}
         </div>
       {:else}
-        <span part="StrategyWave.state" class="state" role="status">{phase == 'done' ? t("strategy.wave.done") : (phase == 'active' ? t("strategy.wave.active") : t("strategy.wave.countdown"))}</span>
+        <span part="state" class="state" role="status">{phase == 'done' ? t("strategy.wave.done") : (phase == 'active' ? t("strategy.wave.active") : t("strategy.wave.countdown"))}</span>
       {/if}
     </div>
   </div>
   {#if enemies.length && phase != 'done'}
   <div class="enemies" role="list" aria-label={t("strategy.wave.incoming")}>
     {#each enemies as e (e.id)}
-      <div part="StrategyWave.row" class="enemy" role="listitem" aria-label={e.scouted ? t("strategy.wave.enemyName", { count: e.count, name: e.name }) : t("strategy.wave.unknown")} data-boss={e.boss} data-scouted={e.scouted}>
+      <div part="row" class="enemy" role="listitem" aria-label={e.scouted ? t("strategy.wave.enemyName", { count: e.count, name: e.name }) : t("strategy.wave.unknown")} data-boss={e.boss} class:not-scouted={!(e.scouted)}>
         <span class="edge"></span>
-        <og-icon part="StrategyWave.mark" class="mark" icon={e.icon}></og-icon>
-        <span part="StrategyWave.name" class="enemy-name">{e.scouted ? e.name : t("strategy.wave.unknown")}</span>
-        {#if e.boss}<span part="StrategyWave.badge" class="boss">{t("strategy.wave.boss")}</span>{/if}
-        {#if e.scouted}<span part="StrategyWave.count" class="enemy-count">{t("strategy.wave.enemyCount", { count: e.count })}</span>{/if}
+        <og-icon part="mark" class="mark" icon={e.icon}></og-icon>
+        <span part="name" class="enemy-name">{e.scouted ? e.name : t("strategy.wave.unknown")}</span>
+        {#if e.boss}<span part="badge" class="boss">{t("strategy.wave.boss")}</span>{/if}
+        {#if e.scouted}<span part="count" class="enemy-count">{t("strategy.wave.enemyCount", { count: e.count })}</span>{/if}
       </div>
     {/each}
   </div>
   {/if}
-  {#if canCallEarly && phase != 'done'}<button id="CallEarly" part="StrategyWave.call" onclick={callEarly}><div class="call-face"><span class="call-label">{t("strategy.wave.callEarly")}</span>{#if reward != ''}<span part="StrategyWave.reward" class="reward">{reward}</span>{/if}</div></button>{/if}
+  {#if canCallEarly && phase != 'done'}<button id="CallEarly" part="call" onclick={callEarly}><div class="call-face"><span class="call-label">{t("strategy.wave.callEarly")}</span>{#if reward != ''}<span part="reward" class="reward">{reward}</span>{/if}</div></button>{/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; align-items: stretch; row-gap: calc(5 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); }
+#StrategyWave { display: flex; flex-direction: column; align-items: stretch; row-gap: calc(5 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); }
 /* The plate: smoked glass, its edge lit in danger while a wave comes or
    fights; quiet once every wave is cleared. */
 #Plate { display: flex; align-items: center; column-gap: calc(10 * var(--font-step-px)); min-inline-size: 0; padding: calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px)); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-alert-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-[data-phase=done] #Plate { box-shadow: var(--hud-plate-rim); }
+.phase-done #Plate { box-shadow: var(--hud-plate-rim); }
 /* The picture is art: it keeps its size at any text scale. */
 .icon { flex: none; inline-size: calc(var(--size-md) * 0.75); block-size: calc(var(--size-md) * 0.75); object-fit: cover; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .main { display: flex; flex-direction: column; row-gap: calc(1 * var(--font-step-px)); flex: 1 1 auto; min-inline-size: 0; }
@@ -76,35 +75,35 @@
 /* The wave's title is short: it fits, or wraps onto a second line; it is
    never cut. */
 .label { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-harm); }
-[data-phase=done] .label { color: var(--hud-label-ink); }
+.phase-done .label { color: var(--hud-label-ink); }
 .final { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.4; font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-gold); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .clock { display: flex; align-items: center; column-gap: calc(8 * var(--font-step-px)); min-inline-size: 0; }
 .time { flex: none; font-size: var(--hud-size-readout); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-shadow: var(--hud-shadow); }
-[data-near=true] .time { color: var(--hud-harm); }
+.near .time { color: var(--hud-harm); }
 /* The wait still to run: a thin leaning well with a red fill. */
 .bar { position: relative; flex: 1 1 auto; min-inline-size: calc(var(--size-xl) * 1.2); block-size: calc(6 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); }
 .fill { position: absolute; left: 0; top: 0; bottom: 0; inline-size: calc(var(--left) * 100%); background: var(--hud-low-fill); }
 .state { min-inline-size: 0; font-size: var(--hud-size-sm); line-height: 1.2; font-weight: var(--hud-figure-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); }
-[data-phase=done] .state { color: var(--hud-boon); }
+.phase-done .state { color: var(--hud-boon); }
 /* The enemies coming, one feed row per kind. */
 .enemies { display: flex; flex-direction: column; row-gap: calc(3 * var(--font-step-px)); min-inline-size: 0; }
 .enemy { display: flex; align-items: center; column-gap: calc(6 * var(--font-step-px)); min-inline-size: 0; padding: calc(2 * var(--font-step-px)) calc(10 * var(--font-step-px)) calc(2 * var(--font-step-px)) 0; background: var(--hud-feed-fill-start); }
 .edge { flex: none; align-self: stretch; inline-size: var(--hud-feed-edge-width); margin-inline-end: calc(4 * var(--font-step-px)); background: var(--hud-harm); }
-[data-scouted=false] > .edge { background: var(--hud-feed-edge); }
+.not-scouted .edge { background: var(--hud-feed-edge); }
 .mark { flex: none; inline-size: calc(16 * var(--font-step-px)); block-size: calc(16 * var(--font-step-px)); color: var(--hud-ink); }
 .enemy-name { flex: 1 1 auto; min-inline-size: 0; font-size: var(--hud-size-feed); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-.enemy[data-scouted=false] .enemy-name { color: var(--hud-ink-dim); }
+.enemy.not-scouted .enemy-name { color: var(--hud-ink-dim); }
 .boss { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.4; font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-harm); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .enemy-count { flex: none; font-size: var(--hud-size-feed); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 /* Call early: a lit plate, what it pays in gold; a long reward scrolls in
    its line, inside the button's padding. */
 #CallEarly { min-block-size: var(--size-touch); min-inline-size: 0; max-inline-size: stretch; }
-#CallEarly::part(base) { padding: calc(4 * var(--font-step-px)) calc(12 * var(--font-step-px)); border: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+#CallEarly { padding: calc(4 * var(--font-step-px)) calc(12 * var(--font-step-px)); border: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .call-face { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; column-gap: calc(8 * var(--font-step-px)); max-inline-size: stretch; min-inline-size: 0; }
 .call-label { flex: none; font-size: var(--hud-label-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--hud-ink); }
 .reward { flex: 0 1 auto; min-inline-size: 0; max-inline-size: 100%; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); color: var(--hud-gold); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 @media (width < 600px) {
-  :host { inline-size: stretch; }
+  #StrategyWave { inline-size: stretch; }
   #Plate { column-gap: calc(8 * var(--font-step-px)); padding: calc(4 * var(--font-step-px)) calc(10 * var(--font-step-px)); }
   .icon { inline-size: var(--size-sm); block-size: var(--size-sm); }
   .label { font-size: var(--hud-size-label-compact); letter-spacing: normal; }

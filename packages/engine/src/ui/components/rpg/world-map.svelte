@@ -1,6 +1,5 @@
 <meta name="component" content="RpgWorldMap">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgWorldMap.frame RpgWorldMap.marker RpgWorldMap.row RpgWorldMap.plate RpgWorldMap.caption">
 <meta name="prop:map" content="number" data-doc="The map's texture (og.load.texture); markers sit on it in fractions of its size.">
 <meta name="prop:markers" content="list" data-doc="Keyed rows of { id, kind, x, y, label }: kind is quest, waypoint, danger or player; x and y 0 to 1 across and down the map.">
 <meta name="prop:selected" content="string" data-doc="The marker selected; empty is none.">
@@ -27,31 +26,31 @@
   pan and release (a press, its moves and its end, each with x and y in
   the map's box), and draws what the game sets.
 -->
-<figure id="RpgWorldMap" part="RpgWorldMap.frame" class="bare" data-layout="shell" aria-label={t("rpg.map.name")}>
-  <div class="sheet" data-fill onwheel={zoom} onpinch={pinch} onpointerdown={grab} onpointermove={pan} onpointerup={release}>
+<figure id="RpgWorldMap" part="frame" variant="bare" layout="stack" fill aria-label={t("rpg.map.name")}>
+  <div class="sheet" fill onwheel={zoom} onpinch={pinch} onpointerdown={grab} onpointermove={pan} onpointerup={release}>
     <div class="land" style:--zoom={zoom || 1} style:--pan-x={panX + "px"} style:--pan-y={panY + "px"}>
       <img class="terrain" src={map} alt="">
       <div class="markers" role="group" aria-label={t("rpg.map.places")}>
         {#each markers as m (m.id)}
-          <button part="RpgWorldMap.marker" class="marker" data-kind={m.kind} disabled={m.kind == 'player'} aria-selected={m.id == selected} aria-label={m.label} style:--x={m.x} style:--y={m.y} onclick={choose}><div class="face" data-layout="cover">
+          <button part="marker" class="marker" disabled={m.kind == 'player'} aria-selected={m.id == selected} aria-label={m.label} style:--x={m.x} style:--y={m.y} onclick={choose} state:selected={m.id == selected} class:kind-danger={(m.kind) == 'danger'} class:kind-player={(m.kind) == 'player'} class:kind-quest={(m.kind) == 'quest'} class:kind-waypoint={(m.kind) == 'waypoint'}><div class="face cover" layout="stack" fill>
             <div class="ring"></div>
-            <div class="pin" data-kind={m.kind}><div class="shape"></div>{#if m.kind == 'player'}<svg class="arrow" viewBox="0 0 16 16"><path d="M8 1l6 13-6-3.5L2 14z"></path></svg>{:else}{#if m.kind == 'quest' || m.kind == 'danger'}<div class="bang"><i class="bar"></i><i class="spot"></i></div>{/if}{/if}</div>
-            <span class="name" part="RpgWorldMap.caption">{m.label}</span>
+            <div class="pin" class:kind-danger={(m.kind) == 'danger'} class:kind-player={(m.kind) == 'player'} class:kind-quest={(m.kind) == 'quest'} class:kind-waypoint={(m.kind) == 'waypoint'}><div class="shape"></div>{#if m.kind == 'player'}<svg class="arrow" viewBox="0 0 16 16"><path d="M8 1l6 13-6-3.5L2 14z"></path></svg>{:else}{#if m.kind == 'quest' || m.kind == 'danger'}<div class="bang"><i class="bar"></i><i class="spot"></i></div>{/if}{/if}</div>
+            <span class="name" part="caption">{m.label}</span>
           </div></button>
         {/each}
       </div>
     </div>
-    {#if here}<div class="here" part="RpgWorldMap.plate" data-layout="row" data-gap="tight"><div class="here-mark"></div><span class="here-text">{here}</span></div>{/if}
+    {#if here}<div class="here" part="plate" layout="row" gap="tight"><div class="here-mark"></div><span class="here-text">{here}</span></div>{/if}
   </div>
-  {#if legend.length}<div class="legend" part="RpgWorldMap.plate" data-layout="cluster" data-gap="loose" aria-label={t("rpg.map.legend")}>
+  {#if legend.length}<div class="legend" part="plate" layout="wrap" gap="loose" aria-label={t("rpg.map.legend")}>
     {#each legend as l (l.id)}
-      <div part="RpgWorldMap.row" class="key" data-layout="row" data-gap="tight" data-kind={l.kind}><div class="mark" data-kind={l.kind}></div><span class="legend-label">{l.label}</span></div>
+      <div part="row" class="key" layout="row" gap="tight" class:kind-danger={(l.kind) == 'danger'} class:kind-player={(l.kind) == 'player'} class:kind-quest={(l.kind) == 'quest'} class:kind-waypoint={(l.kind) == 'waypoint'}><div class="mark" class:kind-danger={(l.kind) == 'danger'} class:kind-player={(l.kind) == 'player'} class:kind-quest={(l.kind) == 'quest'} class:kind-waypoint={(l.kind) == 'waypoint'}></div><span class="legend-label">{l.label}</span></div>
     {/each}
   </div>{/if}
 </figure>
 
 <style>
-:host { position: relative; margin: 0; container-type: inline-size; color: var(--hud-ink); --pin: var(--map-marker); }
+#RpgWorldMap { position: relative; margin: 0; container-type: inline-size; color: var(--hud-ink); --pin: var(--map-marker); }
 .sheet { position: relative; width: stretch; overflow: hidden; }
 .land { position: absolute; left: 0; top: 0; width: calc(var(--zoom) * 100%); height: calc(var(--zoom) * 100%); translate: var(--pan-x) var(--pan-y); }
 .terrain { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -62,20 +61,20 @@
 .marker:disabled { opacity: 1; }
 .marker .face { position: relative; width: stretch; height: stretch; overflow: visible; }
 .ring { display: none; position: absolute; left: 50%; top: 50%; width: calc(var(--map-marker-on) * 1.6); height: calc(var(--map-marker-on) * 1.6); translate: -50% -50%; border-radius: var(--map-round); box-shadow: var(--map-chosen-ring); }
-.marker[aria-selected=true] .ring { display: block; }
+.marker:state(selected) .ring { display: block; }
 .marker:focus-visible .ring { display: block; box-shadow: var(--map-focus-ring); }
-.marker[aria-selected=true] { --pin: var(--map-marker-on); z-index: 1; }
+.marker:state(selected) { --pin: var(--map-marker-on); z-index: 1; }
 .pin { position: relative; width: var(--pin); height: var(--pin); display: flex; align-items: center; justify-content: center; }
 .shape { position: absolute; inset: 0; }
-.pin[data-kind=quest] { filter: var(--map-quest-glow); }
-.pin[data-kind=quest] .shape { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--map-quest); }
-.pin[data-kind=quest] .bang i { background: var(--map-quest-ink); }
-.pin[data-kind=danger] .shape { clip-path: polygon(50% 4%, 100% 96%, 0 96%); background: var(--map-danger); }
-.pin[data-kind=danger] .bang i { background: var(--map-danger-ink); }
-.pin[data-kind=danger] .bang { padding-top: calc(var(--pin) * 0.22); }
-.pin[data-kind=waypoint] { width: calc(var(--pin) * 0.84); height: calc(var(--pin) * 0.84); border-radius: var(--map-round); background: var(--map-way); box-shadow: var(--map-way-glow); }
-.pin[data-kind=waypoint] .shape { inset: 18%; border-radius: var(--map-round); background: var(--map-way-well); }
-.pin[data-kind=player] { width: calc(var(--pin) * 0.84); height: calc(var(--pin) * 0.84); border-radius: var(--map-round); background: var(--map-player); box-shadow: var(--map-player-halo); }
+.pin.kind-quest { filter: var(--map-quest-glow); }
+.pin.kind-quest .shape { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--map-quest); }
+.pin.kind-quest .bang i { background: var(--map-quest-ink); }
+.pin.kind-danger .shape { clip-path: polygon(50% 4%, 100% 96%, 0 96%); background: var(--map-danger); }
+.pin.kind-danger .bang i { background: var(--map-danger-ink); }
+.pin.kind-danger .bang { padding-top: calc(var(--pin) * 0.22); }
+.pin.kind-waypoint { width: calc(var(--pin) * 0.84); height: calc(var(--pin) * 0.84); border-radius: var(--map-round); background: var(--map-way); box-shadow: var(--map-way-glow); }
+.pin.kind-waypoint .shape { inset: 18%; border-radius: var(--map-round); background: var(--map-way-well); }
+.pin.kind-player { width: calc(var(--pin) * 0.84); height: calc(var(--pin) * 0.84); border-radius: var(--map-round); background: var(--map-player); box-shadow: var(--map-player-halo); }
 .arrow { position: relative; width: 60%; height: 60%; rotate: 35deg; fill: var(--map-player-ink); }
 /* The pin's mark of attention: a bar over a spot, drawn, not a glyph. */
 .bang { position: relative; display: flex; flex-direction: column; align-items: center; gap: calc(var(--pin) * 0.06); }
@@ -83,7 +82,7 @@
 .spot { width: calc(var(--pin) * 0.11); height: calc(var(--pin) * 0.11); }
 /* The name: white on a small cut plate under the pin, at any kind. */
 .name { position: absolute; left: 50%; top: calc(50% + var(--pin) / 2 + var(--space-xs)); translate: -50% 0; padding: calc(2 * var(--font-step-px)) var(--space-xs); white-space: nowrap; font-size: var(--map-name-size); font-weight: var(--hud-label-weight); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.marker[aria-selected=true] .name { top: calc(50% + var(--map-marker-on) * 0.8 + var(--space-xs)); font-size: var(--map-name-on-size); }
+.marker:state(selected) .name { top: calc(50% + var(--map-marker-on) * 0.8 + var(--space-xs)); font-size: var(--map-name-on-size); }
 /* The caption and the legend: cut plates over the art. */
 .here { position: absolute; left: var(--space-sm); top: var(--space-sm); align-items: center; padding: var(--space-xxs) var(--space-sm); margin: 0; font-size: var(--hud-size-xs); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .here:dir(rtl) { left: auto; right: var(--space-sm); }
@@ -93,22 +92,24 @@
 .key { flex: none; align-items: center; white-space: nowrap; }
 /* Each legend mark draws its marker's shape. */
 .mark { width: var(--map-legend-mark); height: var(--map-legend-mark); flex: none; }
-.mark[data-kind=quest] { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--map-quest); }
-.mark[data-kind=danger] { clip-path: polygon(50% 4%, 100% 96%, 0 96%); background: var(--map-danger); }
-.mark[data-kind=waypoint] { border-radius: var(--map-round); box-shadow: var(--map-way-ring); }
-.mark[data-kind=player] { border-radius: var(--map-round); background: var(--map-player); }
+.mark.kind-quest { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--map-quest); }
+.mark.kind-danger { clip-path: polygon(50% 4%, 100% 96%, 0 96%); background: var(--map-danger); }
+.mark.kind-waypoint { border-radius: var(--map-round); box-shadow: var(--map-way-ring); }
+.mark.kind-player { border-radius: var(--map-round); background: var(--map-player); }
 /* A narrow map (a phone's) keeps its places apart: pins follow the text
    size up to a share of the map's width, only the chosen place keeps its
    name on the art (every marker still says its name to assistive tech),
    and the legend runs in one row along the foot. */
 @container (width < 560px) {
-  :host { --pin: var(--map-marker-compact); }
-  .marker[aria-selected=true] { --pin: var(--map-marker-on-compact); }
+  #RpgWorldMap { --pin: var(--map-marker-compact); }
+  .marker:state(selected) { --pin: var(--map-marker-on-compact); }
   .ring { width: calc(var(--map-marker-on-compact) * 1.6); height: calc(var(--map-marker-on-compact) * 1.6); }
-  .marker:not([aria-selected=true]) .name { display: none; }
-  .marker[aria-selected=true] .name { top: calc(50% + var(--map-marker-on-compact) * 0.8 + var(--space-xs)); font-size: var(--map-name-compact-size); }
+  .marker .name { display: none; }
+  .marker:state(selected) .name { display: block;  top: calc(50% + var(--map-marker-on-compact) * 0.8 + var(--space-xs)); font-size: var(--map-name-compact-size); }
   .legend { left: var(--space-xs); right: var(--space-xs); bottom: var(--space-xs); flex-wrap: nowrap; justify-content: center; column-gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); font-size: var(--map-name-compact-size); }
   .legend:dir(rtl) { left: var(--space-xs); right: var(--space-xs); }
   .here { left: var(--space-xs); top: var(--space-xs); font-size: var(--map-name-compact-size); }
 }
+.cover { justify-content: center; align-items: center; }
+.cover { justify-content: center; align-items: center; }
 </style>

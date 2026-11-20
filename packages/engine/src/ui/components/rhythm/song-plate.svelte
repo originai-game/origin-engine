@@ -1,6 +1,5 @@
 <meta name="component" content="RhythmSongPlate">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmSongPlate.frame RhythmSongPlate.jacket RhythmSongPlate.picture RhythmSongPlate.song RhythmSongPlate.byline RhythmSongPlate.chart RhythmSongPlate.modifier">
 <meta name="prop:title" content="string" data-doc="The song's title.">
 <meta name="prop:artist" content="string" data-doc="The artist as the game words it; empty hides it.">
 <meta name="prop:bpm" content="string" data-doc="The tempo as the game words it (174, 90–180); empty hides it.">
@@ -20,24 +19,24 @@
   with a lit edge, the title, the artist and tempo, the chart's chip in its
   tier's colour with its level, and the modifiers in play. Read only.
 -->
-<section id="RhythmSongPlate" part="RhythmSongPlate.frame" class="hud bare" data-layout="row" data-gap="wide" role="group" aria-label={t("rhythm.plate.name", { title: title })}>
-  <div id="Jacket" part="RhythmSongPlate.jacket" data-layout="overlay">
-    {#if jacket}<img id="Cover" part="RhythmSongPlate.picture" data-anchor="fill" src={jacket} alt="">{:else}<div id="Blank" data-anchor="fill" data-layout="center"><og-icon id="Glyph" icon="music"></og-icon></div>{/if}
+<section id="RhythmSongPlate" part="frame" variant="hud" layout="row" gap="wide" role="group" aria-label={t("rhythm.plate.name", { title: title })}>
+  <div id="Jacket" part="jacket" layout="overlay">
+    {#if jacket}<img id="Cover" part="picture" anchor="fill" src={jacket} alt="">{:else}<div id="Blank" anchor="fill" layout="center"><og-icon id="Glyph" icon="music"></og-icon></div>{/if}
   </div>
-  <div class="text" data-layout="stack" data-gap="none" data-fill>
-    <span part="RhythmSongPlate.song" class="title">{title}</span>
-    {#if artist != '' || bpm != ''}<span part="RhythmSongPlate.byline" class="byline">{artist != '' && bpm != '' ? t("rhythm.plate.byline", { artist: artist, bpm: bpm }) : (artist != '' ? artist : t("rhythm.songs.bpm", { bpm: bpm }))}</span>{/if}
+  <div class="text" layout="stack" gap="none" fill>
+    <span part="song" class="title">{title}</span>
+    {#if artist != '' || bpm != ''}<span part="byline" class="byline">{artist != '' && bpm != '' ? t("rhythm.plate.byline", { artist: artist, bpm: bpm }) : (artist != '' ? artist : t("rhythm.songs.bpm", { bpm: bpm }))}</span>{/if}
     {#if chart != '' || modifiers.length}
-    <div class="tags" data-layout="cluster" data-gap="tight">
-      {#if chart != ''}<span part="RhythmSongPlate.chart" class="chart" data-tier={tier}>{rating > 0 ? t("rhythm.plate.chart", { chart: chart, rating: rating }) : chart}</span>{/if}
-      {#each modifiers as m (m.id)}<span part="RhythmSongPlate.modifier" class="tag">{m.label}</span>{/each}
+    <div class="tags" layout="wrap" gap="tight">
+      {#if chart != ''}<span part="chart" class="chart" class:tier-easy={(tier) == 'easy'} class:tier-expert={(tier) == 'expert'} class:tier-hard={(tier) == 'hard'} class:tier-master={(tier) == 'master'} class:tier-special={(tier) == 'special'}>{rating > 0 ? t("rhythm.plate.chart", { chart: chart, rating: rating }) : chart}</span>{/if}
+      {#each modifiers as m (m.id)}<span part="modifier" class="tag">{m.label}</span>{/each}
     </div>
     {/if}
   </div>
 </section>
 
 <style>
-:host { align-items: center; max-inline-size: min(100%, var(--measure-lg)); color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --layout-anchor-inset: var(--space-xxs); }
+#RhythmSongPlate { align-items: center; max-inline-size: min(100%, var(--measure-lg)); color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --layout-anchor-inset: var(--space-xxs); }
 /* The jacket: an octagon with a lit edge, the art inset inside it. */
 #Jacket { flex: none; inline-size: calc(84 * var(--font-step-px)); block-size: calc(84 * var(--font-step-px)); clip-path: var(--hud-octagon); background: var(--hud-edge); }
 #Cover, #Blank { clip-path: var(--hud-octagon); background: var(--hud-plate-fill); }
@@ -51,14 +50,16 @@
 .chart, .tag { max-inline-size: stretch; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; -webkit-text-stroke-width: 0; text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .tag { background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
 .chart { color: var(--chart-ink); background: var(--chart-normal); }
-.chart[data-tier=easy] { background: var(--chart-easy); }
-.chart[data-tier=hard] { background: var(--chart-hard); }
-.chart[data-tier=expert] { background: var(--chart-expert); }
-.chart[data-tier=master] { background: var(--chart-master); }
-.chart[data-tier=special] { background: var(--chart-special); }
+.chart.tier-easy { background: var(--chart-easy); }
+.chart.tier-hard { background: var(--chart-hard); }
+.chart.tier-expert { background: var(--chart-expert); }
+.chart.tier-master { background: var(--chart-master); }
+.chart.tier-special { background: var(--chart-special); }
 @media (width < 600px) {
   #Jacket { inline-size: calc(56 * var(--font-step-px)); block-size: calc(56 * var(--font-step-px)); }
   .title { font-size: var(--hud-size-sm); }
   .byline { font-size: var(--hud-size-xs); }
 }
+.cover { justify-content: center; align-items: center; }
+.cover { justify-content: center; align-items: center; }
 </style>

@@ -1,6 +1,5 @@
 <meta name="component" content="StrategyCommands">
 <meta name="strings" content="./strategy.en.ogt">
-<meta name="parts" content="StrategyCommands.frame StrategyCommands.info StrategyCommands.title StrategyCommands.detail StrategyCommands.price StrategyCommands.tag StrategyCommands.grid StrategyCommands.command StrategyCommands.art StrategyCommands.key StrategyCommands.sweep StrategyCommands.time StrategyCommands.cost StrategyCommands.blank">
 <meta name="prop:commands" content="list" data-doc="The command card in grid order, four to a row, keyed rows of { id, name, icon, glyph, key, action, enabled, affordable, cost, costIcon, cooldown, time, active, detail, cooldownText, readyText, reason }: name for a reader and the info card's title, empty draws an empty cell; icon the command's picture (og.load.texture), 0 draws glyph (an icon of the atlas); key the hotkey as the game names it (A), or action the input action whose bound glyph the cap shows (og.input.defineAction), both empty hide it, hidden under a touch screen; enabled false greys it and it sends nothing; affordable false greys it and shows cost on a red tag; cost and costIcon the price as the game words it (200) and the resource's picture; cooldown 0 to 1 still to run, a dark sweep over the art, with time its figure (18); active a toggle that is on or the order in hand, its edge lit; detail, cooldownText and readyText the info card's words (Cooldown 45 s, Ready in 18 s); reason why it cannot be used now (Need a Blacksmith), on the info card.">
 <meta name="prop:focused" content="string" data-doc="The command whose info card stands over the grid (the one under the pointer, as the game decides); empty shows none. A phone shows none.">
 <meta name="fixture:default" content='{"focused":"rally","commands":[{"id":"attack","name":"Attack move","icon":0,"glyph":"sword","key":"A","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":true,"detail":"Move, attacking enemies on the way.","cooldownText":"","readyText":"","reason":""},{"id":"hold","name":"Hold ground","icon":0,"glyph":"shield","key":"H","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"Stand and fight where you are.","cooldownText":"","readyText":"","reason":""},{"id":"rally","name":"Rally banner","icon":0,"glyph":"flag","key":"R","action":"","enabled":true,"affordable":true,"cost":"250","costIcon":0,"cooldown":0.6,"time":"18","active":false,"detail":"Nearby troops move 15% faster and hold formation for 20 s.","cooldownText":"Cooldown 45 s","readyText":"Ready in 18 s","reason":""},{"id":"upgrade","name":"Forge upgrade","icon":0,"glyph":"gear","key":"U","action":"","enabled":true,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"Better weapons for every Man-at-Arms.","cooldownText":"","readyText":"","reason":""},{"id":"barracks","name":"Barracks","icon":0,"glyph":"home","key":"B","action":"","enabled":true,"affordable":true,"cost":"150","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"Trains infantry.","cooldownText":"","readyText":"","reason":""},{"id":"tower","name":"Watchtower","icon":0,"glyph":"flag","key":"T","action":"","enabled":true,"affordable":false,"cost":"200","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"Shoots at enemies in range.","cooldownText":"","readyText":"","reason":"Need 200 stone"},{"id":"archer","name":"Archer","icon":0,"glyph":"bolt","key":"E","action":"","enabled":true,"affordable":true,"cost":"60","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"A ranged soldier.","cooldownText":"","readyText":"","reason":""},{"id":"blank","name":"","icon":0,"glyph":"","key":"","action":"","enabled":false,"affordable":true,"cost":"","costIcon":0,"cooldown":0,"time":"","active":false,"detail":"","cooldownText":"","readyText":"","reason":""}]}'>
@@ -20,30 +19,30 @@
   Reports command (the tile's key; a disabled or unaffordable tile sends
   nothing); the game owns every cost, cooldown and rule.
 -->
-<section id="StrategyCommands" part="StrategyCommands.frame" class="hud bare" aria-label={t("strategy.commands.name")}>
+<section id="StrategyCommands" part="frame" variant="hud" aria-label={t("strategy.commands.name")}>
   {#each commands as c (c.id)}
     {#if c.id == focused && c.name}
-    <div id="Info" part="StrategyCommands.info" role="tooltip">
-      <div class="info-head"><span part="StrategyCommands.title" class="info-title">{c.name}</span>{#if c.key}<span part="StrategyCommands.key" class="info-key">{c.key}</span>{/if}</div>
-      {#if c.detail}<span part="StrategyCommands.detail" class="info-detail">{c.detail}</span>{/if}
+    <div id="Info" part="info" role="tooltip">
+      <div class="info-head"><span part="title" class="info-title">{c.name}</span>{#if c.key}<span part="key" class="info-key">{c.key}</span>{/if}</div>
+      {#if c.detail}<span part="detail" class="info-detail">{c.detail}</span>{/if}
       {#if c.cost || c.cooldownText || c.readyText}<div class="info-tags">
-        {#if c.cost}<div part="StrategyCommands.price" class="price" data-affordable={c.affordable}>{#if c.costIcon}<img class="price-art" src={c.costIcon} alt="">{/if}<span class="price-figure">{c.cost}</span></div>{/if}
-        {#if c.cooldownText}<span part="StrategyCommands.tag" class="tag">{c.cooldownText}</span>{/if}
-        {#if c.readyText}<span part="StrategyCommands.tag" class="tag" data-ready="true">{c.readyText}</span>{/if}
+        {#if c.cost}<div part="price" class="price" class:not-affordable={!(c.affordable)}>{#if c.costIcon}<img class="price-art" src={c.costIcon} alt="">{/if}<span class="price-figure">{c.cost}</span></div>{/if}
+        {#if c.cooldownText}<span part="tag" class="tag">{c.cooldownText}</span>{/if}
+        {#if c.readyText}<span part="tag" class="tag" class:ready={true}>{c.readyText}</span>{/if}
       </div>{/if}
-      {#if c.reason}<span part="StrategyCommands.detail" class="info-reason" role="status">{c.reason}</span>{/if}
+      {#if c.reason}<span part="detail" class="info-reason" role="status">{c.reason}</span>{/if}
     </div>
     {/if}
   {/each}
-  <div id="Grid" part="StrategyCommands.grid" role="toolbar" aria-label={t("strategy.commands.name")}>
+  <div id="Grid" part="grid" role="toolbar" aria-label={t("strategy.commands.name")}>
     {#each commands as c (c.id)}
-      {#if !c.name}<div part="StrategyCommands.blank" class="blank"></div>{:else}
-      <button part="StrategyCommands.command" class="command" aria-label={c.name} aria-description={c.reason ? c.reason : (c.readyText ? c.readyText : c.detail)} aria-pressed={c.active} disabled={!c.enabled || !c.affordable} data-active={c.active} data-cooling={c.cooldown > 0} data-affordable={c.affordable} data-enabled={c.enabled} onclick={command}><div class="face">
-        {#if c.icon}<img part="StrategyCommands.art" class="art" src={c.icon} alt="">{:else}<div part="StrategyCommands.art" class="blank-art"><og-icon class="glyph" icon={c.glyph}></og-icon></div>{/if}
-        {#if c.cooldown > 0}<div part="StrategyCommands.sweep" class="sweep" style:--left={c.cooldown >= 1 ? 1 : c.cooldown}></div>{/if}
-        {#if c.cooldown > 0 && c.time}<span part="StrategyCommands.time" class="time">{c.time}</span>{/if}
-        {#if c.action || c.key}<kbd part="StrategyCommands.key" class="key" data-action={c.action}>{c.key}</kbd>{/if}
-        {#if !c.affordable && c.cost}<span part="StrategyCommands.cost" class="cost">{c.cost}</span>{/if}
+      {#if !c.name}<div part="blank" class="blank"></div>{:else}
+      <button part="command" class="command" aria-label={c.name} aria-description={c.reason ? c.reason : (c.readyText ? c.readyText : c.detail)} aria-pressed={c.active} disabled={!c.enabled || !c.affordable} data-cooling={c.cooldown > 0} data-enabled={c.enabled} onclick={command} class:not-affordable={!(c.affordable)} state:active={c.active}><div class="face">
+        {#if c.icon}<img part="art" class="art" src={c.icon} alt="">{:else}<div part="art" class="blank-art"><og-icon class="glyph" icon={c.glyph}></og-icon></div>{/if}
+        {#if c.cooldown > 0}<div part="sweep" class="sweep" style:--left={c.cooldown >= 1 ? 1 : c.cooldown}></div>{/if}
+        {#if c.cooldown > 0 && c.time}<span part="time" class="time">{c.time}</span>{/if}
+        {#if c.action || c.key}<kbd part="key" class="key" data-action={c.action}>{c.key}</kbd>{/if}
+        {#if !c.affordable && c.cost}<span part="cost" class="cost">{c.cost}</span>{/if}
       </div></button>
       {/if}
     {/each}
@@ -51,7 +50,7 @@
 </section>
 
 <style>
-:host { --cell: calc(var(--size-xl) * 0.8); --gap: calc(4 * var(--font-step-px)); display: flex; flex-direction: column; align-items: stretch; row-gap: calc(8 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); }
+#StrategyCommands { --cell: calc(var(--size-xl) * 0.8); --gap: calc(4 * var(--font-step-px)); display: flex; flex-direction: column; align-items: stretch; row-gap: calc(8 * var(--font-step-px)); inline-size: fit-content; max-inline-size: stretch; min-inline-size: 0; color: var(--hud-ink); }
 /* The info card: smoked glass with an edge lit in the accent, as wide as
    the grid under it. */
 #Info { display: flex; flex-direction: column; row-gap: calc(4 * var(--font-step-px)); inline-size: calc(var(--cell) * 4 + var(--gap) * 3 + 20 * var(--font-step-px)); max-inline-size: stretch; min-inline-size: 0; box-sizing: border-box; padding: calc(8 * var(--font-step-px)) calc(12 * var(--font-step-px)); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
@@ -65,18 +64,18 @@
 .price { display: flex; align-items: center; column-gap: calc(4 * var(--font-step-px)); flex: none; }
 .price-art { flex: none; inline-size: var(--size-xs); block-size: var(--size-xs); object-fit: cover; }
 .price-figure { font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
-.price[data-affordable=false] .price-figure { color: var(--hud-harm); }
+.price.not-affordable .price-figure { color: var(--hud-harm); }
 .tag { flex: 0 1 auto; min-inline-size: 0; padding: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.tag[data-ready=true] { color: var(--hud-gold); }
+.tag.ready { color: var(--hud-gold); }
 /* The grid on a glass plate: four tiles to a row. */
 #Grid { display: grid; grid-template-columns: repeat(4, var(--cell)); grid-auto-rows: var(--cell); gap: var(--gap); justify-content: start; align-self: flex-end; padding: calc(10 * var(--font-step-px)); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .blank { background: var(--hud-slot-empty); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* A tile: its fill is its lit edge, the art inset inside; the tiles are
    art and keep their size at any text scale. */
 .command { inline-size: var(--cell); block-size: var(--cell); min-inline-size: 0; color: var(--hud-ink); }
-.command::part(base) { padding: calc(2 * var(--font-step-px)); border: 0; background: var(--hud-edge); box-shadow: none; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-.command[data-active=true]::part(base) { background: var(--hud-ready-edge); }
-.command:disabled::part(base) { background: var(--hud-edge); }
+.command { padding: calc(2 * var(--font-step-px)); border: 0; background: var(--hud-edge); box-shadow: none; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.command:state(active) { background: var(--hud-ready-edge); }
+.command:disabled { background: var(--hud-edge); }
 .face { container-type: size; position: relative; inline-size: stretch; block-size: stretch; overflow: hidden; border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .art { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .blank-art { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; display: flex; align-items: center; justify-content: center; background: var(--hud-plate-fill); }
@@ -96,7 +95,7 @@
 /* On a phone the grid takes the screen's width at the foot, eight tiles
    to a row, and no info card stands over it. */
 @media (width < 600px) {
-  :host { inline-size: stretch; --cell: calc(var(--size-lg) * 0.82); --gap: calc(3 * var(--font-step-px)); }
+  #StrategyCommands { inline-size: stretch; --cell: calc(var(--size-lg) * 0.82); --gap: calc(3 * var(--font-step-px)); }
   #Info { display: none; }
   #Grid { grid-template-columns: repeat(8, var(--cell)); justify-content: space-between; align-self: stretch; padding: calc(5 * var(--font-step-px)); }
 }

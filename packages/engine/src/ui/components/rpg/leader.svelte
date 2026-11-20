@@ -1,6 +1,5 @@
 <meta name="component" content="RpgLeader">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgLeader.frame RpgLeader.portrait RpgLeader.hero RpgLeader.level RpgLeader.value RpgLeader.max RpgLeader.health RpgLeader.mana RpgLeader.stamina">
 <meta name="prop:name" content="string" data-doc="The leader's name; empty hides it.">
 <meta name="prop:level" content="number" data-doc="The level beside the name; 0 hides it.">
 <meta name="prop:portrait" content="number" data-doc="A head-and-shoulders texture (og.load.texture); 0 draws the person glyph.">
@@ -28,27 +27,27 @@
   mana bar and a stamina bar cut into cells. A game that wants another
   plate lays the same blocks out itself. Read only.
 -->
-<section id="RpgLeader" part="RpgLeader.frame" class="hud bare" data-layout="row" role="group" aria-label={name != '' ? name : t("rpg.party.health")} class:low={healthMax > 0 && health <= healthMax * low}>
-  <div id="Portrait" part="RpgLeader.portrait"><HudPortrait portrait={portrait} dimmed={false} /></div>
-  <div id="Body" data-layout="stack" data-fill>
-    <div id="Head" data-layout="row" data-gap="tight">
-      <div id="Who" data-layout="row" data-gap="tight">
-        {#if name != ''}<span part="RpgLeader.hero" class="name">{name}</span>{/if}
-        {#if level > 0}<span part="RpgLeader.level" class="level">{t("rpg.leader.level", { level: level })}</span>{/if}
+<section id="RpgLeader" part="frame" variant="hud" layout="row" role="group" aria-label={name != '' ? name : t("rpg.party.health")} class:low={healthMax > 0 && health <= healthMax * low}>
+  <div id="Portrait" part="portrait"><HudPortrait portrait={portrait} dimmed={false} /></div>
+  <div id="Body" layout="stack" fill>
+    <div id="Head" layout="row" gap="tight">
+      <div id="Who" layout="row" gap="tight">
+        {#if name != ''}<span part="hero" class="name">{name}</span>{/if}
+        {#if level > 0}<span part="level" class="level">{t("rpg.leader.level", { level: level })}</span>{/if}
       </div>
-      {#if healthMax > 0}<div id="Reading" data-layout="row" data-gap="tight">
-        <span part="RpgLeader.value" class="value">{formatNumber(health < 0 ? 0 : health)}</span>
-        <span part="RpgLeader.max" class="max">{t("rpg.leader.max", { max: formatNumber(healthMax) })}</span>
+      {#if healthMax > 0}<div id="Reading" layout="row" gap="tight">
+        <span part="value" class="value">{formatNumber(health < 0 ? 0 : health)}</span>
+        <span part="max" class="max">{t("rpg.leader.max", { max: formatNumber(healthMax) })}</span>
       </div>{/if}
     </div>
-    <div id="Health" part="RpgLeader.health"><HudBar value={health} max={healthMax} kind="health" ghost={ghost} segment={0} low={healthMax > 0 && health <= healthMax * low} name="" /></div>
-    {#if manaMax > 0}<div id="Mana" part="RpgLeader.mana"><HudBar value={mana} max={manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={false} name="" /></div>{/if}
-    {#if staminaMax > 0}<div id="Stamina" part="RpgLeader.stamina"><HudBar value={stamina} max={staminaMax} kind="stamina" ghost={0} segment={segment} low={false} showValue={false} name="" /></div>{/if}
+    <div id="Health" part="health"><HudBar value={health} max={healthMax} kind="health" ghost={ghost} segment={0} low={healthMax > 0 && health <= healthMax * low} name="" /></div>
+    {#if manaMax > 0}<div id="Mana" part="mana"><HudBar value={mana} max={manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={false} name="" /></div>{/if}
+    {#if staminaMax > 0}<div id="Stamina" part="stamina"><HudBar value={stamina} max={staminaMax} kind="stamina" ghost={0} segment={segment} low={false} showValue={false} name="" /></div>{/if}
   </div>
 </section>
 
 <style>
-:host { align-items: center; column-gap: calc(12 * var(--font-step-px)); inline-size: calc(330 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
+#RpgLeader { align-items: center; column-gap: calc(12 * var(--font-step-px)); inline-size: calc(330 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 /* The portrait's place: a large one, lifted off the scene. */
 #Portrait { flex: none; filter: var(--hud-lift); --hud-portrait-size: calc(68 * var(--font-step-px)); }
 #Body { min-inline-size: 0; row-gap: calc(5 * var(--font-step-px)); }
@@ -70,7 +69,7 @@
 /* On a phone the plate is compact: a smaller portrait and thinner bars
    across the row's width. */
 @media (width < 600px) {
-  :host { column-gap: var(--space-sm); inline-size: stretch; }
+  #RpgLeader { column-gap: var(--space-sm); inline-size: stretch; }
   #Portrait { --hud-portrait-size: calc(44 * var(--font-step-px)); }
   #Body { row-gap: calc(4 * var(--font-step-px)); }
   .name, .value { font-size: var(--hud-size-sm); }

@@ -1,6 +1,5 @@
 <meta name="component" content="RpgTurnOrder">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgTurnOrder.frame RpgTurnOrder.cell RpgTurnOrder.title RpgTurnOrder.picture RpgTurnOrder.badge">
 <meta name="prop:round" content="number" data-doc="The round, on the plate under the portraits.">
 <meta name="prop:turns" content="list" data-doc="Keyed rows of { id, name, portrait, side, acting, down }, in the order they act: side ally, enemy or neutral; acting the one whose turn it is; portrait a texture, 0 none.">
 <meta name="fixture:default" content='{"round":3,"turns":[{"id":"a","name":"Aerin","portrait":0,"side":"ally","acting":true,"down":false},{"id":"o","name":"Oarsman","portrait":0,"side":"enemy","acting":false,"down":false}]}'>
@@ -11,29 +10,29 @@
   them. All portraits share the width, so five fit a phone. Reports
   nothing.
 -->
-<section id="RpgTurnOrder" part="RpgTurnOrder.frame" class="bare" data-layout="stack" data-gap="tight" aria-label={t("rpg.turns.name")}>
-  <div class="track" data-layout="row" data-gap="tight">
+<section id="RpgTurnOrder" part="frame" variant="bare" layout="stack" gap="tight" aria-label={t("rpg.turns.name")}>
+  <div class="track" layout="row" gap="tight">
     <div class="end start"></div>
-    <ol class="turns" data-layout="grid" data-gap="tight" data-fill>
+    <ol class="turns grid" gap="tight" fill>
       {#each turns as u (u.id)}
-        <li part="RpgTurnOrder.cell" data-layout="stack" data-side={u.side} data-acting={u.acting} data-down={u.down} aria-label={u.name} aria-current={u.acting}>
-          <div class="ring" part="RpgTurnOrder.picture">{#if u.portrait}<img class="portrait" src={u.portrait} alt="">{/if}</div>
+        <li class="cell" part="cell" layout="stack" data-side={u.side} data-acting={u.acting} data-down={u.down} aria-label={u.name} aria-current={u.acting}>
+          <div class="ring" part="picture">{#if u.portrait}<img class="portrait" src={u.portrait} alt="">{/if}</div>
         </li>
       {/each}
     </ol>
     <div class="end finish"></div>
   </div>
-  <div class="round-rule" data-layout="row"><div class="rpg-rule" data-fill role="separator"></div><div part="RpgTurnOrder.title RpgTurnOrder.badge" class="round-title">{t("rpg.turns.round", { round: round })}</div><div class="rpg-rule" data-fill role="separator"></div></div>
+  <div class="round-rule" layout="row"><div class="rpg-rule" fill role="separator"></div><div part="badge" class="round-title title">{t("rpg.turns.round", { round: round })}</div><div class="rpg-rule" fill role="separator"></div></div>
 </section>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
-:host { inline-size: stretch; align-items: center; }
+#RpgTurnOrder { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
+#RpgTurnOrder { inline-size: stretch; align-items: center; }
 .track { width: stretch; }
 .end { width: var(--size-sm); height: var(--size-md); flex: none; }
 .turns { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; margin: 0; padding: var(--space-xs) 0; list-style: none; }
-[part="RpgTurnOrder.cell"] { align-items: center; padding: var(--space-xs); }
+.cell { align-items: center; padding: var(--space-xs); }
 .ring { width: stretch; max-width: var(--size-xxl); aspect-ratio: 1; overflow: hidden; padding: calc(2 * var(--font-step-px)); border-radius: 0; clip-path: var(--hud-octagon); background: var(--hud-edge); filter: var(--hud-lift); }
 .ring .portrait { clip-path: var(--hud-octagon); background: var(--hud-plate-fill); }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }

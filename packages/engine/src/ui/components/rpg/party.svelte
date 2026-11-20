@@ -1,6 +1,5 @@
 <meta name="component" content="RpgParty">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgParty.frame RpgParty.cell RpgParty.badge RpgParty.headline RpgParty.health RpgParty.mana RpgParty.caption">
 <meta name="prop:members" content="list" data-doc="Keyed rows of { id, name, portrait, level, health, healthMax, mana, manaMax, down }: portrait a texture (og.load.texture), 0 none; down greys the card and marks it.">
 <meta name="prop:selected" content="string" data-doc="The member chosen; empty is none.">
 <meta name="fixture:default" content='{"members":[{"id":"a","name":"Aerin","portrait":0,"level":8,"health":62,"healthMax":72,"mana":48,"manaMax":72,"down":false},{"id":"l","name":"Lys","portrait":0,"level":8,"health":0,"healthMax":60,"mana":0,"manaMax":80,"down":true}],"selected":"a"}'>
@@ -12,31 +11,31 @@
   health and mana colours. Reports choose (a member's key). The cards
   share the width evenly.
 -->
-<section id="RpgParty" part="RpgParty.frame" class="bare" aria-label={t("rpg.party.name")}>
+<section id="RpgParty" part="frame" variant="bare" aria-label={t("rpg.party.name")}>
   {#if members.length}
-    <div class="cards" data-layout="grid" role="listbox" aria-label={t("rpg.party.name")}>
+    <div class="cards grid" role="listbox" aria-label={t("rpg.party.name")}>
       {#each members as m (m.id)}
-        <button part="RpgParty.cell" role="option" data-down={m.down} aria-selected={m.id == selected} aria-label={m.name} onclick={choose}><div class="face" data-layout="stack" data-gap="hair">
+        <button class="cell" part="cell" role="option" data-down={m.down} aria-selected={m.id == selected} aria-label={m.name} onclick={choose}><div class="face" layout="stack" gap="hair">
           <div class="picture">{#if m.portrait}<img class="portrait" src={m.portrait} alt="">{/if}</div>
-          <div class="seal" part="RpgParty.badge" data-layout="cover" data-gap="none" aria-label={m.down ? t("rpg.party.down") : t("rpg.party.level", { level: m.level })}>{#if !m.down}<span class="seal-lv">{t("rpg.party.lv")}</span><span class="seal-level">{formatNumber(m.level)}</span>{:else}<og-icon icon="skull"></og-icon>{/if}</div>
-          <span class="member-name" part="RpgParty.headline">{m.name}</span>
-          <div class="bar" part="RpgParty.health"><HudBar value={m.health} max={m.healthMax} kind="health" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
-          <div class="bar mana" part="RpgParty.mana"><HudBar value={m.mana} max={m.manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
+          <div class="seal cover" part="badge" layout="stack" fill gap="none" aria-label={m.down ? t("rpg.party.down") : t("rpg.party.level", { level: m.level })}>{#if !m.down}<span class="seal-lv">{t("rpg.party.lv")}</span><span class="seal-level">{formatNumber(m.level)}</span>{:else}<og-icon icon="skull"></og-icon>{/if}</div>
+          <span class="member-name" part="headline">{m.name}</span>
+          <div class="bar" part="health"><HudBar value={m.health} max={m.healthMax} kind="health" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
+          <div class="bar mana" part="mana"><HudBar value={m.mana} max={m.manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
         </div></button>
       {/each}
     </div>
   {:else}
-    <p class="empty-text" part="RpgParty.caption" role="status">{t("rpg.party.empty")}</p>
+    <p class="empty-text" part="caption" role="status">{t("rpg.party.empty")}</p>
   {/if}
 </section>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
-:host { inline-size: stretch; }
+#RpgParty { text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
+#RpgParty { inline-size: stretch; }
 .cards { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; width: stretch; }
-[part="RpgParty.cell"] { position: relative; width: stretch; padding: var(--space-xs); align-items: stretch; justify-content: flex-start; min-width: 0; }
-[part="RpgParty.cell"] .face { width: stretch; }
+.cell { position: relative; width: stretch; padding: var(--space-xs); align-items: stretch; justify-content: flex-start; min-width: 0; }
+.cell .face { width: stretch; }
 .picture { width: stretch; aspect-ratio: 1.15; overflow: hidden; }
 @media (width >= 600px) and (height >= 500px) { .picture { aspect-ratio: 1.5; } }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
@@ -50,4 +49,6 @@
 .empty-text { margin: 0; }
 @media (height < 500px) { .picture { aspect-ratio: 2.4; } }
 @media (600px <= width) and (500px <= height < 800px) { .picture { aspect-ratio: 2; } }
+.cover { justify-content: center; align-items: center; }
+.cover { justify-content: center; align-items: center; }
 </style>

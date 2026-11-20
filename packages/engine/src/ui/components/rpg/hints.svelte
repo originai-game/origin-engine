@@ -1,6 +1,5 @@
 <meta name="component" content="RpgHints">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgHints.frame RpgHints.hint">
 <meta name="prop:hints" content="list" data-doc="The inputs worth a reminder, keyed rows of { id, key, label }: key the input as the game names it (Tab, Space) on a key cap, label what it does (Target). Under a touch screen the hints are hidden: the controls on screen say it.">
 <meta name="fixture:default" content='{"hints":[{"id":"target","key":"Tab","label":"Target"},{"id":"dodge","key":"Space","label":"Dodge"}]}'>
 <meta name="fixture:empty" content='{"hints":[]}'>
@@ -12,14 +11,14 @@
   them; a game lays HudHint out itself anywhere else. Read only; hidden
   under a touch screen.
 -->
-<ul id="RpgHints" part="RpgHints.frame" class="hud bare" data-layout="cluster" aria-label={t("rpg.hints.name")}>
+<ul id="RpgHints" part="frame" variant="hud" layout="wrap" aria-label={t("rpg.hints.name")}>
   {#each hints as h (h.id)}
-  <li part="RpgHints.hint" class="hint" data-layout="row"><HudHint key={h.key} label={h.label} /></li>
+  <li part="hint" class="hint" layout="row"><HudHint key={h.key} label={h.label} /></li>
   {/each}
 </ul>
 
 <style>
-:host { margin: 0; padding: 0; list-style: none; justify-content: flex-end; column-gap: calc(16 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); }
+#RpgHints { margin: 0; padding: 0; list-style: none; justify-content: flex-end; column-gap: calc(16 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); }
 .hint { min-inline-size: 0; max-inline-size: 100%; }
-@media (pointer: coarse) { :host { display: none; } }
+@media (pointer: coarse) { #RpgHints { display: none; } }
 </style>

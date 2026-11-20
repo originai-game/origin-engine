@@ -1,6 +1,5 @@
 <meta name="component" content="ShooterRound">
 <meta name="strings" content="./shooter.en.ogt">
-<meta name="parts" content="ShooterRound.frame ShooterRound.plate ShooterRound.legend ShooterRound.clock ShooterRound.score ShooterRound.ours ShooterRound.theirs">
 <meta name="prop:round" content="number" data-doc="The round in play; 0 hides the word.">
 <meta name="prop:clock" content="string" data-doc="The round's time left as the game words it (1:42); empty hides it.">
 <meta name="prop:ours" content="number" data-doc="The player's side's score.">
@@ -16,25 +15,25 @@
   the score with the player's side in its blue against the other's red.
   The game owns the clock and the score; read only.
 -->
-<section id="ShooterRound" part="ShooterRound.frame" class="hud bare" data-layout="row" role="group" aria-label={theirs >= 0 ? t("shooter.round.score", { ours: ours, theirs: theirs }) : t("shooter.round.name")} class:urgent={urgent}>
+<section id="ShooterRound" part="frame" variant="hud" layout="row" role="group" aria-label={theirs >= 0 ? t("shooter.round.score", { ours: ours, theirs: theirs }) : t("shooter.round.name")} class:urgent={urgent}>
   {#if round > 0 || clock != ''}
-  <div id="Plate" part="ShooterRound.plate" data-layout="row" data-gap="tight">
-    {#if round > 0}<span part="ShooterRound.legend" class="legend">{t("shooter.round.label", { round: round })}</span>{/if}
-    {#if clock != ''}<span part="ShooterRound.clock" class="clock" role="timer">{clock}</span>{/if}
+  <div id="Plate" part="plate" layout="row" gap="tight">
+    {#if round > 0}<span part="legend" class="legend">{t("shooter.round.label", { round: round })}</span>{/if}
+    {#if clock != ''}<span part="clock" class="clock" role="timer">{clock}</span>{/if}
   </div>
   {/if}
-  <span class="spacer" data-fill></span>
+  <span class="spacer" fill></span>
   {#if theirs >= 0}
-  <div id="Score" part="ShooterRound.score" data-layout="row" data-gap="tight">
-    <span part="ShooterRound.ours" class="ours">{formatNumber(ours)}</span>
+  <div id="Score" part="score" layout="row" gap="tight">
+    <span part="ours" class="ours">{formatNumber(ours)}</span>
     <span class="dash"></span>
-    <span part="ShooterRound.theirs" class="theirs">{formatNumber(theirs)}</span>
+    <span part="theirs" class="theirs">{formatNumber(theirs)}</span>
   </div>
   {/if}
 </section>
 
 <style>
-:host { align-items: center; column-gap: var(--space-md); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
+#ShooterRound { align-items: center; column-gap: var(--space-md); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 /* The plate: smoked glass, two corners cut, a lit top edge in the accent. */
 #Plate { flex: 0 1 auto; min-inline-size: 0; align-items: baseline; padding: calc(3 * var(--font-step-px)) var(--space-sm); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .urgent #Plate { box-shadow: var(--bar-critical-rim); }
@@ -48,7 +47,7 @@
 .theirs { color: var(--hud-foe); }
 .dash { align-self: center; inline-size: calc(10 * var(--font-step-px)); block-size: calc(2 * var(--font-step-px)); background: var(--hud-ink-dim); }
 @media (width < 600px) {
-  :host { flex-wrap: wrap; row-gap: var(--space-xxs); justify-content: flex-start; }
+  #ShooterRound { flex-wrap: wrap; row-gap: var(--space-xxs); justify-content: flex-start; }
   .spacer { display: none; }
   #Plate { flex-wrap: wrap; }
   .ours, .theirs { font-size: var(--hud-size-sm); }
