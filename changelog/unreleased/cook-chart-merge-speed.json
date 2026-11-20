@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook: model LOD surfaces",
+      "summary": "Recharting a model's LOD surface no longer takes minutes for a large level: xatlas's chart merge, quadratic in the chart count, now visits only each chart's neighbours and makes the same merges, so the charts and atlases are byte-identical. A 50,000-triangle level's charts take 4.7 s instead of 91 s; level errors and LOD choices are unchanged."
+    }
+  ]
+}

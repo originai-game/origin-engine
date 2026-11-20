@@ -5514,24 +5514,61 @@ private:
 	}
 
 #if XA_MERGE_CHARTS
+	// origin-engine: the same merges in the same order as upstream, without
+	// its quadratic cost (third_party/xatlas/README.md). Upstream clears and
+	// scans arrays of every chart for each chart it tries, and starts again
+	// from the last chart after every merge. Here a chart's neighbours are
+	// gathered sparsely and visited in the same descending order, and a
+	// chart that found nothing to merge is skipped until it or a neighbour
+	// changes: its decision reads only those charts.
 	void mergeCharts()
 	{
 		XA_PROFILE_START(clusteredChartsMerge)
 		const uint32_t chartCount = m_charts.size();
+		m_sharedBoundaryLengths.resize(chartCount);
+		m_sharedBoundaryLengths.zeroOutMemory();
+		m_sharedBoundaryLengthsNoSeams.resize(chartCount);
+		m_sharedBoundaryLengthsNoSeams.zeroOutMemory();
+		m_sharedBoundaryEdgeCountNoSeams.resize(chartCount);
+		m_sharedBoundaryEdgeCountNoSeams.zeroOutMemory();
+		m_mergeClean.resize(chartCount);
+		m_mergeClean.zeroOutMemory();
+		m_mergeSeen.resize(chartCount);
+		m_mergeSeen.zeroOutMemory();
+		// Which faces see each face across an edge: an opposite face is not
+		// always symmetric (a non-manifold edge), so a merge re-decides the
+		// charts that see either chart, not only the ones they see.
+		const uint32_t meshFaceCount = m_data.mesh->faceCount();
+		m_mergeSeenByFirst.resize(meshFaceCount + 1);
+		m_mergeSeenByFirst.zeroOutMemory();
+		for (uint32_t f = 0; f < meshFaceCount; f++) {
+			for (Mesh::FaceEdgeIterator it(m_data.mesh, f); !it.isDone(); it.advance()) {
+				if (!it.isBoundary())
+					m_mergeSeenByFirst[it.oppositeFace() + 1]++;
+			}
+		}
+		for (uint32_t f = 0; f < meshFaceCount; f++)
+			m_mergeSeenByFirst[f + 1] += m_mergeSeenByFirst[f];
+		m_mergeSeenBy.resize(m_mergeSeenByFirst[meshFaceCount]);
+		m_mergeRemap.resize(meshFaceCount);
+		m_mergeRemap.zeroOutMemory();
+		for (uint32_t f = 0; f < meshFaceCount; f++) {
+			for (Mesh::FaceEdgeIterator it(m_data.mesh, f); !it.isDone(); it.advance()) {
+				if (!it.isBoundary()) {
+					const uint32_t o = it.oppositeFace();
+					m_mergeSeenBy[m_mergeSeenByFirst[o] + (uint32_t)m_mergeRemap[o]++] = f;
+				}
+			}
+		}
 		// Merge charts progressively until there's none left to merge.
 		for (;;) {
 			bool merged = false;
 			for (int c = chartCount - 1; c >= 0; c--) {
 				Chart *chart = m_charts[c];
-				if (chart == nullptr)
+				if (chart == nullptr || m_mergeClean[c])
 					continue;
 				float externalBoundaryLength = 0.0f;
-				m_sharedBoundaryLengths.resize(chartCount);
-				m_sharedBoundaryLengths.zeroOutMemory();
-				m_sharedBoundaryLengthsNoSeams.resize(chartCount);
-				m_sharedBoundaryLengthsNoSeams.zeroOutMemory();
-				m_sharedBoundaryEdgeCountNoSeams.resize(chartCount);
-				m_sharedBoundaryEdgeCountNoSeams.zeroOutMemory();
+				m_mergeNeighbors.clear();
 				const uint32_t faceCount = chart->faces.size();
 				for (uint32_t i = 0; i < faceCount; i++) {
 					const uint32_t f = chart->faces[i];
@@ -5544,6 +5581,10 @@ private:
 							if (neighborChart == -1)
 								externalBoundaryLength += l;
 							else if (m_charts[neighborChart] != chart) {
+								if (!m_mergeSeen[neighborChart]) {
+									m_mergeSeen[neighborChart] = 1;
+									m_mergeNeighbors.push_back((uint32_t)neighborChart);
+								}
 								if ((it.isSeam() && (isNormalSeam(it.edge()) || it.isTextureSeam()))) {
 									externalBoundaryLength += l;
 								} else {
@@ -5555,9 +5596,9 @@ private:
 						}
 					}
 				}
-				for (int cc = chartCount - 1; cc >= 0; cc--) {
-					if (cc == c)
-						continue;
+				insertionSort(m_mergeNeighbors.data(), m_mergeNeighbors.size());
+				for (int n = (int)m_mergeNeighbors.size() - 1; n >= 0; n--) {
+					const uint32_t cc = m_mergeNeighbors[n];
 					Chart *chart2 = m_charts[cc];
 					if (chart2 == nullptr)
 						continue;
@@ -5593,29 +5634,55 @@ private:
 					merged = true;
 					break;
 				}
-				if (merged)
+				for (uint32_t n = 0; n < m_mergeNeighbors.size(); n++) {
+					const uint32_t cc = m_mergeNeighbors[n];
+					m_sharedBoundaryLengths[cc] = 0.0f;
+					m_sharedBoundaryLengthsNoSeams[cc] = 0.0f;
+					m_sharedBoundaryEdgeCountNoSeams[cc] = 0;
+					m_mergeSeen[cc] = 0;
+				}
+				if (merged) {
+					// The chart and every chart beside it now (its own
+					// neighbours and the merged chart's) decide anew.
+					m_mergeClean[c] = 0;
+					for (uint32_t i = 0; i < chart->faces.size(); i++) {
+						const uint32_t f = chart->faces[i];
+						for (Mesh::FaceEdgeIterator it(m_data.mesh, f); !it.isDone(); it.advance()) {
+							if (it.isBoundary())
+								continue;
+							const int neighborChart = m_faceCharts[it.oppositeFace()];
+							if (neighborChart != -1)
+								m_mergeClean[neighborChart] = 0;
+						}
+						for (uint32_t k = m_mergeSeenByFirst[f]; k < m_mergeSeenByFirst[f + 1]; k++) {
+							const int neighborChart = m_faceCharts[m_mergeSeenBy[k]];
+							if (neighborChart != -1)
+								m_mergeClean[neighborChart] = 0;
+						}
+					}
 					break;
+				}
+				m_mergeClean[c] = 1;
 			}
 			if (!merged)
 				break;
 		}
-		// Remove deleted charts.
-		for (int c = 0; c < int32_t(m_charts.size()); /*do not increment if removed*/) {
-			if (m_charts[c] == nullptr) {
-				m_charts.removeAt(c);
-				// Update m_faceCharts.
-				const uint32_t faceCount = m_faceCharts.size();
-				for (uint32_t i = 0; i < faceCount; i++) {
-					XA_DEBUG_ASSERT(m_faceCharts[i] != c);
-					XA_DEBUG_ASSERT(m_faceCharts[i] <= int32_t(m_charts.size()));
-					if (m_faceCharts[i] > c) {
-						m_faceCharts[i]--;
-					}
-				}
-			} else {
-				m_charts[c]->id = c;
-				c++;
+		// Remove deleted charts, renumbering m_faceCharts once.
+		m_mergeRemap.resize(chartCount);
+		uint32_t kept = 0;
+		for (uint32_t c = 0; c < chartCount; c++) {
+			m_mergeRemap[c] = (int)kept;
+			if (m_charts[c] != nullptr) {
+				m_charts[kept] = m_charts[c];
+				m_charts[kept]->id = (int)kept;
+				kept++;
 			}
+		}
+		m_charts.resize(kept);
+		const uint32_t faceChartCount = m_faceCharts.size();
+		for (uint32_t i = 0; i < faceChartCount; i++) {
+			if (m_faceCharts[i] >= 0)
+				m_faceCharts[i] = m_mergeRemap[m_faceCharts[i]];
 		}
 		XA_PROFILE_END(clusteredChartsMerge)
 	}
@@ -6105,6 +6172,12 @@ private:
 	Array<float> m_sharedBoundaryLengths;
 	Array<float> m_sharedBoundaryLengthsNoSeams;
 	Array<uint32_t> m_sharedBoundaryEdgeCountNoSeams;
+	Array<uint8_t> m_mergeClean;
+	Array<uint8_t> m_mergeSeen;
+	Array<uint32_t> m_mergeNeighbors;
+	Array<int> m_mergeRemap;
+	Array<uint32_t> m_mergeSeenByFirst;
+	Array<uint32_t> m_mergeSeenBy;
 #endif
 	bool m_placingSeeds;
 };
