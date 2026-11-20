@@ -344,7 +344,7 @@ use frame::timing;
 use frame::views;
 pub use garment::{GarmentDeformation, GarmentTopology};
 pub use gpu::caps;
-pub use gpu::ready::set_pipeline_hooks;
+pub use gpu::ready::{ReadyHooks, pipelines_held, set_pipeline_hooks};
 use gpu::targets;
 use gpu::texture;
 use gpu::texture_array;

@@ -30,6 +30,12 @@ impl Pass for LiveSkyPass {
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
         let r = cx.ctx.r;
         let c = st.as_ref().expect("planned with it");
+        // Its step's pipelines still compile on the web host: the bound
+        // cubes stay as they are, and a later frame takes the step.
+        if !c.compiled(&r.lights.ibl) {
+            crate::gpu::ready::hold();
+            return;
+        }
         let ibl = r.lights.ibl.views();
         let frame = |uniform: wgpu::BindingResource| {
             bind_group(

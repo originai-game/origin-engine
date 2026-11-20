@@ -482,10 +482,12 @@ How the frame's render and compute pipelines compile on the web
   frame a skipped dispatch also skips every later draw and dispatch of that
   frame, so nothing draws from a buffer it did not fill. A pass whose
   output the renderer keeps (a scatter chunk's placement, a grass field's
-  blades) waits for its pipelines' tickets and leaves that work, and its
-  draws, for a later frame (og-render `gpu/ready.rs`); any other kept pass
-  makes a pipeline still compiling at its use. The gate shows once the
-  first frame is drawn whole. Probe captures are always drawn whole.
+  blades, the environment's bake, the live sky's step, the clouds' shadow
+  bake) waits for its pipelines' tickets and leaves that work, and its
+  draws, for a later frame (og-render `gpu/ready.rs`); the shadow layers
+  are drawn in a frame span while any pipeline compiles, and the static
+  shadow cache keeps none of them. The gate shows once the first frame is
+  drawn whole and no work was held. Probe captures are always drawn whole.
 - `prewarm`: as `sync`, with only the warm-up behind the gate
   asynchronous. Opt-in.
 - `auto` (the default): `async` on every GPU except Apple's, which stay

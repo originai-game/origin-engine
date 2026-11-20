@@ -504,6 +504,9 @@ fn promote(id: u64) {
 pub(crate) struct Deferred<T> {
     value: OnceCell<T>,
     make: Cell<Option<Make<T>>>,
+    /// The pipelines the web host was asked for while it was made
+    /// ([`Deferred::compiled`]).
+    tickets: Cell<crate::gpu::ready::Tickets>,
 }
 
 impl<T> Deferred<T> {
@@ -512,6 +515,7 @@ impl<T> Deferred<T> {
         Deferred {
             value: OnceCell::new(),
             make: Cell::new(Some(Make::Here(Box::new(move || logged(asker, make))))),
+            tickets: Cell::default(),
         }
     }
 
@@ -522,6 +526,7 @@ impl<T> Deferred<T> {
         Deferred {
             value: OnceCell::new(),
             make: Cell::new(Some(Make::Anywhere(Box::new(move || logged(asker, make))))),
+            tickets: Cell::default(),
         }
     }
 
@@ -552,11 +557,27 @@ impl<T> Deferred<T> {
     /// The value, made now if it was not yet (waited for, if started).
     pub(crate) fn get(&self) -> &T {
         self.value.get_or_init(|| {
-            self.make
+            let make = self
+                .make
                 .take()
-                .expect("a deferred value is made once, by its first use")
-                .make()
+                .expect("a deferred value is made once, by its first use");
+            let (value, tickets) = crate::gpu::ready::Tickets::during(|| make.make());
+            self.tickets.set(tickets);
+            value
         })
+    }
+
+    /// The value, made now if it was not yet, and whether the pipelines
+    /// the web host was asked for in making it are compiled: a pass whose
+    /// output is kept leaves its work for a later frame while they are not
+    /// (gpu/ready.rs). Without the host's hooks (natively) compiled, and
+    /// not made only to ask.
+    pub(crate) fn compiled(&self) -> bool {
+        if !crate::gpu::ready::hooked() {
+            return true;
+        }
+        self.get();
+        self.tickets.get().ready()
     }
 
     /// Whether the value has been made.

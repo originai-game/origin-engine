@@ -254,7 +254,7 @@ pub(crate) struct ScatterPlace {
     /// The evaluate and place pipelines, per terrain layout (standard,
     /// layer arrays), made when first needed.
     /// Each with its pipelines' tickets (gpu/ready.rs).
-    pipelines: [Option<([wgpu::ComputePipeline; 2], [crate::gpu::ready::Ticket; 2])>; 2],
+    pipelines: [Option<([wgpu::ComputePipeline; 2], crate::gpu::ready::Tickets)>; 2],
     rows: wgpu::Buffer,
     row_cap: u64,
     bits: wgpu::Buffer,
@@ -389,9 +389,7 @@ impl ScatterPlace {
         if self.pipelines[a].is_none() {
             self.pipelines[a] = Some(self.make(device, terrain_layout, arrayed));
         }
-        self.pipelines[a]
-            .as_ref()
-            .is_some_and(|(_, t)| crate::gpu::ready::all(t))
+        self.pipelines[a].as_ref().is_some_and(|(_, t)| t.ready())
     }
 
     /// Records `plan` for the chunk drawn over terrain draw `terrain_draw`
@@ -422,7 +420,7 @@ impl ScatterPlace {
         device: &wgpu::Device,
         terrain_layout: &wgpu::BindGroupLayout,
         arrayed: bool,
-    ) -> ([wgpu::ComputePipeline; 2], [crate::gpu::ready::Ticket; 2]) {
+    ) -> ([wgpu::ComputePipeline; 2], crate::gpu::ready::Tickets) {
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("scatter place"),
             source: wgpu::ShaderSource::Wgsl(source(arrayed).into()),
@@ -436,15 +434,16 @@ impl ScatterPlace {
             ],
             immediate_size: 0,
         });
-        let entries = ["evaluate", "place"];
-        crate::gpu::ready::tracked(|i| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("scatter place"),
-                layout: Some(&layout),
-                module: &module,
-                entry_point: Some(entries[i]),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
+        crate::gpu::ready::Tickets::during(|| {
+            ["evaluate", "place"].map(|entry| {
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("scatter place"),
+                    layout: Some(&layout),
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(device).as_ref(),
+                })
             })
         })
     }

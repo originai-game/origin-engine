@@ -219,6 +219,12 @@ impl SkyCapture {
         self.next.set(None);
     }
 
+    /// Whether its pipeline and `ibl`'s filter's are compiled on the web
+    /// host: until they are, the live sky records no step (gpu/ready.rs).
+    pub fn compiled(&self, ibl: &IblGenerator) -> bool {
+        self.pipeline.compiled() & ibl.compiled()
+    }
+
     /// This frame's step.
     pub fn due(&self) -> Step {
         step(self.next.get(), self.mips)

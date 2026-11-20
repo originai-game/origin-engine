@@ -169,6 +169,14 @@ pub struct IblGenerator {
 }
 
 impl IblGenerator {
+    /// Whether every pipeline is compiled on the web host (made now, asked
+    /// for asynchronously there, when not yet): a bake waits for them
+    /// (gpu/ready.rs). Every one is asked, so all compile side by side.
+    /// Natively true, and nothing is made to ask.
+    pub(crate) fn compiled(&self) -> bool {
+        self.pipelines.iter().filter(|p| !p.compiled()).count() == 0
+    }
+
     /// Makes one pipeline not yet made; false when all are
     /// ([`crate::Renderer::warm`]).
     pub(crate) fn warm(&self) -> bool {

@@ -144,7 +144,8 @@ thread_local! {
 #[test]
 #[ignore = "requires GPU"]
 fn grass_whose_generate_pipelines_arrive_late_draws_no_blade_until_they_do() {
-    fn last() -> u32 {
+    // Every pipeline made is a ticket of its own, compiled once COMPILED.
+    fn count() -> u32 {
         TICKETS.with(|t| {
             t.set(t.get() + 1);
             t.get()
@@ -153,6 +154,9 @@ fn grass_whose_generate_pipelines_arrive_late_draws_no_blade_until_they_do() {
     fn ready(_: u32) -> bool {
         COMPILED.with(|c| c.get())
     }
+    fn compiling() -> bool {
+        !COMPILED.with(|c| c.get())
+    }
     let mut scene = trample_scene();
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     let mut draw = |scene: &mut RenderScene, tick: u64| {
@@ -160,7 +164,7 @@ fn grass_whose_generate_pipelines_arrive_late_draws_no_blade_until_they_do() {
         r.render(scene, &RenderTarget::Offscreen).expect("render");
         r.read_offscreen().expect("capture")
     };
-    og_render::set_pipeline_hooks(None, Some((last, ready)));
+    og_render::set_pipeline_hooks(None, Some((count, ready, compiling)));
     let waiting = blade_pixels_above(&draw(&mut scene, 0));
     let still = blade_pixels_above(&draw(&mut scene, 1));
     COMPILED.with(|c| c.set(true));

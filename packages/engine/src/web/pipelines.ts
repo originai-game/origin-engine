@@ -35,7 +35,7 @@
 //
 // - Compute pipelines take the same path, and the renderer's whole frame is
 //   a make span (`makeSpan`): every pipeline it makes is asked for
-//   asynchronously, with a ticket og-render asks (`lastTicket`, `ready`)
+//   asynchronously, with a ticket og-render asks (`ticketCount`, `ready`)
 //   before a pass whose output it keeps uses one. Before the first frame
 //   (`gate`) a dispatch whose pipeline still compiles skips every later draw
 //   and dispatch of that frame's spans, which may read what it writes.
@@ -75,7 +75,7 @@ interface Slot {
   device: Device;
   desc: Descriptor;
   compute: boolean;
-  /** Its ticket (`lastTicket`, `ready`). */
+  /** Its ticket, numbered from 1 (`ticketCount`, `ready`). */
   ticket: number;
   made: unknown;
   refused: boolean;
@@ -106,8 +106,6 @@ let making = 0;
 let gating = true;
 /** A dispatch was skipped in this frame (under `gating`): every draw and dispatch after it in a span is skipped too. */
 let poisoned = false;
-/** The ticket of the last pipeline made: 0 when made at once (`lastTicket`). */
-let last = 0;
 let tickets = 0;
 /** Stand-ins not made yet, by ticket (`ready`). */
 const waiting = new Map<number, Slot>();
@@ -235,9 +233,14 @@ export function makeSpan(on: boolean): void {
   making = Math.max(0, making + (on ? 1 : -1));
 }
 
-/** The ticket of the pipeline made last: 0 when it was made at once, so it is ready. */
-export function lastTicket(): number {
-  return last;
+/** The tickets handed out so far: each a pipeline asked for asynchronously, numbered from 1. */
+export function ticketCount(): number {
+  return tickets;
+}
+
+/** Whether any pipeline asked for asynchronously still compiles (og-render keeps its shadow layers only once none does). */
+export function anyCompiling(): boolean {
+  return pending > 0;
 }
 
 /** Whether the pipeline with `ticket` is made (or refused, which its use reports): og-render asks before using it. */
@@ -317,7 +320,6 @@ function made(slot: Slot): unknown {
 /** A stand-in for `desc`, asked for asynchronously in a later task. */
 function standIn(device: Device, desc: Descriptor, compute: boolean): Js {
   const slot: Slot = { device, desc, compute, ticket: ++tickets, made: undefined, refused: false };
-  last = slot.ticket;
   waiting.set(slot.ticket, slot);
   pending++;
   queue.push(slot);
@@ -389,7 +391,6 @@ export function install(proto: Device): void {
   proto.createRenderPipeline = function (this: Device, desc: Descriptor) {
     if (!asking()) {
       counts.sync++;
-      last = 0;
       return createRenderPipeline.call(this, bindModules(desc));
     }
     return standIn(this, desc, false);
@@ -398,7 +399,6 @@ export function install(proto: Device): void {
   proto.createComputePipeline = function (this: Device, desc: Descriptor) {
     if (!asking() || typeof this.createComputePipelineAsync !== "function") {
       if (enabled) counts.sync++;
-      last = 0;
       return createComputePipeline.call(this, bindModules(desc));
     }
     return standIn(this, desc, true);

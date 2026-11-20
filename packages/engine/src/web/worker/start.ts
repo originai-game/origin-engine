@@ -116,7 +116,7 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     if (glue.og_web_frame_pipelines) {
       const asked = data.pipelines;
       glue.og_web_frame_pipelines(pipelines.frameSpan);
-      glue.og_web_make_pipelines?.(pipelines.makeSpan, pipelines.lastTicket, pipelines.ready);
+      glue.og_web_make_pipelines?.(pipelines.makeSpan, pipelines.ticketCount, pipelines.ready, pipelines.anyCompiling);
       onDeviceAdapter((adapter) => {
         const choice = pipelines.choose(asked, adapter.info);
         pipelines.use(choice);
