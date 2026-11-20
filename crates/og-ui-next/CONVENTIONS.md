@@ -75,7 +75,7 @@ A `.svelte` document's `<style>` may use:
   value a binding writes.
 
 Not taken: attribute selectors (`[data-…]`, `[aria-…]`), `:where`, `:is`,
-`:not`, `:has`, `:host`, `::part`, `:global`, `@media`, `@container`,
+`:not` (except around `:size()`), `:has`, `:host`, `::part`, `:global`, `@media`, `@container`,
 sibling combinators and structural pseudo-classes. `:dir(rtl)` is taken. Every `var()` resolves
 at cook time; only the tokens a `style:--x` binding reads ship to runtime.
 
@@ -96,13 +96,27 @@ On `<svg>` and its shapes, `fill` and `stroke` are paint, as attributes or
 in a sheet (`fill: none`, `stroke: currentColor`, `stroke-width`). SVG
 shapes carry no `part`.
 
-## Next head (not compiled yet)
+## Size classes and input
 
-- Size classes of the UI's own box, for members and pages alike:
-  `:size(narrow)` (width < 600 px), `:size(short)` (height < 500 px),
-  `:size(compact)` (either). They replace every `@media` and `@container`
-  rule. 844×390 is `short`, 390×844 is `narrow`. Leave the `@media` and
-  `@container` rules until it lands.
+The UI's own box and input are classes a selector reads, in document and
+surfaces sheets alike, and they replace every `@media` and `@container`
+rule:
+
+| Selector | Holds when |
+|---|---|
+| `:size(narrow)` | the UI's box is under 600 px wide |
+| `:size(short)` | it is under 500 px tall (a phone on its side) |
+| `:size(compact)` | narrow or short: the usual compact form |
+| `:touch` | the player touches the screen |
+
+844×390 is short and compact; 390×844 is narrow and compact. Write
+`.x:size(compact) { … }` where a sheet had `@media (width < 600px) { .x { …
+} }`. A custom property set under one (`.bar:size(compact) { --pip: 9px }`)
+is in force over the element's subtree while it holds. Rules for reduced
+motion are gone: the motion system honours the setting itself.
+
+`env(-og-hud-inset-top|right|bottom|left)` is the HUD's safe-area inset, in
+`inset`, `top`/`right`/`bottom`/`left` and `padding*` only.
 
 ## Packs
 
@@ -131,6 +145,10 @@ runtime switches tables. No `::part`, no global rules.
 | `data-tone`, `data-shape`, `data-team`, `data-trend` | `tone`, `shape`, `team`, `trend` |
 | `data-motion="pulse"` | `play="pulse"` |
 | `:dir(rtl)` | unchanged: a condition on the direction |
+| `@media (width < 600px)`, `@container (width < …)` | `:size(compact)` on each rule |
+| `@media (height < 500px)` | `:size(short)` |
+| `@media (pointer: coarse)` | `:touch` |
+| `@media (prefers-reduced-motion)` | deleted |
 | `[aria-selected=true]`, `[data-done=true]`, … | `state:selected={…}` and `:state(selected)` |
 | `:where([part$=".frame"]…)` rules in default.css | `.frame…` in `default/surfaces.css` |
 | `::part(…)` in a pack | the pack's `surfaces.css` |

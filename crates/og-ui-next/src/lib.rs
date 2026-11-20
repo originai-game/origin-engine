@@ -141,6 +141,7 @@ mod tests {
              <style>\n.card { --slot: 48px; padding: 2px; }\n.card .label { width: var(--slot); }\n\
              .label:dir(rtl) { padding: 4px; }\n\
              .label:size(short) { padding: 6px; }\n\
+             .card:size(compact) { --slot: 20px; }\n\
              .card.lit { padding: 9px; }\n</style>",
         )
         .unwrap();
@@ -238,6 +239,17 @@ mod tests {
             taffy::Style::from(&landscape.layout).padding.top,
             taffy::LengthPercentage::length(6.0),
             ":size(short) holds on a phone on its side"
+        );
+        assert_eq!(
+            (
+                taffy::Style::from(&label_rec.layout).size.width,
+                taffy::Style::from(&landscape.layout).size.width
+            ),
+            (
+                taffy::Dimension::length(48.0),
+                taffy::Dimension::length(20.0)
+            ),
+            "the card's --slot under :size(compact) reaches the label's width"
         );
         assert!(!og_ui::bind::Screen::Narrow.holds(844.0, 390.0, true));
         assert!(og_ui::bind::Screen::Compact.holds(390.0, 844.0, true));

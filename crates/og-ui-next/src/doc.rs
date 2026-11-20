@@ -67,6 +67,14 @@ const ALWAYS: u32 = u32::MAX;
 /// The attributes whose values name a surface (`.cell.hud.rare.round`).
 const SURFACE_NAMES: [&str; 7] = ["part", "variant", "tier", "tone", "shape", "team", "trend"];
 
+/// A custom property set under a condition, over the subtree of the
+/// element that sets it.
+struct Override {
+    condition: og_ui::bind::Expr,
+    name: Box<str>,
+    value: Box<str>,
+}
+
 /// What the compile reads beside the document.
 struct Cx<'a> {
     tokens: &'a Tokens,
@@ -85,7 +93,7 @@ impl DocStyle {
             surfaces,
             scale: prim::Scale::of(tokens),
         };
-        out.visit(doc, doc.root, &cx, &mut local);
+        out.visit(doc, doc.root, &cx, &mut local, &mut Vec::new());
         out
     }
 
@@ -229,10 +237,11 @@ impl DocStyle {
         i: usize,
         cx: &Cx,
         local: &mut Vec<(Box<str>, Box<str>)>,
+        over: &mut Vec<Override>,
     ) {
         let tokens = cx.tokens;
         let Some(n) = doc.nodes.get(i) else { return };
-        let mark = local.len();
+        let mark = (local.len(), over.len());
         if matches!(n.kind, NodeKind::Element(_)) {
             // Its own custom properties first: its declarations read them.
             for rule in n
@@ -248,6 +257,27 @@ impl DocStyle {
                     }
                 }
             }
+            // Its custom properties a condition sets (`:size(compact) {
+            // --pip: 9px }`): in force over its subtree while it holds.
+            for rule in n
+                .rules
+                .iter()
+                .filter(|r| r.condition.is_some() && r.structure.is_none())
+            {
+                for d in rule
+                    .declarations
+                    .iter()
+                    .filter(|d| d.name.starts_with("--"))
+                {
+                    if let Some(v) = tokens.substitute_with(&d.source, local) {
+                        over.push(Override {
+                            condition: rule.condition.clone().unwrap(),
+                            name: d.name.as_str().into(),
+                            value: v.into(),
+                        });
+                    }
+                }
+            }
             let first = self.spans.len() as u32;
             self.own(n, cx);
             let base = self.steps.len() as u32;
@@ -255,6 +285,35 @@ impl DocStyle {
                 self.rule(rule, tokens, local);
             }
             self.span(ALWAYS, base);
+            // Each declaration that reads an overridden property again,
+            // under the override's condition.
+            for o in over.iter() {
+                let from = self.steps.len() as u32;
+                let reads = format!("var({}", o.name);
+                local.push((o.name.clone(), o.value.clone()));
+                for rule in n
+                    .rules
+                    .iter()
+                    .filter(|r| r.condition.is_none() && r.structure.is_none())
+                {
+                    for d in rule
+                        .declarations
+                        .iter()
+                        .filter(|d| !d.name.starts_with("--"))
+                    {
+                        if d.source.contains(&reads)
+                            && let Some(v) = tokens.substitute_with(&d.source, local)
+                        {
+                            style::expand(&mut self.steps, &d.name, v.trim());
+                        }
+                    }
+                }
+                local.pop();
+                if self.steps.len() as u32 > from {
+                    self.conditions.push(o.condition.clone());
+                    self.span(self.conditions.len() as u32 - 1, from);
+                }
+            }
             for rule in n.rules.iter().filter(|r| r.condition.is_some()) {
                 let from = self.steps.len() as u32;
                 if !self.rule(rule, tokens, local) {
@@ -272,9 +331,10 @@ impl DocStyle {
             });
         }
         for &c in &n.children {
-            self.visit(doc, c, cx, local);
+            self.visit(doc, c, cx, local, over);
         }
-        local.truncate(mark);
+        local.truncate(mark.0);
+        over.truncate(mark.1);
     }
 
     /// Compiles one rule's declarations; false when the rule is not taken.
