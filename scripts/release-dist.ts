@@ -426,11 +426,10 @@ export const RENDER_RECORD = "looks-render.json";
 /** One preview a version publishes: create-game's PreviewSlot (bin/creation.ts), or a catalogue look's before it. */
 export interface Slot {
   path: string;
-  kind: "look" | "variant" | "ui" | "mood";
+  kind: "look" | "variant" | "ui";
   look?: string;
   variant?: string;
   pack?: string;
-  mood?: string;
 }
 /** What a version publishes of its looks: manifest.json's `looks` and `creation`, and every file they bring, for SHA256SUMS. */
 export interface LooksRelease {
@@ -448,7 +447,7 @@ function filesUnder(root: string, rel = ""): string[] {
  * Writes `<dir>/looks/catalogue.json` (the engine package's catalogue's
  * bytes) and returns manifest.json's `looks` over it and the previews in
  * `<dir>/previews/`, one per slot (a look's under its slug, a variant's under
- * `<slug>.<variant>`; ui and mood previews are named by creation.json only),
+ * `<slug>.<variant>`; ui previews are named by creation.json only),
  * after checking them against `<dir>/looks-render.json`: drawn by this
  * version at this revision from a clean templates/looks/, on the recording
  * tier, with the og and addon `linux` names (the linux-x64 archive's sha256),
@@ -473,7 +472,7 @@ export function writeLooks(dir: string, version: string, revision: string, engin
   const filled: Record<string, LookFile & { engine: string }> = {};
   for (const slot of slots) {
     const at = join(dir, slot.path);
-    if (!/^previews\/(?:ui\/|mood\/)?[a-z0-9-]+(?:\.[a-z0-9-]+)?\.webp$/.test(slot.path)) {
+    if (!/^previews\/(?:ui\/)?[a-z0-9-]+(?:\.[a-z0-9-]+)?\.webp$/.test(slot.path)) {
       wrong.push(`${slot.path} is not a preview path the downloads serve`);
       continue;
     }

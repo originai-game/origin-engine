@@ -45,7 +45,7 @@ export const ART_KINDS = [
 ] as const;
 export type ArtKind = (typeof ART_KINDS)[number];
 
-/** The moods a look takes (`mood "<word>"`, docs/art.md §2.10): og-bundle's MOODS and create's choices, held equal by the tests. */
+/** The moods a look takes (`mood "<word>"`, docs/art.md §2.10): og-bundle's MOODS, held equal by the tests. */
 export const MOODS = ["bright", "dark", "warm", "cold", "soft", "high-contrast"] as const;
 export type Mood = (typeof MOODS)[number];
 
@@ -1545,7 +1545,7 @@ export type MusicRole = "title" | "explore" | "action" | "boss" | "calm" | "vict
 export interface AudioBriefInput {
   /** `CREATION_CHOICES.music`. */
   readonly music: string;
-  /** `CREATION_CHOICES.mood`: bright, dark, warm, cold, soft, high-contrast. */
+  /** `MOODS`: bright, dark, warm, cold, soft, high-contrast (the game's look's mood). */
   readonly mood: string;
   /** `CREATION_CHOICES.genre`; absent for an interactive film (create block `form "film"`), which has none. */
   readonly genre?: string;
@@ -1882,14 +1882,15 @@ const ROLE_WORDS: Readonly<Record<MusicRole, string>> = {
 export function readAudioChoices(projectDir: string): AudioBriefInput {
   const text = readFileSync(join(projectDir, "project.ogt"), "utf8");
   const block = /^create[ \t]*\{([\s\S]*?)^\}/m.exec(text)?.[1];
-  if (!block) throw new Error(`${join(projectDir, "project.ogt")} has no create block: pass music, mood and genre (og new --music --mood --genre)`);
+  if (!block) throw new Error(`${join(projectDir, "project.ogt")} has no create block: pass music, mood and genre (brief audio --music --mood --genre)`);
   const field = (k: string) => new RegExp(`^\\s*${k}\\s+"([^"]*)"`, "m").exec(block)?.[1];
-  const music = field("music"), mood = field("mood"), genre = field("genre");
+  // The mood: a create block's from before 2026-11-20, else the game's look's own.
+  const music = field("music"), mood = field("mood") ?? readLook(projectDir).mood ?? undefined, genre = field("genre");
   if (field("form") === "film") {
-    if (!music || !mood) throw new Error("the create block lacks music or mood");
+    if (!music || !mood) throw new Error("the create block lacks music, or the look names no mood");
     return { music, mood };
   }
-  if (!music || !mood || !genre) throw new Error("the create block lacks music, mood or genre");
+  if (!music || !mood || !genre) throw new Error("the create block lacks music or genre, or the look names no mood");
   return { music, mood, genre };
 }
 

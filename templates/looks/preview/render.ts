@@ -24,7 +24,7 @@
 // preview's sha256 and size by its path under --previews (what scripts/release.sh
 // previews records). --slots FILE draws the creation document's preview slots
 // instead of names (create-game's previewSlots(), as JSON): a look or variant
-// slot as above, a mood slot in its slot's look with `mood "<mood>"` added, a
+// slot as above, a
 // ui slot as the components sheet's hud page dressed in that pack (og ui
 // preview at the desktop breakpoint, 1280x720; the hud sheet's own style
 // command keeps the default style), each to --previews/<slot path>. Two ui
@@ -60,11 +60,10 @@ const names = args.filter((a) => !a.startsWith("--"));
 /** One preview to draw: create-game's PreviewSlot (bin/creation.ts). */
 interface Slot {
   path: string;
-  kind: "look" | "variant" | "ui" | "mood";
+  kind: "look" | "variant" | "ui";
   look?: string;
   variant?: string;
   pack?: string;
-  mood?: string;
 }
 
 interface Scene extends Scene2d {
@@ -142,7 +141,7 @@ function drawUi(slot: Slot, file: string): string | null {
 for (const slot of slots) {
   const slug = slot.look ?? "";
   const variant = slot.variant;
-  const name = slot.kind === "mood" ? `${slug}@mood-${slot.mood}` : slot.kind === "ui" ? `ui@${slot.pack}` : variant ? `${slug}:${variant}` : slug;
+  const name = slot.kind === "ui" ? `ui@${slot.pack}` : variant ? `${slug}:${variant}` : slug;
   const preview = join(previews, slot.path.replace(/^previews\//, ""));
   if (slot.kind === "ui") {
     const file = `${name}.png`;
@@ -157,7 +156,7 @@ for (const slot of slots) {
   mkdirSync(join(dir, "node_modules/@origingame"), { recursive: true });
   symlinkSync(engine, join(dir, "node_modules/@origingame/engine"));
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
-  writeFileSync(join(dir, "assets/looks/main.ogt"), `type look\nversion 1\n---\nname "Preview: ${name}"\nextends ${JSON.stringify(slug)}\n${variant ? `variant ${JSON.stringify(variant)}\n` : ""}${slot.mood ? `mood ${JSON.stringify(slot.mood)}\n` : ""}`);
+  writeFileSync(join(dir, "assets/looks/main.ogt"), `type look\nversion 1\n---\nname "Preview: ${name}"\nextends ${JSON.stringify(slug)}\n${variant ? `variant ${JSON.stringify(variant)}\n` : ""}`);
   if (scene.models) cpSync(join(looks, scene.models), join(dir, "assets/models"), { recursive: true });
   if (scene.scene === "3d") {
     const sprites: Record<string, { path: string; width: number; height: number }> = {};

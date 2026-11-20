@@ -84,16 +84,16 @@ test("creation choices write manifest and look configuration, never gameplay", (
   for (const [i, view] of CREATION_CHOICES.view.entries()) {
     const dir = `choice-${i}`;
     const look = formOf(view) === "2d" ? "pixel" : "faceted-low-poly";
-    const r = cli(dir, "--id", "same", "--name", "Same", "--genre", "arena", "--view", view, "--look", look, "--mood", "cold", "--ui", "default", "--platform", "phone-portrait", "--input", "gamepad", "--players", "online-lockstep", "--lang", "ja,en,ar", "--music", "folk");
+    const r = cli(dir, "--id", "same", "--name", "Same", "--genre", "arena", "--view", view, "--look", look, "--ui", "default", "--platform", "phone-portrait", "--input", "gamepad", "--players", "online-lockstep", "--lang", "ja,en,ar", "--music", "folk");
     expect(r.code, r.err).toBe(0);
     expect(files(join(scratch, dir))).toEqual(expected);
     for (const f of skeleton.filter(f => f !== "project.ogt" && f !== "assets/looks/same.ogt")) expect(read(dir, f)).toBe(read("default", f));
-    expect(read(dir, "assets/looks/same.ogt")).toBe(`type look\nversion 1\n---\nextends "${look}"\nmood "cold"\nui "default"\n`);
+    expect(read(dir, "assets/looks/same.ogt")).toBe(`type look\nversion 1\n---\nextends "${look}"\nui "default"\n`);
     const manifest = read(dir, "project.ogt");
     expect(manifest.slice(0, manifest.indexOf("create {"))).toBe(read("default/project.ogt").split("create {")[0]);
-    for (const line of [`form "${formOf(view)}"`, 'genre "arena"', `view "${view}"`, `look "${look}"`, 'mood "cold"', 'ui "default"', 'platform "phone-portrait"', 'input "gamepad"', 'players "online-lockstep"', 'lang "ja" "en" "ar"', 'music "folk"']) expect(manifest).toContain(line);
+    for (const line of [`form "${formOf(view)}"`, 'genre "arena"', `view "${view}"`, `look "${look}"`, 'ui "default"', 'platform "phone-portrait"', 'input "gamepad"', 'players "online-lockstep"', 'lang "ja" "en" "ar"', 'music "folk"']) expect(manifest).toContain(line);
     expect(manifest).toMatch(/^look "looks\/same.ogt"$/m);
-    expect(manifest).not.toMatch(/^profile |orientation|dpr_cap/m);
+    expect(manifest).not.toMatch(/^profile |orientation|dpr_cap|^\s*mood /m);
   }
 });
 
@@ -114,10 +114,11 @@ test("names are escaped, defaults are stable, and refusal leaves the destination
   expect(read("named/project.ogt")).toContain('name "Ünïcode \\"Game\\" $&\\n2!"');
   expect(cli("id", "--id", "tiny-tower").code).toBe(0);
   expect(read("id/project.ogt")).toContain('name "Tiny Tower"');
-  for (const [flag, value] of [["--id", "Not An Id"], ["--mood", "invalid"], ["--look", "missing"], ["--lang", "en,en"], ["--profile", "2d"], ["--archetype", "runner"]]) {
+  for (const [flag, value] of [["--id", "Not An Id"], ["--mood", "cold"], ["--look", "missing"], ["--lang", "en,en"], ["--profile", "2d"], ["--archetype", "runner"]]) {
     expect(cli("refused", flag!, value!).code).toBe(1);
     expect(existsSync(join(scratch, "refused"))).toBeFalse();
   }
+  expect(cli("refused", "--mood", "cold").err).toContain("--mood is no longer a creation choice");
   mkdirSync(join(scratch, "taken"));
   writeFileSync(join(scratch, "taken/notes.txt"), "mine");
   expect(cli("taken").err).toContain("--force");
@@ -127,11 +128,12 @@ test("names are escaped, defaults are stable, and refusal leaves the destination
 });
 
 test("creation choices infer a premise, preserve overrides, and serialize every choice", () => {
-  const c = resolveCreationChoices("温暖的手机横屏平台跳跃", { mood: "cold", music: "folk", look: "pixel" });
-  expect(c).toEqual({ form: "2d", genre: "action-platformer", view: "side-2d", look: "pixel", mood: "cold", ui: "default", platform: "phone-landscape", input: "touch", players: "single", lang: ["zh"], music: "folk" });
+  const c = resolveCreationChoices("温暖的手机横屏平台跳跃", { music: "folk", look: "pixel" });
+  expect(c).toEqual({ form: "2d", genre: "action-platformer", view: "side-2d", look: "pixel", ui: "default", platform: "phone-landscape", input: "touch", players: "single", lang: ["zh"], music: "folk" });
   expect(inferCreationChoices("isometric online shooter", { platform: "desktop", input: "gamepad" })).toMatchObject({ genre: "shooter", view: "isometric-2.5d", players: "online-lockstep", input: "gamepad" });
   expect(resolveCreationChoices("", { look: "pixel", ui: "default" }).ui).toBe("default");
   expect(() => parseCreationInput({ players: "mmo" })).toThrow("players");
+  expect(() => parseCreationInput({ mood: "cold" } as never)).toThrow("mood is no longer a creation choice");
   expect(() => parseCreationInput({ lang: [] })).toThrow("lang");
   expect(() => parseCreationInput({ lang: ["en", "en"] })).toThrow("lang");
   expect(() => resolveCreationChoices("", { look: "missing" })).toThrow("no look preset");
@@ -167,7 +169,7 @@ test("art and audio briefs remain available without creating a game", () => {
     ["leg-upper-r", "r", "leg-upper-r", true], ["leg-lower-r", "r", "leg-lower-r", true], ["foot-r", "r", "foot-r", true],
   ]);
   expect(() => rigParts("biped")).toThrow("use one of");
-  for (const music of CREATION_CHOICES.music) for (const mood of CREATION_CHOICES.mood) for (const genre of CREATION_CHOICES.genre) {
+  for (const music of CREATION_CHOICES.music) for (const mood of MOODS) for (const genre of CREATION_CHOICES.genre) {
     const b = audioBrief({ music, mood, genre });
     expect(b.cues.length).toBeGreaterThan(2);
     expect(b.sfx.length).toBeGreaterThan(4);
@@ -176,7 +178,7 @@ test("art and audio briefs remain available without creating a game", () => {
   expect(pseudoMessage("{n, plural, one {# coin} other {# coins}} [b]now[/b]")).toBe("[{n, plural, one {# çöíñ} other {# çöíñs}} [b]ñöw[/b] çöíñçö]");
 });
 
-test("catalogue suggestions respect profile and mood without installing them", () => {
+test("catalogue suggestions respect profile without installing them", () => {
   const styles = readCatalogue();
   expect(pickStyle("a cheerful toy party builder for families", styles)?.style.slug).toBe("toy-3d");
   expect(pickStyle("a whimsical cartoon platformer for children", styles, "2d")?.style.slug).toBe("cartoon-2d");
@@ -184,9 +186,8 @@ test("catalogue suggestions respect profile and mood without installing them", (
   expect(pickStyle("", styles)).toBeNull();
   expect(pickStyle("neon arcade shooter", styles.map(s => ({ ...s, look: { ...s.look, presetReady: false } })))).toBeNull();
   expect(words("Cozy Platformers in Sci-Fi colors, hand-drawn")).toEqual(["cosy", "platformer", "sci", "colour", "hand-drawn", "hand", "drawn"]);
-  expect([...CREATION_CHOICES.mood]).toEqual([...MOODS]);
-  expect(resolveCreationChoices("", { look: "low-resolution-3d" }).mood).toBe("dark");
-  expect(resolveCreationChoices("", { look: "low-resolution-3d", mood: "warm" }).mood).toBe("warm");
+  expect(CREATION_CHOICES).not.toHaveProperty("mood");
+  expect(resolveCreationChoices("", { look: "low-resolution-3d" })).not.toHaveProperty("mood");
 });
 
 test("the packed package creates the same skeleton and briefs from its own presets", () => {
@@ -265,7 +266,7 @@ test("a look that does not draw the form or view is refused, naming the looks th
   }
   expect(resolveCreationChoices("", { form: "2d", genre: "rpg" }).view).toBe("top-down-2d");
   expect(resolveCreationChoices("an interactive film about a heist").form).toBe("film");
-  expect(resolveCreationChoices("", { look: "toy-3d", variant: "clay" })).toMatchObject({ variant: "clay", mood: "warm" });
+  expect(resolveCreationChoices("", { look: "toy-3d", variant: "clay" })).toMatchObject({ variant: "clay" });
 });
 
 test("form film writes the film skeleton over the one skeleton, without the game-only fields", () => {
@@ -277,7 +278,7 @@ test("form film writes the film skeleton over the one skeleton, without the game
   const block = read("film/project.ogt").split("create {")[1]!;
   expect(block).toContain('form "film"');
   expect(block).not.toMatch(/^\s*(genre|view|players) /m);
-  expect(read("film/assets/looks/film.ogt")).toBe('type look\nversion 1\n---\nextends "painterly-3d"\nvariant "lush"\nmood "warm"\nui "fantasy"\n');
+  expect(read("film/assets/looks/film.ogt")).toBe('type look\nversion 1\n---\nextends "painterly-3d"\nvariant "lush"\nui "fantasy"\n');
 });
 
 test("the creation document matches the options, and a release cannot ship an unfilled preview slot", () => {
@@ -294,9 +295,13 @@ test("the creation document matches the options, and a release cannot ship an un
   // Every look and variant has its slot and its compat entry; every compat look draws its views' forms.
   const slots = previewSlots();
   const paths = new Set(slots.map(s => s.path));
-  const referenced = [...doc.options.look.flatMap(l => [l.preview, ...l.variants.map(v => v.preview)]), ...doc.options.ui.map(o => o.preview!), ...doc.options.mood.map(o => o.preview!)];
+  const referenced = [...doc.options.look.flatMap(l => [l.preview, ...l.variants.map(v => v.preview)]), ...doc.options.ui.map(o => o.preview!)];
   expect(referenced.map(p => p.path).sort()).toEqual([...paths].sort());
-  expect(paths.has("previews/pixel.8bit.webp") && paths.has("previews/ui/scifi.webp") && paths.has("previews/mood/high-contrast.webp")).toBeTrue();
+  expect(paths.has("previews/pixel.8bit.webp") && paths.has("previews/ui/scifi.webp")).toBeTrue();
+  expect(slots.map(s => s.kind).filter(k => k !== "look" && k !== "variant" && k !== "ui")).toEqual([]);
+  expect(slots.some(s => s.path.startsWith("previews/mood/"))).toBeFalse();
+  expect(doc.options).not.toHaveProperty("mood");
+  expect([...doc.order, ...doc.more]).not.toContain("mood");
   for (const l of doc.options.look) {
     expect(doc.compat.looks[l.id]!.variants).toEqual(l.variants.map(v => v.id));
     for (const v of l.variants) expect(v.label["zh-CN"], `${l.id}.${v.id}`).toEqual(expect.any(String));
@@ -311,8 +316,9 @@ test("the creation document matches the options, and a release cannot ship an un
   const full = creationDocument(filled);
   expect(full.options.look.find(l => l.id === "pixel")!.variants[0]!.preview).toEqual({ path: "previews/pixel.8bit.webp", ...filled["previews/pixel.8bit.webp"]! });
   expect(JSON.stringify(creationDocument(filled))).toBe(JSON.stringify(full));
-  const { ["previews/mood/dark.webp"]: _, ...short } = filled;
-  expect(() => creationDocument(short)).toThrow("previews/mood/dark.webp");
+  const { ["previews/ui/scifi.webp"]: _, ...short } = filled;
+  expect(() => creationDocument(short)).toThrow("previews/ui/scifi.webp");
+  expect(() => creationDocument({ ...filled, "previews/mood/dark.webp": filled["previews/pixel.webp"]! })).toThrow("previews/mood/dark.webp");
   expect(() => creationDocument({ ...filled, "previews/extra.webp": filled["previews/pixel.webp"]! })).toThrow("previews/extra.webp");
   const printed = Bun.spawnSync(["bun", join(pkg, "bin/create.ts"), "--creation"]);
   expect(JSON.parse(new TextDecoder().decode(printed.stdout))).toEqual(JSON.parse(JSON.stringify(doc)));

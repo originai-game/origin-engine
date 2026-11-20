@@ -145,9 +145,9 @@ describe("vfx archives", () => {
         "pixel.8bit": { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/pixel.8bit.webp", sha256: sha("8bit"), size: 4, engine: "1.2.3-dev.4" },
       },
     });
-    // ui and mood previews are the creation document's alone, filled like the rest.
+    // ui previews are the creation document's alone, filled like the rest.
     expect(manifest.creation).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/creation.json", sha256: sha(readFileSync(join(dir, "creation.json"))), size: statSync(join(dir, "creation.json")).size });
-    expect(JSON.parse(readFileSync(join(dir, "creation.json"), "utf8")).previews["previews/mood/dark.webp"]).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/mood/dark.webp", sha256: sha("dark"), size: 4, engine: "1.2.3-dev.4" });
+    expect(JSON.parse(readFileSync(join(dir, "creation.json"), "utf8")).previews["previews/ui/fantasy.webp"]).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/ui/fantasy.webp", sha256: sha("ui"), size: 2, engine: "1.2.3-dev.4" });
     expect(manifest).toMatchObject({ version: "1.2.3-dev.4", channel: "dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig" });
     expect(manifest).not.toHaveProperty("symbols");
     const sums = readFileSync(join(dir, "SHA256SUMS"), "utf8");
@@ -157,7 +157,7 @@ describe("vfx archives", () => {
     expect(sums).toContain("  manifest.json\n");
     expect(sums).toContain(`${manifest.looks.catalogue.sha256}  looks/catalogue.json\n`);
     expect(sums).toContain(`${sha("pix")}  previews/pixel.webp\n`);
-    for (const f of ["previews/pixel.8bit.webp", "previews/ui/fantasy.webp", "previews/mood/dark.webp", "creation.json"]) expect(sums).toContain(`  ${f}\n`);
+    for (const f of ["previews/pixel.8bit.webp", "previews/ui/fantasy.webp", "creation.json"]) expect(sums).toContain(`  ${f}\n`);
     // Every line verifies from the version's directory, as publish checks them.
     // Git Bash on Windows has sha256sum, and shasum only as a Perl script.
     const check = process.platform === "win32" ? ["sha256sum", "-c", "SHA256SUMS"] : ["shasum", "-a", "256", "-c", "SHA256SUMS"];
@@ -188,13 +188,12 @@ describe("vfx archives", () => {
 
 const sha = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");
 const LINUX = { og: sha("og"), addon: sha("addon") };
-/** The slots of a version: two looks, a variant, a UI pack and a mood, with their bytes. */
+/** The slots of a version: two looks, a variant and a UI pack, with their bytes. */
 const SLOTS: (Slot & { bytes: string })[] = [
   { path: "previews/pixel.webp", kind: "look", look: "pixel", bytes: "pix" },
   { path: "previews/pixel.8bit.webp", kind: "variant", look: "pixel", variant: "8bit", bytes: "8bit" },
   { path: "previews/neon-vector.webp", kind: "look", look: "neon-vector", bytes: "neon" },
   { path: "previews/ui/fantasy.webp", kind: "ui", pack: "fantasy", bytes: "ui" },
-  { path: "previews/mood/dark.webp", kind: "mood", look: "neon-vector", mood: "dark", bytes: "dark" },
 ];
 /** A version directory with its previews as scripts/release.sh previews leaves them, and an engine package with a catalogue. */
 function drawLooks(dir: string, version: string, revision: string) {
@@ -239,9 +238,9 @@ describe("the look previews", () => {
     writeFileSync(join(dir, "previews/pixel.webp"), "old");
     expect(() => d.looks()).toThrow(/previews\/pixel\.webp is not the preview looks-render\.json recorded/);
     writeFileSync(join(dir, "previews/pixel.webp"), "pix");
-    rmSync(join(dir, "previews/mood/dark.webp"));
-    expect(() => d.looks()).toThrow(/no previews\/mood\/dark\.webp/);
-    writeFileSync(join(dir, "previews/mood/dark.webp"), "dark");
+    rmSync(join(dir, "previews/ui/fantasy.webp"));
+    expect(() => d.looks()).toThrow(/no previews\/ui\/fantasy\.webp/);
+    writeFileSync(join(dir, "previews/ui/fantasy.webp"), "ui");
     writeFileSync(join(dir, "previews/ui/retired.webp"), "x");
     expect(() => d.looks()).toThrow(/previews\/ui\/retired\.webp: no preview slot names them/);
     rmSync(join(dir, "previews/ui/retired.webp"));

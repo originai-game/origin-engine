@@ -9,10 +9,10 @@ variant, sample scene, gameplay, or installed art.
 og create my-game --name "My Game" --view side-2d --look pixel --no-prompt
 ```
 
-The agent chooses the form, genre, view, look and variant, mood, UI style,
+The agent chooses the form, genre, view, look and variant, UI style,
 platform, input, players, languages, and music. These choices are constraints and hints in
 `project.ogt`'s `create` block. Creation also writes `assets/looks/<id>.ogt`
-with the chosen preset, mood and UI pack, named by the manifest's top-level
+with the chosen preset, variant and UI pack, named by the manifest's top-level
 `look`. It generates no gameplay or art, and changes no publish settings.
 The agent builds the game with the engine API and skills after creation.
 `profile` remains an optional runtime/build setting, omitted here;
@@ -25,7 +25,7 @@ its script.
 ## Options and return value
 
 `create [dir] [--name "Name"] [--id slug] [--premise "one line"] [--force]`
-accepts `--form`, `--genre`, `--view`, `--look`, `--variant`, `--mood`,
+accepts `--form`, `--genre`, `--view`, `--look`, `--variant`,
 `--ui`, `--platform`, `--input`, `--players`, `--lang en,zh`, and `--music`.
 
 `--form` is `2d`, `2.5d`, `3d` or `film`. For a game, the view is one of
@@ -40,8 +40,9 @@ film paused (from `templates/film`, packed as `film/`; the clip is pinned in
 `templates/og-assets.json`, so a checkout runs `bun scripts/assets.ts ensure
 templates` first). A film has no `genre`, `view` or `players`; giving one is
 refused. The look must draw the form (its catalogue `views`; every look
-styles a film), and `--variant` must be one of the look's; a variant's mood
-is the default mood.
+styles a film), and `--variant` must be one of the look's. Mood is not a
+creation choice: the look draws in its preset's or variant's own mood, and
+`--mood` is refused (write `mood "<word>"` in the look file to change it).
 
 On a terminal, missing choices are prompted with inferred defaults.
 `--no-prompt` accepts those defaults. Explicit choices win. `--choices`
@@ -94,17 +95,15 @@ without a breaking changelog entry.
 | `schemaVersion` | 1 |
 | `order`, `more` | the home page's questions in order (`form`, `genre`, `look`, `variant`, `ui`), and those behind "more settings" |
 | `schema` | `creationSchema(looks)`: JSON Schema 2020-12 of a selection, with `form`, `variant`, and `allOf` rules (a film has no genre, view or players; a game's view is its form's) |
-| `options.<field>` | each option's `id`, `label` and `description` (`en`, `zh-CN`); views carry their `form`; looks carry `variants` (with their `mood`); looks, variants, `ui` and `mood` options carry `preview` |
-| `compat` | `formViews`, `genreViews` (preferred first), `genreDefaultView[genre][form]`, `formFields[form]` (the fields that apply), and `looks[slug]`: `forms`, `views`, recommended `ui`, default `mood`, `variants` |
+| `options.<field>` | each option's `id`, `label` and `description` (`en`, `zh-CN`); views carry their `form`; looks carry `variants`; looks, variants and `ui` options carry `preview` |
+| `compat` | `formViews`, `genreViews` (preferred first), `genreDefaultView[genre][form]`, `formFields[form]` (the fields that apply), and `looks[slug]`: `forms`, `views`, recommended `ui`, `variants` |
 | `defaults` | the default `form` and `byForm[form]`: what creation picks with no premise |
 
 A `preview` is `{ path }`, relative to the version root, and the release
 adds `url`, `sha256`, `size` and `engine` (the version that rendered it).
 `previewSlots(catalogue?)` lists every slot as `{ path, kind, look?,
-variant?, pack?, mood? }`: `previews/<look>.webp`,
-`previews/<look>.<variant>.webp`, `previews/ui/<pack>.webp` and
-`previews/mood/<mood>.webp`, a mood drawn in its slot's `look`
-(cinematic-realism). Given previews, `creationDocument` throws on an
+variant?, pack? }`: `previews/<look>.webp`,
+`previews/<look>.<variant>.webp` and `previews/ui/<pack>.webp`. Given previews, `creationDocument` throws on an
 unfilled slot or a path that is no slot. Both read the packed
 `looks/catalogue.json` by default, so a release imports the version's own
 copy from `create/bin/create.ts`.
@@ -119,7 +118,7 @@ changing their signatures. `bin/brief.ts` is copied byte-for-byte from
 - `readLook(dir)` reads the project's configured look file.
 - `artBrief(look, kind, subject)` describes an asset's art requirements.
 - `audioBrief({ music, mood, genre, premise? })` describes music and effects.
-- `readAudioChoices(dir)` reads the `create` block.
+- `readAudioChoices(dir)` reads the `create` block, and the look's mood.
 - `rigParts(template)` describes the auto-rig's layered-art contract.
 
 UI packs, look presets, locale resources, and design tokens remain available

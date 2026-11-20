@@ -188,8 +188,7 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
   }
   const variants = (style.variants ?? []).map(v => v.name);
   if (input.variant !== undefined && !variants.includes(input.variant)) throw new Error(`look ${slug} has no variant '${input.variant}'; ${variants.length ? `pick one of ${variants.join(", ")}` : "it has none"}`);
-  const variantMood = style.variants?.find(v => v.name === input.variant)?.mood;
-  return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: variantMood ?? style.look.mood }));
+  return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! });
 }
 
 /** The font packs in `packs`: each directory with an extension.json, and its languages. */
@@ -252,7 +251,7 @@ export function create(options: CreateOptions): Created {
   if (choices.form === "film") copy(filmDir(), dir);
   const look = `looks/${id}.ogt`;
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
-  writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\n${choices.variant === undefined ? "" : `variant ${JSON.stringify(choices.variant)}\n`}mood ${JSON.stringify(choices.mood)}\nui ${JSON.stringify(choices.ui)}\n`);
+  writeFileSync(join(dir, "assets", look), `type look\nversion 1\n---\nextends ${JSON.stringify(choices.look)}\n${choices.variant === undefined ? "" : `variant ${JSON.stringify(choices.variant)}\n`}ui ${JSON.stringify(choices.ui)}\n`);
   written.push(`assets/${look}`);
   const manifest = join(dir, "project.ogt");
   writeFileSync(manifest, readFileSync(manifest, "utf8")
@@ -270,20 +269,22 @@ const USAGE = `usage: create [dir] [--name "Name"] [--id slug] [--premise "one l
 
 Writes one empty Origin Engine project (default: ./origin-game).
 Choices are constraints and hints in project.ogt's create block.
-The look, variant, mood and UI also configure its look file; no gameplay is generated.
+The look, variant and UI also configure its look file, which draws in the
+look's own mood; no gameplay is generated.
   --form      2d, 2.5d or 3d (a game, its view one of the form's), or film: an
               interactive film (og.film), which adds a Yarn story, two segments and a
               placeholder clip; genre, view and players do not apply to a film
-  --genre --view --look --variant --mood --ui --platform --input --players --lang --music
+  --genre --view --look --variant --ui --platform --input --players --lang --music
               creation choices; --lang en,zh accepts comma-separated tags. A look must
-              draw the form; a variant must be one of the look's
+              draw the form; a variant must be one of the look's. --mood is refused:
+              a look draws in its own mood (write mood "<word>" in the look file)
   --no-prompt accept inferred choices without prompting (it never prompts without a terminal)
   --force     overwrite skeleton files in a nonempty directory
   --creation  print the creation document (every option, label, preview slot, compat rule
               and default; packages/create/README.md) as JSON and write nothing.
               --previews fills each slot from a JSON map of path -> { url, sha256, size, engine }`;
 
-const FIELDS = ["form", "genre", "view", "look", "variant", "ui", "mood", "platform", "input", "players", "lang", "music"] as const;
+const FIELDS = ["form", "genre", "view", "look", "variant", "ui", "platform", "input", "players", "lang", "music"] as const;
 
 function main(argv: string[]): number {
   let dir: string | undefined, name: string | undefined, id: string | undefined, premise: string | undefined;
@@ -304,6 +305,7 @@ function main(argv: string[]): number {
     else if (a === "--choices") continue;
     else if (a === "--creation") document = true;
     else if (a === "--previews") previews = value();
+    else if (a === "--mood") throw new Error('--mood is no longer a creation choice: a look draws in its own mood (its preset\'s or variant\'s); to change it, write mood "<word>" in the game\'s look file');
     else if (a === "--look" || a === "--variant" || a === "--lang" || Object.keys(CREATION_CHOICES).some(key => a === `--${key}`)) choices[a.slice(2)] = a === "--lang" ? value().split(",") : value();
     else if (a === "-h" || a === "--help") { console.log(USAGE); return 0; }
     else if (a.startsWith("-")) throw new Error(`unknown option ${a}. ${USAGE}`);

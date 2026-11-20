@@ -317,8 +317,8 @@ A layer sets only the frame's grading, light and palette (`PostEffects`,
 `RenderSettings`, `Environment`, `Fog`, `Sky`, `Stylise.palette`,
 `ArtPalette.colors`); the contract's sizes, shapes, lines and motion never
 change with the mood. The art brief's prompt gains a `Mood` line (§2.2).
-`og new --mood <word>` writes the line into the game's look; without one
-the game keeps its preset's.
+`og new` writes no mood line (mood is not a creation choice): a new game
+draws in its preset's or variant's mood until its look file names another.
 
 ### 2.11 Variants: one look drawn another way
 

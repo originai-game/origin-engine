@@ -401,7 +401,14 @@ test("an unknown style, mood or genre is refused with the values; a project's cr
   expect(film.sfx.map((e) => e.id)).toContain("choice-pick");
   expect(film.cues[1]!.prompt).toContain("for an interactive film");
   writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\ncreate {\n  form "3d"\n  mood "dark"\n  music "orchestral"\n}\n');
-  expect(() => readAudioChoices(dir)).toThrow("lacks music, mood or genre");
+  expect(() => readAudioChoices(dir)).toThrow("lacks music or genre");
+  // A block og create writes now has no mood: the game's look names it, or its preset does.
+  mkdirSync(join(dir, "assets/looks"), { recursive: true });
+  writeFileSync(join(dir, "assets/looks/x.ogt"), 'type look\nversion 1\n---\nextends "low-resolution-3d"\nui "default"\n');
+  writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\nlook "looks/x.ogt"\ncreate {\n  genre "idle"\n  music "folk"\n}\n');
+  expect(readAudioChoices(dir)).toEqual({ music: "folk", mood: "dark", genre: "idle" });
+  writeFileSync(join(dir, "assets/looks/x.ogt"), 'type look\nversion 1\n---\nextends "low-resolution-3d"\nmood "warm"\n');
+  expect(readAudioChoices(dir).mood).toBe("warm");
   writeFileSync(join(dir, "project.ogt"), 'type project\nversion 1\n---\nname "x"\n');
   expect(() => readAudioChoices(dir)).toThrow("no create block");
   rmSync(dir, { recursive: true, force: true });

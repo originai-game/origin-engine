@@ -32,14 +32,6 @@ export const CHOICE_LABELS = {
     "third-person-3d": ["3D third person", "3D 第三人称", "Follow the character from an outside camera.", "通过角色外部的镜头跟随角色。"],
     "first-person-3d": ["3D first person", "3D 第一人称", "Look through the controlled character's eyes.", "通过受控角色的双眼观察世界。"],
   },
-  mood: {
-    bright: ["Bright", "明亮", "Clear light and lively colour.", "清晰的光线与活泼的色彩。"],
-    dark: ["Dark", "阴暗", "Deep shadows and a tense atmosphere.", "深沉的阴影与紧张的氛围。"],
-    warm: ["Warm", "温暖", "Warm light and welcoming colour.", "暖色光线与亲切的配色。"],
-    cold: ["Cold", "冷峻", "Cool light and a distant atmosphere.", "冷色光线与疏离的氛围。"],
-    soft: ["Soft", "柔和", "Gentle contrast and restrained light.", "温和的对比与克制的光线。"],
-    "high-contrast": ["High contrast", "高对比", "Strong separation between light and shadow.", "鲜明区分明部与暗部。"],
-  },
   ui: {
     default: ["Core default", "核心默认", "The engine core UI with its built-in components.", "引擎核心界面及其内置组件。"],
     cartoon: ["Cartoon", "卡通", "Rounded shapes, bold colour and playful controls.", "圆润的形状、鲜明的色彩与活泼的控件。"],

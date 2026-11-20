@@ -14,12 +14,11 @@ import type { Style } from "./create.ts";
 /** A picture an option shows, by its path under the version root. */
 export interface PreviewSlot {
   readonly path: string;
-  readonly kind: "look" | "variant" | "ui" | "mood";
-  /** The look it is drawn in: the look or variant's own, cinematic-realism for a mood. */
+  readonly kind: "look" | "variant" | "ui";
+  /** The look it is drawn in: the look or variant's own. */
   readonly look?: string;
   readonly variant?: string;
   readonly pack?: string;
-  readonly mood?: string;
 }
 
 /** What a release fills a slot with. */
@@ -30,9 +29,6 @@ export interface PreviewFile {
   /** The engine version that rendered it. */
   readonly engine: string;
 }
-
-/** The scene a mood preview is drawn in. */
-const MOOD_LOOK = "cinematic-realism";
 
 function styles(catalogue: string): Style[] {
   const all = readCatalogue(catalogue), ready = new Set(creationLooks(all));
@@ -47,7 +43,6 @@ export function previewSlots(catalogue: string = catalogueFile()): PreviewSlot[]
       ...(s.variants ?? []).map(v => ({ path: `previews/${s.slug}.${v.name}.webp`, kind: "variant" as const, look: s.slug, variant: v.name })),
     ]),
     ...CREATION_CHOICES.ui.map(pack => ({ path: `previews/ui/${pack}.webp`, kind: "ui" as const, pack })),
-    ...CREATION_CHOICES.mood.map(mood => ({ path: `previews/mood/${mood}.webp`, kind: "mood" as const, look: MOOD_LOOK, mood })),
   ];
 }
 
@@ -64,7 +59,7 @@ export interface CreationCompat {
   readonly genreDefaultView: Record<string, Partial<Record<Form, View>>>;
   /** The fields each form asks for (a film has no genre, view or players). */
   readonly formFields: Record<Form, string[]>;
-  readonly looks: Record<string, { forms: Form[]; views: readonly string[]; ui: string; mood: string; variants: string[] }>;
+  readonly looks: Record<string, { forms: Form[]; views: readonly string[]; ui: string; variants: string[] }>;
 }
 
 /** The rules between options, as data. */
@@ -75,7 +70,7 @@ export function creationCompat(catalogue: string = catalogueFile()): CreationCom
     genreViews: GENRE_VIEWS,
     genreDefaultView: Object.fromEntries(CREATION_CHOICES.genre.map(g => [g, Object.fromEntries(games.map(f => [f, defaultView(g, f)]))])),
     formFields: Object.fromEntries(CREATION_CHOICES.form.map(f => [f, formFields(f)])) as Record<Form, string[]>,
-    looks: Object.fromEntries(styles(catalogue).map(s => [s.slug, { forms: lookForms(s), views: s.look.views, ui: s.ui, mood: s.look.mood, variants: (s.variants ?? []).map(v => v.name) }])),
+    looks: Object.fromEntries(styles(catalogue).map(s => [s.slug, { forms: lookForms(s), views: s.look.views, ui: s.ui, variants: (s.variants ?? []).map(v => v.name) }])),
   };
 }
 
@@ -107,7 +102,7 @@ export function creationDocument(previews?: Readonly<Record<string, PreviewFile>
     schemaVersion: 1,
     /** The home page's questions, in order; `more` holds the rest behind "more settings". */
     order: ["form", "genre", "look", "variant", "ui"],
-    more: ["view", "mood", "platform", "input", "players", "lang", "music"],
+    more: ["view", "platform", "input", "players", "lang", "music"],
     schema: creationSchema(all.map(s => s.slug)),
     options: {
       form: enumOptions("form"),
@@ -122,12 +117,10 @@ export function creationDocument(previews?: Readonly<Record<string, PreviewFile>
           id: v.name,
           label: text(v.title, VARIANT_ZH[`${s.slug}.${v.name}`]?.[0]),
           description: text(v.descriptor, VARIANT_ZH[`${s.slug}.${v.name}`]?.[1]),
-          mood: v.mood,
           preview: preview(`previews/${s.slug}.${v.name}.webp`),
         })),
       })),
       ui: enumOptions("ui", id => `previews/ui/${id}.webp`),
-      mood: enumOptions("mood", id => `previews/mood/${id}.webp`),
       platform: enumOptions("platform"),
       input: enumOptions("input"),
       players: enumOptions("players"),
@@ -137,7 +130,7 @@ export function creationDocument(previews?: Readonly<Record<string, PreviewFile>
     /**
      * What `og create` picks with no premise, per form. With a premise it
      * infers from English and Chinese keywords; explicit choices win, the
-     * look's UI pack and mood are the UI and mood defaults, and languages
+     * look's UI pack is the UI default, and languages
      * follow the premise's script (kana: ja, Han: zh, else en).
      */
     defaults: {

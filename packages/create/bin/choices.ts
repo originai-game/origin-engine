@@ -5,7 +5,6 @@ export const CREATION_CHOICES = {
   form: ["2d", "2.5d", "3d", "film"],
   genre: ["action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
   view: ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"],
-  mood: ["bright", "dark", "warm", "cold", "soft", "high-contrast"],
   ui: ["default", "cartoon", "fantasy", "scifi"],
   platform: ["phone-portrait", "phone-landscape", "desktop", "multi"],
   input: ["touch", "keyboard-mouse", "gamepad"],
@@ -54,7 +53,7 @@ export function formOf(view: View): Exclude<Form, "film"> {
 
 /** The fields that apply to a form, in the create block's order. */
 export function formFields(form: Form): string[] {
-  return ["form", "genre", "view", "look", "variant", "mood", "ui", "platform", "input", "players", "lang", "music"]
+  return ["form", "genre", "view", "look", "variant", "ui", "platform", "input", "players", "lang", "music"]
     .filter(k => form !== "film" || !(GAME_ONLY as readonly string[]).includes(k));
 }
 
@@ -75,7 +74,6 @@ const RULES: Partial<Record<ChoiceKey, readonly (readonly [string, RegExp])[]>> 
   form: [["film", /interactive.(film|movie)|\bfmv\b|互动影游|互动电影|影游/i]],
   genre: [["arena", /arena|竞技|对战/i], ["shooter", /shoot|\bfps\b|射击/i], ["rpg", /\brpg\b|role.play|角色扮演/i], ["puzzle-match", /puzzle|match.?3|解谜|消除/i], ["strategy-tower-defense", /strategy|tower.defen|策略|塔防/i], ["racing", /rac(e|ing)|赛车/i], ["runner", /runner|跑酷/i], ["roguelike-card", /rogue|deck|card|卡牌/i], ["idle", /idle|incremental|放置/i], ["rhythm", /rhythm|节奏/i], ["open-world", /open.world|探索/i], ["action-platformer", /platform|action|动作|跳跃/i]],
   view: [["isometric-2.5d", /isometric|2\.5d|等距/i], ["first-person-3d", /first.person|\bfps\b|第一人称/i], ["third-person-3d", /third.person|\b3d\b|第三人称/i], ["top-down-2d", /top.down|俯视/i], ["side-2d", /side.scroll|platform|\b2d\b|横版|跳跃/i]],
-  mood: [["high-contrast", /high.contrast|高对比/i], ["dark", /dark|horror|阴暗|恐怖/i], ["cold", /cold|icy|冷峻|冰雪/i], ["warm", /warm|温暖/i], ["soft", /soft|cosy|cozy|柔和/i], ["bright", /bright|明亮/i]],
   platform: [["phone-landscape", /phone.landscape|手机横屏/i], ["phone-portrait", /portrait|mobile|phone|手机|竖屏/i], ["multi", /multi.platform|cross.platform|多端/i]],
   input: [["gamepad", /gamepad|controller|手柄/i], ["touch", /touch|触屏/i]],
   players: [["online-lockstep", /online|lockstep|联网/i], ["local-multiplayer", /local.multiplayer|couch|同屏/i]],
@@ -116,7 +114,10 @@ export function parseCreationInput(value: unknown): CreationInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("creation choices must be an object");
   const result: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value)) {
-    if (key === "look" || key === "variant") {
+    if (key === "mood") {
+      // Removed from the creation choices (the owner, 2026-11-20): a look draws in its own declared mood.
+      throw new Error('mood is no longer a creation choice: a look draws in its own mood (its preset\'s or variant\'s); to change it, write mood "<word>" in the game\'s look file');
+    } else if (key === "look" || key === "variant") {
       if (typeof item !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item)) throw new Error(`${key} must be a catalogue slug`);
     } else if (key === "lang") {
       if (!Array.isArray(item) || !item.length || item.some(v => typeof v !== "string" || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(v)) || new Set(item).size !== item.length) throw new Error("lang must be a nonempty list of distinct language tags");
@@ -153,11 +154,11 @@ export function inferCreationChoices(premise: string, input: CreationInput = {},
     genre,
     view: validated.view ?? [suggestions.view, fallback.view].find(v => v && formOf(v) === form) ?? defaultView(genre, form)!,
   };
-  const pick = <K extends "look" | "mood" | "ui" | "music" | "input">(k: K, base: CreationChoices[K]) => validated[k] ?? suggestions[k] ?? fallback[k] ?? base;
+  const pick = <K extends "look" | "ui" | "music" | "input">(k: K, base: CreationChoices[K]) => validated[k] ?? suggestions[k] ?? fallback[k] ?? base;
   const variant = validated.variant ?? fallback.variant;
   return {
     form, ...game, look: pick("look", form === "film" ? "cinematic-realism" : "faceted-low-poly"), ...(variant === undefined ? {} : { variant }),
-    mood: pick("mood", "bright"), ui: pick("ui", "default"), platform,
+    ui: pick("ui", "default"), platform,
     input: pick("input", platform.startsWith("phone-") ? "touch" : "keyboard-mouse"),
     ...(form === "film" ? {} : { players }), lang, music: pick("music", "ambient"),
   };

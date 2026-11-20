@@ -25,7 +25,7 @@ installed into E2B, production's provider, last.
 | `<version>/vfx/<pack>.tar.gz` | one downloadable effect pack, its root directory `<pack>/` (below) | immutable |
 | `<version>/wasm/<variant>/<module>.<hash12>.wasm` | one split engine module (docs/web-export.md §Modules): `<variant>` is the engine wasm it was split from (`publish`, `publish2d`, `lanes`, `lanes2d`); the platform's route serves any name matching `wasm/[a-z0-9-]+/[a-z0-9]+.<hash12>.wasm`, the same pattern that gates SHA256SUMS signing, served as `application/wasm` with CORS for the play origin | immutable |
 | `<version>/looks/catalogue.json` | the engine package's `knowledge/looks/catalogue.json`, byte for byte (each style's `preview` stays `previews/<slug>.webp`, relative to the version) | immutable |
-| `<version>/previews/<slug>.webp`, `<version>/previews/<slug>.<variant>.webp`, `<version>/previews/ui/<pack>.webp`, `<version>/previews/mood/<mood>.webp` | the creation document's previews, 960 x 540 webp, drawn by this version on the GPU host (below, The looks) | immutable |
+| `<version>/previews/<slug>.webp`, `<version>/previews/<slug>.<variant>.webp`, `<version>/previews/ui/<pack>.webp` | the creation document's previews, 960 x 540 webp, drawn by this version on the GPU host (below, The looks) | immutable |
 | `<version>/creation.json` | the creation document (create-game's `creationDocument`, `packages/create/README.md` §Creation document) with every preview slot filled `{path, url, sha256, size, engine}` | immutable |
 | `<version>/manifest.json` | `{version, base?, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx: {<pack>: {url, sha256, size, version, minEngine}}, looks?: {catalogue: {url, sha256, size}, previews: {<slug> \| <slug>.<variant>: {url, sha256, size, engine}}}, creation?: {url, sha256, size}}`; `engine` is the version that drew the preview; a backfill has no `looks` and `creation` | immutable |
 | `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`, the split engine modules' as `wasm/<variant>/<file>`), the looks files' (`looks/catalogue.json`, `previews/...`, `creation.json`), manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
@@ -108,8 +108,7 @@ previews` draws each slot of the packed create-game's `previewSlots()` with
 the version's own linux-x64 og and addon on the GPU host (`gcp-l4`,
 `templates/looks/preview/render.ts --gpu`: a software or absent adapter
 fails the step) and records the run in `looks-render.json`. A look or
-variant is its preset scene; a mood is the 3D scene in its slot's look
-with the mood laid over it; a UI pack is the components sheet's
+variant is its preset scene; a UI pack is the components sheet's
 hud page dressed in that pack (`og ui preview`, desktop). `release-dist.ts` ships them only
 when that record names this version, its commit (with a clean
 `templates/looks/`), the `vulkan` tier, the linux-x64 archive's og and

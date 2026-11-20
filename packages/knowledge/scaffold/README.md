@@ -16,9 +16,10 @@ genre and view. The platform mounts its text as
 | `.gitattributes` | Routes future media through Git LFS |
 
 `og create` fills the name and id and appends the agent's choices in a
-`create` block. Genre, view, look, mood, UI style, platform, input, players,
+`create` block. Genre, view, look and variant, UI style, platform, input, players,
 languages, and music are constraints and hints. Create also writes
-`assets/looks/<id>.ogt` with the preset, mood and UI, and names it in
+`assets/looks/<id>.ogt` with the preset, variant and UI (it draws in the
+preset's own mood), and names it in
 project.ogt. Mounting the raw payload alone does not perform this step.
 No gameplay or art is generated.
 

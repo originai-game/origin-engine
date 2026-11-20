@@ -107,8 +107,8 @@ pub const ANIMATED_FIELDS: [(&str, &str); 2] =
 /// The values of `antialias` (the IDL's `render.Antialias`).
 pub const ANTIALIAS: [&str; 4] = ["tier", "off", "msaa4", "taa"];
 
-/// The moods a look takes (`mood "<word>"`), the creation choice's words
-/// (`packages/create/bin/choices.ts`, held equal by its tests). Each is a
+/// The moods a look takes (`mood "<word>"`; `MOODS` in
+/// `packages/create/bin/brief.ts`). Each is a
 /// layer of the frame's grading, light and, for a palette-bound style, its
 /// palette (`templates/looks/moods/`), docs/art.md §2.10.
 pub const MOODS: [&str; 6] = ["bright", "dark", "warm", "cold", "soft", "high-contrast"];

@@ -34,13 +34,15 @@ an interactive film.
   the story and the film and starts it paused (film §1 to §4). A film has
   no `genre`, `view` or `players`; passing one exits 1.
 - `--variant <name>` picks one of the look's variants (looks), written into
-  the look file; its mood is the default mood.
+  the look file. The look draws in its own mood, the preset's or the
+  variant's; `--mood` is refused (to change it, write `mood "<word>"` in
+  the look file, looks §1).
 
 `og new --creation` prints every choice, its labels and the rules between
 them as JSON, and writes nothing.
 
 The choices made at creation sit in project.ogt's `create` block: `form`,
-`genre`, `view`, `look`, `variant`, `mood`, `ui`, `platform`, `input`,
+`genre`, `view`, `look`, `variant`, `ui`, `platform`, `input`,
 `players`, `lang`, `music` (a film's has no `genre`, `view` or `players`).
 They are constraints and hints, not settings:
 
@@ -53,7 +55,7 @@ They are constraints and hints, not settings:
   simulation follows determinism §3 from the first system written.
 - When the user's request contradicts the block, the request wins: edit
   the block so it stays the record of the brief.
-- `look`, `mood` and `ui` are also written into `assets/looks/<id>.ogt`,
+- `look`, `variant` and `ui` are also written into `assets/looks/<id>.ogt`,
   which project.ogt's `look` names; that file is real configuration
   (looks §1). `lang` installs each language's font pack, which og.i18n
   chains with no code; each language still needs its string table

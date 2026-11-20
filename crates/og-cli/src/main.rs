@@ -39,7 +39,7 @@ usage: og <command> [options]
 
 commands:
   create [dir] [--name \"Name\"] [--id slug] [--premise \"one line\"] [--force] [--no-prompt]
-      [--genre G] [--view V] [--look L] [--mood M] [--ui U] [--platform P]
+      [--genre G] [--view V] [--look L] [--variant V] [--ui U] [--platform P]
       [--input I] [--players P] [--lang en,zh] [--music M]
                       write one empty game project and its creation choices; `og new` is an alias;
                       never prompts with --no-prompt or without a terminal; --look is a catalogue

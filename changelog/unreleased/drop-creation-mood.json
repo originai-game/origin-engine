@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og create --mood, creation.json mood",
+      "change": "Mood is no longer a creation choice. `og create` (`og new`) refuses `--mood`, and the look file and project.ogt's create block it writes have no mood line: a new game draws in its look's own mood, the preset's or the chosen variant's. The creation document drops `options.mood`, `mood` from `schema`, `order`/`more` and `compat` (formFields, the looks' and variants' mood), and its `previews/mood/<mood>.webp` slots, so a release fills 37 preview slots, not 43. The look's `mood \"<word>\"` line, the mood layers and the briefs' mood are unchanged; `readAudioChoices` takes the mood from an older create block, else from the game's look.",
+      "fix": "Drop `--mood` from `og create` calls. To give a game another mood, write `mood \"<word>\"` (bright, dark, warm, cold, soft, high-contrast) in its look file. A reader of creation.json stops reading `options.mood` and the mood previews.",
+      "find": ["--mood", "options.mood", "previews/mood/"]
+    }
+  ]
+}
