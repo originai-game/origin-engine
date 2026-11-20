@@ -109,6 +109,22 @@ impl WaterRenderer {
                 ripples.encode(encoder, pipes);
             }
         }
+        // Each sea's clipmap grid, after the wakes its waves carry (sea_grid_fill): the fills this frame's
+        // prepare planned, once (a frame without water prepares none).
+        let fills = std::mem::take(&mut self.grid_fills);
+        if let (Some((_, none, fill)), false) = (&self.grid, fills.is_empty()) {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("sea grid"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(fill.get());
+            for (read, out, [x, y, z]) in &fills {
+                pass.set_bind_group(0, none, &[]);
+                pass.set_bind_group(1, read, &[]);
+                pass.set_bind_group(2, out, &[]);
+                pass.dispatch_workgroups(*x, *y, *z);
+            }
+        }
         (encoder.timed() && encoder.used() > q0).then(|| q0..encoder.used())
     }
 

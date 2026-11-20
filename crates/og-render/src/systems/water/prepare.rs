@@ -40,6 +40,7 @@ impl WaterRenderer {
                 face: bytemuck::Zeroable::zeroed(),
                 heights: None,
                 ripples: None,
+                grid: None,
             });
         }
         let (w, h) = (screen.0 as f32, screen.1 as f32);
@@ -91,6 +92,7 @@ impl WaterRenderer {
         let line = waterline(waters, camera, seconds, origin);
         let mut draws = Vec::with_capacity(waters.len());
         self.last_sea = None;
+        self.grid_fills.clear();
         for (index, (water, slot)) in waters.iter().zip(&mut self.slots).enumerate() {
             let reflection = planar.iter().find(|(i, _)| *i == index).map(|(_, v)| *v);
             let segments = grid_segments(water);
@@ -303,64 +305,99 @@ impl WaterRenderer {
                 (None, Some((_, _, v)), Some(_), _) => v,
                 _ => &self.flat,
             };
+            // A sea's clipmap grid, filled this frame (encode_fields) before any pass draws it.
+            let grid = match (&self.grid, drawn_sea) {
+                (Some((grid_layout, ..)), Some(_)) => {
+                    if slot.grid.as_ref().is_none_or(|(s, _)| *s != sea_segments) {
+                        let view = sea_grid_texture(device, sea_segments, CLIP_LEVELS as u32, true);
+                        slot.grid = Some((sea_segments, view));
+                    }
+                    let (_, view) = slot.grid.as_ref().expect("made above");
+                    let out = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("sea grid"),
+                        layout: grid_layout,
+                        entries: &[wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: wgpu::BindingResource::TextureView(view),
+                        }],
+                    });
+                    Some((view, out))
+                }
+                _ => None,
+            };
+            let mut entries = vec![
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: slot.uniform.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(heights),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(scene_color),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(scene_depth),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::TextureView(reflection.unwrap_or(fallback)),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(normal_view.unwrap_or(fallback)),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: wgpu::BindingResource::Sampler(&self.ripple_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 8,
+                    resource: wgpu::BindingResource::TextureView(ao),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 9,
+                    resource: wgpu::BindingResource::TextureView(flow_view.unwrap_or(fallback)),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 10,
+                    resource: wgpu::BindingResource::TextureView(shore_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 11,
+                    resource: wgpu::BindingResource::TextureView(wake_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 12,
+                    resource: wgpu::BindingResource::TextureView(
+                        grid.as_ref().map_or(&self.no_grid, |(v, _)| *v),
+                    ),
+                },
+            ];
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("water"),
                 layout: &self.layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: slot.uniform.as_entire_binding(),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::TextureView(heights),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::TextureView(scene_color),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wgpu::BindingResource::TextureView(scene_depth),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: wgpu::BindingResource::Sampler(&self.sampler),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 5,
-                        resource: wgpu::BindingResource::TextureView(
-                            reflection.unwrap_or(fallback),
-                        ),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 6,
-                        resource: wgpu::BindingResource::TextureView(
-                            normal_view.unwrap_or(fallback),
-                        ),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 7,
-                        resource: wgpu::BindingResource::Sampler(&self.ripple_sampler),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 8,
-                        resource: wgpu::BindingResource::TextureView(ao),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 9,
-                        resource: wgpu::BindingResource::TextureView(flow_view.unwrap_or(fallback)),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 10,
-                        resource: wgpu::BindingResource::TextureView(shore_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 11,
-                        resource: wgpu::BindingResource::TextureView(wake_view),
-                    },
-                ],
+                entries: &entries,
             });
+            if let Some((_, out)) = grid {
+                // The fill reads the surface's group with the calm grid in its own's place (the one it writes).
+                entries[12].resource = wgpu::BindingResource::TextureView(&self.no_grid);
+                let read = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("sea grid"),
+                    layout: &self.layout,
+                    entries: &entries,
+                });
+                let points = (sea_segments + 1).div_ceil(8);
+                self.grid_fills
+                    .push((read, out, [points, points, CLIP_LEVELS as u32]));
+            }
             if drawn_sea.is_some() && self.last_sea.is_none() {
                 self.last_sea = Some(group.clone());
             }

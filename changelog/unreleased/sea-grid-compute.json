@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Water (sea)",
+      "summary": "A sea's waves are now evaluated once a frame at each point of its clipmap grid, in a compute pass. Before, every vertex of every pass that drew the sea evaluated them itself (the depth prepass, the frame and the reflection probes' faces), and each grid point was shared by up to six vertices. The surface drawn is the same. The Last Light at 2560x1440 on an M4 Pro, render scale 1, comparing the sea on and off: the sea's GPU cost falls from about 64 ms to about 27 ms in Chrome WebGPU (depth prepass +27 ms to +2.4 ms) and from about 28 ms to about 23 ms natively on Metal."
+    }
+  ]
+}

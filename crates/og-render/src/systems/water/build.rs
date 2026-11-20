@@ -94,10 +94,73 @@ impl WaterRenderer {
                     },
                     count: None,
                 },
+                // A sea's displacement per clipmap grid point (`sea_grid_fill`; one calm texel without), read by its
+                // vertices.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 12,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let module = crate::deferred::module(device, "water", water_source(off));
         let probe_module = module.clone();
+        // The sea grid's fill (`sea_grid_fill`), where compute runs (the FFT sea, the one surface drawn from the grid,
+        // needs it too).
+        let grid = (compute && crate::WORLD_3D).then(|| {
+            let grid_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("sea grid"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: SEA_GRID_FORMAT,
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                    },
+                    count: None,
+                }],
+            });
+            let empty = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("sea grid"),
+                entries: &[],
+            });
+            let none = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("sea grid"),
+                layout: &empty,
+                entries: &[],
+            });
+            let grid_pipeline = {
+                let (device, module) = (device.clone(), module.clone());
+                let layouts = [empty, layout.clone(), grid_layout.clone()];
+                crate::deferred::Deferred::anywhere(move || {
+                    use crate::deferred::AsModule;
+                    let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                        label: Some("sea grid"),
+                        bind_group_layouts: &[
+                            Some(&layouts[0]),
+                            Some(&layouts[1]),
+                            Some(&layouts[2]),
+                        ],
+                        immediate_size: 0,
+                    });
+                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some("sea grid"),
+                        layout: Some(&pl),
+                        module: module.module(),
+                        entry_point: Some("sea_grid_fill"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    })
+                })
+            };
+            (grid_layout, none, grid_pipeline)
+        });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("water"),
             bind_group_layouts: &[Some(frame_layout), Some(&layout)],
@@ -283,8 +346,12 @@ impl WaterRenderer {
             });
             t.create_view(&Default::default())
         };
+        let no_grid = sea_grid_texture(device, 0, 1, false);
         WaterRenderer {
             no_shore,
+            no_grid,
+            grid,
+            grid_fills: Vec::new(),
             shores: Vec::new(),
             ripple_sampler,
             layout,
@@ -310,6 +377,40 @@ impl WaterRenderer {
             caustics_left_out,
         }
     }
+}
+
+/// A sea's clipmap grid ([`WaterRenderer::encode_fields`]): its displacement in xyz per grid point of `segments`
+/// cells a side (segments + 1 points), a layer per level; written by `sea_grid_fill` and read by `sea_vertex`.
+/// `storage`: written by the fill (the calm one bound without a sea is not).
+pub(super) fn sea_grid_texture(
+    device: &wgpu::Device,
+    segments: u32,
+    levels: u32,
+    storage: bool,
+) -> wgpu::TextureView {
+    device
+        .create_texture(&wgpu::TextureDescriptor {
+            label: Some("sea grid"),
+            size: wgpu::Extent3d {
+                width: segments + 1,
+                height: segments + 1,
+                depth_or_array_layers: levels,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: SEA_GRID_FORMAT,
+            usage: if storage {
+                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING
+            } else {
+                wgpu::TextureUsages::TEXTURE_BINDING
+            },
+            view_formats: &[],
+        })
+        .create_view(&wgpu::TextureViewDescriptor {
+            dimension: Some(wgpu::TextureViewDimension::D2Array),
+            ..Default::default()
+        })
 }
 
 /// A height field's texture: `n` × `n` rgba16float, the height in r,

@@ -102,6 +102,9 @@ pub const WAKE_TICKS: usize = 8;
 /// texture_2d_array, shared with the FFT sea's fields) and a storage format
 /// the ripples' compute writes; each is viewed as a 1-layer array there.
 pub(crate) const HEIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+/// A sea's clipmap grid's format ([`sea_grid_texture`]): the displacement in full f32, as the vertices
+/// evaluated it themselves.
+pub(crate) const SEA_GRID_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 
 /// A planar 3D water surface. See the module documentation.
 #[derive(Clone, Debug, PartialEq)]
@@ -530,6 +533,8 @@ struct Slot {
     heights: Option<(u32, wgpu::Texture, wgpu::TextureView)>,
     /// The ripples drawn over the heights (`water_ripples.rs`).
     ripples: Option<crate::water_ripples::Ripples>,
+    /// A sea's clipmap grid (`sea_grid_texture`), for the segments it was made for.
+    grid: Option<(u32, wgpu::TextureView)>,
 }
 
 /// Draws [`Water`]: one pipeline, a uniform buffer and height texture per
@@ -556,6 +561,18 @@ pub(crate) struct WaterRenderer {
     flat: wgpu::TextureView,
     /// A seabed of one sample, bound where a surface has none.
     no_shore: wgpu::TextureView,
+    /// A calm clipmap grid of one point, bound where a surface draws none.
+    no_grid: wgpu::TextureView,
+    /// The sea grid's fill (`sea_grid_fill`: its output's layout, the empty group 0 it binds, the pipeline), where
+    /// compute runs.
+    grid: Option<(
+        wgpu::BindGroupLayout,
+        wgpu::BindGroup,
+        crate::deferred::Deferred<wgpu::ComputePipeline>,
+    )>,
+    /// This frame's fills, a sea each ([`WaterRenderer::encode_fields`]): the surface's group (its grid left out:
+    /// the calm one in its place), the grid to write, and the dispatch's size.
+    grid_fills: Vec<(wgpu::BindGroup, wgpu::BindGroup, [u32; 3])>,
     /// The seabeds' textures ([`shore_texture`]) of this frame's surfaces,
     /// with the fields they hold (shared by surfaces and the foam's pass).
     shores: Vec<(Arc<og_env::ocean::Shore>, wgpu::TextureView)>,

@@ -10,16 +10,23 @@ impl WaterRenderer {
         }
         if waters.iter().any(|w| w.mesh.is_none()) {
             self.pipeline.start(features);
+            if let Some((_, _, fill)) = &self.grid {
+                crate::deferred::Start::start(fill);
+            }
         }
     }
 
     /// Makes its pipeline if no frame used it yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
-        crate::deferred::warm_one(&[
+        let mut items: Vec<&dyn crate::deferred::Warm> = vec![
             self.pipeline.full(),
             self.mesh_pipeline.full(),
             &self.spray_pipeline,
-        ])
+        ];
+        if let Some((_, _, fill)) = &self.grid {
+            items.push(fill);
+        }
+        crate::deferred::warm_one(&items)
     }
 
     /// The surfaces as the faces of a reflection probe's capture of face
@@ -81,6 +88,11 @@ impl WaterRenderer {
                     tex(match &self.wakes {
                         Some(w) if face.wake[3] > 0.5 => &w.view,
                         _ => &self.no_wake,
+                    }),
+                    // The frame's grid: the faces draw the sea at the frame's levels.
+                    tex(match &slot.grid {
+                        Some((_, view)) if sea && self.grid.is_some() => view,
+                        _ => &self.no_grid,
                     }),
                 ];
                 let entries: Vec<wgpu::BindGroupEntry> = entries

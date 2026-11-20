@@ -399,20 +399,51 @@ fn sea_vertex(vi: u32) -> SeaVertex {
       return o;
     }
   }
-  let g = cell_ij + quad_corner(k).yx - half;
+  let ij = cell_ij + quad_corner(k).yx;
+  o.rest = sea_clamp(lv.xy + (ij - half) * c);
+  // Its displacement as this frame's sea_grid_fill wrote it at its grid point (the same per point however many
+  // of the six-vertex quads share it).
+  o.d = textureLoad(sea_grid, vec2<u32>(ij), level, 0).xyz;
+  return o;
+}
+
+// The displacement of a clipmap level's (lv) vertex `g` cells from its centre, of `half` cells a side
+// (sea_vertex), with the morph onto the next level's lattice towards its edge.
+fn sea_point(lv: vec4<f32>, g: vec2<f32>, half: f32) -> vec3<f32> {
+  let c = lv.z;
   let p = lv.xy + g * c;
-  o.rest = sea_clamp(p);
   let m = smoothstep(0.7, 0.95, max(abs(g.x), abs(g.y)) / half);
   let spacing = c * (1.0 + m);
   let odd = vec2<bool>(abs(g.x) % 2.0 > 0.5, abs(g.y) % 2.0 > 0.5);
-  var d = ocean_displace(o.rest, spacing);
+  var d = ocean_displace(sea_clamp(p), spacing);
   if (m > 0.0 && (odd.x || odd.y)) {
     let e = vec2<f32>(select(0.0, c, odd.x), select(0.0, c, odd.y));
     let mean = 0.5 * (ocean_displace(sea_clamp(p - e), spacing) + ocean_displace(sea_clamp(p + e), spacing));
     d = mix(d, mean, m);
   }
-  o.d = d;
-  return o;
+  return d;
+}
+
+// The clipmap's displacement per grid point, a layer per level of (s + 1)² points (water.rs `encode_fields`),
+// evaluated once a frame for every vertex and pass that draws the sea: the prepass's, the frame's and the probe
+// faces' read it where each of the six vertices a point is shared by ran every wave of its own.
+@group(1) @binding(12) var sea_grid: texture_2d_array<f32>;
+@group(2) @binding(2) var sea_grid_out: texture_storage_2d_array<rgba32float, write>;
+
+@compute @workgroup_size(8, 8, 1)
+fn sea_grid_fill(@builtin(global_invocation_id) id: vec3<u32>) {
+  let s = u32(water.clip.y);
+  if (id.x > s || id.y > s || id.z >= u32(water.clip.x)) { return; }
+  let lv = water.levels[id.z];
+  let half = f32(s) * 0.5;
+  let g = vec2<f32>(id.xy) - half;
+  // A point a whole cell inside the hole the level leaves for the one inside it, under no drawn cell
+  // (sea_vertex's skip).
+  if (id.z > 0u) {
+    let inner = water.levels[id.z - 1u];
+    if (all(abs(lv.xy + g * lv.z - inner.xy) < vec2<f32>((half * 0.5 - 1.0) * lv.z))) { return; }
+  }
+  textureStore(sea_grid_out, id.xy, id.z, vec4<f32>(sea_point(lv, g, half), 0.0));
 }
 
 // The drawn sea's height probe (water.rs `WaterRenderer::probe_sea`, Renderer::sea_heights): per point (frame xz),
