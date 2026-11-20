@@ -25,8 +25,10 @@
 // previews records). --slots FILE draws the creation document's preview slots
 // instead of names (create-game's previewSlots(), as JSON): a look or variant
 // slot as above, a mood slot in its slot's look with `mood "<mood>"` added, a
-// ui slot as the HUD sheet's meters page in that pack (og ui preview at the
-// desktop breakpoint, 1280x720), each to --previews/<slot path>.
+// ui slot as the components sheet's hud page dressed in that pack (og ui
+// preview at the desktop breakpoint, 1280x720; the hud sheet's own style
+// command keeps the default style), each to --previews/<slot path>. Two ui
+// slots drawn the same fail the run: a pack must change the frame.
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -117,15 +119,15 @@ function toWebp(frame: string, preview: string): boolean {
   return true;
 }
 const env = gpu ? { ...process.env, OG_RENDERER: "hardware" } : process.env;
-/** Draws a ui slot: the HUD sheet's meters page in the slot's pack, at 1280x720. */
+/** Draws a ui slot: the components sheet's hud page in the slot's pack, at 1280x720. */
 function drawUi(slot: Slot, file: string): string | null {
   const dir = join(repo, "target/look-previews", `ui@${slot.pack}`);
   rmSync(dir, { recursive: true, force: true });
-  cpSync(join(engine, "sheets/hud"), dir, { recursive: true, filter: (from) => !/\/(og-out|\.og)(\/|$)/.test(from) });
+  cpSync(join(engine, "sheets/components"), dir, { recursive: true, filter: (from) => !/\/(og-out|\.og)(\/|$)/.test(from) });
   mkdirSync(join(dir, "node_modules/@origingame"), { recursive: true });
   symlinkSync(engine, join(dir, "node_modules/@origingame/engine"));
   const at = join(dir, "og-out/ui-preview");
-  const run = spawnSync(og, ["ui", "preview", dir, "--screen", "hud=page:meters", "--styles", slot.pack!, "--breakpoints", "desktop", "--locales", "game", "--scales", "100", "--out", at, ...(gpu ? ["--require-checked"] : [])], { encoding: "utf8", timeout: 300_000, env });
+  const run = spawnSync(og, ["ui", "preview", dir, "--screen", "hud=page:hud", "--styles", slot.pack!, "--breakpoints", "desktop", "--locales", "game", "--scales", "100", "--out", at, ...(gpu ? ["--require-checked"] : [])], { encoding: "utf8", timeout: 300_000, env });
   const frame = join(at, "cells/0.png");
   if (run.status !== 0 || !existsSync(frame)) {
     console.log(`${slot.path}: og ui preview failed (${run.status}): ${(run.stderr || run.stdout).trim().split("\n").slice(-4).join(" | ")}`);
@@ -190,9 +192,22 @@ for (const slot of slots) {
     }
     tiers.add(tier);
   }
-  const warnings = (run.stdout + run.stderr).split("\n").filter((l) => /warning/.test(l));
+  // The --json summary line names its own `warnings` list: only prose lines are warnings.
+  const warnings = (run.stdout + run.stderr).split("\n").filter((l) => /warning/.test(l) && !l.startsWith("{"));
   console.log(`${name}: ${join(out, file)}${warnings.length ? `\n  ${warnings.join("\n  ")}` : ""}`);
   if (webp && !toWebp(join(out, file), preview)) failed++;
+}
+// A pack that leaves the frame as another pack's drew nothing of its own.
+const uiDrawn = new Map<string, string>();
+for (const slot of webp ? slots.filter((s) => s.kind === "ui") : []) {
+  const at = join(previews, slot.path.replace(/^previews\//, ""));
+  if (!existsSync(at)) continue;
+  const digest = createHash("sha256").update(readFileSync(at)).digest("hex");
+  const same = uiDrawn.get(digest);
+  if (same) {
+    failed++;
+    console.log(`${slot.path}: the same frame as ${same}: the pack did not dress the page`);
+  } else uiDrawn.set(digest, slot.path);
 }
 if (record && !failed) {
   const sha256 = (f: string) => createHash("sha256").update(readFileSync(f)).digest("hex");

@@ -109,8 +109,8 @@ the version's own linux-x64 og and addon on the GPU host (`gcp-l4`,
 `templates/looks/preview/render.ts --gpu`: a software or absent adapter
 fails the step) and records the run in `looks-render.json`. A look or
 variant is its preset scene; a mood is the 3D scene in its slot's look
-with the mood laid over it; a UI pack is the HUD sheet's meters page in
-that pack (`og ui preview`, desktop). `release-dist.ts` ships them only
+with the mood laid over it; a UI pack is the components sheet's
+hud page dressed in that pack (`og ui preview`, desktop). `release-dist.ts` ships them only
 when that record names this version, its commit (with a clean
 `templates/looks/`), the `vulkan` tier, the linux-x64 archive's og and
 addon and each file's bytes, with a file for every slot and none other;
