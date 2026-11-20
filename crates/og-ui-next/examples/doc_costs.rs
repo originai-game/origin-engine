@@ -25,23 +25,26 @@ fn main() {
     let tokens = Tokens::parse(&css);
     // The default surfaces sheet does not exist until the sheets move.
     let surfaces = og_ui_next::style::Sheet::default();
-    let docs = [
-        ("ui/hud.svelte", "showcase/first-light/assets/ui/hud.svelte"),
-        (
-            "@ui/components/hud/ability-bar.svelte",
-            "packages/engine/src/ui/components/hud/ability-bar.svelte",
-        ),
-        (
-            "@ui/components/hud/ability-slot.svelte",
-            "packages/engine/src/ui/components/hud/ability-slot.svelte",
-        ),
-        (
-            "@ui/components/hud/quest-tracker.svelte",
-            "packages/engine/src/ui/components/hud/quest-tracker.svelte",
-        ),
-    ];
+    // First Light's HUD, then every document of the directories rewritten
+    // so far (`@ui/<dir>/<file>` is a document's id).
+    let mut docs = vec![(
+        "ui/hud.svelte".to_string(),
+        "showcase/first-light/assets/ui/hud.svelte".to_string(),
+    )];
+    for dir in ["components/hud"] {
+        let root = format!("packages/engine/src/ui/{dir}");
+        let mut files: Vec<String> = std::fs::read_dir(&root)
+            .unwrap_or_else(|e| panic!("{root}: {e}"))
+            .filter_map(|e| e.ok()?.file_name().into_string().ok())
+            .filter(|n| n.ends_with(".svelte"))
+            .collect();
+        files.sort();
+        for f in files {
+            docs.push((format!("@ui/{dir}/{f}"), format!("{root}/{f}")));
+        }
+    }
     let mut skips: BTreeMap<Skip, usize> = BTreeMap::new();
-    for (id, path) in docs {
+    for (id, path) in &docs {
         let doc = UiDocument::parse(id, &read(path)).unwrap_or_else(|e| panic!("{id}: {e:?}"));
         let t = Instant::now();
         let s = DocStyle::compile(&doc, &tokens, &surfaces);
@@ -54,6 +57,11 @@ fn main() {
             s.steps.len()
         );
         for k in s.skipped {
+            // What a sheet still has to change, by document; the missing
+            // declarations arrive with later heads.
+            if !matches!(k, Skip::Declaration(_) | Skip::Query) {
+                println!("    skips {k:?}");
+            }
             *skips.entry(k).or_default() += 1;
         }
     }

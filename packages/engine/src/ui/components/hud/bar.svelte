@@ -1,6 +1,5 @@
 <meta name="component" content="HudBar">
 <meta name="strings" content="./bar.en.ogt">
-<meta name="parts" content="HudBar.groove HudBar.ghost HudBar.lit HudBar.cuts HudBar.figure">
 <meta name="prop:value" content="number" data-doc="The value now.">
 <meta name="prop:max" content="number" data-default="1" data-doc="Its most; 0 draws the bar empty.">
 <meta name="prop:kind" content="string" data-default="health" data-doc="What it measures, which is its fill: health, mana, stamina, shield or xp.">
@@ -28,15 +27,15 @@
   its kind's fill there too (--hud-life-fill and --hud-life-glow, and so
   on). Read only.
 -->
-<div id="HudBar" part="HudBar.groove" data-layout="overlay" role="meter" aria-label={name != '' ? name : kind == 'mana' ? t("hud.bar.mana") : kind == 'stamina' ? t("hud.bar.stamina") : kind == 'shield' ? t("hud.bar.shield") : kind == 'xp' ? t("hud.bar.xp") : t("hud.bar.health")} aria-valuemin="0" aria-valuemax={max > 0 ? max : 1} aria-valuenow={value <= 0 ? 0 : max > 0 && value >= max ? max : value} class:mana={kind == 'mana'} class:stamina={kind == 'stamina'} class:shield={kind == 'shield'} class:xp={kind == 'xp'} class:low={low} style:--value={max <= 0 || value <= 0 ? 0 : value >= max ? 1 : value / max} style:--ghost={max <= 0 || ghost <= value ? 0 : ghost >= max ? 1 : ghost / max} style:--cells={segment > 0 && max > 0 ? max / segment : 1}>
-  <div id="Ghost" part="HudBar.ghost" data-anchor="top-start"></div>
-  <div id="Lit" part="HudBar.lit" data-anchor="top-start"></div>
-  {#if segment > 0 && max > 0}<div id="Cuts" part="HudBar.cuts" data-anchor="fill"></div>{/if}
-  {#if showValue}<div id="Figure" part="HudBar.figure" data-anchor="center"><span>{t("hud.bar.figure", { now: value, max: max })}</span></div>{/if}
+<div id="HudBar" part="groove" layout="overlay" role="meter" aria-label={name != '' ? name : kind == 'mana' ? t("hud.bar.mana") : kind == 'stamina' ? t("hud.bar.stamina") : kind == 'shield' ? t("hud.bar.shield") : kind == 'xp' ? t("hud.bar.xp") : t("hud.bar.health")} aria-valuemin="0" aria-valuemax={max > 0 ? max : 1} aria-valuenow={value <= 0 ? 0 : max > 0 && value >= max ? max : value} class:mana={kind == 'mana'} class:stamina={kind == 'stamina'} class:shield={kind == 'shield'} class:xp={kind == 'xp'} class:low={low} style:--value={max <= 0 || value <= 0 ? 0 : value >= max ? 1 : value / max} style:--ghost={max <= 0 || ghost <= value ? 0 : ghost >= max ? 1 : ghost / max} style:--cells={segment > 0 && max > 0 ? max / segment : 1}>
+  <div id="Ghost" part="ghost" anchor="top-start"></div>
+  <div id="Lit" part="lit" anchor="top-start"></div>
+  {#if segment > 0 && max > 0}<div id="Cuts" part="cuts" anchor="fill"></div>{/if}
+  {#if showValue}<div layout="center" id="Figure" part="figure" anchor="fill"><span>{t("hud.bar.figure", { now: value, max: max })}</span></div>{/if}
 </div>
 
 <style>
-:host { inline-size: 100%; block-size: var(--hud-bar-size); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); --layout-anchor-inset: 0; }
+#HudBar { inline-size: 100%; block-size: var(--hud-bar-size); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); --layout-anchor-inset: 0; }
 #Ghost { inline-size: calc(var(--ghost) * 100%); block-size: 100%; background: var(--bar-ghost); transition: var(--bar-ghost-motion); }
 #Lit { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--hud-life-fill); box-shadow: var(--hud-life-glow); }
 .mana #Lit { background: var(--hud-mana-fill); box-shadow: var(--hud-mana-glow); }

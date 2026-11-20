@@ -10,7 +10,6 @@
 <meta name="prop:secondary" content="string" data-doc="The weapon held in reserve, on a quiet line over the readout; empty hides the line.">
 <meta name="prop:secondaryAmmo" content="number" data-default="-1" data-doc="The reserve weapon's rounds; negative hides the figure.">
 <meta name="prop:secondaryKey" content="string" data-doc="The input that swaps to it as the game names it (2), on a key cap; empty hides it.">
-<meta name="parts" content="Ammo.frame Ammo.alternate Ammo.swap Ammo.count Ammo.reserve Ammo.rounds Ammo.magazine Ammo.modes Ammo.weapon Ammo.mode Ammo.reload Ammo.prompt">
 <meta name="fixture:default" content='{"weapon":"VK-7 Carbine","mode":"auto","magazine":24,"capacity":30,"reserve":120,"reloading":-1,"low":0.25,"secondary":"Hollow SMG","secondaryAmmo":32,"secondaryKey":"2"}'>
 <meta name="fixture:low" content='{"weapon":"Brace-12","mode":"single","magazine":2,"capacity":6,"reserve":18,"reloading":-1,"low":0.34,"secondary":"","secondaryAmmo":-1,"secondaryKey":""}'>
 <meta name="fixture:empty" content='{"weapon":"Talon AR","mode":"burst","magazine":0,"capacity":30,"reserve":0,"reloading":-1,"low":0.25,"secondary":"Wren Pistol","secondaryAmmo":15,"secondaryKey":"2"}'>
@@ -26,33 +25,33 @@
   say so; a reload shows its progress. The game owns every count; read
   only.
 -->
-<div id="AmmoCounter" part="Ammo.frame" class="hud bare" data-layout="stack" role="group" aria-label={t("shooter.ammo.name")} aria-valuetext={t("shooter.ammo.value", { magazine: magazine, capacity: capacity, reserve: reserve })} class:low={magazine > 0 && magazine <= capacity * low} class:empty={magazine <= 0}>
-  {#if secondary != ''}<div id="Alternate" part="Ammo.alternate" data-layout="row" data-gap="tight">
+<div id="AmmoCounter" part="frame" variant="hud" layout="stack" role="group" aria-label={t("shooter.ammo.name")} aria-valuetext={t("shooter.ammo.value", { magazine: magazine, capacity: capacity, reserve: reserve })} class:low={magazine > 0 && magazine <= capacity * low} class:empty={magazine <= 0}>
+  {#if secondary != ''}<div id="Alternate" part="alternate" layout="row" gap="tight">
     <span id="AlternateName" class="label">{secondary}</span>
     {#if secondaryAmmo >= 0}<span id="AlternateCount" class="small">{formatNumber(secondaryAmmo)}</span>{/if}
-    {#if secondaryKey != ''}<span id="Swap" part="Ammo.swap" class="key">{secondaryKey}</span>{/if}
+    {#if secondaryKey != ''}<span id="Swap" part="swap" class="key">{secondaryKey}</span>{/if}
   </div>{/if}
-  <div id="Rounds" data-layout="row">
-    <span id="Count" part="Ammo.count" class:low={magazine > 0 && magazine <= capacity * low} class:empty={magazine <= 0}>{formatNumber(magazine)}</span>
-    <span id="Reserve" part="Ammo.reserve">{formatNumber(reserve)}</span>
+  <div id="Rounds" layout="row">
+    <span id="Count" part="count" class:low={magazine > 0 && magazine <= capacity * low} class:empty={magazine <= 0}>{formatNumber(magazine)}</span>
+    <span id="Reserve" part="reserve">{formatNumber(reserve)}</span>
   </div>
-  {#if capacity > 0}<div id="Ticks" part="Ammo.rounds" data-layout="overlay" class:belt={capacity > 60} style:--capacity={capacity > 60 ? 60 : capacity} style:--fill={magazine <= 0 ? 0 : magazine >= capacity ? 1 : magazine / capacity}><div id="Loaded" part="Ammo.magazine" data-anchor="top-start"></div></div>{/if}
-  <div id="Weapon" data-layout="row" data-gap="tight">
-    <div id="Modes" part="Ammo.modes" data-layout="row" data-gap="none" data-mode={mode}><i class="pip one"></i><i class="pip two"></i><i class="pip three"></i></div>
-    <span id="Name" part="Ammo.weapon" class="label">{weapon}</span>
-    {#if mode == 'auto'}<span id="Auto" class="label mode" part="Ammo.mode">{t("shooter.ammo.auto")}</span>{/if}
-    {#if mode == 'burst'}<span id="Burst" class="label mode" part="Ammo.mode">{t("shooter.ammo.burst")}</span>{/if}
-    {#if mode == 'single'}<span id="Single" class="label mode" part="Ammo.mode">{t("shooter.ammo.single")}</span>{/if}
+  {#if capacity > 0}<div id="Ticks" part="rounds" layout="overlay" class:belt={capacity > 60} style:--capacity={capacity > 60 ? 60 : capacity} style:--fill={magazine <= 0 ? 0 : magazine >= capacity ? 1 : magazine / capacity}><div id="Loaded" part="magazine" anchor="top-start"></div></div>{/if}
+  <div id="Weapon" layout="row" gap="tight">
+    <div id="Modes" part="modes" layout="row" gap="none" class:auto={mode == 'auto'} class:burst={mode == 'burst'} class:single={mode == 'single'}><i class="pip one"></i><i class="pip two"></i><i class="pip three"></i></div>
+    <span id="Name" part="weapon" class="label">{weapon}</span>
+    {#if mode == 'auto'}<span id="Auto" class="label mode" part="mode">{t("shooter.ammo.auto")}</span>{/if}
+    {#if mode == 'burst'}<span id="Burst" class="label mode" part="mode">{t("shooter.ammo.burst")}</span>{/if}
+    {#if mode == 'single'}<span id="Single" class="label mode" part="mode">{t("shooter.ammo.single")}</span>{/if}
   </div>
-  {#if reloading >= 0}<div id="Reload" data-layout="row" data-gap="tight" style:--progress={reloading >= 1 ? 1 : reloading}>
+  {#if reloading >= 0}<div id="Reload" layout="row" gap="tight" style:--progress={reloading >= 1 ? 1 : reloading}>
     <span id="ReloadLabel" class="label">{t("shooter.ammo.reloading")}</span>
-    <div id="ReloadTrack" data-layout="overlay"><div id="ReloadFill" part="Ammo.reload" data-anchor="top-start"></div></div>
+    <div id="ReloadTrack" layout="overlay"><div id="ReloadFill" part="reload" anchor="top-start"></div></div>
   </div>{/if}
-  {#if magazine <= 0 && reloading < 0}<span id="Prompt" part="Ammo.prompt" class="label">{t("shooter.ammo.empty")}</span>{/if}
+  {#if magazine <= 0 && reloading < 0}<span id="Prompt" part="prompt" class="label">{t("shooter.ammo.empty")}</span>{/if}
 </div>
 
 <style>
-:host { align-items: flex-end; row-gap: calc(5 * var(--font-step-px)); inline-size: calc(230 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --layout-anchor-inset: 0; }
+#AmmoCounter { align-items: flex-end; row-gap: calc(5 * var(--font-step-px)); inline-size: calc(230 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --layout-anchor-inset: 0; }
 .label { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; }
 /* The reserve weapon: a quiet line over the readout. */
 #Alternate { align-items: center; max-inline-size: 100%; min-inline-size: 0; opacity: 0.8; }
@@ -78,13 +77,13 @@
 /* The fire mode's pips: all three lit for auto, two for burst, one for single. */
 #Modes { flex: none; column-gap: calc(3 * var(--font-step-px)); }
 .pip { inline-size: calc(10 * var(--font-step-px)); block-size: calc(4 * var(--font-step-px)); transform: skewX(var(--bar-skew)); background: var(--hud-pip-off); }
-[data-mode=auto] .pip, [data-mode=burst] .one, [data-mode=burst] .two, [data-mode=single] .one { background: var(--hud-pip-on); box-shadow: var(--hud-pip-glow); }
+.auto .pip, .burst .one, .burst .two, .single .one { background: var(--hud-pip-on); box-shadow: var(--hud-pip-glow); }
 #Reload { align-items: center; inline-size: 100%; }
 #ReloadTrack { flex: 1; block-size: calc(4 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); }
 #ReloadFill { inline-size: calc(var(--progress) * 100%); block-size: 100%; background: var(--hud-pip-on); }
 #Prompt { color: var(--hud-empty-ink); animation: var(--pulse-motion); }
 @media (width < 600px) {
-  :host { inline-size: auto; row-gap: calc(2 * var(--font-step-px)); }
+  #AmmoCounter { inline-size: auto; row-gap: calc(2 * var(--font-step-px)); }
   #Modes { display: none; }
   #Weapon { flex-wrap: wrap; justify-content: flex-end; }
   #Count { font-size: var(--hud-size-ammo-compact); }

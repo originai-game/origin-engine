@@ -1,6 +1,5 @@
 <meta name="component" content="HudSlot">
 <meta name="strings" content="./slot.en.ogt">
-<meta name="parts" content="HudSlot.skill HudSlot.slot HudSlot.art HudSlot.cooldown HudSlot.edge HudSlot.time HudSlot.reason HudSlot.count HudSlot.charges HudSlot.pip HudSlot.ring HudSlot.key">
 <meta name="prop:name" content="string" data-doc="What a reader calls it (Ember slash).">
 <meta name="prop:icon" content="number" data-doc="Its art, a texture (og.load.texture); 0 draws the glyph in its place.">
 <meta name="prop:glyph" content="string" data-doc="An icon of the atlas, drawn when there is no art; empty is none.">
@@ -34,49 +33,49 @@
   slot. It is as wide as its own content wherever it stands, so the art
   and the key cap are one column of the slot's width. The game owns every cooldown, cost and charge; read only.
 -->
-<div id="HudSlot" part="HudSlot.skill" data-layout="stack" data-gap="none" role="group" data-kind={kind} data-ready={ready || (kind == 'ultimate' && charge >= 1)} data-unaffordable={unaffordable} data-cooling={cooldown > 0 || (kind == 'ultimate' && charge < 1)} aria-label={unaffordable && reason ? t("hud.slot.state", { name: name, state: reason }) : name}>
-  {#if chargesMax > 0}<div part="HudSlot.charges" class="charges" data-layout="overlay" role="meter" aria-label={t("hud.slot.charges")} aria-valuemin="0" aria-valuemax={chargesMax} aria-valuenow={charges <= 0 ? 0 : charges} style:--n={chargesMax} style:--on={charges <= 0 ? 0 : charges >= chargesMax ? 1 : charges / chargesMax}><div part="HudSlot.pip" class="pip" data-anchor="top-start"></div></div>{/if}
-  <div class="holder" data-layout="overlay">
-    {#if kind == 'ultimate'}<div part="HudSlot.ring" class="ring" data-anchor="fill" role="meter" aria-label={t("hud.slot.charge")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={charge <= 0 ? 0 : charge >= 1 ? 100 : charge * 100}><svg class="dial" viewBox="0 0 100 100"><path class="well" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none"></path><path class="lit" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none" pathLength="1" stroke-dasharray={(charge <= 0 ? 0 : charge >= 1 ? 1 : charge) + " 1"}></path></svg></div>{/if}
-    <div part="HudSlot.slot" class="slot" data-anchor="center" data-layout="overlay">
-      {#if icon}<img part="HudSlot.art" class="art" data-anchor="fill" src={icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if glyph}<og-icon class="glyph" icon={glyph}></og-icon>{/if}</div>{/if}
-      {#if cooldown > 0}<div part="HudSlot.cooldown" class="cooldown" data-anchor="fill" style:--left={cooldown >= 1 ? 1 : cooldown}></div><div part="HudSlot.edge" class="edge" data-anchor="fill" style:--left={cooldown >= 1 ? 1 : cooldown}></div>{/if}
-      {#if unaffordable}<div class="veil" data-anchor="fill"></div>{/if}
-      {#if cooldown > 0 && time}<span part="HudSlot.time" class="time" data-anchor="center">{time}</span>{/if}
-      {#if unaffordable && reason && cooldown <= 0}<span part="HudSlot.reason" class="reason" data-anchor="center">{reason}</span>{/if}
-      {#if kind == 'ultimate' && charge < 1}<span part="HudSlot.time" class="time" data-anchor="center">{formatPercent(charge <= 0 ? 0 : charge)}</span>{/if}
+<div id="HudSlot" part="skill" layout="stack" gap="none" role="group" class:ultimate={kind == 'ultimate'} class:ready={ready || (kind == 'ultimate' && charge >= 1)} class:unaffordable={unaffordable} class:cooling={cooldown > 0 || (kind == 'ultimate' && charge < 1)} aria-label={unaffordable && reason ? t("hud.slot.state", { name: name, state: reason }) : name}>
+  {#if chargesMax > 0}<div part="charges" class="charges" layout="overlay" role="meter" aria-label={t("hud.slot.charges")} aria-valuemin="0" aria-valuemax={chargesMax} aria-valuenow={charges <= 0 ? 0 : charges} style:--n={chargesMax} style:--on={charges <= 0 ? 0 : charges >= chargesMax ? 1 : charges / chargesMax}><div part="pip" class="pip" anchor="top-start"></div></div>{/if}
+  <div class="holder" layout="overlay">
+    {#if kind == 'ultimate'}<div part="ring" class="ring" anchor="fill" role="meter" aria-label={t("hud.slot.charge")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={charge <= 0 ? 0 : charge >= 1 ? 100 : charge * 100}><svg class="dial" viewBox="0 0 100 100"><path class="well" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none"></path><path class="lit" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none" pathLength="1" stroke-dasharray={(charge <= 0 ? 0 : charge >= 1 ? 1 : charge) + " 1"}></path></svg></div>{/if}
+    <div part="slot" class="slot" anchor="fill" layout="overlay">
+      {#if icon}<img part="art" class="art" anchor="fill" src={icon} alt="">{:else}<div class="blank" anchor="fill" layout="center">{#if glyph}<og-icon class="glyph" icon={glyph}></og-icon>{/if}</div>{/if}
+      {#if cooldown > 0}<div part="cooldown" class="cooldown" anchor="fill" style:--left={cooldown >= 1 ? 1 : cooldown}></div><div part="edge" class="edge" anchor="fill" style:--left={cooldown >= 1 ? 1 : cooldown}></div>{/if}
+      {#if unaffordable}<div class="veil" anchor="fill"></div>{/if}
+      {#if cooldown > 0 && time}<span layout="center" part="time" class="time" anchor="fill">{time}</span>{/if}
+      {#if unaffordable && reason && cooldown <= 0}<span layout="center" part="reason" class="reason" anchor="fill">{reason}</span>{/if}
+      {#if kind == 'ultimate' && charge < 1}<span layout="center" part="time" class="time" anchor="fill">{formatPercent(charge <= 0 ? 0 : charge)}</span>{/if}
     </div>
-    {#if count > 0}<span part="HudSlot.count" class="count" data-anchor="top-end">{t("hud.slot.count", { count: formatNumber(count) })}</span>{/if}
+    {#if count > 0}<span part="count" class="count" anchor="top-end">{t("hud.slot.count", { count: formatNumber(count) })}</span>{/if}
   </div>
-  {#if key}<span part="HudSlot.key" class="key">{key}</span>{/if}
+  {#if key}<span part="key" class="key">{key}</span>{/if}
 </div>
 
 <style>
 /* The slot is art: it keeps its size at any text scale, and its figures
    and key cap follow the text. */
-:host { inline-size: fit-content; max-inline-size: 100%; align-items: center; row-gap: calc(5 * var(--font-step-px)); color: var(--hud-ink); filter: var(--hud-lift); --side: var(--hud-slot-size); }
+#HudSlot { inline-size: fit-content; max-inline-size: 100%; align-items: center; row-gap: calc(5 * var(--font-step-px)); color: var(--hud-ink); filter: var(--hud-lift); --side: var(--hud-slot-size); }
 .holder { inline-size: var(--side); block-size: var(--side); --layout-anchor-inset: 0; }
 /* The slot: an octagon whose fill is its lit edge, the art inset inside. */
 .slot { container-type: size; inline-size: var(--side); block-size: var(--side); clip-path: var(--hud-octagon); background: var(--hud-edge); --layout-anchor-inset: calc(2 * var(--font-step-px)); }
-[data-kind=ultimate] .slot { inline-size: calc(var(--side) * 0.79); block-size: calc(var(--side) * 0.79); clip-path: var(--hud-hexagon); }
-[data-ready=true] .slot { background: var(--hud-ready-edge); }
-[data-ready=true] .holder { filter: var(--hud-ready-glow); }
-[data-kind=ultimate][data-ready=true] .holder { filter: var(--hud-gold-glow); }
+.ultimate .slot { inline-size: calc(var(--side) * 0.79); block-size: calc(var(--side) * 0.79); clip-path: var(--hud-hexagon); }
+.ready .slot { background: var(--hud-ready-edge); }
+.ready .holder { filter: var(--hud-ready-glow); }
+.ultimate.ready .holder { filter: var(--hud-gold-glow); }
 .art, .blank, .cooldown, .edge, .veil { clip-path: var(--hud-octagon); }
-[data-kind=ultimate] .art, [data-kind=ultimate] .blank, [data-kind=ultimate] .cooldown, [data-kind=ultimate] .edge, [data-kind=ultimate] .veil { clip-path: var(--hud-hexagon); }
+.ultimate .art, .ultimate .blank, .ultimate .cooldown, .ultimate .edge, .ultimate .veil { clip-path: var(--hud-hexagon); }
 .art { object-fit: cover; }
 .blank { background: var(--hud-plate-fill); }
 .glyph { inline-size: 50%; block-size: 50%; color: var(--hud-ink); }
-[data-unaffordable=true] .art, [data-unaffordable=true] .glyph { filter: var(--hud-unready); }
+.unaffordable .art, .unaffordable .glyph { filter: var(--hud-unready); }
 /* While a figure or a reason stands on the slot, the art dims under it so it reads. */
-:is([data-cooling=true], [data-unaffordable=true]) :is(.art, .glyph) { opacity: var(--opacity-dim); }
+.cooling .art, .cooling .glyph, .unaffordable .art, .unaffordable .glyph { opacity: var(--opacity-dim); }
 .veil { background: var(--hud-veil); }
 /* The cooldown still to run is dark; it turns clockwise from the top, its
    leading edge lit. */
 .cooldown { background: var(--hud-sweep); mask-image: conic-gradient(transparent calc((1 - var(--left)) * 360deg), #000 0); }
 .edge { background: var(--hud-sweep-edge); mask-image: conic-gradient(transparent calc((1 - var(--left)) * 360deg - 4deg), #000 calc((1 - var(--left)) * 360deg - 4deg) calc((1 - var(--left)) * 360deg), transparent calc((1 - var(--left)) * 360deg)); }
 .time { font-size: var(--hud-size-md); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
-[data-kind=ultimate] .time { font-size: var(--hud-size-sm); }
+.ultimate .time { font-size: var(--hud-size-sm); }
 /* The reason stands on the slot in short capitals; a word per line when
    the slot is narrower than the phrase (No / mana). */
 .reason { max-inline-size: 100%; max-block-size: 84%; font-size: var(--hud-size-reason); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: normal; text-transform: var(--hud-label-transform); text-align: center; color: var(--hud-mana-ink); overflow: hidden; text-shadow: var(--hud-shadow); }
@@ -91,13 +90,13 @@
 .pip { inline-size: calc(var(--on) * 100%); block-size: 100%; background: var(--hud-pip-on); box-shadow: var(--hud-pip-glow); }
 .count { max-inline-size: calc(var(--side) * 1.2); margin-block-start: calc(-6 * var(--font-step-px)); margin-inline-end: calc(-4 * var(--font-step-px)); padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .key { min-inline-size: calc(24 * var(--font-step-px)); max-inline-size: calc(var(--side) * 1.3); padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-[data-kind=ultimate] .key { max-inline-size: calc(var(--side) * 0.8); background: var(--hud-key-gold-fill); }
+.ultimate .key { max-inline-size: calc(var(--side) * 0.8); background: var(--hud-key-gold-fill); }
 /* Under a touch screen the slots are the controls: no key caps. */
 @media (pointer: coarse) { .key { display: none; } }
 /* On a phone its figures and pips are smaller. */
 @media (width < 600px) {
   .time { font-size: var(--hud-size-sm); }
-  [data-kind=ultimate] .time { font-size: var(--hud-size-xs); }
+  .ultimate .time { font-size: var(--hud-size-xs); }
   .charges { --pip: calc(9 * var(--font-step-px)); block-size: calc(3 * var(--font-step-px)); }
 }
 </style>

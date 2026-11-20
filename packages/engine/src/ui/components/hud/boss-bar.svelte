@@ -1,6 +1,5 @@
 <meta name="component" content="BossBar">
 <meta name="strings" content="./boss-bar.en.ogt">
-<meta name="parts" content="BossBar.frame BossBar.kind BossBar.boss BossBar.epithet BossBar.health BossBar.ghost BossBar.threshold BossBar.stagger BossBar.weakness BossBar.share BossBar.state">
 <meta name="prop:name" content="string" data-default="" data-doc="The boss name; empty uses Boss.">
 <meta name="prop:epithet" content="string" data-default="" data-doc="The boss's title as the game words it (Warden of the Ninefold Gate), beside the name; empty hides it.">
 <meta name="prop:value" content="number" data-default="0" data-doc="Health, clamped to the supplied range for display; its share of max stands in figures at the bar's end.">
@@ -28,45 +27,45 @@
   cells, the elements the boss is weak to and its health's share. The game
   owns every value; read only.
 -->
-<section id="BossBar" part="BossBar.frame" class="hud bare" data-layout="stack" data-gap="none" aria-label={name || t("hud.boss-bar.name")} aria-busy={loading} class:invulnerable={invulnerable && !defeated} class:defeated={defeated} class:critical={!loading && !defeated && max > 0 && value / max <= 0.25}>
-  <div id="Heading" data-layout="row" data-gap="tight">
-    <div part="BossBar.kind" class="kind" data-layout="row" data-gap="tight"><div class="gem"></div><span>{t("hud.boss-bar.tag")}</span></div>
-    <span part="BossBar.boss" class="boss">{name || t("hud.boss-bar.name")}</span>
-    {#if epithet != ''}<span part="BossBar.epithet" class="epithet">{epithet}</span>{/if}
+<section id="BossBar" part="frame" variant="hud" layout="stack" gap="none" aria-label={name || t("hud.boss-bar.name")} aria-busy={loading} class:invulnerable={invulnerable && !defeated} class:defeated={defeated} class:critical={!loading && !defeated && max > 0 && value / max <= 0.25}>
+  <div id="Heading" layout="row" gap="tight">
+    <div part="kind" class="kind" layout="row" gap="tight"><div class="gem"></div><span>{t("hud.boss-bar.tag")}</span></div>
+    <span part="boss" class="boss">{name || t("hud.boss-bar.name")}</span>
+    {#if epithet != ''}<span part="epithet" class="epithet">{epithet}</span>{/if}
   </div>
-  {#if loading}<div class="wait" data-layout="row" data-gap="tight"><Spinner size={18} name={t("hud.boss-bar.loading")} /><span part="BossBar.state" class="state" role="status">{t("hud.boss-bar.loading")}</span></div>
+  {#if loading}<div class="wait" layout="row" gap="tight"><Spinner size={18} name={t("hud.boss-bar.loading")} /><span part="state" class="state" role="status">{t("hud.boss-bar.loading")}</span></div>
   {:else}
-    <div id="Track" data-layout="overlay">
-      <div id="Health" part="BossBar.health" data-anchor="fill" data-layout="overlay" role="meter" aria-label={t("hud.boss-bar.health")} aria-valuemin="0" aria-valuemax={max > 0 ? max : 1} aria-valuenow={max <= 0 || value < 0 ? 0 : value > max ? max : value} aria-valuetext={t("hud.boss-bar.value", { value: max <= 0 || value < 0 ? 0 : value > max ? max : value, max: max > 0 ? max : 0 })} style:--value={max <= 0 || value <= 0 ? 0 : value >= max ? 1 : value / max} style:--ghost={max <= 0 || ghost <= value ? 0 : ghost >= max ? 1 : ghost / max}>
-        <div id="Ghost" part="BossBar.ghost" data-anchor="top-start"></div>
-        <div id="Fill" data-anchor="top-start"></div>
+    <div id="Track" layout="overlay">
+      <div id="Health" part="health" anchor="fill" layout="overlay" role="meter" aria-label={t("hud.boss-bar.health")} aria-valuemin="0" aria-valuemax={max > 0 ? max : 1} aria-valuenow={max <= 0 || value < 0 ? 0 : value > max ? max : value} aria-valuetext={t("hud.boss-bar.value", { value: max <= 0 || value < 0 ? 0 : value > max ? max : value, max: max > 0 ? max : 0 })} style:--value={max <= 0 || value <= 0 ? 0 : value >= max ? 1 : value / max} style:--ghost={max <= 0 || ghost <= value ? 0 : ghost >= max ? 1 : ghost / max}>
+        <div id="Ghost" part="ghost" anchor="top-start"></div>
+        <div id="Fill" anchor="top-start"></div>
       </div>
-      {#each phases as p, i (p.id)}{#if i > 0}<div part="BossBar.threshold" class="threshold" data-passed={max > 0 && value / max <= (phases.length - i) / phases.length} style:--at={(phases.length - i) / phases.length}></div>{/if}{/each}
+      {#each phases as p, i (p.id)}{#if i > 0}<div part="threshold" class="threshold" class:passed={max > 0 && value / max <= (phases.length - i) / phases.length} style:--at={(phases.length - i) / phases.length}></div>{/if}{/each}
     </div>
-    <div id="Foot" data-layout="row">
-      {#if stagger >= 0}<div id="Stagger" data-layout="row" data-gap="tight">
+    <div id="Foot" layout="row">
+      {#if stagger >= 0}<div id="Stagger" layout="row" gap="tight">
         <span class="label">{t("hud.boss-bar.stagger")}</span>
-        <div part="BossBar.stagger" class="gauge" data-layout="overlay" role="meter" aria-label={t("hud.boss-bar.stagger")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={stagger >= 1 ? 100 : stagger * 100} style:--value={stagger >= 1 ? 1 : stagger} style:--cells={staggerCells > 0 ? staggerCells : 1}>
-          <div class="lit" data-anchor="top-start"></div>
-          <div class="cuts" data-anchor="fill"></div>
+        <div part="stagger" class="gauge" layout="overlay" role="meter" aria-label={t("hud.boss-bar.stagger")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={stagger >= 1 ? 100 : stagger * 100} style:--value={stagger >= 1 ? 1 : stagger} style:--cells={staggerCells > 0 ? staggerCells : 1}>
+          <div class="lit" anchor="top-start"></div>
+          <div class="cuts" anchor="fill"></div>
         </div>
       </div>{/if}
-      <div id="End" data-layout="row" data-gap="tight">
-        {#if defeated || invulnerable}<span part="BossBar.state" class="state" role="status">{defeated ? t("hud.boss-bar.defeated") : t("hud.boss-bar.invulnerable")}</span>{/if}
-        {#each weaknesses as w (w.id)}<div part="BossBar.weakness" class="weakness" data-layout="overlay" role="image" aria-label={t("hud.boss-bar.weak", { name: w.name })}>{#if w.icon}<img class="art" data-anchor="fill" src={w.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if w.glyph}<og-icon class="glyph" icon={w.glyph}></og-icon>{/if}</div>{/if}</div>{/each}
-        <span part="BossBar.share" class="share">{formatPercent(max <= 0 || value <= 0 ? 0 : value >= max ? 1 : value / max)}</span>
+      <div id="End" layout="row" gap="tight">
+        {#if defeated || invulnerable}<span part="state" class="state" role="status">{defeated ? t("hud.boss-bar.defeated") : t("hud.boss-bar.invulnerable")}</span>{/if}
+        {#each weaknesses as w (w.id)}<div part="weakness" class="weakness" layout="overlay" role="image" aria-label={t("hud.boss-bar.weak", { name: w.name })}>{#if w.icon}<img class="art" anchor="fill" src={w.icon} alt="">{:else}<div class="blank" anchor="fill" layout="center">{#if w.glyph}<og-icon class="glyph" icon={w.glyph}></og-icon>{/if}</div>{/if}</div>{/each}
+        <span part="share" class="share">{formatPercent(max <= 0 || value <= 0 ? 0 : value >= max ? 1 : value / max)}</span>
       </div>
     </div>
   {/if}
 </section>
 
 <style>
-:host { inline-size: min(100%, calc(600 * var(--font-step-px))); align-items: center; row-gap: calc(6 * var(--font-step-px)); color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --layout-anchor-inset: 0; }
+#BossBar { inline-size: min(100%, calc(600 * var(--font-step-px))); align-items: center; row-gap: calc(6 * var(--font-step-px)); color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --layout-anchor-inset: 0; }
 /* The heading: the tag, the name and the epithet on one line; the name
    takes the room first, the epithet scrolls. */
 #Heading { align-items: baseline; justify-content: center; max-inline-size: 100%; min-inline-size: 0; column-gap: calc(10 * var(--font-step-px)); }
 .kind { flex: none; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-harm); white-space: nowrap; }
-.kind > .gem { flex: none; inline-size: calc(6 * var(--font-step-px)); block-size: calc(6 * var(--font-step-px)); transform: rotate(45deg); background: var(--hud-harm); }
+.gem { flex: none; inline-size: calc(6 * var(--font-step-px)); block-size: calc(6 * var(--font-step-px)); transform: rotate(45deg); background: var(--hud-harm); }
 .kind { align-items: center; column-gap: calc(5 * var(--font-step-px)); }
 .boss { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-size-boss); line-height: 1.1; font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .epithet { flex: 0 100 auto; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
@@ -76,7 +75,7 @@
 #Ghost { inline-size: calc(var(--ghost) * 100%); block-size: 100%; background: var(--bar-ghost); transition: var(--bar-ghost-motion); }
 #Fill { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--hud-boss-fill); box-shadow: var(--hud-boss-glow); }
 .threshold { position: absolute; --d: calc(9 * var(--font-step-px)); inline-size: var(--d); block-size: var(--d); left: calc(var(--at) * 100% - var(--d) / 2); top: calc(50% - var(--d) / 2); transform: rotate(45deg); background: var(--hud-tick); box-shadow: var(--hud-marker-rim); }
-.threshold[data-passed=true] { opacity: 0.5; }
+.threshold.passed { opacity: 0.5; }
 #Foot { align-items: center; justify-content: space-between; inline-size: 100%; min-inline-size: 0; column-gap: var(--space-md); }
 #Stagger { flex: 0 1 auto; align-items: center; min-inline-size: 0; }
 .label { flex: none; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; }
@@ -97,7 +96,7 @@
 .invulnerable #Fill { filter: var(--hud-unready); }
 .critical #Health { box-shadow: var(--bar-critical-rim); animation: var(--pulse-motion); }
 @media (width < 600px) {
-  :host { row-gap: calc(4 * var(--font-step-px)); }
+  #BossBar { row-gap: calc(4 * var(--font-step-px)); }
   .boss { font-size: var(--hud-size-boss-compact); }
   .epithet { display: none; }
   #Track { block-size: calc(9 * var(--font-step-px)); }

@@ -1,6 +1,5 @@
 <meta name="component" content="HudLootEntry">
 <meta name="strings" content="./loot-entry.en.ogt">
-<meta name="parts" content="HudLootEntry.entry HudLootEntry.edge HudLootEntry.art HudLootEntry.item HudLootEntry.rarity HudLootEntry.count">
 <meta name="prop:name" content="string" data-doc="The item's name (Ember Blade).">
 <meta name="prop:icon" content="number" data-doc="Its art, a texture (og.load.texture); 0 draws the glyph in its place.">
 <meta name="prop:glyph" content="string" data-doc="An icon of the atlas, drawn when there is no art; empty is none.">
@@ -21,35 +20,34 @@
   dark glass that fades toward the middle with its edge at the screen's
   side tinted by rarity; a fading row dims. Read only.
 -->
-<div id="HudLootEntry" part="HudLootEntry.entry" data-layout="row" data-gap="tight" role="group" data-rarity={rarity} data-fading={fading} aria-label={quantity > 0 ? t("hud.loot-entry.row", { name: name, quantity: currency ? t("hud.loot-entry.gain", { quantity: formatNumber(quantity) }) : t("hud.loot-entry.count", { quantity: formatNumber(quantity) }) }) : name}>
-  <div part="HudLootEntry.edge" class="edge"></div>
-  <div part="HudLootEntry.art" class="art" data-layout="overlay">
-    {#if icon}<img class="picture" data-anchor="fill" src={icon} alt="">{:else}{#if glyph}<og-icon class="glyph" data-anchor="fill" icon={glyph}></og-icon>{/if}{/if}
+<div id="HudLootEntry" part="entry" layout="row" gap="tight" role="group" tier={rarity} class:fading={fading} class:uncommon={rarity == 'uncommon'} class:rare={rarity == 'rare'} class:epic={rarity == 'epic'} class:legendary={rarity == 'legendary'} aria-label={quantity > 0 ? t("hud.loot-entry.row", { name: name, quantity: currency ? t("hud.loot-entry.gain", { quantity: formatNumber(quantity) }) : t("hud.loot-entry.count", { quantity: formatNumber(quantity) }) }) : name}>
+  <div part="edge" class="edge"></div>
+  <div part="art" class="art" layout="overlay">
+    {#if icon}<img class="picture" anchor="fill" src={icon} alt="">{:else}{#if glyph}<og-icon class="glyph" anchor="fill" icon={glyph}></og-icon>{/if}{/if}
   </div>
-  <span part="HudLootEntry.item" class="item">{name}</span>
-  {#if label}<span part="HudLootEntry.rarity" class="tag">{label}</span>{/if}
-  {#if quantity > 0}<span part="HudLootEntry.count" class="count">{currency ? t("hud.loot-entry.gain", { quantity: formatNumber(quantity) }) : t("hud.loot-entry.count", { quantity: formatNumber(quantity) })}</span>{/if}
+  <span part="item" class="item">{name}</span>
+  {#if label}<span part="rarity" class="tag">{label}</span>{/if}
+  {#if quantity > 0}<span part="count" class="count">{currency ? t("hud.loot-entry.gain", { quantity: formatNumber(quantity) }) : t("hud.loot-entry.count", { quantity: formatNumber(quantity) })}</span>{/if}
 </div>
 
 <style>
-:host { inline-size: fit-content; align-items: center; max-inline-size: 100%; min-inline-size: 0; padding-inline-end: var(--space-md); color: var(--hud-ink); background: var(--hud-feed-fill-start); --layout-anchor-inset: 0; }
-:host(:dir(rtl)) { background: var(--hud-feed-fill); }
-[data-fading=true] { opacity: 0.55; }
+#HudLootEntry { inline-size: fit-content; align-items: center; max-inline-size: 100%; min-inline-size: 0; padding-inline-end: var(--space-md); color: var(--hud-ink); background: var(--hud-feed-fill-start); --layout-anchor-inset: 0; }
+#HudLootEntry.fading { opacity: 0.55; }
 /* The edge at the screen's side, tinted by rarity. */
 .edge { flex: none; align-self: stretch; inline-size: var(--hud-feed-edge-width); margin-inline-end: var(--space-xs); background: var(--hud-feed-edge); }
-[data-rarity=uncommon] .edge { background: var(--hud-boon); }
-[data-rarity=rare] .edge { background: var(--hud-rare); }
-[data-rarity=epic] .edge { background: var(--hud-epic); }
-[data-rarity=legendary] .edge { background: var(--hud-legendary); }
+.uncommon .edge { background: var(--hud-boon); }
+.rare .edge { background: var(--hud-rare); }
+.epic .edge { background: var(--hud-epic); }
+.legendary .edge { background: var(--hud-legendary); }
 .art { flex: none; margin-block: calc(3 * var(--font-step-px)); inline-size: calc(20 * var(--font-step-px)); block-size: calc(20 * var(--font-step-px)); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .picture { object-fit: cover; }
 .glyph { color: var(--hud-ink); }
 .item { min-inline-size: 0; font-size: var(--hud-size-feed); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); }
-[data-rarity=epic] .item { color: var(--hud-epic-ink); }
-[data-rarity=legendary] .item { color: var(--hud-legendary); }
+.epic .item { color: var(--hud-epic-ink); }
+.legendary .item { color: var(--hud-legendary); }
 .tag { flex: 0 1 auto; min-inline-size: 0; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .count { flex: none; font-size: var(--hud-size-feed); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; color: var(--hud-ink-dim); text-shadow: var(--hud-shadow); }
-[data-rarity=legendary] .count { color: var(--hud-legendary); }
+.legendary .count { color: var(--hud-legendary); }
 @media (width < 600px) {
   .art { inline-size: calc(18 * var(--font-step-px)); block-size: calc(18 * var(--font-step-px)); }
   .item, .count { font-size: var(--hud-size-xs); }

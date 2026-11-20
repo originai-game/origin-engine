@@ -1,6 +1,5 @@
 <meta name="component" content="RadialMeter">
 <meta name="strings" content="./radial-meter.en.ogt">
-<meta name="parts" content="RadialMeter.wheels RadialMeter.track RadialMeter.fill">
 <meta name="prop:value" content="number" data-doc="The value in wheels: 1 is one full wheel, up to 3.">
 <meta name="prop:wheels" content="number" data-default="1" data-doc="Wheels (an extended stamina's second and third ring), 1 to 3.">
 <meta name="prop:exhausted" content="bool" data-doc="Ran out: red until full again.">
@@ -9,18 +8,18 @@
 <meta name="fixture:default" content='{"value":1.4,"wheels":2,"exhausted":false,"hidden":false,"name":""}'>
 
 <div id="RadialMeter" data-motion="change" role="meter" aria-label={name || t("component.radial-meter.stamina")} aria-valuemin="0" aria-valuemax={wheels} aria-valuenow={value} class:exhausted={exhausted} class:gone={hidden}>
-  <svg id="Wheels" part="RadialMeter.wheels" viewBox="0 0 56 56">
-    <circle class="track" part="RadialMeter.track" cx="28" cy="28" r="17" fill="none" stroke-width="7"></circle>
-    <circle class="fill" part="RadialMeter.fill" data-tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="17" fill="none" stroke-width="7" pathLength="1" stroke-dasharray={(value >= 1 ? 1 : value) + " 1"} transform="rotate(-90 28 28)"></circle>
-    <circle class="track outer" part="RadialMeter.track" cx="28" cy="28" r="23" fill="none" stroke-width="3" opacity={wheels >= 2 ? 1 : 0}></circle>
-    <circle class="fill" part="RadialMeter.fill" data-tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="23" fill="none" stroke-width="3" pathLength="1" stroke-dasharray={(value - 1 >= 1 ? 1 : (value - 1 <= 0 ? 0 : value - 1)) + " 1"} transform="rotate(-90 28 28)"></circle>
-    <circle class="track outer" part="RadialMeter.track" cx="28" cy="28" r="27" fill="none" stroke-width="2" opacity={wheels >= 3 ? 1 : 0}></circle>
-    <circle class="fill" part="RadialMeter.fill" data-tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="27" fill="none" stroke-width="2" pathLength="1" stroke-dasharray={(value - 2 >= 1 ? 1 : (value - 2 <= 0 ? 0 : value - 2)) + " 1"} transform="rotate(-90 28 28)"></circle>
+  <svg class="wheels" id="Wheels" part="wheels" viewBox="0 0 56 56">
+    <circle class="track" part="track" cx="28" cy="28" r="17" fill="none" stroke-width="7"></circle>
+    <circle class="fill" part="fill" data-tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="17" fill="none" stroke-width="7" pathLength="1" stroke-dasharray={(value >= 1 ? 1 : value) + " 1"} transform="rotate(-90 28 28)"></circle>
+    <circle class="track outer" part="track" cx="28" cy="28" r="23" fill="none" stroke-width="3" opacity={wheels >= 2 ? 1 : 0}></circle>
+    <circle class="fill" part="fill" data-tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="23" fill="none" stroke-width="3" pathLength="1" stroke-dasharray={(value - 1 >= 1 ? 1 : (value - 1 <= 0 ? 0 : value - 1)) + " 1"} transform="rotate(-90 28 28)"></circle>
+    <circle class="track outer" part="track" cx="28" cy="28" r="27" fill="none" stroke-width="2" opacity={wheels >= 3 ? 1 : 0}></circle>
+    <circle class="fill" part="fill" data-tone={exhausted ? 'danger' : 'success'} cx="28" cy="28" r="27" fill="none" stroke-width="2" pathLength="1" stroke-dasharray={(value - 2 >= 1 ? 1 : (value - 2 <= 0 ? 0 : value - 2)) + " 1"} transform="rotate(-90 28 28)"></circle>
   </svg>
 </div>
 
 <style>
-:host { width: var(--size-lg); height: var(--size-lg); }
+#RadialMeter { width: var(--size-lg); height: var(--size-lg); }
 .gone { opacity: 0; }
-[part="RadialMeter.wheels"] { width: var(--size-lg); height: var(--size-lg); }
+.wheels { width: var(--size-lg); height: var(--size-lg); }
 </style>

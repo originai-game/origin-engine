@@ -1,6 +1,5 @@
 <meta name="component" content="QtePrompt">
 <meta name="strings" content="./qte-prompt.en.ogt">
-<meta name="parts" content="QtePrompt.frame QtePrompt.label QtePrompt.trigger QtePrompt.key QtePrompt.instruction QtePrompt.timer QtePrompt.progress QtePrompt.state QtePrompt.timeLabel QtePrompt.progressLabel QtePrompt.headline QtePrompt.figure QtePrompt.caption">
 <meta name="prop:label" content="string" data-default="" data-doc="The action to attempt; empty uses Respond.">
 <meta name="prop:keyLabel" content="string" data-default="" data-doc="The displayed input hint, not an input binding; empty hides it.">
 <meta name="prop:action" content="string" data-default="" data-doc="An og-input action bound by the game. Pointer, focused keyboard/pad and this action activate the same control.">
@@ -23,32 +22,32 @@
 
 <!-- respond carries the enclosing keyed prompt's id, or the stable mount
      instance for a single prompt. Game logic decides success and expiry. -->
-<section id="QtePrompt" part="QtePrompt.frame" class="hud" data-layout="stack" data-state={state} aria-label={label || t("hud.qte-prompt.respond")} aria-busy={state == 'waiting'}>
-  <div part="QtePrompt.label QtePrompt.headline">{label || t("hud.qte-prompt.respond")}</div>
+<section id="QtePrompt" part="frame" variant="hud" layout="stack" data-state={state} aria-label={label || t("hud.qte-prompt.respond")} aria-busy={state == 'waiting'}>
+  <div class="label" part="headline">{label || t("hud.qte-prompt.respond")}</div>
   {#if mode == 'hold'}
-    <button id="Hold" part="QtePrompt.trigger" data-hold={holdMs > 0 ? holdMs : 1} data-action={action} disabled={disabled || state != 'active'} onhold={respond} aria-label={label || t("hud.qte-prompt.respond")}>
-      <div class="trigger-face" data-layout="cluster">
-      {#if keyLabel}<div part="QtePrompt.key QtePrompt.figure">{keyLabel}</div>{/if}<div part="QtePrompt.instruction">{t("hud.qte-prompt.hold")}</div>
+    <button class="trigger" id="Hold" part="trigger" data-hold={holdMs > 0 ? holdMs : 1} data-action={action} disabled={disabled || state != 'active'} onhold={respond} aria-label={label || t("hud.qte-prompt.respond")}>
+      <div class="trigger-face" layout="wrap">
+      {#if keyLabel}<div class="key" part="figure">{keyLabel}</div>{/if}<div class="instruction" part="instruction">{t("hud.qte-prompt.hold")}</div>
       </div>
     </button>
   {:else}
-    <button id="Press" part="QtePrompt.trigger" data-action={action} disabled={disabled || state != 'active'} onclick={respond} aria-label={label || t("hud.qte-prompt.respond")}>
-      <div class="trigger-face" data-layout="cluster">
-      {#if keyLabel}<div part="QtePrompt.key QtePrompt.figure">{keyLabel}</div>{/if}<div part="QtePrompt.instruction">{mode == 'mash' ? t("hud.qte-prompt.mash") : t("hud.qte-prompt.press")}</div>
+    <button class="trigger" id="Press" part="trigger" data-action={action} disabled={disabled || state != 'active'} onclick={respond} aria-label={label || t("hud.qte-prompt.respond")}>
+      <div class="trigger-face" layout="wrap">
+      {#if keyLabel}<div class="key" part="figure">{keyLabel}</div>{/if}<div class="instruction" part="instruction">{mode == 'mash' ? t("hud.qte-prompt.mash") : t("hud.qte-prompt.press")}</div>
       </div>
     </button>
   {/if}
-  <div part="QtePrompt.state QtePrompt.caption" data-tone={state == 'success' ? 'success' : state == 'failure' || state == 'expired' ? 'danger' : null} role="status">{state == 'success' ? t("hud.qte-prompt.success") : state == 'failure' ? t("hud.qte-prompt.failure") : state == 'expired' ? t("hud.qte-prompt.expired") : state == 'waiting' ? t("hud.qte-prompt.waiting") : disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}</div>
-  <div part="QtePrompt.timeLabel QtePrompt.caption">{t("hud.qte-prompt.time")}</div>
-  <progress id="Timer" part="QtePrompt.timer" value={remaining < 0 ? 0 : remaining > 1 ? 1 : remaining} aria-label={t("hud.qte-prompt.time")}></progress>
-  {#if mode == 'mash'}<div part="QtePrompt.progressLabel QtePrompt.caption">{t("hud.qte-prompt.progress")}</div><progress id="Progress" part="QtePrompt.progress" value={progress < 0 ? 0 : progress > 1 ? 1 : progress} aria-label={t("hud.qte-prompt.progress")}></progress>{/if}
+  <div class="state" part="caption" data-tone={state == 'success' ? 'success' : state == 'failure' || state == 'expired' ? 'danger' : null} role="status">{state == 'success' ? t("hud.qte-prompt.success") : state == 'failure' ? t("hud.qte-prompt.failure") : state == 'expired' ? t("hud.qte-prompt.expired") : state == 'waiting' ? t("hud.qte-prompt.waiting") : disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}</div>
+  <div class="timeLabel" part="caption">{t("hud.qte-prompt.time")}</div>
+  <progress class="timer" id="Timer" part="timer" value={remaining < 0 ? 0 : remaining > 1 ? 1 : remaining} aria-label={t("hud.qte-prompt.time")}></progress>
+  {#if mode == 'mash'}<div class="progressLabel" part="caption">{t("hud.qte-prompt.progress")}</div><progress class="progress" id="Progress" part="progress" value={progress < 0 ? 0 : progress > 1 ? 1 : progress} aria-label={t("hud.qte-prompt.progress")}></progress>{/if}
 </section>
 
 <style>
-:host { max-inline-size: 100%; }
-[part~="QtePrompt.label"] { overflow-wrap: anywhere; }
-[part="QtePrompt.trigger"] { justify-content: center; min-block-size: var(--touch-target); padding: var(--space-sm) var(--space-md); }
+#QtePrompt { max-inline-size: 100%; }
+.label { overflow-wrap: anywhere; }
+.trigger { justify-content: center; min-block-size: var(--touch-target); padding: var(--space-sm) var(--space-md); }
 .trigger-face { justify-content: center; }
-[part="QtePrompt.instruction"] { overflow-wrap: anywhere; }
-[part="QtePrompt.timer"], [part="QtePrompt.progress"] { inline-size: 100%; }
+.instruction { overflow-wrap: anywhere; }
+.timer, .progress { inline-size: 100%; }
 </style>

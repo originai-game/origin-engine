@@ -23,17 +23,17 @@
 <meta name="fixture:default" content='{"icon":"fire","name":"Fireball","action":"","hotkey":"Q","cooldown":4.2,"cooldownMax":8,"charges":2,"maxCharges":3,"count":0,"cost":"40","unaffordable":false,"outOfRange":false,"active":false,"locked":false,"disabled":false,"ultimate":-1,"level":2,"maxLevel":3}'>
 
 <div id="AbilitySlot" part="frame" variant="bare" layout="stack" gap="hair" class:ultimate={ultimate >= 0} class:fit={fit}>
-  <button id="Slot" part="cell" variant="hud" data-shape={ultimate >= 0 ? 'round' : 'square'} data-active={active || ultimate >= 1} data-locked={locked} data-motion={active || ultimate >= 1 ? 'pulse' : null} onclick={use} aria-label={name} aria-valuetext={locked ? t("component.ability-slot.locked") : disabled ? t("component.ability-slot.unavailable") : cooldown > 0 ? formatNumber(cooldown) : t("component.ability-slot.ready")} disabled={locked || disabled} class:cooling={cooldown > 0} class:tinted={unaffordable || outOfRange} class:full={ultimate >= 1}>
+  <button id="Slot" part="cell" variant="hud" data-shape={ultimate >= 0 ? 'round' : 'square'} state:active={active || ultimate >= 1} state:locked={locked} data-motion={active || ultimate >= 1 ? 'pulse' : null} onclick={use} aria-label={name} aria-valuetext={locked ? t("component.ability-slot.locked") : disabled ? t("component.ability-slot.unavailable") : cooldown > 0 ? formatNumber(cooldown) : t("component.ability-slot.ready")} disabled={locked || disabled} class:cooling={cooldown > 0} class:tinted={unaffordable || outOfRange} class:full={ultimate >= 1}>
     <div id="Face" layout="overlay">
       <div id="Art" part="well" variant="hud" layout="stack" anchor="fill"><og-icon id="Icon" icon={icon}></og-icon></div>
       {#if ultimate >= 0}<svg id="Ultimate" anchor="fill" viewBox="0 0 64 64"><circle id="UltimateTrack" cx="32" cy="32" r="29" stroke-width="4"></circle><circle id="UltimateFill" cx="32" cy="32" r="29" stroke-width="4" pathLength="1" stroke-dasharray={ultimate + " 1"} transform="rotate(-90 32 32)"></circle></svg>{/if}
       {#if cooldown > 0}
         <svg id="Sweep" anchor="fill" viewBox="0 0 56 56"><circle id="SweepArc" cx="28" cy="28" r="20" stroke-width="40" pathLength="1" stroke-dasharray={(cooldown / cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
-        <div class="middle" anchor="fill"><span id="Time" part="figure" variant="hud">{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span></div>
+        <div class="middle" anchor="fill" layout="center"><span id="Time" part="figure" variant="hud">{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span></div>
       {/if}
       {#if ultimate >= 0 && ultimate < 1}<div id="Charge" layout="row" anchor="bottom-edge"><span id="Percent" part="badge">{formatPercent(ultimate)}</span></div>{/if}
       {#if disabled}<svg id="Slash" anchor="fill" viewBox="0 0 56 56"><path id="SlashLine" d="M8 48L48 8" stroke-width="5" stroke-linecap="round"></path></svg>{/if}
-      {#if locked}<div class="middle" anchor="fill"><og-icon id="Lock" icon="lock"></og-icon></div>{/if}
+      {#if locked}<div class="middle" anchor="fill" layout="center"><og-icon id="Lock" icon="lock"></og-icon></div>{/if}
       {#if cost && cooldown <= 0 && !locked}
         {#if ultimate >= 0}<div id="CostTop" layout="row" anchor="top-edge"><span class="cost" part="badge" variant="hud" class:short={unaffordable}>{cost}</span></div>
         {:else}<div layout="row" anchor="bottom-start"><span class="cost" part="badge" variant="hud" class:short={unaffordable}>{cost}</span></div>{/if}
@@ -73,7 +73,7 @@
 #UltimateFill { fill: none; stroke: var(--gold); }
 #SweepArc { fill: none; stroke: var(--sweep-ink); }
 #SlashLine { fill: none; stroke: var(--tone-danger); }
-.middle { display: flex; justify-content: center; align-items: center; --layout-anchor-inset: 0; }
+.middle { --layout-anchor-inset: 0; }
 #Time { font-size: var(--font-step-xl); }
 /* The percent sits on a small ground of its own, so the ring's arc never
    runs through its digits, whatever size and shape a pack gives the ring. */

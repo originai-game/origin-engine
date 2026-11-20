@@ -5,25 +5,24 @@
 <meta name="prop:hitAt" content="number" data-doc="The id of that hit (its tick): a new id plays the mark again.">
 <meta name="prop:aimed" content="bool" data-doc="The aim rests on an enemy: the reticle takes the target ink.">
 <meta name="prop:shape" content="string" data-default="cross" data-doc="cross (four arms and a dot), dot, or circle (a ring and a dot).">
-<meta name="parts" content="Crosshair.arm Crosshair.ring Crosshair.dot Crosshair.hit">
 <meta name="fixture:default" content='{"spread":0.2,"hit":"none","hitAt":0,"aimed":false,"shape":"cross"}'>
 <meta name="fixture:headshot" content='{"spread":0.45,"hit":"headshot","hitAt":12,"aimed":true,"shape":"cross"}'>
 <meta name="fixture:kill" content='{"spread":0,"hit":"kill","hitAt":30,"aimed":false,"shape":"dot"}'>
 <meta name="fixture:circle" content='{"spread":0.6,"hit":"shieldBreak","hitAt":4,"aimed":false,"shape":"circle"}'>
 
 <div id="Crosshair" role="image" aria-label={t("shooter.crosshair.name")} class:circle={shape == 'circle'} class:dotOnly={shape == 'dot'} style:--spread={spread}>
-  <div id="Up" class="arm vertical" part="Crosshair.arm" class:aimed={aimed}></div>
-  <div id="Down" class="arm vertical" part="Crosshair.arm" class:aimed={aimed}></div>
-  <div id="Left" class="arm horizontal" part="Crosshair.arm" class:aimed={aimed}></div>
-  <div id="Right" class="arm horizontal" part="Crosshair.arm" class:aimed={aimed}></div>
-  <div id="Ring" part="Crosshair.ring" class:aimed={aimed}></div>
-  <div id="Dot" part="Crosshair.dot" class:aimed={aimed}></div>
+  <div id="Up" class="arm vertical" part="arm" class:aimed={aimed}></div>
+  <div id="Down" class="arm vertical" part="arm" class:aimed={aimed}></div>
+  <div id="Left" class="arm horizontal" part="arm" class:aimed={aimed}></div>
+  <div id="Right" class="arm horizontal" part="arm" class:aimed={aimed}></div>
+  <div id="Ring" part="ring" class:aimed={aimed}></div>
+  <div id="Dot" part="dot" class:aimed={aimed}></div>
   {#key hitAt}
     <div id="Hit" class:shown={hit != 'none'}>
-      <div id="HitNE" class="tick" part="Crosshair.hit" class:headshot={hit == 'headshot'} class:kill={hit == 'kill'} class:shieldBreak={hit == 'shieldBreak'}></div>
-      <div id="HitSE" class="tick" part="Crosshair.hit" class:headshot={hit == 'headshot'} class:kill={hit == 'kill'} class:shieldBreak={hit == 'shieldBreak'}></div>
-      <div id="HitSW" class="tick" part="Crosshair.hit" class:headshot={hit == 'headshot'} class:kill={hit == 'kill'} class:shieldBreak={hit == 'shieldBreak'}></div>
-      <div id="HitNW" class="tick" part="Crosshair.hit" class:headshot={hit == 'headshot'} class:kill={hit == 'kill'} class:shieldBreak={hit == 'shieldBreak'}></div>
+      <div id="HitNE" class="tick" part="hit" class:headshot={hit == 'headshot'} class:kill={hit == 'kill'} class:shieldBreak={hit == 'shieldBreak'}></div>
+      <div id="HitSE" class="tick" part="hit" class:headshot={hit == 'headshot'} class:kill={hit == 'kill'} class:shieldBreak={hit == 'shieldBreak'}></div>
+      <div id="HitSW" class="tick" part="hit" class:headshot={hit == 'headshot'} class:kill={hit == 'kill'} class:shieldBreak={hit == 'shieldBreak'}></div>
+      <div id="HitNW" class="tick" part="hit" class:headshot={hit == 'headshot'} class:kill={hit == 'kill'} class:shieldBreak={hit == 'shieldBreak'}></div>
     </div>
   {/key}
 </div>
@@ -32,7 +31,7 @@
 /* Geometry is the reticle's structure: arms of --arm length, --gap from the
    centre plus the spread's travel, --weight thick; the roles give the ink
    and the dark keyline that holds it over sky and snow alike. */
-:host {
+#Crosshair {
   position: relative;
   --arm: calc(10 * var(--font-step-px));
   --weight: calc(2 * var(--font-step-px));

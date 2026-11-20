@@ -1,6 +1,5 @@
 <meta name="component" content="TouchControls">
 <meta name="strings" content="./touch-controls.en.ogt">
-<meta name="parts" content="TouchControls.frame TouchControls.stick TouchControls.actions TouchControls.look">
 <meta name="prop:move" content="string" data-doc="The two-axis og-input action the stick at the start side feeds (move); empty leaves the stick out.">
 <meta name="prop:pad" content="bool" data-doc="A d-pad in the stick's place: eight ways, each axis -1, 0 or 1.">
 <meta name="prop:look" content="string" data-doc="A second stick at the end side and the two-axis action it feeds (look); empty leaves it out.">
@@ -26,38 +25,39 @@
   is set, and a control that is not shown or is disabled feeds nothing. The
   page places it: it is as wide as its box and stands on its bottom edge.
 -->
-<div id="TouchControls" part="TouchControls.frame" data-layout="row" data-gap="wide" class="bare" class:always={always} role="group" aria-label={t("component.touch-controls.name")}>
-  <div id="Start" data-layout="row">
+<div id="TouchControls" part="frame" layout="row" gap="wide" variant="bare" class:always={always} role="group" aria-label={t("component.touch-controls.name")}>
+  <div id="Start" layout="row">
     {#if move}
       {#if pad}
-        <dpad id="Pad" part="TouchControls.stick" action={move} disabled={disabled} aria-label={t("component.touch-controls.move")}></dpad>
+        <dpad id="Pad" part="stick" action={move} disabled={disabled} aria-label={t("component.touch-controls.move")}></dpad>
       {:else}
-        <joystick id="Stick" part="TouchControls.stick" action={move} data-dead-zone={deadZone} disabled={disabled} aria-label={t("component.touch-controls.move")}></joystick>
+        <joystick id="Stick" part="stick" action={move} data-dead-zone={deadZone} disabled={disabled} aria-label={t("component.touch-controls.move")}></joystick>
       {/if}
     {/if}
   </div>
-  <div id="End" data-layout="cluster" data-gap="loose" data-fill="true">
-    <div id="Actions" part="TouchControls.actions" data-layout="cluster" data-gap="loose" data-from="end">
+  <div id="End" layout="wrap" gap="loose" fill>
+    <div id="Actions" part="actions" layout="wrap" gap="loose" reverse>
       {#each actions as a (a.id)}
         <ActionButton action={a.action} label={a.label} icon={a.icon} primary={a.primary} charge={a.charge} disabled={disabled || a.disabled} />
       {/each}
     </div>
     {#if look}
-      <joystick id="Look" part="TouchControls.look" action={look} data-dead-zone={deadZone} disabled={disabled} aria-label={t("component.touch-controls.look")}></joystick>
+      <joystick id="Look" part="look" action={look} data-dead-zone={deadZone} disabled={disabled} aria-label={t("component.touch-controls.look")}></joystick>
     {/if}
   </div>
 </div>
 
 <style>
-:host { inline-size: stretch; justify-content: space-between; align-items: end; padding: var(--space-lg); }
+#TouchControls { inline-size: stretch; justify-content: space-between; align-items: end; padding: var(--space-lg); }
 @media (pointer: fine) {
-  #TouchControls:not(.always) { display: none; }
+  #TouchControls { display: none; }
+  #TouchControls.always { display: flex; }
 }
 #Start { align-items: end; flex: none; }
 #End { min-inline-size: 0; align-items: end; justify-content: flex-end; }
 #Actions { min-inline-size: 0; align-items: end; justify-content: flex-start; max-width: min(100%, calc(var(--action-size) * 3.25 + var(--space-md) * 2)); }
 @media (width < 600px) {
-  :host { padding: var(--space-md); --layout-gap-wide: var(--layout-gap-loose); }
+  #TouchControls { padding: var(--space-md); --layout-gap-wide: var(--layout-gap-loose); }
   #End { --layout-gap-loose: var(--layout-gap-tight); }
 }
 </style>
