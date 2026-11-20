@@ -41,7 +41,7 @@
 .clip { inline-size: 100%; block-size: 100%; overflow: hidden; --picture-rim-width: var(--stroke-thin); --picture-rim: var(--frame-rim); }
 [part="Avatar.portrait"] { inline-size: 100%; block-size: 100%; object-fit: cover; object-position: center top; }
 [part~="Avatar.fallback"] { inline-size: 56%; block-size: 56%; }
-.ring { --picture-rim-width: var(--stroke-thick); --picture-rim: var(--focus); pointer-events: none; }
+.ring { --picture-fill: transparent; --picture-rim-width: var(--stroke-thick); --picture-rim: var(--focus); pointer-events: none; }
 [part="Avatar.spinner"] { inline-size: 100%; block-size: 100%; --spinner-size: calc(var(--avatar-size, var(--size-xxl)) * 0.4); }
 .mark { inline-size: var(--space-lg); block-size: var(--space-lg); --layout-anchor-inset: calc(14.6% - var(--space-sm)); --dot-rim-width: var(--stroke-regular); --dot-rim: var(--well-fill); }
 .level { --layout-anchor-inset: calc(var(--space-sm) * -1); }
