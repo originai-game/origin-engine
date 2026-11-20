@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "The 12 look previews (knowledge/previews/<slug>.webp) are drawn again by the current engine on the GPU host, so they show today's exposure, sky, fog, grass and lights: minimal-geometric's ground is one flat tone instead of a checkerboard, and inked-comic-3d hatches its shadows."
+  ]
+}
