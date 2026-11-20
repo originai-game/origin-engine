@@ -147,7 +147,18 @@ impl Pipelines {
             }
             let mut rows = rows;
             rows[1][3] = f32::from(!mesh.initialized || scene.frame.camera_cut);
-            crate::traffic::write_buffer(queue, &mesh.input, 0, bytemuck::cast_slice(&rows));
+            // The rest pose (`inputs`) changes only with the topology, and a
+            // new topology makes the buffer anew with it: a frame writes the
+            // rows before and after it.
+            let rest = REST_FROM..REST_FROM + REST_ROWS * g.topology.rest.len();
+            let input = bytemuck::cast_slice::<_, u8>(&rows);
+            crate::traffic::write_buffer(queue, &mesh.input, 0, &input[..rest.start * 16]);
+            crate::traffic::write_buffer(
+                queue,
+                &mesh.input,
+                rest.end as u64 * 16,
+                &input[rest.end * 16..],
+            );
             let entries: Vec<_> = [&mesh.input, &mesh.adjacency, &mesh.points, output]
                 .into_iter()
                 .enumerate()
@@ -275,6 +286,11 @@ fn simulate(
     Some(())
 }
 
+/// The input row where the rest pose starts (after the header and the
+/// world transform and its inverse), and its rows per vertex.
+const REST_FROM: usize = 10;
+const REST_ROWS: usize = 4;
+
 fn inputs(g: &GarmentDeformation, first: u32, previous: Option<u32>, reset: bool) -> Vec<[f32; 4]> {
     let t = &g.topology;
     let mut rows = vec![
@@ -293,6 +309,7 @@ fn inputs(g: &GarmentDeformation, first: u32, previous: Option<u32>, reset: bool
     ];
     rows.extend(g.world.to_cols_array_2d());
     rows.extend(g.world.inverse().to_cols_array_2d());
+    debug_assert_eq!(rows.len(), REST_FROM);
     for ((p, n), (j, w)) in t.rest.iter().zip(&t.normals).zip(&t.skin) {
         rows.extend([
             p.extend(1.).to_array(),
