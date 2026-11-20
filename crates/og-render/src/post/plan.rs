@@ -23,6 +23,21 @@ use cx::PlanCx;
 pub(crate) use names::*;
 pub(crate) use pass::*;
 
+/// Whether the prepass draws into the main pass's `depth`, which the main
+/// pass loads instead of clearing: a frame with a prepass whose scene has
+/// one sample a pixel. Every opaque surface then passes at its own depth
+/// ([`crate::LIT_DEPTH_COMPARE`]) and the hidden ones are never shaded. A
+/// multisampled main pass keeps its own depth, as the prepass draws one
+/// sample.
+pub(crate) fn shares_prepass_depth(prepass: bool, samples: u32) -> bool {
+    prepass && samples == 1
+}
+
+/// The depth target the prepass draws into ([`shares_prepass_depth`]).
+pub(crate) fn prepass_depth(samples: u32) -> &'static str {
+    if samples == 1 { "depth" } else { "pre-depth" }
+}
+
 /// The render graph of a frame made of `passes` (in recording order).
 pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGraph {
     let cx = PlanCx::new(passes, cfg);

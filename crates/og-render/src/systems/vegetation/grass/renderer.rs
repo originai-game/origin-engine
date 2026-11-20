@@ -262,7 +262,7 @@ impl GrassRenderer {
                 buffers: &[],
                 cull: None,
                 depth_write: true,
-                depth_compare: wgpu::CompareFunction::Less,
+                depth_compare: crate::LIT_DEPTH_COMPARE,
                 blend: None,
                 samples: self.samples,
             },

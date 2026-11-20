@@ -19,11 +19,13 @@ fn fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> Prep
 // What the prepass writes for a fragment (`fs_prepass`, and
 // `fs_prepass_lean`, which may drop the discard: DISCARD in pbr_fs.wgsl).
 fn prepass_targets(in: PrepassOut) -> PrepassTargets {
-  let base_uv = material_uv(UV_MAP, in.uv);
+  // The lit pass's uv (pbr.wgsl `stylised_uv`), so both cut the same pixels.
+  let uv = stylised_uv(in.uv, in.affine);
+  let base_uv = material_uv(UV_MAP, uv);
   var base_sample: vec4<f32>;
   if (ANALYTIC) {
-    let gx = analytic_grad(UV_MAP, in.uv, analytic_uv.xy);
-    let gy = analytic_grad(UV_MAP, in.uv, analytic_uv.zw);
+    let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy);
+    let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw);
     base_sample = textureSampleGrad(base_color_tex, material_sampler, base_uv, gx, gy);
   } else {
     base_sample = textureSample(base_color_tex, material_sampler, base_uv);
@@ -33,7 +35,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   hook.world = in.world_pos;
   hook.local = in.local_pos;
   hook.normal = in.normal;
-  hook.uv = in.uv;
+  hook.uv = uv;
   hook.color = in.color;
   hook.time = frame.time.x;
   hook.origin = frame.origin.xyz;
@@ -41,7 +43,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   hook.front = hook_front;
   hook.wind = frame.foliage_wind[0][0];
   let base = surface_color(hook, shader_params(), material.base_color * base_sample * in.color);
-  let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
+  let dissolved = dissolve_at(uv, in.local_pos).w > 0.5;
   // An instance fading in: the pixels the lit pass cuts (instance.wgsl
   // `reveal_cut`), from the bits `outline_object` put above its id.
   let hidden = reveal_cut(hidden_share((in.object >> 16u) & 511u), in.clip.xy, frame.time.x);
@@ -62,14 +64,14 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   // and metalness as the lit pass shades them (the factors times their
   // maps' b and g), none for an unlit material (mode bit 2).
   let unlit = (u32(material.flags.w) & 2u) != 0u;
-  var metalness = material.mr.x * material_sample(metalness_tex, UV_METALNESS, in.uv).b;
-  var roughness = material.mr.y * material_sample(roughness_tex, UV_METALNESS, in.uv).g;
+  var metalness = material.mr.x * material_sample(metalness_tex, UV_METALNESS, uv).b;
+  var roughness = material.mr.y * material_sample(roughness_tex, UV_METALNESS, uv).g;
   // Wet ground, streaks and puddles as the lit pass shades them
   // (weather_surface.wgsl weather_gloss): reflections see the puddles as
   // mirrors and their ripples, and the normal is the water's.
   if (!unlit) {
     let wet = wet_decal_gloss(in.clip.xy, in.world_pos, n, n, clamp(roughness, 0.04, 1.0));
-    let g = weather_gloss(wet.w, metalness, wet.xyz, n, in.world_pos, weather_cavity(in.uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, (in.object & 256u) != 0u));
+    let g = weather_gloss(wet.w, metalness, wet.xyz, n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, (in.object & 256u) != 0u));
     roughness = g.s.roughness;
     metalness = g.s.metallic;
     o.gbuffer = vec4<f32>(oct_encode(g.n), velocity);

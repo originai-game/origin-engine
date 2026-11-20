@@ -289,6 +289,7 @@ fn fs_prepass_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolvePrepass {
   p.uv = r.v.uv;
   p.color = r.v.color;
   p.local_pos = r.v.local_pos;
+  p.affine = r.v.affine;
   p.cur_clip = fx.view_proj_unjittered * vec4<f32>(r.v.world_pos, 1.0);
   p.prev_clip = mul_point(fx.prev_view_proj, vec4<f32>(r.prev_world, 1.0));
   p.object = r.object;

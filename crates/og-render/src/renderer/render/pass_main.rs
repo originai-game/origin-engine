@@ -119,6 +119,10 @@ impl Renderer {
         };
         let hdr = self.graph.view("hdr");
         let msaa = self.samples > 1;
+        let shared_depth = post::shares_prepass_depth(
+            self.graph.order().contains(&FramePass::Prepass),
+            self.samples,
+        );
         // With water or a 3D fluid the pass is split after the
         // sky: the scene so far is copied for them to refract
         // and reflect, then the pass goes on over it.
@@ -166,7 +170,9 @@ impl Renderer {
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: self.graph.view("depth"),
                         depth_ops: Some(wgpu::Operations {
-                            load: if first {
+                            // The prepass's depth, when it is this pass's
+                            // (post::shares_prepass_depth).
+                            load: if first && !shared_depth {
                                 wgpu::LoadOp::Clear(1.0)
                             } else {
                                 wgpu::LoadOp::Load

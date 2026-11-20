@@ -98,7 +98,7 @@ pub(super) fn terrain_passes(
                         buffers,
                         cull: Some(wgpu::Face::Back),
                         depth_write: true,
-                        depth_compare: wgpu::CompareFunction::Less,
+                        depth_compare: crate::LIT_DEPTH_COMPARE,
                         blend: None,
                         samples,
                     },

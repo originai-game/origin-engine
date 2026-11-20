@@ -43,6 +43,13 @@ impl Renderer {
             grass_frame,
         } = plan;
         let (ctx, encoder, stats) = (cx.ctx, &mut *cx.encoder, &mut *cx.stats);
+        // The main pass goes on in a single-sampled prepass's depth
+        // (post::shares_prepass_depth): every pass over it keeps it.
+        let kept_depth = if self.samples == 1 {
+            wgpu::StoreOp::Store
+        } else {
+            wgpu::StoreOp::Discard
+        };
         // The water's surfaces for the AO and the volumetric fog (water.rs `draw_ao_depth`), drawn after the
         // prepass against it.
         let front_depth = self
@@ -73,14 +80,15 @@ impl Renderer {
                 attachment(self.graph.view("outline-id"), 0.0),
             ],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: self.graph.view("pre-depth"),
+                view: self.graph.view(post::prepass_depth(self.samples)),
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
-                    // Stylise's object pass tests against it.
+                    // Stylise's object pass tests against it, and the main
+                    // pass goes on in it (post::shares_prepass_depth).
                     store: if object_space || front_depth.is_some() {
                         wgpu::StoreOp::Store
                     } else {
-                        wgpu::StoreOp::Discard
+                        kept_depth
                     },
                 }),
                 stencil_ops: None,
@@ -217,10 +225,10 @@ impl Renderer {
                 label: Some("stylise object"),
                 color_attachments: &[attachment(self.graph.view("object-space"), 0.0)],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: self.graph.view("pre-depth"),
+                    view: self.graph.view(post::prepass_depth(self.samples)),
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Discard,
+                        store: kept_depth,
                     }),
                     stencil_ops: None,
                 }),
@@ -294,10 +302,10 @@ impl Renderer {
                         },
                     })],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: self.graph.view("pre-depth"),
+                        view: self.graph.view(post::prepass_depth(self.samples)),
                         depth_ops: Some(wgpu::Operations {
                             load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Discard,
+                            store: kept_depth,
                         }),
                         stencil_ops: None,
                     }),

@@ -117,28 +117,32 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
         g.import("gi-read").import("gi-write");
     }
     if has(FramePass::Prepass) {
-        g.transient(
-            "pre-depth",
-            desc(
-                w,
-                h,
-                DEPTH_FORMAT,
-                1,
-                wgpu::TextureUsages::RENDER_ATTACHMENT,
-            ),
-        )
-        .transient("gbuffer", desc(w, h, GBUFFER_FORMAT, 1, ATTACH_BIND))
-        .transient(
-            "lindepth",
-            desc(
-                w,
-                h,
-                LINDEPTH_FORMAT,
-                1,
-                ATTACH_BIND | wgpu::TextureUsages::COPY_SRC,
-            ),
-        )
-        .transient("outline-id", desc(w, h, OUTLINE_FORMAT, 1, ATTACH_BIND));
+        // A single-sampled scene's prepass draws into `depth` itself
+        // (shares_prepass_depth).
+        if msaa {
+            g.transient(
+                "pre-depth",
+                desc(
+                    w,
+                    h,
+                    DEPTH_FORMAT,
+                    1,
+                    wgpu::TextureUsages::RENDER_ATTACHMENT,
+                ),
+            );
+        }
+        g.transient("gbuffer", desc(w, h, GBUFFER_FORMAT, 1, ATTACH_BIND))
+            .transient(
+                "lindepth",
+                desc(
+                    w,
+                    h,
+                    LINDEPTH_FORMAT,
+                    1,
+                    ATTACH_BIND | wgpu::TextureUsages::COPY_SRC,
+                ),
+            )
+            .transient("outline-id", desc(w, h, OUTLINE_FORMAT, 1, ATTACH_BIND));
         if cfg.object_space {
             g.transient("object-space", desc(w, h, OBJECT_FORMAT, 1, ATTACH_BIND));
         }

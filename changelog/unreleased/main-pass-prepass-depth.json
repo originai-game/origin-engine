@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Renderer (main pass)",
+      "summary": "A frame with a prepass that draws one sample a pixel (taa, fxaa, smaa or off; not msaa4) now shades each pixel's nearest opaque surface only: the prepass draws into the main pass's depth, which the main pass loads instead of clearing, and opaque surfaces pass at their own depth. Before, surfaces hidden behind others were shaded too wherever a material cut pixels (alpha cut-off, dissolve, fade-in), which kept the GPU from culling them. Night Shift at 2560x1440 on an M4 Pro: the main pass from 184 to 99-110 ms, the GPU frame from 243 to 157-172 ms, with the same image. The prepass now cuts a retro look's affine-textured surfaces with the lit pass's uv, so their AO, SSR and outlines follow the pixels the lit pass keeps."
+    }
+  ]
+}

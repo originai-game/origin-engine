@@ -74,6 +74,26 @@ fn oit_revealage_lives_until_taa() {
     }
 }
 
+/// A single-sampled main pass goes on in the prepass's depth, so it shades
+/// only the nearest surface of each pixel; a multisampled one keeps its
+/// own, as the prepass draws one sample.
+#[test]
+fn a_single_sampled_main_pass_loads_the_prepass_depth() {
+    let passes = [FramePass::Prepass, FramePass::Main, FramePass::Tonemap];
+    for samples in [1, 4] {
+        let config = GraphConfig {
+            samples,
+            ..cfg(false, false)
+        };
+        let plan = build_graph(&passes, &config).compile().unwrap();
+        let names = plan.ordered_names();
+        let at = |name| names.iter().position(|&n| n == name).unwrap();
+        let first = if samples == 1 { "prepass" } else { "main" };
+        assert_eq!(plan.lifetime("depth").unwrap().0, at(first), "{samples}");
+        assert_eq!(plan.slot("pre-depth").is_some(), samples > 1);
+    }
+}
+
 #[test]
 fn hdr_chain_keeps_highlights_through_fxaa_and_upscale() {
     let passes = [

@@ -205,6 +205,8 @@ struct PrepassOut {
   // Which object this is (`object_id`), for the outline pass; bit 8 set
   // on a skinned instance (vs_prepass_skinned).
   @location(8) @interpolate(flat) object: u32,
+  // VertexOut's: the prepass cuts with the lit pass's uv.
+  @location(9) affine: vec3<f32>,
 };
 
 // An object's id in the prepass's outline target, 1 to 255, from its
@@ -314,6 +316,7 @@ fn prepass_vertex_from(model: mat4x4<f32>, prev: mat4x4<f32>, v: VertexIn, befor
   p.uv = o.uv;
   p.color = o.color;
   p.local_pos = o.local_pos;
+  p.affine = o.affine;
   p.cur_clip = fx.view_proj_unjittered * vec4<f32>(o.world_pos, 1.0);
   var previous = prev * vec4<f32>(before, 1.0);
   // Where a material shader's vertex_offset put it the frame before, only

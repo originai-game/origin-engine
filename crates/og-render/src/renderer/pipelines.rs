@@ -56,6 +56,15 @@ pub(crate) fn unbounded_shader(
     }
 }
 
+/// The depth test of every opaque surface the prepass also draws, in the
+/// main pass and the views'. A single-sampled main pass loads the
+/// prepass's depth ([`crate::post::shares_prepass_depth`]), so each
+/// surface meets its own depth there and passes at equal depth, and only
+/// the nearest one per pixel is shaded. Both passes place their vertices
+/// with the same functions (pbr.wgsl `lit_place`), so the depths agree to
+/// the bit.
+pub(crate) const LIT_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+
 /// The pipeline state shared by the passes that draw into the HDR target.
 pub(crate) struct HdrPipeline<'a> {
     pub label: &'a str,
@@ -338,7 +347,11 @@ pub(crate) fn lit_pipeline(
             cull: faces.cull(),
             // Blended surfaces test against the opaque depth but do not write it.
             depth_write: !transparent,
-            depth_compare: wgpu::CompareFunction::Less,
+            depth_compare: if transparent {
+                wgpu::CompareFunction::Less
+            } else {
+                LIT_DEPTH_COMPARE
+            },
             blend: transparent.then_some(wgpu::BlendState::ALPHA_BLENDING),
             samples,
         },
@@ -393,7 +406,7 @@ pub(crate) fn lean_pipeline(
             ],
             cull: faces.cull(),
             depth_write: true,
-            depth_compare: wgpu::CompareFunction::Less,
+            depth_compare: LIT_DEPTH_COMPARE,
             blend: None,
             samples,
         },

@@ -76,7 +76,7 @@ impl MeshletGpu {
                         buffers: &[],
                         cull: b.faces.cull(),
                         depth_write: true,
-                        depth_compare: wgpu::CompareFunction::Less,
+                        depth_compare: crate::LIT_DEPTH_COMPARE,
                         blend: None,
                         samples,
                     },
