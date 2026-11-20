@@ -85,6 +85,17 @@ export function callsOf(run: Run): Calls {
       if (a === "stop") return run.trace.turn(run.engine, false);
       return run.trace.document(run.engine, { tier: run.lastTier, lanes: run.lanes });
     },
+    /**
+     * A development build's hot reload (`og dev --web`): the cooked files a re-cook changed
+     * (`[path, bytes]`, each path as the boot put it) replace those the engine holds, then the
+     * probe's `reload` swaps them in as `og dev` does natively: a document, a style or the
+     * default style whose cooked output changed applies in place, the world kept. Answers the
+     * reload's report, or null when it was refused (the reason in the log).
+     */
+    devFiles: (e, [files]) => {
+      for (const [path, bytes] of files as Array<[string, Uint8Array]>) run.glue?.og_web_put_file(path, bytes);
+      return e.probe.reload();
+    },
     probe: (e, [member, ...rest]) => {
       const f = (e.probe as unknown as Record<string, unknown>)[String(member)];
       if (typeof f !== "function") throw new TypeError(`probe has no member '${String(member)}'`);

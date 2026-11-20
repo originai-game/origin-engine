@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "__runtime_probe__.devFiles",
+      "summary": "A development build's page takes re-cooked files ([path, bytes][]) and swaps them in through the probe's reload with the world kept: an edited document, style or (in an origin-engine checkout) default style shows without reloading the page. The UI gallery (docs/ui.md §6.5) uses it."
+    }
+  ]
+}

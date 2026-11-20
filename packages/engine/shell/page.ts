@@ -845,6 +845,9 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // `saveTrace`: the same, downloaded as a file (`?trace` records from the boot).
   probe["trace"] = (action?: "take" | "start" | "stop") => shell.trace(action);
   probe["saveTrace"] = (name?: string) => shell.saveTrace(name);
+  // `devFiles`: a development build's hot reload of re-cooked files (`[path, bytes][]`), swapped in
+  // by the probe's reload with the world kept (worker/calls.ts); the UI gallery's live edits use it.
+  if (config.build === "dev") probe["devFiles"] = (files: Array<[string, Uint8Array]>) => shell.call("devFiles", files);
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
   // The played frames' display intervals and engine work, ms (`og run --device` reads them; `true` resets).
   (globalThis as Record<string, unknown>)[TIMINGS_GLOBAL] = (reset?: boolean) => shell.call("timings", reset === true);
