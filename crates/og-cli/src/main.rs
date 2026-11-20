@@ -10,9 +10,9 @@
 mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
-    create, dev, doctor, explore, fmt, frame, i18n, mcp, migrate, prefab, probe, render, replay,
-    run, serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import, vfx_preview,
-    video, world_server,
+    create, dev, doctor, explore, export, fmt, frame, i18n, mcp, migrate, prefab, probe, render,
+    replay, run, serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import,
+    vfx_preview, video, world_server,
 };
 mod api_lookup;
 mod bundle_cache;
@@ -134,6 +134,11 @@ commands:
   cook [project] [--threads N] [--report [out.md]] [--json] [--watch [--exit-after N]]
                       assets/ into cooked/, incrementally; --report prints the ten slowest
                       assets by their last cook; --watch cooks each change, timing it
+  export gltf <asset> [project] -o <file.glb> [--lod N]
+                      cook the project and write the cooked model <asset> (its path under assets/:
+                      a glTF, a `type model` of parts or a plant, a .vox) as a glTF binary: one
+                      level of detail (0, the full mesh, by default), its materials with PNG
+                      textures, its instances as nodes, its skins, clips and morph targets
   assets [--kind KIND] [--group GROUP] [--unused] [--refs] [--by] [--dupes [--near N]] [--json] [text]
                       query cooked metadata; --refs shows dependencies, --by their users;
                       --near uses caller-chosen Hamming distance 0..64; --project DIR selects a project
@@ -423,6 +428,7 @@ fn main() -> ExitCode {
         ["test", rest @ ..] => test::run(rest),
         ["build", rest @ ..] => bundle::run(rest),
         ["cook", rest @ ..] => cook::run(rest),
+        ["export", rest @ ..] => export::run(rest),
         ["assets", rest @ ..] => assets::run(rest),
         ["fmt", rest @ ..] => fmt::run(rest),
         ["cache", rest @ ..] => cache::run(rest),

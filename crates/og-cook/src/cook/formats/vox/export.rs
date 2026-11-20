@@ -3,9 +3,9 @@
 use super::*;
 
 /// The glTF binary chunk being written: its bytes, buffer views and
-/// accessors.
+/// accessors (also `og export gltf`'s).
 #[derive(Default)]
-pub(crate) struct Bin {
+pub struct Bin {
     pub bytes: Vec<u8>,
     pub views: Vec<serde_json::Value>,
     pub accessors: Vec<serde_json::Value>,

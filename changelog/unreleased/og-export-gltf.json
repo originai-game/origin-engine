@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og export gltf",
+      "summary": "`og export gltf <asset> [project] -o <file.glb> [--lod N]` writes a cooked model as a glTF binary: generated plants and part models included, with normals, uvs, tangents, vertex colours, PBR materials and PNG textures, instances as nodes, and a skinned model's skins, clips and morph targets. One level of detail: the full mesh, or --lod N (the assets guide §8)."
+    }
+  ]
+}

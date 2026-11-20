@@ -69,6 +69,7 @@ mod cli {
     mod bake;
     mod check;
     mod create;
+    mod export;
     mod i18n;
     mod maintenance;
     mod mcp;

@@ -161,3 +161,28 @@ A cook warns when the last part of a name is a type the file does not cook
 as (`menu.prefab.ogt` holding a scene). Any other last part is free
 (`sparks.emitter.ogt`). Rename an existing file with `og assets mv`, which
 rewrites the references to it.
+
+<a id="guide-assets-8"></a>
+### `assets §8` Export a model as glTF
+
+`og export gltf <asset> [project] -o <file.glb> [--lod N]` cooks the
+project and writes one cooked model as a glTF binary: a model the cook
+generates (a `type model` of parts or a plant, a `.vox`) for another tool
+or renderer, or a glTF as the cook left it. `<asset>` is the model's path
+under `assets/` (`plants/oak.ogt`, `models/ship.glb`).
+
+The file is what the game draws: the conformed geometry and colours, the
+normals, uvs, tangents and vertex colours, the metallic-roughness materials
+with their extensions (emissive strength, transmission, clearcoat, sheen,
+unlit, a leaf's diffuse transmission) and their textures as PNG. Instances
+become one node each. A skinned model keeps its skins, joints and weights,
+its clips (as the cook resampled them) and its morph targets. A plant
+keeps its wind attributes (`_OG_PIVOT`, `_OG_ANCHOR`) and its leaf
+settings in `extras.ogFoliage`; another loader ignores them, and the cook
+reads them back when the file returns to `assets/`.
+
+One level of detail is written: the full mesh, or `--lod N` for each
+primitive's level N (a primitive with fewer levels gives its coarsest).
+The printed line names how many levels the model has. The impostor,
+material variants, colliders and visibility clips are not exported, and a
+model's runtime tint (a season's) is not baked into its colours.
