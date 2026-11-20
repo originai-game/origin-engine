@@ -69,13 +69,9 @@ pub(crate) fn find(name: &str) -> Option<&'static str> {
         .map(|icon| icon.name)
 }
 
-pub(crate) fn commands(
-    name: &str,
-    rect: Rect,
-    clip: Rect,
-    color: Srgba,
-    theme: &Theme,
-) -> Vec<DrawCmd> {
+/// The draw commands of built-in icon `name` in `rect`: what an icon
+/// that no atlas names draws, for a host that paints its own elements.
+pub fn commands(name: &str, rect: Rect, clip: Rect, color: Srgba, theme: &Theme) -> Vec<DrawCmd> {
     let Some(icon) = ICONS.iter().find(|icon| icon.name == name) else {
         return Vec::new();
     };

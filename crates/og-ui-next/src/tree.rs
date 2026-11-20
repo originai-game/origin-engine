@@ -961,7 +961,18 @@ impl Tree {
                             clip,
                         }))
                     }
-                    _ => {}
+                    // The engine's own set (Lucide), drawn as og-ui draws it.
+                    Some((IconCell::Builtin(name), _)) => {
+                        let rect =
+                            Rect::new(x + (b.w - size) / 2.0, y + (b.h - size) / 2.0, size, size);
+                        let color = og_ui::Srgba::from_linear(ink);
+                        self.items.extend(
+                            og_ui::builtin_icon(name, rect, clip, color, &og_ui::Theme::default())
+                                .into_iter()
+                                .map(item),
+                        );
+                    }
+                    None => {}
                 }
             }
             if let (Some(leaf), Some(font)) = (el.leaf, font)
@@ -1125,6 +1136,30 @@ mod tests {
         let face = tree.find("Face").unwrap();
         let art = tree.find("Art").unwrap();
         assert_eq!(art, face, "the art covers its face");
+    }
+
+    /// An icon no atlas names draws from the engine's built-in set.
+    #[test]
+    fn a_built_in_icon_draws() {
+        let doc = UiDocument::parse(
+            "i.svelte",
+            "<meta name=\"component\" content=\"i\">\n\
+             <div><og-icon id=\"I\" icon=\"clock\"></og-icon></div>\n\
+             <style>\n#I { width: 16px; height: 16px; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: &crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [doc]);
+        tree.resize(200.0, 200.0);
+        tree.mount("i", &[]).unwrap();
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        assert!(!tree.items.is_empty(), "the clock's strokes");
     }
 
     /// A scroller's `:state(more)` holds while its content runs past its
