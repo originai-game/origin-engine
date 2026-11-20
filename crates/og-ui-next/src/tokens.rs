@@ -76,6 +76,19 @@ impl Tokens {
         substitute(text, &mut |name| self.get(name).map(String::from))
     }
 
+    /// `text` substituted with `local`'s values (an element's own custom
+    /// properties, innermost last) over these.
+    pub fn substitute_with(&self, text: &str, local: &[(Box<str>, Box<str>)]) -> Option<String> {
+        substitute(text, &mut |name| {
+            local
+                .iter()
+                .rev()
+                .find(|(n, _)| &**n == name)
+                .map(|(_, v)| v.to_string())
+                .or_else(|| self.get(name).map(String::from))
+        })
+    }
+
     fn substitute(&mut self, text: &str, depth: u32) -> Option<String> {
         substitute(text, &mut |name| {
             let id = self.ids.get(name).copied()?;

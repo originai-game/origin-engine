@@ -298,6 +298,10 @@ const fn encode_wrap(w: FlexWrap) -> u8 {
         FlexWrap::NoWrap => 0,
         FlexWrap::Wrap => 1,
         FlexWrap::WrapReverse => 2,
+        // og: taffy's `flexbox_balance` variants, when another crate turns
+        // the feature on, pack as `Wrap` (PATCHED.md).
+        #[allow(unreachable_patterns)]
+        _ => 1,
     }
 }
 

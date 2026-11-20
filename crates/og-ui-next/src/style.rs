@@ -347,7 +347,7 @@ const JUSTIFIES: [JustifyContent; 6] = [
     JustifyContent::SPACE_EVENLY,
 ];
 
-fn fold(r: &mut Record, s: &Step) {
+pub(crate) fn fold(r: &mut Record, s: &Step) {
     let l = &mut r.layout;
     let c = s.code as usize;
     let [a, b, cc, d] = s.v;
@@ -508,7 +508,7 @@ fn set_sides(steps: &mut Vec<Step>, o: u8, which: &[usize], x: f32) {
 }
 
 /// Expands one declaration into steps; false when it is not taken.
-fn expand(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
+pub(crate) fn expand(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
     let mut push = |o: u8, code: u8, x: [f32; 4]| {
         steps.push(step(o, code, x));
         true

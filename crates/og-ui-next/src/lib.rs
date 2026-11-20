@@ -5,6 +5,7 @@
 //! work. There is no CSS cascade per element.
 
 pub mod arena;
+pub mod doc;
 pub mod sheet;
 pub mod style;
 pub mod tokens;
@@ -126,6 +127,45 @@ mod tests {
         );
         assert_eq!(s.inset.top, taffy::LengthPercentageAuto::length(9.0));
         assert_eq!(s.inset.bottom, taffy::LengthPercentageAuto::length(0.0));
+    }
+
+    #[test]
+    fn a_documents_rules_compile_per_element_with_conditions_and_its_own_custom_properties() {
+        let doc = og_ui::UiDocument::parse(
+            "t.svelte",
+            "<meta name=\"component\" content=\"t\">\n<meta name=\"prop:on\" content=\"bool\">\n\
+             <div id=\"Box\" class=\"card\" class:lit={on}><span class=\"label\">Hi</span></div>\n\
+             <style>\n.card { --slot: 48px; padding: 2px; }\n.card .label { width: var(--slot); }\n\
+             .card.lit { padding: 9px; }\n</style>",
+        )
+        .unwrap();
+        let s = doc::DocStyle::compile(&doc, &Tokens::default());
+        let card = s
+            .nodes
+            .iter()
+            .position(|n| doc.nodes[n.node as usize].id == "Box")
+            .unwrap();
+        let card_node = s.nodes[card].node as usize;
+        let label = s
+            .nodes
+            .iter()
+            .position(|n| doc.nodes[n.node as usize].parent == card_node)
+            .expect("the label, the card's element child");
+        let pad = |r: &style::Record| taffy::Style::from(&r.layout).padding.top;
+        assert_eq!(
+            pad(&s.record(card, |_| false)),
+            taffy::LengthPercentage::length(2.0)
+        );
+        assert_eq!(
+            pad(&s.record(card, |_| true)),
+            taffy::LengthPercentage::length(9.0),
+            "class:lit's condition"
+        );
+        // The descendant rule reached the label, with the card's --slot.
+        let w = taffy::Style::from(&s.record(label, |_| false).layout)
+            .size
+            .width;
+        assert_eq!(w, taffy::Dimension::length(48.0));
     }
 
     #[test]
