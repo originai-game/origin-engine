@@ -199,8 +199,10 @@ fn params_moved(stamp: u32) -> bool {
 // reads them: one more than a pixel and a half off where `p` projects lies
 // over another (a blended surface), and other cameras have none
 // (`frame.ssr.x` 0).
+// EXPERIMENT (scatter-fs-exp): false skips the screen-space reflections.
+override OG_EXP_SSR: bool = true;
 fn ssr_reflected(prefiltered: vec3<f32>, p: vec3<f32>, clip: vec2<f32>) -> vec3<f32> {
-  if (frame.ssr.x < 0.5) { return prefiltered; }
+  if (!OG_EXP_SSR || frame.ssr.x < 0.5) { return prefiltered; }
   let size = vec2<i32>(textureDimensions(ssr_tex));
   let c = frame.view_proj * vec4<f32>(p, 1.0);
   let px = vec2<f32>(c.x / c.w * 0.5 + 0.5, 0.5 - c.y / c.w * 0.5) * vec2<f32>(size);

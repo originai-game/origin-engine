@@ -131,7 +131,22 @@ impl ScatterRenderer {
         let declared = d.declared;
         Variants::new(declared, move |features: Features| {
             let (device, layout, d) = (device.clone(), layout.clone(), d.clone());
-            let constants = features.constants(declared);
+            let mut constants = features.constants(declared);
+            // EXPERIMENT (scatter-fs-exp, not for landing): the lit pass's
+            // fragment terms named in OG_SCATTER_FS (comma-separated
+            // overrides) switched off.
+            if pass == ScatterPass::Lit {
+                for name in std::env::var("OG_SCATTER_FS")
+                    .unwrap_or_default()
+                    .split(',')
+                {
+                    let name = name.trim();
+                    if !name.is_empty() {
+                        constants.retain(|(n, _)| *n != name);
+                        constants.push((Box::leak(name.to_string().into_boxed_str()), 0.0));
+                    }
+                }
+            }
             Deferred::anywhere(move || {
                 lit_pipeline(&device, &layout, &d, (pass, equal), samples, &constants)
             })

@@ -404,8 +404,13 @@ fn local_bias(light: LocalLight) -> f32 {
 
 // Local shadows store distance / range; the fragment compares its own,
 // filtered with [`local_wide`] (`local_shadow_lookup`'s `wide`).
+// EXPERIMENT (scatter-fs-exp): false filters local shadows with the 2x2
+// PCF; OG_EXP_LOCAL_SHADOW false skips them.
+override OG_EXP_LOCAL_WIDE: bool = true;
+override OG_EXP_LOCAL_SHADOW: bool = true;
 fn local_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
-  return local_shadow_lookup(light, p, n, true);
+  if (!OG_EXP_LOCAL_SHADOW) { return 1.0; }
+  return local_shadow_lookup(light, p, n, OG_EXP_LOCAL_WIDE);
 }
 
 // The local lights' filter for lit surfaces: contact hardening between

@@ -98,6 +98,14 @@ fn scatter_cavity(uv: vec2<f32>) -> f32 {
   return 0.2 + 0.6 * textureSample(ao_tex, material_sampler, material_uv(UV_AO, uv)).r;
 }
 
+// EXPERIMENT (scatter-fs-exp): OG_EXP_SHADE false returns the colour
+// after the cut-off; OG_EXP_SUN_SHADOW false skips the cascades' lookup;
+// OG_EXP_AMBIENT false skips the light around the copy (surface_shade's
+// gather) and keeps the direct light.
+override OG_EXP_SHADE: bool = true;
+override OG_EXP_SUN_SHADOW: bool = true;
+override OG_EXP_AMBIENT: bool = true;
+
 @fragment
 fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let h = scatter_hook(in, front);
@@ -114,6 +122,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     discard;
   }
   let out_a = select(1.0, coverage, a2c);
+  if (!OG_EXP_SHADE) { return vec4<f32>(base.rgb * 0.5, out_a); }
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
     let ao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
     return vec4<f32>(vec3<f32>(select(1.0, ao, fx.ao.x > 0.5)), out_a);
@@ -160,7 +169,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   // blades and cards, thinner than a texel, and neither closed (they would
   // stop shadowing themselves) nor smooth enough for the tent, which
   // averaged their own shadows away (probe-outdoor's meadow went flat).
-  if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0)) {
+  if (OG_EXP_SUN_SHADOW && frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0)) {
     shadow = cascade_shadow_lookup(in.world, leaf_shadow_normal(s, n, l), abs(dot(n, l)), false);
   }
   // The sun under the frame's material style (lighting.wgsl style_sun: its
@@ -183,7 +192,13 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   // lit surface's (surface_shade.wgsl); the screen-space reflections unless
   // blended: then it lies over the surface they were traced for.
   let at = ShadeAt(in.world, n, v, in.clip.xy, true, (mode & 4u) == 0u, styled);
-  let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive + decaled.emissive, material.flags.z, keep);
+  var lit: Shaded;
+  if (OG_EXP_AMBIENT) {
+    lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive + decaled.emissive, material.flags.z, keep);
+  } else {
+    lit.direct = surface_direct(s, at, sun.direct, n_dot_l * shadow);
+    lit.emissive = emissive + decaled.emissive;
+  }
   if (frame.light_color.w > 2.5) {
     return vec4<f32>(shaded_debug(lit, s.albedo, u32(frame.light_color.w + 0.5)), out_a);
   }
