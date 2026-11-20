@@ -10,7 +10,7 @@ import { gunzipSync } from "node:zlib";
 import { ENGINE_PUBKEY, verifyMinisign } from "../packages/engine/src/node/vfx-pack.ts";
 import { ENGINE_PUBKEY as LAUNCHER_PUBKEY } from "../packages/launcher/og.ts";
 import { pinnedKey } from "../packages/launcher/build.ts";
-import { checkPacksOutside, deduplicateAssets, finish, writeVfxArchives, writeWasmModules } from "./release-dist.ts";
+import { checkPacksOutside, deduplicateAssets, finish, writeCreation, writeLooks, writeVfxArchives, writeWasmModules, type Slot } from "./release-dist.ts";
 import { createHash } from "node:crypto";
 import { splitSymbols } from "../packages/engine/scripts/wasm-symbols.ts";
 
@@ -129,11 +129,25 @@ describe("vfx archives", () => {
     writeFileSync(join(engine, "dist/web-publish/modules/modules.json"), JSON.stringify({ physics: { file: `modules/physics.${hash.slice(0, 12)}.wasm`, bytes: 8, sha256: hash } }));
     expect(writeWasmModules(engine, dir, "1.2.3-dev.4")).toEqual([`wasm/publish/physics.${hash.slice(0, 12)}.wasm`]);
     expect(JSON.parse(readFileSync(join(engine, "dist/web-publish/modules/modules.json"), "utf8")).physics.base).toBe("https://origingame.ai/downloads/engine/1.2.3-dev.4/wasm/publish/");
-    finish(dir, "1.2.3-dev.4", "0".repeat(40), "2026-11-07T00:00:00.000Z", vfx);
+    const { looks, filled } = drawLooks(dir, "1.2.3-dev.4", "0".repeat(40)).looks();
+    const creation = writeCreation(dir, "1.2.3-dev.4", { previews: filled });
+    finish(dir, "1.2.3-dev.4", "0".repeat(40), "2026-11-07T00:00:00.000Z", vfx, { looks, creation, files: ["looks/catalogue.json", ...SLOTS.map((s) => s.path), "creation.json"] });
     const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
     expect(manifest.vfx).toEqual(vfx);
     // The shape a platform reads (AGENTS.md §Ownership, docs/release.md §1): changing it is a break.
-    expect(Object.keys(manifest).sort()).toEqual(["channel", "checksums", "releasedAt", "revision", "signature", "targets", "version", "vfx"]);
+    expect(Object.keys(manifest).sort()).toEqual(["channel", "checksums", "creation", "looks", "releasedAt", "revision", "signature", "targets", "version", "vfx"]);
+    // Origin reads looks.catalogue and looks.previews.<slug> (docs/release.md §1 The looks).
+    expect(manifest.looks).toEqual({
+      catalogue: { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/looks/catalogue.json", sha256: expect.stringMatching(/^[0-9a-f]{64}$/), size: expect.any(Number) },
+      previews: {
+        "neon-vector": { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/neon-vector.webp", sha256: sha("neon"), size: 4, engine: "1.2.3-dev.4" },
+        pixel: { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/pixel.webp", sha256: sha("pix"), size: 3, engine: "1.2.3-dev.4" },
+        "pixel.8bit": { url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/pixel.8bit.webp", sha256: sha("8bit"), size: 4, engine: "1.2.3-dev.4" },
+      },
+    });
+    // ui and mood previews are the creation document's alone, filled like the rest.
+    expect(manifest.creation).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/creation.json", sha256: sha(readFileSync(join(dir, "creation.json"))), size: statSync(join(dir, "creation.json")).size });
+    expect(JSON.parse(readFileSync(join(dir, "creation.json"), "utf8")).previews["previews/mood/dark.webp"]).toEqual({ url: "https://origingame.ai/downloads/engine/1.2.3-dev.4/previews/mood/dark.webp", sha256: sha("dark"), size: 4, engine: "1.2.3-dev.4" });
     expect(manifest).toMatchObject({ version: "1.2.3-dev.4", channel: "dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig" });
     expect(manifest).not.toHaveProperty("symbols");
     const sums = readFileSync(join(dir, "SHA256SUMS"), "utf8");
@@ -141,6 +155,9 @@ describe("vfx archives", () => {
     expect(sums).toContain(`${vfx["spark-pack"]!.sha256}  vfx/spark-pack.tar.gz\n`);
     expect(sums).toContain(`${hash}  wasm/publish/physics.${hash.slice(0, 12)}.wasm\n`);
     expect(sums).toContain("  manifest.json\n");
+    expect(sums).toContain(`${manifest.looks.catalogue.sha256}  looks/catalogue.json\n`);
+    expect(sums).toContain(`${sha("pix")}  previews/pixel.webp\n`);
+    for (const f of ["previews/pixel.8bit.webp", "previews/ui/fantasy.webp", "previews/mood/dark.webp", "creation.json"]) expect(sums).toContain(`  ${f}\n`);
     // Every line verifies from the version's directory, as publish checks them.
     // Git Bash on Windows has sha256sum, and shasum only as a Perl script.
     const check = process.platform === "win32" ? ["sha256sum", "-c", "SHA256SUMS"] : ["shasum", "-a", "256", "-c", "SHA256SUMS"];
@@ -166,6 +183,71 @@ describe("vfx archives", () => {
   test("the checkout's engine package lists nothing that reaches packages/vfx-packs/", () => {
     const pkg = JSON.parse(readFileSync(join(import.meta.dir, "../packages/engine/package.json"), "utf8")) as { files: string[] };
     expect(pkg.files.filter((f) => f.includes("vfx-packs") || f.split("/").includes(".."))).toEqual([]);
+  });
+});
+
+const sha = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");
+const LINUX = { og: sha("og"), addon: sha("addon") };
+/** The slots of a version: two looks, a variant, a UI pack and a mood, with their bytes. */
+const SLOTS: (Slot & { bytes: string })[] = [
+  { path: "previews/pixel.webp", kind: "look", look: "pixel", bytes: "pix" },
+  { path: "previews/pixel.8bit.webp", kind: "variant", look: "pixel", variant: "8bit", bytes: "8bit" },
+  { path: "previews/neon-vector.webp", kind: "look", look: "neon-vector", bytes: "neon" },
+  { path: "previews/ui/fantasy.webp", kind: "ui", pack: "fantasy", bytes: "ui" },
+  { path: "previews/mood/dark.webp", kind: "mood", look: "neon-vector", mood: "dark", bytes: "dark" },
+];
+/** A version directory with its previews as scripts/release.sh previews leaves them, and an engine package with a catalogue. */
+function drawLooks(dir: string, version: string, revision: string) {
+  const engine = scratch("og-looks-engine-");
+  mkdirSync(join(engine, "knowledge/looks"), { recursive: true });
+  const catalogue = `${JSON.stringify({ schemaVersion: 3, styles: [{ slug: "pixel", preview: "previews/pixel.webp" }, { slug: "neon-vector", preview: "previews/neon-vector.webp" }] }, null, 2)}\n`;
+  writeFileSync(join(engine, "knowledge/looks/catalogue.json"), catalogue);
+  for (const s of SLOTS) {
+    mkdirSync(join(dir, s.path, ".."), { recursive: true });
+    writeFileSync(join(dir, s.path), s.bytes);
+  }
+  const record = { engine: version, revision, dirty: false, tier: "vulkan", ...LINUX, previews: Object.fromEntries(SLOTS.map((s) => [s.path, { sha256: sha(s.bytes), size: s.bytes.length }])) };
+  const write = (r: object) => writeFileSync(join(dir, "looks-render.json"), JSON.stringify(r));
+  write(record);
+  return { engine, catalogue, record, write, looks: () => writeLooks(dir, version, revision, engine, LINUX, SLOTS) };
+}
+
+describe("the look previews", () => {
+  test("ship the package's catalogue byte for byte", () => {
+    const dir = scratch("og-looks-");
+    const d = drawLooks(dir, "0.9.1", "a".repeat(40));
+    d.looks();
+    expect(readFileSync(join(dir, "looks/catalogue.json"), "utf8")).toBe(d.catalogue);
+  });
+
+  test("are refused unless this version drew every style's on the GPU host with its own og and addon", () => {
+    const dir = scratch("og-looks-");
+    const d = drawLooks(dir, "0.9.1", "a".repeat(40));
+    const refused = (change: object, why: RegExp) => {
+      d.write({ ...d.record, ...change });
+      expect(() => d.looks()).toThrow(why);
+      d.write(d.record);
+    };
+    refused({ engine: "0.9.0" }, /drawn by engine 0\.9\.0, not 0\.9\.1/);
+    refused({ revision: "b".repeat(40) }, /drawn at b{40}/);
+    refused({ tier: "vulkan-cpu" }, /drawn on vulkan-cpu, not vulkan/);
+    refused({ tier: "metal" }, /drawn on metal, not vulkan/);
+    refused({ tier: null }, /drawn on no renderer/);
+    refused({ dirty: true }, /dirty templates\/looks/);
+    refused({ og: sha("another og") }, /another og or addon/);
+    // An old preview left in place: its bytes are not the ones drawn.
+    writeFileSync(join(dir, "previews/pixel.webp"), "old");
+    expect(() => d.looks()).toThrow(/previews\/pixel\.webp is not the preview looks-render\.json recorded/);
+    writeFileSync(join(dir, "previews/pixel.webp"), "pix");
+    rmSync(join(dir, "previews/mood/dark.webp"));
+    expect(() => d.looks()).toThrow(/no previews\/mood\/dark\.webp/);
+    writeFileSync(join(dir, "previews/mood/dark.webp"), "dark");
+    writeFileSync(join(dir, "previews/ui/retired.webp"), "x");
+    expect(() => d.looks()).toThrow(/previews\/ui\/retired\.webp: no preview slot names them/);
+    rmSync(join(dir, "previews/ui/retired.webp"));
+    expect(() => d.looks()).not.toThrow();
+    rmSync(join(dir, "looks-render.json"));
+    expect(() => d.looks()).toThrow(/no looks-render\.json/);
   });
 });
 

@@ -24,8 +24,11 @@ installed into E2B, production's provider, last.
 | `<version>/origin-engine-<version>-<target>.tar.gz` | one target's dist, its root directory `origin-engine-<version>-<target>/` | immutable |
 | `<version>/vfx/<pack>.tar.gz` | one downloadable effect pack, its root directory `<pack>/` (below) | immutable |
 | `<version>/wasm/<variant>/<module>.<hash12>.wasm` | one split engine module (docs/web-export.md §Modules): `<variant>` is the engine wasm it was split from (`publish`, `publish2d`, `lanes`, `lanes2d`); the platform's route serves any name matching `wasm/[a-z0-9-]+/[a-z0-9]+.<hash12>.wasm`, the same pattern that gates SHA256SUMS signing, served as `application/wasm` with CORS for the play origin | immutable |
-| `<version>/manifest.json` | `{version, base?, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx: {<pack>: {url, sha256, size, version, minEngine}}}` | immutable |
-| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`, the split engine modules' as `wasm/<variant>/<file>`), manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
+| `<version>/looks/catalogue.json` | the engine package's `knowledge/looks/catalogue.json`, byte for byte (each style's `preview` stays `previews/<slug>.webp`, relative to the version) | immutable |
+| `<version>/previews/<slug>.webp`, `<version>/previews/<slug>.<variant>.webp`, `<version>/previews/ui/<pack>.webp`, `<version>/previews/mood/<mood>.webp` | the creation document's previews, 960 x 540 webp, drawn by this version on the GPU host (below, The looks) | immutable |
+| `<version>/creation.json` | the creation document (create-game's `creationDocument`, `packages/create/README.md` §Creation document) with every preview slot filled `{path, url, sha256, size, engine}` | immutable |
+| `<version>/manifest.json` | `{version, base?, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx: {<pack>: {url, sha256, size, version, minEngine}}, looks?: {catalogue: {url, sha256, size}, previews: {<slug> \| <slug>.<variant>: {url, sha256, size, engine}}}, creation?: {url, sha256, size}}`; `engine` is the version that drew the preview; a backfill has no `looks` and `creation` | immutable |
+| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`, the split engine modules' as `wasm/<variant>/<file>`), the looks files' (`looks/catalogue.json`, `previews/...`, `creation.json`), manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
 | `latest/manifest.json` | the newest release (never a dev build) | no-cache |
 | `install.sh`, `install.ps1` | install the `og` launcher (`packages/launcher`) | no-cache |
 
@@ -96,6 +99,24 @@ does. The few bundled packs ship inside `engine/`.
 pack of the version: its archive's `url`, `sha256` and `size`, and the
 `version` and `minEngine` of the pack's own `extension.json`
 (`scripts/release-dist.ts`). Bundled packs are not listed.
+
+**The looks** (docs/art.md §2.6): a version publishes the look catalogue,
+the creation document and every preview the document references, so the
+platform reads them from `latest/manifest.json` without installing the
+package. The previews are never the checkout's files: `scripts/release.sh
+previews` draws each slot of the packed create-game's `previewSlots()` with
+the version's own linux-x64 og and addon on the GPU host (`gcp-l4`,
+`templates/looks/preview/render.ts --gpu`: a software or absent adapter
+fails the step) and records the run in `looks-render.json`. A look or
+variant is its preset scene; a mood is the 3D scene in its slot's look
+with the mood laid over it; a UI pack is the HUD sheet's meters page in
+that pack (`og ui preview`, desktop). `release-dist.ts` ships them only
+when that record names this version, its commit (with a clean
+`templates/looks/`), the `vulkan` tier, the linux-x64 archive's og and
+addon and each file's bytes, with a file for every slot and none other;
+`publish` refuses a build without them. A create-game from before the
+creation document gives one slot per catalogue look and no
+`creation.json`.
 
 **The release key** is a minisign (Ed25519) pair:
 
@@ -185,7 +206,9 @@ to `main` and packed at that commit on the packing hosts as a release is
 the orb then archives, signs and publishes it on the `dev` channel with
 `scripts/release.sh dev <dir> --revision <sha>` (`dev <run-id>` takes the
 tarballs of a `release.yml -f dev=true` run instead). The platform then pins
-that exact version. A dev build runs no install test and no browser tier, and writes
+that exact version. Its directory carries the previews `scripts/release.sh
+previews` drew for those tarballs on the GPU host (§1 The looks), or the
+publish is refused. A dev build runs no install test and no browser tier, and writes
 no receipt, tag or changelog entry; `latest` never points at one. A
 release (§3) is cut at a milestone, from whatever dev build the testing
 settled on, with every gate.
@@ -319,13 +342,18 @@ does the rest, so the key never leaves it.
    tarballs, create-game and design into `dist/release/<v>/` and ends by
    naming the missing win32-x64 tarball; the remote-frame archives land in
    `packages/engine/dist/pack/frames/`.
+2a. On the GPU host (the `gcp-l4` orb, a checkout at the same commit with
+   the Mac's `dist/release/<v>/` tarballs copied in): `scripts/release.sh
+   previews <v>`, which writes `dist/release/<v>/previews/` and
+   `looks-render.json`; both go to the orb with the tarballs.
 3. On studio-win (Git Bash, `E:\src\origin-engine` at the same commit):
    `OG_RELEASE=1 sh packages/engine/scripts/build.sh --native && sh
    packages/engine/scripts/pack.sh --native`, giving
    `packages/engine/dist/pack/origingame-engine-win32-x64-<v>.tgz`. It never
    compiles the wasm.
 4. Both hosts send their tarballs, and the Mac its frame archives, to the
-   orb by Amp's thread file transfer. In the orb: copy them into
+   orb by Amp's thread file transfer, and the GPU host its previews and
+   `looks-render.json`. In the orb: copy them into
    `dist/release/<v>/` (the frame archives into
    `packages/engine/dist/pack/frames/`), then `scripts/release.sh archive`,
    `scripts/release.sh verify` (the full install test, not `--core`, host

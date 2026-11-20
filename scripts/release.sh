@@ -22,6 +22,11 @@
 #   scripts/release.sh archive [<version>]      scripts/release-dist.ts over dist/release/<version>/: an archive per target whose platform
 #                                               tarball is there, manifest.json, SHA256SUMS, and SHA256SUMS.minisig when
 #                                               OG_ENGINE_MINISIGN_KEY (the project secret) is set; release.json is the local record
+#   scripts/release.sh previews [<version>]     on the GPU host (gcp-l4, docs/ci.md §The GPU host), at the version's commit with a clean
+#                                               templates/looks/: draw every look's catalogue preview with the version's own linux-x64
+#                                               og and addon, unpacked from dist/release/<version>/'s tarballs (templates/looks/preview/
+#                                               render.ts --gpu: a software or absent adapter fails), into previews/ with looks-render.json;
+#                                               then `archive` again, which ships them (docs/release.md §1 The looks)
 #   scripts/release.sh sign [<version>]         manifest.json, a release's install.sh and install.ps1, SHA256SUMS and its signature
 #                                               again over the archives in place (OG_ENGINE_MINISIGN_KEY); the install test's passes stand
 #   scripts/release.sh fetch <run-id>           download the release workflow run's `release-<version>` artifact (gh run download) into
@@ -35,7 +40,7 @@
 #                                               upload SHA256SUMS, its signature and every file it lists (the three archives, manifest.json,
 #                                               a release's install.sh and install.ps1) to the platform, then publish there
 #                                               (scripts/release-publish.ts; OG_PLATFORM_ENGINE_UPLOAD_TOKEN); refuses a dirty pack, a missing
-#                                               target, an unsigned SHA256SUMS or one that does not verify with docs/release.md's public
+#                                               target, a version without its own previews (`previews`), an unsigned SHA256SUMS or one that does not verify with docs/release.md's public
 #                                               key, an archive not verified on both platforms, and (the checkout's version) a HEAD whose
 #                                               packaged inputs differ from the revision packed. A version already published with the
 #                                               same SHA256SUMS is reported and left; any other bytes are refused
@@ -169,6 +174,7 @@ cmd_publish() {
     if (m.dirty) problems.push("packed from a dirty tree");
     const missing = triples.split(" ").filter((t) => !m.targets.includes(t));
     if (missing.length) problems.push(`no archive for ${missing.join(", ")} (scripts/release.sh archive once the win32-x64 tarball is in)`);
+    if (m.source === "build" && !m.looks) problems.push("no previews drawn by this version (scripts/release.sh previews on the GPU host, then archive)");
     if (!m.signed) problems.push("SHA256SUMS is unsigned (OG_ENGINE_MINISIGN_KEY, then scripts/release.sh archive)");
     if (dev !== "1") {
       if (!m.verified?.host) problems.push("not verified on this machine (scripts/release.sh verify)");
@@ -229,6 +235,37 @@ cmd_publish() {
   bun scripts/release-publish.ts "$out" --version "$v" "${dry[@]}"
 }
 
+# The look previews, drawn by the version itself on the GPU host (docs/release.md §1 The looks):
+# its own og and addon from the tarballs pack wrote, the engine package they belong to, and
+# this checkout's preview scenes, which must be the version's commit (release-dist checks the record).
+cmd_previews() {
+  local v out work
+  v="$(pick_version "${1:-}")"; out="$(out_dir "$v")"
+  for t in "origingame-engine-$v.tgz" "origingame-engine-linux-x64-$v.tgz" "origingame-create-game-$v.tgz"; do
+    [ -f "$out/$t" ] || { og_err "release: no ${out#"$OG_ROOT"/}/$t; pack $v first (docs/release.md §3)"; return 1; }
+  done
+  work="$out/.previews"
+  rm -rf "$work" "$out/previews" "$out/looks-render.json"; mkdir -p "$work/engine" "$work/platform" || return 1
+  tar -xzf "$out/origingame-engine-$v.tgz" -C "$work/engine" --strip-components=1 || return 1
+  tar -xzf "$out/origingame-engine-linux-x64-$v.tgz" -C "$work/platform" --strip-components=1 || return 1
+  mkdir -p "$work/create" && tar -xzf "$out/origingame-create-game-$v.tgz" -C "$work/create" --strip-components=1 || return 1
+  mkdir -p "$work/engine/native" && cp "$work/platform/origin-engine.node" "$work/engine/native/origin-engine.linux-x64.node" || return 1
+  # The scenes' pinned models and art (templates/og-assets.json), absent from a fresh checkout.
+  bun scripts/assets.ts ensure templates || { og_err "release: the preview scenes' pinned assets are not available"; return 1; }
+  # Every slot the version's creation document has (create-game's previewSlots), as release-dist reads them.
+  # shellcheck disable=SC2016 # the bun script takes its arguments from argv
+  bun -e 'const [d, e, o] = process.argv.slice(1); const { creationOf } = await import(`${process.cwd()}/scripts/release-dist.ts`); require("node:fs").writeFileSync(o, JSON.stringify((await creationOf(d, e)).slots))' \
+    "$work/create" "$work/engine" "$work/slots.json" || return 1
+  # shellcheck source-path=SCRIPTDIR
+  . "$OG_ROOT/scripts/gpu-env.sh"
+  og_gpu_acquire "release previews $v" || return 1
+  OG_NATIVE_ADDON="$work/engine/native/origin-engine.linux-x64.node" OG_ENGINE_PACKAGE="$work/engine" \
+    bun templates/looks/preview/render.ts --webp --gpu --og "$work/platform/og" --engine "$work/engine" \
+      --out "$work/frames" --previews "$out/previews" --record "$out/looks-render.json" --slots "$work/slots.json" \
+    || { og_err "release: the previews were not all drawn on a hardware adapter; nothing of them ships"; rm -rf "$out/previews" "$out/looks-render.json"; return 1; }
+  og_say "release: previews of $v drawn into ${out#"$OG_ROOT"/}/previews/; now scripts/release.sh archive $v"
+}
+
 # Signs a packed version again (manifest.json, a release's installers, SHA256SUMS, the signature) over its
 # archives in place, keeping the install test's passes: what a thread with OG_ENGINE_MINISIGN_KEY runs on
 # archives packed and verified elsewhere.
@@ -263,6 +300,8 @@ cmd_dev() {
   local out; out="$(out_dir "$v")"
   rm -rf "$out"; mkdir -p "$out"
   cp "$tmp"/origingame-*-"$v".tgz "$out/" || return 1
+  # The previews the GPU host drew for these tarballs (scripts/release.sh previews), when they came with them.
+  if [ -f "$tmp/looks-render.json" ]; then cp -R "$tmp/previews" "$tmp/looks-render.json" "$out/" || return 1; fi
   [ -d "$src" ] || rev=(--revision "$(gh run view "$src" -R "$REPO" --json headSha -q .headSha)")
   bun scripts/release-dist.ts "$out" --version "$v" "${rev[@]}" || return 1
   OG_RELEASE_DEV=1 cmd_publish "$v"
@@ -275,6 +314,7 @@ case "$verb" in
   fold) bun scripts/changelog.ts fold ;;
   pack) cmd_pack "$@" ;;
   archive) cmd_archive "$@" ;;
+  previews) cmd_previews "$@" ;;
   sign) cmd_sign "$@" ;;
   fetch) cmd_fetch "$@" ;;
   verify) cmd_verify "$@" ;;

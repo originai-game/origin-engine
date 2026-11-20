@@ -47,6 +47,17 @@
 // `vfx` and listed in SHA256SUMS. No target archive carries packages/vfx-packs/
 // (checkPacksOutside).
 //
+// Beside them, the look catalogue and its previews (docs/release.md §1 The
+// looks): `looks/catalogue.json`, the engine package's
+// knowledge/looks/catalogue.json byte for byte, and `previews/<slug>.webp`
+// for each of its styles, which `scripts/release.sh previews` drew on the GPU
+// host with this version's own linux-x64 og and addon (render.ts --gpu) and
+// recorded in `looks-render.json`. Archiving refuses previews that record
+// names another version, commit, og or addon, a tier other than the
+// recording tier (vulkan), or files whose bytes it did not record: a version
+// never ships previews it did not draw. Named in manifest.json's `looks`
+// and listed in SHA256SUMS; a backfill (--registry) has none.
+//
 // The local record `release.json` (the commit, whether the tree was dirty,
 // the source, and the install test's passes) stays beside them for
 // `scripts/release.sh publish` to read; it is not uploaded.
@@ -388,6 +399,122 @@ async function assemble(o: { dir: string; work: string; version: string; base?: 
   return build;
 }
 
+interface LookFile {
+  url: string;
+  sha256: string;
+  size: number;
+}
+/** manifest.json's `looks`: the catalogue, and each style's preview with the version that drew it. */
+export interface Looks {
+  catalogue: LookFile;
+  previews: Record<string, LookFile & { engine: string }>;
+}
+/** What render.ts --record writes for `scripts/release.sh previews`. */
+interface RenderRecord {
+  engine: string;
+  revision: string;
+  dirty: boolean;
+  tier: string | null;
+  og: string;
+  addon: string | null;
+  previews: Record<string, { sha256: string; size: number }>;
+}
+/** The tier the previews are drawn on: the GPU host's, which records the reference frames (docs/ci.md §Reference frames). */
+const PREVIEW_TIER = "vulkan";
+export const RENDER_RECORD = "looks-render.json";
+
+/** One preview a version publishes: create-game's PreviewSlot (bin/creation.ts), or a catalogue look's before it. */
+export interface Slot {
+  path: string;
+  kind: "look" | "variant" | "ui" | "mood";
+  look?: string;
+  variant?: string;
+  pack?: string;
+  mood?: string;
+}
+/** What a version publishes of its looks: manifest.json's `looks` and `creation`, and every file they bring, for SHA256SUMS. */
+export interface LooksRelease {
+  looks: Looks;
+  creation: LookFile | null;
+  files: string[];
+}
+/** The files below `root`, relative to it with `/`, sorted. */
+function filesUnder(root: string, rel = ""): string[] {
+  if (!existsSync(join(root, rel))) return [];
+  return readdirSync(join(root, rel), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? filesUnder(root, `${rel}${e.name}/`) : [`${rel}${e.name}`])).sort();
+}
+
+/**
+ * Writes `<dir>/looks/catalogue.json` (the engine package's catalogue's
+ * bytes) and returns manifest.json's `looks` over it and the previews in
+ * `<dir>/previews/`, one per slot (a look's under its slug, a variant's under
+ * `<slug>.<variant>`; ui and mood previews are named by creation.json only),
+ * after checking them against `<dir>/looks-render.json`: drawn by this
+ * version at this revision from a clean templates/looks/, on the recording
+ * tier, with the og and addon `linux` names (the linux-x64 archive's sha256),
+ * every slot's file the one recorded and no file for no slot. Throws on any
+ * difference. `filled` is what creationDocument takes.
+ */
+export function writeLooks(dir: string, version: string, revision: string, engine: string, linux: { og: string; addon: string }, slots: Slot[]): { looks: Looks; filled: Record<string, LookFile & { engine: string }> } {
+  const file = join(dir, RENDER_RECORD);
+  const where = "scripts/release.sh previews on the GPU host (docs/release.md §3)";
+  if (!existsSync(file)) throw new Error(`no ${RENDER_RECORD} in ${dir}: the previews are drawn by ${where}`);
+  const r = JSON.parse(readFileSync(file, "utf8")) as RenderRecord;
+  const wrong: string[] = [];
+  if (r.engine !== version) wrong.push(`drawn by engine ${r.engine}, not ${version}`);
+  if (r.revision !== revision) wrong.push(`drawn at ${r.revision}, not ${revision}`);
+  if (r.dirty) wrong.push("drawn from a dirty templates/looks/");
+  if (r.tier !== PREVIEW_TIER) wrong.push(`drawn on ${r.tier ?? "no renderer"}, not ${PREVIEW_TIER} (the GPU host)`);
+  if (r.og !== linux.og || r.addon !== linux.addon) wrong.push("drawn with another og or addon than the linux-x64 archive's");
+  const paths = new Set(slots.map((s) => s.path));
+  const extra = filesUnder(join(dir, "previews")).map((f) => `previews/${f}`).filter((f) => !paths.has(f));
+  if (extra.length) wrong.push(`${extra.join(", ")}: no preview slot names them`);
+  const previews: Looks["previews"] = {};
+  const filled: Record<string, LookFile & { engine: string }> = {};
+  for (const slot of slots) {
+    const at = join(dir, slot.path);
+    if (!/^previews\/(?:ui\/|mood\/)?[a-z0-9-]+(?:\.[a-z0-9-]+)?\.webp$/.test(slot.path)) {
+      wrong.push(`${slot.path} is not a preview path the downloads serve`);
+      continue;
+    }
+    if (!existsSync(at)) {
+      wrong.push(`no ${slot.path}`);
+      continue;
+    }
+    const digest = sha256(at);
+    if (r.previews[slot.path]?.sha256 !== digest) wrong.push(`${slot.path} is not the preview ${RENDER_RECORD} recorded`);
+    filled[slot.path] = { url: `${DOWNLOADS}/${version}/${slot.path}`, sha256: digest, size: statSync(at).size, engine: r.engine };
+    if (slot.kind === "look" || slot.kind === "variant") previews[slot.variant ? `${slot.look}.${slot.variant}` : slot.look!] = filled[slot.path]!;
+  }
+  if (wrong.length) throw new Error(`the previews in ${dir} are not this version's (draw them again: ${where}):\n  ${wrong.join("\n  ")}`);
+  mkdirSync(join(dir, "looks"), { recursive: true });
+  copyFileSync(join(engine, "knowledge/looks/catalogue.json"), join(dir, "looks/catalogue.json"));
+  const at = join(dir, "looks/catalogue.json");
+  return { looks: { catalogue: { url: `${DOWNLOADS}/${version}/looks/catalogue.json`, sha256: sha256(at), size: statSync(at).size }, previews }, filled };
+}
+
+/** Writes `<dir>/creation.json`, the creation document as create-game wrote it, and returns manifest.json's `creation`. */
+export function writeCreation(dir: string, version: string, doc: unknown): LookFile {
+  const at = join(dir, "creation.json");
+  writeFileSync(at, `${JSON.stringify(doc, null, 2)}\n`);
+  return { url: `${DOWNLOADS}/${version}/creation.json`, sha256: sha256(at), size: statSync(at).size };
+}
+
+/** A version's looks files, as SHA256SUMS lists them. */
+const LOOK_FILE = /^(?:looks\/catalogue\.json|previews\/.+\.webp|creation\.json)$/;
+
+/**
+ * The preview slots of a packed create-game (`create/bin/create.ts`'s
+ * previewSlots over its own catalogue) and its creationDocument; a
+ * create-game from before them has a slot per catalogue look and no document.
+ */
+export async function creationOf(create: string, engine: string): Promise<{ slots: Slot[]; document: ((previews: Record<string, LookFile & { engine: string }>, catalogue: string) => unknown) | null }> {
+  const mod = (await import(join(create, "bin/create.ts"))) as { previewSlots?: (catalogue: string) => Slot[]; creationDocument?: (p: object, catalogue: string) => unknown };
+  if (mod.previewSlots && mod.creationDocument) return { slots: mod.previewSlots(join(create, "looks/catalogue.json")), document: mod.creationDocument };
+  const styles = (JSON.parse(readFileSync(join(engine, "knowledge/looks/catalogue.json"), "utf8")) as { styles: { slug: string }[] }).styles;
+  return { slots: styles.map((s) => ({ path: `previews/${s.slug}.webp`, kind: "look", look: s.slug })), document: null };
+}
+
 /** Signs SHA256SUMS with the release key (minisign), when OG_ENGINE_MINISIGN_KEY is set; checks the signature. */
 function sign(dir: string, version: string, revision: string): boolean {
   const secret = process.env.OG_ENGINE_MINISIGN_KEY?.trim();
@@ -422,10 +549,11 @@ function sign(dir: string, version: string, revision: string): boolean {
  * manifest.json; for a release (never a dev build) the launcher's install.sh
  * and install.ps1, which move on the site only with a newer release; and
  * SHA256SUMS over all of them, signed. A dev build `dev.<date>.<n>` records
- * the release it is based on (`base`) beside its exact `revision`. Returns
+ * the release it is based on (`base`) beside its exact `revision`; `looks`
+ * (null for a backfill) names the catalogue, previews and creation document. Returns
  * the archives' targets.
  */
-export function finish(dir: string, version: string, revision: string, releasedAt: string, vfx: Record<string, VfxEntry>, base?: string): { archives: Target[]; signed: boolean } {
+export function finish(dir: string, version: string, revision: string, releasedAt: string, vfx: Record<string, VfxEntry>, looks: LooksRelease | null, base?: string): { archives: Target[]; signed: boolean } {
   const archives = (Object.keys(TARGETS) as Target[]).filter((t) => existsSync(join(dir, archiveName(version, t))));
   const channel = isDev(version) ? "dev" : "release";
   if (version.startsWith("dev.") && !(base && /^\d+\.\d+\.\d+$/.test(base) && /^[0-9a-f]{40}$/.test(revision))) die(`${version} must record its base release and its full commit id (base ${base}, revision ${revision})`);
@@ -444,9 +572,11 @@ export function finish(dir: string, version: string, revision: string, releasedA
       }),
     ),
     vfx,
+    ...(looks ? { looks: looks.looks } : {}),
+    ...(looks?.creation ? { creation: looks.creation } : {}),
   };
   writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  const files = [...archives.map((t) => archiveName(version, t)), ...Object.keys(vfx).map(archivePath), ...wasmFiles(dir), "manifest.json"];
+  const files = [...archives.map((t) => archiveName(version, t)), ...Object.keys(vfx).map(archivePath), ...wasmFiles(dir), ...(looks?.files ?? []), "manifest.json"];
   rmSync(join(dir, "install.sh"), { force: true });
   rmSync(join(dir, "install.ps1"), { force: true });
   if (channel === "release") {
@@ -531,7 +661,12 @@ function signAgain(dir: string, version: string) {
     const f = archivePath(name);
     if (!existsSync(join(dir, f)) || before.get(f) !== sha256(join(dir, f)) || vfx[name]!.sha256 !== before.get(f)) die(`${f} is not the archive SHA256SUMS and manifest.json named; archive again (and verify) instead`);
   }
-  const { archives, signed } = finish(dir, version, record.revision, releasedAt, vfx, record.base);
+  // The catalogue and previews in place, as the last manifest named them.
+  const prior = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as { looks?: Looks; creation?: LookFile };
+  const files = [...before.keys()].filter((f) => LOOK_FILE.test(f)).sort();
+  for (const f of files) if (!existsSync(join(dir, f)) || before.get(f) !== sha256(join(dir, f))) die(`${f} is not the file SHA256SUMS named; archive again (and verify) instead`);
+  const looks: LooksRelease | null = prior.looks ? { looks: prior.looks, creation: prior.creation ?? null, files } : null;
+  const { archives, signed } = finish(dir, version, record.revision, releasedAt, vfx, looks, record.base);
   writeFileSync(recordFile, `${JSON.stringify({ ...record, releasedAt, targets: archives, signed }, null, 2)}\n`);
   say(`${version}: SHA256SUMS over ${archives.length} archive(s), manifest.json${isDev(version) ? "" : ", install.sh, install.ps1"}${signed ? "; signed" : "; unsigned"}`);
 }
@@ -620,9 +755,26 @@ async function main() {
       builds[t] = await assemble({ dir, work, version, base, revision, t, common, tsrsTgz, downloadable });
     }
 
-    const { archives, signed } = finish(dir, version, revision, releasedAt, vfx, base);
+    // The previews must be this version's own (writeLooks); a backfill ships none. The Mac's pack
+    // archives before the GPU host drew them: archived again after, and publish refuses a build without.
+    let looks: LooksRelease | null = null;
+    if (!registry && !existsSync(join(dir, RENDER_RECORD))) say(`no previews yet: scripts/release.sh previews ${version} on the GPU host, then archive again (publish refuses until then)`);
+    else if (!registry) {
+      const linux = builds["x86_64-unknown-linux-gnu"] ?? die("the previews are checked against the linux-x64 archive's og and addon: archive it too");
+      const { slots, document } = await creationOf(join(common, "create"), join(common, "engine"));
+      try {
+        const { looks: manifest, filled } = writeLooks(dir, version, revision, join(common, "engine"), linux, slots);
+        rmSync(join(dir, "creation.json"), { force: true });
+        const creation = document ? writeCreation(dir, version, document(filled, join(common, "create/looks/catalogue.json"))) : null;
+        looks = { looks: manifest, creation, files: ["looks/catalogue.json", ...slots.map((s) => s.path).sort(), ...(creation ? ["creation.json"] : [])] };
+      } catch (e) {
+        die((e as Error).message);
+      }
+      say(`looks/catalogue.json, ${slots.length} previews drawn by ${version} on ${PREVIEW_TIER}${looks.creation ? ", creation.json" : " (this create-game has no creation document)"}`);
+    }
+    const { archives, signed } = finish(dir, version, revision, releasedAt, vfx, looks, base);
     // The local record publish reads; the install test adds its passes (new archives clear them).
-    writeFileSync(recordFile, `${JSON.stringify({ version, ...(base ? { base } : {}), revision, releasedAt, dirty, source: registry ? "registry" : "build", builtAt: new Date().toISOString(), targets: archives, signed, verified: {} }, null, 2)}\n`);
+    writeFileSync(recordFile, `${JSON.stringify({ version, ...(base ? { base } : {}), revision, releasedAt, dirty, source: registry ? "registry" : "build", builtAt: new Date().toISOString(), targets: archives, signed, looks: looks !== null, verified: {} }, null, 2)}\n`);
     if (dirty) say("note: the working tree is dirty; publish refuses these until a clean tree is packed");
     say(`${version}: ${archives.length} archive(s) (${archives.join(", ")}), manifest.json, SHA256SUMS${signed ? ", SHA256SUMS.minisig" : ""}`);
   } finally {

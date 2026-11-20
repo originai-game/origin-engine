@@ -44,7 +44,7 @@ if (evil) {
   writeFileSync(file, bytes);
   vfx["spark-pack"] = { ...vfx["spark-pack"]!, sha256: createHash("sha256").update(bytes).digest("hex"), size: bytes.length };
 }
-finish(dir, version, "0".repeat(40), "2026-11-07T00:00:00.000Z", vfx);
+finish(dir, version, "0".repeat(40), "2026-11-07T00:00:00.000Z", vfx, null);
 
 const { publicKey, privateKey } = generateKeyPairSync("ed25519");
 const id = randomBytes(8);
