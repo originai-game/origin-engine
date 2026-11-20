@@ -6,6 +6,7 @@
 
 pub mod arena;
 pub mod sheet;
+pub mod style;
 pub mod tokens;
 
 pub use tokens::Tokens;
@@ -43,6 +44,44 @@ mod tests {
         a.set_text(first, "106:54");
         assert!(a.layout(1280.0, 720.0, &mut measure));
         assert_eq!(a.box_of(second).x, 10.0 + 60.0 + 4.0);
+    }
+
+    #[test]
+    fn a_sheet_compiles_to_records_with_tokens_resolved_and_states_over_the_base() {
+        let tokens = Tokens::parse(":root { --space-lg: 12px; --panel: #336699; }");
+        let sheet = style::Sheet::compile(
+            "#Clock { position: fixed; left: calc(var(--space-lg) + 4px); padding: 2px var(--space-lg); background: var(--panel); }\n\
+             .hud:hover { opacity: 0.5; } .hud .x { color: red; }",
+            &tokens,
+        );
+        assert_eq!(
+            sheet.skipped,
+            ["selector .hud .x"],
+            "a combinator is listed, not guessed"
+        );
+        let clock = sheet.names.get("#Clock").unwrap();
+        let hud = sheet.names.get(".hud").unwrap();
+        let base = sheet.record(&[clock, hud], style::State::Base);
+        assert_eq!(base.opacity, 1.0);
+        assert_eq!(
+            sheet.record(&[clock, hud], style::State::Hover).opacity,
+            0.5
+        );
+        assert_eq!(
+            sheet.record(&[clock], style::State::Hover).opacity,
+            1.0,
+            "the state rule needs .hud"
+        );
+        let mut a = arena::Arena::new();
+        let e = a.element(0, base.layout.clone());
+        a.text(e, "06:54", 20.0);
+        a.layout(1280.0, 720.0, &mut measure);
+        let b = a.box_of(e);
+        assert_eq!((b.x, b.inset), (16.0, [12.0, 2.0, 12.0, 2.0]));
+        assert!(
+            base.fill[2] > base.fill[0],
+            "the panel colour, bluer than red"
+        );
     }
 
     #[test]

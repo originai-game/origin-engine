@@ -7,6 +7,7 @@ publish = false
 description = "og-ui's new core: a flat element arena, styles compiled to typed records, rune-taffy layout and quad paint."
 
 [dependencies]
+og-css = { path = "../og-css" }
 rune-taffy = { path = "../../third_party/rune-taffy" }
 taffy = { version = "=0.15.1", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size"] }
 rustc-hash = "2"
