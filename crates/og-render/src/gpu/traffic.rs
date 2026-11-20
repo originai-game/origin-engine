@@ -166,7 +166,7 @@ fn count(at: &'static Location<'static>, kind: Kind, bytes: u64, ms: f64) {
     let start = (std::ptr::from_ref(at) as usize >> 3) % SITES;
     for i in (start..SITES).chain(0..start) {
         match &mut s.sites[i] {
-            Some(site) if std::ptr::eq(site.at, at) => {
+            Some(site) if std::ptr::eq(site.at, at) && site.kind == kind => {
                 site.count += 1;
                 site.bytes += bytes;
                 site.ms += ms;
