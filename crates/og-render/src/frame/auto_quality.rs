@@ -39,6 +39,19 @@
 //!   failed trials that rung is not tried again until the settings or the
 //!   budget change. So a rung is left and re-entered a bounded number of
 //!   times.
+//!
+//! A step down must pay for itself. Each run of steps down in a row is
+//! measured against the rung it began from: when the cost it saved is less
+//! than [`HELP_AT`] of what the pixels (or [`PRESET_COST`]) predict, the
+//! frame is not bound by them (vertex or CPU-side work the CPU time does not
+//! show, or the browser's own), so fewer pixels only degrade the image. It
+//! goes back to that rung and steps down no further until the bounds change
+//! or the cost there moves past [`REPROBE_AT`] either way (the load changed;
+//! the next step down is measured again). The frame interval moves in whole
+//! vsyncs, so without GPU time a run is judged only once its predicted
+//! saving reaches the budget (The Last Light on Chrome, 2560×1440, ~100 ms
+//! frames: 1.0 → 0.9 → 0.8 saved 19 and 18 ms, 0.7 cost 3 ms more, and it
+//! went on to 0.5 and a preset step for nothing).
 
 /// The render scale's step on the ladder.
 pub const SCALE_STEP: f32 = 0.1;
@@ -71,6 +84,12 @@ pub const PAUSE_MS: f64 = 1000.0;
 /// Frames after any change before the next decision (the new rung's cost
 /// settles: targets remade, pipelines compiled).
 pub const SETTLE_FRAMES: u32 = 30;
+/// A run of steps down that saved less than this share of its predicted
+/// saving did not help.
+pub const HELP_AT: f64 = 0.5;
+/// The factor, either way, by which the cost at a rung a run of steps down
+/// returned to must move before it steps down again.
+pub const REPROBE_AT: f64 = 1.5;
 
 /// One drawn frame, as the host measured it.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -126,6 +145,12 @@ pub struct AutoQuality {
     trial: Option<Trial>,
     /// Failed trials per rung.
     failures: Vec<u32>,
+    /// The rung the steps down in a row began from (the last that helped)
+    /// and its cost; `None` once a frame is not over.
+    helped: Option<(usize, f64)>,
+    /// The rung steps down stop at, and its cost, after a run that did not
+    /// help.
+    floor: Option<(usize, f64)>,
 }
 
 impl AutoQuality {
@@ -143,6 +168,8 @@ impl AutoQuality {
             settle: 0,
             trial: None,
             failures: Vec::new(),
+            helped: None,
+            floor: None,
         };
         q.set_bounds(bounds);
         q
@@ -150,7 +177,7 @@ impl AutoQuality {
 
     /// New bounds (settings or budget changed): the rung keeps its scale
     /// and step where they are still on the ladder (else the nearest), and
-    /// every failed trial is forgotten.
+    /// every failed trial and step down that did not help is forgotten.
     pub fn set_bounds(&mut self, bounds: AutoQualityBounds) {
         let (scale, step) = if self.scales.is_empty() {
             (f32::INFINITY, 0)
@@ -173,6 +200,8 @@ impl AutoQuality {
                 .unwrap_or(self.scales.len() - 1)
         };
         self.failures = vec![0; rungs];
+        self.helped = None;
+        self.floor = None;
         self.restart();
     }
 
@@ -253,19 +282,16 @@ impl AutoQuality {
         if over {
             self.calm = 0;
             self.over += 1;
-            if self.over >= DOWN_FRAMES && self.rung + 1 < self.rungs() {
-                if let Some(t) = self.trial.take()
-                    && t.rung == self.rung
-                {
-                    self.failures[t.rung] += 1;
-                }
-                self.rung += 1;
-                self.restart();
-                return true;
+            if self.over < DOWN_FRAMES {
+                return false;
             }
-            return false;
+            // The interval moves in whole vsyncs: a smaller predicted
+            // saving may not show in it yet.
+            let quantum = if gpu.is_some() { 0.0 } else { budget };
+            return self.step_down(smoothed, quantum);
         }
         self.over = 0;
+        self.helped = None;
         if self.rung == 0 {
             return false;
         }
@@ -301,17 +327,68 @@ impl AutoQuality {
         true
     }
 
+    /// Frames over the budget for long enough at `cost`: first the run of
+    /// steps down so far is judged (once its predicted saving reaches
+    /// `quantum`), and one that did not help goes back to where it began;
+    /// else one rung down, unless the floor or the ladder's end holds it.
+    fn step_down(&mut self, cost: f64, quantum: f64) -> bool {
+        if let Some((from, was)) = self.helped {
+            let predicted = was * (1.0 - self.factor(from, self.rung));
+            if predicted >= quantum {
+                if was - cost < HELP_AT * predicted {
+                    self.floor = Some((from, was));
+                    self.helped = None;
+                    self.trial = None;
+                    self.rung = from;
+                    self.restart();
+                    return true;
+                }
+                self.helped = None;
+            }
+        }
+        if let Some((rung, at)) = self.floor
+            && self.rung >= rung
+        {
+            if cost < at * REPROBE_AT && cost * REPROBE_AT > at {
+                return false;
+            }
+            self.floor = None;
+        }
+        if self.rung + 1 >= self.rungs() {
+            return false;
+        }
+        if let Some(t) = self.trial.take()
+            && t.rung == self.rung
+        {
+            self.failures[t.rung] += 1;
+        }
+        self.helped.get_or_insert((self.rung, cost));
+        self.rung += 1;
+        self.restart();
+        true
+    }
+
+    /// The cost rung `to` is predicted to take, as a share of rung
+    /// `from`'s (`from` <= `to`): the pixels' ratio for each scale step,
+    /// 1 / (1 + [`PRESET_COST`]) for each preset step.
+    fn factor(&self, from: usize, to: usize) -> f64 {
+        (from..to)
+            .map(|k| {
+                if k + 1 >= self.scales.len() {
+                    1.0 / (1.0 + PRESET_COST)
+                } else {
+                    let ratio = f64::from(self.scales[k + 1] / self.scales[k]);
+                    ratio * ratio
+                }
+            })
+            .product()
+    }
+
     /// What the smoothed cost would be on rung `to`, one above this one,
     /// padded by [`SPREAD_SIGMAS`] of the measured spread (GPU time).
     fn predicted(&self, to: usize) -> f64 {
         let cost = self.cost_ms() + SPREAD_SIGMAS * self.spread.max(0.0).sqrt();
-        if to + 1 >= self.scales.len() {
-            // A preset step back (or the step from the least scale's
-            // first preset step back to the scale alone).
-            return cost * (1.0 + PRESET_COST);
-        }
-        let ratio = f64::from(self.scales[to] / self.scales[to + 1]);
-        cost * ratio * ratio
+        cost / self.factor(to, to + 1)
     }
 }
 
@@ -571,6 +648,65 @@ mod tests {
         assert_eq!(ups, MAX_FAILURES as usize, "{moves:?}");
         assert_eq!(moves.len(), 1 + 2 * MAX_FAILURES as usize, "{moves:?}");
         assert_eq!(q.scale(), 0.9);
+    }
+
+    /// A step down that saves much less than its pixels predict goes back
+    /// to the last rung that helped and stays. The Last Light on Chrome
+    /// WebGPU (2560×1440, no GPU time, 60 Hz), its median interval per
+    /// rung with ±8 ms of jitter: 0.9 and 0.8 saved 19 and 18 ms, 0.7 cost
+    /// 3 ms more. Before the fix it went on to 0.5 and a preset step,
+    /// slower than at 0.8. With GPU time, a GPU whose time the pixels set
+    /// but the preset step does not change takes that step and comes back.
+    #[test]
+    fn a_step_down_that_does_not_save_its_pixels_comes_back_and_stays() {
+        // The preset step at 0.5 measured 100.2.
+        let interval = |q: &AutoQuality| match (q.scale() * 10.0).round() as i32 {
+            10 => 119.5,
+            9 => 100.6,
+            8 => 82.4,
+            7 => 85.6,
+            6 => 91.9,
+            _ => 100.4,
+        };
+        let mut q = AutoQuality::new(bounds(1));
+        let mut noise = Noise(3);
+        let mut moves = Vec::new();
+        for _ in 0..36_000 {
+            if q.sample(FrameSample {
+                interval_ms: interval(&q) + 8.0 * noise.next(),
+                cpu_ms: 5.0,
+                gpu_ms: None,
+            }) {
+                moves.push((q.scale(), q.step()));
+            }
+        }
+        assert_eq!(moves, vec![(0.9, 0), (0.8, 0), (0.7, 0), (0.8, 0)]);
+
+        let mut q = AutoQuality::new(bounds(2));
+        let mut moves = Vec::new();
+        for _ in 0..36_000 {
+            let s = f64::from(q.scale());
+            let g = 80.0 * s * s;
+            if q.sample(FrameSample {
+                interval_ms: vsync(g),
+                cpu_ms: 3.0,
+                gpu_ms: Some(g),
+            }) {
+                moves.push((q.scale(), q.step()));
+            }
+        }
+        assert_eq!(
+            moves,
+            vec![
+                (0.9, 0),
+                (0.8, 0),
+                (0.7, 0),
+                (0.6, 0),
+                (0.5, 0),
+                (0.5, 1),
+                (0.5, 0)
+            ]
+        );
     }
 
     /// Without GPU time, late frames the CPU's own work explains (a heavy

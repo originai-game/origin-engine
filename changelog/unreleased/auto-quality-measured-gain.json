@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "render.DisplaySettings.autoQuality",
+      "summary": "Automatic quality no longer lowers the render scale and the graphics preset when doing so makes frames no faster. Each run of steps down is measured against the rung it began from; when it saves less than half of what its pixels (or the preset step) predict, the frame is not bound by them, so automatic quality returns to that rung and steps down no further until the settings or the frame cap change or the frame's cost there moves by half. Without GPU time (WebGPU without timestamp queries, every publish build) a run is judged once its predicted saving reaches the frame cap's interval. A game whose ~100 ms frames on Chrome were bound by something other than pixels went from render scale 1 to 0.5 and a preset step, ending slower than at 0.8; it now stays at 0.8. The budget and the step-down and step-up thresholds are unchanged, and the tick is untouched."
+    }
+  ]
+}
