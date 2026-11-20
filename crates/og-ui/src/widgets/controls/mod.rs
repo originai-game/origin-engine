@@ -1127,6 +1127,10 @@ impl Ui {
             Some(0.0),
         );
         let k = if self.still() || !visible { 1.0 } else { k };
+        // The layer lies outside its opener's flow: the opener stays the
+        // element last closed, so a document's CSS for the control (its
+        // width, its margins) lands on it and not on the open layer.
+        let opener = self.tree.last_closed;
         if visible {
             let layer = self.open_layer(
                 "menu",
@@ -1146,6 +1150,7 @@ impl Ui {
                 opacity: (k * 1.6).min(1.0),
                 ..Props::default()
             });
+            self.tree.last_closed = opener;
         }
         crate::widgets::ModalResponse { visible, dismissed }
     }

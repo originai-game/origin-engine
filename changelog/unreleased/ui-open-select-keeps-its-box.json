@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "UI: an open select, colour picker or other control with a floating list keeps the box its document's CSS gives it. The open list used to take the control's CSS (its width, its margins) instead, so a `width: 160px` select fell back to filling its row beside its neighbours and its trigger spilled out past the panel's edge while the list was open."
+  ]
+}

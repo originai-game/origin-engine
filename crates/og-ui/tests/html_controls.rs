@@ -29,6 +29,9 @@
 //! - `::file-selector-button` styling the whole file input or nothing, the
 //!   names not beside the button, or a press on the names not opening the
 //!   picker → `file_selector_button_is_the_file_inputs_button_box`
+//! - an open select's list taking the CSS its document gives the select,
+//!   so the select falls back to filling its row and its trigger spills
+//!   out of it → `an_open_select_keeps_the_box_its_document_gives_it`
 
 use crate::support;
 
@@ -114,6 +117,62 @@ fn a_select_binds_its_value_by_keys_typeahead_pad_and_pointer() {
     rig.pad(PAD_B);
     assert_eq!(rig.store("choice"), "b");
     assert!(rig.focus().ends_with("Pick/Trigger"), "{}", rig.focus());
+}
+
+#[test]
+fn an_open_select_keeps_the_box_its_document_gives_it() {
+    // The widget set's row: a 160 px select beside a number field.
+    let vp = Viewport::new(900.0, 520.0);
+    let mut ui = ui_with_font(test_font_metrics());
+    kit_screen(
+        &mut ui,
+        &Kit {
+            amount: 3.0,
+            pick: "normal".into(),
+            ..Kit::default()
+        },
+    );
+    for _ in 0..3 {
+        step_screen(&mut ui, InputFrame::default(), vp);
+    }
+    let boxes = |ui: &Ui| {
+        let [select, field] = ["Difficulty", "Amount"].map(|id| ui.element(id).unwrap());
+        (select.x, select.width, field.x, field.width)
+    };
+    let closed = boxes(&ui);
+    assert_eq!(closed.1, 160.0, "{closed:?}");
+    let (x, y) = ui.element("Difficulty").unwrap().center();
+    let p = Vec2::new(x, y);
+    step_screen(
+        &mut ui,
+        InputFrame {
+            pointer: p,
+            pointer_inside: true,
+            down: true,
+            pressed: true,
+            ..InputFrame::default()
+        },
+        vp,
+    );
+    step_screen(
+        &mut ui,
+        InputFrame {
+            pointer: p,
+            pointer_inside: true,
+            released: true,
+            ..InputFrame::default()
+        },
+        vp,
+    );
+    for _ in 0..3 {
+        step_screen(&mut ui, InputFrame::hover(x, y), vp);
+    }
+    assert_eq!(
+        ui.element("Trigger").unwrap().states,
+        ["expanded"],
+        "the list is open"
+    );
+    assert_eq!(boxes(&ui), closed, "the open list leaves the row as it was");
 }
 
 #[test]
