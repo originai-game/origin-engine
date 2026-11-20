@@ -20,6 +20,12 @@ impl MeshletGpu {
         Some(items.div_ceil(ITEM_ALIGN) as u64 * ITEM_ALIGN as u64)
     }
 
+    /// Whether the web host has compiled its cull's pipelines
+    /// (gpu/ready.rs).
+    pub(crate) fn compiled(&self) -> bool {
+        self.tickets.ready()
+    }
+
     /// The most work items one frame's dispatch may write (the device's
     /// storage binding limit).
     pub fn max_items(&self) -> u64 {

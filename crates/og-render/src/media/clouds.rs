@@ -564,10 +564,25 @@ impl CloudNoise {
         self.made = true;
     }
 
+    /// Whether the full volume is drawn: what a bake that keeps what it
+    /// reads waits for.
+    pub(crate) fn drawn(&self) -> bool {
+        self.made && self.pending.is_none()
+    }
+
     /// Submits the volume's draw [`CloudNoise::make`] planned, waiting for
-    /// its pipeline if it is still compiling: before the frame's own
-    /// commands, the first that read it.
+    /// its pipeline if it is still compiling natively: before the frame's
+    /// own commands, the first that read it. While the web host still
+    /// compiles it the draw waits for a later frame (gpu/ready.rs).
     pub(crate) fn submit(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        if self
+            .pending
+            .as_ref()
+            .is_some_and(|(pipeline, _)| !pipeline.compiled())
+        {
+            crate::gpu::ready::hold();
+            return;
+        }
         let Some((pipeline, group)) = self.pending.take() else {
             return;
         };

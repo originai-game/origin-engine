@@ -475,17 +475,26 @@ impl TerrainRenderer {
                 });
                 slot.group = Some((key, group));
             }
+            let passes = match (holed, &self.arrays) {
+                (Some(passes), _) => passes,
+                (None, Some((_, passes))) if arrayed => passes.clone(),
+                _ => self.passes.clone(),
+            };
+            // Every pass draws its levels from the corner cache the frame
+            // fills first: while the web host still compiles the filling
+            // pipeline the terrain is left out, so no pass draws from an
+            // unfilled cache (gpu/ready.rs).
+            if !passes.corners.compiled() {
+                crate::gpu::ready::hold();
+                continue;
+            }
             let (_, _, corners, corners_write) = slot.corners.as_ref().expect("made above");
             draws.push(TerrainDraw {
                 group: slot.group.as_ref().expect("made above").1.clone(),
                 corners: corners.clone(),
                 corners_write: corners_write.clone(),
                 corner_count,
-                passes: match (holed, &self.arrays) {
-                    (Some(passes), _) => passes,
-                    (None, Some((_, passes))) if arrayed => passes.clone(),
-                    _ => self.passes.clone(),
-                },
+                passes,
                 features: self.features,
                 levels: out,
                 cast_shadows: t.cast_shadows,

@@ -134,6 +134,8 @@ struct Gpu {
     /// The field's state (velocity, lean, pressure and their steps), kept
     /// for a presentation checkpoint's copy.
     buffers: [wgpu::Buffer; 7],
+    /// The pipelines the web host was asked for (gpu/ready.rs).
+    tickets: crate::gpu::ready::Tickets,
 }
 
 /// [`WindFieldSim::save`].
@@ -285,21 +287,23 @@ impl WindFieldSim {
             bind_group_layouts: &[Some(layout)],
             immediate_size: 0,
         });
-        let pipelines = [
-            "advect",
-            "divergence_pass",
-            "jacobi_a",
-            "jacobi_b",
-            "project",
-        ]
-        .map(|entry| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("wind field"),
-                layout: Some(&pl),
-                module: &module,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
+        let (pipelines, tickets) = crate::gpu::ready::Tickets::during(|| {
+            [
+                "advect",
+                "divergence_pass",
+                "jacobi_a",
+                "jacobi_b",
+                "project",
+            ]
+            .map(|entry| {
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("wind field"),
+                    layout: Some(&pl),
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(device).as_ref(),
+                })
             })
         });
         let cells = 2 * u64::from(N) * u64::from(N);
@@ -361,6 +365,7 @@ impl WindFieldSim {
             uniform,
             slots,
             buffers,
+            tickets,
         });
         self.gpu.as_ref()
     }
@@ -415,6 +420,14 @@ impl WindFieldSim {
             self.grid = NO_GRID;
             return;
         };
+        // Its state is kept from step to step: while the web host still
+        // compiles its pipelines nothing steps (and nothing leans by it),
+        // and the first frame that runs catches up the ticks since.
+        if !gpu.tickets.ready() {
+            crate::gpu::ready::hold();
+            self.grid = NO_GRID;
+            return;
+        }
         let uniform = gpu.uniform.clone();
         let last = if fresh { None } else { self.last.map(|l| l.0) };
         let steps = catch_up(last, scene.frame.tick, WARM_STEPS);

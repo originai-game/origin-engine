@@ -8,6 +8,7 @@ impl MeshletGpu {
         max_binding: u64,
         wind_field: wgpu::TextureView,
     ) -> MeshletGpu {
+        let tickets = crate::gpu::ready::Tickets::from_here();
         let c = wgpu::ShaderStages::COMPUTE;
         let cull_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("meshlet cull"),
@@ -142,10 +143,12 @@ impl MeshletGpu {
             label: Some("meshlet early depth"),
             source: wgpu::ShaderSource::Wgsl(depth_source().into()),
         });
+        let compact = compact::Compact::new(device);
         MeshletGpu {
+            tickets: tickets.to_here(),
             cull_layout,
             cull,
-            compact: compact::Compact::new(device),
+            compact,
             draw_layout,
             lit: HashMap::new(),
             prepass: HashMap::new(),

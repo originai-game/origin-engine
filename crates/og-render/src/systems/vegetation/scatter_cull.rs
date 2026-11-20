@@ -687,6 +687,12 @@ impl ScatterCull {
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_SRC
     }
 
+    /// Whether its pipeline is compiled: made now if it was not yet, and
+    /// asked of the web host then (gpu/ready.rs).
+    pub(crate) fn compiled(&self) -> bool {
+        self.pipeline.compiled()
+    }
+
     /// A chunk's copies as the cull reads them (its buffer has STORAGE).
     pub(crate) fn chunk_group(
         &self,

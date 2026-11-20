@@ -15,6 +15,12 @@
 //!   the [`Tickets`] of the pipelines it made and, while they are not
 //!   [`Tickets::ready`], leaves its work (and every draw that reads it) for a
 //!   later frame;
+//! - the compute before the frame's passes waits the same way, its readers
+//!   with it: the wind field steps nothing (and catches up its ticks
+//!   later), a terrain whose corner cache is not filled is left out, the
+//!   scattered copies the GPU culls are left out, the clouds' noise is
+//!   drawn by a later frame (and their shadow baked after it), and the
+//!   frame culls its instances on the CPU;
 //! - the shadow layers, which the static cache keeps, are encoded in a frame
 //!   span, and while any pipeline still [`compiling`] the cache forgets its
 //!   layers, so a caster skipped meanwhile is drawn again.
@@ -92,6 +98,22 @@ impl Tickets {
         let from = count();
         let made = make();
         (made, Tickets { from, to: count() })
+    }
+
+    /// The tickets from here on, for a constructor that makes its
+    /// pipelines among its other resources: [`Tickets::to_here`] once
+    /// they are made.
+    pub(crate) fn from_here() -> Tickets {
+        let n = count();
+        Tickets { from: n, to: n }
+    }
+
+    /// The tickets handed out since [`Tickets::from_here`].
+    pub(crate) fn to_here(self) -> Tickets {
+        Tickets {
+            from: self.from,
+            to: count(),
+        }
     }
 
     /// Whether each of its pipelines is made (or refused, which its use

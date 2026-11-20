@@ -396,6 +396,8 @@ struct HeldTables {
 }
 
 pub(crate) struct GpuCulling {
+    /// The pipelines the web host was asked for (gpu/ready.rs).
+    tickets: crate::gpu::ready::Tickets,
     layout: wgpu::BindGroupLayout,
     stages: CullStages,
     hiz_base_layout: [wgpu::BindGroupLayout; 2],
@@ -516,6 +518,11 @@ fn buffer(
 }
 
 impl GpuCulling {
+    /// Whether the web host has compiled its pipelines (gpu/ready.rs).
+    pub(crate) fn compiled(&self) -> bool {
+        self.tickets.ready()
+    }
+
     /// Whether `n` instances and `skinned` skinned ones in `passes` passes
     /// (the most the frame can have) fit the device's storage binding
     /// limit.

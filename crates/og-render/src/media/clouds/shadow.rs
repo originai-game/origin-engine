@@ -167,9 +167,9 @@ impl CloudShadow {
         let (true, Some(pass)) = (self.pending, &self.pass) else {
             return;
         };
-        // Its pipeline still compiles on the web host: baked by a later
-        // frame (gpu/ready.rs).
-        if !pass.pipeline.compiled() {
+        // Its pipeline, or the noise it reads, still compiles on the web
+        // host: baked by a later frame (gpu/ready.rs).
+        if !pass.pipeline.compiled() || !noise.drawn() {
             crate::gpu::ready::hold();
             return;
         }

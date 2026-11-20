@@ -749,6 +749,20 @@ impl ScatterRenderer {
         if let Some(place) = &mut self.place {
             place.upload(device, queue);
         }
+        // The copies the GPU culls draw from what it culled into: while the
+        // web host still compiles the cull's pipeline they are left out, so
+        // no pass draws them unculled (a thinned scatter whole), and the
+        // play gate draws the frame again (gpu/ready.rs).
+        if let Some(cull) = &mut self.cull
+            && !cull_items.is_empty()
+            && !cull.compiled()
+        {
+            crate::gpu::ready::hold();
+            cull_items.clear();
+            self.culled_chunks.clear();
+            batches.clear();
+            planned.clear();
+        }
         // Where each culled chunk draws from, in the order planned.
         if let Some(cull) = &mut self.cull {
             let places = cull.prepare(device, queue, &cull_items, (view_proj, height, lod_bias));

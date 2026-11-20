@@ -320,6 +320,8 @@ use draw::*;
 pub(crate) use plan::*;
 
 pub(crate) struct MeshletGpu {
+    /// The cull's pipelines the web host was asked for (gpu/ready.rs).
+    tickets: crate::gpu::ready::Tickets,
     /// The visibility buffer: the camera's small clusters rasterised in
     /// compute and resolved per batch ([`vis`]).
     vis_buffer: vis::VisBuffer,
