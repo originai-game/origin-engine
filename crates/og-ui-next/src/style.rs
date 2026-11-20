@@ -294,8 +294,12 @@ impl Record {
 
 impl Default for Record {
     fn default() -> Self {
+        // Every box is its anchored descendants' containing block, as in
+        // og-ui: `position` other than absolute and fixed is relative.
+        let mut base = taffy::Style::from(&CompactStyle::default());
+        base.position = taffy::Position::Relative;
         Record {
-            layout: CompactStyle::default(),
+            layout: CompactStyle::from(&base),
             fill: [0.0; 4],
             ink: [0.0, 0.0, 0.0, 1.0],
             radius: 0.0,

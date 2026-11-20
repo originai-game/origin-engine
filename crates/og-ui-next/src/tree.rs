@@ -1099,6 +1099,34 @@ mod tests {
     use super::*;
     use crate::look::Layer;
 
+    /// An overlay is its anchored children's containing block, even
+    /// inside a fixed box: they fill it, not the fixed box.
+    #[test]
+    fn an_anchored_child_fills_its_overlay_not_a_fixed_ancestor() {
+        let doc = UiDocument::parse(
+            "o.svelte",
+            "<meta name=\"component\" content=\"o\">\n\
+             <div id=\"Bar\"><div id=\"Face\" layout=\"overlay\"><div id=\"Art\" anchor=\"fill\"></div></div></div>\n\
+             <style>\n#Bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; }\n\
+             #Face { width: 64px; height: 64px; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: &crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [doc]);
+        tree.resize(1280.0, 720.0);
+        tree.mount("o", &[]).unwrap();
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        let face = tree.find("Face").unwrap();
+        let art = tree.find("Art").unwrap();
+        assert_eq!(art, face, "the art covers its face");
+    }
+
     /// A scroller's `:state(more)` holds while its content runs past its
     /// end, and lets go when the content fits again.
     #[test]
