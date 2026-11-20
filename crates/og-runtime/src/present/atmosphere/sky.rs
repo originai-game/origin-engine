@@ -150,7 +150,7 @@ pub(super) fn extract(
     // No twilight adaptation unless the day-night cycle sets one below.
     scene.atmosphere.adaptation = 1.0;
     scene.atmosphere.leaves = leaf_calendar(world, layouts.season.as_ref());
-    // The physical sky: alone, towards the first directional light.
+    // The physical sky: alone, towards the directional light drawn.
     let air = physical_air(world, layouts.physical_sky.as_ref());
     if let Some(air) = air {
         let dir = scene
@@ -199,8 +199,8 @@ pub(super) fn extract(
             physical: air,
         };
         // A zero sunDirection follows the light the frame is lit by (the
-        // first DirectionalLight as `lights` took it, the built-in sun
-        // with none): the sun stands where the light comes from.
+        // directional light `lights` drew, og_render::key_light; the
+        // built-in sun with none): the sun stands where the light comes from.
         let dir = s
             .sun_direction
             .try_normalize()

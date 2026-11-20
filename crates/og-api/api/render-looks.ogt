@@ -1007,7 +1007,7 @@
     field blend Blend "Alpha (the default) or additive."
     group "Shadows and light"
     field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
-    field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set." {
+    field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the og.DirectionalLight drawn) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set." {
       min 0
       max 1
     }

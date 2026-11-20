@@ -6936,7 +6936,7 @@ export interface Mesh {
 }
 
 /**
- * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default).
+ * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3).
  * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
  * See `render §3`.
  *
@@ -10230,7 +10230,7 @@ export interface SpriteDesc {
    */
   readonly castShadow?: boolean;
   /**
-   * A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set.
+   * A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the og.DirectionalLight drawn) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set.
    *
    * @default 0
    * @range 0..1
@@ -17440,7 +17440,7 @@ export interface Sky {
    */
   ground: Color;
   /**
-   * Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the first DirectionalLight (its entity's +Z; it shines down -Z), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given.
+   * Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the DirectionalLight drawn (its entity's +Z; it shines down -Z; the brightest of several), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given.
    */
   sunDirection: Vector3;
   /**
@@ -17534,7 +17534,7 @@ export interface Sky {
 }
 
 /**
- * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
+ * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
  * See `render §7`.
  *
  * The `DayNight` resource (token `og.DayNight`).
@@ -17705,7 +17705,7 @@ export interface Season {
 }
 
 /**
- * A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.
+ * A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the DirectionalLight drawn. Visual only: drawn from the tick.
  * See `render §7`.
  *
  * The `PhysicalSky` resource (token `og.PhysicalSky`).
@@ -17760,7 +17760,7 @@ export interface PhysicalSky {
 }
 
 /**
- * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.
+ * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the DirectionalLight drawn (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.
  * See `render §7`.
  *
  * The `Clouds` resource (token `og.Clouds`).
@@ -35653,7 +35653,7 @@ export declare namespace og {
    */
   const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly materialLayer: FieldSpec<"i32">; readonly layers: FieldSpec<"u32"> }, Mesh>;
   /**
-   * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default).
+   * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3).
    * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
    * See `render §3`.
    */
@@ -37037,7 +37037,7 @@ export declare namespace og {
    */
   const Sky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly zenith: FieldSpec<"Color">; readonly horizon: FieldSpec<"Color">; readonly ground: FieldSpec<"Color">; readonly sunDirection: FieldSpec<"Vector3">; readonly sunColor: FieldSpec<"Color">; readonly sunSize: FieldSpec<"f32">; readonly sunIntensity: FieldSpec<"f32">; readonly glow: FieldSpec<"f32">; readonly glowPower: FieldSpec<"f32">; readonly stars: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32">; readonly moonIntensity: FieldSpec<"f32">; readonly moonColor: FieldSpec<"Color">; readonly moonDirection: FieldSpec<"Vector3"> }, Sky>;
   /**
-   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
+   * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
    * See `render §7`.
    */
   const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
@@ -37047,12 +37047,12 @@ export declare namespace og {
    */
   const Season: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly latitude: FieldSpec<"f32">; readonly change: FieldSpec<"f32">; readonly sun: FieldSpec<"bool">; readonly temperature: FieldSpec<"f32">; readonly temperatureRange: FieldSpec<"f32">; readonly dayRange: FieldSpec<"f32">; readonly day: FieldSpec<"f32"> }, Season>;
   /**
-   * A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.
+   * A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the DirectionalLight drawn. Visual only: drawn from the tick.
    * See `render §7`.
    */
   const PhysicalSky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly haze: FieldSpec<"f32">; readonly airDensity: FieldSpec<"f32">; readonly ozone: FieldSpec<"f32">; readonly groundAlbedo: FieldSpec<"Color">; readonly altitude: FieldSpec<"f32">; readonly night: FieldSpec<"Color"> }, PhysicalSky>;
   /**
-   * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.
+   * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the DirectionalLight drawn (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.
    * See `render §7`.
    */
   const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;

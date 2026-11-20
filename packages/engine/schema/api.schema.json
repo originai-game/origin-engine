@@ -24515,7 +24515,7 @@
     "DirectionalLight": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default).\nWithout one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.\nSee `render §3`.",
+      "description": "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3).\nWithout one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.\nSee `render §3`.",
       "type": "object",
       "properties": {
         "color": {
@@ -28078,7 +28078,7 @@
         },
         "dropShadow": {
           "type": "number",
-          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set.",
+          "description": "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the og.DirectionalLight drawn) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set.",
           "default": 0,
           "minimum": 0,
           "maximum": 1
@@ -36218,7 +36218,7 @@
         },
         "sunDirection": {
           "$ref": "#/$defs/Vector3",
-          "description": "Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the first DirectionalLight (its entity's +Z; it shines down -Z), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given.",
+          "description": "Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the DirectionalLight drawn (its entity's +Z; it shines down -Z; the brightest of several), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given.",
           "default": {
             "x": 0,
             "y": 0,
@@ -36329,7 +36329,7 @@
     "DayNight": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.\nSee `render §7`.",
+      "description": "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.\nSee `render §7`.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -36496,7 +36496,7 @@
     "PhysicalSky": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.\nSee `render §7`.",
+      "description": "A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the DirectionalLight drawn. Visual only: drawn from the tick.\nSee `render §7`.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -36561,7 +36561,7 @@
     "Clouds": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.\nSee `render §7`.",
+      "description": "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the DirectionalLight drawn (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover, and the cumulus casts its shadows on the world (`shadows`). Visual only.\nSee `render §7`.",
       "type": "object",
       "properties": {
         "enabled": {

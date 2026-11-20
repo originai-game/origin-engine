@@ -289,7 +289,8 @@ pub enum ShadowBounds {
     Sphere { center: Vec3, radius: f32 },
 }
 
-/// The sun: one directional light with three cascaded shadow maps.
+/// The sun: one directional light with three cascaded shadow maps. A scene
+/// with several (a sun and a moon) draws the one [`key_light`] picks.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DirectionalLight {
     /// Points from the scene towards the light (need not be normalized).
@@ -383,6 +384,72 @@ impl Default for DirectionalLight {
             diffusion: 0.0,
         }
     }
+}
+
+/// The directional light a frame draws from several ([`key_light`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct KeyLight {
+    pub light: DirectionalLight,
+    /// The lights (indices into the slice) left out of the drawn one while
+    /// they shine with at least a quarter of its radiance.
+    pub left_out: Vec<usize>,
+}
+
+/// The one directional light a frame draws (its cascades, the sky's sun,
+/// the clouds' and the weather's cover all follow it) from the scene's
+/// several, as Unity's main light: the brightest by radiance (intensity
+/// times the colour's luminance), ties to the earlier. Two within 1.5× of
+/// each other hand over: from where the brighter has 60 % of their
+/// radiance to where they are equal, the drawn light's direction, colour
+/// and intensity blend towards the other's, dimmed by how far apart the two
+/// point (opposite ones dim to nothing at the crossing, as og.DayNight's
+/// sun and moon do), so a sun rising as the moon fades turns the light and
+/// its shadows round without a jump. The shadow settings are the
+/// brighter's. A pure function of the lights; `None` without one.
+pub fn key_light(lights: &[DirectionalLight]) -> Option<KeyLight> {
+    // The relative difference of the two brightest below which they blend.
+    const HANDOVER: f32 = 0.2;
+    let radiance = |l: &DirectionalLight| {
+        (l.intensity * l.color.dot(Vec3::new(0.2126, 0.7152, 0.0722))).max(0.0)
+    };
+    let mut order: Vec<usize> = (0..lights.len()).collect();
+    // Stable: equal lights keep their order.
+    order.sort_by(|&a, &b| radiance(&lights[b]).total_cmp(&radiance(&lights[a])));
+    let (&first, rest) = order.split_first()?;
+    let (a, ra) = (lights[first], radiance(&lights[first]));
+    let mut light = a;
+    let mut blended = 0;
+    if let Some(&second) = rest.first() {
+        let (b, rb) = (lights[second], radiance(&lights[second]));
+        let q = if ra + rb > 0.0 {
+            (ra - rb) / (ra + rb)
+        } else {
+            1.0
+        };
+        let t = (q / HANDOVER).clamp(0.0, 1.0);
+        // The brighter's weight: a half where they are equal.
+        let w = 0.5 + 0.5 * t * t * (3.0 - 2.0 * t);
+        if w < 1.0 {
+            blended = 1;
+            let towards =
+                |l: &DirectionalLight| l.direction_to_light.try_normalize().unwrap_or(Vec3::Y);
+            let v = towards(&a) * w + towards(&b) * (1.0 - w);
+            let reach = v.length();
+            light.direction_to_light = if reach > 1e-6 { v / reach } else { towards(&a) };
+            let intensity = a.intensity * w + b.intensity * (1.0 - w);
+            if intensity > 0.0 {
+                light.color =
+                    (a.color * a.intensity * w + b.color * b.intensity * (1.0 - w)) / intensity;
+            }
+            light.intensity = intensity * reach;
+        }
+    }
+    let left_out = rest[blended..]
+        .iter()
+        .copied()
+        .filter(|&i| radiance(&lights[i]) > 0.0 && radiance(&lights[i]) >= 0.25 * ra)
+        .collect();
+    Some(KeyLight { light, left_out })
 }
 
 pub use crate::shadows::MAX_SHADOWED_LIGHTS;
@@ -902,5 +969,60 @@ mod sky_params_tests {
         };
         soft.cover(0.0);
         assert_eq!(soft.shadow_softness_and_fill(), (0.3, 0.65));
+    }
+
+    /// The brightest directional light is drawn, not the first (Night
+    /// Shift's moon, listed first, faded out while its dawn sun rose and
+    /// the frame stayed dark); two crossing hand over without a jump, and
+    /// a light left out at a quarter of the drawn one's is named.
+    #[test]
+    fn the_brightest_directional_light_is_drawn_and_two_hand_over() {
+        let light = |to: Vec3, color: Vec3, intensity: f32| DirectionalLight {
+            direction_to_light: to,
+            color,
+            intensity,
+            ..Default::default()
+        };
+        let moon = light(Vec3::new(0.3, 0.8, 0.5), Vec3::new(0.55, 0.6, 1.0), 0.08);
+        let sun = light(Vec3::new(-0.6, 0.25, 0.75), Vec3::new(1.0, 0.62, 0.45), 1.6);
+        assert_eq!(key_light(&[]), None);
+        let dawn = key_light(&[moon, sun]).unwrap();
+        assert_eq!(
+            dawn,
+            KeyLight {
+                light: sun,
+                left_out: vec![]
+            }
+        );
+        let night = key_light(&[moon, light(sun.direction_to_light, sun.color, 0.0)]).unwrap();
+        assert_eq!(night.light, moon);
+
+        // A moon overhead at 1 and a sun along +x rising past it: the
+        // radiance drawn moves in small steps, where the pick alone would
+        // swing it a whole light's length (√2) round at the crossing.
+        let (up, east) = (light(Vec3::Y, Vec3::ONE, 1.0), Vec3::X);
+        let drawn = |s: f32| {
+            let k = key_light(&[up, light(east, Vec3::ONE, s)]).unwrap().light;
+            k.direction_to_light.normalize() * k.intensity * k.color.x
+        };
+        let mut worst = 0.0f32;
+        for i in 0..2000 {
+            let s = 0.5 + i as f32 * 1e-3;
+            worst = worst.max((drawn(s + 1e-3) - drawn(s)).length());
+        }
+        assert!(worst < 0.02, "{worst}");
+        // Equal, they light from between them, dimmed by its √½ reach.
+        let even = drawn(1.0);
+        assert!((even - Vec3::new(0.5, 0.5, 0.0)).length() < 1e-5, "{even}");
+        // Out of the handover each is its own light.
+        assert_eq!(drawn(1.6), east * 1.6);
+        assert_eq!(drawn(0.6), Vec3::Y);
+
+        // A fill at 0.3 of the key is left out, and named; a sliver is not.
+        let fill = light(-east, Vec3::ONE, 0.9);
+        let faint = light(Vec3::Z, Vec3::ONE, 0.1);
+        let key = key_light(&[fill, faint, light(east, Vec3::ONE, 3.0)]).unwrap();
+        assert_eq!(key.light.direction_to_light, east);
+        assert_eq!(key.left_out, vec![0]);
     }
 }

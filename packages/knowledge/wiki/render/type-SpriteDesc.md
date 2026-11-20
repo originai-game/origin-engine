@@ -56,7 +56,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `castShadow` | `boolean` | `false` | — | — | — | Block 2D light (Lighting2D) with the sprite's rectangle. |
-| `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set. |
+| `dropShadow` | `number` | `0` | 0 … 1 | — | — | A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the og.DirectionalLight drawn) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set. |
 | `dropShadowHeight` | `number` | `0` | — | `m` | — | The height of the level ground the drop shadow lies on (a floor, a deck, a step); 0 with no terrain is y = 0. Where an og.Terrain under the anchor is higher, the shadow lies on it: on the plane fitted to its slope, or bent over a hollow or a ridge narrower than the shadow. See `looks §13`. |
 | `toneMapped` | `boolean` | `true` | — | — | — | As three.js Material.toneMapped: true draws the sprite through exposure, bloom and the tone curve. false keeps its colours as given (clamped 0 to 1), still placed, depth tested and sorted, outside exposure, bloom, fog and the curve; grade and screen effects apply. Additive sprites always tone map. See `looks §13`. |
 
@@ -144,7 +144,7 @@ struct SpriteDesc {
   field blend Blend "Alpha (the default) or additive."
   group "Shadows and light"
   field castShadow bool "Block 2D light (Lighting2D) with the sprite's rectangle."
-  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the first og.DirectionalLight) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set." {
+  field dropShadow f32 "A drop shadow this dark (0 none, 0.5 typical): the sprite's shape in black, flattened along the sun (the og.DirectionalLight drawn) onto the ground (dropShadowHeight, or the og.Terrain), drawn before its layer's sprites, faded in the sun's shadow; none with the sun set." {
     min 0
     max 1
   }

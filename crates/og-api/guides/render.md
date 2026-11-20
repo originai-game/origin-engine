@@ -78,6 +78,15 @@ feeds back into the simulation.
   casters once instead of once per cascade, as three.js games that fit the
   shadow camera around the player do. `shadowSoftness` (PCSS) costs a
   blocker search and a 16-tap filter per shadowed pixel.
+- Several DirectionalLights: one is drawn, the brightest by intensity
+  times its colour's luminance (of equals, the one spawned first), and its
+  cascades, the sky's sun, the clouds and the weather follow it. Two within
+  1.5x of each other hand over: the drawn light turns from one to the other
+  and dims through the crossing when they point apart, so a sun rising as
+  the moon fades lights the scene without a jump. Fade one out as the
+  other comes up; a fill or rim light is a point, spot or rect light. A
+  development build warns, naming them, when another shines with a quarter
+  of the drawn one's light or more.
 - Point lights: cube shadows take six passes per light, paraboloid two
   (coarser; large casters' edges stay straight).
 - Rect lights: the soft shadow is the costliest light in a frame (two maps

@@ -19822,7 +19822,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the first DirectionalLight (its entity's +Z; it shines down -Z), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given."),
+                doc: doc!("Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the DirectionalLight drawn (its entity's +Z; it shines down -Z; the brightest of several), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

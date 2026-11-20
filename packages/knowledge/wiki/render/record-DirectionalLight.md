@@ -6,7 +6,7 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.DirectionalLight` (component)
 
-The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default).
+The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3).
 
 Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
 
@@ -32,7 +32,7 @@ Token `og.DirectionalLight`, registered under the schema name `og.DirectionalLig
 
 ```ogt
 component DirectionalLight {
-  doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default)."
+  doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). One is drawn, the brightest, with RenderSettings.shadowCascades shadow cascades (3 by default); the sky's sun, clouds and weather follow it. Two within 1.5x of each other hand over smoothly, so a sun can rise as a moon fades (render §3)."
   doc "Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene."
   aliases "sun, directional light, Godot DirectionalLight3D"
   guide "render §3"

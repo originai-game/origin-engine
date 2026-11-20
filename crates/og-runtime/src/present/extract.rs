@@ -10,7 +10,8 @@
 //!   transform, composed from `og.Transform` down the `og.Parent` chain;
 //! - entities with `og.Mesh` (geometry and material handles), when og-core
 //!   can register its bool fields;
-//! - the first `og.DirectionalLight` (else the renderer's default sun), the
+//! - the brightest `og.DirectionalLight` (`og_render::key_light`; else the
+//!   renderer's default sun), the
 //!   `og.PointLight` / `og.SpotLight` (og-render culls and clusters them);
 //! - the `og.Camera` and `og.RenderSettings` resources;
 //! - the text `og.render.text` queued during the tick, with cooked
