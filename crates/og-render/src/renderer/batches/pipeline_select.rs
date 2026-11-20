@@ -99,23 +99,14 @@ impl Renderer {
             .map(|p| p.get(self.frame_features))
     }
 
-    /// Makes the lit, shadow and prepass pipelines this frame's batches need,
-    /// with `local_shadows` (a shadowed local light in the scene) the local
-    /// layers' shadow pipelines of every caster too (shadow_target.rs).
+    /// Makes the lit, shadow and prepass pipelines this frame's batches
+    /// need. A caster's shadow set is made whole: its cascade pipeline and,
+    /// where the renderer draws local lights' shadows
+    /// ([`RenderInfo::shadowed_lights`]), its local layers', since any light
+    /// may start casting on a later frame (shadow_target.rs).
     /// Fork s60: asynchronous on the WebGPU tier while the host asks for it.
-    pub(crate) fn ensure_pipelines(
-        &mut self,
-        batches: &[Batch],
-        skinned: &[Batch],
-        prepass: bool,
-        local_shadows: bool,
-    ) {
-        frame_pipelines(|| {
-            self.ensure_pipelines_now(batches, skinned, prepass, false);
-            if local_shadows {
-                self.ensure_local_shadow_pipelines();
-            }
-        });
+    pub(crate) fn ensure_pipelines(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
+        frame_pipelines(|| self.ensure_pipelines_now(batches, skinned, prepass));
     }
 
     /// Starts the pipelines of `ahead` (the batches of instances not drawn
@@ -124,12 +115,10 @@ impl Renderer {
     /// the frames go on, and [`Renderer::pipelines_compiling`] says when
     /// they are made. On the web they are made here, inside the host's
     /// frame span, as a drawn batch's are.
-    /// With `local_shadows` a caster's shadow set is made with its local
-    /// layers' pipelines, where it compiles.
-    pub(crate) fn ensure_ahead(&mut self, ahead: &[Batch], prepass: bool, local_shadows: bool) {
+    pub(crate) fn ensure_ahead(&mut self, ahead: &[Batch], prepass: bool) {
         self.instances.ahead = !ahead.is_empty();
         if !ahead.is_empty() {
-            frame_pipelines(|| self.ensure_pipelines_now(ahead, &[], prepass, local_shadows));
+            frame_pipelines(|| self.ensure_pipelines_now(ahead, &[], prepass));
         }
     }
 
@@ -169,33 +158,8 @@ impl Renderer {
         varying || once || shadows
     }
 
-    /// The local layers' pipelines of every caster's shadow set made so far
-    /// (one still compiling ahead makes its own, [`Renderer::ensure_ahead`];
-    /// a pass that draws with a set makes them if they are not).
-    fn ensure_local_shadow_pipelines(&self) {
-        let array = self.lit.array_maps.iter().flat_map(|a| a.shadow.values());
-        for set in self
-            .shadows
-            .shadow_pipelines
-            .values()
-            .chain(self.cache.hook_shadow_pipelines.values())
-            .chain(self.shadows.compact_shadow_pipelines.values())
-            .chain(array)
-        {
-            if let Some(set) = set.ready() {
-                set.local();
-            }
-        }
-    }
-
-    /// `local`: a shadow set is made with its local layers' pipelines.
-    fn ensure_pipelines_now(
-        &mut self,
-        batches: &[Batch],
-        skinned: &[Batch],
-        prepass: bool,
-        local: bool,
-    ) {
+    fn ensure_pipelines_now(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
+        let local = self.info.shadowed_lights > 0;
         let (features, declared) = (self.frame_features, self.lit.pbr_shader.declared);
         for (slot, work) in self.pipeline_jobs(batches, skinned, prepass) {
             use Made::{Pipeline as P, Shadows as S};
