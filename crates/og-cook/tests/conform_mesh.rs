@@ -734,7 +734,10 @@ fn sparse_atlas_repacking_relocates_geometry_and_every_map_together() {
                 // every island (50 or 60 apart) and the swapped data map.
                 let actual = &texture.rgba[at..at + 4];
                 assert!(
-                    actual.iter().zip(expected).all(|(&a, e)| a.abs_diff(e) <= 2),
+                    actual
+                        .iter()
+                        .zip(expected)
+                        .all(|(&a, e)| a.abs_diff(e) <= 2),
                     "map {map}, island gutter {col},{row}: {actual:?} vs {expected:?}"
                 );
             }
