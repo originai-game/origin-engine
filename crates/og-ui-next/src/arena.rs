@@ -20,8 +20,15 @@ struct Node {
     style: CompactStyle,
     /// A text leaf's text and how it runs.
     text: Option<(Box<str>, Run)>,
+    /// A text leaf's last two measures, by the width given (`u32::MAX`:
+    /// none, `EMPTY`: unused): layout asks the same sizes many times, and
+    /// a measure shapes. Cleared when its text or run changes.
+    memo: std::cell::Cell<[(u32, f32, f32); 2]>,
     slot: SlotId,
 }
+
+const EMPTY: u32 = u32::MAX - 1;
+const NO_MEMO: [(u32, f32, f32); 2] = [(EMPTY, 0.0, 0.0); 2];
 
 /// How a text leaf's text runs: what its measure reads, resolved from its
 /// element's record ([`crate::style::Text`]).
@@ -61,6 +68,12 @@ pub struct Arena {
     root_slot: SlotId,
     /// Something changed since the last layout.
     dirty: bool,
+    /// An element was added or taken out: the store is reconciled whole.
+    /// Else only `touched` is patched into it.
+    structure: bool,
+    /// Elements whose style (true) or text (false) changed since the
+    /// last layout, each once.
+    touched: Vec<(Id, bool)>,
     next_key: u64,
 }
 
@@ -78,6 +91,8 @@ impl Arena {
             store: LayoutStore::new(),
             root_slot: SlotId(0),
             dirty: true,
+            structure: true,
+            touched: Vec::new(),
             next_key: 0,
         };
         a.push(NONE);
@@ -93,12 +108,14 @@ impl Arena {
             key: self.next_key,
             style: CompactStyle::default(),
             text: None,
+            memo: std::cell::Cell::new(NO_MEMO),
             slot: SlotId(0),
         });
         if parent != NONE {
             self.nodes[parent as usize].children.push(id);
         }
         self.dirty = true;
+        self.structure = true;
         id
     }
 
@@ -122,7 +139,8 @@ impl Arena {
             && *r != run
         {
             *r = run;
-            self.dirty = true;
+            self.nodes[id as usize].memo.set(NO_MEMO);
+            self.touch(id, false);
         }
     }
 
@@ -144,7 +162,7 @@ impl Arena {
         let n = &mut self.nodes[id as usize];
         if n.style != style {
             n.style = style;
-            self.dirty = true;
+            self.touch(id, true);
         }
     }
 
@@ -155,7 +173,19 @@ impl Arena {
             && &**t != text
         {
             *t = text.into();
-            self.dirty = true;
+            n.memo.set(NO_MEMO);
+            self.touch(id, false);
+        }
+    }
+
+    fn touch(&mut self, id: Id, style: bool) {
+        self.dirty = true;
+        if self.structure {
+            return;
+        }
+        match self.touched.iter_mut().find(|(t, _)| *t == id) {
+            Some((_, s)) => *s |= style,
+            None => self.touched.push((id, style)),
         }
     }
 
@@ -168,6 +198,7 @@ impl Arena {
             self.nodes[p as usize].children.retain(|&c| c != id);
             self.nodes[id as usize].parent = NONE;
             self.dirty = true;
+            self.structure = true;
         }
     }
 
@@ -181,19 +212,42 @@ impl Arena {
         if !self.dirty {
             return false;
         }
-        let mut root = self.nodes[0].style.clone();
-        root.set_size(Size {
+        let size = Size {
             width: taffy::Dimension::length(width),
             height: taffy::Dimension::length(height),
-        });
-        self.nodes[0].style = root;
-        self.store.begin_commit();
-        let (slot, _) = sync(&mut self.store, &mut self.nodes, 0);
-        self.root_slot = slot;
-        // Slots move only when the store compacts.
-        let nodes = &mut self.nodes;
-        self.store
-            .end_commit(&mut self.root_slot, |idx, s| nodes[idx as usize].slot = s);
+        };
+        if taffy::CoreStyle::size(&self.nodes[0].style) != size {
+            self.nodes[0].style.set_size(size);
+            self.touch(0, true);
+        }
+        if self.structure {
+            self.reconcile();
+        } else {
+            // The same elements: patch the ones that changed, clearing
+            // their ancestors' caches, with no walk and no clone of the
+            // others' styles.
+            for k in 0..self.touched.len() {
+                let (id, style) = self.touched[k];
+                let nodes = &self.nodes;
+                let slot = nodes[id as usize].slot;
+                let parent = |i: Id| {
+                    let p = nodes[i as usize].parent;
+                    (p != NONE).then_some(p)
+                };
+                let up = std::iter::successors(parent(id), |&p| parent(p))
+                    .map(|p| nodes[p as usize].slot);
+                if style {
+                    self.store.set_style_and_mark_ancestors(
+                        slot,
+                        nodes[id as usize].style.clone(),
+                        up,
+                    );
+                } else {
+                    self.store.mark_dirty_and_ancestors(slot, up);
+                }
+            }
+            self.touched.clear();
+        }
         let nodes = &self.nodes;
         self.store.compute_layout(
             self.root_slot,
@@ -213,7 +267,18 @@ impl Arena {
                         AvailableSpace::Definite(w) => Some(w),
                         _ => None,
                     });
-                let (w, h) = measure(text, run, avail);
+                let n = &nodes[ctx.expect("a text leaf")];
+                let key = avail.map_or(u32::MAX, |w| w.to_bits().min(EMPTY - 1));
+                let mut memo = n.memo.get();
+                let (w, h) = match memo.iter().find(|m| m.0 == key) {
+                    Some(&(_, w, h)) => (w, h),
+                    None => {
+                        let (w, h) = measure(text, run, avail);
+                        memo = [(key, w, h), memo[0]];
+                        n.memo.set(memo);
+                        (w, h)
+                    }
+                };
                 LayoutOutput::from_outer_size(Size {
                     width: input.known_dimensions.width.unwrap_or(w),
                     height: input.known_dimensions.height.unwrap_or(h),
@@ -222,6 +287,19 @@ impl Arena {
         );
         self.dirty = false;
         true
+    }
+
+    /// Reconciles every element into the store (an element came or went).
+    fn reconcile(&mut self) {
+        self.store.begin_commit();
+        let (slot, _) = sync(&mut self.store, &mut self.nodes, 0);
+        self.root_slot = slot;
+        // Slots move only when the store compacts.
+        let nodes = &mut self.nodes;
+        self.store
+            .end_commit(&mut self.root_slot, |idx, s| nodes[idx as usize].slot = s);
+        self.structure = false;
+        self.touched.clear();
     }
 
     /// An element's box, relative to its parent's.
