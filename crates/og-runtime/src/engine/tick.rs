@@ -28,6 +28,12 @@ fn tick_boundary(eng: &Engine) -> Result<(), String> {
     result
 }
 
+/// Whether GameDesc.start is still waiting for what it needs (the boot
+/// scene, the locale's font faces; run_start): no tick runs before it.
+fn start_waiting(eng: &Engine) -> bool {
+    eng.state.borrow().start.is_some()
+}
+
 /// The wall time since `t0` the ticks took, less the probe's screenshots
 /// taken on the way (a 1280x720 PNG is a fifth of a second in a dev build:
 /// a step time that counted it read as a stall on every screenshot tick).
@@ -51,6 +57,9 @@ pub(crate) fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
             host.pump_platform(eng.id)?;
         }
         tick_boundary(eng)?;
+        if start_waiting(eng) {
+            break eng.world()?.time().tick;
+        }
         let chunk = left.min(1);
         let stepped = rprobe::with_probe(eng, false, |p, w| p.advance(w, chunk));
         super::modules::end_of_ticks();
@@ -96,7 +105,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // owed, so the world (and its sound, rendered up to its tick) waits for
     // the footage instead of running ahead of it.
     let paused = eng.probe.borrow().paused() || eng.render.borrow().video_stalled;
-    let (due, before, tick_ms) = {
+    let (mut due, before, tick_ms) = {
         let mut st = eng.state.borrow_mut();
         let tick_ms = 1000.0 / f64::from(st.rate);
         let before = st.accumulator_ms;
@@ -113,6 +122,11 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     let t0 = rprobe::now_ms();
     if let Err(e) = tick_boundary(&eng) {
         return refuse(e);
+    }
+    // No tick before GameDesc.start has run, and no time owed for the wait.
+    if start_waiting(&eng) {
+        eng.state.borrow_mut().accumulator_ms = before;
+        due = 0;
     }
     {
         let mut rs = eng.render.borrow_mut();

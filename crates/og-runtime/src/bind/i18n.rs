@@ -364,6 +364,13 @@ pub(crate) fn resolve_missing(
     out
 }
 
+/// Whether the locale's chain still waits for a font-pack face being
+/// fetched (the web reads them after the boot; never on native).
+pub(crate) fn faces_pending(eng: &Engine) -> bool {
+    ensure_packs(eng);
+    with(eng.id, |s| !s.pending.is_empty())
+}
+
 /// Pack faces and glyphs every engine's chain still waits for: the web Worker draws
 /// the first frame again until none is left, so a boot never shows a
 /// locale's text missing while its pack is fetched.

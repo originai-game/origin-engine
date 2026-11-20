@@ -235,6 +235,13 @@ pub(super) fn run_start(eng: &Engine) -> Result<(), String> {
     if eng.state.borrow().boot_scene.is_some() {
         return Ok(());
     }
+    // The locale's font-pack faces, which the web fetches after the boot
+    // (docs/ui.md §3.4): start waits for them as it waits for the scene, so
+    // an og.load.font of one in start finds it, and the first frame needs
+    // them anyway.
+    if eng.state.borrow().start.is_some() && crate::bind::i18n::faces_pending(eng) {
+        return Ok(());
+    }
     let look = eng.state.borrow_mut().boot_look.take();
     if let Some(path) = look
         && let Err(e) = super::look::load(eng, &path).and_then(|i| super::look::apply(eng, i))
