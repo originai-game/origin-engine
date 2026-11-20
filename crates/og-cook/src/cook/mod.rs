@@ -117,6 +117,10 @@ pub(crate) struct Source {
     /// by glTF image (0 for a texture file) and the `#mips` output's
     /// stamp: encoded once by the first of its two outputs to cook.
     whole: Mutex<BTreeMap<(usize, u64), std::sync::Arc<WholeTexture>>>,
+    /// A model's cook (its blob, notes and LOD surfaces), made once by
+    /// the first that needs it: its plan on a cold cook (all models' at
+    /// once, `plan`), else its outputs.
+    model: std::sync::OnceLock<Result<model::ModelOutput, CookError>>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.

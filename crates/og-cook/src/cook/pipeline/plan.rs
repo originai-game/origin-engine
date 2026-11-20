@@ -66,22 +66,38 @@ pub(crate) fn plan<'a>(
         parsed_refs: BTreeMap::new(),
         planned_textures: std::collections::HashSet::new(),
     };
+    // These cookers consume only bytes/options. The other kinds resolve
+    // relative references or write source-derived names/sub-asset ids;
+    // their location remains part of the action, not the content hash.
+    let hash = |s: &Source| {
+        if s.kind.by_content {
+            stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
+        } else {
+            stamp(&[&s.hash.to_le_bytes(), s.rel.as_bytes()])
+        }
+        .to_le_bytes()
+    };
+    // A model's plan cooks the model when no cooked blob names its LOD
+    // surfaces (`Source::model`): the models are planned here first, all
+    // at once and their outputs dropped, so the loop below, which plans in
+    // order (the first to plan a shared texture owns it), finds them cooked.
+    each(sources, threads, |s| {
+        if s.error.is_none() && s.kind == &model::MODEL {
+            let mut scratch = PlanState {
+                early_errors: Vec::new(),
+                parsed_refs: BTreeMap::new(),
+                planned_textures: Default::default(),
+            };
+            (s.kind.plan)(cx, &mut scratch, s, hash(s), &mut Vec::new());
+        }
+    });
     let mut plan: Vec<Planned> = Vec::new();
     for (si, s) in sources.iter().enumerate() {
         if s.error.is_some() {
             continue;
         }
-        // These cookers consume only bytes/options. The other kinds resolve
-        // relative references or write source-derived names/sub-asset ids;
-        // their location remains part of the action, not the content hash.
-        let hash = if s.kind.by_content {
-            stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
-        } else {
-            stamp(&[&s.hash.to_le_bytes(), s.rel.as_bytes()])
-        }
-        .to_le_bytes();
         let mut outs: Vec<Out> = Vec::new();
-        (s.kind.plan)(cx, &mut state, s, hash, &mut outs);
+        (s.kind.plan)(cx, &mut state, s, hash(s), &mut outs);
         for (id, ty, st, work) in outs {
             let file = if pack_faces.contains(&id) {
                 format!("{id}.{}", og_bundle::runtime::FONT_PACK_FACE)

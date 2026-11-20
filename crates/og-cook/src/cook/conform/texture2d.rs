@@ -537,6 +537,7 @@ pub(in crate::cook) fn conform(
                 error: None,
                 encoded: Default::default(),
                 whole: Default::default(),
+                model: Default::default(),
                 conformed: None,
                 fracture: None,
             };

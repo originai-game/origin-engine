@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook: models",
+      "summary": "A cold cook no longer cooks its models one at a time: planning a model cooks it (its LOD surfaces are outputs of their own), and the plan now cooks every model at once before its ordered pass, which finds them done. The cooked files are byte-identical; Night Shift's cold cook takes 5m11s instead of 9m03s on 8 cores."
+    }
+  ]
+}

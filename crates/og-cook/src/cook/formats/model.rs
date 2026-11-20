@@ -841,7 +841,6 @@ fn plan_model<'a>(
         source: s,
         ids,
         stamp: st,
-        data: Default::default(),
     });
     let cached = (|| {
         let old = cx
@@ -1022,10 +1021,10 @@ struct PreparedModel<'a> {
     source: &'a Source,
     ids: Vec<String>,
     stamp: u64,
-    data: std::sync::OnceLock<Result<ModelOutput, CookError>>,
 }
 
-struct ModelOutput {
+/// A model's cook, kept on its source (`Source::model`).
+pub(crate) struct ModelOutput {
     blob: Vec<u8>,
     notes: ModelNotes,
     textures: Vec<blob::LodTexture>,
@@ -1033,7 +1032,8 @@ struct ModelOutput {
 
 impl PreparedModel<'_> {
     fn get(&self, options: &super::CookOptions) -> Result<&ModelOutput, CookError> {
-        self.data
+        self.source
+            .model
             .get_or_init(|| {
                 let mesh = mesh_for(self.source, options)?;
                 let src = self.source.gltf.as_ref().expect("loaded");

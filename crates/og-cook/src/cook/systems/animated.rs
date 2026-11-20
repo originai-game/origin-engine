@@ -1642,6 +1642,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
             error: None,
             encoded: Default::default(),
             whole: Default::default(),
+            model: Default::default(),
             conformed: None,
             fracture: None,
         });

@@ -341,6 +341,7 @@ pub(crate) fn scan_with(
             error: None,
             encoded: std::sync::OnceLock::new(),
             whole: Default::default(),
+            model: Default::default(),
             conformed: None,
             fracture: None,
         });
@@ -389,6 +390,7 @@ pub(crate) fn scan_with(
             error: None,
             encoded: Default::default(),
             whole: Default::default(),
+            model: Default::default(),
             conformed: None,
             fracture: None,
         });

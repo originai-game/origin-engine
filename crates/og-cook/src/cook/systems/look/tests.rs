@@ -14,6 +14,7 @@ fn source(root: &Path, rel: &str) -> Source {
         error: None,
         encoded: Default::default(),
         whole: Default::default(),
+        model: Default::default(),
         conformed: None,
         fracture: None,
     }
