@@ -31,7 +31,12 @@ fn model_wind_velocity_stops_when_the_wind_stops_changing() {
     };
     draw(&mut renderer, &scene);
     let stationary = draw(&mut renderer, &scene);
-    scene.look.post.motion_blur = None;
+    // Keep the prepass and shared main depth in both draws. Removing the
+    // effect also changes the depth path; a zero shutter isolates blur.
+    scene.look.post.motion_blur = Some(og_render::MotionBlur {
+        shutter: 0.0,
+        ..blur
+    });
     let crisp = draw(&mut renderer, &scene);
     let different = |a: &RgbaImage, b: &RgbaImage| {
         a.pixels
@@ -53,7 +58,10 @@ fn model_wind_velocity_stops_when_the_wind_stops_changing() {
     scene.look.post.motion_blur = Some(blur);
     let moving = draw(&mut renderer, &scene);
     let paused = draw(&mut renderer, &scene);
-    scene.look.post.motion_blur = None;
+    scene.look.post.motion_blur = Some(og_render::MotionBlur {
+        shutter: 0.0,
+        ..blur
+    });
     let crisp = draw(&mut renderer, &scene);
     assert!(
         different(&moving, &crisp) > 50,
