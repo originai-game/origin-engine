@@ -9,9 +9,9 @@
 // shaft depending on the column, which the front-to-back sum turns into
 // vertical streaks. INJECT_TAPS stratified samples over the slice's depth,
 // each jittered within its stratum per froxel and per frame, integrate the
-// slice instead. Spots are resolved on the pixel ray: their cones can be
-// narrower than a cell, so neither a centre ray nor a cell average can
-// reconstruct their silhouette.
+// slice instead. Spots are resolved on the pixel ray (`spots_in`): their
+// cones can be narrower than a cell, so neither a centre ray nor a cell
+// average can reconstruct their silhouette.
 const INJECT_TAPS: u32 = 8u;
 
 // Interleaved gradient noise (Jimenez 2014) at a froxel, moved by the
@@ -93,9 +93,21 @@ fn froxel_at(uv: vec2<f32>, d: f32) -> vec4<f32> {
   return mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
 }
 
-// Integrate only inside each finite spot cone, on the actual pixel ray.
-// The grid still supplies extinction; no spot radiance is stored in it,
-// so interpolating it cannot turn a beam into lit/unlit cuboids.
+// Samples each spot's light takes along a pixel ray (`spots_in`).
+const SPOT_TAPS: u32 = 16u;
+
+// Each spot's light scattered towards the eye along the pixel ray, inside
+// its finite cone only: a cone can be narrower than a froxel, so neither a
+// centre ray nor the grid can draw its silhouette. The grid supplies the
+// extinction; no spot light is stored in it.
+//
+// The samples are equi-angular in the light's view of the ray (Kulla and
+// Fajardo, "Importance Sampling Techniques for Path Tracing in Participating
+// Media", EGSR 2012): their density along the ray follows the inverse square
+// of the distance to the light, which its falloff divides out, so a few
+// samples where the light is near do what many evenly spread ones did. The
+// shadow, cone, cookie and medium vary along the ray; the samples are
+// stratified in angle, jittered per pixel and per frame.
 fn spots_in(uv: vec2<f32>, d: f32) -> vec3<f32> {
   var sum = vec3<f32>(0.0);
   if (VOL_WATER) { return sum; }
@@ -107,33 +119,39 @@ fn spots_in(uv: vec2<f32>, d: f32) -> vec3<f32> {
     if (light.color_kind.w < 0.5) { continue; }
     let span = spot_span(light, frame.view_pos.xyz, dir, vec2<f32>(0.0, d / forward));
     if (span.y <= span.x) { continue; }
-    // Keep the grid's depth strata, including for wide cones and an eye
-    // inside the beam. Only the portion inside the cone is integrated.
-    let first_slice = u32(min(floor(sqrt(max(span.x * forward, 0.0) / vol.extent.x) * vol.grid.z), vol.grid.z - 1.0));
-    let end_slice = u32(min(ceil(sqrt(max(span.y * forward, 0.0) / vol.extent.x) * vol.grid.z), vol.grid.z));
-    for (var z = first_slice; z < end_slice; z++) {
-      let start = max(span.x, slice_depth(f32(z) / vol.grid.z) / forward);
-      let end = min(span.y, slice_depth(f32(z + 1u) / vol.grid.z) / forward);
-      let dt = (end - start) / f32(INJECT_TAPS);
-      for (var t = 0u; t < INJECT_TAPS; t++) {
-        let near = start + f32(t) * dt;
-        let p = frame.view_pos.xyz + dir * (near + jitter * dt);
-        // Preserve the cluster's light cap and selection, even though the
-        // cone intersection is found before choosing a depth cluster.
-        let word = cluster_word(cluster_at(uv * vol.extent.zw, p));
+    // The ray's nearest approach to the light (at `mid`, `reach` from it)
+    // and the angles the span's ends make there.
+    let to_light = light.position_range.xyz - frame.view_pos.xyz;
+    let mid = dot(to_light, dir);
+    let reach = max(length(to_light - dir * mid), 1e-4);
+    let a0 = atan2(span.x - mid, reach);
+    let a1 = atan2(span.y - mid, reach);
+    // A sample's share of the span: 1 / (SPOT_TAPS pdf), the pdf being
+    // reach / ((a1 - a0) (reach^2 + (s - mid)^2)).
+    let share = (a1 - a0) / (reach * f32(SPOT_TAPS));
+    // The cluster's light cap and selection, as the lit pass's: a sample in
+    // the cluster of the one before keeps its answer.
+    var cluster = 0xffffffffu;
+    var present = false;
+    for (var t = 0u; t < SPOT_TAPS; t++) {
+      let along = mid + reach * tan(mix(a0, a1, (f32(t) + jitter) / f32(SPOT_TAPS)));
+      let p = frame.view_pos.xyz + dir * along;
+      let here = cluster_at(uv * vol.extent.zw, p);
+      if (here != cluster) {
+        cluster = here;
+        let word = cluster_word(here);
         let first = word & 0xffffffu;
-        let count = word >> 24u;
-        var present = false;
-        for (var k = 0u; k < count; k++) {
+        present = false;
+        for (var k = 0u; k < (word >> 24u); k++) {
           if (cluster_ref(first + k) == i) { present = true; break; }
         }
-        if (!present) { continue; }
-        let m = vol_medium(p);
-        if (m.sigma <= 0.0) { continue; }
-        let trans = froxel_at(uv, near * forward).a;
-        let length = (1.0 - exp(-m.sigma * dt)) / m.sigma;
-        sum += trans * length * m.scatter * local_in(light, p, dir);
       }
+      if (!present) { continue; }
+      let m = vol_medium(p);
+      if (m.sigma <= 0.0) { continue; }
+      let off = along - mid;
+      let trans = froxel_at(uv, along * forward).a;
+      sum += trans * share * (reach * reach + off * off) * m.scatter * local_in(light, p, dir);
     }
   }
   return sum;

@@ -23,10 +23,11 @@
 //!   the clustered point and rect lights through their shadows and
 //!   cookies, then sums it front to back. Each froxel's light is the mean
 //!   of eight depth-stratified samples, jittered per froxel and per frame.
-//!   Spots resolve on the pixel ray, with eight samples per depth slice
-//!   clipped to the finite cone, taking extinction from the grid. A
-//!   subfroxel beam retains its silhouette instead of disappearing or
-//!   lighting whole cuboids.
+//!   Spots resolve on the pixel ray, with sixteen samples clipped to the
+//!   finite cone and drawn equi-angularly about the light (Kulla and
+//!   Fajardo 2012), taking extinction from the grid. A subfroxel beam
+//!   retains its silhouette instead of disappearing or lighting whole
+//!   cuboids.
 //! - [`VolumetricMethod::Raymarch`] (asked for with
 //!   `RenderDesc::volumetric`): no compute pass; the apply pass marches
 //!   each pixel's view ray in 24 jittered steps, lit by the sun through its

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Fog.volumetric (spot lights)",
+      "summary": "A spot light's beam in volumetric fog is sampled equi-angularly about the light (Kulla and Fajardo 2012): sixteen samples per pixel ray inside its cone, where the light is strong, instead of eight in every depth slice the cone crosses (up to about 240 shadowed samples a pixel). It is the same beam, cut by the same shadows, at a fraction of the cost: Night Shift's main pass at 2560x1440 on an M4 Pro no longer spends about 50 ms on its one shadowed spot."
+    }
+  ]
+}
