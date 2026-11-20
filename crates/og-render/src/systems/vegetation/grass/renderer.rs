@@ -120,6 +120,7 @@ impl GrassRenderer {
                         multisampled: false,
                     },
                 ),
+                entry(9, cs, buffer(rw)),
             ],
         });
         let map = wgpu::BindingType::Texture {
@@ -178,6 +179,11 @@ impl GrassRenderer {
                 ),
                 entry(
                     1,
+                    wgpu::ShaderStages::VERTEX,
+                    buffer(wgpu::BufferBindingType::Storage { read_only: true }),
+                ),
+                entry(
+                    2,
                     wgpu::ShaderStages::VERTEX,
                     buffer(wgpu::BufferBindingType::Storage { read_only: true }),
                 ),

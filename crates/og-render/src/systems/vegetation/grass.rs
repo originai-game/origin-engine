@@ -651,7 +651,8 @@ mod tests {
             &generate_source(false),
             "GrassGen",
             fields!(GenGpu: planes, eye, origin, lod, lod_density, field, chunk, shape, clump,
-                shadow, motion, counts, trample, kinds, maps, clearing, clearing_half, wind),
+                shadow, motion, counts, trample, kinds, maps, clearing, clearing_half, forward,
+                sun, look, canopy, wind),
             size_of::<GenGpu>(),
         );
         check(
