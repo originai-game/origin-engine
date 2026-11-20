@@ -609,6 +609,17 @@ pub(crate) fn insert_model(
         }
         None => assets.push(&id, Status::Ready, payload),
     };
+    // A streamed model is drawn first when a cell spawns it, fading in,
+    // frames after now: its pipelines start now, so that frame waits for
+    // none. A model loaded with the game is drawn in the loading frames.
+    if group.is_some() {
+        rs.scene.objects.prepare.extend(
+            parts
+                .parts
+                .iter()
+                .map(|&(mesh, material, _)| (mesh, material)),
+        );
+    }
     rs.models.insert(handle(index), parts.parts);
     // The models drawn from the parts it replaces are built again.
     rs.kept_models.forget();

@@ -470,12 +470,15 @@ fn render(eng: &Engine, alpha: Option<f32>, interval_ms: f64) -> Result<bool, St
         if let Some(b) = rs.backend.as_mut() {
             b.set_clock(Some(rprobe::now_ms));
             b.render(&rs.scene)?;
+            // The decoded models' pairs were started by this frame.
+            rs.scene.objects.prepare.clear();
             passes = b.pass_timings();
             gpu = b.gpu_timings(false);
             frame = b.frame_stats();
             crate::author::perf::stages(eng.id, &**b);
             // The fades held for pipelines this frame made ahead.
             rs.reveal.drawn(frame.compiling_ahead);
+            crate::author::perf::held(eng.id, frame.compiling_ahead, rs.reveal.held());
         }
         crate::present::loading::compile_step(rs);
         super::assets::release_uploaded_textures(eng, rs);

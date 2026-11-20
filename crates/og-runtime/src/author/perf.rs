@@ -71,6 +71,10 @@ struct Row {
     /// Each pass's time in flight (begin to end, waits included).
     flight: [f32; PASSES],
     compile_us: u32,
+    /// Fades held at nothing this frame, and whether a pipeline made ahead
+    /// of a hidden instance was still compiling (the hold's reason).
+    held: u32,
+    compiling_ahead: bool,
     traffic: og_render::traffic::Traffic,
     draws: u32,
     triangles: u64,
@@ -88,6 +92,8 @@ const EMPTY: Row = Row {
     gpu: [f32::NAN; PASSES],
     flight: [f32::NAN; PASSES],
     compile_us: 0,
+    held: 0,
+    compiling_ahead: false,
     traffic: og_render::traffic::Traffic {
         upload_bytes: 0,
         uploads: 0,
@@ -221,6 +227,20 @@ pub(crate) fn stages(engine: u32, backend: &dyn crate::present::extract::RenderB
             };
             row.cpu[line] += ms as f32;
         });
+    });
+}
+
+/// The fades the frame held for pipelines (present/reveal.rs), into its
+/// row: what a spawn's first frames still wait for.
+pub(crate) fn held(engine: u32, compiling_ahead: bool, fades: u32) {
+    if !on() {
+        return;
+    }
+    PERF.with(|p| {
+        if let Some(pf) = p.borrow_mut().get_mut(&engine) {
+            pf.open.held = fades;
+            pf.open.compiling_ahead = compiling_ahead;
+        }
     });
 }
 
@@ -367,6 +387,11 @@ pub fn report(engine: u32, budgets: &str) -> String {
         lines.push(("readbacks".into(), Box::new(|r: &Row| r.traffic.readbacks as f32)));
         lines.push(("blocking gpu waits".into(), Box::new(|r: &Row| r.traffic.waits as f32)));
         lines.push(("pipelines made".into(), Box::new(|r: &Row| r.traffic.pipelines as f32)));
+        lines.push(("fades held".into(), Box::new(|r: &Row| r.held as f32)));
+        lines.push((
+            "frames compiling ahead".into(),
+            Box::new(|r: &Row| f32::from(u8::from(r.compiling_ahead))),
+        ));
         // Lines that are another line's consequence, never a hitch's cause:
         // the interval itself, the GPU's whole frame and overlap, and the
         // CPU's wait for the GPU.

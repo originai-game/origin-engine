@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og run --perf",
+      "summary": "The perf report counts the fades held while their pipelines compile (`fades held`, `frames compiling ahead`). A streamed model starts its pipelines when it is decoded, before a cell spawns it, so the frame that first draws it no longer waits for them."
+    }
+  ]
+}

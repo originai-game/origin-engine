@@ -307,6 +307,13 @@ pub struct KeptInstances {
 pub struct SceneObjects {
     /// Objects to draw this frame, in any order.
     pub instances: Vec<Instance>,
+    /// (mesh, material) pairs that instances drawn on a later frame will
+    /// draw with: a model decoded now, before any entity draws it. The
+    /// frame starts their pipelines (lit, prepass and shadow, whole and
+    /// fading in) on the compile workers without drawing them, so the
+    /// frame that first draws one waits for none. The host clears it once
+    /// a frame has been drawn with it.
+    pub prepare: Vec<(MeshHandle, MaterialHandle)>,
     /// Three.js layer masks of the instances, by index in `instances`
     /// (bit `n` set: on layer `n`): an index past the end is on layer 0
     /// alone (mask 1), as every object is in three.js. A camera draws the

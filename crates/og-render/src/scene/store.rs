@@ -89,6 +89,7 @@ impl RenderScene {
             mesh_surfaces: Vec::new(),
             mesh_visual: Vec::new(),
             objects: SceneObjects {
+                prepare: Vec::new(),
                 instances: Vec::new(),
                 instance_layers: Vec::new(),
                 instance_levels: Vec::new(),

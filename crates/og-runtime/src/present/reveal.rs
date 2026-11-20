@@ -372,6 +372,13 @@ impl Reveal {
     /// an instance still hidden is not made yet
     /// (`og_render::FrameStats::compiling_ahead`). The next step starts
     /// the held fades when none is.
+    /// The fades the frames hold at nothing (a pipeline they draw with is
+    /// still compiling, or no frame has seen them yet).
+    pub(crate) fn held(&self) -> u32 {
+        let held = |f: &Fade| u32::from(f.held.is_some());
+        self.entities.values().map(held).sum::<u32>() + self.proxies.values().map(held).sum::<u32>()
+    }
+
     pub(crate) fn drawn(&mut self, compiling: bool) {
         self.drawn = self.drawn.wrapping_add(1);
         self.compiling = compiling;

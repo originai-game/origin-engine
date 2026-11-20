@@ -69,6 +69,26 @@ impl Renderer {
         let (probe_frame, active_probes, probe_boxes) = self.prepare_frame_probes(scene);
         let (mut batches, sorted_instances) = self.build_batches(scene)?;
         let mut ahead = self.ahead_batches(scene, &batches, &sorted_instances.ahead);
+        // The pairs of models decoded before anything draws them
+        // (`SceneObjects::prepare`), as instances still hidden.
+        if !scene.objects.prepare.is_empty() {
+            let pairs: Vec<instances::Ahead> = scene
+                .objects
+                .prepare
+                .iter()
+                .filter(|(mesh, material)| {
+                    mesh.index() < self.cache.meshes.len()
+                        && material.index() < self.cache.materials.len()
+                })
+                .map(|&(mesh, material)| instances::Ahead {
+                    mesh: mesh.index(),
+                    material: material.index(),
+                    cast: true,
+                    mirrored: false,
+                })
+                .collect();
+            ahead.extend(self.ahead_batches(scene, &[], &pairs));
+        }
         let instances::Sorted {
             mut transforms,
             mut spheres,
