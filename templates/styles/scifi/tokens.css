@@ -1,0 +1,757 @@
+/* scifi: instrument hierarchy, precise geometry, sparse emphasis
+   (docs/ui.md §4). Dark frosted glass over the scene, thin cyan rims that
+   glow, chamfered frames with corner brackets, scan lines, condensed
+   technical type, a cyan primary and an amber accent for what is chosen.
+
+   The pack is a theme: this file holds every value it draws with, as :root
+   tokens for the dark and light schemes, and the default style's control
+   and role rules (frames, plates, bands, titles, rows, cells, badges, wells,
+   figures, labels, tags) wear them. It selects no part; surfaces.css
+   sets the pack's motion over the default surfaces. The cut corners are
+   radius tokens with their --*-corner-shape set to bevel.
+
+   Every composite (a fill, a shadow) is built from the palette roles and
+   the material tokens under "Materials", never from a literal of its own,
+   so the light scheme at the end restates only those. */
+
+@font-face { font-family: "Scifi Display"; src: url(/@styles/shared/ChakraPetch-SemiBold.ttf); font-weight: 600; }
+@font-face { font-family: "Scifi Label"; src: url(/@styles/shared/BarlowCondensed-SemiBold.ttf); font-weight: 600; }
+@font-face { font-family: "Scifi Text"; src: url(/@styles/shared/BarlowSemiCondensed-SemiBold.ttf); font-weight: 600; }
+@font-face { font-family: "Scifi Figure"; src: url(/@styles/shared/Rajdhani-Bold.ttf); font-weight: 700; }
+/* Barlow carries no arrows: Chakra Petch supplies the arrows block (→ in a
+   combat log, ← in a hint) through unicode-range. */
+@font-face { font-family: "Scifi Text"; src: url(/@styles/shared/ChakraPetch-SemiBold.ttf); font-weight: 600; unicode-range: U+2190-21FF; }
+@font-face { font-family: "Scifi Label"; src: url(/@styles/shared/ChakraPetch-SemiBold.ttf); font-weight: 600; unicode-range: U+2190-21FF; }
+@font-face { font-family: "Scifi Figure"; src: url(/@styles/shared/ChakraPetch-SemiBold.ttf); font-weight: 700; unicode-range: U+2190-21FF; }
+
+:root {
+  /* ── The palette: seeds (cyan brand, amber accent, deep-sea neutral). The default style
+     derives every ground, ink, accent, status and team colour from them,
+     in both schemes, at the contrast its pairs need; what follows is the
+     pack's art on top. */
+  --seed-primary: #22c7f5;
+  --seed-accent: #ffb52e;
+  --seed-neutral: #0a1622;
+  --seed-danger: #ff6b6f;
+  --seed-warn: #ffe04a;
+  --seed-success: #45e3a0;
+  --seed-info: #6cc7ff;
+  --seed-team: #4fb3ff;
+
+  /* ── The core roles, in this pack's materials. --line-strong is the cyan
+     rim of every control and frame, --primary the lit cyan of the main
+     action and of every glow, --accent the amber of what is chosen,
+     tracked or focused. */
+  --line-strong: #2ea6cf;
+  /* The lit cyan of every button ink and hover rim (the derived highlight
+     would take the amber accent's hue). */
+  --highlight: #8eeaff;
+  --scrim: #02060bcc;
+  --shadow: #000000a6;
+  --color-shadow: #000;
+  --sheen: #bfeeff30;
+  --scene-shadow: #000000a0;
+  --health: #c8324a;
+  --mana: #3f8cff;
+  --xp: #d9c2ff;
+  --gold: #ffc861;
+
+  /* Rarity: a rim, a glow and a tinted cell, and the name's ink. */
+  --common: #9fb4c1;
+  --uncommon: #4fe38b;
+  --rare: #6fb2ff;
+  --epic: #c48cff;
+  --legendary: #ffbf91;
+  --mythic: #ff7896;
+
+  /* Sides of a fight. */
+  --neutral: #c9d6de;
+
+  /* ── Materials: what every composite below is made of. The light scheme
+     restates these and nothing else. Glass is the panel a frame stands in
+     (lighter at its top edge), the plate a HUD's over the scene, the cell a
+     tile's; the shades are a drop shadow's and a keyline's; the glow steps
+     are how strongly the primary lights a rim. The engine blends in linear
+     light, so dark glass over a bright ground reads much thinner than its
+     alpha: a frame, which can cover another panel's text, is nearly opaque. */
+  --scifi-glass-lo: #07121cfa;
+  /* What is chosen is washed in the accent. The engine blends in linear
+     light, so a bright wash over dark glass reads far stronger than its
+     alpha, and over light glass far weaker: the steps are per scheme. */
+  --scifi-chosen-hi: rgb(from var(--accent) r g b / 0.1);
+  --scifi-chosen-mid: rgb(from var(--accent) r g b / 0.045);
+  --scifi-chosen-lo: rgb(from var(--accent) r g b / 0.015);
+  --scifi-plate-hi: #0a1a29f2;
+  --scifi-plate-lo: #050d16f5;
+  /* Frost: the glass and plates that blur what is behind them
+     (--frame-glass, --panel-glass, --plate-glass). The blur keeps a scene's
+     detail and another panel's text from ghosting through, so a frame's and
+     a panel's frost lets the blurred scene glow through as soft colour,
+     while its ink, the muted ink too, keeps 4.5:1 over the brightest scene
+     (a white sky): about 96 % in the dark scheme. The HUD's frost is
+     denser still. */
+  --scifi-frost-hi: #10253af5;
+  --scifi-frost-lo: #07121cf7;
+  --scifi-frost-plate-hi: #0a1a29f2;
+  --scifi-frost-plate-lo: #050d16f5;
+  --scifi-cell-hi: #143044;
+  --scifi-cell-lo: #0a1824;
+  --scifi-cell-pressed: #071019;
+  --scifi-key-hi: #17384e;
+  --scifi-key-lo: #0d2233;
+  --scifi-disabled-fill: #0b141c;
+  --scifi-disabled-rim: #2a3b47;
+  --scifi-disabled-on: #5b7686;
+  --scifi-shade: #000000b3;
+  --scifi-shade-soft: #00000080;
+  --scifi-keyline: #000000a6;
+  --scifi-scan: rgb(from var(--primary) r g b / 0.04);
+  --scifi-glow-10: rgb(from var(--primary) r g b / 0.1);
+  --scifi-glow-20: rgb(from var(--primary) r g b / 0.2);
+  --scifi-glow-35: rgb(from var(--primary) r g b / 0.35);
+  --scifi-glow-55: rgb(from var(--primary) r g b / 0.55);
+  --scifi-ember-45: rgb(from var(--accent) r g b / 0.45);
+  --scifi-bracket-tl: url(art/bracket-tl.svg);
+  --scifi-bracket-tr: url(art/bracket-tr.svg);
+  --scifi-bracket-bl: url(art/bracket-bl.svg);
+  --scifi-bracket-br: url(art/bracket-br.svg);
+  --scifi-grid-image: url(art/grid.svg);
+  --scifi-ground-hi: #0b1c2b;
+  --scifi-ground-lo: #03070c;
+
+  /* The roles' translucent steps (the engine's --line-70 / --shadow-30 naming). */
+  --primary-8: rgb(from var(--primary) r g b / 0.08);
+  --primary-12: rgb(from var(--primary) r g b / 0.12);
+  --primary-16: rgb(from var(--primary) r g b / 0.16);
+  --primary-25: rgb(from var(--primary) r g b / 0.25);
+  --primary-32: rgb(from var(--primary) r g b / 0.32);
+  --primary-40: rgb(from var(--primary) r g b / 0.4);
+  --accent-60: rgb(from var(--accent) r g b / 0.6);
+  --line-strong-40: rgb(from var(--line-strong) r g b / 0.4);
+  --line-strong-50: rgb(from var(--line-strong) r g b / 0.5);
+  --line-strong-60: rgb(from var(--line-strong) r g b / 0.6);
+  --well-50: rgb(from var(--well) r g b / 0.5);
+  --well-80: rgb(from var(--well) r g b / 0.8);
+  --well-95: rgb(from var(--well) r g b / 0.95);
+
+  /* ── Type: Chakra Petch for display, Barlow Condensed for labels,
+     Barlow Semi Condensed to read, Rajdhani for figures. */
+  --font-display: "Scifi Display", sans-serif;
+  --font-body: "Scifi Text", sans-serif;
+  --font-sans: "Scifi Text", sans-serif;
+  --font-mono: "Scifi Figure", monospace;
+  --label-font: "Scifi Label", sans-serif;
+  /* The engine's em steps at this pack's sizes (2xs is 11px at a 14px
+     body, 4xl is 26px), so the player's text scale applies. Condensed
+     faces read a step smaller than their size, so the small steps sit one
+     pixel above the default's. */
+  --font-step-2xs: 0.7857em;
+  --font-step-xs: 0.8571em;
+  --font-step-sm: 0.9286em;
+  --font-step-md: 1em;
+  --font-step-lg: 1.0714em;
+  --font-step-xl: 1.1429em;
+  --font-step-2xl: 1.2857em;
+  --font-step-3xl: 1.5714em;
+  --font-step-4xl: 1.8571em;
+  --font-step-5xl: 3em;
+  --font-step-6xl: 4.2857em;
+
+  /* ── Radii and strokes. A radius here is a cut: the --*-corner-shape
+     beside it is bevel. The engine's own radii stay small, since a part the
+     pack does not chamfer is squared. */
+  --radius-xs: 0px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --radius-button: 0px;
+  --radius-panel: 0px;
+  --radius-card: 0px;
+  --radius-field: 0px;
+  --radius-control: 0px;
+  --field-border-width: var(--stroke-hairline);
+  --checkbox-radius-ratio: 0.08;
+  --meter-radius: 0px;
+  --slot-radius: var(--scifi-cut-cell);
+  --tabs-radius: 0px;
+  --chip-radius: var(--scifi-cut-chip);
+  --hud-radius: var(--scifi-cut-plate);
+  --panel-radius: var(--scifi-cut-frame);
+  --tooltip-radius: var(--scifi-cut-chip);
+  /* The cuts: the leading top and trailing bottom corners of a frame, a
+     plate, a cell and a button. */
+  --scifi-cut-frame: 16px 0;
+  --scifi-cut-plate: 10px 0;
+  --scifi-cut-cell: 8px 0;
+  --scifi-cut-button: 10px 0;
+  --scifi-cut-chip: 5px 0;
+  --scifi-cut-field: 0 0 8px 0;
+  /* A portrait, a medal, a seal: an octagon (a bevel of this much of each side). */
+
+  /* ── Inks. */
+  --button-ink: var(--highlight);
+  --button-hover-ink: #ffffff;
+  --button-pressed-ink: var(--highlight);
+  --button-disabled-ink: #6b8392;
+  --button-primary-hover-ink: #00090e;
+  --button-primary-pressed-ink: #02141d;
+  --button-primary-disabled-ink: #6d8491;
+  --ink-disabled: #6f8796;
+  --ink-label: #b8e8f6;
+  --title-ink: #dff8ff;
+  --ink-done: #a9bfcc;
+  --ink-selected: #fff3d6;
+  --figure-ink: #f2fbff;
+  --ink-bright: #ffffff;
+  --badge-ink: #c9f2ff;
+  --ink-down: #7b8a94;
+  --ink-mark: var(--primary);
+  --trend-up: #45e3a0;
+  --trend-down: #ffa3a5;
+  --tone-damage: #ff6f73;
+  --tone-heal: #45e3a0;
+  --tone-crit: #ffb52e;
+
+  /* ── Art. */
+  --band-rule-image: url(art/rule.svg);
+  --band-end-start-image: url(art/band-end-start.svg);
+  --band-end-finish-image: url(art/band-end-finish.svg);
+  --mark-diamond: url(art/diamond.svg);
+  --mark-diamond-open: url(art/diamond-open.svg);
+  --mark-triangle: url(art/triangle-down.svg);
+  --mark-check: url(art/check.svg);
+  --mark-chevron: url(art/chevron.svg);
+  --mark-box: url(art/box.svg);
+  --mark-tower: url(art/beacon.svg);
+  --mark-skull: url(art/hazard.svg);
+  --mark-arrow: url(art/arrow.svg);
+  --mark-pin: url(art/pin.svg);
+  --mark-travel: url(art/travel.svg);
+  --mark-close: url(art/close.svg);
+  --sfx-tap: url(/@styles/shared/sfx-tap.ogt);
+  --sfx-tap2: url(/@styles/shared/sfx-tap2.ogt);
+  --sfx-confirm: url(/@styles/shared/sfx-confirm.ogt);
+  --sfx-back: url(/@styles/shared/sfx-back.ogt);
+  --sfx-open: url(/@styles/shared/sfx-open.ogt);
+  --sfx-error: url(/@styles/shared/sfx-error.ogt);
+  --sfx-reward: url(/@styles/shared/sfx-reward.ogt);
+
+  /* ── Lengths. */
+  --scifi-scan-pitch: 3px;
+  --scifi-grid-pitch: 96px;
+  --frame-pad: calc(var(--space-md) + 4px);
+  --frame-corner-size: 40px;
+  --frame-rim: var(--line-strong-60);
+  --frame-rim-width: var(--stroke-hairline);
+  --frame-radius: var(--scifi-cut-frame);
+  --frame-corner-shape: bevel;
+  --plate-rim: var(--line-strong-50);
+  --plate-rim-width: var(--stroke-hairline);
+  --plate-radius: var(--scifi-cut-plate);
+  --plate-corner-shape: bevel;
+  --plate-pad: var(--space-sm);
+  --band-height: var(--size-lg);
+  --band-pad: var(--space-xs) var(--space-xl);
+  --band-rule: var(--line-strong);
+  --title-font: var(--font-display);
+  --title-size: var(--font-step-4xl);
+  --title-lead-size: var(--font-step-2xl);
+  --title-small-size: var(--font-step-lg);
+  --title-weight: var(--font-weight-semibold);
+  --title-tracking: var(--font-tracking-lg);
+  --title-transform: uppercase;
+  --figure-font: var(--font-mono);
+  --label-tracking: var(--font-tracking-lg);
+  --label-transform: uppercase;
+  --row-radius: 0px;
+  --cell-rim: #2b5a73;
+  --cell-rim-width: var(--stroke-hairline);
+  --cell-radius: var(--scifi-cut-cell);
+  --cell-corner-shape: bevel;
+  --cell-selected-rim: var(--accent);
+  --badge-radius: 0px;
+  --well-fill: var(--well-95);
+  --well-radius: 0px;
+  --scifi-corner-hud: 24px;
+
+  /* ── Motion: quick and exact. Nothing overshoots; a state lands inside
+     two frames and a loop is a scan, not a breath. */
+  --motion-easing-out: cubic-bezier(0.2, 0.9, 0.1, 1);
+  --motion-duration-instant: 60ms;
+  --motion-duration-fast: 90ms;
+  --motion-duration-base: 140ms;
+  --motion-duration-slow: 240ms;
+  --motion-duration-turn: 640ms;
+  --motion-duration-pulse: 800ms;
+  --motion-duration-flare: 720ms;
+  --motion-duration-ping: 900ms;
+  --motion-duration-sweep: 1100ms;
+  --motion-duration-breathe: 1400ms;
+  --motion-duration-sheen: 1600ms;
+  --motion-duration-drift: 2000ms;
+  --motion-duration-fanfare: 1800ms;
+  --motion-duration-orbit: 4800ms;
+  --opacity-wash: 0.18;
+  --scifi-motion-indicator: -og-spring(160ms, 0);
+
+  /* ── Core controls' surfaces. A button is a cut plate of glass with a lit
+     rim; the primary is the lit cyan itself, a button that is on the amber. */
+  --button-font: "Scifi Label";
+  --button-text-shadow: 0 0 8px var(--scifi-glow-35);
+  --button-rim: var(--line-strong);
+  --button-fill: linear-gradient(180deg, var(--primary-16), var(--primary-8)), linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
+  --button-hover-fill: linear-gradient(180deg, var(--primary-40), var(--primary-16)), linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
+  --button-pressed-fill: linear-gradient(180deg, var(--primary-8), var(--primary-16)), var(--scifi-cell-pressed);
+  --button-disabled-fill: var(--scifi-disabled-fill);
+  --button-shadow: inset 0 1px 0 var(--scifi-glow-35), 0 0 10px var(--scifi-glow-20);
+  --button-hover-shadow: inset 0 1px 0 var(--scifi-glow-55), 0 0 16px var(--scifi-glow-35);
+  --button-pressed-shadow: inset 0 2px 6px var(--scifi-keyline);
+  --button-primary-fill: linear-gradient(180deg, var(--primary-hover), var(--primary) 55%, var(--primary-active));
+  --button-primary-hover-fill: linear-gradient(180deg, #b6eeff, var(--primary-hover) 60%, var(--primary));
+  --button-primary-pressed-fill: linear-gradient(180deg, var(--primary-active), var(--primary));
+  --button-primary-shadow: inset 0 1px 0 #ffffff80, 0 0 16px var(--scifi-glow-55);
+  --button-danger-rim: var(--danger);
+  --button-danger-ink: #ffffff;
+  --button-danger-fill: linear-gradient(180deg, rgb(from var(--danger) r g b / 0.24), rgb(from var(--danger) r g b / 0.1)), linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
+  --button-danger-hover-fill: linear-gradient(180deg, rgb(from var(--danger) r g b / 0.45), rgb(from var(--danger) r g b / 0.2)), linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
+  --button-danger-shadow: inset 0 1px 0 rgb(from var(--danger) r g b / 0.45), 0 0 12px rgb(from var(--danger) r g b / 0.3);
+  --button-selected-fill: linear-gradient(180deg, var(--scifi-chosen-hi), var(--scifi-chosen-mid)), linear-gradient(180deg, var(--scifi-plate-hi), var(--scifi-plate-lo));
+  --button-selected-ink: var(--on-selection);
+  --button-selected-shadow: inset 0 1px 0 var(--accent-60), 0 0 12px var(--scifi-ember-45);
+  --well-shadow: inset 0 1px 3px var(--scifi-keyline);
+  --checkbox-checked-fill: linear-gradient(180deg, var(--primary-hover), var(--primary-active));
+  /* The tick and the slider's value bubble stand on the lit primary. */
+  --checkbox-mark-ink: var(--on-primary);
+  --slider-bubble-ink: var(--on-primary);
+  --radio-card-fill: linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
+  --radio-card-checked-fill: linear-gradient(180deg, var(--scifi-chosen-hi), var(--scifi-chosen-mid)), linear-gradient(180deg, var(--scifi-plate-hi), var(--scifi-plate-lo));
+  --radio-card-checked-shadow: 0 0 12px var(--scifi-ember-45);
+  --radio-card-radius: var(--scifi-cut-plate);
+  --switch-checked-fill: linear-gradient(180deg, var(--primary-40), var(--primary-25));
+  --switch-knob-fill: linear-gradient(180deg, #ffffff, var(--knob));
+  --scifi-tab-hover-wash: linear-gradient(0deg, var(--primary-16), rgb(from var(--primary) r g b / 0));
+  --scifi-tab-selected-wash: linear-gradient(0deg, var(--scifi-chosen-hi), rgb(from var(--accent) r g b / 0) 80%);
+  --tabs-indicator-glow: 0 0 8px var(--scifi-ember-45);
+  --scifi-energy-fill: linear-gradient(90deg, var(--primary-active), var(--primary) 60%, var(--highlight));
+  --scifi-energy-glow: 0 0 8px var(--scifi-glow-55);
+  --slider-knob-fill: linear-gradient(180deg, #ffffff, var(--knob));
+  --slider-knob-shadow: 0 0 0 1px var(--scifi-keyline), 0 0 8px var(--scifi-glow-35);
+  --slider-knob-hover-shadow: 0 0 0 1px var(--scifi-keyline), 0 0 14px var(--scifi-glow-55);
+  --slider-knob-pressed-fill: linear-gradient(180deg, var(--primary-hover), var(--primary));
+  --field-fill: linear-gradient(180deg, var(--well-80), var(--well-50));
+  --field-shadow: inset 0 1px 3px var(--scifi-keyline);
+  --field-focus-shadow: inset 0 1px 3px var(--scifi-keyline), 0 0 10px var(--scifi-glow-35);
+  --dropdown-list-shadow: 0 0 12px var(--scifi-glow-20), 0 10px 24px var(--scifi-shade);
+  --scifi-key-fill: linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
+  --scifi-scanlines: repeating-linear-gradient(180deg, var(--scifi-scan) 0, var(--scifi-scan) 1px, rgb(from var(--primary) r g b / 0) 1px, rgb(from var(--primary) r g b / 0) var(--scifi-scan-pitch));
+  /* The backdrop blurs: a panel, dialog, tooltip or frame blurs the scene
+     behind it, a HUD plate a little less. World tags, per-value bars and
+     the small chips of a busy HUD do not blur (solid glass instead): there
+     are many of them over a moving scene, each a capture of its own. */
+  --scifi-glass-blur: blur(16px) saturate(1.3);
+  --scifi-plate-blur: blur(10px) saturate(1.2);
+  --panel-fill:
+    var(--scifi-scanlines),
+    linear-gradient(180deg, var(--primary-12), rgb(from var(--primary) r g b / 0) 28%),
+    linear-gradient(180deg, var(--scifi-frost-hi), var(--scifi-frost-lo));
+  --panel-shadow: inset 0 0 0 1px var(--scifi-keyline), 0 0 14px var(--scifi-glow-20), 0 12px 32px var(--scifi-shade);
+  /* What cannot be used goes grey and dark, but its words stay readable. */
+  /* The character sheet's full figure, a little faded like a projection. */
+  --slot-fill: linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
+  --slot-shadow: inset 0 0 12px var(--scifi-keyline);
+  --keyboard-key-fill: linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
+
+  /* ── The core controls, as tokens the default style's control rules read.
+     Hover raises the light, pressed sinks it, what is on or chosen turns
+     amber, and what is disabled goes dark with no glow at all. */
+  --button-border-width: var(--stroke-hairline);
+  --button-radius: var(--scifi-cut-button);
+  --button-corner-shape: bevel;
+  --button-pad-inline: var(--space-lg);
+  --button-font-size: var(--font-step-lg);
+  --button-tracking: var(--font-tracking-lg);
+  --button-transform: uppercase;
+  --button-hover-rim: var(--highlight);
+  --button-pressed-rim: var(--primary);
+  --button-disabled-rim: var(--scifi-disabled-rim);
+  --button-primary-rim: var(--highlight);
+  --button-primary-hover-rim: var(--ink-bright);
+  --button-primary-ink: var(--on-primary);
+  --button-selected-rim: var(--accent);
+  --button-ghost-rim: var(--line-strong);
+  --button-ghost-hover-fill: var(--primary-12);
+  --button-ghost-pressed-fill: var(--primary-25);
+  --button-quiet-hover-fill: var(--primary-12);
+  --button-quiet-pressed-fill: var(--primary-25);
+  --checkbox-row-hover-fill: var(--primary-8);
+  --checkbox-box-fill: var(--well);
+  --checkbox-box-rim: var(--line-strong);
+  --checkbox-box-shadow: var(--well-shadow);
+  --checkbox-box-hover-rim: var(--highlight);
+  --checkbox-checked-rim: var(--highlight);
+  --checkbox-checked-shadow: var(--scifi-energy-glow);
+  --checkbox-disabled-fill: var(--scifi-disabled-fill);
+  --checkbox-disabled-rim: var(--scifi-disabled-rim);
+  --checkbox-checked-disabled-fill: var(--scifi-disabled-on);
+  --radio-corner-shape: bevel;
+  --radio-ring-fill: var(--well);
+  --radio-ring-rim: var(--line-strong);
+  --radio-ring-shadow: var(--well-shadow);
+  --radio-checked-rim: var(--highlight);
+  --radio-checked-shadow: var(--scifi-energy-glow);
+  --radio-dot-fill: var(--primary);
+  --radio-card-corner-shape: bevel;
+  --radio-card-rim: var(--line-strong-60);
+  --radio-card-hover-rim: var(--highlight);
+  --radio-card-checked-rim: var(--accent);
+  --radio-chosen-fill: var(--accent);
+  --switch-corner-shape: bevel;
+  --switch-track-fill: var(--well);
+  --switch-track-rim: var(--line-strong);
+  --switch-track-shadow: var(--well-shadow);
+  --switch-checked-rim: var(--highlight);
+  --switch-checked-shadow: var(--scifi-energy-glow);
+  --switch-knob-rim: var(--line-strong);
+  --tabs-track-fill: none;
+  --tabs-track-rule: var(--stroke-hairline) solid var(--line-strong-40);
+  --tabs-tab-fill: none;
+  --tabs-tab-hover-fill: var(--scifi-tab-hover-wash);
+  --tabs-tab-hover-ink: var(--ink);
+  --tabs-tab-pressed-fill: var(--primary-16);
+  --tabs-tab-selected-fill: var(--scifi-tab-selected-wash);
+  --tabs-tab-ink: var(--ink-muted);
+  --tabs-tab-selected-ink: oklch(from var(--accent) calc(l + 0.06) c h);
+  --tabs-tab-disabled-ink: var(--ink-disabled);
+  --tabs-font: var(--label-font);
+  --tabs-font-size: var(--font-step-lg);
+  --tabs-tracking: var(--font-tracking-lg);
+  --tabs-transform: uppercase;
+  --tabs-indicator-fill: var(--accent);
+  --tabs-indicator-height: var(--stroke-regular);
+  --tabs-indicator-radius: 0;
+  --slider-track-fill: var(--well);
+  --slider-track-rim: var(--line-strong-40);
+  --slider-track-shadow: var(--well-shadow);
+  --slider-fill: var(--scifi-energy-fill);
+  --slider-fill-shadow: var(--scifi-energy-glow);
+  --slider-tick-fill: var(--line-strong-60);
+  --slider-knob-corner-shape: bevel;
+  --slider-knob-rim: var(--line-strong);
+  --slider-knob-disabled-fill: var(--scifi-disabled-rim);
+  --slider-core-fill: var(--primary-active);
+  --slider-bubble-fill: var(--primary);
+  --slider-bubble-rim: var(--highlight);
+  --slider-bubble-shadow: var(--scifi-energy-glow);
+  --field-corner-shape: bevel;
+  --field-radius: var(--scifi-cut-field);
+  --field-rim: var(--line-strong-60);
+  --field-hover-rim: var(--highlight);
+  --field-focus-rim: var(--highlight);
+  --field-disabled-fill: var(--scifi-disabled-fill);
+  --field-disabled-rim: var(--scifi-disabled-rim);
+  --field-invalid-rim: var(--danger);
+  --field-ink: var(--ink);
+  --field-font: var(--font-body);
+  --field-placeholder-ink: var(--ink-faint);
+  --field-selection-fill: rgb(from var(--primary) r g b / 0.4);
+  --field-caret-fill: var(--accent);
+  --dropdown-list-fill: var(--panel-raised);
+  --dropdown-list-rim: var(--line-strong);
+  --dropdown-option-hover-fill: var(--primary-16);
+  --dropdown-option-pressed-fill: var(--primary-25);
+  --stepper-button-fill: var(--scifi-key-fill);
+  --stepper-button-rim: var(--line-strong-60);
+  --stepper-button-hover-rim: var(--highlight);
+  --stepper-button-hover-fill: var(--button-hover-fill);
+  --stepper-button-pressed-fill: var(--scifi-cell-pressed);
+  --stepper-button-disabled-fill: var(--scifi-disabled-fill);
+  --details-summary-fill: none;
+  --details-summary-hover-fill: var(--primary-8);
+  --details-summary-rule: var(--line-strong-40);
+  --details-summary-ink: var(--ink-label);
+  --details-summary-open-ink: var(--highlight);
+  --details-content-ink: var(--ink);
+  --panel-rim: var(--line-strong-60);
+  --panel-corner-shape: bevel;
+  --panel-glass: var(--scifi-glass-blur);
+  --dialog-backdrop: var(--scrim);
+  --tooltip-fill: linear-gradient(180deg, var(--scifi-frost-plate-hi), var(--scifi-frost-plate-lo));
+  --tooltip-rim: var(--line-strong);
+  --tooltip-shadow: 0 0 10px var(--scifi-glow-20), 0 6px 16px var(--scifi-shade);
+  --tooltip-corner-shape: bevel;
+  --tooltip-glass: var(--scifi-glass-blur);
+  --hud-fill: linear-gradient(180deg, var(--scifi-frost-plate-hi), var(--scifi-frost-plate-lo));
+  --hud-rim: var(--line-strong-50);
+  --hud-corner-shape: bevel;
+  --hud-glass: var(--scifi-plate-blur);
+  --popover-arrow-fill: var(--panel-raised);
+  --spotlight-edge: var(--accent);
+  --slot-rim: var(--cell-rim);
+  --slot-rim-width: var(--stroke-hairline);
+  --slot-corner-shape: bevel;
+  --slot-hover-rim: var(--highlight);
+  --slot-hover-shadow: var(--cell-hover-shadow);
+  --slot-pressed-fill: var(--cell-pressed-fill);
+  --slot-selected-rim: var(--accent);
+  --slot-selected-shadow: var(--button-selected-shadow);
+  --badge-font: var(--label-font);
+  --badge-tracking: var(--font-tracking-sm);
+  --badge-transform: uppercase;
+  --meter-track-fill: var(--well);
+  --meter-track-rim: var(--line-strong-40);
+  --meter-track-shadow: var(--well-shadow);
+  --meter-fill: var(--scifi-energy-fill);
+  --meter-fill-shadow: var(--scifi-energy-glow);
+  --meter-suboptimum-fill: linear-gradient(90deg, rgb(from var(--warn) r g b / 0.7), var(--warn));
+  --meter-poor-fill: linear-gradient(90deg, rgb(from var(--danger) r g b / 0.7), var(--danger));
+  --meter-health-fill: linear-gradient(90deg, rgb(from var(--health) r g b / 0.75), var(--health));
+  --meter-mana-fill: linear-gradient(90deg, rgb(from var(--mana) r g b / 0.75), var(--mana));
+  --progress-fill: var(--scifi-energy-fill);
+  --keyboard-panel-fill: var(--backdrop);
+  --keyboard-key-rim: var(--line-strong-50);
+  --keyboard-key-hover-rim: var(--highlight);
+  --keyboard-key-pressed-fill: var(--scifi-cell-pressed);
+  --keyboard-key-pressed-rim: var(--primary);
+  --keyboard-key-font: var(--label-font);
+  --touch-plate-fill: rgb(from var(--well) r g b / 0.62);
+  --touch-plate-rim: var(--line-strong);
+  --touch-knob-fill: var(--slider-knob-fill);
+  --touch-active-fill: var(--accent);
+  --scrollbar-fill: var(--line-strong-60);
+  --icon-secondary-ink: var(--accent);
+  /* The control hooks' rim widths and the shadows the default never drew. */
+  --button-rim-width: var(--button-border-width);
+  --button-base-shadow: var(--button-shadow);
+  --button-base-pressed-shadow: var(--button-pressed-shadow);
+  --field-rim-width: var(--field-border-width);
+  --field-frame-shadow: var(--field-shadow);
+  --checkbox-checked-rim-width: var(--field-border-width);
+  --radio-checked-rim-width: var(--field-border-width);
+  --radio-card-rim-width: var(--field-border-width);
+  --radio-option-hover-fill: var(--primary-8);
+  --slider-track-rim-width: var(--stroke-hairline);
+  --meter-track-rim-width: var(--stroke-hairline);
+  --tooltip-rim-width: var(--stroke-hairline);
+  --hud-rim-width: var(--stroke-hairline);
+  /* A badge is a dark chip; its tone is its rim and its ink. */
+  --badge-neutral-fill: var(--badge-fill);
+  --badge-neutral-ink: var(--badge-ink);
+  --badge-primary-fill: var(--badge-fill);
+  --badge-primary-ink: var(--primary);
+  --badge-info-fill: var(--badge-fill);
+  --badge-info-ink: var(--info);
+  --badge-success-fill: var(--badge-fill);
+  --badge-success-ink: var(--success);
+  --badge-warn-fill: var(--badge-fill);
+  --badge-warn-ink: var(--warn);
+  --badge-danger-fill: var(--badge-fill);
+  --badge-danger-ink: var(--danger);
+  --badge-rim-width: var(--stroke-hairline);
+
+  /* ── Names and pictures: a name in display capitals, a picture in a
+     cell's well with a dark keyline. */
+  --name-font: var(--font-display);
+  --name-tracking: var(--font-tracking-sm);
+  --name-transform: uppercase;
+  --name-ink: var(--ink);
+  --name-shadow: 0 0 10px var(--scifi-glow-35), 0 1px 2px var(--scifi-shade);
+  --name-selected-ink: var(--ink-selected);
+  --picture-fill: var(--cell-fill);
+  --picture-rim: var(--cell-rim);
+  --picture-radius: var(--radius-xs);
+  --picture-shadow: inset 0 0 0 1px var(--scifi-keyline), 0 0 0 1px var(--scifi-keyline);
+
+  /* ── One component's own look, as the tokens it reads. */
+  --bubble-tail-fill: var(--scifi-glass-lo);
+  --reticle-keyline: 0 0 0 1px var(--scifi-keyline);
+  --reticle-ring: 0 0 0 1px var(--scifi-keyline), inset 0 0 0 1px var(--scifi-keyline);
+  --damage-arc-stroke: var(--danger);
+  --minimap-bezel: linear-gradient(180deg, var(--scifi-plate-hi), var(--scifi-plate-lo));
+
+  /* ── The role parts' surfaces: what every frame, plate, band, title,
+     row, cell, badge and well of a built-in component wears. */
+  /* A frame's and a plate's art over their glass: frost where they blur,
+     the glass and plate where they do not (the -solid fills). */
+  --scifi-frame-art:
+    var(--scifi-bracket-tl) left top / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
+    var(--scifi-bracket-tr) right top / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
+    var(--scifi-bracket-bl) left bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
+    var(--scifi-bracket-br) right bottom / var(--frame-corner-size) var(--frame-corner-size) no-repeat,
+    var(--scifi-scanlines),
+    linear-gradient(180deg, rgb(from var(--primary) r g b / 0.05), rgb(from var(--primary) r g b / 0) 28%);
+  --scifi-plate-art:
+    var(--scifi-bracket-tl) left top / var(--scifi-corner-hud) var(--scifi-corner-hud) no-repeat,
+    var(--scifi-bracket-br) right bottom / var(--scifi-corner-hud) var(--scifi-corner-hud) no-repeat,
+    var(--scifi-scanlines);
+  --frame-fill: var(--scifi-frame-art), linear-gradient(180deg, var(--scifi-frost-hi), var(--scifi-frost-lo));
+  --frame-glass: var(--scifi-glass-blur);
+  --frame-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 28px rgb(from var(--primary) r g b / 0.05), 0 0 14px var(--scifi-glow-20), 0 14px 36px var(--scifi-shade);
+  --plate-fill: var(--scifi-plate-art), linear-gradient(180deg, var(--scifi-frost-plate-hi), var(--scifi-frost-plate-lo));
+  --plate-glass: var(--scifi-plate-blur);
+  --plate-shadow: inset 0 0 0 1px var(--scifi-keyline), 0 0 10px var(--scifi-glow-10), 0 8px 20px var(--scifi-shade);
+  /* A band's wash stays light (12 % at its heart): over glass over a white
+     sky, its title and the muted label beside it keep 4.5:1. */
+  --band-fill: linear-gradient(90deg, rgb(from var(--primary) r g b / 0) 0%, var(--primary-8) 16%, var(--primary-12) 50%, var(--primary-8) 84%, rgb(from var(--primary) r g b / 0) 100%);
+  --band-lead-fill: linear-gradient(90deg, var(--primary-12) 0%, var(--primary-8) 40%, rgb(from var(--primary) r g b / 0.04) 78%, rgb(from var(--primary) r g b / 0) 100%);
+  --band-small-fill: linear-gradient(90deg, var(--primary-12), rgb(from var(--primary) r g b / 0.06) 60%, rgb(from var(--primary) r g b / 0));
+  --band-shadow: 0 1px 0 var(--scifi-keyline);
+  /* A banner called over the scene: the band's light on a plate of its own. */
+  --title-shadow: 0 0 12px var(--scifi-glow-55), 0 1px 2px var(--scifi-shade);
+  --figure-shadow: 0 1px 2px var(--scifi-shade), 0 0 6px var(--scifi-glow-20);
+  /* World tags over the scene: on a strip of the scene's plate, outlined
+     by the default's halo, as the status grid's figures are. */
+  --tag-fill: var(--scene-plate);
+  --tag-pad: 0 var(--space-xs);
+  --tag-radius: 0;
+  --row-hover-fill: linear-gradient(90deg, var(--primary-16), rgb(from var(--primary) r g b / 0));
+  --row-pressed-fill: linear-gradient(90deg, var(--primary-25), var(--primary-8));
+  --row-selected-fill: linear-gradient(90deg, var(--scifi-chosen-hi) 0%, var(--scifi-chosen-mid) 45%, var(--scifi-chosen-lo) 100%);
+  --row-selected-edge: inset 3px 0 0 var(--accent);
+  --cell-fill: linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
+  --cell-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 12px var(--scifi-keyline);
+  --cell-common-fill: linear-gradient(160deg, rgb(from var(--common) r g b / 0.08), rgb(from var(--common) r g b / 0.02) 60%), linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
+  --cell-common-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 0 2px rgb(from var(--common) r g b / 0.7), 0 0 6px rgb(from var(--common) r g b / 0.2);
+  --cell-uncommon-fill: linear-gradient(160deg, rgb(from var(--uncommon) r g b / 0.08), rgb(from var(--uncommon) r g b / 0.02) 60%), linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
+  --cell-uncommon-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 0 2px var(--uncommon), 0 0 10px rgb(from var(--uncommon) r g b / 0.4);
+  --cell-rare-fill: linear-gradient(160deg, rgb(from var(--rare) r g b / 0.08), rgb(from var(--rare) r g b / 0.02) 60%), linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
+  --cell-rare-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 0 2px var(--rare), 0 0 10px rgb(from var(--rare) r g b / 0.45);
+  --cell-epic-fill: linear-gradient(160deg, rgb(from var(--epic) r g b / 0.08), rgb(from var(--epic) r g b / 0.02) 60%), linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
+  --cell-epic-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 0 2px var(--epic), 0 0 10px rgb(from var(--epic) r g b / 0.45);
+  --cell-legendary-fill: linear-gradient(160deg, rgb(from var(--legendary) r g b / 0.08), rgb(from var(--legendary) r g b / 0.02) 60%), linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
+  --cell-legendary-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 0 2px var(--legendary), 0 0 14px rgb(from var(--legendary) r g b / 0.55);
+  --cell-mythic-fill: linear-gradient(160deg, rgb(from var(--mythic) r g b / 0.08), rgb(from var(--mythic) r g b / 0.02) 60%), linear-gradient(160deg, var(--scifi-cell-hi), var(--scifi-cell-lo));
+  --cell-mythic-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 0 2px var(--mythic), 0 0 14px rgb(from var(--mythic) r g b / 0.55);
+  --cell-empty-shadow: inset 0 0 12px var(--scifi-keyline);
+  --cell-hover-shadow: inset 0 0 0 1px var(--scifi-keyline), inset 0 0 18px var(--scifi-glow-35), 0 0 14px var(--scifi-glow-35);
+  --cell-pressed-fill: linear-gradient(160deg, var(--primary-16), var(--primary-8)), var(--scifi-cell-pressed);
+  --badge-fill: linear-gradient(180deg, var(--scifi-key-hi), var(--scifi-key-lo));
+  --badge-shadow: inset 0 0 0 1px var(--line-strong-60), 0 2px 4px var(--scifi-shade-soft);
+  --ground-fill:
+    var(--scifi-grid-image) center / var(--scifi-grid-pitch) var(--scifi-grid-pitch) repeat,
+    radial-gradient(ellipse at 50% 0%, var(--primary-12) 0%, rgb(from var(--primary) r g b / 0) 60%),
+    radial-gradient(ellipse at 50% 40%, var(--scifi-ground-hi) 0%, var(--scifi-ground-lo) 100%);
+  /* The vitals bar carries a white figure, so its mana is a deeper blue
+     than --mana, which is also an ink on dark glass (a slot's cost). */
+  /* A nameplate's cast bar carries the spell's name in the ink, so it is a
+     deep amber where --warn would put white on yellow. */
+
+  font-family: "Scifi Text", sans-serif;
+  /* A number, so every line box follows its own font size, which follows the
+     player's text scale (the steps' px line heights would not). */
+  line-height: 1.35;
+  color: var(--ink);
+
+  /* ── The HUD over the scene: cyan glass edges with a hard keyline, an
+     electric cyan accent, magenta-red for a foe, a white-cyan life bar,
+     violet mana, beveled key caps lit from inside, and square tags. */
+  --hud-accent: #4ff0ff;
+  --hud-gold: #ffd166;
+  --hud-edge: linear-gradient(180deg, rgb(160 250 255 / 0.95), rgb(40 190 220 / 0.55) 50%, rgb(10 60 90 / 0.8));
+  --hud-ready-edge: linear-gradient(180deg, #e6ffff, #4ff0ff);
+  --hud-ally: #4ff0ff;
+  --hud-foe: #ff3d71;
+  --hud-boon: #3dffb0;
+  --hud-harm: #ff3d71;
+  --hud-life-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), linear-gradient(90deg, #39c9ff, #c9f6ff);
+  --hud-life-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(79 240 255 / 0.7);
+  --hud-mana-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), linear-gradient(90deg, #6a3dff, #b48cff);
+  --hud-mana-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(150 110 255 / 0.7);
+  --hud-stamina-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), #ffd166;
+  --hud-shield-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), linear-gradient(90deg, #2a8cff, #6fd0ff);
+  --hud-shield-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(42 140 255 / 0.8);
+  --hud-key-fill: linear-gradient(180deg, rgb(20 50 70 / 0.95), rgb(6 20 32 / 0.95));
+  --hud-key-ink: #bff8ff;
+  --hud-key-radius: 0;
+  --hud-key-gold-fill: linear-gradient(180deg, rgb(30 120 140 / 0.95), rgb(8 46 62 / 0.95));
+  --hud-key-shadow: inset 0 0 0 var(--stroke-hairline) rgb(79 240 255 / 0.7), 0 0 calc(8 * var(--font-step-px)) rgb(79 240 255 / 0.35);
+  --hud-tag-cut: calc(2 * var(--font-step-px));
+  --hud-tag-rim: inset 0 0 0 var(--stroke-hairline) rgb(79 240 255 / 0.5);
+  --hud-plate-rim: inset 0 0 0 var(--stroke-hairline) rgb(79 240 255 / 0.4);
+  --hud-feed-edge: #4ff0ff;
+  --hud-slot-ring: #4ff0ff;
+  --hud-ring-well: rgb(79 240 255 / 0.16);
+}
+
+/* The light scheme: frosted white glass over a pale ground, deep teal rims
+   and ink, a darker amber. It restates the palette roles, the inks and the
+   materials; every composite above follows them. */
+:root.light {
+  /* The selected tab's amber, a step deeper on the white frost. */
+  --tabs-tab-selected-ink: oklch(from var(--accent) calc(l - 0.06) c h);
+  /* The light scheme's brand, deeper. */
+  --seed-primary: #006f93;
+  --line-strong: #0b7fa6;
+  --highlight: #005f80;
+  --scrim: #0a1c2766;
+  --sheen: #ffffff80;
+  --health: #c22a3a;
+  --mana: #1f5fc4;
+  --xp: #6a3fc0;
+  --gold: #a35400;
+  --common: #55697a;
+  --uncommon: #0a6b40;
+  --rare: #1f5fc4;
+  --epic: #7a3fd0;
+  --legendary: #8a3a00;
+  --mythic: #b81d4f;
+  --neutral: #4a5c68;
+  --scifi-glass-lo: #eaf1f5e6;
+  --scifi-chosen-hi: rgb(from var(--accent) r g b / 0.22);
+  --scifi-chosen-mid: rgb(from var(--accent) r g b / 0.14);
+  --scifi-chosen-lo: rgb(from var(--accent) r g b / 0.08);
+  --scifi-plate-hi: #f8fbfde0;
+  --scifi-plate-lo: #e8f0f5e6;
+  /* The white frost holds the dark inks over a black scene (about 90 %). */
+  --scifi-frost-hi: #fbfdfee6;
+  --scifi-frost-lo: #eaf1f5eb;
+  --scifi-frost-plate-hi: #f8fbfdeb;
+  --scifi-frost-plate-lo: #e8f0f5f0;
+  --scifi-cell-hi: #f7fbfd;
+  --scifi-cell-lo: #dde9f0;
+  --scifi-cell-pressed: #cddde7;
+  --scifi-key-hi: #f7fbfd;
+  --scifi-key-lo: #dbe8ef;
+  --scifi-disabled-fill: #dbe3e8;
+  --scifi-disabled-rim: #a9b8c2;
+  --scifi-disabled-on: #7d929e;
+  --scifi-shade: #0a2a3d38;
+  --scifi-shade-soft: #0a2a3d24;
+  --scifi-keyline: #ffffff99;
+  --scifi-scan: rgb(from var(--primary) r g b / 0.035);
+  --scifi-glow-10: rgb(from var(--primary) r g b / 0.05);
+  --scifi-glow-20: rgb(from var(--primary) r g b / 0.1);
+  --scifi-glow-35: rgb(from var(--primary) r g b / 0.16);
+  --scifi-glow-55: rgb(from var(--primary) r g b / 0.24);
+  --scifi-ember-45: rgb(from var(--accent) r g b / 0.24);
+  --scifi-bracket-tl: url(art/bracket-tl-light.svg);
+  --scifi-bracket-tr: url(art/bracket-tr-light.svg);
+  --scifi-bracket-bl: url(art/bracket-bl-light.svg);
+  --scifi-bracket-br: url(art/bracket-br-light.svg);
+  --scifi-ground-hi: #f1f6f9;
+  --scifi-ground-lo: #d3dfe7;
+  --button-hover-ink: #003a4e;
+  --button-pressed-ink: var(--primary-active);
+  --button-disabled-ink: #7c8f9b;
+  --button-primary-hover-ink: #ffffff;
+  --button-primary-pressed-ink: #e3f6fd;
+  --button-primary-disabled-ink: #7c8f9b;
+  --button-primary-hover-fill: linear-gradient(180deg, #0a7fa6, var(--primary-hover) 60%, var(--primary));
+  --button-danger-ink: #8a121d;
+  --ink-disabled: #7c8f9b;
+  --ink-label: #0b5f7d;
+  --title-ink: #06303f;
+  --ink-done: #4f6575;
+  --ink-selected: #2a1a00;
+  --figure-ink: #06222e;
+  --ink-bright: #021017;
+  --badge-ink: #06303f;
+  --ink-down: #6a7a85;
+  --trend-up: #0a6b40;
+  --trend-down: #b3202c;
+  --tone-damage: #b3202c;
+  --tone-heal: #0a6b40;
+  --tone-crit: #a35400;
+  --cell-rim: #8fb0c0;
+  --switch-knob-fill: linear-gradient(180deg, #ffffff, #e6f0f5);
+  --slider-knob-fill: linear-gradient(180deg, #ffffff, #e6f0f5);
+}

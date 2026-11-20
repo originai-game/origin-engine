@@ -1,0 +1,6 @@
+/* scifi: surfaces over the default ones. Rows, cells and tabs switch on a
+   short curve that lands without overshoot (--motion-easing-out in
+   tokens.css). */
+.row, .cell, .tab {
+  transition: background var(--motion-duration-fast) var(--motion-easing-out), border-color var(--motion-duration-fast) var(--motion-easing-out), box-shadow var(--motion-duration-base) var(--motion-easing-out), color var(--motion-duration-fast) var(--motion-easing-out);
+}

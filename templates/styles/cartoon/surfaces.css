@@ -1,0 +1,10 @@
+/* cartoon: surfaces over the default ones. Everything springs: a cell
+   swells under the pointer and squashes when pressed, rows and tabs change
+   on the pack's spring. The durations and scales are tokens in tokens.css. */
+.row, .cell, .tab {
+  transition: background var(--motion-duration-fast) var(--motion-easing-in-out), border-color var(--motion-duration-fast) var(--motion-easing-in-out),
+    color var(--motion-duration-fast) var(--motion-easing-in-out), box-shadow var(--cartoon-spring), scale var(--cartoon-spring), translate var(--cartoon-spring);
+}
+.cell:hover { scale: var(--cartoon-swell); }
+.cell:active { scale: var(--state-press-scale); }
+.cell:disabled { scale: 1; }
