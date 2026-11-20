@@ -164,12 +164,14 @@ export default og.game({
   },
   commands: {
     style: (world, args) => setStyle(world, STYLES.includes(args[0] as never) ? args[0]! : "fantasy"),
+    scheme: (world, args) => og.ui.configure(world, { scheme: args[0] === "light" ? "light" : "dark" }),
     page: (world, args) => show(world, args[0] ?? "pause", args[1] ?? "default"),
     state: (world, args) => show(world, shown.screen || "pause", args[0] ?? "default"),
     reduced: (world, args) => og.ui.configure(world, { reducedMotion: args[0] !== "off" }),
   },
   commandHelp: {
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style the pages are dressed in." },
+    scheme: { usage: "<light|dark>", doc: "The colour scheme the style is drawn in." },
     page: { usage: "<screen>[:<state>]", doc: "A built-in screen, in its default state or the one named." },
     state: { usage: "<state>", doc: "The page's screen in a state of src/fixtures.ts (its default where it has none of the name)." },
     reduced: { usage: "<on|off>", doc: "Reduced motion on or off." },

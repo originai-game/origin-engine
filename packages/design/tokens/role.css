@@ -276,7 +276,7 @@
      delay) and then drains. Healing on its way is striped. Under its
      critical mark the rim glows in danger. */
   --role-bar-skew: -22deg;
-  --role-bar-well: var(--meter-track-fill, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.72));
+  --role-bar-well: var(--meter-track-fill, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.72));
   --role-bar-rim: var(--meter-track-shadow, 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.22), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.14), 0 var(--space-xxs) var(--space-xs) rgb(0 0 0 / 0.45));
   --role-bar-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0.1) 42%, transparent 52%);
   --role-bar-gloss: var(--bar-sheen);
@@ -285,7 +285,7 @@
   --role-bar-ghost-motion: inline-size 350ms var(--motion-easing-exit) 450ms, block-size 350ms var(--motion-easing-exit) 450ms;
   --role-bar-pending: repeating-linear-gradient(115deg, rgb(from var(--tone-heal) r g b / 0.85) 0 var(--space-xs), rgb(from var(--tone-heal) r g b / 0.4) var(--space-xs) calc(var(--space-xs) * 2));
   --role-bar-critical-rim: 0 0 0 var(--stroke-hairline) var(--danger), 0 0 var(--space-md) rgb(from var(--danger) r g b / 0.7);
-  --role-bar-notch: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92);
+  --role-bar-notch: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.92);
   --role-bar-shield: var(--info);
   /* A fill in danger (a boss's health, a vital under its critical mark): a
      deep red that holds as a fill; --danger is lifted for text and washes
@@ -300,18 +300,18 @@
      stacked offsets); figures are bold, tabular and condensed, labels are
      small tracked capitals. Sizes are in font steps, so they follow the
      player's text scale. */
-  --role-hud-ink: rgb(255 255 255);
-  --role-hud-ink-dim: rgb(255 255 255 / 0.66);
+  --role-hud-ink: var(--ink-bright);
+  --role-hud-ink-dim: var(--ink-muted);
   --role-hud-stroke-width: calc(3 * var(--font-step-px));
-  --role-hud-stroke-color: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62);
-  --role-hud-shadow: 0 calc(2 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.55);
+  --role-hud-stroke-color: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.62);
+  --role-hud-shadow: 0 0 calc(6 * var(--font-step-px)) rgb(255 255 255 / 0.7);
   --role-hud-figure-weight: var(--font-weight-bold);
   --role-hud-figure-stretch: 78%;
   --role-hud-label-size: calc(12 * var(--font-step-px));
   --role-hud-label-weight: var(--font-weight-semibold);
   --role-hud-label-tracking: 0.14em;
   --role-hud-label-transform: uppercase;
-  --role-hud-label-ink: rgb(255 255 255 / 0.78);
+  --role-hud-label-ink: var(--ink-label);
   --role-hud-figure-numeric: tabular-nums;
   /* A fill painted through the glyphs (a judgement's gradient). */
   --role-hud-text-clip: text;
@@ -335,13 +335,13 @@
   --role-hud-size-label-compact: min(calc(12 * var(--font-step-px)), 7cqi);
   /* HUD plate: smoked glass with a lit top edge and two corners cut, the
      surface a small HUD readout stands on. */
-  --role-hud-plate-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.84), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.88));
+  --role-hud-plate-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.936 min(c, 0.04) h / 0.84), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.88));
   --role-hud-plate-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.18), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.55);
   --role-hud-plate-cut: calc(6 * var(--font-step-px));
   --role-hud-plate-lit-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-accent) r g b / 0.45), inset 0 calc(2 * var(--stroke-hairline)) 0 var(--hud-accent);
   /* HUD tag: a solid chip behind a small figure (a timer, a stack, a
      modifier), so it reads where a stroke would clog it. */
-  --role-hud-tag-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.88);
+  --role-hud-tag-fill: oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.88);
   --role-hud-tag-rim: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.22);
   --role-hud-tag-cut: calc(4 * var(--font-step-px));
   --role-hud-tag-size: calc(12 * var(--font-step-px));
@@ -359,7 +359,7 @@
   /* The thin line at the screen's top edge (a song's progress). */
   --role-hud-line-fill: linear-gradient(90deg, var(--hud-accent), rgb(255 255 255));
   --role-hud-line-glow: 0 0 calc(12 * var(--font-step-px)) var(--hud-accent);
-  --role-hud-line-well: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.7);
+  --role-hud-line-well: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.7);
   /* A picture's octagon (a jacket, a portrait) and its lit edge. */
   --role-hud-octagon: polygon(22% 0, 78% 0, 100% 22%, 100% 78%, 78% 100%, 22% 100%, 0 78%, 0 22%);
   --role-hud-edge: linear-gradient(180deg, rgb(255 255 255 / 0.75), rgb(255 255 255 / 0.22) 45%, rgb(255 255 255 / 0.14));
@@ -414,8 +414,8 @@
   --role-hud-harm: var(--hud-foe);
   /* A feed row (a kill, a pickup): a dark glass that fades toward the
      screen's middle, an edge at the screen's side. */
-  --role-hud-feed-fill: linear-gradient(270deg, oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.86), oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.35));
-  --role-hud-feed-fill-start: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.86), oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.35));
+  --role-hud-feed-fill: linear-gradient(270deg, oklch(from var(--seed-neutral) 0.909 calc(min(c, 0.04) * 0.59) h / 0.86), oklch(from var(--seed-neutral) 0.909 calc(min(c, 0.04) * 0.59) h / 0.35));
+  --role-hud-feed-fill-start: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.909 calc(min(c, 0.04) * 0.59) h / 0.86), oklch(from var(--seed-neutral) 0.909 calc(min(c, 0.04) * 0.59) h / 0.35));
   --role-hud-feed-edge: rgb(255 255 255 / 0.6);
   --role-hud-feed-edge-width: calc(3 * var(--font-step-px));
   --role-hud-rare: var(--rare);
@@ -434,7 +434,7 @@
   --role-hud-blip-rim: 0 0 0 calc(2 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.8);
   --role-hud-marker-rim: 0 0 0 calc(2 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.85);
   /* The compass strip: a dark band under its ticks. */
-  --role-hud-compass-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0), oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.55));
+  --role-hud-compass-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0), oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.55));
   /* The reticle: white with a dark keyline; a hit's mark in red with a
      glow, a broken shield's in the shield's blue. */
   --role-hud-reticle-rim: 0 0 0 calc(1.5 * var(--font-step-px)) rgb(0 0 0 / 0.7);
@@ -470,18 +470,18 @@
   --role-judge-perfect-ink: var(--hud-gold);
   --role-judge-great-ink: var(--hud-accent);
   --role-judge-good-ink: var(--hud-boon);
-  --role-judge-bad-ink: rgb(255 150 90);
-  --role-judge-miss-ink: rgb(255 255 255 / 0.66);
+  --role-judge-bad-ink: oklch(from rgb(255 150 90) min(l, 0.48) c h);
+  --role-judge-miss-ink: var(--ink-muted);
   --role-judge-early-ink: var(--hud-accent);
-  --role-judge-late-ink: rgb(255 140 70);
+  --role-judge-late-ink: oklch(from rgb(255 140 70) min(l, 0.48) c h);
   --role-judge-tracking: 0.12em;
   --role-judge-slant: oblique;
   --role-gauge-life: var(--hud-boon);
   --role-gauge-fever: rgb(255 61 138);
-  --role-gauge-fever-ink: rgb(255 122 176);
+  --role-gauge-fever-ink: oklch(from rgb(255 122 176) min(l, 0.48) c h);
   --role-gauge-lean: 12deg;
-  --role-gauge-well: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.72);
-  --role-gauge-cut: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92);
+  --role-gauge-well: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.72);
+  --role-gauge-cut: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.92);
   --role-gauge-life-glow: 0 calc(-4 * var(--font-step-px)) calc(14 * var(--font-step-px)) rgb(from var(--hud-boon) r g b / 0.8);
   --role-gauge-fever-glow: 0 calc(-4 * var(--font-step-px)) calc(14 * var(--font-step-px)) rgb(from var(--gauge-fever) r g b / 0.85);
   --role-gauge-danger-glow: 0 0 calc(18 * var(--font-step-px)) rgb(from var(--bar-danger) r g b / 0.8);
@@ -498,7 +498,7 @@
   --role-chart-expert: rgb(255 61 138);
   --role-chart-master: rgb(160 90 255);
   --role-chart-special: linear-gradient(90deg, rgb(255 61 138), rgb(160 90 255) 50%, var(--hud-accent));
-  --role-chart-ink: rgb(255 255 255);
+  --role-chart-ink: var(--ink-bright);
   --role-combo-tracking: 0.4em;
   --role-combo-glow: drop-shadow(0 0 calc(18 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.55));
   --role-combo-burst: radial-gradient(closest-side, rgb(255 255 255 / 0.9) 0 8%, rgb(from var(--hud-accent) r g b / 0.7) 22%, transparent 70%);
@@ -512,7 +512,7 @@
   --role-hud-life-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(from var(--hud-foe) r g b / 0.75);
   --role-hud-mana-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 42%), rgb(91 157 255);
   --role-hud-mana-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(91 157 255 / 0.75);
-  --role-hud-mana-ink: rgb(120 178 255);
+  --role-hud-mana-ink: oklch(from rgb(120 178 255) min(l, 0.48) c h);
   --role-hud-stamina-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 42%), var(--hud-gold);
   --role-hud-stamina-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.7);
   --role-hud-boss-fill: linear-gradient(180deg, rgb(255 255 255 / 0.5), transparent 42%), linear-gradient(90deg, rgb(255 110 40), rgb(255 154 72));
@@ -529,7 +529,7 @@
   /* A cooldown or a timer: the dark sweep over the art for the time still
      to run, and a charge ring's well; a veil over a slot that cannot be
      used (no mana), and the sweep's lit leading edge. */
-  --role-hud-veil: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.5);
+  --role-hud-veil: oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.5);
   --role-hud-sweep-edge: rgb(255 255 255 / 0.95);
   /* The ultimate: a gold ring with a glow and its gold key cap. */
   --role-hud-gold-glow: drop-shadow(0 0 calc(8 * var(--font-step-px)) var(--hud-gold));
@@ -538,7 +538,7 @@
   /* A feed row (a kill, a pickup): a dark glass that fades toward the
      screen's middle, an edge at the screen's side. */
   /* An epic item's name, a lighter violet that reads as text. */
-  --role-hud-epic-ink: oklch(from var(--epic) 0.838 calc(c * 0.51) calc(h - 6));
+  --role-hud-epic-ink: oklch(from oklch(from var(--epic) 0.838 calc(c * 0.51) calc(h - 6)) min(l, 0.48) c h);
   /* The two sides' inks (the player's side in shield blue, the other in
      danger red) for blips. */
   /* A glyph over art: white with one soft shadow. */
@@ -550,7 +550,7 @@
   --role-hud-lock-glow: drop-shadow(0 0 calc(6 * var(--font-step-px)) var(--hud-accent));
   /* Damage figures: a critical hit's slant, a damage over time's ember. */
   --role-hud-figure-slant: italic;
-  --role-hud-burn-ink: rgb(255 162 74);
+  --role-hud-burn-ink: oklch(from rgb(255 162 74) min(l, 0.48) c h);
   /* A quest step's marker: a hollow gold diamond's rim; a done step's line. */
   --role-hud-step-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--hud-gold);
   --role-hud-done-line: line-through;
@@ -579,8 +579,8 @@
   --role-hud-car: rgb(255 255 255 / 0.55);
   /* A personal best in violet (its label and its time); ink on a delta's
      green or red tag. */
-  --role-hud-best-label-ink: oklch(from var(--epic) 0.743 calc(c * 0.84) calc(h - 6));
-  --role-hud-best-ink: oklch(from var(--epic) 0.838 calc(c * 0.51) calc(h - 6));
+  --role-hud-best-label-ink: oklch(from oklch(from var(--epic) 0.743 calc(c * 0.84) calc(h - 6)) min(l, 0.48) c h);
+  --role-hud-best-ink: oklch(from oklch(from var(--epic) 0.838 calc(c * 0.51) calc(h - 6)) min(l, 0.48) c h);
   --role-hud-delta-ink: oklch(from var(--hud-boon) 0.15 calc(c * 0.13) h);
   /* The tachometer: the revs as a white arc with a soft glow over a faint
      well, the red zone faint until the revs reach it, then lit; the dial's
@@ -590,7 +590,7 @@
   --role-hud-rev-well: rgb(255 255 255 / 0.16);
   --role-hud-redline: rgb(from var(--hud-foe) r g b / 0.35);
   --role-hud-redline-lit: var(--hud-foe);
-  --role-hud-dial-face: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.271 calc(min(c, 0.04) * 1.15) h / 0.82), oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.88));
+  --role-hud-dial-face: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.945 calc(min(c, 0.04) * 1.15) h / 0.82), oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.88));
   --role-hud-dial-rim: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.3), 0 calc(10 * var(--font-step-px)) calc(30 * var(--font-step-px)) rgb(0 0 0 / 0.6);
   /* Shift lights: a run of leaning cells lit green, then amber, then red
      across the run, with a soft glow; a cell not lit is faint. */
@@ -602,7 +602,7 @@
   /* A pedal's well's keyline (throttle, brake). */
   --role-hud-pedal-rim: 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.22);
   /* The track map: the road as a dark band under a light line. */
-  --role-hud-track-well: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.9);
+  --role-hud-track-well: oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.9);
   --role-hud-track-line: rgb(255 255 255 / 0.85);
   /* A call across the screen (Final lap) and a meter's word, widely set. */
   --role-hud-banner-tracking: 0.22em;
@@ -647,40 +647,40 @@
   /* A socket: an icon in an octagon with a lit edge; gold when its reward
      waits, faint when it is taken. */
   --role-quest-socket-rim: linear-gradient(180deg, rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.12) 50%, rgb(255 255 255 / 0.06));
-  --role-quest-socket-fill: radial-gradient(80% 80% at 50% 30%, rgb(255 255 255 / 0.1), transparent 70%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.291 calc(min(c, 0.04) * 1.08) h), oklch(from var(--seed-neutral) 0.179 calc(min(c, 0.04) * 0.7) h));
+  --role-quest-socket-fill: radial-gradient(80% 80% at 50% 30%, rgb(255 255 255 / 0.1), transparent 70%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.951 calc(min(c, 0.04) * 1.08) h), oklch(from var(--seed-neutral) 0.918 calc(min(c, 0.04) * 0.7) h));
   --role-quest-socket-gold-rim: linear-gradient(180deg, oklch(from var(--hud-gold) 0.962 calc(c * 0.43) calc(h + 9)), var(--hud-gold) 45%, rgb(from var(--hud-gold) r g b / 0.4));
   --role-quest-socket-gold-fill: radial-gradient(80% 80% at 50% 25%, rgb(from var(--hud-gold) r g b / 0.35), transparent 70%), linear-gradient(180deg, oklch(from var(--hud-gold) 0.308 calc(c * 0.32) h), oklch(from var(--hud-gold) 0.177 calc(c * 0.1) calc(h - 15)));
   --role-quest-socket-off-rim: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.06));
   --role-quest-socket-glow: drop-shadow(0 0 calc(10 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.45));
   /* A prize box (what a quest pays) and a timer tag: a dark cut well. */
-  --role-quest-well-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.72);
+  --role-quest-well-fill: oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.72);
   --role-quest-well-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.08), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.12);
-  --role-quest-well-ready-fill: radial-gradient(90% 90% at 50% 40%, rgb(from var(--hud-gold) r g b / 0.3), oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.7));
+  --role-quest-well-ready-fill: radial-gradient(90% 90% at 50% 40%, rgb(from var(--hud-gold) r g b / 0.3), oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.7));
   --role-quest-well-ready-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-gold) r g b / 0.6);
   /* A medal: a hexagon whose rim and glow take its tier's colour (the
      medal's ink, so a pack retunes it through the rarity colours). */
-  --role-quest-medal-rim: linear-gradient(180deg, rgb(255 255 255), currentColor 40%, oklch(from var(--seed-neutral) 0.174 calc(min(c, 0.04) * 0.64) h) 125%);
-  --role-quest-medal-fill: radial-gradient(70% 60% at 50% 28%, rgb(255 255 255 / 0.14), transparent 75%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.296 calc(min(c, 0.04) * 1.11) h), oklch(from var(--seed-neutral) 0.173 calc(min(c, 0.04) * 0.59) h));
+  --role-quest-medal-rim: linear-gradient(180deg, rgb(255 255 255), currentColor 40%, oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.64) h) 125%);
+  --role-quest-medal-fill: radial-gradient(70% 60% at 50% 28%, rgb(255 255 255 / 0.14), transparent 75%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.953 calc(min(c, 0.04) * 1.11) h), oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.59) h));
   --role-quest-medal-locked-rim: linear-gradient(180deg, rgb(255 255 255 / 0.3), rgb(255 255 255 / 0.08));
   --role-quest-medal-glow: drop-shadow(0 0 calc(8 * var(--font-step-px)) currentColor);
   /* A tier's chip: its colour as ink and keyline over a dark well. */
-  --role-quest-chip-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.55);
+  --role-quest-chip-fill: oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.55);
   --role-quest-chip-rim: inset 0 0 0 var(--stroke-hairline) currentColor;
   /* A day of the login calendar: its header strip, today lit gold with a
      gold header and foot, a milestone in violet, a missed day hatched; a
      day taken carries a stamp in the success colour over its dimmed art. */
-  --role-quest-day-fill: linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.015)), oklch(from var(--seed-neutral) 0.262 calc(min(c, 0.04) * 0.92) h / 0.95);
-  --role-quest-day-head-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.4);
+  --role-quest-day-fill: linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.015)), oklch(from var(--seed-neutral) 0.943 calc(min(c, 0.04) * 0.92) h / 0.95);
+  --role-quest-day-head-fill: oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.4);
   --role-quest-day-art-fill: radial-gradient(55% 50% at 50% 50%, rgb(255 255 255 / 0.1), transparent 70%);
   --role-quest-day-today-fill: radial-gradient(90% 60% at 50% 45%, rgb(from var(--hud-gold) r g b / 0.28), transparent 70%), linear-gradient(180deg, rgb(from var(--hud-gold) r g b / 0.16), rgb(from var(--hud-gold) r g b / 0.04)), oklch(from var(--hud-gold) 0.263 calc(c * 0.09) calc(h - 9) / 0.96);
   --role-quest-day-today-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--hud-gold), inset 0 calc(2 * var(--font-step-px)) 0 oklch(from var(--hud-gold) 0.96 calc(c * 0.44) calc(h + 8)), 0 0 calc(24 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.4);
   --role-quest-day-today-hover-rim: inset 0 0 0 calc(2 * var(--font-step-px)) oklch(from var(--hud-gold) 0.936 calc(c * 0.61) calc(h + 5)), inset 0 calc(2 * var(--font-step-px)) 0 rgb(255 255 255), 0 0 calc(32 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.6);
   --role-quest-day-milestone-fill: linear-gradient(180deg, oklch(from var(--epic) 0.725 calc(c * 0.81) calc(h - 15) / 0.22), oklch(from var(--epic) 0.725 calc(c * 0.81) calc(h - 15) / 0.04) 60%), oklch(from var(--epic) 0.251 calc(c * 0.2) calc(h - 21) / 0.96);
   --role-quest-day-milestone-rim: inset 0 0 0 var(--stroke-hairline) oklch(from var(--epic) 0.725 calc(c * 0.81) calc(h - 15) / 0.55), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.3);
-  --role-quest-day-milestone-ink: oklch(from var(--epic) 0.861 calc(c * 0.39) calc(h - 13));
+  --role-quest-day-milestone-ink: oklch(from oklch(from var(--epic) 0.861 calc(c * 0.39) calc(h - 13)) min(l, 0.48) c h);
   --role-quest-day-milestone-head-fill: oklch(from var(--epic) 0.725 calc(c * 0.81) calc(h - 15) / 0.28);
   --role-quest-day-milestone-glow: drop-shadow(0 0 calc(12 * var(--font-step-px)) oklch(from var(--epic) 0.725 calc(c * 0.81) calc(h - 15) / 0.8));
-  --role-quest-day-missed-fill: var(--entry-grain), oklch(from var(--seed-neutral) 0.22 calc(min(c, 0.04) * 0.72) h / 0.95);
+  --role-quest-day-missed-fill: var(--entry-grain), oklch(from var(--seed-neutral) 0.93 calc(min(c, 0.04) * 0.72) h / 0.95);
   --role-quest-day-missed-foot-fill: oklch(from var(--hud-foe) 0.736 calc(c * 0.76) h / 0.08);
   --role-quest-day-taken-foot-fill: rgb(from var(--hud-boon) r g b / 0.08);
   --role-quest-day-dim-opacity: 0.35;
@@ -705,7 +705,7 @@
   --role-quest-selected-rim: var(--chosen-edge);
   /* The quest page's scenery banner, shaded into the frame's glass. */
   --role-quest-banner-shade: linear-gradient(180deg, transparent, rgb(from var(--color-glass) r g b / 0.7) 55%, var(--color-glass));
-  --role-quest-banner-shadow: 0 calc(2 * var(--font-step-px)) calc(10 * var(--font-step-px)) rgb(0 0 0 / 0.6);
+  --role-quest-banner-shadow: 0 0 calc(10 * var(--font-step-px)) rgb(255 255 255 / 0.7);
   /* The family's type steps: the quest page's title, a summary figure
      (38 of 120) and a rarity's share. */
   --role-quest-size-title: calc(34 * var(--font-step-px));
@@ -753,9 +753,9 @@
      brightens; the chosen song is washed in the HUD's accent from its
      leading edge, which carries a bar of it, and steps in. Its tags: New
      on a pink chip, Cleared in the boon green, Previewing in the accent. */
-  --role-select-row-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.165 calc(min(c, 0.04) * 0.65) h / 0.86), oklch(from var(--seed-neutral) 0.165 calc(min(c, 0.04) * 0.65) h / 0.5));
+  --role-select-row-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.913 calc(min(c, 0.04) * 0.65) h / 0.86), oklch(from var(--seed-neutral) 0.913 calc(min(c, 0.04) * 0.65) h / 0.5));
   --role-select-row-rim: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.14);
-  --role-select-row-hover-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.255 calc(min(c, 0.04) * 1.17) h / 0.92), oklch(from var(--seed-neutral) 0.203 min(c, 0.04) h / 0.62));
+  --role-select-row-hover-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.941 calc(min(c, 0.04) * 1.17) h / 0.92), oklch(from var(--seed-neutral) 0.925 min(c, 0.04) h / 0.62));
   --role-select-row-hover-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.22), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.42);
   --role-select-row-on-fill: var(--chosen-fill);
   --role-select-row-on-rim: var(--chosen-edge);
@@ -764,7 +764,7 @@
   --role-select-row-step: calc(24 * var(--font-step-px));
   --role-select-accent-ink: oklch(from var(--seed-neutral) 0.153 calc(min(c, 0.04) * 0.71) h);
   /* A jacket with no art: the music glyph on solid dark glass. */
-  --role-select-jacket-fill: oklch(from var(--seed-neutral) 0.189 calc(min(c, 0.04) * 0.82) h);
+  --role-select-jacket-fill: oklch(from var(--seed-neutral) 0.921 calc(min(c, 0.04) * 0.82) h);
   /* A glyph set beside small text (a lock, a star), the preview's level
      bars' height, and on a phone the chosen song's jacket held to a share
      of the screen's width. */
@@ -780,24 +780,24 @@
   --role-select-fresh-ink: rgb(255 255 255);
   /* A button on the select (Preview, Retry): a smoked plate lit along its
      top in the accent; pressed (previewing), filled with the accent. */
-  --role-select-button-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.9), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94));
+  --role-select-button-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.936 min(c, 0.04) h / 0.9), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94));
   --role-select-button-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-accent) r g b / 0.5), inset 0 calc(2 * var(--stroke-hairline)) 0 var(--hud-accent);
-  --role-select-button-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.295 calc(min(c, 0.04) * 1.26) h / 0.94), oklch(from var(--seed-neutral) 0.193 calc(min(c, 0.04) * 0.88) h / 0.96));
+  --role-select-button-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.953 calc(min(c, 0.04) * 1.26) h / 0.94), oklch(from var(--seed-neutral) 0.922 calc(min(c, 0.04) * 0.88) h / 0.96));
   --role-select-button-on-fill: linear-gradient(180deg, oklch(from var(--hud-accent) 0.926 calc(c * 0.62) calc(h - 6)), var(--hud-accent));
   --role-select-button-on-rim: 0 0 calc(18 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.55);
   /* A difficulty tile: a leaning plate with its tier's colour along its
      top; the chosen one fills with its tier from the top and is ringed in
      it. A tier the game names nothing else is normal's. */
-  --role-select-tile-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.9), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94));
-  --role-select-tile-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.303 calc(min(c, 0.04) * 1.25) h / 0.94), oklch(from var(--seed-neutral) 0.18 calc(min(c, 0.04) * 0.83) h / 0.96));
+  --role-select-tile-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.936 min(c, 0.04) h / 0.9), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94));
+  --role-select-tile-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.955 calc(min(c, 0.04) * 1.25) h / 0.94), oklch(from var(--seed-neutral) 0.918 calc(min(c, 0.04) * 0.83) h / 0.96));
   --role-select-tile-lean: calc(14 * var(--font-step-px));
   --role-select-tile-strip: calc(5 * var(--font-step-px));
-  --role-select-tile-easy-fill: linear-gradient(180deg, rgb(from var(--chart-easy) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
-  --role-select-tile-normal-fill: linear-gradient(180deg, rgb(from var(--chart-normal) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
-  --role-select-tile-hard-fill: linear-gradient(180deg, rgb(from var(--chart-hard) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
-  --role-select-tile-expert-fill: linear-gradient(180deg, rgb(from var(--chart-expert) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
-  --role-select-tile-master-fill: linear-gradient(180deg, rgb(from var(--chart-master) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
-  --role-select-tile-special-fill: linear-gradient(180deg, rgb(from var(--chart-expert) r g b / 0.45), rgb(from var(--chart-master) r g b / 0.4) 30%, oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-easy-fill: linear-gradient(180deg, rgb(from var(--chart-easy) r g b / 0.55), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-normal-fill: linear-gradient(180deg, rgb(from var(--chart-normal) r g b / 0.55), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-hard-fill: linear-gradient(180deg, rgb(from var(--chart-hard) r g b / 0.55), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-expert-fill: linear-gradient(180deg, rgb(from var(--chart-expert) r g b / 0.55), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-master-fill: linear-gradient(180deg, rgb(from var(--chart-master) r g b / 0.55), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-special-fill: linear-gradient(180deg, rgb(from var(--chart-expert) r g b / 0.45), rgb(from var(--chart-master) r g b / 0.4) 30%, oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
   --role-select-tile-easy-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--chart-easy);
   --role-select-tile-normal-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--chart-normal);
   --role-select-tile-hard-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--chart-hard);
@@ -806,12 +806,12 @@
   --role-select-tile-special-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--chart-master);
   --role-select-tile-focus-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255 / 0.9);
   /* A tier's name in its colour on a tile not chosen. */
-  --role-select-easy-ink: rgb(52 199 120);
-  --role-select-normal-ink: rgb(80 180 240);
-  --role-select-hard-ink: rgb(255 175 60);
-  --role-select-expert-ink: rgb(255 92 156);
-  --role-select-master-ink: rgb(184 130 255);
-  --role-select-special-ink: rgb(255 122 176);
+  --role-select-easy-ink: oklch(from rgb(52 199 120) min(l, 0.48) c h);
+  --role-select-normal-ink: oklch(from rgb(80 180 240) min(l, 0.48) c h);
+  --role-select-hard-ink: oklch(from rgb(255 175 60) min(l, 0.48) c h);
+  --role-select-expert-ink: oklch(from rgb(255 92 156) min(l, 0.48) c h);
+  --role-select-master-ink: oklch(from rgb(184 130 255) min(l, 0.48) c h);
+  --role-select-special-ink: oklch(from rgb(255 122 176) min(l, 0.48) c h);
   /* The select's type steps: the page's title, the chosen song's title,
      a song's name in the list (the chosen one larger), a level's figure;
      `-compact` is the same on a phone. */
@@ -831,16 +831,16 @@
      The road is lit gold up to the current level and pale past it, with
      a dark keyline; a level's stars sit on a dark capsule at its foot, and
      its words on a dark tag, so they hold over any map. */
-  --role-select-node-fill: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.473 calc(min(c, 0.04) * 1.99) h), oklch(from var(--seed-neutral) 0.22 calc(min(c, 0.04) * 1.1) h) 70%);
+  --role-select-node-fill: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.473 calc(min(c, 0.04) * 1.99) h), oklch(from var(--seed-neutral) 0.93 calc(min(c, 0.04) * 1.1) h) 70%);
   --role-select-node-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255 / 0.35), inset 0 calc(3 * var(--font-step-px)) 0 rgb(255 255 255 / 0.5), 0 calc(8 * var(--font-step-px)) calc(16 * var(--font-step-px)) rgb(0 0 0 / 0.5);
   --role-select-node-hover-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255 / 0.7), inset 0 calc(3 * var(--font-step-px)) 0 rgb(255 255 255 / 0.6), 0 calc(10 * var(--font-step-px)) calc(20 * var(--font-step-px)) rgb(0 0 0 / 0.55);
-  --role-select-node-open-fill: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.543 calc(min(c, 0.04) * 1.92) h), oklch(from var(--seed-neutral) 0.264 calc(min(c, 0.04) * 1.26) h) 70%);
+  --role-select-node-open-fill: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.543 calc(min(c, 0.04) * 1.92) h), oklch(from var(--seed-neutral) 0.943 calc(min(c, 0.04) * 1.26) h) 70%);
   --role-select-node-open-rim: inset 0 0 0 calc(3 * var(--font-step-px)) var(--hud-accent), inset 0 calc(4 * var(--font-step-px)) 0 rgb(255 255 255 / 0.5), 0 calc(8 * var(--font-step-px)) calc(16 * var(--font-step-px)) rgb(0 0 0 / 0.5);
   --role-select-node-current-fill: radial-gradient(circle at 50% 28%, oklch(from var(--hud-accent) 0.979 calc(c * 0.23) calc(h - 12)), var(--hud-accent) 62%, oklch(from var(--hud-accent) 0.628 calc(c * 0.85) calc(h + 18)));
   --role-select-node-current-rim: inset 0 0 0 calc(3 * var(--font-step-px)) rgb(255 255 255), 0 0 0 calc(8 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.3), 0 0 0 calc(16 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.14), 0 0 calc(36 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.8);
-  --role-select-node-locked-fill: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.403 calc(min(c, 0.04) * 0.83) h), oklch(from var(--seed-neutral) 0.218 calc(min(c, 0.04) * 0.61) h) 70%);
+  --role-select-node-locked-fill: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.985 calc(min(c, 0.04) * 0.83) h), oklch(from var(--seed-neutral) 0.929 calc(min(c, 0.04) * 0.61) h) 70%);
   --role-select-node-locked-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255 / 0.16), 0 calc(6 * var(--font-step-px)) calc(12 * var(--font-step-px)) rgb(0 0 0 / 0.45);
-  --role-select-node-locked-ink: rgb(255 255 255 / 0.55);
+  --role-select-node-locked-ink: var(--ink-muted);
   --role-select-node-selected-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255 / 0.35), inset 0 calc(3 * var(--font-step-px)) 0 rgb(255 255 255 / 0.5), 0 0 0 calc(4 * var(--font-step-px)) rgb(255 255 255), 0 0 0 calc(8 * var(--font-step-px)) var(--hud-accent);
   --role-select-node-focus-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255 / 0.35), 0 0 0 calc(4 * var(--font-step-px)) rgb(255 255 255 / 0.95);
   --role-select-node-size: calc(64 * var(--font-step-px));
@@ -853,11 +853,11 @@
   --role-select-size-node-longer: min(calc(30 * var(--font-step-px)), 22cqi);
   --role-select-road-lit: linear-gradient(90deg, oklch(from var(--hud-gold) 0.941 calc(c * 0.68) calc(h + 9)), var(--hud-gold));
   --role-select-road-ahead: oklch(from var(--seed-neutral) 0.955 calc(min(c, 0.04) * 0.41) h);
-  --role-select-road-shadow: 0 0 0 calc(3 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.38), 0 calc(3 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.35);
+  --role-select-road-shadow: 0 0 0 calc(3 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.38), 0 calc(3 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.35);
   --role-select-road-width: calc(12 * var(--font-step-px));
   --role-select-road-radius: var(--radius-capsule);
   --role-select-node-radius: var(--radius-capsule);
-  --role-select-capsule-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h));
+  --role-select-capsule-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.936 min(c, 0.04) h), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h));
   --role-select-capsule-rim: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.35), 0 calc(3 * var(--font-step-px)) calc(8 * var(--font-step-px)) rgb(0 0 0 / 0.5);
   --role-select-star-on: var(--hud-gold);
   --role-select-star-off: rgb(255 255 255 / 0.4);
@@ -870,7 +870,7 @@
      cut glass plate with a rail and a socket in its tone; each tone has
      its own hue, warn a deep amber well apart from a reward's gold.
      Words over the scene are HUD type between lit gold rules. */
-  --role-alert-plate-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.311 calc(min(c, 0.04) * 1.11) h / 0.95), oklch(from var(--seed-neutral) 0.214 calc(min(c, 0.04) * 0.74) h / 0.95));
+  --role-alert-plate-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.957 calc(min(c, 0.04) * 1.11) h / 0.95), oklch(from var(--seed-neutral) 0.928 calc(min(c, 0.04) * 0.74) h / 0.95));
   --role-alert-plate-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.12), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.18);
   --role-alert-rail: calc(4 * var(--font-step-px));
   --role-alert-success: var(--success);
@@ -890,8 +890,8 @@
   --role-alert-rule-glow: 0 0 calc(12 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.6);
   /* What holds subtitles and a banner over the brightest sky: a soft dark
      band under the lines, and a near-opaque stroke under every word. */
-  --role-alert-subtitle-shade: radial-gradient(farthest-side, oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.92), oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.86) 72%, transparent);
-  --role-alert-stroke-color: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92);
+  --role-alert-subtitle-shade: radial-gradient(farthest-side, oklch(from var(--seed-neutral) 0.899 calc(min(c, 0.04) * 0.45) h / 0.92), oklch(from var(--seed-neutral) 0.899 calc(min(c, 0.04) * 0.45) h / 0.86) 72%, transparent);
+  --role-alert-stroke-color: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.92);
   /* The family's type steps: a banner's title, a level's figure and a
      subtitle's line, each with a phone step. */
   --role-alert-size-banner: calc(54 * var(--font-step-px));
@@ -906,7 +906,7 @@
   --role-alert-speaker-caps: all-small-caps;
   /* A level up: a dark shade fills the ring over the rays, so the rays
      run from its edge and the word and figure read on clear ground. */
-  --role-alert-level-shade: radial-gradient(closest-side, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h) 92%, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0));
+  --role-alert-level-shade: radial-gradient(closest-side, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h) 92%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0));
 
   /* Social (family 20: chat, friends, a conversation and its history).
      A chat line on a cut chip, the player's own washed gold; the channel
@@ -923,7 +923,7 @@
   --role-social-off-opacity: 0.45;
   /* A conversation: a cut glass band lit gold along its top, the
      speaker's name on a gold plate, a reply's key in a gold keyline. */
-  --role-social-band-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.214 calc(min(c, 0.04) * 0.74) h / 0.92), oklch(from var(--seed-neutral) 0.17 calc(min(c, 0.04) * 0.57) h / 0.97));
+  --role-social-band-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.928 calc(min(c, 0.04) * 0.74) h / 0.92), oklch(from var(--seed-neutral) 0.915 calc(min(c, 0.04) * 0.57) h / 0.97));
   --role-social-band-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.12), inset 0 var(--stroke-hairline) 0 rgb(from var(--hud-gold) r g b / 0.5);
   --role-social-nameplate-fill: linear-gradient(180deg, oklch(from var(--hud-gold) 0.936 calc(c * 0.61) calc(h + 5)), var(--hud-gold));
   --role-social-key-rim: inset 0 0 0 calc(1.5 * var(--font-step-px)) currentColor;
@@ -975,7 +975,7 @@
   --role-inv-kicker-tracking: 0.18em;
   --role-inv-kicker-transform: uppercase;
   --role-inv-kicker-ink: var(--ink-faint);
-  --role-inv-chip-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.55);
+  --role-inv-chip-fill: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.55);
   --role-inv-chip-rim: inset 0 0 0 var(--stroke-hairline) var(--color-rim);
   --role-inv-coin: radial-gradient(circle at 40% 35%, oklch(from var(--hud-gold) 0.96 calc(c * 0.53) calc(h + 11)), var(--hud-gold) 45%, oklch(from var(--hud-gold) 0.578 calc(c * 0.84) calc(h - 17)));
   --role-inv-tab-ink: var(--ink-muted);
@@ -992,11 +992,11 @@
   --role-inv-slot-bar-glow: 0 0 calc(8 * var(--font-step-px)) currentColor;
   --role-inv-slot-art-shadow: drop-shadow(0 calc(4 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.6));
   --role-inv-slot-broken-art: grayscale(1) brightness(0.6);
-  --role-inv-well-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.55);
+  --role-inv-well-fill: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.55);
   --role-inv-well-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.06);
   --role-inv-bracket: linear-gradient(var(--ink), var(--ink)) 0 0 / var(--space-md) var(--stroke-thin) no-repeat, linear-gradient(var(--ink), var(--ink)) 0 0 / var(--stroke-thin) var(--space-md) no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 0 / var(--space-md) var(--stroke-thin) no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 0 / var(--stroke-thin) var(--space-md) no-repeat, linear-gradient(var(--ink), var(--ink)) 0 100% / var(--space-md) var(--stroke-thin) no-repeat, linear-gradient(var(--ink), var(--ink)) 0 100% / var(--stroke-thin) var(--space-md) no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 100% / var(--space-md) var(--stroke-thin) no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 100% / var(--stroke-thin) var(--space-md) no-repeat;
   --role-inv-bracket-glow: drop-shadow(0 0 calc(4 * var(--font-step-px)) var(--inv-accent));
-  --role-inv-tag-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.88);
+  --role-inv-tag-fill: oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.88);
   --role-inv-tag-rim: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.2);
   --role-inv-tag-cut: calc(4 * var(--font-step-px));
   --role-inv-tag-size: calc(12 * var(--font-step-px));
@@ -1004,13 +1004,13 @@
   --role-inv-equipped-fill: var(--success);
   --role-inv-equipped-ink: oklch(from var(--hud-boon) 0.158 calc(c * 0.14) calc(h + 6));
   --role-inv-broken-ink: var(--danger);
-  --role-inv-fresh-glow: 0 0 calc(8 * var(--font-step-px)) var(--inv-accent), 0 0 0 var(--stroke-thin) oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.9);
+  --role-inv-fresh-glow: 0 0 calc(8 * var(--font-step-px)) var(--inv-accent), 0 0 0 var(--stroke-thin) oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.9);
   --role-inv-figure-weight: var(--font-weight-bold);
   --role-inv-figure-stretch: 87.5%;
   --role-inv-load-over-rim: 0 0 0 var(--stroke-hairline) var(--warn), 0 0 calc(12 * var(--font-step-px)) rgb(from var(--warn) r g b / 0.6);
-  --role-inv-row-fill: oklch(from var(--seed-neutral) 0.166 calc(min(c, 0.04) * 0.77) h / 0.55);
+  --role-inv-row-fill: oklch(from var(--seed-neutral) 0.914 calc(min(c, 0.04) * 0.77) h / 0.55);
   --role-inv-row-rim: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft);
-  --role-inv-row-hover-fill: oklch(from var(--seed-neutral) 0.238 calc(min(c, 0.04) * 1.19) h / 0.7);
+  --role-inv-row-hover-fill: oklch(from var(--seed-neutral) 0.935 calc(min(c, 0.04) * 1.19) h / 0.7);
   --role-inv-row-on-fill: var(--chosen-fill);
   --role-inv-row-on-rim: var(--chosen-edge);
   --role-inv-short-fill: rgb(from var(--danger) r g b / 0.1);
@@ -1035,18 +1035,18 @@
   --role-tcg-neutral: var(--color-rim-strong);
   /* The type line's ink: each type lightened to reach the contrast floor
      on the face's glass. */
-  --role-tcg-attack-ink: rgb(255 168 150);
-  --role-tcg-skill-ink: rgb(160 206 255);
-  --role-tcg-power-ink: oklch(from var(--epic) 0.825 calc(c * 0.53) calc(h - 8));
-  --role-tcg-curse-ink: rgb(206 198 222);
+  --role-tcg-attack-ink: oklch(from rgb(255 168 150) min(l, 0.48) c h);
+  --role-tcg-skill-ink: oklch(from rgb(160 206 255) min(l, 0.48) c h);
+  --role-tcg-power-ink: oklch(from oklch(from var(--epic) 0.825 calc(c * 0.53) calc(h - 8)) min(l, 0.48) c h);
+  --role-tcg-curse-ink: oklch(from rgb(206 198 222) min(l, 0.48) c h);
   --role-tcg-neutral-ink: var(--ink-muted);
   --role-tcg-face-cut: calc(12 * var(--font-step-px));
-  --role-tcg-face-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.258 calc(min(c, 0.04) * 1.05) h), oklch(from var(--seed-neutral) 0.17 calc(min(c, 0.04) * 0.71) h));
+  --role-tcg-face-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.941 calc(min(c, 0.04) * 1.05) h), oklch(from var(--seed-neutral) 0.915 calc(min(c, 0.04) * 0.71) h));
   --role-tcg-face-wash: linear-gradient(180deg, currentColor, transparent 32%);
   --role-tcg-face-rim: inset 0 0 0 calc(1.5 * var(--stroke-hairline)) currentColor, inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.35);
   --role-tcg-face-selected-rim: inset 0 0 0 var(--stroke-thin) var(--ink), inset 0 var(--stroke-hairline) 0 var(--ink);
   --role-tcg-window-cut: calc(8 * var(--font-step-px));
-  --role-tcg-window-fill: oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.7);
+  --role-tcg-window-fill: oklch(from var(--seed-neutral) 0.899 calc(min(c, 0.04) * 0.45) h / 0.7);
   --role-tcg-window-glow: radial-gradient(60% 70% at 50% 62%, currentColor, transparent 72%);
   --role-tcg-art-shadow: drop-shadow(0 calc(6 * var(--font-step-px)) calc(8 * var(--font-step-px)) rgb(0 0 0 / 0.7));
   --role-tcg-dim: saturate(0.35) brightness(0.6);
@@ -1068,13 +1068,13 @@
   --role-tcg-type-tracking: 0.14em;
   --role-tcg-type-transform: uppercase;
   --role-tcg-type-weight: var(--font-weight-bold);
-  --role-tcg-text-fill: oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.55);
+  --role-tcg-text-fill: oklch(from var(--seed-neutral) 0.899 calc(min(c, 0.04) * 0.45) h / 0.55);
   --role-tcg-text-size: calc(12.5 * var(--font-step-px));
   /* The reason an unplayable card or an unaddable one is refused: a cut
      dark-red tag with light-red words. */
   --role-tcg-reason-fill: oklch(from var(--hud-foe) 0.194 calc(c * 0.25) calc(h - 8) / 0.94);
   --role-tcg-reason-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--danger) r g b / 0.6);
-  --role-tcg-reason-ink: oklch(from var(--hud-foe) 0.899 calc(c * 0.25) calc(h - 7));
+  --role-tcg-reason-ink: oklch(from oklch(from var(--hud-foe) 0.899 calc(c * 0.25) calc(h - 7)) min(l, 0.48) c h);
   --role-tcg-reason-size: calc(11 * var(--font-step-px));
   /* In the game's own case and tracked less than the type line, so the
      reason fits a narrow card and wraps between words to a second line at
@@ -1082,7 +1082,7 @@
   --role-tcg-reason-tracking: 0.02em;
   /* A pile: a stack of card backs and its count on a cut tag (the
      discard's in the attack red, an empty one's quiet glass). */
-  --role-tcg-back-fill: linear-gradient(160deg, oklch(from var(--seed-neutral) 0.327 calc(min(c, 0.04) * 1.56) h), oklch(from var(--seed-neutral) 0.195 min(c, 0.04) h));
+  --role-tcg-back-fill: linear-gradient(160deg, oklch(from var(--seed-neutral) 0.962 calc(min(c, 0.04) * 1.56) h), oklch(from var(--seed-neutral) 0.922 min(c, 0.04) h));
   --role-tcg-back-rim: inset 0 0 0 calc(1.5 * var(--stroke-hairline)) rgb(255 255 255 / 0.22);
   --role-tcg-back-empty-rim: inset 0 0 0 calc(1.5 * var(--stroke-hairline)) rgb(255 255 255 / 0.28);
   --role-tcg-count-fill: var(--ink);
@@ -1103,9 +1103,9 @@
   --role-tcg-size-over-fill: var(--bar-gloss), var(--danger);
   --role-tcg-over-ink: var(--danger);
   /* A relic offer: gold-rimmed glass with a gold glow behind its mark. */
-  --role-tcg-relic-fill: radial-gradient(70% 45% at 50% 30%, rgb(from var(--hud-gold) r g b / 0.25), transparent 70%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.258 calc(min(c, 0.04) * 1.05) h), oklch(from var(--seed-neutral) 0.17 calc(min(c, 0.04) * 0.71) h));
+  --role-tcg-relic-fill: radial-gradient(70% 45% at 50% 30%, rgb(from var(--hud-gold) r g b / 0.25), transparent 70%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.941 calc(min(c, 0.04) * 1.05) h), oklch(from var(--seed-neutral) 0.915 calc(min(c, 0.04) * 0.71) h));
   --role-tcg-relic-rim: inset 0 0 0 calc(1.5 * var(--stroke-hairline)) rgb(from var(--hud-gold) r g b / 0.7);
-  --role-tcg-relic-mark-fill: oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.6);
+  --role-tcg-relic-mark-fill: oklch(from var(--seed-neutral) 0.899 calc(min(c, 0.04) * 0.45) h / 0.6);
   /* A strip that scrolls sideways fades out at its end. */
   --role-tcg-fade: linear-gradient(90deg, rgb(0 0 0) calc(100% - var(--size-lg)), transparent);
 
@@ -1117,7 +1117,7 @@
 
      The moves (or time) in a cut well, amber when low; a goal's socket and
      its check once met; the score's three-star bar. */
-  --role-play-well-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.55);
+  --role-play-well-fill: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.55);
   --role-play-well-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.14);
   --role-play-low-rim: inset 0 0 0 var(--stroke-thin) var(--hud-low-ink), 0 0 calc(18 * var(--font-step-px)) rgb(from var(--hud-warn) r g b / 0.5);
   --role-play-low-ink: var(--hud-low-ink);
@@ -1138,7 +1138,7 @@
   --role-play-score-size: calc(24 * var(--font-step-px));
   /* A booster: a round socket, its count on a tag; the armed one lifted and
      ringed in the accent; one that is out dims its art, its tag gold. */
-  --role-play-socket-fill: radial-gradient(circle at 50% 35%, rgb(255 255 255 / 0.16), oklch(from var(--seed-neutral) 0.166 calc(min(c, 0.04) * 0.77) h / 0.9) 70%);
+  --role-play-socket-fill: radial-gradient(circle at 50% 35%, rgb(255 255 255 / 0.16), oklch(from var(--seed-neutral) 0.914 calc(min(c, 0.04) * 0.77) h / 0.9) 70%);
   --role-play-socket-rim: inset 0 0 0 calc(1.5 * var(--stroke-hairline)) rgb(255 255 255 / 0.28), 0 calc(4 * var(--font-step-px)) calc(10 * var(--font-step-px)) rgb(0 0 0 / 0.5);
   --role-play-armed-rim: inset 0 0 0 calc(2.5 * var(--stroke-hairline)) var(--hud-accent), 0 0 calc(18 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.6);
   --role-play-armed-ink: var(--hud-accent);
@@ -1150,7 +1150,7 @@
   --role-play-lift: calc(6 * var(--font-step-px));
   /* Idle: a resource chip, full in gold; a generator's level hexagon, its
      yield in green, its Auto and boost tags; a locked one greyed. */
-  --role-play-chip-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.304 calc(min(c, 0.04) * 1.22) h / 0.94), oklch(from var(--seed-neutral) 0.22 min(c, 0.04) h / 0.95));
+  --role-play-chip-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.955 calc(min(c, 0.04) * 1.22) h / 0.94), oklch(from var(--seed-neutral) 0.93 min(c, 0.04) h / 0.95));
   --role-play-chip-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.14);
   --role-play-full-rim: inset 0 0 0 var(--stroke-hairline) var(--hud-gold);
   --role-play-gain-ink: var(--success);
@@ -1167,7 +1167,7 @@
   /* Welcome back: the haul's sockets glow gold from their foot; Double is
      the game's gold offer. Prestige: its currency and gains in epic purple,
      Ascend washed in it, the requirement bar green once met. */
-  --role-play-haul-fill: radial-gradient(120% 80% at 50% 115%, rgb(from var(--hud-gold) r g b / 0.25), transparent 70%), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.9);
+  --role-play-haul-fill: radial-gradient(120% 80% at 50% 115%, rgb(from var(--hud-gold) r g b / 0.25), transparent 70%), oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.76) h / 0.9);
   --role-play-double-fill: linear-gradient(180deg, oklch(from var(--hud-gold) 0.958 calc(c * 0.44) calc(h + 7)), var(--hud-gold));
   --role-play-double-ink: oklch(from var(--hud-gold) 0.218 calc(c * 0.35) calc(h - 24));
   --role-play-epic-ink: var(--hud-epic);
@@ -1182,22 +1182,22 @@
      on cut HUD plates, the top three places on gold, silver and bronze, the
      player's own row lit white, and a league's promote and demote edges.
      Sizes are in font steps, so they follow the player's text scale. */
-  --role-result-scrim: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.9), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62) 55%, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.8));
-  --role-result-won-fill: linear-gradient(180deg, rgb(255 255 255) 18%, oklch(from var(--hud-gold) 0.943 calc(c * 0.6) calc(h + 7)) 52%, var(--hud-warn));
+  --role-result-scrim: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.9), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.62) 55%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.8));
+  --role-result-won-fill: linear-gradient(180deg, oklch(from var(--hud-gold) 0.66 c calc(h + 7)) 18%, oklch(from var(--hud-gold) 0.54 c calc(h + 7)) 52%, oklch(from var(--hud-warn) 0.48 c h));
   --role-result-won-glow: drop-shadow(0 0 calc(22 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.55));
-  --role-result-lost-fill: linear-gradient(180deg, rgb(255 255 255) 10%, oklch(from var(--hud-foe) 0.803 calc(c * 0.53) calc(h - 4)) 48%, var(--bar-danger));
+  --role-result-lost-fill: linear-gradient(180deg, oklch(from var(--hud-foe) 0.6 c h) 10%, oklch(from var(--hud-foe) 0.48 c calc(h - 4)) 48%, oklch(from var(--bar-danger) 0.42 c h));
   --role-result-lost-glow: drop-shadow(0 0 calc(22 * var(--font-step-px)) rgb(from var(--bar-danger) r g b / 0.6));
   --role-result-rule: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.65) 20%, rgb(255 255 255 / 0.65) 80%, transparent);
   --role-result-gold: var(--hud-gold);
   --role-result-silver: oklch(from var(--seed-neutral) 0.886 calc(min(c, 0.04) * 0.8) h);
   --role-result-bronze: rgb(230 150 98);
-  --role-result-row-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.78), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.55));
+  --role-result-row-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.936 min(c, 0.04) h / 0.78), oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.76) h / 0.55));
   --role-result-row-lit: var(--chosen-fill);
   --role-result-row-lit-ink: var(--chosen-ink);
   --role-result-promote: var(--hud-boon);
   --role-result-demote: var(--hud-foe);
   --role-result-grade-fill: linear-gradient(180deg, rgb(255 255 255) 25%, oklch(from var(--hud-accent) 0.91 calc(c * 0.72) calc(h - 5)) 60%, var(--hud-accent));
-  --role-result-grade-face: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.342 calc(min(c, 0.04) * 1.48) h), oklch(from var(--seed-neutral) 0.153 calc(min(c, 0.04) * 0.71) h));
+  --role-result-grade-face: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.967 calc(min(c, 0.04) * 1.48) h), oklch(from var(--seed-neutral) 0.91 calc(min(c, 0.04) * 0.71) h));
   --role-result-size-hero: calc(132 * var(--font-step-px));
   --role-result-size-hero-compact: calc(62 * var(--font-step-px));
   --role-result-size-grade: calc(110 * var(--font-step-px));
@@ -1207,7 +1207,7 @@
   /* The lit diamond on the verdict's rule, the level's octagon, the
      grade's glow, a best stat's gold rim. */
   --role-result-diamond-glow: 0 0 calc(10 * var(--font-step-px)) var(--hud-accent);
-  --role-result-level-fill: linear-gradient(180deg, oklch(from var(--epic) 0.389 calc(c * 0.62) calc(h - 23)), oklch(from var(--epic) 0.226 calc(c * 0.35) calc(h - 24)));
+  --role-result-level-fill: linear-gradient(180deg, oklch(from var(--epic) 0.9 calc(c * 0.35) calc(h - 23)), oklch(from var(--epic) 0.83 calc(c * 0.45) calc(h - 24)));
   --role-result-grade-glow: drop-shadow(0 0 calc(30 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.45));
   --role-result-best-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-gold) r g b / 0.5), inset 0 calc(2 * var(--stroke-hairline)) 0 var(--hud-gold);
   /* The results' tabs: a rule under them, the chosen tab washed up from
@@ -1223,7 +1223,7 @@
      rank box on the player's lit row. */
   --role-result-size-title: calc(46 * var(--font-step-px));
   --role-result-size-title-compact: calc(28 * var(--font-step-px));
-  --role-result-row-hover: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.336 calc(min(c, 0.04) * 1.41) h / 0.9), oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.7));
+  --role-result-row-hover: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.965 calc(min(c, 0.04) * 1.41) h / 0.9), oklch(from var(--seed-neutral) 0.936 min(c, 0.04) h / 0.7));
   --role-result-row-hover-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.3);
   --role-result-medal-ink: oklch(from var(--hud-gold) 0.205 calc(c * 0.24) h);
   --role-result-me-rank-fill: var(--hud-place-fill);
@@ -1237,7 +1237,7 @@
   --role-result-defeat-tracking: 0.06em;
   /* A results card that stands over any key art: smoked glass dense enough
      to hold white body text at 4.5:1 or better over the brightest ground. */
-  --role-result-card-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.197 calc(min(c, 0.04) * 0.81) h / 0.93), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.95));
+  --role-result-card-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.923 calc(min(c, 0.04) * 0.81) h / 0.93), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.95));
   /* A level's end: its card's cut corners, the stars' sizes (the middle
      one raised), and Next's green face. */
   --role-result-card-cut: calc(14 * var(--font-step-px));
@@ -1258,7 +1258,7 @@
   --role-result-team-a-ink: var(--team1);
   --role-result-team-a-glow: drop-shadow(0 0 calc(14 * var(--font-step-px)) rgb(from var(--team1) r g b / 0.5));
   --role-result-team-a-rule: inset 0 calc(-2 * var(--stroke-hairline)) 0 var(--team1);
-  --role-result-team-a-row: linear-gradient(90deg, rgb(from var(--team1) r g b / 0.16), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.72) 40%);
+  --role-result-team-a-row: linear-gradient(90deg, rgb(from var(--team1) r g b / 0.16), oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.76) h / 0.72) 40%);
   --role-result-team-a-edge: inset calc(3 * var(--stroke-hairline)) 0 0 var(--team1);
   /* The local player's row on a team: the chosen wash over its team's row. */
   --role-result-team-a-you-row: var(--chosen-fill), var(--result-team-a-row);
@@ -1267,7 +1267,7 @@
   --role-result-team-b-ink: var(--team2);
   --role-result-team-b-glow: drop-shadow(0 0 calc(14 * var(--font-step-px)) rgb(from var(--team2) r g b / 0.5));
   --role-result-team-b-rule: inset 0 calc(-2 * var(--stroke-hairline)) 0 var(--team2);
-  --role-result-team-b-row: linear-gradient(90deg, rgb(from var(--team2) r g b / 0.16), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.72) 40%);
+  --role-result-team-b-row: linear-gradient(90deg, rgb(from var(--team2) r g b / 0.16), oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.76) h / 0.72) 40%);
   --role-result-team-b-edge: inset calc(3 * var(--stroke-hairline)) 0 0 var(--team2);
   /* Game over: the scene dimmed to a red-black vignette, the defeat's
      size, the diamond's red glow, the time left's gold ring and the
@@ -1275,7 +1275,7 @@
   --role-result-defeat-scrim: radial-gradient(ellipse at 50% 45%, oklch(from var(--hud-foe) 0.225 calc(c * 0.43) h / 0.45), oklch(from var(--hud-foe) 0.071 calc(c * 0.14) calc(h - 35) / 0.92) 75%);
   --role-result-size-defeat: calc(150 * var(--font-step-px));
   --role-result-defeat-diamond-glow: 0 0 calc(10 * var(--font-step-px)) var(--hud-foe);
-  --role-result-ring: inset 0 0 0 calc(5 * var(--font-step-px)) var(--hud-gold), inset 0 0 0 calc(7 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.8);
+  --role-result-ring: inset 0 0 0 calc(5 * var(--font-step-px)) var(--hud-gold), inset 0 0 0 calc(7 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.8);
   --role-result-revive-fill: linear-gradient(180deg, oklch(from var(--hud-gold) 0.96 calc(c * 0.43) calc(h + 8)), var(--hud-gold));
   --role-result-revive-glow: 0 0 calc(26 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.45);
 
@@ -1289,7 +1289,7 @@
      word on a cut tag. Sizes are in font steps, so they follow the
      player's text scale. */
   --role-party-cut: calc(10 * var(--font-step-px));
-  --role-party-card-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.197 calc(min(c, 0.04) * 0.81) h / 0.93), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.95));
+  --role-party-card-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.923 calc(min(c, 0.04) * 0.81) h / 0.93), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.95));
   --role-party-card-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.14), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.5);
   /* A rule under a head and over a foot, and the gold one under a group's
      label. */
@@ -1300,24 +1300,24 @@
   /* A tile or a row a player picks: dark glass with a hairline rim, lit
      brighter under a pointer, ringed in the accent with a white lip and
      washed in it from its foot when chosen, ringed white under the focus. */
-  --role-party-tile-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.271 calc(min(c, 0.04) * 1.15) h / 0.9), oklch(from var(--seed-neutral) 0.162 calc(min(c, 0.04) * 0.7) h / 0.94));
+  --role-party-tile-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.945 calc(min(c, 0.04) * 1.15) h / 0.9), oklch(from var(--seed-neutral) 0.913 calc(min(c, 0.04) * 0.7) h / 0.94));
   --role-party-tile-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.16);
   --role-party-tile-hover-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.45);
   --role-party-on-rim: var(--chosen-tile-rim);
   --role-party-on-wash: linear-gradient(0deg, rgb(from var(--hud-accent) r g b / 0.28), rgb(from var(--hud-accent) r g b / 0.04) 60%);
   --role-party-tile-on-fill: var(--party-on-wash), var(--party-tile-fill);
   --role-party-card-on-fill: var(--party-on-wash), var(--party-card-fill);
-  --role-party-focus-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255), 0 0 0 calc(2 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.9);
+  --role-party-focus-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255), 0 0 0 calc(2 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.9);
   /* A portrait's foot shaded into its tile; what cannot be picked (locked,
      taken) and what was banned drawn grey, a ban struck in red. */
-  --role-party-shade: linear-gradient(180deg, transparent 45%, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.9));
+  --role-party-shade: linear-gradient(180deg, transparent 45%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.9));
   --role-party-out-art: grayscale(1) brightness(0.45);
   --role-party-ban-art: grayscale(1) brightness(0.6);
   --role-party-ban-strike: linear-gradient(135deg, transparent 46%, var(--hud-foe) 46%, var(--hud-foe) 54%, transparent 54%);
   /* An open seat or slot: a hairline octagon over a dark ground, its row
      a faint wash. */
   --role-party-open-edge: rgb(255 255 255 / 0.28);
-  --role-party-open-fill: oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h);
+  --role-party-open-fill: oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.76) h);
   --role-party-open-row: rgb(255 255 255 / 0.04);
   --role-party-seat-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.1);
   /* Ready in green, refused in red (as ink, a glow and a row's edge); a
@@ -1334,8 +1334,8 @@
   --role-party-on-row: var(--party-on-wash), var(--result-row-fill);
   /* A button: a smoked plate lit along its top; the action that goes on
      in the accent. */
-  --role-party-button-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.291 calc(min(c, 0.04) * 1.2) h / 0.92), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.95));
-  --role-party-button-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.359 calc(min(c, 0.04) * 1.51) h / 0.95), oklch(from var(--seed-neutral) 0.212 min(c, 0.04) h / 0.96));
+  --role-party-button-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.951 calc(min(c, 0.04) * 1.2) h / 0.92), oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.76) h / 0.95));
+  --role-party-button-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.972 calc(min(c, 0.04) * 1.51) h / 0.95), oklch(from var(--seed-neutral) 0.928 min(c, 0.04) h / 0.96));
   --role-party-button-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.24), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.6);
   --role-party-go-hover-fill: var(--action-hover-fill);
   --role-party-go-ink: var(--action-ink);
@@ -1345,18 +1345,18 @@
      second side's rows on the versus, mirrored. */
   --role-party-team-a-plate: var(--hud-plate-rim), inset 0 calc(-3 * var(--stroke-hairline)) 0 var(--team1);
   --role-party-team-b-plate: var(--hud-plate-rim), inset 0 calc(-3 * var(--stroke-hairline)) 0 var(--team2);
-  --role-party-team-b-row-end: linear-gradient(270deg, rgb(from var(--team2) r g b / 0.16), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.72) 40%);
+  --role-party-team-b-row-end: linear-gradient(270deg, rgb(from var(--team2) r g b / 0.16), oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.76) h / 0.72) 40%);
   --role-party-team-b-edge-end: inset calc(-3 * var(--stroke-hairline)) 0 0 var(--team2);
-  --role-party-lit-dim: oklch(from var(--seed-neutral) 0.169 calc(min(c, 0.04) * 0.59) h / 0.78);
+  --role-party-lit-dim: oklch(from var(--seed-neutral) 0.915 calc(min(c, 0.04) * 0.59) h / 0.78);
   /* The versus seal: a gold hexagon with a glow. */
   --role-party-seal-fill: radial-gradient(circle at 50% 30%, oklch(from var(--hud-gold) 0.304 calc(c * 0.37) calc(h - 4)), oklch(from var(--hud-gold) 0.147 calc(c * 0.12) calc(h - 4)));
   --role-party-seal-glow: drop-shadow(0 0 calc(26 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.5));
   /* The shown car's picture under the garage: shaded at its head and
      foot so the words over it hold; on a narrow page it closes on the
      ground under it. The figure on a character sheet stands in a glow. */
-  --role-party-hero-shade: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.7), transparent 22%, transparent 55%, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92)), linear-gradient(90deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.55), transparent 40%);
-  --role-party-hero-shade-compact: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.6), transparent 30%, transparent 62%, oklch(from var(--seed-neutral) 0.128 calc(min(c, 0.04) * 0.38) h));
-  --role-party-ground: oklch(from var(--seed-neutral) 0.128 calc(min(c, 0.04) * 0.38) h);
+  --role-party-hero-shade: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.7), transparent 22%, transparent 55%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.92)), linear-gradient(90deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.55), transparent 40%);
+  --role-party-hero-shade-compact: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.6), transparent 30%, transparent 62%, oklch(from var(--seed-neutral) 0.902 calc(min(c, 0.04) * 0.38) h));
+  --role-party-ground: oklch(from var(--seed-neutral) 0.902 calc(min(c, 0.04) * 0.38) h);
   --role-party-figure-glow: radial-gradient(50% 50% at 50% 60%, rgb(from var(--hud-accent) r g b / 0.2), transparent 70%);
   --role-party-figure-shadow: drop-shadow(0 calc(8 * var(--font-step-px)) calc(20 * var(--font-step-px)) rgb(0 0 0 / 0.7));
   /* The family's type steps: a name set large, a page's or a side's
@@ -1380,7 +1380,7 @@
   --role-party-size-stat: min(calc(40 * var(--font-step-px)), 13cqi);
   /* The shown car's name on the garage, held to the garage's width so a
      long name wraps on whole words. */
-  --role-party-size-car: min(calc(66 * var(--font-step-px)), 11cqi);
+  --role-party-size-car: min(calc(66 * var(--font-step-px)), 9cqi);
   --role-party-size-clock: calc(54 * var(--font-step-px));
   --role-party-tile: calc(132 * var(--font-step-px));
   --role-party-tile-compact: calc(100 * var(--font-step-px));
@@ -1440,7 +1440,7 @@
   --role-map-quest-ink: oklch(from var(--hud-gold) 0.225 calc(c * 0.33) calc(h - 11));
   --role-map-quest-glow: drop-shadow(0 0 calc(8 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.8));
   --role-map-way: var(--hud-accent);
-  --role-map-way-well: oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.9);
+  --role-map-way-well: oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.9);
   --role-map-way-glow: 0 0 calc(10 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.6);
   --role-map-danger: linear-gradient(180deg, rgb(255 140 120), var(--hud-foe));
   --role-map-danger-ink: oklch(from var(--hud-foe) 0.174 calc(c * 0.33) calc(h + 9));
@@ -1473,9 +1473,9 @@
   /* The place card: its picture fades into the glass under it, and its
      name sits over a gold rule. Fast travel is the gold primary plate,
      Mark a lit ghost plate. */
-  --role-map-card-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) calc(54 * var(--font-step-px)));
-  --role-map-card-fill-flat: oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94);
-  --role-map-picture-fade: linear-gradient(180deg, transparent 55%, oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.95));
+  --role-map-card-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94) calc(54 * var(--font-step-px)));
+  --role-map-card-fill-flat: oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.94);
+  --role-map-picture-fade: linear-gradient(180deg, transparent 55%, oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.95));
   --role-map-rule: linear-gradient(90deg, var(--hud-gold), transparent);
   --role-map-go-fill: var(--action-fill);
   --role-map-go-ink: var(--action-ink);
@@ -1542,7 +1542,7 @@
   --role-world-friendly-ink: var(--hud-boon);
   --role-world-player-ink: oklch(from var(--hud-accent) 0.858 calc(c * 0.74) calc(h + 12));
   --role-world-ally-ink: rgb(110 168 255);
-  --role-world-dead-ink: rgb(255 255 255 / 0.46);
+  --role-world-dead-ink: var(--ink-faint);
   --role-world-hostile-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 50%), var(--hud-foe);
   --role-world-neutral-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 50%), var(--hud-gold);
   --role-world-friendly-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 50%), var(--hud-boon);
@@ -1557,7 +1557,7 @@
      any text scale. */
   --role-world-ghost: oklch(from var(--hud-gold) 0.949 calc(c * 0.36) calc(h - 3) / 0.82);
   --role-world-ghost-motion: inline-size 300ms var(--motion-easing-exit) 400ms;
-  --role-world-quarters: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.75) calc(25% - 1px) 25%);
+  --role-world-quarters: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.75) calc(25% - 1px) 25%);
   --role-world-bar-rim: 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.28), 0 var(--space-xxs) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.5);
   --role-world-elite-rim: 0 0 0 var(--stroke-hairline) var(--hud-gold), 0 var(--space-xxs) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.5);
   --role-world-target-rim: 0 0 0 var(--stroke-thin) rgb(255 255 255), 0 0 calc(10 * var(--font-step-px)) rgb(255 255 255 / 0.35);
@@ -1624,7 +1624,7 @@
   --role-world-common-ink: rgb(230 233 240 / 0.9);
   --role-world-uncommon: var(--uncommon);
   --role-world-legendary-fill: linear-gradient(180deg, oklch(from var(--hud-gold) 0.32 calc(c * 0.38) calc(h - 3) / 0.9), rgb(12 10 8 / 0.9));
-  --role-world-loot-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.304 calc(min(c, 0.04) * 1.35) h / 0.96), oklch(from var(--seed-neutral) 0.197 calc(min(c, 0.04) * 0.81) h / 0.96));
+  --role-world-loot-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.955 calc(min(c, 0.04) * 1.35) h / 0.96), oklch(from var(--seed-neutral) 0.923 calc(min(c, 0.04) * 0.81) h / 0.96));
   --role-world-loot-border: var(--stroke-thin) solid transparent;
   --role-world-loot-strip: calc(3 * var(--font-step-px));
   --role-world-hover-scale: 1.06;
@@ -1646,13 +1646,13 @@
   /* A prompt enters rising and fading; its plate is the HUD's glass. A
      hold's ring is white on a dark disc; released, it drains. */
   --role-world-prompt-motion: og-rise-in 160ms var(--motion-easing-out) both;
-  --role-world-hold-disc: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.78);
+  --role-world-hold-disc: oklch(from var(--seed-neutral) 0.906 calc(min(c, 0.04) * 0.49) h / 0.78);
   --role-world-hold-ring: rgb(255 255 255);
   --role-world-hold-glow: drop-shadow(0 0 calc(4 * var(--font-step-px)) var(--hud-accent));
   --role-world-hold-drain: stroke-dashoffset 200ms var(--motion-easing-exit);
   --role-world-key-off-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.663 calc(min(c, 0.04) * 0.83) h), oklch(from var(--seed-neutral) 0.514 calc(min(c, 0.04) * 0.89) h));
   --role-world-key-off-ink: oklch(from var(--seed-neutral) 0.254 calc(min(c, 0.04) * 0.81) h);
-  --role-world-pad-fill: radial-gradient(circle at 40% 30%, oklch(from var(--seed-neutral) 0.436 calc(min(c, 0.04) * 0.91) h), oklch(from var(--seed-neutral) 0.236 calc(min(c, 0.04) * 0.65) h));
+  --role-world-pad-fill: radial-gradient(circle at 40% 30%, oklch(from var(--seed-neutral) 0.995 calc(min(c, 0.04) * 0.91) h), oklch(from var(--seed-neutral) 0.935 calc(min(c, 0.04) * 0.65) h));
   --role-world-pad-ink: var(--uncommon);
   --role-world-pad-rim: 0 0 0 var(--stroke-thin) rgb(255 255 255 / 0.6), 0 var(--space-xxs) 0 rgb(0 0 0 / 0.6);
   /* Speech: the HUD's glass with a cut corner, a shout's warm rim, the
@@ -1715,7 +1715,7 @@
   --role-world-blocked-glow: 0 0 calc(14 * var(--font-step-px)) rgb(from var(--hud-foe) r g b / 0.55), inset 0 0 calc(18 * var(--font-step-px)) rgb(from var(--hud-foe) r g b / 0.35);
   /* A path: white dashes over a dark under-stroke, numbered stops, the
      part past this turn's reach red; the end ringed. */
-  --role-world-path-under: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62);
+  --role-world-path-under: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.62);
   --role-world-path-ink: rgb(255 255 255);
   --role-world-path-glow: drop-shadow(0 0 calc(4 * var(--font-step-px)) oklch(from var(--hud-accent) 0.858 calc(c * 0.74) calc(h + 12) / 0.9));
   --role-world-path-stop-ink: oklch(from var(--seed-neutral) 0.169 calc(min(c, 0.04) * 0.59) h);
@@ -1757,12 +1757,12 @@
   /* The narrowest tile: room for its art and a price, wider with the text. */
   --role-shop-tile-min-width: calc(130px + 50 * var(--font-step-px));
   --role-shop-tile-cut: calc(10 * var(--font-step-px));
-  --role-shop-tile-fill: oklch(from var(--seed-neutral) 0.166 calc(min(c, 0.04) * 0.77) h / 0.6);
+  --role-shop-tile-fill: oklch(from var(--seed-neutral) 0.914 calc(min(c, 0.04) * 0.77) h / 0.6);
   --role-shop-tile-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.08);
   --role-shop-tile-hover-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.3);
   --role-shop-tile-selected-rim: inset 0 0 0 var(--stroke-thin) var(--ink);
   --role-shop-tile-name-size: calc(17 * var(--font-step-px));
-  --role-shop-art-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.5);
+  --role-shop-art-fill: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.5);
   /* The rarity's light behind the art: the well's colour is its rarity. */
   --role-shop-art-glow: radial-gradient(70% 80% at 50% 70%, currentColor, transparent 72%);
   --role-shop-art-glow-opacity: 0.26;
@@ -1786,7 +1786,7 @@
   --role-shop-sold-ink: var(--ink-muted);
   --role-shop-sold-fill: rgb(255 255 255 / 0.08);
   /* The confirmation's ledger: a sunk well, one group of rows a currency. */
-  --role-shop-ledger-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.5);
+  --role-shop-ledger-fill: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.5);
   --role-shop-ledger-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.07);
   --role-shop-socket-size: calc(84 * var(--font-step-px));
   --role-shop-socket-compact-size: calc(64 * var(--font-step-px));
@@ -1803,7 +1803,7 @@
   --role-shop-premium-hover-fill: var(--action-reward-hover-fill);
   --role-shop-premium-glow: inset 0 var(--stroke-hairline) 0 rgb(255 255 255), 0 0 calc(20 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.35);
   --role-shop-premium-rule: calc(3 * var(--font-step-px)) solid var(--hud-gold);
-  --role-shop-premium-tile: radial-gradient(80% 60% at 50% 40%, rgb(from var(--hud-gold) r g b / 0.14), transparent 70%), oklch(from var(--seed-neutral) 0.166 calc(min(c, 0.04) * 0.77) h / 0.6);
+  --role-shop-premium-tile: radial-gradient(80% 60% at 50% 40%, rgb(from var(--hud-gold) r g b / 0.14), transparent 70%), oklch(from var(--seed-neutral) 0.914 calc(min(c, 0.04) * 0.77) h / 0.6);
   --role-shop-premium-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-gold) r g b / 0.35);
   --role-shop-free-rule: calc(3 * var(--font-step-px)) solid var(--ink-faint);
   --role-shop-ready-rim: inset 0 0 0 var(--stroke-thin) var(--inv-accent), 0 0 calc(18 * var(--font-step-px)) rgb(from var(--inv-accent) r g b / 0.3);
@@ -2017,17 +2017,17 @@
      cut corners, the chosen one ringed and lit in the accent, a locked
      one grey and darkened. The roll's headings are tracked accent
      capitals. */
-  --role-front-ground: radial-gradient(60% 50% at 50% 45%, oklch(from var(--seed-neutral) 0.195 calc(min(c, 0.04) * 1.12) h), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h) 70%);
-  --role-front-shade: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.92), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.72) 26%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.12) 52%, transparent 70%), linear-gradient(180deg, transparent 70%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.7));
-  --role-front-shade-compact: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.5), transparent 30%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.55) 48%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.94) 70%);
-  --role-front-vignette: radial-gradient(120% 80% at 50% 38%, transparent 40%, oklch(from var(--seed-neutral) 0.107 calc(min(c, 0.04) * 0.57) h / 0.55)), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.107 calc(min(c, 0.04) * 0.57) h / 0.35), transparent 30%, transparent 55%, oklch(from var(--seed-neutral) 0.107 calc(min(c, 0.04) * 0.57) h / 0.88));
-  --role-front-veil: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.86), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.7) 40%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.92));
-  --role-front-roll-veil: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.3), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.88) 30%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.88) 70%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.3));
+  --role-front-ground: radial-gradient(60% 50% at 50% 45%, oklch(from var(--seed-neutral) 0.922 calc(min(c, 0.04) * 1.12) h), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h) 70%);
+  --role-front-shade: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.92), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.72) 26%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.12) 52%, transparent 70%), linear-gradient(180deg, transparent 70%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.7));
+  --role-front-shade-compact: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.5), transparent 30%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.55) 48%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.94) 70%);
+  --role-front-vignette: radial-gradient(120% 80% at 50% 38%, transparent 40%, oklch(from var(--seed-neutral) 0.896 calc(min(c, 0.04) * 0.57) h / 0.55)), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.896 calc(min(c, 0.04) * 0.57) h / 0.35), transparent 30%, transparent 55%, oklch(from var(--seed-neutral) 0.896 calc(min(c, 0.04) * 0.57) h / 0.88));
+  --role-front-veil: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.86), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.7) 40%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.92));
+  --role-front-roll-veil: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.3), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.88) 30%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.88) 70%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.3));
   --role-front-accent: var(--hud-accent);
-  --role-front-ink: rgb(255 255 255);
-  --role-front-ink-dim: rgb(255 255 255 / 0.74);
-  --role-front-ink-faint: rgb(255 255 255 / 0.56);
-  --role-front-shadow: 0 calc(2 * var(--font-step-px)) calc(8 * var(--font-step-px)) rgb(0 0 0 / 0.6);
+  --role-front-ink: var(--ink-bright);
+  --role-front-ink-dim: var(--ink-muted);
+  --role-front-ink-faint: var(--ink-faint);
+  --role-front-shadow: 0 0 calc(8 * var(--font-step-px)) rgb(255 255 255 / 0.7);
   --role-front-logo-lift: drop-shadow(0 calc(8 * var(--font-step-px)) calc(30 * var(--font-step-px)) rgb(0 0 0 / 0.6));
   --role-front-call-glow: 0 0 calc(18 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.55), 0 calc(2 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.8);
   --role-front-call-tracking: 0.28em;
@@ -2051,10 +2051,10 @@
   --role-front-card-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.16), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.55);
   --role-front-card-on-rim: var(--chosen-tile-rim);
   --role-front-card-on-glow: var(--chosen-tile-glow);
-  --role-front-card-foot: linear-gradient(180deg, transparent 35%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.55) 60%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.96));
+  --role-front-card-foot: linear-gradient(180deg, transparent 35%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.55) 60%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.96));
   --role-front-art-off: saturate(0.75) brightness(0.82);
   --role-front-art-locked: grayscale(1) brightness(0.38);
-  --role-front-lock-ink: rgb(255 179 92);
+  --role-front-lock-ink: oklch(from rgb(255 179 92) min(l, 0.48) c h);
   --role-front-tag-on-fill: var(--hud-accent);
   --role-front-tag-on-ink: oklch(from var(--seed-neutral) 0.168 calc(min(c, 0.04) * 0.65) h);
   --role-front-heading-tracking: 0.24em;
@@ -2080,8 +2080,8 @@
      shortcut sits on a dark key chip. A tooltip card is lit along its
      top in its rarity's colour, which also tints its head and rings its
      socket (the card mixes them: `tip-tint` of the colour over the fill). */
-  --role-dialog-scrim: radial-gradient(90% 80% at 50% 50%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.62), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.86));
-  --role-dialog-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.96), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.97));
+  --role-dialog-scrim: radial-gradient(90% 80% at 50% 50%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.62), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.86));
+  --role-dialog-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.936 min(c, 0.04) h / 0.96), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.97));
   --role-dialog-edge: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.18), inset 0 calc(3 * var(--font-step-px)) 0 var(--hud-accent);
   --role-dialog-lift: 0 calc(18 * var(--font-step-px)) calc(40 * var(--font-step-px)) rgb(0 0 0 / 0.6);
   --role-dialog-danger: rgb(226 66 58);
@@ -2113,7 +2113,7 @@
   --role-dialog-tip-chip-rim: inset 0 0 0 var(--stroke-hairline) currentColor;
   --role-dialog-tip-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.16);
   --role-dialog-tip-tint: 16%;
-  --role-dialog-tip-well: oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h);
+  --role-dialog-tip-well: oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h);
   --role-dialog-tip-plain-edge: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.12), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.4);
   --role-dialog-tip-title-size: calc(19 * var(--font-step-px));
 
@@ -2126,20 +2126,20 @@
      A hotspot is four lit brackets round a faint wash. A chapter or an
      ending is a cut still with its name under it, a locked one a hatched
      dark well under a lock. */
-  --role-film-shade: linear-gradient(180deg, transparent 45%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.6) 70%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.92));
-  --role-film-shade-compact: linear-gradient(180deg, transparent 25%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.7) 48%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.95));
+  --role-film-shade: linear-gradient(180deg, transparent 45%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.6) 70%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.92));
+  --role-film-shade-compact: linear-gradient(180deg, transparent 25%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.7) 48%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.95));
   --role-film-choice-size: calc(17 * var(--font-step-px));
   --role-film-choice-on-fill: linear-gradient(180deg, rgb(from var(--hud-accent) r g b / 0.34), rgb(from var(--hud-accent) r g b / 0.12)), var(--dialog-fill);
-  --role-film-choice-off-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.193 calc(min(c, 0.04) * 0.74) h / 0.9), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.92));
+  --role-film-choice-off-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.922 calc(min(c, 0.04) * 0.74) h / 0.9), oklch(from var(--seed-neutral) 0.911 calc(min(c, 0.04) * 0.65) h / 0.92));
   --role-film-choice-off-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.08);
-  --role-film-choice-off-ink: rgb(255 255 255 / 0.52);
+  --role-film-choice-off-ink: var(--ink-faint);
   --role-film-qte-fill: linear-gradient(90deg, var(--hud-gold), rgb(255 255 255));
   --role-film-qte-glow: 0 0 calc(8 * var(--font-step-px)) var(--hud-gold);
   --role-film-spot-wash: rgb(from var(--hud-accent) r g b / 0.1);
   --role-film-spot-edge: rgb(255 255 255);
   --role-film-spot-glow: drop-shadow(0 0 calc(6 * var(--font-step-px)) var(--hud-accent)) drop-shadow(0 var(--stroke-hairline) calc(2 * var(--font-step-px)) rgb(0 0 0 / 0.8));
   --role-film-spot-size: calc(18 * var(--font-step-px));
-  --role-film-locked-fill: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.035) 0 calc(6 * var(--font-step-px)), transparent calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px))), oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.92);
+  --role-film-locked-fill: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.035) 0 calc(6 * var(--font-step-px)), transparent calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px))), oklch(from var(--seed-neutral) 0.909 calc(min(c, 0.04) * 0.59) h / 0.92);
   --role-film-locked-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.12);
   --role-film-name-size: calc(17 * var(--font-step-px));
   --role-film-name-size-compact: calc(15 * var(--font-step-px));
@@ -2161,9 +2161,9 @@
      screen; a shade rises behind the words at its foot and grows with them,
      so a long place name on a phone reads over bright art. Without art the
      style's placeholder is a dark wash lit by the HUD accent. */
-  --role-loading-shade: linear-gradient(180deg, transparent, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62) calc(120 * var(--font-step-px)), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92));
-  --role-loading-side-shade: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.45), transparent 55%);
-  --role-loading-placeholder: radial-gradient(60% 70% at 70% 30%, rgb(from var(--hud-accent) r g b / 0.16), transparent 70%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.195 calc(min(c, 0.04) * 1.12) h), oklch(from var(--seed-neutral) 0.129 calc(min(c, 0.04) * 0.44) h));
+  --role-loading-shade: linear-gradient(180deg, transparent, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.62) calc(120 * var(--font-step-px)), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.92));
+  --role-loading-side-shade: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.45), transparent 55%);
+  --role-loading-placeholder: radial-gradient(60% 70% at 70% 30%, rgb(from var(--hud-accent) r g b / 0.16), transparent 70%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.922 calc(min(c, 0.04) * 1.12) h), oklch(from var(--seed-neutral) 0.903 calc(min(c, 0.04) * 0.44) h));
   --role-loading-fill: var(--bar-gloss), linear-gradient(90deg, rgb(from var(--hud-accent) r g b / 0.55), var(--hud-accent));
   --role-loading-fill-glow: 0 0 calc(14 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.6);
   --role-loading-lead: rgb(255 255 255);
@@ -2175,13 +2175,13 @@
      tracked capitals, figures condensed and tabular; a chosen row or item
      is washed in the accent from its leading edge, which carries a lit bar.
      Rules between rows are faint, so the data reads first. */
-  --role-data-head-ink: rgb(255 255 255 / 0.5);
+  --role-data-head-ink: var(--ink-faint);
   --role-data-rule: rgb(255 255 255 / 0.08);
   --role-data-row-hover-fill: rgb(255 255 255 / 0.06);
   --role-data-row-pressed-fill: rgb(255 255 255 / 0.1);
   --role-data-row-selected-fill: var(--chosen-fill);
   --role-data-row-selected-edge: var(--chosen-edge);
-  --role-data-well: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62);
+  --role-data-well: oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.47) h / 0.62);
   --role-data-well-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.1);
   --role-data-guide: rgb(255 255 255 / 0.12);
   /* The rule under a row and an indent or axis guide, as borders; the
@@ -2211,16 +2211,16 @@
      veil under the full screens, the system type steps, a dimmed or
      dangerous entry, a settings row and its lit state, the page tabs'
      lit bar, a slot's lit rim and an empty slot's well. */
-  --role-system-pause-shade: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.94), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.8) 30%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.35) 60%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.2));
-  --role-system-pause-shade-compact: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.7), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.86) 40%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.96));
-  --role-system-veil: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.9), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.82) 40%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.94));
+  --role-system-pause-shade: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.94), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.8) 30%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.35) 60%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.2));
+  --role-system-pause-shade-compact: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.7), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.86) 40%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.96));
+  --role-system-veil: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.9), oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.82) 40%, oklch(from var(--seed-neutral) 0.901 calc(min(c, 0.04) * 0.63) h / 0.94));
   --role-system-title-size: calc(56 * var(--font-step-px));
   --role-system-title-size-compact: calc(40 * var(--font-step-px));
   --role-system-entry-size: calc(24 * var(--font-step-px));
   --role-system-entry-size-compact: calc(20 * var(--font-step-px));
-  --role-system-ink-off: rgb(255 255 255 / 0.32);
-  --role-system-danger-ink: rgb(255 128 118);
-  --role-system-row-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.233 min(c, 0.04) h / 0.72), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.5));
+  --role-system-ink-off: var(--ink-faint);
+  --role-system-danger-ink: oklch(from rgb(255 128 118) min(l, 0.48) c h);
+  --role-system-row-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.934 min(c, 0.04) h / 0.72), oklch(from var(--seed-neutral) 0.916 calc(min(c, 0.04) * 0.76) h / 0.5));
   --role-system-row-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.07);
   --role-system-row-on-fill: var(--chosen-fill);
   --role-system-row-on-edge: var(--chosen-edge);
@@ -2232,11 +2232,176 @@
   --role-system-plate-edge: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.45);
   --role-system-plate-lit-edge: inset 0 calc(2 * var(--stroke-hairline)) 0 var(--hud-accent);
   --role-system-step-rim: rgb(255 255 255 / 0.3);
-  --role-system-step-done-fill: oklch(from var(--seed-neutral) 0.431 calc(min(c, 0.04) * 1.05) h);
+  --role-system-step-done-fill: oklch(from var(--seed-neutral) 0.993 calc(min(c, 0.04) * 1.05) h);
   /* Calibration's brightness patch: three marks on black, from one that a
      well set screen barely shows to one it shows clearly. */
   --role-system-patch-ground: rgb(0 0 0);
   --role-system-patch-faint: rgb(4 4 4);
   --role-system-patch-mid: rgb(12 12 12);
   --role-system-patch-clear: rgb(26 26 26);
+}
+
+/* The dark scheme: the family grounds at their dark lightness and the
+   HUD's white inks. :root above holds the light scheme's (the light
+   palette's band, recessed darker than raised, and the palette's inks). */
+:root[data-scheme=dark] {
+  --role-bar-well: var(--meter-track-fill, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.72));
+  --role-bar-notch: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92);
+  --role-hud-ink: rgb(255 255 255);
+  --role-hud-ink-dim: rgb(255 255 255 / 0.66);
+  --role-hud-stroke-color: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62);
+  --role-hud-shadow: 0 calc(2 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.55);
+  --role-hud-label-ink: rgb(255 255 255 / 0.78);
+  --role-hud-plate-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.84), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.88));
+  --role-hud-tag-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.88);
+  --role-hud-line-well: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.7);
+  --role-hud-feed-fill: linear-gradient(270deg, oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.86), oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.35));
+  --role-hud-feed-fill-start: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.86), oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.35));
+  --role-hud-compass-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0), oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.55));
+  --role-judge-bad-ink: rgb(255 150 90);
+  --role-judge-miss-ink: rgb(255 255 255 / 0.66);
+  --role-judge-late-ink: rgb(255 140 70);
+  --role-gauge-fever-ink: rgb(255 122 176);
+  --role-gauge-well: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.72);
+  --role-gauge-cut: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92);
+  --role-chart-ink: rgb(255 255 255);
+  --role-hud-mana-ink: rgb(120 178 255);
+  --role-hud-veil: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.5);
+  --role-hud-epic-ink: oklch(from var(--epic) 0.838 calc(c * 0.51) calc(h - 6));
+  --role-hud-burn-ink: rgb(255 162 74);
+  --role-hud-best-label-ink: oklch(from var(--epic) 0.743 calc(c * 0.84) calc(h - 6));
+  --role-hud-best-ink: oklch(from var(--epic) 0.838 calc(c * 0.51) calc(h - 6));
+  --role-hud-dial-face: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.271 calc(min(c, 0.04) * 1.15) h / 0.82), oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.88));
+  --role-hud-track-well: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.9);
+  --role-quest-socket-fill: radial-gradient(80% 80% at 50% 30%, rgb(255 255 255 / 0.1), transparent 70%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.291 calc(min(c, 0.04) * 1.08) h), oklch(from var(--seed-neutral) 0.179 calc(min(c, 0.04) * 0.7) h));
+  --role-quest-well-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.72);
+  --role-quest-well-ready-fill: radial-gradient(90% 90% at 50% 40%, rgb(from var(--hud-gold) r g b / 0.3), oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.7));
+  --role-quest-medal-rim: linear-gradient(180deg, rgb(255 255 255), currentColor 40%, oklch(from var(--seed-neutral) 0.174 calc(min(c, 0.04) * 0.64) h) 125%);
+  --role-quest-medal-fill: radial-gradient(70% 60% at 50% 28%, rgb(255 255 255 / 0.14), transparent 75%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.296 calc(min(c, 0.04) * 1.11) h), oklch(from var(--seed-neutral) 0.173 calc(min(c, 0.04) * 0.59) h));
+  --role-quest-chip-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.55);
+  --role-quest-day-fill: linear-gradient(180deg, rgb(255 255 255 / 0.06), rgb(255 255 255 / 0.015)), oklch(from var(--seed-neutral) 0.262 calc(min(c, 0.04) * 0.92) h / 0.95);
+  --role-quest-day-head-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.4);
+  --role-quest-day-milestone-ink: oklch(from var(--epic) 0.861 calc(c * 0.39) calc(h - 13));
+  --role-quest-day-missed-fill: var(--entry-grain), oklch(from var(--seed-neutral) 0.22 calc(min(c, 0.04) * 0.72) h / 0.95);
+  --role-quest-banner-shadow: 0 calc(2 * var(--font-step-px)) calc(10 * var(--font-step-px)) rgb(0 0 0 / 0.6);
+  --role-select-row-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.165 calc(min(c, 0.04) * 0.65) h / 0.86), oklch(from var(--seed-neutral) 0.165 calc(min(c, 0.04) * 0.65) h / 0.5));
+  --role-select-row-hover-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.255 calc(min(c, 0.04) * 1.17) h / 0.92), oklch(from var(--seed-neutral) 0.203 min(c, 0.04) h / 0.62));
+  --role-select-jacket-fill: oklch(from var(--seed-neutral) 0.189 calc(min(c, 0.04) * 0.82) h);
+  --role-select-button-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.9), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94));
+  --role-select-button-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.295 calc(min(c, 0.04) * 1.26) h / 0.94), oklch(from var(--seed-neutral) 0.193 calc(min(c, 0.04) * 0.88) h / 0.96));
+  --role-select-tile-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.9), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94));
+  --role-select-tile-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.303 calc(min(c, 0.04) * 1.25) h / 0.94), oklch(from var(--seed-neutral) 0.18 calc(min(c, 0.04) * 0.83) h / 0.96));
+  --role-select-tile-easy-fill: linear-gradient(180deg, rgb(from var(--chart-easy) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-normal-fill: linear-gradient(180deg, rgb(from var(--chart-normal) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-hard-fill: linear-gradient(180deg, rgb(from var(--chart-hard) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-expert-fill: linear-gradient(180deg, rgb(from var(--chart-expert) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-master-fill: linear-gradient(180deg, rgb(from var(--chart-master) r g b / 0.55), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-tile-special-fill: linear-gradient(180deg, rgb(from var(--chart-expert) r g b / 0.45), rgb(from var(--chart-master) r g b / 0.4) 30%, oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) 78%);
+  --role-select-easy-ink: rgb(52 199 120);
+  --role-select-normal-ink: rgb(80 180 240);
+  --role-select-hard-ink: rgb(255 175 60);
+  --role-select-expert-ink: rgb(255 92 156);
+  --role-select-master-ink: rgb(184 130 255);
+  --role-select-special-ink: rgb(255 122 176);
+  --role-select-node-fill: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.473 calc(min(c, 0.04) * 1.99) h), oklch(from var(--seed-neutral) 0.22 calc(min(c, 0.04) * 1.1) h) 70%);
+  --role-select-node-open-fill: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.543 calc(min(c, 0.04) * 1.92) h), oklch(from var(--seed-neutral) 0.264 calc(min(c, 0.04) * 1.26) h) 70%);
+  --role-select-node-locked-fill: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.403 calc(min(c, 0.04) * 0.83) h), oklch(from var(--seed-neutral) 0.218 calc(min(c, 0.04) * 0.61) h) 70%);
+  --role-select-node-locked-ink: rgb(255 255 255 / 0.55);
+  --role-select-road-shadow: 0 0 0 calc(3 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.38), 0 calc(3 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.35);
+  --role-select-capsule-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h));
+  --role-alert-plate-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.311 calc(min(c, 0.04) * 1.11) h / 0.95), oklch(from var(--seed-neutral) 0.214 calc(min(c, 0.04) * 0.74) h / 0.95));
+  --role-alert-subtitle-shade: radial-gradient(farthest-side, oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.92), oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.86) 72%, transparent);
+  --role-alert-stroke-color: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92);
+  --role-alert-level-shade: radial-gradient(closest-side, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h) 92%, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0));
+  --role-social-band-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.214 calc(min(c, 0.04) * 0.74) h / 0.92), oklch(from var(--seed-neutral) 0.17 calc(min(c, 0.04) * 0.57) h / 0.97));
+  --role-inv-chip-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.55);
+  --role-inv-well-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.55);
+  --role-inv-tag-fill: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.88);
+  --role-inv-fresh-glow: 0 0 calc(8 * var(--font-step-px)) var(--inv-accent), 0 0 0 var(--stroke-thin) oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.9);
+  --role-inv-row-fill: oklch(from var(--seed-neutral) 0.166 calc(min(c, 0.04) * 0.77) h / 0.55);
+  --role-inv-row-hover-fill: oklch(from var(--seed-neutral) 0.238 calc(min(c, 0.04) * 1.19) h / 0.7);
+  --role-tcg-attack-ink: rgb(255 168 150);
+  --role-tcg-skill-ink: rgb(160 206 255);
+  --role-tcg-power-ink: oklch(from var(--epic) 0.825 calc(c * 0.53) calc(h - 8));
+  --role-tcg-curse-ink: rgb(206 198 222);
+  --role-tcg-face-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.258 calc(min(c, 0.04) * 1.05) h), oklch(from var(--seed-neutral) 0.17 calc(min(c, 0.04) * 0.71) h));
+  --role-tcg-window-fill: oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.7);
+  --role-tcg-text-fill: oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.55);
+  --role-tcg-reason-ink: oklch(from var(--hud-foe) 0.899 calc(c * 0.25) calc(h - 7));
+  --role-tcg-back-fill: linear-gradient(160deg, oklch(from var(--seed-neutral) 0.327 calc(min(c, 0.04) * 1.56) h), oklch(from var(--seed-neutral) 0.195 min(c, 0.04) h));
+  --role-tcg-relic-fill: radial-gradient(70% 45% at 50% 30%, rgb(from var(--hud-gold) r g b / 0.25), transparent 70%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.258 calc(min(c, 0.04) * 1.05) h), oklch(from var(--seed-neutral) 0.17 calc(min(c, 0.04) * 0.71) h));
+  --role-tcg-relic-mark-fill: oklch(from var(--seed-neutral) 0.115 calc(min(c, 0.04) * 0.45) h / 0.6);
+  --role-play-well-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.55);
+  --role-play-socket-fill: radial-gradient(circle at 50% 35%, rgb(255 255 255 / 0.16), oklch(from var(--seed-neutral) 0.166 calc(min(c, 0.04) * 0.77) h / 0.9) 70%);
+  --role-play-chip-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.304 calc(min(c, 0.04) * 1.22) h / 0.94), oklch(from var(--seed-neutral) 0.22 min(c, 0.04) h / 0.95));
+  --role-play-haul-fill: radial-gradient(120% 80% at 50% 115%, rgb(from var(--hud-gold) r g b / 0.25), transparent 70%), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.9);
+  --role-result-scrim: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.9), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62) 55%, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.8));
+  --role-result-won-fill: linear-gradient(180deg, rgb(255 255 255) 18%, oklch(from var(--hud-gold) 0.943 calc(c * 0.6) calc(h + 7)) 52%, var(--hud-warn));
+  --role-result-lost-fill: linear-gradient(180deg, rgb(255 255 255) 10%, oklch(from var(--hud-foe) 0.803 calc(c * 0.53) calc(h - 4)) 48%, var(--bar-danger));
+  --role-result-row-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.78), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.55));
+  --role-result-grade-face: radial-gradient(circle at 50% 30%, oklch(from var(--seed-neutral) 0.342 calc(min(c, 0.04) * 1.48) h), oklch(from var(--seed-neutral) 0.153 calc(min(c, 0.04) * 0.71) h));
+  --role-result-level-fill: linear-gradient(180deg, oklch(from var(--epic) 0.389 calc(c * 0.62) calc(h - 23)), oklch(from var(--epic) 0.226 calc(c * 0.35) calc(h - 24)));
+  --role-result-row-hover: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.336 calc(min(c, 0.04) * 1.41) h / 0.9), oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.7));
+  --role-result-card-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.197 calc(min(c, 0.04) * 0.81) h / 0.93), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.95));
+  --role-result-team-a-row: linear-gradient(90deg, rgb(from var(--team1) r g b / 0.16), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.72) 40%);
+  --role-result-team-b-row: linear-gradient(90deg, rgb(from var(--team2) r g b / 0.16), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.72) 40%);
+  --role-result-ring: inset 0 0 0 calc(5 * var(--font-step-px)) var(--hud-gold), inset 0 0 0 calc(7 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.8);
+  --role-party-card-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.197 calc(min(c, 0.04) * 0.81) h / 0.93), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.95));
+  --role-party-tile-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.271 calc(min(c, 0.04) * 1.15) h / 0.9), oklch(from var(--seed-neutral) 0.162 calc(min(c, 0.04) * 0.7) h / 0.94));
+  --role-party-focus-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255), 0 0 0 calc(2 * var(--font-step-px)) oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.9);
+  --role-party-shade: linear-gradient(180deg, transparent 45%, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.9));
+  --role-party-open-fill: oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h);
+  --role-party-button-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.291 calc(min(c, 0.04) * 1.2) h / 0.92), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.95));
+  --role-party-button-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.359 calc(min(c, 0.04) * 1.51) h / 0.95), oklch(from var(--seed-neutral) 0.212 min(c, 0.04) h / 0.96));
+  --role-party-team-b-row-end: linear-gradient(270deg, rgb(from var(--team2) r g b / 0.16), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.72) 40%);
+  --role-party-lit-dim: oklch(from var(--seed-neutral) 0.169 calc(min(c, 0.04) * 0.59) h / 0.78);
+  --role-party-hero-shade: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.7), transparent 22%, transparent 55%, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92)), linear-gradient(90deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.55), transparent 40%);
+  --role-party-hero-shade-compact: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.6), transparent 30%, transparent 62%, oklch(from var(--seed-neutral) 0.128 calc(min(c, 0.04) * 0.38) h));
+  --role-party-ground: oklch(from var(--seed-neutral) 0.128 calc(min(c, 0.04) * 0.38) h);
+  --role-map-way-well: oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.9);
+  --role-map-card-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94) calc(54 * var(--font-step-px)));
+  --role-map-card-fill-flat: oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.94);
+  --role-map-picture-fade: linear-gradient(180deg, transparent 55%, oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.95));
+  --role-world-dead-ink: rgb(255 255 255 / 0.46);
+  --role-world-quarters: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.75) calc(25% - 1px) 25%);
+  --role-world-loot-hover-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.304 calc(min(c, 0.04) * 1.35) h / 0.96), oklch(from var(--seed-neutral) 0.197 calc(min(c, 0.04) * 0.81) h / 0.96));
+  --role-world-hold-disc: oklch(from var(--seed-neutral) 0.14 calc(min(c, 0.04) * 0.49) h / 0.78);
+  --role-world-pad-fill: radial-gradient(circle at 40% 30%, oklch(from var(--seed-neutral) 0.436 calc(min(c, 0.04) * 0.91) h), oklch(from var(--seed-neutral) 0.236 calc(min(c, 0.04) * 0.65) h));
+  --role-world-path-under: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62);
+  --role-shop-tile-fill: oklch(from var(--seed-neutral) 0.166 calc(min(c, 0.04) * 0.77) h / 0.6);
+  --role-shop-art-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.5);
+  --role-shop-ledger-fill: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.5);
+  --role-shop-premium-tile: radial-gradient(80% 60% at 50% 40%, rgb(from var(--hud-gold) r g b / 0.14), transparent 70%), oklch(from var(--seed-neutral) 0.166 calc(min(c, 0.04) * 0.77) h / 0.6);
+  --role-front-ground: radial-gradient(60% 50% at 50% 45%, oklch(from var(--seed-neutral) 0.195 calc(min(c, 0.04) * 1.12) h), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h) 70%);
+  --role-front-shade: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.92), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.72) 26%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.12) 52%, transparent 70%), linear-gradient(180deg, transparent 70%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.7));
+  --role-front-shade-compact: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.5), transparent 30%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.55) 48%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.94) 70%);
+  --role-front-vignette: radial-gradient(120% 80% at 50% 38%, transparent 40%, oklch(from var(--seed-neutral) 0.107 calc(min(c, 0.04) * 0.57) h / 0.55)), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.107 calc(min(c, 0.04) * 0.57) h / 0.35), transparent 30%, transparent 55%, oklch(from var(--seed-neutral) 0.107 calc(min(c, 0.04) * 0.57) h / 0.88));
+  --role-front-veil: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.86), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.7) 40%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.92));
+  --role-front-roll-veil: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.3), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.88) 30%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.88) 70%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.3));
+  --role-front-ink: rgb(255 255 255);
+  --role-front-ink-dim: rgb(255 255 255 / 0.74);
+  --role-front-ink-faint: rgb(255 255 255 / 0.56);
+  --role-front-shadow: 0 calc(2 * var(--font-step-px)) calc(8 * var(--font-step-px)) rgb(0 0 0 / 0.6);
+  --role-front-card-foot: linear-gradient(180deg, transparent 35%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.55) 60%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.96));
+  --role-front-lock-ink: rgb(255 179 92);
+  --role-dialog-scrim: radial-gradient(90% 80% at 50% 50%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.62), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.86));
+  --role-dialog-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.241 min(c, 0.04) h / 0.96), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.97));
+  --role-dialog-tip-well: oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h);
+  --role-film-shade: linear-gradient(180deg, transparent 45%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.6) 70%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.92));
+  --role-film-shade-compact: linear-gradient(180deg, transparent 25%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.7) 48%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.95));
+  --role-film-choice-off-fill: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.193 calc(min(c, 0.04) * 0.74) h / 0.9), oklch(from var(--seed-neutral) 0.157 calc(min(c, 0.04) * 0.65) h / 0.92));
+  --role-film-choice-off-ink: rgb(255 255 255 / 0.52);
+  --role-film-locked-fill: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.035) 0 calc(6 * var(--font-step-px)), transparent calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px))), oklch(from var(--seed-neutral) 0.151 calc(min(c, 0.04) * 0.59) h / 0.92);
+  --role-loading-shade: linear-gradient(180deg, transparent, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62) calc(120 * var(--font-step-px)), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.92));
+  --role-loading-side-shade: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.45), transparent 55%);
+  --role-loading-placeholder: radial-gradient(60% 70% at 70% 30%, rgb(from var(--hud-accent) r g b / 0.16), transparent 70%), linear-gradient(180deg, oklch(from var(--seed-neutral) 0.195 calc(min(c, 0.04) * 1.12) h), oklch(from var(--seed-neutral) 0.129 calc(min(c, 0.04) * 0.44) h));
+  --role-data-head-ink: rgb(255 255 255 / 0.5);
+  --role-data-well: oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62);
+  --role-system-pause-shade: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.94), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.8) 30%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.35) 60%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.2));
+  --role-system-pause-shade-compact: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.7), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.86) 40%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.96));
+  --role-system-veil: linear-gradient(180deg, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.9), oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.82) 40%, oklch(from var(--seed-neutral) 0.122 calc(min(c, 0.04) * 0.63) h / 0.94));
+  --role-system-ink-off: rgb(255 255 255 / 0.32);
+  --role-system-danger-ink: rgb(255 128 118);
+  --role-system-row-fill: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.233 min(c, 0.04) h / 0.72), oklch(from var(--seed-neutral) 0.175 calc(min(c, 0.04) * 0.76) h / 0.5));
+  --role-system-step-done-fill: oklch(from var(--seed-neutral) 0.431 calc(min(c, 0.04) * 1.05) h);
 }

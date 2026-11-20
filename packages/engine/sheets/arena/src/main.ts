@@ -97,6 +97,7 @@ export default og.game({
   ui: show,
   commands: {
     style: (world, args) => setStyle(world, STYLES.includes(args[0] as never) ? args[0]! : "fantasy"),
+    scheme: (world, args) => og.ui.configure(world, { scheme: args[0] === "light" ? "light" : "dark" }),
     page: (world, args) => {
       og.ui.scope(world, "sheet").writable("page", "select").set(PAGES.includes(args[0] as never) ? args[0]! : "select");
     },
@@ -104,6 +105,7 @@ export default og.game({
   },
   commandHelp: {
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style the pages are dressed in." },
+    scheme: { usage: "<light|dark>", doc: "The colour scheme the style is drawn in." },
     page: { usage: `<${PAGES.join("|")}>`, doc: "A review page of the arena kit." },
     reduced: { usage: "<on|off>", doc: "Reduced motion on or off." },
   },

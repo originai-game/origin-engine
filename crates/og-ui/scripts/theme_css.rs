@@ -719,11 +719,17 @@ pub fn generate(t: &Value) -> Result<String, String> {
             v => writeln!(out, "    --{name}: {v};").unwrap(),
         }
     }
-    // The roles' tokens are `--<role>-<property>`, no group prefix.
-    for (name, value) in super::get(t, &["role"])?
+    // The roles' tokens are `--<role>-<property>`, no group prefix; this
+    // root is the dark scheme, so a role's dark value stands here and its
+    // light one in the light block below.
+    let mut roles = super::get(t, &["role"])?
         .as_object()
         .ok_or("tokens: role is not an object")?
-    {
+        .clone();
+    if let Some(over) = t["dark"]["role"].as_object() {
+        roles.extend(over.clone());
+    }
+    for (name, value) in &roles {
         match value {
             Value::String(s) => writeln!(out, "    --{name}: {s};").unwrap(),
             v => writeln!(out, "    --{name}: {v};").unwrap(),
@@ -842,6 +848,16 @@ pub fn generate(t: &Value) -> Result<String, String> {
     palette(&mut out, t, true)?;
     out.push_str("  }\n  :root[data-scheme=light] {\n");
     palette(&mut out, t, false)?;
+    // The roles the dark scheme sets apart, at their light value.
+    if let Some(over) = t["dark"]["role"].as_object() {
+        for name in over.keys() {
+            match &t["role"][name] {
+                Value::String(s) => writeln!(out, "    --{name}: {s};").unwrap(),
+                Value::Null => {}
+                v => writeln!(out, "    --{name}: {v};").unwrap(),
+            }
+        }
+    }
     out.push_str("  }\n");
     for (query, landscape) in [
         (

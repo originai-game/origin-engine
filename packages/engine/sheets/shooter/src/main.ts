@@ -89,6 +89,7 @@ export default og.game({
   ui: show,
   commands: {
     style: (world, args) => setStyle(world, STYLES.includes(args[0] as never) ? args[0]! : "fantasy"),
+    scheme: (world, args) => og.ui.configure(world, { scheme: args[0] === "light" ? "light" : "dark" }),
     page: (world, args) => {
       og.ui.scope(world, "sheet").writable("page", "combat").set(PAGES.includes(args[0] as never) ? args[0]! : "combat");
     },
@@ -109,6 +110,7 @@ export default og.game({
   },
   commandHelp: {
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style the pages are dressed in." },
+    scheme: { usage: "<light|dark>", doc: "The colour scheme the style is drawn in." },
     page: { usage: `<${PAGES.join("|")}>`, doc: "A review page of the shooter kit." },
     hit: { usage: `<${HITS.join("|")}>`, doc: "Set the crosshair's hit mark and replay it." },
     damage: { usage: `<id>:<angle rad>:<strength 0-1>:<${KINDS.join("|")}>`, doc: "Add an incoming hit to the damage direction." },

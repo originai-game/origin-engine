@@ -94,6 +94,7 @@ export default og.game({
   ui: show,
   commands: {
     style: (world, args) => setStyle(world, STYLES.includes(args[0] as never) ? args[0]! : "fantasy"),
+    scheme: (world, args) => og.ui.configure(world, { scheme: args[0] === "light" ? "light" : "dark" }),
     sample,
     page: (world, args) => {
       show(world);
@@ -105,6 +106,7 @@ export default og.game({
   commandHelp: {
     sample: { usage: "<member> [fixture]", doc: "One isolated panel or feedback fixture, such as tooltipCard overflow or starBar compact." },
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style the pages are dressed in." },
+    scheme: { usage: "<light|dark>", doc: "The colour scheme the style is drawn in." },
     page: { usage: `<${PAGES.join("|")}>`, doc: "A review page of the ungrouped components." },
     reduced: { usage: "<on|off>", doc: "Reduced motion on or off." },
     atlas: { usage: "<on|off>", doc: "The sheet's own icon sheet on or off; off draws every icon from the engine's default set." },
