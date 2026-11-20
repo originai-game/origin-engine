@@ -44,7 +44,10 @@ OG_NATIVE_ADDON=$PWD/target/look-previews/og-host.node OG_ENGINE_PACKAGE=$PWD/pa
 ```
 
 Frames go to `target/look-previews/frames/`; `--webp` also writes each
-look's catalogue preview (960 x 540). A 2D look is drawn at the size its
+look's catalogue preview (960 x 540), a variant's as `<slug>.<variant>.webp`.
+A release draws them itself, with the creation document's every slot
+(`--slots`: looks, variants, moods and UI packs), on the GPU host
+(`--gpu`): `scripts/release.sh previews` (docs/release.md §1 The looks). A 2D look is drawn at the size its
 entry names, a whole multiple of its pixel grid, so no frame has a border.
 No frame here is a reference: read each against its catalogue description.
 
