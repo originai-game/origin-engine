@@ -312,10 +312,19 @@ impl Computed {
             if a.shares(b) {
                 continue;
             }
-            if Arc::ptr_eq(&a.base, &b.base) {
-                names.extend(a.layer.keys().chain(b.layer.keys()));
-            } else {
-                names.extend(a.keys().chain(b.keys()));
+            // A name outside both layers reads its base's value: where the
+            // bases differ, only the names they hold differently can.
+            names.extend(a.layer.keys().chain(b.layer.keys()));
+            if !Arc::ptr_eq(&a.base, &b.base) {
+                for name in base_changes(&a.base, &b.base).iter() {
+                    if let Some((name, _)) = a
+                        .base
+                        .get_key_value(name.as_str())
+                        .or_else(|| b.base.get_key_value(name.as_str()))
+                    {
+                        names.insert(name);
+                    }
+                }
             }
         }
         names
@@ -336,6 +345,65 @@ impl Computed {
             .map(String::as_str)
             .or_else(|| self.get(name).and_then(Option::as_deref))
     }
+}
+
+/// The names two bases hold differently (one holds and the other does
+/// not, or the two values differ), kept for the pair: when the root's
+/// tokens change (a scheme, a viewport, an edited style) every element
+/// compares the same two bases, so each pair is walked once, not once an
+/// element, and an element looks up only the names that changed.
+fn base_changes(a: &Arc<Map>, b: &Arc<Map>) -> Arc<Vec<String>> {
+    type Kept = std::collections::HashMap<(usize, usize), (Arc<Map>, Arc<Map>, Arc<Vec<String>>)>;
+    thread_local! {
+        static KEPT: std::cell::RefCell<Kept> = Default::default();
+    }
+    let key = (Arc::as_ptr(a) as usize, Arc::as_ptr(b) as usize);
+    KEPT.with(|kept| {
+        let mut kept = kept.borrow_mut();
+        // The entry holds both maps, so their addresses name only them.
+        if let Some((_, _, names)) = kept.get(&key) {
+            return names.clone();
+        }
+        let mut names = Vec::new();
+        let (mut x, mut y) = (a.iter().peekable(), b.iter().peekable());
+        loop {
+            match (x.peek(), y.peek()) {
+                (None, None) => break,
+                (Some((k, _)), None) => {
+                    names.push((*k).clone());
+                    x.next();
+                }
+                (None, Some((k, _))) => {
+                    names.push((*k).clone());
+                    y.next();
+                }
+                (Some((ka, va)), Some((kb, vb))) => match ka.cmp(kb) {
+                    std::cmp::Ordering::Less => {
+                        names.push((*ka).clone());
+                        x.next();
+                    }
+                    std::cmp::Ordering::Greater => {
+                        names.push((*kb).clone());
+                        y.next();
+                    }
+                    std::cmp::Ordering::Equal => {
+                        if va != vb {
+                            names.push((*ka).clone());
+                        }
+                        x.next();
+                        y.next();
+                    }
+                },
+            }
+        }
+        // The pairs of the last few changes; older bases are let go.
+        if kept.len() >= 512 {
+            kept.clear();
+        }
+        let names = Arc::new(names);
+        kept.insert(key, (a.clone(), b.clone(), names.clone()));
+        names
+    })
 }
 
 impl std::ops::Index<&str> for Computed {
@@ -730,6 +798,41 @@ mod tests {
             .iter()
             .map(|(name, value)| (name.to_string(), Value::parse(value).unwrap()))
             .collect()
+    }
+
+    /// Where the bases differ (the root's tokens changed), the names that
+    /// changed are those the bases hold differently, or that a layer sets
+    /// over one of them otherwise.
+    #[test]
+    fn changed_names_across_different_bases() {
+        let v = |s: &str| Some(s.to_string());
+        let mut a = Computed::from([
+            ("--x".into(), v("1")),
+            ("--y".into(), v("2")),
+            ("--z".into(), v("3")),
+        ]);
+        a.share_base();
+        let mut b = a.clone();
+        b.insert("--y".into(), v("5"));
+        b.insert("--w".into(), v("9"));
+        b.remove("--z");
+        b.share_base();
+        assert!(!Arc::ptr_eq(&a.base, &b.base));
+        let names = |a: &Computed, b: &Computed| -> Vec<String> {
+            a.changed(b).into_iter().cloned().collect()
+        };
+        assert_eq!(names(&a, &b), ["--w", "--y", "--z"]);
+        assert_eq!(names(&b, &a), ["--w", "--y", "--z"]);
+        // A layer that sets a name alike over both reads the same; one set
+        // over one base only, or over both otherwise, differs.
+        let (mut la, mut lb) = (a.clone(), b.clone());
+        la.insert("--x".into(), v("10"));
+        lb.insert("--x".into(), v("10"));
+        la.insert("--y".into(), v("7"));
+        lb.insert("--y".into(), v("7"));
+        assert_eq!(names(&la, &lb), ["--w", "--z"]);
+        lb.insert("--x".into(), v("11"));
+        assert_eq!(names(&la, &lb), ["--w", "--x", "--z"]);
     }
 
     #[test]
