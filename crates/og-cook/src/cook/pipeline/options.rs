@@ -256,7 +256,7 @@ impl Default for TextureOptions {
     fn default() -> Self {
         TextureOptions {
             etc1s_quality: 128,
-            uastc_level: 1,
+            uastc_level: 3,
             uastc_rdo: Some(1.0),
             zstd: true,
             mipmaps: true,
