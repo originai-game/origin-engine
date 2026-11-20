@@ -6,7 +6,7 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.render.compile`
 
-Compile every pipeline the renderer will draw this world with, as three.js renderer.compileAsync: a few each frame from the next one on, in the background, so a level never waits on a compile once its loading screen is gone. Call it behind a loading screen (after og.scene.change, or once the level's models are spawned) and keep the screen up until og.loading.idle is true; og.loading.status counts the pipelines (pipelinesRequested, pipelinesReady) for its bar. It covers the pipelines of everything the world draws now, wherever the camera points, with every lit feature (so rain or a decal that starts later draws at once) and the compute the frames run; a model, material or effect spawned afterwards compiles when it first draws. The play gate does the same behind the gate for the first scene. Presentation only, as og.render.snap: nothing a tick reads changes. Natively and without asynchronous pipelines it makes them on the frame's thread, a few a frame.
+Prepare this world's render and compute pipelines, as three.js renderer.compileAsync, a few per frame starting next frame. Covers what the world draws now, regardless of camera direction, with every lit feature; content spawned later compiles on first draw. Asynchronous where supported; otherwise runs on the frame's thread. Presentation only: nothing a tick reads changes.
 
 See `loading §12`.
 
@@ -26,7 +26,7 @@ Binding symbol `og_render_compile` · publish builds: kept
 
 ```ogt
 fn compile {
-  doc "Compile every pipeline the renderer will draw this world with, as three.js renderer.compileAsync: a few each frame from the next one on, in the background, so a level never waits on a compile once its loading screen is gone. Call it behind a loading screen (after og.scene.change, or once the level's models are spawned) and keep the screen up until og.loading.idle is true; og.loading.status counts the pipelines (pipelinesRequested, pipelinesReady) for its bar. It covers the pipelines of everything the world draws now, wherever the camera points, with every lit feature (so rain or a decal that starts later draws at once) and the compute the frames run; a model, material or effect spawned afterwards compiles when it first draws. The play gate does the same behind the gate for the first scene. Presentation only, as og.render.snap: nothing a tick reads changes. Natively and without asynchronous pipelines it makes them on the frame's thread, a few a frame."
+  doc "Prepare this world's render and compute pipelines, as three.js renderer.compileAsync, a few per frame starting next frame. Covers what the world draws now, regardless of camera direction, with every lit feature; content spawned later compiles on first draw. Asynchronous where supported; otherwise runs on the frame's thread. Presentation only: nothing a tick reads changes."
   guide "loading §12"
   aliases "compileAsync, warm up shaders, prewarm pipelines, shader precompile, PSO precaching, Unity ShaderVariantCollection.WarmUp, Unreal PSO precache"
   param world World "The world whose renderer compiles."
