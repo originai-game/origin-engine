@@ -1286,6 +1286,12 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   only while its scene and model hashes match; otherwise the scene renders
   unbaked, `og.render.bakedLighting` gives the reason and `og doctor
   --project` warns `unbaked`.
+- **Static lights** (`PointLight.static`, `SpotLight.static`,
+  `RectLight.static`; `RenderSettings.staticLightReach`): past the reach a
+  static light's diffuse light comes from a grid of L1 probes round the
+  camera, recomputed on the CPU when the grid moves a cell or a light
+  changes; its highlights stay per pixel on glossy surfaces, and a static
+  rect light skips rough surfaces there (UE's stationary lights). Off at 0.
 - **Projection painting** (`og bake projection`): a native CPU tool that
   textures a gray level glb from views (the trompe workflow, Apache-2.0). The
   image model stays outside the engine; the agent runs the steps and calls it
@@ -1301,7 +1307,7 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   the local shadow array, no texture slot, up to
   `RenderCapabilities.maxLightCookies`; cookies past the limit are not drawn
   and the frame warns once, naming the lights.
-- Code: og-render `lightmap.rs`, `volumetric.rs`, `area.rs`; `og-bake`; og-cli
+- Code: og-render `lightmap.rs`, `static_far.rs`, `volumetric.rs`, `area.rs`; `og-bake`; og-cli
   `bake_lightmaps.rs`.
 
 ### 10.8 Render targets, secondary cameras, layers, custom shaders, custom post passes

@@ -1408,6 +1408,11 @@
           "name": "cookie",
           "column": "Texture",
           "default": 0
+        },
+        {
+          "name": "static",
+          "column": "bool",
+          "default": false
         }
       ]
     },
@@ -1464,6 +1469,11 @@
           "name": "cookie",
           "column": "Texture",
           "default": 0
+        },
+        {
+          "name": "static",
+          "column": "bool",
+          "default": false
         }
       ]
     },
@@ -2559,6 +2569,11 @@
         },
         {
           "name": "castShadow",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "static",
           "column": "bool",
           "default": false
         }
@@ -9848,6 +9863,12 @@
           "name": "bakedLighting",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "staticLightReach",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         },
         {
           "name": "quality",

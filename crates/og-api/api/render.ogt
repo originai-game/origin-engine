@@ -603,6 +603,9 @@ module render {
     field cookie Texture "A light cookie projected all around the light: six square faces stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z, six times as tall as wide (a KTX2 cube's face order, a cube map's orientation, world axes). The light's colour is multiplied by the texel its direction meets. 0 is none." {
       guide "render §3"
     }
+    field static bool "The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie." {
+      guide "render §3"
+    }
   }
 
   component SpotLight {
@@ -641,6 +644,9 @@ module render {
     }
     field castShadow bool "Cast a shadow map."
     field cookie Texture "A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern." {
+      guide "render §3"
+    }
+    field static bool "The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie." {
       guide "render §3"
     }
   }
@@ -787,6 +793,13 @@ module render {
     field bakedLighting bool "Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map." {
       default true
       guide "render §4"
+    }
+    field staticLightReach f32 "How far from itself a light marked static has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and a static rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole." {
+      default 0
+      min 0
+      unit m
+      tunable true
+      guide "render §3"
     }
     group "Quality" "The fields og.render.applyQuality writes from a graphics preset."
     field quality QualityPreset "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set."

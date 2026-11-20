@@ -230,6 +230,7 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
         // toneMappingExposure does the whole frame's.
         exposure *= s.exposure.max(0.0);
         scene.lighting.environment.intensity = s.environment_intensity;
+        scene.lighting.static_reach = s.static_light_reach.max(0.0);
         if s.sky {
             scene.lighting.environment.background = og_render::Background::Sky;
         }
@@ -298,6 +299,7 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
             },
         };
     } else {
+        scene.lighting.static_reach = 0.0;
         scene.frame.camera.exposure = og_render::Exposure::linear(exposure);
         scene.frame.quality = og_render::RenderQuality {
             global_illumination: crate::present::fx::gi_allowed(

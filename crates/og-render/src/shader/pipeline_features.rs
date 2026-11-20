@@ -41,6 +41,15 @@
 //! rect light is not kept, the probe GI does not run, decals are not
 //! recorded, the shelter layer is not fitted), so a module that carries the
 //! code still skips it at its runtime test.
+//!
+//! The static lights' far field (`OG_STATIC_FAR`, [`Features::STATIC_FAR`])
+//! is outside the full variant: merely carrying its gather cost the lit
+//! pipelines 0.3 ms of Night Shift's frame with the reach at 0, so the
+//! full variant is made without it and a frame that draws it
+//! (`RenderSettings.staticLightReach` above 0 with static lights) draws
+//! with the full variant plus it, made on its first such frame. Until that
+//! is ready a display frame draws without the field; a capture waits for
+//! it, so its bytes stay a function of the world.
 
 // On the web every lit pipeline is the full variant: the variants'
 // machinery is native.
@@ -56,7 +65,7 @@ use std::cell::OnceCell;
 pub(crate) struct Features(u16);
 
 /// Each feature's bit and its override's name.
-const NAMES: [(Features, &str); 15] = [
+const NAMES: [(Features, &str); 16] = [
     (Features::WEATHER, "OG_WEATHER"),
     (Features::LOCAL_LIGHTS, "OG_LOCAL_LIGHTS"),
     (Features::DECALS, "OG_DECALS"),
@@ -72,6 +81,7 @@ const NAMES: [(Features, &str); 15] = [
     (Features::AREA, "OG_AREA"),
     (Features::TOON, "OG_TOON"),
     (Features::DISSOLVE, "OG_DISSOLVE"),
+    (Features::STATIC_FAR, "OG_STATIC_FAR"),
 ];
 
 impl Features {
@@ -106,7 +116,12 @@ impl Features {
     pub(crate) const TOON: Features = Features(8192);
     /// A material's dissolve (`StandardMaterial::dissolve`).
     pub(crate) const DISSOLVE: Features = Features(16384);
+    /// The full variant's: every feature but [`Self::STATIC_FAR`].
     pub(crate) const ALL: Features = Features(32767);
+    /// The static lights' far field (static_far.rs; surface_shade.wgsl
+    /// `OG_STATIC_FAR`). Not in [`Self::ALL`]: a frame that draws it draws
+    /// with its own full variant (see the module's documentation).
+    pub(crate) const STATIC_FAR: Features = Features(32768);
 
     pub(crate) fn contains(self, other: Features) -> bool {
         self.0 & other.0 == other.0
@@ -185,6 +200,10 @@ impl Features {
                     .iter()
                     .any(|l| matches!(l.kind, crate::LightKind::Rect { .. })),
             )
+            .with(
+                Features::STATIC_FAR,
+                scene.lighting.static_reach > 0.0 && !scene.lighting.static_lights.is_empty(),
+            )
     }
 
     /// The features a material draws with (`m` styled, as uploaded): toon
@@ -211,6 +230,13 @@ impl std::ops::BitOr for Features {
     type Output = Features;
     fn bitor(self, o: Features) -> Features {
         Features(self.0 | o.0)
+    }
+}
+
+impl std::ops::BitAnd for Features {
+    type Output = Features;
+    fn bitand(self, o: Features) -> Features {
+        Features(self.0 & o.0)
     }
 }
 
@@ -360,6 +386,9 @@ pub(crate) struct Variants<C> {
     make: MakeCell<C>,
     full: C,
     lean: OnceCell<(Features, C)>,
+    /// The full variant with the static lights' far field, once a frame
+    /// draws it.
+    far: OnceCell<C>,
 }
 
 impl<C: Cell> Variants<C> {
@@ -384,7 +413,24 @@ impl<C: Cell> Variants<C> {
             full: make(Features::ALL),
             make,
             lean: OnceCell::new(),
+            far: OnceCell::new(),
         }
+    }
+
+    /// Whether a frame with `features` draws the far field with this
+    /// module.
+    fn wants_far(&self, features: Features) -> bool {
+        features.contains(Features::STATIC_FAR) && self.declared.contains(Features::STATIC_FAR)
+    }
+
+    /// The full variant with the far field, made (not started) on first
+    /// asking.
+    fn far(&self) -> &C {
+        self.far.get_or_init(|| {
+            let far = (self.make)(Features::ALL | Features::STATIC_FAR);
+            far.follow(&self.full);
+            far
+        })
     }
 
     /// `features` with what the module does not declare: their code is
@@ -403,10 +449,17 @@ impl<C: Cell> Variants<C> {
     pub(crate) fn start(&self, features: Features) {
         #[cfg(not(target_arch = "wasm32"))]
         {
+            if self.wants_far(features) {
+                let far = self.far();
+                if far.ready().is_some() {
+                    return;
+                }
+                far.start_at(Priority::Frame);
+            }
             if self.full.ready().is_some() {
                 return;
             }
-            let features = self.wanted(features);
+            let features = self.wanted(features & Features::ALL);
             if features == Features::ALL {
                 self.full.start_at(Priority::Frame);
                 return;
@@ -428,15 +481,30 @@ impl<C: Cell> Variants<C> {
     /// compiling. A feature it lacks is not drawn until the full one is
     /// ready (that frame does not wait for it). With diagnostics or every
     /// feature (a capture's, `Renderer::capturing`) it is the full variant, waited
-    /// for, so what it draws never depends on what has compiled.
+    /// for, so what it draws never depends on what has compiled. With the
+    /// far field it is the far variant once made, and waited for where the
+    /// full one would be; until then the frame draws without the field.
     pub(crate) fn get(&self, features: Features) -> &C::Value {
         #[cfg(target_arch = "wasm32")]
         {
-            let _ = features;
+            if self.wants_far(features) {
+                return self.far().get();
+            }
             self.full.get()
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
+            if self.wants_far(features) {
+                let far = self.far();
+                if let Some(v) = far.ready() {
+                    return v;
+                }
+                if self.wanted(features & Features::ALL) == Features::ALL {
+                    return far.get();
+                }
+                far.start_at(Priority::Frame);
+            }
+            let features = features & Features::ALL;
             if let Some(v) = self.full.ready() {
                 return v;
             }
@@ -451,6 +519,15 @@ impl<C: Cell> Variants<C> {
     /// Whether what a frame with `features` draws with is made, without
     /// waiting for it ([`Variants::get`] would not wait either).
     pub(crate) fn ready(&self, features: Features) -> bool {
+        if self.wants_far(features) {
+            if self.far.get().is_some_and(|c| c.ready().is_some()) {
+                return true;
+            }
+            if self.wanted(features & Features::ALL) == Features::ALL {
+                return false;
+            }
+        }
+        let features = features & Features::ALL;
         self.full.ready().is_some()
             || (self.wanted(features) != Features::ALL
                 && self.lean.get().is_some_and(|(_, c)| c.ready().is_some()))
@@ -464,7 +541,9 @@ impl<C: Cell> Variants<C> {
 
     /// Every variant made so far.
     pub(crate) fn each(&self) -> impl Iterator<Item = &C> {
-        std::iter::once(&self.full).chain(self.lean.get().map(|(_, c)| c))
+        std::iter::once(&self.full)
+            .chain(self.lean.get().map(|(_, c)| c))
+            .chain(self.far.get())
     }
 }
 
@@ -536,6 +615,27 @@ mod tests {
         assert_eq!(*v.get(Features::GI), Features::ALL);
         assert_eq!(*made.lock().unwrap(), vec![Features::ALL]);
         assert_eq!(v.each().count(), 1);
+    }
+
+    /// The full variant is made without the static lights' far field (a
+    /// frame with the reach at 0 draws none of its code); a capture that
+    /// draws the field waits for the full variant with it.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn the_far_field_is_outside_the_full_variant() {
+        let declared = Features::declared(
+            "override OG_GI: bool = true;\noverride OG_STATIC_FAR: bool = true;\n",
+        );
+        assert_eq!(
+            Features::ALL.constants(declared),
+            vec![("OG_STATIC_FAR", 0.0)]
+        );
+        let v = Variants::new(declared, |f: Features| Deferred::anywhere(move || f));
+        assert_eq!(*v.get(Features::ALL), Features::ALL);
+        let far = Features::ALL | Features::STATIC_FAR;
+        assert_eq!(*v.get(far), far);
+        assert_eq!(*v.get(Features::ALL), Features::ALL);
+        assert_eq!(v.each().count(), 2);
     }
 
     /// The first frame's variant draws; the full one replaces it once made,

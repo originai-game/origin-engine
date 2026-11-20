@@ -50,6 +50,7 @@ Token `og.RenderSettings`, registered under the schema name `og.RenderSettings`;
 | `decalAtlas` | `Texture` | `0` | — | — | — | The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour. |
 | `lodBias` | `number` | `1` | 0 … 16 | — | tunable | A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full. See `render §10`. |
 | `bakedLighting` | `boolean` | `true` | — | — | — | Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map. See `render §4`. |
+| `staticLightReach` | `number` | `0` | ≥ 0 | `m` | tunable | How far from itself a light marked static has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and a static rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole. See `render §3`. |
 
 #### Quality
 
@@ -174,6 +175,13 @@ resource RenderSettings {
     default true
     guide "render §4"
   }
+  field staticLightReach f32 "How far from itself a light marked static has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and a static rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole." {
+    default 0
+    min 0
+    unit m
+    tunable true
+    guide "render §3"
+  }
   group "Quality" "The fields og.render.applyQuality writes from a graphics preset."
   field quality QualityPreset "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set."
   field rectShadows bool "Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off." {
@@ -256,4 +264,4 @@ resource RenderSettings {
 }
 ```
 
-<sub>Module `render` line 700</sub>
+<sub>Module `render` line 706</sub>

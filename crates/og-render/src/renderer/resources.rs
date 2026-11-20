@@ -632,6 +632,8 @@ pub(crate) struct Lights {
     /// The local lights, the cluster table and its light references (`clusters.rs`).
     pub(crate) light_buffers: [wgpu::Buffer; 3],
     pub(crate) clusters: clusters::ClusterBuilder,
+    /// The static lights' far field (`static_far.rs`).
+    pub(crate) static_far: static_far::StaticFar,
     /// Baked lighting: lightmap pages and uvs, the light volumes' buffer
     /// (frame binding 10).
     pub(crate) lightmaps: lightmap::Lightmaps,
@@ -713,12 +715,21 @@ impl Lights {
         budget: frame::LocalShadowBudget,
     ) -> (Vec<frame::LightGpu>, Vec<frame::LocalShadow>, u32) {
         self.clusters.build(&scene.lighting.lights, view);
-        frame::local_lights(
+        let (mut gpu, shadows, dropped) = frame::local_lights(
             &scene.lighting.lights,
             &self.clusters.kept,
             position,
             budget,
-        )
+        );
+        // A far light's record says how far its diffuse light is shaded per
+        // pixel (`static_far.rs`).
+        let far = static_far::far_lights(scene, self.clusters.skip_rects);
+        for (record, i) in gpu.iter_mut().zip(&self.clusters.kept) {
+            if far.binary_search(i).is_ok() {
+                record.source[1] = scene.lighting.static_reach;
+            }
+        }
+        (gpu, shadows, dropped)
     }
 
     /// The light tables every lit pass binds: the records, and the

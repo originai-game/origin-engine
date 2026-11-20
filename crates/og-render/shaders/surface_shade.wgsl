@@ -43,12 +43,21 @@ struct Gathered {
   occlusion: ScreenOcclusion,
 };
 
+// The static lights' far field (static_far.wgsl) is in a pipeline only
+// while a frame draws it (pipeline_features.rs `STATIC_FAR`): a lit
+// pipeline that merely carries its gather costs registers, so with the
+// reach at 0 none does.
+override OG_STATIC_FAR: bool = true;
+
 // The diffuse light arriving at a surface along `ambient_n`, with the
 // probe GI's gather `gi` there.
 fn surface_irradiance(at: ShadeAt, ambient_n: vec3<f32>, gi: GiSample) -> vec3<f32> {
   // The baked lightmap or the light volumes where there are, at the
   // environment's intensity; the hemisphere light adds at its own.
-  let irradiance = ambient_irradiance(ambient_light_from(ambient_n, at.p, gi), at.p, at.n) * frame.params.x + hemi_irradiance(at.n);
+  var irradiance = ambient_irradiance(ambient_light_from(ambient_n, at.p, gi), at.p, at.n) * frame.params.x + hemi_irradiance(at.n);
+  // The static lights' far field, here alone, so the lit shaders carry
+  // one copy of its gather.
+  if (OG_STATIC_FAR) { irradiance += static_far_irradiance(at.p, at.n); }
   if (at.styled) { return style_irradiance(irradiance, at.p); }
   return irradiance;
 }

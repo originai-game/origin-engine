@@ -98,6 +98,21 @@ feeds back into the simulation.
   shadowed as from its centre. The highlight on a glossy floor keeps the
   rectangle's shape (LTC with three.js's tables). Aim one with
   `transform.lookAt`.
+- Static lights: a sign or a lamp that never moves can be marked `static`.
+  The mark alone changes nothing: `RenderSettings.staticLightReach` is 0
+  by default, and then a static light draws exactly as any other at no
+  cost. Above 0, a static light's diffuse light past the reach comes from
+  a 32 × 12 × 32 grid of probes round the camera, half the reach apart
+  (0.6 MB of GPU memory; recomputed on the CPU when the camera moves a cell
+  or a static light changes), and a static rect light draws nothing on a
+  rough surface (roughness 0.5 or more) there. Specular is kept: glossy
+  surfaces keep every static light's highlight over its whole distance, so
+  a wet street still mirrors the signs. Use it in light-heavy scenes, where
+  many unmoving lights (large rect lights especially) reach many rough
+  walls: it saves about 5% of the frame there, and trades the far diffuse
+  detail of those lights (probe-sized, soft in direction) for it. A scene
+  with a few lights gains nothing. Lights that cast a shadow or have a
+  cookie are never cached. 4 to 8 m suits a street.
 - Cookies: a spot projects one texture (a window's bars, stained glass); a
   point light takes a six-face strip, so a lamp behind a pierced shade
   throws its pattern on the walls.

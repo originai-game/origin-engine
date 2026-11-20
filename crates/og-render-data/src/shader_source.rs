@@ -27,7 +27,8 @@ pub const FRAME_WGSL: &str = concat!(
     wgsl!("sky_look.wgsl"),
     wgsl!("gi_common.wgsl"),
     wgsl!("gi_sample.wgsl"),
-    wgsl!("gi_probes.wgsl")
+    wgsl!("gi_probes.wgsl"),
+    wgsl!("static_far.wgsl")
 );
 /// The lit shader's vertex stages and lights; the standard fragment
 /// shader and the prepass's follow it (`pbr_fs.wgsl`, `pbr_prepass.wgsl`),

@@ -196,6 +196,7 @@ impl Lights {
                 c.skip_rects = off.contains(crate::pipeline_features::Features::AREA);
                 c
             },
+            static_far: Default::default(),
             lightmaps,
             ltc,
             caustic_grid,

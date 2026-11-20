@@ -22,6 +22,7 @@ Token `og.RectLight`, registered under the schema name `og.RectLight`; its value
 | `height` | `number` | `10` | ≥ 0 | `m` | tunable | Its size along the entity's local y, as RectAreaLight.height. |
 | `twoSided` | `boolean` | `false` | — | — | — | Emit from the back face as well (a hanging panel lit both ways). |
 | `castShadow` | `boolean` | `false` | — | — | — | Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it. See `render §3`. |
+| `static` | `boolean` | `false` | — | — | — | The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie. See `render §3`. |
 
 ```ogt
 component RectLight {
@@ -52,7 +53,10 @@ component RectLight {
   field castShadow bool "Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it." {
     guide "render §3"
   }
+  field static bool "The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie." {
+    guide "render §3"
+  }
 }
 ```
 
-<sub>Module `render` line 4282</sub>
+<sub>Module `render` line 4295</sub>

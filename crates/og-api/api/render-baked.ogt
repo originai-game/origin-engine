@@ -35,6 +35,9 @@
     field castShadow bool "Cast a soft shadow: a shadow map from the rectangle's centre (two when twoSided, counted in the shadowed lights' budget) read with percentage-closer soft shadows, sharp at contact and widening with the rectangle's size away from it." {
       guide "render §3"
     }
+    field static bool "The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie." {
+      guide "render §3"
+    }
   }
 
   component LightVolume {

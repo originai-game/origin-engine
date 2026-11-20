@@ -328,13 +328,13 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
     if (max(k.subsurface, k.hair) <= 0.0 || dot(n, r.l) > 0.0) { radiance *= contact_shadow(light, p); }
   }
   let b = physical_source_brdf(s, k, n, v, r.l, light.position_range.xyz - p, light.source.x);
-  o.diffuse = b.diffuse * radiance;
+  o.diffuse = b.diffuse * radiance * r.diffuse;
   o.specular = b.specular * radiance;
   if (any(b.through > vec3<f32>(0.0))) {
     // The light that comes through from behind: shadowed where it enters.
     var open = 1.0;
     if (receives) { open = local_shadow(light, p + r.l * b.enters, r.l); }
-    o.diffuse += b.through * r.radiance * open;
+    o.diffuse += b.through * r.radiance * open * r.diffuse;
   }
   return o;
 }

@@ -23,4 +23,4 @@ struct TextMetrics {
 }
 ```
 
-<sub>Module `render` line 2534</sub>
+<sub>Module `render` line 2547</sub>

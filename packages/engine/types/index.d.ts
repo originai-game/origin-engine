@@ -7076,6 +7076,11 @@ export interface PointLight {
    * See `render §3`.
    */
   cookie: Texture;
+  /**
+   * The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie.
+   * See `render §3`.
+   */
+  static: boolean;
 }
 
 /**
@@ -7139,6 +7144,11 @@ export interface SpotLight {
    * See `render §3`.
    */
   cookie: Texture;
+  /**
+   * The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie.
+   * See `render §3`.
+   */
+  static: boolean;
 }
 
 /**
@@ -7344,6 +7354,16 @@ export interface RenderSettings {
    * @default true
    */
   bakedLighting: boolean;
+  /**
+   * How far from itself a light marked static has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and a static rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole.
+   * See `render §3`.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  staticLightReach: number;
   // ── Quality ──
   // The fields og.render.applyQuality writes from a graphics preset.
   /**
@@ -12901,6 +12921,11 @@ export interface RectLight {
    * See `render §3`.
    */
   castShadow: boolean;
+  /**
+   * The light never moves or changes. While RenderSettings.staticLightReach is above 0, its diffuse light past the reach comes from a grid of probes round the camera; glossy surfaces keep its highlights. Never cached when it casts a shadow or has a cookie.
+   * See `render §3`.
+   */
+  static: boolean;
 }
 
 /**
@@ -35666,14 +35691,14 @@ export declare namespace og {
    * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first.
    * See `render §3`.
    */
-  const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, PointLight>;
+  const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture">; readonly static: FieldSpec<"bool"> }, PointLight>;
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */
-  const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, SpotLight>;
+  const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture">; readonly static: FieldSpec<"bool"> }, SpotLight>;
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    * See `render §5`.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly autoExposureMin: FieldSpec<"f32">; readonly autoExposureMax: FieldSpec<"f32">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly particleEmission: FieldSpec<"f32">; readonly maxVfx: FieldSpec<"u32">; readonly maxVfxParticles: FieldSpec<"u32">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly autoExposureMin: FieldSpec<"f32">; readonly autoExposureMax: FieldSpec<"f32">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly staticLightReach: FieldSpec<"f32">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly particleEmission: FieldSpec<"f32">; readonly maxVfx: FieldSpec<"u32">; readonly maxVfxParticles: FieldSpec<"u32">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
   /**
    * How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
    * See `render §9`.
@@ -35790,7 +35815,7 @@ export declare namespace og {
    * Rect lights are clustered with the point and spot lights and share their MAX_LIGHTS budget; each reaches where it would light a white surface facing it at one hundredth of one, fading smoothly to zero there.
    * See `render §3`.
    */
-  const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool">; readonly castShadow: FieldSpec<"bool"> }, RectLight>;
+  const RectLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly twoSided: FieldSpec<"bool">; readonly castShadow: FieldSpec<"bool">; readonly static: FieldSpec<"bool"> }, RectLight>;
   /**
    * A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene at a grid of points spacing metres apart inside it. Every surface drawn inside it without a lightmap takes its ambient light from the probes instead of the sky's, fading out over og.Volume.fade past the box's faces.
    * The box is the og.Volume on its entity, as the world's axes bound it; without one it has no box and nothing is baked. Unbaked, it lights nothing and og doctor --project names the scene.

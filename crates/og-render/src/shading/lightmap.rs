@@ -94,8 +94,11 @@ pub(crate) const VOLUME_ROWS: usize = 3;
 /// The light volumes' header.
 pub(crate) const VOLUME_HEADER: usize = VOLUME_ROWS * PROBE_VOLUMES;
 /// The probe buffer's header: the volumes', then the probe GI's rows
-/// (gi_probes.rs, written each frame after the volumes').
-const HEADER: usize = VOLUME_HEADER + crate::gi_probes::HEADER_ROWS;
+/// (gi_probes.rs, written each frame after the volumes'), then the static
+/// lights' far field's (static_far.rs).
+const HEADER: usize =
+    VOLUME_HEADER + crate::gi_probes::HEADER_ROWS + crate::static_far::HEADER_ROWS;
+const _: () = assert!(crate::static_far::HEADER_AT + crate::static_far::HEADER_ROWS == HEADER);
 /// The probe buffer's size in vec4: the header and 16384 probes of three
 /// vec4.
 pub(crate) const PROBE_CAPACITY: usize = HEADER + 3 * 16384;
@@ -125,6 +128,7 @@ pub(crate) fn pack_probes(volumes: &[ProbeVolume], capacity: usize) -> Vec<[f32;
         row[3] = -1.0;
     }
     out.resize(HEADER, [0.0; 4]);
+    out[crate::static_far::HEADER_AT..HEADER].copy_from_slice(&crate::static_far::OFF);
     for (i, v) in volumes.iter().take(PROBE_VOLUMES).enumerate() {
         let left = capacity.saturating_sub(out.len()) / 3;
         let Some((counts, probes)) = fit(v, left) else {
@@ -249,6 +253,9 @@ pub(crate) struct Lightmaps {
     /// The buffer's size in vec4: [`PROBE_CAPACITY`], or more with the
     /// probe GI's region after it ([`Lightmaps::ensure_capacity`]).
     capacity: usize,
+    /// The static lights' far field's header rows (static_far.rs), written
+    /// each frame after the volumes' (whose packing clears them).
+    pub far_header: [[f32; 4]; crate::static_far::HEADER_ROWS],
     /// The realtime volumes (probe_grid.rs) and what relights them.
     pub grid: crate::probe_grid::ProbeGrid,
     pub projector: crate::probe_grid::GridProjector,
@@ -371,6 +378,7 @@ impl Lightmaps {
             baked_header: baked_header.clone(),
             header: baked_header,
             capacity,
+            far_header: crate::static_far::OFF,
             grid: Default::default(),
             projector: crate::probe_grid::GridProjector::new(device),
         }
@@ -546,6 +554,11 @@ impl Lightmaps {
             queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&header));
             self.header = header;
         }
+        queue.write_buffer(
+            &self.probe_buffer,
+            (crate::static_far::HEADER_AT * 16) as u64,
+            bytemuck::cast_slice(&self.far_header),
+        );
         self.projector.write(queue, &captures);
         captures
     }

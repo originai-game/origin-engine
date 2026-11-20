@@ -181,6 +181,7 @@ use shading::probe_select;
 use shading::probes;
 use shading::ssgi;
 use shading::ssr;
+use shading::static_far;
 use sprites::light2d;
 pub use ssgi::ScreenSpaceGlobalIllumination;
 pub use ssr::ScreenSpaceReflections;

@@ -70,7 +70,13 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let textures = &rs.textures;
     let cookie = |h: u64| super::assets::index_of(h as f64).and_then(|i| textures.get(i).copied());
     let rgb = |c: &crate::host::wire::Color| Vec3::new(c.r, c.g, c.b);
-    let mut locals: Vec<(u64, og_render::Light, Option<og_render::TextureHandle>)> = Vec::new();
+    // Each with its cookie and whether it is static (PointLight.static).
+    let mut locals: Vec<(
+        u64,
+        og_render::Light,
+        Option<og_render::TextureHandle>,
+        bool,
+    )> = Vec::new();
     if let Some(pl) = &layouts.point {
         for (e, v) in rows(world, pl) {
             let Ok(v) = crate::host::wire::record::PointLight::from_json(&v) else {
@@ -90,6 +96,7 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     cast_shadows: v.cast_shadow,
                 },
                 c,
+                v.r#static,
             ));
         }
     }
@@ -116,6 +123,7 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                     cast_shadows: v.cast_shadow,
                 },
                 c,
+                v.r#static,
             ));
         }
     }
@@ -126,20 +134,27 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             };
             let m = h.world_of(e);
             let light = super::baked::rect_light(m, &v);
-            locals.push((e, light, None));
+            locals.push((e, light, None, v.r#static));
         }
     }
     // A light a cell spawned shines up with its fade (`crate::present::reveal`).
-    for (e, light, _) in &mut locals {
+    for (e, light, ..) in &mut locals {
         light.intensity *= rs.reveal.light(*e);
     }
     og_core::sort::sort_by_key(&mut locals, |(e, ..)| Entity::from_bits(*e).index());
     scene.lighting.light_cookies = locals
         .iter()
         .enumerate()
-        .filter_map(|(i, (_, _, c))| c.map(|texture| og_render::LightCookie { light: i, texture }))
+        .filter_map(|(i, (_, _, c, _))| {
+            c.map(|texture| og_render::LightCookie { light: i, texture })
+        })
         .collect();
-    scene.lighting.lights = locals.iter().map(|(_, l, _)| *l).collect();
+    scene.lighting.static_lights = locals
+        .iter()
+        .enumerate()
+        .filter_map(|(i, l)| l.3.then_some(i))
+        .collect();
+    scene.lighting.lights = locals.iter().map(|(_, l, ..)| *l).collect();
     // Cookies past RenderCapabilities.maxLightCookies layers are not drawn:
     // the log says which lights shine without theirs.
     let cookies = og_render::cookie_layers(scene);

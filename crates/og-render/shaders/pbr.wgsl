@@ -495,7 +495,7 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
   var shadow = 1.0;
   if (receives) { shadow = local_shadow(light, p, leaf_shadow_normal(s, n, r.l)) * contact_shadow(light, p); }
   if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
-    return toon_light(s, n, v, r.l, shadow) * r.radiance;
+    return toon_light(s, n, v, r.l, shadow) * r.radiance * r.diffuse;
   }
-  return source_brdf(s, n, v, r.l, light.position_range.xyz - p, light.source.x) * r.radiance * shadow;
+  return source_brdf_kept(s, n, v, r.l, light.position_range.xyz - p, light.source.x, r.diffuse) * r.radiance * shadow;
 }

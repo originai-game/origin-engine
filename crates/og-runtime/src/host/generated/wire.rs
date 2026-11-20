@@ -30514,6 +30514,7 @@ pub mod record {
         pub radius: f32,
         pub cast_shadow: bool,
         pub cookie: u64,
+        pub r#static: bool,
     }
 
     impl Default for PointLight {
@@ -30525,6 +30526,7 @@ pub mod record {
                 radius: 0.0_f32,
                 cast_shadow: Default::default(),
                 cookie: Default::default(),
+                r#static: Default::default(),
             }
         }
     }
@@ -30542,6 +30544,7 @@ pub mod record {
                 radius: field(o, "radius", d.radius)?,
                 cast_shadow: field(o, "castShadow", d.cast_shadow)?,
                 cookie: field(o, "cookie", d.cookie)?,
+                r#static: field(o, "static", d.r#static)?,
             })
         }
     }
@@ -30557,6 +30560,7 @@ pub mod record {
         pub penumbra: f32,
         pub cast_shadow: bool,
         pub cookie: u64,
+        pub r#static: bool,
     }
 
     impl Default for SpotLight {
@@ -30570,6 +30574,7 @@ pub mod record {
                 penumbra: Default::default(),
                 cast_shadow: Default::default(),
                 cookie: Default::default(),
+                r#static: Default::default(),
             }
         }
     }
@@ -30589,6 +30594,7 @@ pub mod record {
                 penumbra: field(o, "penumbra", d.penumbra)?,
                 cast_shadow: field(o, "castShadow", d.cast_shadow)?,
                 cookie: field(o, "cookie", d.cookie)?,
+                r#static: field(o, "static", d.r#static)?,
             })
         }
     }
@@ -30615,6 +30621,7 @@ pub mod record {
         pub decal_atlas: u64,
         pub lod_bias: f32,
         pub baked_lighting: bool,
+        pub static_light_reach: f32,
         pub quality: QualityPreset,
         pub rect_shadows: bool,
         pub shadowed_lights: u32,
@@ -30658,6 +30665,7 @@ pub mod record {
                 decal_atlas: Default::default(),
                 lod_bias: 1.0_f32,
                 baked_lighting: true,
+                static_light_reach: 0.0_f32,
                 quality: Default::default(),
                 rect_shadows: true,
                 shadowed_lights: 8,
@@ -30707,6 +30715,7 @@ pub mod record {
                 decal_atlas: field(o, "decalAtlas", d.decal_atlas)?,
                 lod_bias: field(o, "lodBias", d.lod_bias)?,
                 baked_lighting: field(o, "bakedLighting", d.baked_lighting)?,
+                static_light_reach: field(o, "staticLightReach", d.static_light_reach)?,
                 quality: field(o, "quality", d.quality)?,
                 rect_shadows: field(o, "rectShadows", d.rect_shadows)?,
                 shadowed_lights: field(o, "shadowedLights", d.shadowed_lights)?,
@@ -32425,6 +32434,7 @@ pub mod record {
         pub height: f32,
         pub two_sided: bool,
         pub cast_shadow: bool,
+        pub r#static: bool,
     }
 
     impl Default for RectLight {
@@ -32436,6 +32446,7 @@ pub mod record {
                 height: 10.0_f32,
                 two_sided: Default::default(),
                 cast_shadow: Default::default(),
+                r#static: Default::default(),
             }
         }
     }
@@ -32453,6 +32464,7 @@ pub mod record {
                 height: field(o, "height", d.height)?,
                 two_sided: field(o, "twoSided", d.two_sided)?,
                 cast_shadow: field(o, "castShadow", d.cast_shadow)?,
+                r#static: field(o, "static", d.r#static)?,
             })
         }
     }

@@ -58,8 +58,9 @@ impl Pass for GiProbesPass {
 
 impl Renderer {
     /// The probe GI's frame (gi_probes.rs): off where the quality's GI
-    /// switch or a 2D build says so. The probe buffer grows to hold its
-    /// probes before the frame groups that bind it are made.
+    /// switch or a 2D build says so; then the static lights' far field
+    /// (static_far.rs) after its region. The probe buffer grows to hold
+    /// both before the frame groups that bind it are made.
     pub(super) fn prepare_gi_probes(&mut self, scene: &RenderScene) {
         let desc = scene
             .look
@@ -68,17 +69,24 @@ impl Renderer {
             .filter(|_| WORLD_3D && scene.frame.quality.global_illumination)
             // A renderer made without the probe GI (RenderDesc::without).
             .filter(|_| !self.info.without.contains(LitFeatures::GI));
-        let Some(desc) = desc else {
-            if let Some(g) = &mut self.gi_probes {
-                g.disable();
-            }
-            return;
-        };
+        if desc.is_none()
+            && let Some(g) = &mut self.gi_probes
+        {
+            g.disable();
+        }
         let region = crate::lightmap::PROBE_CAPACITY;
-        let g = self
-            .gi_probes
-            .get_or_insert_with(|| crate::gi_probes::GiProbes::new(&self.device));
-        let need = region + crate::gi_probes::region_vec4s(&desc);
+        let far_at = region + desc.as_ref().map_or(0, crate::gi_probes::region_vec4s);
+        let far = if WORLD_3D {
+            crate::static_far::far_lights(scene, self.lights.clusters.skip_rects)
+        } else {
+            Vec::new()
+        };
+        let need = far_at
+            + if far.is_empty() {
+                0
+            } else {
+                crate::static_far::VEC4S
+            };
         if self
             .lights
             .lightmaps
@@ -88,8 +96,24 @@ impl Renderer {
             // passes' (the screen GI reads the probes).
             self.lights.environment = None;
             self.graph.invalidate();
-            g.restart();
+            if let Some(g) = &mut self.gi_probes {
+                g.restart();
+            }
+            self.lights.static_far.reset();
         }
-        g.prepare(&self.device, &self.queue, scene, desc, region);
+        if let Some(desc) = desc {
+            let g = self
+                .gi_probes
+                .get_or_insert_with(|| crate::gi_probes::GiProbes::new(&self.device));
+            g.prepare(&self.device, &self.queue, scene, desc, region);
+        }
+        let lightmaps = &mut self.lights.lightmaps;
+        lightmaps.far_header = self.lights.static_far.prepare(
+            &self.queue,
+            &lightmaps.probe_buffer,
+            scene,
+            &far,
+            far_at,
+        );
     }
 }

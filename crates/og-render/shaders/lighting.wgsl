@@ -609,6 +609,13 @@ fn sphere_energy(roughness: f32, radius: f32, distance: f32) -> f32 {
 }
 
 fn source_brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, to_light: vec3<f32>, radius: f32) -> vec3<f32> {
+  return source_brdf_kept(s, n, v, l, to_light, radius, 1.0);
+}
+
+// source_brdf with `kept` of its diffuse light (and what passes through a
+// leaf): a static light's past its reach is the far field's
+// (static_far.wgsl).
+fn source_brdf_kept(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, to_light: vec3<f32>, radius: f32, kept: f32) -> vec3<f32> {
   var ls = l;
   var energy = 1.0;
   if (radius > 0.0) {
@@ -626,9 +633,9 @@ fn source_brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, to_light: v
   let f = f_schlick(h_dot_v, s.f0);
   let spec = d * v_ggx(n_dot_v, n_dot_ls, a) * f * energy;
   let kd = (vec3<f32>(1.0) - f) * (1.0 - s.metallic);
-  var base = (kd * s.albedo / PI + spec) * n_dot_l + leaf_transmission(s, n, v, l);
+  var base = (kd * s.albedo / PI * kept + spec) * n_dot_l + leaf_transmission(s, n, v, l) * kept;
   if (radius > 0.0) {
-    base = kd * s.albedo / PI * n_dot_l + spec * n_dot_ls + leaf_transmission(s, n, v, l);
+    base = kd * s.albedo / PI * n_dot_l * kept + spec * n_dot_ls + leaf_transmission(s, n, v, l) * kept;
   }
   if (s.coat <= 0.0) { return base; }
   // The coat (Filament's clear coat): GGX with a fixed 4 % reflectance and

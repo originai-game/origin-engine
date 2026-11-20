@@ -22,10 +22,12 @@ impl Renderer {
         let mut stages = Stages::start(self.clock);
         // What this frame waits for compiles (FrameStats::compile_wait_us).
         crate::deferred::take_waited_us();
-        // A capture draws with the full variants (pipeline_features.rs):
-        // what a display frame draws with depends on what has compiled.
+        // A capture draws with the full variants (pipeline_features.rs),
+        // the static lights' far field's where the scene draws it: what a
+        // display frame draws with depends on what has compiled.
         self.frame_features = if self.capturing {
-            crate::pipeline_features::Features::ALL
+            use crate::pipeline_features::Features;
+            Features::ALL | (super::setup::scene_features(scene) & Features::STATIC_FAR)
         } else {
             super::setup::scene_features(scene)
         };
