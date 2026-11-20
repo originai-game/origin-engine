@@ -13,7 +13,9 @@ step() {
 # project snapshot.
 # libnss3 and libnspr4 are Chrome's own libraries (the browser tests and
 # web-reference run the orb's agent-browser Chrome, .agents/environment).
-packages=(build-essential mold pkg-config libasound2-dev brotli shellcheck curl ca-certificates unzip xz-utils minisign libnss3 libnspr4)
+# libasound2-dev and libudev-dev are Linux build dependencies of the native
+# hosts: cpal's ALSA output (og-audio) and gilrs's gamepads (og-host-c).
+packages=(build-essential mold pkg-config libasound2-dev libudev-dev brotli shellcheck curl ca-certificates unzip xz-utils minisign libnss3 libnspr4)
 missing=()
 for package in "${packages[@]}"; do
   if [[ $(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true) != 'install ok installed' ]]; then
