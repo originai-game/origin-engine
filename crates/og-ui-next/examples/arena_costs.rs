@@ -19,7 +19,8 @@ fn allocations() -> usize {
     og_core::alloc::heap().map_or(0, |h| h.allocations)
 }
 
-fn measure(text: &str, size: f32, _: Option<f32>) -> (f32, f32) {
+fn measure(text: &str, run: &og_ui_next::arena::Run, _: Option<f32>) -> (f32, f32) {
+    let size = run.size;
     (text.chars().count() as f32 * size * 0.5, size * 1.25)
 }
 

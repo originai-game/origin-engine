@@ -18,13 +18,41 @@ struct Node {
     children: Vec<Id>,
     key: u64,
     style: CompactStyle,
-    /// A text leaf's text and font size, CSS px.
-    text: Option<(Box<str>, f32)>,
+    /// A text leaf's text and how it runs.
+    text: Option<(Box<str>, Run)>,
     slot: SlotId,
 }
 
+/// How a text leaf's text runs: what its measure reads, resolved from its
+/// element's record ([`crate::style::Text`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Run {
+    /// Font size, CSS px.
+    pub size: f32,
+    /// Letter spacing, CSS px.
+    pub tracking: f32,
+    /// Line height, CSS px.
+    pub line: f32,
+    pub weight: u16,
+    /// Stays on one line.
+    pub nowrap: bool,
+}
+
+impl Run {
+    /// `size` px, untracked, lines 1.2 apart, wrapping.
+    pub fn sized(size: f32) -> Run {
+        Run {
+            size,
+            tracking: 0.0,
+            line: size * 1.2,
+            weight: 400,
+            nowrap: false,
+        }
+    }
+}
+
 /// Measures a text leaf: its size given the width it may take.
-pub type Measure<'a> = dyn FnMut(&str, f32, Option<f32>) -> (f32, f32) + 'a;
+pub type Measure<'a> = dyn FnMut(&str, &Run, Option<f32>) -> (f32, f32) + 'a;
 
 #[derive(Clone, Debug)]
 pub struct Arena {
@@ -84,8 +112,18 @@ impl Arena {
     /// A new text leaf, the last child of `parent`.
     pub fn text(&mut self, parent: Id, text: &str, size: f32) -> Id {
         let id = self.push(parent);
-        self.nodes[id as usize].text = Some((text.into(), size));
+        self.nodes[id as usize].text = Some((text.into(), Run::sized(size)));
         id
+    }
+
+    /// Sets how a text leaf runs; the same run marks nothing.
+    pub fn set_run(&mut self, id: Id, run: Run) {
+        if let Some((_, r)) = &mut self.nodes[id as usize].text
+            && *r != run
+        {
+            *r = run;
+            self.dirty = true;
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -153,7 +191,7 @@ impl Arena {
             },
             |input: LayoutInput, ctx: Option<usize>, _style: &CompactStyle| {
                 let text = ctx.and_then(|i| nodes[i].text.as_ref());
-                let Some((text, size)) = text else {
+                let Some((text, run)) = text else {
                     return LayoutOutput::HIDDEN;
                 };
                 let avail = input
@@ -163,7 +201,7 @@ impl Arena {
                         AvailableSpace::Definite(w) => Some(w),
                         _ => None,
                     });
-                let (w, h) = measure(text, *size, avail);
+                let (w, h) = measure(text, run, avail);
                 LayoutOutput::from_outer_size(Size {
                     width: input.known_dimensions.width.unwrap_or(w),
                     height: input.known_dimensions.height.unwrap_or(h),
@@ -192,11 +230,14 @@ fn sync(store: &mut LayoutStore, nodes: &mut [Node], i: Id) -> (SlotId, bool) {
         children_dirty |= d;
     }
     let n = &nodes[i as usize];
-    let measure = n.text.as_ref().map(|(t, size)| {
+    let measure = n.text.as_ref().map(|(t, run)| {
         use std::hash::{Hash, Hasher};
         let mut h = rustc_hash::FxHasher::default();
         t.hash(&mut h);
-        size.to_bits().hash(&mut h);
+        [run.size, run.tracking, run.line]
+            .map(f32::to_bits)
+            .hash(&mut h);
+        (run.weight, run.nowrap).hash(&mut h);
         h.finish()
     });
     let (slot, dirty) = store.sync_node(

@@ -100,6 +100,23 @@ mod op {
     /// bottom, left), those that add the HUD's safe-area inset (`v[1]`);
     /// code 0: `inset`, 1: `padding`.
     pub const SAFE: u8 = 20;
+    /// Overflow, x then y in codes 0..3 (visible, clip, hidden, scroll).
+    pub const OVERFLOW: u8 = 21;
+    pub const ASPECT: u8 = 22;
+    pub const WEIGHT: u8 = 40;
+    /// Letter spacing: `v[0]` px plus `v[1]` em.
+    pub const TRACKING: u8 = 41;
+    /// Line height: code 0 a multiple of the font size, 1 px.
+    pub const LINE: u8 = 42;
+    /// Wrapping: code 0 wraps, 1 stays on one line.
+    pub const NOWRAP: u8 = 43;
+    /// Text alignment: code 0 start, 1 center, 2 end.
+    pub const TEXT_ALIGN: u8 = 44;
+    /// What a line too long for its box shows: code 0 clips, 1 an
+    /// ellipsis, 2 scrolls (`-og-scroll`, `v[0]` the cycle and `v[1]` the
+    /// pause, ms).
+    pub const TEXT_OVERFLOW: u8 = 45;
+    pub const TRANSFORM: u8 = 46;
 }
 
 /// A length's kind in a step's code.
@@ -115,6 +132,106 @@ fn step(op: u8, code: u8, v: [f32; 4]) -> Step {
         code,
         _pad: [0; 2],
         v,
+    }
+}
+
+/// An element's text properties. Text inherits: a field its own rules do
+/// not set (a bit clear in `set`) is its parent's, applied when the
+/// element's record is applied, never matched.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Text {
+    pub weight: u16,
+    pub tracking_px: f32,
+    pub tracking_em: f32,
+    /// A multiple of the font size, or with `line_px` CSS px.
+    pub line: f32,
+    pub line_px: bool,
+    pub nowrap: bool,
+    /// 0 start, 1 center, 2 end.
+    pub align: u8,
+    /// 0 clip, 1 ellipsis, 2 scroll.
+    pub overflow: u8,
+    /// `-og-scroll`'s cycle and pause, ms.
+    pub scroll: [f32; 2],
+    /// 0 none, 1 uppercase, 2 lowercase, 3 capitalize.
+    pub transform: u8,
+    /// Which fields its own rules set: bit k for [`Text::WEIGHT`] and on.
+    pub set: u16,
+    /// Its font size was set by its own rules.
+    pub sized: bool,
+}
+
+impl Text {
+    pub const WEIGHT: u16 = 1;
+    pub const TRACKING: u16 = 2;
+    pub const LINE: u16 = 4;
+    pub const NOWRAP: u16 = 8;
+    pub const ALIGN: u16 = 16;
+    pub const OVERFLOW: u16 = 32;
+    pub const TRANSFORM: u16 = 64;
+
+    /// Its letter spacing at `size`, CSS px.
+    pub fn tracking(&self, size: f32) -> f32 {
+        self.tracking_px + self.tracking_em * size
+    }
+
+    /// Its line height at `size`, CSS px.
+    pub fn line_height(&self, size: f32) -> f32 {
+        if self.line_px {
+            self.line
+        } else {
+            self.line * size
+        }
+    }
+
+    /// This text over `parent`'s: the fields it does not set are the
+    /// parent's.
+    pub fn over(&self, parent: &Text) -> Text {
+        let mut t = *parent;
+        let own = |bit| self.set & bit != 0;
+        if own(Text::WEIGHT) {
+            t.weight = self.weight;
+        }
+        if own(Text::TRACKING) {
+            (t.tracking_px, t.tracking_em) = (self.tracking_px, self.tracking_em);
+        }
+        if own(Text::LINE) {
+            (t.line, t.line_px) = (self.line, self.line_px);
+        }
+        if own(Text::NOWRAP) {
+            t.nowrap = self.nowrap;
+        }
+        if own(Text::ALIGN) {
+            t.align = self.align;
+        }
+        if own(Text::OVERFLOW) {
+            (t.overflow, t.scroll) = (self.overflow, self.scroll);
+        }
+        if own(Text::TRANSFORM) {
+            t.transform = self.transform;
+        }
+        t.set = parent.set | self.set;
+        t.sized = self.sized;
+        t
+    }
+}
+
+impl Default for Text {
+    fn default() -> Self {
+        Text {
+            weight: 400,
+            tracking_px: 0.0,
+            tracking_em: 0.0,
+            line: 1.2,
+            line_px: false,
+            nowrap: false,
+            align: 0,
+            overflow: 0,
+            scroll: [0.0; 2],
+            transform: 0,
+            set: 0,
+            sized: false,
+        }
     }
 }
 
@@ -135,6 +252,7 @@ pub struct Record {
     /// safe-area inset (`env(-og-hud-inset-left)`), bits top, right,
     /// bottom, left: the one runtime input a record leaves open.
     pub safe: [u8; 2],
+    pub text: Text,
 }
 
 impl Record {
@@ -183,6 +301,7 @@ impl Default for Record {
             stroke: [0.0; 4],
             stroke_width: 1.0,
             safe: [0; 2],
+            text: Text::default(),
         }
     }
 }
@@ -511,7 +630,44 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::INK => r.ink = s.v,
         op::RADIUS => r.radius = a,
         op::OPACITY => r.opacity = a,
-        op::FONT_SIZE => r.font_size = a,
+        op::FONT_SIZE => {
+            r.font_size = a;
+            r.text.sized = true;
+        }
+        op::OVERFLOW => {
+            use taffy::Overflow as O;
+            let o = |k: u8| [O::Visible, O::Clip, O::Hidden, O::Scroll][usize::from(k & 3)];
+            r.layout.set_overflow(o(s.code), o(s.code >> 2));
+        }
+        op::ASPECT => r.layout.set_aspect_ratio((a > 0.0).then_some(a)),
+        op::WEIGHT => {
+            r.text.weight = a as u16;
+            r.text.set |= Text::WEIGHT;
+        }
+        op::TRACKING => {
+            (r.text.tracking_px, r.text.tracking_em) = (a, b);
+            r.text.set |= Text::TRACKING;
+        }
+        op::LINE => {
+            (r.text.line, r.text.line_px) = (a, c == 1);
+            r.text.set |= Text::LINE;
+        }
+        op::NOWRAP => {
+            r.text.nowrap = c == 1;
+            r.text.set |= Text::NOWRAP;
+        }
+        op::TEXT_ALIGN => {
+            r.text.align = c as u8;
+            r.text.set |= Text::ALIGN;
+        }
+        op::TEXT_OVERFLOW => {
+            (r.text.overflow, r.text.scroll) = (c as u8, [a, b]);
+            r.text.set |= Text::OVERFLOW;
+        }
+        op::TRANSFORM => {
+            r.text.transform = c as u8;
+            r.text.set |= Text::TRANSFORM;
+        }
         op::PAINT => r.paint = if c == 1 { r.ink } else { [a, b, cc, d] },
         op::STROKE => r.stroke = if c == 1 { r.ink } else { [a, b, cc, d] },
         op::STROKE_WIDTH => r.stroke_width = a,
@@ -678,6 +834,12 @@ pub(crate) fn expand(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
 }
 
 fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
+    // A single overflow axis keeps the other's last value.
+    let last_overflow = steps
+        .iter()
+        .rev()
+        .find(|s| s.op == op::OVERFLOW)
+        .map_or(0, |s| s.code);
     let mut push = |o: u8, code: u8, x: [f32; 4]| {
         steps.push(step(o, code, x));
         true
@@ -856,6 +1018,114 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
             .parse()
             .is_ok_and(|x| push(op::OPACITY, 0, [x, 0.0, 0.0, 0.0])),
         "font-size" => px(v).is_some_and(|x| push(op::FONT_SIZE, 0, [x, 0.0, 0.0, 0.0])),
+        "font-weight" => {
+            let w = match v {
+                "normal" => Some(400.0),
+                "bold" => Some(700.0),
+                v => v.parse::<f32>().ok().filter(|w| (1.0..=1000.0).contains(w)),
+            };
+            w.is_some_and(|w| push(op::WEIGHT, 0, [w, 0.0, 0.0, 0.0]))
+        }
+        "letter-spacing" => {
+            if v == "normal" {
+                return push(op::TRACKING, 0, [0.0; 4]);
+            }
+            if let Some(em) = v
+                .strip_suffix("em")
+                .and_then(|n| n.trim().parse::<f32>().ok())
+            {
+                return push(op::TRACKING, 0, [0.0, em, 0.0, 0.0]);
+            }
+            px(v).is_some_and(|x| push(op::TRACKING, 0, [x, 0.0, 0.0, 0.0]))
+        }
+        "line-height" => match v.parse::<f32>() {
+            Ok(k) => push(op::LINE, 0, [k, 0.0, 0.0, 0.0]),
+            Err(_) if v == "normal" => push(op::LINE, 0, [1.2, 0.0, 0.0, 0.0]),
+            Err(_) => px(v).is_some_and(|x| push(op::LINE, 1, [x, 0.0, 0.0, 0.0])),
+        },
+        // One wrapping switch: `white-space` and `text-wrap-mode` set it;
+        // spaces always collapse, except `pre-wrap`, which keeps them.
+        "white-space" | "text-wrap-mode" | "text-wrap" => match v {
+            "nowrap" | "pre" => push(op::NOWRAP, 1, [0.0; 4]),
+            "normal" | "wrap" | "pre-wrap" | "pre-line" | "balance" | "pretty" => {
+                push(op::NOWRAP, 0, [0.0; 4])
+            }
+            _ => false,
+        },
+        "white-space-collapse" => matches!(v, "collapse" | "preserve" | "preserve-breaks"),
+        "text-align" => match v {
+            "start" | "left" | "justify" => push(op::TEXT_ALIGN, 0, [0.0; 4]),
+            "center" => push(op::TEXT_ALIGN, 1, [0.0; 4]),
+            "end" | "right" => push(op::TEXT_ALIGN, 2, [0.0; 4]),
+            _ => false,
+        },
+        "text-overflow" => {
+            let mut w = words(v);
+            match w.next() {
+                Some("clip") => push(op::TEXT_OVERFLOW, 0, [0.0; 4]),
+                Some("ellipsis") => push(op::TEXT_OVERFLOW, 1, [0.0; 4]),
+                Some("-og-scroll") => {
+                    let ms = |t: Option<&str>| match t {
+                        Some(t) if t.ends_with("ms") => t[..t.len() - 2].parse::<f32>().ok(),
+                        Some(t) if t.ends_with('s') => {
+                            t[..t.len() - 1].parse::<f32>().ok().map(|s| s * 1000.0)
+                        }
+                        None => Some(0.0),
+                        _ => None,
+                    };
+                    match (ms(w.next()), ms(w.next())) {
+                        (Some(a), Some(b)) => push(op::TEXT_OVERFLOW, 2, [a, b, 0.0, 0.0]),
+                        _ => false,
+                    }
+                }
+                _ => false,
+            }
+        }
+        "text-transform" => match v {
+            "none" => push(op::TRANSFORM, 0, [0.0; 4]),
+            "uppercase" => push(op::TRANSFORM, 1, [0.0; 4]),
+            "lowercase" => push(op::TRANSFORM, 2, [0.0; 4]),
+            "capitalize" => push(op::TRANSFORM, 3, [0.0; 4]),
+            _ => false,
+        },
+        "overflow" | "overflow-x" | "overflow-y" => {
+            let code = |w: &str| match w {
+                "visible" => Some(0u8),
+                "clip" => Some(1),
+                "hidden" => Some(2),
+                "auto" | "scroll" => Some(3),
+                _ => None,
+            };
+            let mut ws = words(v);
+            let (Some(x), y) = (ws.next().and_then(code), ws.next().map(code)) else {
+                return false;
+            };
+            let y = match y {
+                Some(Some(y)) => y,
+                Some(None) => return false,
+                None => x,
+            };
+            // A single axis keeps the other's last value.
+            let c = match name {
+                "overflow-x" => (last_overflow & !3) | x,
+                "overflow-y" => (last_overflow & 3) | (x << 2),
+                _ => x | (y << 2),
+            };
+            push(op::OVERFLOW, c, [0.0; 4])
+        }
+        "aspect-ratio" => {
+            let v = v.trim_start_matches("auto").trim();
+            let k = match v.split_once('/') {
+                Some((a, b)) => a
+                    .trim()
+                    .parse::<f32>()
+                    .ok()
+                    .zip(b.trim().parse::<f32>().ok())
+                    .map(|(a, b)| a / b),
+                None => v.parse().ok(),
+            };
+            k.is_some_and(|k| push(op::ASPECT, 0, [k, 0.0, 0.0, 0.0]))
+        }
         "fill" | "stroke" => {
             let o = if name == "fill" {
                 op::PAINT

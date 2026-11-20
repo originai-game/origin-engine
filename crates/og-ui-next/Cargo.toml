@@ -8,6 +8,8 @@ description = "og-ui's new core: a flat element arena, styles compiled to typed 
 
 [dependencies]
 og-css = { path = "../og-css" }
+# Text measure: the engine's one text stack (Parley, HarfRust, cooked metrics).
+og-text = { path = "../og-text" }
 # The .svelte parser (doc::UiDocument), until it moves into this crate at the switch.
 og-ui = { path = "../og-ui" }
 rune-taffy = { path = "../../third_party/rune-taffy" }

@@ -9,6 +9,7 @@ pub mod doc;
 pub mod prim;
 pub mod sheet;
 pub mod style;
+pub mod text;
 pub mod tokens;
 
 pub use tokens::Tokens;
@@ -19,7 +20,8 @@ mod tests {
     use rune_taffy::CompactStyle;
 
     /// Fixed metrics: half the size a character, one line.
-    fn measure(text: &str, size: f32, _: Option<f32>) -> (f32, f32) {
+    fn measure(text: &str, run: &arena::Run, _: Option<f32>) -> (f32, f32) {
+        let size = run.size;
         (text.chars().count() as f32 * size * 0.5, size)
     }
 
@@ -279,6 +281,56 @@ mod tests {
                 taffy::LengthPercentage::length(8.0),
                 taffy::LengthPercentage::length(2.0)
             )
+        );
+    }
+
+    #[test]
+    fn text_properties_compile_inherit_and_wrap_a_leaf_by_its_run() {
+        let sheet = style::Sheet::compile(
+            ".p { font-size: 20px; letter-spacing: 0.1em; line-height: 1.5; font-weight: 600; } \
+             .c { white-space: nowrap; text-overflow: -og-scroll 6s 1500ms; overflow: hidden; }",
+            &Tokens::default(),
+        );
+        assert!(sheet.skipped.is_empty(), "{:?}", sheet.skipped);
+        let p = sheet.record(&[sheet.name(".p").unwrap()], style::State::Base);
+        let c = sheet.record(&[sheet.name(".c").unwrap()], style::State::Base);
+        let t = c.text.over(&p.text);
+        assert_eq!(
+            (
+                t.weight,
+                t.tracking(p.font_size),
+                t.line_height(p.font_size)
+            ),
+            (600, 2.0, 30.0),
+            "the child inherits what it does not set"
+        );
+        assert_eq!(
+            (t.nowrap, t.overflow, t.scroll),
+            (true, 2, [6000.0, 1500.0])
+        );
+        // Fixed advances: half an em a character, so 5 at 20 px are 50 px.
+        let m = og_text::text::FontMetrics::fixed(0.5);
+        let run = arena::Run {
+            size: 20.0,
+            tracking: 0.0,
+            line: 30.0,
+            weight: 600,
+            nowrap: false,
+        };
+        assert_eq!(text::measure(&m, "aa bb", &run, Some(1000.0)), (50.0, 30.0));
+        assert_eq!(
+            text::measure(&m, "aa bb", &run, Some(25.0)),
+            (20.0, 60.0),
+            "wraps at the space"
+        );
+        let one = arena::Run {
+            nowrap: true,
+            ..run
+        };
+        assert_eq!(
+            text::measure(&m, "aa bb", &one, Some(25.0)),
+            (50.0, 30.0),
+            "nowrap"
         );
     }
 
