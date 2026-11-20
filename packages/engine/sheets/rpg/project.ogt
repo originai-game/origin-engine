@@ -19,6 +19,7 @@ ui {
   screen "explore-default" "style:default;page:explore"
   screen "combat-default" "style:default;page:combat"
   screen "primitives-default" "style:default;page:primitives"
+  screen "blocks-default" "style:default;page:blocks"
   screen "crafting-default" "style:default;page:crafting"
   screen "trade-default" "style:default;page:trade"
   screen "loot-default" "style:default;page:loot"

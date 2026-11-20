@@ -11,7 +11,7 @@ import { og, type World } from "@origingame/engine";
 import { CMD_NAMES, EQUIPMENT, EXPLORE, HUD_ART, localized, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
 import { BAGS, CARDS, ECONOMY } from "./economy.ts";
 
-const PAGES = ["inventory", "journal", "equipment", "explore", "combat", "primitives", "crafting", "trade", "loot", "dialogue"] as const;
+const PAGES = ["inventory", "journal", "equipment", "explore", "combat", "primitives", "blocks", "crafting", "trade", "loot", "dialogue"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = [
@@ -21,6 +21,7 @@ const DOCUMENTS = [
   "ui/explore.svelte",
   "ui/combat.svelte",
   "ui/primitives.svelte",
+  "ui/blocks.svelte",
   "ui/economy.svelte",
   "ui/dialogue.svelte",
   "ui/sheet.svelte",

@@ -11,6 +11,8 @@
     <CombatPage />
   {:else if $page == 'primitives'}
     <PrimitivesPage />
+  {:else if $page == 'blocks'}
+    <BlocksPage />
   {:else if $page == 'crafting' || $page == 'trade' || $page == 'loot'}
     <EconomyPage />
   {:else if $page == 'dialogue'}

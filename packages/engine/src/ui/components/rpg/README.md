@@ -173,7 +173,9 @@ art (portraits, figure, item and skill icons, scene, map) was generated for
 it with gpt-image-2.6 through the OriginGame gateway and is sheet fixture
 data, not part of the components. The explore page lays out the action HUD as its approved
 mockup does, over the HUD art direction's sample stage, map, portraits and
-icons (`assets/art/hud-*.jpg`, sheet only).
+icons (`assets/art/hud-*.jpg`, sheet only). The blocks page lays out
+another HUD over the same stage from the blocks alone, as a game that
+wants its own layout does: the page owns every place and size.
 `og ui review rpg --style scifi` (or `--style cartoon`) renders the same
 pages in that pack, dressed by its tokens
 (`templates/styles/<pack>/base.css`).
