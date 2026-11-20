@@ -874,9 +874,10 @@ impl Ui {
     }
 
     /// Puts the default style's part stylesheet back, as the process
-    /// read it: nothing is read again.
+    /// read it (the one [`crate::set_base_css`] put in effect): nothing is
+    /// read again.
     pub fn reset_part_css(&mut self) {
-        self.set_part_sheet(crate::doc::stylesheet::DEFAULT_PART_SHEET.clone());
+        self.set_part_sheet(crate::doc::stylesheet::base().part.clone());
     }
 
     fn set_part_sheet(&mut self, sheet: crate::doc::stylesheet::PartSheet) {

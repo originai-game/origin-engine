@@ -30,6 +30,19 @@
 /// The engine's default CSS, generated from the shared design tokens.
 pub const DEFAULT_CSS: &str = include_str!("../default.css");
 
+/// Development hosts only: puts `css`, the default style as the source
+/// tree now has it (`packages/design/tokens/*.css` generated, or
+/// `default.css`), in the place of the compiled [`DEFAULT_CSS`] for the
+/// whole process; `None` puts the compiled one back. Answers whether the
+/// default style changed; CSS that does not read is refused and changes
+/// nothing. A UI or pack read before keeps the default it was read with:
+/// the host reads its packs and documents again and resets a pack-less
+/// UI's part sheet ([`Ui::reset_part_css`]). A published game never calls
+/// it, so it draws the compiled default.
+pub fn set_base_css(css: Option<&str>) -> Result<bool, String> {
+    doc::stylesheet::replace_base(css)
+}
+
 /// The default UI's runtime-outline face, bundled for games with UI documents
 /// and loaded only when no game font or style supplies the role.
 pub const DEFAULT_FONT_ASSET: &str = "@styles/shared/InstrumentSans[wdth,wght].ttf";

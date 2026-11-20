@@ -230,7 +230,7 @@ struct ReadRule {
 /// A global stylesheet read once: tokenized, its selectors parsed and its
 /// bodies lowered. The style's `::part()` rules ([`Reading::part_rules`])
 /// and what dresses a document's elements ([`Global`]) are both made from
-/// one reading, and the default style's ([`DEFAULT`]) is kept for every
+/// one reading, and the default style's ([`base`]) is kept for every
 /// sheet that holds it.
 #[derive(Debug, PartialEq)]
 pub(crate) struct Reading {
@@ -248,37 +248,103 @@ pub(crate) struct Reading {
     rules: Vec<ReadRule>,
 }
 
-/// The default style, read once in the process: the part sheet of a UI
-/// without a pack, and what a pack's rules and a part sheet that begins
-/// with it are laid beside ([`Reading::with_default`]).
-pub(crate) static DEFAULT: std::sync::LazyLock<Reading> = std::sync::LazyLock::new(|| {
-    let read = |css| {
-        Reading::read("<part-css>", css, 0, Vec::new())
-            .expect("generated default CSS is checked by the theme drift test")
-    };
-    let (default, empty) = (read(crate::DEFAULT_CSS), read(""));
-    // What lets its rules be laid beside another sheet's as they were read:
-    // nothing but their own text decides how they read. Its keyframes (the
-    // shared motions, docs/ui.md §3.1) are the one thing it declares, and
-    // Reading::with_default carries them.
-    let declared = super::at_rules::Sheet {
-        keyframes: Vec::new(),
-        keyframe_rules: Vec::new(),
-        ..default.sheet.clone()
-    };
-    assert!(
-        declared == empty.sheet
+/// The default style as the process reads it: its text, its one reading,
+/// the role rules a document without a pack takes ([`Base::global`]) and
+/// the part sheet of a UI without a pack. The compiled one
+/// ([`crate::DEFAULT_CSS`]) unless a development host replaced it
+/// ([`crate::set_base_css`]); [`base`] answers the one in effect.
+pub(crate) struct Base {
+    pub(crate) css: std::sync::Arc<str>,
+    pub(crate) reading: Reading,
+    pub(crate) global: Global,
+    pub(crate) part: PartSheet,
+}
+
+impl Base {
+    fn read(css: &str) -> Result<Self, String> {
+        let read = |css| Reading::read("<part-css>", css, 0, Vec::new());
+        let (default, empty) = (read(css)?, read("")?);
+        // What lets its rules be laid beside another sheet's as they were read:
+        // nothing but their own text decides how they read. Its keyframes (the
+        // shared motions, docs/ui.md §3.1) are the one thing it declares, and
+        // Reading::with_default carries them.
+        let declared = super::at_rules::Sheet {
+            keyframes: Vec::new(),
+            keyframe_rules: Vec::new(),
+            ..default.sheet.clone()
+        };
+        if !(declared == empty.sheet
             && default.layers == empty.layers
             && default.anonymous == 0
             && default
                 .sheet
                 .keyframe_rules
                 .iter()
-                .all(|(_, q, _)| *q == AtQuery::default()),
-        "the default style is rules in og-default and unconditional keyframes: an at-rule that declares something else, or another layer, in it needs Reading::with_default to carry it"
-    );
-    default
+                .all(|(_, q, _)| *q == AtQuery::default()))
+        {
+            return Err("the default style is rules in og-default and unconditional keyframes: an at-rule that declares something else, or another layer, in it needs Reading::with_default to carry it".into());
+        }
+        let roles = css
+            .find("/* Roles:")
+            .ok_or("the default CSS ends with its role rules (`/* Roles:`)")?;
+        let roles = css[..roles].matches('\n').count() + 1;
+        let global = Global::new(Reading {
+            source: default.source.clone(),
+            sheet: default.sheet.clone(),
+            layers: default.layers.clone(),
+            rules: default
+                .rules
+                .iter()
+                .filter(|r| r.rule.ua || r.line >= roles)
+                .cloned()
+                .collect(),
+            ..default
+        })?;
+        Ok(Self {
+            css: css.into(),
+            part: part_sheet(&default),
+            global,
+            reading: default,
+        })
+    }
+}
+
+/// The compiled default style, read once in the process.
+static COMPILED: std::sync::LazyLock<std::sync::Arc<Base>> = std::sync::LazyLock::new(|| {
+    std::sync::Arc::new(
+        Base::read(crate::DEFAULT_CSS)
+            .expect("generated default CSS is checked by the theme drift test"),
+    )
 });
+
+/// The default style a development host read from the source tree in its
+/// place ([`crate::set_base_css`]); none in a published game.
+static REPLACED: std::sync::RwLock<Option<std::sync::Arc<Base>>> = std::sync::RwLock::new(None);
+
+/// The default style in effect: what a UI without a pack wears, what a
+/// pack's rules are laid over and what a part sheet beginning with
+/// [`crate::DEFAULT_CSS`] takes.
+pub(crate) fn base() -> std::sync::Arc<Base> {
+    let replaced = REPLACED.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+    replaced.clone().unwrap_or_else(|| COMPILED.clone())
+}
+
+/// Puts `css` in the compiled default style's place (`None`: the compiled
+/// one again). Answers whether the default style changed; CSS that does
+/// not read leaves it as it was.
+pub(crate) fn replace_base(css: Option<&str>) -> Result<bool, String> {
+    let css = css.filter(|c| *c != crate::DEFAULT_CSS);
+    let current = REPLACED
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone();
+    if current.as_ref().map(|b| &*b.css) == css {
+        return Ok(false);
+    }
+    let next = css.map(Base::read).transpose()?.map(std::sync::Arc::new);
+    *REPLACED.write().unwrap_or_else(std::sync::PoisonError::into_inner) = next;
+    Ok(true)
+}
 
 /// Where the default style's rules go beside a sheet's own.
 #[derive(Clone, Copy)]
@@ -368,8 +434,10 @@ impl Reading {
     }
 
     /// Reads a part sheet. One that begins with the default style's text
-    /// takes that from [`DEFAULT`] and reads only what follows it.
+    /// takes that from [`base`] and reads only what follows it.
     fn read_sheet(source: &str, css: &str, imports: Vec<(String, String)>) -> Result<Self, String> {
+        // The compiled text names the default style in effect: a
+        // development host's source-tree one (crate::set_base_css) too.
         if css.starts_with(crate::DEFAULT_CSS) {
             let own = Self::read(source, css, crate::DEFAULT_CSS.len(), imports)?;
             Ok(own.with_default(DefaultRules::Before))
@@ -381,7 +449,8 @@ impl Reading {
     /// This sheet with the default style's rules beside its own, as
     /// reading the two texts as one reads them.
     fn with_default(mut self, place: DefaultRules) -> Self {
-        let default = &*DEFAULT;
+        let base = base();
+        let default = &base.reading;
         // The default style's keyframes, under the sheet's own (its layer,
         // og-default, is the lowest): a pack's definition of a shared
         // motion's name wins, wherever the two texts are read.
@@ -475,10 +544,6 @@ fn part_sheet(reading: &Reading) -> PartSheet {
     let (rules, sheet) = reading.part_rules();
     (std::sync::Arc::new(rules), std::sync::Arc::new(sheet))
 }
-
-/// The default style's part sheet.
-pub(crate) static DEFAULT_PART_SHEET: std::sync::LazyLock<PartSheet> =
-    std::sync::LazyLock::new(|| part_sheet(&DEFAULT));
 
 /// A global part sheet, using the same reader, shorthand expansion and
 /// cascade order as a document's CSS.
@@ -745,35 +810,6 @@ impl std::fmt::Debug for Global {
             .field("rules", &self.rules.len())
             .finish_non_exhaustive()
     }
-}
-
-/// The default style's role rules (`:where([part$=".frame"])` and the
-/// rest, its last section), for a document shown without a pack: what
-/// dresses a document's own elements. A style pack's sheet holds the whole
-/// default; a document without a pack takes these, and reads their tokens
-/// from the root cascade.
-pub(crate) static DEFAULT_GLOBAL: std::sync::LazyLock<Global> = std::sync::LazyLock::new(|| {
-    let roles = crate::DEFAULT_CSS[..role_rules()].matches('\n').count() + 1;
-    let default = &*DEFAULT;
-    let rules = default.rules.iter();
-    Global::new(Reading {
-        source: default.source.clone(),
-        sheet: default.sheet.clone(),
-        layers: default.layers.clone(),
-        rules: rules
-            .filter(|r| r.rule.ua || r.line >= roles)
-            .cloned()
-            .collect(),
-        ..*default
-    })
-    .expect("the default style's CSS reads")
-});
-
-/// Where the default style's role rules begin in its text.
-fn role_rules() -> usize {
-    crate::DEFAULT_CSS
-        .find("/* Roles:")
-        .expect("the generated default CSS ends with its role rules")
 }
 
 impl Global {
@@ -3504,7 +3540,7 @@ button::part(base):hover { background: red; }
         {
             let css = crate::style_pack::StylePack::sheet(&directory, &files).unwrap();
             let source = format!("{directory}/");
-            std::sync::LazyLock::force(&DEFAULT);
+            base();
             let before = text_read();
             let read = pack_reading(&source, &css, files.clone()).unwrap();
             let own = css.len() + files.iter().map(|(_, text)| text.len()).sum::<usize>();
@@ -3512,7 +3548,7 @@ button::part(base):hover { background: red; }
             let whole = format!("{css}{}", crate::DEFAULT_CSS);
             let whole = Reading::read(&source, &whole, 0, files).unwrap();
             assert!(read == whole, "{directory}: as the whole text reads");
-            assert!(read.count > DEFAULT.count, "{directory}");
+            assert!(read.count > base().reading.count, "{directory}");
         }
     }
 
@@ -3550,7 +3586,7 @@ button::part(base):hover { background: red; }
     fn the_role_rules_are_the_default_readings_last_section() {
         let alone = format!(
             "@layer og-default {{\n{}",
-            &crate::DEFAULT_CSS[role_rules()..]
+            &crate::DEFAULT_CSS[crate::DEFAULT_CSS.find("/* Roles:").unwrap()..]
         );
         let alone = Global::new(Reading::read("", &alone, 0, Vec::new()).unwrap()).unwrap();
         // All but its place in the order, which counts the rules before it.
@@ -3563,10 +3599,11 @@ button::part(base):hover { background: red; }
             (g.selector.clone(), rule, lowered)
         };
         let rules = |g: &Global| g.rules.iter().map(rule).collect::<Vec<_>>();
-        assert!(rules(&alone).len() > 20 && rules(&alone) == rules(&DEFAULT_GLOBAL));
+        let base = base();
+        assert!(rules(&alone).len() > 20 && rules(&alone) == rules(&base.global));
         let orders = |g: &Global| g.rules.iter().map(|g| g.rule.order).collect::<Vec<_>>();
-        assert!(orders(&DEFAULT_GLOBAL).is_sorted());
-        assert!(DEFAULT_GLOBAL.count > *orders(&DEFAULT_GLOBAL).last().unwrap());
+        assert!(orders(&base.global).is_sorted());
+        assert!(base.global.count > *orders(&base.global).last().unwrap());
     }
 
     /// A part sheet that begins with the default style's text reads what
@@ -3575,7 +3612,7 @@ button::part(base):hover { background: red; }
     #[test]
     fn a_sheet_that_begins_with_the_default_text_reads_what_follows() {
         let css = format!("{}\n{OWN}", crate::DEFAULT_CSS);
-        std::sync::LazyLock::force(&DEFAULT);
+        base();
         let before = text_read();
         let read = Reading::read_sheet("<part-css>", &css, Vec::new()).unwrap();
         assert_eq!(text_read() - before, OWN.len() + 1, "only what follows");
@@ -3583,7 +3620,7 @@ button::part(base):hover { background: red; }
         assert!(read == whole, "as the whole text reads");
         // The default style alone is the reading the process keeps.
         let alone = Reading::read_sheet("<part-css>", crate::DEFAULT_CSS, Vec::new()).unwrap();
-        assert!(alone == *DEFAULT);
+        assert!(alone == base().reading);
         for refused in [
             "@import \"x.css\";",
             ".a { colour: red; }",

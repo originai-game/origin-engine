@@ -84,3 +84,8 @@ path = "scripts/gen_theme.rs"
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"
+
+# The process's default style replaced (og_ui::set_base_css): a binary of its own.
+[[test]]
+name = "base_css"
+path = "tests/base_css.rs"

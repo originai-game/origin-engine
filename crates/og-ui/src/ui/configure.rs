@@ -2,7 +2,7 @@ use super::*;
 
 impl Ui {
     pub fn new(desc: UiDesc) -> Ui {
-        let (part_rules, part_sheet) = crate::doc::stylesheet::DEFAULT_PART_SHEET.clone();
+        let (part_rules, part_sheet) = crate::doc::stylesheet::base().part.clone();
         let mut ui = Ui {
             env: Env {
                 configured: desc.theme,
