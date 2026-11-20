@@ -61,6 +61,21 @@ export class Gate {
     if (!warm || !run.rendering) return;
     const began = performance.now();
     let made = 0;
+    // First, what the first played frame would do for the first time (its UI documents built,
+    // the height fields' chunk shapes, their code compiled): one task, before the pipelines.
+    const tick = () => {
+      if (run.crashed || !run.engine) return;
+      if (run.playing) return step();
+      const t0 = performance.now();
+      try {
+        run.glue?.og_web_warm_tick?.(run.engine.id);
+      } catch (e) {
+        run.crash(e instanceof Error ? e.message : String(e));
+        return;
+      }
+      console.info(`renderer: the first played tick's work made behind the gate in ${Math.round(performance.now() - t0)} ms`);
+      setTimeout(step, 0);
+    };
     const step = () => {
       if (run.crashed || !run.engine) return;
       // Play stopped the warm-up: its counts so far, over the first frame's.
@@ -86,7 +101,7 @@ export class Gate {
         this.#reportPipelines(made);
       }
     };
-    setTimeout(step, 0);
+    setTimeout(tick, 0);
   }
 
   /** Textures still drawn from their stand-ins (s63), or font-pack faces the locale's chain still fetches. */

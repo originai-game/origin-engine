@@ -220,3 +220,41 @@ fn compile_makes_every_pipeline_before_play_and_counts_them() {
     og_render::settle_pipelines();
     set_render_backend(engine, None).unwrap();
 }
+
+/// Renderer::warm (the play gate's warm-up and og.render.compile) makes the
+/// UI's shape pipelines too: a HUD that first draws in play compiles
+/// nothing. They were made by the first frame to draw a shape, on the web
+/// seconds into play.
+#[test]
+#[ignore = "requires GPU"]
+fn warm_makes_the_ui_shape_pipelines_before_a_shape_draws() {
+    use og_render::{Overlay, UiShape};
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 128,
+        height: 64,
+        ..RenderDesc::default()
+    })
+    .expect("a headless adapter");
+    let mut scene = RenderScene::new();
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    while renderer.warm() {}
+    og_render::settle_pipelines();
+    let warmed = held(renderer.device());
+    let mut overlay = Overlay::new(128.0, 64.0, 1.0);
+    overlay
+        .ui
+        .shapes
+        .push(UiShape::rect([8.0, 8.0, 64.0, 24.0], 6.0, [1.0; 4]));
+    scene.ui.overlay = Some(overlay);
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    og_render::settle_pipelines();
+    assert_eq!(
+        held(renderer.device()),
+        warmed,
+        "(render, compute) pipelines made by the first frame to draw a UI shape"
+    );
+}

@@ -154,6 +154,10 @@ pub(crate) struct RenderState {
     /// og.render.compile asked for the renderer's pipelines, and some are
     /// still to make: each frame makes a few ([`crate::present::loading`]).
     pub compile: bool,
+    /// og.render.compile also asked for the work a played tick first
+    /// reaches ([`crate::present::loading::warm_tick`]), done after the
+    /// next frame.
+    pub warm_tick: bool,
     /// The models' wind (og.Model.sway): their tops and the wind copies
     /// of their materials (`wind.rs`).
     pub wind: wind::WindModels,
@@ -298,6 +302,7 @@ impl RenderState {
             kept_models: KeptModels::default(),
             reveal: Default::default(),
             compile: false,
+            warm_tick: false,
             wind: Default::default(),
             probe_bakes: Default::default(),
             fonts: Vec::new(),

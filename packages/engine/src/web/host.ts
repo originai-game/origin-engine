@@ -241,6 +241,8 @@ export interface WebExtras {
   og_web_gpu?(engine: number): string;
   /** Make one pipeline no frame used yet (og-render's Renderer::warm); false when none is left. */
   og_web_warm?(engine: number): boolean;
+  /** The work a played tick first reaches, without a tick (og_runtime::warm_tick): the UI's documents built on a copy, the height fields' chunk shapes. */
+  og_web_warm_tick?(engine: number): void;
   /** The display's refresh interval the Worker measured, ms (automatic quality's budget at no frame cap). */
   og_web_display_interval?(engine: number, ms: number): void;
   /** Brackets the probe's `frame`: a harness's frame draws at the configured quality and is no sample of automatic quality. */

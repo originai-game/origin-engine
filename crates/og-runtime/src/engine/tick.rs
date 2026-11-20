@@ -479,6 +479,9 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
         super::assets::release_uploaded_textures(eng, rs);
         std::mem::take(&mut rs.notes)
     };
+    if std::mem::take(&mut eng.render.borrow_mut().warm_tick) {
+        crate::present::loading::warm_tick(eng.id);
+    }
     let mut st = eng.state.borrow_mut();
     st.render_ms = rprobe::now_ms() - t0;
     super::trace::frame(eng.id, tick, t0, st.render_ms, &passes);

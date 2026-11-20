@@ -21,7 +21,7 @@ impl Renderer {
     }
 
     /// Makes one pipeline no frame has drawn with yet, the likeliest to be
-    /// drawn soon first (the sprites and the overlay, the post passes, then
+    /// drawn soon first (the sprites, the overlay and the UI, the post passes, then
     /// sky, the environment's light, the plain lit and shadow pipelines,
     /// ribbons, particles, 2D lights, glass, water, terrain, metaballs,
     /// fluids);
@@ -45,6 +45,7 @@ impl Renderer {
             &self.sprite.sprite_additive_pipeline,
             &self.sprite.sprite_glow_pipeline,
         ]) || self.overlay.warm()
+            || self.ui.warm()
             || self.post.warm()
             || deferred::warm_one(&[
                 &self.sky.sky_pipeline,

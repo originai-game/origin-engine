@@ -193,6 +193,8 @@ mod vfx;
 mod video_rendition;
 #[path = "../virtual_cameras.rs"]
 mod virtual_cameras;
+#[path = "../warm_tick.rs"]
+mod warm_tick;
 #[path = "../weather_switch.rs"]
 mod weather_switch;
 #[path = "../web_findings.rs"]

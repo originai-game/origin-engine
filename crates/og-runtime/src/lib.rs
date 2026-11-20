@@ -239,6 +239,7 @@ pub use present::geometry::{
 pub use present::light2d_at::og_render_light2d_at;
 pub use present::loading::{
     og_loading_done, og_loading_idle, og_loading_stage, og_loading_status, og_render_compile,
+    warm_tick,
 };
 pub use present::ui_draw::{og_load_ui_material, og_load_vector};
 pub use present::views::{

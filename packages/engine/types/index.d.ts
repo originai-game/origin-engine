@@ -35856,7 +35856,7 @@ export declare namespace og {
      */
     function snapCamera(world: World): void;
     /**
-     * Prepare this world's render and compute pipelines, as three.js renderer.compileAsync, a few per frame starting next frame. Covers what the world draws now, regardless of camera direction, with every lit feature; content spawned later compiles on first draw. Asynchronous where supported; otherwise runs on the frame's thread. Presentation only: nothing a tick reads changes.
+     * Prepare this world's render and compute pipelines, as three.js renderer.compileAsync, a few per frame starting next frame. Covers what the world draws now, regardless of camera direction, with every lit feature; content spawned later compiles on first draw. Asynchronous where supported; otherwise runs on the frame's thread. After the next frame it also builds the UI's documents on a copy of the UI and physics' height-field chunk shapes, once, so the first played frame does not. Presentation only: nothing a tick reads changes.
      * See `loading §12`.
      *
      * @param world The world whose renderer compiles.

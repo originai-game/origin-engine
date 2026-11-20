@@ -344,6 +344,16 @@ pub fn og_web_warm(engine: u32) -> bool {
     og_runtime::warm_renderer(engine)
 }
 
+/// The work a played tick first reaches, done without a tick
+/// (og_runtime::warm_tick): the engine Worker calls it once behind the play
+/// gate, after the first frame, so the first played frame does not build
+/// the UI's documents or the height fields' chunk shapes (nor compile
+/// their code) for the first time.
+#[wasm_bindgen]
+pub fn og_web_warm_tick(engine: u32) {
+    og_runtime::warm_tick(engine)
+}
+
 /// Fork s60: the Worker's `span(on)`, called when the renderer begins and
 /// ends making its frame pipelines (og-render `set_frame_pipelines_hook`);
 /// `null` calls nothing. The Worker makes the pipelines asked for in between

@@ -96,10 +96,45 @@ pub(crate) fn compile_step(rs: &mut crate::present::extract::RenderState) {
     }
 }
 
-/// `og.render.compile`.
+/// `og.render.compile`: the renderer's pipelines, a few a frame, and the
+/// work a played tick first reaches ([`warm_tick`]) after the next frame.
 pub fn og_render_compile(world: u32) {
     if let Ok(eng) = engine(world) {
-        eng.render.borrow_mut().compile = true;
+        let mut rs = eng.render.borrow_mut();
+        rs.compile = true;
+        rs.warm_tick = true;
+    }
+}
+
+/// Behind the play gate and for og.render.compile, outside a tick: the
+/// first-use work of what a played tick reaches, done ahead so the first
+/// played frame does not do it. The game's UI documents are built, laid out
+/// and painted once on a copy of the UI (with no input), and the physics
+/// builds a query view of the world, which makes its height fields' chunk
+/// shapes into the cache its step takes them from. Neither runs a game
+/// system or a tick: the world, the UI, its stores and every queue a tick
+/// reads are as they were, so the ticks after it are the same. What it
+/// leaves is caches: compiled code, shaped text, memoised styles and the
+/// chunk shapes, each a function of what it was made from.
+pub fn warm_tick(id: u32) {
+    let Ok(eng) = engine(id) else { return };
+    if eng.stepping.get() {
+        return;
+    }
+    let (ui, physics) = {
+        let st = eng.state.borrow();
+        (st.ui.clone(), st.physics.clone())
+    };
+    if let Some(ui) = ui {
+        let viewport = crate::bind::modules::viewport_of(id);
+        let mut copy = ui.lock().clone();
+        copy.begin(og_ui::InputFrame::default(), viewport);
+        copy.build_layers(&crate::bind::modules::docs::env(id));
+        copy.end();
+    }
+    if let (Some(physics), Ok(world)) = (physics, eng.world()) {
+        // A world without the physics settings has nothing to build.
+        let _ = physics.query(world);
     }
 }
 

@@ -203,6 +203,17 @@ const VECTOR_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayou
 };
 
 impl UiRenderer {
+    /// Makes one of the pipelines a HUD draws with that no frame used yet
+    /// (Renderer::warm): the shapes, vectors, layer composites and mass
+    /// elements of the output, then of its sRGB view. The blend modes and
+    /// operators a document rarely uses stay made on first use.
+    pub(crate) fn warm(&self) -> bool {
+        let common = |p: &UiPipelines| {
+            crate::deferred::warm_one(&[&p.normal, &p.vector, &p.composite, &p.mass])
+        };
+        common(&self.output) || self.linear.as_ref().is_some_and(common)
+    }
+
     /// Compiles the custom materials the frame's layers use (inside an
     /// error scope) and uploads the vectors it draws that are new.
     pub fn prepare(
