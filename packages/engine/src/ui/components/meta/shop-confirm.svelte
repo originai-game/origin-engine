@@ -125,9 +125,7 @@ h2, h3, p { margin: 0; }
 .main { flex-grow: 1.4; }
 .cap { flex: none; }
 /* A phone: a sheet, square at its foot, the socket smaller. */
-@media (width < 600px) {
-  .frame { border-radius: var(--inv-frame-cut) 0 0 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-  .socket { inline-size: var(--shop-socket-compact-size); block-size: var(--shop-socket-compact-size); }
-  .main { flex-grow: 1; }
-}
+.frame:size(compact) { border-radius: var(--inv-frame-cut) 0 0 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.socket:size(compact) { inline-size: var(--shop-socket-compact-size); block-size: var(--shop-socket-compact-size); }
+.main:size(compact) { flex-grow: 1; }
 </style>

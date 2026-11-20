@@ -81,5 +81,7 @@ h4 { font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing
 /* Claim: the reward's gold face. */
 .wait { padding: var(--space-lg); }
 /* A narrow inbox: the list over the reader in one column, neither scrolling sideways. */
-@container (width < 600px) { .layout { grid-template-columns: minmax(0, 1fr); } .list { min-block-size: calc(160 * var(--font-step-px)); max-block-size: var(--size-5xl); } .reader { max-block-size: none; overflow: visible; } }
+.layout:size(compact) { grid-template-columns: minmax(0, 1fr); }
+.list:size(compact) { min-block-size: calc(160 * var(--font-step-px)); max-block-size: var(--size-5xl); }
+.reader:size(compact) { max-block-size: none; overflow: visible; }
 </style>

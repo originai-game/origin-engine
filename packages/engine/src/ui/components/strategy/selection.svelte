@@ -119,18 +119,16 @@
 /* On a phone the panel is compact: a smaller portrait, the name and its
    line, and one row of whole cards: the first four and a +n tile counting
    the rest; the stats go. */
-@media (width < 600px) {
-  #StrategySelection { --portrait: var(--size-lg); --card: var(--size-md); column-gap: calc(8 * var(--font-step-px)); }
-  .lead { row-gap: calc(3 * var(--font-step-px)); }
-  .health { block-size: calc(5 * var(--font-step-px)); }
-  .vital-max { display: none; }
-  .main { row-gap: calc(5 * var(--font-step-px)); }
-  .unit-name { font-size: var(--hud-size-unit-compact); }
-  .count { font-size: var(--hud-size-xs); }
-  .line { font-size: var(--hud-size-label-compact); letter-spacing: normal; }
-  .stats { display: none; }
-  .roster { flex-wrap: nowrap; max-inline-size: none; max-block-size: none; overflow: hidden; }
-  .card.past { display: none; }
-  .more { display: flex; }
-}
+#StrategySelection:size(compact) { --portrait: var(--size-lg); --card: var(--size-md); column-gap: calc(8 * var(--font-step-px)); }
+.lead:size(compact) { row-gap: calc(3 * var(--font-step-px)); }
+.health:size(compact) { block-size: calc(5 * var(--font-step-px)); }
+.vital-max:size(compact) { display: none; }
+.main:size(compact) { row-gap: calc(5 * var(--font-step-px)); }
+.unit-name:size(compact) { font-size: var(--hud-size-unit-compact); }
+.count:size(compact) { font-size: var(--hud-size-xs); }
+.line:size(compact) { font-size: var(--hud-size-label-compact); letter-spacing: normal; }
+.stats:size(compact) { display: none; }
+.roster:size(compact) { flex-wrap: nowrap; max-inline-size: none; max-block-size: none; overflow: hidden; }
+.card.past:size(compact) { display: none; }
+.more:size(compact) { display: flex; }
 </style>

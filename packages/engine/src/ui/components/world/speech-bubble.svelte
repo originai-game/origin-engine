@@ -48,7 +48,6 @@
 .left { block-size: 100%; inline-size: calc(var(--left) * 100%); background: var(--world-timer-fill); }
 /* The tail points down to the speaker. */
 .tail { flex: none; inline-size: var(--world-tail-width); block-size: var(--world-tail-height); margin-top: calc(-1 * var(--stroke-hairline)); background: var(--hud-tag-fill); clip-path: polygon(0 0, 100% 0, 50% 100%); }
-@media (width < 600px) { .box { max-inline-size: min(var(--world-speech-measure), var(--world-speech-room-phone)); } }
-@media (height < 500px) { .box { max-inline-size: min(var(--world-speech-measure), var(--world-speech-room-short)); } }
-@media (prefers-reduced-motion: reduce) { #Bubble { animation: none; } }
+.box:size(compact) { max-inline-size: min(var(--world-speech-measure), var(--world-speech-room-phone)); }
+.box:size(short) { max-inline-size: min(var(--world-speech-measure), var(--world-speech-room-short)); }
 </style>

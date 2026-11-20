@@ -94,25 +94,21 @@
 /* On a phone: the place smaller, the lap and the places gained beside it,
    then the lap time running over the best lap and the delta; the last lap
    is left out. */
-@media (width < 600px) {
-  #RacingLapHud { row-gap: calc(8 * var(--font-step-px)); inline-size: stretch; }
-  .place { font-size: var(--hud-size-place-compact); }
-  .of { font-size: var(--hud-size-md); }
-  #Head { column-gap: var(--space-sm); }
-  #Side { row-gap: calc(4 * var(--font-step-px)); padding-block-end: 0; }
-  .moved { letter-spacing: normal; }
-  /* The times in two lines across the full width: the lap time running,
-     then the best lap and the split's delta. */
-  #Times { row-gap: calc(2 * var(--font-step-px)); column-gap: var(--space-md); grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "cl ct ct ct" "bl bt sl sd"; }
-  .current .label { grid-area: cl; }
-  .current .time { grid-area: ct; }
-  .best .label { grid-area: bl; }
-  .best .time { grid-area: bt; justify-self: start; }
-  .split .label { grid-area: sl; justify-self: end; }
-  .delta { grid-area: sd; }
-  .current .time { font-size: var(--hud-size-md); }
-  .last .label, .last .end { display: none; }
-  .label { letter-spacing: normal; }
-  .delta, .split .label { margin-block-start: 0; }
-}
+#RacingLapHud:size(compact) { row-gap: calc(8 * var(--font-step-px)); inline-size: stretch; }
+.place:size(compact) { font-size: var(--hud-size-place-compact); }
+.of:size(compact) { font-size: var(--hud-size-md); }
+#Head:size(compact) { column-gap: var(--space-sm); }
+#Side:size(compact) { row-gap: calc(4 * var(--font-step-px)); padding-block-end: 0; }
+.moved:size(compact) { letter-spacing: normal; }
+#Times:size(compact) { row-gap: calc(2 * var(--font-step-px)); column-gap: var(--space-md); grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "cl ct ct ct" "bl bt sl sd"; }
+.current .label:size(compact) { grid-area: cl; }
+.current .time:size(compact) { grid-area: ct; }
+.best .label:size(compact) { grid-area: bl; }
+.best .time:size(compact) { grid-area: bt; justify-self: start; }
+.split .label:size(compact) { grid-area: sl; justify-self: end; }
+.delta:size(compact) { grid-area: sd; }
+.current .time:size(compact) { font-size: var(--hud-size-md); }
+.last .label:size(compact), .last .end:size(compact) { display: none; }
+.label:size(compact) { letter-spacing: normal; }
+.delta:size(compact), .split .label:size(compact) { margin-block-start: 0; }
 </style>

@@ -68,5 +68,4 @@
 #Inside { align-items: center; block-size: 100%; padding-inline: var(--space-sm); line-height: 1; transform: skewX(calc(-1 * var(--bar-skew))); }
 .figure { --figure-size: var(--font-step-sm); --figure-weight: var(--bar-figure-weight); font-stretch: var(--bar-figure-stretch); white-space: nowrap; }
 .critical .figure { --figure-ink: var(--tone-danger); }
-@media (prefers-reduced-motion: reduce) { .critical #Track { animation: none; } }
 </style>

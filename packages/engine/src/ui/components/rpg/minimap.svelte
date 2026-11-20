@@ -57,14 +57,11 @@
 #Where { align-items: center; justify-content: center; max-inline-size: 100%; min-inline-size: 0; }
 .place { min-inline-size: 0; font-size: var(--hud-size-name); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .clock { flex: none; max-inline-size: 50%; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-@media (width < 600px) {
-  #RpgMinimap { --side: calc(var(--size-xl) * 1.6); row-gap: calc(6 * var(--font-step-px)); }
-  .blip { --pip: calc(7 * var(--font-step-px)); }
-  .blip.kind-boss, .blip.kind-objective { --pip: calc(10 * var(--font-step-px)); }
-  #Self { --me: calc(11 * var(--font-step-px)); }
-  /* The clock goes under the place rather than widen the map's column. */
-  #Where { flex-wrap: wrap; max-inline-size: var(--side); row-gap: 0; }
-  .place { font-size: var(--hud-size-xs); }
-}
+#RpgMinimap:size(compact) { --side: calc(var(--size-xl) * 1.6); row-gap: calc(6 * var(--font-step-px)); }
+.blip:size(compact) { --pip: calc(7 * var(--font-step-px)); }
+.blip.kind-boss:size(compact), .blip.kind-objective:size(compact) { --pip: calc(10 * var(--font-step-px)); }
+#Self:size(compact) { --me: calc(11 * var(--font-step-px)); }
+#Where:size(compact) { flex-wrap: wrap; max-inline-size: var(--side); row-gap: 0; }
+.place:size(compact) { font-size: var(--hud-size-xs); }
 .anchor-top { text-align: center; }
 </style>

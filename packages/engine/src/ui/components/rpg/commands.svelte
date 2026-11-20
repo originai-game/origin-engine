@@ -28,5 +28,5 @@
 .cell { block-size: calc(var(--size-xl) * 1.2); padding: 0; min-inline-size: 0; }
 .face { inline-size: 100%; block-size: 100%; }
 .command-mark { width: var(--size-lg); height: var(--size-lg); }
-@media (width < 600px), (height < 500px) { .plates { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); } }
+.plates:size(compact) { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); }
 </style>

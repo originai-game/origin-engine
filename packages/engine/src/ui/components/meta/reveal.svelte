@@ -100,9 +100,7 @@ h2, p { margin: 0; overflow-wrap: anywhere; }
 .actions { flex: none; width: stretch; justify-content: center; }
 .act { flex: 0 1 calc(260 * var(--font-step-px)); min-width: 0; min-block-size: calc(var(--size-touch) * 1.15); gap: var(--space-xs); white-space: normal; }
 .cap { flex: none; }
-@container (width < 480px) {
-  .rewards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .socket { inline-size: var(--shop-reward-compact-size); }
-  .act { flex: 1 1 auto; }
-}
+.rewards:size(compact) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.socket:size(compact) { inline-size: var(--shop-reward-compact-size); }
+.act:size(compact) { flex: 1 1 auto; }
 </style>

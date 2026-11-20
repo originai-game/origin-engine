@@ -46,9 +46,7 @@
 .plate.kind-countdown .call { font-size: var(--hud-size-lg); letter-spacing: normal; font-variant-numeric: var(--hud-figure-numeric); }
 .place { flex: none; font-size: var(--hud-size-md); font-weight: var(--hud-figure-weight); color: var(--hud-accent); white-space: nowrap; }
 .detail { max-inline-size: 100%; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-@media (width < 600px) {
-  .plate { padding: calc(4 * var(--font-step-px)) calc(14 * var(--font-step-px)); }
-  .call, .place { font-size: var(--hud-size-sm); }
-  .detail { letter-spacing: normal; }
-}
+.plate:size(compact) { padding: calc(4 * var(--font-step-px)) calc(14 * var(--font-step-px)); }
+.call:size(compact), .place:size(compact) { font-size: var(--hud-size-sm); }
+.detail:size(compact) { letter-spacing: normal; }
 </style>

@@ -162,38 +162,34 @@ img.art { object-fit: cover; }
 .state-plate { align-items: center; padding: var(--space-md) var(--space-lg); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .state-text { margin: 0; text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink); }
 .none .state-text { padding: var(--space-sm) var(--space-md); background: var(--hud-tag-fill); -webkit-text-stroke-width: 0; text-shadow: none; }
-@media (pointer: coarse) { .key { display: none; } }
+.key:touch { display: none; }
 /* A narrow panel (a phone, or a side column on a wide screen) puts the
    selected song's details over the list, the jacket small at the start. */
-@container (width < 560px) {
-  .body { flex-direction: column; --layout-gap-wide: var(--layout-gap); }
-  .detail { order: -1; }
-  .list { flex: 1; width: stretch; min-height: 0; }
-  .rows { padding-inline-end: var(--space-xxs); }
-  .detail { flex: none; width: stretch; overflow-y: visible; padding: 0; }
-  .hero { align-items: center; }
-  .cover { inline-size: min(calc(92 * var(--font-step-px)), var(--select-cover-compact-max)); }
-  .info { flex: 1; min-width: 0; }
-  .detail-name { font-size: var(--select-size-hero-compact); }
-  .detail-artist { font-size: var(--hud-size-xs); }
-  .facts { padding-block: 0; flex-wrap: nowrap; min-width: 0; max-width: stretch; }
-  .facts .label { display: none; }
-  .facts { align-items: center; }
-  .fact { min-block-size: 0; }
-  .act { min-width: 0; min-height: calc(var(--size-touch) * 0.8); padding: 0 var(--space-sm); }
-  .act span { white-space: nowrap; }
-  .act .eq { display: none; }
-  .info .badges { display: none; }
-  .fact { flex-direction: row; align-items: baseline; gap: var(--space-xs); min-inline-size: 0; padding: calc(2 * var(--font-step-px)) var(--space-xs); }
-  .value { font-size: var(--hud-size-sm); }
-  .row:state(selected) { margin-inline-start: 0; }
-  .row:state(selected) .thumb, .thumb { inline-size: calc(48 * var(--font-step-px)); block-size: calc(48 * var(--font-step-px)); }
-  .name, .row:state(selected) .name { font-size: var(--select-size-name-compact); }
-  .bpm { font-size: var(--hud-size-sm); }
-}
+.body:size(compact) { flex-direction: column; --layout-gap-wide: var(--layout-gap); }
+.detail:size(compact) { order: -1; }
+.list:size(compact) { flex: 1; width: stretch; min-height: 0; }
+.rows:size(compact) { padding-inline-end: var(--space-xxs); }
+.detail:size(compact) { flex: none; width: stretch; overflow-y: visible; padding: 0; }
+.hero:size(compact) { align-items: center; }
+.cover:size(compact) { inline-size: min(calc(92 * var(--font-step-px)), var(--select-cover-compact-max)); }
+.info:size(compact) { flex: 1; min-width: 0; }
+.detail-name:size(compact) { font-size: var(--select-size-hero-compact); }
+.detail-artist:size(compact) { font-size: var(--hud-size-xs); }
+.facts:size(compact) { padding-block: 0; flex-wrap: nowrap; min-width: 0; max-width: stretch; }
+.facts .label:size(compact) { display: none; }
+.facts:size(compact) { align-items: center; }
+.fact:size(compact) { min-block-size: 0; }
+.act:size(compact) { min-width: 0; min-height: calc(var(--size-touch) * 0.8); padding: 0 var(--space-sm); }
+.act span:size(compact) { white-space: nowrap; }
+.act .eq:size(compact) { display: none; }
+.info .badges:size(compact) { display: none; }
+.fact:size(compact) { flex-direction: row; align-items: baseline; gap: var(--space-xs); min-inline-size: 0; padding: calc(2 * var(--font-step-px)) var(--space-xs); }
+.value:size(compact) { font-size: var(--hud-size-sm); }
+.row:state(selected):size(compact) { margin-inline-start: 0; }
+.row:state(selected) .thumb:size(compact), .thumb:size(compact) { inline-size: calc(48 * var(--font-step-px)); block-size: calc(48 * var(--font-step-px)); }
+.name:size(compact), .row:state(selected) .name:size(compact) { font-size: var(--select-size-name-compact); }
+.bpm:size(compact) { font-size: var(--hud-size-sm); }
 /* The frame cannot ask its own width, so its title and gap follow the screen. */
-@media (width < 600px) {
-  #RhythmSongSelect { --layout-gap-loose: var(--layout-gap-tight); }
-  .title { font-size: var(--select-size-title-compact); }
-}
+#RhythmSongSelect:size(compact) { --layout-gap-loose: var(--layout-gap-tight); }
+.title:size(compact) { font-size: var(--select-size-title-compact); }
 </style>

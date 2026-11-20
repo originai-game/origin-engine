@@ -136,15 +136,10 @@ td.total { font-size: var(--hud-size-md); }
 .num, .total { text-align: end; white-space: nowrap; }
 .num { min-width: var(--size-md); }
 .empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
-@container (width < 600px) {
-  .team th, .team td { padding: var(--space-xxs) var(--space-xs); }
-  /* A narrow board cannot hold a long name beside four figures at large
-     text: the name takes its own line and the figures share the line under
-     it in even columns, the same in every row, so they still line up. */
-  .team, .team thead, .team tbody { display: block; }
-  .team tr { display: flex; flex-wrap: wrap; align-items: center; width: stretch; margin-block-end: var(--space-xxs); }
-  .team-head, .who-cell { flex: 1 1 100%; width: auto; min-width: 0; max-width: stretch; }
-  .num { flex: 1 1 0; min-width: 0; }
-  .total { flex: 2 1 0; min-width: 0; }
-}
+.team th:size(compact), .team td:size(compact) { padding: var(--space-xxs) var(--space-xs); }
+.team:size(compact), .team thead:size(compact), .team tbody:size(compact) { display: block; }
+.team tr:size(compact) { display: flex; flex-wrap: wrap; align-items: center; width: stretch; margin-block-end: var(--space-xxs); }
+.team-head:size(compact), .who-cell:size(compact) { flex: 1 1 100%; width: auto; min-width: 0; max-width: stretch; }
+.num:size(compact) { flex: 1 1 0; min-width: 0; }
+.total:size(compact) { flex: 2 1 0; min-width: 0; }
 </style>

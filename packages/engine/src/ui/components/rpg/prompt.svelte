@@ -28,6 +28,6 @@
 .action { min-inline-size: 0; font-size: var(--hud-size-title); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .reason { flex: none; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-harm); white-space: nowrap; }
 .disabled .action, .disabled .key { opacity: 0.55; }
-@media (pointer: coarse) { .key { display: none; } }
-@media (width < 600px) { .action { font-size: var(--hud-size-xs); } }
+.key:touch { display: none; }
+.action:size(compact) { font-size: var(--hud-size-xs); }
 </style>

@@ -94,5 +94,5 @@
 #Send { flex: none; min-height: var(--size-touch); min-width: var(--size-touch); }
 .send-mark { width: var(--size-xs); height: var(--size-xs); }
 .send-mark:dir(rtl) { transform: scaleX(-1); }
-@container (width < 400px) { .send-label { display: none; } }
+.send-label:size(compact) { display: none; }
 </style>

@@ -78,9 +78,7 @@
 #Double { --button-fill: var(--play-double-fill); --button-hover-fill: var(--play-double-fill); --button-pressed-fill: var(--play-double-fill); --button-ink: var(--play-double-ink); }
 .double { align-items: center; min-width: 0; max-width: stretch; }
 .double-text { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; font-size: var(--hud-tag-size); }
-@media (pointer: coarse) { .actions button { flex: 1; } }
-@container (width < 560px) {
-  .actions button { flex: 1; min-width: 0; }
-  .haul { min-inline-size: calc(var(--size-xl) * 1.4); }
-}
+.actions button:touch { flex: 1; }
+.actions button:size(compact) { flex: 1; min-width: 0; }
+.haul:size(compact) { min-inline-size: calc(var(--size-xl) * 1.4); }
 </style>

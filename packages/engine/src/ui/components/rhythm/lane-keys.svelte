@@ -22,7 +22,5 @@
 .lane { flex: 1 1 0; min-inline-size: 0; }
 .key { min-inline-size: calc(44 * var(--font-step-px)); max-inline-size: stretch; min-block-size: calc(34 * var(--font-step-px)); padding: 0 var(--space-xs); font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); overflow-wrap: anywhere; }
 .key.held { background: var(--hud-key-lit-fill); box-shadow: var(--hud-key-lit-shadow); }
-@media (width < 600px) {
-  .key { min-inline-size: calc(30 * var(--font-step-px)); min-block-size: calc(28 * var(--font-step-px)); font-size: var(--hud-size-xs); }
-}
+.key:size(compact) { min-inline-size: calc(30 * var(--font-step-px)); min-block-size: calc(28 * var(--font-step-px)); font-size: var(--hud-size-xs); }
 </style>

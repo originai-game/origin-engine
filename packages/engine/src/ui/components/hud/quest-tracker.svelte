@@ -51,9 +51,7 @@
 .step:state(done) .text { text-decoration-line: var(--hud-done-line); }
 .tag { flex: none; max-inline-size: 45%; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; -webkit-text-stroke-width: 0; text-shadow: none; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* On a phone the tracker is one line: the step in play. */
-@media (width < 600px) {
-  #RpgQuestTracker { inline-size: stretch; }
-  .legend, #Head, .step { display: none; }
-  .step:state(current) { display: flex; }
-}
+#RpgQuestTracker:size(compact) { inline-size: stretch; }
+.legend:size(compact), #Head:size(compact), .step:size(compact) { display: none; }
+.step:state(current):size(compact) { display: flex; }
 </style>

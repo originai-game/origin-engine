@@ -81,19 +81,14 @@
 /* The HUD spans the screen, so the screen's width decides. A phone keeps
    the scores and the round, and gives each team's name a line of its own
    over its score, so the name has the plate's whole width. */
-@media (width < 600px) {
-  #ArenaRoundHud { --layout-gap-wide: var(--space-lg); }
-  /* The bar never outgrows the screen: the round and its clock take a
-     line over the two teams, which share the width under it, so a name
-     and a score keep whole at any text size. */
-  .bar { width: stretch; flex-wrap: wrap; }
-  .team { flex: 1 1 0; flex-wrap: wrap; align-content: center; --layout-gap: var(--space-xs); padding: var(--space-xxs) var(--space-sm); }
-  .name { flex: 1 1 100%; font-size: var(--hud-size-xs); }
-  .team.b .name { order: -1; }
-  .team.a .name { text-align: end; }
-  .team.b .name { text-align: start; }
-  .score { font-size: var(--party-size-figure-compact); }
-  .round { order: -1; flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; min-width: 0; padding: var(--space-xxs) var(--space-sm); --layout-gap-hair: var(--space-sm); }
-  .round-label { white-space: normal; text-align: center; }
-}
+#ArenaRoundHud:size(compact) { --layout-gap-wide: var(--space-lg); }
+.bar:size(compact) { width: stretch; flex-wrap: wrap; }
+.team:size(compact) { flex: 1 1 0; flex-wrap: wrap; align-content: center; --layout-gap: var(--space-xs); padding: var(--space-xxs) var(--space-sm); }
+.name:size(compact) { flex: 1 1 100%; font-size: var(--hud-size-xs); }
+.team.b .name:size(compact) { order: -1; }
+.team.a .name:size(compact) { text-align: end; }
+.team.b .name:size(compact) { text-align: start; }
+.score:size(compact) { font-size: var(--party-size-figure-compact); }
+.round:size(compact) { order: -1; flex: 1 1 100%; flex-direction: row; flex-wrap: wrap; min-width: 0; padding: var(--space-xxs) var(--space-sm); --layout-gap-hair: var(--space-sm); }
+.round-label:size(compact) { white-space: normal; text-align: center; }
 </style>

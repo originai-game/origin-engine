@@ -133,10 +133,8 @@
 #Sell { font-size: var(--hud-label-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); }
 .refund { color: var(--hud-gold); letter-spacing: normal; text-transform: none; }
 .empty-text { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
-@container (width < 600px) {
-  .path { display: grid; grid-template-columns: auto minmax(0, 1fr); padding: var(--space-sm); }
-  .buy { grid-column: 2; min-width: 0; max-width: none; padding: var(--space-xs) var(--space-sm); }
-  .actions { justify-content: stretch; }
-  #Sell { width: stretch; }
-}
+.path:size(compact) { display: grid; grid-template-columns: auto minmax(0, 1fr); padding: var(--space-sm); }
+.buy:size(compact) { grid-column: 2; min-width: 0; max-width: none; padding: var(--space-xs) var(--space-sm); }
+.actions:size(compact) { justify-content: stretch; }
+#Sell:size(compact) { width: stretch; }
 </style>

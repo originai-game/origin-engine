@@ -108,14 +108,12 @@
   .glyph { width: var(--size-sm); height: var(--size-sm); }
 }
 /* The reveal fills the screen, so the screen's width decides: a phone stacks the sides with the seal between them. */
-@media (width < 600px) {
-  .stage { flex-direction: column; align-items: stretch; --layout-gap-wide: var(--space-xs); }
-  .side { flex: none; --layout-gap: var(--space-xs); }
-  .heading { font-size: var(--party-size-hero-compact); }
-  .seal { align-self: center; inline-size: calc(var(--party-size-seal-compact) * 2); }
-  .vs { font-size: var(--party-size-seal-compact); }
-  .card { padding: var(--space-xxs) var(--space-sm); --layout-gap-loose: var(--layout-gap); }
-  .portrait { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
-  .glyph { width: var(--size-sm); height: var(--size-sm); }
-}
+.stage:size(compact) { flex-direction: column; align-items: stretch; --layout-gap-wide: var(--space-xs); }
+.side:size(compact) { flex: none; --layout-gap: var(--space-xs); }
+.heading:size(compact) { font-size: var(--party-size-hero-compact); }
+.seal:size(compact) { align-self: center; inline-size: calc(var(--party-size-seal-compact) * 2); }
+.vs:size(compact) { font-size: var(--party-size-seal-compact); }
+.card:size(compact) { padding: var(--space-xxs) var(--space-sm); --layout-gap-loose: var(--layout-gap); }
+.portrait:size(compact) { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
+.glyph:size(compact) { width: var(--size-sm); height: var(--size-sm); }
 </style>

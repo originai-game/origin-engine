@@ -95,16 +95,13 @@
    and pulses. */
 .invulnerable #Fill { filter: var(--hud-unready); }
 .critical #Health { box-shadow: var(--bar-critical-rim); animation: var(--pulse-motion); }
-@media (width < 600px) {
-  #BossBar { row-gap: calc(4 * var(--font-step-px)); }
-  .boss { font-size: var(--hud-size-boss-compact); }
-  .epithet { display: none; }
-  #Track { block-size: calc(9 * var(--font-step-px)); }
-  .threshold { --d: calc(7 * var(--font-step-px)); }
-  .gauge { block-size: calc(5 * var(--font-step-px)); }
-  .weakness { inline-size: calc(16 * var(--font-step-px)); block-size: calc(16 * var(--font-step-px)); }
-  .share { font-size: var(--hud-size-xs); }
-  .label, .kind { letter-spacing: normal; }
-}
-@media (prefers-reduced-motion: reduce) { .critical #Health { animation: none; } }
+#BossBar:size(compact) { row-gap: calc(4 * var(--font-step-px)); }
+.boss:size(compact) { font-size: var(--hud-size-boss-compact); }
+.epithet:size(compact) { display: none; }
+#Track:size(compact) { block-size: calc(9 * var(--font-step-px)); }
+.threshold:size(compact) { --d: calc(7 * var(--font-step-px)); }
+.gauge:size(compact) { block-size: calc(5 * var(--font-step-px)); }
+.weakness:size(compact) { inline-size: calc(16 * var(--font-step-px)); block-size: calc(16 * var(--font-step-px)); }
+.share:size(compact) { font-size: var(--hud-size-xs); }
+.label:size(compact), .kind:size(compact) { letter-spacing: normal; }
 </style>

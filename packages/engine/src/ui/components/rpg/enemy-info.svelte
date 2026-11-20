@@ -38,5 +38,6 @@
 .effects { width: stretch; margin: 0; padding: 0; list-style: none; }
 .row { inline-size: 100%; }
 .effect-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
-@media (width < 600px), (height < 500px) { .picture { display: none; } .row { inline-size: auto; } }
+.picture:size(compact) { display: none; }
+.row:size(compact) { inline-size: auto; }
 </style>

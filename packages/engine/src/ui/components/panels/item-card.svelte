@@ -152,22 +152,16 @@ h2, p { margin: 0; }
 .act { flex: 1 1 0; min-width: 0; min-block-size: calc(var(--size-touch) * 1.15); gap: var(--space-xs); }
 .main { flex-grow: 1.4; }
 .cap { flex: none; }
-@media (width < 600px), (height < 500px) {
-  /* Narrow or short: the art in a socket beside the name, no lore, the
-     rows without the equipped column. */
-  .top { flex-direction: row; align-items: center; gap: var(--space-sm); }
-  .hero { inline-size: var(--icard-socket-size); block-size: var(--icard-socket-size); width: auto; flex: none; border: none; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-  .hero-glow { display: none; }
-  .hero-art { inline-size: 80%; block-size: 80%; }
-  .band { min-width: 0; flex: 1 1 0; padding: 0; }
-  /* The kicker and the line keep one line each, so the figures keep the
-     card's height at large text. */
-  .band .kicker, .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .name { font-size: var(--inv-figure-lg-size); line-clamp: 2; overflow: hidden; }
-  .big { font-size: var(--inv-figure-xl-size); }
-  .head-row { display: none; }
-  .wide { display: none; }
-  .lore { display: none; }
-  .act { min-block-size: var(--size-touch); }
-}
+.top:size(compact) { flex-direction: row; align-items: center; gap: var(--space-sm); }
+.hero:size(compact) { inline-size: var(--icard-socket-size); block-size: var(--icard-socket-size); width: auto; flex: none; border: none; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); border-radius: var(--inv-slot-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
+.hero-glow:size(compact) { display: none; }
+.hero-art:size(compact) { inline-size: 80%; block-size: 80%; }
+.band:size(compact) { min-width: 0; flex: 1 1 0; padding: 0; }
+.band .kicker:size(compact), .line:size(compact) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name:size(compact) { font-size: var(--inv-figure-lg-size); line-clamp: 2; overflow: hidden; }
+.big:size(compact) { font-size: var(--inv-figure-xl-size); }
+.head-row:size(compact) { display: none; }
+.wide:size(compact) { display: none; }
+.lore:size(compact) { display: none; }
+.act:size(compact) { min-block-size: var(--size-touch); }
 </style>

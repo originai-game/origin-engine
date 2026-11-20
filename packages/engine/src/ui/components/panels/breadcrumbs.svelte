@@ -25,7 +25,7 @@
 #Breadcrumbs { display: block; color: var(--front-ink); }
 ol { margin: 0; padding: 0; list-style-type: none; align-items: center; row-gap: 0; }
 .crumb { min-inline-size: 0; max-inline-size: 100%; min-block-size: calc(32 * var(--font-step-px)); align-items: center; }
-@media (pointer: coarse) { .crumb { min-block-size: var(--touch-target); } }
+.crumb:touch { min-block-size: var(--touch-target); }
 .icon { flex: none; width: calc(18 * var(--font-step-px)); height: calc(18 * var(--font-step-px)); color: var(--front-ink-dim); }
 .link { font-size: var(--dialog-crumb-size); font-weight: var(--dialog-weight); line-height: var(--font-leading-snug); color: var(--front-ink-dim); text-decoration: none; overflow-wrap: break-word; min-inline-size: 0; }
 .link:hover, .link:focus-visible { color: var(--front-ink); }

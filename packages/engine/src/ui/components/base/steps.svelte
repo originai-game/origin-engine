@@ -61,10 +61,8 @@
 .column .face { grid-template-columns: auto minmax(0, 1fr); }
 .column .rail { flex-direction: column; }
 .column .reach { flex-direction: column; inline-size: var(--stroke-thick); block-size: auto; min-inline-size: 0; min-block-size: var(--space-md); margin-inline-end: 0; margin-block-end: calc(var(--space-xs) - var(--space-sm) * 2); }
-@container (width < 480px) {
-  .steps { flex-direction: column; }
-  .face { grid-template-columns: auto minmax(0, 1fr); }
-  .rail { flex-direction: column; }
-  .reach { flex-direction: column; inline-size: var(--stroke-thick); block-size: auto; min-inline-size: 0; min-block-size: var(--space-md); margin-inline-end: 0; margin-block-end: calc(var(--space-xs) - var(--space-sm) * 2); }
-}
+.steps:size(compact) { flex-direction: column; }
+.face:size(compact) { grid-template-columns: auto minmax(0, 1fr); }
+.rail:size(compact) { flex-direction: column; }
+.reach:size(compact) { flex-direction: column; inline-size: var(--stroke-thick); block-size: auto; min-inline-size: 0; min-block-size: var(--space-md); margin-inline-end: 0; margin-block-end: calc(var(--space-xs) - var(--space-sm) * 2); }
 </style>

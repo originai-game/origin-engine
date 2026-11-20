@@ -54,11 +54,9 @@
    its side, with the width for more, the three newest (where more rows
    would cover the play area round the aim); the rest stay in the log for
    a reader. */
-@media (width < 600px) {
-  .row.later { display: none; }
-  .row { padding-inline-start: var(--space-sm); }
-  .name { font-size: var(--hud-size-xs); }
-  .glyph { inline-size: calc(26 * var(--font-step-px)); block-size: calc(10 * var(--font-step-px)); }
-}
-@media (height < 600px) and (orientation: landscape) { .row.past { display: none; } }
+.row.later:size(compact) { display: none; }
+.row:size(compact) { padding-inline-start: var(--space-sm); }
+.name:size(compact) { font-size: var(--hud-size-xs); }
+.glyph:size(compact) { inline-size: calc(26 * var(--font-step-px)); block-size: calc(10 * var(--font-step-px)); }
+.row.past:size(short) { display: none; }
 </style>

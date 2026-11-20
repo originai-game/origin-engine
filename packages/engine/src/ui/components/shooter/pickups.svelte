@@ -41,9 +41,7 @@
 .rarity-rare .count { color: var(--hud-rare); }
 .rarity-epic .count { color: var(--hud-epic); }
 .rarity-legendary .count { color: var(--hud-legendary); }
-@media (width < 600px) {
-  .entry.later { display: none; }
-  .art { inline-size: calc(18 * var(--font-step-px)); block-size: calc(18 * var(--font-step-px)); }
-  .item, .count { font-size: var(--hud-size-xs); }
-}
+.entry.later:size(compact) { display: none; }
+.art:size(compact) { inline-size: calc(18 * var(--font-step-px)); block-size: calc(18 * var(--font-step-px)); }
+.item:size(compact), .count:size(compact) { font-size: var(--hud-size-xs); }
 </style>

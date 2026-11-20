@@ -78,9 +78,7 @@
 @keyframes title { from { scale: 0.4; } to { scale: 1; } }
 @keyframes value { from { translate: 0 var(--space-xl); opacity: 0; } to { translate: 0 0; opacity: 1; } }
 
-@media (prefers-reduced-motion) {
-  .rays { display: none; }
-  .halo, .title, .value { animation: none; }
-}
-@media (width < 600px) { .value { font-size: var(--alert-size-level-compact); } .halo { width: calc(var(--alert-size-level-compact) * 2.2); height: calc(var(--alert-size-level-compact) * 2.2); } .rays { width: calc(var(--alert-size-level-compact) * 3.8); height: calc(var(--alert-size-level-compact) * 3.8); } }
+.value:size(compact) { font-size: var(--alert-size-level-compact); }
+.halo:size(compact) { width: calc(var(--alert-size-level-compact) * 2.2); height: calc(var(--alert-size-level-compact) * 2.2); }
+.rays:size(compact) { width: calc(var(--alert-size-level-compact) * 3.8); height: calc(var(--alert-size-level-compact) * 3.8); }
 </style>

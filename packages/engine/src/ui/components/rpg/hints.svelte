@@ -20,5 +20,5 @@
 <style>
 #RpgHints { margin: 0; padding: 0; list-style: none; justify-content: flex-end; column-gap: calc(16 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); }
 .hint { min-inline-size: 0; max-inline-size: 100%; }
-@media (pointer: coarse) { #RpgHints { display: none; } }
+#RpgHints:touch { display: none; }
 </style>

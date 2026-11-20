@@ -34,9 +34,7 @@
 .hit.later .call { display: none; }
 .hit.later .amount { font-size: var(--hud-size-md); }
 .hit.third { margin-inline-start: calc(64 * var(--font-step-px)); opacity: 0.6; }
-@media (width < 600px) {
-  .amount { font-size: var(--hud-size-damage-compact); }
-  .call { letter-spacing: normal; }
-  .hit.later { display: none; }
-}
+.amount:size(compact) { font-size: var(--hud-size-damage-compact); }
+.call:size(compact) { letter-spacing: normal; }
+.hit.later:size(compact) { display: none; }
 </style>

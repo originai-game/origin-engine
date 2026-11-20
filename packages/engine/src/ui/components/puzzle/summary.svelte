@@ -91,13 +91,8 @@
 .actions { flex: none; justify-content: center; }
 .actions button { min-height: var(--size-touch); }
 /* Next: the way on, in green. */
-@media (width < 600px) {
-  #PuzzleSummary { padding: var(--space-lg) var(--space-md) var(--space-md); --layout-gap-loose: var(--layout-gap-tight); }
-  .actions { --layout-gap-tight: var(--layout-gap-hair); }
-  .medal { inline-size: var(--result-size-star-compact); block-size: var(--result-size-star-compact); }
-  .medal.centre { inline-size: var(--result-size-star-lead-compact); block-size: var(--result-size-star-lead-compact); margin-block-end: var(--space-sm); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .medal.lit { animation: none; }
-}
+#PuzzleSummary:size(compact) { padding: var(--space-lg) var(--space-md) var(--space-md); --layout-gap-loose: var(--layout-gap-tight); }
+.actions:size(compact) { --layout-gap-tight: var(--layout-gap-hair); }
+.medal:size(compact) { inline-size: var(--result-size-star-compact); block-size: var(--result-size-star-compact); }
+.medal.centre:size(compact) { inline-size: var(--result-size-star-lead-compact); block-size: var(--result-size-star-lead-compact); margin-block-end: var(--space-sm); }
 </style>

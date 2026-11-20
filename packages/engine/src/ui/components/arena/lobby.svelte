@@ -102,18 +102,13 @@ button span { color: inherit; font-weight: inherit; }
 .actions { width: stretch; flex: none; justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
 .actions button { min-width: calc(var(--size-xxl) * 1.25); }
 .key { color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }
-@media (pointer: coarse) { .key { display: none; } }
+.key:touch { display: none; }
 /* The lobby sits in a panel: its own width, not the screen's, tightens it. */
-@container (width < 600px) {
-  .frame { padding: var(--space-sm); }
-  .row { --layout-gap: var(--layout-gap-tight); flex-wrap: wrap; padding: var(--space-xxs) var(--space-xs); }
-  .portrait { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
-  /* The name and its tags keep a width of their own; when the state or
-     Invite does not fit beside them it takes the line under, at its end. */
-  .who { flex: 1 1 calc(96 * var(--font-step-px)); }
-  .state, #Invite { margin-inline-start: auto; }
-  /* The actions share the width; when their words do not fit side by side, each takes a line. */
-  .actions { flex-wrap: wrap; }
-  .actions button { flex: 1 1 auto; }
-}
+.frame:size(compact) { padding: var(--space-sm); }
+.row:size(compact) { --layout-gap: var(--layout-gap-tight); flex-wrap: wrap; padding: var(--space-xxs) var(--space-xs); }
+.portrait:size(compact) { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
+.who:size(compact) { flex: 1 1 calc(96 * var(--font-step-px)); }
+.state:size(compact), #Invite:size(compact) { margin-inline-start: auto; }
+.actions:size(compact) { flex-wrap: wrap; }
+.actions button:size(compact) { flex: 1 1 auto; }
 </style>

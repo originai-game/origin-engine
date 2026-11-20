@@ -31,9 +31,7 @@
 .pedal-throttle .fill { background: var(--hud-shift-low); }
 .pedal-brake .fill { background: var(--hud-harm); }
 .label { font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
-@media (width < 600px) {
-  #RacingPedals { column-gap: calc(8 * var(--font-step-px)); }
-  .well { inline-size: calc(9 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
-  .label { letter-spacing: normal; }
-}
+#RacingPedals:size(compact) { column-gap: calc(8 * var(--font-step-px)); }
+.well:size(compact) { inline-size: calc(9 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
+.label:size(compact) { letter-spacing: normal; }
 </style>

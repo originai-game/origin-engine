@@ -95,13 +95,11 @@
 .star.lit { color: var(--play-star-on); filter: var(--hud-gold-glow); }
 .star-icon { width: 100%; height: 100%; }
 /* The frame is the container, so a narrow panel on a wide screen wraps as a phone does. */
-@container (width < 600px) {
-  .counters { --layout-gap-loose: var(--layout-gap-tight); }
-  .counter { min-width: calc(var(--size-xl) * 1.3); }
-  .counter-figure { font-size: var(--play-counter-compact-size); }
-  .goals { order: 3; flex-basis: 100%; }
-  .score { flex: 1; min-width: 0; }
-  .goal { flex: 1 1 0; min-width: 0; }
-  .socket { inline-size: var(--size-md); block-size: var(--size-md); }
-}
+.counters:size(compact) { --layout-gap-loose: var(--layout-gap-tight); }
+.counter:size(compact) { min-width: calc(var(--size-xl) * 1.3); }
+.counter-figure:size(compact) { font-size: var(--play-counter-compact-size); }
+.goals:size(compact) { order: 3; flex-basis: 100%; }
+.score:size(compact) { flex: 1; min-width: 0; }
+.goal:size(compact) { flex: 1 1 0; min-width: 0; }
+.socket:size(compact) { inline-size: var(--size-md); block-size: var(--size-md); }
 </style>

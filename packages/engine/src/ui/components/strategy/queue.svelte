@@ -76,8 +76,6 @@
 .reason { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-harm); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .empty-text { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-size-xs); color: var(--hud-ink-dim); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 /* On a phone the row is compact: smaller tiles, the title short. */
-@media (width < 600px) {
-  #StrategyQueue { --first: var(--size-md); --tile: calc(var(--size-md) * 0.78); --gap: calc(4 * var(--font-step-px)); column-gap: calc(6 * var(--font-step-px)); }
-  .title { font-size: var(--hud-size-label-compact); letter-spacing: normal; }
-}
+#StrategyQueue:size(compact) { --first: var(--size-md); --tile: calc(var(--size-md) * 0.78); --gap: calc(4 * var(--font-step-px)); column-gap: calc(6 * var(--font-step-px)); }
+.title:size(compact) { font-size: var(--hud-size-label-compact); letter-spacing: normal; }
 </style>

@@ -34,8 +34,6 @@
 .hint { max-inline-size: 100%; min-height: var(--control-lg); padding: var(--space-xxs) var(--space-sm); }
 .cap { min-width: var(--size-sm); height: var(--size-sm); flex: none; }
 .words { text-align: start; overflow-wrap: anywhere; }
-@media (pointer: coarse) {
-  #ActionHints { justify-content: center; --layout-gap-wide: var(--layout-gap); }
-  .hint { min-height: var(--touch-target); padding: var(--space-xxs) var(--space-md); }
-}
+#ActionHints:touch { justify-content: center; --layout-gap-wide: var(--layout-gap); }
+.hint:touch { min-height: var(--touch-target); padding: var(--space-xxs) var(--space-md); }
 </style>

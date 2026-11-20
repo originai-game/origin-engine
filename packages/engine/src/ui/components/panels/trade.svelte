@@ -100,12 +100,9 @@ h2, p { margin: 0; }
 .deal { width: stretch; min-block-size: calc(var(--size-touch) * 1.15); gap: var(--space-xs); }
 .cap { flex: none; }
 /* Narrow: the switch and the purse go under the title. */
-@container (width < 480px) {
-  .heading { flex-basis: 100%; }
-  /* The price goes under the name, so a struck price never squeezes it. */
-  .face .socket { grid-row: span 2; }
-  .price { grid-column: 2; justify-self: start; }
-  .summary { flex-wrap: wrap; }
-  .sum { flex-basis: 100%; flex-direction: row; justify-content: flex-end; align-items: baseline; gap: var(--space-sm); }
-}
+.heading:size(compact) { flex-basis: 100%; }
+.face .socket:size(compact) { grid-row: span 2; }
+.price:size(compact) { grid-column: 2; justify-self: start; }
+.summary:size(compact) { flex-wrap: wrap; }
+.sum:size(compact) { flex-basis: 100%; flex-direction: row; justify-content: flex-end; align-items: baseline; gap: var(--space-sm); }
 </style>

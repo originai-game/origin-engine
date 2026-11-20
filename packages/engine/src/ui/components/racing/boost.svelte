@@ -39,16 +39,14 @@
 .head { align-items: center; column-gap: calc(8 * var(--font-step-px)); min-inline-size: 0; }
 .label { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ally); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .key { flex: 0 1 auto; min-inline-size: calc(22 * var(--font-step-px)); max-inline-size: 60%; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-@media (pointer: coarse) { .key { display: none; } }
+.key:touch { display: none; }
 /* The bar: a leaning well, the fill in the shield's blue, cut into cells. */
 .bar { inline-size: stretch; block-size: calc(12 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); --layout-anchor-inset: 0; }
 .fill { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--hud-shield-fill); }
 .firing .fill { box-shadow: var(--hud-shield-glow); }
 .cuts { background: var(--bar-notch); mask-image: repeating-linear-gradient(90deg, transparent 0 calc(100% / var(--cells) - 3 * var(--font-step-px)), #000 calc(100% / var(--cells) - 3 * var(--font-step-px)) calc(100% / var(--cells))); }
-@media (width < 600px) {
-  #RacingBoost { inline-size: stretch; column-gap: calc(6 * var(--font-step-px)); }
-  .icon { inline-size: calc(24 * var(--font-step-px)); block-size: calc(24 * var(--font-step-px)); }
-  .label { letter-spacing: normal; }
-  .bar { block-size: calc(8 * var(--font-step-px)); }
-}
+#RacingBoost:size(compact) { inline-size: stretch; column-gap: calc(6 * var(--font-step-px)); }
+.icon:size(compact) { inline-size: calc(24 * var(--font-step-px)); block-size: calc(24 * var(--font-step-px)); }
+.label:size(compact) { letter-spacing: normal; }
+.bar:size(compact) { block-size: calc(8 * var(--font-step-px)); }
 </style>

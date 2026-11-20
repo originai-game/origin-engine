@@ -66,9 +66,7 @@
    apart. */
 /* A narrow map (a phone's) keeps its height for the rooms: the legend's
    keys pack closer, on as few rows as fit. */
-@container (width < 560px) {
-  .band { padding-block: var(--space-xs) 0; }
-  .legend { column-gap: var(--space-sm); row-gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); margin-block-end: var(--space-xs); }
-  .key { gap: var(--space-xs); }
-}
+.band:size(compact) { padding-block: var(--space-xs) 0; }
+.legend:size(compact) { column-gap: var(--space-sm); row-gap: var(--space-xs); padding: var(--space-xs) var(--space-sm); margin-block-end: var(--space-xs); }
+.key:size(compact) { gap: var(--space-xs); }
 </style>

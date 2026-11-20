@@ -17,5 +17,5 @@
 #RpgLockOn { --side: calc(var(--size-xxl) * 0.9); inline-size: var(--side); block-size: var(--side); flex: none; pointer-events: none; --layout-anchor-inset: 0; }
 /* The ring: a thin band of the arcs, cut from a disc by a mask. */
 #Ring { border-radius: var(--hud-radar-radius); background: var(--hud-lock-ring); mask-image: radial-gradient(closest-side, transparent 93%, #000 94%); filter: var(--hud-lock-glow); }
-@media (width < 600px) { #RpgLockOn { --side: calc(var(--size-xxl) * 0.6); } }
+#RpgLockOn:size(compact) { --side: calc(var(--size-xxl) * 0.6); }
 </style>

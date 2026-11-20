@@ -40,12 +40,10 @@
 .detail { max-inline-size: 100%; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-gold); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 /* On a phone one compact row: the meter, then the points over what earns
    them. */
-@media (width < 600px) {
-  #RacingBonus { flex-direction: row; justify-content: center; column-gap: var(--space-md); }
-  .meter { flex: 0 1 auto; min-inline-size: 0; }
-  .chain { flex: 0 1 auto; align-items: flex-start; }
-  .label, .detail { letter-spacing: normal; }
-  .bar { inline-size: calc(100 * var(--font-step-px)); block-size: calc(5 * var(--font-step-px)); }
-  .points { padding-inline: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-size-sm); }
-}
+#RacingBonus:size(compact) { flex-direction: row; justify-content: center; column-gap: var(--space-md); }
+.meter:size(compact) { flex: 0 1 auto; min-inline-size: 0; }
+.chain:size(compact) { flex: 0 1 auto; align-items: flex-start; }
+.label:size(compact), .detail:size(compact) { letter-spacing: normal; }
+.bar:size(compact) { inline-size: calc(100 * var(--font-step-px)); block-size: calc(5 * var(--font-step-px)); }
+.points:size(compact) { padding-inline: 0 calc(6 * var(--font-step-px)); font-size: var(--hud-size-sm); }
 </style>

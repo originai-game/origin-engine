@@ -153,14 +153,8 @@
 .state-interrupted .castbar { box-shadow: var(--world-interrupted-rim); }
 .state-interrupted .cast-fill { background: var(--world-interrupted-fill); box-shadow: none; }
 /* On a phone the plate is a little denser. */
-@media (width < 600px) {
-  #Plate { --bw: calc(var(--world-bar-width) * var(--world-density-compact)); }
-  #Plate.boss { --bw: calc(var(--world-boss-bar-width) * var(--world-density-compact)); }
-  #Plate.compact { --bw: calc(var(--world-compact-bar-width) * var(--world-density-compact)); }
-}
+#Plate:size(compact) { --bw: calc(var(--world-bar-width) * var(--world-density-compact)); }
+#Plate.boss:size(compact) { --bw: calc(var(--world-boss-bar-width) * var(--world-density-compact)); }
+#Plate.compact:size(compact) { --bw: calc(var(--world-compact-bar-width) * var(--world-density-compact)); }
 /* Reduced motion: the low rim holds still, the ghost and brackets jump. */
-@media (prefers-reduced-motion: reduce) {
-  .alarm, .brackets { animation: none; }
-  .ghost { transition: none; }
-}
 </style>

@@ -101,14 +101,12 @@
    size up to a share of the map's width, only the chosen place keeps its
    name on the art (every marker still says its name to assistive tech),
    and the legend runs in one row along the foot. */
-@container (width < 560px) {
-  #RpgWorldMap { --pin: var(--map-marker-compact); }
-  .marker:state(selected) { --pin: var(--map-marker-on-compact); }
-  .ring { width: calc(var(--map-marker-on-compact) * 1.6); height: calc(var(--map-marker-on-compact) * 1.6); }
-  .marker .name { display: none; }
-  .marker:state(selected) .name { display: block;  top: calc(50% + var(--map-marker-on-compact) * 0.8 + var(--space-xs)); font-size: var(--map-name-compact-size); }
-  .legend { left: var(--space-xs); right: var(--space-xs); bottom: var(--space-xs); flex-wrap: nowrap; justify-content: center; column-gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); font-size: var(--map-name-compact-size); }
-  .legend:dir(rtl) { left: var(--space-xs); right: var(--space-xs); }
-  .here { left: var(--space-xs); top: var(--space-xs); font-size: var(--map-name-compact-size); }
-}
+#RpgWorldMap:size(compact) { --pin: var(--map-marker-compact); }
+.marker:state(selected):size(compact) { --pin: var(--map-marker-on-compact); }
+.ring:size(compact) { width: calc(var(--map-marker-on-compact) * 1.6); height: calc(var(--map-marker-on-compact) * 1.6); }
+.marker .name:size(compact) { display: none; }
+.marker:state(selected) .name:size(compact) { display: block;  top: calc(50% + var(--map-marker-on-compact) * 0.8 + var(--space-xs)); font-size: var(--map-name-compact-size); }
+.legend:size(compact) { left: var(--space-xs); right: var(--space-xs); bottom: var(--space-xs); flex-wrap: nowrap; justify-content: center; column-gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); font-size: var(--map-name-compact-size); }
+.legend:dir(rtl):size(compact) { left: var(--space-xs); right: var(--space-xs); }
+.here:size(compact) { left: var(--space-xs); top: var(--space-xs); font-size: var(--map-name-compact-size); }
 </style>

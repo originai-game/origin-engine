@@ -64,5 +64,4 @@
 /* The distance on a dark tag; a short figure, always whole. */
 .distance { flex: none; padding: calc(1 * var(--font-step-px)) calc(6 * var(--font-step-px)); font-size: var(--world-size-distance); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); white-space: nowrap; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .units { margin-inline-start: var(--stroke-hairline); font-size: var(--world-size-units); color: var(--hud-ink-dim); }
-@media (prefers-reduced-motion: reduce) { .kind-ping .pin { animation: none; } }
 </style>

@@ -138,12 +138,10 @@
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
 /* Ascend: washed in the epic purple. */
 .button-icon { width: var(--size-xs); height: var(--size-xs); flex: none; }
-@media (pointer: coarse) { .actions button { flex: 1; } }
+.actions button:touch { flex: 1; }
 /* A narrow panel (a phone, or a side column on a wide screen) wraps each
    row's figures under its name; the actions share the width. */
-@container (width < 560px) {
-  .row { flex-wrap: wrap; padding: var(--space-xxs) var(--space-xs); }
-  .readouts { flex: 1 0 100%; }
-  .actions button { flex: 1; min-width: 0; }
-}
+.row:size(compact) { flex-wrap: wrap; padding: var(--space-xxs) var(--space-xs); }
+.readouts:size(compact) { flex: 1 0 100%; }
+.actions button:size(compact) { flex: 1; min-width: 0; }
 </style>

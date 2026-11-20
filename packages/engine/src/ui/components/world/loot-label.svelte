@@ -93,8 +93,4 @@
 /* Epic and legendary: a beam from the item up to the chip. */
 .beam { inline-size: var(--stroke-thick); block-size: var(--world-beam-height); opacity: var(--world-glow-opacity); background: var(--world-epic-beam); box-shadow: var(--world-epic-beam-glow); }
 .rarity-legendary .beam { background: var(--world-legendary-beam); box-shadow: var(--world-legendary-beam-glow); }
-@media (prefers-reduced-motion: reduce) {
-  .chip, .sheen { animation: none; }
-  .sheen { display: none; }
-}
 </style>

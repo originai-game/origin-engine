@@ -110,23 +110,18 @@
 .actions { width: stretch; flex: none; justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); }
 /* A phone has no X key: its key caps go. */
-@media (pointer: coarse) { .key { display: none; } }
-@container (width < 760px) {
-  .board { grid-template-columns: minmax(0, 1fr); }
-  .hero { flex-direction: row; flex-wrap: wrap; align-items: center; }
-  .mine-place { font-size: var(--hud-size-place-compact); }
-  .mine { flex: 1 1 calc(110 * var(--font-step-px)); flex-direction: column; align-items: flex-start; }
-  .mine-figure { font-size: var(--hud-size-md); }
-}
-@container (width < 600px) {
-  .title { font-size: var(--result-size-title-compact); }
-  .heading, .row { --layout-gap-loose: var(--layout-gap-tight); padding: var(--space-xxs) var(--space-xs) var(--space-xxs) 0; }
-  .row .time, .row .points, .driver { font-size: var(--hud-size-xs); }
-  /* The captions in their columns' widths at any text scale: tight tracking, the tag size. */
-  .heading { font-size: var(--hud-tag-size); letter-spacing: var(--result-tab-tracking-compact); }
-  .time { width: calc(var(--size-xxl) * 0.9); }
-  .points { width: calc(36 * var(--font-step-px)); }
-  .actions { justify-content: stretch; }
-  .actions button { flex: 1; min-width: 0; }
-}
+.key:touch { display: none; }
+.board:size(compact) { grid-template-columns: minmax(0, 1fr); }
+.hero:size(compact) { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.mine-place:size(compact) { font-size: var(--hud-size-place-compact); }
+.mine:size(compact) { flex: 1 1 calc(110 * var(--font-step-px)); flex-direction: column; align-items: flex-start; }
+.mine-figure:size(compact) { font-size: var(--hud-size-md); }
+.title:size(compact) { font-size: var(--result-size-title-compact); }
+.heading:size(compact), .row:size(compact) { --layout-gap-loose: var(--layout-gap-tight); padding: var(--space-xxs) var(--space-xs) var(--space-xxs) 0; }
+.row .time:size(compact), .row .points:size(compact), .driver:size(compact) { font-size: var(--hud-size-xs); }
+.heading:size(compact) { font-size: var(--hud-tag-size); letter-spacing: var(--result-tab-tracking-compact); }
+.time:size(compact) { width: calc(var(--size-xxl) * 0.9); }
+.points:size(compact) { width: calc(36 * var(--font-step-px)); }
+.actions:size(compact) { justify-content: stretch; }
+.actions button:size(compact) { flex: 1; min-width: 0; }
 </style>

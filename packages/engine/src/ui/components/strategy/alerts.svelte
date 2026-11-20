@@ -41,10 +41,8 @@
 .faded .text { color: var(--hud-ink-dim); }
 .faded .mark { box-shadow: var(--hud-marker-rim); }
 .key { flex: 0 1 auto; min-inline-size: calc(22 * var(--font-step-px)); max-inline-size: 40%; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-@media (pointer: coarse) { .key { display: none; } }
-@media (width < 600px) {
-  #StrategyAlerts { inline-size: stretch; row-gap: calc(3 * var(--font-step-px)); }
-  .alert { column-gap: calc(6 * var(--font-step-px)); padding: calc(3 * var(--font-step-px)) calc(8 * var(--font-step-px)) calc(3 * var(--font-step-px)) 0; }
-  .text { font-size: var(--hud-size-xs); }
-}
+.key:touch { display: none; }
+#StrategyAlerts:size(compact) { inline-size: stretch; row-gap: calc(3 * var(--font-step-px)); }
+.alert:size(compact) { column-gap: calc(6 * var(--font-step-px)); padding: calc(3 * var(--font-step-px)) calc(8 * var(--font-step-px)) calc(3 * var(--font-step-px)) 0; }
+.text:size(compact) { font-size: var(--hud-size-xs); }
 </style>

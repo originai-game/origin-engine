@@ -194,11 +194,9 @@
 .state-text { margin: 0; text-align: center; }
 #Retry { min-height: var(--size-touch); }
 /* Narrow: the balances under the title, two columns of tiles. */
-@container (width < 480px) {
-  .heading { flex-basis: 100%; }
-  .wallet { justify-content: flex-start; }
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .art { block-size: calc(var(--shop-art-height) * 0.62); }
-  .art-icon { inline-size: calc(var(--shop-art-size) * 0.7); block-size: calc(var(--shop-art-size) * 0.7); }
-}
+.heading:size(compact) { flex-basis: 100%; }
+.wallet:size(compact) { justify-content: flex-start; }
+.grid:size(compact) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.art:size(compact) { block-size: calc(var(--shop-art-height) * 0.62); }
+.art-icon:size(compact) { inline-size: calc(var(--shop-art-size) * 0.7); block-size: calc(var(--shop-art-size) * 0.7); }
 </style>

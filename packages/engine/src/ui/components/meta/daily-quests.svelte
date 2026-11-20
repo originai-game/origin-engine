@@ -97,10 +97,8 @@
 .empty-mark { width: var(--size-lg); height: var(--size-lg); }
 .empty-text { margin: 0; }
 /* A narrow list: no socket; the prize and Claim take a line of their own. */
-@container (width < 480px) {
-  .quest { flex-wrap: wrap; row-gap: var(--space-xs); padding: var(--space-sm); }
-  .socket { display: none; }
-  .end { width: stretch; max-width: stretch; justify-content: space-between; }
-  .prize { flex-direction: row; min-block-size: 0; column-gap: var(--space-xs); padding: var(--space-xxs) var(--space-md); }
-}
+.quest:size(compact) { flex-wrap: wrap; row-gap: var(--space-xs); padding: var(--space-sm); }
+.socket:size(compact) { display: none; }
+.end:size(compact) { width: stretch; max-width: stretch; justify-content: space-between; }
+.prize:size(compact) { flex-direction: row; min-block-size: 0; column-gap: var(--space-xs); padding: var(--space-xxs) var(--space-md); }
 </style>

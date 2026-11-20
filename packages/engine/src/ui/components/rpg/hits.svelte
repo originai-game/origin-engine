@@ -47,12 +47,9 @@
 .hit.later { margin-block-start: calc(28 * var(--font-step-px)); opacity: 0.85; }
 .hit.third { margin-inline-start: calc(220 * var(--font-step-px)); margin-block-start: 0; opacity: 0.7; }
 .hit.third .amount { font-size: var(--hud-size-md); }
-@media (width < 600px) {
-  .amount { font-size: var(--hud-size-md); }
-  .kind-critical .amount { font-size: var(--hud-size-crit-compact); }
-  .call { font-size: var(--hud-tag-size); letter-spacing: normal; }
-  /* A phone shows the newest alone. */
-  .hit.lead { margin-inline-start: 0; }
-  .hit.later { display: none; }
-}
+.amount:size(compact) { font-size: var(--hud-size-md); }
+.kind-critical .amount:size(compact) { font-size: var(--hud-size-crit-compact); }
+.call:size(compact) { font-size: var(--hud-tag-size); letter-spacing: normal; }
+.hit.lead:size(compact) { margin-inline-start: 0; }
+.hit.later:size(compact) { display: none; }
 </style>

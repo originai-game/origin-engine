@@ -34,10 +34,8 @@
 #Decay { grid-area: decay; inline-size: calc(160 * var(--font-step-px)); max-inline-size: 100%; block-size: calc(6 * var(--font-step-px)); margin-block-start: calc(6 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); }
 #Lit { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--hud-accent-fill); box-shadow: var(--hud-accent-glow); }
 .bonus { grid-area: bonus; margin-block-start: calc(6 * var(--font-step-px)); font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent); white-space: nowrap; }
-@media (width < 600px) {
-  .count { font-size: var(--hud-size-combo-compact); }
-  .word { font-size: var(--hud-size-xs); }
-  #Decay { inline-size: calc(110 * var(--font-step-px)); block-size: calc(5 * var(--font-step-px)); margin-block-start: calc(4 * var(--font-step-px)); }
-  .bonus { margin-block-start: calc(3 * var(--font-step-px)); letter-spacing: normal; }
-}
+.count:size(compact) { font-size: var(--hud-size-combo-compact); }
+.word:size(compact) { font-size: var(--hud-size-xs); }
+#Decay:size(compact) { inline-size: calc(110 * var(--font-step-px)); block-size: calc(5 * var(--font-step-px)); margin-block-start: calc(4 * var(--font-step-px)); }
+.bonus:size(compact) { margin-block-start: calc(3 * var(--font-step-px)); letter-spacing: normal; }
 </style>

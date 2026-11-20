@@ -51,12 +51,10 @@
 .empty { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; }
 /* On a phone the bar takes the width: the stockpiles spread across one
    row, or two at a large text scale, smaller. */
-@media (width < 600px) {
-  #StrategyResources { inline-size: stretch; justify-content: space-between; column-gap: calc(8 * var(--font-step-px)); row-gap: calc(4 * var(--font-step-px)); padding: calc(4 * var(--font-step-px)) calc(10 * var(--font-step-px)); }
-  .resource { column-gap: calc(4 * var(--font-step-px)); }
-  .picture, .glyph { inline-size: var(--size-xs); block-size: var(--size-xs); }
-  .amount { font-size: var(--hud-size-readout-compact); }
-  .cap { font-size: var(--hud-size-label-compact); }
-  .rate { font-size: var(--hud-size-label-compact); }
-}
+#StrategyResources:size(compact) { inline-size: stretch; justify-content: space-between; column-gap: calc(8 * var(--font-step-px)); row-gap: calc(4 * var(--font-step-px)); padding: calc(4 * var(--font-step-px)) calc(10 * var(--font-step-px)); }
+.resource:size(compact) { column-gap: calc(4 * var(--font-step-px)); }
+.picture:size(compact), .glyph:size(compact) { inline-size: var(--size-xs); block-size: var(--size-xs); }
+.amount:size(compact) { font-size: var(--hud-size-readout-compact); }
+.cap:size(compact) { font-size: var(--hud-size-label-compact); }
+.rate:size(compact) { font-size: var(--hud-size-label-compact); }
 </style>

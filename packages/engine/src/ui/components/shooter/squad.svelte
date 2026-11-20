@@ -62,13 +62,11 @@
 /* On a phone the plates stand side by side, each compact: a small
    portrait beside the name over the bars, the state on a tag under
    them. */
-@media (width < 600px) {
-  #ShooterSquad { flex-direction: row; inline-size: stretch; column-gap: var(--space-md); }
-  .mate { flex: 1 1 0; }
-  .mate { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "portrait name" "portrait shield" "portrait health" "status status"; column-gap: calc(4 * var(--font-step-px)); row-gap: calc(3 * var(--font-step-px)); }
-  .portrait { align-self: start; inline-size: calc(28 * var(--font-step-px)); block-size: calc(28 * var(--font-step-px)); }
-  .callsign { font-size: var(--hud-size-xs); }
-  .bar { block-size: calc(4 * var(--font-step-px)); }
-  .status { padding: 0 calc(3 * var(--font-step-px)); font-size: var(--hud-tag-size); letter-spacing: normal; -webkit-text-stroke-width: 0; text-shadow: none; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-}
+#ShooterSquad:size(compact) { flex-direction: row; inline-size: stretch; column-gap: var(--space-md); }
+.mate:size(compact) { flex: 1 1 0; }
+.mate:size(compact) { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "portrait name" "portrait shield" "portrait health" "status status"; column-gap: calc(4 * var(--font-step-px)); row-gap: calc(3 * var(--font-step-px)); }
+.portrait:size(compact) { align-self: start; inline-size: calc(28 * var(--font-step-px)); block-size: calc(28 * var(--font-step-px)); }
+.callsign:size(compact) { font-size: var(--hud-size-xs); }
+.bar:size(compact) { block-size: calc(4 * var(--font-step-px)); }
+.status:size(compact) { padding: 0 calc(3 * var(--font-step-px)); font-size: var(--hud-tag-size); letter-spacing: normal; -webkit-text-stroke-width: 0; text-shadow: none; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 </style>

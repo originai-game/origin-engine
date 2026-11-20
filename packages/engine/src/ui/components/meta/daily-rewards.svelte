@@ -107,21 +107,15 @@
 .day.state-today .foot { color: var(--quest-gold-ink); background: var(--quest-claim-fill); }
 button.day.state-today:hover { box-shadow: var(--quest-day-today-hover-rim); }
 button.day.state-today:active { background: var(--quest-day-today-fill); }
-@container (width < 760px) {
-  .days { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .day { min-height: calc(var(--size-xxl) * 1.6); }
-  .reward { width: var(--size-md); height: var(--size-md); }
-  .stamp { width: var(--size-lg); height: var(--size-lg); }
-  .stamp-mark { width: var(--size-xs); height: var(--size-xs); }
-}
-@container (width < 400px) {
-  .days { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  /* A last day alone on its row takes the whole row. */
-  .slot.alone { grid-column: 1 / -1; }
-  /* A narrow tile keeps its state word whole: the mark above it, no tracking. */
-  .foot { flex-direction: column; letter-spacing: normal; }
-  .state-text { white-space: nowrap; }
-}
+.days:size(compact) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.day:size(compact) { min-height: calc(var(--size-xxl) * 1.6); }
+.reward:size(compact) { width: var(--size-md); height: var(--size-md); }
+.stamp:size(compact) { width: var(--size-lg); height: var(--size-lg); }
+.stamp-mark:size(compact) { width: var(--size-xs); height: var(--size-xs); }
+.days:size(compact) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.slot.alone:size(compact) { grid-column: 1 / -1; }
+.foot:size(compact) { flex-direction: column; letter-spacing: normal; }
+.state-text:size(compact) { white-space: nowrap; }
 /* Too narrow for the word: the mark alone (the day's name carries the state). */
 @container (width < 300px) {
   .state-text { display: none; }

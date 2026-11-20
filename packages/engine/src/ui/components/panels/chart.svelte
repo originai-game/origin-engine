@@ -65,8 +65,6 @@
 .category { position: absolute; top: 0; inset-inline-start: calc((var(--i) + 0.5) * (100% + var(--space-xs)) / var(--n) - var(--space-xs) / 2); translate: -50% 0; white-space: nowrap; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); font-stretch: var(--hud-figure-stretch); color: var(--data-head-ink); }
 #Ticks { position: relative; inline-size: 100%; block-size: calc(var(--hud-label-size) * 1.5); }
 .dense .category.even { display: none; }
-@container (width < 520px) {
-  .dense .category { display: none; }
-  .dense .category.third { display: block; }
-}
+.dense .category:size(compact) { display: none; }
+.dense .category.third:size(compact) { display: block; }
 </style>

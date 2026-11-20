@@ -145,5 +145,6 @@
 .word { inset-block-start: calc(50% + var(--node) / 2 + var(--space-xs)); padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.6; color: var(--hud-ink); background: var(--hud-tag-fill); }
 .empty { padding: var(--space-xl); }
 .empty-text { margin: 0; padding: var(--space-sm) var(--space-md); text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink); background: var(--hud-tag-fill); }
-@container (width < 600px) { #PuzzleLevelPath { --node: calc(var(--select-node-size) * 0.8); --node-on: calc(var(--select-node-current-size) * 0.8); --road: calc(var(--select-road-width) * 0.8); } .title { font-size: var(--select-size-name); } }
+#PuzzleLevelPath:size(compact) { --node: calc(var(--select-node-size) * 0.8); --node-on: calc(var(--select-node-current-size) * 0.8); --road: calc(var(--select-road-width) * 0.8); }
+.title:size(compact) { font-size: var(--select-size-name); }
 </style>

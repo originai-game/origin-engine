@@ -145,9 +145,7 @@
 .load-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill, 0) * 100%); background: var(--inv-load-fill); }
 .load-fill.tone-warn { background: var(--inv-load-over-fill); }
 .over { margin: 0; }
-@media (width < 600px), (height < 500px) {
-  .band { padding-block: var(--space-xs); }
-  .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .foot { padding-top: var(--space-xs); }
-}
+.band:size(compact) { padding-block: var(--space-xs); }
+.grid:size(compact) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.foot:size(compact) { padding-top: var(--space-xs); }
 </style>

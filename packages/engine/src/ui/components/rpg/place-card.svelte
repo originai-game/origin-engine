@@ -50,12 +50,10 @@
 .go { color: var(--map-go-ink); background: var(--map-go-fill); box-shadow: var(--map-go-glow); }
 .go:disabled { opacity: 0.45; }
 .act:focus-visible { box-shadow: var(--map-focus-ring); }
-@container (width < 560px) {
-  .pic { inline-size: 26%; }
-  .body { padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md); }
-  .act { padding: 0 var(--space-xs); font-size: var(--map-act-compact-size); }
-  .act-mark { display: none; }
-  .name { font-size: var(--map-title-compact-size); }
-  .about { display: none; }
-}
+.pic:size(compact) { inline-size: 26%; }
+.body:size(compact) { padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md); }
+.act:size(compact) { padding: 0 var(--space-xs); font-size: var(--map-act-compact-size); }
+.act-mark:size(compact) { display: none; }
+.name:size(compact) { font-size: var(--map-title-compact-size); }
+.about:size(compact) { display: none; }
 </style>

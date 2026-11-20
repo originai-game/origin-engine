@@ -104,9 +104,7 @@
 .unlock { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .empty-text { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; }
 /* A narrow panel (a phone, or a side column on a wide screen) tightens the rows. */
-@container (width < 560px) {
-  .row { padding: var(--space-xs); }
-  .face { --layout-gap-loose: var(--layout-gap-tight); }
-  .art { inline-size: var(--size-md); block-size: var(--size-md); }
-}
+.row:size(compact) { padding: var(--space-xs); }
+.face:size(compact) { --layout-gap-loose: var(--layout-gap-tight); }
+.art:size(compact) { inline-size: var(--size-md); block-size: var(--size-md); }
 </style>

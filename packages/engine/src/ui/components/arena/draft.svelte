@@ -170,15 +170,14 @@
 #Confirm:disabled { opacity: 0.45; }
 #Confirm span { color: inherit; font-weight: inherit; }
 .key { color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }
-@media (pointer: coarse) { .key { display: none; } }
+.key:touch { display: none; }
 /* The draft sits in a panel: its own width, not the screen's, tightens it. */
-@container (width < 600px) {
-  .frame { padding: var(--space-sm); }
-  .band { --layout-gap-loose: var(--layout-gap-tight); }
-  .teams { --layout-gap-loose: var(--layout-gap-tight); }
-  .slot.pick { --layout-gap: var(--layout-gap-tight); padding: var(--space-xxs) var(--space-xs); }
-  .portrait { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
-  #Confirm { flex: 1; }
-}
-@container (width < 520px) { .teams { flex-direction: column; align-items: stretch; } .team { flex: none; } }
+.frame:size(compact) { padding: var(--space-sm); }
+.band:size(compact) { --layout-gap-loose: var(--layout-gap-tight); }
+.teams:size(compact) { --layout-gap-loose: var(--layout-gap-tight); }
+.slot.pick:size(compact) { --layout-gap: var(--layout-gap-tight); padding: var(--space-xxs) var(--space-xs); }
+.portrait:size(compact) { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
+#Confirm:size(compact) { flex: 1; }
+.teams:size(compact) { flex-direction: column; align-items: stretch; }
+.team:size(compact) { flex: none; }
 </style>

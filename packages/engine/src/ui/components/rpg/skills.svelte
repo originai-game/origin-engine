@@ -32,10 +32,8 @@
 .skill.after-items { margin-inline-start: calc(10 * var(--font-step-px)); }
 .skill.kind-ultimate { margin-inline-start: calc(6 * var(--font-step-px)); }
 /* On a phone the skills and the ultimate fit the width; the items drop. */
-@media (width < 600px) {
-  #RpgSkills { column-gap: calc(6 * var(--font-step-px)); --s: calc(var(--size-xl) * 0.6); --ult: calc(var(--size-xl) * 0.85); }
-  .skill.kind-item { display: none; }
-  .skill.after-items { margin-inline-start: 0; }
-  .skill.kind-ultimate { margin-inline-start: calc(2 * var(--font-step-px)); }
-}
+#RpgSkills:size(compact) { column-gap: calc(6 * var(--font-step-px)); --s: calc(var(--size-xl) * 0.6); --ult: calc(var(--size-xl) * 0.85); }
+.skill.kind-item:size(compact) { display: none; }
+.skill.after-items:size(compact) { margin-inline-start: 0; }
+.skill.kind-ultimate:size(compact) { margin-inline-start: calc(2 * var(--font-step-px)); }
 </style>

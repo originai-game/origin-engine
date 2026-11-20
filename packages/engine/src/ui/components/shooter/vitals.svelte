@@ -81,12 +81,9 @@
 .low #HealthFill { background: var(--hud-low-fill); box-shadow: var(--hud-low-glow); }
 .low #Health { box-shadow: var(--bar-critical-rim); animation: var(--pulse-motion); }
 .low .value { color: var(--hud-empty-ink); }
-@media (width < 600px) {
-  #ShooterVitals { column-gap: var(--space-sm); inline-size: stretch; }
-  #Portrait { inline-size: calc(40 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
-  .value { font-size: var(--hud-size-sm); }
-  #Shield { block-size: calc(6 * var(--font-step-px)); }
-  #Health { block-size: calc(11 * var(--font-step-px)); }
-}
-@media (prefers-reduced-motion: reduce) { .low #Health { animation: none; } }
+#ShooterVitals:size(compact) { column-gap: var(--space-sm); inline-size: stretch; }
+#Portrait:size(compact) { inline-size: calc(40 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
+.value:size(compact) { font-size: var(--hud-size-sm); }
+#Shield:size(compact) { block-size: calc(6 * var(--font-step-px)); }
+#Health:size(compact) { block-size: calc(11 * var(--font-step-px)); }
 </style>

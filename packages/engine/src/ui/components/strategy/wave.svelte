@@ -102,12 +102,10 @@
 .call-face { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; column-gap: calc(8 * var(--font-step-px)); max-inline-size: stretch; min-inline-size: 0; }
 .call-label { flex: none; font-size: var(--hud-label-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--hud-ink); }
 .reward { flex: 0 1 auto; min-inline-size: 0; max-inline-size: 100%; font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); color: var(--hud-gold); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-@media (width < 600px) {
-  #StrategyWave { inline-size: stretch; }
-  #Plate { column-gap: calc(8 * var(--font-step-px)); padding: calc(4 * var(--font-step-px)) calc(10 * var(--font-step-px)); }
-  .icon { inline-size: var(--size-sm); block-size: var(--size-sm); }
-  .label { font-size: var(--hud-size-label-compact); letter-spacing: normal; }
-  .time { font-size: var(--hud-size-readout-compact); }
-  .bar { min-inline-size: var(--size-lg); }
-}
+#StrategyWave:size(compact) { inline-size: stretch; }
+#Plate:size(compact) { column-gap: calc(8 * var(--font-step-px)); padding: calc(4 * var(--font-step-px)) calc(10 * var(--font-step-px)); }
+.icon:size(compact) { inline-size: var(--size-sm); block-size: var(--size-sm); }
+.label:size(compact) { font-size: var(--hud-size-label-compact); letter-spacing: normal; }
+.time:size(compact) { font-size: var(--hud-size-readout-compact); }
+.bar:size(compact) { min-inline-size: var(--size-lg); }
 </style>

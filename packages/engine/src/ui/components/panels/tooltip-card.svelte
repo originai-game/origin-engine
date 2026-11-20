@@ -127,8 +127,6 @@
 .badge { align-items: center; padding: 0; border-radius: 0; background: none; box-shadow: none; font-size: var(--dialog-tip-note-size); font-weight: var(--dialog-weight); white-space: nowrap; color: var(--front-ink); }
 /* A narrow screen: the item's card first, what is equipped under it, each
    as wide as the screen allows. */
-@media (width < 600px) {
-  #TooltipCard { flex-direction: column-reverse; flex-wrap: nowrap; align-items: stretch; }
-  .frame { width: auto; }
-}
+#TooltipCard:size(compact) { flex-direction: column-reverse; flex-wrap: nowrap; align-items: stretch; }
+.frame:size(compact) { width: auto; }
 </style>

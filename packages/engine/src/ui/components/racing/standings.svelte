@@ -73,13 +73,11 @@
 }
 /* On a phone the tower keeps the player's row and the rows either side of
    it, slimmer. */
-@media (width < 600px) {
-  #RacingStandings { inline-size: stretch; }
-  .rows { row-gap: calc(2 * var(--font-step-px)); }
-  .row { display: none; column-gap: calc(6 * var(--font-step-px)); padding-inline-end: calc(8 * var(--font-step-px)); }
-  .row.player, .row.beside { display: flex; }
-  .place { inline-size: calc(24 * var(--font-step-px)); line-height: calc(20 * var(--font-step-px)); font-size: var(--hud-size-xs); }
-  .car { block-size: calc(14 * var(--font-step-px)); }
-  .name, .gap { font-size: var(--hud-size-xs); }
-}
+#RacingStandings:size(compact) { inline-size: stretch; }
+.rows:size(compact) { row-gap: calc(2 * var(--font-step-px)); }
+.row:size(compact) { display: none; column-gap: calc(6 * var(--font-step-px)); padding-inline-end: calc(8 * var(--font-step-px)); }
+.row.player:size(compact), .row.beside:size(compact) { display: flex; }
+.place:size(compact) { inline-size: calc(24 * var(--font-step-px)); line-height: calc(20 * var(--font-step-px)); font-size: var(--hud-size-xs); }
+.car:size(compact) { block-size: calc(14 * var(--font-step-px)); }
+.name:size(compact), .gap:size(compact) { font-size: var(--hud-size-xs); }
 </style>

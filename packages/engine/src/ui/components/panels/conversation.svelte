@@ -77,10 +77,8 @@
 .row:state(selected) .reply-mark { visibility: visible; }
 @media (pointer: fine) and (width >= 600px) { .row { min-height: calc(var(--size-touch) * 0.8); } .replies { padding: var(--space-sm) 0; } }
 .go { align-items: flex-end; justify-content: flex-end; padding: var(--space-md); }
-@container (width < 720px) {
-  .portrait { width: var(--size-xxl); height: var(--size-xxl); }
-  .said { width: stretch; flex: 1; padding: 0; }
-  .line { font-size: var(--social-size-line-compact); }
-  .replies, .go { padding: 0; flex-basis: 100%; }
-}
+.portrait:size(compact) { width: var(--size-xxl); height: var(--size-xxl); }
+.said:size(compact) { width: stretch; flex: 1; padding: 0; }
+.line:size(compact) { font-size: var(--social-size-line-compact); }
+.replies:size(compact), .go:size(compact) { padding: 0; flex-basis: 100%; }
 </style>

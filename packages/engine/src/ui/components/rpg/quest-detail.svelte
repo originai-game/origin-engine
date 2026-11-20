@@ -111,11 +111,9 @@
 .actions { width: stretch; flex: none; justify-content: flex-end; padding: var(--space-sm) var(--space-lg) var(--space-md); }
 .actions button { min-height: var(--size-touch); }
 .action-mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
-@container (width < 480px) {
-  .heading, .body { padding-inline: var(--space-md); }
-  .name { font-size: var(--title-size); }
-  .reward { min-inline-size: 0; width: stretch; }
-  .actions { padding-inline: var(--space-md); }
-  .actions button { flex: 1 1 auto; }
-}
+.heading:size(compact), .body:size(compact) { padding-inline: var(--space-md); }
+.name:size(compact) { font-size: var(--title-size); }
+.reward:size(compact) { min-inline-size: 0; width: stretch; }
+.actions:size(compact) { padding-inline: var(--space-md); }
+.actions button:size(compact) { flex: 1 1 auto; }
 </style>

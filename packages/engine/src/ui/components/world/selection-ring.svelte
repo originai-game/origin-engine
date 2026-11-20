@@ -45,5 +45,4 @@
 /* A target: segments turning slowly. */
 .target .line { stroke-dasharray: 22 9; }
 #Ring.target { animation: var(--world-target-ring-motion); }
-@media (prefers-reduced-motion: reduce) { #Ring, #Ring.target { animation: none; } }
 </style>

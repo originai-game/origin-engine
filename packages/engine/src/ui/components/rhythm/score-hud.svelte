@@ -50,10 +50,8 @@
 .delta { flex: none; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); -webkit-text-stroke-width: 0; text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .delta.trend-up { color: var(--trend-up); }
 .delta.trend-down { color: var(--trend-down); }
-@media (width < 600px) {
-  .score { font-size: var(--hud-size-score-compact); }
-  .accuracy { font-size: var(--hud-size-sm); }
-  .grade { font-size: var(--hud-size-md); }
-  .line { margin-block-start: var(--space-xxs); }
-}
+.score:size(compact) { font-size: var(--hud-size-score-compact); }
+.accuracy:size(compact) { font-size: var(--hud-size-sm); }
+.grade:size(compact) { font-size: var(--hud-size-md); }
+.line:size(compact) { margin-block-start: var(--space-xxs); }
 </style>

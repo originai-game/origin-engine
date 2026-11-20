@@ -92,11 +92,9 @@
 .key { min-inline-size: calc(24 * var(--font-step-px)); max-inline-size: calc(var(--side) * 1.3); padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .ultimate .key { max-inline-size: calc(var(--side) * 0.8); background: var(--hud-key-gold-fill); }
 /* Under a touch screen the slots are the controls: no key caps. */
-@media (pointer: coarse) { .key { display: none; } }
+.key:touch { display: none; }
 /* On a phone its figures and pips are smaller. */
-@media (width < 600px) {
-  .time { font-size: var(--hud-size-sm); }
-  .ultimate .time { font-size: var(--hud-size-xs); }
-  .charges { --pip: calc(9 * var(--font-step-px)); block-size: calc(3 * var(--font-step-px)); }
-}
+.time:size(compact) { font-size: var(--hud-size-sm); }
+.ultimate .time:size(compact) { font-size: var(--hud-size-xs); }
+.charges:size(compact) { --pip: calc(9 * var(--font-step-px)); block-size: calc(3 * var(--font-step-px)); }
 </style>

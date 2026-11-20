@@ -48,5 +48,4 @@
 #Figure { white-space: nowrap; padding-inline: var(--space-xs); transform: skewX(calc(-1 * var(--bar-skew))); font: var(--badge-text); font-family: var(--figure-font); color: var(--hud-ink); text-shadow: var(--hud-shadow); }
 .low #Lit { background: var(--hud-low-fill); box-shadow: var(--hud-low-glow); }
 #HudBar.low { box-shadow: var(--bar-critical-rim); animation: var(--pulse-motion); }
-@media (prefers-reduced-motion: reduce) { #HudBar.low { animation: none; } }
 </style>

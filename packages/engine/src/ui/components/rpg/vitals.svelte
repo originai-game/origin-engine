@@ -43,12 +43,10 @@
 .bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); }
 .mana { --fill-color: var(--mana); }
 .bar-figure { position: relative; white-space: nowrap; padding-inline: var(--space-xs); }
-@media (width < 600px), (height < 500px) {
-  .frame.plate-compact .bars { width: var(--size-xxl); }
-  .frame.plate-large .ring { width: calc(var(--size-xxl) * 1.05); height: calc(var(--size-xxl) * 1.05); }
-  .frame.plate-large .badge { top: calc(var(--size-xxl) * 1.05 - var(--size-md)); }
-  .frame.plate-large .bars { width: calc(var(--size-xxl) * 1.7); }
-  .frame.plate-large .bar { height: calc(var(--space-md) * 1.2); }
-}
+.frame.plate-compact .bars:size(compact) { width: var(--size-xxl); }
+.frame.plate-large .ring:size(compact) { width: calc(var(--size-xxl) * 1.05); height: calc(var(--size-xxl) * 1.05); }
+.frame.plate-large .badge:size(compact) { top: calc(var(--size-xxl) * 1.05 - var(--size-md)); }
+.frame.plate-large .bars:size(compact) { width: calc(var(--size-xxl) * 1.7); }
+.frame.plate-large .bar:size(compact) { height: calc(var(--space-md) * 1.2); }
 .bars.roomy { row-gap: var(--layout-gap-tight); }
 </style>

@@ -91,12 +91,10 @@
 /* The price it cannot pay, on a red tag in the bottom corner. */
 .cost { position: absolute; right: calc(3 * var(--font-step-px)); bottom: calc(3 * var(--font-step-px)); max-inline-size: calc(100% - 6 * var(--font-step-px)); padding: 0 calc(4 * var(--font-step-px)); font-size: var(--hud-size-reason); line-height: 1.35; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; color: var(--hud-harm); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* Under a touch screen the tiles are the controls: no key caps. */
-@media (pointer: coarse) { .key, .info-key { display: none; } }
+.key:touch, .info-key:touch { display: none; }
 /* On a phone the grid takes the screen's width at the foot, eight tiles
    to a row, and no info card stands over it. */
-@media (width < 600px) {
-  #StrategyCommands { inline-size: stretch; --cell: calc(var(--size-lg) * 0.82); --gap: calc(3 * var(--font-step-px)); }
-  #Info { display: none; }
-  #Grid { grid-template-columns: repeat(8, var(--cell)); justify-content: space-between; align-self: stretch; padding: calc(5 * var(--font-step-px)); }
-}
+#StrategyCommands:size(compact) { inline-size: stretch; --cell: calc(var(--size-lg) * 0.82); --gap: calc(3 * var(--font-step-px)); }
+#Info:size(compact) { display: none; }
+#Grid:size(compact) { grid-template-columns: repeat(8, var(--cell)); justify-content: space-between; align-self: stretch; padding: calc(5 * var(--font-step-px)); }
 </style>

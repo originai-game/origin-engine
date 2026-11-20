@@ -83,9 +83,7 @@ h2, h3, p { margin: 0; }
 /* Narrow: Take goes under the row's words, at the row's
    end, so the name keeps the row's width, and the description keeps two
    lines, so more than one item shows; the socket keeps its column. */
-@container (width < 520px) {
-  .socket { grid-row: span 2; }
-  .take { grid-column: 2 / 4; justify-self: end; }
-  .description { line-clamp: 2; overflow: hidden; }
-}
+.socket:size(compact) { grid-row: span 2; }
+.take:size(compact) { grid-column: 2 / 4; justify-self: end; }
+.description:size(compact) { line-clamp: 2; overflow: hidden; }
 </style>

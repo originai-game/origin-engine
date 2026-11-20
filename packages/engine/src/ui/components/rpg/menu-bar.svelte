@@ -44,5 +44,8 @@
 .menu-close:focus-visible { box-shadow: var(--party-focus-rim); }
 .face { inline-size: 100%; block-size: 100%; }
 .close-mark { width: 50%; height: 50%; }
-@media (width < 600px), (height < 500px) { #RpgMenuBar { --layout-gap-loose: var(--layout-gap-tight); } .menu-tabs { grid-auto-columns: max-content; width: max-content; } .menu-fade { display: block; } .tab { padding-inline: var(--space-md); font-size: var(--hud-size-xs); letter-spacing: var(--result-tab-tracking-compact); } }
+#RpgMenuBar:size(compact) { --layout-gap-loose: var(--layout-gap-tight); }
+.menu-tabs:size(compact) { grid-auto-columns: max-content; width: max-content; }
+.menu-fade:size(compact) { display: block; }
+.tab:size(compact) { padding-inline: var(--space-md); font-size: var(--hud-size-xs); letter-spacing: var(--result-tab-tracking-compact); }
 </style>

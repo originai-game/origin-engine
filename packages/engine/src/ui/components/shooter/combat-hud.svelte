@@ -34,7 +34,7 @@
    bottom right, the feed top right, the reticle and hit directions centred.
    Edges sit inside the safe area, so a phone's notch and home bar stay clear. */
 #CombatHud { position: fixed; inset: 0; pointer-events: none; --edge: var(--space-xl); --layout-anchor-inset: var(--edge); text-shadow: var(--tag-halo); --scene-halo: var(--tag-halo); }
-@media (width < 600px) { #CombatHud { --edge: var(--space-md); } }
+#CombatHud:size(compact) { --edge: var(--space-md); }
 #Damage { width: calc(var(--size-xxl) * 3); height: calc(var(--size-xxl) * 3); }
 #Feed { right: calc(env(safe-area-inset-right) + var(--edge)); top: calc(env(safe-area-inset-top) + var(--edge)); max-width: calc(100% - var(--edge) * 2); }
 /* The vitals plate has the bar's length: a plate that hugs a bar whose
@@ -50,9 +50,7 @@
    on the left { right: auto; left: calc(env(safe-area-inset-left) + var(--edge)); }
 /* On a phone the vitals take the bottom edge and the ammunition sits above
    them, and the centre ring shrinks. */
-@media (width < 600px) {
-  #Vitals { width: calc(100% - var(--edge) * 2 - env(safe-area-inset-left) - env(safe-area-inset-right)); }
-  #Ammo { bottom: calc(env(safe-area-inset-bottom) + var(--edge) + var(--size-xl)); }
-  #Damage { width: calc(var(--size-xxl) * 2); height: calc(var(--size-xxl) * 2); }
-}
+#Vitals:size(compact) { width: calc(100% - var(--edge) * 2 - env(safe-area-inset-left) - env(safe-area-inset-right)); }
+#Ammo:size(compact) { bottom: calc(env(safe-area-inset-bottom) + var(--edge) + var(--size-xl)); }
+#Damage:size(compact) { width: calc(var(--size-xxl) * 2); height: calc(var(--size-xxl) * 2); }
 </style>

@@ -135,10 +135,8 @@ h2 { margin: 0; overflow-wrap: anywhere; }
 .mark { flex: none; inline-size: var(--inv-tag-size); block-size: var(--inv-tag-size); }
 .claim { margin-block-start: auto; width: stretch; min-block-size: var(--size-touch); white-space: normal; }
 .wait { padding: var(--space-lg); }
-@container (width < 600px) {
-  .heading { flex-basis: 100%; }
-  .upgrade { width: stretch; }
-  .lanes { grid-template-columns: minmax(0, 1fr); }
-  .lane-h { flex-direction: row; justify-content: flex-start; align-items: baseline; gap: var(--space-xs); padding-block: var(--space-xxs); }
-}
+.heading:size(compact) { flex-basis: 100%; }
+.upgrade:size(compact) { width: stretch; }
+.lanes:size(compact) { grid-template-columns: minmax(0, 1fr); }
+.lane-h:size(compact) { flex-direction: row; justify-content: flex-start; align-items: baseline; gap: var(--space-xs); padding-block: var(--space-xxs); }
 </style>

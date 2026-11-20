@@ -78,16 +78,12 @@
 /* A narrow shell: each row is a two-line card, the first column and the
    last on its first line and the rest as a caption under them, so no
    column is cut to an ellipsis. The headings above read the same. */
-@container (width < 480px) {
-  #Head, .cells { display: flex; flex-wrap: wrap; column-gap: var(--space-md); row-gap: var(--space-xxs); align-items: baseline; }
-  .heading, .cell { flex: none; width: auto; order: 3; }
-  /* The name gives way to the figure, which keeps its whole width. */
-  .heading.first, .cell.first { flex: 1 1 0; order: 0; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-  .heading.last, .cell.last { order: 1; }
-  /* A break after them puts the rest on the caption line. */
-  .break { display: block; flex: 0 0 100%; order: 2; block-size: 0; }
-  .heading.middle { display: none; }
-  .cell.middle { font-size: var(--hud-label-size); }
-  .row { padding-block: var(--space-sm); }
-}
+#Head:size(compact), .cells:size(compact) { display: flex; flex-wrap: wrap; column-gap: var(--space-md); row-gap: var(--space-xxs); align-items: baseline; }
+.heading:size(compact), .cell:size(compact) { flex: none; width: auto; order: 3; }
+.heading.first:size(compact), .cell.first:size(compact) { flex: 1 1 0; order: 0; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.heading.last:size(compact), .cell.last:size(compact) { order: 1; }
+.break:size(compact) { display: block; flex: 0 0 100%; order: 2; block-size: 0; }
+.heading.middle:size(compact) { display: none; }
+.cell.middle:size(compact) { font-size: var(--hud-label-size); }
+.row:size(compact) { padding-block: var(--space-sm); }
 </style>

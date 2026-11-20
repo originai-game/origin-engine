@@ -99,15 +99,14 @@
 .attr-mark { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--hud-label-ink); }
 .attr-label { min-width: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-label-ink); overflow-wrap: break-word; }
 .attr-value { flex: none; white-space: nowrap; font-size: var(--hud-size-readout); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); text-shadow: none; }
-@media (width < 600px) {
-  .frame { padding: var(--space-sm); }
-  /* Five slots a column fit the doll's height on a phone at any text size. */
-  .cell { width: var(--size-touch); height: var(--size-touch); padding: var(--space-xxs); }
-  .portrait { width: var(--size-lg); height: var(--size-lg); }
-  .name { font-size: var(--party-size-name-compact); }
-}
+.frame:size(compact) { padding: var(--space-sm); }
+.cell:size(compact) { width: var(--size-touch); height: var(--size-touch); padding: var(--space-xxs); }
+.portrait:size(compact) { width: var(--size-lg); height: var(--size-lg); }
+.name:size(compact) { font-size: var(--party-size-name-compact); }
 @container (width < 300px) { .attr-split { display: none; } }
-@media (height < 500px) { .doll { padding: var(--space-xxs) var(--space-xs); } .column { --layout-gap-tight: var(--layout-gap-hair); } .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } }
+.doll:size(short) { padding: var(--space-xxs) var(--space-xs); }
+.column:size(short) { --layout-gap-tight: var(--layout-gap-hair); }
+.cell:size(short) { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); }
 /* A short screen (a desktop at large text): smaller slots, so the doll can give height to the attributes. */
 @media (600px <= width) and (500px <= height < 800px) { .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } .column { --layout-gap-tight: var(--layout-gap-hair); } }
 @media (600px <= width) and (500px <= height < 800px) { .attr-mark { display: none; } .attributes { --layout-gap-loose: var(--layout-gap); } }

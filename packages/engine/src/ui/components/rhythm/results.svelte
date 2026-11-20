@@ -122,17 +122,15 @@
 .actions { width: stretch; flex: none; justify-content: flex-end; }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
 /* A phone has no Escape: its key caps go. */
-@media (pointer: coarse) { .key { display: none; } }
+.key:touch { display: none; }
 /* A narrow panel (a phone, or a side column on a wide screen) stacks the
    verdict, score, figures and tally in one column; the actions share the width. */
-@container (width < 560px) {
-  .content { --layout-gap-loose: var(--layout-gap); }
-  .lower { grid-template-columns: minmax(0, 1fr); --layout-gap-wide: var(--layout-gap); }
-  .title { font-size: var(--hud-size-md); }
-  .grade { font-size: var(--result-size-grade-compact); }
-  .badge { font-size: var(--hud-tag-size); }
-  .score { font-size: var(--result-size-score-compact); }
-  .value { font-size: var(--hud-size-md); }
-  .actions button { flex: 1; min-width: 0; }
-}
+.content:size(compact) { --layout-gap-loose: var(--layout-gap); }
+.lower:size(compact) { grid-template-columns: minmax(0, 1fr); --layout-gap-wide: var(--layout-gap); }
+.title:size(compact) { font-size: var(--hud-size-md); }
+.grade:size(compact) { font-size: var(--result-size-grade-compact); }
+.badge:size(compact) { font-size: var(--hud-tag-size); }
+.score:size(compact) { font-size: var(--result-size-score-compact); }
+.value:size(compact) { font-size: var(--hud-size-md); }
+.actions button:size(compact) { flex: 1; min-width: 0; }
 </style>

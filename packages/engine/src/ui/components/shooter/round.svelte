@@ -46,11 +46,9 @@
 .ours { color: var(--hud-ally); }
 .theirs { color: var(--hud-foe); }
 .dash { align-self: center; inline-size: calc(10 * var(--font-step-px)); block-size: calc(2 * var(--font-step-px)); background: var(--hud-ink-dim); }
-@media (width < 600px) {
-  #ShooterRound { flex-wrap: wrap; row-gap: var(--space-xxs); justify-content: flex-start; }
-  .spacer { display: none; }
-  #Plate { flex-wrap: wrap; }
-  .ours, .theirs { font-size: var(--hud-size-sm); }
-  .clock { font-size: var(--hud-size-xs); }
-}
+#ShooterRound:size(compact) { flex-wrap: wrap; row-gap: var(--space-xxs); justify-content: flex-start; }
+.spacer:size(compact) { display: none; }
+#Plate:size(compact) { flex-wrap: wrap; }
+.ours:size(compact), .theirs:size(compact) { font-size: var(--hud-size-sm); }
+.clock:size(compact) { font-size: var(--hud-size-xs); }
 </style>

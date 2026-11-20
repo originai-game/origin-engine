@@ -45,10 +45,8 @@
 /* An alert: a red ring with a glow round the place. */
 .ping { position: absolute; --ring: calc(18 * var(--font-step-px)); inline-size: var(--ring); block-size: var(--ring); left: calc(var(--x) * 100% - var(--ring) / 2); top: calc(var(--y) * 100% - var(--ring) / 2); border-radius: var(--hud-radar-radius); box-shadow: var(--hud-ping-ring); }
 /* On a phone the tile is smaller, in its corner. */
-@media (width < 600px) {
-  #StrategyMinimap { --side: var(--size-xxl); }
-  .dot { --pip: calc(4 * var(--font-step-px)); }
-  .dot.base { --pip: calc(7 * var(--font-step-px)); }
-  .ping { --ring: calc(13 * var(--font-step-px)); }
-}
+#StrategyMinimap:size(compact) { --side: var(--size-xxl); }
+.dot:size(compact) { --pip: calc(4 * var(--font-step-px)); }
+.dot.base:size(compact) { --pip: calc(7 * var(--font-step-px)); }
+.ping:size(compact) { --ring: calc(13 * var(--font-step-px)); }
 </style>

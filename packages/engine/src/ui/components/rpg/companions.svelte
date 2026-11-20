@@ -47,25 +47,18 @@
 /* The key cap that switches to the companion. */
 .key { grid-area: key; align-self: center; min-inline-size: calc(22 * var(--font-step-px)); max-inline-size: calc(72 * var(--font-step-px)); padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); -webkit-text-stroke-width: 0; text-shadow: none; white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 /* Under a touch screen a plate is the control: no key caps. */
-@media (pointer: coarse) { .key { display: none; } }
+.key:touch { display: none; }
 /* On a phone the plates stand side by side, each compact: the name over
    the bars, no portrait, so a short name fits whole at a large text scale
    (they wrap only when it cannot). */
-@media (width < 600px) {
-  #RpgCompanions { flex-direction: row; flex-wrap: wrap; inline-size: stretch; column-gap: var(--space-md); row-gap: var(--space-sm); }
-  /* The rows start at the plate's top and keep their own heights (the row
-     stretches every plate to the tallest one's height; stretched rows
-     would move a fallen plate's bar, whose tag row is taller than a mana
-     bar), so every bar sits directly under its name. */
-  .member { flex: 1 1 calc(70 * var(--font-step-px)); grid-template-columns: minmax(0, 1fr); grid-template-areas: "who" "health" "mana"; row-gap: calc(3 * var(--font-step-px)); align-content: start; }
-  .portrait { display: none; }
-  .name { font-size: var(--hud-size-xs); }
-  /* A fallen companion has no mana bar: its tag stands in that row. */
-  .who { display: contents; }
-  .name { grid-area: who; }
-  .fallen { grid-area: mana; justify-self: start; letter-spacing: normal; }
-  .health { --hud-bar-size: calc(5 * var(--font-step-px)); }
-  .mana { --hud-bar-size: calc(3 * var(--font-step-px)); }
-  .key { display: none; }
-}
+#RpgCompanions:size(compact) { flex-direction: row; flex-wrap: wrap; inline-size: stretch; column-gap: var(--space-md); row-gap: var(--space-sm); }
+.member:size(compact) { flex: 1 1 calc(70 * var(--font-step-px)); grid-template-columns: minmax(0, 1fr); grid-template-areas: "who" "health" "mana"; row-gap: calc(3 * var(--font-step-px)); align-content: start; }
+.portrait:size(compact) { display: none; }
+.name:size(compact) { font-size: var(--hud-size-xs); }
+.who:size(compact) { display: contents; }
+.name:size(compact) { grid-area: who; }
+.fallen:size(compact) { grid-area: mana; justify-self: start; letter-spacing: normal; }
+.health:size(compact) { --hud-bar-size: calc(5 * var(--font-step-px)); }
+.mana:size(compact) { --hud-bar-size: calc(3 * var(--font-step-px)); }
+.key:size(compact) { display: none; }
 </style>

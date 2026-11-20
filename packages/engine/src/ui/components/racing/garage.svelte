@@ -145,22 +145,18 @@
 .tag.tag-locked { color: var(--hud-ink-dim); }
 .empty-text { margin: 0; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); }
 .key { color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }
-@media (pointer: coarse) { .key { display: none; } }
+.key:touch { display: none; }
 /* A phone: the picture closes on the ground under it, the name smaller.
    The frame's own gap follows the viewport: a container cannot query
    itself. */
-@media (width < 600px) {
-  .frame { padding: var(--space-sm); --layout-gap-loose: var(--layout-gap); }
-  .backdrop, .shade { bottom: auto; block-size: 38%; }
-  .shade { background: var(--party-hero-shade-compact); }
-  .tile { width: var(--party-garage-tile-compact); }
-}
+.frame:size(compact) { padding: var(--space-sm); --layout-gap-loose: var(--layout-gap); }
+.backdrop:size(compact), .shade:size(compact) { bottom: auto; block-size: 38%; }
+.shade:size(compact) { background: var(--party-hero-shade-compact); }
+.tile:size(compact) { width: var(--party-garage-tile-compact); }
 /* A narrow panel stacks the shown car over the ratings and the action, the
    tiles along the foot under the thumb. */
-@container (width < 600px) {
-  .body { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: safe flex-end; --layout-gap-wide: var(--layout-gap); }
-  .show { width: stretch; flex: none; }
-  .side { width: stretch; flex: none; padding: var(--space-sm); --layout-gap-wide: var(--layout-gap); }
-  .actions { width: stretch; }
-}
+.body:size(compact) { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: safe flex-end; --layout-gap-wide: var(--layout-gap); }
+.show:size(compact) { width: stretch; flex: none; }
+.side:size(compact) { width: stretch; flex: none; padding: var(--space-sm); --layout-gap-wide: var(--layout-gap); }
+.actions:size(compact) { width: stretch; }
 </style>

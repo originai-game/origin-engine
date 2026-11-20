@@ -55,7 +55,7 @@ button.entry:disabled { background: transparent; box-shadow: none; color: var(--
 button.entry.danger { --button-ink: var(--system-danger-ink); --button-hover-ink: var(--system-danger-ink); }
 button.entry.danger, button.entry.danger:hover, button.entry.danger:focus-visible { color: var(--system-danger-ink); }
 button.entry.danger:disabled { color: var(--system-ink-off); }
-@media (pointer: coarse) { button.entry { min-block-size: var(--touch-target); } }
+button.entry:touch { min-block-size: var(--touch-target); }
 .face { width: stretch; column-gap: var(--space-sm); align-items: center; }
 .slot { flex: none; width: calc(18 * var(--font-step-px)); height: calc(18 * var(--font-step-px)); }
 .icon { width: 100%; height: 100%; }

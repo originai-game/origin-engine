@@ -68,13 +68,11 @@
 .low .value { color: var(--hud-harm); }
 /* On a phone the plate is compact: a smaller portrait and thinner bars
    across the row's width. */
-@media (width < 600px) {
-  #RpgLeader { column-gap: var(--space-sm); inline-size: stretch; }
-  #Portrait { --hud-portrait-size: calc(44 * var(--font-step-px)); }
-  #Body { row-gap: calc(4 * var(--font-step-px)); }
-  .name, .value { font-size: var(--hud-size-sm); }
-  #Health { --hud-bar-size: calc(12 * var(--font-step-px)); }
-  #Mana { --hud-bar-size: calc(6 * var(--font-step-px)); }
-  #Stamina { --hud-bar-size: calc(5 * var(--font-step-px)); }
-}
+#RpgLeader:size(compact) { column-gap: var(--space-sm); inline-size: stretch; }
+#Portrait:size(compact) { --hud-portrait-size: calc(44 * var(--font-step-px)); }
+#Body:size(compact) { row-gap: calc(4 * var(--font-step-px)); }
+.name:size(compact), .value:size(compact) { font-size: var(--hud-size-sm); }
+#Health:size(compact) { --hud-bar-size: calc(12 * var(--font-step-px)); }
+#Mana:size(compact) { --hud-bar-size: calc(6 * var(--font-step-px)); }
+#Stamina:size(compact) { --hud-bar-size: calc(5 * var(--font-step-px)); }
 </style>

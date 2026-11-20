@@ -60,10 +60,8 @@
 .tag { max-inline-size: calc(var(--s) * 1.2); margin-block-start: calc(-6 * var(--font-step-px)); margin-inline-end: calc(-6 * var(--font-step-px)); padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .key { min-inline-size: calc(22 * var(--font-step-px)); max-inline-size: calc(var(--s) * 1.3); padding: 0 var(--space-xs); font-size: var(--hud-tag-size); line-height: 1.5; font-weight: var(--hud-figure-weight); text-align: center; color: var(--hud-key-ink); background: var(--hud-key-fill); border-radius: var(--hud-key-radius); box-shadow: var(--hud-key-shadow); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 /* Under a touch screen the slots are the controls: no key caps. */
-@media (pointer: coarse) { .key { display: none; } }
-@media (width < 600px) {
-  #ShooterAbilities { column-gap: calc(8 * var(--font-step-px)); --s: calc(36 * var(--font-step-px)); --ult: calc(44 * var(--font-step-px)); }
-  .time { font-size: var(--hud-size-sm); }
-  .ultimate .time { font-size: var(--hud-size-xs); }
-}
+.key:touch { display: none; }
+#ShooterAbilities:size(compact) { column-gap: calc(8 * var(--font-step-px)); --s: calc(36 * var(--font-step-px)); --ult: calc(44 * var(--font-step-px)); }
+.time:size(compact) { font-size: var(--hud-size-sm); }
+.ultimate .time:size(compact) { font-size: var(--hud-size-xs); }
 </style>

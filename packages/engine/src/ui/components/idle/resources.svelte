@@ -70,8 +70,6 @@
 .rate.trend-down { color: var(--play-low-ink); }
 .placeholder { width: var(--size-xl); height: var(--space-sm); margin-block: var(--space-xxs); background: var(--play-well-fill); }
 .empty-text { margin: 0; padding: var(--space-md); }
-@container (width < 600px) {
-  .row { flex: 1 1 0; padding-inline-end: var(--space-xs); }
-  .socket { inline-size: var(--size-md); block-size: var(--size-md); }
-}
+.row:size(compact) { flex: 1 1 0; padding-inline-end: var(--space-xs); }
+.socket:size(compact) { inline-size: var(--size-md); block-size: var(--size-md); }
 </style>

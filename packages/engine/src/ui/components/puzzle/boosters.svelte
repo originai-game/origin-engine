@@ -67,10 +67,8 @@
 .armed .name { color: var(--play-armed-ink); }
 .not-available .name { color: var(--hud-label-ink); }
 .empty { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; }
-@container (width < 600px) {
-  .tray { width: stretch; min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: var(--space-xs); --layout-gap-tight: var(--layout-gap-hair); }
-  .booster { min-width: calc(var(--size-lg) * 1.9); max-width: none; }
-  .name { max-inline-size: calc(var(--size-lg) * 1.9); }
-  .well { width: var(--size-lg); height: var(--size-lg); }
-}
+.tray:size(compact) { width: stretch; min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: var(--space-xs); --layout-gap-tight: var(--layout-gap-hair); }
+.booster:size(compact) { min-width: calc(var(--size-lg) * 1.9); max-width: none; }
+.name:size(compact) { max-inline-size: calc(var(--size-lg) * 1.9); }
+.well:size(compact) { width: var(--size-lg); height: var(--size-lg); }
 </style>

@@ -110,5 +110,5 @@ button.row:state(selected) { background: var(--quest-selected-fill); box-shadow:
 .empty { width: stretch; align-items: center; padding: var(--space-xl) 0; color: var(--quest-ink-quiet); }
 .empty-mark { width: var(--size-lg); height: var(--size-lg); }
 .empty-text { margin: 0; }
-@container (width < 400px) { .action-label { display: none; } }
+.action-label:size(compact) { display: none; }
 </style>

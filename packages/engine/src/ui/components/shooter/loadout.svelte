@@ -94,22 +94,18 @@
 #Actions button:disabled { opacity: 0.45; }
 #Actions button span { color: inherit; font-weight: inherit; }
 #BackKey, #EquipKey { color: var(--hud-key-ink); background: var(--hud-key-fill); box-shadow: var(--hud-key-shadow); border-radius: var(--hud-key-radius); }
-@media (width < 600px) {
-  #Loadout { --layout-gap-wide: var(--layout-gap-loose); }
-  #Title { font-size: var(--party-size-hero-compact); }
-  #Groups { padding-right: var(--space-xs); }
-  #Actions button { flex: 1 1 auto; }
-}
+#Loadout:size(compact) { --layout-gap-wide: var(--layout-gap-loose); }
+#Title:size(compact) { font-size: var(--party-size-hero-compact); }
+#Groups:size(compact) { padding-right: var(--space-xs); }
+#Actions button:size(compact) { flex: 1 1 auto; }
 /* A landscape phone has height for a few rows only: the title takes less of it,
    and the actions stand beside the list, at its end under the thumb, so the
    list keeps the page's height. */
-@media (height < 600px) and (orientation: landscape) {
-  #Loadout { --layout-gap-wide: var(--layout-gap); }
-  #Title { font-size: var(--party-size-hero-compact); }
-  #Body { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
-  #Groups { grid-template-columns: minmax(0, 1fr); }
-  #Actions { width: calc(var(--size-xxl) * 1.25); height: stretch; align-content: end; }
-}
+#Loadout:size(short) { --layout-gap-wide: var(--layout-gap); }
+#Title:size(short) { font-size: var(--party-size-hero-compact); }
+#Body:size(short) { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
+#Groups:size(short) { grid-template-columns: minmax(0, 1fr); }
+#Actions:size(short) { width: calc(var(--size-xxl) * 1.25); height: stretch; align-content: end; }
 /* Under a finger the buttons are pressed, not keyed: no keycaps. */
-@media (pointer: coarse) { #BackKey, #EquipKey { display: none; } }
+#BackKey:touch, #EquipKey:touch { display: none; }
 </style>

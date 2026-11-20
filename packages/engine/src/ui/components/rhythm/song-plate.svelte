@@ -55,9 +55,7 @@
 .chart.tier-expert { background: var(--chart-expert); }
 .chart.tier-master { background: var(--chart-master); }
 .chart.tier-special { background: var(--chart-special); }
-@media (width < 600px) {
-  #Jacket { inline-size: calc(56 * var(--font-step-px)); block-size: calc(56 * var(--font-step-px)); }
-  .title { font-size: var(--hud-size-sm); }
-  .byline { font-size: var(--hud-size-xs); }
-}
+#Jacket:size(compact) { inline-size: calc(56 * var(--font-step-px)); block-size: calc(56 * var(--font-step-px)); }
+.title:size(compact) { font-size: var(--hud-size-sm); }
+.byline:size(compact) { font-size: var(--hud-size-xs); }
 </style>

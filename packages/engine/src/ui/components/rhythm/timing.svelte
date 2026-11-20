@@ -64,16 +64,14 @@
 .scale-row { flex-wrap: wrap; row-gap: var(--space-xxs); justify-content: space-between; }
 #Scale { order: -1; flex: 1 1 100%; }
 /* On a phone the tally runs as one line of pairs over a full-width scale. */
-@media (width < 600px) {
-  #RhythmTiming { inline-size: stretch; }
-  .tally { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-md); }
-  .row { --layout-gap-wide: var(--space-xs); }
-  .name, .count { font-size: var(--hud-size-xs); }
-  .label { display: none; }
-  .scale-row { flex-wrap: nowrap; }
-  #Scale { order: 0; flex: 1 1 0; min-inline-size: 0; }
-  .early { order: -1; }
-}
+#RhythmTiming:size(compact) { inline-size: stretch; }
+.tally:size(compact) { flex-direction: row; flex-wrap: wrap; column-gap: var(--space-md); }
+.row:size(compact) { --layout-gap-wide: var(--space-xs); }
+.name:size(compact), .count:size(compact) { font-size: var(--hud-size-xs); }
+.label:size(compact) { display: none; }
+.scale-row:size(compact) { flex-wrap: nowrap; }
+#Scale:size(compact) { order: 0; flex: 1 1 0; min-inline-size: 0; }
+.early:size(compact) { order: -1; }
 .anchor-top { display: flex; justify-content: center; }
 .anchor-top { display: flex; justify-content: center; }
 </style>

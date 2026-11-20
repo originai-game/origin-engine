@@ -65,9 +65,4 @@
 .reason { display: flex; align-items: center; column-gap: calc(4 * var(--font-step-px)); min-inline-size: 0; font-size: var(--world-size-title); line-height: 1.2; font-weight: var(--hud-figure-weight); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); color: var(--world-hostile-ink); white-space: nowrap; }
 .lock { flex: none; inline-size: var(--world-mark-size); block-size: var(--world-mark-size); }
 .why { min-inline-size: 0; max-inline-size: calc(200 * var(--font-step-px)); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
-@media (prefers-reduced-motion: reduce) {
-  #Prompt { animation: none; }
-  .pressed .key { translate: none; }
-  .not-pressed .sweep { transition: none; }
-}
 </style>

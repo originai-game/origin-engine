@@ -108,12 +108,10 @@
 .empty-text { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; }
 /* A narrow panel (a phone, or a side column on a wide screen) puts the
    amounts under the title and each row's price and Buy under its name. */
-@container (width < 560px) {
-  .band .amounts { flex: 1 0 100%; }
-  .amount { flex: 1; min-width: 0; }
-  .row { flex-wrap: wrap; }
-  .art { inline-size: calc(40 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
-  .body { flex: 1 1 0; }
-  .end { flex: 1 0 100%; max-width: stretch; flex-direction: row; justify-content: flex-end; align-items: center; }
-}
+.band .amounts:size(compact) { flex: 1 0 100%; }
+.amount:size(compact) { flex: 1; min-width: 0; }
+.row:size(compact) { flex-wrap: wrap; }
+.art:size(compact) { inline-size: calc(40 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
+.body:size(compact) { flex: 1 1 0; }
+.end:size(compact) { flex: 1 0 100%; max-width: stretch; flex-direction: row; justify-content: flex-end; align-items: center; }
 </style>

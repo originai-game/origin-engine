@@ -72,16 +72,11 @@
 .offset { font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-gold); white-space: nowrap; }
 .timing.timing-early, .offset.timing-early { color: var(--judge-early-ink); }
 .timing.timing-late { color: var(--judge-late-ink); }
-@media (width < 600px) {
-  .count { font-size: var(--hud-size-hero-compact); }
-  .word { font-size: var(--hud-size-judge-compact); }
-  .plate { margin-block-start: var(--space-md); }
-  /* On a phone the combo's word and its mark share a line and its type
-     (the label's tracking and compact size, held to the container's
-     width), so the pair fits between the gauges at any text scale. */
-  .words { flex-direction: row; align-items: baseline; gap: var(--space-sm); }
-  .combo-word, .mark { font-size: var(--hud-size-label-compact); }
-  .combo-word { letter-spacing: var(--hud-label-tracking); }
-  .mark { margin-block-start: 0; }
-}
+.count:size(compact) { font-size: var(--hud-size-hero-compact); }
+.word:size(compact) { font-size: var(--hud-size-judge-compact); }
+.plate:size(compact) { margin-block-start: var(--space-md); }
+.words:size(compact) { flex-direction: row; align-items: baseline; gap: var(--space-sm); }
+.combo-word:size(compact), .mark:size(compact) { font-size: var(--hud-size-label-compact); }
+.combo-word:size(compact) { letter-spacing: var(--hud-label-tracking); }
+.mark:size(compact) { margin-block-start: 0; }
 </style>

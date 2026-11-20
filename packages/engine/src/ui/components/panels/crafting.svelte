@@ -124,13 +124,9 @@ h2, h3, h4, p { margin: 0; }
 .cost { font-size: var(--inv-figure-lg-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); white-space: nowrap; }
 .craft { width: stretch; min-block-size: calc(var(--size-touch) * 1.15); gap: var(--space-xs); }
 .cap { flex: none; }
-@container (width < 600px) {
-  /* Narrow: the recipes over the selected one, in one scroller. */
-  .cols { display: flex; flex-direction: column; }
-  .recipes { flex: 0 1 auto; max-block-size: 40%; }
-  .detail { flex: 1 1 0; }
-  /* The batch and Craft stay at the foot while what is above scrolls. */
-  .hero { block-size: var(--inv-hero-compact-size); }
-  .hero-art { inline-size: var(--inv-hero-compact-art-size); block-size: var(--inv-hero-compact-art-size); }
-}
+.cols:size(compact) { display: flex; flex-direction: column; }
+.recipes:size(compact) { flex: 0 1 auto; max-block-size: 40%; }
+.detail:size(compact) { flex: 1 1 0; }
+.hero:size(compact) { block-size: var(--inv-hero-compact-size); }
+.hero-art:size(compact) { inline-size: var(--inv-hero-compact-art-size); block-size: var(--inv-hero-compact-art-size); }
 </style>

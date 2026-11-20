@@ -82,16 +82,13 @@
 #ReloadTrack { flex: 1; block-size: calc(4 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); }
 #ReloadFill { inline-size: calc(var(--progress) * 100%); block-size: 100%; background: var(--hud-pip-on); }
 #Prompt { color: var(--hud-empty-ink); animation: var(--pulse-motion); }
-@media (width < 600px) {
-  #AmmoCounter { inline-size: auto; row-gap: calc(2 * var(--font-step-px)); }
-  #Modes { display: none; }
-  #Weapon { flex-wrap: wrap; justify-content: flex-end; }
-  #Count { font-size: var(--hud-size-ammo-compact); }
-  #Reserve { font-size: var(--hud-size-sm); }
-  #Ticks { block-size: calc(6 * var(--font-step-px)); inline-size: calc(var(--capacity) * 4 * var(--font-step-px)); }
-  #Alternate .small { font-size: var(--hud-size-xs); }
-}
+#AmmoCounter:size(compact) { inline-size: auto; row-gap: calc(2 * var(--font-step-px)); }
+#Modes:size(compact) { display: none; }
+#Weapon:size(compact) { flex-wrap: wrap; justify-content: flex-end; }
+#Count:size(compact) { font-size: var(--hud-size-ammo-compact); }
+#Reserve:size(compact) { font-size: var(--hud-size-sm); }
+#Ticks:size(compact) { block-size: calc(6 * var(--font-step-px)); inline-size: calc(var(--capacity) * 4 * var(--font-step-px)); }
+#Alternate .small:size(compact) { font-size: var(--hud-size-xs); }
 /* Under a touch screen there is no key to swap with. */
-@media (pointer: coarse) { #Swap { display: none; } }
-@media (prefers-reduced-motion: reduce) { #Prompt { animation: none; } }
+#Swap:touch { display: none; }
 </style>

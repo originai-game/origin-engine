@@ -38,5 +38,6 @@
 .timer { background: var(--hud-sweep); mask-image: conic-gradient(transparent calc(var(--left) * 360deg), #000 0); }
 .tag { max-inline-size: calc(56 * var(--font-step-px)); padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .harmful .tag { color: var(--hud-foe); }
-@media (width < 600px) { .tile { inline-size: calc(24 * var(--font-step-px)); block-size: calc(24 * var(--font-step-px)); } .tag { padding: 0 calc(3 * var(--font-step-px)); } }
+.tile:size(compact) { inline-size: calc(24 * var(--font-step-px)); block-size: calc(24 * var(--font-step-px)); }
+.tag:size(compact) { padding: 0 calc(3 * var(--font-step-px)); }
 </style>

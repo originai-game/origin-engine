@@ -49,15 +49,11 @@
 
 <style>
 #TouchControls { inline-size: stretch; justify-content: space-between; align-items: end; padding: var(--space-lg); }
-@media (pointer: fine) {
-  #TouchControls { display: none; }
-  #TouchControls.always { display: flex; }
-}
+#TouchControls { display: none; }
+#TouchControls.always, #TouchControls:touch { display: flex; }
 #Start { align-items: end; flex: none; }
 #End { min-inline-size: 0; align-items: end; justify-content: flex-end; }
 #Actions { min-inline-size: 0; align-items: end; justify-content: flex-start; max-width: min(100%, calc(var(--action-size) * 3.25 + var(--space-md) * 2)); }
-@media (width < 600px) {
-  #TouchControls { padding: var(--space-md); --layout-gap-wide: var(--layout-gap-loose); }
-  #End { --layout-gap-loose: var(--layout-gap-tight); }
-}
+#TouchControls:size(compact) { padding: var(--space-md); --layout-gap-wide: var(--layout-gap-loose); }
+#End:size(compact) { --layout-gap-loose: var(--layout-gap-tight); }
 </style>

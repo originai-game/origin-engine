@@ -94,11 +94,8 @@
 .readout { align-items: center; margin-block-end: calc(-4 * var(--font-step-px)); position: relative; z-index: 1; }
 #Bearing { padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.35; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-key-ink); background: var(--hud-accent); border: 0; box-shadow: none; -webkit-text-stroke-width: 0; text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 #Notch { position: absolute; top: calc(var(--band) - 4 * var(--font-step-px)); inset-inline-start: calc(50% - 6 * var(--font-step-px)); inline-size: calc(12 * var(--font-step-px)); block-size: calc(8 * var(--font-step-px)); background: var(--hud-accent); clip-path: polygon(0 0, 100% 0, 50% 100%); }
-@media (width < 600px) {
-  #Compass { --hud-size-cardinal: var(--hud-size-sm); }
-  /* Room under the band for a mark and its distance (1 + 12 + 14.3 steps). */
-  #Window { block-size: calc(var(--band) + 30 * var(--font-step-px)); }
-  .copy { top: calc(var(--band) + 1 * var(--font-step-px)); row-gap: 0; }
-  .point { font-size: var(--hud-size-xs); }
-}
+#Compass:size(compact) { --hud-size-cardinal: var(--hud-size-sm); }
+#Window:size(compact) { block-size: calc(var(--band) + 30 * var(--font-step-px)); }
+.copy:size(compact) { top: calc(var(--band) + 1 * var(--font-step-px)); row-gap: 0; }
+.point:size(compact) { font-size: var(--hud-size-xs); }
 </style>

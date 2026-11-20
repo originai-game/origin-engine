@@ -22,5 +22,5 @@
 <style>
 #RpgLootFeed { align-items: flex-start; row-gap: calc(5 * var(--font-step-px)); max-inline-size: stretch; color: var(--hud-ink); }
 .entry { flex: none; max-inline-size: 100%; min-inline-size: 0; }
-@media (width < 600px) { .entry.later { display: none; } }
+.entry.later:size(compact) { display: none; }
 </style>

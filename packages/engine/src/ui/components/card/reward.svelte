@@ -77,9 +77,7 @@
 #Skip { min-width: calc(var(--size-xxl) * 2); min-height: var(--size-touch); }
 /* A phone: one offer at nearly the full width, so its text stays whole,
    the next one peeking at the faded edge; the row scrolls sideways. */
-@container (width < 640px) {
-  .strip { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; mask-image: var(--tcg-fade); }
-  .choices { width: auto; justify-content: start; scroll-snap-type: x mandatory; padding-inline-end: var(--size-lg); }
-  .choice, .relic { flex: 0 0 min(78cqw, calc((100cqh - var(--size-lg) * 4) * 0.7)); min-width: 0; scroll-snap-align: center; }
-}
+.strip:size(compact) { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; mask-image: var(--tcg-fade); }
+.choices:size(compact) { width: auto; justify-content: start; scroll-snap-type: x mandatory; padding-inline-end: var(--size-lg); }
+.choice:size(compact), .relic:size(compact) { flex: 0 0 min(78cqw, calc((100cqh - var(--size-lg) * 4) * 0.7)); min-width: 0; scroll-snap-align: center; }
 </style>

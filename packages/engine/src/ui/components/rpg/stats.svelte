@@ -57,6 +57,6 @@
 .row-mark { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--hud-label-ink); }
 .row-label { min-width: 0; font-size: var(--hud-size-xs); font-weight: var(--hud-label-weight); color: var(--hud-label-ink); overflow-wrap: break-word; }
 .row-value { flex: none; white-space: nowrap; font-size: var(--hud-size-readout); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); text-shadow: none; }
-@media (width < 600px) { .frame { padding: var(--space-sm); } }
-@container (width < 420px) { .split { display: none; } }
+.frame:size(compact) { padding: var(--space-sm); }
+.split:size(compact) { display: none; }
 </style>

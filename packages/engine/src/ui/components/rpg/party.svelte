@@ -39,7 +39,7 @@
 .cell { position: relative; width: stretch; padding: var(--space-xs); align-items: stretch; justify-content: flex-start; min-width: 0; }
 .cell .face { width: stretch; }
 .picture { width: stretch; aspect-ratio: 1.15; overflow: hidden; }
-@media (width >= 600px) and (height >= 500px) { .picture { aspect-ratio: 1.5; } }
+.picture:not(:size(compact)) { aspect-ratio: 1.5; }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .seal { position: absolute; inset-inline-start: var(--space-xs); top: var(--space-xs); width: var(--size-md); height: max-content; min-height: var(--size-md); }
 .seal og-icon { width: var(--size-xs); height: var(--size-xs); }
@@ -49,6 +49,6 @@
 .bar { margin-inline: var(--space-xs); --hud-bar-size: max(calc(var(--space-md) * 1.25), var(--size-sm)); --hud-life-fill: var(--fill-gloss), var(--health); --hud-life-glow: none; }
 .mana { --hud-mana-fill: var(--fill-gloss), var(--mana); --hud-mana-glow: none; }
 .empty-text { margin: 0; }
-@media (height < 500px) { .picture { aspect-ratio: 2.4; } }
+.picture:size(short) { aspect-ratio: 2.4; }
 @media (600px <= width) and (500px <= height < 800px) { .picture { aspect-ratio: 2; } }
 </style>

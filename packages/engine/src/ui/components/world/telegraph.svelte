@@ -63,5 +63,4 @@
 .hit .sweep { background: var(--world-telegraph-hit-fill); }
 .hit .rim { border: var(--world-telegraph-hit-border); }
 .hit .side { background: var(--hud-ink); }
-@media (prefers-reduced-motion: reduce) { #Area.hit { animation: none; } }
 </style>

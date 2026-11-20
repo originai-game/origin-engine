@@ -93,15 +93,13 @@
 /* A phone sets the charts two to a row: the tier's name and its state
    across the top, the level under them and the best beside it, wrapping
    under the level when larger text leaves no room. */
-@media (width < 600px) {
-  #RhythmDifficulty { --lean: calc(var(--select-tile-lean) / 2); }
-  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs); padding-block-start: var(--space-xxs); }
-  .tile { min-height: var(--size-touch); padding: calc(var(--space-xxs) + var(--select-tile-strip)) calc(var(--space-xs) + var(--lean)) var(--space-xxs); }
-  .face { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: var(--space-xs); }
-  .rating { align-self: center; }
-  .head { flex: 1 0 100%; }
-  .best { flex: none; }
-  .lv { font-size: var(--select-size-level-compact); }
-  .tile:state(selected) { translate: none; }
-}
+#RhythmDifficulty:size(compact) { --lean: calc(var(--select-tile-lean) / 2); }
+.tiles:size(compact) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-xs); padding-block-start: var(--space-xxs); }
+.tile:size(compact) { min-height: var(--size-touch); padding: calc(var(--space-xxs) + var(--select-tile-strip)) calc(var(--space-xs) + var(--lean)) var(--space-xxs); }
+.face:size(compact) { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: var(--space-xs); }
+.rating:size(compact) { align-self: center; }
+.head:size(compact) { flex: 1 0 100%; }
+.best:size(compact) { flex: none; }
+.lv:size(compact) { font-size: var(--select-size-level-compact); }
+.tile:state(selected):size(compact) { translate: none; }
 </style>

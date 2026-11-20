@@ -39,5 +39,7 @@
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .round-rule { width: stretch; }
 .round-title { flex: none; padding: var(--space-xs) var(--space-xl); white-space: nowrap; --badge-text: var(--text-lg); background: var(--hud-tag-fill); box-shadow: var(--hud-plate-lit-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
-@media (height < 500px) { .ring { max-width: var(--size-xl); } .turns { padding: 0; } .round-title { padding: 0 var(--space-lg); } }
+.ring:size(short) { max-width: var(--size-xl); }
+.turns:size(short) { padding: 0; }
+.round-title:size(short) { padding: 0 var(--space-lg); }
 </style>

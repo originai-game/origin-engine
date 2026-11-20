@@ -101,11 +101,9 @@
 .action:disabled { opacity: 0.45; }
 .reason { text-align: center; font-size: var(--hud-size-xs); color: var(--hud-ink-dim); overflow-wrap: break-word; }
 .spinner { justify-content: center; }
-@media (width < 600px) {
-  .frame { padding: var(--space-sm); }
-  .stats { grid-template-columns: minmax(0, 1fr); --layout-gap: var(--layout-gap-tight); }
-  .stat { padding: var(--space-xs) var(--space-md); container-type: normal; }
-  .value { font-size: var(--party-size-figure-compact); }
-  .name { font-size: var(--party-size-name-compact); }
-}
+.frame:size(compact) { padding: var(--space-sm); }
+.stats:size(compact) { grid-template-columns: minmax(0, 1fr); --layout-gap: var(--layout-gap-tight); }
+.stat:size(compact) { padding: var(--space-xs) var(--space-md); container-type: normal; }
+.value:size(compact) { font-size: var(--party-size-figure-compact); }
+.name:size(compact) { font-size: var(--party-size-name-compact); }
 </style>

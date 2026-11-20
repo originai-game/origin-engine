@@ -71,9 +71,7 @@
 .option:disabled .state { color: var(--hud-ink-dim); }
 #ArenaVote section .state { color: var(--hud-ink-dim); }
 .tally { flex: 0 1 auto; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: inherit; text-shadow: none; overflow-wrap: break-word; }
-@container (width < 400px) {
-  .frame { padding: var(--space-sm); }
-  .option { padding: var(--space-xs) var(--space-sm); }
-  .tally { flex-basis: 100%; text-align: end; }
-}
+.frame:size(compact) { padding: var(--space-sm); }
+.option:size(compact) { padding: var(--space-xs) var(--space-sm); }
+.tally:size(compact) { flex-basis: 100%; text-align: end; }
 </style>

@@ -111,13 +111,11 @@
 .empty-mark { width: var(--size-lg); height: var(--size-lg); }
 .empty-text { margin: 0; }
 /* A narrow list: the rarity takes a line under the words, Claim and Claimed take a line of their own. */
-@container (width < 480px) {
-  .summary { padding: var(--space-xs) var(--space-md); }
-  .total { --figure-size: var(--quest-size-total-compact); }
-  .entry { flex-wrap: wrap; align-items: flex-start; row-gap: var(--space-xs); padding: var(--space-sm); }
-  .medal { width: var(--size-lg); height: calc(var(--size-lg) * 1.1); }
-  .rarity { width: stretch; flex-direction: row; align-items: baseline; column-gap: var(--space-xs); padding-inline-start: calc(var(--size-lg) + var(--space-md)); }
-  .claim { width: stretch; }
-  .stamp { width: stretch; justify-content: flex-end; }
-}
+.summary:size(compact) { padding: var(--space-xs) var(--space-md); }
+.total:size(compact) { --figure-size: var(--quest-size-total-compact); }
+.entry:size(compact) { flex-wrap: wrap; align-items: flex-start; row-gap: var(--space-xs); padding: var(--space-sm); }
+.medal:size(compact) { width: var(--size-lg); height: calc(var(--size-lg) * 1.1); }
+.rarity:size(compact) { width: stretch; flex-direction: row; align-items: baseline; column-gap: var(--space-xs); padding-inline-start: calc(var(--size-lg) + var(--space-md)); }
+.claim:size(compact) { width: stretch; }
+.stamp:size(compact) { width: stretch; justify-content: flex-end; }
 </style>
