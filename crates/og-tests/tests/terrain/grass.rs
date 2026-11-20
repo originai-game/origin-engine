@@ -130,6 +130,56 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
     );
 }
 
+thread_local! {
+    static TICKETS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    static COMPILED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// A web host whose compute pipelines arrive late (og-render gpu/ready.rs):
+/// while the grass's generate pipelines still compile, no blade is drawn
+/// (nothing reads the blade buffers nothing generated), and once they are
+/// made the meadow is drawn as with pipelines made at once. Fails if the
+/// field were generated or drawn before its pipelines were ready, or left
+/// out once they were.
+#[test]
+#[ignore = "requires GPU"]
+fn grass_whose_generate_pipelines_arrive_late_draws_no_blade_until_they_do() {
+    fn last() -> u32 {
+        TICKETS.with(|t| {
+            t.set(t.get() + 1);
+            t.get()
+        })
+    }
+    fn ready(_: u32) -> bool {
+        COMPILED.with(|c| c.get())
+    }
+    let mut scene = trample_scene();
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut draw = |scene: &mut RenderScene, tick: u64| {
+        scene.frame.tick = tick;
+        r.render(scene, &RenderTarget::Offscreen).expect("render");
+        r.read_offscreen().expect("capture")
+    };
+    og_render::set_pipeline_hooks(None, Some((last, ready)));
+    let waiting = blade_pixels_above(&draw(&mut scene, 0));
+    let still = blade_pixels_above(&draw(&mut scene, 1));
+    COMPILED.with(|c| c.set(true));
+    let arrived = blade_pixels_above(&draw(&mut scene, 2));
+    og_render::set_pipeline_hooks(None, None);
+    let at_once = blade_pixels_above(&draw(&mut scene, 2));
+    println!("blade pixels: waiting {waiting}, {still}; arrived {arrived}; made at once {at_once}");
+    assert_eq!(
+        (waiting, still),
+        (0, 0),
+        "blades drawn while their pipelines compile"
+    );
+    assert!(at_once > 2000, "the meadow shows {at_once} blade pixels");
+    assert!(
+        arrived as f32 > 0.9 * at_once as f32,
+        "the meadow once its pipelines arrived: {arrived} of {at_once}"
+    );
+}
+
 /// G5: under a sun 10 degrees up, a dense meadow (one colour root to tip,
 /// no sky light) is more than twice as bright at its tips as at its roots:
 /// the canopy between a blade's foot and the sun, and the blades' own

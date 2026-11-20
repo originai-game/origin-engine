@@ -89,6 +89,8 @@ thread_local! {
     static BUNDLE: RefCell<Option<(String, std::rc::Rc<og_bundle::runtime::Bundle>)>> = const { RefCell::new(None) };
     /// The Worker's frame-pipeline span (fork s60, `og_web_frame_pipelines`).
     static FRAME_SPAN: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
+    /// The Worker's make span, last ticket and readiness (`og_web_make_pipelines`).
+    static MAKE_HOOKS: RefCell<Option<[js_sys::Function; 3]>> = const { RefCell::new(None) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `transcode(id, ktx2, target)`, which transcodes a Basis
@@ -340,6 +342,55 @@ pub fn og_web_frame_pipelines(span: Option<js_sys::Function>) {
     let on = span.is_some();
     FRAME_SPAN.with(|cell| *cell.borrow_mut() = span);
     og_render::set_frame_pipelines_hook(on.then_some(frame_span as fn(bool)));
+}
+
+/// The Worker's `make(on)` around each frame the renderer draws, `last()`
+/// (the ticket of the pipeline made last, 0 when made at once) and
+/// `ready(ticket)` (src/web/pipelines.ts `makeSpan`, `lastTicket`, `ready`):
+/// every pipeline a frame makes is asked for asynchronously, and the passes
+/// whose output the renderer keeps wait for theirs (og-render gpu/ready.rs).
+/// `null`s call nothing.
+#[wasm_bindgen]
+pub fn og_web_make_pipelines(
+    make: Option<js_sys::Function>,
+    last: Option<js_sys::Function>,
+    ready: Option<js_sys::Function>,
+) {
+    let hooks = match (make, last, ready) {
+        (Some(m), Some(l), Some(r)) => Some([m, l, r]),
+        _ => None,
+    };
+    let on = hooks.is_some();
+    MAKE_HOOKS.with(|cell| *cell.borrow_mut() = hooks);
+    og_render::set_pipeline_hooks(
+        on.then_some(make_span as fn(bool)),
+        on.then_some((last_ticket as fn() -> u32, ticket_ready as fn(u32) -> bool)),
+    );
+}
+
+fn make_hook(i: usize, arg: &JsValue) -> JsValue {
+    MAKE_HOOKS.with(|cell| {
+        cell.borrow()
+            .as_ref()
+            .and_then(|h| h[i].call1(&JsValue::NULL, arg).ok())
+            .unwrap_or(JsValue::UNDEFINED)
+    })
+}
+
+fn make_span(on: bool) {
+    make_hook(0, &JsValue::from_bool(on));
+}
+
+fn last_ticket() -> u32 {
+    make_hook(1, &JsValue::NULL)
+        .as_f64()
+        .map_or(0, |t| t as u32)
+}
+
+fn ticket_ready(ticket: u32) -> bool {
+    make_hook(2, &JsValue::from(ticket))
+        .as_bool()
+        .unwrap_or(true)
 }
 
 fn frame_span(on: bool) {

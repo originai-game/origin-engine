@@ -18,7 +18,8 @@ impl GrassRenderer {
             timestamp_writes: None,
         });
         for field in &frame.fields {
-            let Some([evaluate, scan, compact]) = &self.generate[usize::from(field.arrayed)] else {
+            let Some(([evaluate, scan, compact], _)) = &self.generate[usize::from(field.arrayed)]
+            else {
                 continue;
             };
             let f = &self.fields[field.slot];

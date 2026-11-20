@@ -10,6 +10,7 @@ pub(crate) mod indirect_own;
 pub(crate) mod layout;
 pub(crate) mod mips;
 pub(crate) mod pipeline_cache;
+pub(crate) mod ready;
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 pub mod shared_frames;
 pub(crate) mod targets;

@@ -336,7 +336,7 @@ impl GrassRenderer {
         device: &wgpu::Device,
         terrain_layout: &wgpu::BindGroupLayout,
         arrayed: bool,
-    ) -> [wgpu::ComputePipeline; 3] {
+    ) -> ([wgpu::ComputePipeline; 3], [crate::gpu::ready::Ticket; 3]) {
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("grass generate"),
             source: wgpu::ShaderSource::Wgsl(generate_source(arrayed).into()),
@@ -350,12 +350,13 @@ impl GrassRenderer {
             ],
             immediate_size: 0,
         });
-        ["evaluate", "scan", "compact"].map(|entry| {
+        let entries = ["evaluate", "scan", "compact"];
+        crate::gpu::ready::tracked(|i| {
             device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("grass generate"),
                 layout: Some(&layout),
                 module: &module,
-                entry_point: Some(entry),
+                entry_point: Some(entries[i]),
                 compilation_options: Default::default(),
                 cache: crate::pipeline_cache::of(device).as_ref(),
             })

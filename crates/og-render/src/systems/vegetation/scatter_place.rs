@@ -253,7 +253,8 @@ pub(crate) struct ScatterPlace {
     pub chunk_layout: wgpu::BindGroupLayout,
     /// The evaluate and place pipelines, per terrain layout (standard,
     /// layer arrays), made when first needed.
-    pipelines: [Option<[wgpu::ComputePipeline; 2]>; 2],
+    /// Each with its pipelines' tickets (gpu/ready.rs).
+    pipelines: [Option<([wgpu::ComputePipeline; 2], [crate::gpu::ready::Ticket; 2])>; 2],
     rows: wgpu::Buffer,
     row_cap: u64,
     bits: wgpu::Buffer,
@@ -373,21 +374,30 @@ impl ScatterPlace {
         self.words = 0;
     }
 
-    /// Records `plan` for the chunk drawn over terrain draw `terrain_draw`
-    /// (whose group is the layer-array variant's with `arrayed`), its
-    /// pipelines made over `terrain_layout` when first needed. Jobs are
-    /// encoded in the order recorded.
-    pub(crate) fn push(
+    /// Whether a chunk over the layer-array variant's terrain (`arrayed`)
+    /// can be placed this frame: its pipelines, made over `terrain_layout`
+    /// when first asked, are compiled. A chunk placed once is kept, so one
+    /// whose pipelines the web host still compiles waits for a later frame
+    /// rather than keep an empty placement (gpu/ready.rs).
+    pub(crate) fn ready(
         &mut self,
         device: &wgpu::Device,
         terrain_layout: &wgpu::BindGroupLayout,
-        (terrain_draw, arrayed): (usize, bool),
-        mut plan: Plan,
-    ) {
+        arrayed: bool,
+    ) -> bool {
         let a = usize::from(arrayed);
         if self.pipelines[a].is_none() {
             self.pipelines[a] = Some(self.make(device, terrain_layout, arrayed));
         }
+        self.pipelines[a]
+            .as_ref()
+            .is_some_and(|(_, t)| crate::gpu::ready::all(t))
+    }
+
+    /// Records `plan` for the chunk drawn over terrain draw `terrain_draw`
+    /// (whose group is the layer-array variant's with `arrayed`), once
+    /// [`Self::ready`]. Jobs are encoded in the order recorded.
+    pub(crate) fn push(&mut self, (terrain_draw, arrayed): (usize, bool), mut plan: Plan) {
         let first = (self.frame_rows.len() as u64 / ROW_SLOT) as u32;
         for row in &mut plan.rows {
             for l in &mut row.layers {
@@ -412,7 +422,7 @@ impl ScatterPlace {
         device: &wgpu::Device,
         terrain_layout: &wgpu::BindGroupLayout,
         arrayed: bool,
-    ) -> [wgpu::ComputePipeline; 2] {
+    ) -> ([wgpu::ComputePipeline; 2], [crate::gpu::ready::Ticket; 2]) {
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("scatter place"),
             source: wgpu::ShaderSource::Wgsl(source(arrayed).into()),
@@ -426,12 +436,13 @@ impl ScatterPlace {
             ],
             immediate_size: 0,
         });
-        ["evaluate", "place"].map(|entry| {
+        let entries = ["evaluate", "place"];
+        crate::gpu::ready::tracked(|i| {
             device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: Some("scatter place"),
                 layout: Some(&layout),
                 module: &module,
-                entry_point: Some(entry),
+                entry_point: Some(entries[i]),
                 compilation_options: Default::default(),
                 cache: crate::pipeline_cache::of(device).as_ref(),
             })
@@ -509,7 +520,7 @@ impl ScatterPlace {
             timestamp_writes: None,
         });
         for (job, chunk) in self.jobs.iter().zip(chunks) {
-            let Some([evaluate, place]) = &self.pipelines[usize::from(job.arrayed)] else {
+            let Some(([evaluate, place], _)) = &self.pipelines[usize::from(job.arrayed)] else {
                 continue;
             };
             let Some(td) = terrain_draws.get(job.terrain_draw) else {

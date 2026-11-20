@@ -15,6 +15,9 @@ impl Renderer {
         if let Some(stale) = scene.stale_handle() {
             return Err(RenderError::InvalidHandle(stale));
         }
+        // Every pipeline this frame makes is asked of the web host
+        // asynchronously (gpu/ready.rs).
+        let _make = crate::gpu::ready::MakeSpan::open();
         // Where the call's time goes, with a clock (frame_stages.rs).
         let mut stages = Stages::start(self.clock);
         // What this frame waits for compiles (FrameStats::compile_wait_us).
