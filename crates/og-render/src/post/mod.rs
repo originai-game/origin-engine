@@ -7,6 +7,7 @@
 
 pub(crate) mod color_vision;
 pub(crate) mod contact;
+pub(crate) mod depth_mips;
 pub(crate) mod display;
 mod flare;
 pub(crate) mod fsr;
@@ -496,6 +497,8 @@ pub(crate) struct PostPasses {
     pub fsr: fsr::FsrPasses,
     /// The contact shadows' compute passes (`contact.rs`).
     pub contact: contact::ContactPasses,
+    /// The view depth's MIP chain's compute pass (`depth_mips.rs`).
+    pub depth_mips: depth_mips::DepthMipsPass,
 }
 
 /// A 3D RGBA8 LUT texture from a 32³ table.
@@ -658,7 +661,10 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
     ]
     .into_iter()
     .map(|(label, body)| (label, fullscreen_source(body)))
-    .chain([("contact", contact::source())])
+    .chain([
+        ("contact", contact::source()),
+        ("depth mips", depth_mips::source()),
+    ])
     .collect()
 }
 

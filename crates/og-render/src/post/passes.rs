@@ -493,6 +493,7 @@ impl PostPasses {
             flare: FlarePasses::new(device),
             fsr: fsr::FsrPasses::new(device),
             contact: contact::ContactPasses::new(device),
+            depth_mips: depth_mips::DepthMipsPass::new(device),
             source_layout,
             post_layout,
             taa_layout,

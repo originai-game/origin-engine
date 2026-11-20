@@ -2,12 +2,18 @@
 //! contact shadows that share its target.
 
 use super::*;
+use crate::post::depth_mips::DEPTH_MIPS_TARGET;
 
 pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
     let has = |p| cx.has(p);
     let ao_out = cx.ao_out;
     let water = cx.cfg.water_ao && cx.front_depth;
-    let mut ao_reads = vec![if water { "front-depth" } else { "lindepth" }, "gbuffer"];
+    let depth = if water { "front-depth" } else { "lindepth" };
+    let mut ao_reads = vec![depth, "gbuffer"];
+    // GTAO's far taps read the chain (depth_mips.rs) in the depth's place.
+    if has(FramePass::DepthMips) {
+        ao_reads.push(DEPTH_MIPS_TARGET);
+    }
     // The GI reads the previous frame's lit image.
     if cx.cfg.gi {
         ao_reads.push(if cx.cfg.taa {
@@ -18,6 +24,7 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
     }
     let name = p.name();
     match p {
+        FramePass::DepthMips => g.pass(name, &[depth], &[DEPTH_MIPS_TARGET]),
         FramePass::Ao => g.pass(name, &ao_reads, &["ao.raw"]),
         FramePass::AoBlur if has(FramePass::AoUpsample) => {
             g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &["ao.blur"])

@@ -39,6 +39,10 @@ pub(crate) enum FramePass {
     GroundHeights,
     /// The depth-normal prepass (normal, velocity, view depth, outline ids).
     Prepass,
+    /// The view depth's MIP chain (`depth_mips.rs`, compute) the AO's
+    /// horizon search reads its far taps from: into the graph's own
+    /// texture (the imported `depth-mips`), before the AO.
+    DepthMips,
     /// Ambient occlusion (GTAO or SSAO), then its blur.
     Ao,
     AoBlur,
@@ -323,6 +327,7 @@ impl FramePass {
             FramePass::Shelter => "shelter".into(),
             FramePass::GroundHeights => "ground-heights".into(),
             FramePass::Prepass => "prepass".into(),
+            FramePass::DepthMips => "depth-mips".into(),
             FramePass::Ao => "ao".into(),
             FramePass::AoBlur => "ao-blur".into(),
             FramePass::AoUpsample => "ao-upsample".into(),

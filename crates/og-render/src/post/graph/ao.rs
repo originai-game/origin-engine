@@ -10,9 +10,13 @@ pub(super) fn groups(cx: &BindCx, pass: FramePass) -> Option<Pair> {
         // The AO reads the depth with the water's surfaces in it when there is one.
         // The GI reads the lit image the previous frame left: the
         // TAA history it wrote, or the main pass's copy.
+        // GTAO reads the view depth's MIP chain in its place
+        // (depth_mips.rs): its level 0 is the same depth.
         FramePass::Ao => {
-            let water = cx.cfg.water_ao.then(|| cx.graph.try_view("front-depth"));
-            let d = water.flatten().unwrap_or(cx.depth());
+            let d = match cx.graph.depth_mips() {
+                Some(mips) => mips.view(),
+                None => cx.ao_depth(),
+            };
             let previous = |slot: usize| match (cx.cfg.gi, cx.history(), &cx.persistent.gi) {
                 (false, ..) => black,
                 (true, Some(h), _) => &h[1 - slot],

@@ -155,6 +155,38 @@ fn gi_frames_compile_with_the_ao_targets_widened() {
     }
 }
 
+/// GTAO's depth MIP chain: its fill runs after the prepass that writes the
+/// depth and before the AO that reads its levels, whichever order the
+/// passes are listed in, with and without the water's front depth.
+#[test]
+fn depth_mips_fill_before_the_ao_reads_them() {
+    for water_ao in [false, true] {
+        let passes = vec![
+            FramePass::Prepass,
+            FramePass::Ao,
+            FramePass::AoBlur,
+            FramePass::DepthMips,
+            FramePass::Main,
+            FramePass::Tonemap,
+        ];
+        let plan = build_graph(
+            &passes,
+            &GraphConfig {
+                water_ao,
+                ..cfg(false, false)
+            },
+        )
+        .compile()
+        .unwrap_or_else(|e| panic!("water_ao {water_ao}: {e}"));
+        let at = |p: FramePass| plan.order().iter().position(|&i| passes[i] == p);
+        assert!(at(FramePass::Prepass) < at(FramePass::DepthMips));
+        assert!(
+            at(FramePass::DepthMips) < at(FramePass::Ao),
+            "water_ao {water_ao}"
+        );
+    }
+}
+
 #[test]
 fn smaa_t2x_keeps_reprojection_inputs_until_resolve() {
     for (velocity, chain_format) in [

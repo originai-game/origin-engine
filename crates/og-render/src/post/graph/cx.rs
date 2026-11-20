@@ -125,6 +125,16 @@ impl<'a> BindCx<'a> {
             .unwrap_or(&self.passes.far_depth)
     }
 
+    /// The depth the AO searches: with the water's surfaces in it when
+    /// there is one.
+    pub fn ao_depth(&self) -> &'a wgpu::TextureView {
+        let water = self
+            .cfg
+            .water_ao
+            .then(|| self.graph.try_view("front-depth"));
+        water.flatten().unwrap_or(self.depth())
+    }
+
     /// The prepass's normals and velocity (black without a prepass).
     pub fn gbuffer(&self) -> &'a wgpu::TextureView {
         self.graph.try_view("gbuffer").unwrap_or(&self.passes.black)

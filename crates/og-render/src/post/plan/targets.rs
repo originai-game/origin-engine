@@ -108,6 +108,10 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
     if cfg.ssr {
         g.import("ssr");
     }
+    // The graph's own texture (FrameGraph::depth_mips).
+    if has(FramePass::DepthMips) {
+        g.import(crate::post::depth_mips::DEPTH_MIPS_TARGET);
+    }
     if smaa_t2x {
         g.import("smaa-read").import("smaa-write");
     }

@@ -35,6 +35,21 @@ fn depth_tap(uv: vec2<f32>, size: vec2<i32>, size_f: vec2<f32>) -> f32 {
   return textureLoad(tex_depth, clamp(vec2<i32>(uv * size_f), vec2<i32>(0), size - 1), 0).r;
 }
 
+// The view depth at `uv` on MIP level `level` of the depth (the AO pass's
+// is the MIP chain, depth_mips.wgsl; elsewhere it has one level), `size`
+// its level 0's size.
+fn depth_mip_tap(uv: vec2<f32>, size: vec2<i32>, level: i32) -> f32 {
+  let s = max(size >> vec2<u32>(u32(level)), vec2<i32>(1));
+  return textureLoad(tex_depth, clamp(vec2<i32>(uv * vec2<f32>(s)), vec2<i32>(0), s - 1), level).r;
+}
+
+// The MIP level a tap `offset_px` pixels from its pixel reads (XeGTAO's
+// XE_GTAO_DEPTH_MIP_SAMPLING_OFFSET 3.3: level 0 within 14 pixels,
+// each doubling of the distance a level coarser), up to `top`.
+fn depth_tap_level(offset_px: f32, top: i32) -> i32 {
+  return clamp(i32(round(log2(max(offset_px, 1.0)) - 3.3)), 0, top);
+}
+
 fn is_sky(d: f32) -> bool {
   return d >= fxp.cam.x * 0.999;
 }
@@ -148,10 +163,10 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
   let steps = 6u;
   var vis = 0.0;
   var bent = vec3<f32>(0.0);
-  // Loop invariants held outside the loops (the same values every tap
-  // read through `depth_uv`): the depth's size, and each slice's jitter.
+  // Loop invariants held outside the loops: the depth's size and its
+  // coarsest level, and each slice's jitter.
   let dsize = vec2<i32>(textureDimensions(tex_depth));
-  let dsize_f = vec2<f32>(dsize);
+  let top = i32(textureNumLevels(tex_depth)) - 1;
   for (var s = 0u; s < slices; s++) {
     let jitter = fract(noise * 4.0 + f32(s) * 0.37);
     let phi = (f32(s) + noise) * PI / f32(slices);
@@ -181,11 +196,15 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
       let t = (f32(k) - 0.5 + jitter) / f32(steps);
       // At least 1.3 pixels out (XeGTAO's pixelTooCloseThreshold), so no
       // tap reads the pixel itself.
-      let offset = round(omega * (t * t * radius_px + 1.3)) * fxp.screen.zw;
+      let offset_px = round(omega * (t * t * radius_px + 1.3));
+      let offset = offset_px * fxp.screen.zw;
+      // The far taps from the depth's MIP chain (XeGTAO): the 2^k
+      // pixels around the tap filtered towards the farthest of them.
+      let level = depth_tap_level(length(offset_px), top);
       let uv0 = uv + offset;
       let uv1 = uv - offset;
-      let s0 = view_pos(uv0, depth_tap(uv0, dsize, dsize_f)) - p;
-      let s1 = view_pos(uv1, depth_tap(uv1, dsize, dsize_f)) - p;
+      let s0 = view_pos(uv0, depth_mip_tap(uv0, dsize, level)) - p;
+      let s1 = view_pos(uv1, depth_mip_tap(uv1, dsize, level)) - p;
       let l0 = length(s0);
       let l1 = length(s1);
       let w0 = clamp(2.0 - 2.0 * l0 / radius, 0.0, 1.0);

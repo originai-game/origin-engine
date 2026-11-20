@@ -80,9 +80,11 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             | FramePass::UiLayers
             | FramePass::Overlay
             | FramePass::HdrOutput => scene::declare,
-            FramePass::Ao | FramePass::AoBlur | FramePass::AoUpsample | FramePass::Contact => {
-                ao::declare
-            }
+            FramePass::DepthMips
+            | FramePass::Ao
+            | FramePass::AoBlur
+            | FramePass::AoUpsample
+            | FramePass::Contact => ao::declare,
             FramePass::DepthBands
             | FramePass::DepthRange(_)
             | FramePass::FogOfWar

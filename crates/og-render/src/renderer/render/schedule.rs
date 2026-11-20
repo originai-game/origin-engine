@@ -48,6 +48,11 @@ pub(crate) const PASSES: &[PassDesc] = &[
     LocalFacePass::DESC,
     PrepassPass::DESC,
     PassDesc {
+        pass: FramePass::DepthMips,
+        name: "depth-mips",
+        needs: Caps::COMPUTE,
+    },
+    PassDesc {
         pass: FramePass::Contact,
         name: "contact",
         needs: Caps::COMPUTE,
@@ -170,6 +175,9 @@ pub(crate) struct PassDecisions<'a> {
     pub prepass: bool,
     /// The AO passes' resolution, when they run.
     pub ao: Option<AoResolution>,
+    /// The view depth's MIP chain before them (GTAO's far taps; not the
+    /// screen GI's in its place).
+    pub depth_mips: bool,
     pub contact: bool,
     pub particles: bool,
     pub light_2d: bool,
@@ -274,6 +282,9 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
         push(FramePass::Prepass);
     }
     if let Some(resolution) = d.ao {
+        if d.depth_mips {
+            push(FramePass::DepthMips);
+        }
         push(FramePass::Ao);
         push(FramePass::AoBlur);
         if resolution == AoResolution::Half {
@@ -484,6 +495,7 @@ mod tests {
             local_shadows,
             prepass: true,
             ao: Some(AoResolution::Half),
+            depth_mips: true,
             contact: true,
             particles: true,
             light_2d: true,

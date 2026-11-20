@@ -19,6 +19,8 @@ use cx::*;
 /// The post passes' bind groups for one realization of the graph, by
 /// family: each makes its own groups and encodes its own passes.
 struct Bindings {
+    /// The view depth's MIP chain's fill (`depth_mips.rs`).
+    depth_mips: Option<wgpu::BindGroup>,
     fx: fx::Fx,
     contact: Option<contact_shadows::ContactShadows>,
     temporal: temporal::Temporal,
@@ -32,6 +34,11 @@ struct Bindings {
 impl Bindings {
     fn new(cx: &BindCx) -> Bindings {
         Bindings {
+            depth_mips: cx.graph.depth_mips().map(|mips| {
+                cx.passes
+                    .depth_mips
+                    .bind(cx.device, &cx.passes.fx_buffer, cx.ao_depth(), mips)
+            }),
             fx: fx::Fx::bind(cx),
             contact: contact_shadows::ContactShadows::bind(cx),
             temporal: temporal::Temporal::bind(cx),
@@ -46,6 +53,12 @@ impl Bindings {
     /// Records `pass` with the family it is of; `None` for a pass that is
     /// no post pass.
     fn encode(&self, encoder: &mut crate::Encoder, cx: &PostCx, pass: FramePass) -> Option<u32> {
+        if pass == FramePass::DepthMips {
+            let group = self.depth_mips.as_ref().expect("depth mips bound");
+            let mips = cx.graph.depth_mips().expect("depth mips realized");
+            cx.passes.depth_mips.encode(encoder, group, mips.size());
+            return Some(1);
+        }
         if pass == FramePass::Contact {
             let contact = self.contact.as_ref().expect("contact bound");
             return Some(contact.encode(encoder, cx));
@@ -76,6 +89,9 @@ pub(crate) struct FrameGraph {
     plan: Option<GraphPlan>,
     pool: Vec<(TargetDesc, wgpu::TextureView)>,
     views: HashMap<String, wgpu::TextureView>,
+    /// The view depth's MIP chain at the frame's size, while the frame has
+    /// its pass.
+    depth_mips: Option<depth_mips::DepthMips>,
     bindings: Option<Bindings>,
     /// The fog of war texture the bindings hold (`SightTexture::generation`).
     sight_key: u64,
@@ -175,6 +191,12 @@ impl FrameGraph {
         ))
     }
 
+    /// The view depth's MIP chain (`depth_mips.rs`) when the frame fills
+    /// it: what a pass that declares a read of `depth-mips` samples.
+    pub fn depth_mips(&self) -> Option<&depth_mips::DepthMips> {
+        self.depth_mips.as_ref()
+    }
+
     /// The view of `name` when the current graph has it.
     pub fn try_view(&self, name: &str) -> Option<&wgpu::TextureView> {
         self.views.get(name)
@@ -242,6 +264,14 @@ impl FrameGraph {
             taken[index] = true;
             slot_views.push(self.pool[index].1.clone());
         }
+        let size = (cfg.width.max(8), cfg.height.max(8));
+        self.depth_mips =
+            passes
+                .contains(&FramePass::DepthMips)
+                .then(|| match self.depth_mips.take() {
+                    Some(m) if m.size() == size => m,
+                    _ => depth_mips::DepthMips::new(device, (cfg.width, cfg.height)),
+                });
         self.views.clear();
         for (name, slot) in plan.transients() {
             self.views
