@@ -114,7 +114,7 @@ fn project(test: &str) -> PathBuf {
     std::fs::write(assets.join("sprig.ogt"), sprig).unwrap();
     std::fs::write(assets.join("sprig.ogt.ogt"), card).unwrap();
     std::fs::write(assets.join("bare.ogt"), sprig).unwrap();
-    // The same plant with leaves enough to thin with distance.
+    // The same plant with ten times the leaves.
     let leafy = sprig
         .replace("count 4", "count 40")
         .replace("sprig", "leafy");
@@ -318,7 +318,9 @@ fn a_model_scatters_whole_with_every_part_as_one_copy() {
         }
     }
     // A part carries the levels its model cooked with, finest first, each
-    // with its error: the leaves a half and a quarter of themselves.
+    // with its error: a plant's leaves their kites, every leaf in fewer
+    // triangles at a fraction of the 0.2 leaf's size (og-cook's
+    // model_text), with a card or without and however many leaves.
     let leaves = |seed| {
         let at = |(_, (d, _)): &(usize, &DrawBounds)| d.scatter.seed == seed && d.with.is_some();
         let (i, (d, _)) = draws.iter().enumerate().find(at).expect("the leaves");
@@ -327,27 +329,16 @@ fn a_model_scatters_whole_with_every_part_as_one_copy() {
             &draws.triangles[i],
         )
     };
-    let (errors, triangles) = leaves(9);
-    let [Some(half), Some(quarter)] = errors else {
-        panic!("the leaves scatter without their levels: {errors:?}")
-    };
-    assert!(0.0 < half && half < quarter, "{errors:?}");
-    let [full, a, b] = triangles[..] else {
-        panic!("{triangles:?}")
-    };
-    let near = |part: usize, of: usize| part.abs_diff(of) * 8 <= of;
-    assert!(
-        full >= 80 && near(a * 2, full) && near(b * 4, full),
-        "{triangles:?}"
-    );
-    // The sprig's few leaves thin once, with a card or without.
-    for seed in [3, 5] {
+    for seed in [3, 5, 9] {
         let (errors, triangles) = leaves(seed);
-        assert!(matches!(errors, [Some(_), None]), "seed {seed}: {errors:?}");
-        assert!(
-            near(triangles[1] * 2, triangles[0]),
-            "seed {seed}: {triangles:?}"
-        );
+        let [Some(error), None] = errors else {
+            panic!("seed {seed}: the leaves scatter without their level: {errors:?}")
+        };
+        assert!(0.0 < error && error < 0.034, "seed {seed}: {errors:?}");
+        let [full, kites] = triangles[..] else {
+            panic!("seed {seed}: {triangles:?}")
+        };
+        assert!(kites * 10 < full * 6, "seed {seed}: {triangles:?}");
     }
     assert!(
         draws.iter().all(|(d, _)| d.scatter.seed != 7),
