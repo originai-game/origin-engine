@@ -31,7 +31,8 @@
   charges, a consumable's count on a tag, and the ultimate in a hexagon
   inside a gold ring that fills with its charge; a key cap under it. Its
   side is --rpg-skill-slot-size; a bar sets it on the place it gives the
-  slot. The game owns every cooldown, cost and charge; read only.
+  slot. It is as wide as its own content wherever it stands, so the art
+  and the key cap are one column of the slot's width. The game owns every cooldown, cost and charge; read only.
 -->
 <div id="RpgSkillSlot" part="RpgSkillSlot.skill" data-layout="stack" data-gap="none" role="group" data-kind={kind} data-ready={ready || (kind == 'ultimate' && charge >= 1)} data-unaffordable={unaffordable} data-cooling={cooldown > 0 || (kind == 'ultimate' && charge < 1)} aria-label={unaffordable && reason ? t("rpg.skills.slot", { name: name, state: reason }) : name}>
   {#if chargesMax > 0}<div part="RpgSkillSlot.charges" class="charges" data-layout="overlay" role="meter" aria-label={t("rpg.skills.charges")} aria-valuemin="0" aria-valuemax={chargesMax} aria-valuenow={charges <= 0 ? 0 : charges} style:--n={chargesMax} style:--on={charges <= 0 ? 0 : charges >= chargesMax ? 1 : charges / chargesMax}><div part="RpgSkillSlot.pip" class="pip" data-anchor="top-start"></div></div>{/if}
@@ -53,7 +54,7 @@
 <style>
 /* The slot is art: it keeps its size at any text scale, and its figures
    and key cap follow the text. */
-:host { align-items: center; row-gap: calc(5 * var(--font-step-px)); color: var(--hud-ink); filter: var(--hud-lift); --side: var(--rpg-skill-slot-size); }
+:host { inline-size: fit-content; max-inline-size: 100%; align-items: center; row-gap: calc(5 * var(--font-step-px)); color: var(--hud-ink); filter: var(--hud-lift); --side: var(--rpg-skill-slot-size); }
 .holder { inline-size: var(--side); block-size: var(--side); --layout-anchor-inset: 0; }
 /* The slot: an octagon whose fill is its lit edge, the art inset inside. */
 .slot { container-type: size; inline-size: var(--side); block-size: var(--side); clip-path: var(--hud-octagon); background: var(--hud-edge); --layout-anchor-inset: calc(2 * var(--font-step-px)); }

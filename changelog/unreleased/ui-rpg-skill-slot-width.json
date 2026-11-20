@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "RpgSkillSlot",
+      "summary": "A skill slot placed on its own (outside RpgSkills, in a game's own layout) is as wide as its content: its art and its key cap stand in one column of the slot's width instead of the art centring in the whole place while the key cap stayed at its start."
+    }
+  ]
+}
