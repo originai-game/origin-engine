@@ -757,4 +757,6 @@ pub struct Renderer {
     /// Order-independent transparency's mode, arena, resolve and
     /// pipelines (`oit.rs`).
     oit: oit::OitState,
+    /// The systems the last scene rendered has ([`renderer::readback::Reach`]).
+    reach: renderer::readback::Reach,
 }

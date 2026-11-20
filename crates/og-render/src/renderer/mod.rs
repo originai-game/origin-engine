@@ -12,7 +12,7 @@ mod init;
 mod pipelines;
 pub(crate) use pipelines::{LitPipelines, PrepassState};
 mod presentation;
-mod readback;
+pub(crate) mod readback;
 mod render;
 pub(crate) use render::Particles;
 mod resources;

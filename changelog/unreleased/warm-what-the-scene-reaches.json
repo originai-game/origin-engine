@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.render.compile",
+      "summary": "og.render.compile and the web page's warm-up behind the play gate now make only the pipelines of the systems the world has (its meshes and terrain, water, scattered copies and grass, particles, ribbons and trails, lines, 2D lights, metaballs, fluids, sprites and text), plus the UI, the overlay and the post passes, instead of every pipeline the engine has. A UI-only scene makes 52 pipelines instead of 101, and nothing a frame draws changes. Spawn a system's content before calling og.render.compile: one added later compiles when it first draws, and the perf record names it under pipelines made after the first frames."
+    }
+  ]
+}

@@ -8,6 +8,51 @@ use super::*;
 /// still frame.
 pub const CAPTURE_WARMUP: u64 = 8;
 
+/// The systems a scene has, as [`Renderer::warm`] reads them: it makes the
+/// pipelines of these only. Set by each [`Renderer::render`].
+#[derive(Clone, Copy, Default)]
+pub(crate) struct Reach {
+    /// Meshes, skinned meshes or crowds: the lit and shadow pipelines, the
+    /// sky and the environment's light.
+    pub world: bool,
+    pub sprites: bool,
+    pub lights_2d: bool,
+    pub ribbons: bool,
+    pub particles: bool,
+    pub water: bool,
+    pub terrain: bool,
+    pub scatter: bool,
+    pub metaballs: bool,
+    pub fluids: bool,
+    pub lines: bool,
+}
+
+impl Reach {
+    pub(crate) fn of(scene: &RenderScene) -> Reach {
+        let (o, w, s, e) = (&scene.objects, &scene.world, &scene.sprite, &scene.effects);
+        Reach {
+            world: !o.instances.is_empty()
+                || !o.skinned_instances.is_empty()
+                || !o.crowds.is_empty()
+                || !w.terrains.is_empty(),
+            sprites: !s.sprites.is_empty()
+                || !s.texts.is_empty()
+                || !s.tile_layers.is_empty()
+                || !s.sprite_arrays.is_empty()
+                || !s.sprite_meshes.is_empty(),
+            lights_2d: !s.lights_2d.is_empty() || s.lighting_2d.is_some(),
+            ribbons: !e.ribbons.is_empty() || !e.trails.is_empty() || !e.beams.is_empty(),
+            particles: !e.particles.is_empty() || !e.hosted_particles.is_empty(),
+            water: !w.water.is_empty(),
+            terrain: !w.terrains.is_empty(),
+            scatter: !w.scatters.is_empty() || !w.grass.is_empty(),
+            metaballs: !s.metaballs.is_empty(),
+            fluids: !w.fluids_3d.is_empty(),
+            lines: !e.lines.is_empty() || !e.points.is_empty(),
+        }
+    }
+}
+
 impl Renderer {
     /// Reads the next frame's GPU counts back: the culling's (`culled`,
     /// `occluded`, `triangles`, `shadow_casters` and the triangle counts
@@ -20,60 +65,67 @@ impl Renderer {
         self.visibility.culling_counts = true;
     }
 
-    /// Makes one pipeline no frame has drawn with yet, the likeliest to be
-    /// drawn soon first (the sprites, the overlay and the UI, the post passes, then
-    /// sky, the environment's light, the plain lit and shadow pipelines,
-    /// ribbons, particles, 2D lights, glass, water, terrain, metaballs,
-    /// fluids);
-    /// false when every pipeline is made. The renderer makes a pipeline when
-    /// a pass first sets it (deferred.rs), so a frame compiles only what it
-    /// draws; a host with idle time (the web page behind its play gate)
-    /// calls this until
-    /// it answers false, so a pass met later does not stop a frame. The
-    /// frames are the same either way.
+    /// Makes one pipeline that the last scene rendered can reach and no
+    /// frame has drawn with yet: of the systems that scene has
+    /// ([`Reach`]), the variants a frame did not draw (the full lit
+    /// variants a feature turned on later draws with, the plain lit and
+    /// shadow pipelines, the sky's cloud passes, the water's and the
+    /// terrain's full variants, particles' simulation), the UI's, the
+    /// overlay's and the post passes' (TAA's after a cut, the flare) first. False when none is left. A system the scene does not
+    /// have gets none: a pipeline a frame draws is made by that frame
+    /// (deferred.rs), so this is only what a later frame may reach. A host
+    /// with idle time (the web page behind its play gate, og.render.compile)
+    /// calls it until it answers false. The frames are the same either way.
     pub fn warm(&mut self) -> bool {
         // Fork s60: asynchronous on the WebGPU tier while the host asks.
         frame_pipelines(|| self.warm_now())
     }
 
     fn warm_now(&mut self) -> bool {
-        deferred::warm_one(&[
-            &self.sprite.sprite_pipeline,
-            &self.sprite.msdf_pipeline,
-            &self.sprite.sprite_cover_pipeline,
-            &self.sprite.sprite_untonemapped_pipeline,
-            &self.sprite.sprite_additive_pipeline,
-            &self.sprite.sprite_glow_pipeline,
-        ]) || self.overlay.warm()
+        let r = self.reach;
+        let world = WORLD_3D && r.world;
+        (r.sprites
+            && deferred::warm_one(&[
+                &self.sprite.sprite_pipeline,
+                &self.sprite.msdf_pipeline,
+                &self.sprite.sprite_cover_pipeline,
+                &self.sprite.sprite_untonemapped_pipeline,
+                &self.sprite.sprite_additive_pipeline,
+                &self.sprite.sprite_glow_pipeline,
+            ]))
+            || self.overlay.warm()
             || self.ui.warm()
-            || self.post.warm()
-            || deferred::warm_one(&[
-                &self.sky.sky_pipeline,
-                &self.sky.sky_look_pipeline,
-                &self.sky.clouds_low.sky,
-                &self.sky.clouds_low.march,
-                &self.sky.clouds_low.march_depth,
-                &self.sky.clouds_low.resolve,
-            ])
-            || self.lights.ibl.warm()
-            || self.warm_plain_lit()
-            || self.warm_full_lit()
-            || deferred::warm_one(&[
-                &self.strips.ribbon_pipelines[0],
-                &self.strips.ribbon_pipelines[1],
-            ])
-            || self.strips.gpu_trails.as_ref().is_some_and(|g| {
-                deferred::warm_one(&[&g.pipeline, &g.pipelines[0], &g.pipelines[1]])
-            })
-            || self.particles.gpu.warm()
-            || self.lights_2d.warm()
             || self.glass.warm()
-            || (WORLD_3D && self.world.water.warm())
-            || (WORLD_3D && self.world.terrain.warm())
-            || (WORLD_3D && self.world.scatter.warm())
-            || self.world.metaballs.warm()
-            || (WORLD_3D && self.world.fluid3d.warm())
-            || self.lines.warm()
+            || self.post.warm()
+            || (world
+                && deferred::warm_one(&[
+                    &self.sky.sky_pipeline,
+                    &self.sky.sky_look_pipeline,
+                    &self.sky.clouds_low.sky,
+                    &self.sky.clouds_low.march,
+                    &self.sky.clouds_low.march_depth,
+                    &self.sky.clouds_low.resolve,
+                ]))
+            || (world && self.lights.ibl.warm())
+            || (world && self.warm_plain_lit())
+            || self.warm_full_lit()
+            || (r.ribbons
+                && deferred::warm_one(&[
+                    &self.strips.ribbon_pipelines[0],
+                    &self.strips.ribbon_pipelines[1],
+                ]))
+            || (r.ribbons
+                && self.strips.gpu_trails.as_ref().is_some_and(|g| {
+                    deferred::warm_one(&[&g.pipeline, &g.pipelines[0], &g.pipelines[1]])
+                }))
+            || (r.particles && self.particles.gpu.warm())
+            || (r.lights_2d && self.lights_2d.warm())
+            || (WORLD_3D && r.water && self.world.water.warm())
+            || (WORLD_3D && r.terrain && self.world.terrain.warm())
+            || (WORLD_3D && r.scatter && self.world.scatter.warm())
+            || (r.metaballs && self.world.metaballs.warm())
+            || (WORLD_3D && r.fluids && self.world.fluid3d.warm())
+            || (r.lines && self.lines.warm())
     }
 
     /// The full variant of a batch's lit pipeline that a frame has drawn

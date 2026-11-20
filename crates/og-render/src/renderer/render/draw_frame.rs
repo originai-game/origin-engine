@@ -32,6 +32,7 @@ impl Renderer {
             super::setup::scene_features(scene)
         };
         self.world.terrain.features = self.frame_features;
+        self.reach = super::readback::Reach::of(scene);
         // Match the surface's two-frame latency. Wait for the oldest frame,
         // not the entire queue: motion and readbacks share this device.
         #[cfg(not(target_arch = "wasm32"))]

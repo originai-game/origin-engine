@@ -740,6 +740,7 @@ impl Renderer {
             ssr,
             stylise_chain: None,
             oit,
+            reach: Default::default(),
         })
     }
 }
