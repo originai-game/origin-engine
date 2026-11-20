@@ -42,8 +42,8 @@
       </div>{/if}
     </div>
     <div id="Health" part="RpgLeader.health"><RpgBar value={health} max={healthMax} kind="health" ghost={ghost} segment={0} low={healthMax > 0 && health <= healthMax * low} name="" /></div>
-    {#if manaMax > 0}<div id="Mana" part="RpgLeader.mana"><RpgBar value={mana} max={manaMax} kind="mana" ghost={0} segment={0} low={false} name="" /></div>{/if}
-    {#if staminaMax > 0}<div id="Stamina" part="RpgLeader.stamina"><RpgBar value={stamina} max={staminaMax} kind="stamina" ghost={0} segment={segment} low={false} name="" /></div>{/if}
+    {#if manaMax > 0}<div id="Mana" part="RpgLeader.mana"><RpgBar value={mana} max={manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={false} name="" /></div>{/if}
+    {#if staminaMax > 0}<div id="Stamina" part="RpgLeader.stamina"><RpgBar value={stamina} max={staminaMax} kind="stamina" ghost={0} segment={segment} low={false} showValue={false} name="" /></div>{/if}
   </div>
 </section>
 

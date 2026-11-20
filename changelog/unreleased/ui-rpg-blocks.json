@@ -6,12 +6,22 @@
       "change": "The RPG action HUD's plates are now built from three blocks instead of drawing everything themselves: RpgPortrait, RpgBar and RpgSkillSlot. Their props and look are unchanged. The parts of what a block now draws moved to the block: RpgLeader.face and .ghost, RpgCompanions.face and .ghost, and RpgSkills.slot, .art, .cooldown, .edge, .time, .reason, .count, .charges, .pip, .ring and .key are gone. RpgLeader.portrait, .health, .mana and .stamina, RpgCompanions.portrait, .health and .mana, and RpgSkills.skill remain as the places of the blocks.",
       "fix": "In a style pack or a game's CSS, style the blocks' parts: RpgPortrait.rim and .face; RpgBar.groove, .ghost, .lit and .cuts; RpgSkillSlot.skill, .slot, .art, .cooldown, .edge, .time, .reason, .count, .charges, .pip, .ring and .key.",
       "find": ["RpgLeader.face", "RpgLeader.ghost", "RpgCompanions.face", "RpgCompanions.ghost", "RpgSkills.slot", "RpgSkills.art", "RpgSkills.cooldown", "RpgSkills.edge", "RpgSkills.time", "RpgSkills.reason", "RpgSkills.count", "RpgSkills.charges", "RpgSkills.pip", "RpgSkills.ring", "RpgSkills.key"]
+    },
+    {
+      "member": "RpgParty and RpgEnemyInfo parts",
+      "change": "RpgParty's health and mana bars and RpgEnemyInfo's health bar are now RpgBar blocks. Their props and look are unchanged. RpgParty.track and .fill and RpgEnemyInfo.track, .fill and .badge are gone; RpgParty.health and .mana and RpgEnemyInfo.health are the places of the bars.",
+      "fix": "In a style pack or a game's CSS, style RpgBar.groove, .lit and .figure, or set the fill tokens of the bar's kind (--hud-life-fill, --hud-mana-fill and their glows) on the bar's place.",
+      "find": ["RpgParty.track", "RpgParty.fill", "RpgEnemyInfo.track", "RpgEnemyInfo.fill", "RpgEnemyInfo.badge"]
     }
   ],
   "added": [
     {
       "member": "RpgPortrait, RpgBar, RpgSkillSlot",
       "summary": "The RPG action HUD's blocks, usable by name in a game's own plate: an octagon portrait, one leaning bar (health with its ghost, mana, stamina in cells, experience; low turns it to danger) and one skill slot (cooldown sweep, charges, count, reason, ultimate ring, key cap). A block's size is a token set on the place it is given: --rpg-portrait-size, --rpg-bar-size, --rpg-skill-slot-size."
+    },
+    {
+      "member": "RpgBar.showValue",
+      "summary": "RpgBar can stand its figure (value / max) upright over the bar (showValue). A plate can set the fill tokens of the bar's kind (--hud-life-fill, --hud-mana-fill and their glows) on the place it gives the bar, as RpgParty does for the page's health and mana colours."
     }
   ]
 }

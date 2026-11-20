@@ -26,7 +26,7 @@
       {#if m.fallen}<span part="RpgCompanions.fallen" class="fallen">{t("rpg.companions.fallen")}</span>{/if}
     </div>
     <div part="RpgCompanions.health" class="health"><RpgBar value={m.health} max={m.healthMax} kind="health" ghost={m.ghost} segment={0} low={!m.fallen && m.healthMax > 0 && m.health <= m.healthMax * low} name="" /></div>
-    {#if m.manaMax > 0 && !m.fallen}<div part="RpgCompanions.mana" class="mana"><RpgBar value={m.mana} max={m.manaMax} kind="mana" ghost={0} segment={0} low={false} name="" /></div>{/if}
+    {#if m.manaMax > 0 && !m.fallen}<div part="RpgCompanions.mana" class="mana"><RpgBar value={m.mana} max={m.manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={false} name="" /></div>{/if}
     {#if m.key}<span part="RpgCompanions.key" class="key">{m.key}</span>{/if}
   </div>
   {/each}

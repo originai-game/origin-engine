@@ -1,6 +1,6 @@
 <meta name="component" content="RpgParty">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgParty.frame RpgParty.cell RpgParty.badge RpgParty.headline RpgParty.track RpgParty.fill RpgParty.caption">
+<meta name="parts" content="RpgParty.frame RpgParty.cell RpgParty.badge RpgParty.headline RpgParty.health RpgParty.mana RpgParty.caption">
 <meta name="prop:members" content="list" data-doc="Keyed rows of { id, name, portrait, level, health, healthMax, mana, manaMax, down }: portrait a texture (og.load.texture), 0 none; down greys the card and marks it.">
 <meta name="prop:selected" content="string" data-doc="The member chosen; empty is none.">
 <meta name="fixture:default" content='{"members":[{"id":"a","name":"Aerin","portrait":0,"level":8,"health":62,"healthMax":72,"mana":48,"manaMax":72,"down":false},{"id":"l","name":"Lys","portrait":0,"level":8,"health":0,"healthMax":60,"mana":0,"manaMax":80,"down":true}],"selected":"a"}'>
@@ -8,8 +8,9 @@
 
 <!--
   The party as a row of portrait cards: a level seal, the portrait, the
-  name, and health and mana bars with their figures. Reports choose (a
-  member's key). The cards share the width evenly.
+  name, and a health and a mana RpgBar with their figures, in the page's
+  health and mana colours. Reports choose (a member's key). The cards
+  share the width evenly.
 -->
 <section id="RpgParty" part="RpgParty.frame" class="bare" aria-label={t("rpg.party.name")}>
   {#if members.length}
@@ -19,8 +20,8 @@
           <div class="picture">{#if m.portrait}<img class="portrait" src={m.portrait} alt="">{/if}</div>
           <div class="seal" part="RpgParty.badge" data-layout="cover" data-gap="none" aria-label={m.down ? t("rpg.party.down") : t("rpg.party.level", { level: m.level })}>{#if !m.down}<span class="seal-lv">{t("rpg.party.lv")}</span><span class="seal-level">{formatNumber(m.level)}</span>{:else}<og-icon icon="skull"></og-icon>{/if}</div>
           <span class="member-name" part="RpgParty.headline">{m.name}</span>
-          <div class="bar health" part="RpgParty.track" data-layout="row" role="meter" aria-label={t("rpg.party.health")} style:--fill={m.healthMax > 0 ? m.health / m.healthMax : 0}><div class="bar-fill" part="RpgParty.fill"></div><div class="bar-figure" part="RpgParty.badge"><span>{t("rpg.party.figure", { now: m.health, max: m.healthMax })}</span></div></div>
-          <div class="bar mana" part="RpgParty.track" data-layout="row" role="meter" aria-label={t("rpg.party.mana")} style:--fill={m.manaMax > 0 ? m.mana / m.manaMax : 0}><div class="bar-fill" part="RpgParty.fill"></div><div class="bar-figure" part="RpgParty.badge"><span>{t("rpg.party.figure", { now: m.mana, max: m.manaMax })}</span></div></div>
+          <div class="bar" part="RpgParty.health"><RpgBar value={m.health} max={m.healthMax} kind="health" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
+          <div class="bar mana" part="RpgParty.mana"><RpgBar value={m.mana} max={m.manaMax} kind="mana" ghost={0} segment={0} low={false} showValue={true} name="" /></div>
         </div></button>
       {/each}
     </div>
@@ -42,12 +43,10 @@
 .seal { position: absolute; inset-inline-start: var(--space-xs); top: var(--space-xs); width: var(--size-md); height: max-content; min-height: var(--size-md); }
 .seal og-icon { width: var(--size-xs); height: var(--size-xs); }
 .member-name { padding: var(--space-xxs) var(--space-xs); text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-/* The one meter: it leans forward in its well, its figure upright
-   over it. */
-.bar { position: relative; height: calc(var(--space-md) * 1.25); min-block-size: var(--size-sm); justify-content: center; overflow: hidden; margin-inline: var(--space-xs); transform: skewX(var(--bar-skew)); border-radius: 0; background: var(--bar-well); box-shadow: var(--bar-rim); --fill-color: var(--health); }
-.bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); }
-.mana { --fill-color: var(--mana); }
-.bar-figure { position: relative; white-space: nowrap; padding-inline: var(--space-xs); transform: skewX(calc(-1 * var(--bar-skew))); background: none; box-shadow: none; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
+/* Each bar's place: thick enough for its figure, filled in the page's
+   health and mana instead of the HUD's. */
+.bar { margin-inline: var(--space-xs); --rpg-bar-size: max(calc(var(--space-md) * 1.25), var(--size-sm)); --hud-life-fill: var(--fill-gloss), var(--health); --hud-life-glow: none; }
+.mana { --hud-mana-fill: var(--fill-gloss), var(--mana); --hud-mana-glow: none; }
 .empty-text { margin: 0; }
 @media (height < 500px) { .picture { aspect-ratio: 2.4; } }
 @media (600px <= width) and (500px <= height < 800px) { .picture { aspect-ratio: 2; } }

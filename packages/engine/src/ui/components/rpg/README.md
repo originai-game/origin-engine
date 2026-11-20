@@ -28,11 +28,14 @@ The game feeds its current auto setting back through `auto`.
 The action HUD's plates are built from three blocks, which a game also
 uses by name to lay out a plate of its own: `RpgPortrait` (the octagon
 portrait), `RpgBar` (one leaning bar: health with its ghost, mana,
-stamina in cells, experience) and `RpgSkillSlot` (one slot of the skill
-bar). `RpgLeader`, `RpgCompanions` and `RpgSkills` only place and size
-them: a block's size is a token (`--rpg-portrait-size`,
-`--rpg-bar-size`, `--rpg-skill-slot-size`) set on the place it is given,
-where it inherits.
+stamina in cells, experience; `showValue` stands its figure over it) and
+`RpgSkillSlot` (one slot of the skill bar). `RpgLeader`, `RpgCompanions`
+and `RpgSkills` only place and size them: a block's size is a token
+(`--rpg-portrait-size`, `--rpg-bar-size`, `--rpg-skill-slot-size`) set on
+the place it is given, where it inherits. `RpgParty` and `RpgEnemyInfo`
+draw their bars with `RpgBar` too, thick enough for the figure and filled
+in the page's health, mana and danger: a place may set the fill tokens
+of the bar's kind (`--hud-life-fill` and `--hud-life-glow`, and so on).
 
 Each member is HTML with component CSS in the `og-components` layer.
 `:host` owns the root dimensions; shared `data-layout` and `data-gap`
@@ -82,7 +85,7 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgCommands` | `commands` keyed `{ id, label, icon, enabled }`, `selected` | `choose` (row key; a disabled command sends nothing) |
 | `RpgLeader` | `name`, `level`, `portrait`, `health`, `healthMax`, `ghost`, `mana`, `manaMax`, `stamina`, `staminaMax`, `segment` (stamina per cell), `low` | none |
 | `RpgPortrait` (block) | `portrait`, `dimmed`; its side is `--rpg-portrait-size` | none |
-| `RpgBar` (block) | `value`, `max`, `kind` (health, mana, stamina, xp), `ghost`, `segment` (value per cell), `low`, `name`; as wide as its place, `--rpg-bar-size` thick | none |
+| `RpgBar` (block) | `value`, `max`, `kind` (health, mana, stamina, xp), `ghost`, `segment` (value per cell), `low`, `showValue` (its figure over it), `name`; as wide as its place, `--rpg-bar-size` thick, filled by its kind's `--hud-*-fill` and `--hud-*-glow`, which its place may set | none |
 | `RpgEffects` | `effects` keyed `{ id, name, icon, glyph, remaining, label, harmful }` | none |
 | `RpgCompanions` | `members` keyed `{ id, name, portrait, health, healthMax, ghost, mana, manaMax, key, fallen }`, `low` | none |
 | `RpgMinimap` | `map` (texture), `centerX`, `centerY`, `zoom`, `heading`, `blips` keyed `{ id, kind (ally, foe, boss, objective), x, y, label }`, `place`, `clock` | none |
@@ -110,10 +113,10 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgCombatLog` (`../hud/combat-log.svelte`) | `frame`, `band`, `title`, `row` (`[data-tone]`), `fade` |
 | `RpgCommands` (`commands.svelte`) | `frame`, `band`, `title`, `cell` (a button: `.primary` `[aria-selected]` `:disabled`) |
 | `RpgConversation` (`../panels/conversation.svelte`) | `frame`, `name`, `row` (a button: `[aria-selected]` `[data-used]`), `controls`, `backlog`, `skip`, `auto` (`[aria-pressed]`) |
-| `RpgEnemyInfo` (`enemy-info.svelte`) | `frame`, `band`, `title`, `name`, `row` (`[data-tone]`) |
+| `RpgEnemyInfo` (`enemy-info.svelte`) | `frame`, `band`, `title`, `name`, `row` (`[data-tone]`), `health` (the place of its `RpgBar`) |
 | `RpgItemCard` (`../panels/item-card.svelte`) | `frame` (`[data-rarity]`), `hero`, `band`, `kicker`, `name`, `line`, `lead`, `delta` (`[data-trend]`), `current`, `stats`, `row`, `lore`, `actions`, `reason` |
 | `RpgMenuBar` (`menu-bar.svelte`) | `frame`, `tab` (a button: `[aria-selected]`) |
-| `RpgParty` (`party.svelte`) | `frame`, `cell` (a button: `[aria-selected]` `[data-down]`) |
+| `RpgParty` (`party.svelte`) | `frame`, `cell` (a button: `[aria-selected]` `[data-down]`), `health`, `mana` (the places of its `RpgBar` blocks) |
 | `RpgPlaceCard` (`place-card.svelte`) | `frame`, `name`, `caption` |
 | `RpgQuestDetail` (`quest-detail.svelte`) | `frame`, `band`, `title`, `row` (`[data-done]` `[data-optional]` `[data-step]`), `reward`, `scenery` |
 | `RpgQuestLog` (`../panels/quest-log.svelte`) | `frame`, `band`, `title`, `heading`, `row` (a button: `[aria-selected]` `[data-done]` `[data-fresh]` `[data-tracked]`) |
@@ -123,7 +126,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgVitals` (`vitals.svelte`) | `frame` (`[data-down]` `[data-plate]`) |
 | `RpgLeader` (`leader.svelte`) | `frame` (`.low`), `portrait`, `hero`, `level`, `value`, `max`, `health`, `mana`, `stamina` (the places of its `RpgPortrait` and `RpgBar` blocks) |
 | `RpgPortrait` (`portrait.svelte`) | `rim` (`.dimmed`), `face` |
-| `RpgBar` (`bar.svelte`) | `groove` (`.mana` `.stamina` `.xp` `.low`), `ghost`, `lit`, `cuts` |
+| `RpgBar` (`bar.svelte`) | `groove` (`.mana` `.stamina` `.xp` `.low`), `ghost`, `lit`, `cuts`, `figure` |
 | `RpgEffects` (`effects.svelte`) | `frame`, `effect` (`[data-harmful]`), `tile`, `art`, `timer`, `time` |
 | `RpgCompanions` (`companions.svelte`) | `frame`, `member` (`[data-fallen]` `.low`), `portrait`, `callsign`, `fallen`, `health`, `mana`, `key` (`portrait`, `health` and `mana` are the places of its blocks) |
 | `RpgMinimap` (`minimap.svelte`) | `frame`, `scope`, `map`, `blip` (`[data-kind]`), `self`, `north`, `place`, `clock` |

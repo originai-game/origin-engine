@@ -58,8 +58,10 @@
    stands on a tag in the HUD's accent over it with a caret under the
    ticks; each point of interest is a mark under the strip with its
    distance. A lap (360 degrees) is three windows wide, so a window shows
-   120 degrees. */
-:host { align-items: center; inline-size: var(--measure-xl); max-inline-size: 100%; container-type: inline-size; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --band: calc(36 * var(--font-step-px)); }
+   120 degrees. The band is as tall as what stands on it: a cardinal
+   letter (--hud-size-cardinal), then its ticks (2 steps under the letter, 10 tall, 4 off the
+   band's foot), so the letter never sits on a tick at any size. */
+:host { align-items: center; inline-size: var(--measure-xl); max-inline-size: 100%; container-type: inline-size; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --band: calc(var(--hud-size-cardinal) + 16 * var(--font-step-px)); }
 #Window { position: relative; inline-size: 100%; block-size: calc(var(--band) + 34 * var(--font-step-px)); overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); --w: 100cqi; }
 #Band { position: absolute; inset-inline: 0; top: 0; block-size: var(--band); background: var(--hud-compass-fill); }
 #Strip { position: absolute; top: 0; bottom: 0; inset-inline-start: 50%; inline-size: calc(var(--w) * 9); translate: calc(var(--h) * var(--w) * -0.4774648 - var(--w) * 3) 0; }
@@ -94,11 +96,10 @@
 #Bearing { padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.35; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-key-ink); background: var(--hud-accent); border: 0; box-shadow: none; -webkit-text-stroke-width: 0; text-shadow: none; border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 #Notch { position: absolute; top: calc(var(--band) - 4 * var(--font-step-px)); inset-inline-start: calc(50% - 6 * var(--font-step-px)); inline-size: calc(12 * var(--font-step-px)); block-size: calc(8 * var(--font-step-px)); background: var(--hud-accent); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 @media (width < 600px) {
-  :host { --band: calc(22 * var(--font-step-px)); }
+  :host { --hud-size-cardinal: var(--hud-size-sm); }
   /* Room under the band for a mark and its distance (1 + 12 + 14.3 steps). */
   #Window { block-size: calc(var(--band) + 30 * var(--font-step-px)); }
   .copy { top: calc(var(--band) + 1 * var(--font-step-px)); row-gap: 0; }
   .point { font-size: var(--hud-size-xs); }
-  .point.cardinal { font-size: var(--hud-size-sm); }
 }
 </style>

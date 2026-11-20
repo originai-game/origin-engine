@@ -29,11 +29,11 @@
     <RpgPortrait portrait={0} dimmed={false} />
     <RpgPortrait portrait={$charPortrait} dimmed={true} />
     <div class="bars">
-      <div class="fat"><RpgBar value={2184} max={3420} kind="health" ghost={2668} segment={0} low={false} name="" /></div>
-      <div class="fat"><RpgBar value={420} max={3420} kind="health" ghost={900} segment={0} low={true} name="" /></div>
-      <RpgBar value={72} max={100} kind="mana" ghost={0} segment={0} low={false} name="" />
-      <RpgBar value={5} max={8} kind="stamina" ghost={0} segment={1} low={false} name="" />
-      <RpgBar value={62} max={100} kind="xp" ghost={0} segment={0} low={false} name="" />
+      <div class="fat"><RpgBar value={2184} max={3420} kind="health" ghost={2668} segment={0} low={false} showValue={false} name="" /></div>
+      <div class="fat"><RpgBar value={420} max={3420} kind="health" ghost={900} segment={0} low={true} showValue={false} name="" /></div>
+      <RpgBar value={72} max={100} kind="mana" ghost={0} segment={0} low={false} showValue={false} name="" />
+      <RpgBar value={5} max={8} kind="stamina" ghost={0} segment={1} low={false} showValue={false} name="" />
+      <RpgBar value={62} max={100} kind="xp" ghost={0} segment={0} low={false} showValue={false} name="" />
     </div>
     <RpgSkillSlot name="Ember slash" icon={0} glyph="sword" key="1" kind="skill" cooldown={0} time="" count={0} ready={true} unaffordable={false} reason="" charges={0} chargesMax={0} charge={0} />
     <RpgSkillSlot name="Arc step" icon={0} glyph="star" key="2" kind="skill" cooldown={0.4} time="3" count={0} ready={false} unaffordable={false} reason="" charges={1} chargesMax={3} charge={0} />
@@ -45,8 +45,8 @@
     <div class="target">
       <div class="target-bars">
         <span class="target-name">Ashen Colossus</span>
-        <div class="fat"><RpgBar value={1380} max={2400} kind="health" ghost={1700} segment={0} low={false} name="Ashen Colossus" /></div>
-        <RpgBar value={3} max={6} kind="stamina" ghost={0} segment={1} low={false} name="Guard" />
+        <div class="fat"><RpgBar value={1380} max={2400} kind="health" ghost={1700} segment={0} low={false} showValue={false} name="Ashen Colossus" /></div>
+        <RpgBar value={3} max={6} kind="stamina" ghost={0} segment={1} low={false} showValue={false} name="Guard" />
       </div>
       <RpgPortrait portrait={0} dimmed={false} />
     </div>
