@@ -12,7 +12,10 @@ fn ink(ui: &Ui) -> [u8; 3] {
 fn packed() -> Ui {
     let pack = StylePack::parse(
         "styles/plain",
-        vec![("styles/plain/base.css".into(), ":root { --gap-test: 1px; }".into())],
+        vec![(
+            "styles/plain/base.css".into(),
+            ":root { --gap-test: 1px; }".into(),
+        )],
     )
     .unwrap();
     let mut ui = Ui::new(Default::default());
@@ -28,9 +31,16 @@ fn a_replaced_default_style_dresses_what_is_read_after_it() {
     assert_ne!(edited, DEFAULT_CSS);
 
     assert!(set_base_css(Some(&edited)).unwrap());
-    assert!(!set_base_css(Some(&edited)).unwrap(), "the same text again changes nothing");
+    assert!(
+        !set_base_css(Some(&edited)).unwrap(),
+        "the same text again changes nothing"
+    );
     assert_eq!(ink(&Ui::new(Default::default())), [255, 0, 0]);
-    assert_eq!(ink(&packed()), [255, 0, 0], "a pack lays its rules over the replaced default");
+    assert_eq!(
+        ink(&packed()),
+        [255, 0, 0],
+        "a pack lays its rules over the replaced default"
+    );
 
     // CSS that does not read is refused and leaves the replaced default.
     assert!(set_base_css(Some("@layer og-default { :root { --ink: red; }")).is_err());

@@ -209,7 +209,9 @@ pub fn base_css() -> (Result<Option<&'static [u8]>, String>, Vec<PathBuf>) {
             // Kept for the process (`og dev` cooks in it again and again),
             // each distinct text once.
             static KEPT: std::sync::Mutex<Vec<&'static [u8]>> = std::sync::Mutex::new(Vec::new());
-            let mut kept = KEPT.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut kept = KEPT
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             match kept.iter().find(|k| **k == css.as_bytes()) {
                 Some(k) => *k,
                 None => {

@@ -584,8 +584,8 @@ pub(crate) fn apply_base(eng: &Engine) -> Result<bool, String> {
             Err(_) => None,
         }
     };
-    let changed =
-        og_ui::set_base_css(css.as_deref()).map_err(|e| format!("{PACK}: {e} (the default style stays)"))?;
+    let changed = og_ui::set_base_css(css.as_deref())
+        .map_err(|e| format!("{PACK}: {e} (the default style stays)"))?;
     if changed
         && let Some(ui) = eng.state.borrow().ui.clone()
         && ui.lock().styled_by(None)

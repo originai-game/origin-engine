@@ -325,7 +325,9 @@ static REPLACED: std::sync::RwLock<Option<std::sync::Arc<Base>>> = std::sync::Rw
 /// pack's rules are laid over and what a part sheet beginning with
 /// [`crate::DEFAULT_CSS`] takes.
 pub(crate) fn base() -> std::sync::Arc<Base> {
-    let replaced = REPLACED.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let replaced = REPLACED
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     replaced.clone().unwrap_or_else(|| COMPILED.clone())
 }
 
@@ -342,7 +344,9 @@ pub(crate) fn replace_base(css: Option<&str>) -> Result<bool, String> {
         return Ok(false);
     }
     let next = css.map(Base::read).transpose()?.map(std::sync::Arc::new);
-    *REPLACED.write().unwrap_or_else(std::sync::PoisonError::into_inner) = next;
+    *REPLACED
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = next;
     Ok(true)
 }
 
