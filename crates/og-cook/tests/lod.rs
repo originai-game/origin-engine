@@ -464,7 +464,9 @@ fn a_model_cooked_without_clusters_loads_with_none() {
     );
     let triangles = |indices: &[u32]| {
         let mut tris: Vec<_> = indices
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|t| {
                 [t[0], t[1], t[2]]
                     .min([t[1], t[2], t[0]])
