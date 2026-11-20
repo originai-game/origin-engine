@@ -47,7 +47,7 @@ if (which === "node") {
   const { loadNativeHost } = await import("../../src/node/index.ts");
   loadNativeHost();
 } else if (which === "lanes") {
-  const dir = join(pkg, "dist", opt("--module", profile) === "2d" ? "web-publish-2d" : "web-publish");
+  const dir = argv.includes("--dir") ? opt("--dir", "") : join(pkg, "dist", opt("--module", profile) === "2d" ? "web-publish-2d" : "web-publish");
   const { loadWebHost } = await import("../../src/web/host.ts");
   const glue = await import(join(dir, "origin-engine-lanes.js"));
   const { fileModuleHost } = await import("../../src/node/modules.ts");
@@ -160,7 +160,7 @@ console.log(
     advanceMs: +ms.toFixed(2),
     ...(snapshot ? { snapshot: snapshot.value } : {}),
     ...(lanesReport ? { lanes: JSON.parse(lanesReport()) } : {}),
-    ...(which === "publish" ? { modules: (await import("../../src/web/host.ts")).loadedEngineModules() } : {}),
+    ...(which === "publish" || which === "lanes" ? { modules: (await import("../../src/web/host.ts")).loadedEngineModules() } : {}),
   }),
 );
 // The lanes glue's wasm-bindgen-rayon snippet listens for a pool Worker's

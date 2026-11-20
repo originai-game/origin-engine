@@ -475,6 +475,8 @@ export function finish(dir: string, version: string, revision: string, releasedA
 export const WASM_HOSTS: Record<string, string> = {
   "web-publish/modules": "publish",
   "web-publish-2d/modules": "publish2d",
+  "web-publish/modules-lanes": "lanes",
+  "web-publish-2d/modules-lanes": "lanes2d",
 };
 export function writeWasmModules(engine: string, dir: string, version: string): string[] {
   rmSync(join(dir, "wasm"), { recursive: true, force: true });

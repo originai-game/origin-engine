@@ -160,8 +160,8 @@ fi
 variants="${OG_WASM_VARIANTS:-$(cat "$gate_wasm/variants" 2>/dev/null || echo all)}"
 # A split module (scripts/gate/commands.sh wasm_split, docs/web-export.md
 # §Modules): its primary over the whole module, and its modules beside it in
-# modules/. The lanes modules and the remote-frame twins are not split and
-# ship whole; so does a build without wasm-split's output.
+# modules/ (a lanes module's in modules-lanes/). The remote-frame twins are
+# not split and ship whole; so does a build without wasm-split's output.
 use_split() {
   [ -d "$gate_wasm/split/$1" ] || {
     case "$1" in *frames) ;; *) echo "build.sh: $gate_wasm/split/$1 is missing, so dist/$2 ships $1 whole (scripts/install-tools.sh installs wasm-split)" >&2 ;; esac
@@ -223,6 +223,7 @@ if [ -f "$gate_wasm/bindgen/og_host_web/origin-engine_bg.wasm" ] \
       cp "$gate_modules/og_host_web-$1.wasm" "$here/dist/$2/origin-engine-lanes_bg.wasm"
       # The pool Workers start the glue with its single-object init (scripts/rayon-worker.sh).
       sh "$here/scripts/rayon-worker.sh" "$here/dist/$2"
+      use_split "og_host_web-$1" "$2"
     elif [ -n "$lanes_expected" ]; then
       echo "build.sh: $gate_modules/og_host_web-$1.wasm is missing; prepare all lanes variants again (docs/ci.md §The lanes wasm)" >&2
       [ "${OG_WASM_STALE:-0}" = 1 ] || exit 1

@@ -322,7 +322,7 @@ variant: what counts is the largest one a player downloads, never the sum
 
 ## Modules
 
-A single-threaded publish module is split (Binaryen's `wasm-split`, pinned by
+Each publish module, single-threaded and lanes, is split (Binaryen's `wasm-split`, pinned by
 `scripts/install-tools.sh`; `packages/engine/scripts/wasm-split.ts`) into
 the primary, which boots, and one module per optional capability:
 `physics`, `story` (with og.film), `nav` (with og.ai), `motion`,
@@ -336,9 +336,15 @@ a frame, a canvas attach or a geometry call reaches by direct calls
 uses it (og.motion once og.MotionAgent is registered, a dynamic geometry's
 update, the physics debug view, a playing video's stream). A generated
 geometry is not handed to physics until a collider names it. The split
-fails when an entry names no function any more. The lanes modules and the remote-frame twins ship whole: a lanes
-pool Worker instantiates the module again, so each of its modules would
-have to be loaded into every Worker's instance too (open work).
+fails when an entry names no function any more. A lanes module's
+modules sit in `modules-lanes/` beside it. Each lanes pool Worker
+instantiates the primary again on the shared memory, with the same
+placeholders (`scripts/og-pool-split.js`, which `scripts/rayon-worker.sh`
+wires into wasm-bindgen-rayon's Worker helper): a lane that first calls a
+module loads it into its own Worker's instance (a blocking request, from
+the HTTP cache once the engine Worker fetched it). A split module carries
+functions and no data, so loading it again writes nothing in the shared
+memory. The remote-frame twins ship whole.
 
 The primary imports a placeholder for each split function
 (`placeholder.<module>`); `loadWebHost`'s optional fourth argument, a

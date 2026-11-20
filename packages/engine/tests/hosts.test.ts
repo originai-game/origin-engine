@@ -81,6 +81,7 @@ function physics(host: string, ...extra: string[]) {
     tick: number; hash: string; hashAtLoad: string; body63: { y: number } | null; tally: { entered: number; started: number } | null;
     snapshot?: string; refused?: string; restored?: { tick: number; hash: string };
     lanes?: { threads: number; pool: string; parallelCalls: number; sites: Record<string, { calls: number }> };
+    modules?: string[];
   };
 }
 
@@ -205,7 +206,10 @@ test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel 
 // Workers (wasm-bindgen-rayon's, under bun as in a page; every step went to
 // the pool): the same snapshot as the native host's at tick 600, which
 // restored natively has the native world's hash (a publish module has no
-// world dump of its own). And it refuses a world of the other profile.
+// world dump of its own). Split (docs/web-export.md §Modules), each pool
+// Worker loads physics into its own instance at its lane's first call,
+// and nothing loads the modules the scene never calls. And it refuses a
+// world of the other profile.
 for (const profile of ["3d", "2d"] as const) {
   test.skipIf(STALE_WASM || NO_PUBLISH_WASM)(`the ${profile} lanes module steps a ${profile} physics scene to the native world, on one thread and on four Workers, and refuses the other profile`, () => {
     const dir = mkdtempSync(join(tmpdir(), "og-lanes-profile-"));
@@ -226,6 +230,9 @@ for (const profile of ["3d", "2d"] as const) {
       expect([label, lanes.tally]).toEqual([label, node.tally]);
       expect(lanes.snapshot!.length).toBeGreaterThan(0);
       expect([label, lanes.snapshot]).toEqual([label, node.snapshot!]);
+      if (existsSync(join(pkg, "dist", profile === "2d" ? "web-publish-2d" : "web-publish", "modules-lanes", "modules.json"))) {
+        expect([label, lanes.modules!.includes("physics"), lanes.modules!.filter((m) => ["nav", "motion", "destruction", "video"].includes(m))]).toEqual([label, true, []]);
+      }
       const file = join(dir, `lanes-${profile}-${bodies}.snapshot`);
       writeFileSync(file, lanes.snapshot!);
       expect([label, physics("node", "--profile", profile, "--bodies", bodies, "--restore", file).restored]).toEqual([label, { tick: 600, hash: node.hash }]);

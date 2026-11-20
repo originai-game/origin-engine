@@ -93,6 +93,33 @@ for f in "$dir"/snippets/wasm-bindgen-rayon-*/src/workerHelpers.no-bundler.js; d
     echo "rayon-worker.sh: $f has an unrecognized pool loop; read the helper wasm-bindgen-rayon now writes before shipping it" >&2
     exit 1
   fi
+  # A split lanes primary (docs/web-export.md §Modules): each pool Worker
+  # instantiates it with the placeholder namespaces it imports and loads a
+  # module into its own instance when a lane first calls into it
+  # (scripts/og-pool-split.js, copied beside the helper). The engine Worker
+  # hands the Worker where the modules are (split.ts __ogPoolSplit) and the
+  # shim's URL, which a Worker started from a blob: copy cannot resolve
+  # relatively.
+  cp "$(dirname "$0")/og-pool-split.js" "$(dirname "$f")/og-pool-split.js"
+  init='  const pkg = await import(data.mainJS);'
+  install='  if (data.split) (await import(data.poolSplitJS)).installPoolSplit(data.split);'
+  handed='    split: globalThis.__ogPoolSplit ?? null, poolSplitJS: new URL("./og-pool-split.js", import.meta.url).href,'
+  if ! grep -qF "$install" "$f"; then
+    grep -qF "$init" "$f" && grep -qF "mainJS: builder.mainJS()" "$f" || {
+      echo "rayon-worker.sh: $f has no '$init' or no 'mainJS: builder.mainJS()'; read the helper wasm-bindgen-rayon now writes before shipping it" >&2
+      exit 1
+    }
+    awk -v init="$init" -v install="$install" -v handed="$handed" '
+      index($0, init) == 1 { print install }
+      index($0, "mainJS: builder.mainJS()") { sub(/mainJS: builder\.mainJS\(\)/, "mainJS: builder.mainJS(),"); print; print handed; next }
+      { print }
+    ' "$f" > "$f.tmp"
+    mv "$f.tmp" "$f"
+  fi
+  if ! grep -qF "$install" "$f" || ! grep -qF "$handed" "$f"; then
+    echo "rayon-worker.sh: $f does not hand its pool Workers the split modules; read the helper wasm-bindgen-rayon now writes before shipping it" >&2
+    exit 1
+  fi
 done
 if [ "$found" = 0 ]; then
   echo "rayon-worker.sh: $dir has origin-engine-lanes.js but no snippets/wasm-bindgen-rayon-*/src/workerHelpers.no-bundler.js: the pool would have no Worker script" >&2

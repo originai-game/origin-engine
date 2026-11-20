@@ -325,18 +325,18 @@ wasm_bindgen_one() {
   cp "$dir/${out}_bg.wasm" "$OG_WASM_OUT/dev/$name.wasm"
 }
 
-# The single-threaded publish modules split (docs/web-export.md §Modules):
-# each bound module's primary and its on-demand modules in
-# $OG_WASM_OUT/split/<name>/ (packages/engine/scripts/wasm-split.ts), which
-# scripts/build.sh puts in dist/web-publish*. The lanes modules and the
-# remote-frame twins ship whole: a lanes pool Worker instantiates the module
-# again and would need each module loaded into its own instance. The size
-# gate measures the whole modules: the largest download is a game that uses
-# every module.
+# The publish and lanes modules split (docs/web-export.md §Modules): each
+# bound module's primary and its on-demand modules in
+# $OG_WASM_OUT/split/<name>/ (packages/engine/scripts/wasm-split.ts; a lanes
+# module's in modules-lanes/), which scripts/build.sh puts in
+# dist/web-publish*. A lanes pool Worker loads a module into its own
+# instance when a lane first calls it (scripts/og-pool-split.js). The
+# remote-frame twins ship whole. The size gate measures the whole modules:
+# the largest download is a game that uses every module.
 wasm_split() {
   local d name profile pids=() failed=0
   rm -rf "$OG_WASM_OUT/split"
-  for d in "$OG_WASM_OUT"/bindgen/og_host_web-publish*; do
+  for d in "$OG_WASM_OUT"/bindgen/og_host_web-publish* "$OG_WASM_OUT"/bindgen/og_host_web-lanes*; do
     [ -d "$d" ] || continue
     name="$(basename "$d")"
     [ "${name%frames}" = "$name" ] || continue

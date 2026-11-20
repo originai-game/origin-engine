@@ -5,6 +5,7 @@
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { ModuleHost } from "../web/split.ts";
 
 /** The modules listed in `<dir>/modules[-lanes]/modules.json`; none (an unsplit module) when it is absent. */
@@ -16,7 +17,9 @@ export function fileModuleHost(dir: string, lanes = false): ModuleHost {
     if (!entry) throw new Error(`engine module ${name} is not in ${listing}`);
     return new WebAssembly.Instance(new WebAssembly.Module(new Uint8Array(readFileSync(join(dir, entry.file)))), imports);
   };
-  return { load: async (name, imports) => instance(name, imports), loadSync: instance };
+  // The lanes pool's Workers read the same files (scripts/og-pool-split.js).
+  const pool = existsSync(listing) ? { base: pathToFileURL(join(dir, "/")).href, files: Object.fromEntries(Object.entries(listed).map(([m, e]) => [m, e.file])) } : undefined;
+  return { load: async (name, imports) => instance(name, imports), loadSync: instance, ...(pool ? { pool } : {}) };
 }
 
 /**

@@ -22,6 +22,26 @@ export interface ModuleHost {
    * host loads the game's modules before its first tick (loadEngineModules).
    */
   loadSync?(name: string, imports: WebAssembly.Imports): WebAssembly.Instance;
+  /**
+   * Where the modules are, for the lanes pool's Workers (scripts/og-pool-split.js): each
+   * instantiates the primary again and loads a module into its own instance when a lane first
+   * calls into it. A host without it cannot serve a split lanes primary's pool.
+   */
+  readonly pool?: PoolSplit;
+}
+
+/** A module host's `base` and `files`, as the pool Workers fetch from them. */
+export interface PoolSplit {
+  readonly base: string;
+  readonly files: Readonly<Record<string, string>>;
+}
+
+/**
+ * What wasm-bindgen-rayon's Worker helper hands each pool Worker it starts (scripts/rayon-worker.sh
+ * adds it to the Worker's init message): the engine's module host's {@link PoolSplit}, or null.
+ */
+declare global {
+  var __ogPoolSplit: PoolSplit | null | undefined;
 }
 
 /** The primary's export of the placeholders' table (wasm-split's name, with scripts/wasm-split.ts's export prefix `%`). */
@@ -105,6 +125,7 @@ function withPlaceholders(given: WebAssembly.Imports | undefined): WebAssembly.I
  */
 export async function instantiateSplit<T>(host: ModuleHost | null, init: () => Promise<T>): Promise<T> {
   split = { host, exports: null, loads: new Map() };
+  globalThis.__ogPoolSplit = host?.pool ?? null;
   const wa = WebAssembly as unknown as Record<string, Fn | undefined>;
   const saved = { instantiate: wa.instantiate, instantiateStreaming: wa.instantiateStreaming };
   const keep = (r: unknown) => {
@@ -179,6 +200,7 @@ export function fetchModuleHost(base: string | URL, files: Readonly<Record<strin
   const started = new Map(start.map((name) => [name, get(name)] as const));
   for (const p of started.values()) p.catch(() => {});
   return {
+    pool: { base: String(base), files },
     async load(name, imports) {
       const r = await (started.get(name) ?? get(name));
       started.delete(name);

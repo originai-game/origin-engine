@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og build --publish",
+      "summary": "The lanes (multi-threaded) engine is split like the single-threaded one: a game whose page offers lanes downloads the primary and the modules it references (`modules-lanes/`, or the engine version's `wasm/lanes` and `wasm/lanes2d` on the CDN), and each pool Worker loads a module the first time one of its lanes calls into it. A module that loads late changes no result."
+    }
+  ]
+}
