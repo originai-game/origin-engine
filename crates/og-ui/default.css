@@ -1454,6 +1454,7 @@
     --result-row-lit: var(--chosen-fill);
     --result-row-lit-ink: var(--chosen-ink);
     --result-rule: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.65) 20%, rgb(255 255 255 / 0.65) 80%, transparent);
+    --result-score-descender-space: 0.2em;
     --result-scrim: linear-gradient(90deg, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.9), oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.62) 55%, oklch(from var(--seed-neutral) 0.123 calc(min(c, 0.04) * 0.47) h / 0.8));
     --result-silver: oklch(from var(--seed-neutral) 0.886 calc(min(c, 0.04) * 0.8) h);
     --result-size-defeat: calc(150 * var(--font-step-px));

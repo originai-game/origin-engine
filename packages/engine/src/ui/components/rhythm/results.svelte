@@ -99,7 +99,7 @@
 /* Plates: the score, the max combo, the accuracy and the tally. */
 .score-cell, .stat, .counts { background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); border-radius: var(--hud-plate-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .score-cell { flex: 1 1 auto; max-width: stretch; min-width: 0; align-items: flex-start; padding: var(--space-md) var(--space-lg); }
-.score { font-size: var(--result-size-score); line-height: 1; padding-block-end: 0.2em; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
+.score { font-size: var(--result-size-score); line-height: 1; padding-block-end: var(--result-score-descender-space); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 [part="RhythmResults.caption"] { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 .best { justify-content: flex-start; align-items: center; }
 .previous { white-space: nowrap; letter-spacing: 0; text-transform: none; }

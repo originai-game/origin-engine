@@ -1234,6 +1234,7 @@
      tracking. */
   --role-result-size-score: min(calc(72 * var(--font-step-px)), 22cqi);
   --role-result-size-score-compact: min(calc(30 * var(--font-step-px)), 22cqi);
+  --role-result-score-descender-space: 0.2em;
   --role-result-title-tracking: 0.04em;
   --role-result-verdict-tracking: 0.02em;
   --role-result-defeat-tracking: 0.06em;
