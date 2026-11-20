@@ -67,6 +67,8 @@ pub(crate) struct Next {
     /// The items the overlay draws, as og-ui's frame carries them.
     pub frame: og_ui::UiFrame,
     pub spans: Spans,
+    /// Whether the body font draws (has a handle in the scene).
+    font: bool,
 }
 
 /// Whether engine `world`'s project runs its documents on the new core.
@@ -99,6 +101,7 @@ impl Next {
             built: false,
             frame: og_ui::UiFrame::default(),
             spans: Spans::default(),
+            font: false,
         }
     }
 
@@ -328,6 +331,7 @@ impl Next {
         tree.resize(v.width * unit, v.height * unit);
         let commit = tree.commit();
         let t1 = now();
+        self.font = ui.fonts().body.handle.is_some();
         let (_, painted) = tree.present(ui.fonts(), ui.icons());
         let t2 = now();
         if painted {
@@ -368,11 +372,19 @@ impl Next {
     /// What `__runtime_probe__` reads beside the timings.
     pub(crate) fn probe(&self) -> Value {
         let s = &self.spans;
+        let mut kinds = serde_json::Map::new();
+        for it in &self.frame.items {
+            let k = format!("{:?}", it.cmd);
+            let k = k.split([' ', '{', '(']).next().unwrap_or("").to_string();
+            let n = kinds.get(&k).and_then(Value::as_u64).unwrap_or(0);
+            kinds.insert(k, (n + 1).into());
+        }
         json!({
             "look_ms": s.look, "build_ms": s.build, "build_allocations": s.build_allocations,
             "frame_ms": s.frame, "commit_ms": s.commit, "layout_ms": s.layout,
             "allocations": s.allocations, "ops": s.ops, "refolded": s.refolded,
             "elements": s.elements, "items": self.frame.items.len(), "mounts": self.mounts.len(),
+            "kinds": kinds, "font": self.font,
         })
     }
 }
