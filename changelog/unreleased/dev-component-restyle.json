@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og dev",
+      "summary": "An edited component's styles (its <style>, :host rules) show at once in every mounted document that uses it, directly or through another component, instead of only after the page is opened again."
+    }
+  ]
+}

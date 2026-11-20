@@ -1068,6 +1068,31 @@ fn host_reads_the_instances_state() {
     assert_eq!(size(&d)[1], (40.0, 20.0));
 }
 
+/// A component defined again (a live edit) shows in the mounts already
+/// using it, directly or through another component, without mounting them
+/// again.
+#[test]
+fn a_redefined_component_restyles_its_mounted_instances() {
+    let chip = |w: u32| {
+        format!(
+            "<meta name=\"component\" content=\"Chip\">\n<column id=\"Face\"></column>\n<style>:host {{ width: {w}px; height: 20px; padding: 0; }}</style>"
+        )
+    };
+    let panel = r##"<meta name="component" content="Panel">
+<column id="Box"><Chip id="Inner" /></column>"##;
+    let page = r##"<meta name="component" content="page">
+<column id="Root"><Chip id="One" /><Panel id="Two" /></column>"##;
+    let mut d = Doc::with_components(&[&chip(40), panel], page, &[]);
+    let widths = |d: &Doc| [d.get("One").width, d.get("Inner").width];
+    assert_eq!(widths(&d), [40.0, 40.0]);
+    let doc =
+        d.ui.parse_document("ui/c0.svelte", &chip(70), Vec::new())
+            .unwrap();
+    d.ui.define_document(doc);
+    d.step(InputFrame::default());
+    assert_eq!(widths(&d), [70.0, 70.0]);
+}
+
 /// What `:host` cannot mean is refused with its fix: a feature beside
 /// `:host` (a host is featureless inside its component), an instance
 /// attribute the component declares no prop for, an id, and a component

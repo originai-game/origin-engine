@@ -220,6 +220,29 @@ impl RetainedHost {
             .documents
             .get(document)
             .is_some_and(|d| d.control.is_some());
+        // A component's instances are compiled into the mounts that use it,
+        // directly or through another component: those are compiled again.
+        let library = &ui.docs.library.documents;
+        let uses = |root: &str| {
+            let mut seen = std::collections::BTreeSet::new();
+            let mut pending = vec![root.to_owned()];
+            while let Some(name) = pending.pop() {
+                let Some(doc) = library.get(&name) else {
+                    continue;
+                };
+                for n in &doc.nodes {
+                    if let crate::doc::NodeKind::Use(used) = &n.kind {
+                        if used == document {
+                            return true;
+                        }
+                        if seen.insert(used.clone()) {
+                            pending.push(used.clone());
+                        }
+                    }
+                }
+            }
+            false
+        };
         let mounts: Vec<_> = self
             .registrations
             .iter()
@@ -227,6 +250,7 @@ impl RetainedHost {
                 registration.document == document
                     || framing.contains(*mount)
                     || (control && !self.pending_mounts.contains(*mount))
+                    || uses(&registration.document)
             })
             .map(|(mount, _)| mount.clone())
             .collect();
