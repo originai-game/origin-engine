@@ -48,6 +48,12 @@ mod tests {
             !a.layout(1280.0, 720.0, &mut measure),
             "the same text marks nothing"
         );
+        a.set_text(first, "07:15");
+        assert!(
+            !a.layout(1280.0, 720.0, &mut measure),
+            "a text of the same size moves nothing"
+        );
+        assert_eq!(a.box_of(second).x, 10.0 + 50.0 + 4.0);
         a.set_text(first, "106:54");
         assert!(a.layout(1280.0, 720.0, &mut measure));
         assert_eq!(a.box_of(second).x, 10.0 + 60.0 + 4.0);

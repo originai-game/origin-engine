@@ -74,6 +74,10 @@ pub struct Arena {
     /// Elements whose style (true) or text (false) changed since the
     /// last layout, each once.
     touched: Vec<(Id, bool)>,
+    /// Text leaves whose text changed since the last layout, each once,
+    /// their memo kept: one whose new text measures the same at the widths
+    /// it was laid out at moves nothing (a clock's next minute).
+    retexted: Vec<Id>,
     next_key: u64,
 }
 
@@ -93,6 +97,7 @@ impl Arena {
             dirty: true,
             structure: true,
             touched: Vec::new(),
+            retexted: Vec::new(),
             next_key: 0,
         };
         a.push(NONE);
@@ -173,9 +178,36 @@ impl Arena {
             && &**t != text
         {
             *t = text.into();
-            n.memo.set(NO_MEMO);
-            self.touch(id, false);
+            self.dirty = true;
+            if !self.retexted.contains(&id) {
+                self.retexted.push(id);
+            }
         }
+    }
+
+    /// Settles the leaves whose text changed: one that measures the same
+    /// at every width its memo holds keeps its box (the memo stays); any
+    /// other is touched, its memo cleared. With the store reconciled whole,
+    /// every one is cleared.
+    fn settle_texts(&mut self, measure: &mut Measure<'_>) {
+        for k in 0..self.retexted.len() {
+            let id = self.retexted[k];
+            let n = &self.nodes[id as usize];
+            let memo = n.memo.get();
+            let same = !self.structure
+                && memo[0].0 != EMPTY
+                && n.text.as_ref().is_some_and(|(t, run)| {
+                    memo.iter().filter(|m| m.0 != EMPTY).all(|&(key, w, h)| {
+                        let avail = (key != u32::MAX).then(|| f32::from_bits(key));
+                        measure(t, run, avail) == (w, h)
+                    })
+                });
+            if !same {
+                self.nodes[id as usize].memo.set(NO_MEMO);
+                self.touch(id, false);
+            }
+        }
+        self.retexted.clear();
     }
 
     fn touch(&mut self, id: Id, style: bool) {
@@ -210,6 +242,12 @@ impl Arena {
     /// whether anything was laid out; a clean arena returns at once.
     pub fn layout(&mut self, width: f32, height: f32, measure: &mut Measure<'_>) -> bool {
         if !self.dirty {
+            return false;
+        }
+        self.settle_texts(measure);
+        if !self.structure && self.touched.is_empty() {
+            // Only texts that kept their size changed: nothing moves.
+            self.dirty = false;
             return false;
         }
         let size = Size {
