@@ -842,16 +842,29 @@ fn plan_model<'a>(
         ids,
         stamp: st,
     });
+    // The LOD surfaces a cooked blob of this stamp names: the last cook's
+    // in cooked/, else the shared action cache's (a fresh checkout).
     let cached = (|| {
-        let old = cx
+        let bytes = cx
             .old_outputs
             .get(s.rel.as_str())
-            .filter(|o| o.stamp == st)?;
-        let bytes = std::fs::read(cx.cooked_dir.join(&old.file)).ok()?;
-        if hash_bytes(&bytes) != old.hash {
-            return None;
-        }
-        let blob = og_blob::Blob::parse(&bytes, &old.file).ok()?;
+            .filter(|o| o.stamp == st)
+            .and_then(|old| {
+                std::fs::read(cx.cooked_dir.join(&old.file))
+                    .ok()
+                    .filter(|b| hash_bytes(b) == old.hash)
+            })
+            .or_else(|| {
+                crate::cook::pipeline::action_cache::project_output(
+                    cx.texture_cache,
+                    &s.rel,
+                    format::Model::NAME,
+                    st,
+                    options,
+                    cx.project_key,
+                )
+            })?;
+        let blob = og_blob::Blob::parse(&bytes, &s.rel).ok()?;
         if blob.header().schema_version != format::Model::schema_version() {
             return None;
         }

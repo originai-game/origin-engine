@@ -382,6 +382,7 @@ pub fn cook_project_with_texture_cache(
         texture_encoder.as_deref().unwrap_or("none")
     );
     let document_themes = vec![og_ui::Theme::default()];
+    let project_key = project_key(&cook_index, &sources, texture_cache);
     let cx = Cx {
         root,
         assets_dir,
@@ -406,6 +407,8 @@ pub fn cook_project_with_texture_cache(
         components: &components,
         frames: &project.frames,
         provided: &project.provided,
+        texture_cache,
+        project_key: project_key.as_deref(),
     };
     let (
         plan,
@@ -416,7 +419,6 @@ pub fn cook_project_with_texture_cache(
         },
     ) = plan(&cx, early_errors, threads);
     laps.lap("plan");
-    let project_key = project_key(&cook_index, &sources, texture_cache);
     let results = execute(
         &cx,
         &plan,

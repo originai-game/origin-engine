@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook: models",
+      "summary": "Planning a model no longer cooks it when the shared cook cache holds its blob: the plan reads the model's LOD surfaces from the cached blob, as it does from the last cook's. A warm cook of a fresh Night Shift checkout takes 3.8 s instead of 26 s; the cooked files are byte-identical to a cold cook's."
+    }
+  ]
+}

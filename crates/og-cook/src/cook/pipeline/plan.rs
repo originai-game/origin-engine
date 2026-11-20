@@ -28,6 +28,10 @@ pub(crate) struct Cx<'a> {
     pub(crate) components: &'a BTreeMap<String, String>,
     /// project.ogt's `frames`: the origins remote `<iframe>`s may load from.
     pub(crate) frames: &'a [String],
+    /// The shared action cache and the project's key in it
+    /// (`action_cache`), which a plan may read before anything cooks.
+    pub(crate) texture_cache: Option<&'a Path>,
+    pub(crate) project_key: Option<&'a str>,
     /// project.ogt's `cook { uses }`: the assets other cooked bundles provide.
     pub(crate) provided: &'a provided::Provided,
 }
