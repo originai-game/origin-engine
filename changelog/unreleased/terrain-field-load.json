@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.load.terrain",
+      "summary": "Loading a cooked terrain builds its whole height field and control map about 3× faster in the web build (First Light's 8 km valley, 2049² heights and a two-page 2048² control map: 1.09 s to 0.33 s in wasm), so a large terrain delays the first frame less. The field is byte-identical."
+    }
+  ]
+}

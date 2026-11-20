@@ -210,31 +210,28 @@ impl CookedTerrain {
                 let index = l.index(0, x as u32, z as u32);
                 let (h, cz) = self.inflate(index)?;
                 let h = self.heights_from(index, &h)?;
+                // The tile's samples, a row at a time.
+                let n = (t + 1).min(cols - x * t);
                 for j in 0..=t {
                     let r = z * t + j;
                     if r >= rows {
                         break;
                     }
-                    for i in 0..=t {
-                        let col = x * t + i;
-                        if col >= cols {
-                            break;
-                        }
-                        let v = h[(j + 1) * side + i + 1];
-                        heights[r * cols + col] = v;
-                        if l.holes && r + 1 < rows && col + 1 < cols {
-                            holes[r * (cols - 1) + col] = u8::from(og_render_data::hole_bit(v));
+                    let src = &h[(j + 1) * side + 1..][..n];
+                    heights[r * cols + x * t..][..n].copy_from_slice(src);
+                    if l.holes && r + 1 < rows {
+                        let m = n.min(cols - 1 - x * t);
+                        for (hole, v) in holes[r * (cols - 1) + x * t..][..m].iter_mut().zip(src) {
+                            *hole = u8::from(og_render_data::hole_bit(*v));
                         }
                     }
                 }
                 if let Some(cz) = cz {
                     for p in 0..pages {
                         for j in 0..c {
-                            for i in 0..c {
-                                let src = p * cside * cside * 4 + ((j + 1) * cside + i + 1) * 4;
-                                let dst = p * cw * ch * 4 + ((z * c + j) * cw + x * c + i) * 4;
-                                rgba[dst..dst + 4].copy_from_slice(&cz[src..src + 4]);
-                            }
+                            let src = p * cside * cside * 4 + ((j + 1) * cside + 1) * 4;
+                            let dst = p * cw * ch * 4 + ((z * c + j) * cw + x * c) * 4;
+                            rgba[dst..dst + c * 4].copy_from_slice(&cz[src..src + c * 4]);
                         }
                     }
                 }
@@ -247,25 +244,54 @@ impl CookedTerrain {
             let per = c as f32 / t as f32;
             let w = ((quads.0 * per).round() as usize).max(1);
             let hgt = ((quads.1 * per).round() as usize).max(1);
-            let texel = |p: usize, x: i64, y: i64, k: usize| {
-                let x = x.clamp(0, cw as i64 - 1) as usize;
-                let y = y.clamp(0, ch as i64 - 1) as usize;
-                rgba[p * cw * ch * 4 + (y * cw + x) * 4 + k] as f32
+            // Each output column's and row's two source texels (clamped to
+            // the tiles' texels) and its weight, made once: the same sums
+            // per texel as weighing each one on its own.
+            let taps = |n: usize, quads: f32, have: usize| -> Vec<(usize, usize, f32)> {
+                (0..n)
+                    .map(|i| {
+                        let g = (i as f32 + 0.5) / n as f32 * quads * per - 0.5;
+                        let g0 = g.floor();
+                        let at = |v: i64| v.clamp(0, have as i64 - 1) as usize;
+                        (at(g0 as i64), at(g0 as i64 + 1), g - g0)
+                    })
+                    .collect()
             };
+            let (xs, ys) = (taps(w, quads.0, cw), taps(hgt, quads.1, ch));
+            // Each texel on its own (the tiles' texels span the terrain
+            // exactly): the map is the texels as they are.
+            let same = |taps: &[(usize, usize, f32)], have: usize| {
+                taps.len() == have
+                    && taps
+                        .iter()
+                        .enumerate()
+                        .all(|(i, &(a, _, f))| a == i && f == 0.0)
+            };
+            if same(&xs, cw) && same(&ys, ch) {
+                return og_render_data::TerrainControl {
+                    width: w as u32,
+                    height: hgt as u32,
+                    rgba: std::mem::take(&mut rgba).into(),
+                };
+            }
             let mut out = vec![0u8; w * hgt * 4 * pages];
             for p in 0..pages {
-                for j in 0..hgt {
-                    for i in 0..w {
-                        let gx = (i as f32 + 0.5) / w as f32 * quads.0 * per - 0.5;
-                        let gy = (j as f32 + 0.5) / hgt as f32 * quads.1 * per - 0.5;
-                        let (x0, y0) = (gx.floor(), gy.floor());
-                        let (fx, fy) = (gx - x0, gy - y0);
-                        let (x0, y0) = (x0 as i64, y0 as i64);
+                let page = &rgba[p * cw * ch * 4..][..cw * ch * 4];
+                let to = &mut out[p * w * hgt * 4..][..w * hgt * 4];
+                for (j, &(y0, y1, fy)) in ys.iter().enumerate() {
+                    let (row0, row1) = (
+                        &page[y0 * cw * 4..][..cw * 4],
+                        &page[y1 * cw * 4..][..cw * 4],
+                    );
+                    for (i, &(x0, x1, fx)) in xs.iter().enumerate() {
                         for k in 0..4 {
-                            let t = |x, y| texel(p, x, y, k);
-                            let a = t(x0, y0) + (t(x0 + 1, y0) - t(x0, y0)) * fx;
-                            let b = t(x0, y0 + 1) + (t(x0 + 1, y0 + 1) - t(x0, y0 + 1)) * fx;
-                            out[p * w * hgt * 4 + (j * w + i) * 4 + k] =
+                            let t00 = row0[x0 * 4 + k] as f32;
+                            let t10 = row0[x1 * 4 + k] as f32;
+                            let t01 = row1[x0 * 4 + k] as f32;
+                            let t11 = row1[x1 * 4 + k] as f32;
+                            let a = t00 + (t10 - t00) * fx;
+                            let b = t01 + (t11 - t01) * fx;
+                            to[(j * w + i) * 4 + k] =
                                 (a + (b - a) * fy).round().clamp(0.0, 255.0) as u8;
                         }
                     }
