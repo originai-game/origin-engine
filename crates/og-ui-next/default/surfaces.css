@@ -6,11 +6,10 @@
    a part by its tokens and, where it needs another shape, by its own
    surfaces sheet.
 
-   Not here yet: the tones (damage … primary), teams, trends, shapes
-   (round, square, hex, diamond) and shared motions (pulse, shimmer …)
-   the old default dressed from data-tone, data-team, data-trend,
-   data-shape and data-motion. They wait on the core's typed form for
-   them; until then a document sets them in its own sheet. */
+   A tone, shape, team and trend are surface names too (`tone="danger"`,
+   `shape="round"`, `team="a"`, `trend="up"`): a rule on the name alone
+   dresses any element that has it, a compound only that part. The shared
+   motions are the `play` field's, not a surface's. */
 
 /* Frame: a panel a component stands in. `hud` makes it a plate, the
    lighter surface a HUD sits on over the scene; `bare` only lays its
@@ -99,6 +98,9 @@
 .cell:state(done) { border-color: var(--cell-done-rim); }
 .cell:state(active) { border-color: var(--cell-active-rim); box-shadow: var(--cell-active-shadow); }
 .cell:state(down) { opacity: var(--down-opacity); }
+.cell.round { border-radius: var(--radius-capsule); }
+.cell.square { border-radius: var(--cell-radius); }
+.cell.hex { corner-shape: bevel; border-radius: 25% / 50%; }
 
 /* Card: a framed choice; its headline is one step up from a row's name. */
 .card {
@@ -162,6 +164,16 @@
 .picture:state(muted) { opacity: var(--picture-muted-opacity); }
 
 .dot { box-sizing: border-box; border: var(--dot-rim-width) solid var(--dot-rim); border-radius: var(--dot-radius); background: var(--dot-fill); color: var(--dot-ink); }
+.dot.round { border-radius: var(--radius-capsule); }
+.dot.square { border-radius: 0; }
+.dot.hex { corner-shape: bevel; border-radius: 25% / 50%; }
+.dot.diamond { border-radius: 0; rotate: 45deg; }
+/* A toned dot fills with its tone; what it holds reads on that fill. */
+.dot.success { background: var(--tone-success); color: contrast-color(var(--tone-success)); }
+.dot.danger { background: var(--tone-danger); color: contrast-color(var(--tone-danger)); }
+.dot.warn { background: var(--tone-warn); color: contrast-color(var(--tone-warn)); }
+.dot.info { background: var(--tone-info); color: contrast-color(var(--tone-info)); }
+.dot.primary { background: var(--primary); color: contrast-color(var(--primary)); }
 
 /* A component's tab wears the core tabs' hooks. */
 .tab { background: var(--tabs-tab-fill); color: var(--tabs-tab-ink); font-family: var(--tabs-font); letter-spacing: var(--tabs-tracking); text-transform: var(--tabs-transform); transition: var(--change-motion); }
@@ -175,6 +187,10 @@
 .fill { background: var(--fill-gloss), var(--fill-color); }
 .fill.ghost { --fill-color: var(--fill-ghost-color); transition: var(--ghost-motion); }
 .fill.plain { --fill-gloss: var(--bar-plain-gloss); }
+.fill.success { --fill-color: var(--tone-success); }
+.fill.danger { --fill-color: var(--tone-danger); }
+.fill.warn { --fill-color: var(--tone-warn); }
+.fill.info { --fill-color: var(--tone-info); }
 .sweep { pointer-events: none; background: var(--sweep-ink); }
 .notch { pointer-events: none; background: var(--notch-ink); }
 
@@ -188,6 +204,10 @@
 /* A ribbon: a strip of strong colour (a sale, a new item, a rank) whose
    ink is the readable contrast of its fill. */
 .ribbon { padding: var(--ribbon-pad); border-radius: var(--ribbon-radius); background: var(--ribbon-fill); color: contrast-color(var(--ribbon-fill)); font: var(--ribbon-text); }
+.ribbon.success { background: var(--tone-success); color: contrast-color(var(--tone-success)); }
+.ribbon.danger { background: var(--tone-danger); color: contrast-color(var(--tone-danger)); }
+.ribbon.warn { background: var(--tone-warn); color: contrast-color(var(--tone-warn)); }
+.ribbon.info { background: var(--tone-info); color: contrast-color(var(--tone-info)); }
 
 /* A skeleton stands in for content still loading; its sheen sweeps
    across it (with `.shimmer`), cut to its box. */
@@ -203,9 +223,34 @@
 /* A zone marked on the world or a board (a placement's footprint): a rim
    and a wash of its tone; a danger zone is hatched. */
 .zone { --zone-color: var(--zone-ink); border: var(--zone-rim-width) solid var(--zone-color); background: color-mix(in srgb, var(--zone-color) var(--zone-wash), transparent); }
+.zone.success { --zone-color: var(--tone-success); }
+.zone.warn { --zone-color: var(--tone-warn); }
+.zone.info { --zone-color: var(--tone-info); }
+.zone.danger {
+  --zone-color: var(--tone-danger);
+  background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--zone-color) var(--zone-hatch), transparent) 0 var(--zone-hatch-width), transparent 0 var(--zone-hatch-step)), color-mix(in srgb, var(--zone-color) var(--zone-wash), transparent);
+}
 
 /* A fade: the cue that a scroller holds more, a band from clear to the
    surface it sits on, pointing into the scroller from its edge; `top`
    runs the other way. */
 .fade { block-size: var(--fade-size); pointer-events: none; background: linear-gradient(transparent, var(--fade-fill)); }
 .fade.top { background: linear-gradient(var(--fade-fill), transparent); }
+
+/* Tones, teams and trends as ink, on any element that names one. */
+.damage { color: var(--tone-damage); }
+.heal { color: var(--tone-heal); }
+.crit { color: var(--tone-crit); }
+.success { color: var(--tone-success); }
+.danger { color: var(--tone-danger); }
+.warn { color: var(--tone-warn); }
+.info { color: var(--tone-info); }
+.primary { color: var(--primary); }
+.a { color: var(--team1); border-color: var(--team1); }
+.b { color: var(--team2); border-color: var(--team2); }
+/* A selected row's ground is the selection, too light for a team's ink
+   in the dark scheme: it keeps the selected ink, its team in its rim. */
+.row.a:state(selected) { color: var(--ink-selected); }
+.row.b:state(selected) { color: var(--ink-selected); }
+.up { color: var(--trend-up); }
+.down { color: var(--trend-down); }
