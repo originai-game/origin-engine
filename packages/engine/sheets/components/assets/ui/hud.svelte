@@ -6,7 +6,8 @@
      right; along the foot one console (the life orb, a strip of ability
      slots over the level's bar, the mana orb) with the action hints above
      its end. Over a bright sky and a dark floor (docs/ui.md §6.3: bright
-     and dark HUD backgrounds). A phone, upright or on its side, has no room
+     and dark HUD backgrounds); in the light scheme, which is drawn for a light
+     scene, over a pale sky and a sand floor. A phone, upright or on its side, has no room
      for every corner at once, so there they stack in a column that scrolls,
      each seen whole; on its side, a screen each. -->
 <div id="Page" data-layout="shell" data-gap="wide">
@@ -41,6 +42,8 @@
 
 <style>
 #Page { overflow-y: auto; padding: var(--space-lg); background: linear-gradient(180deg, #9cc7e8, #e2e6df 50%, #4b4038 50%, #16120e); }
+/* The light scheme is drawn for a light scene: a pale sky over a sand floor. */
+@media (prefers-color-scheme: light) { #Page { background: linear-gradient(180deg, #bcd8ee, #eef0ea 50%, #ddd2bd 50%, #b8a88a); } }
 #Upper { position: relative; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: start; }
 .bar, #Compass { inline-size: stretch; }
 #TopMid { align-items: center; }
