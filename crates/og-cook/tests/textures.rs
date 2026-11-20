@@ -129,6 +129,8 @@ fn uastc_candidate_pruning_preserves_encoded_mips() {
     // hashes were recorded with the unmodified encoder, not the pruning.
     // Non-contracting native arithmetic keeps the same golden on ARM64
     // and x86-64; do not replace it with a host-specific expectation.
+    // Level 3, the most searching: what every UASTC cook encoded at while
+    // basis-universal ORed the level over its default (2 | 1).
     let rgba = card(128, 64, 3);
     for (kind, _) in cases {
         png(&root.join(format!("assets/tex/{kind}.png")), 128, 64, &rgba);
@@ -141,6 +143,7 @@ fn uastc_candidate_pruning_preserves_encoded_mips() {
     let options = CookOptions {
         texture: og_cook::cook::TextureOptions {
             color_uastc: true,
+            uastc_level: 3,
             ..Default::default()
         },
         ..Default::default()

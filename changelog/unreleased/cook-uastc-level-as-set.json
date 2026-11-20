@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook: normal and linear textures",
+      "summary": "UASTC textures (normal maps, metallic-roughness, occlusion, masks, and colour under `cook { color_textures uastc }`) encode at the level the options set: the basis-universal binding ORed the level over its default, so the default level 1 encoded as level 3 (slower). They now encode at level 1, about three times faster, with RDO 1.0 as before; level 0 of a 1024x1024 map measures 0.05 to 0.5 dB lower PSNR. Every UASTC texture recooks once."
+    }
+  ]
+}

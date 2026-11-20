@@ -173,6 +173,9 @@ impl CompressorParams {
 
         unsafe {
             let mut flags = sys::compressor_params_get_pack_uastc_flags(self.0);
+            // The level replaces the one set before (the constructor sets
+            // the default): ORed over it, level 1 encoded as 3.
+            flags &= !sys::UastcPackFlags_PackUASTCLevelMask;
             flags |= quality_level as i32; // bindgen reflects constants as signed integers. So even if it doesn't make sense for the quality level to be signed, it has to be.
             sys::compressor_params_set_pack_uastc_flags(self.0, flags);
         }
