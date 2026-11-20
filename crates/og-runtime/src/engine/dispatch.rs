@@ -167,6 +167,8 @@ pub(crate) struct State {
     /// The GPU milliseconds per pass of the newest frame the GPU's
     /// timestamps were read back for (`ProbeTimings.gpuPasses`).
     pub gpu_ms: Vec<(String, f64)>,
+    /// That frame's span on the GPU (its first timestamp to its last).
+    pub gpu_frame_ms: Option<f64>,
     /// What the last frame submitted: its triangles are
     /// `ProbeTimings.triangles`, the rest `dump_render`'s.
     pub frame: og_render::FrameStats,

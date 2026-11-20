@@ -57,9 +57,10 @@ fn pass_times(
         let timed = renderer.gpu_timings(true);
         let mut passes: Vec<(String, f64)> = Vec::new();
         for pass in timed.iter().flat_map(|f| &f.passes) {
+            let Some(ms) = pass.ms() else { continue };
             match passes.iter_mut().find(|p| p.0 == pass.name) {
-                Some(p) => p.1 += pass.ms(),
-                None => passes.push((pass.name.clone(), pass.ms())),
+                Some(p) => p.1 += ms,
+                None => passes.push((pass.name.clone(), ms)),
             }
         }
         for (name, sum) in passes {

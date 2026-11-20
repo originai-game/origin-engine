@@ -574,11 +574,12 @@ fn cost() {
                 if f < 16 {
                     continue;
                 }
-                total.push(frame.passes.iter().map(|p| p.ms()).sum::<f64>());
+                total.push(frame.ms());
                 for p in &frame.passes {
+                    let Some(ms) = p.ms() else { continue };
                     match passes.iter_mut().find(|q| q.0 == p.name) {
-                        Some(q) => q.1.push(p.ms()),
-                        None => passes.push((p.name.clone(), vec![p.ms()])),
+                        Some(q) => q.1.push(ms),
+                        None => passes.push((p.name.clone(), vec![ms])),
                     }
                 }
             }

@@ -11,8 +11,8 @@ import { gpuTest } from "./support/gpu.ts";
 //   that way shows it does;
 // - og-lanes' work invisible or folded onto one track: the physics step and
 //   the CPU cull's jobs appear on two or more "lane N" threads;
-// - GPU time missing where the device has timestamps (gpuTimestamps), or
-//   a GPU frame whose passes leave it;
+// - GPU time missing where the device has timestamps (gpuTimestamps), a
+//   GPU frame whose passes leave it, or an untimed pass without its reason;
 // - a take's spans moved by a different shift than the one before it, so
 //   the GPU's frames, back to back across takes, overlap.
 import { expect, test } from "bun:test";
@@ -89,4 +89,7 @@ gpuTest("og run --trace lays every span where it ran: systems, passes, GPU passe
   const cpuNames = new Set(of("pass").map((p) => p.name));
   expect(passes.every((p) => cpuNames.has(p.name))).toBe(true);
   expect(passes.reduce((a, p) => a + p.dur, 0)).toBeGreaterThan(0);
+  // A pass the GPU could not time says why; it is no span of 0.
+  const untimed = doc.traceEvents.filter((e) => e.ph === "i" && e.cat === "gpu");
+  for (const u of untimed) expect(typeof (u.args as { untimed?: unknown }).untimed).toBe("string");
 }, 240_000);

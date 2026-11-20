@@ -506,7 +506,7 @@ pub use terrain_tiles::{
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};
 pub(crate) use timing::Encoder;
-pub use timing::{GpuFrame, GpuPass, PassTiming, gpu_timing_absent};
+pub use timing::{GpuFrame, GpuPass, GpuUntimed, PassTiming, gpu_timing_absent};
 pub use video::FrameTexture;
 pub use views::{MirrorQuad, View, ViewTarget};
 pub use volumetric::{

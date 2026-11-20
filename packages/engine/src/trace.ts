@@ -110,8 +110,8 @@ export type TraceCheck = { errors: string[]; spans: number; threads: Record<numb
  * (the first child at the parent's `ts`, each next one where the previous
  * ended), over at least `endToEndAfter` parents with two or more children,
  * is reported: recorded starts leave gaps somewhere. The GPU's passes
- * (`cat` "gpu") are exempt: one timestamp ends a pass and begins the next,
- * so they are back to back by the measurement's construction.
+ * (`cat` "gpu") are exempt: the GPU runs its passes back to back, each
+ * beginning as the one before it ends.
  */
 export function checkTrace(doc: unknown, endToEndAfter = 8): TraceCheck {
   const errors: string[] = [];

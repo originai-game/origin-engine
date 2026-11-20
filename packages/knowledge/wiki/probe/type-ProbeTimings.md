@@ -15,7 +15,7 @@ The fixed timings head of state().
 | `frameMs` | `number` | `0` | — | `ms` | — | step + render. |
 | `systems` | `readonly ProbeTiming[]` | `[]` | — | — | — | The last tick's systems in run order, each with its milliseconds. |
 | `passes` | `readonly ProbeTiming[]` | `[]` | — | — | — | The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer). |
-| `gpuPasses` | `readonly ProbeTiming[]` | `[]` | — | — | — | The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds since the end of the pass before it; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer. |
+| `gpuPasses` | `readonly ProbeTiming[]` | `[]` | — | — | — | The render passes of the newest frame the GPU timed (a frame or two behind `passes`), each with its own GPU milliseconds (passes run at once may sum past the frame); a pass it could not time is left out; empty without timestamp queries (RenderCapabilities.gpuTimestamps). |
 | `triangles` | `number` | `0` | — | — | — | Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer. |
 
 ```ogt
@@ -32,7 +32,7 @@ struct ProbeTimings {
   }
   field systems List.ProbeTiming "The last tick's systems in run order, each with its milliseconds."
   field passes List.ProbeTiming "The last rendered frame's render passes in the render graph's order, each with its milliseconds of CPU encoding (empty without a renderer)."
-  field gpuPasses List.ProbeTiming "The render passes of the newest frame the GPU's timestamps were read back for (a frame or two behind `passes`), each with the GPU's milliseconds since the end of the pass before it; empty where the device has no timestamp queries (RenderCapabilities.gpuTimestamps) or without a renderer."
+  field gpuPasses List.ProbeTiming "The render passes of the newest frame the GPU timed (a frame or two behind `passes`), each with its own GPU milliseconds (passes run at once may sum past the frame); a pass it could not time is left out; empty without timestamp queries (RenderCapabilities.gpuTimestamps)."
   field triangles u32 "Triangles the last frame's main pass drew (after culling and level of detail); 0 without a renderer."
 }
 ```

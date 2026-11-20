@@ -191,7 +191,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     let (max_fps, page) = {
         let gpu_ms = {
             let st = eng.state.borrow();
-            (!st.gpu_ms.is_empty()).then(|| st.gpu_ms.iter().map(|(_, ms)| *ms).sum::<f64>())
+            st.gpu_frame_ms
         };
         let mut rs = eng.render.borrow_mut();
         if rendered {
@@ -484,11 +484,15 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     super::trace::frame(eng.id, tick, t0, st.render_ms, &passes);
     super::trace::gpu_frames(eng.id, &gpu);
     if let Some(newest) = gpu.last() {
+        // Each timed pass's own time; one the GPU could not time is left
+        // out, not reported as 0. Passes that ran at once each count their
+        // whole time, so the frame's GPU time is its span.
         st.gpu_ms = newest
             .passes
             .iter()
-            .map(|p| (p.name.clone(), p.ms()))
+            .filter_map(|p| Some((p.name.clone(), p.ms()?)))
             .collect();
+        st.gpu_frame_ms = Some(newest.ms());
     }
     st.pass_ms = passes;
     st.frame = frame;

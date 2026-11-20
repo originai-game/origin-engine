@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ProbeTimings.gpuPasses, og run --trace",
+      "summary": "GPU pass times are each pass's own. A pass was timed from the end of the pass before it, so a pass the GPU ran beside a longer one read 0 ms and the longer one took its time (The Last Light's shadow cascades read 0 behind the scatter cull). Each pass now reports when it ran, from its beginning to its end: passes run at once may sum past the frame, whose span is the trace's `gpu frame` and its `args.passes` each pass's own milliseconds. In the trace a pass overlapping another is on a `gpu (overlapping) N` thread, and a pass the GPU could not time is an instant with `args.untimed` saying why (gpuPasses leaves it out) instead of 0 ms."
+    }
+  ]
+}

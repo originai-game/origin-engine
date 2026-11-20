@@ -357,7 +357,7 @@ fn cost() {
                         .passes
                         .iter()
                         .filter(|p| p.name == n)
-                        .map(|p| p.ms())
+                        .filter_map(|p| p.ms())
                         .sum::<f64>()
                 };
                 if !shown && f == 79 {
@@ -365,19 +365,19 @@ fn cost() {
                     let all: Vec<String> = frame
                         .passes
                         .iter()
-                        .map(|p| format!("{} {:.3}", p.name, p.ms()))
+                        .map(|p| format!("{} {:.3}", p.name, p.ms().unwrap_or(f64::NAN)))
                         .collect();
                     println!("passes\t{label}\t{}", all.join(", "));
                 }
                 resolve.push(pass("taa") + pass("taa-sharpen"));
                 if std::env::var("OG_FSR_COST_RAW").is_ok() {
-                    let all = frame.passes.iter().map(|p| p.ms()).sum::<f64>();
+                    let all = frame.ms();
                     println!(
                         "raw\t{label}\t{:.4}\t{all:.4}",
                         pass("taa") + pass("taa-sharpen")
                     );
                 }
-                total.push(frame.passes.iter().map(|p| p.ms()).sum::<f64>());
+                total.push(frame.ms());
             }
         }
         let at = |v: &mut Vec<f64>, q: f64| {

@@ -14,15 +14,24 @@
 //! Nothing else measures a pass there: Apple GPUs run encoders with no
 //! data dependency at once, so a timestamp written by a separate marker
 //! pass measured only the marker (every pass read a few microseconds on
-//! Apple silicon), and for the same reason a pass's own beginning can lie
-//! before the end of the pass before it (its vertex stage starts while the
-//! previous fragments run). A render-graph pass is therefore reported
-//! from the end of the pass before it to the last end of the passes it
-//! opened (`ProbeTimings.gpuPasses`): the GPU's time in queue order,
-//! which sums to the frame.
+//! Apple silicon).
 //!
-//! A query the GPU never wrote resolves to 0 (WebGPU's unwritten query):
-//! a frame with none read is not reported ([`frame_of`]).
+//! A render-graph pass is reported by its own time: when each pass it
+//! opened ran on the GPU, from its beginning to its end
+//! ([`GpuPass::busy`], overlapping ones merged), and their length
+//! ([`GpuPass::ms`]). Passes the GPU ran at once each report their whole
+//! time, so a frame's passes may sum past it; the frame's span is its own
+//! ([`GpuFrame::ms`], the first beginning to the last end). Laid back to
+//! back in queue order instead (each pass from the end of the one before
+//! it), a pass that overlapped an earlier, longer one read 0 and the one
+//! it overlapped took its time.
+//!
+//! A pass that cannot be timed on its own says why ([`GpuUntimed`]) and
+//! has no time, never 0 ms: it opened no render or compute pass (copies
+//! only), the frame's queries ran out before it, or the GPU wrote none of
+//! its timestamps (a query never written resolves to 0, WebGPU's
+//! unwritten query). A frame with no query read is not reported
+//! ([`frame_of`]).
 //!
 //! The timestamps of a frame are resolved into a buffer, copied to a
 //! readback and mapped after the submit; a later frame (or
@@ -57,33 +66,64 @@ pub struct GpuFrame {
     /// clock is not the CPU's, so a trace anchors the frame's first
     /// timestamp here.
     pub submitted: f64,
-    /// The passes in execution order: each one's start and end in
-    /// milliseconds after the frame's first timestamp, back to back (a
-    /// pass starts at the very value the one before it ended, so a trace
-    /// rounding both lands them on one microsecond).
+    /// The render-graph passes, in queue order.
     pub passes: Vec<GpuPass>,
 }
 
-/// One pass of a [`GpuFrame`].
+/// One render-graph pass of a [`GpuFrame`]: when it ran on the GPU, or
+/// why it was not timed.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GpuPass {
     pub name: String,
-    pub start: f64,
-    pub end: f64,
+    /// When the passes it opened ran: each from its beginning to its end,
+    /// in milliseconds after the frame's first timestamp, in order, those
+    /// that overlapped merged. Empty when it is [`GpuPass::untimed`].
+    pub busy: Vec<(f64, f64)>,
+    /// Why it has no time of its own, or `None` when it has.
+    pub untimed: Option<GpuUntimed>,
+}
+
+/// Why a render-graph pass has no GPU time of its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GpuUntimed {
+    /// It opened no render or compute pass for timestamps to bracket
+    /// (copies or clears only, or nothing this frame).
+    NoGpuPass,
+    /// The frame's timestamp queries ran out before it.
+    QueriesFull,
+    /// The GPU wrote none of its timestamps.
+    NotWritten,
+}
+
+impl GpuUntimed {
+    /// The reason, in words, for a trace or a report.
+    pub fn reason(self) -> &'static str {
+        match self {
+            GpuUntimed::NoGpuPass => "it opened no render or compute pass to time",
+            GpuUntimed::QueriesFull => "the frame's timestamp queries ran out before it",
+            GpuUntimed::NotWritten => "the GPU wrote none of its timestamps",
+        }
+    }
 }
 
 impl GpuPass {
-    /// The pass's GPU milliseconds.
-    pub fn ms(&self) -> f64 {
-        self.end - self.start
+    /// The pass's own GPU milliseconds (the length of [`GpuPass::busy`]),
+    /// or `None` when it is untimed.
+    pub fn ms(&self) -> Option<f64> {
+        self.untimed
+            .is_none()
+            .then(|| self.busy.iter().map(|(b, e)| e - b).sum())
     }
 }
 
 impl GpuFrame {
-    /// The GPU milliseconds from the first timestamp to the last: the last
-    /// pass's end, the same value.
+    /// The frame's span on the GPU: from its first timestamp to its last.
     pub fn ms(&self) -> f64 {
-        self.passes.last().map_or(0.0, |p| p.end)
+        self.passes
+            .iter()
+            .filter_map(|p| p.busy.last())
+            .map(|b| b.1)
+            .fold(0.0, f64::max)
     }
 }
 
@@ -611,44 +651,52 @@ impl GpuTimer {
 }
 
 #[cfg(not(feature = "publish"))]
-/// A frame's passes from its timestamps: pass `k` of a render-graph pass
-/// wrote queries `2k` and `2k + 1`, and the graph pass ends at the last
-/// end among them. Each graph pass runs from the end of the one before it
-/// (the frame's first beginning for the first) to its own end, in queue
-/// order (the module's documentation). A query the GPU left at 0 is not
-/// read; a pass with none ends where the one before it did, 0 ms long. A
-/// frame with no query read is no frame (`None`).
+/// A frame's passes from its timestamps: pass `k` the frame's encoder
+/// began wrote queries `2k` and `2k + 1`, and a render-graph pass lists
+/// the queries of the passes it opened. Each graph pass is busy over its
+/// own passes' beginnings and ends, overlaps merged (the module's
+/// documentation); a pair with a query the GPU left at 0 is not read. A
+/// graph pass with no pair read is untimed, with why. A frame with no
+/// query read is no frame (`None`).
 fn frame_of(p: Pending, ticks: &[u64], period_ns: f64) -> Option<GpuFrame> {
-    let span = |r: &Range<u32>| -> Option<(u64, u64)> {
-        let mut span: Option<(u64, u64)> = None;
-        for q in (r.start..r.end).step_by(2) {
-            let (Some(&b), Some(&e)) = (ticks.get(q as usize), ticks.get(q as usize + 1)) else {
-                break;
-            };
-            if b == 0 || e == 0 {
-                continue;
-            }
-            span = Some(span.map_or((b, e), |(sb, se)| (sb.min(b), se.max(e))));
-        }
-        span
+    let pairs = |r: &Range<u32>| -> Vec<(u64, u64)> {
+        (r.start..r.end)
+            .step_by(2)
+            .map_while(|q| Some((*ticks.get(q as usize)?, *ticks.get(q as usize + 1)?)))
+            .filter(|&(b, e)| b != 0 && e != 0)
+            .map(|(b, e)| (b, e.max(b)))
+            .collect()
     };
-    let spans: Vec<Option<(u64, u64)>> = p.passes.iter().map(|(_, r)| span(r)).collect();
-    let first = spans.iter().flatten().map(|s| s.0).min()?;
+    let read: Vec<Vec<(u64, u64)>> = p.passes.iter().map(|(_, r)| pairs(r)).collect();
+    let first = read.iter().flatten().map(|s| s.0).min()?;
     let ms = |ticks: u64| ticks.saturating_sub(first) as f64 * period_ns / 1e6;
-    let mut prev_end = 0.0;
     let passes = p
         .passes
         .into_iter()
-        .zip(spans)
-        .map(|((name, _), span)| {
-            let end = span.map_or(prev_end, |(_, e)| ms(e).max(prev_end));
-            let pass = GpuPass {
-                name,
-                start: prev_end,
-                end,
+        .zip(read)
+        .map(|((name, r), mut pairs)| {
+            pairs.sort_unstable();
+            let mut busy: Vec<(u64, u64)> = Vec::with_capacity(pairs.len());
+            for (b, e) in pairs {
+                match busy.last_mut() {
+                    Some(last) if b <= last.1 => last.1 = last.1.max(e),
+                    _ => busy.push((b, e)),
+                }
+            }
+            let untimed = if !busy.is_empty() {
+                None
+            } else if !r.is_empty() {
+                Some(GpuUntimed::NotWritten)
+            } else if r.start + 2 > QUERIES {
+                Some(GpuUntimed::QueriesFull)
+            } else {
+                Some(GpuUntimed::NoGpuPass)
             };
-            prev_end = end;
-            pass
+            GpuPass {
+                name,
+                busy: busy.into_iter().map(|(b, e)| (ms(b), ms(e))).collect(),
+                untimed,
+            }
         })
         .collect();
     Some(GpuFrame {
@@ -663,52 +711,63 @@ mod tests {
     use super::*;
 
     #[test]
-    fn passes_run_back_to_back_to_the_ends_of_the_passes_they_opened() {
+    fn each_pass_reports_its_own_time_and_overlapping_passes_keep_theirs() {
         let p = || Pending {
             frame: 7,
             passes: vec![
-                ("Cascade0".into(), 0..2),
-                ("Main".into(), 2..6),
-                ("Bloom".into(), 6..6),
-                ("Tonemap".into(), 6..8),
+                ("Cull".into(), 0..2),
+                ("Cascade0".into(), 2..4),
+                ("Main".into(), 4..8),
+                ("Bloom".into(), 8..8),
+                ("Tonemap".into(), 8..10),
+                ("Late".into(), QUERIES..QUERIES),
             ],
-            queries: 8,
+            queries: 10,
             submitted: 100.0,
             resolved: true,
         };
-        // 10 ns a tick: 1 ms is 100 000 ticks. Main opened two passes, the
-        // second begun before the first ended (an Apple GPU overlapping
-        // encoders): it ends at the later end. Bloom opened none: 0 ms
-        // where Main ended. Tonemap's end was left at 0 by the GPU: its
-        // one pair is not read, so it sits there too.
+        // 10 ns a tick: 1 ms is 100 000 ticks. The cull runs 0 to 8 ms
+        // and the cascade, which needs nothing of it, runs at once, 1 to
+        // 4 ms: laid back to back in queue order the cascade read 0 ms.
+        // Main opened two passes, the second begun before the first ended
+        // (an Apple GPU overlapping encoders): one stretch. Bloom opened
+        // none; Tonemap's end was left at 0 by the GPU; Late came after
+        // the frame's queries ran out: untimed, each with why.
         let f = frame_of(
             p(),
             &[
-                5_000, 105_000, 95_000, 305_000, 255_000, 405_000, 405_000, 0,
+                1, 800_001, 100_001, 400_001, 800_001, 1_000_001, 950_001, 1_100_001, 1_100_001, 0,
             ],
             10.0,
         )
         .expect("a frame with queries read");
         assert_eq!(f.frame, 7);
-        let got: Vec<(&str, f64, f64)> = f
+        let got: Vec<(&str, Option<f64>, Option<GpuUntimed>)> = f
             .passes
             .iter()
-            .map(|p| (p.name.as_str(), p.start, p.end))
+            .map(|p| (p.name.as_str(), p.ms(), p.untimed))
             .collect();
         assert_eq!(
             got,
             [
-                ("Cascade0", 0.0, 1.0),
-                ("Main", 1.0, 4.0),
-                ("Bloom", 4.0, 4.0),
-                ("Tonemap", 4.0, 4.0)
+                ("Cull", Some(8.0), None),
+                ("Cascade0", Some(3.0), None),
+                ("Main", Some(3.0), None),
+                ("Bloom", None, Some(GpuUntimed::NoGpuPass)),
+                ("Tonemap", None, Some(GpuUntimed::NotWritten)),
+                ("Late", None, Some(GpuUntimed::QueriesFull)),
             ]
         );
-        assert_eq!(f.passes[1].ms(), 3.0);
-        assert_eq!(f.ms(), 4.0);
-        // Every query left at 0 (none written): no frame, not
-        // one of 0 ms passes.
-        assert_eq!(frame_of(p(), &[0; 8], 10.0), None);
+        assert_eq!(f.passes[1].busy, [(1.0, 4.0)]);
+        assert_eq!(f.passes[2].busy, [(8.0, 11.0)]);
+        assert_eq!(
+            f.ms(),
+            11.0,
+            "the frame's span, first beginning to last end"
+        );
+        // Every query left at 0 (none written): no frame, not one of
+        // untimed passes.
+        assert_eq!(frame_of(p(), &[0; 10], 10.0), None);
     }
 }
 

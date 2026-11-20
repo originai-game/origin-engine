@@ -276,7 +276,9 @@ fn gpu_passes(
     renderer.set_clock(None);
     let mut total = std::collections::BTreeMap::<String, f64>::new();
     for pass in timed.iter().flat_map(|f| &f.passes) {
-        *total.entry(pass.name.clone()).or_default() += pass.ms();
+        if let Some(ms) = pass.ms() {
+            *total.entry(pass.name.clone()).or_default() += ms;
+        }
     }
     let mut rows: Vec<_> = total.into_iter().collect();
     rows.sort_by(|a, b| b.1.total_cmp(&a.1));

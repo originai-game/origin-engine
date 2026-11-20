@@ -125,6 +125,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         render_ms: 0.0,
         pass_ms: Vec::new(),
         gpu_ms: Vec::new(),
+        gpu_frame_ms: None,
         frame: Default::default(),
         // A GameDesc mistake is logged at once (the others answer the call that meets them).
         log: a

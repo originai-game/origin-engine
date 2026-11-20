@@ -473,12 +473,12 @@ impl og_runtime::RenderBackend for Offscreen {
         let frames = self.renderer.gpu_timings(true);
         let mut seen = self.seen.borrow_mut();
         if let Some(f) = frames.last() {
-            seen.gpu = f.passes.iter().map(|p| p.ms()).sum();
+            seen.gpu = f.ms();
             seen.gpu_ui = f
                 .passes
                 .iter()
                 .filter(|p| p.name.contains("overlay") || p.name.contains("ui"))
-                .map(|p| p.ms())
+                .filter_map(|p| p.ms())
                 .sum();
         }
         if self.read {
