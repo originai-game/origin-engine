@@ -1,0 +1,28 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "RpgEffects, RpgHints and RpgLootFeed parts",
+      "change": "The RPG action HUD's effects row, input hints and loot feed are now built from blocks, as its plates are: RpgEffect, RpgHint and RpgLootEntry. Their props and look are unchanged. The parts of what a block now draws moved to the block: RpgEffects.tile, .art, .timer and .time, RpgHints.key and .action, and RpgLootFeed.art, .item, .rarity and .count are gone. RpgEffects.effect, RpgHints.hint and RpgLootFeed.entry remain as the places of the blocks.",
+      "fix": "In a style pack or a game's CSS, style the blocks' parts: RpgEffect.effect, .tile, .art, .timer and .time; RpgHint.hint, .key and .action; RpgLootEntry.entry, .edge, .art, .item, .rarity and .count.",
+      "find": [
+        "RpgEffects.tile",
+        "RpgEffects.art",
+        "RpgEffects.timer",
+        "RpgEffects.time",
+        "RpgHints.key",
+        "RpgHints.action",
+        "RpgLootFeed.art",
+        "RpgLootFeed.item",
+        "RpgLootFeed.rarity",
+        "RpgLootFeed.count"
+      ]
+    }
+  ],
+  "added": [
+    {
+      "member": "RpgEffect, RpgHint, RpgLootEntry",
+      "summary": "More of the RPG action HUD's blocks, usable by name in a game's own HUD: one buff or debuff tile (its time as a radial sweep and a tag), one key cap with its action, and one looted row (edge by rarity, name, rarity tag, count). A game lays them out with flex or grid where it wants them."
+    }
+  ]
+}

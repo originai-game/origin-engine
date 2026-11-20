@@ -1355,11 +1355,24 @@
     ],
     "imports": []
   },
+  "RpgEffect": {
+    "id": "@ui/components/rpg/effect.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/effect.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
   "RpgEffects": {
     "id": "@ui/components/rpg/effects.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "RpgEffect"
+    ],
     "files": [
       "@ui/components/rpg/effects.svelte",
       "@ui/components/rpg/rpg.en.ogt"
@@ -1390,11 +1403,23 @@
     ],
     "imports": []
   },
+  "RpgHint": {
+    "id": "@ui/components/rpg/hint.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/hint.svelte"
+    ],
+    "imports": []
+  },
   "RpgHints": {
     "id": "@ui/components/rpg/hints.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "RpgHint"
+    ],
     "files": [
       "@ui/components/rpg/hints.svelte",
       "@ui/components/rpg/rpg.en.ogt"
@@ -1461,11 +1486,24 @@
     ],
     "imports": []
   },
+  "RpgLootEntry": {
+    "id": "@ui/components/rpg/loot-entry.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/loot-entry.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
   "RpgLootFeed": {
     "id": "@ui/components/rpg/loot-feed.svelte",
     "screen": false,
     "control": null,
-    "uses": [],
+    "uses": [
+      "RpgLootEntry"
+    ],
     "files": [
       "@ui/components/rpg/loot-feed.svelte",
       "@ui/components/rpg/rpg.en.ogt"
