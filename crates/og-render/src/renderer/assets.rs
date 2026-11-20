@@ -263,7 +263,7 @@ impl Renderer {
                     kind,
                     surface::subdivisions(scene.objects.cloth_subdivisions),
                 ),
-                None => self.upload_mesh(mesh, compact),
+                None => self.upload_mesh(mesh, compact, self.pools_vertices(scene, index)),
             };
             gpu.revision = scene.mesh_revisions()[index];
             self.cache.meshes.push(gpu);
@@ -310,6 +310,7 @@ impl Renderer {
                     .unwrap_or_default(),
             );
         }
+        self.sync_meshlet_pool(scene);
         // Every simulation surface is uploaded, new ones too.
         self.refresh_visual(scene);
         self.sync_assets(scene)?;

@@ -42,8 +42,10 @@ impl Renderer {
     }
 
     /// `mesh` on the GPU; `compact`: as [`VertexEncoding::Compact`], whose
-    /// f32 vertices wait for a pipeline that reads them.
-    pub(crate) fn upload_mesh(&self, mesh: &MeshData, compact: bool) -> GpuMesh {
+    /// f32 vertices wait for a pipeline that reads them; `pooled`: the
+    /// meshlet vertex pool holds its f32 vertices, written there from the
+    /// CPU ([`Renderer::pools_vertices`]), so it gets no buffer of its own.
+    pub(crate) fn upload_mesh(&self, mesh: &MeshData, compact: bool, pooled: bool) -> GpuMesh {
         // Never create an empty buffer: an empty mesh keeps a 16-byte placeholder and draws nothing.
         let compact = compact
             .then(|| compact::encode(mesh))
@@ -60,7 +62,7 @@ impl Renderer {
                 );
                 (buffer, dq)
             });
-        let full = compact.is_none();
+        let full = compact.is_none() && !pooled;
         let vertices = if full {
             self.upload_vertices(mesh)
         } else {
@@ -113,7 +115,7 @@ impl Renderer {
                 bytes > 0 && bytes <= self.device.limits().max_storage_buffer_binding_size
             })
         else {
-            return self.upload_mesh(&surface::fallback(mesh, kind), false);
+            return self.upload_mesh(&surface::fallback(mesh, kind), false, false);
         };
         let vertices = crate::traffic::create_buffer(
             &self.device,
@@ -343,8 +345,9 @@ impl Renderer {
                 }
                 continue;
             }
+            let pooled = self.pools_vertices(scene, i);
             if gpu.surface.is_some() {
-                let mut fresh = self.upload_mesh(source, false);
+                let mut fresh = self.upload_mesh(source, false, pooled);
                 fresh.revision = revision;
                 self.cache.meshes[i] = fresh;
                 continue;
@@ -360,7 +363,7 @@ impl Renderer {
                 && scene.skins()[i].is_none()
                 && scene.morphs()[i].is_none();
             if compact || gpu.compact.is_some() {
-                let mut fresh = self.upload_mesh(source, compact);
+                let mut fresh = self.upload_mesh(source, compact, pooled);
                 fresh.revision = revision;
                 self.cache.meshes[i] = fresh;
                 continue;
@@ -389,7 +392,7 @@ impl Renderer {
                 gpu.bounds = bounds;
                 gpu.revision = revision;
             } else {
-                let mut fresh = self.upload_mesh(mesh, false);
+                let mut fresh = self.upload_mesh(mesh, false, pooled);
                 fresh.revision = revision;
                 self.cache.meshes[i] = fresh;
             }
@@ -407,5 +410,45 @@ impl Renderer {
         let gpu = &mut self.cache.meshes[mesh];
         gpu.vertices = vertices;
         gpu.full = true;
+    }
+
+    /// Whether mesh `i`'s f32 vertices live in the meshlet vertex pool
+    /// alone: a clustered mesh no surface simulates, on a device that culls
+    /// on the GPU, in a scene that draws meshlets.
+    pub(crate) fn pools_vertices(&self, scene: &RenderScene, i: usize) -> bool {
+        self.gpu_culls()
+            && scene.objects.meshlets
+            && scene
+                .mesh_clusters_all()
+                .get(i)
+                .is_some_and(Option::is_some)
+            && scene.mesh_surfaces.get(i).is_none_or(Option::is_none)
+    }
+
+    /// Keeps the meshlet path's pools in step with the scene's clustered
+    /// meshes, right after their uploads: a mesh [`Self::pools_vertices`]
+    /// takes is written into the vertex pool from the CPU, never into a
+    /// buffer of its own first.
+    pub(crate) fn sync_meshlet_pool(&mut self, scene: &RenderScene) {
+        if !(self.gpu_culls()
+            && scene.objects.meshlets
+            && scene.mesh_clusters_all().iter().any(Option::is_some))
+        {
+            return;
+        }
+        let limits = self.device.limits();
+        let max = limits
+            .max_storage_buffer_binding_size
+            .min(limits.max_buffer_size);
+        self.visibility
+            .meshlet
+            .get_or_insert_with(|| {
+                meshlet_gpu::MeshletGpu::new(
+                    &self.device,
+                    max,
+                    self.world.wind_field.lean_view.clone(),
+                )
+            })
+            .sync(&self.device, &self.queue, scene, &mut self.cache.meshes);
     }
 }

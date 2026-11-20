@@ -200,11 +200,13 @@ impl MeshletGpu {
 
     /// Rebuilds the pools when the scene's clustered meshes changed, or
     /// one of them was uploaded again. The vertex pool is the one copy of
-    /// its meshes' f32 vertices: they are copied on the GPU from where
-    /// each is now (its own buffer, or the last pool), each at a base the
-    /// storage offset alignment divides, and each mesh then draws from its
-    /// range of the pool ([`crate::GpuMesh::pooled`]). A mesh a surface simulates
-    /// (it writes its own vertices) keeps its own buffer too.
+    /// its meshes' f32 vertices, each at a base the storage offset
+    /// alignment divides: a mesh without f32 vertices on the GPU (uploaded
+    /// for the pool, or compact) is written there from the CPU, one that
+    /// has them is copied on the GPU from where they are (its own buffer,
+    /// or the last pool), and each mesh then draws from its range of the
+    /// pool ([`crate::GpuMesh::pooled`]). A mesh a surface simulates (it
+    /// writes its own vertices) keeps its own buffer too.
     pub fn sync(
         &mut self,
         device: &wgpu::Device,
@@ -253,8 +255,9 @@ impl MeshletGpu {
         // Each base in whole vertices, so a mesh's range binds as storage.
         let align = (u64::from(device.limits().min_storage_buffer_offset_alignment) / 64).max(1);
         let vertex_bytes = std::mem::size_of::<crate::Vertex>() as u64;
-        // (mesh, source, its offset, the pool's offset, bytes) per mesh.
-        let mut copies: Vec<(usize, wgpu::Buffer, u64, u64, u64)> = Vec::new();
+        // (mesh, source, its offset, the pool's offset, bytes) per mesh;
+        // no source: written from the CPU.
+        let mut copies: Vec<(usize, Option<wgpu::Buffer>, u64, u64, u64)> = Vec::new();
         let mut vertex_count: u64 = 0;
         let mut slots = HashMap::new();
         let mut mesh_rows: Vec<[u32; 4]> = Vec::new();
@@ -269,7 +272,7 @@ impl MeshletGpu {
             let (Some(source), Some(gpu)) = (scene.meshes().get(*i), meshes.get(*i)) else {
                 continue;
             };
-            if !gpu.full || source.vertices.is_empty() {
+            if source.vertices.is_empty() {
                 continue;
             }
             let base = vertex_count.next_multiple_of(align);
@@ -291,11 +294,10 @@ impl MeshletGpu {
             if bytes > self.max_binding {
                 break;
             }
-            // As the mesh's buffer holds them (uploads.rs, tangents made
-            // where it had none), copied from there.
             let bytes = source.vertices.len() as u64 * vertex_bytes;
             let (from, _) = gpu.pooled.unwrap_or((0, bytes));
-            copies.push((*i, gpu.vertices.clone(), from, base * vertex_bytes, bytes));
+            let held = gpu.full.then(|| gpu.vertices.clone());
+            copies.push((*i, held, from, base * vertex_bytes, bytes));
             vertex_count = base + source.vertices.len() as u64;
             let most = c
                 .levels
@@ -338,8 +340,27 @@ impl MeshletGpu {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("meshlet vertex pool"),
         });
-        for (_, source, from, to, bytes) in &copies {
-            encoder.copy_buffer_to_buffer(source, *from, &pool, *to, *bytes);
+        for (i, source, from, to, bytes) in &copies {
+            match source {
+                Some(buffer) => {
+                    encoder.copy_buffer_to_buffer(buffer, *from, &pool, *to, *bytes);
+                }
+                // As upload_vertices would hold them: tangents made where
+                // the mesh has none.
+                None => {
+                    let mesh = &scene.meshes()[*i];
+                    let made;
+                    let vertices = if mesh.lacks_tangents() {
+                        let mut m = mesh.clone();
+                        m.generate_tangents();
+                        made = m;
+                        &made.vertices
+                    } else {
+                        &mesh.vertices
+                    };
+                    crate::traffic::write_buffer(queue, &pool, *to, bytemuck::cast_slice(vertices));
+                }
+            }
         }
         queue.submit([encoder.finish()]);
         for &(i, _, _, to, bytes) in &copies {
@@ -347,6 +368,7 @@ impl MeshletGpu {
             if gpu.surface.is_none() {
                 gpu.vertices = pool.clone();
                 gpu.pooled = Some((to, bytes));
+                gpu.full = true;
             }
         }
         let make = |label: &str, bytes: &[u8]| {

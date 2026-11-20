@@ -243,7 +243,7 @@ impl Renderer {
     /// Whether the frame's instances are culled on the GPU as far as the
     /// device goes (the frame may still cull on the CPU: an empty frame,
     /// buffers over the device's limits).
-    fn gpu_culls(&self) -> bool {
+    pub(crate) fn gpu_culls(&self) -> bool {
         self.visibility.indirect
     }
 }

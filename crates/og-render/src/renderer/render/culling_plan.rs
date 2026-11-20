@@ -99,34 +99,12 @@ impl Renderer {
         // batch as any mesh, culled on the CPU, at the level og-runtime
         // picked for its model). Never with stylise's object pass, which
         // redraws the camera list's instances. Its cluster pools
-        // (meshlet_gpu.rs) are made by the first frame that runs it.
+        // (meshlet_gpu.rs) are kept by the mesh uploads (uploads.rs
+        // `sync_meshlet_pool`).
         let meshlet_on = self.gpu_culls()
             && !object_space
             && scene.objects.meshlets
             && scene.mesh_clusters_all().iter().any(Option::is_some);
-        if meshlet_on {
-            // The pool copies a clustered mesh's f32 vertices from its own
-            // buffer, which a compact mesh has only once asked for.
-            for i in (scene.mesh_clusters_all().iter().enumerate())
-                .filter_map(|(i, c)| c.is_some().then_some(i))
-            {
-                self.ensure_full(scene, i);
-            }
-            let limits = self.device.limits();
-            let max = limits
-                .max_storage_buffer_binding_size
-                .min(limits.max_buffer_size);
-            self.visibility
-                .meshlet
-                .get_or_insert_with(|| {
-                    meshlet_gpu::MeshletGpu::new(
-                        &self.device,
-                        max,
-                        self.world.wind_field.lean_view.clone(),
-                    )
-                })
-                .sync(&self.device, &self.queue, scene, &mut self.cache.meshes);
-        }
         let mut meshlet_taken: Vec<u32> = match self.visibility.meshlet.as_ref() {
             Some(m) if meshlet_on => batches
                 .iter()
