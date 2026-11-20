@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "__runtime_probe__.perf",
+      "summary": "A built web page's probe answers `__runtime_probe__.perf(\"start\" | \"stop\" | \"report\", budgets)`, the engine Worker's performance record (`og run --perf`'s lines; `report` answers `{ json, text }` with each line flagged against `budgets` in ms). Guide perf."
+    }
+  ]
+}

@@ -21,7 +21,7 @@
 // - the probe: `globalThis.__runtime_probe__` (protocol 5, every member a
 //   Promise, plus `lanes`, `memory()` (what the engine holds), `trace()`
 //   and `saveTrace()` (the run's Chrome trace; `?trace` records from the
-//   boot), `boot`
+//   boot), `perf()` (the engine's performance record, guide perf), `boot`
 //   (where the Worker's boot went) and
 //   `error`: what stopped the engine, a panic with its tick and lane, an
 //   error or a hang) and the platform's `og-probe`
@@ -849,6 +849,9 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // `saveTrace`: the same, downloaded as a file (`?trace` records from the boot).
   probe["trace"] = (action?: "take" | "start" | "stop") => shell.trace(action);
   probe["saveTrace"] = (name?: string) => shell.saveTrace(name);
+  // `perf`: the engine's performance record in the Worker (guide perf): "start", "stop", or
+  // "report" with line budgets in ms ({ json, text }).
+  probe["perf"] = (action?: "report" | "start" | "stop", budgets?: Record<string, number>) => shell.perf(action, budgets);
   // `devFiles`: a development build's hot reload of re-cooked files (`[path, bytes][]`), swapped in
   // by the probe's reload with the world kept (worker/calls.ts); the UI gallery's live edits use it.
   if (config.build === "dev") probe["devFiles"] = (files: Array<[string, Uint8Array]>) => shell.call("devFiles", files);
