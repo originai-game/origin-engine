@@ -29,12 +29,17 @@ pub enum Op {
     },
     /// An `{#if}` block's branch.
     Shown { tree: u32, node: u32, on: bool },
+    /// A `{#each}` block's keys changed: its rows are made again.
+    Rebuild { tree: u32, node: u32 },
 }
 
 impl Op {
     fn tree(&self) -> u32 {
         match self {
-            Op::Text { tree, .. } | Op::Holds { tree, .. } | Op::Shown { tree, .. } => *tree,
+            Op::Text { tree, .. }
+            | Op::Holds { tree, .. }
+            | Op::Shown { tree, .. }
+            | Op::Rebuild { tree, .. } => *tree,
         }
     }
 }
@@ -42,9 +47,20 @@ impl Op {
 /// How a binding's value becomes an op.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Target {
-    Text { node: u32 },
-    Holds { node: u32, cond: u32 },
-    Shown { node: u32 },
+    Text {
+        node: u32,
+    },
+    Holds {
+        node: u32,
+        cond: u32,
+    },
+    Shown {
+        node: u32,
+    },
+    /// Its value is a list's keys; a change after the first run rebuilds.
+    Rebuild {
+        node: u32,
+    },
 }
 
 type Func = Rc<dyn Fn(Value) -> Option<Value>>;
@@ -160,9 +176,10 @@ pub fn bind(tree: u32, target: Target, expr: Expr, reads: Reads, env: Rc<dyn Env
             (Some(prev), Target::Holds { .. } | Target::Shown { .. }) => {
                 og_ui::bind::truthy(&next) != og_ui::bind::truthy(prev)
             }
-            (Some(prev), Target::Text { .. }) => next != *prev,
+            (Some(prev), Target::Text { .. } | Target::Rebuild { .. }) => next != *prev,
         };
-        if changed {
+        let first = last.borrow().is_none();
+        if changed && !(first && matches!(target, Target::Rebuild { .. })) {
             let on = og_ui::bind::truthy(&next);
             data().ops.push(match target {
                 Target::Text { node } => Op::Text {
@@ -177,7 +194,10 @@ pub fn bind(tree: u32, target: Target, expr: Expr, reads: Reads, env: Rc<dyn Env
                     on,
                 },
                 Target::Shown { node } => Op::Shown { tree, node, on },
+                Target::Rebuild { node } => Op::Rebuild { tree, node },
             });
+        }
+        if changed {
             *last.borrow_mut() = Some(next);
         }
         Some(Value::Null)
@@ -185,6 +205,37 @@ pub fn bind(tree: u32, target: Target, expr: Expr, reads: Reads, env: Rc<dyn Env
     nsh_reactive::run_updates(Ui, false, || {
         nsh_reactive::effect(Ui, Kind::Effect, func, Value::Null)
     })
+}
+
+/// A value computed by `f` from the signals it reads (a component's prop,
+/// a list's row), re-run when one of them changes; an equal result
+/// notifies nothing. Read it as a signal.
+pub fn derive(f: impl Fn() -> Value + 'static) -> u32 {
+    let func: Func = Rc::new(move |_| Some(f()));
+    nsh_reactive::run_updates(Ui, false, || {
+        nsh_reactive::memo(Ui, func, Value::Null, Equals::Default, false)
+    })
+}
+
+/// A signal's value, tracked by the computation running it.
+pub fn read(signal: u32) -> Value {
+    nsh_reactive::read(Ui, signal)
+}
+
+/// Runs `f` under a new owner and answers it: what `f` makes is disposed
+/// with [`dispose`] of it (a list's row).
+pub fn owned(f: impl FnOnce()) -> u32 {
+    // SAFETY: short borrows.
+    let root = unsafe { Ui.graph() }.root();
+    let saved = unsafe { Ui.graph() }.enter_owner(root);
+    f();
+    unsafe { Ui.graph() }.leave_owner(saved);
+    root
+}
+
+/// Disposes a node and what it owns.
+pub fn dispose(id: u32) {
+    nsh_reactive::dispose(Ui, id);
 }
 
 /// Stops a binding (its tree's node is gone).

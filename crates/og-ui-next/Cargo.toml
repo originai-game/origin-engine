@@ -10,6 +10,8 @@ description = "og-ui's new core: a flat element arena, styles compiled to typed 
 og-css = { path = "../og-css" }
 # Text measure: the engine's one text stack (Parley, HarfRust, cooked metrics).
 og-text = { path = "../og-text" }
+# Its draw commands name fonts and textures by og-draw's handles.
+og-draw = { path = "../og-draw" }
 # The .svelte parser (doc::UiDocument), until it moves into this crate at the switch.
 og-ui = { path = "../og-ui" }
 nsh-reactive = { path = "../../third_party/nsh-reactive" }

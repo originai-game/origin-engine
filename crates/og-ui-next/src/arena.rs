@@ -159,6 +159,18 @@ impl Arena {
         }
     }
 
+    /// Takes `id` out of its parent's children: it and its subtree are no
+    /// longer laid out (their slots stay, unused, until the arena is made
+    /// again).
+    pub fn detach(&mut self, id: Id) {
+        let p = self.nodes[id as usize].parent;
+        if p != NONE {
+            self.nodes[p as usize].children.retain(|&c| c != id);
+            self.nodes[id as usize].parent = NONE;
+            self.dirty = true;
+        }
+    }
+
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }

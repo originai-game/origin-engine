@@ -15,11 +15,14 @@ pub struct Layer<'a> {
 
 /// A loaded style in one scheme: its resolved token table and its surfaces
 /// compiled against it.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Look {
     pub scheme: Box<str>,
     pub tokens: Tokens,
     pub surfaces: Sheet,
+    /// What the root sets for the text under it: the ink, the body size,
+    /// its line height and weight.
+    pub root: crate::style::Record,
 }
 
 impl Look {
@@ -39,10 +42,20 @@ impl Look {
             .collect::<Vec<_>>()
             .join("\n");
         let surfaces = Sheet::compile(&css, &tokens);
+        let root = Sheet::compile(
+            ".root { color: var(--ink, #ffffff); font-size: var(--font-scale-body-size, 16px); \
+             line-height: var(--line-height-body, 1.25); font-weight: var(--font-weight-body, 400); }",
+            &tokens,
+        );
+        let root = root.record(
+            &[root.name(".root").unwrap_or(0)],
+            crate::style::State::Base,
+        );
         Look {
             scheme: scheme.into(),
             tokens,
             surfaces,
+            root,
         }
     }
 }
