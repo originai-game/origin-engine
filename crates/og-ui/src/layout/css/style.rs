@@ -782,8 +782,9 @@ impl tf::FlexboxContainerStyle for View<'_> {
         let el = self.el();
         match (el.wrap, el.wrap_reverse, el.wrap_balance) {
             (false, ..) => tf::FlexWrap::NoWrap,
-            (true, false, true) => tf::FlexWrap::Balance,
-            (true, false, false) => tf::FlexWrap::Wrap,
+            // Balance is no longer a taffy feature here: the og-ui rewrite
+            // drops it, and no shipped sheet uses it.
+            (true, false, _) => tf::FlexWrap::Wrap,
             (true, true, _) => tf::FlexWrap::WrapReverse,
         }
     }
