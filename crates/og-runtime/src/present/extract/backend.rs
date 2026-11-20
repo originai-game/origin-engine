@@ -60,6 +60,10 @@ pub trait RenderBackend {
     fn pass_timings(&self) -> Vec<og_render::PassTiming> {
         Vec::new()
     }
+    /// Calls `f` with each of the last frame's CPU stages and its
+    /// milliseconds, in order (og-render's `Renderer::stage_timings`),
+    /// copying nothing; none without a clock.
+    fn each_stage(&self, _f: &mut dyn FnMut(&str, f64)) {}
     /// The frames timed on the GPU read back since the last call, oldest
     /// first (og-render's `Renderer::gpu_timings`; `wait` waits for those
     /// in flight, natively); empty without a clock or timestamp queries.

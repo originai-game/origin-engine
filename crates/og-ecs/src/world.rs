@@ -1247,6 +1247,19 @@ impl World {
             .collect()
     }
 
+    /// Calls `f` with each system that ran at tick `tick` and its
+    /// milliseconds, in run order, copying nothing: the per-frame reader's
+    /// [`World::system_ms`].
+    pub fn each_system_ms(&self, tick: u64, mut f: impl FnMut(&str, f64)) {
+        for s in &self.systems {
+            if s.last_tick == Some(tick)
+                && let Some(ms) = s.ms
+            {
+                f(&s.name, ms);
+            }
+        }
+    }
+
     /// Times every system's run (with its commands applied) with `clock`,
     /// wall-clock milliseconds from any origin, reported by
     /// [`World::system_info`]; `None` stops timing. Measurement only: no

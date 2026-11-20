@@ -78,6 +78,10 @@ export interface HostAbi<A, V> {
   og_engine_trace(engine: number, on: boolean): void;
   /** The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take). */
   og_engine_trace_take(engine: number, last: boolean): string;
+  /** Turn an engine's performance record on (a fresh one) or off (`og run --perf`, the shell's `perf()`, guide perf). */
+  og_engine_perf(engine: number, on: boolean): void;
+  /** The performance record's report so far, as JSON `{ json, text }`: each line's median, p95 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes. */
+  og_engine_perf_report(engine: number, budgets: string): string;
   /** `defineComponent` */
   og_reflect_define_component(name: string, fields: string): string;
   /** `defineResource` */
@@ -2121,6 +2125,8 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_set_content",
   "og_engine_trace",
   "og_engine_trace_take",
+  "og_engine_perf",
+  "og_engine_perf_report",
 ];
 
 /** Why `value`, passed as `param` of `call` where an entity is expected, is not one. */

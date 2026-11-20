@@ -86,6 +86,21 @@ export function callsOf(run: Run): Calls {
       return run.trace.document(run.engine, { tier: run.lastTier, lanes: run.lanes });
     },
     /**
+     * The performance record (guide perf): `start` begins a fresh one, `stop` ends it, `report`
+     * answers `{ json, text }` so far against `budgets` (a JSON object of line to ms). False when
+     * the module cannot record.
+     */
+    perf: (_, [action, budgets]) => {
+      const abi = boundHost()?.abi;
+      if (!run.engine || !abi) return false;
+      const a = String(action ?? "report");
+      if (a === "start" || a === "stop") {
+        abi.og_engine_perf(run.engine.id, a === "start");
+        return true;
+      }
+      return JSON.parse(abi.og_engine_perf_report(run.engine.id, JSON.stringify(budgets ?? {})));
+    },
+    /**
      * A development build's live edit (the UI gallery): the cooked files a re-cook changed
      * (`[path, bytes]`, each path as the boot put it) replace those the engine holds, and what
      * they change is read again in place (og_runtime::dev_refresh): a document, a style or the

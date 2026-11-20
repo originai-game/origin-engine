@@ -62,6 +62,7 @@ pub use author::lanes::{panic_report, record_panic, report as lanes_report};
 pub use present::glyphs::glyphs_pending;
 
 pub use author::memory::memory_report;
+pub use author::perf::{report as perf_report, set as perf_set};
 #[cfg(not(feature = "publish"))]
 pub use author::probe::dev_refresh;
 #[cfg(not(feature = "publish"))]

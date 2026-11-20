@@ -184,6 +184,16 @@ pub fn og_engine_trace_take(engine: u32, last: bool) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_engine_perf(engine: u32, on: bool) {
+    <Host as Lifecycle>::og_engine_perf(&Host, engine, on)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_perf_report(engine: u32, budgets: String) -> String {
+    <Host as Lifecycle>::og_engine_perf_report(&Host, engine, budgets)
+}
+
+#[wasm_bindgen]
 pub fn og_reflect_define_component(name: String, fields: String) -> String {
     <Host as ReflectApi>::og_reflect_define_component(&Host, name, fields)
 }

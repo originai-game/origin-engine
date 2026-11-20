@@ -416,6 +416,15 @@ export class Shell {
     return this.call("trace", action) as Promise<TraceDocument | null | boolean>;
   }
 
+  /**
+   * The engine's performance record (guide perf), kept in the engine Worker: `start` begins a
+   * fresh one, `stop` ends it, `report` (the default) answers `{ json, text }` so far, each line
+   * flagged against `budgets` (line name to milliseconds). False when the module cannot record.
+   */
+  perf(action: "report" | "start" | "stop" = "report", budgets: Record<string, number> = {}): Promise<{ json: unknown; text: string } | boolean> {
+    return this.call("perf", action, budgets) as Promise<{ json: unknown; text: string } | boolean>;
+  }
+
   /** Saves the trace so far as a JSON file the browser downloads (`name`, default `trace.json`): open it in Perfetto. False when none is recorded. */
   async saveTrace(name = "trace.json"): Promise<boolean> {
     const doc = await this.trace("take");

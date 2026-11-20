@@ -184,6 +184,16 @@ unsafe extern "C" fn og_engine_trace_take(args: *const crate::OgValue, out: *mut
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_engine_perf(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as Lifecycle>::og_engine_perf(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_engine_perf_report(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as Lifecycle>::og_engine_perf_report(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_reflect_define_component(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as ReflectApi>::og_reflect_define_component(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3604,6 +3614,8 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_engine_set_content", arity: 2, call: og_engine_set_content },
     crate::Symbol { name: c"og_engine_trace", arity: 2, call: og_engine_trace },
     crate::Symbol { name: c"og_engine_trace_take", arity: 2, call: og_engine_trace_take },
+    crate::Symbol { name: c"og_engine_perf", arity: 2, call: og_engine_perf },
+    crate::Symbol { name: c"og_engine_perf_report", arity: 2, call: og_engine_perf_report },
     crate::Symbol { name: c"og_reflect_define_component", arity: 2, call: og_reflect_define_component },
     crate::Symbol { name: c"og_reflect_define_resource", arity: 2, call: og_reflect_define_resource },
     crate::Symbol { name: c"og_reflect_define_event", arity: 2, call: og_reflect_define_event },

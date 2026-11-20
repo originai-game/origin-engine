@@ -188,6 +188,11 @@ impl RenderBackend for OffscreenBackend {
     fn pass_timings(&self) -> Vec<og_render::PassTiming> {
         self.renderer.pass_timings().to_vec()
     }
+    fn each_stage(&self, f: &mut dyn FnMut(&str, f64)) {
+        for s in self.renderer.stage_timings() {
+            f(&s.name, s.ms);
+        }
+    }
     fn gpu_timings(&mut self, wait: bool) -> Vec<og_render::GpuFrame> {
         self.renderer.gpu_timings(wait)
     }

@@ -10,6 +10,7 @@ pub(crate) mod determinism;
 pub(crate) mod inspector;
 pub(crate) mod lanes;
 pub(crate) mod memory;
+pub(crate) mod perf;
 pub(crate) mod probe;
 pub(crate) mod pulse;
 #[cfg(not(feature = "publish"))]

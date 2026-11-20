@@ -1,6 +1,6 @@
 //! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
 //! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
-//! [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--capture-only] [--forks N] [--json] [--no-check]`
+//! [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--capture-only] [--forks N] [--json] [--no-check]`
 //!
 //! Cooks the project, type-checks it (crate::check: a type error stops the
 //! run before anything is bundled, its diagnostics printed, or with
@@ -54,7 +54,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/|https://<host>:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/|https://<host>:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -74,6 +74,10 @@ pub struct RunArgs {
     pub profile: Option<std::path::PathBuf>,
     /// `--gpu-serial`: every render-graph pass waits for the one before it.
     pub gpu_serial: bool,
+    /// `--perf`: the directory perf.json and perf.txt go to (absolute).
+    pub perf: Option<std::path::PathBuf>,
+    /// `--budget <line>=<ms>`: over the project's `perf` budgets.
+    pub budgets: Vec<(String, f64)>,
     /// Native-only options given (refused with `--device`).
     native: Vec<String>,
 }
@@ -91,6 +95,8 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
         trace: None,
         profile: None,
         gpu_serial: false,
+        perf: None,
+        budgets: Vec::new(),
         native: Vec::new(),
     };
     let mut device_forward = Vec::new();
@@ -161,6 +167,8 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             | "--clock"
             | "--locale"
             | "--trace"
+            | "--perf"
+            | "--budget"
             | "--profile"
             | "--room"
             | "--forks"
@@ -176,6 +184,23 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                     "--trace" => {
                         r.trace =
                             Some(std::path::absolute(v).map_err(|e| format!("--trace {v}: {e}"))?);
+                        r.native.push(flag.into());
+                    }
+                    "--perf" => {
+                        r.perf =
+                            Some(std::path::absolute(v).map_err(|e| format!("--perf {v}: {e}"))?);
+                        r.native.push(flag.into());
+                    }
+                    "--budget" => {
+                        let parsed = v.rsplit_once('=').and_then(|(line, ms)| {
+                            Some((line.to_string(), ms.parse::<f64>().ok()?))
+                        });
+                        let Some(b) = parsed.filter(|(_, ms)| ms.is_finite() && *ms >= 0.0) else {
+                            return Err(format!(
+                                "--budget takes <line>=<ms>, such as \"gpu frame=16.6\". {USAGE}"
+                            ));
+                        };
+                        r.budgets.push(b);
                         r.native.push(flag.into());
                     }
                     "--profile" => {
@@ -342,6 +367,17 @@ pub fn run(args: &[&str]) -> ExitCode {
     }
     if let Some(trace) = &a.trace {
         cmd.arg("--trace").arg(trace).arg("--trace-append");
+    }
+    if let Some(perf) = &a.perf {
+        // The project's budgets, each overridden by a --budget of its line.
+        let mut budgets = serde_json::Map::new();
+        for (line, ms) in p.budgets.iter().chain(&a.budgets) {
+            budgets.insert(line.clone(), serde_json::json!(ms));
+        }
+        cmd.arg("--perf")
+            .arg(perf)
+            .arg("--budgets")
+            .arg(serde_json::Value::Object(budgets).to_string());
     }
     if a.gpu_serial {
         cmd.env("OG_GPU_SERIAL", "1");

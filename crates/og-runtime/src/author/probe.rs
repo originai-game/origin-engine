@@ -561,6 +561,7 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     // A world.restore asked for during a tick applies as the tick ends.
     probe.set_after_tick(Box::new(move |world| {
         crate::author::trace::after_tick(id, world);
+        crate::author::perf::after_tick(id, world);
         if let Ok(eng) = engine(id) {
             crate::world::save::after_tick(&eng, world);
         }
@@ -597,6 +598,7 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     // og.WorldRestored, the tick after a restore.
     probe.set_before_tick(Box::new(move |world| {
         crate::author::trace::before_tick(id);
+        crate::author::perf::before_tick(id);
         if let Ok(eng) = engine(id) {
             // The world the last tick left, before this one moves anything.
             if let Ok(mut rs) = eng.render.try_borrow_mut() {

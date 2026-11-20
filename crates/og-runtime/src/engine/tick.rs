@@ -181,7 +181,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     let rendered = match if capture_only {
         Ok(false)
     } else {
-        render(&eng, alpha)
+        render(&eng, alpha, elapsed_ms)
     } {
         Ok(r) => r,
         Err(e) => return refuse(e),
@@ -412,8 +412,9 @@ fn settle_textures(eng: &Engine) {
 }
 
 /// Draws the frame, between the last two ticks at `alpha`
-/// (`super::interpolate`) or at the tick (`None`).
-fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
+/// (`super::interpolate`) or at the tick (`None`); `interval_ms` is the
+/// host's time since the last frame (the perf record's).
+fn render(eng: &Engine, alpha: Option<f32>, interval_ms: f64) -> Result<bool, String> {
     if eng.render.borrow().backend.is_none() {
         return Ok(false);
     }
@@ -472,6 +473,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
             passes = b.pass_timings();
             gpu = b.gpu_timings(false);
             frame = b.frame_stats();
+            crate::author::perf::stages(eng.id, &**b);
             // The fades held for pipelines this frame made ahead.
             rs.reveal.drawn(frame.compiling_ahead);
         }
@@ -486,6 +488,15 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     st.render_ms = rprobe::now_ms() - t0;
     super::trace::frame(eng.id, tick, t0, st.render_ms, &passes);
     super::trace::gpu_frames(eng.id, &gpu);
+    crate::author::perf::frame(
+        eng.id,
+        tick,
+        interval_ms,
+        st.render_ms,
+        &passes,
+        &gpu,
+        &frame,
+    );
     if let Some(newest) = gpu.last() {
         // Each timed pass's own time; one the GPU could not time is left
         // out, not reported as 0. Passes that ran at once each count their

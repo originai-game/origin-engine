@@ -431,6 +431,18 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "String",
         "The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take).",
     ),
+    (
+        "og_engine_perf",
+        &[("engine", "u32", "number"), ("on", "bool", "boolean")],
+        "()",
+        "Turn an engine's performance record on (a fresh one) or off (`og run --perf`, the shell's `perf()`, guide perf).",
+    ),
+    (
+        "og_engine_perf_report",
+        &[("engine", "u32", "number"), ("budgets", "String", "string")],
+        "String",
+        "The performance record's report so far, as JSON `{ json, text }`: each line's median, p95 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes.",
+    ),
 ];
 
 /// `crates/og-api/src/generated/host.rs`.

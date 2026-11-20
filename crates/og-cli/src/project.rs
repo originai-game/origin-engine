@@ -34,6 +34,9 @@ pub struct Project {
     /// written against (design §9: an upgrade is an explicit edit). `None`
     /// for a bare entry or a manifest without the line.
     pub engine: Option<String>,
+    /// `perf { budget "<line>" <ms> }` of project.ogt: the most milliseconds
+    /// each line of the perf report's may take at its median (guide perf).
+    pub budgets: Vec<(String, f64)>,
 }
 
 fn string(v: Option<&Entry>) -> Option<String> {
@@ -87,6 +90,7 @@ impl Project {
                     entry: PathBuf::from(typescript_path(path)),
                     out: "dist".into(),
                     engine: None,
+                    budgets: Vec::new(),
                 },
             });
         } else {
@@ -128,12 +132,25 @@ impl Project {
             ));
         }
         let engine = string(b.get("engine"));
+        let mut budgets = Vec::new();
+        if let Some(perf) = b.get("perf").and_then(|p| p.block.as_ref()) {
+            for e in perf.get_all("budget") {
+                let (Ok(line), Ok(ms)) = (e.string(0), e.number(1)) else {
+                    return Err(format!(
+                        "{}: perf's `budget` takes a line's name and its milliseconds, such as `budget \"gpu frame\" 16.6`",
+                        manifest.display()
+                    ));
+                };
+                budgets.push((line.to_string(), ms.as_f64()));
+            }
+        }
         Ok(Project {
             entry,
             root,
             manifest: true,
             out,
             engine,
+            budgets,
         })
     }
 

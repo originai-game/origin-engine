@@ -6,7 +6,7 @@
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render] [--capture-only]
 //       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>]
-//       [--trace <out.json> [--trace-append]] [--room ws://127.0.0.1:P/<room>]
+//       [--trace <out.json> [--trace-append]] [--perf <dir> [--budgets <json>]] [--room ws://127.0.0.1:P/<room>]
 //       [--shared ws://127.0.0.1:P/|https://127.0.0.1:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--json]
 //       [--restore <world.save>] [--handoff <world.save>] [--forks N]
 //
@@ -127,6 +127,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     let clock: number | undefined;
     let tracePath: string | undefined;
     let traceAppend = false;
+    let perfDir: string | undefined;
+    let budgets = "{}";
     let room: string | undefined;
     let shared: string | undefined;
     let sharedTokenFile: string | undefined;
@@ -169,6 +171,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       else if (a === "--clock") clock = Number(next());
       else if (a === "--trace") tracePath = resolve(next());
       else if (a === "--trace-append") traceAppend = true;
+      else if (a === "--perf") perfDir = resolve(next());
+      else if (a === "--budgets") budgets = next();
       else if (a === "--room") room = next();
       else if (a === "--shared") shared = next();
       else if (a === "--shared-token-file") sharedTokenFile = resolve(next());
@@ -288,7 +292,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     if (sharedTokenFile !== undefined && shared === undefined) fail("--shared-token-file goes with --shared <ws://host:port/>");
     // A traced run that renders takes its --ticks one frame each: a trace is of the frames, and ticks advanced at once
     // draw none.
-    const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined || shared !== undefined || handoffFile !== undefined || (tracePath !== undefined && render && ticks !== undefined);
+    const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined || shared !== undefined || handoffFile !== undefined || ((tracePath !== undefined || perfDir !== undefined) && render && ticks !== undefined);
     // With a renderer, GameDesc.start runs once it is attached (as the web Worker
     // does), so og.render.capabilities reports the play surface's size there.
     const deferStart = probing && render;
@@ -338,6 +342,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       abi.og_engine_trace(engine.id, true);
       abi.og_engine_trace(BEFORE_ENGINE, false);
     }
+    // --perf: the engine's per-frame record (guide perf), reported at the end.
+    if (perfDir) boundHost()!.abi.og_engine_perf(engine.id, true);
     // og.platform: the local store, in memory unless --platform-store names a file;
     // its clock the system's, or with --clock one that starts there and moves with the ticks.
     if (clock !== undefined) engine.setClock(fixedClock(engine, clock));
@@ -739,6 +745,14 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       mkdirSync(dirname(tracePath), { recursive: true });
       writeFileSync(tracePath, JSON.stringify(trace!.document()));
       outputs.push(tracePath);
+    }
+    if (perfDir) {
+      const report = JSON.parse(boundHost()!.abi.og_engine_perf_report(engine.id, budgets)) as { json: unknown; text: string };
+      mkdirSync(perfDir, { recursive: true });
+      writeFileSync(join(perfDir, "perf.json"), JSON.stringify(report.json, null, 1));
+      writeFileSync(join(perfDir, "perf.txt"), report.text);
+      outputs.push(join(perfDir, "perf.json"), join(perfDir, "perf.txt"));
+      process.stderr.write(report.text);
     }
     let wavSha256: string | undefined;
     if (audioMode === "capture") {

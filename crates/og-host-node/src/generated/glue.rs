@@ -219,6 +219,18 @@ pub fn og_engine_trace_take(env: Env, engine: u32, last: bool) -> String {
     <Host as Lifecycle>::og_engine_trace_take(&Host, engine, last)
 }
 
+#[napi(js_name = "og_engine_perf")]
+pub fn og_engine_perf(env: Env, engine: u32, on: bool) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_perf(&Host, engine, on)
+}
+
+#[napi(js_name = "og_engine_perf_report")]
+pub fn og_engine_perf_report(env: Env, engine: u32, budgets: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_perf_report(&Host, engine, budgets)
+}
+
 #[napi(js_name = "og_reflect_define_component")]
 pub fn og_reflect_define_component(env: Env, name: String, fields: String) -> String {
     let _env = crate::EnvScope::enter(&env);
