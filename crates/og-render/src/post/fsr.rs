@@ -217,14 +217,17 @@ fn pass(
                 bind_group_layouts: &[Some(&group)],
                 immediate_size: 0,
             });
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(label),
-                layout: Some(&pl),
-                module: &module,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(&device).as_ref(),
-            })
+            crate::traffic::create_compute_pipeline(
+                &device,
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&pl),
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                },
+            )
         }),
     }
 }
@@ -266,14 +269,17 @@ fn pair(device: &wgpu::Device, label: &str, size: (u32, u32), format: F) -> [wgp
 }
 
 fn buffer(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size: size.max(16),
-        usage: wgpu::BufferUsages::STORAGE
-            | wgpu::BufferUsages::COPY_SRC
-            | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some(label),
+            size: size.max(16),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 /// What FSR keeps between frames, for an output of `upscale` (render sizes
@@ -506,12 +512,15 @@ impl FsrPasses {
         let [prepare, luma, scp, sc, reactivity, accumulate] = SHADERS;
         FsrPasses {
             device: device.clone(),
-            uniform: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("fsr"),
-                size: std::mem::size_of::<FsrUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
+            uniform: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("fsr"),
+                    size: std::mem::size_of::<FsrUniform>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            ),
             sampler: device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some("fsr linear clamp"),
                 mag_filter: wgpu::FilterMode::Linear,
@@ -658,7 +667,7 @@ impl FsrPasses {
                 0.0,
             ],
         };
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
 
         let s = self.state.as_ref().expect("made above");
         let (cur, prev) = ((self.index % 2) as usize, (1 - self.index % 2) as usize);

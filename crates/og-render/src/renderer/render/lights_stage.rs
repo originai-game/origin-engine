@@ -121,12 +121,14 @@ impl Renderer {
                 },
             );
             if !lights_gpu.is_empty() {
-                self.queue.write_buffer(
+                crate::traffic::write_buffer(
+                    &self.queue,
                     &self.reflections.reflection_light_buffers[k][1],
                     0,
                     bytemuck::cast_slice(&self.reflections.reflection_clusters[k].table),
                 );
-                self.queue.write_buffer(
+                crate::traffic::write_buffer(
+                    &self.queue,
                     &self.reflections.reflection_light_buffers[k][2],
                     0,
                     bytemuck::cast_slice(&self.reflections.reflection_clusters[k].ref_words()),

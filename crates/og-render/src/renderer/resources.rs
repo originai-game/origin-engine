@@ -738,13 +738,20 @@ impl Lights {
         if lights_gpu.is_empty() {
             return;
         }
-        queue.write_buffer(&self.light_buffers[0], 0, bytemuck::cast_slice(lights_gpu));
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
+            &self.light_buffers[0],
+            0,
+            bytemuck::cast_slice(lights_gpu),
+        );
+        crate::traffic::write_buffer(
+            queue,
             &self.light_buffers[1],
             0,
             bytemuck::cast_slice(&self.clusters.table),
         );
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
             &self.light_buffers[2],
             0,
             bytemuck::cast_slice(&self.clusters.ref_words()),

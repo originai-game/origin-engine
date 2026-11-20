@@ -456,20 +456,23 @@ impl VisualFluids {
                             source: wgpu::ShaderSource::Wgsl(source().into()),
                         })
                     });
-                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                        label: Some(entry),
-                        layout: Some(&device.create_pipeline_layout(
-                            &wgpu::PipelineLayoutDescriptor {
-                                label: Some("visual fluid"),
-                                bind_group_layouts: &[Some(&layout)],
-                                immediate_size: 0,
-                            },
-                        )),
-                        module,
-                        entry_point: Some(entry),
-                        compilation_options: Default::default(),
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
-                    })
+                    crate::traffic::create_compute_pipeline(
+                        &device,
+                        &wgpu::ComputePipelineDescriptor {
+                            label: Some(entry),
+                            layout: Some(&device.create_pipeline_layout(
+                                &wgpu::PipelineLayoutDescriptor {
+                                    label: Some("visual fluid"),
+                                    bind_group_layouts: &[Some(&layout)],
+                                    immediate_size: 0,
+                                },
+                            )),
+                            module,
+                            entry_point: Some(entry),
+                            compilation_options: Default::default(),
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
+                        },
+                    )
                 })
             })
             .collect();
@@ -525,7 +528,7 @@ impl VisualFluids {
         if bytes.len() as u64 > self.colliders.size() {
             self.colliders = collider_buffer(device, (bytes.len() as u64).next_power_of_two());
         }
-        queue.write_buffer(&self.colliders, 0, bytes);
+        crate::traffic::write_buffer(queue, &self.colliders, 0, bytes);
         for ((slot, grid), list) in slots.iter().zip(grids).zip(lists) {
             let f = &slot.fluid;
             let sim = self
@@ -554,8 +557,8 @@ impl VisualFluids {
                 (slot.radius, slot.color, slot.density),
                 slot.first,
             );
-            queue.write_buffer(&sim.head, 0, bytemuck::cast_slice(&words));
-            queue.write_buffer(&sim.cursor, 0, bytemuck::bytes_of(&0u32));
+            crate::traffic::write_buffer(queue, &sim.head, 0, bytemuck::cast_slice(&words));
+            crate::traffic::write_buffer(queue, &sim.cursor, 0, bytemuck::bytes_of(&0u32));
             let entries: Vec<_> = [
                 &sim.head,
                 &self.colliders,
@@ -619,22 +622,28 @@ impl VisualFluids {
 }
 
 fn collider_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("visual fluid colliders"),
-        size,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some("visual fluid colliders"),
+            size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 fn make(device: &wgpu::Device, grid: &Grid, f: &VisualFluid) -> Sim {
     let buffer = |label, size: u64| {
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(label),
-            size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
+        crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some(label),
+                size,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        )
     };
     Sim {
         grid: grid.clone(),

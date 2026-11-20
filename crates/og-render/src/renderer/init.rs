@@ -494,12 +494,15 @@ impl Renderer {
             ..Default::default()
         });
         let uniform_buffer = |label: &str, size: usize| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size: size as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                &device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size: size as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let fx_buffer = uniform_buffer("fx", std::mem::size_of::<fx::FxUniform>());
         let decal_buffers = crate::decals::DecalBuffers::new(&device);
@@ -569,12 +572,15 @@ impl Renderer {
         });
         let instances = InstanceRecords::new(&device);
         let vertex_buffer = |label: &str, size: u64| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size,
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                &device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size,
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let ribbon_buffer = vertex_buffer("strips", 48 * 1024);
         let sprite_buffer = vertex_buffer("sprites", SPRITE_STRIDE * 1024);

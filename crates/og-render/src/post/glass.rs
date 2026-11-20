@@ -178,12 +178,15 @@ impl GlassPasses {
             output_format,
             None,
         );
-        let filter_params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("color filter"),
-            size: 112,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let filter_params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("color filter"),
+                size: 112,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("glass"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -193,18 +196,24 @@ impl GlassPasses {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("glass"),
-            size: 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let off = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("glass linear"),
-            size: 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("glass"),
+                size: 16,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let off = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("glass linear"),
+                size: 16,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let pyramid_params = crate::buffer_init(
             device,
             queue,
@@ -424,7 +433,8 @@ impl GlassPasses {
         filter: &crate::ColorFilter,
         decode: bool,
     ) -> u32 {
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
             &self.filter_params,
             0,
             bytemuck::cast_slice(&filter.params(decode)),
@@ -449,7 +459,8 @@ impl GlassPasses {
         targets: &GlassTargets,
         decode: bool,
     ) -> u32 {
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
             &self.uniform,
             0,
             bytemuck::cast_slice(&[

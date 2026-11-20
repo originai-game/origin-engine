@@ -87,14 +87,17 @@ impl MeshletGpu {
             bind_group_layouts: &[Some(&cull_layout)],
             immediate_size: 0,
         });
-        let cull = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("meshlet cull"),
-            layout: Some(&layout),
-            module: &module,
-            entry_point: Some("cull_clusters"),
-            compilation_options: Default::default(),
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+        let cull = crate::traffic::create_compute_pipeline(
+            device,
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("meshlet cull"),
+                layout: Some(&layout),
+                module: &module,
+                entry_point: Some("cull_clusters"),
+                compilation_options: Default::default(),
+                cache: crate::pipeline_cache::of(device).as_ref(),
+            },
+        );
         let no_pyramid = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("meshlet: no depth pyramid"),
@@ -295,7 +298,7 @@ impl MeshletGpu {
         pool.extend_from_slice(bytemuck::cast_slice(&regions));
         let make = |label: &str, bytes: &[u8]| {
             let b = buffer(device, label, bytes.len() as u64, storage_usage());
-            queue.write_buffer(&b, 0, bytes);
+            crate::traffic::write_buffer(queue, &b, 0, bytes);
             b
         };
         self.pools = Some(Pools {

@@ -371,15 +371,18 @@ impl ParticleRenderer {
             let first_entry = entries.len() as u32;
             if gpu {
                 let g = state.gpu.get_or_insert_with(|| {
-                    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                        label: Some("particles"),
-                        size: PARTICLE_STRIDE * e.max_particles as u64,
-                        usage: wgpu::BufferUsages::STORAGE
-                            | wgpu::BufferUsages::VERTEX
-                            | wgpu::BufferUsages::COPY_SRC
-                            | wgpu::BufferUsages::COPY_DST,
-                        mapped_at_creation: false,
-                    });
+                    let buffer = crate::traffic::create_buffer(
+                        device,
+                        &wgpu::BufferDescriptor {
+                            label: Some("particles"),
+                            size: PARTICLE_STRIDE * e.max_particles as u64,
+                            usage: wgpu::BufferUsages::STORAGE
+                                | wgpu::BufferUsages::VERTEX
+                                | wgpu::BufferUsages::COPY_SRC
+                                | wgpu::BufferUsages::COPY_DST,
+                            mapped_at_creation: false,
+                        },
+                    );
                     let points = crate::buffer_init(
                         device,
                         queue,
@@ -394,12 +397,15 @@ impl ParticleRenderer {
                     } else {
                         1
                     };
-                    let trail = device.create_buffer(&wgpu::BufferDescriptor {
-                        label: Some("particle trails"),
-                        size: 16 * rows,
-                        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::VERTEX,
-                        mapped_at_creation: false,
-                    });
+                    let trail = crate::traffic::create_buffer(
+                        device,
+                        &wgpu::BufferDescriptor {
+                            label: Some("particle trails"),
+                            size: 16 * rows,
+                            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::VERTEX,
+                            mapped_at_creation: false,
+                        },
+                    );
                     let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: Some("particle sim system"),
                         layout: &self.sim_system_layout,
@@ -701,9 +707,14 @@ impl ParticleRenderer {
             if bytes.len() as u64 > self.fields.size() {
                 self.fields = collider_buffer(device, (bytes.len() as u64).next_power_of_two());
             }
-            queue.write_buffer(&self.fields, 0, bytes);
+            crate::traffic::write_buffer(queue, &self.fields, 0, bytes);
         } else if out.any_gpu {
-            queue.write_buffer(&self.fields, 0, bytemuck::cast_slice(&[[0.0f32; 4]]));
+            crate::traffic::write_buffer(
+                queue,
+                &self.fields,
+                0,
+                bytemuck::cast_slice(&[[0.0f32; 4]]),
+            );
         }
         // The scene's colliders near each colliding system, one list each
         // (`emitter.info.z`), in the buffer the simulation reads.
@@ -720,17 +731,20 @@ impl ParticleRenderer {
             if bytes.len() as u64 > self.colliders.size() {
                 self.colliders = collider_buffer(device, (bytes.len() as u64).next_power_of_two());
             }
-            queue.write_buffer(&self.colliders, 0, bytes);
+            crate::traffic::write_buffer(queue, &self.colliders, 0, bytes);
         }
         if !entries.is_empty() {
             let size = EMITTER_STRIDE * entries.len() as u64;
             if size > self.emitter_buffer.size() {
-                self.emitter_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("emitters"),
-                    size: size.next_power_of_two(),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                });
+                self.emitter_buffer = crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("emitters"),
+                        size: size.next_power_of_two(),
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                );
             }
             let bytes = &mut self.emitter_bytes;
             bytes.resize(size as usize, 0);
@@ -739,14 +753,14 @@ impl ParticleRenderer {
                 bytes[at..at + std::mem::size_of::<EmitterGpu>()]
                     .copy_from_slice(bytemuck::bytes_of(e));
             }
-            queue.write_buffer(&self.emitter_buffer, 0, bytes);
+            crate::traffic::write_buffer(queue, &self.emitter_buffer, 0, bytes);
         }
         if !self.cpu_bytes.is_empty() {
             let size = self.cpu_bytes.len() as u64;
             if size > self.cpu_vertices.size() {
                 self.cpu_vertices = cpu_vertex_buffer(device, size.next_power_of_two());
             }
-            queue.write_buffer(&self.cpu_vertices, 0, &self.cpu_bytes);
+            crate::traffic::write_buffer(queue, &self.cpu_vertices, 0, &self.cpu_bytes);
         }
         self.entries = entries;
         Ok(out)
@@ -766,12 +780,15 @@ impl ParticleRenderer {
         }
         let size = SPRITE_PARAMS_STRIDE * ranges.ranges.len() as u64;
         if size > self.sprites_params.size() {
-            self.sprites_params = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("particle sprites"),
-                size: size.next_power_of_two(),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            self.sprites_params = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("particle sprites"),
+                    size: size.next_power_of_two(),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
         }
         let mut bytes = vec![0u8; size as usize];
         for (k, r) in ranges.ranges.iter().enumerate() {
@@ -794,7 +811,7 @@ impl ParticleRenderer {
             bytes[at..at + std::mem::size_of::<SpriteParamsGpu>()]
                 .copy_from_slice(bytemuck::bytes_of(&p));
         }
-        queue.write_buffer(&self.sprites_params, 0, &bytes);
+        crate::traffic::write_buffer(queue, &self.sprites_params, 0, &bytes);
     }
 
     /// Writes the instances of the sprite-mode systems simulated in compute

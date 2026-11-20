@@ -347,46 +347,49 @@ fn apply_pipeline(
     froxel: bool,
     constants: &[(&str, f64)],
 ) -> wgpu::RenderPipeline {
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("volumetric apply"),
-        layout: Some(layout),
-        vertex: wgpu::VertexState {
-            module,
-            entry_point: Some("vs_volumetric"),
-            compilation_options: Default::default(),
-            buffers: &[],
-        },
-        primitive: Default::default(),
-        depth_stencil: None,
-        multisample: Default::default(),
-        fragment: Some(wgpu::FragmentState {
-            module,
-            entry_point: Some(if froxel { "fs_froxel" } else { "fs_raymarch" }),
-            compilation_options: wgpu::PipelineCompilationOptions {
-                constants,
-                ..Default::default()
+    crate::traffic::create_render_pipeline(
+        device,
+        &wgpu::RenderPipelineDescriptor {
+            label: Some("volumetric apply"),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module,
+                entry_point: Some("vs_volumetric"),
+                compilation_options: Default::default(),
+                buffers: &[],
             },
-            targets: &[Some(wgpu::ColorTargetState {
-                format: crate::HDR_FORMAT,
-                // colour × transmittance + in-scattered light.
-                blend: Some(wgpu::BlendState {
-                    color: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::One,
-                        dst_factor: wgpu::BlendFactor::SrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                    alpha: wgpu::BlendComponent {
-                        src_factor: wgpu::BlendFactor::Zero,
-                        dst_factor: wgpu::BlendFactor::One,
-                        operation: wgpu::BlendOperation::Add,
-                    },
-                }),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview_mask: None,
-        cache: crate::pipeline_cache::of(device).as_ref(),
-    })
+            primitive: Default::default(),
+            depth_stencil: None,
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module,
+                entry_point: Some(if froxel { "fs_froxel" } else { "fs_raymarch" }),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants,
+                    ..Default::default()
+                },
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: crate::HDR_FORMAT,
+                    // colour × transmittance + in-scattered light.
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::One,
+                            dst_factor: wgpu::BlendFactor::SrcAlpha,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                        alpha: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::Zero,
+                            dst_factor: wgpu::BlendFactor::One,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                    }),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        },
+    )
 }
 
 /// A froxel compute pipeline at `entry_point` of the module.
@@ -398,17 +401,20 @@ fn compute_pipeline(
     entry_point: &str,
     constants: &[(&str, f64)],
 ) -> wgpu::ComputePipeline {
-    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some(label),
-        layout: Some(layout),
-        module,
-        entry_point: Some(entry_point),
-        compilation_options: wgpu::PipelineCompilationOptions {
-            constants,
-            ..Default::default()
+    crate::traffic::create_compute_pipeline(
+        device,
+        &wgpu::ComputePipelineDescriptor {
+            label: Some(label),
+            layout: Some(layout),
+            module,
+            entry_point: Some(entry_point),
+            compilation_options: wgpu::PipelineCompilationOptions {
+                constants,
+                ..Default::default()
+            },
+            cache: crate::pipeline_cache::of(device).as_ref(),
         },
-        cache: crate::pipeline_cache::of(device).as_ref(),
-    })
+    )
 }
 
 impl Froxels {
@@ -680,12 +686,15 @@ impl Volumetric {
         });
         Volumetric {
             method,
-            uniform: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("volumetric"),
-                size: std::mem::size_of::<VolUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
+            uniform: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("volumetric"),
+                    size: std::mem::size_of::<VolUniform>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            ),
             froxels: None,
             apply_layout,
             module: None,
@@ -803,7 +812,7 @@ impl Volumetric {
             own,
             volumes,
         };
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
     }
 
     /// The froxel dispatches (nothing with the raymarch): after the

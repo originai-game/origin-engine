@@ -389,22 +389,28 @@ impl DebrisLayer {
                 immediate_size: 0,
             });
             let pipeline = |entry| {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("debris"),
-                    layout: Some(&pl),
-                    module: &module,
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                })
+                crate::traffic::create_compute_pipeline(
+                    device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("debris"),
+                        layout: Some(&pl),
+                        module: &module,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(device).as_ref(),
+                    },
+                )
             };
             let buffer = |label, size: u64, usage| {
-                device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some(label),
-                    size,
-                    usage,
-                    mapped_at_creation: false,
-                })
+                crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some(label),
+                        size,
+                        usage,
+                        mapped_at_creation: false,
+                    },
+                )
             };
             let s = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
             let n = MAX_DEBRIS as u64;
@@ -538,7 +544,8 @@ impl DebrisLayer {
                 home: pos.extend(0.0).to_array(),
                 info: [points.len() as u32, catch_up, 0, 1],
             };
-            queue.write_buffer(
+            crate::traffic::write_buffer(
+                queue,
                 &gpu.bodies,
                 u64::from(slot) * std::mem::size_of::<BodyGpu>() as u64,
                 bytemuck::bytes_of(&body),
@@ -547,7 +554,8 @@ impl DebrisLayer {
             for (k, p) in points.iter().enumerate() {
                 hull[k] = p.extend(0.0).to_array();
             }
-            queue.write_buffer(
+            crate::traffic::write_buffer(
+                queue,
                 &gpu.hull,
                 u64::from(slot) * DEBRIS_POINTS as u64 * 16,
                 bytemuck::cast_slice(&hull),
@@ -572,16 +580,19 @@ impl DebrisLayer {
         let gpu = self.gpu.as_mut().expect("made above");
         let bytes: &[u8] = bytemuck::cast_slice(&words);
         if bytes.len() as u64 > gpu.colliders.size() {
-            gpu.colliders = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("debris colliders"),
-                size: (bytes.len() as u64).next_power_of_two(),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            gpu.colliders = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("debris colliders"),
+                    size: (bytes.len() as u64).next_power_of_two(),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
         }
-        queue.write_buffer(&gpu.colliders, 0, bytes);
+        crate::traffic::write_buffer(queue, &gpu.colliders, 0, bytes);
         if !by_slot.is_empty() {
-            queue.write_buffer(&gpu.lists, 0, bytemuck::cast_slice(&by_slot));
+            crate::traffic::write_buffer(queue, &gpu.lists, 0, bytemuck::cast_slice(&by_slot));
         }
         // The writes, each target's after the one before.
         let mut writes: Vec<WriteGpu> = Vec::new();
@@ -610,15 +621,18 @@ impl DebrisLayer {
         }
         let bytes: &[u8] = bytemuck::cast_slice(&writes);
         if bytes.len() as u64 > gpu.writes.size() {
-            gpu.writes = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("debris writes"),
-                size: (bytes.len() as u64).next_power_of_two(),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            gpu.writes = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("debris writes"),
+                    size: (bytes.len() as u64).next_power_of_two(),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
         }
         if !bytes.is_empty() {
-            queue.write_buffer(&gpu.writes, 0, bytes);
+            crate::traffic::write_buffer(queue, &gpu.writes, 0, bytes);
         }
         let params = |first: u32, n: u32| ParamsGpu {
             counts: [self.count, steps, SUBSTEPS, n],
@@ -642,7 +656,7 @@ impl DebrisLayer {
                 // Slot 0 steps (with the first target); slot 1 only writes.
                 let slot = k as u64 * SLOT;
                 let p = params(first, n);
-                queue.write_buffer(&gpu.params, slot, bytemuck::bytes_of(&p));
+                crate::traffic::write_buffer(queue, &gpu.params, slot, bytemuck::bytes_of(&p));
                 let group =
                     device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: Some("debris"),
@@ -709,17 +723,20 @@ mod tests {
 
     /// One record's translation, read back from `buffer`.
     fn read_translation(device: &wgpu::Device, queue: &wgpu::Queue, buffer: &wgpu::Buffer) -> Vec3 {
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            size: 64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let staging = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: None,
+                size: 64,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let mut e = device.create_command_encoder(&Default::default());
         e.copy_buffer_to_buffer(buffer, 0, &staging, 0, 64);
         queue.submit([e.finish()]);
-        staging.slice(..).map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+        crate::traffic::map_async(&staging.slice(..), wgpu::MapMode::Read, |_| {});
+        crate::traffic::poll(device, wgpu::PollType::wait_indefinitely()).unwrap();
         let words: Vec<f32> =
             bytemuck::cast_slice(&staging.slice(..).get_mapped_range().unwrap()).to_vec();
         // Columns' x y z, four of them: the translation is words 9..12.
@@ -733,12 +750,15 @@ mod tests {
             .expect("a GPU adapter (og-render's tests draw on the GPU)");
         let (device, queue) =
             pollster::block_on(adapter.request_device(&Default::default())).expect("a device");
-        let records = device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            size: 64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
+        let records = crate::traffic::create_buffer(
+            &device,
+            &wgpu::BufferDescriptor {
+                label: None,
+                size: 64,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            },
+        );
         let mut scene = RenderScene::default();
         scene.world.colliders.push(SceneCollider::Plane {
             normal: Vec3::Y,

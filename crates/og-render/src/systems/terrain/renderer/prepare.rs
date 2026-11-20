@@ -75,18 +75,24 @@ impl TerrainRenderer {
         }
         while self.slots.len() < scene.world.terrains.len() {
             self.slots.push(Slot {
-                uniform: device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("terrain"),
-                    size: std::mem::size_of::<TerrainGpu>() as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                }),
-                levels: device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("terrain levels"),
-                    size: LEVEL_STRIDE * MAX_TERRAIN_LEVELS as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                }),
+                uniform: crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("terrain"),
+                        size: std::mem::size_of::<TerrainGpu>() as u64,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                ),
+                levels: crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("terrain levels"),
+                        size: LEVEL_STRIDE * MAX_TERRAIN_LEVELS as u64,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                ),
                 group: None,
                 corners: None,
             });
@@ -264,7 +270,7 @@ impl TerrainRenderer {
                 },
             };
             let slot = &mut self.slots[ti];
-            queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
+            crate::traffic::write_buffer(queue, &slot.uniform, 0, bytemuck::bytes_of(&gpu));
 
             // The levels are laid out in the terrain's own space: the camera
             // brought into it, the far plane by the terrain's horizontal scale.
@@ -356,7 +362,7 @@ impl TerrainRenderer {
                     skirt: l.morph.then(|| ranges.skirt.clone()),
                 });
             }
-            queue.write_buffer(&slot.levels, 0, &level_bytes);
+            crate::traffic::write_buffer(queue, &slot.levels, 0, &level_bytes);
             // The corner cache: every level's corners, 16 bytes each.
             let needed = u64::from(corner_count) * list.len().max(1) as u64;
             if slot
@@ -364,12 +370,15 @@ impl TerrainRenderer {
                 .as_ref()
                 .is_none_or(|(have, ..)| *have < needed)
             {
-                let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("terrain corners"),
-                    size: needed * 16,
-                    usage: wgpu::BufferUsages::STORAGE,
-                    mapped_at_creation: false,
-                });
+                let buffer = crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("terrain corners"),
+                        size: needed * 16,
+                        usage: wgpu::BufferUsages::STORAGE,
+                        mapped_at_creation: false,
+                    },
+                );
                 let group = |layout, binding| {
                     device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: Some("terrain corners"),

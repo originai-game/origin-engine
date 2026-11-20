@@ -38,15 +38,18 @@ impl TerrainRenderer {
         };
         // Unfiltered f32 loads need no sampled texture slot. Keep the exact
         // height/horizon layout, leaving the sixteenth texture for decals.
-        let heights = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("terrain heights"),
-            size: u64::from(layout.heights_side())
-                * u64::from(layout.heights_rows())
-                * u64::from(layers)
-                * 4,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let heights = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("terrain heights"),
+                size: u64::from(layout.heights_side())
+                    * u64::from(layout.heights_rows())
+                    * u64::from(layers)
+                    * 4,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let ns = layout.normals_side();
         let (normals, normals_view) = array(
             "terrain normals",
@@ -66,12 +69,15 @@ impl TerrainRenderer {
                 layout.pages.max(1),
             )
         });
-        let table = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("terrain tiles"),
-            size: TABLE_BYTES,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let table = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("terrain tiles"),
+                size: TABLE_BYTES,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         self.generations += 1;
         GpuData {
             revision,
@@ -122,7 +128,12 @@ impl TerrainRenderer {
         };
         let hs = gpu.layout.heights_side();
         let offset = u64::from(slot) * u64::from(hs) * u64::from(gpu.layout.heights_rows()) * 4;
-        queue.write_buffer(&gpu.heights, offset, bytemuck::cast_slice(&tile.heights));
+        crate::traffic::write_buffer(
+            queue,
+            &gpu.heights,
+            offset,
+            bytemuck::cast_slice(&tile.heights),
+        );
         // The horizon words in the rows under the heights as numbers (exact:
         // each under 2^24), the last row padded.
         let rows = gpu.layout.heights_rows() - hs;
@@ -130,7 +141,8 @@ impl TerrainRenderer {
         for (w, v) in words.iter_mut().zip(tile.horizon.iter()) {
             *w = *v as f32;
         }
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
             &gpu.heights,
             offset + u64::from(hs) * u64::from(hs) * 4,
             bytemuck::cast_slice(&words),
@@ -142,7 +154,8 @@ impl TerrainRenderer {
         {
             let n = (side * side) as usize;
             if let Some(texels) = tile.normals.get(at..at + n) {
-                queue.write_texture(
+                crate::traffic::write_texture(
+                    queue,
                     layer(&gpu.normals, mip as u32, slot),
                     bytemuck::cast_slice(texels),
                     row(side, 4),
@@ -161,7 +174,8 @@ impl TerrainRenderer {
                 {
                     let n = (side * side * 4) as usize;
                     if let Some(texels) = control.get(at..at + n) {
-                        queue.write_texture(
+                        crate::traffic::write_texture(
+                            queue,
                             layer(texture, mip as u32, slot * pages + page),
                             texels,
                             row(side, 4),
@@ -534,7 +548,7 @@ impl TerrainRenderer {
                 }
             }
             if table != gpu.table_cpu {
-                queue.write_buffer(&gpu.table, 0, bytemuck::cast_slice(&table));
+                crate::traffic::write_buffer(queue, &gpu.table, 0, bytemuck::cast_slice(&table));
                 gpu.table_cpu = table;
             }
             gpu.drawn = true;

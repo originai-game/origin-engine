@@ -341,12 +341,15 @@ impl CloudsTemporal {
             march,
             depth,
             resolve,
-            uniform: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("clouds temporal"),
-                size: std::mem::size_of::<TemporalUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
+            uniform: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("clouds temporal"),
+                    size: std::mem::size_of::<TemporalUniform>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            ),
             history: None,
             drawn: None,
             reproject: false,
@@ -398,7 +401,7 @@ impl CloudsTemporal {
             size: [w as f32, h as f32, x, y],
             mode: [f32::from(u8::from(self.reproject)), 0.0, 0.0, 0.0],
         };
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
         self.drawn = Some((phase, view_proj));
     }
 
@@ -471,7 +474,8 @@ fn volume(device: &wgpu::Device, size: u32, storage: bool) -> wgpu::Texture {
 impl CloudNoise {
     pub(crate) fn placeholder(device: &wgpu::Device, queue: &wgpu::Queue) -> CloudNoise {
         let texture = volume(device, 1, false);
-        queue.write_texture(
+        crate::traffic::write_texture(
+            queue,
             texture.as_image_copy(),
             &[0, 0, 0, 0],
             wgpu::TexelCopyBufferLayout {
@@ -539,14 +543,17 @@ impl CloudNoise {
                     label: Some("cloud noise"),
                     source: wgpu::ShaderSource::Wgsl(NOISE_WGSL.into()),
                 });
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("cloud noise"),
-                    layout: Some(&pipeline_layout),
-                    module: &module,
-                    entry_point: Some("main"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("cloud noise"),
+                        layout: Some(&pipeline_layout),
+                        module: &module,
+                        entry_point: Some("main"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         };
         crate::deferred::Start::start(&pipeline);

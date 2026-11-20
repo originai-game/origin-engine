@@ -98,7 +98,7 @@ impl UiRenderer {
                 ],
             )
         };
-        queue.write_buffer(&self.uniforms[0], 0, bytemuck::cast_slice(&uniform));
+        crate::traffic::write_buffer(queue, &self.uniforms[0], 0, bytemuck::cast_slice(&uniform));
         let mut groups = UiFrameGroups {
             main: Some(group0(&self.uniforms[0])),
             ..Default::default()
@@ -110,13 +110,13 @@ impl UiRenderer {
                 .min(super::super::UI_MASS_BATCHES);
             let mut camera = camera;
             camera.tick[1] = (n * super::super::mass::TEMPLATE_TEXELS) as u32;
-            queue.write_buffer(&self.mass_camera, 0, bytemuck::bytes_of(&camera));
+            crate::traffic::write_buffer(queue, &self.mass_camera, 0, bytemuck::bytes_of(&camera));
             let bytes: &[u8] = bytemuck::cast_slice(&frame.mass_instances);
             if bytes.len() as u64 > self.mass_instances.size() {
                 self.mass_instances =
                     vertex_buffer(device, (bytes.len() as u64).next_power_of_two());
             }
-            queue.write_buffer(&self.mass_instances, 0, bytes);
+            crate::traffic::write_buffer(queue, &self.mass_instances, 0, bytes);
             // The table: rows of TABLE_WIDTH entries, at least one.
             let width = super::super::mass::TABLE_WIDTH;
             let mut texels: Vec<[f32; 4]> = Vec::with_capacity(
@@ -147,7 +147,8 @@ impl UiRenderer {
             }
             let (texture, view, _) = self.mass_table.as_ref().expect("made above");
             texels.resize((rows * width) as usize, [0.0; 4]);
-            queue.write_texture(
+            crate::traffic::write_texture(
+                queue,
                 wgpu::TexelCopyTextureInfo {
                     texture,
                     mip_level: 0,
@@ -318,7 +319,7 @@ impl UiRenderer {
                 0.0,
                 0.0,
             ];
-            queue.write_buffer(&self.uniforms[n + 1], 0, bytemuck::cast_slice(&u));
+            crate::traffic::write_buffer(queue, &self.uniforms[n + 1], 0, bytemuck::cast_slice(&u));
             let builtin = match layer.material {
                 UiMaterial::Builtin(b) => builtin_code(b),
                 _ => 0.0,
@@ -421,7 +422,12 @@ impl UiRenderer {
                 0.5 / size.width as f32,
                 0.5 / size.height as f32,
             ];
-            queue.write_buffer(&self.layer_params[n], 0, bytemuck::bytes_of(&params));
+            crate::traffic::write_buffer(
+                queue,
+                &self.layer_params[n],
+                0,
+                bytemuck::bytes_of(&params),
+            );
             let composite = crate::bind_group(
                 device,
                 "ui layer composite",
@@ -468,7 +474,8 @@ impl UiRenderer {
                 });
                 self.layer_behind = Some((texture, size));
             }
-            queue.write_buffer(
+            crate::traffic::write_buffer(
+                queue,
                 &self.layer_backdrop_params,
                 0,
                 bytemuck::cast_slice(&[0.0f32, 1.0, 0.0, 0.0]),
@@ -488,7 +495,8 @@ impl UiRenderer {
             ));
         }
         if let Some((pyramid, behind, _, decode)) = backdrop {
-            queue.write_buffer(
+            crate::traffic::write_buffer(
+                queue,
                 &self.backdrop_params,
                 0,
                 bytemuck::cast_slice(&[

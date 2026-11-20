@@ -449,7 +449,8 @@ impl Renderer {
             let Some(gpu) = self.cache.textures.get(index) else {
                 continue;
             };
-            self.queue.write_texture(
+            crate::traffic::write_texture(
+                &self.queue,
                 wgpu::TexelCopyTextureInfo {
                     texture: gpu.view.texture(),
                     mip_level: 0,
@@ -529,7 +530,8 @@ impl Renderer {
                         previous_custom: m.params.unwrap_or(p),
                         stamp: [self.frame_index as u32, 0, 0, 0],
                     };
-                    self.queue.write_buffer(
+                    crate::traffic::write_buffer(
+                        &self.queue,
                         &m.factors,
                         std::mem::offset_of!(material::MaterialUniform, custom) as u64,
                         bytemuck::bytes_of(&change),

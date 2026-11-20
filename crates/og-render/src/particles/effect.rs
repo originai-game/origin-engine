@@ -315,7 +315,8 @@ impl EffectRenderer {
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
-        queue.write_texture(
+        crate::traffic::write_texture(
+            queue,
             white.as_image_copy(),
             &[255; 4],
             wgpu::TexelCopyBufferLayout {
@@ -331,7 +332,7 @@ impl EffectRenderer {
         );
         let white = white.create_view(&Default::default());
         let buffer = Self::buffer(device, EFFECT_STRIDE);
-        queue.write_buffer(&buffer, 0, bytemuck::bytes_of(&EffectGpu::off()));
+        crate::traffic::write_buffer(queue, &buffer, 0, bytemuck::bytes_of(&EffectGpu::off()));
         let mut r = EffectRenderer {
             layout,
             empty_layout,
@@ -347,12 +348,15 @@ impl EffectRenderer {
     }
 
     fn buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("effect materials"),
-            size,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
+        crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("effect materials"),
+                size,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        )
     }
 
     fn group(
@@ -473,7 +477,7 @@ impl EffectRenderer {
                 }
             }
         }
-        queue.write_buffer(&self.buffer, 0, &bytes);
+        crate::traffic::write_buffer(queue, &self.buffer, 0, &bytes);
         Ok(())
     }
 

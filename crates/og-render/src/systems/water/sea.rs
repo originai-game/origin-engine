@@ -76,7 +76,8 @@ pub(super) fn shore_texture(
     });
     if field.columns * field.rows > 0 {
         let texels: Vec<[f32; 4]> = field.texels.iter().map(|v| v.to_array()).collect();
-        queue.write_texture(
+        crate::traffic::write_texture(
+            queue,
             t.as_image_copy(),
             bytemuck::cast_slice(&texels),
             wgpu::TexelCopyBufferLayout {

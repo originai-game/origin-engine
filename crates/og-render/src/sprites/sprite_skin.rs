@@ -50,12 +50,15 @@ impl SkinRenderer {
             }),
         });
         let buffer = |label| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size: 64,
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size: 64,
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let bones = buffer("sprite bones");
         let influences = buffer("sprite influences");

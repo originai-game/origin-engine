@@ -25,12 +25,15 @@ const WGSL: &str = wgsl_library!("fxpost_uniform.wgsl", "contact.wgsl");
 /// the rgba8unorm mask each light had; kept across frames (the keys carry
 /// their frame), so it is the graph's own buffer, not a transient.
 pub(crate) fn mask_buffer(device: &wgpu::Device, size: (u32, u32)) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("contact masks"),
-        size: (CONTACT_LIGHTS as u64 * size.0 as u64 * size.1 as u64 * 4).max(4),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some("contact masks"),
+            size: (CONTACT_LIGHTS as u64 * size.0 as u64 * size.1 as u64 * 4).max(4),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 /// The contact module's source, for validation (`shaders.rs`).
@@ -372,14 +375,17 @@ impl ContactPasses {
                         bind_group_layouts: &[Some(&layout)],
                         immediate_size: 0,
                     });
-                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                        label: Some(label),
-                        layout: Some(&pl),
-                        module: module.get(),
-                        entry_point: Some(entry),
-                        compilation_options: Default::default(),
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
-                    })
+                    crate::traffic::create_compute_pipeline(
+                        &device,
+                        &wgpu::ComputePipelineDescriptor {
+                            label: Some(label),
+                            layout: Some(&pl),
+                            module: module.get(),
+                            entry_point: Some(entry),
+                            compilation_options: Default::default(),
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
+                        },
+                    )
                 })
             };
         ContactPasses {
@@ -387,12 +393,15 @@ impl ContactPasses {
             compose: pipeline("contact compose", &compose_layout, "cs_contact_compose"),
             layout,
             compose_layout,
-            buffer: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("contact dispatches"),
-                size: (stride as usize * CONTACT_LIGHTS * MAX_DISPATCHES) as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
+            buffer: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("contact dispatches"),
+                    size: (stride as usize * CONTACT_LIGHTS * MAX_DISPATCHES) as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            ),
             stride,
             lights: Vec::new(),
             size: (0, 0),
@@ -453,7 +462,7 @@ impl ContactPasses {
             bytes[at..at + std::mem::size_of::<DispatchUniform>()]
                 .copy_from_slice(bytemuck::bytes_of(u));
         }
-        queue.write_buffer(&self.buffer, 0, &bytes);
+        crate::traffic::write_buffer(queue, &self.buffer, 0, &bytes);
     }
 
     /// Records the lights' dispatches (`lights`: their bind group, over

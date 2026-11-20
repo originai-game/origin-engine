@@ -297,7 +297,8 @@ impl TerrainRenderer {
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
-        queue.write_texture(
+        crate::traffic::write_texture(
+            queue,
             white_tex.as_image_copy(),
             &[255; 4],
             wgpu::TexelCopyBufferLayout {

@@ -259,7 +259,12 @@ impl Output {
         limit: og_draw::RangeLimit,
     ) {
         // The uniform's z: the headroom, or less under `limit`.
-        queue.write_buffer(&self.uniform, 8, bytemuck::bytes_of(&self.peak(limit)));
+        crate::traffic::write_buffer(
+            queue,
+            &self.uniform,
+            8,
+            bytemuck::bytes_of(&self.peak(limit)),
+        );
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("display output"),
             layout: &self.layout,

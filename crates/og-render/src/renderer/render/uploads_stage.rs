@@ -107,7 +107,8 @@ impl Renderer {
         // The sprite shaders' light map strips and ambient
         // (`SpriteFxFrame::light`).
         let ambient_2d = scene.sprite.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
-        self.queue.write_buffer(
+        crate::traffic::write_buffer(
+            &self.queue,
             &self.sprite.sprite_fx_buffer,
             16,
             bytemuck::bytes_of(&[

@@ -322,12 +322,15 @@ impl FlarePasses {
             flare: pipeline("flare", "fs_flare", FLARE_FORMAT),
             blur_x: pipeline("flare blur x", "fs_flare_blur_x", FLARE_FORMAT),
             blur_y: pipeline("flare blur y", "fs_flare_blur_y", FLARE_FORMAT),
-            buffer: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("lens flare"),
-                size: std::mem::size_of::<FlareUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
+            buffer: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("lens flare"),
+                    size: std::mem::size_of::<FlareUniform>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            ),
             layout,
         }
     }

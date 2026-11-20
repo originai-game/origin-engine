@@ -539,31 +539,34 @@ impl FilterRunner {
         });
         let device = device.clone();
         let pipeline = crate::deferred::Deferred::new(move || {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("ui filter"),
-                layout: Some(&pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some("vs_filter"),
-                    compilation_options: Default::default(),
-                    buffers: &[],
+            crate::traffic::create_render_pipeline(
+                &device,
+                &wgpu::RenderPipelineDescriptor {
+                    label: Some("ui filter"),
+                    layout: Some(&pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: Some("vs_filter"),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: Some("fs_filter"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: super::pass::LAYER_FORMAT,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: None,
                 },
-                primitive: Default::default(),
-                depth_stencil: None,
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some("fs_filter"),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: super::pass::LAYER_FORMAT,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: None,
-            })
+            )
         });
         FilterRunner {
             pipeline,
@@ -659,16 +662,19 @@ impl FilterRunner {
         params: &FilterParams,
     ) -> usize {
         if self.next_uniform == self.uniforms.len() {
-            self.uniforms
-                .push(device.create_buffer(&wgpu::BufferDescriptor {
+            self.uniforms.push(crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
                     label: Some("ui filter"),
                     size: std::mem::size_of::<FilterParams>() as u64,
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
-                }));
+                },
+            ));
         }
         self.next_uniform += 1;
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
             &self.uniforms[self.next_uniform - 1],
             0,
             bytemuck::bytes_of(params),

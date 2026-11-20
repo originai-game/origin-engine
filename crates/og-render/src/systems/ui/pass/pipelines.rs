@@ -113,12 +113,15 @@ pub(super) fn blend_state(pipe: Option<ShapePipe>) -> wgpu::BlendState {
 }
 
 pub(super) fn vertex_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("ui mass instances"),
-        size: size.max(256),
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some("ui mass instances"),
+            size: size.max(256),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 /// The mass elements' pipeline: one instance per element from the vertex
@@ -133,31 +136,34 @@ pub(super) fn mass_pipeline(
     Deferred::new(move || {
         const BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
             &[Some(super::super::mass::MASS_LAYOUT)];
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("ui mass"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs_mass"),
-                compilation_options: Default::default(),
-                buffers: BUFFERS,
+        crate::traffic::create_render_pipeline(
+            &device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some("ui mass"),
+                layout: Some(&layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs_mass"),
+                    compilation_options: Default::default(),
+                    buffers: BUFFERS,
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some("fs_mass"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(&device).as_ref(),
             },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs_mass"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(&device).as_ref(),
-        })
+        )
     })
 }
 
@@ -176,30 +182,33 @@ pub(super) fn pipeline(
     let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
     Deferred::new(move || {
         const VECTOR: &[Option<wgpu::VertexBufferLayout<'static>>] = &[Some(VECTOR_LAYOUT)];
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some(label),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some(vs),
-                compilation_options: Default::default(),
-                buffers: if vector { VECTOR } else { &[] },
+        crate::traffic::create_render_pipeline(
+            &device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(&layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some(vs),
+                    compilation_options: Default::default(),
+                    buffers: if vector { VECTOR } else { &[] },
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some(fs),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: Some(blend),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(&device).as_ref(),
             },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some(fs),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend: Some(blend),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(&device).as_ref(),
-        })
+        )
     })
 }

@@ -36,14 +36,14 @@ impl Renderer {
         // not the entire queue: motion and readbacks share this device.
         #[cfg(not(target_arch = "wasm32"))]
         if matches!(target, RenderTarget::Offscreen) && self.offscreen_submissions.len() == 2 {
-            self.device
-                .poll(wgpu::PollType::Wait {
+            crate::traffic::poll(
+                &self.device,
+                wgpu::PollType::Wait {
                     submission_index: self.offscreen_submissions.front().cloned(),
                     timeout: Some(crate::capture::BACKLOG_TIMEOUT),
-                })
-                .map_err(|e| {
-                    RenderError::Readback(format!("waiting for an offscreen frame: {e}"))
-                })?;
+                },
+            )
+            .map_err(|e| RenderError::Readback(format!("waiting for an offscreen frame: {e}")))?;
             self.offscreen_submissions.pop_front();
         }
         stages.end("wait for frame N-2");

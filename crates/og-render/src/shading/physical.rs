@@ -356,31 +356,34 @@ impl PhysicalPipelines {
             ],
         });
         let pack_module = crate::shader(device, "pack", PACK_WGSL.to_string());
-        let pack_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("pack"),
-            layout: Some(&layout("pack", &[&pack_layout])),
-            vertex: wgpu::VertexState {
-                module: &pack_module,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
+        let pack_pipeline = crate::traffic::create_render_pipeline(
+            device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some("pack"),
+                layout: Some(&layout("pack", &[&pack_layout])),
+                vertex: wgpu::VertexState {
+                    module: &pack_module,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &pack_module,
+                    entry_point: Some("fs"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: PACK_FORMAT,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &pack_module,
-                entry_point: Some("fs"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: PACK_FORMAT,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+        );
         let empty_pack = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("empty pack"),

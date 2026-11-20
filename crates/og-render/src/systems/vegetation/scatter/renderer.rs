@@ -134,12 +134,15 @@ impl ScatterRenderer {
             label: Some("scatter shadow"),
             source: wgpu::ShaderSource::Wgsl(p.shadow_wgsl.into()),
         });
-        let wind_uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("scatter wind"),
-            size: std::mem::size_of::<crate::wind::WindFieldGpu>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let wind_uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("scatter wind"),
+                size: std::mem::size_of::<crate::wind::WindFieldGpu>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let blue_noise = crate::buffer_init(
             device,
             queue,

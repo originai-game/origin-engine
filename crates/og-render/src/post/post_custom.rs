@@ -194,31 +194,34 @@ impl CustomPosts {
             label: Some(&post.name),
             source: wgpu::ShaderSource::Wgsl(post_module_source(post).into()),
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some(&post.name),
-            layout: Some(layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
+        let pipeline = crate::traffic::create_render_pipeline(
+            device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some(&post.name),
+                layout: Some(layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some("fs_custom_post"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: crate::HDR_FORMAT,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
             },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs_custom_post"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: crate::HDR_FORMAT,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
+        );
         let mut pending = Box::pin(scope.pop());
         // Native devices answer at once; the web's on a later frame.
         let waker = std::task::Waker::noop();
@@ -230,12 +233,15 @@ impl CustomPosts {
                 Some(pending as std::pin::Pin<Box<dyn std::future::Future<Output = _>>>)
             }
         };
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("custom post"),
-            size: std::mem::size_of::<PostUniform>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("custom post"),
+                size: std::mem::size_of::<PostUniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         Compiled::Ready {
             pipeline,
             uniform,
@@ -290,7 +296,7 @@ impl CustomPosts {
                 0.0,
             ],
         };
-        queue.write_buffer(uniform, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, uniform, 0, bytemuck::bytes_of(&u));
         let [read, scene_color, depth, gbuffer, write] = views;
         let group = crate::bind_group(
             device,

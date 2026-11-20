@@ -355,14 +355,17 @@ impl Lightmaps {
             ..Default::default()
         });
         let capacity = PROBE_CAPACITY;
-        let probe_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("light volumes"),
-            size: (capacity * 16) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let probe_buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("light volumes"),
+                size: (capacity * 16) as u64,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let empty = pack_probes(&[], capacity);
-        queue.write_buffer(&probe_buffer, 0, bytemuck::cast_slice(&empty));
+        crate::traffic::write_buffer(queue, &probe_buffer, 0, bytemuck::cast_slice(&empty));
         let baked_header = empty[..VOLUME_HEADER].to_vec();
         Lightmaps {
             layout,
@@ -461,14 +464,17 @@ impl Lightmaps {
             return false;
         }
         let capacity = vec4s.next_power_of_two().max(PROBE_CAPACITY);
-        self.probe_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("light volumes"),
-            size: (capacity * 16) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        self.probe_buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("light volumes"),
+                size: (capacity * 16) as u64,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let empty = pack_probes(&[], PROBE_CAPACITY);
-        queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&empty));
+        crate::traffic::write_buffer(queue, &self.probe_buffer, 0, bytemuck::cast_slice(&empty));
         self.capacity = capacity;
         self.probes_key = vec![(Vec3::NAN, Vec3::NAN, [0; 3], 0)];
         self.baked_end = empty.len();
@@ -532,7 +538,7 @@ impl Lightmaps {
             .collect();
         if probes_key != self.probes_key {
             let data = pack_probes(&baked.volumes, PROBE_CAPACITY);
-            queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&data));
+            crate::traffic::write_buffer(queue, &self.probe_buffer, 0, bytemuck::cast_slice(&data));
             self.probes_key = probes_key;
             self.baked_end = data.len();
             self.baked_header = data[..VOLUME_HEADER].to_vec();
@@ -551,10 +557,16 @@ impl Lightmaps {
             header[VOLUME_ROWS * i..VOLUME_ROWS * (i + 1)].copy_from_slice(&row);
         }
         if header != self.header {
-            queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&header));
+            crate::traffic::write_buffer(
+                queue,
+                &self.probe_buffer,
+                0,
+                bytemuck::cast_slice(&header),
+            );
             self.header = header;
         }
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
             &self.probe_buffer,
             (crate::static_far::HEADER_AT * 16) as u64,
             bytemuck::cast_slice(&self.far_header),

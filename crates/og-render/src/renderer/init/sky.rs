@@ -112,31 +112,34 @@ impl Renderer {
                 let (device, layout, module) = (device.clone(), layout.clone(), sky_shader.clone());
                 deferred::Deferred::anywhere(move || {
                     deferred::note(|| format!("clouds low {vs}/{fs}"));
-                    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                        label: Some("clouds low"),
-                        layout: Some(&layout),
-                        vertex: wgpu::VertexState {
-                            module: module.get(),
-                            entry_point: Some(vs),
-                            compilation_options: Default::default(),
-                            buffers: &[],
+                    crate::traffic::create_render_pipeline(
+                        &device,
+                        &wgpu::RenderPipelineDescriptor {
+                            label: Some("clouds low"),
+                            layout: Some(&layout),
+                            vertex: wgpu::VertexState {
+                                module: module.get(),
+                                entry_point: Some(vs),
+                                compilation_options: Default::default(),
+                                buffers: &[],
+                            },
+                            primitive: wgpu::PrimitiveState::default(),
+                            depth_stencil: None,
+                            multisample: Default::default(),
+                            fragment: Some(wgpu::FragmentState {
+                                module: module.get(),
+                                entry_point: Some(fs),
+                                compilation_options: Default::default(),
+                                targets: &[Some(wgpu::ColorTargetState {
+                                    format: HDR_FORMAT,
+                                    blend: None,
+                                    write_mask: wgpu::ColorWrites::ALL,
+                                })],
+                            }),
+                            multiview_mask: None,
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
                         },
-                        primitive: wgpu::PrimitiveState::default(),
-                        depth_stencil: None,
-                        multisample: Default::default(),
-                        fragment: Some(wgpu::FragmentState {
-                            module: module.get(),
-                            entry_point: Some(fs),
-                            compilation_options: Default::default(),
-                            targets: &[Some(wgpu::ColorTargetState {
-                                format: HDR_FORMAT,
-                                blend: None,
-                                write_mask: wgpu::ColorWrites::ALL,
-                            })],
-                        }),
-                        multiview_mask: None,
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
-                    })
+                    )
                 })
             };
             // Only the march reads the overcast strip's grey, which
@@ -157,12 +160,15 @@ impl Renderer {
         let ibl = ibl::IblGenerator::new(device);
         let cloud_noise = clouds::CloudNoise::placeholder(device, queue);
         let cloud_shadow = clouds::CloudShadow::placeholder(device);
-        let sky_params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("sky params"),
-            size: std::mem::size_of::<SkyParams>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let sky_params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("sky params"),
+                size: std::mem::size_of::<SkyParams>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let aurora_map = aurora::AuroraMap::placeholder(device, queue);
         SkyResourcesOutputs {
             sky_pipeline,

@@ -262,22 +262,28 @@ impl GridProjector {
                     label: Some("probe grid"),
                     source: wgpu::ShaderSource::Wgsl(PROBE_GRID_WGSL.into()),
                 });
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("probe grid"),
-                    layout: Some(&pipeline_layout),
-                    module: &module,
-                    entry_point: Some("cs_project"),
-                    compilation_options: Default::default(),
-                    cache: None,
-                })
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("probe grid"),
+                        layout: Some(&pipeline_layout),
+                        module: &module,
+                        entry_point: Some("cs_project"),
+                        compilation_options: Default::default(),
+                        cache: None,
+                    },
+                )
             }
         });
-        let params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("probe grid params"),
-            size: PARAMS_STRIDE * MAX_GRID_CAPTURES as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("probe grid params"),
+                size: PARAMS_STRIDE * MAX_GRID_CAPTURES as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         GridProjector {
             layout,
             pipeline,
@@ -301,7 +307,7 @@ impl GridProjector {
             bytes[o..o + 4].copy_from_slice(&c.at.to_le_bytes());
             bytes[o + 4..o + 8].copy_from_slice(&c.intensity.to_le_bytes());
         }
-        queue.write_buffer(&self.params, 0, &bytes);
+        crate::traffic::write_buffer(queue, &self.params, 0, &bytes);
     }
 
     /// Projects capture `k` of the frame (its six faces in `capture`) onto

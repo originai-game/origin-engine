@@ -224,42 +224,45 @@ impl MetaballRenderer {
                 (device.clone(), field_layout.clone(), module.clone());
             Deferred::new(move || {
                 let module = module.module();
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("metaball field"),
-                    layout: Some(&field_layout),
-                    vertex: wgpu::VertexState {
-                        module,
-                        entry_point: Some("vs_field"),
-                        compilation_options: Default::default(),
-                        buffers: &[Some(BLOB_LAYOUT)],
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("metaball field"),
+                        layout: Some(&field_layout),
+                        vertex: wgpu::VertexState {
+                            module,
+                            entry_point: Some("vs_field"),
+                            compilation_options: Default::default(),
+                            buffers: &[Some(BLOB_LAYOUT)],
+                        },
+                        primitive: Default::default(),
+                        depth_stencil: None,
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module,
+                            entry_point: Some("fs_field"),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: crate::HDR_FORMAT,
+                                blend: Some(wgpu::BlendState {
+                                    color: wgpu::BlendComponent {
+                                        src_factor: wgpu::BlendFactor::One,
+                                        dst_factor: wgpu::BlendFactor::One,
+                                        operation: wgpu::BlendOperation::Add,
+                                    },
+                                    alpha: wgpu::BlendComponent {
+                                        src_factor: wgpu::BlendFactor::One,
+                                        dst_factor: wgpu::BlendFactor::One,
+                                        operation: wgpu::BlendOperation::Add,
+                                    },
+                                }),
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: Default::default(),
-                    depth_stencil: None,
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module,
-                        entry_point: Some("fs_field"),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: crate::HDR_FORMAT,
-                            blend: Some(wgpu::BlendState {
-                                color: wgpu::BlendComponent {
-                                    src_factor: wgpu::BlendFactor::One,
-                                    dst_factor: wgpu::BlendFactor::One,
-                                    operation: wgpu::BlendOperation::Add,
-                                },
-                                alpha: wgpu::BlendComponent {
-                                    src_factor: wgpu::BlendFactor::One,
-                                    dst_factor: wgpu::BlendFactor::One,
-                                    operation: wgpu::BlendOperation::Add,
-                                },
-                            }),
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         };
         let composite_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -287,18 +290,24 @@ impl MetaballRenderer {
                 samples,
             },
         );
-        let blobs = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("metaballs"),
-            size: 4096,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("metaball params"),
-            size: SLOT * MAX_FLUIDS as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let blobs = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("metaballs"),
+                size: 4096,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("metaball params"),
+                size: SLOT * MAX_FLUIDS as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         MetaballRenderer {
             field_pipeline,
             composite_pipeline,
@@ -377,20 +386,28 @@ impl MetaballRenderer {
                     if single { 1.0 } else { 0.0 },
                 ],
             };
-            queue.write_buffer(&self.params, k as u64 * SLOT, bytemuck::bytes_of(&gpu));
+            crate::traffic::write_buffer(
+                queue,
+                &self.params,
+                k as u64 * SLOT,
+                bytemuck::bytes_of(&gpu),
+            );
             self.fields_of.push(s.field);
         }
         let bytes: &[u8] = bytemuck::cast_slice(&blobs);
         if bytes.len() as u64 > self.blobs.size() {
-            self.blobs = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("metaballs"),
-                size: (bytes.len() as u64).next_power_of_two(),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            self.blobs = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("metaballs"),
+                    size: (bytes.len() as u64).next_power_of_two(),
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
         }
         if !bytes.is_empty() {
-            queue.write_buffer(&self.blobs, 0, bytes);
+            crate::traffic::write_buffer(queue, &self.blobs, 0, bytes);
         }
         fields
     }

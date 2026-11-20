@@ -18,12 +18,15 @@ impl Foam {
         module: &dyn Fn(&'static str, &str) -> wgpu::ShaderModule,
     ) -> Foam {
         let first = foam_layer(cascades);
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ocean foam"),
-            size: ring_stride::<foam::FoamGpu>() * foam::MAX_STEPS as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("ocean foam"),
+                size: ring_stride::<foam::FoamGpu>() * foam::MAX_STEPS as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let history = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ocean foam history"),
             size: wgpu::Extent3d {

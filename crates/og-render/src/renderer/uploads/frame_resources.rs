@@ -127,8 +127,12 @@ impl Renderer {
             blend: blend.map_or(0.0, |b| b.1),
         });
         let params = SkyParams::new(&scene.lighting.environment, crate::ibl::PREFILTER_MIPS, map);
-        self.queue
-            .write_buffer(&self.sky.sky_params, 0, bytemuck::bytes_of(&params));
+        crate::traffic::write_buffer(
+            &self.queue,
+            &self.sky.sky_params,
+            0,
+            bytemuck::bytes_of(&params),
+        );
     }
 
     pub(crate) fn ensure_environment(&mut self, scene: &RenderScene) {

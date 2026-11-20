@@ -48,12 +48,15 @@ impl TerrainFx {
             entries: &entries,
         });
         let uniform = |label, size| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            )
         };
         Self {
             layout,
@@ -73,8 +76,8 @@ impl TerrainFx {
         let mut u = *fx;
         u.ao = [0.0; 4];
         crate::fx::unclustered(&mut u);
-        queue.write_buffer(&self.unclustered, 0, bytemuck::bytes_of(&u));
-        queue.write_buffer(&self.trample, 0, bytemuck::bytes_of(&trample));
+        crate::traffic::write_buffer(queue, &self.unclustered, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &self.trample, 0, bytemuck::bytes_of(&trample));
     }
 
     /// Makes the two groups: the main camera's (`b.fx` and `b.ao`), and

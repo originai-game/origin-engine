@@ -114,31 +114,34 @@ impl SkyCapture {
                         off.leave_out(super::sky::sky_source()).into(),
                     ),
                 });
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("live sky"),
-                    layout: Some(&layout),
-                    vertex: wgpu::VertexState {
-                        module: &module,
-                        entry_point: Some("vs_sky_look"),
-                        compilation_options: Default::default(),
-                        buffers: &[],
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("live sky"),
+                        layout: Some(&layout),
+                        vertex: wgpu::VertexState {
+                            module: &module,
+                            entry_point: Some("vs_sky_look"),
+                            compilation_options: Default::default(),
+                            buffers: &[],
+                        },
+                        primitive: wgpu::PrimitiveState::default(),
+                        depth_stencil: None,
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module: &module,
+                            entry_point: Some("fs_sky_look"),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: HDR_FORMAT,
+                                blend: None,
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: wgpu::PrimitiveState::default(),
-                    depth_stencil: None,
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module: &module,
-                        entry_point: Some("fs_sky_look"),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: HDR_FORMAT,
-                            blend: None,
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         };
         crate::deferred::Start::start(&pipeline);
@@ -183,12 +186,15 @@ impl SkyCapture {
         });
         let stride = (std::mem::size_of::<FrameUniform>() as u64)
             .next_multiple_of(device.limits().min_uniform_buffer_offset_alignment as u64);
-        let uniforms = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("live sky frames"),
-            size: stride * 6,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniforms = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("live sky frames"),
+                size: stride * 6,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         SkyCapture {
             pipeline,
             faces,
@@ -249,7 +255,7 @@ impl SkyCapture {
             let at = face as usize * self.stride as usize;
             bytes[at..at + size].copy_from_slice(bytemuck::bytes_of(&u));
         }
-        queue.write_buffer(&self.uniforms, 0, &bytes);
+        crate::traffic::write_buffer(queue, &self.uniforms, 0, &bytes);
     }
 
     /// Records this frame's step: its faces (each with `frame(uniform)`,

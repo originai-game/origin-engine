@@ -42,14 +42,17 @@ impl Compact {
             immediate_size: 0,
         });
         let pipelines = ["reduce", "scan_blocks", "prefix", "scatter"].map(|name| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(name),
-                layout: Some(&pipeline_layout),
-                module: &module,
-                entry_point: Some(name),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
+            crate::traffic::create_compute_pipeline(
+                device,
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some(name),
+                    layout: Some(&pipeline_layout),
+                    module: &module,
+                    entry_point: Some(name),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(device).as_ref(),
+                },
+            )
         });
         Self {
             selected: buffer(device, "meshlet selected", 0, storage_usage()),
@@ -114,7 +117,7 @@ impl Compact {
         {
             return;
         }
-        queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params));
+        crate::traffic::write_buffer(queue, &self.params, 0, bytemuck::bytes_of(&params));
         let mut entries = vec![entry(0, &self.params)];
         for (i, buf) in bound.iter().enumerate() {
             // Power-of-two buffer growth may exceed the binding limit;

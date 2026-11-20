@@ -405,7 +405,8 @@ impl PostPasses {
             HDR_FORMAT,
             wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         );
-        queue.write_texture(
+        crate::traffic::write_texture(
+            queue,
             black_texture.as_image_copy(),
             &[0u8; 8],
             wgpu::TexelCopyBufferLayout {
@@ -420,12 +421,15 @@ impl PostPasses {
             },
         );
         let uniform = |label: &str, size: usize| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size: size as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size: size as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let fx_shader = module("fx post", &fx_source());
         let fx_pl = pipeline_layout("fx post", &fx_layout);

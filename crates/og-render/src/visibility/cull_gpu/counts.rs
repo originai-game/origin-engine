@@ -56,7 +56,7 @@ impl GpuCulling {
             None => {
                 let (layout, given) = self.last.clone().filter(|(l, _)| l.frame == frame)?;
                 // Every readback in flight lands and is taken.
-                device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
+                crate::traffic::poll(device, wgpu::PollType::wait_indefinitely()).ok()?;
                 self.poll_counts();
                 let words = CountLayout::words(layout.kinds.len(), layout.batches);
                 let r = self
@@ -85,7 +85,7 @@ impl GpuCulling {
             {
                 break;
             }
-            device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
+            crate::traffic::poll(device, wgpu::PollType::wait_indefinitely()).ok()?;
         }
         self.poll_counts();
         self.latest
@@ -108,11 +108,13 @@ impl GpuCulling {
         for r in &mut self.readbacks {
             if std::mem::take(&mut r.unmapped) {
                 let mapped = r.mapped.clone();
-                r.buffer
-                    .slice(..)
-                    .map_async(wgpu::MapMode::Read, move |result| {
+                crate::traffic::map_async(
+                    &r.buffer.slice(..),
+                    wgpu::MapMode::Read,
+                    move |result| {
                         *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
-                    });
+                    },
+                );
             }
         }
     }

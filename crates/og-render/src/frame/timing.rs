@@ -402,7 +402,7 @@ impl Encoder {
         });
         queue.submit(Some(std::mem::replace(&mut self.raw, next).finish()));
         #[cfg(not(target_arch = "wasm32"))]
-        let _ = device.poll(wgpu::PollType::wait_indefinitely());
+        let _ = crate::traffic::poll(device, wgpu::PollType::wait_indefinitely());
     }
 
     /// `wgpu::CommandEncoder::finish`.
@@ -493,18 +493,24 @@ impl GpuTimer {
                 ty: wgpu::QueryType::Timestamp,
                 count: QUERIES,
             }),
-            resolve: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("pass timestamps resolve"),
-                size: bytes,
-                usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
-                mapped_at_creation: false,
-            }),
-            read: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("pass timestamps readback"),
-                size: bytes,
-                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
+            resolve: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("pass timestamps resolve"),
+                    size: bytes,
+                    usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                    mapped_at_creation: false,
+                },
+            ),
+            read: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("pass timestamps readback"),
+                    size: bytes,
+                    usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            ),
             done: Arc::new(Mutex::new(false)),
             mapped: Arc::new(Mutex::new(None)),
             pending: None,
@@ -522,7 +528,7 @@ impl GpuTimer {
             // when polled: a frame whose GPU work is done may still hold
             // its slot.
             #[cfg(not(target_arch = "wasm32"))]
-            let _ = device.poll(wgpu::PollType::Poll);
+            let _ = crate::traffic::poll(device, wgpu::PollType::Poll);
             self.collect(device, queue);
             i = free(&self.slots);
         }
@@ -598,11 +604,9 @@ impl GpuTimer {
             encoder.copy_buffer_to_buffer(&s.resolve, 0, &s.read, 0, bytes);
             queue.submit(Some(encoder.finish()));
             let mapped = s.mapped.clone();
-            s.read
-                .slice(..bytes)
-                .map_async(wgpu::MapMode::Read, move |result| {
-                    *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
-                });
+            crate::traffic::map_async(&s.read.slice(..bytes), wgpu::MapMode::Read, move |result| {
+                *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
+            });
         }
         for s in &mut self.slots {
             let landed = s.mapped.lock().unwrap_or_else(|e| e.into_inner()).take();
@@ -647,11 +651,14 @@ impl GpuTimer {
         {
             let in_flight = |slots: &[Slot]| slots.iter().any(|s| s.pending.is_some());
             let poll = |wait: bool| {
-                let _ = device.poll(if wait {
-                    wgpu::PollType::wait_indefinitely()
-                } else {
-                    wgpu::PollType::Poll
-                });
+                let _ = crate::traffic::poll(
+                    device,
+                    if wait {
+                        wgpu::PollType::wait_indefinitely()
+                    } else {
+                        wgpu::PollType::Poll
+                    },
+                );
             };
             poll(wait && in_flight(&self.slots));
             self.collect(device, queue);

@@ -165,14 +165,17 @@ impl WaterRenderer {
             bind_group_layouts: &[Some(&empty), Some(&self.layout), Some(&io_layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("water probe"),
-            layout: Some(&pl),
-            module: self.module.module(),
-            entry_point: Some("probe_sea"),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let pipeline = crate::traffic::create_compute_pipeline(
+            device,
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("water probe"),
+                layout: Some(&pl),
+                module: self.module.module(),
+                entry_point: Some("probe_sea"),
+                compilation_options: Default::default(),
+                cache: None,
+            },
+        );
         let input: Vec<[f32; 2]> = points.iter().map(|p| p.to_array()).collect();
         let input = crate::buffer_init(
             device,
@@ -184,18 +187,24 @@ impl WaterRenderer {
             },
         );
         let size = (points.len().max(1) * 16) as u64;
-        let output = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("water probe out"),
-            size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-        let read = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("water probe read"),
-            size,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let output = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("water probe out"),
+                size,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            },
+        );
+        let read = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("water probe read"),
+                size,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let io = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("water probe"),
             layout: &io_layout,

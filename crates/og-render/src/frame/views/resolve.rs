@@ -98,31 +98,34 @@ impl Views {
                     immediate_size: 0,
                 })
             });
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("view resolve"),
-                layout: layout.as_ref(),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some("vs"),
-                    compilation_options: Default::default(),
-                    buffers: &[],
+            crate::traffic::create_render_pipeline(
+                device,
+                &wgpu::RenderPipelineDescriptor {
+                    label: Some("view resolve"),
+                    layout: layout.as_ref(),
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: None,
                 },
-                primitive: Default::default(),
-                depth_stencil: None,
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: None,
-            })
+            )
         });
     }
 
@@ -173,7 +176,7 @@ impl Views {
             ],
             hdr: if viewport { hdr } else { [0.0; 4] },
         };
-        queue.write_buffer(&slot.resolve_buffer, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &slot.resolve_buffer, 0, bytemuck::bytes_of(&u));
         let pipeline = &self.pipelines[&(format, entry)];
         let layout = pipeline.get_bind_group_layout(0);
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {

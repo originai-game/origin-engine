@@ -573,23 +573,28 @@ impl CountReadbacks {
     }
 
     fn buffer(device: &wgpu::Device, bytes: u64) -> wgpu::Buffer {
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("scatter cull counts"),
-            size: bytes.next_power_of_two(),
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        })
+        crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("scatter cull counts"),
+                size: bytes.next_power_of_two(),
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            },
+        )
     }
 
     fn after_submit(&mut self) {
         for r in &mut self.slots {
             if std::mem::take(&mut r.unmapped) {
                 let mapped = r.mapped.clone();
-                r.buffer
-                    .slice(..)
-                    .map_async(wgpu::MapMode::Read, move |result| {
+                crate::traffic::map_async(
+                    &r.buffer.slice(..),
+                    wgpu::MapMode::Read,
+                    move |result| {
                         *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
-                    });
+                    },
+                );
             }
         }
     }
@@ -728,23 +733,29 @@ impl ScatterCull {
         let pipeline = crate::deferred::Deferred::anywhere({
             let device = device.clone();
             move || {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("scatter cull"),
-                    layout: Some(&layout),
-                    module: &module,
-                    entry_point: Some("cull"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("scatter cull"),
+                        layout: Some(&layout),
+                        module: &module,
+                        entry_point: Some("cull"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             }
         });
         let make = |label, size, usage| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size,
-                usage,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size,
+                    usage,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let uniform = wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST;
         ScatterCull {
@@ -819,15 +830,18 @@ impl ScatterCull {
             };
         }
         let slots = ChunkPool::page_slots(pages.len(), &device.limits());
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("scatter chunks"),
-            size: slots * SLOT_BYTES,
-            usage: wgpu::BufferUsages::VERTEX
-                | wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::INDIRECT
-                | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("scatter chunks"),
+                size: slots * SLOT_BYTES,
+                usage: wgpu::BufferUsages::VERTEX
+                    | wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::INDIRECT
+                    | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("scatter cull chunks"),
             layout: &self.chunk_layout,
@@ -880,12 +894,15 @@ impl ScatterCull {
             own.ensure(device, 8 * n as usize);
         }
         let make = |label, size, usage| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size,
-                usage,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size,
+                    usage,
+                    mapped_at_creation: false,
+                },
+            )
         };
         if self.item_cap < n {
             self.item_cap = n.next_power_of_two();
@@ -974,7 +991,7 @@ impl ScatterCull {
             out.push(culled);
             self.frame.push((i.density_map, culled));
         }
-        queue.write_buffer(&self.items, 0, &rows);
+        crate::traffic::write_buffer(queue, &self.items, 0, &rows);
         out
     }
 
@@ -1010,7 +1027,7 @@ impl ScatterCull {
             ],
             lod: [self.lod[0], self.lod[1], 0.0, 0.0],
         };
-        queue.write_buffer(&self.view, 0, bytemuck::bytes_of(&gpu));
+        crate::traffic::write_buffer(queue, &self.view, 0, bytemuck::bytes_of(&gpu));
         // One group per dispatch: its page of the list and its rows.
         let shared = |d: &Dispatch| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {

@@ -110,38 +110,41 @@ impl Renderer {
             let (device, sprite_pl, sprite_shader) =
                 (device.clone(), sprite_pl.clone(), sprite_shader.clone());
             Deferred::new(move || {
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("sprite glow"),
-                    layout: Some(&sprite_pl),
-                    vertex: wgpu::VertexState {
-                        module: &sprite_shader,
-                        entry_point: Some("vs"),
-                        compilation_options: Default::default(),
-                        buffers: SPRITE_BUFFERS,
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("sprite glow"),
+                        layout: Some(&sprite_pl),
+                        vertex: wgpu::VertexState {
+                            module: &sprite_shader,
+                            entry_point: Some("vs"),
+                            compilation_options: Default::default(),
+                            buffers: SPRITE_BUFFERS,
+                        },
+                        primitive: Default::default(),
+                        depth_stencil: None,
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module: &sprite_shader,
+                            entry_point: Some("fs_glow"),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: HDR_FORMAT,
+                                blend: Some(wgpu::BlendState {
+                                    color: wgpu::BlendComponent {
+                                        src_factor: wgpu::BlendFactor::One,
+                                        dst_factor: wgpu::BlendFactor::One,
+                                        operation: wgpu::BlendOperation::Add,
+                                    },
+                                    alpha: wgpu::BlendComponent::REPLACE,
+                                }),
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: Default::default(),
-                    depth_stencil: None,
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module: &sprite_shader,
-                        entry_point: Some("fs_glow"),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: HDR_FORMAT,
-                            blend: Some(wgpu::BlendState {
-                                color: wgpu::BlendComponent {
-                                    src_factor: wgpu::BlendFactor::One,
-                                    dst_factor: wgpu::BlendFactor::One,
-                                    operation: wgpu::BlendOperation::Add,
-                                },
-                                alpha: wgpu::BlendComponent::REPLACE,
-                            }),
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         };
         SpritePipelinesOutputs {

@@ -3,6 +3,17 @@
 # wgpu's create_buffer_init maps the buffer at creation, which on the web was
 # most of a large boot's long GPU-process tasks in Chrome (fork s71): every
 # buffer with initial contents is made by crate::buffer_init.
+# What moves between the CPU and the GPU is counted where it moves
+# (gpu/traffic.rs, og run --perf): uploads, buffers, readbacks, waits and
+# pipelines go through crate::traffic.
 disallowed-methods = [
+  { path = "wgpu::Queue::write_buffer", reason = "counted: crate::traffic::write_buffer" },
+  { path = "wgpu::Queue::write_texture", reason = "counted: crate::traffic::write_texture" },
+  { path = "wgpu::Device::create_buffer", reason = "counted: crate::traffic::create_buffer" },
+  { path = "wgpu::Device::poll", reason = "counted: crate::traffic::poll" },
+  { path = "wgpu::Device::create_render_pipeline", reason = "counted: crate::traffic::create_render_pipeline" },
+  { path = "wgpu::Device::create_compute_pipeline", reason = "counted: crate::traffic::create_compute_pipeline" },
+  { path = "wgpu::BufferSlice::map_async", reason = "counted: crate::traffic::map_async" },
+  { path = "wgpu::Buffer::map_async", reason = "counted: crate::traffic::map_async" },
   { path = "wgpu::util::DeviceExt::create_buffer_init", reason = "mapped at creation on the web: crate::buffer_init" },
 ]

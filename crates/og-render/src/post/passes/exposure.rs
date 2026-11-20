@@ -71,7 +71,7 @@ impl PostPasses {
             speed: [dt, up, down, snap as u32 as f32],
             meter: [compensation, min_ev, max_ev.max(min_ev), 0.0],
         };
-        queue.write_buffer(&self.adapt_buffer, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &self.adapt_buffer, 0, bytemuck::bytes_of(&u));
     }
 
     /// A frame without adaptation: the next adapted frame starts afresh.

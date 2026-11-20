@@ -11,12 +11,15 @@ pub(crate) const CAUSTIC_TEXEL: f64 = 0.4;
 /// The grid's buffer, a uniform in the frame group (bound in every frame
 /// group, written by [`WaterRenderer::prepare`]'s caustics pass).
 pub(crate) fn caustic_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("water caustics"),
-        size: u64::from(CAUSTIC_RES * CAUSTIC_RES) * 4,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::STORAGE,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some("water caustics"),
+            size: u64::from(CAUSTIC_RES * CAUSTIC_RES) * 4,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 pub(crate) fn caustic_layout_entry() -> wgpu::BindGroupLayoutEntry {
@@ -113,20 +116,26 @@ impl CausticsPass {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("water caustics"),
-            layout: Some(&pl),
-            module: &module,
-            entry_point: Some("main"),
-            compilation_options: Default::default(),
-            cache: None,
-        });
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("water caustics"),
-            size: std::mem::size_of::<CausticsGpu>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let pipeline = crate::traffic::create_compute_pipeline(
+            device,
+            &wgpu::ComputePipelineDescriptor {
+                label: Some("water caustics"),
+                layout: Some(&pl),
+                module: &module,
+                entry_point: Some("main"),
+                compilation_options: Default::default(),
+                cache: None,
+            },
+        );
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("water caustics"),
+                size: std::mem::size_of::<CausticsGpu>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         // The cascades tile.
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("water caustics"),
@@ -157,7 +166,7 @@ impl CausticsPass {
         params: &CausticsGpu,
         out: &wgpu::Buffer,
     ) {
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(params));
+        crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(params));
         self.pending = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("water caustics"),
             layout: &self.layout,

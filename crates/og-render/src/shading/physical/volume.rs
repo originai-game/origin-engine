@@ -87,31 +87,34 @@ impl Volume {
             ]
             .concat(),
         );
-        let depth_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("transmission opaque depth"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
+        let depth_pipeline = crate::traffic::create_render_pipeline(
+            device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some("transmission opaque depth"),
+                layout: Some(&layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some("fs"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: FORMAT,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: FORMAT,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+        );
         Self {
             exits: view("transmission exits", FORMAT),
             depth: view("transmission exit depth", crate::DEPTH_FORMAT),
@@ -179,47 +182,50 @@ impl Volume {
                 Some(skin::SKINNED_INSTANCE_LAYOUT),
                 Some(skin::SKIN_VERTEX_LAYOUT),
             ];
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("transmission exits"),
-                layout: Some(if skinned { layouts.1 } else { layouts.0 }),
-                vertex: wgpu::VertexState {
-                    module,
-                    entry_point: Some(if skinned {
-                        "vs_physical_skinned"
-                    } else {
-                        "vs_physical"
+            crate::traffic::create_render_pipeline(
+                device,
+                &wgpu::RenderPipelineDescriptor {
+                    label: Some("transmission exits"),
+                    layout: Some(if skinned { layouts.1 } else { layouts.0 }),
+                    vertex: wgpu::VertexState {
+                        module,
+                        entry_point: Some(if skinned {
+                            "vs_physical_skinned"
+                        } else {
+                            "vs_physical"
+                        }),
+                        compilation_options: options.clone(),
+                        buffers: if skinned { &skin } else { &plain },
+                    },
+                    primitive: wgpu::PrimitiveState {
+                        front_face: faces.front(),
+                        cull_mode: Some(wgpu::Face::Front),
+                        ..Default::default()
+                    },
+                    depth_stencil: Some(wgpu::DepthStencilState {
+                        format: crate::DEPTH_FORMAT,
+                        depth_write_enabled: Some(true),
+                        depth_compare: Some(wgpu::CompareFunction::Less),
+                        stencil: Default::default(),
+                        bias: Default::default(),
                     }),
-                    compilation_options: options.clone(),
-                    buffers: if skinned { &skin } else { &plain },
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module,
+                        entry_point: Some("fs_volume_exit"),
+                        compilation_options: options,
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: FORMAT,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::RED
+                                | wgpu::ColorWrites::GREEN
+                                | wgpu::ColorWrites::BLUE,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 },
-                primitive: wgpu::PrimitiveState {
-                    front_face: faces.front(),
-                    cull_mode: Some(wgpu::Face::Front),
-                    ..Default::default()
-                },
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: crate::DEPTH_FORMAT,
-                    depth_write_enabled: Some(true),
-                    depth_compare: Some(wgpu::CompareFunction::Less),
-                    stencil: Default::default(),
-                    bias: Default::default(),
-                }),
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module,
-                    entry_point: Some("fs_volume_exit"),
-                    compilation_options: options,
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: FORMAT,
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::RED
-                            | wgpu::ColorWrites::GREEN
-                            | wgpu::ColorWrites::BLUE,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
+            )
         });
     }
 }

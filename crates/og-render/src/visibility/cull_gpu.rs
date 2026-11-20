@@ -115,14 +115,17 @@ pub(crate) fn compute_stage(
     module: &wgpu::ShaderModule,
     entry: &str,
 ) -> wgpu::ComputePipeline {
-    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: Some(entry),
-        layout: Some(layout),
-        module,
-        entry_point: Some(entry),
-        compilation_options: Default::default(),
-        cache: crate::pipeline_cache::of(device).as_ref(),
-    })
+    crate::traffic::create_compute_pipeline(
+        device,
+        &wgpu::ComputePipelineDescriptor {
+            label: Some(entry),
+            layout: Some(layout),
+            module,
+            entry_point: Some(entry),
+            compilation_options: Default::default(),
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        },
+    )
 }
 
 pub(crate) const CULL_WGSL: &str = concat!(
@@ -509,12 +512,15 @@ fn buffer(
     size: u64,
     usage: wgpu::BufferUsages,
 ) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size: size.max(16),
-        usage,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some(label),
+            size: size.max(16),
+            usage,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 impl GpuCulling {

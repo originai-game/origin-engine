@@ -30,8 +30,7 @@ impl Renderer {
 
     /// Blocks until the GPU has finished every submitted frame.
     pub fn wait_idle(&self) -> Result<(), RenderError> {
-        self.device
-            .poll(wgpu::PollType::wait_indefinitely())
+        crate::traffic::poll(&self.device, wgpu::PollType::wait_indefinitely())
             .map(|_| ())
             .map_err(|e| RenderError::Readback(e.to_string()))
     }
@@ -64,7 +63,7 @@ impl Renderer {
             return Ok(Vec::new());
         };
         let (tx, rx) = std::sync::mpsc::channel();
-        buffer.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+        crate::traffic::map_async(&buffer.slice(..), wgpu::MapMode::Read, move |r| {
             let _ = tx.send(r);
         });
         self.wait_idle()?;
@@ -135,12 +134,15 @@ impl Renderer {
         let row = w * 4;
         let padded =
             row.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("texture array readback"),
-            size: u64::from(padded * h),
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let buffer = crate::traffic::create_buffer(
+            &self.device,
+            &wgpu::BufferDescriptor {
+                label: Some("texture array readback"),
+                size: u64::from(padded * h),
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            },
+        );
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -173,7 +175,7 @@ impl Renderer {
         );
         self.queue.submit(Some(encoder.finish()));
         let (tx, rx) = std::sync::mpsc::channel();
-        buffer.slice(..).map_async(wgpu::MapMode::Read, move |r| {
+        crate::traffic::map_async(&buffer.slice(..), wgpu::MapMode::Read, move |r| {
             let _ = tx.send(r);
         });
         self.wait_idle()?;

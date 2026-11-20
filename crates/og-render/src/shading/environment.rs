@@ -102,7 +102,8 @@ pub(crate) fn upload(
     for level in 0..ENVIRONMENT_MAP_LEVELS {
         let n = map.size >> level;
         let count = 6 * (n * n) as usize;
-        queue.write_texture(
+        crate::traffic::write_texture(
+            queue,
             wgpu::TexelCopyTextureInfo {
                 texture: &texture,
                 mip_level: level,

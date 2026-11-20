@@ -77,41 +77,44 @@ impl ObjectPass {
             Some(skin::SKINNED_INSTANCE_LAYOUT),
             Some(skin::SKIN_VERTEX_LAYOUT),
         ];
-        let p = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("stylise object"),
-            layout: Some(if skinned { layouts.1 } else { layouts.0 }),
-            vertex: wgpu::VertexState {
-                module: &self.module,
-                entry_point: Some(if skinned {
-                    "vs_object_skinned"
-                } else {
-                    "vs_object"
+        let p = crate::traffic::create_render_pipeline(
+            device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some("stylise object"),
+                layout: Some(if skinned { layouts.1 } else { layouts.0 }),
+                vertex: wgpu::VertexState {
+                    module: &self.module,
+                    entry_point: Some(if skinned {
+                        "vs_object_skinned"
+                    } else {
+                        "vs_object"
+                    }),
+                    compilation_options: Default::default(),
+                    buffers: if skinned { &skin } else { &plain },
+                },
+                primitive: faces.primitive(faces.cull()),
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: crate::DEPTH_FORMAT,
+                    depth_write_enabled: Some(false),
+                    depth_compare: Some(wgpu::CompareFunction::LessEqual),
+                    stencil: Default::default(),
+                    bias: BIAS,
                 }),
-                compilation_options: Default::default(),
-                buffers: if skinned { &skin } else { &plain },
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &self.module,
+                    entry_point: Some("fs_object"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: OBJECT_FORMAT,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
-            primitive: faces.primitive(faces.cull()),
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: crate::DEPTH_FORMAT,
-                depth_write_enabled: Some(false),
-                depth_compare: Some(wgpu::CompareFunction::LessEqual),
-                stencil: Default::default(),
-                bias: BIAS,
-            }),
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &self.module,
-                entry_point: Some("fs_object"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: OBJECT_FORMAT,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+        );
         self.pipelines.insert((faces, skinned), p);
     }
 

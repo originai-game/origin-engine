@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og run --perf",
+      "summary": "The perf report also counts what each frame moves between the CPU and the GPU: bytes uploaded and the writes, buffers made, readbacks started, blocking waits for the GPU and pipelines made, each with its time. It lists the engine places that moved it (uploads in steady play and at load, buffers made, readbacks, waits, late pipelines), and a hitch names the first-use work its frame did. Guide perf."
+    }
+  ]
+}

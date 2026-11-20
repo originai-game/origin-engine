@@ -111,14 +111,17 @@ impl Renderer {
         else {
             return self.upload_mesh(&surface::fallback(mesh, kind), false);
         };
-        let vertices = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("simulation surface vertices"),
-            size: bytes,
-            usage: wgpu::BufferUsages::VERTEX
-                | wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
+        let vertices = crate::traffic::create_buffer(
+            &self.device,
+            &wgpu::BufferDescriptor {
+                label: Some("simulation surface vertices"),
+                size: bytes,
+                usage: wgpu::BufferUsages::VERTEX
+                    | wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            },
+        );
         let indices: Vec<u32> = (0..count as u32).collect();
         let indices = crate::buffer_init(
             &self.device,
@@ -372,8 +375,8 @@ impl Renderer {
                 && vb.len() as u64 == gpu.vertices.size()
                 && ib.len() as u64 == gpu.indices.size()
             {
-                self.queue.write_buffer(&gpu.vertices, 0, vb);
-                self.queue.write_buffer(&gpu.indices, 0, ib);
+                crate::traffic::write_buffer(&self.queue, &gpu.vertices, 0, vb);
+                crate::traffic::write_buffer(&self.queue, &gpu.indices, 0, ib);
                 let bounds = mesh
                     .bounds()
                     .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo) * 0.5));

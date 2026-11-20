@@ -114,40 +114,43 @@ impl CrowdImpostors {
                 write_mask: wgpu::ColorWrites::ALL,
             })
         };
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("crowd bake"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs_bake"),
-                compilation_options: Default::default(),
-                buffers: &[
-                    Some(crate::VERTEX_LAYOUT),
-                    Some(crate::skin::SKIN_VERTEX_LAYOUT),
-                ],
+        let pipeline = crate::traffic::create_render_pipeline(
+            device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some("crowd bake"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs_bake"),
+                    compilation_options: Default::default(),
+                    buffers: &[
+                        Some(crate::VERTEX_LAYOUT),
+                        Some(crate::skin::SKIN_VERTEX_LAYOUT),
+                    ],
+                },
+                // Both faces: a part's caps and thin pieces seen from any side.
+                primitive: Default::default(),
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: DEPTH_FORMAT,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(wgpu::CompareFunction::Less),
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
+                multisample: wgpu::MultisampleState {
+                    count: SAMPLES,
+                    ..Default::default()
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some("fs_bake"),
+                    compilation_options: Default::default(),
+                    targets: &[target(ALBEDO_FORMAT), target(DATA_FORMAT)],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
-            // Both faces: a part's caps and thin pieces seen from any side.
-            primitive: Default::default(),
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: DEPTH_FORMAT,
-                depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::Less),
-                stencil: Default::default(),
-                bias: Default::default(),
-            }),
-            multisample: wgpu::MultisampleState {
-                count: SAMPLES,
-                ..Default::default()
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs_bake"),
-                compilation_options: Default::default(),
-                targets: &[target(ALBEDO_FORMAT), target(DATA_FORMAT)],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+        );
         let (uniform, group) = Self::slots(device, &layout, 4);
         CrowdImpostors {
             layout,
@@ -166,12 +169,15 @@ impl CrowdImpostors {
         layout: &wgpu::BindGroupLayout,
         slots: u64,
     ) -> (wgpu::Buffer, wgpu::BindGroup) {
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("crowd bake"),
-            size: slots * SLOT,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("crowd bake"),
+                size: slots * SLOT,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("crowd bake"),
             layout,
@@ -288,7 +294,12 @@ impl CrowdImpostors {
         for k in 0..parts.len() {
             let mut b = bake;
             b.clip[3] = k as u32;
-            queue.write_buffer(&self.uniform, k as u64 * SLOT, bytemuck::bytes_of(&b));
+            crate::traffic::write_buffer(
+                queue,
+                &self.uniform,
+                k as u64 * SLOT,
+                bytemuck::bytes_of(&b),
+            );
         }
         let level0 = |t: &wgpu::Texture| crate::mips::level_view(t, "crowd impostor level", 0);
         let (albedo0, data0) = (level0(&albedo), level0(&data));

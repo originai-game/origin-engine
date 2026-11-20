@@ -128,14 +128,17 @@ impl VisBuffer {
             immediate_size: 0,
         });
         let pipeline = |entry: &str| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("meshlet raster"),
-                layout: Some(&pipeline_layout),
-                module: &module,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
+            crate::traffic::create_compute_pipeline(
+                device,
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("meshlet raster"),
+                    layout: Some(&pipeline_layout),
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(device).as_ref(),
+                },
+            )
         };
         let f = wgpu::ShaderStages::FRAGMENT;
         let resolve_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -250,7 +253,8 @@ impl VisBuffer {
             );
             self.resolve_group = None;
         }
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
             &self.screen,
             0,
             bytemuck::cast_slice(&[w, h, base as u32, rows as u32]),
@@ -264,7 +268,7 @@ impl VisBuffer {
             leaf_year: f.leaf_year,
             sun: f.sun.extend(0.0).to_array(),
         };
-        queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params));
+        crate::traffic::write_buffer(queue, &self.params, 0, bytemuck::bytes_of(&params));
         // The cull's count into `soft.z`.
         encoder.copy_buffer_to_buffer(f.count.0, f.count.1, &self.params, 64 + 16 + 8, 4);
         encoder.clear_buffer(&self.words, 0, Some(words));

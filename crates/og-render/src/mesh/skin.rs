@@ -512,12 +512,15 @@ impl Vec4Array {
             return false;
         }
         let capacity = count.next_power_of_two();
-        self.buffer = Some(device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("vertex vec4 array"),
-            size: capacity as u64 * 16,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        }));
+        self.buffer = Some(crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("vertex vec4 array"),
+                size: capacity as u64 * 16,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        ));
         self.capacity = capacity;
         true
     }
@@ -526,11 +529,11 @@ impl Vec4Array {
     fn upload(&self, queue: &wgpu::Queue, data: &[[f32; 4]], after: &[[f32; 4]]) {
         let buffer = self.buffer.as_ref().expect("made");
         if !data.is_empty() {
-            queue.write_buffer(buffer, 0, bytemuck::cast_slice(data));
+            crate::traffic::write_buffer(queue, buffer, 0, bytemuck::cast_slice(data));
         }
         if !after.is_empty() {
             let at = data.len() as u64 * 16;
-            queue.write_buffer(buffer, at, bytemuck::cast_slice(after));
+            crate::traffic::write_buffer(queue, buffer, at, bytemuck::cast_slice(after));
         }
     }
 

@@ -60,7 +60,7 @@ impl DirtyUpload {
         let runs = self.runs(bytes, drawn);
         let mut written = 0;
         for (start, end) in runs {
-            queue.write_buffer(buffer, start as u64, &bytes[start..end]);
+            crate::traffic::write_buffer(queue, buffer, start as u64, &bytes[start..end]);
             written += (end - start) as u64;
         }
         written

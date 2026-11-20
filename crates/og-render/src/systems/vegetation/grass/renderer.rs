@@ -282,27 +282,30 @@ impl GrassRenderer {
             })
         };
         let raster = |label, layout, module, vs, fs, targets: &[Option<wgpu::ColorTargetState>]| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(label),
-                layout: Some(layout),
-                vertex: wgpu::VertexState {
-                    module,
-                    entry_point: Some(vs),
-                    compilation_options: Default::default(),
-                    buffers: &[],
+            crate::traffic::create_render_pipeline(
+                device,
+                &wgpu::RenderPipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(layout),
+                    vertex: wgpu::VertexState {
+                        module,
+                        entry_point: Some(vs),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: depth.clone(),
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module,
+                        entry_point: Some(fs),
+                        compilation_options: Default::default(),
+                        targets,
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 },
-                primitive: Default::default(),
-                depth_stencil: depth.clone(),
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module,
-                    entry_point: Some(fs),
-                    compilation_options: Default::default(),
-                    targets,
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
+            )
         };
         let prepass = raster(
             "grass prepass",
@@ -352,14 +355,17 @@ impl GrassRenderer {
         });
         crate::gpu::ready::Tickets::during(|| {
             ["evaluate", "scan", "compact"].map(|entry| {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("grass generate"),
-                    layout: Some(&layout),
-                    module: &module,
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                })
+                crate::traffic::create_compute_pipeline(
+                    device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("grass generate"),
+                        layout: Some(&layout),
+                        module: &module,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(device).as_ref(),
+                    },
+                )
             })
         })
     }

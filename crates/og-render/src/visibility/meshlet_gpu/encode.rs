@@ -192,7 +192,7 @@ impl MeshletGpu {
             .map(|_| [(CLUSTER_TRIANGLES * 3) as u32, 0, 0, 0])
             .chain(std::iter::once([0; 4]))
             .collect();
-        queue.write_buffer(&self.draws, 0, bytemuck::cast_slice(&draw_args));
+        crate::traffic::write_buffer(queue, &self.draws, 0, bytemuck::cast_slice(&draw_args));
         // Two phases with the pyramid and its depth, one without.
         let pyramid = gc.pyramid();
         let depth = gc.occluder_depth().filter(|_| pyramid.is_some());
@@ -246,7 +246,12 @@ impl MeshletGpu {
             if margin != *written {
                 *written = margin;
                 let at = (*slot as usize * MESH_ROWS + 1) * 16 + 8;
-                queue.write_buffer(&pools.meshes, at as u64, bytemuck::bytes_of(&margin));
+                crate::traffic::write_buffer(
+                    queue,
+                    &pools.meshes,
+                    at as u64,
+                    bytemuck::bytes_of(&margin),
+                );
             }
         }
         let selected_bytes = u64::from(slots) * 8;

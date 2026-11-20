@@ -81,23 +81,26 @@ impl Pipelines {
             let device = device.clone();
             let layout = layout.clone();
             Deferred::new(move || {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some(entry),
-                    layout: Some(
-                        &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some(entry),
+                        layout: Some(&device.create_pipeline_layout(
+                            &wgpu::PipelineLayoutDescriptor {
+                                label: Some("garment draw"),
+                                bind_group_layouts: &[Some(&layout)],
+                                immediate_size: 0,
+                            },
+                        )),
+                        module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
                             label: Some("garment draw"),
-                            bind_group_layouts: &[Some(&layout)],
-                            immediate_size: 0,
+                            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
                         }),
-                    ),
-                    module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                        label: Some("garment draw"),
-                        source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-                    }),
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         };
         Self {
@@ -144,7 +147,7 @@ impl Pipelines {
             }
             let mut rows = rows;
             rows[1][3] = f32::from(!mesh.initialized || scene.frame.camera_cut);
-            queue.write_buffer(&mesh.input, 0, bytemuck::cast_slice(&rows));
+            crate::traffic::write_buffer(queue, &mesh.input, 0, bytemuck::cast_slice(&rows));
             let entries: Vec<_> = [&mesh.input, &mesh.adjacency, &mesh.points, output]
                 .into_iter()
                 .enumerate()
@@ -205,12 +208,15 @@ impl Pipelines {
                 "garment adjacency",
                 bytemuck::cast_slice(&adjacency(&g.topology)),
             ),
-            points: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("garment points and history"),
-                size: (g.topology.rest.len() + g.topology.vertices.len()) as u64 * 16,
-                usage: wgpu::BufferUsages::STORAGE,
-                mapped_at_creation: false,
-            }),
+            points: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("garment points and history"),
+                    size: (g.topology.rest.len() + g.topology.vertices.len()) as u64 * 16,
+                    usage: wgpu::BufferUsages::STORAGE,
+                    mapped_at_creation: false,
+                },
+            ),
             initialized: false,
             visual: None,
         }

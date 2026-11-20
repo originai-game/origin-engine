@@ -175,12 +175,15 @@ impl FftOcean {
         let cascades = cascades.clamp(1, 3);
         let texels = u64::from(N * N * cascades);
         let buffer = |label, size: u64, usage| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size,
-                usage,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size,
+                    usage,
+                    mapped_at_creation: false,
+                },
+            )
         };
         // A slot per foam step and one for the frame's fields.
         let uniform = buffer(
@@ -287,14 +290,17 @@ impl FftOcean {
                 bind_group_layouts: &[Some(layout)],
                 immediate_size: 0,
             });
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(label),
-                layout: Some(&pl),
-                module: m,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                cache: None,
-            })
+            crate::traffic::create_compute_pipeline(
+                device,
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&pl),
+                    module: m,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    cache: None,
+                },
+            )
         };
         let rows = pipeline("ocean fft rows", &rows_layout, &fft, "rows");
         let columns = pipeline("ocean fft columns", &columns_layout, &fft, "columns");
@@ -417,7 +423,7 @@ impl FftOcean {
             self.dk[i] = (std::f64::consts::TAU / c.size) as f32;
         }
         self.lambda = spectrum.choppiness as f32;
-        queue.write_buffer(&self.spectrum, 0, bytemuck::cast_slice(&data));
+        crate::traffic::write_buffer(queue, &self.spectrum, 0, bytemuck::cast_slice(&data));
         // A new sea's foam starts over.
         self.foam.last = None;
     }
@@ -476,9 +482,9 @@ impl FftOcean {
             self.foam.last = Some((k, snaps));
         }
         self.fields_at(&mut fft_ring, steps.len(), seconds);
-        queue.write_buffer(&self.uniform, 0, &fft_ring);
+        crate::traffic::write_buffer(queue, &self.uniform, 0, &fft_ring);
         if !steps.is_empty() {
-            queue.write_buffer(&self.foam.uniform, 0, &foam_ring);
+            crate::traffic::write_buffer(queue, &self.foam.uniform, 0, &foam_ring);
         }
         // A frame planned and never recorded keeps its first-time work.
         let detail = detail || self.pending.as_ref().is_some_and(|p| p.detail);

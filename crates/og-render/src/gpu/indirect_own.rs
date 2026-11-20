@@ -29,13 +29,15 @@ impl OwnArgs {
     /// Makes slots `0..n` (those already made are kept).
     pub fn ensure(&mut self, device: &wgpu::Device, n: usize) {
         while self.buffers.len() < n {
-            self.buffers
-                .push(device.create_buffer(&wgpu::BufferDescriptor {
+            self.buffers.push(crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
                     label: Some("indirect draw args"),
                     size: RECORD,
                     usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
-                }));
+                },
+            ));
         }
     }
 

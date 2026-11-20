@@ -98,12 +98,15 @@ fn buffer(
     size: u64,
     usage: wgpu::BufferUsages,
 ) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size: size.max(16),
-        usage,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some(label),
+            size: size.max(16),
+            usage,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 impl CrowdCulling {
@@ -334,11 +337,11 @@ impl CrowdCulling {
             "crowd draws (indirect)",
             (r as u64 * d as u64 * 5 + CROWD_COUNT_WORDS) * 4,
         );
-        queue.write_buffer(&self.members, 0, members);
-        queue.write_buffer(&self.crowds, 0, crowds);
-        queue.write_buffer(&self.clips, 0, clips);
-        queue.write_buffer(&self.draws, 0, draws);
-        queue.write_buffer(&self.rows, 0, rows_bytes);
+        crate::traffic::write_buffer(queue, &self.members, 0, members);
+        crate::traffic::write_buffer(queue, &self.crowds, 0, crowds);
+        crate::traffic::write_buffer(queue, &self.clips, 0, clips);
+        crate::traffic::write_buffer(queue, &self.draws, 0, draws);
+        crate::traffic::write_buffer(queue, &self.rows, 0, rows_bytes);
         let params = Params {
             counts: [n, frame.crowds.len() as u32, r, d],
             sizes: [
@@ -356,7 +359,7 @@ impl CrowdCulling {
             ],
             view_proj: view.view_proj.to_cols_array_2d(),
         };
-        queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params));
+        crate::traffic::write_buffer(queue, &self.params, 0, bytemuck::bytes_of(&params));
         // The pyramid's view changes with the frame's size: bound fresh.
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("crowd cull"),

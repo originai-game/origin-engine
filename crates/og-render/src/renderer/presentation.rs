@@ -195,7 +195,7 @@ impl Renderer {
     pub fn lose_device(&self) {
         self.device.destroy();
         #[cfg(not(target_arch = "wasm32"))]
-        let _ = self.device.poll(wgpu::PollType::Poll);
+        let _ = crate::traffic::poll(&self.device, wgpu::PollType::Poll);
     }
 
     /// What a renderer like this one on a new device is made from

@@ -334,31 +334,34 @@ pub(crate) fn fullscreen_pipeline(
     blend: Option<wgpu::BlendState>,
 ) -> wgpu::RenderPipeline {
     crate::deferred::note(|| format!("{label} vs/{entry}"));
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(label),
-        layout: Some(layout),
-        vertex: wgpu::VertexState {
-            module,
-            entry_point: Some("vs"),
-            compilation_options: Default::default(),
-            buffers: &[],
+    crate::traffic::create_render_pipeline(
+        device,
+        &wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module,
+                entry_point: Some("vs"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
+            primitive: Default::default(),
+            depth_stencil: None,
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module,
+                entry_point: Some(entry),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
         },
-        primitive: Default::default(),
-        depth_stencil: None,
-        multisample: Default::default(),
-        fragment: Some(wgpu::FragmentState {
-            module,
-            entry_point: Some(entry),
-            compilation_options: Default::default(),
-            targets: &[Some(wgpu::ColorTargetState {
-                format,
-                blend,
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-        }),
-        multiview_mask: None,
-        cache: crate::pipeline_cache::of(device).as_ref(),
-    })
+    )
 }
 
 /// [`fullscreen_pipeline`] made when a pass first sets it (deferred.rs).
@@ -532,7 +535,8 @@ fn new_lut_texture(device: &wgpu::Device, label: &str, size: u32) -> wgpu::Textu
 
 /// Writes a table into a LUT texture of its size ([`lut_texture`]).
 fn write_lut(queue: &wgpu::Queue, texture: &wgpu::Texture, lut: &crate::ColorLut) {
-    queue.write_texture(
+    crate::traffic::write_texture(
+        queue,
         texture.as_image_copy(),
         &lut.rgba,
         wgpu::TexelCopyBufferLayout {

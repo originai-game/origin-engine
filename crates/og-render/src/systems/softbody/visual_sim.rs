@@ -678,23 +678,26 @@ impl VisualPipelines {
             let device = device.clone();
             let layout = layout.clone();
             Deferred::new(move || {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some(label),
-                    layout: Some(
-                        &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                            label: Some("visual body"),
-                            bind_group_layouts: &[Some(&layout)],
-                            immediate_size: 0,
-                        }),
-                    ),
-                    module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
                         label: Some(label),
-                        source: wgpu::ShaderSource::Wgsl(source.into()),
-                    }),
-                    entry_point: Some("solve"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                        layout: Some(&device.create_pipeline_layout(
+                            &wgpu::PipelineLayoutDescriptor {
+                                label: Some("visual body"),
+                                bind_group_layouts: &[Some(&layout)],
+                                immediate_size: 0,
+                            },
+                        )),
+                        module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                            label: Some(label),
+                            source: wgpu::ShaderSource::Wgsl(source.into()),
+                        }),
+                        entry_point: Some("solve"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         };
         VisualPipelines {
@@ -708,12 +711,15 @@ impl VisualPipelines {
     }
 
     fn collider_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("visual colliders"),
-            size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        })
+        crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("visual colliders"),
+                size,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        )
     }
 
     /// Writes the frame's colliders for bodies with world boxes `bounds`;
@@ -732,7 +738,7 @@ impl VisualPipelines {
                 Self::collider_buffer(device, (bytes.len() as u64).next_power_of_two());
             self.generation += 1;
         }
-        queue.write_buffer(&self.colliders, 0, bytes);
+        crate::traffic::write_buffer(queue, &self.colliders, 0, bytes);
         lists
     }
 
@@ -752,18 +758,24 @@ impl VisualPipelines {
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             },
         );
-        let state = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("visual body state"),
-            size: n * 7 * 16,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let grid = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("visual body grid"),
-            size: topology.grid_words() * 4,
-            usage: wgpu::BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
+        let state = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("visual body state"),
+                size: n * 7 * 16,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let grid = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("visual body grid"),
+                size: topology.grid_words() * 4,
+                usage: wgpu::BufferUsages::STORAGE,
+                mapped_at_creation: false,
+            },
+        );
         VisualMesh {
             topology,
             body,
@@ -807,7 +819,7 @@ impl VisualPipelines {
         let n = now.len() as u64;
         let mut both = std::mem::take(&mut mesh.targets);
         both.extend_from_slice(&now);
-        queue.write_buffer(&mesh.state, 2 * n * 16, bytemuck::cast_slice(&both));
+        crate::traffic::write_buffer(queue, &mesh.state, 2 * n * 16, bytemuck::cast_slice(&both));
         mesh.targets = now;
         if !normals.is_empty() {
             let now: Vec<[f32; 4]> = normals.iter().map(|v| v.extend(0.0).to_array()).collect();
@@ -816,12 +828,17 @@ impl VisualPipelines {
             }
             let mut both = std::mem::take(&mut mesh.normals);
             both.extend_from_slice(&now);
-            queue.write_buffer(&mesh.state, 5 * n * 16, bytemuck::cast_slice(&both));
+            crate::traffic::write_buffer(
+                queue,
+                &mesh.state,
+                5 * n * 16,
+                bytemuck::cast_slice(&both),
+            );
             mesh.normals = now;
         }
         let mut header = mesh.topology.words[..h::LEN].to_vec();
         frame_header(&mut header, body, p, dt, list, world);
-        queue.write_buffer(&mesh.body, 0, bytemuck::cast_slice(&header));
+        crate::traffic::write_buffer(queue, &mesh.body, 0, bytemuck::cast_slice(&header));
         if mesh
             .group
             .as_ref()

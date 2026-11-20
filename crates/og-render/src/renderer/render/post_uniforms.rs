@@ -233,8 +233,12 @@ impl Renderer {
             ),
             contact,
         };
-        self.queue
-            .write_buffer(&self.post.fx_buffer, 0, bytemuck::bytes_of(&fxp));
+        crate::traffic::write_buffer(
+            &self.queue,
+            &self.post.fx_buffer,
+            0,
+            bytemuck::bytes_of(&fxp),
+        );
         // The passes after TAA see the frame it resolved: the output's
         // size under TAAU (`FramePass::after_taa`), the scene's otherwise.
         let (pw, ph) = self.history_size();
@@ -246,8 +250,12 @@ impl Renderer {
         if let Some(b) = screen_blur {
             after.blur = b.rows(pw as f32, ph as f32);
         }
-        self.queue
-            .write_buffer(&self.post.fx_after_buffer, 0, bytemuck::bytes_of(&after));
+        crate::traffic::write_buffer(
+            &self.queue,
+            &self.post.fx_after_buffer,
+            0,
+            bytemuck::bytes_of(&after),
+        );
         let view_t = cam.view.transpose();
         let pview = particles_gpu::ParticleViewGpu {
             view_proj: cam.view_proj.to_cols_array_2d(),
@@ -260,12 +268,14 @@ impl Renderer {
             cam_up: view_t.y_axis.truncate().extend(0.0).to_array(),
             screen: fxp.screen,
         };
-        self.queue.write_buffer(
+        crate::traffic::write_buffer(
+            &self.queue,
             &self.particles.gpu.view_buffer,
             0,
             bytemuck::bytes_of(&pview),
         );
-        self.queue.write_buffer(
+        crate::traffic::write_buffer(
+            &self.queue,
             &self.sprite.sprite_fx_buffer,
             0,
             bytemuck::bytes_of(&fxp.screen),
@@ -317,8 +327,12 @@ impl Renderer {
                     },
                 ],
             };
-            self.queue
-                .write_buffer(&self.post.taa_buffer, 0, bytemuck::bytes_of(&taa_uniform));
+            crate::traffic::write_buffer(
+                &self.queue,
+                &self.post.taa_buffer,
+                0,
+                bytemuck::bytes_of(&taa_uniform),
+            );
         }
     }
 }

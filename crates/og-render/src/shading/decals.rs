@@ -86,12 +86,15 @@ pub(crate) struct DecalBuffers {
 }
 
 fn storage(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size,
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some(label),
+            size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 impl DecalBuffers {
@@ -131,10 +134,10 @@ impl DecalBuffers {
             self.generation = self.generation.wrapping_add(1);
         }
         if !r.is_empty() {
-            queue.write_buffer(&self.records, 0, r);
+            crate::traffic::write_buffer(queue, &self.records, 0, r);
         }
         if !c.is_empty() {
-            queue.write_buffer(&self.cells, 0, c);
+            crate::traffic::write_buffer(queue, &self.cells, 0, c);
         }
     }
 

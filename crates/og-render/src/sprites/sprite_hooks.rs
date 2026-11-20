@@ -219,7 +219,7 @@ impl SpriteHooks {
         let uniform = Uniform { custom: params };
         if let Some(g) = self.groups.get_mut(&index) {
             if g.params != params {
-                queue.write_buffer(&g.buffer, 0, bytemuck::bytes_of(&uniform));
+                crate::traffic::write_buffer(queue, &g.buffer, 0, bytemuck::bytes_of(&uniform));
                 g.params = params;
             }
             return;

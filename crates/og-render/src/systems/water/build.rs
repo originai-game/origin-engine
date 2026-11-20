@@ -149,14 +149,17 @@ impl WaterRenderer {
                         ],
                         immediate_size: 0,
                     });
-                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                        label: Some("sea grid"),
-                        layout: Some(&pl),
-                        module: module.module(),
-                        entry_point: Some("sea_grid_fill"),
-                        compilation_options: Default::default(),
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
-                    })
+                    crate::traffic::create_compute_pipeline(
+                        &device,
+                        &wgpu::ComputePipelineDescriptor {
+                            label: Some("sea grid"),
+                            layout: Some(&pl),
+                            module: module.module(),
+                            entry_point: Some("sea_grid_fill"),
+                            compilation_options: Default::default(),
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
+                        },
+                    )
                 })
             };
             (grid_layout, none, grid_pipeline)
@@ -220,37 +223,40 @@ impl WaterRenderer {
                     ),
                 ]
                 .map(|(label, vs, buffers)| {
-                    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                        label: Some(label),
-                        layout: Some(&pl),
-                        vertex: wgpu::VertexState {
-                            module: m,
-                            entry_point: Some(vs),
-                            compilation_options: Default::default(),
-                            buffers,
+                    crate::traffic::create_render_pipeline(
+                        &device,
+                        &wgpu::RenderPipelineDescriptor {
+                            label: Some(label),
+                            layout: Some(&pl),
+                            vertex: wgpu::VertexState {
+                                module: m,
+                                entry_point: Some(vs),
+                                compilation_options: Default::default(),
+                                buffers,
+                            },
+                            primitive: wgpu::PrimitiveState::default(),
+                            depth_stencil: Some(wgpu::DepthStencilState {
+                                format: crate::DEPTH_FORMAT,
+                                depth_write_enabled: Some(false),
+                                depth_compare: Some(wgpu::CompareFunction::Less),
+                                stencil: Default::default(),
+                                bias: Default::default(),
+                            }),
+                            multisample: wgpu::MultisampleState::default(),
+                            fragment: Some(wgpu::FragmentState {
+                                module: m,
+                                entry_point: Some("fs_ao_depth"),
+                                compilation_options: Default::default(),
+                                targets: &[Some(wgpu::ColorTargetState {
+                                    format: crate::post::LINDEPTH_FORMAT,
+                                    blend: None,
+                                    write_mask: wgpu::ColorWrites::ALL,
+                                })],
+                            }),
+                            multiview_mask: None,
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
                         },
-                        primitive: wgpu::PrimitiveState::default(),
-                        depth_stencil: Some(wgpu::DepthStencilState {
-                            format: crate::DEPTH_FORMAT,
-                            depth_write_enabled: Some(false),
-                            depth_compare: Some(wgpu::CompareFunction::Less),
-                            stencil: Default::default(),
-                            bias: Default::default(),
-                        }),
-                        multisample: wgpu::MultisampleState::default(),
-                        fragment: Some(wgpu::FragmentState {
-                            module: m,
-                            entry_point: Some("fs_ao_depth"),
-                            compilation_options: Default::default(),
-                            targets: &[Some(wgpu::ColorTargetState {
-                                format: crate::post::LINDEPTH_FORMAT,
-                                blend: None,
-                                write_mask: wgpu::ColorWrites::ALL,
-                            })],
-                        }),
-                        multiview_mask: None,
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
-                    })
+                    )
                 })
             })
         };

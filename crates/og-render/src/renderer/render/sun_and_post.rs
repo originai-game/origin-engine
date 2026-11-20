@@ -107,8 +107,12 @@ impl Renderer {
                 self.history_size(),
                 camera.far,
             );
-            self.queue
-                .write_buffer(&self.post.flare.buffer, 0, bytemuck::bytes_of(&u));
+            crate::traffic::write_buffer(
+                &self.queue,
+                &self.post.flare.buffer,
+                0,
+                bytemuck::bytes_of(&u),
+            );
         }
         self.post.write_uniform(
             &self.queue,

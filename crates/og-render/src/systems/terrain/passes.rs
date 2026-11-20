@@ -142,35 +142,38 @@ pub(super) fn terrain_passes(
                     constants: &constants,
                     ..Default::default()
                 };
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some(label),
-                    layout: Some(&layout),
-                    vertex: wgpu::VertexState {
-                        module,
-                        entry_point: Some(vs),
-                        compilation_options: options(),
-                        buffers,
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some(label),
+                        layout: Some(&layout),
+                        vertex: wgpu::VertexState {
+                            module,
+                            entry_point: Some(vs),
+                            compilation_options: options(),
+                            buffers,
+                        },
+                        primitive: wgpu::PrimitiveState {
+                            front_face: front(mirrored),
+                            cull_mode: Some(wgpu::Face::Back),
+                            ..Default::default()
+                        },
+                        depth_stencil: depth(true),
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module,
+                            entry_point: Some(fs),
+                            compilation_options: options(),
+                            targets: &[
+                                target(crate::post::GBUFFER_FORMAT),
+                                target(crate::post::LINDEPTH_FORMAT),
+                                target(crate::post::OUTLINE_FORMAT),
+                            ],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: wgpu::PrimitiveState {
-                        front_face: front(mirrored),
-                        cull_mode: Some(wgpu::Face::Back),
-                        ..Default::default()
-                    },
-                    depth_stencil: depth(true),
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module,
-                        entry_point: Some(fs),
-                        compilation_options: options(),
-                        targets: &[
-                            target(crate::post::GBUFFER_FORMAT),
-                            target(crate::post::LINDEPTH_FORMAT),
-                            target(crate::post::OUTLINE_FORMAT),
-                        ],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         })
     };
@@ -192,33 +195,36 @@ pub(super) fn terrain_passes(
         Deferred::anywhere(move || {
             let module = module.module();
             crate::ShadowSet::new(|target| {
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some(label),
-                    layout: Some(&layout),
-                    vertex: wgpu::VertexState {
-                        module,
-                        entry_point: Some(vs),
-                        compilation_options: options(),
-                        buffers,
-                    },
-                    primitive: wgpu::PrimitiveState {
-                        cull_mode: target.cull(crate::Side::Double),
-                        ..Default::default()
-                    },
-                    depth_stencil: Some(target.depth()),
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module,
-                        entry_point: Some(fs),
-                        compilation_options: wgpu::PipelineCompilationOptions {
-                            constants: fragment_constants,
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some(label),
+                        layout: Some(&layout),
+                        vertex: wgpu::VertexState {
+                            module,
+                            entry_point: Some(vs),
+                            compilation_options: options(),
+                            buffers,
+                        },
+                        primitive: wgpu::PrimitiveState {
+                            cull_mode: target.cull(crate::Side::Double),
                             ..Default::default()
                         },
-                        targets: &[Some(target.color())],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                        depth_stencil: Some(target.depth()),
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module,
+                            entry_point: Some(fs),
+                            compilation_options: wgpu::PipelineCompilationOptions {
+                                constants: fragment_constants,
+                                ..Default::default()
+                            },
+                            targets: &[Some(target.color())],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         })
     };
@@ -271,14 +277,17 @@ pub(super) fn terrain_passes(
         corners: Rc::new({
             let device = device.clone();
             Deferred::anywhere(move || {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("terrain corners"),
-                    layout: Some(&corners_layout),
-                    module: corners_module.module(),
-                    entry_point: Some("write_corners"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("terrain corners"),
+                        layout: Some(&corners_layout),
+                        module: corners_module.module(),
+                        entry_point: Some("write_corners"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         }),
     }

@@ -523,14 +523,17 @@ fn table(i: u32) -> vec4<f32> {{ return texels[{base}u + i]; }}
             label: Some("mass timing readback"),
             source: wgpu::ShaderSource::Wgsl(shader.into()),
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: None,
-            layout: None,
-            module: &module,
-            entry_point: Some("test"),
-            compilation_options: Default::default(),
-            cache: None,
-        });
+        let pipeline = crate::traffic::create_compute_pipeline(
+            &device,
+            &wgpu::ComputePipelineDescriptor {
+                label: None,
+                layout: None,
+                module: &module,
+                entry_point: Some("test"),
+                compilation_options: Default::default(),
+                cache: None,
+            },
+        );
         let data = crate::buffer_init(
             &device,
             &queue,
@@ -550,18 +553,24 @@ fn table(i: u32) -> vec4<f32> {{ return texels[{base}u + i]; }}
             },
         );
         let size = (inputs.len() * 16) as u64;
-        let output = device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            size,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            size,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let output = crate::traffic::create_buffer(
+            &device,
+            &wgpu::BufferDescriptor {
+                label: None,
+                size,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            },
+        );
+        let staging = crate::traffic::create_buffer(
+            &device,
+            &wgpu::BufferDescriptor {
+                label: None,
+                size,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let entries: Vec<_> = [&data, &queries, &output]
             .iter()
             .enumerate()
@@ -584,8 +593,8 @@ fn table(i: u32) -> vec4<f32> {{ return texels[{base}u + i]; }}
         }
         encoder.copy_buffer_to_buffer(&output, 0, &staging, 0, size);
         queue.submit([encoder.finish()]);
-        staging.slice(..).map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+        crate::traffic::map_async(&staging.slice(..), wgpu::MapMode::Read, |_| {});
+        crate::traffic::poll(&device, wgpu::PollType::wait_indefinitely()).unwrap();
         let mapped = staging.slice(..).get_mapped_range().unwrap();
         let results: &[[f32; 4]] = bytemuck::cast_slice(&mapped);
         let mut maxima = vec![0.0f32; curves.len()];

@@ -177,7 +177,8 @@ impl GpuCulling {
                 bind_group_layouts: &[Some(&self.hiz_base_layout[multisampled as usize])],
                 immediate_size: 0,
             });
-            self.hiz_base[multisampled as usize] = Some(device.create_compute_pipeline(
+            self.hiz_base[multisampled as usize] = Some(crate::traffic::create_compute_pipeline(
+                device,
                 &wgpu::ComputePipelineDescriptor {
                     label: Some("depth pyramid base"),
                     layout: Some(&layout),

@@ -15,38 +15,41 @@ impl GpuCulling {
         self.depth_pipelines
             .entry((faces, compact, samples))
             .or_insert_with(|| {
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("occluder depth"),
-                    layout: Some(&self.depth_pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &self.depth_module,
-                        entry_point: Some(if compact { "vs_compact" } else { "vs" }),
-                        compilation_options: Default::default(),
-                        buffers: &[
-                            Some(if compact {
-                                crate::compact::POSITION_LAYOUT
-                            } else {
-                                crate::VERTEX_LAYOUT
-                            }),
-                            Some(crate::INSTANCE_LAYOUT),
-                        ],
+                crate::traffic::create_render_pipeline(
+                    device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("occluder depth"),
+                        layout: Some(&self.depth_pipeline_layout),
+                        vertex: wgpu::VertexState {
+                            module: &self.depth_module,
+                            entry_point: Some(if compact { "vs_compact" } else { "vs" }),
+                            compilation_options: Default::default(),
+                            buffers: &[
+                                Some(if compact {
+                                    crate::compact::POSITION_LAYOUT
+                                } else {
+                                    crate::VERTEX_LAYOUT
+                                }),
+                                Some(crate::INSTANCE_LAYOUT),
+                            ],
+                        },
+                        primitive: faces.primitive(faces.cull()),
+                        depth_stencil: Some(wgpu::DepthStencilState {
+                            format: DEPTH_FORMAT,
+                            depth_write_enabled: Some(true),
+                            depth_compare: Some(wgpu::CompareFunction::Less),
+                            stencil: Default::default(),
+                            bias: Default::default(),
+                        }),
+                        multisample: wgpu::MultisampleState {
+                            count: samples,
+                            ..Default::default()
+                        },
+                        fragment: None,
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(device).as_ref(),
                     },
-                    primitive: faces.primitive(faces.cull()),
-                    depth_stencil: Some(wgpu::DepthStencilState {
-                        format: DEPTH_FORMAT,
-                        depth_write_enabled: Some(true),
-                        depth_compare: Some(wgpu::CompareFunction::Less),
-                        stencil: Default::default(),
-                        bias: Default::default(),
-                    }),
-                    multisample: wgpu::MultisampleState {
-                        count: samples,
-                        ..Default::default()
-                    },
-                    fragment: None,
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                })
+                )
             });
     }
 
@@ -205,7 +208,7 @@ impl GpuCulling {
                 Self::instance_usage(),
             );
             let records = &skinned.expect("ns > 0").records[..ns as usize];
-            queue.write_buffer(&self.skinned, 0, bytemuck::cast_slice(records));
+            crate::traffic::write_buffer(queue, &self.skinned, 0, bytemuck::cast_slice(records));
         }
         let previous_uploaded = if let Some(prev) = previous {
             debug_assert_eq!(prev.len(), base as usize);

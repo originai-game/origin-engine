@@ -194,40 +194,43 @@ pub(crate) fn pipeline(
     let fs = fragment_entry(p.fs, mode);
     crate::deferred::note(|| format!("{} (oit) {}/{fs} {constants:?}", p.label, p.vs));
     let targets = targets();
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(&format!("{} (oit)", p.label)),
-        layout: Some(p.layout),
-        vertex: wgpu::VertexState {
-            module: p.module,
-            entry_point: Some(p.vs),
-            compilation_options: options.clone(),
-            buffers: p.buffers,
+    crate::traffic::create_render_pipeline(
+        device,
+        &wgpu::RenderPipelineDescriptor {
+            label: Some(&format!("{} (oit)", p.label)),
+            layout: Some(p.layout),
+            vertex: wgpu::VertexState {
+                module: p.module,
+                entry_point: Some(p.vs),
+                compilation_options: options.clone(),
+                buffers: p.buffers,
+            },
+            primitive: wgpu::PrimitiveState {
+                front_face: front,
+                cull_mode: p.cull,
+                ..Default::default()
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: crate::DEPTH_FORMAT,
+                depth_write_enabled: Some(false),
+                depth_compare: Some(p.depth_compare),
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
+            multisample: wgpu::MultisampleState {
+                count: p.samples,
+                ..Default::default()
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: p.module,
+                entry_point: Some(&fs),
+                compilation_options: options,
+                targets: if mode == Oit::Mark { &[] } else { &targets },
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
         },
-        primitive: wgpu::PrimitiveState {
-            front_face: front,
-            cull_mode: p.cull,
-            ..Default::default()
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: crate::DEPTH_FORMAT,
-            depth_write_enabled: Some(false),
-            depth_compare: Some(p.depth_compare),
-            stencil: Default::default(),
-            bias: Default::default(),
-        }),
-        multisample: wgpu::MultisampleState {
-            count: p.samples,
-            ..Default::default()
-        },
-        fragment: Some(wgpu::FragmentState {
-            module: p.module,
-            entry_point: Some(&fs),
-            compilation_options: options,
-            targets: if mode == Oit::Mark { &[] } else { &targets },
-        }),
-        multiview_mask: None,
-        cache: crate::pipeline_cache::of(device).as_ref(),
-    })
+    )
 }
 
 /// The arena's entry in the linked-list frame group: binding 15, after
@@ -358,23 +361,29 @@ struct Readback {
 
 impl Arena {
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, size: ArenaSize) -> Arena {
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("oit arena"),
-            size: size.bytes,
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-        queue.write_buffer(&buffer, 0, bytemuck::cast_slice(&size.header()));
+        let buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("oit arena"),
+                size: size.bytes,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_DST
+                    | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            },
+        );
+        crate::traffic::write_buffer(queue, &buffer, 0, bytemuck::cast_slice(&size.header()));
         let readbacks = (0..3)
             .map(|_| Readback {
-                buffer: device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("oit overflow readback"),
-                    size: 4,
-                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                    mapped_at_creation: false,
-                }),
+                buffer: crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("oit overflow readback"),
+                        size: 4,
+                        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                        mapped_at_creation: false,
+                    },
+                ),
                 mapped: Arc::new(Mutex::new(None)),
                 frame: None,
                 unmapped: false,
@@ -410,11 +419,13 @@ impl Arena {
         for r in self.readbacks.borrow_mut().iter_mut() {
             if std::mem::take(&mut r.unmapped) {
                 let mapped = r.mapped.clone();
-                r.buffer
-                    .slice(..)
-                    .map_async(wgpu::MapMode::Read, move |result| {
+                crate::traffic::map_async(
+                    &r.buffer.slice(..),
+                    wgpu::MapMode::Read,
+                    move |result| {
                         *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
-                    });
+                    },
+                );
             }
         }
     }
@@ -476,19 +487,21 @@ impl Arena {
     ) -> Result<TransparencyCounts, String> {
         let pixels = u64::from(self.size.width) * u64::from(self.size.height);
         let bytes = HEADER_BYTES + pixels * COUNT_BYTES;
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("oit counts readback"),
-            size: bytes,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("oit counts readback"),
+                size: bytes,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            },
+        );
         let mut encoder = device.create_command_encoder(&Default::default());
         encoder.copy_buffer_to_buffer(&self.buffer, 0, &buffer, 0, bytes);
         queue.submit(Some(encoder.finish()));
         let slice = buffer.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        device
-            .poll(wgpu::PollType::wait_indefinitely())
+        crate::traffic::map_async(&slice, wgpu::MapMode::Read, |_| {});
+        crate::traffic::poll(device, wgpu::PollType::wait_indefinitely())
             .map_err(|e| format!("reading the oit counts back: {e}"))?;
         let words: Vec<u32> = {
             let data = slice
@@ -776,47 +789,50 @@ impl Resolver {
                 immediate_size: 0,
             });
             let module = crate::shader(device, "oit resolve", resolve_source(msaa, list));
-            let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("oit resolve"),
-                layout: Some(&pl),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some("vs"),
-                    compilation_options: Default::default(),
-                    buffers: &[],
+            let pipeline = crate::traffic::create_render_pipeline(
+                device,
+                &wgpu::RenderPipelineDescriptor {
+                    label: Some("oit resolve"),
+                    layout: Some(&pl),
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: Default::default(),
+                    depth_stencil: None,
+                    multisample: wgpu::MultisampleState {
+                        count: samples,
+                        ..Default::default()
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: Some("fs_resolve"),
+                        compilation_options: Default::default(),
+                        // Premultiplied over the scene; the HDR alpha (the
+                        // untonemapped sprites' cover) is left as it was.
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: crate::HDR_FORMAT,
+                            blend: Some(wgpu::BlendState {
+                                color: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::One,
+                                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                                alpha: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::Zero,
+                                    dst_factor: wgpu::BlendFactor::One,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                            }),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 },
-                primitive: Default::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState {
-                    count: samples,
-                    ..Default::default()
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some("fs_resolve"),
-                    compilation_options: Default::default(),
-                    // Premultiplied over the scene; the HDR alpha (the
-                    // untonemapped sprites' cover) is left as it was.
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: crate::HDR_FORMAT,
-                        blend: Some(wgpu::BlendState {
-                            color: wgpu::BlendComponent {
-                                src_factor: wgpu::BlendFactor::One,
-                                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                                operation: wgpu::BlendOperation::Add,
-                            },
-                            alpha: wgpu::BlendComponent {
-                                src_factor: wgpu::BlendFactor::Zero,
-                                dst_factor: wgpu::BlendFactor::One,
-                                operation: wgpu::BlendOperation::Add,
-                            },
-                        }),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            });
+            );
             (layout, pipeline)
         })
     }

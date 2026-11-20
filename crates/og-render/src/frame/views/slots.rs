@@ -107,12 +107,15 @@ impl Views {
         }
         self.slots[index].get_or_insert_with(|| {
             let buffer = |label, size| {
-                device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some(label),
-                    size,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                })
+                crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some(label),
+                        size,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                )
             };
             let (hdr, msaa, depth, prepass) = textures(device, key);
             ViewSlot {

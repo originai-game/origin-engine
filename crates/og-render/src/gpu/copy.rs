@@ -66,12 +66,15 @@ impl GpuCopy {
         let buffers = buffers
             .iter()
             .map(|b| {
-                let copy = device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("presentation checkpoint"),
-                    size: b.size(),
-                    usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                });
+                let copy = crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("presentation checkpoint"),
+                        size: b.size(),
+                        usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                );
                 encoder.copy_buffer_to_buffer(b, 0, &copy, 0, b.size());
                 copy
             })

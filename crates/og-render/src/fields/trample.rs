@@ -240,34 +240,43 @@ impl Trample {
             immediate_size: 0,
         });
         let pipeline = |entry| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("grass trample"),
-                layout: Some(&pl),
-                module: &module,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
+            crate::traffic::create_compute_pipeline(
+                device,
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("grass trample"),
+                    layout: Some(&pl),
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(device).as_ref(),
+                },
+            )
         };
         let cells = u64::from(N) * u64::from(N) * 16;
         let buffer = |label| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size: cells,
-                // Copied for a presentation checkpoint (renderer/history.rs).
-                usage: wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::COPY_SRC
-                    | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size: cells,
+                    // Copied for a presentation checkpoint (renderer/history.rs).
+                    usage: wgpu::BufferUsages::STORAGE
+                        | wgpu::BufferUsages::COPY_SRC
+                        | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let (state, scratch) = (buffer("grass trample"), buffer("grass trample step"));
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("grass trample"),
-            size: SLOT * MAX_STEPS,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("grass trample"),
+                size: SLOT * MAX_STEPS,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("grass trample"),
             layout,
@@ -370,7 +379,7 @@ impl Trample {
             bytes[at..at + std::mem::size_of::<TrampleGpu>()]
                 .copy_from_slice(bytemuck::bytes_of(&t));
         }
-        queue.write_buffer(&uniform, 0, &bytes);
+        crate::traffic::write_buffer(queue, &uniform, 0, &bytes);
         self.steps = count as u32;
         self.last = Some((first + count - 1, cell));
     }

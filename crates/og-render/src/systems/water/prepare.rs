@@ -31,12 +31,15 @@ impl WaterRenderer {
     ) -> Vec<WaterDraw> {
         while self.slots.len() < waters.len() {
             self.slots.push(Slot {
-                uniform: device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("water"),
-                    size: std::mem::size_of::<WaterGpu>() as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                }),
+                uniform: crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("water"),
+                        size: std::mem::size_of::<WaterGpu>() as u64,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                ),
                 face: bytemuck::Zeroable::zeroed(),
                 heights: None,
                 ripples: None,
@@ -117,7 +120,8 @@ impl WaterRenderer {
                 let (_, texture, _) = slot.heights.as_ref().expect("made above");
                 let texels: Vec<[u16; 4]> =
                     f.heights.iter().map(|&h| [f16_bits(h), 0, 0, 0]).collect();
-                queue.write_texture(
+                crate::traffic::write_texture(
+                    queue,
                     texture.as_image_copy(),
                     bytemuck::cast_slice(&texels),
                     wgpu::TexelCopyBufferLayout {
@@ -288,7 +292,7 @@ impl WaterRenderer {
                     ]
                 },
             };
-            queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
+            crate::traffic::write_buffer(queue, &slot.uniform, 0, bytemuck::bytes_of(&gpu));
             // A probe face has no planar reflection of its own (that would be
             // a mirrored pass per face); its screen-space reflection marches
             // the face's own depth prepass and copy, as the frame's does,

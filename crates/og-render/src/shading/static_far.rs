@@ -267,7 +267,12 @@ impl StaticFar {
         let min = cell.as_vec3() * s;
         if self.key != Some(key) {
             let data = field(&scene.lighting.lights, far, reach, min, s);
-            queue.write_buffer(buffer, (at * 16) as u64, bytemuck::cast_slice(&data));
+            crate::traffic::write_buffer(
+                queue,
+                buffer,
+                (at * 16) as u64,
+                bytemuck::cast_slice(&data),
+            );
             self.key = Some(key);
         }
         [min.extend(at as f32).to_array(), [s, reach, 0.0, 0.0]]

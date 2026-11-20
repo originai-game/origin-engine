@@ -11,7 +11,10 @@
 //! build, its passes' encoding and its submit, from og-render's frame
 //! stages), its GPU time (the frame's span, each pass's time alone,
 //! [`og_render::GpuPass::alone`], and the time passes overlapped or the GPU
-//! idled) and what it drew. The report gives each line's median, p95 and max, flags a line
+//! idled), what moved between the CPU and the GPU
+//! ([`og_render::traffic`]: bytes uploaded, buffers made, readbacks
+//! started, blocking waits for the GPU and pipelines made, each with its
+//! call site) and what it drew. The report gives each line's median, p95 and max, flags a line
 //! over its budget (the project's `perf.budgets`, passed in), and lists
 //! every hitch (a frame whose interval passed twice the median) with its
 //! cause: the line that grew most over its own median, or the first-use
@@ -68,6 +71,7 @@ struct Row {
     /// Each pass's time in flight (begin to end, waits included).
     flight: [f32; PASSES],
     compile_us: u32,
+    traffic: og_render::traffic::Traffic,
     draws: u32,
     triangles: u64,
 }
@@ -84,6 +88,17 @@ const EMPTY: Row = Row {
     gpu: [f32::NAN; PASSES],
     flight: [f32::NAN; PASSES],
     compile_us: 0,
+    traffic: og_render::traffic::Traffic {
+        upload_bytes: 0,
+        uploads: 0,
+        buffers: 0,
+        buffer_bytes: 0,
+        readbacks: 0,
+        waits: 0,
+        wait_us: 0,
+        pipelines: 0,
+        pipeline_us: 0,
+    },
     draws: 0,
     triangles: 0,
 };
@@ -136,6 +151,9 @@ pub fn set(engine: u32, on: bool) {
         } else {
             p.remove(&engine);
         }
+        // The renderer's traffic belongs to the process: counted while any
+        // engine records.
+        og_render::traffic::set_clock((!p.is_empty()).then_some(now as fn() -> f64));
     });
 }
 
@@ -241,6 +259,7 @@ pub(crate) fn frame(
             row.cpu[BUILD] = (render_ms - encode).max(0.0) as f32;
         }
         row.compile_us = stats.compile_wait_us;
+        row.traffic = stats.traffic;
         row.draws = stats.draw_calls;
         row.triangles = stats.triangles;
         let slot = pf.next;
@@ -335,6 +354,19 @@ pub fn report(engine: u32, budgets: &str) -> String {
         for (i, name) in pf.passes.iter().enumerate() {
             lines.push((format!("gpu {name} (in flight)"), Box::new(move |r: &Row| r.flight[i])));
         }
+        // What moved between the CPU and the GPU: two times (the frame's
+        // blocking waits for the GPU, and its pipelines made), then counts.
+        let us = |x: u32| x as f32 / 1000.0;
+        lines.push(("cpu blocking gpu waits".into(), Box::new(move |r: &Row| us(r.traffic.wait_us))));
+        lines.push(("cpu pipelines made".into(), Box::new(move |r: &Row| us(r.traffic.pipeline_us))));
+        let times = lines.len();
+        lines.push(("upload kb".into(), Box::new(|r: &Row| r.traffic.upload_bytes as f32 / 1024.0)));
+        lines.push(("uploads".into(), Box::new(|r: &Row| r.traffic.uploads as f32)));
+        lines.push(("buffers made".into(), Box::new(|r: &Row| r.traffic.buffers as f32)));
+        lines.push(("buffer kb made".into(), Box::new(|r: &Row| r.traffic.buffer_bytes as f32 / 1024.0)));
+        lines.push(("readbacks".into(), Box::new(|r: &Row| r.traffic.readbacks as f32)));
+        lines.push(("blocking gpu waits".into(), Box::new(|r: &Row| r.traffic.waits as f32)));
+        lines.push(("pipelines made".into(), Box::new(|r: &Row| r.traffic.pipelines as f32)));
         // Lines that are another line's consequence, never a hitch's cause:
         // the interval itself, the GPU's whole frame and overlap, and the
         // CPU's wait for the GPU.
@@ -384,10 +416,10 @@ pub fn report(engine: u32, budgets: &str) -> String {
             if f64::from(r.interval) <= 2.0 * frame_median {
                 continue;
             }
-            let cause = if r.compile_us > 1000 {
+            let mut cause = if r.compile_us > 1000 {
                 format!("pipeline compile {:.1} ms", f64::from(r.compile_us) / 1000.0)
             } else {
-                lines
+                lines[..times]
                     .iter()
                     .zip(&medians)
                     .filter(|((name, _), _)| !effect(name))
@@ -396,6 +428,25 @@ pub fn report(engine: u32, budgets: &str) -> String {
                     .max_by(|a, b| a.1.total_cmp(&b.1))
                     .map_or("unknown".into(), |(name, d)| format!("{name} +{d:.1} ms"))
             };
+            // The first-use work the frame did, named: a frame after load
+            // or Play has no steady median to stand out from.
+            let t = &r.traffic;
+            let mut work = Vec::new();
+            if t.pipelines > 0 {
+                work.push(format!("{} pipelines made", t.pipelines));
+            }
+            if t.buffers > 0 {
+                work.push(format!("{} buffers made ({} kb)", t.buffers, t.buffer_bytes / 1024));
+            }
+            if t.waits > 0 {
+                work.push(format!("{} blocking gpu waits ({:.1} ms)", t.waits, us(t.wait_us)));
+            }
+            if t.upload_bytes >= 1 << 20 {
+                work.push(format!("{} kb uploaded", t.upload_bytes / 1024));
+            }
+            if !work.is_empty() {
+                cause += &format!("; {}", work.join(", "));
+            }
             hitches.push(json!({ "tick": r.tick, "interval": r2(f64::from(r.interval)), "ticks": r.ticks, "cause": cause }));
         }
         text += &format!("hitches (interval over 2x the median {frame_median:.2} ms): {}\n", hitches.len());
@@ -405,13 +456,113 @@ pub fn report(engine: u32, budgets: &str) -> String {
                 h["tick"], h["interval"].as_f64().unwrap_or(0.0), h["ticks"], h["cause"].as_str().unwrap_or("")
             );
         }
+        let (sites, sites_text) = sites(n);
+        text += &sites_text;
         let drawn = |f: fn(&Row) -> f32| r2(at(&sorted(rows.iter().map(|r| f(r))), 0.5));
         let json = json!({
-            "frames": n, "lines": out_lines, "hitches": hitches,
+            "frames": n, "lines": out_lines, "hitches": hitches, "sites": sites,
             "draws": drawn(|r| r.draws as f32), "triangles": drawn(|r| r.triangles as f32),
         });
         json!({ "json": json, "text": text }).to_string()
     })
+}
+
+/// The renderer's call sites that moved data, for the report: the
+/// biggest uploaders and buffer makers, every blocking wait and readback,
+/// and the pipelines made after the first frames (late: a frame waited or
+/// will wait for them). `frames` is the record's, for per-frame bytes.
+fn sites(frames: usize) -> (Value, String) {
+    use og_render::traffic::{Kind, Site};
+    let mut all: Vec<Site> = Vec::new();
+    let lost = og_render::traffic::each_site(|s| all.push(*s));
+    let frames = frames.max(1) as f64;
+    let name = |s: &Site| {
+        let file = s.at.file();
+        let file = file.rsplit_once("src/").map_or(file, |(_, f)| f);
+        format!("{file}:{}", s.at.line())
+    };
+    let mut out = Vec::new();
+    let mut text = String::new();
+    // `steady`: Some(true) only sites still moving after the first frames
+    // (late, per frame), Some(false) only those done by then (load), None
+    // every site.
+    let mut section = |title: &str,
+                       kind: Kind,
+                       steady: Option<bool>,
+                       key: fn(&Site) -> f64,
+                       take: usize| {
+        let mut v: Vec<&Site> = all
+            .iter()
+            .filter(|s| s.kind == kind && steady.is_none_or(|on| (s.last_frame > 2) == on))
+            .collect();
+        v.sort_by(|a, b| key(b).total_cmp(&key(a)));
+        if v.is_empty() {
+            return;
+        }
+        let total: u64 = v.iter().map(|s| s.bytes).sum();
+        text += &format!(
+            "{title} ({} sites, {:.1} MB)\n",
+            v.len(),
+            total as f64 / 1048576.0
+        );
+        for s in v.iter().take(take) {
+            let site = name(s);
+            text += &format!(
+                "  {site:<60} {:>8} calls {:>10.1} MB {:>10.1} kb/frame {:>8.1} ms  frames {}..{}\n",
+                s.count,
+                s.bytes as f64 / 1048576.0,
+                s.bytes as f64 / 1024.0 / frames,
+                s.ms,
+                s.first_frame,
+                s.last_frame
+            );
+            out.push(json!({
+                "kind": format!("{kind:?}").to_lowercase(), "site": site, "count": s.count,
+                "bytes": s.bytes, "ms": r2(s.ms), "first_frame": s.first_frame,
+                "last_frame": s.last_frame, "late": s.last_frame > 2,
+            }));
+        }
+    };
+    section(
+        "uploads in steady play, by bytes",
+        Kind::Upload,
+        Some(true),
+        |s| s.bytes as f64,
+        12,
+    );
+    section(
+        "uploads at load only, by bytes",
+        Kind::Upload,
+        Some(false),
+        |s| s.bytes as f64,
+        12,
+    );
+    section(
+        "buffers made, by bytes",
+        Kind::Buffer,
+        None,
+        |s| s.bytes as f64,
+        16,
+    );
+    section("readbacks", Kind::Readback, None, |s| s.count as f64, 12);
+    section(
+        "blocking gpu waits, by time",
+        Kind::Wait,
+        None,
+        |s| s.ms,
+        12,
+    );
+    section(
+        "pipelines made after the first frames",
+        Kind::Pipeline,
+        Some(true),
+        |s| s.ms,
+        20,
+    );
+    if lost > 0 {
+        text += &format!("({lost} events past the site table)\n");
+    }
+    (Value::Array(out), text)
 }
 
 #[cfg(test)]

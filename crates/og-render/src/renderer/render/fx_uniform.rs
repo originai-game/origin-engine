@@ -113,8 +113,12 @@ impl Renderer {
             let (n, at, ..) = water::surface(w, w.mesh.and_then(|m| scene.mesh(m)));
             fx_uniform.planar = n.extend(n.dot(at)).to_array();
         }
-        self.queue
-            .write_buffer(&self.lights.fx_buffer, 0, bytemuck::bytes_of(&fx_uniform));
+        crate::traffic::write_buffer(
+            &self.queue,
+            &self.lights.fx_buffer,
+            0,
+            bytemuck::bytes_of(&fx_uniform),
+        );
         for (k, (_, _, _, view_proj, (rw, rh))) in reflections.iter().enumerate() {
             let mut u = fx_uniform;
             u.ao = [0.0; 4];
@@ -126,7 +130,8 @@ impl Renderer {
             u.prev_view_proj = view_proj.to_cols_array_2d();
             u.screen = [*rw as f32, *rh as f32, 1.0 / *rw as f32, 1.0 / *rh as f32];
             fx::unclustered(&mut u);
-            self.queue.write_buffer(
+            crate::traffic::write_buffer(
+                &self.queue,
                 &self.reflections.reflection_fx_buffer[k],
                 0,
                 bytemuck::bytes_of(&u),

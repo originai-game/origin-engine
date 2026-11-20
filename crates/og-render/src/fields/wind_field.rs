@@ -296,27 +296,33 @@ impl WindFieldSim {
                 "project",
             ]
             .map(|entry| {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("wind field"),
-                    layout: Some(&pl),
-                    module: &module,
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                })
+                crate::traffic::create_compute_pipeline(
+                    device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("wind field"),
+                        layout: Some(&pl),
+                        module: &module,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(device).as_ref(),
+                    },
+                )
             })
         });
         let cells = 2 * u64::from(N) * u64::from(N);
         let buffer = |label, size| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size,
-                // Copied for a presentation checkpoint (renderer/history.rs).
-                usage: wgpu::BufferUsages::STORAGE
-                    | wgpu::BufferUsages::COPY_SRC
-                    | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size,
+                    // Copied for a presentation checkpoint (renderer/history.rs).
+                    usage: wgpu::BufferUsages::STORAGE
+                        | wgpu::BufferUsages::COPY_SRC
+                        | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let buffers = [
             buffer("wind velocity", cells * 16),
@@ -327,12 +333,15 @@ impl WindFieldSim {
             buffer("wind pressure step", cells * 4),
             buffer("wind divergence", cells * 4),
         ];
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("wind field"),
-            size: SLOT * slots,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("wind field"),
+                size: SLOT * slots,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let mut entries = vec![wgpu::BindGroupEntry {
             binding: 0,
             resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
@@ -499,7 +508,7 @@ impl WindFieldSim {
             let at = (SLOT * k) as usize;
             bytes[at..at + std::mem::size_of::<SimGpu>()].copy_from_slice(bytemuck::bytes_of(&sim));
         }
-        queue.write_buffer(&uniform, 0, &bytes);
+        crate::traffic::write_buffer(queue, &uniform, 0, &bytes);
         self.steps = count as u32;
         self.last = Some((scene.frame.tick, cells));
     }

@@ -302,8 +302,12 @@ impl Renderer {
                 foliage_wind: uniform.foliage_wind[0],
             };
         }
-        self.queue
-            .write_buffer(&self.lights.frame_buffer, 0, bytemuck::bytes_of(&uniform));
+        crate::traffic::write_buffer(
+            &self.queue,
+            &self.lights.frame_buffer,
+            0,
+            bytemuck::bytes_of(&uniform),
+        );
         // The live sky's faces due this frame see the sky as it is drawn.
         LiveSkyPass::write(&self.sky.sky_capture, &self.queue, &uniform, camera);
         let probe_positions: Vec<Vec3> = probe_frame
@@ -339,13 +343,15 @@ impl Renderer {
             }
             u.cluster = self.reflections.reflection_clusters[k].params;
             u.ssr = [0.0; 4];
-            self.queue.write_buffer(
+            crate::traffic::write_buffer(
+                &self.queue,
                 &self.reflections.reflection_buffer[k],
                 0,
                 bytemuck::bytes_of(&u),
             );
         }
-        self.queue.write_buffer(
+        crate::traffic::write_buffer(
+            &self.queue,
             &self.shadows.shadow_buffer,
             0,
             bytemuck::cast_slice(&shadow_slots),

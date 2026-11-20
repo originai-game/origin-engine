@@ -61,12 +61,15 @@ pub(crate) fn buffers(device: &wgpu::Device) -> [wgpu::Buffer; 3] {
     let labels = ["lights", "cluster table", "cluster lights"];
     let sizes = sizes();
     [0, 1, 2].map(|i| {
-        device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(labels[i]),
-            size: sizes[i],
-            usage,
-            mapped_at_creation: false,
-        })
+        crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some(labels[i]),
+                size: sizes[i],
+                usage,
+                mapped_at_creation: false,
+            },
+        )
     })
 }
 

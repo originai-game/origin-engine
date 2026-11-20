@@ -206,12 +206,15 @@ fn buffer(
     size: u64,
     usage: wgpu::BufferUsages,
 ) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size,
-        usage,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some(label),
+            size,
+            usage,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 const STORAGE: wgpu::BufferUsages = wgpu::BufferUsages::STORAGE.union(wgpu::BufferUsages::COPY_DST);
@@ -260,23 +263,26 @@ impl GpuTrails {
         let pipeline = {
             let (device, layout) = (device.clone(), layout.clone());
             Deferred::new(move || {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("trails"),
-                    layout: Some(
-                        &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                            label: Some("trails"),
-                            bind_group_layouts: &[Some(&layout)],
-                            immediate_size: 0,
-                        }),
-                    ),
-                    module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
                         label: Some("trails"),
-                        source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-                    }),
-                    entry_point: Some("advance"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                        layout: Some(&device.create_pipeline_layout(
+                            &wgpu::PipelineLayoutDescriptor {
+                                label: Some("trails"),
+                                bind_group_layouts: &[Some(&layout)],
+                                immediate_size: 0,
+                            },
+                        )),
+                        module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                            label: Some("trails"),
+                            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+                        }),
+                        entry_point: Some("advance"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         };
         let points = buffer(device, "strip points", POINT_BYTES * 256, STORAGE);
@@ -499,7 +505,7 @@ impl GpuTrails {
             self.points = buffer(device, "strip points", bytes.next_power_of_two(), STORAGE);
             self.draw_group = Self::group(device, &self.draw_layout, &self.points);
         }
-        queue.write_buffer(&self.points, 0, bytemuck::cast_slice(&points));
+        crate::traffic::write_buffer(queue, &self.points, 0, bytemuck::cast_slice(&points));
         if jobs.is_empty() {
             return Ok(out);
         }
@@ -523,7 +529,7 @@ impl GpuTrails {
                 STORAGE,
             );
         }
-        queue.write_buffer(&self.styles, 0, style_bytes);
+        crate::traffic::write_buffer(queue, &self.styles, 0, style_bytes);
         let job_bytes: &[u8] = bytemuck::cast_slice(&jobs);
         if job_bytes.len() as u64 > self.jobs.size() {
             self.jobs = buffer(
@@ -533,8 +539,9 @@ impl GpuTrails {
                 STORAGE,
             );
         }
-        queue.write_buffer(&self.jobs, 0, job_bytes);
-        queue.write_buffer(
+        crate::traffic::write_buffer(queue, &self.jobs, 0, job_bytes);
+        crate::traffic::write_buffer(
+            queue,
             &self.count,
             0,
             bytemuck::cast_slice(&[jobs.len() as u32, 0, 0, 0]),

@@ -478,12 +478,16 @@ impl Probes {
                 .is_none_or(|(b, _)| b.size() < stride * slots as u64)
         {
             self.uniforms = Some((
-                device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("probe frames"),
-                    size: stride * ((MAX_REFLECTION_PROBES + crate::MAX_GRID_CAPTURES) * 7) as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                }),
+                crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("probe frames"),
+                        size: stride
+                            * ((MAX_REFLECTION_PROBES + crate::MAX_GRID_CAPTURES) * 7) as u64,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                ),
                 stride,
             ));
         }
@@ -586,7 +590,7 @@ impl Probes {
                 );
             }
         }
-        queue.write_buffer(buffer, 0, &bytes);
+        crate::traffic::write_buffer(queue, buffer, 0, &bytes);
     }
 }
 
@@ -665,12 +669,15 @@ pub(crate) fn read_back(
     for mip in 0..crate::ibl::PREFILTER_MIPS {
         let n = (slot.size >> mip).max(1);
         let row = (n * 8).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("probe read back"),
-            size: (row * n * 6) as u64,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("probe read back"),
+                size: (row * n * 6) as u64,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            },
+        );
         let mut encoder = device.create_command_encoder(&Default::default());
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
@@ -695,9 +702,8 @@ pub(crate) fn read_back(
         );
         queue.submit(Some(encoder.finish()));
         let slice = buffer.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        device
-            .poll(wgpu::PollType::wait_indefinitely())
+        crate::traffic::map_async(&slice, wgpu::MapMode::Read, |_| {});
+        crate::traffic::poll(device, wgpu::PollType::wait_indefinitely())
             .map_err(|e| format!("reading the probe back: {e}"))?;
         let data = slice
             .get_mapped_range()

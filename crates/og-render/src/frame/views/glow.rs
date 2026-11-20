@@ -143,34 +143,37 @@ pub(super) fn glow_add(device: &wgpu::Device) -> GlowAdd {
     // The down passes write their level; the up passes and the add blend
     // onto theirs, as the frame's bloom up passes do.
     let pipeline = |entry: &str, blend: bool| {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("view glow"),
-            layout: Some(&pl),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
+        crate::traffic::create_render_pipeline(
+            device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some("view glow"),
+                layout: Some(&pl),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: crate::HDR_FORMAT,
+                        blend: blend.then_some(wgpu::BlendState {
+                            color: add,
+                            alpha: add,
+                        }),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
             },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: crate::HDR_FORMAT,
-                    blend: blend.then_some(wgpu::BlendState {
-                        color: add,
-                        alpha: add,
-                    }),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        })
+        )
     };
     let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("view glow"),

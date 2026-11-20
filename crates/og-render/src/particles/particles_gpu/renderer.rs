@@ -79,14 +79,17 @@ impl ParticleRenderer {
                     immediate_size: 0,
                 });
                 let pipeline = |entry: &str| {
-                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                        label: Some("particle sim"),
-                        layout: Some(&layout),
-                        module: &module,
-                        entry_point: Some(entry),
-                        compilation_options: Default::default(),
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
-                    })
+                    crate::traffic::create_compute_pipeline(
+                        &device,
+                        &wgpu::ComputePipelineDescriptor {
+                            label: Some("particle sim"),
+                            layout: Some(&layout),
+                            module: &module,
+                            entry_point: Some(entry),
+                            compilation_options: Default::default(),
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
+                        },
+                    )
                 };
                 (pipeline("simulate"), pipeline("clear"), pipeline("shift"))
             })
@@ -103,31 +106,37 @@ impl ParticleRenderer {
         let sprites_pipeline = {
             let (device, sprites_layout) = (device.clone(), sprites_layout.clone());
             Deferred::new(move || {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("particle sprites"),
-                    layout: Some(
-                        &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                            label: Some("particle sprites"),
-                            bind_group_layouts: &[Some(&sprites_layout)],
-                            immediate_size: 0,
-                        }),
-                    ),
-                    module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
                         label: Some("particle sprites"),
-                        source: wgpu::ShaderSource::Wgsl(sprites_source().into()),
-                    }),
-                    entry_point: Some("expand"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                        layout: Some(&device.create_pipeline_layout(
+                            &wgpu::PipelineLayoutDescriptor {
+                                label: Some("particle sprites"),
+                                bind_group_layouts: &[Some(&sprites_layout)],
+                                immediate_size: 0,
+                            },
+                        )),
+                        module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                            label: Some("particle sprites"),
+                            source: wgpu::ShaderSource::Wgsl(sprites_source().into()),
+                        }),
+                        entry_point: Some("expand"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         };
-        let sprites_params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("particle sprites"),
-            size: SPRITE_PARAMS_STRIDE * 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let sprites_params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("particle sprites"),
+                size: SPRITE_PARAMS_STRIDE * 16,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let draw_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle draw"),
             entries: &[
@@ -149,18 +158,24 @@ impl ParticleRenderer {
             ],
             immediate_size: 0,
         });
-        let emitter_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("emitters"),
-            size: EMITTER_STRIDE * 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let view_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("particle view"),
-            size: std::mem::size_of::<ParticleViewGpu>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let emitter_buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("emitters"),
+                size: EMITTER_STRIDE * 16,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let view_buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("particle view"),
+                size: std::mem::size_of::<ParticleViewGpu>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         ParticleRenderer {
             sprites_layout,
             sprites_pipeline,
@@ -533,18 +548,21 @@ impl ParticleRenderer {
             return Some(state.cpu.slots.clone());
         };
         let size = g.buffer.size();
-        let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("particle readback"),
-            size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let staging = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("particle readback"),
+                size,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            },
+        );
         let mut encoder = device.create_command_encoder(&Default::default());
         encoder.copy_buffer_to_buffer(&g.buffer, 0, &staging, 0, size);
         queue.submit(Some(encoder.finish()));
         let slice = staging.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
-        device.poll(wgpu::PollType::wait_indefinitely()).ok()?;
+        crate::traffic::map_async(&slice, wgpu::MapMode::Read, |_| {});
+        crate::traffic::poll(device, wgpu::PollType::wait_indefinitely()).ok()?;
         let data = slice.get_mapped_range().ok()?;
         let slots = bytemuck::cast_slice::<u8, ParticleState>(&data).to_vec();
         drop(data);

@@ -88,12 +88,14 @@ impl Views {
                 },
             );
             if lights {
-                queue.write_buffer(
+                crate::traffic::write_buffer(
+                    queue,
                     &slot.light_buffers[1],
                     0,
                     bytemuck::cast_slice(&slot.clusters.table),
                 );
-                queue.write_buffer(
+                crate::traffic::write_buffer(
+                    queue,
                     &slot.light_buffers[2],
                     0,
                     bytemuck::cast_slice(&slot.clusters.ref_words()),
@@ -115,7 +117,7 @@ impl Views {
             u.ssr = [0.0; 4];
             // Its own level-of-detail tint (meshlet.wgsl).
             u.drawn[1] = u32::from(scene.frame.views[p.index].lod_debug);
-            queue.write_buffer(&slot.frame_buffer, 0, bytemuck::bytes_of(&u));
+            crate::traffic::write_buffer(queue, &slot.frame_buffer, 0, bytemuck::bytes_of(&u));
             let mut f = *fx;
             f.ao = [0.0; 4];
             f.view_proj_unjittered = vp;
@@ -123,13 +125,14 @@ impl Views {
             let (w, h) = (p.size.0 as f32, p.size.1 as f32);
             f.screen = [w, h, 1.0 / w, 1.0 / h];
             crate::fx::unclustered(&mut f);
-            queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
+            crate::traffic::write_buffer(queue, &slot.fx_buffer, 0, bytemuck::bytes_of(&f));
             let strips = light_map.map_or(1, |(_, s)| s.max(1));
             let ambient = scene
                 .sprite
                 .lighting_2d
                 .map_or(glam::Vec3::ONE, |l| l.ambient);
-            queue.write_buffer(
+            crate::traffic::write_buffer(
+                queue,
                 &slot.sprite_fx_buffer,
                 0,
                 bytemuck::bytes_of(&[f.screen, [strips as f32, ambient.x, ambient.y, ambient.z]]),
@@ -187,15 +190,20 @@ impl Views {
                     // The upsample's radius, one texel, as the frame's.
                     let u = [intensity.max(0.0), 1.0];
                     for uniform in &g.uniforms {
-                        queue.write_buffer(uniform, 0, bytemuck::cast_slice(&u));
+                        crate::traffic::write_buffer(queue, uniform, 0, bytemuck::cast_slice(&u));
                     }
                     Some(g)
                 }
             };
             let (particles, lines) =
                 camera_gpu(&p.frame, p.position, p.size, scene.frame.css_height);
-            queue.write_buffer(&slot.particle_buffer, 0, bytemuck::bytes_of(&particles));
-            queue.write_buffer(&slot.line_buffer, 0, bytemuck::bytes_of(&lines));
+            crate::traffic::write_buffer(
+                queue,
+                &slot.particle_buffer,
+                0,
+                bytemuck::bytes_of(&particles),
+            );
+            crate::traffic::write_buffer(queue, &slot.line_buffer, 0, bytemuck::bytes_of(&lines));
         }
         self.glow_add = add;
         for p in plans {

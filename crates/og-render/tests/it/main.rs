@@ -1,5 +1,8 @@
 #![feature(custom_test_frameworks, test)]
 #![test_runner(gpu_tests::run)]
+// The tests drive wgpu themselves: only the renderer counts its traffic
+// (og-render clippy.toml, gpu/traffic.rs).
+#![allow(clippy::disallowed_methods)]
 use og_render::wgpu as gpu_wgpu;
 #[path = "../../../../tests/gpu.rs"]
 mod gpu_tests;

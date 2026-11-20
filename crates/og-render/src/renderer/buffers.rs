@@ -81,10 +81,13 @@ pub(crate) fn sprite_bind_group(
 /// The sprite-mode particles' instances: written in compute, read as
 /// vertices (`size` bytes).
 pub(crate) fn particle_sprite_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("particle sprites"),
-        size,
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some("particle sprites"),
+            size,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        },
+    )
 }

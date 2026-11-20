@@ -34,12 +34,15 @@ impl ScatterRenderer {
         let size = (total * std::mem::size_of::<crate::instances::GpuTransform>()) as u64;
         if self.impostor_instances.as_ref().is_none_or(|b| b.1 < size) {
             let cap = size.next_power_of_two();
-            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("impostor instances"),
-                size: cap,
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            let buffer = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("impostor instances"),
+                    size: cap,
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
             self.impostor_instances = Some((buffer, cap));
         }
         let mut transforms = Vec::with_capacity(total);
@@ -78,7 +81,12 @@ impl ScatterRenderer {
                 gpu.wind = [wind_dir.x, wind_dir.y, sway, 0.0];
                 gpu.wind_shape[1] = top;
             }
-            queue.write_buffer(&self.uniform, slot as u64 * SLOT, bytemuck::bytes_of(&gpu));
+            crate::traffic::write_buffer(
+                queue,
+                &self.uniform,
+                slot as u64 * SLOT,
+                bytemuck::bytes_of(&gpu),
+            );
             out.push(ImpostorBatch {
                 material: imp.material.index(),
                 cast_shadows: cast,
@@ -90,7 +98,7 @@ impl ScatterRenderer {
             });
         }
         if let Some((buffer, _)) = &self.impostor_instances {
-            queue.write_buffer(buffer, 0, bytemuck::cast_slice(&transforms));
+            crate::traffic::write_buffer(queue, buffer, 0, bytemuck::cast_slice(&transforms));
         }
         for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
             self.pipeline(device, None, Side::Double, pass, true);
@@ -137,7 +145,8 @@ impl ScatterRenderer {
         let wind = scene.atmosphere.wind.filter(|w| w.strength > 0.0);
         let previous = self.last_tick.unwrap_or(scene.frame.tick);
         self.last_tick = Some(scene.frame.tick);
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
             &self.wind_uniform,
             0,
             bytemuck::bytes_of(&crate::wind::field_gpu(
@@ -509,7 +518,8 @@ impl ScatterRenderer {
                         && p.index_count != index_count
                     {
                         p.index_count = index_count;
-                        queue.write_buffer(
+                        crate::traffic::write_buffer(
+                            queue,
                             b,
                             c.offset + crate::scatter_place::TAIL,
                             bytemuck::bytes_of(&index_count),
@@ -616,7 +626,7 @@ impl ScatterRenderer {
                     Some(cull) => {
                         let slot = cull.alloc(device);
                         let buffer = cull.chunks(slot).clone();
-                        queue.write_buffer(&buffer, slot.offset(), contents);
+                        crate::traffic::write_buffer(queue, &buffer, slot.offset(), contents);
                         (Some(buffer), Some(slot))
                     }
                     None => {
@@ -679,7 +689,12 @@ impl ScatterRenderer {
                     self.pipeline(device, None, Side::Double, pass, true);
                 }
             }
-            queue.write_buffer(&self.uniform, si as u64 * SLOT, bytemuck::bytes_of(&gpu));
+            crate::traffic::write_buffer(
+                queue,
+                &self.uniform,
+                si as u64 * SLOT,
+                bytemuck::bytes_of(&gpu),
+            );
             let shader = shader_of(d.material.index());
             if let Some(sh) = shader
                 && !self.hooked.contains_key(&sh)
@@ -826,16 +841,19 @@ impl ScatterRenderer {
             let size = std::mem::size_of_val(cpu) as u64;
             if self.card_instances.as_ref().is_none_or(|b| b.1 < size) {
                 let cap = size.next_power_of_two();
-                let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("crowd card records"),
-                    size: cap,
-                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                });
+                let buffer = crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("crowd card records"),
+                        size: cap,
+                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                );
                 self.card_instances = Some((buffer, cap));
             }
             let (buffer, _) = self.card_instances.as_ref().expect("made above");
-            queue.write_buffer(buffer, 0, bytemuck::cast_slice(cpu));
+            crate::traffic::write_buffer(queue, buffer, 0, bytemuck::cast_slice(cpu));
         }
         let out = inputs
             .iter()
@@ -848,7 +866,12 @@ impl ScatterRenderer {
                 gpu.fade[2] = c.views as f32;
                 gpu.fade[3] = c.frames as f32;
                 gpu.impostor_light = light.extend(c.elevation).to_array();
-                queue.write_buffer(&self.uniform, slot as u64 * SLOT, bytemuck::bytes_of(&gpu));
+                crate::traffic::write_buffer(
+                    queue,
+                    &self.uniform,
+                    slot as u64 * SLOT,
+                    bytemuck::bytes_of(&gpu),
+                );
                 CardBatch {
                     input: *c,
                     offset: (slot as u64 * SLOT) as u32,

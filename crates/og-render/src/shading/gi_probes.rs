@@ -362,12 +362,15 @@ impl Grown {
         if self.buffer.as_ref().is_some_and(|b| b.size() >= bytes) {
             return false;
         }
-        self.buffer = Some(device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some(self.label),
-            size: bytes.max(256).next_power_of_two(),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        }));
+        self.buffer = Some(crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some(self.label),
+                size: bytes.max(256).next_power_of_two(),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        ));
         self.generation += 1;
         true
     }
@@ -497,14 +500,17 @@ impl GiProbes {
                 bind_group_layouts: layouts,
                 immediate_size: 0,
             });
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(label),
-                layout: Some(&layout),
-                module: &module,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                cache: None,
-            })
+            crate::traffic::create_compute_pipeline(
+                device,
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&layout),
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    cache: None,
+                },
+            )
         };
         let trace = pipeline(
             "gi probes trace",
@@ -518,12 +524,15 @@ impl GiProbes {
             blend_source(),
             "cs_blend",
         );
-        let params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("gi probes params"),
-            size: PARAMS_STRIDE * MAX_SLICES as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("gi probes params"),
+                size: PARAMS_STRIDE * MAX_SLICES as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         GiProbes {
             frame_layout,
             trace_layout,
@@ -600,11 +609,12 @@ impl GiProbes {
         });
         let words = &self.scene.words;
         if self.bvh.fit(device, (words.len() * 16) as u64) || self.scene.static_dirty {
-            queue.write_buffer(self.bvh.get(), 0, bytemuck::cast_slice(words));
+            crate::traffic::write_buffer(queue, self.bvh.get(), 0, bytemuck::cast_slice(words));
             self.scene.static_dirty = false;
         } else {
             let at = self.scene.static_len;
-            queue.write_buffer(
+            crate::traffic::write_buffer(
+                queue,
                 self.bvh.get(),
                 (at * 16) as u64,
                 bytemuck::cast_slice(&words[at..]),
@@ -663,7 +673,7 @@ impl GiProbes {
             let o = k * PARAMS_STRIDE as usize;
             bytes[o..o + std::mem::size_of::<GiParams>()].copy_from_slice(bytemuck::bytes_of(&p));
         }
-        queue.write_buffer(&self.params, 0, &bytes);
+        crate::traffic::write_buffer(queue, &self.params, 0, &bytes);
         self.slices = slices;
         self.header = header(&desc, &cascades);
         self.frame += 1;
@@ -676,7 +686,8 @@ impl GiProbes {
         if !force && self.header == self.written {
             return;
         }
-        queue.write_buffer(
+        crate::traffic::write_buffer(
+            queue,
             probes,
             (HEADER_AT * 16) as u64,
             bytemuck::cast_slice(&self.header),

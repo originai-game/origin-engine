@@ -42,6 +42,20 @@ frame interval:
 | `cpu engine systems` | the engine's other systems inside them |
 | `cpu render build` | building the frame: extracting the world, preparing, submitting |
 | `cpu render encode` | encoding the render passes' commands |
+| `cpu blocking gpu waits` | time the frame stood still waiting for the GPU |
+| `cpu pipelines made` | time spent making pipelines on the frame's thread |
+| `upload kb`, `uploads` | data written to the GPU in the frame, and the writes |
+| `buffers made`, `buffer kb made` | GPU buffers created in the frame |
+| `readbacks` | reads of GPU data back to the CPU started in the frame |
+| `blocking gpu waits`, `pipelines made` | how many of each the frame did |
+
+After the lines, the report lists where that data moved, each place with
+its calls, total MB, KB per frame and the frames it moved in: uploads in
+steady play and uploads only at load, buffers made, every readback, every
+blocking wait, and the pipelines made after the first frames. In steady
+play a frame should make no buffers and no pipelines; an upload that
+repeats every frame with the same size is data that could stay on the
+GPU.
 
 GPU passes that ran together each count only their time alone, so the
 pass lines plus the overlap add up to `gpu frame`. A pass the GPU could
@@ -85,6 +99,12 @@ has a cause:
   frame. For the first frames after loading or Play the medians are the
   steady frames', so a first build or a first use reads as the line it
   landed on.
+
+Either cause is followed by the first-use work the frame did, when it
+did any: pipelines made, buffers made, blocking waits, and an upload of
+1 MB or more. The first frame after loading or Play reads, for example,
+`pipeline compile 36 ms; 102 pipelines made, 385 buffers made (562003 kb),
+257509 kb uploaded`.
 
 A hitch whose cause is `cpu ticks` with several ticks is the simulation
 catching up after a slow frame: fix the slow frame before it.

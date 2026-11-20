@@ -127,31 +127,34 @@ impl GroundCatcher {
                     bind_group_layouts: &[Some(&layout)],
                     immediate_size: 0,
                 });
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("ground open"),
-                    layout: Some(&pl),
-                    vertex: wgpu::VertexState {
-                        module: &module,
-                        entry_point: Some("vs_ground_open"),
-                        compilation_options: Default::default(),
-                        buffers: &[],
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("ground open"),
+                        layout: Some(&pl),
+                        vertex: wgpu::VertexState {
+                            module: &module,
+                            entry_point: Some("vs_ground_open"),
+                            compilation_options: Default::default(),
+                            buffers: &[],
+                        },
+                        primitive: wgpu::PrimitiveState::default(),
+                        depth_stencil: None,
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module: &module,
+                            entry_point: Some("fs_ground_open"),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: OPEN_FORMAT,
+                                blend: None,
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: wgpu::PrimitiveState::default(),
-                    depth_stencil: None,
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module: &module,
-                        entry_point: Some("fs_ground_open"),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: OPEN_FORMAT,
-                            blend: None,
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         };
         GroundCatcher {
@@ -177,12 +180,15 @@ impl GroundCatcher {
             1,
             wgpu::TextureFormat::R32Float,
         );
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ground open"),
-            size: 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("ground open"),
+                size: 16,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let open = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("ground open"),
@@ -228,7 +234,8 @@ impl GroundCatcher {
     /// The bake's uniform for `g` (written with the frame's).
     pub(crate) fn write(&self, queue: &wgpu::Queue, g: &crate::GroundProjection) {
         if let Some(m) = &self.maps {
-            queue.write_buffer(
+            crate::traffic::write_buffer(
+                queue,
                 &m.uniform,
                 0,
                 bytemuck::cast_slice(&[ground_half(g), 0.0, 0.0, 0.0]),

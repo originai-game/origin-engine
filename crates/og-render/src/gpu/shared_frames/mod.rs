@@ -430,7 +430,7 @@ impl FrameLink {
     /// [`Renderer::render`] to [`crate::RenderTarget::Offscreen`].
     pub fn present(&mut self, renderer: &Renderer) -> Presented {
         // Finished copies send their Ready from here (on_submitted_work_done).
-        let _ = renderer.device().poll(wgpu::PollType::Poll);
+        let _ = crate::traffic::poll(renderer.device(), wgpu::PollType::Poll);
         self.drain();
         let size = renderer.size();
         let Some(host) = self.host.as_mut() else {
@@ -439,7 +439,7 @@ impl FrameLink {
         let stale = host.current.as_ref().is_none_or(|g| g.size != size);
         if stale && host.pending.is_none_or(|(_, s)| s != size) {
             // Every Ready of the old generation goes before its Rehello.
-            let _ = renderer.device().poll(wgpu::PollType::wait_indefinitely());
+            let _ = crate::traffic::poll(renderer.device(), wgpu::PollType::wait_indefinitely());
             host.current = None;
             let generation = host.next_generation;
             host.next_generation += 1;

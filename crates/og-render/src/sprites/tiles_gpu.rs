@@ -131,12 +131,15 @@ impl Tiles {
                 },
             ],
         });
-        let params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("tile placements"),
-            size: 256,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("tile placements"),
+                size: 256,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let pipeline = pipeline(device, layouts, &layout, samples, false, off);
         Self {
             layout,

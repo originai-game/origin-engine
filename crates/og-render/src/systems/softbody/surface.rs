@@ -164,23 +164,26 @@ impl SurfacePipelines {
             let device = device.clone();
             let layout = layout.clone();
             Deferred::new(move || {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some(entry),
-                    layout: Some(
-                        &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some(entry),
+                        layout: Some(&device.create_pipeline_layout(
+                            &wgpu::PipelineLayoutDescriptor {
+                                label: Some("simulation surface"),
+                                bind_group_layouts: &[Some(&layout)],
+                                immediate_size: 0,
+                            },
+                        )),
+                        module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
                             label: Some("simulation surface"),
-                            bind_group_layouts: &[Some(&layout)],
-                            immediate_size: 0,
+                            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
                         }),
-                    ),
-                    module: &device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                        label: Some("simulation surface"),
-                        source: wgpu::ShaderSource::Wgsl(WGSL.into()),
-                    }),
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         };
         Self {
@@ -217,12 +220,15 @@ impl SurfacePipelines {
                 usage: storage,
             },
         );
-        let normals = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("surface normals"),
-            size: mesh.vertices.len() as u64 * 16,
-            usage: wgpu::BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
+        let normals = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("surface normals"),
+                size: mesh.vertices.len() as u64 * 16,
+                usage: wgpu::BufferUsages::STORAGE,
+                mapped_at_creation: false,
+            },
+        );
         let entries: Vec<_> = [&source, &topology, &normals, output]
             .into_iter()
             .enumerate()
@@ -236,12 +242,15 @@ impl SurfacePipelines {
             layout: &self.layout,
             entries: &entries,
         });
-        let previous = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("previous surface"),
-            size: output.size(),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let previous = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("previous surface"),
+                size: output.size(),
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         SurfaceMesh {
             source,
             topology,
@@ -297,7 +306,7 @@ impl SurfaceMesh {
     }
 
     pub(crate) fn update(&self, queue: &wgpu::Queue, mesh: &MeshData) {
-        queue.write_buffer(&self.source, 0, bytemuck::cast_slice(&mesh.vertices));
+        crate::traffic::write_buffer(queue, &self.source, 0, bytemuck::cast_slice(&mesh.vertices));
     }
 
     pub(crate) fn bytes(&self) -> u64 {

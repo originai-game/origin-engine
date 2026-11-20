@@ -166,7 +166,8 @@ impl Renderer {
             usage,
             view_formats: &[],
         });
-        self.queue.write_texture(
+        crate::traffic::write_texture(
+            &self.queue,
             wgpu::TexelCopyTextureInfo {
                 texture: &tex,
                 mip_level: 0,

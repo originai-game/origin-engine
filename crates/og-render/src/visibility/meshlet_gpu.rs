@@ -417,12 +417,15 @@ fn buffer(
     size: u64,
     usage: wgpu::BufferUsages,
 ) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size: size.max(16),
-        usage,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some(label),
+            size: size.max(16),
+            usage,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 fn storage_usage() -> wgpu::BufferUsages {

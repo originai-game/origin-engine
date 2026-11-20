@@ -449,12 +449,15 @@ impl LineRenderer {
             }],
         });
         let uniform = |label: &str| {
-            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size: std::mem::size_of::<LineUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            let buffer = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size: std::mem::size_of::<LineUniform>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some(label),
                 layout: &layout,
@@ -494,54 +497,63 @@ impl LineRenderer {
             };
             Sampled::new(samples, move |samples| {
                 use crate::deferred::AsModule;
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some(label),
-                    layout: Some(&pl),
-                    vertex: wgpu::VertexState {
-                        module: module.module(),
-                        entry_point: Some(vs),
-                        compilation_options: Default::default(),
-                        buffers,
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some(label),
+                        layout: Some(&pl),
+                        vertex: wgpu::VertexState {
+                            module: module.module(),
+                            entry_point: Some(vs),
+                            compilation_options: Default::default(),
+                            buffers,
+                        },
+                        primitive: Default::default(),
+                        depth_stencil: depth.map(|compare| wgpu::DepthStencilState {
+                            format: crate::DEPTH_FORMAT,
+                            depth_write_enabled: Some(false),
+                            depth_compare: Some(compare),
+                            stencil: Default::default(),
+                            bias: Default::default(),
+                        }),
+                        multisample: wgpu::MultisampleState {
+                            count: samples,
+                            ..Default::default()
+                        },
+                        fragment: Some(wgpu::FragmentState {
+                            module: module.module(),
+                            entry_point: Some(fs),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format,
+                                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: Default::default(),
-                    depth_stencil: depth.map(|compare| wgpu::DepthStencilState {
-                        format: crate::DEPTH_FORMAT,
-                        depth_write_enabled: Some(false),
-                        depth_compare: Some(compare),
-                        stencil: Default::default(),
-                        bias: Default::default(),
-                    }),
-                    multisample: wgpu::MultisampleState {
-                        count: samples,
-                        ..Default::default()
-                    },
-                    fragment: Some(wgpu::FragmentState {
-                        module: module.module(),
-                        entry_point: Some(fs),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format,
-                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         };
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("lines"),
-            size: LINE_STRIDE * 256,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let wire_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("lines (wireframe)"),
-            size: WIRE_STRIDE * 256,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("lines"),
+                size: LINE_STRIDE * 256,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let wire_buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("lines (wireframe)"),
+                size: WIRE_STRIDE * 256,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         LineRenderer {
             layout,
             scene_uniform,
@@ -732,37 +744,43 @@ impl LineRenderer {
         if !wires.is_empty() {
             let bytes = wires.len() as u64 * WIRE_STRIDE;
             if self.wire_buffer.size() < bytes {
-                self.wire_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("lines (wireframe)"),
-                    size: bytes.next_power_of_two(),
-                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                });
+                self.wire_buffer = crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("lines (wireframe)"),
+                        size: bytes.next_power_of_two(),
+                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                );
             }
-            queue.write_buffer(&self.wire_buffer, 0, bytemuck::cast_slice(&wires));
+            crate::traffic::write_buffer(queue, &self.wire_buffer, 0, bytemuck::cast_slice(&wires));
         }
         if all.is_empty() {
             return frame;
         }
         let bytes = all.len() as u64 * LINE_STRIDE;
         if self.buffer.size() < bytes {
-            self.buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("lines"),
-                size: bytes.next_power_of_two(),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            self.buffer = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("lines"),
+                    size: bytes.next_power_of_two(),
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
         }
-        queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&all));
+        crate::traffic::write_buffer(queue, &self.buffer, 0, bytemuck::cast_slice(&all));
         frame
     }
 
     pub fn set_scene_uniform(&self, queue: &wgpu::Queue, u: &LineUniform) {
-        queue.write_buffer(&self.scene_uniform, 0, bytemuck::bytes_of(u));
+        crate::traffic::write_buffer(queue, &self.scene_uniform, 0, bytemuck::bytes_of(u));
     }
 
     pub fn set_overlay_uniform(&self, queue: &wgpu::Queue, u: &LineUniform) {
-        queue.write_buffer(&self.overlay_uniform, 0, bytemuck::bytes_of(u));
+        crate::traffic::write_buffer(queue, &self.overlay_uniform, 0, bytemuck::bytes_of(u));
     }
 
     fn draw(&self, pass: &mut wgpu::RenderPass, range: (u32, u32)) {

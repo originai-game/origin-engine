@@ -12,12 +12,15 @@ impl GrassRenderer {
         let slice_cap = slices.next_power_of_two().clamp(64, MAX_SLICES);
         let blade_cap = (slice_cap * SLICE).min(MAX_BLADES);
         let make = |label, size: u64, usage| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size,
-                usage,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size,
+                    usage,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let storage = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
         let uniform = wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST;
@@ -328,9 +331,9 @@ impl GrassRenderer {
                 kinds: kinds_draw(&g),
                 wind,
             };
-            queue.write_buffer(&f.generator, 0, bytemuck::bytes_of(&generator));
-            queue.write_buffer(&f.draw, 0, bytemuck::bytes_of(&draw));
-            queue.write_buffer(&f.slices, 0, bytemuck::cast_slice(&slices));
+            crate::traffic::write_buffer(queue, &f.generator, 0, bytemuck::bytes_of(&generator));
+            crate::traffic::write_buffer(queue, &f.draw, 0, bytemuck::bytes_of(&draw));
+            crate::traffic::write_buffer(queue, &f.slices, 0, bytemuck::cast_slice(&slices));
             let view_of =
                 |m: Option<crate::TextureHandle>| m.and_then(textures).unwrap_or(&self.white);
             let maps = device.create_bind_group(&wgpu::BindGroupDescriptor {

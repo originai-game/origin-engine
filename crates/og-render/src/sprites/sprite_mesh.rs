@@ -253,12 +253,15 @@ impl SpriteMeshRenderer {
         SpriteMeshRenderer {
             alpha: pipeline("sprite mesh", wgpu::BlendState::ALPHA_BLENDING),
             additive: pipeline("sprite mesh additive", additive),
-            buffer: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("sprite meshes"),
-                size: 4096 * MESH_STRIDE,
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
+            buffer: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("sprite meshes"),
+                    size: 4096 * MESH_STRIDE,
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            ),
             skin: skin.then(|| crate::sprite_skin::SkinRenderer::new(device, layouts, samples)),
         }
     }

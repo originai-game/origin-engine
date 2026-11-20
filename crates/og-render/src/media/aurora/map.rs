@@ -67,7 +67,8 @@ fn write_rows(
         .flat_map(u16::to_le_bytes)
         .collect();
     let rows = texels.len() as u32 / width;
-    queue.write_texture(
+    crate::traffic::write_texture(
+        queue,
         wgpu::TexelCopyTextureInfo {
             texture,
             mip_level: 0,
@@ -127,7 +128,8 @@ impl AuroraMap {
             view_formats: &[],
         });
         for (level, (w, h, texels)) in strip_mips(&kh_strip(seed)).iter().enumerate() {
-            queue.write_texture(
+            crate::traffic::write_texture(
+                queue,
                 wgpu::TexelCopyTextureInfo {
                     texture: &strip_texture,
                     mip_level: level as u32,
@@ -228,32 +230,41 @@ impl AuroraMap {
                     source: wgpu::ShaderSource::Wgsl(FOOTPRINT_WGSL.into()),
                 });
                 let compute = |entry| {
-                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                        label: Some("aurora footprint"),
-                        layout: Some(&pipeline_layout),
-                        module: &module,
-                        entry_point: Some(entry),
-                        compilation_options: Default::default(),
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
-                    })
+                    crate::traffic::create_compute_pipeline(
+                        &device,
+                        &wgpu::ComputePipelineDescriptor {
+                            label: Some("aurora footprint"),
+                            layout: Some(&pipeline_layout),
+                            module: &module,
+                            entry_point: Some(entry),
+                            compilation_options: Default::default(),
+                            cache: crate::pipeline_cache::of(&device).as_ref(),
+                        },
+                    )
                 };
                 (compute("main"), compute("light"))
             })
         };
         let groups = u64::from(FOOTPRINT / 8) * u64::from(FOOTPRINT / 8);
-        let partials = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("aurora light"),
-            size: groups * 32,
-            usage: wgpu::BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
+        let partials = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("aurora light"),
+                size: groups * 32,
+                usage: wgpu::BufferUsages::STORAGE,
+                mapped_at_creation: false,
+            },
+        );
         crate::deferred::Start::start(&pipeline);
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("aurora footprint"),
-            size: std::mem::size_of::<FootprintParams>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("aurora footprint"),
+                size: std::mem::size_of::<FootprintParams>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         // Along the curtain the strip repeats; across it, it ends.
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("aurora strip"),
@@ -301,7 +312,7 @@ impl AuroraMap {
         let mut params = aurora.footprint(seconds, Vec2::new(viewer.x, viewer.z) * 0.001);
         params.sky = [radius_km, viewer.y.max(0.0) * 0.001, LIGHT_ROW as f32, 0.0];
         params.columns = pass.columns;
-        queue.write_buffer(&pass.uniform, 0, bytemuck::bytes_of(&params));
+        crate::traffic::write_buffer(queue, &pass.uniform, 0, bytemuck::bytes_of(&params));
         self.pending = true;
     }
 

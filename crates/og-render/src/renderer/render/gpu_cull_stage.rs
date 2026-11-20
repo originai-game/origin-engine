@@ -58,7 +58,7 @@ impl Renderer {
             .as_mut()
             .expect("made when gpu_cull was decided");
         if gc.in_flight() {
-            let _ = self.device.poll(wgpu::PollType::Poll);
+            let _ = crate::traffic::poll(&self.device, wgpu::PollType::Poll);
         }
         let lagged = gc.poll_counts();
         debug_assert!(vis.cull_passes.len() <= max_passes);

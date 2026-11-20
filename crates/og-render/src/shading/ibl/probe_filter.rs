@@ -42,12 +42,15 @@ impl IblGenerator {
         const COPY: usize = 7;
         let mips = radiance.mip_level_count();
         let count = 6 * (mips as usize + irradiance.is_some() as usize + PREFILTER_MIPS as usize);
-        let params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("probe filter params"),
-            size: SLOT * count as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("probe filter params"),
+                size: SLOT * count as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let group = |source: &wgpu::TextureView, slot: usize| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("probe filter"),
@@ -147,7 +150,7 @@ impl IblGenerator {
                 );
             }
         }
-        queue.write_buffer(&params, 0, &bytes);
+        crate::traffic::write_buffer(queue, &params, 0, &bytes);
         ProbeFilter {
             _params: params,
             draws,

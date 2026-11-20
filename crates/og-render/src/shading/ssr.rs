@@ -331,12 +331,15 @@ impl SsrRenderer {
         SsrRenderer {
             pipelines: None,
             targets: None,
-            uniform: device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("ssr"),
-                size: std::mem::size_of::<SsrUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }),
+            uniform: crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("ssr"),
+                    size: std::mem::size_of::<SsrUniform>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            ),
             off: texture(device, "ssr off", (1, 1), FORMAT, 1).create_view(&Default::default()),
             history: None,
             generation: 0,
@@ -502,7 +505,7 @@ impl SsrRenderer {
                 1.0 / t.ray_size.1 as f32,
             ],
         };
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
         self.history = Some((frame, camera.view_proj));
     }
 
@@ -780,21 +783,24 @@ impl Pipelines {
                 bind_group_layouts: &[Some(&common), Some(&layouts[i])],
                 immediate_size: 0,
             });
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(entries[i]),
-                layout: Some(&pl),
-                module: &module,
-                entry_point: Some(entries[i]),
-                // Every pass writes its shared memory before it reads it
-                // (behind a barrier), so the zeroing WebGPU asks for is a
-                // second barrier and a store of every byte for nothing (the
-                // browsers zero it regardless).
-                compilation_options: wgpu::PipelineCompilationOptions {
-                    zero_initialize_workgroup_memory: false,
-                    ..Default::default()
+            crate::traffic::create_compute_pipeline(
+                device,
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some(entries[i]),
+                    layout: Some(&pl),
+                    module: &module,
+                    entry_point: Some(entries[i]),
+                    // Every pass writes its shared memory before it reads it
+                    // (behind a barrier), so the zeroing WebGPU asks for is a
+                    // second barrier and a store of every byte for nothing (the
+                    // browsers zero it regardless).
+                    compilation_options: wgpu::PipelineCompilationOptions {
+                        zero_initialize_workgroup_memory: false,
+                        ..Default::default()
+                    },
+                    cache: None,
                 },
-                cache: None,
-            })
+            )
         });
         Pipelines {
             common,

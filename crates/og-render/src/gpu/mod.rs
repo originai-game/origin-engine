@@ -16,4 +16,5 @@ pub mod shared_frames;
 pub(crate) mod targets;
 pub(crate) mod texture;
 pub(crate) mod texture_array;
+pub mod traffic;
 pub(crate) mod video;

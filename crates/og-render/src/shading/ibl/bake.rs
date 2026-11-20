@@ -33,7 +33,8 @@ impl IblGenerator {
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
-        queue.write_texture(
+        crate::traffic::write_texture(
+            queue,
             wgpu::TexelCopyTextureInfo {
                 texture: &flat,
                 mip_level: 0,
@@ -54,12 +55,15 @@ impl IblGenerator {
         let radiance = cube_texture(device, "environment radiance", n, mips);
         let out = cube_texture(device, "environment map", n, PREFILTER_MIPS);
         let count = 6 * (mips as usize + PREFILTER_MIPS as usize);
-        let params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("environment bake params"),
-            size: SLOT * count as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("environment bake params"),
+                size: SLOT * count as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let group = |source: &wgpu::TextureView, slot: usize| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("environment bake"),
@@ -150,7 +154,7 @@ impl IblGenerator {
                 );
             }
         }
-        queue.write_buffer(&params, 0, &bytes);
+        crate::traffic::write_buffer(queue, &params, 0, &bytes);
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("environment bake"),
         });

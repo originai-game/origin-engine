@@ -136,7 +136,8 @@ impl SightTexture {
             return;
         }
         let texels: Vec<u8> = fog.levels.iter().map(|&l| texel(l)).collect();
-        queue.write_texture(
+        crate::traffic::write_texture(
+            queue,
             self.texture.as_image_copy(),
             &texels,
             wgpu::TexelCopyBufferLayout {

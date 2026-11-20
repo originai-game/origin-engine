@@ -112,14 +112,17 @@ impl DepthMipsPass {
                     bind_group_layouts: &[Some(&layout)],
                     immediate_size: 0,
                 });
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("depth mips"),
-                    layout: Some(&pl),
-                    module: module.get(),
-                    entry_point: Some("cs_depth_mips"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("depth mips"),
+                        layout: Some(&pl),
+                        module: module.get(),
+                        entry_point: Some("cs_depth_mips"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         };
         DepthMipsPass { layout, pipeline }

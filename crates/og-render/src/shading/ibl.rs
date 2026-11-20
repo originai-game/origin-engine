@@ -273,31 +273,34 @@ impl IblGenerator {
             let (device, pipeline_layout, shader) =
                 (device.clone(), pipeline_layout.clone(), shader.clone());
             Deferred::anywhere(move || {
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some(entry),
-                    layout: Some(&pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &shader,
-                        entry_point: Some("vs"),
-                        compilation_options: Default::default(),
-                        buffers: &[],
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some(entry),
+                        layout: Some(&pipeline_layout),
+                        vertex: wgpu::VertexState {
+                            module: &shader,
+                            entry_point: Some("vs"),
+                            compilation_options: Default::default(),
+                            buffers: &[],
+                        },
+                        primitive: wgpu::PrimitiveState::default(),
+                        depth_stencil: None,
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module: &shader,
+                            entry_point: Some(entry),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: HDR_FORMAT,
+                                blend: None,
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: wgpu::PrimitiveState::default(),
-                    depth_stencil: None,
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module: &shader,
-                        entry_point: Some(entry),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: HDR_FORMAT,
-                            blend: None,
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         };
         const SKY: usize = 0;
@@ -343,12 +346,15 @@ impl IblGenerator {
             view_formats: &[],
         });
         let count = 6 * (sky_mips as usize + 1 + PREFILTER_MIPS as usize) + 1;
-        let params = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ibl params"),
-            size: SLOT * count as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("ibl params"),
+                size: SLOT * count as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         // binding 4's placeholder: never a pass's target (the LUT's own
         // pass would read and write it at once).
         let placeholder = device.create_texture(&wgpu::TextureDescriptor {
@@ -547,7 +553,7 @@ impl IblGenerator {
             bytes[at..at + std::mem::size_of::<Params>()]
                 .copy_from_slice(bytemuck::bytes_of(&params));
         }
-        queue.write_buffer(&self.params, 0, &bytes);
+        crate::traffic::write_buffer(queue, &self.params, 0, &bytes);
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("ibl") });
         for (i, p) in all.iter().enumerate() {
@@ -670,7 +676,7 @@ impl IblGenerator {
             bytes[at..at + std::mem::size_of::<Params>()]
                 .copy_from_slice(bytemuck::bytes_of(&params));
         }
-        queue.write_buffer(&self.params, 0, &bytes);
+        crate::traffic::write_buffer(queue, &self.params, 0, &bytes);
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("ibl from a map"),
         });

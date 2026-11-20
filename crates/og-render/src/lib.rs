@@ -349,6 +349,7 @@ pub use gpu::ready::{ReadyHooks, pipeline_counts, pipelines_held, set_pipeline_h
 use gpu::targets;
 use gpu::texture;
 use gpu::texture_array;
+pub use gpu::traffic;
 use gpu::video;
 use media::sky::{sky_ground_source, sky_source};
 use media::sky_physical;
@@ -544,6 +545,7 @@ use wgpu::util::DeviceExt;
 /// A buffer that maps again (`MAP_READ` or `MAP_WRITE`) and natively, it is
 /// `create_buffer_init`. Every buffer with initial contents in og-render is
 /// made here (clippy.toml refuses `create_buffer_init`).
+#[track_caller]
 pub(crate) fn buffer_init(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -559,23 +561,28 @@ pub(crate) fn buffer_init(
         // COPY_BUFFER_ALIGNMENT, the padding zero.
         let align = wgpu::COPY_BUFFER_ALIGNMENT as usize;
         let whole = desc.contents.len() / align * align;
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: desc.label,
-            size: desc.contents.len().div_ceil(align) as u64 * wgpu::COPY_BUFFER_ALIGNMENT,
-            usage: desc.usage | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: desc.label,
+                size: desc.contents.len().div_ceil(align) as u64 * wgpu::COPY_BUFFER_ALIGNMENT,
+                usage: desc.usage | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         if whole > 0 {
-            queue.write_buffer(&buffer, 0, &desc.contents[..whole]);
+            crate::traffic::write_buffer(queue, &buffer, 0, &desc.contents[..whole]);
         }
         if whole < desc.contents.len() {
             let mut tail = [0u8; wgpu::COPY_BUFFER_ALIGNMENT as usize];
             tail[..desc.contents.len() - whole].copy_from_slice(&desc.contents[whole..]);
-            queue.write_buffer(&buffer, whole as u64, &tail);
+            crate::traffic::write_buffer(queue, &buffer, whole as u64, &tail);
         }
         return buffer;
     }
     let _ = queue;
+    let len = desc.contents.len() as u64;
+    crate::traffic::made_with_contents(len.next_multiple_of(wgpu::COPY_BUFFER_ALIGNMENT), len);
     #[allow(clippy::disallowed_methods)]
     device.create_buffer_init(desc)
 }

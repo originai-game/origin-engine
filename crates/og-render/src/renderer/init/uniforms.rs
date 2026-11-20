@@ -37,12 +37,15 @@ impl Renderer {
         }: UniformBuffersInputs<'_>,
     ) -> UniformBuffersOutputs {
         // Uniforms.
-        let frame_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("frame"),
-            size: std::mem::size_of::<frame::FrameUniform>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let frame_buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("frame"),
+                size: std::mem::size_of::<frame::FrameUniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let light_buffers = clusters::buffers(device);
         let ltc = area::ltc_buffer(device, queue);
         let caustic_grid = water::caustic_buffer(device);
@@ -56,12 +59,15 @@ impl Renderer {
         let reflection_buffer: Vec<_> = slots
             .clone()
             .map(|_| {
-                device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("frame (planar reflection)"),
-                    size: std::mem::size_of::<frame::FrameUniform>() as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                })
+                crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("frame (planar reflection)"),
+                        size: std::mem::size_of::<frame::FrameUniform>() as u64,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                )
             })
             .collect();
         let reflection_clusters: Vec<_> = slots
@@ -70,20 +76,26 @@ impl Renderer {
             .collect();
         let reflection_fx_buffer: Vec<_> = slots
             .map(|_| {
-                device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("fx (planar reflection)"),
-                    size: std::mem::size_of::<fx::FxUniform>() as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                })
+                crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("fx (planar reflection)"),
+                        size: std::mem::size_of::<fx::FxUniform>() as u64,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                )
             })
             .collect();
-        let shadow_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("shadow passes"),
-            size: SHADOW_SLOT_STRIDE * SHADOW_SLOTS as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let shadow_buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("shadow passes"),
+                size: SHADOW_SLOT_STRIDE * SHADOW_SLOTS as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let shadow_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("shadow"),
             layout: shadow_bind_layout,

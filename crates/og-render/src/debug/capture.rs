@@ -161,20 +161,21 @@ impl CaptureRequest {
         renderer: &Renderer,
         timeout: std::time::Duration,
     ) -> Result<RgbaImage, RenderError> {
-        renderer
-            .device
-            .poll(wgpu::PollType::Wait {
+        crate::traffic::poll(
+            &renderer.device,
+            wgpu::PollType::Wait {
                 submission_index: Some(self.submission.clone()),
                 timeout: Some(timeout),
-            })
-            .map_err(|e| match e {
-                wgpu::PollError::Timeout => RenderError::Readback(format!(
-                    "the capture's copy did not land in {timeout:?} after the GPU \
+            },
+        )
+        .map_err(|e| match e {
+            wgpu::PollError::Timeout => RenderError::Readback(format!(
+                "the capture's copy did not land in {timeout:?} after the GPU \
                      finished the frames before it (OG_CAPTURE_TIMEOUT=<seconds> \
                      waits longer)"
-                )),
-                other => RenderError::Readback(other.to_string()),
-            })?;
+            )),
+            other => RenderError::Readback(other.to_string()),
+        })?;
         match self.try_finish(renderer)? {
             Some(image) => Ok(image),
             None => Err(RenderError::Readback(format!(
@@ -247,7 +248,7 @@ impl Renderer {
     /// Processes finished GPU work without blocking: completes pending
     /// captures when no frame is being submitted.
     pub fn poll(&self) {
-        let _ = self.device.poll(wgpu::PollType::Poll);
+        let _ = crate::traffic::poll(&self.device, wgpu::PollType::Poll);
     }
 
     /// Keep each frame presented to the surface in the offscreen target too
@@ -336,12 +337,15 @@ impl Renderer {
                 if let Some(b) = other {
                     b.destroy();
                 }
-                self.device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("capture"),
-                    size,
-                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                    mapped_at_creation: false,
-                })
+                crate::traffic::create_buffer(
+                    &self.device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("capture"),
+                        size,
+                        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                        mapped_at_creation: false,
+                    },
+                )
             }
         };
         let mut encoder = self
@@ -373,15 +377,13 @@ impl Renderer {
         let submission = self.queue.submit(Some(encoder.finish()));
         let state = Arc::new(Mutex::new(MapState::default()));
         let callback_state = state.clone();
-        buffer
-            .slice(..)
-            .map_async(wgpu::MapMode::Read, move |result| {
-                let mut s = callback_state.lock().unwrap_or_else(|e| e.into_inner());
-                s.result = Some(result);
-                if let Some(waker) = s.waker.take() {
-                    waker.wake();
-                }
-            });
+        crate::traffic::map_async(&buffer.slice(..), wgpu::MapMode::Read, move |result| {
+            let mut s = callback_state.lock().unwrap_or_else(|e| e.into_inner());
+            s.result = Some(result);
+            if let Some(waker) = s.waker.take() {
+                waker.wake();
+            }
+        });
         Ok(CaptureRequest {
             buffer,
             spare: self.capture_spare.clone(),
@@ -410,18 +412,20 @@ impl Renderer {
             let (copy, frames) = capture_timeouts();
             // The frames first, on their own bound: the copy's bound is
             // for the copy, not for a cold GPU's first draw of a pass.
-            self.device
-                .poll(wgpu::PollType::Wait {
+            crate::traffic::poll(
+                &self.device,
+                wgpu::PollType::Wait {
                     submission_index: None,
                     timeout: Some(frames),
-                })
-                .map_err(|e| match e {
-                    wgpu::PollError::Timeout => RenderError::Readback(format!(
-                        "the GPU had not finished the frames before the capture in \
+                },
+            )
+            .map_err(|e| match e {
+                wgpu::PollError::Timeout => RenderError::Readback(format!(
+                    "the GPU had not finished the frames before the capture in \
                          {frames:?} (OG_CAPTURE_TIMEOUT=<seconds> waits longer)"
-                    )),
-                    other => RenderError::Readback(other.to_string()),
-                })?;
+                )),
+                other => RenderError::Readback(other.to_string()),
+            })?;
             self.begin_capture()?.wait(self, copy)
         }
         #[cfg(target_arch = "wasm32")]

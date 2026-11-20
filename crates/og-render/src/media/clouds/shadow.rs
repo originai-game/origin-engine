@@ -150,7 +150,7 @@ impl CloudShadow {
         }
         let pass = self.pass.as_ref().expect("made above");
         if self.baked != Some(bake) {
-            queue.write_buffer(&pass.uniform, 0, bytemuck::cast_slice(&bake.ray));
+            crate::traffic::write_buffer(queue, &pass.uniform, 0, bytemuck::cast_slice(&bake.ray));
             self.baked = Some(bake);
             self.pending = true;
         }
@@ -300,23 +300,29 @@ impl BakePass {
                     label: Some("cloud shadow"),
                     source: wgpu::ShaderSource::Wgsl(bake_source().into()),
                 });
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("cloud shadow"),
-                    layout: Some(&pipeline_layout),
-                    module: &module,
-                    entry_point: Some("main"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("cloud shadow"),
+                        layout: Some(&pipeline_layout),
+                        module: &module,
+                        entry_point: Some("main"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         };
         crate::deferred::Start::start(&pipeline);
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("cloud shadow"),
-            size: 16,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("cloud shadow"),
+                size: 16,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let frame = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("cloud shadow frame"),
             layout: &frame_layout,

@@ -308,12 +308,15 @@ impl ScatterPlace {
             )],
         });
         let make = |label, size, usage| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size,
-                usage,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size,
+                    usage,
+                    mapped_at_creation: false,
+                },
+            )
         };
         ScatterPlace {
             rows: make(
@@ -429,14 +432,17 @@ impl ScatterPlace {
         });
         crate::gpu::ready::Tickets::during(|| {
             ["evaluate", "place"].map(|entry| {
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("scatter place"),
-                    layout: Some(&layout),
-                    module: &module,
-                    entry_point: Some(entry),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                })
+                crate::traffic::create_compute_pipeline(
+                    device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("scatter place"),
+                        layout: Some(&layout),
+                        module: &module,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(device).as_ref(),
+                    },
+                )
             })
         })
     }
@@ -449,23 +455,29 @@ impl ScatterPlace {
         let rows = self.frame_rows.len() as u64 / ROW_SLOT;
         if self.row_cap < rows {
             self.row_cap = rows.next_power_of_two();
-            self.rows = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("scatter place rows"),
-                size: ROW_SLOT * self.row_cap,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            self.rows = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("scatter place rows"),
+                    size: ROW_SLOT * self.row_cap,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
         }
         if self.bit_words < u64::from(self.words) {
             self.bit_words = u64::from(self.words).next_power_of_two();
-            self.bits = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("scatter place bits"),
-                size: 4 * self.bit_words,
-                usage: Self::bits_usage(),
-                mapped_at_creation: false,
-            });
+            self.bits = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("scatter place bits"),
+                    size: 4 * self.bit_words,
+                    usage: Self::bits_usage(),
+                    mapped_at_creation: false,
+                },
+            );
         }
-        queue.write_buffer(&self.rows, 0, &self.frame_rows);
+        crate::traffic::write_buffer(queue, &self.rows, 0, &self.frame_rows);
     }
 
     /// Whether any job waits to be encoded.

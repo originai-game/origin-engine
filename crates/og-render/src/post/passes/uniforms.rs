@@ -5,7 +5,7 @@ use super::*;
 impl PostPasses {
     /// Writes the stylisation passes' parameters.
     pub fn write_stylise(&self, queue: &wgpu::Queue, uniform: &StyliseUniform) {
-        queue.write_buffer(&self.stylise_buffer, 0, bytemuck::bytes_of(uniform));
+        crate::traffic::write_buffer(queue, &self.stylise_buffer, 0, bytemuck::bytes_of(uniform));
     }
 
     /// Bakes the table the tonemap samples for `adjust` after `grade` (the
@@ -163,6 +163,6 @@ impl PostPasses {
                 [f.intensity.max(0.0), f.starburst as u32 as f32, turn, 0.0]
             }),
         };
-        queue.write_buffer(&self.post_buffer, 0, bytemuck::bytes_of(&uniform));
+        crate::traffic::write_buffer(queue, &self.post_buffer, 0, bytemuck::bytes_of(&uniform));
     }
 }

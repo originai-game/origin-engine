@@ -142,31 +142,34 @@ impl MeshletGpu {
         faces: Faces,
         samples: u32,
     ) -> wgpu::RenderPipeline {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("meshlet early depth"),
-            layout: Some(&self.depth_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &self.depth_module,
-                entry_point: Some("vs_depth"),
-                compilation_options: Default::default(),
-                buffers: &[],
+        crate::traffic::create_render_pipeline(
+            device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some("meshlet early depth"),
+                layout: Some(&self.depth_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &self.depth_module,
+                    entry_point: Some("vs_depth"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: faces.primitive(faces.cull()),
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: crate::DEPTH_FORMAT,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(wgpu::CompareFunction::Less),
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
+                multisample: wgpu::MultisampleState {
+                    count: samples,
+                    ..Default::default()
+                },
+                fragment: None,
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
-            primitive: faces.primitive(faces.cull()),
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: crate::DEPTH_FORMAT,
-                depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::Less),
-                stencil: Default::default(),
-                bias: Default::default(),
-            }),
-            multisample: wgpu::MultisampleState {
-                count: samples,
-                ..Default::default()
-            },
-            fragment: None,
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        })
+        )
     }
 
     /// Makes the draw groups of the frame's meshes: `instances` the

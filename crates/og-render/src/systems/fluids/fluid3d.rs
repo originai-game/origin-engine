@@ -276,15 +276,18 @@ fn texture_entry(binding: u32, filterable: bool) -> wgpu::BindGroupLayoutEntry {
 }
 
 fn instance_buffer(device: &wgpu::Device, count: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("fluid 3d instances"),
-        size: count * std::mem::size_of::<Instance>() as u64,
-        // Storage too: visual fluids write their particles into it.
-        usage: wgpu::BufferUsages::VERTEX
-            | wgpu::BufferUsages::COPY_DST
-            | wgpu::BufferUsages::STORAGE,
-        mapped_at_creation: false,
-    })
+    crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some("fluid 3d instances"),
+            size: count * std::mem::size_of::<Instance>() as u64,
+            // Storage too: visual fluids write their particles into it.
+            usage: wgpu::BufferUsages::VERTEX
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        },
+    )
 }
 
 fn group(
@@ -375,37 +378,40 @@ impl Fluid3dRenderer {
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &attributes,
                 });
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some(label),
-                    layout: Some(&sphere_pl),
-                    vertex: wgpu::VertexState {
-                        module,
-                        entry_point: Some("vs_sphere"),
-                        compilation_options: Default::default(),
-                        buffers: std::slice::from_ref(&instance_layout),
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some(label),
+                        layout: Some(&sphere_pl),
+                        vertex: wgpu::VertexState {
+                            module,
+                            entry_point: Some("vs_sphere"),
+                            compilation_options: Default::default(),
+                            buffers: std::slice::from_ref(&instance_layout),
+                        },
+                        primitive: Default::default(),
+                        depth_stencil: depth.then(|| wgpu::DepthStencilState {
+                            format: crate::DEPTH_FORMAT,
+                            depth_write_enabled: Some(true),
+                            depth_compare: Some(wgpu::CompareFunction::Less),
+                            stencil: Default::default(),
+                            bias: Default::default(),
+                        }),
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module,
+                            entry_point: Some(fs),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format,
+                                blend,
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: Default::default(),
-                    depth_stencil: depth.then(|| wgpu::DepthStencilState {
-                        format: crate::DEPTH_FORMAT,
-                        depth_write_enabled: Some(true),
-                        depth_compare: Some(wgpu::CompareFunction::Less),
-                        stencil: Default::default(),
-                        bias: Default::default(),
-                    }),
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module,
-                        entry_point: Some(fs),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format,
-                            blend,
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         };
         let depth = sphere(
@@ -466,12 +472,15 @@ impl Fluid3dRenderer {
             ..Default::default()
         });
         let buffer = |label, size: usize| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size: size as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size: size as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let blur_size = std::mem::size_of::<BlurGpu>();
         Fluid3dRenderer {
@@ -570,12 +579,17 @@ impl Fluid3dRenderer {
             self.instances = instance_buffer(device, self.capacity);
         }
         if !self.scratch.is_empty() {
-            queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(&self.scratch));
+            crate::traffic::write_buffer(
+                queue,
+                &self.instances,
+                0,
+                bytemuck::cast_slice(&self.scratch),
+            );
         }
         let (gpu, blur) = camera_uniforms(first, camera, screen);
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&gpu));
+        crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&gpu));
         for (buffer, b) in self.blur_uniforms.iter().zip(&blur) {
-            queue.write_buffer(buffer, 0, bytemuck::bytes_of(b));
+            crate::traffic::write_buffer(queue, buffer, 0, bytemuck::bytes_of(b));
         }
         let [x, y, square] = &self.blur_uniforms;
         Some(self.frame(device, &self.uniform, [x, y, square], views, count as u32))

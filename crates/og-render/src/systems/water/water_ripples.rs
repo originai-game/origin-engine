@@ -113,14 +113,17 @@ impl RipplePipelines {
             immediate_size: 0,
         });
         let pipeline = |entry| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("water ripples"),
-                layout: Some(&pl),
-                module: &module,
-                entry_point: Some(entry),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
+            crate::traffic::create_compute_pipeline(
+                device,
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("water ripples"),
+                    layout: Some(&pl),
+                    module: &module,
+                    entry_point: Some(entry),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(device).as_ref(),
+                },
+            )
         };
         RipplePipelines {
             advance: pipeline("advance"),
@@ -231,18 +234,24 @@ impl Ripples {
             ..Default::default()
         });
         let views = state.each_ref().map(|t| t.create_view(&Default::default()));
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("water ripples"),
-            size: SLOT * (crate::water::WAKE_TICKS as u64 + 1),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let cuts = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("water ripples cuts"),
-            size: (std::mem::size_of::<CutGpu>() * MAX_CUTS * crate::water::WAKE_TICKS) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("water ripples"),
+                size: SLOT * (crate::water::WAKE_TICKS as u64 + 1),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let cuts = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("water ripples cuts"),
+                size: (std::mem::size_of::<CutGpu>() * MAX_CUTS * crate::water::WAKE_TICKS) as u64,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let group = |from: usize| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("water ripples"),
@@ -358,9 +367,9 @@ impl Ripples {
         }
         // The compose step's slot (no cuts).
         params.extend_from_slice(bytemuck::bytes_of(&base));
-        queue.write_buffer(&self.uniform, 0, &params);
+        crate::traffic::write_buffer(queue, &self.uniform, 0, &params);
         if !cuts.is_empty() {
-            queue.write_buffer(&self.cuts, 0, bytemuck::cast_slice(&cuts));
+            crate::traffic::write_buffer(queue, &self.cuts, 0, bytemuck::cast_slice(&cuts));
         }
         // A frame planned and never recorded keeps its calm.
         let calm = !std::mem::replace(&mut self.cleared, true)

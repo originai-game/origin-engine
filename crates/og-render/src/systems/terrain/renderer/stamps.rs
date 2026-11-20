@@ -89,12 +89,15 @@ impl TerrainRenderer {
         let need = slots.len() as u64;
         if self.stamp_slots.as_ref().is_none_or(|(n, ..)| *n < need) {
             let n = need.next_power_of_two().max(8);
-            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("terrain stamps"),
-                size: n * STAMP_STRIDE,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            let buffer = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("terrain stamps"),
+                    size: n * STAMP_STRIDE,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("terrain stamps"),
                 layout: &self.stamp_layout,
@@ -115,7 +118,7 @@ impl TerrainRenderer {
             let at = i * STAMP_STRIDE as usize;
             bytes[at..at + std::mem::size_of::<StampGpu>()].copy_from_slice(bytemuck::bytes_of(g));
         }
-        queue.write_buffer(buffer, 0, &bytes);
+        crate::traffic::write_buffer(queue, buffer, 0, &bytes);
         for (k, d) in placed {
             draws[k].stamps.push(d);
             draws[k].stamp_group = Some(group.clone());

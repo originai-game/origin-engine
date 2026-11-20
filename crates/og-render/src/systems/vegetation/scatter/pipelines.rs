@@ -8,12 +8,15 @@ impl ScatterRenderer {
         [wind_field, trample]: [&wgpu::TextureView; 2],
         n: u64,
     ) -> (wgpu::Buffer, wgpu::BindGroup) {
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("scatter"),
-            size: SLOT * n,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("scatter"),
+                size: SLOT * n,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("scatter"),
             layout,
@@ -148,33 +151,36 @@ impl ScatterRenderer {
         target: crate::ShadowTarget,
     ) -> wgpu::RenderPipeline {
         let buffers = [Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)];
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("scatter shadow"),
-            layout: Some(layout),
-            vertex: wgpu::VertexState {
-                module,
-                entry_point: Some("vs_shadow"),
-                compilation_options: Default::default(),
-                buffers: &buffers,
-            },
-            primitive: wgpu::PrimitiveState {
-                cull_mode: target.cull(side),
-                ..Default::default()
-            },
-            depth_stencil: Some(target.depth()),
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module,
-                entry_point: Some("fs_shadow"),
-                compilation_options: wgpu::PipelineCompilationOptions {
-                    constants: crate::ShadowTarget::constants(side),
+        crate::traffic::create_render_pipeline(
+            device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some("scatter shadow"),
+                layout: Some(layout),
+                vertex: wgpu::VertexState {
+                    module,
+                    entry_point: Some("vs_shadow"),
+                    compilation_options: Default::default(),
+                    buffers: &buffers,
+                },
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: target.cull(side),
                     ..Default::default()
                 },
-                targets: &[Some(target.color())],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        })
+                depth_stencil: Some(target.depth()),
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module,
+                    entry_point: Some("fs_shadow"),
+                    compilation_options: wgpu::PipelineCompilationOptions {
+                        constants: crate::ShadowTarget::constants(side),
+                        ..Default::default()
+                    },
+                    targets: &[Some(target.color())],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
+            },
+        )
     }
 
     /// An impostor's (`impostor_shadow.wgsl`) or a crowd card's
@@ -206,31 +212,34 @@ fn card_shadow(
     target: crate::ShadowTarget,
 ) -> wgpu::RenderPipeline {
     let (vs, fs) = (format!("vs_{entry}_shadow"), format!("fs_{entry}_shadow"));
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(label),
-        layout: Some(layout),
-        vertex: wgpu::VertexState {
-            module,
-            entry_point: Some(&vs),
-            compilation_options: Default::default(),
-            buffers,
-        },
-        primitive: Default::default(),
-        depth_stencil: Some(target.depth()),
-        multisample: Default::default(),
-        fragment: Some(wgpu::FragmentState {
-            module,
-            entry_point: Some(&fs),
-            // Both faces cast (shadow_target.rs).
-            compilation_options: wgpu::PipelineCompilationOptions {
-                constants: crate::ShadowTarget::constants(Side::Double),
-                ..Default::default()
+    crate::traffic::create_render_pipeline(
+        device,
+        &wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module,
+                entry_point: Some(&vs),
+                compilation_options: Default::default(),
+                buffers,
             },
-            targets: &[Some(target.color())],
-        }),
-        multiview_mask: None,
-        cache: crate::pipeline_cache::of(device).as_ref(),
-    })
+            primitive: Default::default(),
+            depth_stencil: Some(target.depth()),
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module,
+                entry_point: Some(&fs),
+                // Both faces cast (shadow_target.rs).
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: crate::ShadowTarget::constants(Side::Double),
+                    ..Default::default()
+                },
+                targets: &[Some(target.color())],
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        },
+    )
 }
 
 /// The scattered meshes', impostors' and crowd cards' vertex buffers.
@@ -302,38 +311,41 @@ fn lit_pipeline(
         ..Default::default()
     };
     let fs = format!("{}_prepass", d.fs);
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(d.label),
-        layout: Some(layout),
-        vertex: wgpu::VertexState {
-            module: &d.module,
-            entry_point: Some(d.vs),
-            compilation_options: options(),
-            buffers: d.buffers,
+    crate::traffic::create_render_pipeline(
+        device,
+        &wgpu::RenderPipelineDescriptor {
+            label: Some(d.label),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module: &d.module,
+                entry_point: Some(d.vs),
+                compilation_options: options(),
+                buffers: d.buffers,
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode: d.cull,
+                ..Default::default()
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: crate::DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &d.module,
+                entry_point: Some(&fs),
+                compilation_options: options(),
+                targets: &[
+                    target(crate::post::GBUFFER_FORMAT),
+                    target(crate::post::LINDEPTH_FORMAT),
+                    target(crate::post::OUTLINE_FORMAT),
+                ],
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
         },
-        primitive: wgpu::PrimitiveState {
-            cull_mode: d.cull,
-            ..Default::default()
-        },
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: crate::DEPTH_FORMAT,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
-            stencil: Default::default(),
-            bias: Default::default(),
-        }),
-        multisample: Default::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &d.module,
-            entry_point: Some(&fs),
-            compilation_options: options(),
-            targets: &[
-                target(crate::post::GBUFFER_FORMAT),
-                target(crate::post::LINDEPTH_FORMAT),
-                target(crate::post::OUTLINE_FORMAT),
-            ],
-        }),
-        multiview_mask: None,
-        cache: crate::pipeline_cache::of(device).as_ref(),
-    })
+    )
 }

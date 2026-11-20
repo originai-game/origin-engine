@@ -292,19 +292,25 @@ impl Light2dRenderer {
                 },
             ],
         });
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("lights 2d"),
-            size: std::mem::size_of::<Lights2dUniform>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let instances = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("lights 2d"),
-            size: (std::mem::size_of::<LightInstance>() * MAX_LIGHTS_2D * MAX_LIGHT_MASKS_2D)
-                as u64,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("lights 2d"),
+                size: std::mem::size_of::<Lights2dUniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let instances = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("lights 2d"),
+                size: (std::mem::size_of::<LightInstance>() * MAX_LIGHTS_2D * MAX_LIGHT_MASKS_2D)
+                    as u64,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let shadows = Shadows::new(device);
         let group = light_group(device, &layout, &uniform, &shadows.map.2);
         // Made when a frame first draws 2D lights (deferred.rs).
@@ -340,27 +346,30 @@ impl Light2dRenderer {
                     })
                 };
                 let targets = [target(add), target(add_all)];
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("lights 2d"),
-                    layout: Some(&pl),
-                    vertex: wgpu::VertexState {
-                        module,
-                        entry_point: Some("vs"),
-                        compilation_options: Default::default(),
-                        buffers: &[Some(LIGHT_LAYOUT)],
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("lights 2d"),
+                        layout: Some(&pl),
+                        vertex: wgpu::VertexState {
+                            module,
+                            entry_point: Some("vs"),
+                            compilation_options: Default::default(),
+                            buffers: &[Some(LIGHT_LAYOUT)],
+                        },
+                        primitive: Default::default(),
+                        depth_stencil: None,
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module,
+                            entry_point: Some(fs),
+                            compilation_options: Default::default(),
+                            targets: &targets[..if dir { 2 } else { 1 }],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: Default::default(),
-                    depth_stencil: None,
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module,
-                        entry_point: Some(fs),
-                        compilation_options: Default::default(),
-                        targets: &targets[..if dir { 2 } else { 1 }],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         };
         Light2dRenderer {
@@ -404,7 +413,7 @@ impl Light2dRenderer {
         let mut u: Lights2dUniform = bytemuck::Zeroable::zeroed();
         u.view_proj = view_proj.to_cols_array_2d();
         u.info = [angles as f32, 0.0, 0.0, 0.0];
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
         self.written = u;
         let traced = shadow_edges(lights, occ);
         self.shadows.write(queue, &traced, angles);
@@ -425,7 +434,12 @@ impl Light2dRenderer {
             self.ranges.push(start..instances.len() as u32);
         }
         if !instances.is_empty() {
-            queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(&instances));
+            crate::traffic::write_buffer(
+                queue,
+                &self.instances,
+                0,
+                bytemuck::cast_slice(&instances),
+            );
         }
         self.count = instances.len() as u32;
         (lights.len() as u32, occ.len() as u32)
@@ -441,18 +455,21 @@ impl Light2dRenderer {
         view_proj: Mat4,
     ) {
         while self.views.len() <= k {
-            let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("lights 2d (view)"),
-                size: std::mem::size_of::<Lights2dUniform>() as u64,
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
+            let uniform = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("lights 2d (view)"),
+                    size: std::mem::size_of::<Lights2dUniform>() as u64,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
             let group = light_group(device, &self.layout, &uniform, &self.shadows.map.2);
             self.views.push((uniform, group));
         }
         let mut u = self.written;
         u.view_proj = view_proj.to_cols_array_2d();
-        queue.write_buffer(&self.views[k].0, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &self.views[k].0, 0, bytemuck::bytes_of(&u));
     }
 
     /// Clears `target` (`size`: its strips side by side) to `ambient`,
@@ -650,18 +667,24 @@ impl Shadows {
                 buffer(1, wgpu::BufferBindingType::Storage { read_only: true }),
             ],
         });
-        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("lights 2d shadows"),
-            size: std::mem::size_of::<ShadowUniform>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let edges = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("lights 2d shadow edges"),
-            size: (std::mem::size_of::<ShadowEdge>() * MAX_SHADOW_EDGES_2D) as u64,
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("lights 2d shadows"),
+                size: std::mem::size_of::<ShadowUniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let edges = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("lights 2d shadow edges"),
+                size: (std::mem::size_of::<ShadowEdge>() * MAX_SHADOW_EDGES_2D) as u64,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("lights 2d shadows"),
             layout: &layout,
@@ -687,31 +710,34 @@ impl Shadows {
             let device = device.clone();
             Deferred::new(move || {
                 let module = module.module();
-                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("lights 2d shadows"),
-                    layout: Some(&pl),
-                    vertex: wgpu::VertexState {
-                        module,
-                        entry_point: Some("vs"),
-                        compilation_options: Default::default(),
-                        buffers: &[],
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("lights 2d shadows"),
+                        layout: Some(&pl),
+                        vertex: wgpu::VertexState {
+                            module,
+                            entry_point: Some("vs"),
+                            compilation_options: Default::default(),
+                            buffers: &[],
+                        },
+                        primitive: Default::default(),
+                        depth_stencil: None,
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module,
+                            entry_point: Some("fs"),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: SHADOW_FORMAT,
+                                blend: None,
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
-                    primitive: Default::default(),
-                    depth_stencil: None,
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module,
-                        entry_point: Some("fs"),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: SHADOW_FORMAT,
-                            blend: None,
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                )
             })
         };
         Shadows {
@@ -733,9 +759,14 @@ impl Shadows {
             u.rows[i] = *row;
             u.ranges[i] = *range;
         }
-        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
         if !traced.edges.is_empty() {
-            queue.write_buffer(&self.edges, 0, bytemuck::cast_slice(&traced.edges));
+            crate::traffic::write_buffer(
+                queue,
+                &self.edges,
+                0,
+                bytemuck::cast_slice(&traced.edges),
+            );
         }
         self.rows = traced.rows.len() as u32;
         self.traced.set(self.rows == 0);

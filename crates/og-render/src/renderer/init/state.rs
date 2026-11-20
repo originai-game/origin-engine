@@ -61,23 +61,29 @@ impl InstanceRecords {
     /// skinned instances'.
     pub(super) fn new(device: &wgpu::Device) -> InstanceRecords {
         let instance_records = |label: &str| {
-            device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(label),
-                size: INSTANCE_STRIDE * 1024,
-                usage: wgpu::BufferUsages::VERTEX
-                    | wgpu::BufferUsages::COPY_DST
-                    | wgpu::BufferUsages::STORAGE,
-                mapped_at_creation: false,
-            })
+            crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some(label),
+                    size: INSTANCE_STRIDE * 1024,
+                    usage: wgpu::BufferUsages::VERTEX
+                        | wgpu::BufferUsages::COPY_DST
+                        | wgpu::BufferUsages::STORAGE,
+                    mapped_at_creation: false,
+                },
+            )
         };
         let instance_buffer = instance_records("instances");
         let prev_instance_buffer = instance_records("previous instances");
-        let skinned_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("skinned instances"),
-            size: skin::SKINNED_INSTANCE_STRIDE * 64,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
+        let skinned_buffer = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("skinned instances"),
+                size: skin::SKINNED_INSTANCE_STRIDE * 64,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
         InstanceRecords {
             sorted: instances::SortedInstances::default(),
             instance_buffer,

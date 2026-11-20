@@ -213,32 +213,35 @@ impl Cookies {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("cookie"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs"),
-                compilation_options: Default::default(),
-                buffers: &[],
+        let pipeline = crate::traffic::create_render_pipeline(
+            device,
+            &wgpu::RenderPipelineDescriptor {
+                label: Some("cookie"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some("fs_cookie"),
+                    compilation_options: Default::default(),
+                    // The local array's (shadow_target.rs); the cookie in red.
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: crate::LOCAL_SHADOW_FORMAT,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::RED,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs_cookie"),
-                compilation_options: Default::default(),
-                // The local array's (shadow_target.rs); the cookie in red.
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: crate::LOCAL_SHADOW_FORMAT,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::RED,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+        );
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("cookie"),
             mag_filter: wgpu::FilterMode::Linear,

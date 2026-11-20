@@ -41,12 +41,15 @@ fn drawn(
     });
     let texel = format.block_copy_size(None).expect("a colour format") as usize;
     let row = (width as usize * texel).next_multiple_of(256);
-    let staging = device.create_buffer(&wgpu::BufferDescriptor {
-        label: None,
-        size: (row * height as usize) as u64,
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
+    let staging = crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: None,
+            size: (row * height as usize) as u64,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        },
+    );
     let mut encoder = device.create_command_encoder(&Default::default());
     {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -77,8 +80,8 @@ fn drawn(
         target.size(),
     );
     queue.submit([encoder.finish()]);
-    staging.slice(..).map_async(wgpu::MapMode::Read, |_| {});
-    device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+    crate::traffic::map_async(&staging.slice(..), wgpu::MapMode::Read, |_| {});
+    crate::traffic::poll(device, wgpu::PollType::wait_indefinitely()).unwrap();
     let bytes = staging.slice(..).get_mapped_range().unwrap();
     let float = |b: &[u8]| match texel {
         8 => crate::probes::f16_to_f32(u16::from_le_bytes([b[0], b[1]])),
@@ -163,27 +166,30 @@ fn ggx_test_fs(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {{
         source: wgpu::ShaderSource::Wgsl(source.into()),
     });
     let format = wgpu::TextureFormat::Rgba32Float;
-    let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: None,
-        layout: None,
-        vertex: wgpu::VertexState {
-            module: &module,
-            entry_point: Some("ggx_test_vs"),
-            compilation_options: Default::default(),
-            buffers: &[],
+    let pipeline = crate::traffic::create_render_pipeline(
+        &device,
+        &wgpu::RenderPipelineDescriptor {
+            label: None,
+            layout: None,
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: Some("ggx_test_vs"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
+            primitive: Default::default(),
+            depth_stencil: None,
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: Some("ggx_test_fs"),
+                compilation_options: Default::default(),
+                targets: &[Some(format.into())],
+            }),
+            multiview_mask: None,
+            cache: None,
         },
-        primitive: Default::default(),
-        depth_stencil: None,
-        multisample: Default::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &module,
-            entry_point: Some("ggx_test_fs"),
-            compilation_options: Default::default(),
-            targets: &[Some(format.into())],
-        }),
-        multiview_mask: None,
-        cache: None,
-    });
+    );
     // The sheen's albedo table, which `physical_brdf` reads only
     // under a sheen: the two bindings the entry point keeps.
     let ibl = IblGenerator::new(&device);

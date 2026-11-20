@@ -2,6 +2,7 @@
 
 /// Replaces `buffer` with a larger one of the same usage when `len` bytes
 /// do not fit; true when it did.
+#[track_caller]
 pub(crate) fn grow(
     device: &wgpu::Device,
     buffer: &mut wgpu::Buffer,
@@ -11,16 +12,20 @@ pub(crate) fn grow(
     if len <= buffer.size() {
         return false;
     }
-    *buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some(label),
-        size: len.next_power_of_two(),
-        usage: buffer.usage(),
-        mapped_at_creation: false,
-    });
+    *buffer = crate::traffic::create_buffer(
+        device,
+        &wgpu::BufferDescriptor {
+            label: Some(label),
+            size: len.next_power_of_two(),
+            usage: buffer.usage(),
+            mapped_at_creation: false,
+        },
+    );
     true
 }
 
 /// Writes `bytes` at the start of `buffer`, replacing it with a larger one first if needed.
+#[track_caller]
 pub(crate) fn grow_and_write(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -30,7 +35,7 @@ pub(crate) fn grow_and_write(
 ) {
     grow(device, buffer, label, bytes.len() as u64);
     if !bytes.is_empty() {
-        queue.write_buffer(buffer, 0, bytes);
+        crate::traffic::write_buffer(queue, buffer, 0, bytes);
     }
 }
 
@@ -44,6 +49,7 @@ pub(crate) struct RetainedUpload {
 }
 
 impl RetainedUpload {
+    #[track_caller]
     pub(crate) fn write<T: bytemuck::Pod>(
         &mut self,
         device: &wgpu::Device,
@@ -56,7 +62,7 @@ impl RetainedUpload {
         grow(device, buffer, label, bytes.len() as u64);
         let previous = (self.buffer.as_ref() == Some(buffer)).then_some(self.bytes.as_slice());
         changed_ranges(previous, values, |range| {
-            queue.write_buffer(buffer, range.start as u64, &bytes[range]);
+            crate::traffic::write_buffer(queue, buffer, range.start as u64, &bytes[range]);
         });
         if self.buffer.as_ref() != Some(buffer) {
             self.buffer = Some(buffer.clone());

@@ -642,6 +642,10 @@ pub struct FrameStats {
     /// frame that first drew the instance now would wait for it, so its
     /// producer keeps it hidden while this holds. Never on the web.
     pub compiling_ahead: bool,
+    /// What moved between the CPU and the GPU since the frame before
+    /// (uploads, buffers made, readbacks, waits, pipelines): zero unless
+    /// [`crate::traffic::set_clock`] turned the counting on.
+    pub traffic: crate::traffic::Traffic,
     /// Tile quads drawn this frame (after culling) and the chunks they came from.
     pub tiles: u32,
     pub tile_chunks: u32,
