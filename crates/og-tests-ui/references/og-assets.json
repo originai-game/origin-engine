@@ -261,14 +261,14 @@
     },
     {
       "path": "vulkan/doc-components-hud-ability-bar.png",
-      "sha256": "e2db13e6f9f62b82fd35a0e0da183b16f7aa71bb8b0045777888b6946eec9286",
-      "size": 14134,
+      "sha256": "3084fcac464750152057db9f8100e082d23beefe90876d1667a152a9d46fb85c",
+      "size": 16038,
       "visibility": "public"
     },
     {
       "path": "vulkan/doc-components-hud-ability-slot.png",
-      "sha256": "0a41eb10b229720154cc80ed84efa44117d87fb972ff045981d82e3157a92b6a",
-      "size": 7200,
+      "sha256": "30d82e240eb037f6ef8779b94da9fb79fcadb31d77ceaa80dc0b6d04b5dc90ff",
+      "size": 6990,
       "visibility": "public"
     },
     {
@@ -287,6 +287,12 @@
       "path": "vulkan/doc-components-hud-ammo-counter.png",
       "sha256": "258ccb6d39e6b5b7a569f519c3e60acf2e2ec275cd207ee40bd31946b9f84fe9",
       "size": 16811,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/doc-components-hud-bar.png",
+      "sha256": "0508087c4ec88c4e41faeeac7c8a4fb4676c651253ea3332095980187547709c",
+      "size": 5024,
       "visibility": "public"
     },
     {
@@ -332,9 +338,21 @@
       "visibility": "public"
     },
     {
+      "path": "vulkan/doc-components-hud-effect.png",
+      "sha256": "725d062da6366d84dfa2530b6b7f2d8ae7e3eaf6e8846e6ebdf12cbdc932d46b",
+      "size": 6640,
+      "visibility": "public"
+    },
+    {
       "path": "vulkan/doc-components-hud-hero-button.png",
       "sha256": "09e1156b214b93c02f19f94b008d35dfe140976b7ed8f1baf07e28d94f6bea6d",
       "size": 8574,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/doc-components-hud-hint.png",
+      "sha256": "5899a436c6f76e302273cc570d9272d193c69a6ca518437453ab5d9e4e02aa04",
+      "size": 6172,
       "visibility": "public"
     },
     {
@@ -356,9 +374,15 @@
       "visibility": "public"
     },
     {
+      "path": "vulkan/doc-components-hud-loot-entry.png",
+      "sha256": "c198c4a8732478e2a023bf0ad62da2cf6a33833cf72abf4303b761e5adb51fa4",
+      "size": 9316,
+      "visibility": "public"
+    },
+    {
       "path": "vulkan/doc-components-hud-orb-meter.png",
-      "sha256": "d3b0e7b1139f3a77c69453792475387902a0b51769843d1a690d172bf8a3d768",
-      "size": 12930,
+      "sha256": "fefb6612ed7c26fb5df2b8b9c66e3a14799b5cafae2a7653861e9127dc8bf6cc",
+      "size": 22263,
       "visibility": "public"
     },
     {
@@ -377,6 +401,12 @@
       "path": "vulkan/doc-components-hud-pickup-feed.png",
       "sha256": "08d2fa7d06d14a7874fde301e940e7a50cfe4cebb989e9914de8b9007ee7cf03",
       "size": 44024,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/doc-components-hud-portrait.png",
+      "sha256": "9afc712a34ab4cc631862464a9f5bf9e706c5ee3aea2edd4b089c7e840038f5e",
+      "size": 7254,
       "visibility": "public"
     },
     {
@@ -416,9 +446,15 @@
       "visibility": "public"
     },
     {
+      "path": "vulkan/doc-components-hud-slot.png",
+      "sha256": "d22ce0738d31eadbe83582c5b5c8efb76e872b3faf89fcc7a1131bbc72d9fa43",
+      "size": 10896,
+      "visibility": "public"
+    },
+    {
       "path": "vulkan/doc-components-hud-star-bar.png",
-      "sha256": "831a35e9eaa5e452088637fca27c4bd9ac36352c04bb970859039cd56aef0378",
-      "size": 9793,
+      "sha256": "72fefc25cd902f05c2b910d6ed6497b3e80bbdc5de01e02f160a7fdd70b11259",
+      "size": 11197,
       "visibility": "public"
     },
     {
@@ -837,8 +873,8 @@
     },
     {
       "path": "vulkan/doc-components-rpg-enemy-info.png",
-      "sha256": "799d3370d28e4ebfd40364c2353d719f909cd78f4771553dc9bf53f408faa2db",
-      "size": 122598,
+      "sha256": "5ef02470e8f21bd159f2aacb33cb493cceb047cdb3b87ba3efac52dc18e23d7f",
+      "size": 122305,
       "visibility": "public"
     },
     {
@@ -861,8 +897,8 @@
     },
     {
       "path": "vulkan/doc-components-rpg-leader.png",
-      "sha256": "c6e0d99748ace299fb62618a49f641fea86c12af9b28b0b52f9a2decebe48d64",
-      "size": 21661,
+      "sha256": "5cf768b36844deb4700ff8fbe152611991a79528fddccda79a8775218ebb84eb",
+      "size": 22082,
       "visibility": "public"
     },
     {
@@ -891,8 +927,8 @@
     },
     {
       "path": "vulkan/doc-components-rpg-party.png",
-      "sha256": "4c55ea83a37bfbc922d1eeec4f299a646ce6f94996d310bf718d8115447f90b6",
-      "size": 318159,
+      "sha256": "2c3e088137c022d7e4f4ad3e5f9c83846d8e3106b844c6615d4dfa71525e104e",
+      "size": 316986,
       "visibility": "public"
     },
     {
@@ -915,8 +951,8 @@
     },
     {
       "path": "vulkan/doc-components-rpg-skills.png",
-      "sha256": "8b8122bcb01b3dec296bcfb5df52b3bc38b29513ecd687ff9244ba8eda1ca1c8",
-      "size": 47156,
+      "sha256": "ff29f5f1b9fd89c42da14bfc802d2c3943fc8e8f4297019c5fbd1ca78b2f481b",
+      "size": 47008,
       "visibility": "public"
     },
     {
@@ -1311,14 +1347,14 @@
     },
     {
       "path": "vulkan/documents/creator-tools-default-1280.png",
-      "sha256": "9d920e9a09e12a9626c965e38c0eedc3b4f99785c1fb4dfaff9bd387526ad014",
-      "size": 437511,
+      "sha256": "4d661c77488483fbe5d84d8b30eead9536c5d46322a4cd38f383882eeb98feb1",
+      "size": 439528,
       "visibility": "public"
     },
     {
       "path": "vulkan/documents/creator-tools-default-390.png",
-      "sha256": "44a4d8af7030415cb013b8984bfa2eb3debd288cad255d12e278734cf1eafad3",
-      "size": 181327,
+      "sha256": "49ee4c0d9e93c639477764b4ddbacf3db1d2c1817122cfccbd7d6c5483f6c8f0",
+      "size": 164601,
       "visibility": "public"
     },
     {
