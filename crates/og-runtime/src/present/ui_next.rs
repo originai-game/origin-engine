@@ -69,6 +69,8 @@ pub(crate) struct Next {
     pub spans: Spans,
     /// Whether the body font draws (has a handle in the scene).
     font: bool,
+    /// The overlay texts and sprites its last emit added.
+    pub emitted: std::cell::Cell<(usize, usize, usize)>,
 }
 
 /// Whether engine `world`'s project runs its documents on the new core.
@@ -102,6 +104,7 @@ impl Next {
             frame: og_ui::UiFrame::default(),
             spans: Spans::default(),
             font: false,
+            emitted: Default::default(),
         }
     }
 
@@ -372,6 +375,30 @@ impl Next {
     /// What `__runtime_probe__` reads beside the timings.
     pub(crate) fn probe(&self) -> Value {
         let s = &self.spans;
+        let texts: Vec<Value> = self
+            .frame
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                og_ui::DrawCmd::Text {
+                    x,
+                    baseline,
+                    size,
+                    text,
+                    color,
+                    font,
+                    clip,
+                    bounds,
+                    ..
+                } => Some(json!({
+                    "text": text, "x": x, "baseline": baseline, "size": size, "color": color,
+                    "font": format!("{font:?}"), "clip": [clip.x, clip.y, clip.width, clip.height],
+                    "bounds": [bounds.x, bounds.y, bounds.width, bounds.height], "level": it.level,
+                })),
+                _ => None,
+            })
+            .take(4)
+            .collect();
         let mut kinds = serde_json::Map::new();
         for it in &self.frame.items {
             let k = format!("{:?}", it.cmd);
@@ -384,7 +411,7 @@ impl Next {
             "frame_ms": s.frame, "commit_ms": s.commit, "layout_ms": s.layout,
             "allocations": s.allocations, "ops": s.ops, "refolded": s.refolded,
             "elements": s.elements, "items": self.frame.items.len(), "mounts": self.mounts.len(),
-            "kinds": kinds, "font": self.font,
+            "kinds": kinds, "font": self.font, "texts": texts, "emitted": self.emitted.get(),
         })
     }
 }

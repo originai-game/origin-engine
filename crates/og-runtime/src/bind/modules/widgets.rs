@@ -54,7 +54,17 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     }
     // The documents on og-ui's new core, over og-ui's (present/ui_next.rs).
     if let Some(next) = &rs.ui_next {
+        let before = (
+            overlay.texts.len(),
+            overlay.sprites.len(),
+            overlay.ui.shapes.len(),
+        );
         next.frame.emit_shifted(&desc, overlay, &|_| None);
+        next.emitted.set((
+            overlay.texts.len() - before.0,
+            overlay.sprites.len() - before.1,
+            overlay.ui.shapes.len() - before.2,
+        ));
     }
     // Mass elements no element owns (docs/ui.md §1), under the UI.
     world_frame.emit(og_render::UI_OVERLAY_LAYER, overlay);
