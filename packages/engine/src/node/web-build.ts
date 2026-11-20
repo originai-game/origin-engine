@@ -968,7 +968,11 @@ function outRefusal(project: string, out: string): string | null {
   return null;
 }
 
-export async function webBuild(project: string, entry: string, out: string, publish: boolean, given?: ProjectSettings): Promise<WebBuild> {
+/**
+ * `live`: a development build whose game code `og dev --web` replaces while it runs (build.ts
+ * `web-live`: the engine modules the game imports are kept for its `web-code` bundles).
+ */
+export async function webBuild(project: string, entry: string, out: string, publish: boolean, given?: ProjectSettings, live = false): Promise<WebBuild> {
   // Once the output directory is replaced, a failure removes what was half written,
   // so the next build is not refused for a directory without og-build.json.
   let replaced = false;
@@ -1029,7 +1033,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   replaced = true;
 
   // Source maps name the game's files relative to the project and the engine's as `@origingame/engine/<path>`.
-  const game = await bundleGame(entry, join(out, "game.js"), "web", publish, { root: project, ...mapOptions(out, "game.js", publish) });
+  const game = await bundleGame(entry, join(out, "game.js"), live && !publish ? "web-live" : "web", publish, { root: project, ...mapOptions(out, "game.js", publish) });
   if (!game.ok) return fail(`bundling ${entry}: ${game.reason}`);
   for (const [file, src] of [["play.js", join(here, "..", "web", "play.ts")], ["audio-worklet.js", join(here, "..", "web", "audio-worklet.ts")]] as const) {
     const b = await bundleGame(src, join(out, file), "script", publish, { root: project, ...mapOptions(out, file, publish) });

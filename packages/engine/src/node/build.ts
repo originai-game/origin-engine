@@ -7,6 +7,11 @@
 //   web     the engine Worker: `startWorker(game)`, the runtime and the game in
 //           one module, as the play page's shell starts it;
 //   script  any other browser module (the shell's play.js, the audio worklet), as is.
+//   web-live  `web` for `og dev --web`: the engine modules the game imports are
+//           also published on `globalThis.__og_engine__` (by specifier), so a
+//   web-code  bundle of the game's own code alone (built on each edit) imports
+//           them from there: the edited game re-registers into the running
+//           engine and the probe's `reload` swaps it in (src/node/dev-web.ts).
 //
 // Each bundle gets its source map beside it, `<out>.map`, its `sources`
 // named so that a stack maps back to the game's TypeScript: by default
@@ -40,6 +45,7 @@ declare const Bun: {
   write(path: string, data: string): Promise<number>;
   resolveSync(specifier: string, parent: string): string;
   JSONC: { parse(text: string): unknown };
+  Transpiler: new (o: { loader: string }) => { scan(text: string): { exports: string[] } };
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -135,7 +141,7 @@ const ADOPT_SITES = `{
 `;
 
 /** Bundle `entry` (whose default export is `og.game(...)`) into `out`, its source map into `<out>.map`. */
-export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" = "native", minify = false, maps: MapOptions = {}, cacheInputs?: ReadonlySet<string>): Promise<Bundled> {
+export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" | "web-live" | "web-code" = "native", minify = false, maps: MapOptions = {}, cacheInputs?: ReadonlySet<string>): Promise<Bundled> {
   const t0 = performance.now();
   const absEntry = resolve(entry);
   let cacheable = cacheInputs !== undefined && target === "native";
@@ -148,16 +154,42 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       if (typeof config !== "object" || config === null || "extends" in config) cacheable = false;
     } catch { cacheable = false; }
   }
+  const gameRoot = projectRoot(absEntry);
   const engine = {
     name: "origin-engine",
     setup(build: {
-      onResolve(o: { filter: RegExp; namespace?: string }, f: (a: { path: string; resolveDir: string }) => unknown): void;
+      onResolve(o: { filter: RegExp; namespace?: string }, f: (a: { path: string; resolveDir: string; importer?: string; namespace?: string }) => unknown): void;
       onLoad(o: { filter: RegExp; namespace?: string }, f: (a: { path: string }) => unknown): void;
     }) {
       build.onResolve({ filter: /^@origingame\/engine(\/.*)?$/ }, (a) => {
         const file = engineFile(a.path);
         if (!file) throw new Error(`${a.path} is not an export of @origingame/engine`);
+        // The game's own imports (not the engine's, nor the og:worker entry's) go
+        // through the shared namespaces (`web-live` publishes them, `web-code` reads them).
+        // (A sheet project lives inside the engine package, so this keys on the game's project, not the engine's root.)
+        const importer = a.importer ?? "";
+        const fromGame = a.namespace !== "og" && importer.startsWith(gameRoot + sep) && !importer.includes(`${sep}node_modules${sep}`);
+        if (fromGame && target === "web-live") return { path: a.path, namespace: "og-pub" };
+        if (fromGame && target === "web-code") return { path: a.path, namespace: "og-ext" };
         return { path: file, external: target === "native" };
+      });
+      build.onLoad({ filter: /.*/, namespace: "og-pub" }, (a) => {
+        const file = JSON.stringify(engineFile(a.path));
+        const hasDefault = new Bun.Transpiler({ loader: "ts" }).scan(readFileSync(engineFile(a.path)!, "utf8")).exports.includes("default");
+        return {
+          contents: `import * as m from ${file};\n(globalThis.__og_engine__ ??= {})[${JSON.stringify(a.path)}] = m;\nexport * from ${file};\n${hasDefault ? `export { default } from ${file};\n` : ""}`,
+          loader: "ts",
+        };
+      });
+      build.onLoad({ filter: /.*/, namespace: "og-ext" }, async (a) => {
+        // The names the module exports, read by importing it here (bun runs the engine's modules natively).
+        const names = Object.keys(await import(engineFile(a.path)!));
+        const spec = JSON.stringify(a.path);
+        const own = names.filter((n) => n !== "default" && /^[A-Za-z_$][\w$]*$/.test(n));
+        return {
+          contents: `const m = globalThis.__og_engine__?.[${spec}];\nif (!m) throw new Error("og dev: the running page has no " + ${spec} + " (a cold restart loads it)");\nexport const { ${own.join(", ")} } = m;\n${names.includes("default") ? "export default m.default;\n" : ""}`,
+          loader: "js",
+        };
       });
       build.onResolve({ filter: /^og:(worker|game)$/ }, (a) => ({ path: a.path.slice(3), namespace: "og" }));
       if (cacheInputs) {
@@ -197,7 +229,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     },
   };
   const r = await Bun.build({
-    entrypoints: [target === "web" ? "og:worker" : target === "native" ? "og:game" : absEntry],
+    entrypoints: [target === "web" || target === "web-live" ? "og:worker" : target === "native" || target === "web-code" ? "og:game" : absEntry],
     target: target === "native" ? "bun" : "browser",
     format: "esm",
     minify,

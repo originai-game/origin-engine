@@ -2,7 +2,7 @@
 // harness's ticks and frames, the command channel, the probe, and what the
 // Worker measured of the run.
 
-import { boundHost, type Engine } from "../../runtime.ts";
+import { beginBundle, boundHost, type Engine } from "../../runtime.ts";
 import * as pipelines from "../pipelines.ts";
 import { pumpRoom } from "./platform.ts";
 import { pumpShared } from "./shared.ts";
@@ -101,6 +101,25 @@ export function callsOf(run: Run): Calls {
       if (refreshed === undefined) return { error: "this engine module has no live edit (a publish build)" };
       return { ...(JSON.parse(refreshed) as Record<string, unknown>), putMs: Math.round(putMs * 10) / 10 };
     },
+    /**
+     * `og dev --web`'s code edit: the game's code bundle at `url` (build.ts `web-code`, which
+     * reads the engine modules this page's own bundle kept) is imported, its declarations
+     * replacing the old bundle's, and the probe's `reload` swaps it in (snapshot, swap,
+     * restore: the world kept). Answers `{ importMs, reloadMs, report }`, timed in the Worker;
+     * a failed import throws and the old code keeps running.
+     */
+    devCode: async (e, [url]) => {
+      const t0 = performance.now();
+      beginBundle();
+      await import(/* @vite-ignore */ String(url));
+      const t1 = performance.now();
+      const report = e.probe.reload();
+      const t2 = performance.now();
+      const round = (ms: number) => Math.round(ms * 10) / 10;
+      return { importMs: round(t1 - t0), reloadMs: round(t2 - t1), report };
+    },
+    /** `og dev --web`'s Stage channel: opens or closes the inspector (the `inspect` command). */
+    inspector: (e, [open]) => e.command("inspect", [open ? "on" : "off"]),
     probe: (e, [member, ...rest]) => {
       const f = (e.probe as unknown as Record<string, unknown>)[String(member)];
       if (typeof f !== "function") throw new TypeError(`probe has no member '${String(member)}'`);
