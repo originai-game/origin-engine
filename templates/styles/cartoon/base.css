@@ -712,6 +712,37 @@
      the player's text scale. */
   line-height: 1.35;
   color: var(--ink);
+
+  /* ── The HUD over the scene: thick white edges with an ink outline,
+     candy colours (a hot-pink foe, a lime boon, a cherry life bar, a
+     bubble-blue mana bar), chunky key caps with a drop, round tags. */
+  --hud-accent: #ffd23f;
+  --hud-gold: #ffc21a;
+  --hud-edge: linear-gradient(180deg, #ffffff, #ffffff 60%, #d8dcff);
+  --hud-ready-edge: linear-gradient(180deg, #fff6b0, #ffc21a);
+  --hud-ally: #3fb6ff;
+  --hud-foe: #ff3b6b;
+  --hud-boon: #7be04a;
+  --hud-harm: #ff3b6b;
+  --hud-life-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), linear-gradient(90deg, #ff2e55, #ff6b6b);
+  --hud-life-glow: none;
+  --hud-mana-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), linear-gradient(90deg, #2f7bff, #55c1ff);
+  --hud-mana-glow: none;
+  --hud-stamina-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), #ffc21a;
+  --hud-stamina-glow: none;
+  --hud-shield-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), #55c1ff;
+  --hud-shield-glow: none;
+  --hud-key-fill: linear-gradient(180deg, #ffffff, #e4e7ff);
+  --hud-key-ink: #241a5a;
+  --hud-key-radius: calc(7 * var(--font-step-px));
+  --hud-key-shadow: 0 calc(3 * var(--font-step-px)) 0 #241a5a, inset 0 0 0 calc(2 * var(--font-step-px)) #241a5a;
+  --hud-tag-cut: calc(8 * var(--font-step-px));
+  --hud-tag-rim: inset 0 0 0 calc(2 * var(--font-step-px)) #241a5a;
+  --hud-plate-rim: inset 0 0 0 calc(2 * var(--font-step-px)) #241a5a;
+  --bar-rim: 0 0 0 calc(2 * var(--font-step-px)) #241a5a;
+  --hud-feed-edge: #ffd23f;
+  --hud-pip-on: #ffd23f;
+  --hud-lift: drop-shadow(0 calc(4 * var(--font-step-px)) 0 rgb(36 26 90 / 0.85));
 }
 
 /* The light scheme: a day sky, cream panels and indigo ink; the same

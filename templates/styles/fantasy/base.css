@@ -528,6 +528,35 @@
      player's text scale (the steps' px line heights would not). */
   line-height: 1.4;
   color: var(--ink);
+
+  /* ── The HUD over the scene: aged brass edges and octagons, a gold
+     accent, crimson for a foe and for life, deep lapis mana, parchment
+     key caps with brown ink, and leaf-cut tags. */
+  --hud-accent: #e9c46f;
+  --hud-gold: #f0cf7a;
+  --hud-edge: linear-gradient(180deg, #f6dc93, #b88a3e 45%, #5c3f1c);
+  --hud-ready-edge: linear-gradient(180deg, #fff2c4, #e9c46f 55%, #8a6326);
+  --hud-ally: #8fc4ff;
+  --hud-foe: #e2412f;
+  --hud-boon: #8fd27a;
+  --hud-harm: #ff6a52;
+  --hud-life-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), linear-gradient(90deg, #7a1410, #c8321f);
+  --hud-life-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(200 50 31 / 0.6);
+  --hud-mana-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), linear-gradient(90deg, #1b3a8a, #3f7ad8);
+  --hud-mana-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(63 122 216 / 0.6);
+  --hud-stamina-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), #d9a441;
+  --hud-shield-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), linear-gradient(90deg, #8a96a8, #d6dde8);
+  --hud-shield-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(214 221 232 / 0.5);
+  --hud-health-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 42%), #e8dcc0;
+  --hud-key-fill: linear-gradient(180deg, #f3e6c4, #cdb27a);
+  --hud-key-ink: #3a2412;
+  --hud-key-radius: calc(2 * var(--font-step-px));
+  --hud-key-shadow: 0 calc(2 * var(--font-step-px)) 0 #2a1a0b, inset 0 0 0 var(--stroke-hairline) #7a5a2a;
+  --hud-tag-rim: inset 0 0 0 var(--stroke-hairline) rgb(233 196 111 / 0.55);
+  --hud-plate-rim: inset 0 0 0 var(--stroke-hairline) rgb(233 196 111 / 0.45), inset 0 var(--stroke-hairline) 0 rgb(255 236 180 / 0.35);
+  --hud-feed-edge: #b88a3e;
+  --hud-pip-on: #f0cf7a;
+  --hud-ring-well: rgb(233 196 111 / 0.18);
 }
 
 /* The light scheme: parchment and ink, the same brass and crimson. */

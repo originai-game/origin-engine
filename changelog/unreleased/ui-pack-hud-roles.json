@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "fantasy, scifi and cartoon style packs: the HUD",
+      "summary": "The three built-in packs dress the HUD over the scene, not only its typeface: fantasy in aged brass edges, parchment key caps and a crimson life bar; scifi in cyan glass edges, an inner-lit cyan ultimate ring and key caps and a violet mana bar; cartoon in ink-outlined key caps, tags and bars with a hard drop and candy colours. Each sets the shared --hud-* roles (edge, accent, gold, ally, foe, boon, harm, the life, mana, stamina and shield fills, key caps, tags, plate rim, the slot ring) in both schemes; the plates keep following each pack's neutral seed."
+    }
+  ]
+}
