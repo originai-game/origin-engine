@@ -104,7 +104,16 @@ impl Renderer {
             let t0 = clock.map(|c| c());
             let q0 = encoder.used();
             let draws = stats.draw_calls;
-            let _span = pass.redrawn().then(FrameSpan::open);
+            // The shadow layers too while the web host still compiles a
+            // pipeline: a caster skipped meanwhile is drawn again, as the
+            // static cache forgets its layers after such a frame
+            // (submit_frame.rs, gpu/ready.rs).
+            let shadow = matches!(
+                pass,
+                FramePass::Cascade(_) | FramePass::LocalFace(_) | FramePass::Shelter
+            );
+            let _span = (pass.redrawn() || (shadow && crate::gpu::ready::compiling()))
+                .then(FrameSpan::open);
             match pass {
                 _ if plans.encode(
                     pass,

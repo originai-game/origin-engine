@@ -512,6 +512,7 @@ impl ScatterRenderer {
                     }
                     let place = self.place.as_mut().expect("planned with it");
                     if !place.ready(device, terrain_layout, arrayed) {
+                        crate::gpu::ready::hold();
                         continue;
                     }
                     gpu_budget = gpu_budget.saturating_sub(1);

@@ -95,9 +95,9 @@ export class Gate {
     return (glue?.og_web_textures_deferred?.() ?? 0) > 0 || (glue?.og_web_fonts_pending?.() ?? 0) > 0;
   }
 
-  /** Whether the last frame drew less than the scene: pipelines compiling or draws skipped for them (s60), textures waiting (s63). */
+  /** Whether the last frame drew less than the scene: pipelines compiling, draws skipped or kept work held for them (s60), textures waiting (s63). */
   #frameWaits(): boolean {
-    return pipelines.takeSkipped() > 0 || pipelines.compiling() > 0 || this.#texturesWaiting();
+    return pipelines.takeSkipped() > 0 || pipelines.compiling() > 0 || (this.#run.glue?.og_web_pipelines_held?.() ?? false) || this.#texturesWaiting();
   }
 
   // og.loading (fork s61): the game's stages reach the page as `og-stage`, and its done (stage

@@ -3,7 +3,7 @@
   "fixed": [
     {
       "member": "publish { pipelines }",
-      "summary": "A large scene no longer loses its GPU device before its first frame on a desktop GPU with a cold shader cache: `auto` makes pipelines asynchronously on every GPU but Apple's, compute pipelines included, and every pipeline a frame makes is asked for asynchronously. Before the first frame a dispatch still compiling skips the rest of that frame, and grass and GPU-placed scatter wait for their pipelines instead of drawing from unfilled buffers."
+      "summary": "A large scene no longer loses its GPU device before its first frame on a desktop GPU with a cold shader cache: `auto` makes pipelines asynchronously on every GPU but Apple's, compute pipelines included, and every pipeline a frame makes is asked for asynchronously. Before the first frame a dispatch still compiling skips the rest of that frame, and grass, GPU-placed scatter, the environment and live sky bakes, the clouds' shadow bake and the cached shadow layers wait for their pipelines instead of drawing from unfilled buffers or compiling synchronously."
     }
   ]
 }

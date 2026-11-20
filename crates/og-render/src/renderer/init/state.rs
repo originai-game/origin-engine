@@ -201,6 +201,7 @@ impl Lights {
             caustic_grid,
             ibl,
             environment: None,
+            environment_unbaked: false,
             decal_buffers,
             decal_records: Vec::new(),
             decal_spheres: Vec::new(),

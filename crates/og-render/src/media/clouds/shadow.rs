@@ -164,9 +164,16 @@ impl CloudShadow {
         noise: &CloudNoise,
         encoder: &mut crate::Encoder,
     ) {
-        let (true, Some(pass)) = (std::mem::take(&mut self.pending), &self.pass) else {
+        let (true, Some(pass)) = (self.pending, &self.pass) else {
             return;
         };
+        // Its pipeline still compiles on the web host: baked by a later
+        // frame (gpu/ready.rs).
+        if !pass.pipeline.compiled() {
+            crate::gpu::ready::hold();
+            return;
+        }
+        self.pending = false;
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("cloud shadow"),
             layout: &pass.layout,

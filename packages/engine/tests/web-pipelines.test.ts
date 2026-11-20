@@ -444,7 +444,8 @@ test("a compute pipeline that arrives late skips the rest of the first frame, an
   // Made in the renderer's frame but outside a frame span (a kept pass's): asked for asynchronously, with a ticket.
   p.makeSpan(true);
   const kept = device.createComputePipeline({ label: "place", compute: { module: "m" } });
-  const keptTicket = p.lastTicket();
+  const keptTicket = p.ticketCount();
+  expect(p.anyCompiling()).toBe(true);
   p.frameSpan(true);
   const generate = device.createComputePipeline({ label: "generate", compute: { module: "m" } });
   const draws = device.createRenderPipeline(desc({ module: "m" }, "blades"));

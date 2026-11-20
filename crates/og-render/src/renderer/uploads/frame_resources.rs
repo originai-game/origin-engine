@@ -237,13 +237,22 @@ impl Renderer {
                 self.lights.environment = None;
             }
         }
-        if self
-            .lights
-            .environment
-            .as_ref()
-            .is_some_and(|(k, ..)| *k == key)
+        if !self.lights.environment_unbaked
+            && self
+                .lights
+                .environment
+                .as_ref()
+                .is_some_and(|(k, ..)| *k == key)
         {
             return;
+        }
+        // The bake's pipelines may still compile on the web host: the frame
+        // groups are made over the cubes as they are, and a later frame
+        // bakes them (gpu/ready.rs).
+        let baking = self.lights.ibl.compiled();
+        self.lights.environment_unbaked = !baking;
+        if !baking {
+            crate::gpu::ready::hold();
         }
         let view = |i: usize| {
             &self.cache.environment_maps[i]
@@ -251,7 +260,7 @@ impl Renderer {
                 .expect("filtered above")
                 .view
         };
-        match map {
+        match map.filter(|_| baking) {
             Some(m) => {
                 let first = &scene.environment_maps()[m.map.index()].irradiance;
                 let irradiance = match blend {
@@ -272,13 +281,14 @@ impl Renderer {
                     m.background_intensity.max(0.0),
                 )
             }
-            None => self.lights.ibl.generate(
+            None if baking => self.lights.ibl.generate(
                 &self.device,
                 &self.queue,
                 sky.sun_direction,
                 sky.sun_color,
                 sky.look.as_ref(),
             ),
+            None => {}
         }
         // The bound cubes are the sky without its clouds again: the live
         // sky captures it whole the next frame.

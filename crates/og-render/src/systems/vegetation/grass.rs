@@ -368,7 +368,7 @@ pub(crate) struct GrassRenderer {
     /// The generation pipelines (evaluate, scan, compact) over each
     /// terrain layout, standard then layer arrays.
     /// Each with its pipelines' tickets (gpu/ready.rs).
-    generate: [Option<([wgpu::ComputePipeline; 3], [crate::gpu::ready::Ticket; 3])>; 2],
+    generate: [Option<([wgpu::ComputePipeline; 3], crate::gpu::ready::Tickets)>; 2],
     tile: wgpu::Buffer,
     indices: wgpu::Buffer,
     fields: Vec<FieldGpu>,

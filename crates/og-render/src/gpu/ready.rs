@@ -7,78 +7,112 @@
 //! driver compiles one for seconds, and synchronous ones in one GPU-process
 //! task past Chrome's 15 s watchdog lose the device. A pass drawn again every
 //! frame skips a pipeline still compiling (the host's frame span), but one
-//! whose output is kept (a scatter chunk placed once, a grass field's
-//! blades) would keep that gap, or make the pipeline synchronously at its
-//! use. Such a pass takes the [`Ticket`] of each pipeline it makes and,
-//! while one is not [`Ticket::ready`], leaves its work (and every draw that
-//! reads it) for a later frame. Natively, and on a page that makes its
-//! pipelines at once, every ticket is ready.
+//! whose output is kept would keep that gap, or make the pipeline
+//! synchronously at its use. So each such pass waits:
+//!
+//! - one-shot work (a scatter chunk's placement, a grass field's blades, the
+//!   environment's bake, the live sky's step, the clouds' shadow bake) takes
+//!   the [`Tickets`] of the pipelines it made and, while they are not
+//!   [`Tickets::ready`], leaves its work (and every draw that reads it) for a
+//!   later frame;
+//! - the shadow layers, which the static cache keeps, are encoded in a frame
+//!   span, and while any pipeline still [`compiling`] the cache forgets its
+//!   layers, so a caster skipped meanwhile is drawn again.
+//!
+//! Either way the host still compiles, so the play gate draws the first
+//! frame again until it is whole. Natively, and on a page that makes its
+//! pipelines at once, every ticket is ready and nothing compiles.
 
 use std::cell::Cell;
 
-/// The host's `(last, ready)`: the ticket of the pipeline made last, and
-/// whether a ticket's pipeline is made.
-pub type ReadyHooks = (fn() -> u32, fn(u32) -> bool);
+/// The host's `(count, ready, compiling)`: the tickets handed out so far
+/// (each a pipeline asked for asynchronously, numbered from 1), whether a
+/// ticket's pipeline is made, and whether any is still compiling.
+pub type ReadyHooks = (fn() -> u32, fn(u32) -> bool, fn() -> bool);
 
 thread_local! {
-    /// The host's `(last, ready)`: the ticket of the pipeline made last, and
-    /// whether a ticket's pipeline is made.
     static READY: Cell<Option<ReadyHooks>> = const { Cell::new(None) };
     /// The host's span around the renderer's frame: every pipeline made in
     /// it is asked for asynchronously.
     static MAKE: Cell<Option<fn(bool)>> = const { Cell::new(None) };
+    /// Whether the frame drawing now (or drawn last) left kept work for a
+    /// later one ([`hold`]).
+    static HELD: Cell<bool> = const { Cell::new(false) };
 }
 
 /// The web host's pipeline hooks: `make(on)` around each frame the renderer
-/// draws, and `ready = (last, ready)` for the [`Ticket`]s of what it made;
-/// `None` (the default) calls nothing and every ticket is ready.
+/// draws, and `ready` for the [`Tickets`] of what it made; `None` (the
+/// default) calls nothing, every ticket is ready and nothing compiles.
 pub fn set_pipeline_hooks(make: Option<fn(bool)>, ready: Option<ReadyHooks>) {
     MAKE.with(|c| c.set(make));
     READY.with(|c| c.set(ready));
 }
 
-/// A pipeline the host may still compile: taken right after making it.
+fn count() -> u32 {
+    READY.with(|c| c.get()).map_or(0, |(count, ..)| count())
+}
+
+/// Whether the host has hooks: off, every ticket is ready, and nothing is
+/// made only to ask whether it is compiled.
+pub(crate) fn hooked() -> bool {
+    READY.with(|c| c.get()).is_some()
+}
+
+/// A pass whose output is kept left its work for a later frame: the web
+/// host draws the first frame again until none did ([`pipelines_held`]).
+pub(crate) fn hold() {
+    HELD.with(|h| h.set(true));
+}
+
+/// Whether the last frame left kept work for a later one, its pipelines
+/// still compiling (the web host's play gate).
+pub fn pipelines_held() -> bool {
+    HELD.with(|h| h.get())
+}
+
+/// Whether the host still compiles any pipeline it was asked for.
+pub(crate) fn compiling() -> bool {
+    READY
+        .with(|c| c.get())
+        .is_some_and(|(.., compiling)| compiling())
+}
+
+/// The pipelines the host was asked for asynchronously while a value was
+/// made ([`Tickets::during`]); none when it made them at once.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct Ticket(u32);
+pub(crate) struct Tickets {
+    /// After the tickets handed out before, up to those handed out after.
+    from: u32,
+    to: u32,
+}
 
-impl Ticket {
-    /// The ticket of the pipeline made last on this thread.
-    pub(crate) fn last() -> Ticket {
-        Ticket(READY.with(|c| c.get()).map_or(0, |(last, _)| last()))
+impl Tickets {
+    /// `make()`, with the tickets of the pipelines it made.
+    pub(crate) fn during<T>(make: impl FnOnce() -> T) -> (T, Tickets) {
+        let from = count();
+        let made = make();
+        (made, Tickets { from, to: count() })
     }
 
-    /// Whether its pipeline is made (or refused, which its use reports).
+    /// Whether each of its pipelines is made (or refused, which its use
+    /// reports).
     pub(crate) fn ready(self) -> bool {
-        self.0 == 0
-            || READY
-                .with(|c| c.get())
-                .is_none_or(|(_, ready)| ready(self.0))
+        if self.from >= self.to {
+            return true;
+        }
+        READY
+            .with(|c| c.get())
+            .is_none_or(|(_, ready, _)| (self.from + 1..=self.to).all(ready))
     }
-}
-
-/// Makes `n` pipelines with `make`, each with its ticket.
-pub(crate) fn tracked<T, const N: usize>(
-    mut make: impl FnMut(usize) -> T,
-) -> ([T; N], [Ticket; N]) {
-    let mut tickets = [Ticket::default(); N];
-    let made = std::array::from_fn(|i| {
-        let p = make(i);
-        tickets[i] = Ticket::last();
-        p
-    });
-    (made, tickets)
-}
-
-/// Whether every one of `tickets` is ready.
-pub(crate) fn all(tickets: &[Ticket]) -> bool {
-    tickets.iter().all(|t| t.ready())
 }
 
 /// The host's make span, open while this lives.
 pub(crate) struct MakeSpan(Option<fn(bool)>);
 
 impl MakeSpan {
+    /// Opened once a frame, before anything is held.
     pub(crate) fn open() -> MakeSpan {
+        HELD.with(|h| h.set(false));
         let hook = MAKE.with(|c| c.get());
         if let Some(hook) = hook {
             hook(true);

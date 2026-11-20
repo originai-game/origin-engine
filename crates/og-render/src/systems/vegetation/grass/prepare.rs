@@ -191,10 +191,8 @@ impl GrassRenderer {
             // the web host still compiles the generate pipelines the field is
             // left out, so no pass draws blades nothing generated
             // (gpu/ready.rs).
-            if self.generate[a]
-                .as_ref()
-                .is_some_and(|(_, t)| !crate::gpu::ready::all(t))
-            {
+            if self.generate[a].as_ref().is_some_and(|(_, t)| !t.ready()) {
+                crate::gpu::ready::hold();
                 continue;
             }
             let cast = g.cast_shadows && scene.lighting.light.cast_shadows && sun_on;

@@ -89,8 +89,8 @@ thread_local! {
     static BUNDLE: RefCell<Option<(String, std::rc::Rc<og_bundle::runtime::Bundle>)>> = const { RefCell::new(None) };
     /// The Worker's frame-pipeline span (fork s60, `og_web_frame_pipelines`).
     static FRAME_SPAN: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
-    /// The Worker's make span, last ticket and readiness (`og_web_make_pipelines`).
-    static MAKE_HOOKS: RefCell<Option<[js_sys::Function; 3]>> = const { RefCell::new(None) };
+    /// The Worker's make span, ticket count, readiness and compiling (`og_web_make_pipelines`).
+    static MAKE_HOOKS: RefCell<Option<[js_sys::Function; 4]>> = const { RefCell::new(None) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `transcode(id, ktx2, target)`, which transcodes a Basis
@@ -344,28 +344,40 @@ pub fn og_web_frame_pipelines(span: Option<js_sys::Function>) {
     og_render::set_frame_pipelines_hook(on.then_some(frame_span as fn(bool)));
 }
 
-/// The Worker's `make(on)` around each frame the renderer draws, `last()`
-/// (the ticket of the pipeline made last, 0 when made at once) and
-/// `ready(ticket)` (src/web/pipelines.ts `makeSpan`, `lastTicket`, `ready`):
-/// every pipeline a frame makes is asked for asynchronously, and the passes
-/// whose output the renderer keeps wait for theirs (og-render gpu/ready.rs).
-/// `null`s call nothing.
+/// The Worker's `make(on)` around each frame the renderer draws, `count()`
+/// (the tickets handed out, each a pipeline asked for asynchronously),
+/// `ready(ticket)` and `compiling()` (src/web/pipelines.ts `makeSpan`,
+/// `ticketCount`, `ready`, `anyCompiling`): every pipeline a frame makes is
+/// asked for asynchronously, and the passes whose output the renderer keeps
+/// wait for theirs (og-render gpu/ready.rs). `null`s call nothing.
 #[wasm_bindgen]
 pub fn og_web_make_pipelines(
     make: Option<js_sys::Function>,
-    last: Option<js_sys::Function>,
+    count: Option<js_sys::Function>,
     ready: Option<js_sys::Function>,
+    compiling: Option<js_sys::Function>,
 ) {
-    let hooks = match (make, last, ready) {
-        (Some(m), Some(l), Some(r)) => Some([m, l, r]),
+    let hooks = match (make, count, ready, compiling) {
+        (Some(m), Some(n), Some(r), Some(c)) => Some([m, n, r, c]),
         _ => None,
     };
     let on = hooks.is_some();
     MAKE_HOOKS.with(|cell| *cell.borrow_mut() = hooks);
     og_render::set_pipeline_hooks(
         on.then_some(make_span as fn(bool)),
-        on.then_some((last_ticket as fn() -> u32, ticket_ready as fn(u32) -> bool)),
+        on.then_some((
+            ticket_count as fn() -> u32,
+            ticket_ready as fn(u32) -> bool,
+            any_compiling as fn() -> bool,
+        )),
     );
+}
+
+/// Whether the last frame left work whose pipelines still compile for a
+/// later one: the Worker draws the first frame again until it did not.
+#[wasm_bindgen]
+pub fn og_web_pipelines_held() -> bool {
+    og_render::pipelines_held()
 }
 
 fn make_hook(i: usize, arg: &JsValue) -> JsValue {
@@ -381,7 +393,7 @@ fn make_span(on: bool) {
     make_hook(0, &JsValue::from_bool(on));
 }
 
-fn last_ticket() -> u32 {
+fn ticket_count() -> u32 {
     make_hook(1, &JsValue::NULL)
         .as_f64()
         .map_or(0, |t| t as u32)
@@ -391,6 +403,10 @@ fn ticket_ready(ticket: u32) -> bool {
     make_hook(2, &JsValue::from(ticket))
         .as_bool()
         .unwrap_or(true)
+}
+
+fn any_compiling() -> bool {
+    make_hook(3, &JsValue::NULL).as_bool().unwrap_or(false)
 }
 
 fn frame_span(on: bool) {
