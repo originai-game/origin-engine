@@ -52,6 +52,9 @@ struct DispatchUniform {
     wave_offset: [i32; 2],
     index: u32,
     frame: u32,
+    range: f32,
+    /// WGSL rounds the struct to 16 bytes.
+    _pad: [f32; 3],
 }
 
 /// One of Bend's `DispatchData`: its workgroups and its `WaveOffset`.
@@ -441,6 +444,8 @@ impl ContactPasses {
                 wave_offset: d.wave_offset,
                 index: index as u32,
                 frame: self.frame,
+                range: ranges[index],
+                _pad: [0.0; 3],
             }));
             self.lights.push(list);
         }

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "PointLight.castShadow",
+      "summary": "Screen-space contact shadows skip the pixels past their light's distance, where its light is already 0, instead of marching every pixel the light's bounds cover (a near light's covered the whole screen). Frames are unchanged; the `contact` pass costs less where the light reaches a small part of the screen."
+    }
+  ]
+}

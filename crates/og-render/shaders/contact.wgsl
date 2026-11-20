@@ -36,6 +36,10 @@ struct ContactDispatch {
   // the top byte of every key, so a key of this frame outranks every
   // earlier one and the masks need no clearing between frames.
   frame: u32,
+  // The light's range (contact.rs `ContactPasses::prepare`): its light is
+  // 0 from there (frame.wgsl `range_window`), so a pixel past it needs no
+  // shadow.
+  range: f32,
 };
 
 @group(0) @binding(0) var<uniform> fxp: FxPost;
@@ -77,14 +81,20 @@ fn view_pos(uv: vec2<f32>, d: f32) -> vec3<f32> {
 }
 
 // Whether the pixel at `px` takes no light from the contact light: off
-// the screen, in the sky, or facing away from it (Bend's EarlyOutPixel).
+// the screen, in the sky, past the light's range (its falloff is 0 there:
+// a near light's range box reaches behind the camera and its dispatches
+// cover the whole screen, the far ground too), or facing away from it
+// (Bend's EarlyOutPixel).
 fn unlit(px: vec2<i32>, size: vec2<i32>) -> bool {
   if (any(px < vec2<i32>(0)) || any(px >= size)) { return true; }
   let d = textureLoad(tex_depth, px, 0).r;
   if (d >= fxp.cam.x * 0.999) { return true; }
   let p = view_pos((vec2<f32>(px) + 0.5) / vec2<f32>(size), d);
+  let to_light = fxp.contact[dispatch.index].xyz - p;
+  let range = max(dispatch.range, 1e-3);
+  if (dot(to_light, to_light) >= range * range) { return true; }
   let n = normalize((fxp.view * vec4<f32>(oct_decode(textureLoad(tex_gbuffer, px, 0).xy), 0.0)).xyz);
-  return dot(fxp.contact[dispatch.index].xyz - p, n) <= 0.0;
+  return dot(to_light, n) <= 0.0;
 }
 
 // The mask `value` at `px` from a thread whose line passes `near` (0 to
