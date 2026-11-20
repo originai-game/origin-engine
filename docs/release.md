@@ -23,7 +23,7 @@ installed into E2B, production's provider, last.
 |---|---|---|
 | `<version>/origin-engine-<version>-<target>.tar.gz` | one target's dist, its root directory `origin-engine-<version>-<target>/` | immutable |
 | `<version>/vfx/<pack>.tar.gz` | one downloadable effect pack, its root directory `<pack>/` (below) | immutable |
-| `<version>/wasm/<variant>/<module>.<hash12>.wasm` | one split engine module (docs/web-export.md §Modules): `<variant>` `publish`, `publish2d`, `lanes` or `lanes2d`, served as `application/wasm` with CORS for the play origin | immutable |
+| `<version>/wasm/<variant>/<module>.<hash12>.wasm` | one split engine module (docs/web-export.md §Modules): `<variant>` is the engine wasm it was split from (`publish`, `publish2d`, `lanes`, `lanes2d`); the platform's route serves any name matching `wasm/[a-z0-9-]+/[a-z0-9]+.<hash12>.wasm`, the same pattern that gates SHA256SUMS signing, served as `application/wasm` with CORS for the play origin | immutable |
 | `<version>/manifest.json` | `{version, base?, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx: {<pack>: {url, sha256, size, version, minEngine}}}` | immutable |
 | `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`, the split engine modules' as `wasm/<variant>/<file>`), manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
 | `latest/manifest.json` | the newest release (never a dev build) | no-cache |
