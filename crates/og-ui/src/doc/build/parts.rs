@@ -2011,6 +2011,34 @@ mod media_cache_tests {
             ui.end();
         }
     }
+
+    /// The play gate reads the tokens for the viewport ahead (warm_tick): the
+    /// first begin on it must find them read, not cascade the root again, and
+    /// the read must leave the theme and viewport in effect as they were.
+    #[test]
+    fn tokens_read_ahead_are_the_first_begins() {
+        let mut ui = Ui::new(Default::default());
+        ui.set_part_css(":root { --w: 17px; } @media (width >= 950px) { :root { --w: 29px; } }")
+            .unwrap();
+        let (theme, viewport) = (ui.env.theme, ui.env.viewport);
+        ui.read_theme_tokens_for(crate::Viewport::new(1200.0, 700.0));
+        assert!(
+            ui.env.theme == theme && ui.env.viewport == viewport,
+            "nothing in effect moved"
+        );
+        let ahead = ui.style.theme_read.as_ref().unwrap().0.root.0.clone();
+        begin(&mut ui, 1200.0, 700.0);
+        assert!(
+            Arc::ptr_eq(&ahead, &ui.style.theme_read.as_ref().unwrap().0.root.0),
+            "the first begin reused the root read ahead"
+        );
+        let root = ui.css_root_variables();
+        assert_eq!(
+            root.get("--w").and_then(|v| v.as_deref()).map(str::trim),
+            Some("29px")
+        );
+        ui.end();
+    }
 }
 
 #[cfg(test)]

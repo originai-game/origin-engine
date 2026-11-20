@@ -140,6 +140,9 @@ pub fn warm_tick(id: u32) {
     let Some(ui) = ui else { return };
     let viewport = crate::bind::modules::viewport_of(id);
     let env = crate::bind::modules::docs::env(id);
+    // The theme tokens are read on the UI itself (only the answer is kept), so
+    // the first played tick's begin and the copies below find them read.
+    ui.lock().read_theme_tokens_for(viewport);
     let mut copy = ui.lock().clone();
     for _ in 0..WARM_BUILDS {
         copy = ui.lock().clone();

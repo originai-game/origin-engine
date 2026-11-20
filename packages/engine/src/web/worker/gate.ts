@@ -144,6 +144,24 @@ export class Gate {
       if (!answered.ok) return run.crash(answered.reason ?? "the engine refused a frame");
       run.relay(answered);
       if (!run.firstFrame && answered.rendered !== false) {
+        // On the first frame drawn, before its pipelines are waited for, the first played tick's
+        // work (og_runtime::warm_tick: the UI built on a copy, drawn once so its pipelines and
+        // glyphs are made, the height fields' chunk shapes). Its CPU runs while the frame's
+        // pipelines compile, and its pipelines are waited for as the frame's own: Play never opens
+        // on a HUD whose pipelines are still to compile. The frame is drawn again after it.
+        if (!this.#tickWarmed && run.glue?.og_web_warm_tick) {
+          this.#tickWarmed = true;
+          if (!waiting.since) waiting.since = performance.now();
+          const t0 = performance.now();
+          run.glue.og_web_warm_tick(engine.id);
+          console.info(`renderer: the first played tick's work made behind the gate in ${Math.round(performance.now() - t0)} ms`);
+          run.flushLog();
+          waiting.again = setTimeout(() => {
+            waiting.again = 0;
+            this.present();
+          }, 0);
+          return;
+        }
         // A frame that drew less than the scene is drawn again, each try its own task: once no
         // pipeline compiles (s60, polled without drawing: a frame meanwhile only slows them), or at
         // once while textures wait to upload (s63). The first frame is the first one drawn whole.
@@ -167,22 +185,6 @@ export class Gate {
           };
           if (!waiting.again) waiting.again = setTimeout(poll, pipelines.compiling() > 0 ? 50 : 0);
           run.flushLog();
-          return;
-        }
-        // The first frame is whole. Before the gate opens, the first played tick's work
-        // (og_runtime::warm_tick: the UI built on a copy, drawn once so its pipelines and glyphs are
-        // made, the height fields' chunk shapes), its pipelines waited for as the frame's own: Play
-        // never opens on a HUD whose pipelines are still to compile.
-        if (!this.#tickWarmed && run.glue?.og_web_warm_tick) {
-          this.#tickWarmed = true;
-          const t0 = performance.now();
-          run.glue.og_web_warm_tick(engine.id);
-          console.info(`renderer: the first played tick's work made behind the gate in ${Math.round(performance.now() - t0)} ms`);
-          run.flushLog();
-          waiting.again = setTimeout(() => {
-            waiting.again = 0;
-            this.present();
-          }, 0);
           return;
         }
         if (waiting.since) console.info(`renderer: the first frame waited ${Math.round(performance.now() - waiting.since)} ms (${waiting.frames} frames behind the gate)`);

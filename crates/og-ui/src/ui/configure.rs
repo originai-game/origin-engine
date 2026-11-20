@@ -581,6 +581,18 @@ impl Ui {
         self.begin_with(input, viewport, Element::column());
     }
 
+    /// Reads the theme tokens a frame begun on `viewport` reads, ahead of it,
+    /// and keeps only the answer: the next `begin` on that viewport finds them
+    /// read. The theme and viewport in effect are left as they were.
+    pub fn read_theme_tokens_for(&mut self, viewport: Viewport) {
+        let (theme, kept_viewport) = (self.env.theme, self.env.viewport);
+        let unit = surface_unit(&self.env.configured, &viewport);
+        self.env.viewport = viewport.zoomed(unit);
+        self.env.theme = self.env.configured;
+        self.read_theme_tokens();
+        (self.env.theme, self.env.viewport) = (theme, kept_viewport);
+    }
+
     /// Starts a frame with a root of your own (its size is the viewport; the
     /// safe area is added to its padding; its background covers the whole viewport).
     pub(crate) fn begin_with(&mut self, input: InputFrame, viewport: Viewport, root: Element) {
