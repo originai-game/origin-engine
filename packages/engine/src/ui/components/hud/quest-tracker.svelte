@@ -1,6 +1,5 @@
 <meta name="component" content="RpgQuestTracker">
 <meta name="strings" content="./quest-tracker.en.ogt">
-<meta name="parts" content="RpgQuestTracker.frame RpgQuestTracker.legend RpgQuestTracker.quest RpgQuestTracker.distance RpgQuestTracker.step RpgQuestTracker.marker RpgQuestTracker.text RpgQuestTracker.progress">
 <meta name="prop:label" content="string" data-doc="The tracker's heading as the game words it (Side quest); empty takes the component's Main quest.">
 <meta name="prop:name" content="string" data-doc="The tracked quest's name; empty hides the tracker.">
 <meta name="prop:steps" content="list" data-doc="Its objectives in order, keyed rows of { id, text, done, tag }: done ones are struck and dimmed with a filled diamond; the first not done is the step in play (lit, on data-current); the ones after it are upcoming (dim); tag its progress as the game words it (1 / 3) on a tag, empty for none. A phone shows the step in play alone.">
@@ -16,19 +15,19 @@
   its progress on a tag and the upcoming ones dim. Read only; the journal
   owns choosing what to track.
 -->
-<section id="RpgQuestTracker" part="RpgQuestTracker.frame" class="hud bare" data-layout="stack" data-empty={!name} role="status" aria-label={label != '' ? label : t("rpg.quests.main")}>
+<section id="RpgQuestTracker" part="frame" variant="hud" layout="stack" data-empty={!name} role="status" aria-label={label != '' ? label : t("rpg.quests.main")}>
   {#if name}
-  <span part="RpgQuestTracker.legend" class="legend">{label != '' ? label : t("rpg.quests.main")}</span>
-  <div id="Head" data-layout="row" data-gap="tight">
-    <span part="RpgQuestTracker.quest" class="quest">{name}</span>
-    {#if distance}<span part="RpgQuestTracker.distance" class="tag">{distance}</span>{/if}
+  <span part="legend" class="legend">{label != '' ? label : t("rpg.quests.main")}</span>
+  <div id="Head" layout="row" gap="tight">
+    <span part="quest" class="quest">{name}</span>
+    {#if distance}<span part="distance" class="tag">{distance}</span>{/if}
   </div>
-  <ul class="steps" data-layout="stack">
+  <ul class="steps" layout="stack">
     {#each steps as s, i (s.id)}
-      <li part="RpgQuestTracker.step" class="step" data-layout="row" data-gap="tight" data-done={s.done} data-current={!s.done && (i == 0 || steps[i - 1]['done'])}>
-        <div part="RpgQuestTracker.marker" class="marker"></div>
-        <span part="RpgQuestTracker.text" class="text">{s.text}</span>
-        {#if s.tag}<span part="RpgQuestTracker.progress" class="tag">{s.tag}</span>{/if}
+      <li part="step" class="step" layout="row" gap="tight" data-done={s.done} data-current={!s.done && (i == 0 || steps[i - 1]['done'])}>
+        <div part="marker" class="marker"></div>
+        <span part="text" class="text">{s.text}</span>
+        {#if s.tag}<span part="progress" class="tag">{s.tag}</span>{/if}
       </li>
     {/each}
   </ul>
@@ -36,8 +35,8 @@
 </section>
 
 <style>
-:host { inline-size: calc(250 * var(--font-step-px)); max-inline-size: stretch; row-gap: calc(5 * var(--font-step-px)); color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
-[part="RpgQuestTracker.frame"][data-empty=true] { display: none; }
+#RpgQuestTracker { inline-size: calc(250 * var(--font-step-px)); max-inline-size: stretch; row-gap: calc(5 * var(--font-step-px)); color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
+#RpgQuestTracker[data-empty=true] { display: none; }
 .legend { min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-gold); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 #Head { align-items: baseline; min-inline-size: 0; }
 .quest { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-size-title); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
@@ -53,7 +52,7 @@
 .tag { flex: none; max-inline-size: 45%; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; -webkit-text-stroke-width: 0; text-shadow: none; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border-radius: var(--hud-tag-cut) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 /* On a phone the tracker is one line: the step in play. */
 @media (width < 600px) {
-  :host { inline-size: stretch; }
+  #RpgQuestTracker { inline-size: stretch; }
   .legend, #Head, .step:not([data-current=true]) { display: none; }
 }
 </style>

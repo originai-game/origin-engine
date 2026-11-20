@@ -15,8 +15,8 @@
 -->
 <div id="Hud">
 {#if $shown}
-  <section id="Clock" class="hud" data-layout="stack" data-gap="hair" role="status">
-    <div id="Now" data-layout="row" data-gap="tight"><og-icon id="ClockIcon" icon="clock"></og-icon><span id="Time">{$clock}</span></div>
+  <section id="Clock" class="hud" layout="stack" gap="hair" role="status">
+    <div id="Now" layout="row" gap="tight"><og-icon id="ClockIcon" icon="clock"></og-icon><span id="Time">{$clock}</span></div>
     <span id="Day">{$day}</span>
     <span id="Sky">{$sky}</span>
   </section>
