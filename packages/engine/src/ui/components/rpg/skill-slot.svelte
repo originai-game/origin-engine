@@ -33,7 +33,7 @@
   side is --rpg-skill-slot-size; a bar sets it on the place it gives the
   slot. The game owns every cooldown, cost and charge; read only.
 -->
-<div id="RpgSkillSlot" part="RpgSkillSlot.skill" data-layout="stack" data-gap="none" role="group" data-kind={kind} data-ready={ready || (kind == 'ultimate' && charge >= 1)} data-unaffordable={unaffordable} aria-label={unaffordable && reason ? t("rpg.skills.slot", { name: name, state: reason }) : name}>
+<div id="RpgSkillSlot" part="RpgSkillSlot.skill" data-layout="stack" data-gap="none" role="group" data-kind={kind} data-ready={ready || (kind == 'ultimate' && charge >= 1)} data-unaffordable={unaffordable} data-cooling={cooldown > 0 || (kind == 'ultimate' && charge < 1)} aria-label={unaffordable && reason ? t("rpg.skills.slot", { name: name, state: reason }) : name}>
   {#if chargesMax > 0}<div part="RpgSkillSlot.charges" class="charges" data-layout="overlay" role="meter" aria-label={t("rpg.skills.charges")} aria-valuemin="0" aria-valuemax={chargesMax} aria-valuenow={charges <= 0 ? 0 : charges} style:--n={chargesMax} style:--on={charges <= 0 ? 0 : charges >= chargesMax ? 1 : charges / chargesMax}><div part="RpgSkillSlot.pip" class="pip" data-anchor="top-start"></div></div>{/if}
   <div class="holder" data-layout="overlay">
     {#if kind == 'ultimate'}<div part="RpgSkillSlot.ring" class="ring" data-anchor="fill" role="meter" aria-label={t("rpg.skills.charge")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={charge <= 0 ? 0 : charge >= 1 ? 100 : charge * 100}><svg class="dial" viewBox="0 0 100 100"><path class="well" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none"></path><path class="lit" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none" pathLength="1" stroke-dasharray={(charge <= 0 ? 0 : charge >= 1 ? 1 : charge) + " 1"}></path></svg></div>{/if}
@@ -67,6 +67,8 @@
 .blank { background: var(--hud-plate-fill); }
 .glyph { inline-size: 50%; block-size: 50%; color: var(--hud-ink); }
 [data-unaffordable=true] .art, [data-unaffordable=true] .glyph { filter: var(--hud-unready); }
+/* While a figure or a reason stands on the slot, the art dims under it so it reads. */
+:is([data-cooling=true], [data-unaffordable=true]) :is(.art, .glyph) { opacity: var(--opacity-dim); }
 .veil { background: var(--hud-veil); }
 /* The cooldown still to run is dark; it turns clockwise from the top, its
    leading edge lit. */
