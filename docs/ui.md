@@ -2757,8 +2757,13 @@ for its elements are placed with its own as its text is read
 readings). A pack's tokens and its plain `::part()` rules are the UI's
 and follow the pack at once. So a game selects its style before it loads
 its documents. When `og.ui.configure` changes the style under loaded
-documents, as a style edited under `og dev` does, the runtime reads each
-loaded document again, once. The cook does not style documents: a cooked
+documents, as a style edited under `og dev` does, the runtime reads
+again, once, each loaded document the change reaches
+(`Ui::restyled_documents`): a document records the style's rules that
+reached its elements, so another pack, or a changed selector, layer,
+keyframes or at-rule, reads them all; a changed rule body reads those it
+reached; a changed token (a `:root` custom property, the root cascade's)
+reads none. The cook does not style documents: a cooked
 document is its text, and a parsed document has no cooked form.
 
 Built-in styles live in `templates/styles/<name>` and ship in the engine
@@ -3018,7 +3023,8 @@ generator (`gen-theme.sh`, seconds) on a generator edit, and on a token
 edit while the generator is newer than og, so `default.css` follows the
 checkout's rules without rebuilding og. A
 development runtime puts it in the compiled one's place
-(`og_ui::set_base_css`) and reads its packs and documents again. A
+(`og_ui::set_base_css`), reads its packs again and the documents the
+change reaches (§5, `Ui::restyled_documents`). A
 publish cook and a publish build never carry or read it: they draw the
 compiled `DEFAULT_CSS`, and `theme.rs` stays generated and drift-checked.
 

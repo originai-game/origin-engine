@@ -538,13 +538,19 @@ fn define(ui: &mut og_ui::Ui, doc: UiDocument, faces: Vec<og_ui::FamilyFace>) {
     ui.define_document(doc);
 }
 
-/// After `og.ui.configure` changed the style: every loaded document is
-/// read again, parsed once against the new style, and replaces its
-/// definition in place (the UI's state is kept, as for an edited
-/// document).
+/// After `og.ui.configure` changed the style: every loaded document the
+/// change reaches (og-ui's `Ui::restyled_documents`: all of them for
+/// another pack, those a changed rule reaches for an edited one, none for
+/// a changed token) is read again, parsed once against the new style, and
+/// replaces its definition in place (the UI's state is kept, as for an
+/// edited document).
 pub(crate) fn restyle_loaded(eng: &Engine) -> Result<(), String> {
     let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
+    let restyled: BTreeSet<String> = ui.lock().restyled_documents().into_iter().collect();
     for l in with(eng.id, |d| d.loaded.clone()) {
+        if !restyled.contains(&l.name) {
+            continue;
+        }
         let doc = read_document(eng, &l.id)?;
         let faces = family_faces(eng, &doc)?;
         define(&mut ui.lock(), doc, faces);

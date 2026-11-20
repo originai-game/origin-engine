@@ -81,6 +81,7 @@ impl UiDocument {
         fn plain(d: &UiDocument) -> UiDocument {
             let mut d = d.clone();
             d.text.clear();
+            d.styled = Default::default();
             for rule in &mut d.part_rules {
                 rule.line = 0;
                 for declaration in &mut rule.declarations {

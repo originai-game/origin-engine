@@ -842,6 +842,10 @@ pub struct UiDocument {
     /// scoped view transitions of its elements (`og.ui.startViewTransition`)
     /// whether or not it opts its layer in; `None` without any.
     pub view_transitions: Option<view_transition::ViewTransition>,
+    /// The global sheet its elements were matched against and which of
+    /// its rules reached them ([`stylesheet::Styled`]): a changed style
+    /// reads again only the documents a changed rule reaches.
+    pub styled: stylesheet::Styled,
 }
 
 pub const NONE: usize = usize::MAX;

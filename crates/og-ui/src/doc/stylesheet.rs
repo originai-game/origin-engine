@@ -256,7 +256,7 @@ pub(crate) struct Reading {
 pub(crate) struct Base {
     pub(crate) css: std::sync::Arc<str>,
     pub(crate) reading: Reading,
-    pub(crate) global: Global,
+    pub(crate) global: std::sync::Arc<Global>,
     pub(crate) part: PartSheet,
 }
 
@@ -288,7 +288,7 @@ impl Base {
             .find("/* Roles:")
             .ok_or("the default CSS ends with its role rules (`/* Roles:`)")?;
         let roles = css[..roles].matches('\n').count() + 1;
-        let global = Global::new(Reading {
+        let global = std::sync::Arc::new(Global::new(Reading {
             source: default.source.clone(),
             sheet: default.sheet.clone(),
             layers: default.layers.clone(),
@@ -299,7 +299,7 @@ impl Base {
                 .cloned()
                 .collect(),
             ..default
-        })?;
+        })?);
         Ok(Self {
             css: css.into(),
             part: part_sheet(&default),
@@ -881,6 +881,93 @@ impl Global {
     }
 }
 
+impl Global {
+    /// Per rule, whether it dresses an element otherwise under `now` than
+    /// under this sheet; `None` when the two are not the same rules in the
+    /// same places (a selector, layer or condition added, removed or
+    /// moved, or other keyframes or at-rules), so every document reads
+    /// otherwise. A `:root` rule whose custom properties alone changed
+    /// (a token) dresses no document otherwise: they are the root
+    /// cascade's ([`without_custom`]).
+    fn changed(&self, now: &Global) -> Option<Vec<bool>> {
+        if self.sheet != now.sheet
+            || self.layers != now.layers
+            || self.anonymous != now.anonymous
+            || self.count != now.count
+            || self.rules.len() != now.rules.len()
+        {
+            return None;
+        }
+        let place = |g: &GlobalRule| Rule {
+            body: String::new(),
+            boxed: String::new(),
+            ..g.rule.clone()
+        };
+        self.rules
+            .iter()
+            .zip(&now.rules)
+            .map(|(a, b)| {
+                (a.selector == b.selector && a.root == b.root && place(a) == place(b)).then(|| {
+                    // A lowered body is what dresses an element, unless the
+                    // body names an animation a document's own keyframes
+                    // may read otherwise; then the text decides.
+                    let same = a.lowered == b.lowered
+                        && a.animates == b.animates
+                        && ((a.lowered.is_some() && !a.animates)
+                            || (a.rule.body == b.rule.body && a.rule.boxed == b.rule.boxed));
+                    !same
+                })
+            })
+            .collect()
+    }
+}
+
+/// The global sheet a document's elements were matched against
+/// ([`apply`]) and the rules of it that reached an element.
+#[derive(Clone, Debug, Default)]
+pub struct Styled {
+    global: Option<std::sync::Arc<Global>>,
+    rules: Vec<u32>,
+}
+
+impl PartialEq for Styled {
+    fn eq(&self, other: &Self) -> bool {
+        self.rules == other.rules
+            && match (&self.global, &other.global) {
+                (Some(a), Some(b)) => std::sync::Arc::ptr_eq(a, b),
+                (a, b) => a.is_none() && b.is_none(),
+            }
+    }
+}
+
+impl Styled {
+    /// Whether the document reads as it does under the global sheet
+    /// `now`: the one it was read against, or one whose rules that reached
+    /// it dress elements as they did. `changes` keeps each earlier sheet's
+    /// comparison with `now`, which documents read against it share.
+    pub(crate) fn holds(&self, now: &std::sync::Arc<Global>, changes: &mut Changes) -> bool {
+        let Some(then) = &self.global else {
+            return false;
+        };
+        if std::sync::Arc::ptr_eq(then, now) {
+            return true;
+        }
+        let key = std::sync::Arc::as_ptr(then) as usize;
+        let changed = changes.entry(key).or_insert_with(|| then.changed(now));
+        changed
+            .as_ref()
+            .is_some_and(|c| !self.rules.iter().any(|&i| c[i as usize]))
+    }
+}
+
+/// [`Styled::holds`]'s comparisons, by the earlier sheet.
+pub(crate) type Changes = std::collections::HashMap<usize, Option<Vec<bool>>>;
+
+/// The global sheet in effect: the pack's, or the default style's.
+pub(crate) fn global_of(pack: Option<&crate::style_pack::StylePack>) -> std::sync::Arc<Global> {
+    pack.map_or_else(|| base().global.clone(), |p| p.global.clone())
+}
+
 /// Whether a global rule selects only the root: one compound of `:root`,
 /// no pseudo-element.
 fn root_only(selector: &Selector, rule: &Rule) -> bool {
@@ -1021,14 +1108,31 @@ fn read(
     Ok(rules)
 }
 
+/// A rule in a document's cascade order: a global one with its index.
+type Placed<'a> = (
+    &'a std::sync::Arc<Selector>,
+    &'a Rule,
+    Option<(usize, &'a GlobalRule)>,
+);
+
 /// Places `global`'s rules and the document's own `styles` on the
 /// document's elements, in cascade order.
 pub fn apply(
     doc: &mut UiDocument,
     elements: &[(usize, String, Vec<Attr>)],
     styles: &[(String, usize)],
-    global: &Global,
+    sheet: std::sync::Arc<Global>,
 ) -> Result<(), Error> {
+    let global = &*sheet;
+    // The global rules that reach an element, in order.
+    let mut reached: Vec<u32> = Vec::new();
+    let mut reach = |k: Option<usize>| {
+        if let Some(k) = k.map(|k| k as u32)
+            && reached.last() != Some(&k)
+        {
+            reached.push(k);
+        }
+    };
     let lookup = super::selectors::Elements::new(elements, doc.nodes.len());
     let mut rules = read(&doc.source, &mut doc.sheet, styles, global)?;
     doc.style_faces = global.sheet.font_faces.len();
@@ -1058,14 +1162,17 @@ pub fn apply(
     // could change how its animation reads.
     let more_keyframes = doc.sheet.keyframe_rules.len() != global.sheet.keyframe_rules.len();
     // Cascade order: the global sheet's rules and the document's together.
-    let mut order: Vec<(&std::sync::Arc<Selector>, &Rule, Option<&GlobalRule>)> = global
+    let mut order: Vec<Placed> = global
         .rules
         .iter()
-        .map(|g| (&g.selector, &g.rule, Some(g)))
+        .enumerate()
+        .map(|(k, g)| (&g.selector, &g.rule, Some((k, g))))
         .chain(own.iter().map(|(selector, rule)| (selector, rule, None)))
         .collect();
     order.sort_by_key(|(selector, rule, _)| cascade_key(selector, rule, &layers));
     for (parsed, rule, kept) in order {
+        let index = kept.map(|(k, _)| k);
+        let kept = kept.map(|(_, g)| g);
         // A rule for a control document's `pseudo=` element is matched,
         // as a `::part()` rule is, against the host where that document
         // is instantiated; a global sheet's is the style's.
@@ -1210,6 +1317,7 @@ pub fn apply(
                 let Some(condition) = matches(doc, &lookup, *i, &host, rule.at)? else {
                     continue;
                 };
+                reach(index);
                 text_span = true;
                 let mut span =
                     super::spans::parse(selector, &rule.body).map_err(|e| (rule.at, e))?;
@@ -1267,6 +1375,7 @@ pub fn apply(
                             None => continue,
                         },
                     };
+                    reach(index);
                     doc.nodes[*i].rules.push(StyleRule {
                         inline: false,
                         context: super::TreeContext::Tree,
@@ -1350,6 +1459,7 @@ pub fn apply(
                 Expr::Lit(serde_json::Value::Bool(true)) => None,
                 c => Some(c),
             };
+            reach(index);
             // A component is styled through what it declares. A rule that
             // names an instance is refused; one that only sweeps over it
             // (`*`, a pack's global rule) passes it by.
@@ -1464,6 +1574,10 @@ pub fn apply(
             }
         }
     }
+    doc.styled = Styled {
+        global: Some(sheet.clone()),
+        rules: reached,
+    };
     Ok(())
 }
 

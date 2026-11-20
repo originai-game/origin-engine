@@ -159,6 +159,25 @@ impl crate::Ui {
         }
     }
 
+    /// The documents defined here that read otherwise under the style in
+    /// effect than under the one they were parsed against: a host that
+    /// replaced the pack or the default style under them (a style edited
+    /// under `og dev`) parses and defines these again, and only these. A
+    /// changed selector, layer, keyframes or at-rule names them all; a
+    /// changed token (a `:root` custom property) names none, since the
+    /// root cascade carries it.
+    pub fn restyled_documents(&self) -> Vec<String> {
+        let now = crate::doc::stylesheet::global_of(self.docs.library.pack.as_deref());
+        let mut changes = Default::default();
+        self.docs
+            .library
+            .documents
+            .iter()
+            .filter(|(_, d)| !d.styled.holds(&now, &mut changes))
+            .map(|(name, _)| name.clone())
+            .collect()
+    }
+
     /// Parses a document against the style pack in effect, or the default
     /// style without one: the one reading of its text. Give the
     /// stylesheets its `@import`s name as for
