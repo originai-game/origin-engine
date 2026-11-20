@@ -375,6 +375,21 @@ test("RpgItemCard: its buttons report once, and a refused action is disabled", (
   });
 });
 
+test("RpgItemCard: a header label wider than its figure column has its room, ending over the column", () => {
+  run(member("item-card", {}, { view: DESKTOP }), (e) => {
+    e.advance(3);
+    const all = elements(e);
+    const end = (x: El) => Math.round(x.x + x.width);
+    const [mine, worn] = all.filter((x) => x.role === "columnheader" && x.text !== "");
+    // The first row's figures: this item's, and the equipped one's at the row's end.
+    const [value, was] = all.filter((x) => x.role === "cell" && x.text !== "");
+    // "EQUIPPED" is wider than the equipped column: its box holds it, so nothing overflows the body sideways.
+    expect(worn!.width).toBeGreaterThan(was!.width);
+    expect([end(mine!), end(worn!)]).toEqual([end(value!), end(was!)]);
+    expect(end(mine!)).toBeLessThanOrEqual(Math.round(worn!.x));
+  });
+});
+
 test("RpgPlaceCard: Mark reports, and Fast travel refused is silent", () => {
   const placed: Event[] = [];
   run(member("place-card", { canTravel: false }, { events: placed }), (e) => {

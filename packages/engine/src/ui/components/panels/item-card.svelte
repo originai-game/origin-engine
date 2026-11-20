@@ -134,6 +134,15 @@ h2, p { margin: 0; }
 .value { inline-size: var(--icard-value-col); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); text-align: end; white-space: nowrap; }
 .change { inline-size: var(--icard-change-col); }
 .was { inline-size: var(--icard-now-col); color: var(--ink-label); text-align: end; white-space: nowrap; }
+/* A header's label can be wider than its figure column (EQUIPPED, a
+   translation). The header's figures keep the rows' total width and the
+   empty change column between the two labels gives up its room, so each
+   label ends over its column and none runs past the row, where it made
+   the body scroll sideways. */
+.head-row .figs { inline-size: calc(var(--icard-value-col) + var(--icard-change-col) + var(--icard-now-col) + 2 * var(--space-xs)); }
+.head-row .value { flex: none; inline-size: auto; min-inline-size: var(--icard-value-col); }
+.head-row .change { flex: 1 1 0; inline-size: auto; min-inline-size: 0; }
+.head-row .was { flex: 0 1 auto; inline-size: auto; min-inline-size: var(--icard-now-col); overflow: hidden; text-overflow: ellipsis; }
 .lore { flex: none; padding-inline-start: var(--space-sm); border-inline-start: var(--icard-lore-rule); border-inline-start-color: var(--inv-rarity); }
 .lore-text { font-style: var(--icard-lore-style); }
 /* The buttons at the foot, the refusal in words over them. */

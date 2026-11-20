@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "RpgItemCard: a sideways scrollbar no longer lies across the last line of the card's body. The figure table's header label (EQUIPPED, or a longer translation) was wider than its figure column and ran past the row, so the body scrolled sideways; the label now takes the empty change column's room beside it and ends over its own column."
+  ]
+}
