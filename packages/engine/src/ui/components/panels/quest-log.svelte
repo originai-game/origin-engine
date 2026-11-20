@@ -77,7 +77,7 @@
 .fresh { flex: none; padding: 0 var(--space-xs); font: var(--caption-text); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--quest-gold-ink); background: var(--quest-gold); border-radius: var(--quest-cut-sm) 0; corner-shape: var(--cut-shape); clip-path: border-box; }
 .quest-open { flex: none; width: var(--size-xs); height: var(--size-xs); color: var(--quest-gold); }
 .quest-open:dir(rtl) { scale: -1 1; }
-@media (pointer: fine) and (width >= 600px) { .quest { min-height: calc(var(--size-touch) * 0.82); } }
+.quest:not(:touch):not(:size(narrow)) { min-height: calc(var(--size-touch) * 0.82); }
 .empty { width: stretch; }
 .empty-mark { width: var(--size-lg); height: var(--size-lg); }
 .empty-text { margin: 0; }

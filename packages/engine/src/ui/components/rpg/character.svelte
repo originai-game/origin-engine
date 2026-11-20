@@ -8,6 +8,8 @@
 <meta name="prop:slots" content="list" data-doc="The equipment slots, keyed rows of { id, side, label, icon, rarity }: side is start or end (the column it stands in, mirrored right to left); an empty icon is an empty slot showing its label.">
 <meta name="prop:selected" content="string" data-doc="The selected slot's id; empty is none.">
 <meta name="prop:attributes" content="list" data-doc="The attributes, keyed rows of { id, group, icon, label, value }: group a or b, the two columns; empty hides them (a page with RpgStats beside it).">
+<meta name="prop:compact" content="bool" data-doc="Its place is narrow (under about 300 px): the attributes (their split goes) tighten. The place decides, not the screen.">
+<meta name="prop:dense" content="bool" data-doc="A wide but short place (a laptop window): smaller slots and tighter attributes.">
 <meta name="action:details" content="Unequip">
 <meta name="fixture:default" content='{"title":"","name":"Brenna Vale","line":"Ranger · Level 12","portrait":0,"figure":0,"slots":[{"id":"hand","side":"start","label":"Weapon","icon":"sword","rarity":"legendary"},{"id":"neck","side":"end","label":"Amulet","icon":"","rarity":"common"}],"selected":"hand","attributes":[{"id":"vit","group":"a","icon":"heart","label":"Vitality","value":"142"},{"id":"str","group":"b","icon":"sword","label":"Strength","value":"14"}]}'>
 
@@ -17,7 +19,7 @@
   columns beneath. The game owns what fits where; the sheet reports choose
   (a slot's key) and unequip (X or pad Y on the focused slot, its key).
 -->
-<section class="frame" id="RpgCharacter" part="frame" layout="stack" fill aria-label={title ? title : name}>
+<section class="frame" id="RpgCharacter" part="frame" layout="stack" fill aria-label={title ? title : name} class:narrow={compact} class:dense={dense}>
   {#if title}<header class="band" part="band" layout="row" gap="loose"><div class="band-end start"></div><h2 class="title" part="title">{title}</h2><div class="band-end finish"></div></header>
   {:else}<header class="who" layout="row" gap="loose">
     {#if portrait}<img class="portrait" src={portrait} alt="">{/if}
@@ -103,11 +105,13 @@
 .cell:size(compact) { width: var(--size-touch); height: var(--size-touch); padding: var(--space-xxs); }
 .portrait:size(compact) { width: var(--size-lg); height: var(--size-lg); }
 .name:size(compact) { font-size: var(--party-size-name-compact); }
-@container (width < 300px) { .attr-split { display: none; } }
+#RpgCharacter.narrow .attr-split { display: none; }
 .doll:size(short) { padding: var(--space-xxs) var(--space-xs); }
 .column:size(short) { --layout-gap-tight: var(--layout-gap-hair); }
 .cell:size(short) { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); }
 /* A short screen (a desktop at large text): smaller slots, so the doll can give height to the attributes. */
-@media (600px <= width) and (500px <= height < 800px) { .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } .column { --layout-gap-tight: var(--layout-gap-hair); } }
-@media (600px <= width) and (500px <= height < 800px) { .attr-mark { display: none; } .attributes { --layout-gap-loose: var(--layout-gap); } }
+#RpgCharacter.dense .cell { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); }
+#RpgCharacter.dense .column { --layout-gap-tight: var(--layout-gap-hair); }
+#RpgCharacter.dense .attr-mark { display: none; }
+#RpgCharacter.dense .attributes { --layout-gap-loose: var(--layout-gap); }
 </style>

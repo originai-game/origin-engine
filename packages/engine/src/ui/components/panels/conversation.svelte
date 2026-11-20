@@ -75,7 +75,8 @@
 .reply-text { text-align: start; overflow-wrap: anywhere; }
 .reply-mark { width: var(--space-sm); height: var(--space-sm); flex: none; visibility: hidden; rotate: 45deg; background: var(--quest-gold); box-shadow: var(--quest-mark-lit); }
 .row:state(selected) .reply-mark { visibility: visible; }
-@media (pointer: fine) and (width >= 600px) { .row { min-height: calc(var(--size-touch) * 0.8); } .replies { padding: var(--space-sm) 0; } }
+.row:not(:touch):not(:size(narrow)) { min-height: calc(var(--size-touch) * 0.8); }
+.replies:not(:touch):not(:size(narrow)) { padding: var(--space-sm) 0; }
 .go { align-items: flex-end; justify-content: flex-end; padding: var(--space-md); }
 .portrait:size(compact) { width: var(--size-xxl); height: var(--size-xxl); }
 .said:size(compact) { width: stretch; flex: 1; padding: 0; }

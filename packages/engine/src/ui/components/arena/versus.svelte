@@ -5,6 +5,7 @@
 <meta name="prop:sideA" content="list" data-doc="The first side's fighters in the game's order, keyed rows of { id, name, portrait, icon, character, rank, local }: portrait a texture (0 shows the icon); character the champion's name (empty hides); rank as the game words it (Gold II, 1840 SR; empty hides); local marks the local player (You).">
 <meta name="prop:sideB" content="list" data-doc="The second side's fighters, keyed as sideA. An empty side reads Waiting for opponents.">
 <meta name="prop:at" content="number" data-doc="The reveal's id: a new value replays the sides' entrance.">
+<meta name="prop:compact" content="bool" data-doc="Its place is narrow (under about 300 px): the cards and portraits tighten. The place decides, not the screen.">
 <meta name="fixture:default" content='{"nameA":"","nameB":"","at":1,"sideA":[{"id":"you","name":"Rhea","portrait":0,"icon":"sword","character":"Vex","rank":"Gold II","local":true}],"sideB":[{"id":"rook","name":"Rook","portrait":0,"icon":"shield","character":"Brenna","rank":"Gold I","local":false}]}'>
 <meta name="fixture:teams" content='{"nameA":"Iron Wolves","nameB":"Ember Court","at":2,"sideA":[{"id":"kai","name":"Kai","portrait":0,"icon":"shield","character":"Brenna","rank":"Platinum III","local":false},{"id":"you","name":"Rhea","portrait":0,"icon":"sword","character":"Vex","rank":"Gold II","local":true},{"id":"ana","name":"Ana","portrait":0,"icon":"heart","character":"Sela","rank":"Gold IV","local":false}],"sideB":[{"id":"rook","name":"Rook","portrait":0,"icon":"bolt","character":"Idris","rank":"Gold I","local":false},{"id":"wren","name":"Wren","portrait":0,"icon":"leaf","character":"Maren","rank":"","local":false},{"id":"quill","name":"Quill","portrait":0,"icon":"star","character":"Quill","rank":"Silver I","local":false}]}'>
 <meta name="fixture:waiting" content='{"nameA":"","nameB":"","at":3,"sideA":[{"id":"you","name":"Rhea","portrait":0,"icon":"sword","character":"Vex","rank":"Gold II","local":true}],"sideB":[]}'>
@@ -17,7 +18,7 @@
   filled reads Waiting for opponents. A new reveal id (at) replays the
   entrance, which reduced motion skips. Read only.
 -->
-<section id="ArenaVersus" part="frame" variant="bare" layout="row" aria-label={t("arena.versus.name")}>
+<section id="ArenaVersus" part="frame" variant="bare" layout="row" aria-label={t("arena.versus.name")} class:narrow={compact}>
   {#key at}
     <div class="stage" layout="row" gap="wide">
       <div part="plate" class="side a" layout="stack" fill play="enter" team="a" role="group" aria-label={nameA != '' ? nameA : t("arena.team.a")}>
@@ -102,11 +103,9 @@
 .vs { padding: 0; border-radius: 0; white-space: nowrap; font-size: var(--party-size-seal); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-style: var(--hud-figure-slant); color: var(--hud-gold); background: none; box-shadow: none; text-shadow: none; }
 /* A narrow side (the reveal in a column of a wide page at large text):
    the portrait smaller and the row tighter, so a long name keeps whole. */
-@container (width < 300px) {
-  .card { padding: var(--space-xxs) var(--space-xs); --layout-gap-loose: var(--layout-gap-tight); }
-  .portrait { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
-  .glyph { width: var(--size-sm); height: var(--size-sm); }
-}
+#ArenaVersus.narrow .card { padding: var(--space-xxs) var(--space-xs); --layout-gap-loose: var(--layout-gap-tight); }
+#ArenaVersus.narrow .portrait { inline-size: var(--party-portrait-compact); block-size: var(--party-portrait-compact); }
+#ArenaVersus.narrow .glyph { width: var(--size-sm); height: var(--size-sm); }
 /* The reveal fills the screen, so the screen's width decides: a phone stacks the sides with the seal between them. */
 .stage:size(compact) { flex-direction: column; align-items: stretch; --layout-gap-wide: var(--space-xs); }
 .side:size(compact) { flex: none; --layout-gap: var(--space-xs); }

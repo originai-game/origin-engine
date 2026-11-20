@@ -7,6 +7,7 @@
 <meta name="prop:scoreA" content="string" data-doc="The first team's score as the game words it (rounds, points); empty hides it.">
 <meta name="prop:scoreB" content="string" data-doc="The second team's score as the game words it; empty hides it.">
 <meta name="prop:rows" content="list" data-doc="Every player in the game's order, keyed rows of { id, team, name, kills, deaths, assists, score, local, disconnected }: team a or b; the figures as the game counts them; local marks the local player's row (You, aria-current); disconnected dims the row and names it (Disconnected).">
+<meta name="prop:split" content="bool" data-doc="The two teams stand side by side (a place about 900 px wide or more); otherwise one above the other.">
 <meta name="fixture:default" content='{"title":"","columns":"kda","nameA":"","nameB":"","scoreA":"7","scoreB":"5","rows":[{"id":"kai","team":"a","name":"Kai","kills":12,"deaths":4,"assists":6,"score":2840,"local":false,"disconnected":false},{"id":"you","team":"a","name":"Rhea","kills":9,"deaths":5,"assists":11,"score":2410,"local":true,"disconnected":false},{"id":"ana","team":"a","name":"Ana","kills":3,"deaths":7,"assists":14,"score":1720,"local":false,"disconnected":false},{"id":"rook","team":"b","name":"Rook","kills":10,"deaths":8,"assists":3,"score":2290,"local":false,"disconnected":false},{"id":"wren","team":"b","name":"Wren","kills":6,"deaths":9,"assists":7,"score":1650,"local":false,"disconnected":true},{"id":"quill","team":"b","name":"Quill","kills":4,"deaths":10,"assists":9,"score":1310,"local":false,"disconnected":false}]}'>
 <meta name="fixture:score" content='{"title":"","columns":"score","nameA":"Iron Wolves","nameB":"Ember Court","scoreA":"2","scoreB":"3","rows":[{"id":"kai","team":"a","name":"Kai","kills":0,"deaths":0,"assists":0,"score":34,"local":false,"disconnected":false},{"id":"you","team":"a","name":"Rhea","kills":0,"deaths":0,"assists":0,"score":28,"local":true,"disconnected":false},{"id":"rook","team":"b","name":"Rook","kills":0,"deaths":0,"assists":0,"score":41,"local":false,"disconnected":false},{"id":"wren","team":"b","name":"Wren","kills":0,"deaths":0,"assists":0,"score":19,"local":false,"disconnected":false}]}'>
 <meta name="fixture:empty" content='{"title":"","columns":"kda","nameA":"","nameB":"","scoreA":"","scoreB":"","rows":[]}'>
@@ -21,7 +22,7 @@
   counts every figure; the board only shows them. Read only; it scrolls
   inside the height it is given.
 -->
-<section id="ArenaScoreboard" part="frame" variant="bare" layout="stack" fill gap="loose" aria-label={title != '' ? title : t("arena.score.title")}>
+<section id="ArenaScoreboard" part="frame" variant="bare" layout="stack" fill gap="loose" aria-label={title != '' ? title : t("arena.score.title")} class:split={split}>
   <header class="band" part="band" layout="row"><h2 class="title" part="title" fill>{title != '' ? title : t("arena.score.title")}</h2></header>
   {#if rows.length}
     <div class="list" layout="scroll" fill>
@@ -101,7 +102,7 @@
 .title { margin: 0; flex: 1; min-width: 0; text-align: center; white-space: normal; overflow-wrap: anywhere; font-size: var(--hud-size-sm); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 .list { flex: 1; min-height: 0; overflow-y: auto; container-type: inline-size; -og-scroll-fade: var(--space-xl); }
 .teams { width: stretch; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); align-items: start; }
-@container (width >= 900px) { .teams { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+#ArenaScoreboard.split .teams { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .team { width: stretch; border-collapse: separate; border-spacing: 0 var(--space-xxs); background: none; box-shadow: none; border: 0; padding: 0; }
 /* The second team's colour: its name, score, rule, row wash and edge. */
 .team.team-b .heading { box-shadow: var(--result-team-b-rule); }

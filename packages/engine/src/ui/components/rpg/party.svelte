@@ -2,6 +2,7 @@
 <meta name="strings" content="./rpg.en.ogt">
 <meta name="prop:members" content="list" data-doc="Keyed rows of { id, name, portrait, level, health, healthMax, mana, manaMax, down }: portrait a texture (og.load.texture), 0 none; down greys the card and marks it.">
 <meta name="prop:selected" content="string" data-doc="The member chosen; empty is none.">
+<meta name="prop:dense" content="bool" data-doc="A wide but short place (a laptop window): wider, shorter portraits.">
 <meta name="fixture:default" content='{"members":[{"id":"a","name":"Aerin","portrait":0,"level":8,"health":62,"healthMax":72,"mana":48,"manaMax":72,"down":false},{"id":"l","name":"Lys","portrait":0,"level":8,"health":0,"healthMax":60,"mana":0,"manaMax":80,"down":true}],"selected":"a"}'>
 <meta name="fixture:empty" content='{"members":[],"selected":""}'>
 
@@ -11,7 +12,7 @@
   health and mana colours. Reports choose (a member's key). The cards
   share the width evenly.
 -->
-<section id="RpgParty" part="frame" variant="bare" aria-label={t("rpg.party.name")}>
+<section id="RpgParty" part="frame" variant="bare" aria-label={t("rpg.party.name")} class:dense={dense}>
   {#if members.length}
     <div gap="base" class="cards grid" role="listbox" aria-label={t("rpg.party.name")}>
       {#each members as m (m.id)}
@@ -50,5 +51,5 @@
 .mana { --hud-mana-fill: var(--fill-gloss), var(--mana); --hud-mana-glow: none; }
 .empty-text { margin: 0; }
 .picture:size(short) { aspect-ratio: 2.4; }
-@media (600px <= width) and (500px <= height < 800px) { .picture { aspect-ratio: 2; } }
+#RpgParty.dense .picture { aspect-ratio: 2; }
 </style>

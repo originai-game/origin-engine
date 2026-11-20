@@ -4,6 +4,7 @@
 <meta name="prop:characters" content="list" data-doc="The roster in the game's order, keyed rows of { id, name, portrait, icon, role, roleLabel, locked, takenBy }: portrait a texture (og.load.texture, 0 shows the icon instead); icon an icon name; role a key for the pack (tank, damage, support…) and roleLabel its word; locked the player cannot pick it yet; takenBy who already holds it (empty: free). Locked and taken cells are disabled and say why in words.">
 <meta name="prop:selected" content="string" data-doc="The local player's character (aria-selected, named under the grid); empty is none.">
 <meta name="prop:players" content="list" data-doc="Who is choosing, keyed rows of { id, slot, at, ready }: slot 1 to 4 (the mark P1…P4), at the character id the player is on (empty: none), ready the player has locked in (a check beside the mark).">
+<meta name="prop:compact" content="bool" data-doc="Its place is narrow (under about 380 px): the tiles, padding and chosen name tighten. The place decides, not the screen.">
 <meta name="fixture:default" content='{"title":"","selected":"vex","characters":[{"id":"brenna","name":"Brenna","portrait":0,"icon":"shield","role":"tank","roleLabel":"Vanguard","locked":false,"takenBy":""},{"id":"vex","name":"Vex","portrait":0,"icon":"sword","role":"damage","roleLabel":"Striker","locked":false,"takenBy":""},{"id":"sela","name":"Sela","portrait":0,"icon":"heart","role":"support","roleLabel":"Mender","locked":false,"takenBy":""},{"id":"idris","name":"Idris","portrait":0,"icon":"bolt","role":"damage","roleLabel":"Arcanist","locked":false,"takenBy":"Kai"},{"id":"maren","name":"Maren","portrait":0,"icon":"leaf","role":"support","roleLabel":"Warden","locked":false,"takenBy":""},{"id":"oarsman","name":"Oarsman","portrait":0,"icon":"skull","role":"tank","roleLabel":"Bulwark","locked":true,"takenBy":""}],"players":[{"id":"p1","slot":1,"at":"vex","ready":false},{"id":"p2","slot":2,"at":"sela","ready":true}]}'>
 <meta name="fixture:empty" content='{"title":"","selected":"","characters":[],"players":[]}'>
 <meta name="fixture:none" content='{"title":"Ranked · Pick your fighter","selected":"","characters":[{"id":"brenna","name":"Brenna","portrait":0,"icon":"shield","role":"tank","roleLabel":"Vanguard","locked":false,"takenBy":""},{"id":"vex","name":"Vex","portrait":0,"icon":"sword","role":"damage","roleLabel":"Striker","locked":false,"takenBy":""},{"id":"sela","name":"Sela","portrait":0,"icon":"heart","role":"support","roleLabel":"Mender","locked":false,"takenBy":""}],"players":[]}'>
@@ -20,7 +21,7 @@
   named under the grid. The game decides what can be picked; the roster
   only reports the choice.
 -->
-<section class="frame" id="ArenaRoster" part="frame" layout="stack" fill gap="loose" aria-label={title != '' ? title : t("arena.roster.title")}>
+<section class="frame" id="ArenaRoster" part="frame" layout="stack" fill gap="loose" aria-label={title != '' ? title : t("arena.roster.title")} class:narrow={compact}>
   <header class="band" part="band" layout="row"><h2 class="title" part="title">{title != '' ? title : t("arena.roster.title")}</h2></header>
   {#if characters.length}
     <div class="grid-shell" layout="stack" gap="none" fill>
@@ -105,11 +106,9 @@
 .chosen-role { flex: 0 1 auto; min-width: 0; max-inline-size: 100%; overflow-wrap: anywhere; font-size: var(--hud-label-size); line-height: 1.3; font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 .empty-text { margin: 0; padding: var(--space-lg); text-align: center; font-size: var(--hud-size-sm); color: var(--hud-ink-dim); }
 /* The roster sits in a panel: its own width, not the screen's, tightens it. */
-@container (width < 380px) {
-  .frame { padding: var(--space-sm); }
-  .grid { --layout-tile: min(var(--party-tile-compact), 45cqi); --layout-gap: var(--layout-gap-tight); }
-  .glyph { width: var(--size-md); height: var(--size-md); }
-  .chosen { --layout-gap: var(--layout-gap-tight); padding: var(--space-xs) var(--space-sm); }
-  .chosen-name { font-size: var(--party-size-name-compact); }
-}
+#ArenaRoster.narrow { padding: var(--space-sm); }
+#ArenaRoster.narrow .grid { --layout-tile: min(var(--party-tile-compact), 45cqi); --layout-gap: var(--layout-gap-tight); }
+#ArenaRoster.narrow .glyph { width: var(--size-md); height: var(--size-md); }
+#ArenaRoster.narrow .chosen { --layout-gap: var(--layout-gap-tight); padding: var(--space-xs) var(--space-sm); }
+#ArenaRoster.narrow .chosen-name { font-size: var(--party-size-name-compact); }
 </style>

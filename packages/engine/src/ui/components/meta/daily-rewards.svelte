@@ -4,6 +4,7 @@
 <meta name="prop:refresh" content="string" data-doc="When the next day's reward opens, as the game words it; empty hides it.">
 <meta name="prop:days" content="list" data-doc="The calendar's days in order: keyed rows of { id, label, icon, amount, state, milestone }: label the day in words (Day 1); amount the reward in words (x100); state claimed, today, upcoming or missed, each shown by its own word: the game sends claimed for today once its reward is taken; milestone a big reward, lit violet with a ribbon.">
 <meta name="prop:canClaim" content="bool" data-doc="Today's reward is waiting: the day whose state is today is a Claim button; otherwise no day is a button.">
+<meta name="prop:compact" content="bool" data-doc="Its place is narrow (under about 300 px): the days (their state words go) tighten. The place decides, not the screen.">
 <meta name="fixture:default" content='{"title":"","refresh":"Next reward in 9h 40m","days":[{"id":"d1","label":"Day 1","icon":"coin","amount":"x100","state":"claimed","milestone":false},{"id":"d2","label":"Day 2","icon":"potion","amount":"x3","state":"claimed","milestone":false},{"id":"d3","label":"Day 3","icon":"gem","amount":"x20","state":"missed","milestone":false},{"id":"d4","label":"Day 4","icon":"coin","amount":"x300","state":"today","milestone":false},{"id":"d5","label":"Day 5","icon":"key","amount":"x1","state":"upcoming","milestone":false},{"id":"d6","label":"Day 6","icon":"gem","amount":"x50","state":"upcoming","milestone":false},{"id":"d7","label":"Day 7","icon":"crown","amount":"Legend chest","state":"upcoming","milestone":true}],"canClaim":true}'>
 <meta name="fixture:disabled" content='{"title":"","refresh":"Next reward in 23h 10m","days":[{"id":"d1","label":"Day 1","icon":"coin","amount":"x100","state":"claimed","milestone":false},{"id":"d2","label":"Day 2","icon":"potion","amount":"x3","state":"claimed","milestone":false},{"id":"d3","label":"Day 3","icon":"gem","amount":"x20","state":"claimed","milestone":true},{"id":"d4","label":"Day 4","icon":"coin","amount":"x300","state":"upcoming","milestone":false}],"canClaim":false}'>
 <meta name="fixture:overflow" content='{"title":"Fourteen Days of Treasure from the Royal Vaults","refresh":"","days":[{"id":"d1","label":"Day 1","icon":"coin","amount":"x1,000,000","state":"claimed","milestone":false},{"id":"d2","label":"Day 2","icon":"potion","amount":"A very long reward name","state":"claimed","milestone":false},{"id":"d3","label":"Day 3","icon":"gem","amount":"x20","state":"claimed","milestone":false},{"id":"d4","label":"Day 4","icon":"coin","amount":"x300","state":"claimed","milestone":false},{"id":"d5","label":"Day 5","icon":"key","amount":"x1","state":"claimed","milestone":true},{"id":"d6","label":"Day 6","icon":"gem","amount":"x50","state":"missed","milestone":false},{"id":"d7","label":"Day 7","icon":"crown","amount":"x1","state":"today","milestone":false},{"id":"d8","label":"Day 8","icon":"coin","amount":"x200","state":"upcoming","milestone":false},{"id":"d9","label":"Day 9","icon":"apple","amount":"x5","state":"upcoming","milestone":false},{"id":"d10","label":"Day 10","icon":"trophy","amount":"x1","state":"upcoming","milestone":true},{"id":"d11","label":"Day 11","icon":"coin","amount":"x250","state":"upcoming","milestone":false},{"id":"d12","label":"Day 12","icon":"gem","amount":"x60","state":"upcoming","milestone":false},{"id":"d13","label":"Day 13","icon":"leaf","amount":"x9","state":"upcoming","milestone":false},{"id":"d14","label":"Day 14","icon":"crown","amount":"x1","state":"upcoming","milestone":true}],"canClaim":true}'>
@@ -22,7 +23,7 @@
   narrow panel, three on a phone, where a last day alone on its row takes
   the whole row.
 -->
-<section id="DailyRewards" part="frame" layout="stack" fill aria-label={title != '' ? title : t("general.rewards.name")}>
+<section id="DailyRewards" part="frame" layout="stack" fill aria-label={title != '' ? title : t("general.rewards.name")} class:narrow={compact}>
   <header class="band" part="band" layout="wrap" gap="loose">
     <h2 class="title" part="title" fill>{title != '' ? title : t("general.rewards.name")}</h2>
     {#if refresh}<div part="label" class="timer refresh" layout="row" gap="tight" role="timer" aria-label={refresh}><og-icon class="mark" icon="clock"></og-icon><span class="refresh-text">{refresh}</span></div>{/if}
@@ -117,7 +118,5 @@ button.day.state-today:active { background: var(--quest-day-today-fill); }
 .foot:size(compact) { flex-direction: column; letter-spacing: normal; }
 .state-text:size(compact) { white-space: nowrap; }
 /* Too narrow for the word: the mark alone (the day's name carries the state). */
-@container (width < 300px) {
-  .state-text { display: none; }
-}
+#DailyRewards.narrow .state-text { display: none; }
 </style>

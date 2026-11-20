@@ -9,6 +9,7 @@
 <meta name="prop:rarity" content="string" data-doc="common, uncommon, rare, epic, legendary or mythic; it reaches the frame as data-rarity.">
 <meta name="prop:text" content="string" data-doc="The rules text as the game words it, every number already computed; it wraps, up to four lines and then an ellipsis, and the art window gives it the room.">
 <meta name="prop:dim" content="bool" data-doc="Dims the art and the frame (a card that cannot be played or is not owned); the words keep their ink.">
+<meta name="prop:size" content="string" data-doc="How short its place is: empty is full height; medium, small and tiny clamp the rules text to 3, 2 and 1 lines (tiny also drops the type line).">
 <meta name="fixture:default" content='{"name":"Ember Strike","cost":"1","icon":"fire","art":0,"type":"attack","typeLabel":"Attack","rarity":"common","text":"Deal 6 damage. Apply 1 Burn.","dim":false}'>
 <meta name="fixture:relic" content='{"name":"Lantern of Dusk","cost":"","icon":"crown","art":0,"type":"relic","typeLabel":"Relic","rarity":"rare","text":"At the start of each combat, gain 1 energy.","dim":false}'>
 <meta name="fixture:overflow" content='{"name":"Thousandfold Lamentation of the Drowned Cathedral","cost":"10","icon":"skull","art":0,"type":"power","typeLabel":"Power · Legendary","rarity":"legendary","text":"At the start of your turn, every enemy loses 3 Strength, you draw 2 cards, gain 2 Block for each card in your discard pile and Exhaust a random card from your hand. Ethereal. Innate. Retain.","dim":false}'>
@@ -23,7 +24,7 @@
   name takes two lines and the rules text four, each ending in an
   ellipsis at a whole line, and the art window yields its height to them.
 -->
-<div class="frame" id="CardFace" part="frame" variant="bare" layout="stack" gap="hair" tier={rarity} class:type-attack={(type) == 'attack'} class:type-curse={(type) == 'curse'} class:type-power={(type) == 'power'} class:type-relic={(type) == 'relic'} class:type-skill={(type) == 'skill'} class:type-status={(type) == 'status'} class:dim={dim}>
+<div class="frame" id="CardFace" part="frame" variant="bare" layout="stack" gap="hair" tier={rarity} class:type-attack={(type) == 'attack'} class:type-curse={(type) == 'curse'} class:type-power={(type) == 'power'} class:type-relic={(type) == 'relic'} class:type-skill={(type) == 'skill'} class:type-status={(type) == 'status'} class:dim={dim} class:medium={size == 'medium' || size == 'small' || size == 'tiny'} class:small={size == 'small' || size == 'tiny'} class:tiny={size == 'tiny'}>
   <div class="wash"></div>
   <div part="art" class="window" layout="row" gap="none"><div class="glow"></div>{#if art}<img class="picture" src={art} alt="">{:else}<og-icon class="icon" icon={icon}></og-icon>{/if}</div>
   <p part="name" class="name">{name}</p>
@@ -65,7 +66,9 @@
 .cost-figure { white-space: nowrap; }
 /* A short face (a small cell, large text) gives its words fewer lines,
    each still ending whole with an ellipsis, so the frame never cuts one. */
-@container (height < 17em) { .text { line-clamp: 3; } .name { line-clamp: 1; } }
-@container (height < 13em) { .text { line-clamp: 2; } }
-@container (height < 9em) { .text { line-clamp: 1; } .type { display: none; } }
+#CardFace.medium .text { line-clamp: 3; }
+#CardFace.medium .name { line-clamp: 1; }
+#CardFace.small .text { line-clamp: 2; }
+#CardFace.tiny .text { line-clamp: 1; }
+#CardFace.tiny .type { display: none; }
 </style>
