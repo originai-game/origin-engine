@@ -407,8 +407,31 @@ mod tests {
                 "{n} points: closest {closest}, even {even}"
             );
         }
-        // And it is the same tile every time (a fixed seed).
-        assert_eq!(tile[0], blue_noise_tile()[0]);
+    }
+
+    /// The baked tile is its generator's output, bit for bit
+    /// (`OG_BLESS_GRASS_TILE=1` writes it again).
+    #[test]
+    fn the_baked_tile_is_the_generators() {
+        let made = plan::best_candidate();
+        if std::env::var_os("OG_BLESS_GRASS_TILE").is_some() {
+            let bytes: Vec<u8> = made
+                .iter()
+                .flat_map(|p| [p.x.to_le_bytes(), p.y.to_le_bytes()])
+                .flatten()
+                .collect();
+            let path = concat!(env!("CARGO_MANIFEST_DIR"), "/data/grass-tile-1024.f32");
+            std::fs::write(path, bytes).expect("write the tile");
+        }
+        let bits = |t: &[Vec2]| {
+            t.iter()
+                .map(|p| (p.x.to_bits(), p.y.to_bits()))
+                .collect::<Vec<_>>()
+        };
+        assert!(
+            bits(&made) == bits(blue_noise_tile()),
+            "data/grass-tile-1024.f32 is not best_candidate's output (OG_BLESS_GRASS_TILE=1 writes it)"
+        );
     }
 
     /// Full density to LOD 1, the table's shares where LOD 2 and the fade

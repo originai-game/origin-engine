@@ -4,40 +4,56 @@ use super::*;
 
 /// The grass's hash: hash.wgsl's `pcg`, which the blades' shaders draw from.
 pub use og_core::hash::pcg as hash;
-pub(super) use og_core::hash::unit24 as unit;
+#[cfg(test)]
+use og_core::hash::unit24 as unit;
 
 /// The blue-noise tile: [`TILE_POINTS`] points in the unit square,
 /// wrapping, in progressive order (every prefix is itself evenly spread,
 /// so thinning by rank keeps the field even). Mitchell's best candidate
-/// with a fixed seed: the same on every machine.
+/// with a fixed seed, baked: `data/grass-tile-1024.f32` holds each point's
+/// x and y as little-endian f32s, [`best_candidate`]'s output
+/// (`OG_BLESS_GRASS_TILE=1` writes it again). Made at run time it was
+/// 6 million distance tests, 116 ms of a web worker's first grass frame.
 pub fn blue_noise_tile() -> &'static [Vec2] {
     static TILE: OnceLock<Vec<Vec2>> = OnceLock::new();
+    static BYTES: &[u8; TILE_POINTS as usize * 8] =
+        include_bytes!("../../../../data/grass-tile-1024.f32");
     TILE.get_or_init(|| {
-        let mut points: Vec<Vec2> = Vec::with_capacity(TILE_POINTS as usize);
-        let mut rng = 0x6b8a_3a00u32;
-        let mut next = || {
-            rng = hash(rng);
-            unit(rng)
-        };
-        while points.len() < TILE_POINTS as usize {
-            let (mut best, mut best_d) = (Vec2::ZERO, -1.0f32);
-            for _ in 0..12 {
-                let c = Vec2::new(next(), next());
-                let d = points
-                    .iter()
-                    .map(|p| {
-                        let d = (*p - c).abs();
-                        d.min(Vec2::ONE - d).length_squared()
-                    })
-                    .fold(f32::INFINITY, f32::min);
-                if d > best_d {
-                    (best, best_d) = (c, d);
-                }
-            }
-            points.push(best);
-        }
-        points
+        let f = |i: usize| f32::from_le_bytes(BYTES[i * 4..i * 4 + 4].try_into().expect("4 bytes"));
+        (0..TILE_POINTS as usize)
+            .map(|i| Vec2::new(f(2 * i), f(2 * i + 1)))
+            .collect()
     })
+}
+
+/// The tile's generator: Mitchell's best candidate, 12 candidates a point,
+/// distances on the torus.
+#[cfg(test)]
+pub(super) fn best_candidate() -> Vec<Vec2> {
+    let mut points: Vec<Vec2> = Vec::with_capacity(TILE_POINTS as usize);
+    let mut rng = 0x6b8a_3a00u32;
+    let mut next = || {
+        rng = hash(rng);
+        unit(rng)
+    };
+    while points.len() < TILE_POINTS as usize {
+        let (mut best, mut best_d) = (Vec2::ZERO, -1.0f32);
+        for _ in 0..12 {
+            let c = Vec2::new(next(), next());
+            let d = points
+                .iter()
+                .map(|p| {
+                    let d = (*p - c).abs();
+                    d.min(Vec2::ONE - d).length_squared()
+                })
+                .fold(f32::INFINITY, f32::min);
+            if d > best_d {
+                (best, best_d) = (c, d);
+            }
+        }
+        points.push(best);
+    }
+    points
 }
 
 /// How density and detail fall off with distance, for a field reaching

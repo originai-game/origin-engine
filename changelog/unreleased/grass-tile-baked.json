@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Grass",
+      "summary": "The grass's blue-noise tile ships baked instead of being made by the first frame that draws grass (116 ms of a web worker's first grass frame). Blades stand where they did."
+    }
+  ]
+}
