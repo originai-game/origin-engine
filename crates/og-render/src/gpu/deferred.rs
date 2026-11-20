@@ -584,6 +584,12 @@ impl<T> Deferred<T> {
     pub(crate) fn made(&self) -> bool {
         self.value.get().is_some()
     }
+
+    /// Whether the value is made and the pipelines the web host was asked
+    /// for in making it are compiled, without making it (gpu/ready.rs).
+    pub(crate) fn usable(&self) -> bool {
+        self.ready().is_some() && self.tickets.get().ready()
+    }
 }
 
 /// Something a frame can start making ahead of the pass that uses it.
@@ -643,6 +649,9 @@ impl<T> DerefMut for Deferred<T> {
 pub(crate) struct Sampled<T> {
     samples: Cell<u32>,
     made: [OnceCell<T>; 2],
+    /// The pipelines the web host was asked for while each count's value
+    /// was made ([`Sampled::usable`]).
+    tickets: [Cell<crate::gpu::ready::Tickets>; 2],
     /// A count's value started on a worker thread ([`Sampled::anywhere`]).
     #[cfg(not(target_arch = "wasm32"))]
     started: [Cell<Option<Pending<T>>>; 2],
@@ -660,6 +669,7 @@ impl<T> Sampled<T> {
         Sampled {
             samples: Cell::new(samples),
             made: [OnceCell::new(), OnceCell::new()],
+            tickets: [Cell::default(), Cell::default()],
             #[cfg(not(target_arch = "wasm32"))]
             started: [Cell::new(None), Cell::new(None)],
             make,
@@ -708,12 +718,21 @@ impl<T> Sampled<T> {
             if let Some(worker) = self.started[i].take() {
                 return joined(worker);
             }
-            match &self.make {
+            let (value, tickets) = crate::gpu::ready::Tickets::during(|| match &self.make {
                 SampledMake::Here(make) => timed(|| make(self.samples.get())),
                 #[cfg(not(target_arch = "wasm32"))]
                 SampledMake::Anywhere(make) => timed(|| make(self.samples.get())),
-            }
+            });
+            self.tickets[i].set(tickets);
+            value
         })
+    }
+
+    /// Whether the value at the current count is made and the pipelines
+    /// the web host was asked for in making it are compiled, without making
+    /// it (gpu/ready.rs).
+    pub(crate) fn usable(&self) -> bool {
+        self.ready().is_some() && self.tickets[self.index()].get().ready()
     }
 
     /// The value at the current count if it is made, or was started and
