@@ -227,6 +227,10 @@ async function swapNow(event) {
   const timing = {
     serverMs: event.serverMs ?? event.cookMs,
     cookMs: event.cookMs,
+    detectMs: event.detectMs,
+    walkMs: event.walkMs,
+    reportMs: event.reportMs,
+    stampMs: event.stampMs,
     fetchMs: Math.round(fetched - t0),
     workerMs: r?.ms ?? null,
     callMs: Math.round(swapped - fetched),
@@ -235,7 +239,7 @@ async function swapNow(event) {
   timing.totalMs = Math.round((event.serverMs ?? event.cookMs) + (drawn - t0));
   window.__gallery_last_reload__ = { edits: event.edits, files: event.files.length, ok, steps: r?.steps, ...timing };
   window.__gallery_reloads__ = [...(window.__gallery_reloads__ ?? []), window.__gallery_last_reload__];
-  log(`${event.edits.join(", ")}: ${ok ? "applied" : `refused: ${r?.error ?? r?.warnings}`} in ${timing.totalMs} ms (save→cooked ${timing.serverMs} [cook ${timing.cookMs}] + fetch ${timing.fetchMs} + apply ${timing.callMs} [${steps}] + frame ${timing.frameMs}; ${event.files.length} file(s))`, ok ? "ok" : "err");
+  log(`${event.edits.join(", ")}: ${ok ? "applied" : `refused: ${r?.error ?? r?.warnings}`} in ${timing.totalMs} ms (save→cooked ${timing.serverMs} [seen ${timing.detectMs}, walk ${timing.walkMs}, cook ${timing.cookMs}, reported ${timing.reportMs}, stamps ${timing.stampMs}] + fetch ${timing.fetchMs} + apply ${timing.callMs} [${steps}] + frame ${timing.frameMs}; ${event.files.length} file(s))`, ok ? "ok" : "err");
   if (r?.warnings?.length) log(r.warnings.join("\n"), "err");
 }
 

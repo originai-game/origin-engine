@@ -484,11 +484,21 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
     let mut cooks = 0usize;
     loop {
         std::thread::sleep(Duration::from_millis(25));
+        let walk = std::time::Instant::now();
         let now = take();
+        let walk_ms = walk.elapsed().as_secs_f64() * 1000.0;
         let changes = crate::dev::changed(&seen, &now);
         if changes.is_empty() {
             continue;
         }
+        // How long the newest edit waited to be seen (the poll and the walk).
+        let detect_ms = changes
+            .iter()
+            .filter_map(|c| now.get(c))
+            .max()
+            .and_then(|t| std::time::SystemTime::now().duration_since(*t).ok())
+            .map_or(0.0, |d| d.as_secs_f64() * 1000.0);
+        let started = std::time::Instant::now();
         seen = now;
         cooks += 1;
         let changed: Vec<String> = changes
@@ -529,6 +539,10 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
                         "changed": changed, "assets": cooked, "errors": r.errors(),
                         "ms": (r.elapsed_ms * 10.0).round() / 10.0,
                         "budgetMs": budget, "withinBudget": r.elapsed_ms <= budget,
+                        // The steps around the cook: the edit's age when seen,
+                        // one walk of the watched trees, and seen to reported.
+                        "detectMs": detect_ms.round(), "walkMs": walk_ms.round(),
+                        "reportMs": (started.elapsed().as_secs_f64() * 1000.0).round(),
                     })
                 );
             }

@@ -222,14 +222,16 @@ function startCooker(name: string): void {
         const line = buffered.slice(0, nl);
         buffered = buffered.slice(nl + 1);
         if (cooker !== me) return;
-        let e: { event?: string; ok?: boolean; changed?: string[]; ms?: number; errors?: unknown[] };
+        let e: { event?: string; ok?: boolean; changed?: string[]; ms?: number; errors?: unknown[]; detectMs?: number; walkMs?: number; reportMs?: number };
         try {
           e = JSON.parse(line);
         } catch {
           continue;
         }
         if (e.event !== "cook") continue;
+        const st = performance.now();
         const now = stamps(join(work, name, "cooked"));
+        const stampMs = Math.round(performance.now() - st);
         const files = changed(me.cooked, now);
         me.cooked = now;
         const edits = (e.changed ?? []).map((p) => (p.startsWith(repo) ? relative(repo, p) : p));
@@ -237,8 +239,8 @@ function startCooker(name: string): void {
         const saved = newest(name, e.changed ?? []);
         const serverMs = saved ? Math.max(0, Math.round(Date.now() - saved)) : null;
         if (e.ok === false) tell({ type: "error", sheet: name, edits, error: (e.errors ?? []).map(String).join("\n") });
-        else tell({ type: "files", sheet: name, edits, files, cookMs: Math.round(e.ms ?? 0), serverMs });
-        console.log(`${edits.join(", ")}: cooked ${files.length} file(s) in ${Math.round(e.ms ?? 0)} ms (saved to cooked ${serverMs} ms)`);
+        else tell({ type: "files", sheet: name, edits, files, cookMs: Math.round(e.ms ?? 0), serverMs, detectMs: e.detectMs, walkMs: e.walkMs, reportMs: e.reportMs, stampMs });
+        console.log(`${edits.join(", ")}: cooked ${files.length} file(s) in ${Math.round(e.ms ?? 0)} ms (saved to cooked ${serverMs} ms: seen after ${e.detectMs} [walk ${e.walkMs}], seen to reported ${e.reportMs}, stamps ${stampMs})`);
       }
     }
   })();
