@@ -109,15 +109,16 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     run.glue = glue;
     // Fork s63: at most UPLOAD_BUDGET texture bytes a frame; the rest in the frames after.
     glue.og_web_upload_budget?.(UPLOAD_BUDGET);
-    // Fork s60: the frame pipelines compile off the browser's GPU-process main task (pipelines.ts)
-    // as the build asks, or for auto (absent) on a mobile GPU, picked at the adapter: a phone's
-    // browser compiles synchronous ones on its GPU process's main thread, while on Chrome/Metal a
-    // cold shader cache compiles them asynchronously several times slower (docs/web-export.md §Pipelines).
+    // Fork s60: the frame's pipelines compile off the browser's GPU-process main task (pipelines.ts)
+    // as the build asks, or for auto (absent) on every GPU but Apple's, picked at the adapter: a cold
+    // driver compiles a large scene's for seconds each, and synchronous ones past Chrome's GPU
+    // watchdog lose the device (docs/web-export.md §Pipelines).
     if (glue.og_web_frame_pipelines) {
       const asked = data.pipelines;
       glue.og_web_frame_pipelines(pipelines.frameSpan);
+      glue.og_web_make_pipelines?.(pipelines.makeSpan, pipelines.lastTicket, pipelines.ready);
       onDeviceAdapter((adapter) => {
-        const choice = pipelines.choose(asked, adapter.info, (navigator as { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile);
+        const choice = pipelines.choose(asked, adapter.info);
         pipelines.use(choice);
         console.info(`[og] pipelines ${choice.mode}: ${choice.reason}`);
       });

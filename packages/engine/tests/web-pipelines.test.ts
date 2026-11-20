@@ -23,6 +23,11 @@
 //   hook is on (a wgpu that took the function from the prototype at load,
 //   or one taken before the Worker installed): the first is still asynchronous,
 //   the second is named by `bypassed` from the counts the probe reports
+// - a compute pipeline still compiled synchronously, or one arriving late
+//   leaving a buffer unfilled that a later draw reads → asked for
+//   asynchronously anywhere in the renderer's frame; before the first frame
+//   its dispatch skips every later draw and dispatch of the frame, and a
+//   pass whose output is kept sees it not ready and is never skipped
 import { beforeAll, expect, test } from "bun:test";
 
 type Call = { method: string; arg: unknown };
@@ -45,6 +50,19 @@ class FakePass {
   }
   drawIndexedIndirect(_b: unknown, _o: number) {
     this.draws++;
+  }
+}
+class FakeCompute {
+  pipeline: unknown = null;
+  dispatches = 0;
+  setPipeline(p: unknown) {
+    this.pipeline = p;
+  }
+  dispatchWorkgroups(_x: number) {
+    this.dispatches++;
+  }
+  dispatchWorkgroupsIndirect(_b: unknown, _o: number) {
+    this.dispatches++;
   }
 }
 class FakeBundle {
@@ -73,7 +91,13 @@ class FakeDevice {
     calls.push({ method: "createComputePipeline", arg: desc });
     return { compute: desc };
   }
+  createComputePipelineAsync(desc: unknown) {
+    calls.push({ method: "createComputePipelineAsync", arg: desc });
+    return new Promise((resolve) => lateCompute.push(() => resolve({ compute: "async", desc })));
+  }
 }
+/** The compute pipelines asked for asynchronously, each made when its function runs. */
+const lateCompute: (() => void)[] = [];
 // What a wgpu that bypassed the wrappers would call: the browser's own function, taken before install.
 const browserCreate = FakeDevice.prototype.createRenderPipeline;
 // The browser's own draw methods, taken before install.
@@ -86,6 +110,7 @@ let p: typeof import("../src/web/pipelines.ts");
 beforeAll(async () => {
   (globalThis as Record<string, unknown>)["GPURenderPassEncoder"] = FakePass;
   (globalThis as Record<string, unknown>)["GPURenderBundleEncoder"] = FakeBundle;
+  (globalThis as Record<string, unknown>)["GPUComputePassEncoder"] = FakeCompute;
   p = await import("../src/web/pipelines.ts");
   p.install(FakeDevice.prototype);
 });
@@ -375,27 +400,25 @@ test("frame pipelines that reached the browser without the wrappers are named, n
   p.enable(true);
 });
 
-test("auto picks async on a mobile GPU only, and the page reports the pick and why", () => {
-  const mode = (asked: Parameters<typeof p.choose>[0], info: Parameters<typeof p.choose>[1], mobile?: boolean) => p.choose(asked, info, mobile).mode;
-  // The adapter's vendor or architecture names it; it outranks the user agent's hint.
+test("auto picks async on every GPU but Apple's, and the page reports the pick and why", () => {
+  const mode = (asked: Parameters<typeof p.choose>[0], info: Parameters<typeof p.choose>[1]) => p.choose(asked, info).mode;
   expect(mode(undefined, { vendor: "img-tec", architecture: "d-series" })).toBe("async");
   expect(mode(undefined, { vendor: "qualcomm", architecture: "adreno-7xx" })).toBe("async");
-  expect(mode(undefined, { vendor: "arm", architecture: "" })).toBe("async");
   expect(mode(undefined, { vendor: "", architecture: "valhall" })).toBe("async");
-  expect(mode(undefined, { vendor: "nvidia", architecture: "blackwell" }, true)).toBe("sync");
+  // A desktop GPU too: a cold driver cache compiles synchronous ones past Chrome's GPU watchdog.
+  expect(mode(undefined, { vendor: "nvidia", architecture: "lovelace" })).toBe("async");
+  expect(p.choose(undefined, { vendor: "nvidia", architecture: "lovelace" }).reason).toMatch(/not an Apple GPU \(nvidia lovelace\)/);
+  // Firefox's empty strings, or no info at all.
+  expect(mode(undefined, { vendor: "", architecture: "" })).toBe("async");
+  expect(mode(undefined, undefined)).toBe("async");
   // Apple GPUs stay sync until iOS is measured, an iPhone's included.
-  expect(mode(undefined, { vendor: "apple", architecture: "metal-3" }, true)).toBe("sync");
-  // Firefox's empty strings: navigator.userAgentData.mobile where it exists, else sync.
-  expect(mode(undefined, { vendor: "", architecture: "" }, true)).toBe("async");
-  expect(mode(undefined, { vendor: "", architecture: "" }, false)).toBe("sync");
-  expect(mode(undefined, undefined, undefined)).toBe("sync");
+  expect(mode(undefined, { vendor: "apple", architecture: "metal-3" })).toBe("sync");
   // What the build asked is kept, on any GPU.
-  expect(mode("sync", { vendor: "qualcomm" }, true)).toBe("sync");
-  expect(mode("prewarm", { vendor: "apple" }, false)).toBe("prewarm");
-  expect(p.choose(undefined, { vendor: "qualcomm", architecture: "adreno-7xx" }, undefined).reason).toMatch(/mobile GPU \(qualcomm adreno-7xx\)/);
+  expect(mode("sync", { vendor: "qualcomm" })).toBe("sync");
+  expect(mode("prewarm", { vendor: "apple" })).toBe("prewarm");
 
-  // Auto's sync on a desktop: the renderer's hook stays installed, but its spans make nothing asynchronous and count nothing.
-  p.use(p.choose(undefined, { vendor: "apple", architecture: "metal-3" }, false));
+  // Auto's sync on Apple: the renderer's hook stays installed, but its spans make nothing asynchronous and count nothing.
+  p.use(p.choose(undefined, { vendor: "apple", architecture: "metal-3" }));
   const before = p.stats();
   expect([before.mode, before.reason]).toEqual(["sync", "auto: an Apple GPU (apple metal-3), sync until iOS is measured"]);
   calls.length = 0;
@@ -406,7 +429,80 @@ test("auto picks async on a mobile GPU only, and the page reports the pick and w
   expect(made("createRenderPipelineAsync").length).toBe(0);
   const after = p.stats();
   expect([after.spans - before.spans, after.sync - before.sync, after.async - before.async]).toEqual([0, 1, 0]);
-  p.use(p.choose(undefined, { vendor: "img-tec", architecture: "d-series" }, undefined));
+  p.use(p.choose(undefined, { vendor: "img-tec", architecture: "d-series" }));
   expect(p.stats().mode).toBe("async");
+  p.enable(false);
+});
+
+test("a compute pipeline that arrives late skips the rest of the first frame, and a kept pass waits for its ticket", async () => {
+  await tasks(0);
+  calls.length = 0;
+  lateCompute.length = 0;
+  p.enable(true);
+  p.gate(true);
+  p.takeSkipped();
+  // Made in the renderer's frame but outside a frame span (a kept pass's): asked for asynchronously, with a ticket.
+  p.makeSpan(true);
+  const kept = device.createComputePipeline({ label: "place", compute: { module: "m" } });
+  const keptTicket = p.lastTicket();
+  p.frameSpan(true);
+  const generate = device.createComputePipeline({ label: "generate", compute: { module: "m" } });
+  const draws = device.createRenderPipeline(desc({ module: "m" }, "blades"));
+  p.frameSpan(false);
+  p.makeSpan(false);
+  for (let i = 0; i < 3; i++) await tasks(0);
+  expect(made("createComputePipeline").length).toBe(0);
+  expect(made("createComputePipelineAsync").length).toBe(2);
+  // The render pipeline arrived; the compute ones did not.
+  expect(keptTicket).toBeGreaterThan(0);
+  expect(p.ready(keptTicket)).toBe(false);
+
+  const frame = () => {
+    p.makeSpan(true);
+    p.frameSpan(true);
+    const c = new FakeCompute();
+    c.setPipeline(generate);
+    c.dispatchWorkgroups(4);
+    const r = new FakePass();
+    r.setPipeline(draws);
+    r.draw(3);
+    const after = new FakeCompute();
+    after.setPipeline({ plain: true });
+    after.dispatchWorkgroups(1);
+    p.frameSpan(false);
+    p.makeSpan(false);
+    return { dispatched: c.dispatches + after.dispatches, drawn: r.draws, skipped: p.takeSkipped() };
+  };
+  // Before the first frame: the late dispatch, the draw reading its buffer and what follows are skipped.
+  expect(frame()).toEqual({ dispatched: 0, drawn: 0, skipped: 3 });
+  // A pass whose output is kept asks first and waits; it was never handed the stand-in.
+  expect(p.ready(keptTicket)).toBe(false);
+  expect(p.compiling()).toBe(2);
+  for (const resolve of lateCompute.splice(0)) resolve();
+  await tasks(0);
+  expect(p.ready(keptTicket)).toBe(true);
+  expect(p.compiling()).toBe(0);
+  expect(frame()).toEqual({ dispatched: 2, drawn: 1, skipped: 0 });
+  const kp = new FakeCompute();
+  kp.setPipeline(kept);
+  expect((kp.pipeline as { compute: string }).compute).toBe("async");
+  expect(made("createComputePipeline").length).toBe(0);
+
+  // After the first frame a late compute pipeline is made at its dispatch: a played frame never reads its buffer unfilled.
+  p.gate(false);
+  p.makeSpan(true);
+  const late = device.createComputePipeline({ label: "late", compute: { module: "m" } });
+  p.makeSpan(false);
+  p.frameSpan(true);
+  const c = new FakeCompute();
+  c.setPipeline(late);
+  c.dispatchWorkgroups(1);
+  p.frameSpan(false);
+  expect(c.dispatches).toBe(1);
+  expect(made("createComputePipeline").length).toBe(1);
+  expect(p.takeSkipped()).toBe(0);
+  for (const resolve of lateCompute.splice(0)) resolve();
+  await tasks(0);
+  p.gate(true);
   p.enable(false);
 });

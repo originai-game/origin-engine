@@ -33,12 +33,21 @@
 //   (Tint) in the pipeline requests' tasks, not all in the task that
 //   registered them; any other use makes it then.
 //
+// - Compute pipelines take the same path, and the renderer's whole frame is
+//   a make span (`makeSpan`): every pipeline it makes is asked for
+//   asynchronously, with a ticket og-render asks (`lastTicket`, `ready`)
+//   before a pass whose output it keeps uses one. Before the first frame
+//   (`gate`) a dispatch whose pipeline still compiles skips every later draw
+//   and dispatch of that frame's spans, which may read what it writes.
+//
 // Off, every call goes straight to the browser. Which mode a page runs is
 // project.ogt `publish { pipelines }`; `auto` (the default) picks one when the
-// Worker meets its adapter (`choose`): async on a mobile GPU, whose browsers
-// compile synchronous pipelines on the GPU process's main thread (a Pixel 10
-// drew no frame for about 23 s behind the gate), sync elsewhere, where async
-// made a cold boot on Chrome/Metal 2.5-5x later (docs/web-export.md §Pipelines).
+// Worker meets its adapter (`choose`): async on every GPU but Apple's. A
+// browser compiles synchronous pipelines on its GPU process's main thread (a
+// Pixel 10 drew no frame for about 23 s behind the gate; First Light on an
+// NVIDIA L4 lost its device to Chrome's 15 s GPU watchdog); Apple GPUs stay
+// sync, where async made a cold boot on Chrome/Metal 2.5-5x later, until a
+// real device is measured (docs/web-export.md §Pipelines).
 //
 // A wgpu that reached the browser's createRenderPipeline some other way would
 // lose all this silently: frames would compile synchronously again. So the
@@ -60,10 +69,14 @@ interface Device {
   createRenderPipeline(desc: Descriptor): unknown;
   createRenderPipelineAsync(desc: Descriptor): Promise<unknown>;
   createComputePipeline(desc: Descriptor): unknown;
+  createComputePipelineAsync(desc: Descriptor): Promise<unknown>;
 }
 interface Slot {
   device: Device;
   desc: Descriptor;
+  compute: boolean;
+  /** Its ticket (`lastTicket`, `ready`). */
+  ticket: number;
   made: unknown;
   refused: boolean;
 }
@@ -87,8 +100,23 @@ let pending = 0;
 let skipped = 0;
 const queue: Slot[] = [];
 let draining = false;
+/** `makeSpan` calls open: the renderer's frame, where every pipeline made is asked for asynchronously. */
+let making = 0;
+/** Before the first frame (`gate`): a dispatch whose compute pipeline still compiles skips the rest of the frame. */
+let gating = true;
+/** A dispatch was skipped in this frame (under `gating`): every draw and dispatch after it in a span is skipped too. */
+let poisoned = false;
+/** The ticket of the last pipeline made: 0 when made at once (`lastTicket`). */
+let last = 0;
+let tickets = 0;
+/** Stand-ins not made yet, by ticket (`ready`). */
+const waiting = new Map<number, Slot>();
 /** The browser's own methods, taken from the prototype at `install`: what the wrappers call. */
-let native: { createShaderModule: Device["createShaderModule"]; createRenderPipeline: Device["createRenderPipeline"] } | null = null;
+let native: {
+  createShaderModule: Device["createShaderModule"];
+  createRenderPipeline: Device["createRenderPipeline"];
+  createComputePipeline: Device["createComputePipeline"];
+} | null = null;
 
 /** How the page makes its frame pipelines: project.ogt `publish { pipelines }`, or `auto`'s pick. */
 export type PipelineMode = "sync" | "async" | "prewarm";
@@ -106,22 +134,22 @@ const MOBILE_ARCHITECTURE = /powervr|rogue|mali|valhall|bifrost|adreno/;
 
 /**
  * The mode a page runs: `asked` (its build's `publish { pipelines }`, absent for auto) as is, or for
- * auto, async on a mobile GPU named by the adapter's `info`; when the browser names none (Firefox
- * reports empty strings), async when `mobile` (navigator.userAgentData.mobile) says so; otherwise
- * sync. Apple GPUs stay sync until a real iOS or macOS device is measured; a virtual machine's
- * numbers do not move the default (docs/web-export.md §Pipelines).
+ * auto, async on every GPU but Apple's (named by the adapter's `info`), which stay sync until a real
+ * iOS or macOS device is measured; a virtual machine's numbers do not move the default
+ * (docs/web-export.md §Pipelines).
  */
-export function choose(asked: PipelineMode | undefined, info: { vendor?: string; architecture?: string } | null | undefined, mobile: boolean | undefined): PipelineChoice {
+export function choose(asked: PipelineMode | undefined, info: { vendor?: string; architecture?: string } | null | undefined): PipelineChoice {
   if (asked) return { mode: asked, reason: `publish { pipelines ${asked} }` };
   const vendor = (info?.vendor ?? "").toLowerCase();
   const architecture = (info?.architecture ?? "").toLowerCase();
   const named = [vendor, architecture].filter(Boolean).join(" ");
   if (MOBILE_VENDORS.includes(vendor) || MOBILE_ARCHITECTURE.test(architecture)) return { mode: "async", reason: `auto: a mobile GPU (${named})` };
   if (vendor === "apple") return { mode: "sync", reason: `auto: an Apple GPU (${named}), sync until iOS is measured` };
-  if (named) return { mode: "sync", reason: `auto: not a mobile GPU (${named})` };
-  if (mobile === true) return { mode: "async", reason: "auto: no adapter info; navigator.userAgentData.mobile" };
-  if (mobile === false) return { mode: "sync", reason: "auto: no adapter info; navigator.userAgentData not mobile" };
-  return { mode: "sync", reason: "auto: no adapter info, no navigator.userAgentData" };
+  // A desktop GPU with a cold driver cache compiles a large scene's pipelines for seconds each
+  // (NVIDIA L4/Vulkan: 3 to 4.8 s), and synchronous ones in one GPU-process task past Chrome's
+  // 15 s watchdog lose the device (docs/web-export.md §Pipelines).
+  if (named) return { mode: "async", reason: `auto: not an Apple GPU (${named})` };
+  return { mode: "async", reason: "auto: no adapter info" };
 }
 
 let chosen: PipelineChoice | null = null;
@@ -192,8 +220,42 @@ export function frameSpan(on: boolean): void {
   span = Math.max(0, span + (on ? 1 : -1));
 }
 
-/** Whether a render pipeline made now is asked for asynchronously, and a pass may skip a stand-in's draws. */
+/** Whether a pass may skip a stand-in's draws or dispatches (and a pipeline made now is asked for asynchronously). */
 const framing = () => enabled && span > 0 && whole === 0 && (!prewarmOnly || warmingDepth > 0);
+/** Whether a pipeline made now is asked for asynchronously: in a frame span, or anywhere in the renderer's frame (`makeSpan`). */
+const asking = () => framing() || (enabled && making > 0 && whole === 0 && !prewarmOnly);
+
+/**
+ * The renderer begins (true) or ends (false) a frame (og_web_make_pipelines): every render and
+ * compute pipeline made in between is asked for asynchronously, but only a pass in a frame span
+ * skips a stand-in's work; one outside makes it then. og-render asks `ready` before a pass whose
+ * output it keeps uses one, and keeps that work for a later frame (og-render gpu/ready.rs).
+ */
+export function makeSpan(on: boolean): void {
+  making = Math.max(0, making + (on ? 1 : -1));
+}
+
+/** The ticket of the pipeline made last: 0 when it was made at once, so it is ready. */
+export function lastTicket(): number {
+  return last;
+}
+
+/** Whether the pipeline with `ticket` is made (or refused, which its use reports): og-render asks before using it. */
+export function ready(ticket: number): boolean {
+  const slot = waiting.get(ticket);
+  return !slot || slot.refused || !!slot.made;
+}
+
+/**
+ * Before the first frame (on, the default) a dispatch in a frame span whose compute pipeline still
+ * compiles skips the rest of that frame's draws and dispatches in spans, so nothing draws from the
+ * buffer it did not fill, and the gate draws the frame again. Once the first frame is drawn (off),
+ * such a pipeline is made at its dispatch instead: a played frame never draws from it unfilled.
+ */
+export function gate(on: boolean): void {
+  gating = on;
+  if (!on) poisoned = false;
+}
 
 /**
  * Runs `f` with every pipeline it meets made at once and every draw drawn, spans or not: a
@@ -218,6 +280,8 @@ export function compiling(): number {
 export function takeSkipped(): number {
   const n = skipped;
   skipped = 0;
+  // The gate asks once a frame: a frame's skip of the rest ends with it.
+  poisoned = false;
   return n;
 }
 
@@ -239,13 +303,30 @@ function bindModules(desc: Descriptor): Descriptor {
   return desc;
 }
 
-/** A stand-in's pipeline, made now with `createRenderPipeline` when it was not yet. */
+/** A stand-in's pipeline, made now with `createRenderPipeline` (or `createComputePipeline`) when it was not yet. */
 function made(slot: Slot): unknown {
   if (!slot.made) {
     counts.fallback++;
-    slot.made = native!.createRenderPipeline.call(slot.device, bindModules(slot.desc));
+    const make = slot.compute ? native!.createComputePipeline : native!.createRenderPipeline;
+    slot.made = make.call(slot.device, bindModules(slot.desc));
+    waiting.delete(slot.ticket);
   }
   return slot.made;
+}
+
+/** A stand-in for `desc`, asked for asynchronously in a later task. */
+function standIn(device: Device, desc: Descriptor, compute: boolean): Js {
+  const slot: Slot = { device, desc, compute, ticket: ++tickets, made: undefined, refused: false };
+  last = slot.ticket;
+  waiting.set(slot.ticket, slot);
+  pending++;
+  queue.push(slot);
+  if (!draining) void drain();
+  return {
+    [SLOT]: slot,
+    label: (desc as { label?: string }).label ?? "",
+    getBindGroupLayout: (index: number) => (made(slot) as { getBindGroupLayout(i: number): unknown }).getBindGroupLayout(index),
+  };
 }
 
 const nextTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -266,14 +347,16 @@ async function drain(): Promise<void> {
         counts.async++;
         let promise: Promise<unknown>;
         try {
-          promise = slot.device.createRenderPipelineAsync(bindModules(slot.desc));
+          const desc = bindModules(slot.desc);
+          promise = slot.compute ? slot.device.createComputePipelineAsync(desc) : slot.device.createRenderPipelineAsync(desc);
         } catch {
-          promise = Promise.reject(new Error("createRenderPipelineAsync threw"));
+          promise = Promise.reject(new Error("the asynchronous pipeline call threw"));
         }
         promise.then(
           (p) => {
             pending--;
             slot.made ??= p;
+            waiting.delete(slot.ticket);
           },
           () => {
             pending--;
@@ -293,7 +376,7 @@ export function install(proto: Device): void {
   const createShaderModule = proto.createShaderModule;
   const createRenderPipeline = proto.createRenderPipeline;
   const createComputePipeline = proto.createComputePipeline;
-  native = { createShaderModule, createRenderPipeline };
+  native = { createShaderModule, createRenderPipeline, createComputePipeline };
   proto.createShaderModule = function (this: Device, desc: unknown) {
     if (!enabled) return createShaderModule.call(this, desc);
     const late: LateModule = { device: this, desc, made: undefined };
@@ -304,22 +387,21 @@ export function install(proto: Device): void {
     };
   };
   proto.createRenderPipeline = function (this: Device, desc: Descriptor) {
-    if (!framing()) {
+    if (!asking()) {
       counts.sync++;
+      last = 0;
       return createRenderPipeline.call(this, bindModules(desc));
     }
-    const slot: Slot = { device: this, desc, made: undefined, refused: false };
-    pending++;
-    queue.push(slot);
-    if (!draining) void drain();
-    return {
-      [SLOT]: slot,
-      label: (desc as { label?: string }).label ?? "",
-      getBindGroupLayout: (index: number) => (made(slot) as { getBindGroupLayout(i: number): unknown }).getBindGroupLayout(index),
-    };
+    return standIn(this, desc, false);
   };
+  // Compute pipelines too: a cold driver compiles one for seconds as well (fork s60's gap).
   proto.createComputePipeline = function (this: Device, desc: Descriptor) {
-    return createComputePipeline.call(this, bindModules(desc));
+    if (!asking() || typeof this.createComputePipelineAsync !== "function") {
+      if (enabled) counts.sync++;
+      last = 0;
+      return createComputePipeline.call(this, bindModules(desc));
+    }
+    return standIn(this, desc, true);
   };
   patchEncoders();
 }
@@ -331,7 +413,7 @@ const skipDraw = () => {};
 function patchEncoders(): void {
   if (patched) return;
   patched = true;
-  const g = globalThis as unknown as { GPURenderPassEncoder?: { prototype: Js }; GPURenderBundleEncoder?: { prototype: Js } };
+  const g = globalThis as unknown as { GPURenderPassEncoder?: { prototype: Js }; GPURenderBundleEncoder?: { prototype: Js }; GPUComputePassEncoder?: { prototype: Js } };
   const pass = g.GPURenderPassEncoder?.prototype;
   if (pass) {
     const setPipeline = pass["setPipeline"] as (this: Js, p: unknown) => void;
@@ -345,7 +427,8 @@ function patchEncoders(): void {
       const slot = (p as Js | null)?.[SLOT] as Slot | undefined;
       // Only a pass encoded in a frame span may skip: one outside it (a shadow map's static
       // casters, a probe's capture, a one-shot bake) keeps what it draws, so it makes it now.
-      if (slot && !slot.made && framing() && !slot.refused) {
+      // After a skipped dispatch (`gate`) the rest of the frame's spans draw nothing.
+      if ((slot && !slot.made && framing() && !slot.refused) || (poisoned && framing())) {
         skipped++;
         if (!this[SKIP]) {
           this[SKIP] = true;
@@ -356,6 +439,32 @@ function patchEncoders(): void {
       if (this[SKIP]) {
         this[SKIP] = false;
         draws.forEach((name, i) => (this[name] = own[i]));
+      }
+      setPipeline.call(this, slot ? made(slot) : p);
+    };
+  }
+  const compute = g.GPUComputePassEncoder?.prototype;
+  if (compute) {
+    const setPipeline = compute["setPipeline"] as (this: Js, p: unknown) => void;
+    const dispatches = ["dispatchWorkgroups", "dispatchWorkgroupsIndirect"].filter((name) => compute[name]);
+    const own = dispatches.map((name) => compute[name]);
+    compute["setPipeline"] = function (this: Js, p: unknown) {
+      const slot = (p as Js | null)?.[SLOT] as Slot | undefined;
+      // Before the first frame, in a span: the dispatch is skipped, and with it everything after
+      // it in the frame's spans, which may read what it writes (`gate`). Otherwise made now.
+      const skip = gating && framing() && (poisoned || (!!slot && !slot.made && !slot.refused));
+      if (skip) {
+        skipped++;
+        poisoned = true;
+        if (!this[SKIP]) {
+          this[SKIP] = true;
+          for (const name of dispatches) this[name] = skipDraw;
+        }
+        return;
+      }
+      if (this[SKIP]) {
+        this[SKIP] = false;
+        dispatches.forEach((name, i) => (this[name] = own[i]));
       }
       setPipeline.call(this, slot ? made(slot) : p);
     };

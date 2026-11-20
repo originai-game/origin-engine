@@ -471,24 +471,31 @@ what it wrote.
 
 ### Pipelines
 
-How the frame's render pipelines compile on the web
+How the frame's render and compute pipelines compile on the web
 (`src/web/pipelines.ts`, `publish { pipelines }`):
 
 - `sync`: a pipeline is made when a pass first draws with it, and the rest
   are warmed behind the play gate after the first frame.
-- `async`: pipelines are made with `createRenderPipelineAsync`; a pass
-  whose pipeline still compiles skips its draws, and the gate shows once
-  the first frame is drawn whole. Probe captures are always drawn whole.
+- `async`: every pipeline the renderer's frame makes is asked for with
+  `createRenderPipelineAsync` or `createComputePipelineAsync`. A pass drawn
+  again every frame skips a pipeline still compiling; before the first
+  frame a skipped dispatch also skips every later draw and dispatch of that
+  frame, so nothing draws from a buffer it did not fill. A pass whose
+  output the renderer keeps (a scatter chunk's placement, a grass field's
+  blades) waits for its pipelines' tickets and leaves that work, and its
+  draws, for a later frame (og-render `gpu/ready.rs`); any other kept pass
+  makes a pipeline still compiling at its use. The gate shows once the
+  first frame is drawn whole. Probe captures are always drawn whole.
 - `prewarm`: as `sync`, with only the warm-up behind the gate
   asynchronous. Opt-in.
-- `auto` (the default): `async` on a mobile GPU (`img-tec`, `arm`,
-  `qualcomm`, or none named and `navigator.userAgentData.mobile`), `sync`
-  otherwise, Apple GPUs included, since a mobile GPU that compiles
-  synchronously holds the page for tens of seconds. Open: Apple GPUs move
-  to `async` only on a measurement from a real iOS or macOS device. A
-  virtual machine's numbers do not count (Chrome on a cloud Mac took 0.8 to
-  1.2 s for the first frame that drew a textured model with a cold shader
-  cache, 2026-11); until then a game sets `publish { pipelines async }`.
+- `auto` (the default): `async` on every GPU except Apple's, which stay
+  `sync` until a real iOS or macOS device is measured (a virtual machine's
+  numbers do not count: Chrome on a cloud Mac took 0.8 to 1.2 s for the
+  first frame that drew a textured model with a cold shader cache,
+  2026-11). A cold driver cache compiles a large scene's pipelines for
+  seconds each (First Light on an NVIDIA L4 under Vulkan: terrain 4.8 s,
+  pbr meshlet 4.0 s, live sky 3.6 s, 2026-11), and synchronous ones in one
+  GPU-process task past Chrome's 15 s watchdog lose the device.
 
 The mode and why are on `__runtime_probe__.boot.pipelines`, in the
 Worker's console and in the boot telemetry sample.
