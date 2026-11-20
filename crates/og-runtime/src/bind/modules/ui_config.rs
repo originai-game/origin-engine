@@ -1,55 +1,26 @@
 use super::*;
 use crate::host::wire;
 
-/// A UI with the theme and fonts of `previous` (a hot reload keeps them).
+/// A new game's UI, or on a hot reload `previous` itself: its documents and
+/// the timelines they define, stores, mounts, styles and state stay as they
+/// are, in memory (copying them, or saving and restoring them, took seconds
+/// on a page of many components). Nothing changes it until the reload is
+/// committed (probe.rs `after_reload`, which also gives it the new game's
+/// tick rate), so a refused reload leaves the running game's UI untouched.
 pub(crate) fn new_ui(
     tick: u32,
     seed: u64,
     previous: Option<&SharedUi>,
 ) -> Result<SharedUi, String> {
-    let (theme, fonts, icons, style_name) = match previous {
-        Some(p) => {
-            let ui = p.lock();
-            (
-                *ui.theme(),
-                ui.fonts().clone(),
-                ui.icons().clone(),
-                ui.style_name().to_string(),
-            )
-        }
-        None => (
-            Theme::default(),
-            Fonts::default(),
-            IconAtlas::default(),
-            String::new(),
-        ),
-    };
+    if let Some(p) = previous {
+        return Ok(p.clone());
+    }
     let mut ui = Ui::new(UiDesc {
-        theme,
+        theme: Theme::default(),
         ticks_per_second: tick,
-        fonts,
+        fonts: Fonts::default(),
     });
     ui.seed_feedback(seed);
-    ui.set_icons(icons);
-    if let Some(p) = previous {
-        ui.set_images(p.lock().images().clone());
-        ui.inherit_part_css(&p.lock());
-    }
-    ui.set_style_name(&style_name);
-    // A hot reload keeps the documents loaded (and the timelines they define).
-    if let Some(p) = previous {
-        let p = p.lock();
-        ui.inherit_store_registrations(&p);
-        for name in p.documents() {
-            if let Some(d) = p.document(&name) {
-                ui.define_document(d.clone());
-            }
-        }
-        ui.restore_state(&p.save_state())
-            .map_err(|e| e.reason().to_owned())?;
-        ui.restore_world_state(&p.save_world_state())
-            .map_err(|e| e.reason().to_owned())?;
-    }
     Ok(SharedUi::new(ui))
 }
 

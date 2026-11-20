@@ -353,6 +353,16 @@ impl Ui {
         &mut self.interaction.state.voices
     }
 
+    /// The tick rate the UI's motion counts in, as [`UiDesc`] gave it (0:
+    /// 60): a hot reload keeps its UI and takes the new game's rate.
+    pub fn set_ticks_per_second(&mut self, ticks_per_second: u32) {
+        self.env.ticks_per_second = if ticks_per_second == 0 {
+            60
+        } else {
+            ticks_per_second
+        };
+    }
+
     /// Restores [`Ui::save_state`] bytes. Refused, with nothing changed, for
     /// bytes of another version or a truncated buffer.
     pub fn restore_state(&mut self, bytes: &[u8]) -> og_core::Result<()> {

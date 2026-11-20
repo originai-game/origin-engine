@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og dev",
+      "summary": "A hot reload keeps the UI in memory instead of saving and restoring it through JSON: a code swap on a page of many components took seconds in the UI alone, now milliseconds."
+    }
+  ]
+}
