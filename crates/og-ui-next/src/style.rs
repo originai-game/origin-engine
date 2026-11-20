@@ -1,30 +1,22 @@
-//! CSS compiled once, when a sheet loads, into flat typed records: a rule's
-//! declarations become a `Record` (layout as rune-taffy's `CompactStyle`,
-//! paint as plain `Copy` fields), with every `var()` and `calc()` resolved
-//! against the style's tokens. A selector is a compound of an id, classes
-//! and a state (`:hover`, `:active`, `:disabled`, `:focus`), interned to
-//! `u32`s; an element's record is the fold of the rules its id and classes
-//! name, done when its classes change, never per frame. What the compiler
-//! does not take (combinators, unknown properties) is listed, not guessed.
+//! CSS compiled by the cook into flat typed records. A rule's declarations
+//! become `Step`s: plain 20-byte `Pod` values (an op, a code and four
+//! floats) with every `var()` and `calc()` resolved against the style's
+//! tokens, shorthands and logical properties expanded. A selector is a
+//! compound of interned ids and classes and a state (`:hover`, `:active`,
+//! `:focus`, `:disabled`). The compiled sheet is a few flat arrays written
+//! into the blob as they are ([`Sheet::to_bytes`]); loading one is copying
+//! them back ([`Sheet::from_bytes`]). An element's record is the fold of the
+//! rules its names match, made when its names change, never per frame.
+//! What the compiler does not take is listed in [`Sheet::skipped`] for the
+//! sheet's author to fix, not guessed.
 
 use crate::tokens::Tokens;
+use bytemuck::{Pod, Zeroable};
 use rune_taffy::CompactStyle;
 use rustc_hash::FxHashMap;
-use taffy::{AlignItems, Dimension, FlexDirection, JustifyContent, LengthPercentageAuto, Rect};
-
-/// Interned names: ids and classes share one table.
-#[derive(Clone, Debug, Default)]
-pub struct Names(FxHashMap<Box<str>, u32>);
-
-impl Names {
-    pub fn id(&mut self, name: &str) -> u32 {
-        let n = self.0.len() as u32;
-        *self.0.entry(name.into()).or_insert(n)
-    }
-    pub fn get(&self, name: &str) -> Option<u32> {
-        self.0.get(name).copied()
-    }
-}
+use taffy::{
+    AlignItems, Dimension, FlexDirection, FlexWrap, JustifyContent, LengthPercentageAuto, Rect,
+};
 
 /// An element state a rule may apply under.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
@@ -41,35 +33,62 @@ pub enum State {
 /// A linear RGBA colour.
 pub type Rgba = [f32; 4];
 
-/// What one rule sets: `Some` the properties it declared.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Decl {
-    layout: Vec<Layout>,
-    pub fill: Option<Rgba>,
-    pub ink: Option<Rgba>,
-    pub radius: Option<f32>,
-    pub opacity: Option<f32>,
-    pub font_size: Option<f32>,
+/// One compiled declaration.
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[repr(C)]
+pub struct Step {
+    op: u8,
+    /// An enum's value, a length's kind ([`len`]) or the sides an inset sets.
+    code: u8,
+    _pad: [u8; 2],
+    v: [f32; 4],
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Layout {
-    Display(taffy::Display),
-    Direction(FlexDirection),
-    Gap(f32, f32),
-    Pad([f32; 4]),
-    Margin([f32; 4]),
-    Width(Dimension),
-    Height(Dimension),
-    Absolute,
-    Inset([Option<f32>; 4]),
-    Align(AlignItems),
-    Justify(JustifyContent),
-    Grow(f32),
+mod op {
+    pub const DISPLAY: u8 = 1;
+    pub const DIRECTION: u8 = 2;
+    pub const WRAP: u8 = 3;
+    pub const GAP: u8 = 4;
+    pub const PAD: u8 = 5;
+    pub const MARGIN: u8 = 6;
+    pub const WIDTH: u8 = 7;
+    pub const HEIGHT: u8 = 8;
+    pub const MIN_W: u8 = 9;
+    pub const MIN_H: u8 = 10;
+    pub const MAX_W: u8 = 11;
+    pub const MAX_H: u8 = 12;
+    pub const ABSOLUTE: u8 = 13;
+    pub const INSET: u8 = 14;
+    pub const ALIGN: u8 = 15;
+    pub const JUSTIFY: u8 = 16;
+    pub const GROW: u8 = 17;
+    pub const SHRINK: u8 = 18;
+    pub const BASIS: u8 = 19;
+    pub const FILL: u8 = 32;
+    pub const INK: u8 = 33;
+    pub const RADIUS: u8 = 34;
+    pub const OPACITY: u8 = 35;
+    pub const FONT_SIZE: u8 = 36;
+}
+
+/// A length's kind in a step's code.
+mod len {
+    pub const AUTO: u8 = 0;
+    pub const PX: u8 = 1;
+    pub const PERCENT: u8 = 2;
+}
+
+fn step(op: u8, code: u8, v: [f32; 4]) -> Step {
+    Step {
+        op,
+        code,
+        _pad: [0; 2],
+        v,
+    }
 }
 
 /// An element's computed look: what its rules set, folded in order.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Record {
     pub layout: CompactStyle,
     pub fill: Rgba,
@@ -79,44 +98,84 @@ pub struct Record {
     pub font_size: f32,
 }
 
-#[derive(Clone, Debug)]
+impl Default for Record {
+    fn default() -> Self {
+        Record {
+            layout: CompactStyle::default(),
+            fill: [0.0; 4],
+            ink: [0.0, 0.0, 0.0, 1.0],
+            radius: 0.0,
+            opacity: 1.0,
+            font_size: 16.0,
+        }
+    }
+}
+
+/// A rule: the names it needs and its steps, as spans of the sheet's arrays.
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[repr(C)]
 struct Rule {
-    /// The id or classes the element must have, all of them.
-    needs: Vec<u32>,
-    state: State,
-    decl: Decl,
+    needs: [u32; 2],
+    steps: [u32; 2],
+    state: u32,
 }
 
 /// A compiled sheet.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Sheet {
-    pub names: Names,
+    names: Vec<Box<str>>,
+    ids: FxHashMap<Box<str>, u32>,
     rules: Vec<Rule>,
-    /// Selectors and declarations the compiler did not take.
+    needs: Vec<u32>,
+    steps: Vec<Step>,
+    /// Selectors and declarations the compiler did not take (the cook's
+    /// warnings; not kept in the blob).
     pub skipped: Vec<String>,
 }
 
 impl Sheet {
-    /// Compiles `css` against `tokens`.
+    /// Compiles `css` against `tokens` (the cook's step).
     pub fn compile(css: &str, tokens: &Tokens) -> Sheet {
         let mut s = Sheet::default();
         for (prelude, body) in crate::sheet::blocks(css) {
-            if prelude.starts_with(':') && prelude.trim() == ":root" || prelude.starts_with('@') {
+            if prelude.trim() == ":root" || prelude.starts_with('@') {
                 continue;
             }
-            let decl = s.declarations(body, tokens);
+            let from = s.steps.len() as u32;
+            s.declarations(body, tokens);
+            let steps = [from, s.steps.len() as u32 - from];
             for sel in crate::sheet::split_top(prelude, b',') {
-                match s.selector(sel.trim()) {
-                    Some((needs, state)) => s.rules.push(Rule {
-                        needs,
-                        state,
-                        decl: decl.clone(),
-                    }),
-                    None => s.skipped.push(format!("selector {}", sel.trim())),
+                let sel = sel.trim();
+                match s.selector(sel) {
+                    Some((needs, state)) => {
+                        let at = s.needs.len() as u32;
+                        s.needs.extend_from_slice(&needs);
+                        s.rules.push(Rule {
+                            needs: [at, needs.len() as u32],
+                            steps,
+                            state: state as u32,
+                        });
+                    }
+                    None => s.skipped.push(format!("selector {sel}")),
                 }
             }
         }
         s
+    }
+
+    fn intern(&mut self, name: &str) -> u32 {
+        if let Some(&i) = self.ids.get(name) {
+            return i;
+        }
+        let i = self.names.len() as u32;
+        self.names.push(name.into());
+        self.ids.insert(name.into(), i);
+        i
+    }
+
+    /// The id of an id (`#Clock`) or class (`.hud`) the sheet names.
+    pub fn name(&self, name: &str) -> Option<u32> {
+        self.ids.get(name).copied()
     }
 
     fn selector(&mut self, sel: &str) -> Option<(Vec<u32>, State)> {
@@ -134,19 +193,17 @@ impl Sheet {
         let mut needs = Vec::new();
         let mut rest = sel;
         while !rest.is_empty() {
-            let sigil = rest.as_bytes()[0];
-            if sigil != b'#' && sigil != b'.' {
+            if !rest.starts_with(['#', '.']) {
                 return None;
             }
             let end = rest[1..].find(['#', '.']).map_or(rest.len(), |e| e + 1);
-            needs.push(self.names.id(&rest[..end]));
+            needs.push(self.intern(&rest[..end]));
             rest = &rest[end..];
         }
         (!needs.is_empty()).then_some((needs, state))
     }
 
-    fn declarations(&mut self, body: &str, tokens: &Tokens) -> Decl {
-        let mut d = Decl::default();
+    fn declarations(&mut self, body: &str, tokens: &Tokens) {
         for (name, value) in crate::sheet::declarations(body) {
             if name.starts_with("--") {
                 continue;
@@ -156,88 +213,197 @@ impl Sheet {
                     .push(format!("{name}: {value} (an unknown token)"));
                 continue;
             };
-            if !apply(&mut d, name, v.trim()) {
+            if !expand(&mut self.steps, name, v.trim()) {
                 self.skipped.push(format!("{name}: {value}"));
             }
         }
-        d
     }
 
     /// The record of an element with these names in this state: the base
     /// rules in sheet order, then the state's.
     pub fn record(&self, names: &[u32], state: State) -> Record {
-        let mut r = Record {
-            opacity: 1.0,
-            font_size: 16.0,
-            ink: [0.0, 0.0, 0.0, 1.0],
-            ..Record::default()
+        let mut r = Record::default();
+        let passes: &[State] = if state == State::Base {
+            &[State::Base]
+        } else {
+            &[State::Base, state]
         };
-        for pass in [State::Base, state] {
+        for &pass in passes {
             for rule in &self.rules {
-                if rule.state == pass && rule.needs.iter().all(|n| names.contains(n)) {
-                    fold(&mut r, &rule.decl);
+                let needs = &self.needs[span(rule.needs)];
+                if rule.state == pass as u32 && needs.iter().all(|n| names.contains(n)) {
+                    for s in &self.steps[span(rule.steps)] {
+                        fold(&mut r, s);
+                    }
                 }
-            }
-            if state == State::Base {
-                break;
             }
         }
         r
     }
+
+    /// The sheet as the blob keeps it: its arrays as they are in memory,
+    /// each after its length, then the names.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        let mut put = |bytes: &[u8], count: usize| {
+            out.extend_from_slice(&(count as u32).to_le_bytes());
+            out.extend_from_slice(bytes);
+        };
+        put(bytemuck::cast_slice(&self.rules), self.rules.len());
+        put(bytemuck::cast_slice(&self.needs), self.needs.len());
+        put(bytemuck::cast_slice(&self.steps), self.steps.len());
+        let names = self.names.join("\n");
+        put(names.as_bytes(), names.len());
+        out
+    }
+
+    /// A sheet [`Sheet::to_bytes`] wrote.
+    pub fn from_bytes(bytes: &[u8]) -> Option<Sheet> {
+        let mut at = 0;
+        let mut take = |size: usize| -> Option<&[u8]> {
+            let n = u32::from_le_bytes(bytes.get(at..at + 4)?.try_into().ok()?) as usize;
+            let b = bytes.get(at + 4..at + 4 + n * size)?;
+            at += 4 + n * size;
+            Some(b)
+        };
+        let rules = collect_pod(take(size_of::<Rule>())?);
+        let needs = collect_pod(take(4)?);
+        let steps = collect_pod(take(size_of::<Step>())?);
+        let names_text = std::str::from_utf8(take(1)?).ok()?;
+        let names: Vec<Box<str>> = if names_text.is_empty() {
+            Vec::new()
+        } else {
+            names_text.split('\n').map(Into::into).collect()
+        };
+        let ids = names
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.clone(), i as u32))
+            .collect();
+        Some(Sheet {
+            names,
+            ids,
+            rules,
+            needs,
+            steps,
+            skipped: Vec::new(),
+        })
+    }
 }
 
-fn fold(r: &mut Record, d: &Decl) {
-    for l in &d.layout {
-        let s = &mut r.layout;
-        match *l {
-            Layout::Display(v) => s.modify_cold(|t| t.display = v),
-            Layout::Direction(v) => s.set_flex_direction(v),
-            Layout::Gap(c, w) => s.set_gap(c, w),
-            Layout::Pad([t, rt, b, lf]) => {
-                s.set_pad_top(t);
-                s.set_pad_right(rt);
-                s.set_pad_bottom(b);
-                s.set_pad_left(lf);
-            }
-            Layout::Margin([t, rt, b, lf]) => {
-                s.set_margin_top(t);
-                s.set_margin_right(rt);
-                s.set_margin_bottom(b);
-                s.set_margin_left(lf);
-            }
-            Layout::Width(v) => s.set_width(v),
-            Layout::Height(v) => s.set_height(v),
-            Layout::Absolute => s.set_position_absolute(),
-            Layout::Inset(i) => {
-                let lpa = |v: Option<f32>| {
-                    v.map_or(LengthPercentageAuto::auto(), LengthPercentageAuto::length)
-                };
-                s.set_absolute_inset(Rect {
-                    top: lpa(i[0]),
-                    right: lpa(i[1]),
-                    bottom: lpa(i[2]),
-                    left: lpa(i[3]),
-                });
-            }
-            Layout::Align(v) => s.set_align_items(v),
-            Layout::Justify(v) => s.set_justify_content(v),
-            Layout::Grow(v) => s.set_flex_grow(v),
+/// `bytes` copied into a new, aligned `Vec<T>`.
+fn collect_pod<T: Pod>(bytes: &[u8]) -> Vec<T> {
+    let mut v = vec![T::zeroed(); bytes.len() / size_of::<T>()];
+    bytemuck::cast_slice_mut::<T, u8>(&mut v).copy_from_slice(bytes);
+    v
+}
+
+fn span([start, n]: [u32; 2]) -> std::ops::Range<usize> {
+    start as usize..(start + n) as usize
+}
+
+fn dim(s: &Step) -> Dimension {
+    match s.code {
+        len::PX => Dimension::length(s.v[0]),
+        len::PERCENT => Dimension::percent(s.v[0]),
+        _ => Dimension::auto(),
+    }
+}
+
+fn lpa(s: &Step) -> LengthPercentageAuto {
+    match s.code {
+        len::PX => LengthPercentageAuto::length(s.v[0]),
+        len::PERCENT => LengthPercentageAuto::percent(s.v[0]),
+        _ => LengthPercentageAuto::auto(),
+    }
+}
+
+const DISPLAYS: [taffy::Display; 4] = [
+    taffy::Display::Flex,
+    taffy::Display::Grid,
+    taffy::Display::Block,
+    taffy::Display::None,
+];
+const DIRECTIONS: [FlexDirection; 4] = [
+    FlexDirection::Row,
+    FlexDirection::Column,
+    FlexDirection::RowReverse,
+    FlexDirection::ColumnReverse,
+];
+const WRAPS: [FlexWrap; 3] = [FlexWrap::NoWrap, FlexWrap::Wrap, FlexWrap::WrapReverse];
+const ALIGNS: [AlignItems; 5] = [
+    AlignItems::CENTER,
+    AlignItems::FLEX_START,
+    AlignItems::FLEX_END,
+    AlignItems::STRETCH,
+    AlignItems::BASELINE,
+];
+const JUSTIFIES: [JustifyContent; 6] = [
+    JustifyContent::CENTER,
+    JustifyContent::FLEX_START,
+    JustifyContent::FLEX_END,
+    JustifyContent::SPACE_BETWEEN,
+    JustifyContent::SPACE_AROUND,
+    JustifyContent::SPACE_EVENLY,
+];
+
+fn fold(r: &mut Record, s: &Step) {
+    let l = &mut r.layout;
+    let c = s.code as usize;
+    let [a, b, cc, d] = s.v;
+    match s.op {
+        op::DISPLAY => {
+            let v = DISPLAYS[c];
+            l.modify_cold(|t| t.display = v);
         }
-    }
-    if let Some(v) = d.fill {
-        r.fill = v;
-    }
-    if let Some(v) = d.ink {
-        r.ink = v;
-    }
-    if let Some(v) = d.radius {
-        r.radius = v;
-    }
-    if let Some(v) = d.opacity {
-        r.opacity = v;
-    }
-    if let Some(v) = d.font_size {
-        r.font_size = v;
+        op::DIRECTION => l.set_flex_direction(DIRECTIONS[c]),
+        op::WRAP => l.set_flex_wrap(WRAPS[c]),
+        op::GAP => l.set_gap(a, b),
+        op::PAD => {
+            l.set_pad_top(a);
+            l.set_pad_right(b);
+            l.set_pad_bottom(cc);
+            l.set_pad_left(d);
+        }
+        op::MARGIN => {
+            l.set_margin_top(a);
+            l.set_margin_right(b);
+            l.set_margin_bottom(cc);
+            l.set_margin_left(d);
+        }
+        op::WIDTH => l.set_width(dim(s)),
+        op::HEIGHT => l.set_height(dim(s)),
+        op::MIN_W => l.set_min_width(lpa(s)),
+        op::MIN_H => l.set_min_height(lpa(s)),
+        op::MAX_W => l.set_max_width(lpa(s)),
+        op::MAX_H => l.set_max_height(lpa(s)),
+        op::ABSOLUTE => l.set_position_absolute(),
+        op::INSET => {
+            let side = |k: usize| {
+                if s.code & (1 << k) != 0 {
+                    LengthPercentageAuto::length(s.v[k])
+                } else {
+                    LengthPercentageAuto::auto()
+                }
+            };
+            l.set_absolute_inset(Rect {
+                top: side(0),
+                right: side(1),
+                bottom: side(2),
+                left: side(3),
+            });
+        }
+        op::ALIGN => l.set_align_items(ALIGNS[c]),
+        op::JUSTIFY => l.set_justify_content(JUSTIFIES[c]),
+        op::GROW => l.set_flex_grow(a),
+        op::SHRINK => l.set_flex_shrink(a),
+        op::BASIS => l.set_flex_basis(dim(s)),
+        op::FILL => r.fill = s.v,
+        op::INK => r.ink = s.v,
+        op::RADIUS => r.radius = a,
+        op::OPACITY => r.opacity = a,
+        op::FONT_SIZE => r.font_size = a,
+        _ => {}
     }
 }
 
@@ -246,7 +412,7 @@ fn fold(r: &mut Record, d: &Decl) {
 fn px(v: &str) -> Option<f32> {
     let reduced;
     let v = if v.contains('(') {
-        reduced = og_css::calc::reduce(v).ok()?;
+        reduced = og_css::calc::reduce(&rem_to_px(v)).ok()?;
         reduced.trim()
     } else {
         v
@@ -263,26 +429,50 @@ fn px(v: &str) -> Option<f32> {
     None
 }
 
-fn dimension(v: &str) -> Option<Dimension> {
+/// `text` with each `<n>rem` written as `<n * 16>px`, so `calc()` reduces it.
+fn rem_to_px(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("rem") {
+        let num_start = rest[..at]
+            .rfind(|c: char| !(c.is_ascii_digit() || c == '.'))
+            .map_or(0, |i| i + 1);
+        let after = rest[at + 3..].chars().next();
+        match rest[num_start..at].parse::<f64>() {
+            Ok(n) if num_start < at && !after.is_some_and(|c| c.is_alphanumeric() || c == '-') => {
+                out.push_str(&rest[..num_start]);
+                out.push_str(&format!("{}px", n * 16.0));
+            }
+            _ => out.push_str(&rest[..at + 3]),
+        }
+        rest = &rest[at + 3..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// A length's kind and value: `auto`, a percentage or px.
+fn length(v: &str) -> Option<(u8, f32)> {
     if v == "auto" {
-        return Some(Dimension::auto());
+        return Some((len::AUTO, 0.0));
     }
     if let Some(p) = v.strip_suffix('%') {
         return p
             .trim()
             .parse::<f32>()
             .ok()
-            .map(|p| Dimension::percent(p / 100.0));
+            .map(|p| (len::PERCENT, p / 100.0));
     }
-    px(v).map(Dimension::length)
+    px(v).map(|x| (len::PX, x))
+}
+
+fn words(v: &str) -> impl Iterator<Item = &str> {
+    crate::sheet::split_top(v, b' ').filter(|p| !p.is_empty())
 }
 
 /// Up to four lengths in CSS's top, right, bottom, left shorthand order.
 fn sides(v: &str) -> Option<[f32; 4]> {
-    let parts: Vec<f32> = crate::sheet::split_top(v, b' ')
-        .filter(|p| !p.is_empty())
-        .map(px)
-        .collect::<Option<_>>()?;
+    let parts: Vec<f32> = words(v).map(px).collect::<Option<_>>()?;
     Some(match parts[..] {
         [a] => [a; 4],
         [a, b] => [a, b, a, b],
@@ -299,102 +489,206 @@ fn color(v: &str) -> Option<Rgba> {
         .map(|c| c.linear())
 }
 
-fn apply(d: &mut Decl, name: &str, v: &str) -> bool {
-    use Layout as L;
-    let layout = match name {
-        "display" => L::Display(match v {
-            "flex" => taffy::Display::Flex,
-            "grid" => taffy::Display::Grid,
-            "block" => taffy::Display::Block,
-            "none" => taffy::Display::None,
-            _ => return false,
-        }),
-        "flex-direction" => L::Direction(match v {
-            "row" => FlexDirection::Row,
-            "column" => FlexDirection::Column,
-            "row-reverse" => FlexDirection::RowReverse,
-            "column-reverse" => FlexDirection::ColumnReverse,
-            _ => return false,
-        }),
-        "gap" => {
-            let Some(s) = sides(v) else { return false };
-            L::Gap(s[1], s[0])
-        }
-        "padding" => match sides(v) {
-            Some(s) => L::Pad(s),
-            None => return false,
-        },
-        "margin" => match sides(v) {
-            Some(s) => L::Margin(s),
-            None => return false,
-        },
-        "width" | "inline-size" => match dimension(v) {
-            Some(x) => L::Width(x),
-            None => return false,
-        },
-        "height" | "block-size" => match dimension(v) {
-            Some(x) => L::Height(x),
-            None => return false,
-        },
-        "position" if v == "fixed" || v == "absolute" => L::Absolute,
-        "position" if v == "relative" || v == "static" => return true,
-        "top" | "right" | "bottom" | "left" => {
-            let at = ["top", "right", "bottom", "left"]
-                .iter()
-                .position(|s| *s == name)
-                .unwrap();
-            let Some(x) = px(v) else { return false };
-            let mut inset = d.layout.iter().rev().find_map(|l| match l {
-                L::Inset(i) => Some(*i),
-                _ => None,
-            });
-            let i = inset.get_or_insert([None; 4]);
-            i[at] = Some(x);
-            d.layout.retain(|l| !matches!(l, L::Inset(_)));
-            L::Inset(*i)
-        }
-        "align-items" => L::Align(match v {
-            "center" => AlignItems::CENTER,
-            "start" | "flex-start" => AlignItems::FLEX_START,
-            "end" | "flex-end" => AlignItems::FLEX_END,
-            "stretch" => AlignItems::STRETCH,
-            "baseline" => AlignItems::BASELINE,
-            _ => return false,
-        }),
-        "justify-content" => L::Justify(match v {
-            "center" => JustifyContent::CENTER,
-            "start" | "flex-start" => JustifyContent::FLEX_START,
-            "end" | "flex-end" => JustifyContent::FLEX_END,
-            "space-between" => JustifyContent::SPACE_BETWEEN,
-            "space-around" => JustifyContent::SPACE_AROUND,
-            _ => return false,
-        }),
-        "flex-grow" => match v.parse() {
-            Ok(g) => L::Grow(g),
-            Err(_) => return false,
-        },
-        "background" | "background-color" => {
-            d.fill = color(v);
-            return d.fill.is_some();
-        }
-        "color" => {
-            d.ink = color(v);
-            return d.ink.is_some();
-        }
-        "border-radius" => {
-            d.radius = px(v);
-            return d.radius.is_some();
-        }
-        "opacity" => {
-            d.opacity = v.parse().ok();
-            return d.opacity.is_some();
-        }
-        "font-size" => {
-            d.font_size = px(v);
-            return d.font_size.is_some();
-        }
-        _ => return false,
+fn index<T: Copy>(table: &[(&str, T)], v: &str) -> Option<u8> {
+    table.iter().position(|(n, _)| *n == v).map(|i| i as u8)
+}
+
+/// Lays the step a side-wise property (`padding-left`, `margin-inline`)
+/// sets over the last full one of `op`, or a new one from zero.
+fn set_sides(steps: &mut Vec<Step>, o: u8, which: &[usize], x: f32) {
+    let mut v = steps
+        .iter()
+        .rev()
+        .find(|s| s.op == o)
+        .map_or([0.0; 4], |s| s.v);
+    for &k in which {
+        v[k] = x;
+    }
+    steps.push(step(o, 0, v));
+}
+
+/// Expands one declaration into steps; false when it is not taken.
+fn expand(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
+    let mut push = |o: u8, code: u8, x: [f32; 4]| {
+        steps.push(step(o, code, x));
+        true
     };
-    d.layout.push(layout);
-    true
+    let keyword = |table: &[&str]| table.iter().position(|n| *n == v).map(|i| i as u8);
+    match name {
+        "display" => match keyword(&["flex", "grid", "block", "none"]) {
+            Some(c) => push(op::DISPLAY, c, [0.0; 4]),
+            None => false,
+        },
+        "flex-direction" => match keyword(&["row", "column", "row-reverse", "column-reverse"]) {
+            Some(c) => push(op::DIRECTION, c, [0.0; 4]),
+            None => false,
+        },
+        "flex-wrap" => match keyword(&["nowrap", "wrap", "wrap-reverse"]) {
+            Some(c) => push(op::WRAP, c, [0.0; 4]),
+            None => false,
+        },
+        "gap" => match sides(v) {
+            Some(s) => push(op::GAP, 0, [s[1], s[0], 0.0, 0.0]),
+            None => false,
+        },
+        "row-gap" | "column-gap" => {
+            let Some(x) = px(v) else { return false };
+            let mut g = steps
+                .iter()
+                .rev()
+                .find(|s| s.op == op::GAP)
+                .map_or([0.0; 4], |s| s.v);
+            g[usize::from(name == "row-gap")] = x;
+            steps.push(step(op::GAP, 0, g));
+            true
+        }
+        "padding" => sides(v).is_some_and(|s| push(op::PAD, 0, s)),
+        "margin" => sides(v).is_some_and(|s| push(op::MARGIN, 0, s)),
+        "padding-top" | "padding-right" | "padding-bottom" | "padding-left" | "padding-inline"
+        | "padding-block" | "margin-top" | "margin-right" | "margin-bottom" | "margin-left"
+        | "margin-inline" | "margin-block" => {
+            let (o, side) = name.split_once('-').unwrap();
+            let o = if o == "padding" { op::PAD } else { op::MARGIN };
+            let which: &[usize] = match side {
+                "top" => &[0],
+                "right" => &[1],
+                "bottom" => &[2],
+                "left" => &[3],
+                // Horizontal writing: inline is left and right, block top and bottom.
+                "inline" => &[1, 3],
+                _ => &[0, 2],
+            };
+            let vals: Vec<f32> = match words(v).map(px).collect::<Option<Vec<f32>>>() {
+                Some(v) => v,
+                None => return false,
+            };
+            match (which.len(), &vals[..]) {
+                (_, &[x]) => set_sides(steps, o, which, x),
+                // `-inline: start end` is left then right; `-block: start end` top then bottom.
+                (2, &[x, y]) => {
+                    let (start, end) = if which == [1, 3] { (3, 1) } else { (0, 2) };
+                    set_sides(steps, o, &[start], x);
+                    set_sides(steps, o, &[end], y);
+                }
+                _ => return false,
+            }
+            true
+        }
+        "width" | "inline-size" | "height" | "block-size" | "min-width" | "min-inline-size"
+        | "min-height" | "min-block-size" | "max-width" | "max-inline-size" | "max-height"
+        | "max-block-size" | "flex-basis" => {
+            let o = match name {
+                "width" | "inline-size" => op::WIDTH,
+                "height" | "block-size" => op::HEIGHT,
+                "min-width" | "min-inline-size" => op::MIN_W,
+                "min-height" | "min-block-size" => op::MIN_H,
+                "max-width" | "max-inline-size" => op::MAX_W,
+                "max-height" | "max-block-size" => op::MAX_H,
+                _ => op::BASIS,
+            };
+            // `none` as a maximum is no limit.
+            let v = if v == "none" { "auto" } else { v };
+            length(v).is_some_and(|(k, x)| push(o, k, [x, 0.0, 0.0, 0.0]))
+        }
+        "position" => match v {
+            "fixed" | "absolute" => push(op::ABSOLUTE, 0, [0.0; 4]),
+            "relative" | "static" => true,
+            _ => false,
+        },
+        "top" | "right" | "bottom" | "left" | "inset" => {
+            let mut last = steps
+                .iter()
+                .rev()
+                .find(|s| s.op == op::INSET)
+                .copied()
+                .unwrap_or(step(op::INSET, 0, [0.0; 4]));
+            if name == "inset" {
+                let Some(s) = sides(v) else { return false };
+                last = step(op::INSET, 0b1111, s);
+            } else {
+                let k = ["top", "right", "bottom", "left"]
+                    .iter()
+                    .position(|s| *s == name)
+                    .unwrap();
+                let Some(x) = px(v) else { return false };
+                last.v[k] = x;
+                last.code |= 1 << k;
+            }
+            steps.push(last);
+            true
+        }
+        "align-items" => {
+            let table = [
+                ("center", ()),
+                ("start", ()),
+                ("end", ()),
+                ("stretch", ()),
+                ("baseline", ()),
+                ("flex-start", ()),
+                ("flex-end", ()),
+            ];
+            match index(&table, v) {
+                Some(i) => push(op::ALIGN, [0, 1, 2, 3, 4, 1, 2][i as usize], [0.0; 4]),
+                None => false,
+            }
+        }
+        "justify-content" => {
+            let table = [
+                ("center", ()),
+                ("start", ()),
+                ("end", ()),
+                ("space-between", ()),
+                ("space-around", ()),
+                ("space-evenly", ()),
+                ("flex-start", ()),
+                ("flex-end", ()),
+            ];
+            match index(&table, v) {
+                Some(i) => push(op::JUSTIFY, [0, 1, 2, 3, 4, 5, 1, 2][i as usize], [0.0; 4]),
+                None => false,
+            }
+        }
+        "flex-grow" => v
+            .parse()
+            .is_ok_and(|g| push(op::GROW, 0, [g, 0.0, 0.0, 0.0])),
+        "flex-shrink" => v
+            .parse()
+            .is_ok_and(|g| push(op::SHRINK, 0, [g, 0.0, 0.0, 0.0])),
+        "flex" => {
+            // `none`, `auto` and `<grow> [<shrink>] [<basis>]`.
+            let (g, sh, basis) = match v {
+                "none" => (0.0, 0.0, "auto"),
+                "auto" => (1.0, 1.0, "auto"),
+                _ => {
+                    let w: Vec<&str> = words(v).collect();
+                    let num = |s: &str| s.parse::<f32>().ok();
+                    match w[..] {
+                        [g] if num(g).is_some() => (num(g).unwrap(), 1.0, "0px"),
+                        [g, s] if num(s).is_some() => {
+                            (num(g).unwrap_or(1.0), num(s).unwrap(), "0px")
+                        }
+                        [g, b] => (num(g).unwrap_or(1.0), 1.0, b),
+                        [g, s, b] => (num(g).unwrap_or(1.0), num(s).unwrap_or(1.0), b),
+                        _ => return false,
+                    }
+                }
+            };
+            let Some((k, x)) = length(basis) else {
+                return false;
+            };
+            push(op::GROW, 0, [g, 0.0, 0.0, 0.0]);
+            push(op::SHRINK, 0, [sh, 0.0, 0.0, 0.0]);
+            push(op::BASIS, k, [x, 0.0, 0.0, 0.0])
+        }
+        "background" | "background-color" => color(v).is_some_and(|c| push(op::FILL, 0, c)),
+        "color" => color(v).is_some_and(|c| push(op::INK, 0, c)),
+        "border-radius" => px(v).is_some_and(|x| push(op::RADIUS, 0, [x, 0.0, 0.0, 0.0])),
+        "opacity" => v
+            .parse()
+            .is_ok_and(|x| push(op::OPACITY, 0, [x, 0.0, 0.0, 0.0])),
+        "font-size" => px(v).is_some_and(|x| push(op::FONT_SIZE, 0, [x, 0.0, 0.0, 0.0])),
+        // A list draws no markers in og-ui: there is nothing to turn off.
+        "list-style" | "list-style-type" => v == "none",
+        _ => false,
+    }
 }

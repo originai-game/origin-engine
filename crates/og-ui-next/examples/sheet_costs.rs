@@ -39,6 +39,21 @@ fn main() {
     let t = Instant::now();
     let sheet = Sheet::compile(&css, &tokens);
     let compile_ms = t.elapsed().as_secs_f64() * 1e3;
+    // What the cook writes, and loading it back: what a game pays at load.
+    let (sheet_blob, token_blob) = (sheet.to_bytes(), tokens.to_bytes());
+    let t = Instant::now();
+    let loaded = Sheet::from_bytes(&sheet_blob).unwrap();
+    let load_sheet_us = t.elapsed().as_secs_f64() * 1e6;
+    let t = Instant::now();
+    let loaded_tokens = Tokens::from_bytes(&token_blob).unwrap();
+    let load_tokens_us = t.elapsed().as_secs_f64() * 1e6;
+    assert_eq!(loaded_tokens.len(), tokens.len());
+    assert_eq!(loaded.to_bytes(), sheet_blob);
+    println!(
+        "cooked: sheet {} B loads in {load_sheet_us:.1} us; tokens {} B load in {load_tokens_us:.1} us",
+        sheet_blob.len(),
+        token_blob.len()
+    );
     println!(
         "tokens {} in {tokens_ms:.2} ms; sheet compiled in {compile_ms:.3} ms; {} skipped:",
         tokens.len(),

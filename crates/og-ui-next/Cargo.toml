@@ -11,6 +11,7 @@ og-css = { path = "../og-css" }
 rune-taffy = { path = "../../third_party/rune-taffy" }
 taffy = { version = "=0.15.1", default-features = false, features = ["std", "taffy_tree", "flexbox", "grid", "block_layout", "content_size"] }
 rustc-hash = "2"
+bytemuck = { workspace = true }
 
 [dev-dependencies]
 og-core = { path = "../og-core" }

@@ -126,6 +126,35 @@ impl Tokens {
     pub fn is_empty(&self) -> bool {
         self.raw.is_empty()
     }
+
+    /// The resolved table as the blob keeps it: `name value` lines (a
+    /// value holds no newline once read). Raw values are the cook's only.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut names: Vec<(&str, u32)> = self.ids.iter().map(|(n, &i)| (&**n, i)).collect();
+        names.sort_unstable_by_key(|&(_, i)| i);
+        let mut out = String::new();
+        for (name, i) in names {
+            if let Some(v) = &self.resolved[i as usize] {
+                out.push_str(name);
+                out.push(' ');
+                out.push_str(&v.replace('\n', " "));
+                out.push('\n');
+            }
+        }
+        out.into_bytes()
+    }
+
+    /// A table [`Tokens::to_bytes`] wrote.
+    pub fn from_bytes(bytes: &[u8]) -> Option<Tokens> {
+        let mut t = Tokens::default();
+        for line in std::str::from_utf8(bytes).ok()?.lines() {
+            let (name, value) = line.split_once(' ')?;
+            t.ids.insert(name.into(), t.raw.len() as u32);
+            t.raw.push(value.into());
+            t.resolved.push(Some(value.into()));
+        }
+        Some(t)
+    }
 }
 
 /// The index of the `)` closing the parenthesis opened before `from`.

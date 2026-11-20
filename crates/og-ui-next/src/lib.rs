@@ -59,8 +59,8 @@ mod tests {
             ["selector .hud .x"],
             "a combinator is listed, not guessed"
         );
-        let clock = sheet.names.get("#Clock").unwrap();
-        let hud = sheet.names.get(".hud").unwrap();
+        let clock = sheet.name("#Clock").unwrap();
+        let hud = sheet.name(".hud").unwrap();
         let base = sheet.record(&[clock, hud], style::State::Base);
         assert_eq!(base.opacity, 1.0);
         assert_eq!(
@@ -82,6 +82,50 @@ mod tests {
             base.fill[2] > base.fill[0],
             "the panel colour, bluer than red"
         );
+        // What the cook writes, loaded back, answers the same records.
+        let loaded = style::Sheet::from_bytes(&sheet.to_bytes()).unwrap();
+        for state in [style::State::Base, style::State::Hover] {
+            assert_eq!(
+                loaded.record(&[clock, hud], state),
+                sheet.record(&[clock, hud], state)
+            );
+        }
+        assert_eq!(loaded.name(".hud"), Some(hud));
+        let t = Tokens::from_bytes(&tokens.to_bytes()).unwrap();
+        assert_eq!(t.get("--space-lg"), Some("12px"));
+    }
+
+    #[test]
+    fn shorthands_and_logical_properties_expand_at_compile_time() {
+        let sheet = style::Sheet::compile(
+            "#A { flex: 1 0 40px; margin-inline: 3px 5px; padding-block: 7px 8px; padding-left: 2px; \
+             inset: 0; top: 9px; max-inline-size: none; list-style: none; }",
+            &Tokens::default(),
+        );
+        assert!(sheet.skipped.is_empty(), "{:?}", sheet.skipped);
+        let r = sheet.record(&[sheet.name("#A").unwrap()], style::State::Base);
+        let s = taffy::Style::from(&r.layout);
+        assert_eq!(
+            (s.flex_grow, s.flex_shrink, s.flex_basis),
+            (1.0, 0.0, taffy::Dimension::length(40.0))
+        );
+        assert_eq!(
+            (s.margin.left, s.margin.right),
+            (
+                taffy::LengthPercentageAuto::length(3.0),
+                taffy::LengthPercentageAuto::length(5.0)
+            )
+        );
+        assert_eq!(
+            (s.padding.top, s.padding.bottom, s.padding.left),
+            (
+                taffy::LengthPercentage::length(7.0),
+                taffy::LengthPercentage::length(8.0),
+                taffy::LengthPercentage::length(2.0)
+            )
+        );
+        assert_eq!(s.inset.top, taffy::LengthPercentageAuto::length(9.0));
+        assert_eq!(s.inset.bottom, taffy::LengthPercentageAuto::length(0.0));
     }
 
     #[test]
