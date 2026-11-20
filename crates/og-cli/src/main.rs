@@ -119,6 +119,11 @@ commands:
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
                       report each reload against the 300 ms budget and type-check each src/ change
                       beside the rebuild (reported, never refusing the reload)
+  dev [project] --web [--port P] [--host H]
+                      serve the development web build on http://H:P/ (default 127.0.0.1:47810;
+                      the inspector, Tune, Pause and Step, the probe) with every edit pushed to
+                      the open page: assets and UI applied in place, code swapped with the world
+                      kept, a reload only when project.ogt changes (the testing guide §1)
   check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo] [--require-checked]
                       type-check the game code with tsrs (tsgo where tsrs has no package);
                       --json prints the diagnostics as one `check` event; og run, og test and
