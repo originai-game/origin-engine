@@ -188,11 +188,11 @@ pub(crate) fn scan_with(
         };
         // One that does not parse is the plan's error.
         let imports = disk_imports(assets_dir, rel, &text);
-        let Ok(doc) = og_ui::UiDocument::parse_with_imports(rel, &text, imports) else {
+        let Ok(doc) = ui_components::parsed(rel, &text, imports) else {
             continue;
         };
         game.entry(doc.name.clone()).or_insert_with(|| rel.clone());
-        used.extend(ui_components::uses(&doc));
+        used.extend(ui_components::uses(doc));
     }
     // The built-in screens the game's code names by id.
     if let Some(root) = assets_dir

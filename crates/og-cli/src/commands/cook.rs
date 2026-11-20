@@ -445,13 +445,27 @@ pub fn slowest_lines(r: &Report) -> Vec<String> {
     out
 }
 
-/// `--watch`: cooks again on every change under assets/, printing what
-/// cooked and how long it took against the reload budget.
+/// `--watch`: cooks again on every change under assets/, and under the
+/// engine's built-in styles, documents and (in a checkout) design tokens
+/// and default CSS the cook reads, printing what cooked and how long it
+/// took against the reload budget. One process: what an earlier cook
+/// parsed and did not change is not parsed again.
 fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> ExitCode {
     let assets = root.join("assets");
+    let mut watched = vec![assets.clone()];
+    watched.extend(og_cook::cook::look::styles_dir().map(Path::to_path_buf));
+    watched.extend(og_cook::cook::ui_components::engine_sources());
     let take = || {
         let mut m = BTreeMap::new();
-        crate::dev::snapshot(&assets, &mut m);
+        for w in &watched {
+            if w.is_file() {
+                if let Ok(t) = std::fs::metadata(w).and_then(|m| m.modified()) {
+                    m.insert(w.clone(), t);
+                }
+            } else {
+                crate::dev::snapshot(w, &mut m);
+            }
+        }
         m
     };
     let mut seen = take();
@@ -479,7 +493,7 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
         cooks += 1;
         let changed: Vec<String> = changes
             .iter()
-            .filter_map(|c| c.strip_prefix(&assets).ok())
+            .map(|c| c.strip_prefix(&assets).unwrap_or(c))
             .map(|c| c.to_string_lossy().replace('\\', "/"))
             .collect();
         let options = match (texture_options(root, false), mesh_options(root)) {

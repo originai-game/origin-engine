@@ -41,8 +41,6 @@ mod theme_codegen;
 /// The directories under `src/ui` that hold built-in documents.
 const ROOTS: [&str; 3] = ["components/", "controls/", "screens/"];
 
-type FileBytes = Vec<(String, Vec<u8>)>;
-
 /// One built-in document, a component or a screen.
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Component {
@@ -58,46 +56,97 @@ pub struct Component {
     /// their import settings), by bundle id.
     pub files: Vec<String>,
     pub imports: Vec<String>,
-    #[serde(skip)]
-    doc: OnceLock<Result<og_ui::UiDocument, String>>,
-    #[serde(skip)]
-    bytes: OnceLock<Result<FileBytes, String>>,
 }
 
 impl Component {
-    /// Parse only a document whose schema the caller actually needs.
-    pub fn document(&self) -> Result<&og_ui::UiDocument, String> {
-        self.doc
-            .get_or_init(|| {
-                let text = String::from_utf8(read(&self.id)?).map_err(|e| e.to_string())?;
-                let imports = self
-                    .imports
-                    .iter()
-                    .map(|id| {
-                        Ok((
-                            id.clone(),
-                            String::from_utf8(read(id)?).map_err(|e| e.to_string())?,
-                        ))
-                    })
-                    .collect::<Result<Vec<_>, String>>()?;
-                og_ui::UiDocument::parse_with_imports(&self.id, &text, imports)
-                    .map_err(|e| e.join("\n"))
+    /// Its document as its files now read (parsed once per distinct text
+    /// in the process: [`parsed`]).
+    pub fn document(&self) -> Result<&'static og_ui::UiDocument, String> {
+        let text = String::from_utf8(read(&self.id)?).map_err(|e| e.to_string())?;
+        let imports = self
+            .imports
+            .iter()
+            .map(|id| {
+                Ok((
+                    id.clone(),
+                    String::from_utf8(read(id)?).map_err(|e| e.to_string())?,
+                ))
             })
-            .as_ref()
-            .map_err(Clone::clone)
+            .collect::<Result<Vec<_>, String>>()?;
+        parsed(&self.id, &text, imports).map_err(|e| e.join("\n"))
     }
 
-    fn bytes(&self) -> Result<&FileBytes, String> {
-        self.bytes
-            .get_or_init(|| {
-                self.files
-                    .iter()
-                    .map(|id| Ok((id.clone(), read(id)?)))
-                    .collect()
-            })
-            .as_ref()
-            .map_err(Clone::clone)
+    /// Its files as they now read, by id: a long-running cook (`og dev`,
+    /// `og cook --watch`) bundles an edit to a built-in file.
+    fn bytes(&self) -> Result<Vec<(String, &'static [u8])>, String> {
+        self.files
+            .iter()
+            .map(|id| Ok((id.clone(), intern(read(id)?))))
+            .collect()
     }
+}
+
+/// `bytes` for the process, each distinct content kept once (the cook
+/// lends its built-in files as `&'static`): a long-running cook keeps what
+/// it read, and only an edit adds a copy.
+pub fn intern(bytes: Vec<u8>) -> &'static [u8] {
+    use std::collections::HashMap;
+    type Kept = HashMap<u64, Vec<&'static [u8]>>;
+    static KEPT: std::sync::Mutex<Option<Kept>> = std::sync::Mutex::new(None);
+    let key = og_core::hash::hash_bytes(&bytes);
+    let mut kept = KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let same = kept
+        .get_or_insert_with(HashMap::new)
+        .entry(key)
+        .or_default();
+    if let Some(k) = same.iter().find(|k| ***k == *bytes) {
+        return k;
+    }
+    let k: &'static [u8] = Box::leak(bytes.into_boxed_slice());
+    same.push(k);
+    k
+}
+
+/// A document as og-ui parses it, kept for the process by its id, text and
+/// imports: a cook parses each document in its scan, its plan and its job,
+/// and a long-running cook (`og dev`, `og cook --watch`) parses again only
+/// what an edit changed. Each distinct reading is kept once.
+pub fn parsed(
+    rel: &str,
+    text: &str,
+    imports: Vec<(String, String)>,
+) -> Result<&'static og_ui::UiDocument, Vec<String>> {
+    use std::collections::HashMap;
+    type Kept = HashMap<u64, &'static Result<og_ui::UiDocument, Vec<String>>>;
+    static KEPT: std::sync::Mutex<Option<Kept>> = std::sync::Mutex::new(None);
+    let mut key = og_core::hash::StableHasher::new();
+    key.write_str(rel);
+    key.write_str(text);
+    for (id, css) in &imports {
+        key.write_str(id);
+        key.write_str(css);
+    }
+    let key = key.finish();
+    let found = KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get_or_insert_with(HashMap::new)
+        .get(&key)
+        .copied();
+    // Parsed outside the lock: a cook's threads parse different documents.
+    let read = found.unwrap_or_else(|| {
+        let read: &'static _ = Box::leak(Box::new(og_ui::UiDocument::parse_with_imports(
+            rel, text, imports,
+        )));
+        KEPT.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get_or_insert_with(HashMap::new)
+            .insert(key, read);
+        read
+    });
+    read.as_ref().map_err(Clone::clone)
 }
 
 /// The documents a document uses, by name: the components its
@@ -168,6 +217,25 @@ pub fn ui_dir() -> Option<&'static Path> {
     .as_deref()
 }
 
+/// The engine's sources a cook reads its built-in documents and default
+/// style from, outside the project: `src/ui`, and in a checkout the design
+/// tokens and `crates/og-ui/default.css`. A long-running cook watches them
+/// with the project's assets.
+pub fn engine_sources() -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = ui_dir().map(Path::to_path_buf).into_iter().collect();
+    if let Some(root) = ui_dir().and_then(|d| d.ancestors().nth(4)) {
+        for p in [
+            root.join("packages/design/tokens"),
+            root.join("crates/og-ui/default.css"),
+        ] {
+            if p.exists() {
+                out.push(p);
+            }
+        }
+    }
+    out
+}
+
 /// The default style as the checkout's source tree has it, when that is
 /// not the style this cook was compiled with, and the files it is read
 /// from (inputs of the cook either way; none outside a checkout). It is
@@ -204,24 +272,7 @@ pub fn base_css() -> (Result<Option<&'static [u8]>, String>, Vec<PathBuf>) {
     } else {
         std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))
     };
-    let css = css.map(|css| {
-        (css != og_ui::DEFAULT_CSS).then(|| {
-            // Kept for the process (`og dev` cooks in it again and again),
-            // each distinct text once.
-            static KEPT: std::sync::Mutex<Vec<&'static [u8]>> = std::sync::Mutex::new(Vec::new());
-            let mut kept = KEPT
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            match kept.iter().find(|k| **k == css.as_bytes()) {
-                Some(k) => *k,
-                None => {
-                    let k: &'static [u8] = Box::leak(css.into_bytes().into_boxed_slice());
-                    kept.push(k);
-                    k
-                }
-            }
-        })
-    });
+    let css = css.map(|css| (css != og_ui::DEFAULT_CSS).then(|| intern(css.into_bytes())));
     (css, inputs)
 }
 
@@ -386,8 +437,6 @@ pub fn manifest(dir: &Path) -> Result<String, String> {
                     uses,
                     files: c.files,
                     imports: c.imports,
-                    doc: OnceLock::new(),
-                    bytes: OnceLock::new(),
                 },
             )
         })
@@ -437,7 +486,7 @@ pub fn resolve(
         };
         components.insert(name, c.id.clone());
         for (id, bytes) in c.bytes()? {
-            files.insert(id.clone(), bytes.as_slice());
+            files.insert(id, bytes);
         }
         pending.extend(c.uses.iter().cloned());
     }

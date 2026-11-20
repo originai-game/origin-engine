@@ -24,11 +24,7 @@ fn plan_style<'a>(
 ) {
     let Cx { known, .. } = *cx;
     let PlanState { parsed_refs, .. } = state;
-    let refs: Vec<String> = serde_json::from_slice(&s.bytes)
-        .map_err(|e| e.to_string())
-        .and_then(|files| og_ui::style_pack::StylePack::parse(&s.rel, files))
-        .map(|pack| pack.assets)
-        .unwrap_or_default()
+    let refs: Vec<String> = pack_assets(&s.rel, &s.bytes)
         .into_iter()
         .inspect(|r| {
             parsed_refs
@@ -45,6 +41,37 @@ fn plan_style<'a>(
         st,
         Box::new(StyleJob(s)),
     ));
+}
+
+/// The assets a pack's CSS names (`url()`), by its directory and sources,
+/// kept for the process: a long-running cook reads a pack again only when
+/// its CSS changed. A pack that does not parse names none (its job reports
+/// why).
+fn pack_assets(rel: &str, bytes: &[u8]) -> Vec<String> {
+    use std::collections::HashMap;
+    static KEPT: std::sync::Mutex<Option<HashMap<u64, Vec<String>>>> = std::sync::Mutex::new(None);
+    let mut key = og_core::hash::StableHasher::new();
+    key.write_str(rel);
+    key.write(bytes);
+    let key = key.finish();
+    if let Some(found) = KEPT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get_or_insert_with(HashMap::new)
+        .get(&key)
+    {
+        return found.clone();
+    }
+    let assets = serde_json::from_slice(bytes)
+        .map_err(|e| e.to_string())
+        .and_then(|files| og_ui::style_pack::StylePack::parse(rel, files))
+        .map(|pack| pack.assets)
+        .unwrap_or_default();
+    KEPT.lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get_or_insert_with(HashMap::new)
+        .insert(key, assets.clone());
+    assets
 }
 
 /// A style pack's one output.
@@ -143,7 +170,7 @@ fn plan_document<'a>(
             hash_bytes(css.as_bytes())
         ));
     }
-    if let Err(errors) = og_ui::UiDocument::parse_with_imports(&s.rel, &text, imports).and_then(|doc| {
+    if let Err(errors) = crate::cook::ui_components::parsed(&s.rel, &text, imports).and_then(|doc| {
         doc.validate_tokens(document_themes)?;
         // Each @font-face's fonts join the bundle with it (the first
         // url() the project has is the face's; local() names none).
@@ -170,7 +197,7 @@ fn plan_document<'a>(
         }
         // Each component it uses is loaded with it: the game's document of
         // that name, else the engine's built-in one.
-        for name in crate::cook::ui_components::uses(&doc) {
+        for name in crate::cook::ui_components::uses(doc) {
             if let Some(id) = components.get(&name).filter(|id| **id != s.rel) {
                 dependencies.push(format!("{id}=<{name}>"));
                 uses.push(id.clone());
@@ -197,7 +224,7 @@ fn plan_document<'a>(
             }
         }
         if options.publish && !doc.warnings.is_empty() {
-            Err(doc.warnings)
+            Err(doc.warnings.clone())
         } else {
             Ok(())
         }
@@ -225,7 +252,7 @@ impl Job for DocumentJob<'_> {
         let text = std::str::from_utf8(&s.bytes)
             .map_err(|_| CookError("a document is text (UTF-8)".into()))?;
         let imports = execute::document_imports(s, text).map_err(CookError)?;
-        let doc = og_ui::UiDocument::parse_with_imports(&s.rel, text, imports.clone())
+        let doc = crate::cook::ui_components::parsed(&s.rel, text, imports.clone())
             .map_err(|e| CookError(e.join("\n")))?;
         let mut w = og_blob::BlobWriter::new(
             format::Document::type_hash(),
