@@ -8,13 +8,14 @@
 //! its systems inside it (the world's clock, `SystemInfo::start`/`ms`);
 //! each rendered frame with its render-graph passes' CPU encoding
 //! (og-render's `pass_timings`); each frame's passes on the GPU (timestamp
-//! queries, og-render's `gpu_timings`: each pass's own time), anchored at
+//! queries, og-render's `gpu_timings`: each pass's time alone on the GPU,
+//! and apart from it its time in flight), anchored at
 //! the frame's submit since the GPU's clock is its own, and after the
 //! frame before it, since the GPU runs them in order; each cooked output read by a load; and
 //! every job og-lanes ran on a pool thread, on that thread's own track.
 //!
-//! Thread ids: 1 engine, 2 render, 3 load, 5 gpu (8 to 15 its passes that
-//! overlap another, [`gpu_frames`]), [`LANE_THREADS`] + n for
+//! Thread ids: 1 engine, 2 render, 3 load, 5 gpu (96 + n its passes in
+//! flight, [`gpu_frames`]), [`LANE_THREADS`] + n for
 //! pool thread n (and [`LANE_THREADS`] − 1 for a job off the pool); og
 //! adds 4 cook and its cook threads (og-cli's `trace.rs`). `ts` and `dur`
 //! are whole microseconds on the engine's clock (`now_ms`), each span's
@@ -36,10 +37,9 @@ const RENDER: u32 = 2;
 const LOAD: u32 = 3;
 const GPU: u32 = 5;
 const TEXTURES: u32 = 6;
-/// The threads a GPU pass overlapping the gpu thread's goes on: from
-/// [`GPU_LANE`], [`GPU_LANES`] of them (below og-lanes' pool threads).
-const GPU_LANE: u32 = 8;
-const GPU_LANES: u32 = 8;
+/// The first of the threads the GPU's passes in flight go on, as many as
+/// overlap at once (past the cook's threads, og-cli's `trace.rs`).
+const GPU_LANE: u32 = 96;
 
 #[derive(Default)]
 struct Trace {
@@ -190,14 +190,17 @@ pub(crate) fn frame(engine: u32, tick: u64, start: f64, ms: f64, passes: &[og_re
 
 /// Frames timed on the GPU (og-render's `gpu_timings`), oldest first.
 ///
-/// Each frame is a span on the gpu thread from its first timestamp to its
-/// last, and each render-graph pass a span for every stretch the GPU ran
-/// it: its own time, so passes the GPU ran at once overlap. A pass that
-/// overlaps one already on the gpu thread goes on the next of the
-/// [`GPU_LANES`] threads it fits on (a thread's spans never overlap). A
-/// pass the GPU could not time is an instant at the frame's start with
-/// why (`args.untimed`), never a span of 0. The frame's `args.passes`
-/// holds every pass's own milliseconds (`null`: untimed).
+/// On the gpu thread, each frame is a span from its first timestamp to
+/// its last, and inside it each render-graph pass a span for every stretch
+/// it ran alone on the GPU (og-render's `GpuPass::alone`: its cost; they
+/// never overlap). Each pass's beginning to its end, waits included, is a
+/// span named `<pass> (in flight)` on the "gpu in flight N" threads
+/// ([`GPU_LANE`], as many as overlap). A pass the GPU could not time is an
+/// instant at the frame's start with why (`args.untimed`), never a span of
+/// 0. The frame's `args` hold every pass's alone milliseconds (`passes`;
+/// `null`: untimed), its in-flight ones (`inFlight`), and the frame's
+/// `overlapped` and `idle` milliseconds: the alone time, `overlapped` and
+/// `idle` sum to the frame's span.
 pub(crate) fn gpu_frames(engine: u32, frames: &[og_render::GpuFrame]) {
     if !on() || frames.is_empty() {
         return;
@@ -212,13 +215,19 @@ pub(crate) fn gpu_frames(engine: u32, frames: &[og_render::GpuFrame]) {
                 // A pass's end and the frame's are the same sum (at + the
                 // same value): one rounding, so a pass never leaves it.
                 let end = at + f.ms();
-                let own: serde_json::Map<String, Value> = f
-                    .passes
-                    .iter()
-                    .map(|p| (p.name.clone(), json!(p.ms())))
-                    .collect();
+                let of = |m: fn(&og_render::GpuPass) -> Option<f64>| {
+                    let map: serde_json::Map<String, Value> = f
+                        .passes
+                        .iter()
+                        .map(|p| (p.name.clone(), json!(m(p))))
+                        .collect();
+                    Value::Object(map)
+                };
                 let mut frame_args = args.clone();
-                frame_args["passes"] = Value::Object(own);
+                frame_args["passes"] = of(og_render::GpuPass::ms);
+                frame_args["inFlight"] = of(og_render::GpuPass::in_flight_ms);
+                frame_args["overlapped"] = json!(f.overlapped_ms());
+                frame_args["idle"] = json!(f.idle);
                 tr.events.push(span_to(
                     &format!("gpu frame {}", f.frame),
                     "gpu",
@@ -227,6 +236,12 @@ pub(crate) fn gpu_frames(engine: u32, frames: &[og_render::GpuFrame]) {
                     end,
                     frame_args,
                 ));
+                for p in &f.passes {
+                    for &(b, e) in &p.alone {
+                        tr.events
+                            .push(span_to(&p.name, "gpu", GPU, at + b, at + e, args.clone()));
+                    }
+                }
                 let mut stretches: Vec<(&str, f64, f64)> = f
                     .passes
                     .iter()
@@ -237,30 +252,31 @@ pub(crate) fn gpu_frames(engine: u32, frames: &[og_render::GpuFrame]) {
                     })
                     .collect();
                 stretches.sort_by(|a, b| a.1.total_cmp(&b.1));
-                // Each lane's last end (µs, as written).
+                // Each in-flight thread's last end (µs, as written).
                 let mut lanes: Vec<i64> = Vec::new();
                 for (name, b, e) in stretches {
                     let (from, to) = ((b * 1000.0).round() as i64, (e * 1000.0).round() as i64);
                     let lane = match lanes.iter().position(|&last| last <= from) {
                         Some(l) => l,
-                        None if lanes.len() < 1 + GPU_LANES as usize => {
+                        None => {
                             lanes.push(i64::MIN);
                             lanes.len() - 1
                         }
-                        None => GPU_LANES as usize,
                     };
                     lanes[lane] = lanes[lane].max(to);
-                    let tid = if lane == 0 {
-                        GPU
-                    } else {
-                        GPU_LANE + lane as u32 - 1
-                    };
-                    if lane > 0 && tr.named.insert(tid) {
+                    let tid = GPU_LANE + lane as u32;
+                    if tr.named.insert(tid) {
                         tr.events
-                            .extend(thread_named(tid, &format!("gpu (overlapping) {lane}")));
+                            .extend(thread_named(tid, &format!("gpu in flight {}", lane + 1)));
                     }
-                    tr.events
-                        .push(span_to(name, "gpu", tid, b, e, args.clone()));
+                    tr.events.push(span_to(
+                        &format!("{name} (in flight)"),
+                        "gpu",
+                        tid,
+                        b,
+                        e,
+                        args.clone(),
+                    ));
                 }
                 for p in &f.passes {
                     if let Some(why) = p.untimed {
@@ -399,33 +415,37 @@ pub fn take(engine: u32, last: bool) -> String {
 mod tests {
     use super::*;
 
-    /// The trace shows each GPU pass's own time: a cascade the GPU ran
-    /// beside a longer cull keeps its 3 ms on a track of its own (laid
-    /// back to back in queue order it read 0 and the cull took it), a pass
-    /// that could not be timed says why instead of reading 0, and a pass
-    /// ends on the very microsecond its frame does.
+    /// The trace shows each GPU pass's time alone on the GPU on the gpu
+    /// thread and its time in flight apart, labelled so: a cascade the GPU
+    /// ran beside a longer cull is in flight 3 ms and costs none of the
+    /// cull's time; a pass that could not be timed says why instead of
+    /// reading 0; the alone time, the overlapped and the idle sum to the
+    /// frame, and a pass ends on the very microsecond its frame does.
     #[test]
-    fn gpu_passes_keep_their_own_time_where_they_overlap() {
+    fn gpu_passes_show_their_time_alone_and_in_flight_apart() {
         use og_render::{GpuFrame, GpuPass, GpuUntimed};
         let at = 1948.0215173274164;
-        let pass = |name: &str, busy: Vec<(f64, f64)>| GpuPass {
+        let pass = |name: &str, busy: Vec<(f64, f64)>, alone: Vec<(f64, f64)>| GpuPass {
             name: name.into(),
             busy,
+            alone,
             untimed: None,
         };
         let frame = GpuFrame {
             frame: 7,
             submitted: at,
             passes: vec![
-                pass("cull", vec![(0.0, 8.0)]),
-                pass("cascade", vec![(1.0, 4.0)]),
-                pass("main", vec![(8.0, 9.9784)]),
+                pass("cull", vec![(0.0, 8.0)], vec![(0.0, 1.0), (4.0, 8.0)]),
+                pass("cascade", vec![(1.0, 4.0)], Vec::new()),
+                pass("main", vec![(8.0, 9.9784)], vec![(8.0, 9.9784)]),
                 GpuPass {
                     name: "bloom".into(),
                     busy: Vec::new(),
+                    alone: Vec::new(),
                     untimed: Some(GpuUntimed::NoGpuPass),
                 },
             ],
+            idle: 0.0,
         };
         const ENGINE_ID: u32 = 4242;
         TRACES.with(|t| {
@@ -434,39 +454,55 @@ mod tests {
         gpu_frames(ENGINE_ID, &[frame]);
         let events = TRACES
             .with(|t| std::mem::take(&mut t.borrow_mut().get_mut(&ENGINE_ID).unwrap().events));
-        let span = |name: &str| {
-            let e = events
+        let spans = |name: &str| -> Vec<(u32, i64, i64)> {
+            events
                 .iter()
-                .find(|e| e["name"] == name && e["ph"] == "X")
-                .unwrap_or_else(|| panic!("{name} has a span"));
-            let ts = e["ts"].as_i64().unwrap();
-            (
-                e["tid"].as_u64().unwrap() as u32,
-                ts,
-                ts + e["dur"].as_i64().unwrap(),
-            )
+                .filter(|e| e["name"] == name && e["ph"] == "X")
+                .map(|e| {
+                    let ts = e["ts"].as_i64().unwrap();
+                    (
+                        e["tid"].as_u64().unwrap() as u32,
+                        ts,
+                        ts + e["dur"].as_i64().unwrap(),
+                    )
+                })
+                .collect()
         };
-        let frame = span("gpu frame 7");
-        let (cull, cascade, main) = (span("cull"), span("cascade"), span("main"));
-        assert_eq!(cull.2 - cull.1, 8000, "the cull's own 8 ms");
-        assert_eq!(cascade.2 - cascade.1, 3000, "the cascade's own 3 ms, not 0");
-        assert_eq!((cull.0, main.0), (GPU, GPU));
-        assert_eq!(
-            cascade.0, GPU_LANE,
-            "beside the cull, on a track of its own"
-        );
+        let frame = spans("gpu frame 7")[0];
+        let cull = spans("cull");
+        assert_eq!(cull.len(), 2, "the cull's two stretches alone");
+        assert!(cull.iter().all(|s| s.0 == GPU));
+        assert_eq!(cull.iter().map(|s| s.2 - s.1).sum::<i64>(), 5000);
+        assert!(spans("cascade").is_empty(), "the cascade never ran alone");
+        let cascade = spans("cascade (in flight)");
+        assert_eq!(cascade.len(), 1);
+        assert_eq!(cascade[0].2 - cascade[0].1, 3000, "in flight 3 ms");
+        assert!(cascade[0].0 >= GPU_LANE, "on a thread of its own");
+        let cull_flight = spans("cull (in flight)")[0];
+        assert_ne!(cull_flight.0, cascade[0].0, "overlapping, on two threads");
         assert!(
             events
                 .iter()
-                .any(|e| e["ph"] == "M" && e["tid"] == GPU_LANE)
+                .any(|e| e["ph"] == "M" && e["tid"] == cascade[0].0)
         );
-        assert_eq!(main.2, frame.2, "main ends where the frame does");
+        assert_eq!(
+            spans("main")[0].2,
+            frame.2,
+            "main ends where the frame does"
+        );
         assert_eq!(frame.2 - frame.1, 9978);
         let bloom = events.iter().find(|e| e["name"] == "bloom").expect("bloom");
         assert_eq!(bloom["ph"], "i", "an untimed pass is no span of 0");
         assert_eq!(bloom["args"]["untimed"], GpuUntimed::NoGpuPass.reason());
-        let own = &events.iter().find(|e| e["name"] == "gpu frame 7").unwrap()["args"]["passes"];
-        assert_eq!(own["cascade"], 3.0);
-        assert!(own["bloom"].is_null());
+        let args = &events.iter().find(|e| e["name"] == "gpu frame 7").unwrap()["args"];
+        assert_eq!(args["passes"]["cascade"], 0.0);
+        assert_eq!(args["inFlight"]["cascade"], 3.0);
+        assert!(args["passes"]["bloom"].is_null());
+        let alone: f64 = ["cull", "cascade", "main"]
+            .iter()
+            .map(|n| args["passes"][n].as_f64().unwrap())
+            .sum();
+        let sum = alone + args["overlapped"].as_f64().unwrap() + args["idle"].as_f64().unwrap();
+        assert!((sum - 9.9784).abs() < 1e-9, "{sum}");
     }
 }

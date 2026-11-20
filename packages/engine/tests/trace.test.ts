@@ -87,7 +87,13 @@ gpuTest("og run --trace lays every span where it ran: systems, passes, GPU passe
   expect(gpuFrames.length).toBe(of("render").length);
   const passes = of("gpu").filter((s) => !s.name.startsWith("gpu frame"));
   const cpuNames = new Set(of("pass").map((p) => p.name));
-  expect(passes.every((p) => cpuNames.has(p.name))).toBe(true);
+  expect(passes.every((p) => cpuNames.has(p.name.replace(/ \(in flight\)$/, "")))).toBe(true);
+  // A frame's passes alone, its overlapped and its idle time sum to its span.
+  for (const f of gpuFrames) {
+    const a = f.args as { passes: Record<string, number | null>; overlapped: number; idle: number };
+    const sum = Object.values(a.passes).reduce<number>((s, v) => s + (v ?? 0), 0) + a.overlapped + a.idle;
+    expect(Math.abs(sum - f.dur / 1000)).toBeLessThan(0.01);
+  }
   expect(passes.reduce((a, p) => a + p.dur, 0)).toBeGreaterThan(0);
   // A pass the GPU could not time says why; it is no span of 0.
   const untimed = doc.traceEvents.filter((e) => e.ph === "i" && e.cat === "gpu");

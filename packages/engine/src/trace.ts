@@ -8,8 +8,9 @@
 // events }`, `ts` in µs); a take is placed on the document's origin (Unix
 // milliseconds) by the difference between the host's time and the engine's
 // clock read together. Threads of process 1: 1 engine, 2 render, 3 load,
-// 4 cook (og's, natively), 5 gpu, 16 + n og-lanes' pool thread n, 48 + n
-// the cook's thread n; threads that appear mid-run arrive with their names.
+// 4 cook (og's, natively), 5 gpu (each pass's time alone on the GPU), 16 + n
+// og-lanes' pool thread n, 48 + n the cook's thread n, 96 + n the GPU's
+// passes in flight ("<pass> (in flight)", waits included); threads that appear mid-run arrive with their names.
 
 export type TraceEvent = Record<string, unknown> & { ph: string; pid: number; tid: number; name: string; ts?: number; dur?: number };
 
