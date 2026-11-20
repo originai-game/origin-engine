@@ -2339,6 +2339,15 @@ fn a_loaded_cells_proxy_shows_its_models_until_their_textures_are_prepared() {
         }
     }
     assert!(og_loading_idle(engine));
+    // Ready models cross-fade with the proxy for 0.4 s. Loading being
+    // idle does not mean that presentation transition has finished.
+    for _ in 0..30 {
+        g.frame();
+        assert!(
+            g.held.get().instances > 0,
+            "the cross-fade left the cell empty"
+        );
+    }
     let _ = og_engine_take_outputs(engine);
     let _: Value =
         serde_json::from_str(&og_engine_probe_commands(engine, "0:dump_render".into())).unwrap();
