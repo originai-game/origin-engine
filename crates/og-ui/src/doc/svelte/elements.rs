@@ -1093,6 +1093,8 @@ impl Parser {
                     | "tier"
                     | "tone"
                     | "shape"
+                    | "team"
+                    | "trend"
             );
             if !component
                 && model.is_none()
