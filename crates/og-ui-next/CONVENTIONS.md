@@ -68,17 +68,30 @@ Not taken: attribute selectors (`[data-…]`, `[aria-…]`), `:where`, `:is`,
 sibling combinators and structural pseudo-classes. Every `var()` resolves
 at cook time; only the tokens a `style:--x` binding reads ship to runtime.
 
-## Next head (not compiled yet; don't write them until it lands)
+## States
 
-- Typed states set by bindings, one bit each: `selected={…}`, `done={…}`,
-  `locked={…}`, `empty={…}`, `on={…}`, matched as `:selected`, `:done`,
-  `:locked`, `:empty`, `:on` (replace `aria-selected`, `aria-current`,
-  `aria-pressed`, `data-selected`, `data-done`, `data-locked`,
-  `data-empty`, `data-active`).
+A state a binding decides is a CSS custom state: the element writes
+`state:selected={…}`, and a sheet matches `:state(selected)`, in a document
+sheet and in a surfaces sheet alike (`.row:state(selected)`,
+`.cell:state(empty)`). The state holds while the binding's value is set
+and not `false`. It replaces `aria-selected`, `aria-current`,
+`aria-pressed`, `data-selected`, `data-done`, `data-current`, `data-locked`,
+`data-empty`, `data-active` and the like. Accessibility attributes stay on
+the element for what they mean, never for styling.
+
+## SVG
+
+On `<svg>` and its shapes, `fill` and `stroke` are paint, as attributes or
+in a sheet (`fill: none`, `stroke: currentColor`, `stroke-width`). SVG
+shapes carry no `part`.
+
+## Next head (not compiled yet)
+
 - Size classes of the UI's own box, for members and pages alike:
   `:size(narrow)` (width < 600 px), `:size(short)` (height < 500 px),
   `:size(compact)` (either). They replace every `@media` and `@container`
-  rule. 844×390 is `short`, 390×844 is `narrow`.
+  rule. 844×390 is `short`, 390×844 is `narrow`. Leave the `@media` and
+  `@container` rules until it lands.
 
 ## Packs
 
@@ -104,5 +117,6 @@ runtime switches tables. No `::part`, no global rules.
 | `part="Comp.frame"` + `parts` meta line | `part="frame"` |
 | `class="hud"` / `"bare"` / `"lead"` / `"small"` on a part | `variant="…"` |
 | `data-rarity="rare"` | `tier="rare"` |
+| `[aria-selected=true]`, `[data-done=true]`, … | `state:selected={…}` and `:state(selected)` |
 | `:where([part$=".frame"]…)` rules in default.css | `.frame…` in `default/surfaces.css` |
 | `::part(…)` in a pack | the pack's `surfaces.css` |

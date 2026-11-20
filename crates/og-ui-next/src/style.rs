@@ -30,6 +30,17 @@ pub enum State {
     Disabled = 4,
 }
 
+/// What a rule applies under: a built-in state, or a custom state
+/// (`:state(selected)`) that the element's `state:selected={…}` binding sets.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Under<S = String> {
+    State(State),
+    Custom(S),
+}
+
+/// A rule's state field with this bit set holds a custom state's name id.
+const CUSTOM: u32 = 1 << 31;
+
 impl State {
     fn from_u32(v: u32) -> State {
         match v {
@@ -81,6 +92,10 @@ mod op {
     pub const RADIUS: u8 = 34;
     pub const OPACITY: u8 = 35;
     pub const FONT_SIZE: u8 = 36;
+    /// SVG paint; code 1: `currentColor`, the element's ink.
+    pub const PAINT: u8 = 37;
+    pub const STROKE: u8 = 38;
+    pub const STROKE_WIDTH: u8 = 39;
 }
 
 /// A length's kind in a step's code.
@@ -108,6 +123,10 @@ pub struct Record {
     pub radius: f32,
     pub opacity: f32,
     pub font_size: f32,
+    /// An SVG shape's fill and stroke paint, and its stroke's width.
+    pub paint: Rgba,
+    pub stroke: Rgba,
+    pub stroke_width: f32,
 }
 
 impl Default for Record {
@@ -119,6 +138,9 @@ impl Default for Record {
             radius: 0.0,
             opacity: 1.0,
             font_size: 16.0,
+            paint: [0.0, 0.0, 0.0, 1.0],
+            stroke: [0.0; 4],
+            stroke_width: 1.0,
         }
     }
 }
@@ -160,12 +182,16 @@ impl Sheet {
                 let sel = sel.trim();
                 match s.selector(sel) {
                     Some((needs, state)) => {
+                        let state = match state {
+                            Under::State(st) => st as u32,
+                            Under::Custom(name) => CUSTOM | s.intern(&name),
+                        };
                         let at = s.needs.len() as u32;
                         s.needs.extend_from_slice(&needs);
                         s.rules.push(Rule {
                             needs: [at, needs.len() as u32],
                             steps,
-                            state: state as u32,
+                            state,
                         });
                     }
                     None => s.skipped.push(format!("selector {sel}")),
@@ -190,17 +216,23 @@ impl Sheet {
         self.ids.get(name).copied()
     }
 
-    fn selector(&mut self, sel: &str) -> Option<(Vec<u32>, State)> {
+    fn selector(&mut self, sel: &str) -> Option<(Vec<u32>, Under)> {
         if sel.is_empty() || sel.contains([' ', '>', '+', '~', '[', '*']) {
             return None;
         }
         let (sel, state) = match sel.split_once(':') {
-            None => (sel, State::Base),
-            Some((s, "hover")) => (s, State::Hover),
-            Some((s, "active")) => (s, State::Active),
-            Some((s, "focus" | "focus-visible")) => (s, State::Focus),
-            Some((s, "disabled")) => (s, State::Disabled),
-            Some(_) => return None,
+            None => (sel, Under::State(State::Base)),
+            Some((s, "hover")) => (s, Under::State(State::Hover)),
+            Some((s, "active")) => (s, Under::State(State::Active)),
+            Some((s, "focus" | "focus-visible")) => (s, Under::State(State::Focus)),
+            Some((s, "disabled")) => (s, Under::State(State::Disabled)),
+            Some((s, custom)) => {
+                let name = custom.strip_prefix("state(")?.strip_suffix(')')?;
+                if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+                    return None;
+                }
+                (s, Under::Custom(name.to_owned()))
+            }
         };
         let mut needs = Vec::new();
         let mut rest = sel;
@@ -232,14 +264,19 @@ impl Sheet {
     }
 
     /// The steps of each rule whose names are all in `names`, in sheet
-    /// order, with the state it applies under.
-    pub fn each<'s>(&'s self, names: &[u32], mut f: impl FnMut(State, &'s [Step])) {
+    /// order, with what it applies under.
+    pub fn each<'s>(&'s self, names: &[u32], mut f: impl FnMut(Under<&'s str>, &'s [Step])) {
         for rule in &self.rules {
             if self.needs[span(rule.needs)]
                 .iter()
                 .all(|n| names.contains(n))
             {
-                f(State::from_u32(rule.state), &self.steps[span(rule.steps)]);
+                let under = if rule.state & CUSTOM != 0 {
+                    Under::Custom(&*self.names[(rule.state & !CUSTOM) as usize])
+                } else {
+                    Under::State(State::from_u32(rule.state))
+                };
+                f(under, &self.steps[span(rule.steps)]);
             }
         }
     }
@@ -428,6 +465,9 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::RADIUS => r.radius = a,
         op::OPACITY => r.opacity = a,
         op::FONT_SIZE => r.font_size = a,
+        op::PAINT => r.paint = if c == 1 { r.ink } else { [a, b, cc, d] },
+        op::STROKE => r.stroke = if c == 1 { r.ink } else { [a, b, cc, d] },
+        op::STROKE_WIDTH => r.stroke_width = a,
         _ => {}
     }
 }
@@ -712,6 +752,19 @@ pub(crate) fn expand(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
             .parse()
             .is_ok_and(|x| push(op::OPACITY, 0, [x, 0.0, 0.0, 0.0])),
         "font-size" => px(v).is_some_and(|x| push(op::FONT_SIZE, 0, [x, 0.0, 0.0, 0.0])),
+        "fill" | "stroke" => {
+            let o = if name == "fill" {
+                op::PAINT
+            } else {
+                op::STROKE
+            };
+            match v {
+                "none" | "transparent" => push(o, 0, [0.0; 4]),
+                _ if v.eq_ignore_ascii_case("currentcolor") => push(o, 1, [0.0; 4]),
+                _ => color(v).is_some_and(|c| push(o, 0, c)),
+            }
+        }
+        "stroke-width" => px(v).is_some_and(|x| push(op::STROKE_WIDTH, 0, [x, 0.0, 0.0, 0.0])),
         // A list draws no markers in og-ui: there is nothing to turn off.
         "list-style" | "list-style-type" => v == "none",
         _ => false,

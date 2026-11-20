@@ -136,7 +136,8 @@ mod tests {
             "t.svelte",
             "<meta name=\"component\" content=\"t\">\n<meta name=\"prop:on\" content=\"bool\">\n\
              <div id=\"Box\" class=\"card\" class:lit={on} layout=\"row\" gap=\"tight\" \
-             part=\"frame\" variant=\"hud\"><span class=\"label\">Hi</span></div>\n\
+             part=\"frame\" variant=\"hud\" state:done={on}><span class=\"label\">Hi</span>\
+             <svg viewBox=\"0 0 4 4\"><circle cx=\"2\" cy=\"2\" r=\"2\" fill=\"none\"/></svg></div>\n\
              <style>\n.card { --slot: 48px; padding: 2px; }\n.card .label { width: var(--slot); }\n\
              .card.lit { padding: 9px; }\n</style>",
         )
@@ -144,7 +145,7 @@ mod tests {
         let tokens = Tokens::parse(":root { --layout-gap-tight: 3px; }");
         let surfaces = style::Sheet::compile(
             ".frame { padding: 1px; flex-wrap: wrap; } .frame.hud:hover { background: #ff0000; } \
-             .frame.bare { flex-wrap: wrap-reverse; }",
+             .frame.bare { flex-wrap: wrap-reverse; } .frame:state(done) { opacity: 0.5; }",
             &tokens,
         );
         let s = doc::DocStyle::compile(&doc, &tokens, &surfaces);
@@ -185,6 +186,14 @@ mod tests {
         let hover = og_ui::bind::Expr::Interaction(og_ui::bind::InteractionState::Hover);
         let hovered = s.record(card, |c| s.conditions[c as usize] == hover);
         assert_eq!(hovered.fill[0], 1.0, ".frame.hud:hover while hovered");
+        assert_eq!(hovered.opacity, 1.0);
+        let done = s.record(card, |c| s.conditions[c as usize] != hover);
+        assert_eq!(done.opacity, 0.5, ".frame:state(done) under state:done");
+        assert!(
+            !s.skipped.iter().any(|k| matches!(k, doc::Skip::Field(_))),
+            "SVG's fill is paint: {:?}",
+            s.skipped
+        );
         assert_eq!(
             pad(&s.record(card, |_| true)),
             taffy::LengthPercentage::length(9.0),

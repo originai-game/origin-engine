@@ -14,7 +14,7 @@
 //! strings.
 
 use crate::prim;
-use crate::style::{self, Record, Sheet, State, Step};
+use crate::style::{self, Record, Sheet, State, Step, Under};
 use crate::tokens::Tokens;
 use bytemuck::{Pod, Zeroable};
 use og_ui::doc::{NodeKind, UiDocument};
@@ -101,6 +101,8 @@ impl DocStyle {
     fn own(&mut self, n: &og_ui::doc::DocNode, cx: &Cx) {
         let mut fields = prim::Fields::default();
         let (mut part, mut variant, mut tier) = (None, None, None);
+        // On SVG `fill` is its paint, not the layout field.
+        let svg = matches!(n.kind, NodeKind::Element(k) if k.svg());
         for (name, e) in &n.selector_attrs {
             let og_ui::bind::Expr::Lit(v) = e else {
                 continue;
@@ -115,6 +117,7 @@ impl DocStyle {
                 "part" => part = Some(text),
                 "variant" => variant = Some(text),
                 "tier" => tier = Some(text),
+                "fill" if svg => {}
                 name => {
                     if let Err(u) = fields.set(name, text) {
                         self.skipped.push(Skip::Field(u));
@@ -136,22 +139,36 @@ impl DocStyle {
             )
             .collect();
         let mut states = Vec::new();
-        cx.surfaces.each(&names, |state, steps| match state {
-            State::Base => self.steps.extend_from_slice(steps),
-            state => states.push((state, steps)),
+        cx.surfaces.each(&names, |under, steps| match under {
+            Under::State(State::Base) => self.steps.extend_from_slice(steps),
+            under => states.push((under, steps)),
         });
         self.span(ALWAYS, from);
-        for (state, steps) in states {
-            use og_ui::bind::InteractionState as I;
-            let s = match state {
-                State::Hover => I::Hover,
-                State::Active => I::Active,
-                State::Focus => I::FocusVisible,
-                _ => I::Disabled,
+        for (under, steps) in states {
+            use og_ui::bind::{Expr, InteractionState as I, Op};
+            let condition = match under {
+                Under::State(State::Hover) => Expr::Interaction(I::Hover),
+                Under::State(State::Active) => Expr::Interaction(I::Active),
+                Under::State(State::Focus) => Expr::Interaction(I::FocusVisible),
+                Under::State(_) => Expr::Interaction(I::Disabled),
+                // A custom state holds while the element's binding of it
+                // is set and not "false", as the parser reads `:state()`.
+                Under::Custom(name) => {
+                    let key = format!("state:{name}");
+                    let Some((_, e)) = n.selector_attrs.iter().find(|(k, _)| *k == key) else {
+                        continue;
+                    };
+                    let not_false = Expr::Bin(
+                        Op::Ne,
+                        Box::new(e.clone()),
+                        Box::new(Expr::Lit("false".into())),
+                    );
+                    Expr::Bin(Op::And, Box::new(e.clone()), Box::new(not_false))
+                }
             };
             let from = self.steps.len() as u32;
             self.steps.extend_from_slice(steps);
-            self.conditions.push(og_ui::bind::Expr::Interaction(s));
+            self.conditions.push(condition);
             self.span(self.conditions.len() as u32 - 1, from);
         }
     }
