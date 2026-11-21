@@ -108,7 +108,7 @@ pub const ANIMATED_FIELDS: [(&str, &str); 2] =
 pub const ANTIALIAS: [&str; 4] = ["tier", "off", "msaa4", "taa"];
 
 /// The moods a look takes (`mood "<word>"`; `MOODS` in
-/// `packages/create/bin/brief.ts`). Each is a
+/// `packages/knowledge/scripts/brief.ts`). Each is a
 /// layer of the frame's grading, light and, for a palette-bound style, its
 /// palette (`templates/looks/moods/`), docs/art.md §2.10.
 pub const MOODS: [&str; 6] = ["bright", "dark", "warm", "cold", "soft", "high-contrast"];

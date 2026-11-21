@@ -377,6 +377,12 @@ test("every effect names the file and bus it goes to, and its stand-in is a type
   expect(new Set(whooshes).size).toBe(whooshes.length);
 });
 
+test("MOODS is og-bundle's MOODS", () => {
+  const rs = readFileSync(join(import.meta.dir, "..", "..", "..", "crates", "og-bundle", "src", "look.rs"), "utf8");
+  const block = /pub const MOODS[^=]*=\s*\[([^\]]*)\];/.exec(rs)![1]!;
+  expect([...block.matchAll(/"([a-z-]+)"/g)].map((m) => m[1])).toEqual([...MOODS]);
+});
+
 test("the stand-in presets are og cook's: SFX_PRESETS is og-cook's sfx::PRESETS", () => {
   const rs = readFileSync(join(import.meta.dir, "..", "..", "..", "crates", "og-cook", "src", "cook", "formats", "sfx.rs"), "utf8");
   const block = /pub const PRESETS[^=]*= &\[([\s\S]*?)\];/.exec(rs)![1]!;
