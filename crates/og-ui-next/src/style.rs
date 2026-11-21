@@ -351,17 +351,17 @@ impl Decoration {
     pub const LINE_THROUGH: u8 = 4;
 }
 
-/// An element's computed look: what its rules set, folded in order.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Record {
-    pub layout: CompactStyle,
+/// An element's paint: every field the paint pass reads, `Copy`, so motion
+/// holds an animated copy of it per node and repaint reads either.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Skin {
     pub fill: Rgba,
     /// A gradient over `fill` (`background: linear-gradient(…), <colour>`).
     pub gradient: Option<Gradient>,
     pub ink: Rgba,
     /// Corner radii: top left, top right, bottom right, bottom left.
     pub radius: [f32; 4],
-    /// Border widths, top, right, bottom, left (also in `layout`).
+    /// Border widths, top, right, bottom, left (also in the layout).
     pub border: [f32; 4],
     pub border_color: Rgba,
     /// Box shadows, `shadow_count` of them, first on top.
@@ -374,11 +374,42 @@ pub struct Record {
     pub text_shadow: Shadow,
     pub decoration: Decoration,
     pub opacity: f32,
-    pub font_size: f32,
     /// An SVG shape's fill and stroke paint, and its stroke's width.
     pub paint: Rgba,
     pub stroke: Rgba,
     pub stroke_width: f32,
+}
+
+impl Default for Skin {
+    fn default() -> Self {
+        Skin {
+            fill: [0.0; 4],
+            gradient: None,
+            ink: [0.0, 0.0, 0.0, 1.0],
+            radius: [0.0; 4],
+            border: [0.0; 4],
+            border_color: [0.0; 4],
+            shadows: [Shadow::default(); SHADOWS],
+            shadow_count: 0,
+            outline: Outline::default(),
+            transform: Transform::default(),
+            backdrop_blur: 0.0,
+            text_shadow: Shadow::default(),
+            decoration: Decoration::default(),
+            opacity: 1.0,
+            paint: [0.0, 0.0, 0.0, 1.0],
+            stroke: [0.0; 4],
+            stroke_width: 1.0,
+        }
+    }
+}
+
+/// An element's computed look: what its rules set, folded in order.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Record {
+    pub layout: CompactStyle,
+    pub skin: Skin,
+    pub font_size: f32,
     /// The sides of its `inset` (0) and `padding` (1) that add the HUD's
     /// safe-area inset (`env(-og-hud-inset-left)`), bits top, right,
     /// bottom, left: the one runtime input a record leaves open.
@@ -431,24 +462,8 @@ impl Default for Record {
         base.position = taffy::Position::Relative;
         Record {
             layout: CompactStyle::from(&base),
-            fill: [0.0; 4],
-            gradient: None,
-            ink: [0.0, 0.0, 0.0, 1.0],
-            radius: [0.0; 4],
-            border: [0.0; 4],
-            border_color: [0.0; 4],
-            shadows: [Shadow::default(); SHADOWS],
-            shadow_count: 0,
-            outline: Outline::default(),
-            transform: Transform::default(),
-            backdrop_blur: 0.0,
-            text_shadow: Shadow::default(),
-            decoration: Decoration::default(),
-            opacity: 1.0,
+            skin: Skin::default(),
             font_size: 16.0,
-            paint: [0.0, 0.0, 0.0, 1.0],
-            stroke: [0.0; 4],
-            stroke_width: 1.0,
             safe: [0; 2],
             text: Text::default(),
             inked: false,
@@ -839,11 +854,11 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::SHRINK => l.set_flex_shrink(a),
         op::BASIS => l.set_flex_basis(dim(s)),
         op::FILL => {
-            r.fill = s.v;
-            r.gradient = None;
+            r.skin.fill = s.v;
+            r.skin.gradient = None;
         }
         op::GRADIENT => {
-            r.gradient = Some(Gradient {
+            r.skin.gradient = Some(Gradient {
                 angle: a,
                 corner: [b as i8, cc as i8],
                 count: 0,
@@ -851,7 +866,7 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
             })
         }
         op::STOP => {
-            if let Some(g) = &mut r.gradient
+            if let Some(g) = &mut r.skin.gradient
                 && usize::from(g.count) < GRADIENT_STOPS
             {
                 let offset = f32::from(u16::from_le_bytes(s._pad)) / f32::from(u16::MAX);
@@ -860,65 +875,65 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
             }
         }
         op::INK => {
-            r.ink = s.v;
+            r.skin.ink = s.v;
             r.inked = true;
         }
-        op::RADIUS => r.radius = s.v,
+        op::RADIUS => r.skin.radius = s.v,
         op::BORDER => {
             let m = if s.code == 0 { 15 } else { s.code };
             for k in 0..4 {
                 if m & (1 << k) != 0 {
-                    r.border[k] = s.v[k];
+                    r.skin.border[k] = s.v[k];
                 }
             }
-            r.layout.set_border(r.border);
+            r.layout.set_border(r.skin.border);
         }
-        op::BORDER_COLOR => r.border_color = s.v,
-        op::SHADOWS => r.shadow_count = 0,
+        op::BORDER_COLOR => r.skin.border_color = s.v,
+        op::SHADOWS => r.skin.shadow_count = 0,
         op::SHADOW => {
-            if usize::from(r.shadow_count) < SHADOWS {
-                r.shadows[usize::from(r.shadow_count)] = Shadow {
+            if usize::from(r.skin.shadow_count) < SHADOWS {
+                r.skin.shadows[usize::from(r.skin.shadow_count)] = Shadow {
                     offset: [a, b],
                     blur: cc,
                     spread: d,
                     color: [0.0; 4],
                     inset: s.code == 1,
                 };
-                r.shadow_count += 1;
+                r.skin.shadow_count += 1;
             }
         }
         op::SHADOW_COLOR => {
-            if let Some(k) = usize::from(r.shadow_count).checked_sub(1) {
-                r.shadows[k].color = s.v;
+            if let Some(k) = usize::from(r.skin.shadow_count).checked_sub(1) {
+                r.skin.shadows[k].color = s.v;
             }
         }
         // Code 0: the width (`outline`), 1: the offset.
         op::OUTLINE => match s.code {
-            0 => r.outline.width = a,
-            _ => r.outline.offset = b,
+            0 => r.skin.outline.width = a,
+            _ => r.skin.outline.offset = b,
         },
-        op::OUTLINE_COLOR => r.outline.color = s.v,
+        op::OUTLINE_COLOR => r.skin.outline.color = s.v,
         op::MOVE => match s.code {
-            0 => r.transform.translate = [a, b],
-            1 => r.transform.scale = [a, b],
-            2 => r.transform.rotate = a,
-            _ => r.transform.origin = [a, b],
+            0 => r.skin.transform.translate = [a, b],
+            1 => r.skin.transform.scale = [a, b],
+            2 => r.skin.transform.rotate = a,
+            _ => r.skin.transform.origin = [a, b],
         },
-        op::BACKDROP_BLUR => r.backdrop_blur = a,
+        op::BACKDROP_BLUR => r.skin.backdrop_blur = a,
         op::TEXT_SHADOW => {
-            r.text_shadow = Shadow {
+            r.skin.text_shadow = Shadow {
                 offset: [a, b],
                 blur: cc,
                 ..Shadow::default()
             }
         }
-        op::TEXT_SHADOW_COLOR => r.text_shadow.color = s.v,
+        op::TEXT_SHADOW_COLOR => r.skin.text_shadow.color = s.v,
         op::DECORATION => {
-            r.decoration.line = s.code;
-            r.decoration.thickness = a;
+            r.skin.decoration.line = s.code;
+            r.skin.decoration.thickness = a;
         }
-        op::DECORATION_COLOR => r.decoration.color = s.v,
-        op::OPACITY => r.opacity = a,
+        op::DECORATION_COLOR => r.skin.decoration.color = s.v,
+        op::OPACITY => r.skin.opacity = a,
         op::FONT_SIZE => {
             r.font_size = a;
             r.text.sized = true;
@@ -963,9 +978,9 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
             r.text.transform = c as u8;
             r.text.set |= Text::TRANSFORM;
         }
-        op::PAINT => r.paint = if c == 1 { r.ink } else { [a, b, cc, d] },
-        op::STROKE => r.stroke = if c == 1 { r.ink } else { [a, b, cc, d] },
-        op::STROKE_WIDTH => r.stroke_width = a,
+        op::PAINT => r.skin.paint = if c == 1 { r.skin.ink } else { [a, b, cc, d] },
+        op::STROKE => r.skin.stroke = if c == 1 { r.skin.ink } else { [a, b, cc, d] },
+        op::STROKE_WIDTH => r.skin.stroke_width = a,
         _ => {}
     }
 }

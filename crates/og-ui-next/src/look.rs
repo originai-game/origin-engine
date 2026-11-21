@@ -253,10 +253,10 @@ mod tests {
             let id = l.surfaces().name(".frame").unwrap();
             l.surfaces().record(&[id], crate::style::State::Base)
         };
-        assert_eq!(frame(&dark).fill, [0.0, 0.0, 0.0, 1.0]);
+        assert_eq!(frame(&dark).skin.fill, [0.0, 0.0, 0.0, 1.0]);
         assert_ne!(dark.key, light.key, "a scheme is another look");
-        assert_eq!(frame(&light).fill, [1.0, 1.0, 1.0, 1.0]);
-        assert_eq!(frame(&light).opacity, 0.25, "the pack's rule wins");
+        assert_eq!(frame(&light).skin.fill, [1.0, 1.0, 1.0, 1.0]);
+        assert_eq!(frame(&light).skin.opacity, 0.25, "the pack's rule wins");
         assert_eq!(light.tokens().get("--edge"), Some("1px"));
     }
 }

@@ -326,7 +326,7 @@ impl Tree {
             env: Rc::new(Surface::default()),
             root: Inherit {
                 size: root.font_size,
-                ink: root.ink,
+                ink: root.skin.ink,
                 text: root.text,
                 opacity: 1.0,
             },
@@ -805,9 +805,9 @@ impl Tree {
         let r = &el.record;
         let eff = Inherit {
             size: if r.text.sized { r.font_size } else { from.size },
-            ink: if r.inked { r.ink } else { from.ink },
+            ink: if r.inked { r.skin.ink } else { from.ink },
             text: r.text.over(&from.text),
-            opacity: from.opacity * r.opacity,
+            opacity: from.opacity * r.skin.opacity,
         };
         let mut layout = r.layout_in([0.0; 4]);
         if el.hidden > 0 {
@@ -1104,18 +1104,19 @@ impl Tree {
             let rect = [x, y, b.w, b.h];
             // One radius a quad until the pass takes four corners.
             let radius = r
+                .skin
                 .radius
                 .iter()
                 .copied()
                 .fold(0.0, f32::max)
                 .min(b.w.min(b.h) / 2.0);
-            if r.fill[3] > 0.0 {
-                let mut c = r.fill;
+            if r.skin.fill[3] > 0.0 {
+                let mut c = r.skin.fill;
                 c[3] *= alpha;
                 p.quads
                     .push(quad(PaintKind::Solid, rect, clip, c, radius, 0, 0));
             }
-            if let Some(g) = &r.gradient {
+            if let Some(g) = &r.skin.gradient {
                 let gi = p.gradient(g.angle, g.stops().iter().copied());
                 p.quads.push(quad(
                     PaintKind::Gradient,
@@ -1658,7 +1659,7 @@ mod tests {
                         .iter()
                         .any(|(k, _)| k == "state:done")
             })
-            .map(|el| el.record.opacity)
+            .map(|el| el.record.skin.opacity)
             .collect();
         assert_eq!(opacities, [1.0, 0.25, 1.0]);
     }
@@ -1692,7 +1693,7 @@ mod tests {
                 el.style != NONE
                     && c.doc.nodes[c.style.nodes[el.style as usize].node as usize].id == "S"
             });
-            t.els[e.unwrap()].record.opacity
+            t.els[e.unwrap()].record.skin.opacity
         };
         tree.frame(&fonts, &icons);
         assert_eq!(opacity(&tree), 0.25, "wide");
@@ -1795,7 +1796,7 @@ mod tests {
                 el.style != NONE
                     && c.doc.nodes[c.style.nodes[el.style as usize].node as usize].id == "F"
             });
-            t.els[e.unwrap()].record.opacity
+            t.els[e.unwrap()].record.skin.opacity
         };
         tree.frame(&fonts, &icons);
         assert_eq!(opacity(&tree), 1.0, "100px in a 40px scroller has more");

@@ -104,13 +104,16 @@ mod tests {
         let clock = sheet.name("#Clock").unwrap();
         let hud = sheet.name(".hud").unwrap();
         let base = sheet.record(&[clock, hud], style::State::Base);
-        assert_eq!(base.opacity, 1.0);
+        assert_eq!(base.skin.opacity, 1.0);
         assert_eq!(
-            sheet.record(&[clock, hud], style::State::Hover).opacity,
+            sheet
+                .record(&[clock, hud], style::State::Hover)
+                .skin
+                .opacity,
             0.5
         );
         assert_eq!(
-            sheet.record(&[clock], style::State::Hover).opacity,
+            sheet.record(&[clock], style::State::Hover).skin.opacity,
             1.0,
             "the state rule needs .hud"
         );
@@ -121,7 +124,7 @@ mod tests {
         let b = a.box_of(e);
         assert_eq!((b.x, b.inset), (16.0, [12.0, 2.0, 12.0, 2.0]));
         assert!(
-            base.fill[2] > base.fill[0],
+            base.skin.fill[2] > base.skin.fill[0],
             "the panel colour, bluer than red"
         );
         // What the cook writes, loaded back, answers the same records.
@@ -271,14 +274,17 @@ mod tests {
             taffy::FlexWrap::Wrap,
             "the frame surface over the layout field, without the other variant's rule"
         );
-        assert_eq!(base.fill, [0.0; 4]);
+        assert_eq!(base.skin.fill, [0.0; 4]);
         let hover =
             og_reactive::bind::Expr::Interaction(og_reactive::bind::InteractionState::Hover);
         let hovered = s.record(card, |c| *s.conditions[c as usize] == hover);
-        assert_eq!(hovered.fill[0], 1.0, ".frame.hud:hover while hovered");
-        assert_eq!(hovered.opacity, 1.0);
+        assert_eq!(hovered.skin.fill[0], 1.0, ".frame.hud:hover while hovered");
+        assert_eq!(hovered.skin.opacity, 1.0);
         let done = s.record(card, |c| *s.conditions[c as usize] != hover);
-        assert_eq!(done.opacity, 0.5, ".frame:state(done) under state:done");
+        assert_eq!(
+            done.skin.opacity, 0.5,
+            ".frame:state(done) under state:done"
+        );
         assert!(
             !s.skipped.iter().any(|k| matches!(k, doc::Skip::Field(_))),
             "SVG's fill is paint: {:?}",
@@ -296,7 +302,7 @@ mod tests {
         assert_eq!(w, taffy::Dimension::length(48.0));
         let label_rec = s.record(label, |_| false);
         assert_eq!(
-            label_rec.ink[0], 1.0,
+            label_rec.skin.ink[0], 1.0,
             "tone=danger picks the .danger surface"
         );
         let rtl = s.record(label, |c| {
@@ -315,7 +321,7 @@ mod tests {
                 og_reactive::bind::Expr::Bin(og_reactive::bind::Op::Eq, _, v) if **v == og_reactive::bind::Expr::Lit("rare".into()))
         });
         assert_eq!(
-            (label_rec.opacity, rare.opacity),
+            (label_rec.skin.opacity, rare.skin.opacity),
             (1.0, 0.25),
             "a bound tier picks its surface"
         );
@@ -436,7 +442,7 @@ mod tests {
             let names: Vec<u32> = n.iter().map(|n| sheet.name(n).unwrap()).collect();
             sheet.record(&names, style::State::Base)
         };
-        let g = rec(&[".a"]).gradient.unwrap();
+        let g = rec(&[".a"]).skin.gradient.unwrap();
         assert!(
             (g.angle - std::f32::consts::PI).abs() < 1e-5,
             "180deg points down"
@@ -448,16 +454,16 @@ mod tests {
             "red to blue"
         );
         let b = rec(&[".b"]);
-        let g = b.gradient.unwrap();
+        let g = b.skin.gradient.unwrap();
         assert!(
             (g.angle - std::f32::consts::FRAC_PI_2).abs() < 1e-5,
             "to right"
         );
         let offsets: Vec<f32> = g.stops().iter().map(|s| (s.0 * 100.0).round()).collect();
         assert_eq!(offsets, [0.0, 50.0, 100.0], "an unplaced stop halfway");
-        assert_eq!(b.fill, [1.0; 4], "the base colour under it");
+        assert_eq!(b.skin.fill, [1.0; 4], "the base colour under it");
         assert_eq!(
-            rec(&[".b", ".c"]).gradient,
+            rec(&[".b", ".c"]).skin.gradient,
             None,
             "a later colour replaces the gradient"
         );
@@ -485,8 +491,12 @@ mod tests {
             sheet.record(&names, style::State::Base)
         };
         let a = rec(&[".a"]);
-        assert_eq!(a.border, [2.0, 2.0, 2.0, 0.0], "a side over the shorthand");
-        assert_eq!(a.border_color[0], 1.0);
+        assert_eq!(
+            a.skin.border,
+            [2.0, 2.0, 2.0, 0.0],
+            "a side over the shorthand"
+        );
+        assert_eq!(a.skin.border_color[0], 1.0);
         let t = taffy::Style::from(&a.layout);
         assert_eq!(
             (t.border.top, t.border.left),
@@ -496,9 +506,9 @@ mod tests {
             ),
             "borders take space"
         );
-        assert_eq!(a.radius, [1.0, 2.0, 3.0, 4.0]);
-        assert_eq!(a.shadow_count, 2);
-        let [inner, outer] = [a.shadows[0], a.shadows[1]];
+        assert_eq!(a.skin.radius, [1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(a.skin.shadow_count, 2);
+        let [inner, outer] = [a.skin.shadows[0], a.skin.shadows[1]];
         assert!(inner.inset && !outer.inset, "the first layer is inset");
         assert_eq!(
             (outer.offset, outer.blur, outer.spread),
@@ -506,25 +516,29 @@ mod tests {
         );
         assert!((inner.color[3] - 0.5).abs() < 1e-3 && outer.color[3] == 1.0);
         assert_eq!(
-            (a.outline.width, a.outline.offset, a.outline.color[1]),
+            (
+                a.skin.outline.width,
+                a.skin.outline.offset,
+                a.skin.outline.color[1]
+            ),
             (3.0, 2.0, 1.0)
         );
-        let m = a.transform;
+        let m = a.skin.transform;
         assert_eq!(
             (m.translate, m.scale, m.origin),
             ([4.0, 5.0], [1.5, 1.5], [0.0, 0.0])
         );
         assert!((m.rotate - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
-        assert_eq!(a.backdrop_blur, 12.0);
+        assert_eq!(a.skin.backdrop_blur, 12.0);
         assert_eq!(
-            (a.text_shadow.offset, a.text_shadow.blur),
+            (a.skin.text_shadow.offset, a.skin.text_shadow.blur),
             ([1.0, 2.0], 3.0)
         );
         assert_eq!(
             (
-                a.decoration.line,
-                a.decoration.thickness,
-                a.decoration.color[0]
+                a.skin.decoration.line,
+                a.skin.decoration.thickness,
+                a.skin.decoration.color[0]
             ),
             (
                 style::Decoration::UNDERLINE | style::Decoration::LINE_THROUGH,
@@ -533,12 +547,16 @@ mod tests {
             )
         );
         assert_eq!(
-            a.gradient.unwrap().corner,
+            a.skin.gradient.unwrap().corner,
             [1, -1],
             "to top right: the corner"
         );
-        assert_eq!(rec(&[".a", ".b"]).shadow_count, 0, "none clears the layers");
-        let c = rec(&[".c"]).shadows[0];
+        assert_eq!(
+            rec(&[".a", ".b"]).skin.shadow_count,
+            0,
+            "none clears the layers"
+        );
+        let c = rec(&[".c"]).skin.shadows[0];
         assert_eq!(
             (c.offset, c.color),
             ([1.0, 1.0], [0.0, 0.0, 0.0, 1.0]),
