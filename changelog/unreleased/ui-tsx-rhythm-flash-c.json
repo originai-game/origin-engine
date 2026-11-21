@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "RhythmChain, RhythmDifficulty, RhythmGauge, RhythmJudgement, RhythmLaneKeys, RhythmResults, RhythmScoreHud, RhythmSongPlate, RhythmSongProgress, RhythmSongSelect, RhythmTiming",
+      "summary": "The rhythm HUD components ship as TSX beside their component documents: same props, states, strings and accessibility, styled with Tailwind classes and the new UI's primitives. Masked cell and gauge strips become real cell Views with hairline separators, clipped gradient display text stands in as solid per-judgement inks, and a key cap hides under a touch screen through pointer-coarse."
+    }
+  ]
+}
