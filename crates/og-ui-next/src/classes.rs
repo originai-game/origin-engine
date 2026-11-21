@@ -9,7 +9,7 @@ use crate::motion;
 use crate::style::{GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Text};
 use nsh_tailwind::effects::{Filter, GradientKind, Keyframes};
 use nsh_tailwind::geometry::{DefiniteLength, Points, Size};
-use nsh_tailwind::style::{Color, Style, TextAlign, TextTransform};
+use nsh_tailwind::style::{Color, Style, StyleValue, TextAlign, TextTransform};
 use nsh_tailwind::tailwind::{self, ClassEnvironment, ClassList, ClassProps, Context, Theme};
 use nsh_tailwind::transform::TransformKind;
 use rune_taffy::CompactStyle;
@@ -80,6 +80,15 @@ impl Classes {
 
     /// The record `classes` give an element in `env`.
     pub fn record(&mut self, classes: &str, env: &Env) -> Record {
+        self.record_styled(classes, "", env)
+    }
+
+    /// The record `classes` and the inline declarations `style` give an
+    /// element in `env`: `style` is CSS text as the renderer's `setStyle`
+    /// sends it (`width: 40%; opacity: 0.5`), applied over the classes
+    /// through NSH's own declarations, so it takes what a style prop
+    /// takes. A declaration NSH does not know is skipped.
+    pub fn record_styled(&mut self, classes: &str, style: &str, env: &Env) -> Record {
         let env = *env;
         let list = self.list(classes).clone();
         let cx = Context {
@@ -98,11 +107,45 @@ impl Classes {
             position: 0,
             group: &|_| 0,
         };
-        let mut style = Style::default();
+        let mut out = Style::default();
         let mut props = ClassProps::default();
-        list.apply(&cx, &self.theme, &mut style, &mut props, |_| {});
-        record_of(&style, &props)
+        list.apply(&cx, &self.theme, &mut out, &mut props, |_| {});
+        for (name, value) in declarations(style) {
+            let value = match value.parse::<f32>() {
+                Ok(n) => StyleValue::Number(n),
+                Err(_) => StyleValue::Str(value),
+            };
+            let _ = out.set(&camel(name), value);
+        }
+        record_of(&out, &props)
     }
+}
+
+/// CSS text's declarations as (name, value), trimmed, empty ones left out.
+fn declarations(css: &str) -> impl Iterator<Item = (&str, &str)> {
+    css.split(';').filter_map(|d| {
+        let (n, v) = d.split_once(':')?;
+        let (n, v) = (n.trim(), v.trim());
+        (!n.is_empty() && !v.is_empty()).then_some((n, v))
+    })
+}
+
+/// A CSS property name in React Native's camel case (`border-top-width`
+/// is `borderTopWidth`), the names NSH's declarations take.
+fn camel(name: &str) -> String {
+    let mut out = String::with_capacity(name.len());
+    let mut up = false;
+    for c in name.chars() {
+        match c {
+            '-' => up = !out.is_empty(),
+            c if up => {
+                out.push(c.to_ascii_uppercase());
+                up = false;
+            }
+            c => out.push(c),
+        }
+    }
+    out
 }
 
 /// A packed sRGB colour (`0xRRGGBBAA`) as linear RGBA, straight alpha.
@@ -484,5 +527,31 @@ mod tests {
             (exit.skin.opacity, exit.skin.transform.translate[1]),
             (0.0, 8.0)
         );
+    }
+
+    #[test]
+    fn an_inline_style_folds_over_its_classes() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        let env = Env::default();
+        let class = "w-4 opacity-50 bg-red-500";
+        let base = c.record(class, &env);
+        let r = c.record_styled(
+            class,
+            "width: 40%; opacity:0.75 ;; background-color: #0000ff",
+            &env,
+        );
+        let w = |r: &Record| taffy::CoreStyle::size(&r.layout).width;
+        assert_eq!(w(&base), taffy::Dimension::length(16.0), "w-4");
+        assert_eq!(
+            w(&r),
+            taffy::Dimension::percent(0.4),
+            "the style wins over w-4"
+        );
+        assert_eq!(r.skin.opacity, 0.75);
+        assert_eq!(r.skin.fill, linear(Color(0x0000ffff)));
+        // What it does not name stays the class's; an unknown one is skipped.
+        let r = c.record_styled(class, "bogus-thing: 3", &env);
+        assert_eq!((w(&r), r.skin.opacity), (w(&base), 0.5));
+        assert_eq!(camel("border-top-left-radius"), "borderTopLeftRadius");
     }
 }
