@@ -181,7 +181,7 @@
     "skull": "art/skull.svg"
   },
   "sounds": {
-    "Button.base": {
+    "Button.plate": {
       "hover": {
         "clips": [
           "@styles/shared/sfx-tap2.ogt"
@@ -202,7 +202,7 @@
         ]
       }
     },
-    "Button.base.primary": {
+    "Button.plate.primary": {
       "hover": {
         "clips": [
           "@styles/shared/sfx-tap2.ogt"

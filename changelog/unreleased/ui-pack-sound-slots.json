@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.UiPack sounds",
+      "summary": "The fantasy, cartoon and scifi packs key their per-slot sounds by the slots the engine's TSX components declare (`Button.plate`, `Button.plate.primary`) instead of og-ui part names (`Button.base`), so a primary button plays its confirm sound and plate buttons their hover. Cartoon's sounds for `Button.base.danger`, `Radio.card` and `Tabs.tab`, slots no TSX component declares, are gone; those controls play the pack-wide sounds."
+    }
+  ]
+}

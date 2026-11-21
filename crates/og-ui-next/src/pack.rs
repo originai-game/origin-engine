@@ -743,4 +743,83 @@ mod tests {
         assert_eq!(p.sounds[""]["press"].clips, ["c"]);
         assert_eq!(p.sounds["Button.base"]["hover"].pitch, [1.2, 1.2]);
     }
+
+    /// The slots the engine's TSX components declare (`packClass("C",
+    /// "slot"[, variant])` with literal names; a variant written as an
+    /// expression declares each string literal in it).
+    fn declared_slots(dir: &std::path::Path, out: &mut std::collections::BTreeSet<String>) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            let kind = entry.file_type().unwrap();
+            if kind.is_dir() {
+                declared_slots(&path, out);
+                continue;
+            }
+            if !kind.is_file() || !path.extension().is_some_and(|e| e == "tsx" || e == "ts") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).unwrap();
+            for (at, _) in text.match_indices("packClass(") {
+                let args = &text[at + "packClass(".len()..];
+                let mut depth = 0;
+                let end = args
+                    .char_indices()
+                    .find(|&(_, c)| {
+                        depth += match c {
+                            '(' => 1,
+                            ')' => -1,
+                            _ => 0,
+                        };
+                        depth < 0
+                    })
+                    .map_or(args.len(), |(i, _)| i);
+                let args = &args[..end];
+                let mut parts = args.splitn(3, ',').map(str::trim);
+                let literal = |a: Option<&str>| {
+                    a.and_then(|a| a.strip_prefix('"')?.strip_suffix('"')).map(str::to_owned)
+                };
+                let (Some(component), Some(slot)) = (literal(parts.next()), literal(parts.next()))
+                else {
+                    continue;
+                };
+                let base = format!("{component}.{slot}");
+                for variant in parts.next().unwrap_or("").split('"').skip(1).step_by(2) {
+                    out.insert(format!("{base}.{variant}"));
+                }
+                out.insert(base);
+            }
+        }
+    }
+
+    /// Every slot a shipped pack gives sounds or classes names a slot an
+    /// engine component declares: a key for another name (an og-ui part
+    /// such as `Button.base`) never matches and its sounds never play.
+    #[test]
+    fn shipped_packs_key_only_the_slots_components_declare() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut declared = std::collections::BTreeSet::new();
+        declared_slots(&root.join("packages/engine/src"), &mut declared);
+        assert!(declared.contains("Button.plate.primary"), "{declared:?}");
+        let mut stray = Vec::new();
+        for entry in std::fs::read_dir(root.join("templates/styles")).unwrap() {
+            let file = entry.unwrap().path().join("pack.json");
+            let Ok(text) = std::fs::read_to_string(&file) else {
+                continue;
+            };
+            let layer = Layer::parse(&text).unwrap();
+            let keys = layer.variants.keys().map(|k| ("variants", k));
+            let keys = keys.chain(layer.sounds.keys().filter(|k| !k.is_empty()).map(|k| ("sounds", k)));
+            for (what, key) in keys {
+                if !declared.contains(key) {
+                    stray.push(format!("{}: {what}.{key}", file.display()));
+                }
+            }
+        }
+        assert!(
+            stray.is_empty(),
+            "pack keys no component declares (declared: {declared:?}):\n{}",
+            stray.join("\n")
+        );
+    }
 }

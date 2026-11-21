@@ -173,7 +173,7 @@
     "warn": "#ffb629"
   },
   "sounds": {
-    "Button.base": {
+    "Button.plate": {
       "hover": {
         "clips": [
           "@styles/shared/sfx-tap2.ogt"
@@ -199,29 +199,7 @@
         ]
       }
     },
-    "Button.base.danger": {
-      "hover": {
-        "clips": [
-          "@styles/shared/sfx-tap2.ogt"
-        ],
-        "pitch": [
-          1.2,
-          1.3
-        ],
-        "volume": 0.08
-      },
-      "press": {
-        "clips": [
-          "@styles/shared/sfx-back.ogt"
-        ],
-        "pitch": [
-          0.94,
-          1.0
-        ],
-        "volume": 0.28
-      }
-    },
-    "Button.base.primary": {
+    "Button.plate.primary": {
       "hover": {
         "clips": [
           "@styles/shared/sfx-tap2.ogt"
@@ -243,57 +221,7 @@
         "volume": 0.32
       }
     },
-    "Radio.card": {
-      "hover": {
-        "clips": [
-          "@styles/shared/sfx-tap.ogt"
-        ],
-        "pitch": [
-          1.24,
-          1.34
-        ],
-        "volume": 0.07
-      },
-      "press": {
-        "clips": [
-          "@styles/shared/sfx-tap2.ogt"
-        ],
-        "pitch": [
-          1.1,
-          1.24
-        ],
-        "volume": [
-          0.22,
-          0.28
-        ]
-      }
-    },
     "Slot.frame": {
-      "hover": {
-        "clips": [
-          "@styles/shared/sfx-tap.ogt"
-        ],
-        "pitch": [
-          1.24,
-          1.34
-        ],
-        "volume": 0.07
-      },
-      "press": {
-        "clips": [
-          "@styles/shared/sfx-tap2.ogt"
-        ],
-        "pitch": [
-          1.1,
-          1.24
-        ],
-        "volume": [
-          0.22,
-          0.28
-        ]
-      }
-    },
-    "Tabs.tab": {
       "hover": {
         "clips": [
           "@styles/shared/sfx-tap.ogt"
