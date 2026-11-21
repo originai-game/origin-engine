@@ -40,10 +40,11 @@
 // world hash, the PNG's SHA-256 (and `first`'s with --mode restore), the
 // presentation hash, and with --mode synctest the ticks checked and the
 // mismatches.
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { bundleGame } from "../../src/node/build.ts";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 
 const argv = process.argv.slice(2);
@@ -67,14 +68,14 @@ for (const step of opt("--inputs", "").split(";").filter(Boolean)) {
 
 const { loadNativeHost, native, attachRenderer } = await import("../../src/node/index.ts");
 loadNativeHost();
-// The game's own module beside this script, so its "@origingame/engine" is
-// this checkout's package, as og run's is.
-const here = dirname(fileURLToPath(import.meta.url));
-const copy = join(here, `.presentation-main-${process.pid}.ts`);
-copyFileSync(join(project, "src", "main.ts"), copy);
-const game = await import(copy)
+// The game bundled as og run bundles it: its TSX compiled by nsh-jsx, its
+// own imports kept, and its "@origingame/engine" this checkout's package.
+const bundleDir = mkdtempSync(join(tmpdir(), "og-presentation-"));
+const bundled = await bundleGame(join(project, "src", "main.ts"), join(bundleDir, "game.js"));
+if (!bundled.ok) throw new Error(bundled.reason);
+const game = await import(join(bundleDir, "game.js"))
   .then((m) => (m as { default: GameToken }).default)
-  .finally(() => rmSync(copy, { force: true }));
+  .finally(() => rmSync(bundleDir, { recursive: true, force: true }));
 const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T => {
   if (!r.ok) throw new Error(r.reason);
   return r.value;
