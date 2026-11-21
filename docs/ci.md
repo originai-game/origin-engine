@@ -207,7 +207,7 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 
 | Lane | Checks |
 |---|---|
-| `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside og-tests, generated API drift, engine TypeScript checks, non-engine package tests, the lanes wasm type check, the wasm32 check of the wasm-only crates, the CSS checklist |
+| `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside the crates in `scripts/gate-exclude.txt`, generated API drift, engine TypeScript checks, non-engine package tests, and the one wasm32 check of the wasm-only crates (feature matrix and lanes variants) |
 | `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the browser tests of packages/engine's `test:browser` |
 
 `OG_GATE_SKIP` (comma-separated step names) drops those steps from a run.
@@ -302,8 +302,7 @@ split, and the lowest such crate is its cause.
 | `api-surface` | Compares the live native API to the IDL, in both directions, without a GPU. | quick, full or a scoped prerequisite |
 | `bun-quick` | Non-engine package tests, without rebuilding native artifacts. | quick, full |
 | `engine-typecheck` | Native `og check tsconfig.runtime.json` exercises checker dispatch and config handling. Preflight already checks all three configurations (API, runtime, templates). | quick, full |
-| `wasm-lanes-check` | `scripts/wasm-lanes.sh check` of the non-frames `lanes` variants when their inputs change. If this run successfully built all variants with the same flags and features, that build is the proof. | quick, full |
-| `wasm-check` | Check standalone default-feature `og-render` and `og-tests-web` for wasm32. With them, check og-host-web with none of og-runtime's optional modules (3D and 2D) and with each one left out, which no shipped variant builds. | quick, full |
+| `wasm-check` | The one wasm32 check of the wasm-only crates: standalone default-feature `og-render` and `og-tests-web`, og-host-web with none of og-runtime's optional modules (3D and 2D) and with each one left out, which no shipped variant builds, and `scripts/wasm-lanes.sh check` of the non-frames `lanes` variants — unless this run successfully built all variants with the same flags and features, which is that proof. Each half keeps its own input record. | quick, full |
 | `wasm-build` | Build `scripts/wasm-crates.txt` modules in `wasm-test` into `target/og-wasm/raw`. `OG_WASM_VARIANTS` picks them: `dev` (the development module alone: bun-test's cross-host tests, a landing), `reference` (adds the 3D publish pair, web-reference alone), `all` (every publish and lanes variant: a run with `browser`, and `scripts/release-wasm.sh`). Tests that load a publish or lanes module skip without one. | full |
 | `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
 | `web-ready` | Packages the prepared native and wasm products once for the selected web consumers. | full or a scoped prerequisite |
@@ -444,7 +443,8 @@ documents. `document` parses a document's text, as a remote `<iframe>`
 delivers it, then mounts and builds it. A crash it finds is fixed at the
 root and its input, minimised with `cargo fuzz tmin`, goes in
 `crates/og-ui-fuzz/regressions/document/`, which the crate's test
-(`cargo test -p og-ui-fuzz`, in the gate's tests) replays.
+(`cargo test -p og-ui-fuzz`) replays. The crate is excluded from the gate
+(`scripts/gate-exclude.txt`) while the og-ui deletion head owns it.
 
 ## Uniform host coverage
 

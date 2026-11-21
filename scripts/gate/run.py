@@ -15,7 +15,7 @@ NEEDS = {
     'native-ready': ('rust-build',), 'drift': ('rust-build',), 'api-surface': ('native-ready',),
     'rust-cpu': ('rust-build',), 'rust-gpu': ('rust-build',),
     'bun-quick': ('preflight',), 'engine-typecheck': ('rust-build',),
-    'wasm-lanes-check': ('preflight',), 'wasm-check': ('preflight',),
+    'wasm-check': ('preflight',),
     'wasm-build': ('preflight',), 'wasm-bindgen': ('wasm-build',),
     'web-ready': ('native-ready', 'wasm-bindgen'),
     'bun-test': ('web-ready', 'api-surface', 'drift', 'bun-quick', 'engine-typecheck'),
@@ -41,7 +41,7 @@ def stop_group(proc, sig):
         pass
 
 
-QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'api-surface', 'bun-quick', 'engine-typecheck', 'wasm-lanes-check', 'wasm-check')
+QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'api-surface', 'bun-quick', 'engine-typecheck', 'wasm-check')
 FULL = QUICK + ('wasm-build', 'wasm-bindgen', 'bun-test', 'fixtures', 'doc-tests', 'browser')
 # These consumers can cook the same projects. Serialize them when selected
 # together without adding tests to a scoped run merely to enforce ordering.
@@ -140,8 +140,10 @@ def main():
                          + ', '.join(unlandable)
                          + '); only rust-gpu may be skipped for a landing')
     skipped = [s for s in NEEDS if s in wanted and s in skip]
-    if {'browser', 'wasm-build', 'wasm-lanes-check'} <= wanted:
-        NEEDS['wasm-lanes-check'] += ('wasm-build',)
+    # In a browser run the all-variant wasm build type-checks the lanes
+    # variants first, and step_wasm_check's lanes half then reuses it.
+    if {'browser', 'wasm-build', 'wasm-check'} <= wanted:
+        NEEDS['wasm-check'] += ('wasm-build',)
     if resume and skip:
         raise ValueError('--resume is incompatible with OG_GATE_SKIP')
     jobs = int(os.environ.get('OG_GATE_JOBS', '2'))

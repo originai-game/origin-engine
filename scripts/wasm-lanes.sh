@@ -6,8 +6,8 @@
 # physics the determinism step compares (docs/web-export.md §Lanes).
 #
 #   scripts/wasm-lanes.sh CARGO_BUILD_ARGS...   cargo build ARGS for wasm32 with atomics
-#   scripts/wasm-lanes.sh check CARGO_ARGS...   cargo check ARGS the same way (the quick
-#                                               gate's wasm-lanes-check step)
+#   scripts/wasm-lanes.sh check CARGO_ARGS...   cargo check ARGS the same way (the
+#                                               wasm-check step's lanes half)
 #   scripts/wasm-lanes.sh --target-dir          print the target directory it builds in
 #
 # A lanes variant is a publish engine with wasm atomics (one per physics

@@ -122,23 +122,23 @@ require_wasm() {
 # types are not Send, which neither the native build nor the
 # single-threaded wasm32 one (where wgpu marks them Send) can see; a Send
 # bound on a pipeline cell once broke every lanes module while quick
-# passed. Runs whenever og-render, og-host-web or anything
-# they depend on changes; cargo check in scripts/wasm-lanes.sh's target
-# directory, beside wasm-build's lanes builds. Without sccache: a check
-# makes only metadata, which the shared store gains little from, and the
-# step then never waits on the shared server. Cold it takes about 3
-# minutes, after an og-render change 20 to 50 s a variant.
-step_wasm_lanes_check() {
+# passed. Part of step_wasm_check (one wasm32 step, one closure), keeping
+# its own input record so a variant regime change cannot stale-skip it.
+# Without sccache: a check makes only metadata, which the shared store
+# gains little from, and the step then never waits on the shared server.
+# Cold it takes about 3 minutes, after an og-render change 20 to 50 s a
+# variant.
+lanes_check() {
   # An all-variant build uses the same profile, manifests, flags and feature
   # sets below via wasm-lanes.sh; it type-checks them before linking. A skip
   # or dev-only build cannot provide that evidence.
   if [ "${OG_WASM_VARIANTS:-dev}" = all ] && [[ "${OG_GATE_RAN:- }" == *' wasm-build '* ]]; then
-    og_say 'wasm-lanes-check: covered by the all-variant wasm build in this run'
+    og_say 'lanes check: covered by the all-variant wasm build in this run'
+    og_green_set wasm-check.lanes
     return 0
   fi
-  skip_unchanged wasm-lanes-check "wasm-lanes-check" "$(rule_wasm)" && return $SKIP
+  skip_unchanged wasm-check.lanes "lanes check" "$(rule_wasm)" && return $SKIP
   local c v vname vfeat
-  export RUSTC_WRAPPER=
   for c in $(og_wasm_lanes_crates); do
     v="$(og_wasm_lanes_variants "$c")"
     if [ -z "$v" ]; then
@@ -158,6 +158,7 @@ step_wasm_lanes_check() {
 $v
 EOF_LANES
   done
+  og_green_set wasm-check.lanes
 }
 
 # The crates that compile only for wasm32 type-checked there: natively they
@@ -188,6 +189,14 @@ modules_without() {
   printf '%s' "$out"
 }
 step_wasm_check() {
+  # The one wasm32 type check of quick: the wasm-only crates' feature
+  # matrix below and the lanes variants (lanes_check), one step over one
+  # closure (og-tests-web, og-host-web, og-render and their dependencies);
+  # each half keeps its own input record. The crates here compile only for
+  # wasm32 — natively they are empty, so the workspace's check and clippy
+  # never see them (og-tests-web once stopped compiling for weeks while
+  # quick passed) — so this step reruns only when a crate in the closure
+  # changed.
   skip_unchanged wasm-check "wasm-check" "$(python3 scripts/gate/inputs.py crates og-tests-web og-host-web og-render)" && return $SKIP
   export RUSTC_WRAPPER=
   local profile="${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" base3d=og-host-web/publish,og-host-web/physics3d,og-host-web/shaping m
@@ -204,6 +213,7 @@ step_wasm_check() {
     og_say "wasm check: og-host-web without $m"
     cargo check --profile "$profile" --target "$WASM_TRIPLE" -p og-host-web --lib --no-default-features --features "$base3d$(modules_without "$m")" || return 1
   done
+  lanes_check
 }
 
 # OG_WASM_VARIANTS picks the modules beside the development one, which every

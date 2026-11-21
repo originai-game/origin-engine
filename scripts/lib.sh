@@ -97,9 +97,15 @@ og_sha256() {
 # Compressed sizes keyed by content, kept across size checks in this checkout.
 OG_CONTENT_CACHE="$OG_TARGET_DIR/og-wasm-cache"
 
-# og_gate_excluded: crate names from scripts/gate-exclude.txt.
+# og_gate_excluded: crate names from scripts/gate-exclude.txt (a `bin ...`
+# line drops one test binary and stays out of the crate list).
 og_gate_excluded() {
-  awk '{ sub(/#.*/, "") } NF >= 1 { print $1 }' "$OG_ROOT/scripts/gate-exclude.txt"
+  awk '{ sub(/#.*/, "") } NF >= 1 && $1 != "bin" { print $1 }' "$OG_ROOT/scripts/gate-exclude.txt"
+}
+
+# og_gate_excluded_bins: binary ids (`package/binary`) from `bin` lines.
+og_gate_excluded_bins() {
+  awk '{ sub(/#.*/, "") } $1 == "bin" && NF >= 2 { print $2 }' "$OG_ROOT/scripts/gate-exclude.txt"
 }
 
 # og_workspace_crates: names of the workspace's own packages.

@@ -9,25 +9,101 @@ import subprocess
 import sys
 from xml.etree import ElementTree
 
-from inputs import LOGS, GREEN, crate_inputs, mark, unaffected
+from inputs import LOGS, GREEN, ROOT, crate_inputs, mark, metadata, unaffected
+
+
+def excluded():
+    """Crates and binary ids the gate skips (scripts/gate-exclude.txt)."""
+    crates, bins = [], []
+    list_file = ROOT / 'scripts' / 'gate-exclude.txt'
+    if list_file.is_file():
+        for line in list_file.read_text().splitlines():
+            line = line.split('#', 1)[0].strip()
+            if not line:
+                continue
+            if line.startswith('bin '):
+                bins.append(line.split()[1])
+            else:
+                crates.append(line)
+    return crates, bins
+
+
+def build_key(binary_id):
+    return 'rust.build.' + hashlib.sha256(binary_id.encode()).hexdigest()[:20]
+
+
+def package_name(entry):
+    return entry['package-id'].rsplit('/', 1)[-1].split('#')[0]
+
+
+def test_packages():
+    """Workspace packages that own a test target, from cargo metadata."""
+    names = set()
+    for package in metadata()['packages']:
+        if package['id'] not in metadata()['workspace_members']:
+            continue
+        if any('test' in t['kind'] for t in package['targets']):
+            names.add(package['name'])
+    return names
 
 
 def build():
-    command = ['cargo', 'nextest', 'list', '--locked', '--workspace', '--list-type', 'binaries-only', '--message-format', 'json']
-    if os.environ['OG_GATE_LANE'] == 'quick':
-        command += ['--exclude', 'og-tests']
-    with (LOGS / 'binaries.json').open('w') as out:
-        subprocess.run(command, stdout=out, check=True)
-    # The dev addon and og every later step uses (packages/engine/scripts/
-    # build.sh copies them, drift and fixtures run target/debug/og), built
-    # here once: features match the test build (docs/ci.md §Tests), so only
-    # the addon compiles. Each cargo build re-links target/debug/og, so no
-    # step after this one runs cargo for them.
-    subprocess.run(['cargo', 'build', '--locked', '-q', '-p', 'og-host-node', '-p', 'og-cli'], check=True)
-    listing = json.loads((LOGS / 'binaries.json').read_text())
-    binaries = listing['rust-binaries']
+    lane = os.environ['OG_GATE_LANE']
+    ex_crates, ex_bins = excluded()
+    if lane == 'quick':
+        ex_crates = ex_crates + ['og-tests']
+    allowed_packages = test_packages() - set(ex_crates)
+
+    # Per-binary input records (scripts/gate/inputs.py): a binary whose
+    # inputs — its package's Cargo closure — are unchanged since its last
+    # build reuses its stored listing, and cargo never relinks it. Only the
+    # changed binaries' packages go to cargo, so a warm run relinks just
+    # their packages' tests. A new or removed workspace package forces a
+    # full list, as does any missing record, tests file or binary.
+    stored = {}
+    try:
+        stored = json.loads((GREEN / 'rust.build.list.binaries.json').read_text())['rust-binaries']
+    except (OSError, ValueError, KeyError):
+        stored = {}
+    listed = set(package_name(e) for e in stored.values())
+    reuse, affected = {}, set()
+    for binary_id, entry in stored.items():
+        package = package_name(entry)
+        if package not in allowed_packages or entry['binary-id'] in ex_bins:
+            continue
+        tests_file = GREEN / f'{build_key(binary_id)}.tests.json'
+        try:
+            reusable = (tests_file.is_file() and Path(entry['binary-path']).is_file()
+                        and unaffected(build_key(binary_id), crate_inputs([package])))
+        except (OSError, ValueError):
+            reusable = False
+        if reusable:
+            reuse[binary_id] = entry
+        else:
+            affected.add(package)
+    affected |= allowed_packages - listed
+
+    if not affected and reuse:
+        listing = json.loads((GREEN / 'rust.build.list.binaries.json').read_text())
+    else:
+        command = ['cargo', 'nextest', 'list', '--locked', '--list-type', 'binaries-only', '--message-format', 'json']
+        # A scoped list builds only what it lists, so name the changed
+        # packages; with none changed, --workspace covers new and removed
+        # packages and the exclusions keep their targets unbuilt.
+        if affected:
+            command += [x for p in sorted(affected) for x in ('-p', p)]
+        else:
+            command += ['--workspace'] + [f'--exclude={c}' for c in sorted(ex_crates)]
+        with (LOGS / 'binaries.json').open('w') as out:
+            subprocess.run(command, stdout=out, check=True)
+        listing = json.loads((LOGS / 'binaries.json').read_text())
+        for binary_id, entry in reuse.items():
+            listing['rust-binaries'].setdefault(binary_id, entry)
+    (LOGS / 'binaries.json').write_text(json.dumps(listing))
+    binaries = {b: e for b, e in listing['rust-binaries'].items()
+                if package_name(e) in allowed_packages and e['binary-id'] not in ex_bins}
+    listing['rust-binaries'] = binaries
     meta = listing['rust-build-meta']
-    discovered = {}
     env = dict(os.environ, OG_RENDERER='none')
     env.pop('OG_GPU_REPORT_DIR', None)
     env.pop('OG_REFERENCE_REPORT_DIR', None)
@@ -40,7 +116,15 @@ def build():
     if sys.platform == 'win32':
         libraries.append(str(Path(meta['platforms']['host']['libdir']['path']).parents[3] / 'bin'))
     env[loader] = os.pathsep.join(libraries + [env.get(loader, '')])
-    for binary_id, binary in binaries.items():
+    # The dev addon and og every later step uses (packages/engine/scripts/
+    # build.sh copies them, drift and fixtures run target/debug/og), built
+    # here once: features match the test build (docs/ci.md §Tests), so only
+    # the addon compiles. Each cargo build re-links target/debug/og, so no
+    # step after this one runs cargo for them.
+    subprocess.run(['cargo', 'build', '--locked', '-q', '-p', 'og-host-node', '-p', 'og-cli'], check=True)
+    discovered = {}
+    for binary_id in [b for b in binaries if b not in reuse]:
+        binary = binaries[binary_id]
         result = subprocess.run([binary['binary-path'], '--list', '--format=json', '-Zunstable-options'],
                                 env=env, capture_output=True, text=True, check=True)
         tests = []
@@ -54,7 +138,16 @@ def build():
             tests.append({'name': record['name'], 'source': record.get('source_path'), 'gpu': gpu,
                           'ignored': bool(record.get('ignore')) and not gpu})
         discovered[binary_id] = {'binary': binary, 'tests': tests}
+        GREEN.mkdir(parents=True, exist_ok=True)
+        (GREEN / f'{build_key(binary_id)}.tests.json').write_text(json.dumps(tests))
+        mark(build_key(binary_id))
+    for binary_id, entry in reuse.items():
+        tests = json.loads((GREEN / f'{build_key(binary_id)}.tests.json').read_text())
+        discovered[binary_id] = {'binary': binaries[binary_id], 'tests': tests}
     (LOGS / 'discovered.json').write_text(json.dumps(discovered, indent=2))
+    # The next run reuses these entries and listings for the binaries whose
+    # inputs have not moved since.
+    (GREEN / 'rust.build.list.binaries.json').write_text(json.dumps(listing))
 
 
 def selection(binary_id, tests, gpu):
