@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui.configure UiDesc.seeds",
+      "summary": "Seeds given at run time (a look's through og.render.applyLook, a faction's) recolour the TSX UI: they lie over the style pack as a pack's own seeds do, so every class colour and og.ui.theme's colors derive from them; null clears them. Before, only old og-ui read them."
+    },
+    {
+      "member": "og.ui.configure UiDesc.sounds",
+      "summary": "The hover, press, open, close and error sounds reach the TSX UI, over the style pack's own sounds for those events. A press sounds when it completes (on release, as a click). success has no event in the TSX UI and plays nothing."
+    }
+  ]
+}
