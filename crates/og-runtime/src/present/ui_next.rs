@@ -1,13 +1,14 @@
 //! og-ui's new core behind the runtime's UI entry points, for a game whose
 //! project.ogt says `uiCore next` (the ui-rewrite branch; this module goes
 //! when the new core replaces og-ui). The game's store operations
-//! (`og.ui.scope`) still reach og-ui, which keeps the values, answers the
-//! reads and checkpoints them; each is also mirrored into an og-ui-next
-//! signal. Its mounts go to the new core alone, so og-ui draws none of
-//! them. At the end of the UI's tick the tree commits what the stores
+//! (`og.ui.scope`) go to the store here, a reactive session that keeps
+//! the values, answers the reads and goes into checkpoints; each is also
+//! mirrored into an og-ui-next signal. Its mounts go to the new core
+//! alone, so og-ui draws none of them. At the end of the UI's tick the tree commits what the stores
 //! changed, lays out and paints; its items are emitted to the overlay
 //! beside og-ui's.
 
+use og_ui::reactive::session::{Command, Session};
 use og_ui_next::look::{Layer, Look};
 use og_ui_next::queue;
 use og_ui_next::tree::Tree;
@@ -52,8 +53,9 @@ pub(crate) struct Spans {
     pub elements: usize,
 }
 
-/// A mounted document's name and its inputs, as (prop, signal) pairs.
-type Mount = (String, Vec<(String, u32)>);
+/// A mounted document's name, its inputs as (prop, signal) pairs, and
+/// their sources as the mount named them.
+type Mount = (String, Vec<(String, u32)>, Vec<Value>);
 
 pub(crate) struct Next {
     scheme: og_ui::Scheme,
@@ -68,6 +70,8 @@ pub(crate) struct Next {
     /// Mounted documents: mount id to (document, inputs).
     mounts: BTreeMap<(String, String), Mount>,
     built: bool,
+    /// The game's stores: their values, reads and checkpoints.
+    pub(crate) store: Session,
     /// The items the overlay draws, as og-ui's frame carries them.
     pub frame: og_ui::UiFrame,
     pub spans: Spans,
@@ -133,6 +137,7 @@ impl Next {
             rows: BTreeMap::new(),
             mounts: BTreeMap::new(),
             built: false,
+            store: Session::default(),
             frame: og_ui::UiFrame::default(),
             spans: Spans::default(),
             font: false,
@@ -245,6 +250,7 @@ impl Next {
                 let mount = c.get("mount").and_then(source)?;
                 let document = c.get("document").and_then(Value::as_str)?.to_string();
                 let mut inputs = Vec::new();
+                let mut sources = Vec::new();
                 if let Some(m) = c.get("inputs").and_then(Value::as_object) {
                     for (name, s) in m {
                         let Some(id) = source(s) else { continue };
@@ -252,9 +258,10 @@ impl Next {
                             self.signal(id.clone(), Value::Null);
                         }
                         inputs.push((name.clone(), self.signals[&id]));
+                        sources.push(s.clone());
                     }
                 }
-                self.mounts.insert(mount, (document, inputs));
+                self.mounts.insert(mount, (document, inputs, sources));
                 self.tree = None;
                 return Some(json!({ "ok": true, "value": null }));
             }
@@ -269,34 +276,26 @@ impl Next {
         None
     }
 
-    /// The UI patch batch `bytes`: the store commands mirrored here and
-    /// applied by og-ui, the mounts taken here; the replies in order.
-    pub(crate) fn patch(&mut self, ui: &mut og_ui::Ui, bytes: &[u8]) -> Vec<u8> {
+    /// The UI patch batch `bytes`: the mounts taken here, every other
+    /// command applied to the store (and mirrored); the replies in order.
+    pub(crate) fn patch(&mut self, bytes: &[u8]) -> Vec<u8> {
         let wire = og_ui::reactive::wire::encode;
         let Ok(Value::Array(commands)) = og_ui::reactive::wire::decode(bytes) else {
-            return ui.apply_reactive(bytes);
+            return self.store.apply(bytes);
         };
         let mut replies: Vec<Option<Value>> = Vec::with_capacity(commands.len());
         let mut forward = Vec::new();
-        for mut c in commands {
-            match self.mirror(&c) {
-                Some(reply) => replies.push(Some(reply)),
-                None => {
-                    // og-ui is told only of its own mounts.
-                    if c.get("op").and_then(Value::as_str) == Some("registered")
-                        && let Some(Value::Array(m)) = c.get_mut("mounts")
-                    {
-                        m.retain(|s| source(s).is_none_or(|id| !self.mounts.contains_key(&id)));
-                    }
-                    replies.push(None);
-                    forward.push(c);
-                }
+        for c in commands {
+            let reply = self.mirror(&c);
+            if reply.is_none() {
+                forward.push(c);
             }
+            replies.push(reply);
         }
         let mut answered = match forward.is_empty() {
             true => Vec::new(),
             false => match wire(&Value::Array(forward))
-                .map(|b| og_ui::reactive::wire::decode(&ui.apply_reactive(&b)))
+                .map(|b| og_ui::reactive::wire::decode(&self.answer(&b)))
             {
                 Ok(Ok(Value::Array(a))) => a,
                 Ok(Ok(whole)) => return wire(&whole).unwrap_or_default(),
@@ -309,6 +308,44 @@ impl Next {
             .map(|r| r.unwrap_or_else(|| answered.next().unwrap_or(Value::Null)))
             .collect();
         wire(&Value::Array(out)).unwrap_or_default()
+    }
+
+    /// The store's replies to a batch of commands the mounts did not take.
+    fn answer(&mut self, bytes: &[u8]) -> Vec<u8> {
+        Session::apply_with(bytes, |command| self.command(command))
+    }
+
+    /// One store command: the mounts' own are answered here, the rest by
+    /// the store.
+    fn command(&mut self, command: Command) -> Result<Value, String> {
+        match command {
+            Command::MountInputs => Ok(Value::Array(
+                self.mounts
+                    .iter()
+                    .map(|((scope, id), (_, _, sources))| {
+                        json!({ "mount": { "scope": scope, "id": id }, "inputs": sources })
+                    })
+                    .collect(),
+            )),
+            Command::Mount { mount, .. } | Command::Unmount { mount } => Err(format!(
+                "og.ui: '{}:{}' is not a document mount of this UI",
+                mount.scope, mount.id
+            )),
+            // The mounts are this module's; the store keeps the sources.
+            Command::Registered { sources, .. } => self.store.execute(Command::Registered {
+                sources,
+                mounts: Vec::new(),
+            }),
+            Command::Dispose { scope } => {
+                let before = self.mounts.len();
+                self.mounts.retain(|(s, _), _| *s != scope);
+                if self.mounts.len() != before {
+                    self.tree = None;
+                }
+                self.store.execute(Command::Dispose { scope })
+            }
+            command => self.store.execute(command),
+        }
     }
 
     /// The UI's tick is ending: the tree is made again if a mount changed
@@ -391,7 +428,7 @@ impl Next {
                 &self.language,
                 Box::new(move |key| crate::bind::i18n::message(engine, key)),
             );
-            for (doc, inputs) in self.mounts.values() {
+            for (doc, inputs, _) in self.mounts.values() {
                 let inputs: Vec<(&str, u32)> =
                     inputs.iter().map(|(n, s)| (n.as_str(), *s)).collect();
                 if let Err(e) = tree.mount(doc, &inputs) {
@@ -450,7 +487,9 @@ impl Next {
     /// The new core's elements with a document id, as the probe's UI dump
     /// lists them: id, box on screen and text, from the arena.
     pub(crate) fn elements(&self) -> Vec<og_probe::UiElement> {
-        let Some(tree) = &self.tree else { return Vec::new() };
+        let Some(tree) = &self.tree else {
+            return Vec::new();
+        };
         tree.dump()
             .into_iter()
             .filter(|(_, _, shown, _)| *shown)
@@ -508,5 +547,45 @@ impl Next {
             "elements": s.elements, "items": self.frame.items.len(), "mounts": self.mounts.len(),
             "kinds": kinds, "font": self.font, "texts": texts, "emitted": self.emitted.get(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::present::presentation::UiCheckpoint;
+
+    fn patch(next: &mut Next, commands: Value) -> Value {
+        let bytes = og_ui::reactive::wire::encode(&commands).unwrap();
+        og_ui::reactive::wire::decode(&next.patch(&bytes)).unwrap()
+    }
+
+    fn read(next: &mut Next) -> Value {
+        let src = json!({ "scope": "hud", "id": "gold" });
+        patch(next, json!([{ "op": "read", "source": src }]))[0]["value"]["value"].clone()
+    }
+
+    /// The new core's stores answer reads and go into a checkpoint, which a
+    /// save's text carries and a restore brings back.
+    #[test]
+    fn checkpoints_carry_the_new_cores_stores() {
+        let mut next = Next::new();
+        let src = json!({ "scope": "hud", "id": "gold" });
+        let set = |v: i64| json!([{ "op": "set", "source": src, "value": v, "force": false }]);
+        patch(
+            &mut next,
+            json!([{ "op": "signal", "source": src, "initial": 3 }]),
+        );
+        patch(&mut next, set(7));
+        assert_eq!(read(&mut next), json!(7));
+        let ui = og_ui::SharedUi::new(og_ui::Ui::default());
+        let saved = UiCheckpoint::save(&ui, Some(&next.store));
+        let text = serde_json::to_vec(&saved).unwrap();
+        let saved: UiCheckpoint = serde_json::from_slice(&text).unwrap();
+        saved.validate().unwrap();
+        patch(&mut next, set(12));
+        assert_eq!(read(&mut next), json!(12));
+        saved.restore(&ui, Some(&mut next.store)).unwrap();
+        assert_eq!(read(&mut next), json!(7));
     }
 }

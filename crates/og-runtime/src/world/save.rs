@@ -166,11 +166,11 @@ pub fn og_world_snapshot(world: u32, desc: Option<String>) -> Result<serde_json:
         Ok((bytes, tick)) => {
             let ui = (!is_selection(&bytes))
                 .then(|| {
-                    eng.state
-                        .borrow()
-                        .ui
-                        .as_ref()
-                        .map(crate::present::presentation::UiCheckpoint::save)
+                    eng.state.borrow().ui.as_ref().map(|ui| {
+                        let rs = eng.render.borrow();
+                        let store = crate::present::presentation::next_store(&rs);
+                        crate::present::presentation::UiCheckpoint::save(ui, store)
+                    })
                 })
                 .flatten();
             Ok(Value::String(encode(&bytes, tick, version, ui.as_ref())))

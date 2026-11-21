@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui.scope",
+      "summary": "On `uiCore next`, the new core keeps the stores itself: their values, reads and mount inputs, and a checkpoint or a save carries them, so loading a save brings the HUD's values back."
+    }
+  ]
+}

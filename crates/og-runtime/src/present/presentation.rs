@@ -54,14 +54,27 @@ struct Checkpoint {
 pub(crate) struct UiCheckpoint {
     state: Vec<u8>,
     world: Vec<u8>,
+    /// The new core's stores (`uiCore next`); none on og-ui's core, whose
+    /// stores `state` holds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    store: Option<serde_json::Value>,
+}
+
+/// The new core's stores in render state `rs`, when the game runs on it.
+pub(crate) fn next_store(rs: &RenderState) -> Option<&og_ui::reactive::session::Session> {
+    rs.ui_next.as_deref().map(|n| &n.store)
 }
 
 impl UiCheckpoint {
-    pub(crate) fn save(ui: &og_ui::SharedUi) -> Self {
+    pub(crate) fn save(
+        ui: &og_ui::SharedUi,
+        store: Option<&og_ui::reactive::session::Session>,
+    ) -> Self {
         let ui = ui.lock();
         Self {
             state: ui.save_state(),
             world: ui.save_world_state(),
+            store: store.map(|s| s.save()),
         }
     }
 
@@ -70,25 +83,45 @@ impl UiCheckpoint {
         ui.restore_state(&self.state)
             .map_err(|e| e.reason().to_owned())?;
         ui.restore_world_state(&self.world)
-            .map_err(|e| e.reason().to_owned())
+            .map_err(|e| e.reason().to_owned())?;
+        match &self.store {
+            Some(saved) => og_ui::reactive::session::Session::default().restore(saved),
+            None => Ok(()),
+        }
     }
 
-    pub(crate) fn restore(&self, ui: &og_ui::SharedUi) -> Result<(), String> {
-        self.validate_for(ui)?;
+    pub(crate) fn restore(
+        &self,
+        ui: &og_ui::SharedUi,
+        store: Option<&mut og_ui::reactive::session::Session>,
+    ) -> Result<(), String> {
+        self.validate_for(ui, store.as_deref())?;
         let mut ui = ui.lock();
         ui.restore_state(&self.state)
             .map_err(|e| e.reason().to_owned())?;
         ui.restore_world_state(&self.world)
-            .map_err(|e| e.reason().to_owned())
+            .map_err(|e| e.reason().to_owned())?;
+        if let (Some(saved), Some(store)) = (&self.store, store) {
+            store.restore(saved)?;
+        }
+        Ok(())
     }
 
-    pub(crate) fn validate_for(&self, current: &og_ui::SharedUi) -> Result<(), String> {
+    pub(crate) fn validate_for(
+        &self,
+        current: &og_ui::SharedUi,
+        store: Option<&og_ui::reactive::session::Session>,
+    ) -> Result<(), String> {
         let mut ui = og_ui::Ui::default();
         ui.inherit_store_registrations(&current.lock());
         ui.restore_state(&self.state)
             .map_err(|e| e.reason().to_owned())?;
         ui.restore_world_state(&self.world)
-            .map_err(|e| e.reason().to_owned())
+            .map_err(|e| e.reason().to_owned())?;
+        match (&self.store, store) {
+            (Some(saved), Some(store)) => store.clone().restore(saved),
+            _ => Ok(()),
+        }
     }
 }
 
@@ -103,6 +136,10 @@ pub(crate) struct Checkpoints {
 pub(crate) fn save(rs: &mut RenderState) -> u64 {
     let renderer = rs.backend.as_mut().map_or(0, |b| b.save_state());
     let terrain = crate::bind::terrain::checkpoint(rs);
+    let ui = rs
+        .ui
+        .as_ref()
+        .map(|ui| UiCheckpoint::save(ui, next_store(rs)));
     let c = &mut rs.checkpoints;
     c.next += 1;
     c.kept.push_back((
@@ -111,7 +148,7 @@ pub(crate) fn save(rs: &mut RenderState) -> u64 {
             particles: rs.particle_history.clone(),
             motion: rs.motion.checkpoint(),
             renderer,
-            ui: rs.ui.as_ref().map(UiCheckpoint::save),
+            ui,
             interp: rs.interp.checkpoint(),
             record: rs.geo.record_checkpoint(),
             objects: rs.fx.motion_checkpoint(),
@@ -129,7 +166,7 @@ pub(crate) fn validate_restore(rs: &RenderState, id: u64) -> Result<(), String> 
     if let Some((_, checkpoint)) = rs.checkpoints.kept.iter().find(|(k, _)| *k == id)
         && let (Some(saved), Some(current)) = (&checkpoint.ui, &rs.ui)
     {
-        saved.validate_for(current)?;
+        saved.validate_for(current, next_store(rs))?;
     }
     Ok(())
 }
@@ -151,7 +188,7 @@ pub(crate) fn restore(rs: &mut RenderState, id: u64) {
             }
             if let (Some(saved), Some(current)) = (&c.ui, &rs.ui) {
                 saved
-                    .restore(current)
+                    .restore(current, rs.ui_next.as_deref_mut().map(|n| &mut n.store))
                     .expect("presentation checkpoint preflight passed");
             }
             rs.interp.restore(&c.interp);
@@ -201,9 +238,12 @@ pub(crate) fn hash(rs: &RenderState) -> u64 {
         }
     }
     if let Some(ui) = &rs.ui {
-        let saved = UiCheckpoint::save(ui);
+        let saved = UiCheckpoint::save(ui, next_store(rs));
         put(&saved.state);
         put(&saved.world);
+        if let Some(store) = &saved.store {
+            put(store.to_string().as_bytes());
+        }
     }
     rs.reveal.hash(&mut put);
     h

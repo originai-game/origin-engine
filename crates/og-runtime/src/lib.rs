@@ -314,13 +314,13 @@ pub fn shared_ui(engine: u32) -> Option<og_ui::SharedUi> {
 pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
     match shared_ui(world) {
         // A project on og-ui's new core: its mounts are the new core's.
-        Some(ui) if present::ui_next::wanted(world) => {
+        Some(_) if present::ui_next::wanted(world) => {
             let eng = engine::engine(world).expect("shared_ui found it");
             let mut rs = eng.render.borrow_mut();
             let next = rs
                 .ui_next
                 .get_or_insert_with(|| Box::new(present::ui_next::Next::new()));
-            next.patch(&mut ui.lock(), bytes)
+            next.patch(bytes)
         }
         Some(ui) => ui.lock().apply_reactive(bytes),
         None => og_ui::reactive::wire::encode(&serde_json::json!({
