@@ -550,7 +550,7 @@ test("FilmFlowchartScreen passes a picked node's id through and plays only where
   const dir = mkdtempSync(join(tmpdir(), "og-tsx-flowchart-"));
   try {
     writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
-    const screen = fileURLToPath(new URL("../src/ui/screens/film-flowchart.tsx", import.meta.url));
+    const screen = fileURLToPath(new URL("../src/ui/screens/flow-chart.tsx", import.meta.url));
     writeFileSync(join(dir, "main.ts"), `export { FilmFlowchartScreen, fixtures } from ${JSON.stringify(screen)};\n`);
     const out = join(dir, "game.js");
     const b = await bundleGame(join(dir, "main.ts"), out, "native");

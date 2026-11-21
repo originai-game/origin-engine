@@ -10,7 +10,7 @@ pub(crate) mod ai;
 pub(crate) mod anim;
 pub(crate) mod destruction;
 pub(crate) mod destruction2d;
-pub(crate) mod film;
+pub(crate) mod flow;
 pub(crate) mod forces;
 pub(crate) mod garment;
 pub(crate) mod i18n;

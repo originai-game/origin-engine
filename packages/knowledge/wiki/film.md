@@ -6,7 +6,7 @@ Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og
 
 The story stays og.story's, the footage og.video's, the timing og.timeline's: og.film moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
 
-See `film`.
+See `flow`.
 
 - **TypeScript**: functions are the namespace `og.film`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).

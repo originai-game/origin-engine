@@ -7,7 +7,7 @@
     ],
     "story": [
       "^og_story::",
-      "^og_runtime::bind::(story|film)"
+      "^og_runtime::bind::(story|flow)"
     ],
     "nav": [
       "^og_ai::",

@@ -1,6 +1,6 @@
 <!-- Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate. -->
 
-# The `film` guide: Make an interactive film
+# The `flow` guide: Make an interactive film
 
 An interactive film is a Yarn dialogue whose nodes play footage. The story
 stays in Yarn (`yarn`), each segment is a timeline with a video track
@@ -9,8 +9,8 @@ og.film moves the conversation from segment to segment and warms the
 segments a choice may lead to. Nothing else is new: captions, markers,
 transitions and sound are the timeline's, saves are the world's.
 
-<a id="guide-film-1"></a>
-### `film §1` Lay out the files
+<a id="guide-flow-1"></a>
+### `flow §1` Lay out the files
 
 ```text
 assets/story/film.yarn        # the story: nodes, choices, variables, endings
@@ -31,8 +31,8 @@ const film = og.film.start(world, { dialogue: "film", paused: true });
 fetches nothing until it plays, so a film of hundreds of segments loads
 them all at start.
 
-<a id="guide-film-2"></a>
-### `film §2` Write a film node
+<a id="guide-flow-2"></a>
+### `flow §2` Write a film node
 
 ```yarn
 title: kitchen
@@ -63,8 +63,8 @@ A film node holds no Yarn lines: what is said is the segment's caption
 track, so there is one source of subtitles. Choice text is the Yarn
 option's, translated as any line is.
 
-<a id="guide-film-3"></a>
-### `film §3` Write a segment
+<a id="guide-flow-3"></a>
+### `flow §3` Write a segment
 
 ```text
 type timeline
@@ -122,8 +122,8 @@ Thresholds that read well:
 | Key frame interval | at most 1 s at the cut (`keyframe`), so a cut never waits on a seek |
 | Chunk | the default 6 s; 2 to 4 s for films that cut every few seconds |
 
-<a id="guide-film-4"></a>
-### `film §4` Show the film
+<a id="guide-flow-4"></a>
+### `flow §4` Show the film
 
 Each tick, read `og.film.view`: put its `texture` on a full-screen sprite
 or UI image, and while `window` is set offer `choices` with the time left
@@ -177,8 +177,8 @@ to its window, then to its cut.
 On the web, audio starts only after a gesture: start the film paused
 behind a title screen and call `og.film.play` from its Start button.
 
-<a id="guide-film-5"></a>
-### `film §5` Saves, chapters and seen segments
+<a id="guide-flow-5"></a>
+### `flow §5` Saves, chapters and seen segments
 
 A film is world state: a snapshot taken mid-segment restores to the same
 frame, window and pending choice. On og.FilmChapter, take a snapshot into
@@ -208,8 +208,8 @@ og.FilmEnded under these keys, so tools agree:
 Telemetry, when a game sends it: `film_choice {node, index, timedOut}`,
 `film_ending {ending}`, `film_quit {node}`.
 
-<a id="guide-film-6"></a>
-### `film §6` Decks and devices
+<a id="guide-flow-6"></a>
+### `flow §6` Decks and devices
 
 `FilmDesc.decks` is 3 by default: one plays, two hold the segments the
 current node may lead to, paused on their first frame, the chosen one
@@ -229,8 +229,8 @@ align each segment's start to a multiple of the clip's `keyframe` seconds
 a cut that lands on one decodes a single frame, not a run. A small
 `keyframe` makes cuts snappier at some size cost.
 
-<a id="guide-film-7"></a>
-### `film §7` Make the footage (AI models)
+<a id="guide-flow-7"></a>
+### `flow §7` Make the footage (AI models)
 
 When a generative video model makes the clips, two cook settings keep them
 consistent and one tool continues them:
@@ -243,8 +243,8 @@ consistent and one tool continues them:
   Feed the last frame to an image-to-video model as the seed for the next
   clip, so the cut joins; the first frame checks it against the clip before.
 
-<a id="guide-film-8"></a>
-### `film §8` Test every route
+<a id="guide-flow-8"></a>
+### `flow §8` Test every route
 
 The world is deterministic, so a test walks `og.story.graph` from the
 start, chooses each choice of each film node in turn with `film:choose:<i>`

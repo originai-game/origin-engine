@@ -86,7 +86,7 @@ pub use bind::destruction2d::{
     og_destruction_carve2d, og_destruction_cell2d, og_destruction_explode2d, og_destruction_fill2d,
     og_destruction_fracture2d,
 };
-pub use bind::film::{
+pub use bind::flow::{
     og_film_chart, og_film_choose, og_film_load, og_film_pause, og_film_play, og_film_skip,
     og_film_start, og_film_stop, og_film_view,
 };

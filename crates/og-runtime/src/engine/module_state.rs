@@ -7,7 +7,7 @@
 //! never the process's.
 
 use crate::{
-    bind::agents, bind::destruction, bind::destruction2d, bind::film, bind::forces, bind::i18n,
+    bind::agents, bind::destruction, bind::destruction2d, bind::flow, bind::forces, bind::i18n,
     bind::modules, bind::motion, bind::net, bind::particles, bind::shared, bind::sight,
     bind::story, bind::terrain, bind::timeline, bind::vfx, bind::video, bind::wind,
     engine::invariants, host::platform, present::atmosphere, present::loading, world::origin,
@@ -31,7 +31,7 @@ pub(crate) struct Modules {
     pub stream: stream::ModuleState,
     pub agents: agents::ModuleState,
     pub story: story::ModuleState,
-    pub film: film::ModuleState,
+    pub film: flow::ModuleState,
     pub platform: platform::ModuleState,
     pub net: net::ModuleState,
     pub i18n: i18n::ModuleState,

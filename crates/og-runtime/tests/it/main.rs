@@ -40,10 +40,10 @@ mod display;
 mod drop_shadows;
 #[path = "../extract_cost.rs"]
 mod extract_cost;
-#[path = "../film.rs"]
-mod film;
-#[path = "../film_prefetch.rs"]
-mod film_prefetch;
+#[path = "../flow.rs"]
+mod flow;
+#[path = "../flow_prefetch.rs"]
+mod flow_prefetch;
 #[path = "../font_packs.rs"]
 mod font_packs;
 #[path = "../garment.rs"]

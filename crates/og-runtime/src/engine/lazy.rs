@@ -218,28 +218,28 @@ pub(crate) const LAZY: &[Lazy] = &[
     // og.film: its system once a game loads a film (og.film.load registers
     // its records together, TOGETHER).
     Lazy {
-        name: crate::bind::film::RECORDS[0],
-        enable: crate::bind::film::enable,
+        name: crate::bind::flow::RECORDS[0],
+        enable: crate::bind::flow::enable,
     },
     Lazy {
-        name: crate::bind::film::RECORDS[1],
-        enable: crate::bind::film::enable,
+        name: crate::bind::flow::RECORDS[1],
+        enable: crate::bind::flow::enable,
     },
     Lazy {
-        name: crate::bind::film::RECORDS[2],
-        enable: crate::bind::film::enable,
+        name: crate::bind::flow::RECORDS[2],
+        enable: crate::bind::flow::enable,
     },
     Lazy {
-        name: crate::bind::film::RECORDS[3],
-        enable: crate::bind::film::enable,
+        name: crate::bind::flow::RECORDS[3],
+        enable: crate::bind::flow::enable,
     },
     Lazy {
-        name: crate::bind::film::RECORDS[4],
-        enable: crate::bind::film::enable,
+        name: crate::bind::flow::RECORDS[4],
+        enable: crate::bind::flow::enable,
     },
     Lazy {
-        name: crate::bind::film::RECORDS[5],
-        enable: crate::bind::film::enable,
+        name: crate::bind::flow::RECORDS[5],
+        enable: crate::bind::flow::enable,
     },
     // G3-3: world cells, read and written by the runtime's before-tick
     // hook (stream::cells); no module to grant. Naming any of the cell's
@@ -558,7 +558,7 @@ const TOGETHER: &[&[&str]] = &[
     &crate::bind::destruction::RECORDS,
     &crate::bind::destruction2d::RECORDS,
     &crate::bind::vfx::RECORDS,
-    &crate::bind::film::RECORDS,
+    &crate::bind::flow::RECORDS,
     &crate::bind::shared::RECORDS,
     &crate::world::scenes::RECORDS,
     &[
@@ -572,7 +572,7 @@ const TOGETHER: &[&[&str]] = &[
 /// before its records enable it: og.film's system writes its decks'
 /// og.VideoPlayer.
 const NEEDS: &[(&[&str], &[&str])] =
-    &[(&crate::bind::film::RECORDS, &[crate::bind::video::PLAYER])];
+    &[(&crate::bind::flow::RECORDS, &[crate::bind::video::PLAYER])];
 
 /// The lazy records lazy record `name`'s module needs registered first.
 pub(crate) fn needs(name: &str) -> &'static [&'static str] {

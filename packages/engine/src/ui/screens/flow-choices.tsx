@@ -1,7 +1,7 @@
 import { For, Show, Text, View, createMemo, t, type UiEvent } from "@origingame/engine/ui";
 import type { FilmView } from "@origingame/engine";
 import { Progress } from "../controls/progress";
-import "./film-choices.en.ogt";
+import "./flow-choices.en.ogt";
 
 export interface FilmChoicesProps {
   /** What the film shows now (og.film.view's value, set each tick); null or a view without a window hides the screen. */

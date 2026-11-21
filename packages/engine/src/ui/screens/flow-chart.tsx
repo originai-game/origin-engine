@@ -1,7 +1,7 @@
 import { Icon, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
 import { NodeGraph } from "../components/panels/node-graph";
 import { Button } from "../controls/button";
-import "./film-flowchart.en.ogt";
+import "./flow-chart.en.ogt";
 
 export interface FilmFlowchartScreenProps {
   /** og.film.chart's nodes as NodeGraph's: keyed rows of { id (the node), x, y, label, icon, state, shape, team }. state: current (where the film is), done (a segment seen), locked (not seen); an ending's shape diamond, a chapter's square, the rest circle. */

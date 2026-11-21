@@ -410,7 +410,7 @@ pub(crate) fn wanted_chunks(eng: &Engine) -> Vec<crate::world::stream::VideoChun
     let wants = wants(world, &layout);
     // og.film's cut targets: each one's first chunk, needed at the cut.
     let mut ahead: BTreeMap<usize, Vec<(f32, f64)>> = BTreeMap::new();
-    for a in crate::bind::film::prefetch(eng) {
+    for a in crate::bind::flow::prefetch(eng) {
         if let Some(i) = assets::index_of(a.video as f64) {
             ahead.entry(i).or_default().push((a.from, a.seconds));
         }
