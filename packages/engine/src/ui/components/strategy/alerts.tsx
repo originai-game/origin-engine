@@ -25,7 +25,7 @@ export function StrategyAlerts(props: StrategyAlertsProps) {
             {a().text}
           </Text>
           <Show when={a().key}>
-            <Text class={`shrink min-w-[1.571rem] max-w-[40%] py-0 px-1 leading-[1.5] text-[0.857rem] font-bold text-center text-[#0b0f18] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden`}>
+            <Text class={`shrink min-w-[1.571rem] max-w-[40%] py-0 px-1 leading-[1.5] text-[0.857rem] font-bold text-center text-[#0b0f18] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
               {a().key}
             </Text>
           </Show>

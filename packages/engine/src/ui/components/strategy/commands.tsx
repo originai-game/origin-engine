@@ -33,7 +33,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                 {c().name}
               </Text>
               <Show when={c().key}>
-                <Text class={`shrink min-w-[1.429rem] max-w-[40%] py-0 px-[0.357rem] leading-[1.5] text-[0.857rem] font-bold text-center text-[#0b0f18] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden`}>
+                <Text class={`shrink min-w-[1.429rem] max-w-[40%] py-0 px-[0.357rem] leading-[1.5] text-[0.857rem] font-bold text-center text-[#0b0f18] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
                   {c().key}
                 </Text>
               </Show>
@@ -102,7 +102,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                   </View>
                 </Show>
                 <Show when={c().action || c().key}>
-                  <Text class={`absolute left-1 top-[0.143rem] max-w-[94%] py-0 px-0 leading-[1.2] text-[0.857rem] font-bold text-fg whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55`} glyph={c().key ? undefined : c().action}>
+                  <Text class={`absolute left-1 top-[0.143rem] max-w-[94%] py-0 px-0 leading-[1.2] text-[0.857rem] font-bold text-fg whitespace-nowrap overflow-hidden text-shadow-xs text-shadow-bg/55 pointer-coarse:hidden`} glyph={c().key ? undefined : c().action}>
                     {c().key}
                   </Text>
                 </Show>
