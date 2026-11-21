@@ -1,0 +1,63 @@
+import { Show, Text, View, formatDuration, t } from "@origingame/engine/ui";
+import "./hud-timer.en.ogt";
+
+export interface HudTimerProps {
+  /** Seconds on the clock. */
+  seconds: number;
+  /** A countdown's whole time: a ring of what is left beside it (0: none). */
+  total?: number;
+  /** Counts down (warns and turns red near zero); false is a stopwatch. */
+  countdown?: boolean;
+  /** Seconds left when it turns warn; a third of it is critical. */
+  warnAt?: number;
+  /** Paused: the time dims and breathes. */
+  paused?: boolean;
+  /** A caption over it (Round 2); empty is none. */
+  label?: string;
+}
+
+/**
+ * A HUD clock on its plate: a caption, the seconds in the HUD's large
+ * figure, and for a countdown with a total a ring of what is left, which
+ * warns and then turns red near zero; paused, the time dims and breathes.
+ * Read only. The ring's arc has no TSX surface: a View stand-in fills
+ * what is left from the bottom, as ability-slot's ultimate does.
+ */
+export function HudTimer(props: HudTimerProps) {
+  const warn = () => (props.countdown ?? false) && props.seconds <= (props.warnAt ?? 0) && props.seconds > (props.warnAt ?? 0) / 3;
+  const critical = () => (props.countdown ?? false) && props.seconds <= (props.warnAt ?? 0) / 3;
+  return (
+    <View
+      class={`flex-col items-center gap-y-[0.143rem] border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate py-2 px-4 data-paused:opacity-60`}
+      role="timer"
+      label={props.label || t("component.hud-timer.name")}
+      valueText={formatDuration(props.seconds)}
+      data-warn={warn()}
+      data-critical={critical()}
+      data-paused={props.paused}
+    >
+      <Show when={props.label}>
+        <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted text-shadow-2xs">{props.label}</Text>
+      </Show>
+      <View class="flex-row items-center gap-1">
+        <Show when={(props.countdown ?? false) && (props.total ?? 0) > 0}>
+          <View class="relative size-6 overflow-hidden rounded-full border-[3px] border-white/22 shadow-sunk" data-warn={warn()} data-critical={critical()}>
+            <View class="absolute inset-x-0 bottom-0 bg-gold data-warn:bg-warn data-critical:bg-danger transition-layout duration-180 ease-out" data-warn={warn()} data-critical={critical()} style={{ height: `${Math.min(Math.max(props.seconds / (props.total ?? 1), 0), 1) * 100}%` }} />
+          </View>
+        </Show>
+        <Text
+          class={`text-[22.88px] tabular-nums whitespace-nowrap text-fg text-shadow-2xs data-warn:text-warn data-critical:text-danger data-paused:animate-pulse data-critical:animate-beat`}
+          data-warn={warn()}
+          data-critical={critical()}
+          data-paused={props.paused}
+        >
+          {formatDuration(props.seconds)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+export const fixtures: Record<string, Partial<HudTimerProps>> = {
+  default: {"seconds":8.4,"total":90,"countdown":true,"warnAt":10,"paused":false,"label":"Round 2"},
+};
