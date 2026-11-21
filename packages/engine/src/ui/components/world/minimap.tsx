@@ -59,10 +59,10 @@ export function Minimap(props: MinimapProps) {
         <Show when={(props.texture ?? 0) > 0} fallback={
           <View class="absolute inset-0 bg-tile">
             <For each={Array.from({ length: 7 }, (_, k) => k)} key={(k) => `h${k}`}>
-              {(k) => <View class="absolute bg-white/14" style={{ left: `${((k() + 1) / 8) * 100}%`, top: 0, width: `${100 / size()}%`, height: "100%" }} />}
+              {(k) => <View class="absolute bg-lit" style={{ left: `${((k() + 1) / 8) * 100}%`, top: 0, width: `${100 / size()}%`, height: "100%" }} />}
             </For>
             <For each={Array.from({ length: 7 }, (_, k) => k)} key={(k) => `v${k}`}>
-              {(k) => <View class="absolute bg-white/14" style={{ top: `${((k() + 1) / 8) * 100}%`, left: 0, height: `${100 / size()}%`, width: "100%" }} />}
+              {(k) => <View class="absolute bg-lit" style={{ top: `${((k() + 1) / 8) * 100}%`, left: 0, height: `${100 / size()}%`, width: "100%" }} />}
             </For>
           </View>
         }>

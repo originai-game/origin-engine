@@ -104,7 +104,7 @@ export function MinimapView(props: MinimapViewProps) {
   return (
     <View class="flex-col items-center gap-y-1" role="image" label={props.zone || t("component.minimap-view.name")} data-square={props.square === true}>
       <View
-        class={`relative rounded-full p-[0.357rem] data-square:rounded-[0.857rem] bg-[conic-gradient(rgb(255_255_255/0.55),rgb(255_255_255/0.12)_25%,rgb(255_255_255/0.4)_50%,rgb(255_255_255/0.1)_75%,rgb(255_255_255/0.55))] shadow-[0px_0.571rem_1.714rem_#0000008c]`}
+        class={`relative rounded-full p-[0.357rem] data-square:rounded-[0.857rem] bg-conic from-rim-strong via-rim-soft to-rim-strong shadow-[0px_0.571rem_1.714rem_#0000008c]`}
         data-square={props.square === true}
       >
         <View
@@ -124,10 +124,10 @@ export function MinimapView(props: MinimapViewProps) {
             <Show when={(props.texture ?? 0) > 0} fallback={
               <View class="absolute inset-0">
                 <For each={Array.from({ length: 9 }, (_, k) => k)} key={(k) => `h${k}`}>
-                  {(k) => <View class="absolute bg-white/8" style={{ left: `${((k() + 1) / 10) * 100}%`, top: 0, width: "0.071rem", height: "100%" }} />}
+                  {(k) => <View class="absolute bg-lit" style={{ left: `${((k() + 1) / 10) * 100}%`, top: 0, width: "0.071rem", height: "100%" }} />}
                 </For>
                 <For each={Array.from({ length: 9 }, (_, k) => k)} key={(k) => `v${k}`}>
-                  {(k) => <View class="absolute bg-white/8" style={{ top: `${((k() + 1) / 10) * 100}%`, left: 0, height: "0.071rem", width: "100%" }} />}
+                  {(k) => <View class="absolute bg-lit" style={{ top: `${((k() + 1) / 10) * 100}%`, left: 0, height: "0.071rem", width: "100%" }} />}
                 </For>
               </View>
             }>
@@ -150,7 +150,7 @@ export function MinimapView(props: MinimapViewProps) {
             <View class="absolute inset-0 rounded-full border border-white/8 pointer-events-none" />
           </Show>
           <View
-            class="absolute left-1/2 top-1/2 w-[5.76rem] h-[5.76rem] bg-[conic-gradient(from_-30deg_at_50%_100%,rgb(56_232_255/0.32),transparent_60deg)]"
+            class="absolute left-1/2 top-1/2 w-[5.76rem] h-[5.76rem] bg-[conic-gradient(from_-30deg_at_50%_100%,var(--color-hud-accent),transparent_60deg)]"
             style={{
               transform: `translate(-50%, -100%) ${props.rotate ? "" : `rotate(${heading()}deg)`}`,
               transformOrigin: "50% 100%",

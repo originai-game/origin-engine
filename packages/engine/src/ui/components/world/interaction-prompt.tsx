@@ -69,14 +69,14 @@ export function InteractionPrompt(props: InteractionPromptProps) {
       <View class="relative z-1 shrink-0 flex-row items-center justify-center size-[2.571rem]">
         <Show when={hold() >= 0}>
           <View class="absolute inset-0 rounded-full bg-fg/78" />
-          <View class="absolute inset-0 nine-ring bg-white" wipe={hold() >= 1 ? 1 : hold()} role="meter" label={t("world.prompt.hold")} valueMin={0} valueMax={1} valueNow={hold() >= 1 ? 1 : hold()} />
+          <View class="absolute inset-0 nine-ring bg-sheen" wipe={hold() >= 1 ? 1 : hold()} role="meter" label={t("world.prompt.hold")} valueMin={0} valueMax={1} valueNow={hold() >= 1 ? 1 : hold()} />
         </Show>
-        <Text class="z-1 min-w-[1.857rem] h-[1.857rem] px-[0.357rem] text-center text-sm leading-[1.857rem] font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] group-data-pressed:translate-y-[2px] group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-[0px_0px_1rem_#38e8ff,inset_0px_-0.143rem_0px_#0000002e] group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-[1.857rem] group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg/95 group-data-pad:shadow-[0px_0px_0px_1.5px_#ffffff99,0px_2px_0px_#00000099]" data-action={action() || undefined}>{key()}</Text>
+        <Text class="z-1 min-w-[1.857rem] h-[1.857rem] px-[0.357rem] text-center text-sm leading-[1.857rem] font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] group-data-pressed:translate-y-[2px] group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-[0px_0px_1rem_#38e8ff,inset_0px_-0.143rem_0px_#0000002e] group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-[1.857rem] group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg/95 group-data-pad:shadow-[0px_0px_0px_1.5px_#ffffff99,0px_2px_0px_#00000099]" data-action={action() || undefined}>{key()}</Text>
       </View>
       <View class="flex-col min-w-0 -ml-[0.714rem] pt-[0.286rem] px-[0.857rem] pb-[0.357rem] pl-[1.143rem] nine-plate-cut bg-plate-hi">
-        <Text class="text-reading leading-[1.15] font-bold tracking-[0.07em] uppercase whitespace-nowrap group-data-disabled:text-fg/66">{props.verb}</Text>
+        <Text class="text-reading leading-[1.15] font-bold tracking-[0.07em] uppercase whitespace-nowrap group-data-disabled:text-fg-muted">{props.verb}</Text>
         <Show when={name() !== ""}>
-          <Text class="min-w-0 max-w-[14.286rem] text-[0.75rem] leading-[1.2] font-semibold tracking-[0.13em] uppercase whitespace-nowrap truncate text-fg/78">{name()}</Text>
+          <Text class="min-w-0 max-w-[14.286rem] text-[0.75rem] leading-[1.2] font-semibold tracking-[0.13em] uppercase whitespace-nowrap truncate text-fg-muted">{name()}</Text>
         </Show>
         <Show when={props.disabled && reason() !== ""}>
           <View class="flex-row items-center gap-x-[0.286rem] min-w-0 text-[0.75rem] leading-[1.2] font-bold tracking-[0.13em] uppercase whitespace-nowrap text-danger">

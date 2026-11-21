@@ -103,7 +103,7 @@ export function Compass(props: CompassProps) {
               const opacity = Math.min(Math.max((d - 0.05) * 25, 0), 1);
               return (
                 <Text
-                  class={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${p().cardinal ? "text-xl leading-none text-fg" : "text-base leading-[1.2] text-fg/66"}`}
+                  class={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${p().cardinal ? "text-xl leading-none text-fg" : "text-base leading-[1.2] text-fg-muted"}`}
                   style={{ left: `${(p().at / 9) * 100}%`, opacity }}
                 >
                   {t(p().key)}
@@ -114,7 +114,7 @@ export function Compass(props: CompassProps) {
           <For each={Array.from({ length: 72 }, (_, k) => k)} key={(k) => k}>
             {(k) => (
               <View
-                class="absolute top-[1.857rem] w-[0.143rem] h-[0.429rem] bg-white/66"
+                class="absolute top-[1.857rem] w-[0.143rem] h-[0.429rem] bg-lit"
                 style={{ left: `${((k() * 0.125) / 9) * 100}%` }}
               />
             )}
@@ -122,7 +122,7 @@ export function Compass(props: CompassProps) {
           <For each={Array.from({ length: 24 }, (_, k) => k)} key={(k) => k}>
             {(k) => (
               <View
-                class="absolute top-[1.571rem] w-[0.143rem] h-[0.714rem] bg-white"
+                class="absolute top-[1.571rem] w-[0.143rem] h-[0.714rem] bg-sheen"
                 style={{ left: `${((k() * 0.375) / 9) * 100}%` }}
               />
             )}
