@@ -986,6 +986,9 @@ impl TransitionProps {
     pub const SHAPE: u8 = 16;
     /// Everything that can transition.
     pub const ALL: u8 = 0x1f;
+    /// Origin Engine: `transition-layout`, a box that moves or resizes
+    /// slides there. Not in `ALL`; kept when another group is named.
+    pub const LAYOUT: u8 = 32;
 
     /// True if `group` is included.
     #[inline]
@@ -1054,6 +1057,17 @@ pub enum Keyframes {
     Pulse,
     /// Jumps up by a quarter of its height and lands.
     Bounce,
+    // Origin Engine: the engine's own keyframes (`animate-pop` …).
+    /// In from transparent at 0.9×, overshooting a little.
+    Pop,
+    /// In from transparent at 1.4×.
+    Stamp,
+    /// From 1.15× back to its size.
+    Beat,
+    /// Settles from 1.4×, rises and fades out, and stays out.
+    Float,
+    /// Sweeps across its box, from -100% to 420% of its width.
+    Shimmer,
 }
 
 /// `animation*`: a keyframe animation running natively, forever by default.

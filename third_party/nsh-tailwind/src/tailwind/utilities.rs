@@ -550,7 +550,15 @@ impl Parts {
                 self.font_variant = Some(bits & !clear | set);
             }
             TransitionProps(p) => {
-                self.transition_props = Some(p);
+                // Origin Engine: `transition-layout` stays beside the
+                // group named before or after it, and adds to it.
+                let was = self.transition_props.unwrap_or(0);
+                let layout = crate::effects::TransitionProps::LAYOUT;
+                self.transition_props = Some(if p == layout {
+                    was | layout
+                } else {
+                    p | was & layout
+                });
                 self.transition_none = false;
             }
             Duration(ms) => self.duration = Some(ms),
@@ -1830,6 +1838,13 @@ fn keyword(u: &str) -> Option<Vec<Decl>> {
         "animate-pulse" => Decl::Part(Part::Animate(Some(Keyframes::Pulse))),
         "animate-bounce" => Decl::Part(Part::Animate(Some(Keyframes::Bounce))),
         "animate-none" => Decl::Part(Part::Animate(None)),
+        // Origin Engine: layout transitions and the engine's keyframes.
+        "transition-layout" => Decl::Part(Part::TransitionProps(TransitionProps::LAYOUT)),
+        "animate-pop" => Decl::Part(Part::Animate(Some(Keyframes::Pop))),
+        "animate-stamp" => Decl::Part(Part::Animate(Some(Keyframes::Stamp))),
+        "animate-beat" => Decl::Part(Part::Animate(Some(Keyframes::Beat))),
+        "animate-float" => Decl::Part(Part::Animate(Some(Keyframes::Float))),
+        "animate-shimmer" => Decl::Part(Part::Animate(Some(Keyframes::Shimmer))),
         // Interactivity.
         "pointer-events-none" => Decl::Set(
             K::PointerEvents,
@@ -3092,5 +3107,22 @@ fn preset(keyframes: Keyframes) -> KeyframeAnimation {
             iterations: None,
             frame_rate: None,
         },
+        // Origin Engine: the engine's motion tokens' timings.
+        Keyframes::Pop | Keyframes::Stamp | Keyframes::Beat | Keyframes::Float | Keyframes::Shimmer => {
+            let (duration, easing, iterations) = match keyframes {
+                Keyframes::Pop => (520.0, [0.34, 1.3, 0.64, 1.0], Some(1)),
+                Keyframes::Stamp | Keyframes::Beat => (400.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
+                Keyframes::Float => (800.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
+                _ => (1400.0, [0.42, 0.0, 0.58, 1.0], None),
+            };
+            KeyframeAnimation {
+                keyframes,
+                duration,
+                delay: 0.0,
+                easing,
+                iterations,
+                frame_rate: None,
+            }
+        }
     }
 }

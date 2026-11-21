@@ -28,6 +28,11 @@ the changes after it are only these:
   `compact:` (either), read from `Context.window`, and the states
   `starting:` and `exit:` (bits `STARTING` and `EXIT`) that the motion
   system sets.
+- Motion (`effects.rs`, `tailwind/utilities.rs`, each marked in place):
+  `TransitionProps::LAYOUT` and the class `transition-layout`, which adds
+  to the group named before or after it and is not in `ALL`; the keyframes
+  `Pop`, `Stamp`, `Beat`, `Float` and `Shimmer` with their classes
+  `animate-pop` … `animate-shimmer` and their timings in `preset`.
 
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.
