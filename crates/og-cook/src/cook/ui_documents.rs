@@ -273,9 +273,16 @@ fn plan_document<'a>(
     for k in default_keys() {
         looks.extend_from_slice(&k.to_le_bytes());
     }
+    // Only what the compile reads of a pack: its tokens.css and
+    // surfaces.css. An edit to a rule only the old core reads (a pack's
+    // other sheets) leaves the documents cached.
     for pack in &packs {
-        looks.extend_from_slice(pack.rel.as_bytes());
-        looks.extend_from_slice(&pack.hash.to_le_bytes());
+        let files: Vec<(String, String)> = serde_json::from_slice(&pack.bytes).unwrap_or_default();
+        if let Some(layer) = og_ui_next::look::pack_layer(&files) {
+            looks.extend_from_slice(pack.rel.as_bytes());
+            looks.extend_from_slice(&hash_bytes(layer.tokens.as_bytes()).to_le_bytes());
+            looks.extend_from_slice(&hash_bytes(layer.surfaces.as_bytes()).to_le_bytes());
+        }
     }
     let st = stamp(&[b"svelte document 3", &hash, dependencies.as_bytes(), &looks]);
     outs.push((

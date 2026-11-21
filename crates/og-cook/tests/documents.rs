@@ -71,7 +71,7 @@ fn pack_edits_leave_document_blobs_cached() {
     let after = cook();
     assert_eq!(
         before.0, after.0,
-        "documents are not lowered against a pack at cook time"
+        "a pack rule only the old core reads leaves documents cached"
     );
     assert_ne!(before.1, after.1, "the changed pack must recook");
     std::fs::write(
@@ -84,6 +84,16 @@ fn pack_edits_leave_document_blobs_cached() {
         cook().0,
         "a document's own source still invalidates it"
     );
+    // A pack's tokens are what the new core's compile reads (its styles
+    // are compiled against each look at cook time): editing them cooks
+    // the documents again.
+    let before = cook();
+    std::fs::write(
+        root.join("assets/styles/test/tokens.css"),
+        ":root { --space-sm: 3px; }",
+    )
+    .unwrap();
+    assert_ne!(before.0, cook().0, "a pack's tokens recook the documents");
 }
 
 #[test]
