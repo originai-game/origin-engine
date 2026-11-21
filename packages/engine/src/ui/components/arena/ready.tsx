@@ -41,7 +41,7 @@ export interface ArenaReadyProps {
  * list's foot is dropped.
  */
 const CARD = `w-full max-h-full p-4 nine-panel-cut bg-[#232837ed] ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 ${packClass("Button", "plate")}`;
+const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 ${packClass("Button", "plate")}`;
 const STATE_EDGE = "shadow-[inset_3px_0px_0px_0px_rgb(255_255_255/0.3)]";
 
 export function ArenaReady(props: ArenaReadyProps) {
@@ -51,14 +51,14 @@ export function ArenaReady(props: ArenaReadyProps) {
     <View class={`flex-col gap-y-2 text-fg ${CARD}`} label={heading()} busy={props.loading}>
       <Text class="text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg text-center">{heading()}</Text>
       <Show when={(props.detail ?? "") != ""}>
-        <Text class="text-[0.929rem] font-semibold text-fg/66 text-center">{props.detail}</Text>
+        <Text class="text-caption font-semibold text-fg/66 text-center">{props.detail}</Text>
       </Show>
       <Show when={props.closed} fallback={
         <Show when={(props.timeText ?? "") != ""}>
-          <Text class="text-[3.857rem] leading-none font-bold tabular-nums text-[#ffcf5a] text-center">{props.timeText}</Text>
+          <Text class="text-[3.857rem] leading-none font-bold tabular-nums text-gold text-center">{props.timeText}</Text>
         </Show>
       }>
-        <Text class="text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg/66 text-center" role="status">{t("ready.closed")}</Text>
+        <Text class="text-caption font-bold tracking-[0.14em] uppercase text-fg/66 text-center" role="status">{t("ready.closed")}</Text>
       </Show>
       <Show when={props.loading} fallback={
         <Show when={(props.players ?? []).length}>
@@ -67,14 +67,14 @@ export function ArenaReady(props: ArenaReadyProps) {
               <For each={props.players ?? []} key={(p) => p.id}>
                 {(p) => (
                   <View
-                    class={`group/readyrow flex-row flex-wrap items-center justify-between gap-x-2 min-h-8 py-1 px-3 bg-linear-to-r from-[#282e3cc7] to-[#1c202bd1] ${STATE_EDGE} data-ready:shadow-[inset_3px_0px_0px_0px_#55e39a] data-declined:shadow-[inset_3px_0px_0px_0px_#ff4d5e]`}
+                    class={`group/readyrow flex-row flex-wrap items-center justify-between gap-x-2 min-h-8 py-1 px-3 bg-linear-to-r from-entry-hi to-entry-lo ${STATE_EDGE} data-ready:shadow-[inset_3px_0px_0px_0px_#55e39a] data-declined:shadow-[inset_3px_0px_0px_0px_#ff4d5e]`}
                     role="listitem"
                     data-ready={p().state == "ready"}
                     data-declined={p().state == "declined"}
                   >
-                    <Text class={`flex-1 basis-16 min-w-0 text-[1.071rem] font-semibold text-fg data-offline:text-fg/66`} data-offline={p().state == "offline"}>{p().name}</Text>
+                    <Text class={`flex-1 basis-16 min-w-0 text-reading font-semibold text-fg data-offline:text-fg/66`} data-offline={p().state == "offline"}>{p().name}</Text>
                     <Text
-                      class={`ml-auto text-[0.929rem] leading-[1.3] font-bold tracking-[0.14em] uppercase text-fg/66 text-center data-ready:text-[#55e39a] data-declined:text-[#ff7a83]`}
+                      class={`ml-auto text-caption leading-[1.3] font-bold tracking-[0.14em] uppercase text-fg/66 text-center data-ready:text-success data-declined:text-danger`}
                       data-ready={p().state == "ready"}
                       data-declined={p().state == "declined"}
                     >
@@ -87,14 +87,14 @@ export function ArenaReady(props: ArenaReadyProps) {
           </Scroll>
         </Show>
       }>
-        <Text class="text-[0.929rem] font-semibold text-fg/66 text-center" role="status">{t("ready.loading")}</Text>
+        <Text class="text-caption font-semibold text-fg/66 text-center" role="status">{t("ready.loading")}</Text>
       </Show>
       <Show when={!props.loading && (props.players ?? []).length == 0}>
-        <Text class="text-[0.929rem] font-semibold text-fg/66 text-center" role="status">{t("ready.empty")}</Text>
+        <Text class="text-caption font-semibold text-fg/66 text-center" role="status">{t("ready.empty")}</Text>
       </Show>
       <View class="flex-row flex-wrap gap-x-1 gap-y-1">
         <View
-          class={`${BUTTON} text-[#011e0f] bg-none bg-[#55e39a] hover:bg-[#55e39a] ${packClass("Button", "plate", "primary")}`}
+          class={`${BUTTON} text-[#011e0f] bg-none bg-success hover:bg-success ${packClass("Button", "plate", "primary")}`}
           role="button"
           label={t("ready.accept")}
           pressed={props.response == "ready"}

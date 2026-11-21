@@ -19,13 +19,13 @@ export function StrategyAlerts(props: StrategyAlertsProps) {
       <For each={props.alerts ?? []} key={(a) => a.id}>
         {(a) => (
         <View class={`group/alert flex-row items-center gap-x-2 max-w-full min-w-0 pt-1 pr-[0.857rem] pb-1 pl-0 bg-linear-to-r from-[#070b14db] to-[#070b1459] compact:gap-x-1.5 compact:pt-[0.214rem] compact:pr-[0.571rem] compact:pb-[0.214rem]`} label={a().kind === "danger" ? t("strategy.alerts.danger", { text: a().text }) : a().kind === "done" ? t("strategy.alerts.done", { text: a().text }) : a().text} data-danger={a().kind === "danger"} data-done={a().kind === "done"} data-info={a().kind === "info"} data-faded={a().faded}>
-          <View class={`shrink self-stretch w-[0.214rem] mr-1 bg-white/60 group-data-danger/alert:bg-[#ff4d5e] group-data-done/alert:bg-[#55e39a] group-data-info/alert:bg-[#38e8ff]`} />
-          <View class={`shrink rotate-45 size-2 bg-white/60 shadow-[0_0_0_2.288px_#060910d9] group-data-danger/alert:bg-[#ff4d5e] group-data-done/alert:bg-[#55e39a] group-data-info/alert:bg-[#38e8ff]`} />
-          <Text class={`min-w-0 text-[1rem] font-semibold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg group-data-faded/alert:text-fg-muted compact:text-[0.929rem]`}>
+          <View class={`shrink self-stretch w-[0.214rem] mr-1 bg-white/60 group-data-danger/alert:bg-danger group-data-done/alert:bg-success group-data-info/alert:bg-[#38e8ff]`} />
+          <View class={`shrink rotate-45 size-2 bg-white/60 shadow-[0_0_0_2.288px_#060910d9] group-data-danger/alert:bg-danger group-data-done/alert:bg-success group-data-info/alert:bg-[#38e8ff]`} />
+          <Text class={`min-w-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg group-data-faded/alert:text-fg-muted compact:text-caption`}>
             {a().text}
           </Text>
           <Show when={a().key}>
-            <Text class={`shrink min-w-[1.571rem] max-w-[40%] py-0 px-1 leading-[1.5] text-[0.857rem] font-bold text-center text-[#0b0f18] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
+            <Text class={`shrink min-w-[1.571rem] max-w-[40%] py-0 px-1 leading-[1.5] text-xs font-bold text-center text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
               {a().key}
             </Text>
           </Show>

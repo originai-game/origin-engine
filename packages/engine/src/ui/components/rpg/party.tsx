@@ -42,8 +42,8 @@ export function RpgParty(props: RpgPartyProps) {
                 <Show when={!m().down} fallback={
                     <Icon class="size-4 text-fg" name="skull" />
                 }>
-                  <Text class="text-[0.857rem] font-bold text-fg">{t("rpg.party.lv")}</Text>
-                  <Text class="text-[0.857rem] font-bold tabular-nums text-fg">{formatNumber(m().level)}</Text>
+                  <Text class="text-xs font-bold text-fg">{t("rpg.party.lv")}</Text>
+                  <Text class="text-xs font-bold tabular-nums text-fg">{formatNumber(m().level)}</Text>
                 </Show>
               </View>
               <Text class="py-[0.143rem] px-1 text-center whitespace-nowrap text-ellipsis overflow-hidden text-fg">

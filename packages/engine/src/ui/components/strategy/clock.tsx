@@ -20,28 +20,28 @@ export interface StrategyClockProps {
 export function StrategyClock(props: StrategyClockProps) {
   return (
     <View
-      class={`group/clock flex-row items-center gap-x-[0.714rem] w-fit max-w-full min-w-0 py-[0.429rem] px-[1rem] text-fg nine-plate-cut bg-[#1e2637e5] compact:w-full compact:gap-x-[0.429rem] compact:py-[0.286rem] compact:px-[0.714rem] ${packClass("Plate", "frame")}`}
+      class={`group/clock flex-row items-center gap-x-[0.714rem] w-fit max-w-full min-w-0 py-[0.429rem] px-4 text-fg nine-plate-cut bg-plate-hi compact:w-full compact:gap-x-[0.429rem] compact:py-[0.286rem] compact:px-[0.714rem] ${packClass("Plate", "frame")}`}
       role="timer"
       label={props.label !== "" ? props.label : t("strategy.clock.name")}
       valueText={props.time}
       data-paused={props.paused}
     >
       <Show when={props.label !== ""}>
-        <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] compact:text-[0.857rem] compact:tracking-normal`}>
+        <Text class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 compact:text-xs compact:tracking-normal`}>
           {props.label}
         </Text>
       </Show>
-      <Text class={`shrink text-[1.286rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-stroke-3 text-stroke-bg compact:text-[1.071rem]`}>
+      <Text class={`shrink text-lg leading-[1.1] font-bold tabular-nums whitespace-nowrap text-stroke-3 text-stroke-bg compact:text-reading`}>
         {props.time}
       </Text>
       <Show when={props.paused} fallback={
           <Show when={props.speed !== ""}>
-            <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold tabular-nums text-center whitespace-nowrap nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+            <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-xs font-bold tabular-nums text-center whitespace-nowrap nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
               {props.speed}
             </Text>
           </Show>
       }>
-        <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold tabular-nums text-center whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status">
+        <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-xs font-bold tabular-nums text-center whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status">
           {t("strategy.clock.paused")}
         </Text>
       </Show>

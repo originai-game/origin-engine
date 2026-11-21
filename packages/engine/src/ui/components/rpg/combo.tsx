@@ -26,28 +26,28 @@ export function RpgCombo(props: RpgComboProps) {
     >
       <Show when={props.count > 0}>
         <View class={`flex-row items-baseline justify-end max-w-full min-w-0 gap-1`}>
-          <Text class={`shrink-0 text-[4.429rem] leading-[0.9] font-bold italic tabular-nums whitespace-nowrap compact:text-[2.143rem] animate-pop`}>
+          <Text class={`shrink-0 text-[4.429rem] leading-[0.9] font-bold italic tabular-nums whitespace-nowrap compact:text-4xl animate-pop`}>
             {formatNumber(props.count)}
           </Text>
           <Text
-            class={`min-w-0 text-[1.714rem] font-bold italic tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden compact:text-[0.929rem]`}
+            class={`min-w-0 text-[1.714rem] font-bold italic tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden compact:text-caption`}
           >
             {props.word !== "" ? props.word : t("rpg.combo.word")}
           </Text>
         </View>
         <Show when={(props.remaining ?? -1) >= 0}>
           <View
-            class={`w-[11.429rem] max-w-full h-[0.429rem] mt-[0.429rem] overflow-hidden skew-x-[-22deg] bg-[#04060cb8] shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_4px_#00000073] compact:w-[7.857rem] compact:h-[0.357rem] compact:mt-[0.286rem]`}
+            class={`w-[11.429rem] max-w-full h-[0.429rem] mt-[0.429rem] overflow-hidden skew-x-[-22deg] bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_4px_#00000073] compact:w-[7.857rem] compact:h-[0.357rem] compact:mt-[0.286rem]`}
           >
             <View
-              class={`h-full bg-[#38e8ff] bg-linear-to-b from-[#ffffff8c] to-transparent to-42% shadow-[2px_0px_10px_#38e8ffbf]`}
+              class={`h-full bg-[#38e8ff] bg-linear-to-b from-white/55 to-transparent to-42% shadow-[2px_0px_10px_#38e8ffbf]`}
               style={{ width: `${Math.min((props.remaining ?? -1) >= 1 ? 1 : props.remaining ?? 0, 1) * 100}%` }}
             />
           </View>
         </Show>
         <Show when={(props.multiplier ?? 0) > 1}>
           <Text
-            class={`mt-[0.429rem] text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#38e8ff] whitespace-nowrap compact:mt-[0.214rem] compact:tracking-normal`}
+            class={`mt-[0.429rem] text-xs font-semibold tracking-[0.14em] uppercase text-[#38e8ff] whitespace-nowrap compact:mt-[0.214rem] compact:tracking-normal`}
           >
             {t("rpg.combo.bonus", { value: props.multiplier ?? 0 })}
           </Text>

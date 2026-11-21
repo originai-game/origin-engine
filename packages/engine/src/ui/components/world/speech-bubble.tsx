@@ -51,9 +51,9 @@ export function SpeechBubble(props: SpeechBubbleProps) {
       data-reaction-neutral={reaction() === "neutral"}
       data-reaction-player={reaction() === "player"}
     >
-      <View class="relative flex-col gap-y-[0.143rem] min-w-0 max-w-[12.6rem] py-[0.5rem] px-[0.929rem] text-[1.036rem] leading-[1.32] nine-plate-cut bg-[#212735e6]">
+      <View class="relative flex-col gap-y-[0.143rem] min-w-0 max-w-[12.6rem] py-2 px-[0.929rem] text-[1.036rem] leading-[1.32] nine-plate-cut bg-plate-hi">
         <Show when={speaker() !== ""}>
-          <Text class="min-w-0 max-w-full text-[0.75rem] font-bold tracking-[0.13em] uppercase whitespace-nowrap truncate text-[#55e39a] text-shadow-2xs group-data-reaction-hostile:text-[#ff4d5e] group-data-reaction-neutral:text-[#ffd23f] group-data-reaction-player:text-[#38e8ff]">{speaker()}</Text>
+          <Text class="min-w-0 max-w-full text-[0.75rem] font-bold tracking-[0.13em] uppercase whitespace-nowrap truncate text-success text-shadow-2xs group-data-reaction-hostile:text-danger group-data-reaction-neutral:text-gold group-data-reaction-player:text-[#38e8ff]">{speaker()}</Text>
         </Show>
         <Text class="min-w-0 group-data-shout:font-bold">{props.text}</Text>
         <Show when={left() >= 0}>
@@ -62,7 +62,7 @@ export function SpeechBubble(props: SpeechBubbleProps) {
           </View>
         </Show>
       </View>
-      <View class="size-[0.714rem] rotate-45 -mt-[1px] bg-[#212735e6]" />
+      <View class="size-[0.714rem] rotate-45 -mt-[1px] bg-plate-hi" />
     </View>
   );
 }

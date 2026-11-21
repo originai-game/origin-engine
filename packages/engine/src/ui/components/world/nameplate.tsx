@@ -103,9 +103,9 @@ export function Nameplate(props: NameplateProps) {
             </View>
           </Show>
           <Show when={icon() !== ""}>
-            <Icon class="shrink-0 size-[1rem]" name={icon()} />
+            <Icon class="shrink-0 size-4" name={icon()} />
           </Show>
-          <Text class="shrink min-w-0 max-w-[10.714rem] text-[1.071rem] font-semibold whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-reaction-hostile:text-[#ff4d5e] group-data-reaction-friendly:text-[#55e39a] group-data-reaction-player:text-[#38e8ff] group-data-boss:max-w-[14.286rem] group-data-boss:text-[1.214rem] group-data-boss:font-bold group-data-boss:tracking-[0.07em] group-data-boss:uppercase group-data-targeted:text-fg group-data-dead:text-fg/45">{props.name}</Text>
+          <Text class="shrink min-w-0 max-w-[10.714rem] text-reading font-semibold whitespace-nowrap truncate text-gold text-shadow-2xs text-stroke-3 text-stroke-bg group-data-reaction-hostile:text-danger group-data-reaction-friendly:text-success group-data-reaction-player:text-[#38e8ff] group-data-boss:max-w-[14.286rem] group-data-boss:text-[1.214rem] group-data-boss:font-bold group-data-boss:tracking-[0.07em] group-data-boss:uppercase group-data-targeted:text-fg group-data-dead:text-fg/45">{props.name}</Text>
         </View>
         <Show when={title() !== ""}>
           <Text class="min-w-0 max-w-[13.571rem] text-[0.75rem] font-semibold tracking-[0.13em] uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs group-data-dead:text-fg/45">{title()}</Text>
@@ -117,7 +117,7 @@ export function Nameplate(props: NameplateProps) {
       <Show when={health() >= 0 && !props.dead}>
         <View class="relative flex-row items-center gap-x-[0.357rem]">
           <View
-            class={`relative h-[0.5rem] w-[8.286rem] bg-tile group-data-boss:h-[0.714rem] group-data-boss:w-[14.286rem] group-data-compact:h-[0.429rem] group-data-compact:w-[4.143rem] ${props.targeted ? (elite() ? "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0px_2.5px_#ffd23fb3]" : "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0.714rem_#ffffff59]") : elite() ? "shadow-[0px_0px_0px_1px_#ffd23f,0px_0.143rem_0.429rem_#00000080]" : "shadow-[0px_0px_0px_1px_#ffffff47,0px_0.143rem_0.429rem_#00000080]"}`}
+            class={`relative h-2 w-[8.286rem] bg-tile group-data-boss:h-[0.714rem] group-data-boss:w-[14.286rem] group-data-compact:h-[0.429rem] group-data-compact:w-[4.143rem] ${props.targeted ? (elite() ? "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0px_2.5px_#ffd23fb3]" : "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0.714rem_#ffffff59]") : elite() ? "shadow-[0px_0px_0px_1px_#ffd23f,0px_0.143rem_0.429rem_#00000080]" : "shadow-[0px_0px_0px_1px_#ffffff47,0px_0.143rem_0.429rem_#00000080]"}`}
             role="meter"
             label={t("world.nameplate.health")}
             valueMin={0}
@@ -127,9 +127,9 @@ export function Nameplate(props: NameplateProps) {
           >
             <View class="absolute left-0 top-0 bottom-0 overflow-hidden">
               <View class="absolute left-0 top-0 bottom-0 bg-[#f2e3b5d1] transition-layout duration-300 delay-400 ease-out" style={{ width: `${hp() * 100}%` }} />
-              <View class="absolute left-0 top-0 bottom-0 bg-linear-to-b from-white/55 to-transparent to-50% bg-[#ffd23f] group-data-reaction-hostile:bg-[#ff4d5e] group-data-reaction-friendly:bg-[#55e39a] group-data-reaction-player:bg-[#38e8ff]" style={{ width: `${hp() * 100}%` }} />
+              <View class="absolute left-0 top-0 bottom-0 bg-linear-to-b from-white/55 to-transparent to-50% bg-gold group-data-reaction-hostile:bg-danger group-data-reaction-friendly:bg-success group-data-reaction-player:bg-[#38e8ff]" style={{ width: `${hp() * 100}%` }} />
               <Show when={(props.shield ?? 0) > 0}>
-                <View class="absolute top-0 bottom-0 bg-linear-to-b from-white/55 to-transparent to-42% bg-[#4fd8ff]" style={{ left: `${hp() * 100}%`, width: `${Math.min(props.shield ?? 0, 1) * 100}%` }} />
+                <View class="absolute top-0 bottom-0 bg-linear-to-b from-white/55 to-transparent to-42% bg-info" style={{ left: `${hp() * 100}%`, width: `${Math.min(props.shield ?? 0, 1) * 100}%` }} />
               </Show>
               <For each={[1, 2, 3]} key={(i) => i}>
                 {(i) => <View class="absolute top-0 bottom-0 w-[1px] bg-[#dfe3ecbf]" style={{ left: `${i() * 25}%` }} />}
@@ -140,19 +140,19 @@ export function Nameplate(props: NameplateProps) {
             </Show>
           </View>
           <Show when={(props.boss || low()) && !props.compact}>
-            <Text class="shrink-0 text-[0.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-shadow-2xs group-data-low:text-[#ff4d5e]">{`${formatNumber(hp() * 100, { decimals: 0 })}%`}</Text>
+            <Text class="shrink-0 text-xs leading-none font-bold tabular-nums whitespace-nowrap text-shadow-2xs group-data-low:text-danger">{`${formatNumber(hp() * 100, { decimals: 0 })}%`}</Text>
           </Show>
         </View>
       </Show>
       <Show when={castName() !== "" && !props.compact && !props.dead}>
         <View
-          class="flex-col gap-y-[1px] min-w-[9rem] max-w-[18.286rem] mt-[1px]"
+          class="flex-col gap-y-[1px] min-w-36 max-w-[18.286rem] mt-[1px]"
           role="status"
           label={castState() === "locked" ? t("world.nameplate.uninterruptible", { spell: castName() }) : castState() === "interrupted" ? t("world.nameplate.interrupted") : t("world.nameplate.casting", { spell: castName() })}
           data-state-locked={castState() === "locked"}
           data-state-interrupted={castState() === "interrupted"}
         >
-          <View class="group/cast flex-row items-center gap-x-[0.429rem] min-w-0 text-[0.821rem] leading-[1.1] font-bold tracking-[0.07em] uppercase whitespace-nowrap text-[#ffb547] group-data-state-locked:text-[#c6c9d4] group-data-state-interrupted:text-fg">
+          <View class="group/cast flex-row items-center gap-x-[0.429rem] min-w-0 text-[0.821rem] leading-[1.1] font-bold tracking-[0.07em] uppercase whitespace-nowrap text-warn group-data-state-locked:text-[#c6c9d4] group-data-state-interrupted:text-fg">
             <Icon class="shrink-0 -mr-[0.214rem] size-[0.821rem]" name={castState() === "locked" ? "shield" : castState() === "interrupted" ? "close" : "bolt"} />
             <Text class="grow min-w-0 max-w-[12.143rem] truncate">{castState() === "interrupted" ? t("world.nameplate.interrupted") : castName()}</Text>
             <Show when={castTime() !== "" && castState() !== "interrupted"}>
@@ -160,7 +160,7 @@ export function Nameplate(props: NameplateProps) {
             </Show>
           </View>
           <View class="relative h-[0.357rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffb5478c] group-data-state-locked:shadow-[0px_0px_0px_1px_#c6c9d499] group-data-state-interrupted:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.714rem_#ff4d5ecc]">
-            <View class="absolute left-0 top-0 bottom-0 bg-linear-to-r from-[#ffb54773] via-[#ffb547] via-80% to-white shadow-[0px_0px_0.571rem_#ffb547] group-data-state-locked:bg-linear-to-r group-data-state-locked:from-[#c6c9d459] group-data-state-locked:via-[#dde0ea] group-data-state-locked:via-85% group-data-state-locked:to-white group-data-state-locked:shadow-none group-data-state-interrupted:bg-[#ff4d5e] group-data-state-interrupted:shadow-none" style={{ width: `${castFill() * 100}%` }} />
+            <View class="absolute left-0 top-0 bottom-0 bg-linear-to-r from-warn/45 via-warn via-80% to-white shadow-[0px_0px_0.571rem_#ffb547] group-data-state-locked:bg-linear-to-r group-data-state-locked:from-[#c6c9d459] group-data-state-locked:via-[#dde0ea] group-data-state-locked:via-85% group-data-state-locked:to-white group-data-state-locked:shadow-none group-data-state-interrupted:bg-danger group-data-state-interrupted:shadow-none" style={{ width: `${castFill() * 100}%` }} />
           </View>
         </View>
       </Show>

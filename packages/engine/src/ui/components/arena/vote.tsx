@@ -56,14 +56,14 @@ export function ArenaVote(props: ArenaVoteProps) {
     <View class={`flex-col gap-y-2 text-fg ${CARD}`} label={heading()} busy={props.loading}>
       <Text class="text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg text-center">{heading()}</Text>
       <Show when={(props.detail ?? "") != ""}>
-        <Text class="text-[0.929rem] font-semibold text-fg/66">{props.detail}</Text>
+        <Text class="text-caption font-semibold text-fg/66">{props.detail}</Text>
       </Show>
       <Show when={props.closed} fallback={
         <Show when={(props.timeText ?? "") != ""}>
-          <Text class="text-[1.714rem] leading-[1.1] font-bold tabular-nums text-[#ffcf5a]">{props.timeText}</Text>
+          <Text class="text-[1.714rem] leading-[1.1] font-bold tabular-nums text-gold">{props.timeText}</Text>
         </Show>
       }>
-        <Text class="text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg/66" role="status">{t("vote.closed")}</Text>
+        <Text class="text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg/66" role="status">{t("vote.closed")}</Text>
       </Show>
       <Show when={props.loading} fallback={
         <Show when={(props.options ?? []).length}>
@@ -85,21 +85,21 @@ export function ArenaVote(props: ArenaVoteProps) {
                       <Icon class="shrink-0 size-6 text-fg" name={o().icon} />
                     </Show>
                     <View class="flex-1 min-w-0 flex-col items-start gap-y-[0.071rem]">
-                      <Text class="w-full text-[1.286rem] leading-[1.15] font-bold text-fg">{o().name}</Text>
+                      <Text class="w-full text-lg leading-[1.15] font-bold text-fg">{o().name}</Text>
                       <Show when={(o().detail ?? "") != ""}>
-                        <Text class="text-[0.929rem] text-fg/66">{o().detail}</Text>
+                        <Text class="text-caption text-fg/66">{o().detail}</Text>
                       </Show>
                       <Show when={props.selected == o().id}>
-                        <Text class="text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#38e8ff]">{t("vote.selected")}</Text>
+                        <Text class="text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#38e8ff]">{t("vote.selected")}</Text>
                       </Show>
                       <Show when={props.closed && props.winner == o().id}>
-                        <Text class="text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#55e39a]">{t("vote.winner")}</Text>
+                        <Text class="text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-success">{t("vote.winner")}</Text>
                       </Show>
                       <Show when={o().disabled && (o().reason ?? "") != ""}>
-                        <Text class="text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg/66">{o().reason}</Text>
+                        <Text class="text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg/66">{o().reason}</Text>
                       </Show>
                     </View>
-                    <Text class="shrink basis-auto text-[1.143rem] font-bold tabular-nums text-fg compact:basis-full compact:text-end">{t("vote.tally", { count: formatNumber(o().votes ?? 0) })}</Text>
+                    <Text class="shrink basis-auto text-base font-bold tabular-nums text-fg compact:basis-full compact:text-end">{t("vote.tally", { count: formatNumber(o().votes ?? 0) })}</Text>
                   </View>
                 )}
               </For>
@@ -107,10 +107,10 @@ export function ArenaVote(props: ArenaVoteProps) {
           </Scroll>
         </Show>
       }>
-        <Text class="text-[0.929rem] font-semibold text-fg/66" role="status">{t("vote.loading")}</Text>
+        <Text class="text-caption font-semibold text-fg/66" role="status">{t("vote.loading")}</Text>
       </Show>
       <Show when={!props.loading && (props.options ?? []).length == 0}>
-        <Text class="text-[0.929rem] font-semibold text-fg/66" role="status">{t("vote.empty")}</Text>
+        <Text class="text-caption font-semibold text-fg/66" role="status">{t("vote.empty")}</Text>
       </Show>
     </View>
   );

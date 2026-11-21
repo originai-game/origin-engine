@@ -24,9 +24,9 @@ export function RpgTurnOrder(props: RpgTurnOrderProps) {
           <For each={props.turns ?? []} key={(u) => u.id}>
             {(u) => (
               <View class={`flex-col items-center p-1 min-w-0`} role="listitem" label={u().name} data-acting={u().acting} data-down={u().down} current={u().acting}>
-                <View class={`relative w-full max-w-[6.857rem] aspect-square overflow-hidden p-[0.143rem] rounded-full bg-linear-to-b from-[#ffffffbf] via-[#ffffff38] via-45% to-[#ffffff14] shadow-[0px_4.571px_9.143px_#000000a6]`}>
+                <View class={`relative w-full max-w-[6.857rem] aspect-square overflow-hidden p-[0.143rem] rounded-full bg-linear-to-b from-white/75 via-white/22 via-45% to-white/8 shadow-[0px_4.571px_9.143px_#000000a6]`}>
                   <Show when={u().portrait !== 0}>
-                    <Image class={`size-full rounded-full bg-[#1e2637e5]`} src={u().portrait} />
+                    <Image class={`size-full rounded-full bg-plate-hi`} src={u().portrait} />
                   </Show>
                 </View>
               </View>

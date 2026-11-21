@@ -50,7 +50,7 @@ export function Chat(props: ChatProps) {
                       {c().label}
                     </Text>
                     <Show when={c().unread > 0}>
-                      <Text class={`font-bold text-caption tabular-nums nine-chip-cut bg-gold border border-[#4e586c] text-[#241a04] transition duration-317 min-w-4 text-center py-0 px-0.5 m-0 shrink ${packClass("Chip", "frame")}`}>
+                      <Text class={`font-bold text-caption tabular-nums nine-chip-cut bg-gold border border-rim text-[#241a04] transition duration-317 min-w-4 text-center py-0 px-0.5 m-0 shrink ${packClass("Chip", "frame")}`}>
                         {formatNumber(c().unread)}
                       </Text>
                     </Show>
@@ -62,7 +62,7 @@ export function Chat(props: ChatProps) {
           </Scroll>
         </View>
       </Show>
-      <View class={`grow shrink basis-0 nine-plate-cut bg-[#060910b8] border border-[#ffffff14] w-full py-1 px-[1.5px] gap-0 ${packClass("Field", "frame")}`}>
+      <View class={`grow shrink basis-0 nine-plate-cut bg-[#060910b8] border border-white/8 w-full py-1 px-[1.5px] gap-0 ${packClass("Field", "frame")}`}>
         <Scroll class={`flex-col-reverse grow shrink basis-0 w-full gap-0`} role="log" label={t("general.chat.messages")} live="polite">
           <Show when={props.messages.length} fallback={
               <Text class="text-center text-fg-muted p-4 m-0" role="status">{t("general.chat.empty")}</Text>
@@ -102,7 +102,7 @@ export function Chat(props: ChatProps) {
         </Scroll>
       </View>
       <Show when={props.notice}>
-        <Text class={`tracking-xs text-[#ff8a2e] m-0`} role="status">
+        <Text class={`tracking-xs text-warn m-0`} role="status">
           {props.notice}
         </Text>
       </Show>

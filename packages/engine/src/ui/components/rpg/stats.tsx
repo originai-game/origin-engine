@@ -23,9 +23,9 @@ export function RpgStats(props: RpgStatsProps) {
             <For each={props.rows ?? []} key={(r) => r.id}>
               {(r) => r().group === g().id ? (
                 <View class={`flex-row items-center min-h-8 py-1 w-full shadow-[inset_0px_-1px_0px_0px_#ffffff24]`} role="row">
-                  <Icon class={`shrink size-4 text-[#ffffffc7]`} name={r().icon} />
-                  <Text class={`grow min-w-0 text-[0.929rem] font-semibold text-[#ffffffc7]`} role="rowheader">{r().label}</Text>
-                  <Text class={`shrink whitespace-nowrap text-[1.286rem] font-bold tabular-nums text-fg`} role="cell">{r().value}</Text>
+                  <Icon class={`shrink size-4 text-fg/78`} name={r().icon} />
+                  <Text class={`grow min-w-0 text-caption font-semibold text-fg/78`} role="rowheader">{r().label}</Text>
+                  <Text class={`shrink whitespace-nowrap text-lg font-bold tabular-nums text-fg`} role="cell">{r().value}</Text>
                 </View>
               ) : null}
             </For>
@@ -46,7 +46,7 @@ export function RpgStats(props: RpgStatsProps) {
       <Scroll class={`grow min-h-0 w-full`}>
         <View class={`flex-row flex-wrap items-stretch gap-3 w-full px-1`}>
           {column("a")}
-          <View class={`shrink-0 w-px self-stretch bg-[#ffffff24] compact:hidden`} />
+          <View class={`shrink-0 w-px self-stretch bg-white/14 compact:hidden`} />
           {column("b")}
         </View>
       </Scroll>

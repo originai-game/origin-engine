@@ -60,12 +60,12 @@ export interface ArenaLobbyProps {
  * dropped, and a long word wraps without breaking.
  */
 const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-[#232837ed] compact:p-2 ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
-const KEYCAP = "shrink-0 size-6 min-w-6 text-center text-[0.929rem] leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
-const TAG = `shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut ${packClass("Chip", "frame")}`;
+const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
+const KEYCAP = "shrink-0 size-6 min-w-6 text-center text-caption leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
+const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut ${packClass("Chip", "frame")}`;
 const PORTRAIT = "shrink-0 size-[3.714rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 compact:size-[2.857rem]";
-const PORTRAIT_OPEN = "data-open:p-px data-open:bg-none data-open:bg-[#ffffff47]";
-const SEAT = "flex-row flex-wrap items-center gap-x-1 gap-y-0.5 min-h-11 py-1 px-2 nine-plate-cut bg-[#282e3cc7] compact:min-h-9 compact:py-0.5 compact:px-1 compact:gap-x-1";
+const PORTRAIT_OPEN = "data-open:p-px data-open:bg-none data-open:bg-white/28";
+const SEAT = "flex-row flex-wrap items-center gap-x-1 gap-y-0.5 min-h-11 py-1 px-2 nine-plate-cut bg-entry-hi compact:min-h-9 compact:py-0.5 compact:px-1 compact:gap-x-1";
 
 export function ArenaLobby(props: ArenaLobbyProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.lobby.title");
@@ -75,24 +75,24 @@ export function ArenaLobby(props: ArenaLobbyProps) {
       <View class="flex-row flex-wrap items-baseline gap-x-3 gap-y-1">
         <Text class="min-w-0 text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg">{heading()}</Text>
         <Show when={(props.detail ?? "") != ""}>
-          <Text class="min-w-0 text-[0.929rem] font-semibold text-fg/66">{props.detail}</Text>
+          <Text class="min-w-0 text-caption font-semibold text-fg/66">{props.detail}</Text>
         </Show>
       </View>
       <Show when={slots().length} fallback={
-        <Text class="p-4 text-center text-[1.143rem] text-fg/66" role="status">{t("arena.lobby.empty")}</Text>
+        <Text class="p-4 text-center text-base text-fg/66" role="status">{t("arena.lobby.empty")}</Text>
       }>
         <Scroll class="min-h-0">
           <View class="flex-col gap-y-1" role="list" label={t("arena.lobby.players")}>
             <For each={slots()} key={(s) => s.id}>
               {(s) => (
                 <View
-                  class={`${SEAT} ${PORTRAIT_OPEN} data-local:shadow-[inset_0px_0px_0px_1px_rgb(56_232_255/0.45),inset_0px_2px_0px_0px_#38e8ff] data-open:bg-none data-open:bg-[#ffffff0a]`}
+                  class={`${SEAT} ${PORTRAIT_OPEN} data-local:shadow-[inset_0px_0px_0px_1px_rgb(56_232_255/0.45),inset_0px_2px_0px_0px_#38e8ff] data-open:bg-none data-open:bg-white/4`}
                   role="listitem"
                   label={s().open ? t("arena.lobby.open") : s().name}
                   data-local={s().local === true}
                   data-open={s().open === true}
                 >
-                  <View class={`${PORTRAIT} ${s().open ? "p-px bg-none bg-[#ffffff47]" : ""}`}>
+                  <View class={`${PORTRAIT} ${s().open ? "p-px bg-none bg-white/28" : ""}`}>
                     <View class="size-full rounded-[0.714rem] bg-[#1d212c] flex-row items-center justify-center overflow-hidden">
                       <Show when={(s().portrait ?? 0) != 0 && !s().open} fallback={
                         <Icon class={s().open ? "size-6 text-fg/66" : "size-6 text-fg"} glyph={s().open ? "plus" : (s().icon ?? "")} />
@@ -102,11 +102,11 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                     </View>
                   </View>
                   <View class="flex-1 min-w-0 flex-col gap-y-0.5 compact:basis-[6.857rem]">
-                    <Text class={`text-start text-[1.071rem] leading-[1.15] font-bold text-fg ${s().open ? "text-fg/66" : ""}`}>{s().open ? t("arena.lobby.open") : s().name}</Text>
+                    <Text class={`text-start text-reading leading-[1.15] font-bold text-fg ${s().open ? "text-fg/66" : ""}`}>{s().open ? t("arena.lobby.open") : s().name}</Text>
                     <Show when={s().host || s().local}>
                       <View class="flex-row flex-wrap gap-x-0.5 gap-y-0.5">
                         <Show when={s().host}>
-                          <Text class={`${TAG} text-[#5a3d05] bg-[#ffcf5a]`}>{t("arena.lobby.host")}</Text>
+                          <Text class={`${TAG} text-[#5a3d05] bg-gold`}>{t("arena.lobby.host")}</Text>
                         </Show>
                         <Show when={s().local}>
                           <Text class={`${TAG} text-[#15181f] bg-[#38e8ff]`}>{t("arena.you")}</Text>
@@ -116,7 +116,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   </View>
                   <Show when={!s().open}>
                     <View
-                      class={`flex-row items-center gap-x-1 whitespace-nowrap text-[0.929rem] font-bold tracking-[0.14em] uppercase compact:ml-auto ${s().ready ? "text-[#55e39a] shadow-[0px_0px_0.571rem_rgb(85_227_154/0.7)]" : "text-fg/66"}`}
+                      class={`flex-row items-center gap-x-1 whitespace-nowrap text-caption font-bold tracking-[0.14em] uppercase compact:ml-auto ${s().ready ? "text-success shadow-[0px_0px_0.571rem_rgb(85_227_154/0.7)]" : "text-fg/66"}`}
                     >
                       <Icon class="size-4" glyph={s().ready ? "check" : "clock"} />
                       <Text class="whitespace-nowrap">{s().ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</Text>
@@ -124,13 +124,13 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   </Show>
                   <Show when={s().open && props.canInvite}>
                     <View
-                      class="flex-none flex-row items-center gap-x-0.5 min-h-8 px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-[#2c3140eb] to-[#1b1f29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.24),inset_0px_1px_0px_0px_rgb(255_255_255/0.6)] rounded-tl-[0.429rem] hover:bg-none hover:bg-linear-to-b hover:from-[#373d4ff2] hover:to-[#232837f5] compact:ml-auto"
+                      class="flex-none flex-row items-center gap-x-0.5 min-h-8 px-4 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-[#2c3140eb] to-[#1b1f29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.24),inset_0px_1px_0px_0px_rgb(255_255_255/0.6)] rounded-tl-[0.429rem] hover:bg-none hover:bg-linear-to-b hover:from-[#373d4ff2] hover:to-[#232837f5] compact:ml-auto"
                       role="button"
                       label={t("arena.lobby.invite")}
                       onPress={(e) => props.onInvite?.(e, s().id)}
                     >
                       <Icon class="size-4" glyph="plus" />
-                      <Text class="text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.invite")}</Text>
+                      <Text class="text-caption font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.invite")}</Text>
                     </View>
                   </Show>
                 </View>
@@ -143,23 +143,23 @@ export function ArenaLobby(props: ArenaLobbyProps) {
         <Show when={props.isReady} fallback={
           <View class={BUTTON} role="button" label={t("arena.lobby.readyUp")} disabled={!(props.canReady ?? false)} onPress={(e) => props.onReady?.(e)}>
             <Text class={KEYCAP} glyph="details" />
-            <Text class="text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.readyUp")}</Text>
+            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.readyUp")}</Text>
           </View>
         }>
           <View class={BUTTON} role="button" label={t("arena.lobby.unready")} disabled={!(props.canReady ?? false)} onPress={(e) => props.onUnready?.(e)}>
             <Text class={KEYCAP} glyph="details" />
-            <Text class="text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.unready")}</Text>
+            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-fg">{t("arena.lobby.unready")}</Text>
           </View>
         </Show>
         <Show when={props.isHost}>
           <View
-            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#15181f] nine-plate-cut bg-[#38e8ff] hover:bg-[#5defff] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
+            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-[#15181f] nine-plate-cut bg-[#38e8ff] hover:bg-[#5defff] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
             role="button"
             label={t("arena.lobby.start")}
             disabled={!(props.canStart ?? false)}
             onPress={(e) => props.onStart?.(e)}
           >
-            <Text class="text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#15181f]">{t("arena.lobby.start")}</Text>
+            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-[#15181f]">{t("arena.lobby.start")}</Text>
           </View>
         </Show>
       </View>

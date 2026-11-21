@@ -48,7 +48,7 @@ export function OverheadBars(props: OverheadBarsProps) {
                 class="-translate-x-1/2 relative h-[0.357rem] w-[3.286rem] bg-tile shadow-[0px_0px_0px_1px_#ffffff47]"
               >
                 <View
-                  class="absolute left-0 top-0 h-full bg-[#55e39a] data-ally:bg-[#6ea8ff] data-enemy:bg-[#ff4d5e] data-neutral:bg-[#ffd23f]"
+                  class="absolute left-0 top-0 h-full bg-success data-ally:bg-info data-enemy:bg-danger data-neutral:bg-gold"
                   data-ally={b().side === "ally"}
                   data-enemy={b().side === "enemy"}
                   data-neutral={b().side === "neutral"}
@@ -62,7 +62,7 @@ export function OverheadBars(props: OverheadBarsProps) {
                   class="-translate-x-1/2 relative h-[0.214rem] w-[2.643rem] bg-tile shadow-[0px_0px_0px_1px_#ffffff47]"
                 >
                   <View
-                    class="absolute left-0 top-0 h-full bg-[#78b2ff]"
+                    class="absolute left-0 top-0 h-full bg-mana"
                     style={{ width: `${(b().resourceMax ?? 0) > 0 ? Math.min(Math.max((b().resource ?? 0) / (b().resourceMax ?? 1), 0), 1) * 100 : 0}%` }}
                   />
                 </View>

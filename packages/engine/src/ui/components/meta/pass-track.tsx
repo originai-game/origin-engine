@@ -54,7 +54,7 @@ export function PassTrack(props: PassTrackProps) {
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <View class="grow shrink basis-[11.429rem] gap-0.5 compact:basis-full">
           <Show when={props.season || props.refresh}>
-            <Text class={`text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-subtle`}>
+            <Text class={`text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle`}>
               {props.season && props.refresh ? t("meta.pass.kicker", { season: props.season, refresh: props.refresh }) : props.season || props.refresh}
             </Text>
           </Show>
@@ -80,7 +80,7 @@ export function PassTrack(props: PassTrackProps) {
                       </Show>
                       <View class="grow shrink basis-0 gap-1">
                         <View class="flex-row items-baseline w-full flex-wrap gap-1">
-                          <Text class={`grow shrink basis-0 font-semibold text-[0.857rem] leading-4.5 text-fg-subtle tracking-[0.18em] uppercase`}>
+                          <Text class={`grow shrink basis-0 font-semibold text-xs leading-4.5 text-fg-subtle tracking-[0.18em] uppercase`}>
                             {t("meta.pass.progress")}
                           </Text>
                           <Text class={`tabular-nums text-fg whitespace-nowrap font-bold`}>
@@ -105,8 +105,8 @@ export function PassTrack(props: PassTrackProps) {
                         <For each={(props.rewards ?? [])}>
                           {(r) => (
                           <Show when={r().premium}>
-                            <View class={`group/reward grow basis-[8.857rem] min-w-[8.857rem] items-center text-center bg-[#090e1a99] border border-[#ffffff14] nine-plate-cut p-1 gap-1 data-premium:bg-[#090e1a99]`} label={t("meta.pass.reward", { tier: r().tier, name: r().name, state: r().state === 'claimed' ? t("meta.claimed") : r().state === 'available' && (props.premiumUnlocked ?? false) ? t("meta.available") : t("meta.locked") })} data-premium={true} data-not-ready={!(r().state === 'available' && (props.premiumUnlocked ?? false))} data-ready={r().state === 'available' && (props.premiumUnlocked ?? false)} data-state-claimed={(r().state) === 'claimed'}>
-                              <Text class={`self-start text-[0.857rem] font-bold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap`}>
+                            <View class={`group/reward grow basis-[8.857rem] min-w-[8.857rem] items-center text-center bg-tile/60 border border-white/8 nine-plate-cut p-1 gap-1 data-premium:bg-tile/60`} label={t("meta.pass.reward", { tier: r().tier, name: r().name, state: r().state === 'claimed' ? t("meta.claimed") : r().state === 'available' && (props.premiumUnlocked ?? false) ? t("meta.available") : t("meta.locked") })} data-premium={true} data-not-ready={!(r().state === 'available' && (props.premiumUnlocked ?? false))} data-ready={r().state === 'available' && (props.premiumUnlocked ?? false)} data-state-claimed={(r().state) === 'claimed'}>
+                              <Text class={`self-start text-xs font-bold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap`}>
                                 {t("meta.pass.tier", { tier: r().tier })}
                               </Text>
                               <Icon class={`size-[4.143rem] group-data-state-claimed/reward:opacity-45`} name={r().icon} />
@@ -119,13 +119,13 @@ export function PassTrack(props: PassTrackProps) {
                                 </Text>
                               </Show>
                               <Show when={r().detail}>
-                                <Text class={`max-w-full text-[0.857rem] text-fg-muted m-0`}>
+                                <Text class={`max-w-full text-xs text-fg-muted m-0`}>
                                   {r().detail}
                                 </Text>
                               </Show>
                               <Show when={r().state === 'claimed'} fallback={
                                   <Show when={r().state === 'available' && (props.premiumUnlocked ?? false)} fallback={
-                                      <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-chip-cut py-0.5 px-1 gap-0.5 ${packClass("Chip", "frame")}`}>
+                                      <View class={`flex-row items-center mt-auto text-xs font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-chip-cut py-0.5 px-1 gap-0.5 ${packClass("Chip", "frame")}`}>
                                         <Text class="whitespace-nowrap">{t("meta.locked")}</Text>
                                       </View>
                                   }>
@@ -134,7 +134,7 @@ export function PassTrack(props: PassTrackProps) {
                                     </View>
                                   </Show>
                               }>
-                                <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-chip-cut py-0.5 px-1 gap-0.5 data-kind-claimed:text-success data-kind-claimed:bg-none data-kind-claimed:bg-success/12 ${packClass("Chip", "frame")}`} data-kind-claimed={true}>
+                                <View class={`flex-row items-center mt-auto text-xs font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-chip-cut py-0.5 px-1 gap-0.5 data-kind-claimed:text-success data-kind-claimed:bg-none data-kind-claimed:bg-success/12 ${packClass("Chip", "frame")}`} data-kind-claimed={true}>
                                   <Icon class="size-[0.857rem]" name="check" />
                                   <Text class="whitespace-nowrap">{t("meta.claimed")}</Text>
                                 </View>
@@ -151,8 +151,8 @@ export function PassTrack(props: PassTrackProps) {
                         <For each={(props.rewards ?? [])}>
                           {(r) => (
                           <Show when={!r().premium}>
-                            <View class={`group/reward grow basis-[8.857rem] min-w-[8.857rem] items-center text-center bg-[#090e1a99] border border-[#ffffff14] nine-plate-cut p-1 gap-1 data-premium:bg-[#090e1a99]`} label={t("meta.pass.reward", { tier: r().tier, name: r().name, state: r().state === 'claimed' ? t("meta.claimed") : r().state === 'available' ? t("meta.available") : t("meta.locked") })} data-premium={false} data-not-ready={!(r().state === 'available')} data-ready={r().state === 'available'} data-state-claimed={(r().state) === 'claimed'}>
-                              <Text class={`self-start text-[0.857rem] font-bold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap`}>
+                            <View class={`group/reward grow basis-[8.857rem] min-w-[8.857rem] items-center text-center bg-tile/60 border border-white/8 nine-plate-cut p-1 gap-1 data-premium:bg-tile/60`} label={t("meta.pass.reward", { tier: r().tier, name: r().name, state: r().state === 'claimed' ? t("meta.claimed") : r().state === 'available' ? t("meta.available") : t("meta.locked") })} data-premium={false} data-not-ready={!(r().state === 'available')} data-ready={r().state === 'available'} data-state-claimed={(r().state) === 'claimed'}>
+                              <Text class={`self-start text-xs font-bold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap`}>
                                 {t("meta.pass.tier", { tier: r().tier })}
                               </Text>
                               <Icon class={`size-[4.143rem] group-data-state-claimed/reward:opacity-45`} name={r().icon} />
@@ -165,13 +165,13 @@ export function PassTrack(props: PassTrackProps) {
                                 </Text>
                               </Show>
                               <Show when={r().detail}>
-                                <Text class={`max-w-full text-[0.857rem] text-fg-muted m-0`}>
+                                <Text class={`max-w-full text-xs text-fg-muted m-0`}>
                                   {r().detail}
                                 </Text>
                               </Show>
                               <Show when={r().state === 'claimed'} fallback={
                                   <Show when={r().state === 'available'} fallback={
-                                      <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-chip-cut py-0.5 px-1 gap-0.5 ${packClass("Chip", "frame")}`}>
+                                      <View class={`flex-row items-center mt-auto text-xs font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-chip-cut py-0.5 px-1 gap-0.5 ${packClass("Chip", "frame")}`}>
                                         <Text class="whitespace-nowrap">{t("meta.locked")}</Text>
                                       </View>
                                   }>
@@ -180,7 +180,7 @@ export function PassTrack(props: PassTrackProps) {
                                     </View>
                                   </Show>
                               }>
-                                <View class={`flex-row items-center mt-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-chip-cut py-0.5 px-1 gap-0.5 data-kind-claimed:text-success data-kind-claimed:bg-none data-kind-claimed:bg-success/12 ${packClass("Chip", "frame")}`} data-kind-claimed={true}>
+                                <View class={`flex-row items-center mt-auto text-xs font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-chip-cut py-0.5 px-1 gap-0.5 data-kind-claimed:text-success data-kind-claimed:bg-none data-kind-claimed:bg-success/12 ${packClass("Chip", "frame")}`} data-kind-claimed={true}>
                                   <Icon class="size-[0.857rem]" name="check" />
                                   <Text class="whitespace-nowrap">{t("meta.claimed")}</Text>
                                 </View>

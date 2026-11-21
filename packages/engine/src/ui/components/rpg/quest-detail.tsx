@@ -47,13 +47,13 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
       <View class={`relative shrink-0 w-full min-h-[6.857rem] group-data-with-scenery/frame:min-h-[13.714rem]`}>
         <Show when={props.scenery !== 0}>
           <Image class={`absolute inset-0 size-full`} src={props.scenery} />
-          <View class="absolute inset-0 bg-linear-to-b from-transparent via-[#060d1cb3] via-55% to-[#060d1c]" />
+          <View class="absolute inset-0 bg-linear-to-b from-transparent via-glass-lo/70 via-55% to-glass-lo" />
         </Show>
         <View class="absolute bottom-0 left-0 flex-col gap-0.5 min-w-0 pt-3 pb-2 px-4 compact:px-3">
           <Show when={props.label}>
             <Text class={`text-caption font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold`}>{props.label}</Text>
           </Show>
-          <Text class={`min-w-0 text-[2.429rem] leading-tight text-fg text-stroke-3 text-stroke-bg compact:text-[1.714rem]`} role="heading" level={2}>
+          <Text class={`min-w-0 text-display-md leading-tight text-fg text-stroke-3 text-stroke-bg compact:text-[1.714rem]`} role="heading" level={2}>
             {props.name}
           </Text>
         </View>
@@ -63,7 +63,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
         <Scroll class="absolute inset-0">
           <View class={`flex-col gap-3 pt-1 px-4 pb-4 compact:px-3`}>
             <Show when={props.summary}>
-              <Text class={`max-w-[30rem] text-fg-muted`}>{props.summary}</Text>
+              <Text class={`max-w-120 text-fg-muted`}>{props.summary}</Text>
             </Show>
             <Show when={(props.objectives ?? []).length}>
               <View class={`flex-col gap-1`} role="group" label={t("rpg.quest.objectives")}>
@@ -100,7 +100,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                   <For each={props.rewards ?? []} key={(r) => r.id}>
                     {(r) => (
                       <View class={`group/reward flex-row items-center gap-3 grow min-w-[17.829rem] compact:min-w-0 compact:w-full py-1 pl-1 pr-3 nine-chip-cut bg-[#101725d9] ${packClass("Chip", "frame")}`} role="listitem" data-unique={r().detail !== ""}>
-                        <View class={`shrink-0 size-12 rounded-[6.858px] p-[1.5px] bg-linear-to-b from-[#ffffff80] via-[#ffffff1f] via-50% to-[#ffffff0f] data-unique:from-[#fff3cf] data-unique:via-[#ffcf5a] data-unique:via-45% data-unique:to-[#ffcf5a66]`}>
+                        <View class={`shrink-0 size-12 rounded-[6.858px] p-[1.5px] bg-linear-to-b from-white/50 via-white/12 via-50% to-white/6 data-unique:from-[#fff3cf] data-unique:via-gold data-unique:via-45% data-unique:to-[#ffcf5a66]`}>
                           <View class={`size-full rounded-[5.143px] flex-row items-center justify-center bg-[#1f2430] data-unique:bg-[#3a2f0e]`}>
                             <Icon class={`size-6 text-fg data-unique:text-gold`} name={r().icon} />
                           </View>
@@ -126,20 +126,20 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
       <Show when={props.canTrack || props.canLocate}>
         <View class={`shrink flex-row flex-wrap justify-end gap-2 pt-2 px-4 pb-3 compact:px-3`}>
           <Show when={props.canLocate}>
-            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-[4.576px] border border-rim text-fg hover:bg-[#ffffff0f] disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.locate")} onPress={(e) => props.onLocate?.(e)}>
+            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-[4.576px] border border-rim text-fg hover:bg-white/6 disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.locate")} onPress={(e) => props.onLocate?.(e)}>
               <Icon class="shrink size-4" name="map" />
-              <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase`}>{t("rpg.quest.locate")}</Text>
+              <Text class={`text-caption font-bold tracking-[0.14em] uppercase`}>{t("rpg.quest.locate")}</Text>
             </View>
           </Show>
           <Show when={props.canTrack && props.tracked} fallback={
             <Show when={props.canTrack}>
               <View class={`min-h-11 flex-row items-center justify-center gap-1 px-3 rounded-[4.576px] bg-accent text-accent-ink shadow-[inset_0px_2px_0px_#ffffff59] hover:bg-white ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.quest.track")} onPress={(e) => props.onTrack?.(e)}>
-                <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase`}>{t("rpg.quest.track")}</Text>
+                <Text class={`text-caption font-bold tracking-[0.14em] uppercase`}>{t("rpg.quest.track")}</Text>
               </View>
             </Show>
           }>
-            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-[4.576px] border border-rim text-fg hover:bg-[#ffffff0f] disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.untrack")} onPress={(e) => props.onTrack?.(e)}>
-              <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase`}>{t("rpg.quest.untrack")}</Text>
+            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-[4.576px] border border-rim text-fg hover:bg-white/6 disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.untrack")} onPress={(e) => props.onTrack?.(e)}>
+              <Text class={`text-caption font-bold tracking-[0.14em] uppercase`}>{t("rpg.quest.untrack")}</Text>
             </View>
           </Show>
         </View>

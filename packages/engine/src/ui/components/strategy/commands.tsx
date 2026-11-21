@@ -28,48 +28,48 @@ export function StrategyCommands(props: StrategyCommandsProps) {
       <For each={props.commands ?? []} key={(c) => c.id}>
         {(c) => (
         <Show when={c().id === props.focused && c().name}>
-          <View class={`flex-col gap-y-1 w-[16.914rem] max-w-full min-w-0 py-2 px-3 nine-panel-cut bg-[#1e2637e5] compact:hidden ${packClass("Panel", "frame")}`} role="tooltip">
+          <View class={`flex-col gap-y-1 w-[16.914rem] max-w-full min-w-0 py-2 px-3 nine-panel-cut bg-plate-hi compact:hidden ${packClass("Panel", "frame")}`} role="tooltip">
             <View class="flex-row items-center justify-between gap-x-2 min-w-0">
-              <Text class={`shrink min-w-0 text-[1.071rem] font-bold whitespace-nowrap overflow-hidden`}>
+              <Text class={`shrink min-w-0 text-reading font-bold whitespace-nowrap overflow-hidden`}>
                 {c().name}
               </Text>
               <Show when={c().key}>
-                <Text class={`shrink min-w-[1.429rem] max-w-[40%] py-0 px-[0.357rem] leading-[1.5] text-[0.857rem] font-bold text-center text-[#0b0f18] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
+                <Text class={`shrink min-w-[1.429rem] max-w-[40%] py-0 px-[0.357rem] leading-[1.5] text-xs font-bold text-center text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
                   {c().key}
                 </Text>
               </Show>
             </View>
             <Show when={c().detail}>
-              <Text class={`text-[0.929rem] leading-[1.35] text-fg-muted whitespace-normal`}>
+              <Text class={`text-caption leading-[1.35] text-fg-muted whitespace-normal`}>
                 {c().detail}
               </Text>
             </Show>
             <Show when={c().cost || c().cooldownText || c().readyText}>
               <View class="flex-row flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                 <Show when={c().cost}>
-                  <View class={`shrink flex-row items-center gap-x-1 data-short:text-[#ff4d5e]`} data-short={!c().affordable}>
+                  <View class={`shrink flex-row items-center gap-x-1 data-short:text-danger`} data-short={!c().affordable}>
                     <Show when={c().costIcon}>
                       <Image class={`shrink size-[1.143rem]`} src={c().costIcon} />
                     </Show>
-                    <Text class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap data-short:text-[#ff4d5e]`} data-short={!c().affordable}>
+                    <Text class={`text-base font-bold tabular-nums whitespace-nowrap data-short:text-danger`} data-short={!c().affordable}>
                       {c().cost}
                     </Text>
                   </View>
                 </Show>
                 <Show when={c().cooldownText}>
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-xs font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
                     {c().cooldownText}
                   </Text>
                 </Show>
                 <Show when={c().readyText}>
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-xs font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
                     {c().readyText}
                   </Text>
                 </Show>
               </View>
             </Show>
             <Show when={c().reason}>
-              <View class={`text-[0.929rem] leading-[1.35] font-semibold text-[#ff4d5e] whitespace-normal`} role="status">
+              <View class={`text-caption leading-[1.35] font-semibold text-danger whitespace-normal`} role="status">
                 <Text>{c().reason}</Text>
               </View>
             </Show>
@@ -77,16 +77,16 @@ export function StrategyCommands(props: StrategyCommandsProps) {
         </Show>
         )}
       </For>
-      <View class={`group/grid grid grid-cols-4 auto-rows-[3.657rem] gap-1 justify-start self-end p-[0.714rem] nine-panel-cut bg-[#1e2637e5] compact:grid-cols-8 compact:justify-between compact:self-stretch compact:p-[0.357rem] ${packClass("Panel", "frame")}`} role="toolbar" label={t("strategy.commands.name")}>
+      <View class={`group/grid grid grid-cols-4 auto-rows-[3.657rem] gap-1 justify-start self-end p-[0.714rem] nine-panel-cut bg-plate-hi compact:grid-cols-8 compact:justify-between compact:self-stretch compact:p-[0.357rem] ${packClass("Panel", "frame")}`} role="toolbar" label={t("strategy.commands.name")}>
         <For each={props.commands ?? []} key={(c) => c.id}>
           {(c) => (
           <Show when={c().name} fallback={
-              <View class={`nine-plate-cut bg-[#ffffff1f]`} />
+              <View class={`nine-plate-cut bg-sheen`} />
           }>
-            <View class={`group/cmd flex p-[0.143rem] nine-plate-cut bg-[#ffffffbf] data-active:bg-[#38e8ff] disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
+            <View class={`group/cmd flex p-[0.143rem] nine-plate-cut bg-white/75 data-active:bg-[#38e8ff] disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
               <View class="relative size-full overflow-hidden">
                 <Show when={c().icon} fallback={
-                    <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-[#1e2637e5] to-plate-lo">
+                    <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">
                       <Icon class={`size-[55%] text-fg`} name={c().glyph} />
                     </View>
                 }>
@@ -107,12 +107,12 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                   </View>
                 </Show>
                 <Show when={c().action || c().key}>
-                  <Text class={`absolute left-1 top-[0.143rem] max-w-[94%] py-0 px-0 leading-[1.2] text-[0.857rem] font-bold text-fg whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg pointer-coarse:hidden`} glyph={c().key ? undefined : c().action}>
+                  <Text class={`absolute left-1 top-[0.143rem] max-w-[94%] py-0 px-0 leading-[1.2] text-xs font-bold text-fg whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg pointer-coarse:hidden`} glyph={c().key ? undefined : c().action}>
                     {c().key}
                   </Text>
                 </Show>
                 <Show when={!c().affordable && c().cost}>
-                  <Text class={`absolute right-[0.214rem] bottom-[0.214rem] max-w-[97%] py-0 px-1 leading-[1.35] text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden text-[#ff4d5e] nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                  <Text class={`absolute right-[0.214rem] bottom-[0.214rem] max-w-[97%] py-0 px-1 leading-[1.35] text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-danger nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
                     {c().cost}
                   </Text>
                 </Show>

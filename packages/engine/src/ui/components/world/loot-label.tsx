@@ -61,22 +61,22 @@ export function LootLabel(props: LootLabelProps) {
       data-legendary={rarity() === "legendary"}
     >
       <View
-        class={`group/chip relative flex-row items-center gap-x-[0.429rem] min-w-0 max-w-full shrink-0 py-[0.214rem] pr-[0.643rem] pl-[0.786rem] text-[0.964rem] leading-[1.2] font-semibold whitespace-nowrap nine-chip-cut bg-[#1b1f29e0] animate-pop hover:scale-[1.06] hover:bg-[#f2f4f8f5] group-data-uncommon:text-[#45e08f] group-data-rare:text-[#5cc8ff] group-data-epic:text-[#c86ff5] group-data-legendary:font-bold group-data-legendary:text-gold group-data-legendary:bg-[#171310e6] group-data-hovered:scale-[1.06] group-data-hovered:bg-[#f2f4f8f5] ${packClass("Chip", "frame")}`}
+        class={`group/chip relative flex-row items-center gap-x-[0.429rem] min-w-0 max-w-full shrink-0 py-[0.214rem] pr-[0.643rem] pl-[0.786rem] text-[0.964rem] leading-[1.2] font-semibold whitespace-nowrap nine-chip-cut bg-[#1b1f29e0] animate-pop hover:scale-[1.06] hover:bg-[#f2f4f8f5] group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:font-bold group-data-legendary:text-gold group-data-legendary:bg-[#171310e6] group-data-hovered:scale-[1.06] group-data-hovered:bg-[#f2f4f8f5] ${packClass("Chip", "frame")}`}
         data-more={more() > 0}
         data-hovered={props.hovered}
         role="button"
         label={more() > 0 ? t("world.loot.moreName", { n: more() }) : name()}
         onPress={(e) => props.onPick?.(e)}
       >
-        <View class="absolute left-0 top-0 bottom-0 w-[0.214rem] bg-[#e6e9f073] group-data-uncommon:bg-[#45e08f] group-data-rare:bg-[#5cc8ff] group-data-epic:bg-[#c86ff5] group-data-legendary:bg-gold" />
+        <View class="absolute left-0 top-0 bottom-0 w-[0.214rem] bg-[#e6e9f073] group-data-uncommon:bg-uncommon group-data-rare:bg-rare group-data-epic:bg-epic group-data-legendary:bg-gold" />
         <Show when={more() > 0}>
           <Text class="shrink-0 font-bold tabular-nums text-fg">{t("world.loot.more", { n: more() })}</Text>
           <For each={props.tiers ?? []} key={(d) => d.id}>
-            {(d) => <View class="shrink-0 size-[0.5rem] rotate-45 bg-[#e6e9f073] data-rarity-uncommon:bg-[#45e08f] data-rarity-rare:bg-[#5cc8ff] data-rarity-epic:bg-[#c86ff5] data-rarity-legendary:bg-gold" data-rarity-uncommon={d().rarity === "uncommon"} data-rarity-rare={d().rarity === "rare"} data-rarity-epic={d().rarity === "epic"} data-rarity-legendary={d().rarity === "legendary"} />}
+            {(d) => <View class="shrink-0 size-2 rotate-45 bg-[#e6e9f073] data-rarity-uncommon:bg-uncommon data-rarity-rare:bg-rare data-rarity-epic:bg-epic data-rarity-legendary:bg-gold" data-rarity-uncommon={d().rarity === "uncommon"} data-rarity-rare={d().rarity === "rare"} data-rarity-epic={d().rarity === "epic"} data-rarity-legendary={d().rarity === "legendary"} />}
           </For>
         </Show>
         <Show when={more() === 0}>
-          <Text class="shrink max-w-[13.571rem] min-w-0 truncate text-[#e6e9f0e6] group-data-uncommon:text-[#45e08f] group-data-rare:text-[#5cc8ff] group-data-epic:text-[#c86ff5] group-data-legendary:text-gold">{name()}</Text>
+          <Text class="shrink max-w-[13.571rem] min-w-0 truncate text-[#e6e9f0e6] group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:text-gold">{name()}</Text>
           <Show when={(props.count ?? 0) > 1}>
             <Text class="shrink-0 font-bold tabular-nums text-fg">{t("world.loot.count", { count: props.count ?? 0 })}</Text>
           </Show>
@@ -86,7 +86,7 @@ export function LootLabel(props: LootLabelProps) {
         </Show>
       </View>
       <Show when={more() === 0 && (rarity() === "epic" || rarity() === "legendary")}>
-        <View class="shrink-0 w-[3px] h-[3.143rem] bg-[#c86ff5] shadow-[0px_0px_1.143rem_#c86ff5] group-data-legendary:bg-gold group-data-legendary:shadow-[0px_0px_1.143rem_#ffd23f] opacity-75" />
+        <View class="shrink-0 w-[3px] h-[3.143rem] bg-epic shadow-[0px_0px_1.143rem_#c86ff5] group-data-legendary:bg-gold group-data-legendary:shadow-[0px_0px_1.143rem_#ffd23f] opacity-75" />
       </Show>
     </View>
   );

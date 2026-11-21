@@ -60,8 +60,8 @@ export interface ArenaRosterProps {
  * is an opacity, and the scroll fade at the grid's foot is dropped.
  */
 const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-[#232837ed] data-compact:p-2 ${packClass("Panel", "frame")}`;
-const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-[0.857rem] leading-[1.5] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] rounded-[0.286rem] data-ready:bg-none data-ready:bg-[#55e39a] data-ready:text-[#011e0f]";
-const TAG = `flex-none max-w-full self-center py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-center text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`;
+const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-xs leading-[1.5] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] rounded-[0.286rem] data-ready:bg-none data-ready:bg-success data-ready:text-[#011e0f]";
+const TAG = `flex-none max-w-full self-center py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-center text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`;
 const CELL = "flex-col gap-y-0.5 pb-2 nine-panel-cut bg-[#2b3141e6] hover:bg-[#3a4152e6] data-selected:bg-[#38e8ff26] data-disabled:text-fg/66 data-disabled:bg-[#2b3141e6]";
 
 export function ArenaRoster(props: ArenaRosterProps) {
@@ -73,7 +73,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
     <View class={CARD} label={heading()} data-compact={props.compact === true}>
       <Text class="text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg">{heading()}</Text>
       <Show when={characters().length} fallback={
-        <Text class="p-4 text-center text-[1.143rem] text-fg/66" role="status">{t("arena.roster.empty")}</Text>
+        <Text class="p-4 text-center text-base text-fg/66" role="status">{t("arena.roster.empty")}</Text>
       }>
         <Scroll class="min-h-0">
           <View class="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-1 p-0.5 pb-4 data-compact:grid-cols-[repeat(auto-fill,minmax(100px,1fr))] data-compact:gap-1" role="listbox" label={t("arena.roster.characters")}>
@@ -107,7 +107,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
                               data-ready={p().ready === true}
                               label={p().ready ? t("arena.roster.slotReady", { slot: p().slot ?? 0 }) : t("arena.roster.slotName", { slot: p().slot ?? 0 })}
                             >
-                              <Text class="text-[0.857rem] leading-[1.5] font-bold">{t("arena.roster.slot", { slot: p().slot ?? 0 })}</Text>
+                              <Text class="text-xs leading-[1.5] font-bold">{t("arena.roster.slot", { slot: p().slot ?? 0 })}</Text>
                               <Show when={p().ready}>
                                 <Icon class="size-4" glyph="check" />
                               </Show>
@@ -117,7 +117,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
                       </View>
                     </Show>
                   </View>
-                  <Text class="px-1 text-center text-[1.071rem] leading-[1.15] font-bold text-inherit">{c().name}</Text>
+                  <Text class="px-1 text-center text-reading leading-[1.15] font-bold text-inherit">{c().name}</Text>
                   <Show when={c().locked || (c().takenBy ?? "") != ""}>
                     <Text class={`${TAG} ${c().locked ? "text-fg/66" : "text-fg/66"}`}>{c().locked ? t("arena.roster.locked") : t("arena.roster.taken", { name: c().takenBy })}</Text>
                   </Show>
@@ -127,10 +127,10 @@ export function ArenaRoster(props: ArenaRosterProps) {
           </View>
         </Scroll>
         <Show when={(props.selected ?? "") != "" && chosen()}>
-          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-[#282e3cd6] data-compact:gap-y-1 data-compact:py-1 px-2" role="status">
+          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-entry-hi data-compact:gap-y-1 data-compact:py-1 px-2" role="status">
             <Text class={`${TAG} bg-[#38e8ff] text-[#15181f] shadow-none`}>{t("arena.roster.chosen")}</Text>
-            <Text class="min-w-0 text-[1.857rem] leading-[1.1] font-bold uppercase text-fg data-compact:text-[1.429rem]">{chosen()?.name}</Text>
-            <Text class="shrink min-w-0 max-w-full text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78">{chosen()?.roleLabel}</Text>
+            <Text class="min-w-0 text-3xl leading-[1.1] font-bold uppercase text-fg data-compact:text-xl">{chosen()?.name}</Text>
+            <Text class="shrink min-w-0 max-w-full text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78">{chosen()?.roleLabel}</Text>
           </View>
         </Show>
       </Show>

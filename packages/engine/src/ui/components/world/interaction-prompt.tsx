@@ -67,16 +67,16 @@ export function InteractionPrompt(props: InteractionPromptProps) {
           <View class="absolute inset-0 rounded-full bg-[#e6eaf2c7]" />
           <View class="absolute inset-0 nine-ring bg-white" wipe={hold() >= 1 ? 1 : hold()} role="meter" label={t("world.prompt.hold")} valueMin={0} valueMax={1} valueNow={hold() >= 1 ? 1 : hold()} />
         </Show>
-        <Text class="z-1 min-w-[1.857rem] h-[1.857rem] px-[0.357rem] text-center text-[1rem] leading-[1.857rem] font-bold whitespace-nowrap text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] group-data-pressed:translate-y-[2px] group-data-pressed:bg-linear-to-b group-data-pressed:from-[#d9fbff] group-data-pressed:to-[#38e8ff] group-data-pressed:shadow-[0px_0px_1rem_#38e8ff,inset_0px_-0.143rem_0px_#0000002e] group-data-disabled:text-[#5a5f6b] group-data-disabled:bg-linear-to-b group-data-disabled:from-[#8d92a0] group-data-disabled:to-[#6a6f7d] group-data-pad:px-0 group-data-pad:w-[1.857rem] group-data-pad:min-w-0 group-data-pad:text-[#45e08f] group-data-pad:rounded-full group-data-pad:bg-[#f4f6faf2] group-data-pad:shadow-[0px_0px_0px_1.5px_#ffffff99,0px_2px_0px_#00000099]" data-action={action() || undefined}>{key()}</Text>
+        <Text class="z-1 min-w-[1.857rem] h-[1.857rem] px-[0.357rem] text-center text-sm leading-[1.857rem] font-bold whitespace-nowrap text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] group-data-pressed:translate-y-[2px] group-data-pressed:bg-linear-to-b group-data-pressed:from-[#d9fbff] group-data-pressed:to-[#38e8ff] group-data-pressed:shadow-[0px_0px_1rem_#38e8ff,inset_0px_-0.143rem_0px_#0000002e] group-data-disabled:text-[#5a5f6b] group-data-disabled:bg-linear-to-b group-data-disabled:from-[#8d92a0] group-data-disabled:to-[#6a6f7d] group-data-pad:px-0 group-data-pad:w-[1.857rem] group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-[#f4f6faf2] group-data-pad:shadow-[0px_0px_0px_1.5px_#ffffff99,0px_2px_0px_#00000099]" data-action={action() || undefined}>{key()}</Text>
       </View>
-      <View class="flex-col min-w-0 -ml-[0.714rem] pt-[0.286rem] px-[0.857rem] pb-[0.357rem] pl-[1.143rem] nine-plate-cut bg-[#212735e6]">
-        <Text class="text-[1.071rem] leading-[1.15] font-bold tracking-[0.07em] uppercase whitespace-nowrap group-data-disabled:text-fg/66">{props.verb}</Text>
+      <View class="flex-col min-w-0 -ml-[0.714rem] pt-[0.286rem] px-[0.857rem] pb-[0.357rem] pl-[1.143rem] nine-plate-cut bg-plate-hi">
+        <Text class="text-reading leading-[1.15] font-bold tracking-[0.07em] uppercase whitespace-nowrap group-data-disabled:text-fg/66">{props.verb}</Text>
         <Show when={name() !== ""}>
           <Text class="min-w-0 max-w-[14.286rem] text-[0.75rem] leading-[1.2] font-semibold tracking-[0.13em] uppercase whitespace-nowrap truncate text-fg/78">{name()}</Text>
         </Show>
         <Show when={props.disabled && reason() !== ""}>
-          <View class="flex-row items-center gap-x-[0.286rem] min-w-0 text-[0.75rem] leading-[1.2] font-bold tracking-[0.13em] uppercase whitespace-nowrap text-[#ff4d5e]">
-            <Icon class="shrink-0 size-[0.75rem]" name="lock" />
+          <View class="flex-row items-center gap-x-[0.286rem] min-w-0 text-[0.75rem] leading-[1.2] font-bold tracking-[0.13em] uppercase whitespace-nowrap text-danger">
+            <Icon class="shrink-0 size-3" name="lock" />
             <Text class="min-w-0 max-w-[14.286rem] whitespace-nowrap truncate">{reason()}</Text>
           </View>
         </Show>

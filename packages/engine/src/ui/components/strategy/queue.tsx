@@ -29,14 +29,14 @@ export interface StrategyQueueProps {
 export function StrategyQueue(props: StrategyQueueProps) {
   return (
     <View class={`flex-row flex-wrap items-center gap-x-[0.714rem] gap-y-1 w-full min-w-0 text-fg compact:gap-x-[0.429rem]`} label={props.title !== "" ? props.title : t("strategy.queue.title")} data-full={props.full}>
-      <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] compact:text-[0.857rem] compact:tracking-normal`}>
+      <Text class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 compact:text-xs compact:tracking-normal`}>
         {props.title !== "" ? props.title : t("strategy.queue.title")}
       </Text>
       <View class={`flex-row items-center gap-x-[0.429rem] min-w-0 shrink overflow-hidden compact:gap-x-1`} role="group" label={t("strategy.queue.items")}>
         <For each={props.items ?? []} key={(q) => q.id}>
           {(q, i) => (
           <View
-            class={`shrink size-[1.914rem] compact:size-[1.783rem] p-[0.143rem] nine-chip-cut bg-[#ffffffbf] data-state-blocked:bg-[#ff4d5e] data-first:size-[2.514rem] compact:data-first:size-[2.286rem] ${packClass("Button", "plate")}`}
+            class={`shrink size-[1.914rem] compact:size-[1.783rem] p-[0.143rem] nine-chip-cut bg-white/75 data-state-blocked:bg-danger data-first:size-[2.514rem] compact:data-first:size-[2.286rem] ${packClass("Button", "plate")}`}
             role="button"
             label={t("strategy.queue.cancel", { name: q().name })}
             description={q().reason !== "" ? q().reason : q().timeText}
@@ -47,7 +47,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
           >
             <View class="relative size-full overflow-hidden">
               <Show when={q().picture} fallback={
-                  <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-[#1e2637e5] to-plate-lo">
+                  <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">
                     <Icon class={`size-[60%] text-fg`} name={q().icon} />
                   </View>
               }>
@@ -71,7 +71,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
                 </View>
               </Show>
               <Show when={q().count > 1}>
-                <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-[0.857rem] font-bold whitespace-nowrap bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-xs font-bold whitespace-nowrap bg-[#060910e0] ${packClass("Chip", "frame")}`}>
                   {t("strategy.queue.stack", { count: q().count })}
                 </Text>
               </Show>
@@ -82,30 +82,30 @@ export function StrategyQueue(props: StrategyQueueProps) {
         <Show when={props.limit > props.queued}>
           <For each={Array.from({ length: Math.min(12, props.limit - props.queued) }, (_, i) => i)} key={(i) => i}>
             {() => (
-              <View class={`shrink size-[1.914rem] compact:size-[1.783rem] nine-chip-cut bg-[#ffffff1f]`} />
+              <View class={`shrink size-[1.914rem] compact:size-[1.783rem] nine-chip-cut bg-sheen`} />
             )}
           </For>
         </Show>
       </View>
       <Show when={props.limit > 0} fallback={
           <Show when={props.full}>
-            <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-[0.857rem] font-bold whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })}>
+            <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })}>
               {t("strategy.queue.full")}
             </Text>
           </Show>
       }>
-        <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-[0.857rem] font-bold tabular-nums whitespace-nowrap text-fg data-full:text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })} data-full={props.full}>
+        <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-xs font-bold tabular-nums whitespace-nowrap text-fg data-full:text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })} data-full={props.full}>
           {props.full ? t("strategy.queue.fullCount", { count: props.queued, limit: props.limit }) : t("strategy.queue.capacity", { count: props.queued, limit: props.limit })}
         </Text>
       </Show>
       <For each={props.items ?? []} key={(q) => q.id}>
         {(q) => (
         <Show when={q().state === "paused" || q().state === "blocked"}>
-          <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-[0.857rem] font-bold whitespace-nowrap text-fg data-state-paused:text-gold data-state-blocked:text-[#ff4d5e] nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status" data-state-paused={q().state === "paused"} data-state-blocked={q().state === "blocked"}>
+          <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap text-fg data-state-paused:text-gold data-state-blocked:text-danger nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status" data-state-paused={q().state === "paused"} data-state-blocked={q().state === "blocked"}>
             {q().state === "paused" ? t("strategy.queue.paused") : t("strategy.queue.blocked")}
           </Text>
           <Show when={q().reason !== ""}>
-            <Text class={`shrink min-w-0 text-[0.929rem] font-semibold text-[#ff4d5e] whitespace-nowrap overflow-hidden`}>
+            <Text class={`shrink min-w-0 text-caption font-semibold text-danger whitespace-nowrap overflow-hidden`}>
               {q().reason}
             </Text>
           </Show>
@@ -113,7 +113,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
         )}
       </For>
       <Show when={!(props.items ?? []).length}>
-        <Text class={`shrink min-w-0 text-[0.929rem] text-fg-muted whitespace-nowrap overflow-hidden`} role="status">
+        <Text class={`shrink min-w-0 text-caption text-fg-muted whitespace-nowrap overflow-hidden`} role="status">
           {t("strategy.queue.empty")}
         </Text>
       </Show>

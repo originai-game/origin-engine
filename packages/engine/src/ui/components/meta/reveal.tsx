@@ -51,7 +51,7 @@ export function Reveal(props: RevealProps) {
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-center text-center py-1 px-4 gap-0.5`}>
         <Show when={props.kicker}>
-          <Text class={`text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-subtle`}>
+          <Text class={`text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle`}>
             {props.kicker}
           </Text>
         </Show>
@@ -80,11 +80,11 @@ export function Reveal(props: RevealProps) {
                       <View class="shrink basis-[8.571rem]">
                         <View class={`group/reward w-full p-0 hover:bg-transparent hover:bg-none hover:shadow-none`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.reward", { name: reward().name, rarity: reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onPress={(e) => props.onInspect?.(e, reward().id)} data-tier-common={(reward().rarity || 'common') === "common"}>
                           <View class="w-full items-center text-center gap-1">
-                            <View class={`grow shrink basis-0 justify-center items-center w-[8.571rem] max-w-full aspect-square bg-tile border-[1.5px] border-[#4b5568] nine-plate-cut gap-2 compact:w-[6.857rem] ${packClass("Slot", "frame")}`}>
+                            <View class={`grow shrink basis-0 justify-center items-center w-[8.571rem] max-w-full aspect-square bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 compact:w-[6.857rem] ${packClass("Slot", "frame")}`}>
                               <Icon class="size-[70%]" name={reward().icon} />
                               <View class="absolute bottom-0 h-0.75 text-border-strong bg-current inset-x-[0.571rem]" />
                               <Show when={reward().amount}>
-                                <Text class={`absolute right-1 bottom-2 text-[0.857rem] font-bold leading-[1.35] whitespace-nowrap text-fg bg-[#060910e0] nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                                <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-[1.35] whitespace-nowrap text-fg bg-[#060910e0] nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                                   {reward().amount}
                                 </Text>
                               </Show>
@@ -92,7 +92,7 @@ export function Reveal(props: RevealProps) {
                                 <View class={`bg-[#38e8ff] text-fg absolute right-2 top-2 shadow-[0px_0px_9.136px_#38e8ff,0px_0px_0px_1.5px_#060910e5] size-1 rounded-capsule`} label={t("meta.new")} />
                               </Show>
                             </View>
-                            <Text class={`text-[0.857rem] font-bold tracking-[0.18em] uppercase text-border-strong`}>
+                            <Text class={`text-xs font-bold tracking-[0.18em] uppercase text-border-strong`}>
                               {reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common")}
                             </Text>
                             <Text class={`text-fg max-w-full font-semibold`}>

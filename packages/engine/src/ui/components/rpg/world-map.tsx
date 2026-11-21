@@ -36,17 +36,17 @@ function LegendMark(props: { kind: string }) {
   return (
     <Switch fallback={
       <Show when={props.kind === "player"}>
-        <View class={`shrink size-[1rem] rounded-full bg-[#38e8ff]`} />
+        <View class={`shrink size-4 rounded-full bg-[#38e8ff]`} />
       </Show>
     }>
       <Match when={props.kind === "quest"}>
         <View class={`shrink size-[0.714rem] rotate-45 bg-gold`} />
       </Match>
       <Match when={props.kind === "danger"}>
-        <Line class={`shrink size-[1rem] stroke-[#ff4d5e]`} points={[7, 1, 13, 12, 1, 12]} closed />
+        <Line class={`shrink size-4 stroke-danger`} points={[7, 1, 13, 12, 1, 12]} closed />
       </Match>
       <Match when={props.kind === "waypoint"}>
-        <View class={`shrink size-[1rem] rounded-full border-[3px] border-[#38e8ff]`} />
+        <View class={`shrink size-4 rounded-full border-[3px] border-[#38e8ff]`} />
       </Match>
     </Switch>
   );
@@ -103,14 +103,14 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                       </Show>
                     }>
                       <Match when={m().kind === "quest"}>
-                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[62%] rotate-45 bg-linear-to-b from-[#ffe9ae] via-[#ffcf5a] to-[#c99b2e]" />
+                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[62%] rotate-45 bg-linear-to-b from-[#ffe9ae] via-gold to-[#c99b2e]" />
                         <View class="relative flex-col items-center gap-[0.128rem]">
                           <View class="w-[0.357rem] h-[0.929rem] bg-[#5c430d]" />
                           <View class="w-[0.357rem] h-[0.357rem] bg-[#5c430d]" />
                         </View>
                       </Match>
                       <Match when={m().kind === "danger"}>
-                        <Line class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[2.143rem] stroke-[3px] stroke-[#ff4d5e]" points={[15, 3, 27, 26, 3, 26]} closed />
+                        <Line class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-[2.143rem] stroke-[3px] stroke-danger" points={[15, 3, 27, 26, 3, 26]} closed />
                         <View class="relative mt-[0.471rem] flex-col items-center gap-[0.128rem]">
                           <View class="w-[0.357rem] h-[0.929rem] bg-[#801823]" />
                           <View class="w-[0.357rem] h-[0.357rem] bg-[#801823]" />
@@ -122,7 +122,7 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                       </Match>
                     </Switch>
                   </View>
-                  <Text class={`absolute left-1/2 -translate-x-1/2 top-[2.929rem] py-[0.143rem] px-1 whitespace-nowrap text-[1rem] font-semibold text-fg nine-plate-cut bg-[#060910e0] compact:hidden compact:group-data-selected/marker:block group-data-selected/marker:top-[3.286rem] group-data-selected/marker:text-[1.143rem] ${packClass("Chip", "frame")}`}>
+                  <Text class={`absolute left-1/2 -translate-x-1/2 top-[2.929rem] py-[0.143rem] px-1 whitespace-nowrap text-sm font-semibold text-fg nine-plate-cut bg-[#060910e0] compact:hidden compact:group-data-selected/marker:block group-data-selected/marker:top-[3.286rem] group-data-selected/marker:text-base ${packClass("Chip", "frame")}`}>
                     {m().label}
                   </Text>
                 </View>
@@ -132,18 +132,18 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
         </View>
       </View>
       <Show when={props.here}>
-        <View class={`absolute left-2 top-2 flex-row items-center gap-1 py-0.5 px-2 nine-plate-cut bg-[#1e2637e5] compact:left-1 compact:top-1 ${packClass("Plate", "frame")}`}>
-          <View class={`shrink size-[1rem] rounded-full bg-[#38e8ff] shadow-[0px_0px_10px_#38e8ff99]`} />
-          <Text class={`text-[0.929rem] text-fg whitespace-nowrap`}>{props.here}</Text>
+        <View class={`absolute left-2 top-2 flex-row items-center gap-1 py-0.5 px-2 nine-plate-cut bg-plate-hi compact:left-1 compact:top-1 ${packClass("Plate", "frame")}`}>
+          <View class={`shrink size-4 rounded-full bg-[#38e8ff] shadow-[0px_0px_10px_#38e8ff99]`} />
+          <Text class={`text-caption text-fg whitespace-nowrap`}>{props.here}</Text>
         </View>
       </Show>
       <Show when={(props.legend ?? []).length}>
-        <View class={`absolute left-2 bottom-2 max-w-[94%] flex-row flex-wrap items-center gap-x-2 gap-y-1 py-0.5 px-3 text-[0.929rem] nine-plate-cut bg-[#1e2637e5] compact:left-1 compact:right-1 compact:bottom-1 compact:flex-nowrap compact:justify-center compact:px-2 compact:text-[1rem] ${packClass("Plate", "frame")}`} role="group" label={t("rpg.map.legend")}>
+        <View class={`absolute left-2 bottom-2 max-w-[94%] flex-row flex-wrap items-center gap-x-2 gap-y-1 py-0.5 px-3 text-caption nine-plate-cut bg-plate-hi compact:left-1 compact:right-1 compact:bottom-1 compact:flex-nowrap compact:justify-center compact:px-2 compact:text-sm ${packClass("Plate", "frame")}`} role="group" label={t("rpg.map.legend")}>
           <For each={props.legend ?? []} key={(l) => l.id}>
             {(l) => (
               <View class={`shrink-0 flex-row items-center gap-1 whitespace-nowrap`}>
                 <LegendMark kind={l().kind} />
-                <Text class={`text-[0.929rem] text-fg compact:text-[1rem]`}>{l().label}</Text>
+                <Text class={`text-caption text-fg compact:text-sm`}>{l().label}</Text>
               </View>
             )}
           </For>

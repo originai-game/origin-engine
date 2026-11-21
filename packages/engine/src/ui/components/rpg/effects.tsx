@@ -18,7 +18,7 @@ export interface RpgEffectsProps {
 export function RpgEffects(props: RpgEffectsProps) {
   return (
     <View
-      class={`flex-row flex-wrap max-w-full text-fg nine-plate-cut bg-[#1e2637e5] p-2 gap-x-2 gap-y-1 compact:gap-x-[0.429rem] ${packClass("Plate", "frame")}`}
+      class={`flex-row flex-wrap max-w-full text-fg nine-plate-cut bg-plate-hi p-2 gap-x-2 gap-y-1 compact:gap-x-[0.429rem] ${packClass("Plate", "frame")}`}
       role="list"
       label={t("rpg.effects.name")}
     >

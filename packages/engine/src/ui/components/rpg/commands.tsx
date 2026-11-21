@@ -17,14 +17,14 @@ export interface RpgCommandsProps {
 export function RpgCommands(props: RpgCommandsProps) {
   return (
     <View
-      class={`flex-col w-full text-fg nine-panel-cut bg-[#1e2637e5] p-2 gap-y-2 ${packClass("Panel", "frame")}`}
+      class={`flex-col w-full text-fg nine-panel-cut bg-plate-hi p-2 gap-y-2 ${packClass("Panel", "frame")}`}
       label={t("rpg.commands.name")}
     >
       <View class={`flex-row items-center justify-center w-full shrink-0 min-h-[2.286rem] py-[0.143rem] px-[0.857rem] shadow-[inset_0px_-1px_0px_#343d4f]`}>
         <Text
           role="heading"
           level={3}
-          class={`text-[1rem] font-bold text-fg whitespace-nowrap text-stroke-3 text-stroke-bg`}
+          class={`text-sm font-bold text-fg whitespace-nowrap text-stroke-3 text-stroke-bg`}
         >
           {t("rpg.commands.name")}
         </Text>
@@ -44,7 +44,7 @@ export function RpgCommands(props: RpgCommandsProps) {
             <View class={`flex-col justify-center items-center gap-1 w-full h-full`}>
               <Icon class={`size-[3.429rem] text-fg group-disabled/cmd:text-fg-subtle`} name={c().icon} />
               <Text
-                class={`max-w-full px-1 text-[0.929rem] font-semibold whitespace-nowrap overflow-hidden text-ellipsis text-stroke-3 text-stroke-bg`}
+                class={`max-w-full px-1 text-caption font-semibold whitespace-nowrap overflow-hidden text-ellipsis text-stroke-3 text-stroke-bg`}
               >
                 {c().label}
               </Text>

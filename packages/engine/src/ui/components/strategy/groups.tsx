@@ -20,17 +20,17 @@ export function StrategyGroups(props: StrategyGroupsProps) {
     <View class={`flex-row flex-wrap items-center w-fit max-w-full min-w-0 gap-x-1.5 gap-y-1 text-fg compact:gap-x-1`} role="toolbar" label={t("strategy.groups.name")}>
       <For each={props.groups ?? []} key={(g) => g.id}>
         {(g) => (
-        <View class={`group/grp flex py-[0.214rem] px-[0.571rem] nine-chip-cut bg-[#1e2637e5] compact:py-[0.143rem] compact:px-0.5 ${packClass("Button", "plate")}`} role="button" label={t("strategy.groups.value", { label: g().label, count: g().count })} pressed={g().active} data-selected={g().active} data-alert={g().alert} onPress={(e) => props.onPick?.(e, g().id)}>
+        <View class={`group/grp flex py-[0.214rem] px-[0.571rem] nine-chip-cut bg-plate-hi compact:py-[0.143rem] compact:px-0.5 ${packClass("Button", "plate")}`} role="button" label={t("strategy.groups.value", { label: g().label, count: g().count })} pressed={g().active} data-selected={g().active} data-alert={g().alert} onPress={(e) => props.onPick?.(e, g().id)}>
           <View class="flex-row items-center gap-x-1.5 min-w-0">
             <Show when={g().key}>
-              <Text class={`shrink min-w-[1.286rem] max-w-[5.486rem] py-0 px-1 leading-[1.5] text-[0.857rem] font-bold text-center text-[#0b0f18] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] group-data-selected/grp:from-[#eaffff] group-data-selected/grp:to-[#38e8ff] group-data-selected/grp:text-[#141a02] whitespace-nowrap overflow-hidden`}>
+              <Text class={`shrink min-w-[1.286rem] max-w-[5.486rem] py-0 px-1 leading-[1.5] text-xs font-bold text-center text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] group-data-selected/grp:from-[#eaffff] group-data-selected/grp:to-[#38e8ff] group-data-selected/grp:text-[#141a02] whitespace-nowrap overflow-hidden`}>
                 {g().key}
               </Text>
             </Show>
             <Show when={g().icon}>
               <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} src={g().icon} />
             </Show>
-            <Text class={`shrink text-[1.143rem] font-bold tabular-nums whitespace-nowrap group-data-alert/grp:text-gold compact:text-[0.929rem]`}>
+            <Text class={`shrink text-base font-bold tabular-nums whitespace-nowrap group-data-alert/grp:text-gold compact:text-caption`}>
               {formatNumber(g().count)}
             </Text>
           </View>

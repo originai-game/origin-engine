@@ -53,7 +53,7 @@ export function Friends(props: FriendsProps) {
             <View class="w-full p-0 m-0 gap-0.5">
               <For each={props.requests}>
                 {(r) => (
-                <View class={`flex-row flex-wrap items-center nine-plate-cut text-fg transition duration-317 border border-[#ffcf5a73] w-full py-1 px-2 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={r().name}>
+                <View class={`flex-row flex-wrap items-center nine-plate-cut text-fg transition duration-317 border border-gold/45 w-full py-1 px-2 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={r().name}>
                   <View class={`flex-row items-center shadow-[inset_0px_0px_0px_1px_#ffcf5a99] justify-center text-gold gap-0 size-12 rounded-capsule`}>
                     <Icon class="size-6 shrink" name={r().avatar} />
                   </View>
@@ -112,7 +112,7 @@ export function Friends(props: FriendsProps) {
                           {f().name}
                         </Text>
                         <View class="flex-row items-baseline w-full gap-2">
-                          <Text class={`tracking-xs text-fg-muted whitespace-nowrap font-bold m-0 data-status-online:text-success data-status-ingame:text-info data-status-away:text-[#ff8a2e] data-status-offline:text-fg-muted`} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'}>
+                          <Text class={`tracking-xs text-fg-muted whitespace-nowrap font-bold m-0 data-status-online:text-success data-status-ingame:text-info data-status-away:text-warn data-status-offline:text-fg-muted`} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'}>
                             {f().status === 'ingame' ? t("general.friends.ingame") : f().status === 'online' ? t("general.friends.online") : f().status === 'away' ? t("general.friends.away") : t("general.friends.offline")}
                           </Text>
                           <Show when={f().activity}>

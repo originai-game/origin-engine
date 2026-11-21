@@ -14,10 +14,10 @@ export interface RpgHitsProps {
  */
 export function RpgHits(props: RpgHitsProps) {
   return (
-    <View class={`flex-col items-start max-w-full pointer-events-none text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-[#1e2637e5] p-2 ${packClass("Plate", "frame")}`} role="log" label={t("rpg.hits.name")}>
+    <View class={`flex-col items-start max-w-full pointer-events-none text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-plate-hi p-2 ${packClass("Plate", "frame")}`} role="log" label={t("rpg.hits.name")}>
       <For each={props.hits ?? []} key={(h) => h.id}>
         {(h, i) => (
-        <View class={`flex-col items-start max-w-full min-w-0 animate-pop transition duration-180 exit:opacity-0 data-later:mt-[2rem] data-later:opacity-85 data-third:ml-[15.714rem] data-third:mt-0 data-third:opacity-70 data-lead:ml-[10.714rem] compact:data-lead:ml-0 compact:data-later:hidden`}
+        <View class={`flex-col items-start max-w-full min-w-0 animate-pop transition duration-180 exit:opacity-0 data-later:mt-8 data-later:opacity-85 data-third:ml-[15.714rem] data-third:mt-0 data-third:opacity-70 data-lead:ml-[10.714rem] compact:data-lead:ml-0 compact:data-later:hidden`}
           data-lead={i() === 0 && (props.hits ?? []).length > 1}
           data-later={i() >= 1}
           data-third={i() >= 2}
@@ -27,18 +27,18 @@ export function RpgHits(props: RpgHitsProps) {
           data-heal={h().kind === "heal"}
           data-miss={h().kind === "miss"}>
           <Show when={h().call}>
-            <Text class={`max-w-full min-w-0 text-[1rem] font-semibold tracking-[0.14em] uppercase text-gold whitespace-normal compact:text-[0.857rem] compact:tracking-normal`}>
+            <Text class={`max-w-full min-w-0 text-sm font-semibold tracking-[0.14em] uppercase text-gold whitespace-normal compact:text-xs compact:tracking-normal`}>
               {h().call}
             </Text>
           </Show>
           <View class="flex-row items-baseline min-w-0 max-w-full gap-1">
             <Show when={h().kind !== "miss"}>
-              <Text class={`shrink text-[2.429rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg data-critical:text-[3.571rem] data-critical:italic data-critical:text-gold data-burn:text-[#a65b1f] data-heal:text-[#55e39a] compact:text-[1.714rem] compact:data-critical:text-[2.143rem]`}>
+              <Text class={`shrink text-display-md leading-none font-bold tabular-nums whitespace-nowrap text-fg data-critical:text-[3.571rem] data-critical:italic data-critical:text-gold data-burn:text-[#a65b1f] data-heal:text-success compact:text-[1.714rem] compact:data-critical:text-4xl`}>
                 {h().kind === "heal" ? t("rpg.hits.heal", { amount: formatNumber(h().amount) }) : formatNumber(h().amount)}
               </Text>
             </Show>
             <Show when={h().word}>
-              <Text class={`min-w-0 text-[1rem] font-bold whitespace-nowrap overflow-hidden text-fg data-burn:text-[#a65b1f] data-miss:text-[1.714rem] data-miss:text-fg-muted`}>
+              <Text class={`min-w-0 text-sm font-bold whitespace-nowrap overflow-hidden text-fg data-burn:text-[#a65b1f] data-miss:text-[1.714rem] data-miss:text-fg-muted`}>
                 {h().word}
               </Text>
             </Show>

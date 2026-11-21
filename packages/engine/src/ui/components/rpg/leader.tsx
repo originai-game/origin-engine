@@ -53,22 +53,22 @@ export function RpgLeader(props: RpgLeaderProps) {
         <View class="flex-row flex-wrap items-baseline gap-x-1 min-w-0">
           <View class="flex-row items-baseline gap-x-1 min-w-0 shrink">
             <Show when={props.name !== ""}>
-              <Text class={`min-w-0 text-[1.214rem] font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-[1.143rem]`}>
+              <Text class={`min-w-0 text-[1.214rem] font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-base`}>
                 {props.name}
               </Text>
             </Show>
             <Show when={props.level > 0}>
-              <Text class={`shrink text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#38e8ff]`}>
+              <Text class={`shrink text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#38e8ff]`}>
                 {t("rpg.leader.level", { level: props.level })}
               </Text>
             </Show>
           </View>
           <Show when={props.healthMax > 0}>
             <View class="flex-row items-baseline gap-x-1 ml-auto shrink">
-              <Text class={`shrink text-[1.214rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg data-low:text-[#ff4d5e] compact:text-[1.143rem]`} data-low={low()}>
+              <Text class={`shrink text-[1.214rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg data-low:text-danger compact:text-base`} data-low={low()}>
                 {formatNumber(props.health < 0 ? 0 : props.health)}
               </Text>
-              <Text class={`shrink text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg-muted compact:text-[0.929rem]`}>
+              <Text class={`shrink text-base font-bold tabular-nums whitespace-nowrap text-fg-muted compact:text-caption`}>
                 {t("rpg.leader.max", { max: formatNumber(props.healthMax) })}
               </Text>
             </View>

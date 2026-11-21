@@ -56,16 +56,16 @@ export interface ArenaScoreboardProps {
  * opacity, the hover wash is dropped (the same fill), the scroll fade
  * at the list's foot is dropped, and a long word wraps without breaking.
  */
-const TAG = `shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-[#1b1f29e0] whitespace-nowrap ${packClass("Chip", "frame")}`;
-const CAPTION = "text-end whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78";
-const STAT = "text-end whitespace-nowrap text-[1.143rem] font-bold tabular-nums text-fg compact:flex-1 compact:min-w-0";
+const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-[#1b1f29e0] whitespace-nowrap ${packClass("Chip", "frame")}`;
+const CAPTION = "text-end whitespace-nowrap text-xs font-semibold tracking-[0.14em] uppercase text-fg/78";
+const STAT = "text-end whitespace-nowrap text-base font-bold tabular-nums text-fg compact:flex-1 compact:min-w-0";
 
 function TeamTable(props: { team: "a" | "b"; name: string; score: string; columns: string; rows: ReadonlyArray<ScoreboardRow> }) {
   const blue = props.team == "a";
-  const ink = blue ? "text-[#50aaff]" : "text-[#ff6a5e]";
+  const ink = blue ? "text-team1" : "text-team2";
   const rule = blue ? "shadow-[inset_0px_-2px_0px_0px_#50aaff]" : "shadow-[inset_0px_-2px_0px_0px_#ff6a5e]";
   const glow = blue ? "shadow-[0px_0px_1rem_rgb(80_170_255/0.5)]" : "shadow-[0px_0px_1rem_rgb(255_106_94/0.5)]";
-  const wash = blue ? "bg-linear-to-r from-[rgb(80_170_255/0.16)] to-[#1a1e29b8] to-40%" : "bg-linear-to-r from-[rgb(255_106_94/0.16)] to-[#1a1e29b8] to-40%";
+  const wash = blue ? "bg-linear-to-r from-team1/16 to-entry-lo to-40%" : "bg-linear-to-r from-team2/16 to-entry-lo to-40%";
   const edge = blue ? "shadow-[inset_3px_0px_0px_0px_#50aaff]" : "shadow-[inset_3px_0px_0px_0px_#ff6a5e]";
   const kda = () => props.columns == "kda";
   return (
@@ -74,7 +74,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
         <View class="flex-1 min-w-0 flex-row items-baseline gap-x-3 py-1 px-2" role="columnheader">
           <Text class="min-w-0 text-[1.714rem] font-bold tracking-[0.04em] uppercase text-fg text-start">{props.name}</Text>
           <Show when={props.score != ""}>
-            <Text class={`flex-none min-w-8 text-center whitespace-nowrap text-[2.429rem] font-bold tabular-nums ${ink} ${glow}`} description={t("arena.score.teamScore")}>{props.score}</Text>
+            <Text class={`flex-none min-w-8 text-center whitespace-nowrap text-display-md font-bold tabular-nums ${ink} ${glow}`} description={t("arena.score.teamScore")}>{props.score}</Text>
           </Show>
         </View>
         <Show when={kda()}>
@@ -95,7 +95,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
               data-disconnected={r().disconnected === true}
             >
               <View class="flex-1 min-w-0 flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-1 px-2 compact:basis-full compact:grow compact:shrink" role="rowheader">
-                <Text class="min-w-0 text-start text-[1.071rem] font-semibold text-inherit">{r().name}</Text>
+                <Text class="min-w-0 text-start text-reading font-semibold text-inherit">{r().name}</Text>
                 <Show when={r().local === true}>
                   <Text class={TAG}>{t("arena.you")}</Text>
                 </Show>
@@ -127,10 +127,10 @@ export function ArenaScoreboard(props: ArenaScoreboardProps) {
   return (
     <View class="w-full min-w-0 max-h-full flex-col gap-y-3 text-fg" label={heading()}>
       <View class="flex-none flex-row w-full min-h-0">
-        <Text class="flex-1 min-w-0 text-center text-[1.143rem] font-semibold tracking-[0.14em] uppercase text-fg/78">{heading()}</Text>
+        <Text class="flex-1 min-w-0 text-center text-base font-semibold tracking-[0.14em] uppercase text-fg/78">{heading()}</Text>
       </View>
       <Show when={rows().length} fallback={
-        <Text class="p-4 text-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78" role="status">{t("arena.score.empty")}</Text>
+        <Text class="p-4 text-center text-xs font-semibold tracking-[0.14em] uppercase text-fg/78" role="status">{t("arena.score.empty")}</Text>
       }>
         <Scroll class="min-h-0 flex-1">
           <View class="grid grid-cols-1 items-start gap-4 w-full data-split:grid-cols-2" data-split={props.split === true}>

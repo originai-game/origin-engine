@@ -18,7 +18,7 @@ export function RpgExperience(props: RpgExperienceProps) {
   const share = (v: number) => `${formatNumber(v * 100, { decimals: 0 })}%`;
   return (
     <View
-      class={`flex-col w-full gap-y-2 text-fg nine-plate-cut bg-[#1e2637e5] p-2 ${packClass("Plate", "frame")}`}
+      class={`flex-col w-full gap-y-2 text-fg nine-plate-cut bg-plate-hi p-2 ${packClass("Plate", "frame")}`}
       role="meter"
       label={t("rpg.xp.name")}
       valueMin={0}
@@ -26,13 +26,13 @@ export function RpgExperience(props: RpgExperienceProps) {
       valueNow={props.value <= 0 ? 0 : props.value >= 1 ? 100 : props.value * 100}
     >
       <Text
-        class={`self-start max-w-full px-[1.714rem] text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#ffffffc7] whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg compact:px-3 compact:tracking-normal`}
+        class={`self-start max-w-full px-[1.714rem] text-xs font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg compact:px-3 compact:tracking-normal`}
       >
         {props.level > 0
           ? t("rpg.xp.caption", { level: props.level, share: share(props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value) })
           : t("rpg.xp.share", { share: share(props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value) })}
       </Text>
-      <View class={`w-full h-[0.429rem] bg-[#04060cb2] compact:h-[0.286rem]`}>
+      <View class={`w-full h-[0.429rem] bg-tile compact:h-[0.286rem]`}>
         <View
           class={`h-full bg-linear-to-r from-[#8a6bff] to-[#d7b8ff] shadow-[0px_0px_10px_#a98bff]`}
           style={{ width: `${(props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value) * 100}%` }}

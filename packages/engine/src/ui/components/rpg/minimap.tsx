@@ -42,7 +42,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
           <For each={props.blips ?? []} key={(b) => b.id}>
             {(b) => (
             <View class="absolute" style={{ left: `${50 + (b().x - (props.centerX ?? 0.5)) * 100 / zoom()}%`, top: `${50 + (b().y - (props.centerY ?? 0.5)) * 100 / zoom()}%` }}>
-              <View class={`-translate-x-1/2 -translate-y-1/2 size-[0.571rem] rounded-full shadow-[0px_0px_0px_2px_#060910cc] data-ally:bg-[#4fd8ff] data-foe:rounded-none data-foe:rotate-45 data-foe:bg-[#ff4d5e] data-foe:shadow-[0px_0px_0px_2px_#060910cc,0px_0px_8px_#ff4d5ee6] data-boss:size-[0.786rem] data-boss:rounded-none data-boss:rotate-45 data-boss:bg-[#ff4d5e] data-boss:shadow-[0px_0px_0px_2px_#060910cc,0px_0px_8px_#ff4d5ee6] data-objective:size-[0.786rem] data-objective:rounded-none data-objective:rotate-45 data-objective:bg-gold compact:size-[0.5rem] compact:data-boss:size-[0.714rem] compact:data-objective:size-[0.714rem]`}
+              <View class={`-translate-x-1/2 -translate-y-1/2 size-[0.571rem] rounded-full shadow-[0px_0px_0px_2px_#060910cc] data-ally:bg-info data-foe:rounded-none data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-[0px_0px_0px_2px_#060910cc,0px_0px_8px_#ff4d5ee6] data-boss:size-[0.786rem] data-boss:rounded-none data-boss:rotate-45 data-boss:bg-danger data-boss:shadow-[0px_0px_0px_2px_#060910cc,0px_0px_8px_#ff4d5ee6] data-objective:size-[0.786rem] data-objective:rounded-none data-objective:rotate-45 data-objective:bg-gold compact:size-2 compact:data-boss:size-[0.714rem] compact:data-objective:size-[0.714rem]`}
                 role="image" label={b().label}
                 data-ally={b().kind === "ally"} data-foe={b().kind === "foe"} data-boss={b().kind === "boss"} data-objective={b().kind === "objective"} />
             </View>
@@ -55,7 +55,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
           </View>
         </View>
         <View class="absolute top-0 inset-x-0 flex-row justify-center pointer-events-none">
-          <Text class={`py-0 px-1 text-[0.857rem] font-bold whitespace-nowrap text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+          <Text class={`py-0 px-1 text-xs font-bold whitespace-nowrap text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
             {t("rpg.minimap.north")}
           </Text>
         </View>
@@ -63,12 +63,12 @@ export function RpgMinimap(props: RpgMinimapProps) {
       <Show when={props.place !== "" || props.clock !== ""}>
         <View class="flex-row items-center justify-center max-w-full min-w-0 gap-1 compact:flex-wrap compact:gap-y-0">
           <Show when={props.place !== ""}>
-            <Text class={`min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg compact:text-[0.929rem]`}>
+            <Text class={`min-w-0 text-reading font-semibold whitespace-nowrap overflow-hidden text-fg text-stroke-3 text-stroke-bg compact:text-caption`}>
               {props.place}
             </Text>
           </Show>
           <Show when={props.clock !== ""}>
-            <Text class={`shrink max-w-[50%] py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+            <Text class={`shrink max-w-[50%] py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
               {props.clock}
             </Text>
           </Show>

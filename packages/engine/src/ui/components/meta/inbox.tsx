@@ -37,7 +37,7 @@ export function Inbox(props: InboxProps) {
           {props.title || t("meta.inbox.title")}
         </Text>
         <Show when={props.summary}>
-          <Text class={`text-caption text-fg bg-[#060910b8] border border-[#ffffff14] nine-chip-cut py-0.5 px-2 shrink ${packClass("Chip", "frame")}`}>
+          <Text class={`text-caption text-fg bg-[#060910b8] border border-white/8 nine-chip-cut py-0.5 px-2 shrink ${packClass("Chip", "frame")}`}>
             {props.summary}
           </Text>
         </Show>
@@ -50,7 +50,7 @@ export function Inbox(props: InboxProps) {
                       <For each={(props.messages ?? [])}>
                         {(message) => (
                         <View>
-                          <View class={`group/row nine-plate-cut text-fg transition duration-317 border border-[#4e586c] w-full text-start py-2 px-3 data-selected:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
+                          <View class={`group/row nine-plate-cut text-fg transition duration-317 border border-rim w-full text-start py-2 px-3 data-selected:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
                             <View class="items-start w-full gap-2">
                               <Text class={`text-caption text-fg-muted`}>
                                 {message().sender}
@@ -111,7 +111,7 @@ export function Inbox(props: InboxProps) {
                                   <For each={(props.attachments ?? [])}>
                                     {(attachment) => (
                                     <Show when={attachment().message === message().id}>
-                                      <View class={`flex-row items-center pr-3 pl-2 bg-[#060910b8] border border-[#ffcf5a99] nine-chip-cut py-1 gap-2 shrink ${packClass("Chip", "frame")}`}>
+                                      <View class={`flex-row items-center pr-3 pl-2 bg-[#060910b8] border border-gold/60 nine-chip-cut py-1 gap-2 shrink ${packClass("Chip", "frame")}`}>
                                         <Icon class={`text-gold size-4`} name={attachment().icon} />
                                         <View class={`shrink`}>
                                           <Text>{attachment().name}</Text>

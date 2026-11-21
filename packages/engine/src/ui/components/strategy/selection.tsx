@@ -41,15 +41,15 @@ export interface StrategySelectionProps {
  */
 export function StrategySelection(props: StrategySelectionProps) {
   return (
-    <View class={`flex-row items-start gap-x-[1rem] w-full min-w-0 text-fg compact:gap-x-[0.571rem]`} label={props.name !== "" ? props.name : t("strategy.selection.title")} data-kind-unit={props.kind === "unit"} data-kind-building={props.kind === "building"}>
+    <View class={`flex-row items-start gap-x-4 w-full min-w-0 text-fg compact:gap-x-[0.571rem]`} label={props.name !== "" ? props.name : t("strategy.selection.title")} data-kind-unit={props.kind === "unit"} data-kind-building={props.kind === "building"}>
       <Show when={props.name !== ""} fallback={
-          <Text class={`flex-1 py-[1.143rem] text-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#ffffffc7]`} role="status">
+          <Text class={`flex-1 py-[1.143rem] text-center text-xs font-semibold tracking-[0.14em] uppercase text-fg/78`} role="status">
             {t("strategy.selection.empty")}
           </Text>
       }>
         <View class={`flex-col gap-y-[0.357rem] shrink min-w-[6.171rem] compact:gap-y-[0.214rem] compact:min-w-[3.429rem]`}>
           <View class={`self-center size-[6.171rem] compact:size-[3.429rem] p-[0.143rem] nine-plate-cut bg-[#38e8ff]`}>
-            <View class={`size-full flex-row items-center justify-center overflow-hidden nine-plate-cut bg-[#1e2637e5]`}>
+            <View class={`size-full flex-row items-center justify-center overflow-hidden nine-plate-cut bg-plate-hi`}>
               <Show when={props.portrait} fallback={
                   <Icon class={`size-[55%] text-fg`} name={props.icon} />
               }>
@@ -59,7 +59,7 @@ export function StrategySelection(props: StrategySelectionProps) {
           </View>
           <Show when={(props.healthMax ?? 1) > 0}>
             <View
-              class={`group/health relative h-[0.5rem] compact:h-[0.357rem] overflow-hidden bg-[#04060cb8] shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]`}
+              class={`group/health relative h-2 compact:h-[0.357rem] overflow-hidden bg-tile shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]`}
               role="meter"
               label={t("strategy.selection.health")}
               valueMin={0}
@@ -68,13 +68,13 @@ export function StrategySelection(props: StrategySelectionProps) {
               data-hurt={props.health / (props.healthMax ?? 1) <= 0.6}
               data-low={props.health / (props.healthMax ?? 1) <= 0.3}
             >
-              <View class={`absolute inset-y-0 left-0 bg-[#55e39a] bg-linear-to-b from-[#ffffff73] to-transparent to-50% group-data-hurt/health:bg-gold group-data-low/health:bg-[#ff4d5e]`} style={{ width: `${(props.health <= 0 ? 0 : props.health >= (props.healthMax ?? 1) ? 1 : props.health / (props.healthMax ?? 1)) * 100}%` }} />
+              <View class={`absolute inset-y-0 left-0 bg-success bg-linear-to-b from-white/45 to-transparent to-50% group-data-hurt/health:bg-gold group-data-low/health:bg-danger`} style={{ width: `${(props.health <= 0 ? 0 : props.health >= (props.healthMax ?? 1) ? 1 : props.health / (props.healthMax ?? 1)) * 100}%` }} />
             </View>
             <View class={`flex-row justify-center items-baseline gap-x-[0.214rem]`}>
-              <Text class={`shrink text-[0.929rem] font-bold tabular-nums whitespace-nowrap`}>
+              <Text class={`shrink text-caption font-bold tabular-nums whitespace-nowrap`}>
                 {formatNumber(props.health)}
               </Text>
-              <Text class={`shrink text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg-muted compact:hidden`}>
+              <Text class={`shrink text-caption font-bold tabular-nums whitespace-nowrap text-fg-muted compact:hidden`}>
                 {t("strategy.selection.healthMax", { max: props.healthMax ?? 1 })}
               </Text>
             </View>
@@ -84,17 +84,17 @@ export function StrategySelection(props: StrategySelectionProps) {
           <View class={`flex-row flex-wrap items-start justify-between gap-x-[0.857rem] gap-y-[0.286rem] min-w-0`}>
             <View class={`flex-col gap-y-[0.071rem] flex-1 min-w-0`}>
               <View class={`flex-row items-baseline gap-x-[0.429rem] min-w-0`}>
-                <Text class={`shrink min-w-0 text-[1.429rem] leading-[1.15] font-bold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg compact:text-[1.143rem]`}>
+                <Text class={`shrink min-w-0 text-xl leading-[1.15] font-bold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg compact:text-base`}>
                   {props.name}
                 </Text>
                 <Show when={props.count > 1}>
-                  <Text class={`shrink text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg-muted compact:text-[0.929rem]`}>
+                  <Text class={`shrink text-base font-bold tabular-nums whitespace-nowrap text-fg-muted compact:text-caption`}>
                     {t("strategy.selection.count", { count: props.count })}
                   </Text>
                 </Show>
               </View>
               <Show when={props.line !== ""}>
-                <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] compact:text-[0.857rem] compact:tracking-normal`}>
+                <Text class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 compact:text-xs compact:tracking-normal`}>
                   {props.line}
                 </Text>
               </Show>
@@ -102,13 +102,13 @@ export function StrategySelection(props: StrategySelectionProps) {
             <Show when={(props.stats ?? []).length || props.status !== ""}>
               <View class={`flex-row flex-wrap items-center justify-end gap-x-[0.357rem] gap-y-[0.286rem] min-w-0`} role="list" label={t("strategy.selection.stats")}>
                 <Show when={props.status !== ""}>
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status">
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status">
                     {props.status}
                   </Text>
                 </Show>
                 <For each={props.stats ?? []} key={(s) => s.id}>
                   {(s) => (
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="listitem" label={t("strategy.selection.stat", { label: s().label, value: s().value })}>
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="listitem" label={t("strategy.selection.stat", { label: s().label, value: s().value })}>
                     {t("strategy.selection.stat", { label: s().label, value: s().value })}
                   </Text>
                   )}
@@ -122,7 +122,7 @@ export function StrategySelection(props: StrategySelectionProps) {
               <For each={props.units ?? []} key={(u) => u.id}>
                 {(u, i) => (
                 <View
-                  class={`shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] nine-chip-cut bg-[#ffffffbf] data-selected:bg-[#38e8ff] compact:data-past:hidden ${packClass("Button", "plate")}`}
+                  class={`shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] nine-chip-cut bg-white/75 data-selected:bg-[#38e8ff] compact:data-past:hidden ${packClass("Button", "plate")}`}
                   role="option"
                   label={u().name}
                   description={t("strategy.selection.unitValue", { count: u().count, now: u().health, max: u().healthMax })}
@@ -134,30 +134,30 @@ export function StrategySelection(props: StrategySelectionProps) {
                 >
                   <View class="relative size-full overflow-hidden">
                     <Show when={u().portrait} fallback={
-                        <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-[#1e2637e5] to-plate-lo">
+                        <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">
                           <Icon class={`size-[60%] text-fg`} name={u().icon} />
                         </View>
                     }>
                       <Image class="absolute inset-0 size-full" src={u().portrait} />
                     </Show>
                     <Show when={u().count > 1}>
-                      <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-[0.857rem] font-bold whitespace-nowrap bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                      <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-xs font-bold whitespace-nowrap bg-[#060910e0] ${packClass("Chip", "frame")}`}>
                         {t("strategy.selection.count", { count: u().count })}
                       </Text>
                     </Show>
                     <View
-                      class={`group/meter absolute left-[0.214rem] right-[0.214rem] bottom-[0.214rem] h-[0.214rem] overflow-hidden bg-[#04060cb2]`}
+                      class={`group/meter absolute left-[0.214rem] right-[0.214rem] bottom-[0.214rem] h-[0.214rem] overflow-hidden bg-tile`}
                       data-hurt={u().healthMax > 0 && u().health / u().healthMax <= 0.6 && u().health / u().healthMax > 0.3}
                       data-low={u().healthMax > 0 && u().health / u().healthMax <= 0.3}
                     >
-                      <View class={`absolute inset-y-0 left-0 bg-[#55e39a] group-data-hurt/meter:bg-gold group-data-low/meter:bg-[#ff4d5e]`} style={{ width: `${(u().healthMax <= 0 || u().health <= 0 ? 0 : u().health >= u().healthMax ? 1 : u().health / u().healthMax) * 100}%` }} />
+                      <View class={`absolute inset-y-0 left-0 bg-success group-data-hurt/meter:bg-gold group-data-low/meter:bg-danger`} style={{ width: `${(u().healthMax <= 0 || u().health <= 0 ? 0 : u().health >= u().healthMax ? 1 : u().health / u().healthMax) * 100}%` }} />
                     </View>
                   </View>
                 </View>
                 )}
               </For>
               <Show when={(props.units ?? []).length > 4}>
-                <View class={`hidden compact:flex-row compact:items-center compact:justify-center shrink compact:size-[2.286rem] text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status" label={t("strategy.selection.more", { n: (props.units ?? []).length - 4 })}>
+                <View class={`hidden compact:flex-row compact:items-center compact:justify-center shrink compact:size-[2.286rem] text-caption font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status" label={t("strategy.selection.more", { n: (props.units ?? []).length - 4 })}>
                   <Text>{t("strategy.selection.moreCount", { n: (props.units ?? []).length - 4 })}</Text>
                 </View>
               </Show>

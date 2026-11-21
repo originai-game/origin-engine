@@ -62,16 +62,16 @@ export interface ArenaDraftProps {
  * and a long word wraps without breaking.
  */
 const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-[#232837ed] compact:p-2 ${packClass("Panel", "frame")}`;
-const TAG = `shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg whitespace-nowrap nine-chip-cut ${packClass("Chip", "frame")}`;
-const KEYCAP = "shrink-0 size-6 min-w-6 text-center text-[0.929rem] leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
-const CONFIRM = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#15181f] nine-plate-cut bg-[#38e8ff] hover:bg-[#5defff] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`;
+const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg whitespace-nowrap nine-chip-cut ${packClass("Chip", "frame")}`;
+const KEYCAP = "shrink-0 size-6 min-w-6 text-center text-caption leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
+const CONFIRM = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-[#15181f] nine-plate-cut bg-[#38e8ff] hover:bg-[#5defff] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`;
 
 function Portrait(props: { slot: () => DraftSlot; small?: boolean }) {
   const s = props.slot;
   const hasName = () => (s().name ?? "") != "";
   return (
     <View
-      class={`relative shrink-0 ${props.small ? "size-[3.143rem]" : "size-[3.714rem]"} compact:size-[2.857rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 overflow-hidden data-empty:p-px data-empty:bg-none data-empty:bg-[#ffffff47]`}
+      class={`relative shrink-0 ${props.small ? "size-[3.143rem]" : "size-[3.714rem]"} compact:size-[2.857rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 overflow-hidden data-empty:p-px data-empty:bg-none data-empty:bg-white/28`}
       data-empty={!hasName()}
     >
       <View class="size-full rounded-[0.571rem] overflow-hidden flex-row items-center justify-center bg-[#1a1e29]">
@@ -84,7 +84,7 @@ function Portrait(props: { slot: () => DraftSlot; small?: boolean }) {
         </Show>
       </View>
       <Show when={hasName()}>
-        <Icon class="absolute inset-0 size-full text-[#ff4d5e]" name="close" />
+        <Icon class="absolute inset-0 size-full text-danger" name="close" />
       </Show>
     </View>
   );
@@ -92,17 +92,17 @@ function Portrait(props: { slot: () => DraftSlot; small?: boolean }) {
 
 function DraftTeam(props: { team: "a" | "b"; name: string; active: boolean; slots: ReadonlyArray<DraftSlot> }) {
   const blue = props.team == "a";
-  const ink = blue ? "text-[#50aaff]" : "text-[#ff6a5e]";
+  const ink = blue ? "text-team1" : "text-team2";
   const rule = blue ? "shadow-[inset_0px_-2px_0px_0px_#50aaff]" : "shadow-[inset_0px_-2px_0px_0px_#ff6a5e]";
   const wash = blue
-    ? "bg-linear-to-r from-[rgb(80_170_255/0.16)] to-[#1a1e29b8] to-40% shadow-[inset_3px_0px_0px_0px_#50aaff]"
-    : "bg-linear-to-r from-[rgb(255_106_94/0.16)] to-[#1a1e29b8] to-40% shadow-[inset_3px_0px_0px_0px_#ff6a5e]";
+    ? "bg-linear-to-r from-team1/16 to-entry-lo to-40% shadow-[inset_3px_0px_0px_0px_#50aaff]"
+    : "bg-linear-to-r from-team2/16 to-entry-lo to-40% shadow-[inset_3px_0px_0px_0px_#ff6a5e]";
   const bans = () => (props.slots ?? []).filter((s) => s.kind == "ban");
   const picks = () => (props.slots ?? []).filter((s) => s.kind == "pick");
   return (
     <View class="min-w-0 flex-1 flex-col gap-y-1 compact:flex-none" role="group" label={props.name} current={props.active === true}>
-      <Text role="heading" level={3} class={`pb-1 text-[1.286rem] leading-[1.15] font-bold tracking-[0.04em] uppercase ${ink} ${rule}`}>{props.name}</Text>
-      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap">{t("arena.draft.bans")}</Text>
+      <Text role="heading" level={3} class={`pb-1 text-lg leading-[1.15] font-bold tracking-[0.04em] uppercase ${ink} ${rule}`}>{props.name}</Text>
+      <Text class="text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap">{t("arena.draft.bans")}</Text>
       <View class="flex-row flex-wrap gap-1" role="list" label={t("arena.draft.bans")}>
         <For each={bans()} key={(s) => s.id}>
           {(s) => (
@@ -116,13 +116,13 @@ function DraftTeam(props: { team: "a" | "b"; name: string; active: boolean; slot
                 {s().active ? t("arena.draft.banning") : (s().name ?? "") != "" ? t("arena.draft.banned") : t("arena.draft.open")}
               </Text>
               <Show when={(s().name ?? "") != ""}>
-                <Text class="max-w-full text-center text-[0.929rem] leading-[1.2] text-fg/66">{s().name}</Text>
+                <Text class="max-w-full text-center text-caption leading-[1.2] text-fg/66">{s().name}</Text>
               </Show>
             </View>
           )}
         </For>
       </View>
-      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap">{t("arena.draft.picks")}</Text>
+      <Text class="text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap">{t("arena.draft.picks")}</Text>
       <View class="flex-col gap-y-1" role="list" label={t("arena.draft.picks")}>
         <For each={picks()} key={(s) => s.id}>
           {(s) => (
@@ -135,14 +135,14 @@ function DraftTeam(props: { team: "a" | "b"; name: string; active: boolean; slot
               <Portrait slot={s} />
               <View class="flex-1 min-w-0 flex-col">
                 <Text
-                  class="min-w-0 text-start text-[1.071rem] leading-[1.15] font-bold text-fg data-empty:text-fg/66"
+                  class="min-w-0 text-start text-reading leading-[1.15] font-bold text-fg data-empty:text-fg/66"
                   data-empty={(s().name ?? "") == ""}
                 >
                   {(s().name ?? "") != "" ? s().name : t("arena.draft.open")}
                 </Text>
                 <View class="min-w-0 flex-row flex-wrap gap-x-1">
                   <Show when={(s().player ?? "") != ""}>
-                    <Text class="min-w-0 text-start text-[0.929rem] text-fg/66 data-active:text-fg/78" data-active={s().active === true}>{s().player}</Text>
+                    <Text class="min-w-0 text-start text-caption text-fg/66 data-active:text-fg/78" data-active={s().active === true}>{s().player}</Text>
                   </Show>
                   <Show when={s().active === true}>
                     <Text class={`${TAG} bg-[#38e8ff] text-[#15181f] shadow-none`}>{t("arena.draft.picking")}</Text>
@@ -168,12 +168,12 @@ export function ArenaDraft(props: ArenaDraftProps) {
         <View class="flex-1 min-w-0 flex-row flex-wrap items-center gap-x-3 gap-y-1">
           <Text class="min-w-0 text-[1.714rem] leading-[1.1] font-bold tracking-[0.04em] uppercase text-fg">{heading()}</Text>
           <Show when={props.phase == "ban" || props.phase == "pick" || props.phase == "done"}>
-            <Text class="shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut bg-gold text-[#1e1604]">
+            <Text class="shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut bg-gold text-[#1e1604]">
               {props.phase == "ban" ? t("arena.draft.ban") : props.phase == "pick" ? t("arena.draft.pick") : t("arena.draft.done")}
             </Text>
           </Show>
           <Show when={props.active == "a" || props.active == "b"}>
-            <Text class="min-w-0 text-[0.929rem] font-semibold text-fg" role="status">
+            <Text class="min-w-0 text-caption font-semibold text-fg" role="status">
               {t("arena.draft.turn", { team: props.active == "a" ? nameA() : nameB() })}
             </Text>
           </Show>
@@ -185,7 +185,7 @@ export function ArenaDraft(props: ArenaDraftProps) {
         </Show>
       </View>
       <Show when={slots().length} fallback={
-        <Text class="p-4 text-center text-[1.143rem] text-fg/66" role="status">{t("arena.draft.empty")}</Text>
+        <Text class="p-4 text-center text-base text-fg/66" role="status">{t("arena.draft.empty")}</Text>
       }>
         <Scroll class="min-h-0">
           <View class="flex-row items-start gap-x-3 w-full compact:flex-col compact:items-stretch">
@@ -204,7 +204,7 @@ export function ArenaDraft(props: ArenaDraftProps) {
             onPress={(e) => props.onConfirm?.(e)}
           >
             <Text class={KEYCAP} glyph="details" />
-            <Text class="text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#15181f]">{t("arena.draft.confirm")}</Text>
+            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-[#15181f]">{t("arena.draft.confirm")}</Text>
           </View>
         </View>
       </Show>

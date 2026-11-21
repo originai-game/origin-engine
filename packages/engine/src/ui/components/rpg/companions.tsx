@@ -26,7 +26,7 @@ function isLow(props: RpgCompanionsProps, m: { fallen: boolean; health: number; 
 export function RpgCompanions(props: RpgCompanionsProps) {
   return (
     <View
-      class={`flex-col w-[16rem] max-w-full text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-[#1e2637e5] p-2 gap-y-[0.643rem] compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2 ${packClass("Plate", "frame")}`}
+      class={`flex-col w-64 max-w-full text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-plate-hi p-2 gap-y-[0.643rem] compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2 ${packClass("Plate", "frame")}`}
       role="group"
       label={t("rpg.party.name")}
     >
@@ -43,11 +43,11 @@ export function RpgCompanions(props: RpgCompanionsProps) {
             <HudPortrait portrait={m().portrait} dimmed={m().fallen} />
           </View>
           <View class={`flex-row items-baseline min-w-0 gap-1`}>
-            <Text class={`shrink text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-ellipsis compact:text-[0.929rem]`}>
+            <Text class={`shrink text-reading font-semibold whitespace-nowrap overflow-hidden text-ellipsis compact:text-caption`}>
               {m().name}
             </Text>
             <Show when={m().fallen}>
-              <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#ff4d5e] whitespace-nowrap compact:tracking-normal`}>
+              <Text class={`shrink-0 text-xs font-semibold tracking-[0.14em] uppercase text-danger whitespace-nowrap compact:tracking-normal`}>
                 {t("rpg.companions.fallen")}
               </Text>
             </Show>
@@ -58,7 +58,7 @@ export function RpgCompanions(props: RpgCompanionsProps) {
           </Show>
           <Show when={m().key}>
             <Text
-              class={`row-span-3 self-center min-w-[1.571rem] max-w-[5.143rem] px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-[#0b0f18] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
+              class={`row-span-3 self-center min-w-[1.571rem] max-w-[5.143rem] px-1 text-xs leading-[1.5] font-bold text-center text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
             >
               {m().key}
             </Text>

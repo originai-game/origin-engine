@@ -29,29 +29,29 @@ export interface RpgPlaceCardProps {
  */
 export function RpgPlaceCard(props: RpgPlaceCardProps) {
   return (
-    <View class={`flex-row items-stretch w-full min-w-0 text-fg nine-panel-cut bg-[#0e1626f0] ${packClass("Panel", "frame")}`} role="region" label={props.name}>
+    <View class={`flex-row items-stretch w-full min-w-0 text-fg nine-panel-cut bg-glass-lo ${packClass("Panel", "frame")}`} role="region" label={props.name}>
       <Show when={props.picture}>
         <View class="relative shrink-0 w-[34%] compact:w-[26%] overflow-hidden">
           <Image class="absolute inset-0 size-full" src={props.picture} />
-          <View class="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-[#0e1626f0] to-transparent" />
+          <View class="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-glass-lo to-transparent" />
         </View>
       </Show>
       <View class="flex-col justify-center min-w-0 grow gap-y-1 py-3 px-4 compact:py-2 compact:px-3">
-        <Text role="heading" level={3} class={`max-w-full text-left text-[2.857rem] leading-[1.05] font-bold whitespace-nowrap overflow-hidden text-fg compact:text-[1.857rem]`}>
+        <Text role="heading" level={3} class={`max-w-full text-left text-display-lg leading-[1.05] font-bold whitespace-nowrap overflow-hidden text-fg compact:text-3xl`}>
           {props.name}
         </Text>
         <View class="w-full h-[0.143rem] shrink-0 bg-linear-to-r from-gold to-transparent" />
         <Show when={props.about}>
-          <Text class={`line-clamp-2 text-left text-[1.143rem] leading-[1.45] text-fg-muted overflow-hidden compact:hidden`}>
+          <Text class={`line-clamp-2 text-left text-base leading-[1.45] text-fg-muted overflow-hidden compact:hidden`}>
             {props.about}
           </Text>
         </Show>
         <View class="flex-row w-full shrink-0 gap-1 pt-1">
-          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase nine-plate-cut text-fg bg-[#1e2637e5] data-marked:text-gold ${packClass("Button", "plate")}`} role="button" label={props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")} pressed={props.marked} selected={props.marked} data-marked={props.marked} onPress={(e) => props.onMark?.(e)}>
+          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-caption font-bold tracking-[0.14em] uppercase nine-plate-cut text-fg bg-plate-hi data-marked:text-gold ${packClass("Button", "plate")}`} role="button" label={props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")} pressed={props.marked} selected={props.marked} data-marked={props.marked} onPress={(e) => props.onMark?.(e)}>
             <Icon class="shrink-0 size-[1.071rem] compact:hidden" name="flag" />
             <Text class="whitespace-nowrap">{props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")}</Text>
           </View>
-          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase nine-plate-cut text-[#141a02] bg-gold disabled:opacity-45 ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.place.travel")} disabled={!props.canTravel} onPress={(e) => props.onTravel?.(e)}>
+          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-caption font-bold tracking-[0.14em] uppercase nine-plate-cut text-[#141a02] bg-gold disabled:opacity-45 ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.place.travel")} disabled={!props.canTravel} onPress={(e) => props.onTravel?.(e)}>
             <Icon class="shrink-0 size-[1.071rem] compact:hidden" name="map" />
             <Text class="whitespace-nowrap">{t("rpg.place.travel")}</Text>
           </View>

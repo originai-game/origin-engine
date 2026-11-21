@@ -28,14 +28,14 @@ export interface StrategyMinimapProps {
  */
 export function StrategyMinimap(props: StrategyMinimapProps) {
   return (
-    <View class={`shrink p-[0.143rem] nine-plate-cut bg-[#ffffffbf] w-[14.264rem] h-[14.264rem] compact:w-[6.857rem] compact:h-[6.857rem] ${packClass("Plate", "frame")}`} role="group" label={t("strategy.minimap.name")}>
+    <View class={`shrink p-[0.143rem] nine-plate-cut bg-white/75 w-[14.264rem] h-[14.264rem] compact:w-[6.857rem] compact:h-[6.857rem] ${packClass("Plate", "frame")}`} role="group" label={t("strategy.minimap.name")}>
       <View class="relative size-full overflow-hidden nine-plate-cut bg-[#0b1220]" role="image" label={t("strategy.minimap.name")}>
         <Show when={props.map}>
           <Image class="absolute inset-0 size-full" src={props.map} />
         </Show>
         <For each={props.dots ?? []} key={(d) => d.id}>
           {(d) => (
-          <View class={`absolute size-[0.357rem] -translate-x-1/2 -translate-y-1/2 bg-fg shadow-[0_0_0_2.288px_#060910d9] data-base:size-[0.643rem] data-own:bg-[#38e8ff] data-ally:bg-[#4fd8ff] data-foe:bg-[#ff4d5e] data-neutral:rotate-45 data-neutral:bg-gold compact:size-[0.286rem] compact:data-base:size-[0.5rem]`} style={{ left: `${d().x * 100}%`, top: `${d().y * 100}%` }} role="image" label={d().label} data-base={d().base} data-own={d().kind === "own"} data-ally={d().kind === "ally"} data-foe={d().kind === "foe"} data-neutral={d().kind === "neutral"} />
+          <View class={`absolute size-[0.357rem] -translate-x-1/2 -translate-y-1/2 bg-fg shadow-[0_0_0_2.288px_#060910d9] data-base:size-[0.643rem] data-own:bg-[#38e8ff] data-ally:bg-info data-foe:bg-danger data-neutral:rotate-45 data-neutral:bg-gold compact:size-[0.286rem] compact:data-base:size-2`} style={{ left: `${d().x * 100}%`, top: `${d().y * 100}%` }} role="image" label={d().label} data-base={d().base} data-own={d().kind === "own"} data-ally={d().kind === "ally"} data-foe={d().kind === "foe"} data-neutral={d().kind === "neutral"} />
           )}
         </For>
         <Show when={props.viewWidth > 0}>

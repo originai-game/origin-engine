@@ -74,7 +74,7 @@ function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
         <Icon class="size-[0.857rem]" name={props.poi.icon} style={{ color: ink() }} />
       </Show>
       <Show when={(props.poi.distance ?? -1) >= 0}>
-        <Text class="text-[0.929rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0)}${props.units}`}</Text>
+        <Text class="text-caption leading-[1.1] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0)}${props.units}`}</Text>
       </Show>
     </View>
   );
@@ -85,9 +85,9 @@ export function Compass(props: CompassProps) {
   const degrees = () => (heading() * 57.29578);
   const pois = () => props.pois ?? [];
   return (
-    <View class="flex-col items-center w-[40rem] max-w-full" role="status" label={t("component.compass.name")} valueText={`${formatNumber(degrees())}°`}>
+    <View class="flex-col items-center w-160 max-w-full" role="status" label={t("component.compass.name")} valueText={`${formatNumber(degrees())}°`}>
       <View class="flex-col items-center relative z-[1] -mb-[0.286rem]">
-        <Text class="py-0 px-[0.357rem] text-[0.857rem] leading-[1.35] font-bold tabular-nums text-[#262b38] bg-[#38e8ff] rounded-tl-[0.286rem] rounded-br-[0.286rem] text-shadow-none">
+        <Text class="py-0 px-[0.357rem] text-xs leading-[1.35] font-bold tabular-nums text-[#262b38] bg-[#38e8ff] rounded-tl-[0.286rem] rounded-br-[0.286rem] text-shadow-none">
           {(degrees() < 9.5 ? "00" : degrees() < 99.5 ? "0" : "") + formatNumber(degrees()) + "°"}
         </Text>
       </View>
@@ -103,7 +103,7 @@ export function Compass(props: CompassProps) {
               const opacity = Math.min(Math.max((d - 0.05) * 25, 0), 1);
               return (
                 <Text
-                  class={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${p().cardinal ? "text-[1.429rem] leading-none text-fg" : "text-[1.143rem] leading-[1.2] text-fg/66"}`}
+                  class={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${p().cardinal ? "text-xl leading-none text-fg" : "text-base leading-[1.2] text-fg/66"}`}
                   style={{ left: `${(p().at / 9) * 100}%`, opacity }}
                 >
                   {t(p().key)}
