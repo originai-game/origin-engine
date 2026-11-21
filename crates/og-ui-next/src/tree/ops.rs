@@ -1087,8 +1087,8 @@ impl Tree {
         self.env.size.get()
     }
 
-    /// Op node `id`'s box on screen (x, y, width, height) as last painted,
-    /// when it shows.
+    /// Op node `id`'s box (x, y, width, height) as last painted, in the
+    /// tree's units, when it shows.
     pub fn op_box(&self, id: u32) -> Option<[f32; 4]> {
         let e = self.op(id).ok()? as usize;
         let &(x, y, shown, _) = self.abs.get(e)?;

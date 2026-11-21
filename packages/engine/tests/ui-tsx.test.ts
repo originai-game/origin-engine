@@ -402,9 +402,11 @@ test("an anchored node sits on its entity's projection and hides behind the came
   }
 });
 
-test("og.ui's unitScale lays the tree out in its units, and the probe reads its boxes in the surface's px", () => {
+test("og.ui's unitScale lays the tree out in its units, and the probe and the virtual cursor answer in the surface's px", () => {
   loadNativeHost();
+  const Cursor = defineSystem("UiCursor", { reads: [] }, () => og.ui.setVirtualCursor({} as never));
   const game = og.game({
+    systems: [Cursor],
     start(world) {
       og.ui.configure(world, { unitScale: 2 });
     },
@@ -423,6 +425,9 @@ test("og.ui's unitScale lays the tree out in its units, and the probe reads its 
     const box = frame.elements.find((e) => e.role === "button")!;
     // Two surface px to the unit: twice the authored lengths.
     expect([box.x, box.y, box.width, box.height]).toEqual([20, 60, 80, 40]);
+    // The cursor starts in the surface's middle.
+    const cursor = og.ui.virtualCursor()!;
+    expect([cursor.x, cursor.y]).toEqual([640, 360]);
   } finally {
     renderers.delete(id);
     engine.destroy();

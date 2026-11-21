@@ -361,7 +361,10 @@ pub(crate) fn set_virtual_cursor(engine: u32, desc: Option<og_ui_next::tree::Vir
 pub(crate) fn virtual_cursor(engine: u32) -> Option<([f32; 2], bool)> {
     let eng = crate::engine::engine(engine).ok()?;
     let rs = eng.render.borrow();
-    rs.ui_next.as_ref()?.tree.as_ref()?.virtual_cursor_at()
+    let next = rs.ui_next.as_ref()?;
+    // The tree's units, in the surface's px.
+    let (p, shown) = next.tree.as_ref()?.virtual_cursor_at()?;
+    Some((p.map(|v| v * next.unit), shown))
 }
 
 /// Style `id`'s pack (its `pack.json`, cooked as an `og.UiPack`), if it
@@ -1485,10 +1488,11 @@ impl Next {
     }
 
     /// A TSX node's box on the UI's surface, in CSS px, as last laid out
-    /// (the inspector's panel).
+    /// (the inspector's panel): the tree's og-ui units times the unit.
     #[cfg(not(feature = "publish"))]
     pub(crate) fn op_box(&self, id: u32) -> Option<[f32; 4]> {
-        self.tree.as_ref()?.op_box(id)
+        let b = self.tree.as_ref()?.op_box(id)?;
+        Some(b.map(|v| v * self.unit))
     }
 
     /// The new core's op nodes as the probe lists them, and the focus
