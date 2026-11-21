@@ -161,6 +161,10 @@ pub struct Tree {
     pub generation: u64,
     /// Each element's place on screen, whether it shows, and its depth.
     abs: Vec<(f32, f32, bool, i32)>,
+    /// Each built-in icon's commands as last emitted, by name and the
+    /// bits of its rect, clip and colour: an icon that did not move is
+    /// not flattened again on a repaint.
+    icons: Vec<(&'static str, [u32; 12], Vec<DrawCmd>)>,
 }
 
 static NEXT_TREE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
@@ -314,6 +318,7 @@ impl Tree {
             items: Vec::new(),
             generation: 0,
             abs: Vec::new(),
+            icons: Vec::new(),
         }
     }
 
@@ -1048,11 +1053,27 @@ impl Tree {
                         let rect =
                             Rect::new(x + (b.w - size) / 2.0, y + (b.h - size) / 2.0, size, size);
                         let color = og_ui::Srgba::from_linear(ink);
-                        self.items.extend(
-                            og_ui::builtin_icon(name, rect, clip, color, &og_ui::Theme::default())
-                                .into_iter()
-                                .map(|c| item(under, c)),
-                        );
+                        let key = [
+                            rect.x, rect.y, rect.width, rect.height, clip.x, clip.y, clip.width,
+                            clip.height, ink[0], ink[1], ink[2], ink[3],
+                        ]
+                        .map(f32::to_bits);
+                        let at = match self.icons.iter().position(|(n, k, _)| *n == name && *k == key) {
+                            Some(at) => at,
+                            None => {
+                                let cmds = og_ui::builtin_icon(
+                                    name,
+                                    rect,
+                                    clip,
+                                    color,
+                                    &og_ui::Theme::default(),
+                                );
+                                self.icons.push((name, key, cmds));
+                                self.icons.len() - 1
+                            }
+                        };
+                        self.items
+                            .extend(self.icons[at].2.iter().map(|c| item(under, c.clone())));
                     }
                     None => {}
                 }
