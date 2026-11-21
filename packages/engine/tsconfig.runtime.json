@@ -17,6 +17,7 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": false,
     "noEmit": true,
+    "jsx": "preserve",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "erasableSyntaxOnly": true,
