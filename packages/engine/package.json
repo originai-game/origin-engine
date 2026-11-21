@@ -31,7 +31,7 @@
     "./runtime": "./src/runtime.ts",
     "./sourcemap": "./src/sourcemap.ts",
     "./ui": {
-      "types": "./src/ui/index.ts",
+      "types": "./types/ui.d.ts",
       "default": "./src/ui/index.ts"
     },
     "./ui/components": {

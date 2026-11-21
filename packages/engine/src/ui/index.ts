@@ -7,72 +7,19 @@
 import type { World } from "@origingame/engine";
 import { abi } from "../runtime/host.ts";
 import { json } from "../runtime/result.ts";
-import { type Renderer, Renderer as UiRenderer, RendererContext, type UiChild, type UiEvent, UiNode, component, element, insert, spread } from "./rt.ts";
+import { type Renderer, Renderer as UiRenderer, RendererContext, type UiNode, component, element, insert, spread } from "./rt.ts";
 import { type Accessor, createContext, createMemo, createRoot, createSignal, onCleanup, provide, untrack, useContext } from "./signals.ts";
 
 export { batch, createContext, createEffect, createMemo, createRenderEffect, createRoot, createSignal, onCleanup, untrack, useContext } from "./signals.ts";
 export type { Accessor, Context, Signal } from "./signals.ts";
-export type { UiChild, UiEvent, UiNode } from "./rt.ts";
+// The public shapes are the declaration's (types/ui.d.ts), which games read.
+import type { HostProps, UiChild } from "../../types/ui.d.ts";
+export type { HostProps, UiChild, UiEvent, UiNode } from "../../types/ui.d.ts";
 
-declare global {
-  namespace JSX {
-    type Element = UiChild;
-    // Tags are PascalCase imports: no intrinsic elements.
-    interface IntrinsicElements {}
-    interface ElementChildrenAttribute { children: {} }
-  }
-}
 
 /** The id the host calls take: the runtime's world (WorldImpl) carries it. */
 function idOf(world: World): number {
   return (world as unknown as { readonly id: number }).id;
-}
-
-type Handler = ((e: UiEvent) => void) | undefined;
-
-/** What every host element takes. Every optional prop also takes `undefined`. */
-export interface HostProps {
-  class?: string | undefined;
-  classList?: Record<string, boolean | undefined> | undefined;
-  style?: string | Record<string, string | number | undefined> | undefined;
-  ref?: ((node: UiNode) => void) | undefined;
-  children?: UiChild;
-  onPress?: Handler;
-  onTap?: Handler;
-  onPointerDown?: Handler;
-  onPointerMove?: Handler;
-  onPointerUp?: Handler;
-  onWheel?: Handler;
-  onFocus?: Handler;
-  onBlur?: Handler;
-  onKey?: Handler;
-  onChange?: Handler;
-  /** Input actions handled where focus is (`{ confirm, details }`); the event's `key` names the action. */
-  onAction?: Record<string, Handler> | undefined;
-  disabled?: boolean | undefined;
-  tabIndex?: number | undefined;
-  /** The binding glyph of this input action (a Text's content). */
-  glyph?: string | undefined;
-  /** CONVENTIONS.md §Accessibility. */
-  role?: string | undefined;
-  label?: string | undefined;
-  description?: string | undefined;
-  checked?: boolean | "mixed" | undefined;
-  pressed?: boolean | "mixed" | undefined;
-  selected?: boolean | undefined;
-  expanded?: boolean | undefined;
-  busy?: boolean | undefined;
-  current?: boolean | undefined;
-  hidden?: boolean | undefined;
-  modal?: boolean | undefined;
-  level?: number | undefined;
-  live?: "polite" | "assertive" | "off" | undefined;
-  valueMin?: number | undefined;
-  valueMax?: number | undefined;
-  valueNow?: number | undefined;
-  valueText?: string | undefined;
-  /** `data-*` states class variants read (`data-ready:`). */
-  [data: `data-${string}`]: string | number | boolean | undefined;
 }
 
 function host<P extends HostProps>(tag: string): (props: P) => UiNode {

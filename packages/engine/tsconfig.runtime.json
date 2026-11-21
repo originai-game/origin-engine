@@ -36,6 +36,7 @@
     "scripts/*.ts"
   ],
   "exclude": [
-    "tests/contract.ts"
+    "tests/contract.ts",
+    "tests/fixtures/*/src/**"
   ]
 }

@@ -12,9 +12,17 @@
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
+    "jsx": "preserve",
     "paths": {
-      "@origingame/engine": ["./types/index.d.ts"]
+      "@origingame/engine": ["./types/index.d.ts"],
+      "@origingame/engine/ui": ["./types/ui.d.ts"],
+      "@origingame/engine/ui/components": ["./src/ui/components/index.tsx"]
     }
   },
-  "include": ["../create/template/src/**/*.ts", "../../tests/fixtures/*/src/**/*.ts", "sheets/*/src/**/*.ts"]
+  "include": [
+    "../create/template/src/**/*.ts",
+    "../../tests/fixtures/*/src/**/*.ts",
+    "tests/fixtures/*/src/**/*.ts",
+    "sheets/*/src/**/*.ts"
+  ]
 }

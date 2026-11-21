@@ -225,6 +225,9 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       }
       // og.assert's places (src/node/assert-sites.ts), in the game's own files only.
       const project = projectRoot(absEntry);
+      // A component's strings (`import "./x.en.ogt"`) are the cook's: the
+      // bundle keeps nothing of them.
+      build.onLoad({ filter: /\.ogt$/, namespace: "file" }, () => ({ contents: "", loader: "js" }));
       // TSX and JSX (the game's and the engine's UI components) compile with
       // nsh-jsx to the UI renderer's calls (crates/og-ui-next/CONVENTIONS.md
       // §JSX compile), after the og.assert sites are placed.
