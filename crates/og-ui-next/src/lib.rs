@@ -5,6 +5,7 @@
 //! work. There is no CSS cascade per element.
 
 pub mod arena;
+pub mod classes;
 pub mod cooked;
 pub mod doc;
 pub mod icons;
