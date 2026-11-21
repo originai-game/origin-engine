@@ -133,37 +133,15 @@ and stops itself after 30 idle minutes. The former `gcp-l4` orb is retired;
 the sections below that name it describe the same steps, now run on Colab.
 The compatibility hosts are listed in AGENTS.md §Building and testing.
 
-### L4 milestone runner
-
-`scripts/gpu-env.sh` holds the Vulkan/NVIDIA pins formerly kept only in
-`/home/user/gpu/env.sh`. It sets no gate overrides, so it can also be sourced
-for landing. The end-of-round `batch3.sh` is now
-`scripts/gpu-milestone.sh`; neither setup nor landing starts it. Start it
-only when the coordinator authorizes the milestone:
-
-```sh
-amp orb service start gpu-milestone --command 'bash scripts/gpu-milestone.sh'
-```
-
-The runner fetches and pins one full `origin/main` SHA, creates clean sibling
-worktrees `l4-gate` and `l4-perf` if absent, and refuses to overwrite local
-changes. It leaves old integrator worktrees and `/home/user/gpu` untouched.
-In order: clean targets; full gate with `OG_WASM_VARIANTS=all` (rust-gpu
-included); release `og` and screens for default, fantasy,
-scifi and cartoon; ignored og-ui perf against `2fb1c4819`; release native
-town bench twice against `6cc20b167`. GPU work uses `scripts/lock.sh`.
-The dense-menu budget is 0.85 ms. Reference movements are reported for
-quality review, not used as a pixel-difference landing gate.
-
-Logs and command exit statuses live in `.og/gpu-milestone/<run>/`; review
-screens and town profiles in `.amp/in/artifacts/review/<run>/`. Each run
-gets its own directory. Failed stages are logged; a failed build never
-runs a stale binary. Completion still needs the integrator's frame review
-(no black, broken or clipped frames; never record one) and Chinese report
-to the coordinator. On an idle host also check
-`bold_rich_text_is_heavier_ink_never_a_box` and `scripts/test-landing.py`'s
-30-second timeouts. Performance fixes follow the milestone measurement.
-The supervised service stays alive after `batch-done` for log inspection.
+`scripts/gpu-env.sh` holds the Vulkan/NVIDIA pins and sets no gate
+overrides, so it can also be sourced for landing (`scripts/release.sh`
+sources it). The former L4 milestone runner (`scripts/gpu-milestone.sh`)
+is deleted; a milestone round — clean targets, the full gate with
+`OG_WASM_VARIANTS=all` (rust-gpu included), ignored og-ui perf and the
+release native town bench against the last measured main — runs on the
+Colab host through the plugin, only on the coordinator's instruction.
+Reference movements are reported for quality review, not used as a
+pixel-difference landing gate (§Reference frames).
 
 ## Reference frames
 
