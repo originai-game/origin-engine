@@ -1563,6 +1563,48 @@ pub fn run(args: &[&str]) -> ExitCode {
 mod tests {
     use super::*;
 
+    /// The engine's own TSX components (packages/engine/src/ui) use only
+    /// classes the default pack's theme knows, as a game's must
+    /// ([`unknown_classes`]): one that styles nothing fails here, where
+    /// no game's check reaches it.
+    #[test]
+    fn the_engines_components_use_only_known_classes() {
+        use og_ui_next::pack::{Layer, Pack, Scheme};
+        let ui = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui");
+        let pack = Pack::new(&[Layer::default_pack()]);
+        let theme = nsh_jsx::Theme::from_json(&pack.theme_json(Scheme::Dark)).unwrap();
+        let images: Vec<String> = pack.images(Scheme::Dark).keys().cloned().collect();
+        let mut files = Vec::new();
+        crate::lockstep_lint::sources(&ui, &mut files);
+        files.retain(|f| f.extension().is_some_and(|e| e == "tsx"));
+        assert!(files.len() > 20, "the components are there");
+        let mut unknown = Vec::new();
+        for path in files {
+            let text = std::fs::read_to_string(&path).unwrap();
+            for u in nsh_jsx::unknown_classes(&path.to_string_lossy(), &text, &theme) {
+                let nine = u
+                    .class
+                    .rsplit(':')
+                    .next()
+                    .and_then(|c| c.strip_prefix("nine-"));
+                if nine.is_some_and(|n| images.iter().any(|i| i == n)) {
+                    continue;
+                }
+                let file = path
+                    .strip_prefix(&ui)
+                    .unwrap_or(&path)
+                    .display()
+                    .to_string();
+                unknown.push(format!("{file}:{}: {}", u.line, u.class));
+            }
+        }
+        assert!(
+            unknown.is_empty(),
+            "unknown classes:\n{}",
+            unknown.join("\n")
+        );
+    }
+
     fn at(file: &str, line: u32, col: u32, code: u32, message: &str) -> Diagnostic {
         Diagnostic {
             file: Some(file.into()),
