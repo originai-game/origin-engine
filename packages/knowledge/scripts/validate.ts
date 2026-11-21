@@ -25,7 +25,7 @@ import {
   type PayloadFile,
   type Roots,
 } from "./lib.ts";
-import { ART_KINDS } from "./brief.ts";
+import { ART_KINDS, MOODS } from "./brief.ts";
 
 export interface Rules {
   payload: { roots: string[] };
@@ -510,8 +510,6 @@ export const PROFILES = ["2d", "3d"] as const;
 export const LAYERS = ["frame", "conform", "runtime", "authored"] as const;
 /** What `look.views` may name: the creation choice's views (create's choices.ts, held equal by its tests); a `-2d` view needs the 2d profile, the rest 3d. */
 export const VIEWS = ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"] as const;
-/** What `look.mood` may name: the moods a look takes (og-bundle's MOODS; docs/art.md §2.10). */
-export const MOODS = ["bright", "dark", "warm", "cold", "soft", "high-contrast"] as const;
 /** The placeholders the art-bible template may use. */
 export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "game", "slug", "checks"] as const;
 const PREMISE = ["genre", "mood", "era", "audience"];
@@ -668,6 +666,71 @@ function looks(roots: Roots, problems: string[]): void {
   if (existsSync(variantsDir)) {
     for (const d of readdirSync(variantsDir, { withFileTypes: true })) if (d.isDirectory() && !seen.has(d.name)) problems.push(`${at}: templates/looks/variants/${d.name}/ is no style's`);
   }
+  artDoc(roots, problems);
+}
+
+/**
+ * docs/art.md's restatements of the catalogue and the moods, read back
+ * against their sources: §2.6's looks list names every catalogue style with
+ * the UI pack its `ui` line carries (and only ones a creation offers),
+ * §2.10's moods sentence names MOODS (brief.ts's, held to og-bundle's by its
+ * tests), and §2.11's variants table lists exactly each style's variants, in
+ * the catalogue's order. Checked, not emitted: the prose around them is
+ * written by hand. The published package carries no repository docs, so a
+ * missing docs/art.md is not a problem.
+ */
+export function artDoc(roots: Roots, problems: string[]): void {
+  const docAt = join(roots.pkg, "..", "..", "docs", "art.md");
+  if (!existsSync(docAt)) return;
+  const doc = readFileSync(docAt, "utf8");
+  const catAt = join(roots.pkg, "looks", "catalogue.json");
+  let styles: { slug: string; ui?: string; look?: { presetReady?: boolean }; variants?: { name: string }[] }[] = [];
+  try {
+    styles = (JSON.parse(readFileSync(catAt, "utf8")) as { styles?: typeof styles }).styles ?? [];
+  } catch {
+    return; // looks() reports the catalogue's own problems.
+  }
+
+  const moods = [...(/one of ([^)]*?) \(og-bundle's `MOODS`/.exec(doc)?.[1] ?? "").matchAll(/`([a-z-]+)`/g)].map((m) => m[1]!);
+  if (moods.join() !== MOODS.join()) problems.push(`docs/art.md §2.10 names the moods ${moods.join(", ") || "none"}; the look takes ${MOODS.join(", ")} (og-bundle's MOODS)`);
+
+  const list = /Twelve looks[\s\S]*?line names: ([\s\S]*?)\./.exec(doc)?.[1];
+  if (!list) {
+    problems.push("docs/art.md §2.6 has no looks list naming every catalogue style with the UI pack its `ui` line names");
+  } else {
+    const named: { slug: string; ui: string }[] = [];
+    for (const group of list.split(";")) {
+      const g = /(.+) \(([a-z0-9-]+)\)/.exec(group.replace(/\s+/g, " ").trim());
+      if (!g) {
+        problems.push(`docs/art.md §2.6's looks list names styles as \`slug, slug (ui pack)\`: \`${group.trim()}\` names none`);
+        continue;
+      }
+      for (const slug of g[1]!.split(/, | and /)) named.push({ slug: slug.trim(), ui: g[2]! });
+    }
+    const at = "docs/art.md §2.6's looks list";
+    const known = new Map(styles.map((s) => [s.slug, s]));
+    for (const { slug, ui } of named) {
+      const s = known.get(slug);
+      if (!s) problems.push(`${at} names ${slug}, which the catalogue has no style for`);
+      else if (s.ui !== ui) problems.push(`${at} names ${slug} under the ${ui} UI pack; the catalogue says ui "${s.ui}"`);
+      else if (!s.look?.presetReady) problems.push(`${at} names ${slug}, which no creation offers (its look has no preset; creationLooks)`);
+    }
+    const missing = styles.filter((s) => !named.some((n) => n.slug === s.slug)).map((s) => s.slug);
+    if (missing.length) problems.push(`${at} does not name ${missing.join(", ")}`);
+  }
+
+  const tableAt = doc.indexOf("| Look | Variants |");
+  const rows = tableAt < 0 ? [] : [...doc.slice(tableAt).matchAll(/^\| ([a-z0-9-]+) \| ([a-z0-9-, -]*[a-z0-9-])?\s*\|$/gm)].map((m) => ({ slug: m[1]!, variants: (m[2] ?? "").split(", ").filter(Boolean) }));
+  const at = "docs/art.md §2.11's variants table";
+  if (tableAt < 0) problems.push(`${at}: the doc has none`);
+  const withVariants = styles.filter((s) => (s.variants?.length ?? 0) > 0);
+  for (const row of rows) {
+    const s = styles.find((x) => x.slug === row.slug);
+    if (!s) problems.push(`${at} has a row for ${row.slug}, which the catalogue has no style for`);
+    else if (row.variants.join() !== (s.variants ?? []).map((v) => v.name).join()) problems.push(`${at} lists ${row.slug}'s variants ${row.variants.join(", ") || "none"}; the catalogue says ${(s.variants ?? []).map((v) => v.name).join(", ") || "none"}`);
+  }
+  const unlisted = withVariants.filter((s) => !rows.some((r) => r.slug === s.slug)).map((s) => s.slug);
+  if (unlisted.length) problems.push(`${at} has no row for ${unlisted.join(", ")}`);
 }
 
 /**

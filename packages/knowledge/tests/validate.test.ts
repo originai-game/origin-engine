@@ -4,11 +4,11 @@
 // each asserts the problem it adds over the copy's own baseline.
 
 import { afterAll, expect, test } from "bun:test";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { defaultRoots, ogtTopLevel, payload, packs, type Roots } from "../scripts/lib.ts";
-import { bundle, validate } from "../scripts/validate.ts";
+import { artDoc, bundle, validate } from "../scripts/validate.ts";
 
 /** packages/engine's version: what the scaffold pins. */
 const ENGINE_VERSION = (JSON.parse(readFileSync(join(defaultRoots().engine, "package.json"), "utf8")) as { version: string }).version;
@@ -250,6 +250,45 @@ test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
       "looks/catalogue.json: a-new-look: look.preset is templates/looks/" + cat.styles[4]!.slug + ".ogt, expected templates/looks/a-new-look.ogt",
     ].sort(),
   );
+});
+
+test("docs/art.md's looks list, moods and variants table are the catalogue's and MOODS's", () => {
+  // A layout the doc check reads: docs/ beside packages/knowledge/, as the repository's, with the real catalogue and doc.
+  const dir = mkdtempSync(join(tmpdir(), "og-artdoc-"));
+  temps.push(dir);
+  const roots: Roots = { pkg: join(dir, "packages", "knowledge"), template: "", engine: "" };
+  mkdirSync(join(roots.pkg, "looks"), { recursive: true });
+  mkdirSync(join(dir, "docs"), { recursive: true });
+  cpSync(join(real.pkg, "looks", "catalogue.json"), join(roots.pkg, "looks", "catalogue.json"));
+  const doc = join(dir, "docs", "art.md");
+  cpSync(join(real.pkg, "..", "..", "docs", "art.md"), doc);
+  const original = readFileSync(doc, "utf8");
+  const problems = (text: string): string[] => {
+    writeFileSync(doc, text);
+    const out: string[] = [];
+    artDoc(roots, out);
+    return out;
+  };
+  expect(problems(original)).toEqual([]);
+  // A look the catalogue has that the list does not name, and one it names that the catalogue has no style for.
+  expect(problems(original.replace("neon-vector (scifi); ", ""))).toEqual([
+    "docs/art.md §2.6's looks list does not name neon-vector",
+  ]);
+  expect(problems(original.replace("toy-3d and cartoon-2d (cartoon)", "toy-3d and comic-2d (cartoon)"))).toEqual([
+    "docs/art.md §2.6's looks list names comic-2d, which the catalogue has no style for",
+    "docs/art.md §2.6's looks list does not name cartoon-2d",
+  ]);
+  // A variant the table left out, and one it names that the catalogue has no variant for.
+  expect(problems(original.replace("| pixel | 8bit, monochrome, detailed, luminous, coarse, topdown |", "| pixel | 8bit, monochrome, detailed |"))).toEqual([
+    "docs/art.md §2.11's variants table lists pixel's variants 8bit, monochrome, detailed; the catalogue says 8bit, monochrome, detailed, luminous, coarse, topdown",
+  ]);
+  expect(problems(original.replace("| cinematic-realism | muted |", "| cinematic-realism | muted, faded |"))).toEqual([
+    "docs/art.md §2.11's variants table lists cinematic-realism's variants muted, faded; the catalogue says muted",
+  ]);
+  // A mood the sentence dropped.
+  expect(problems(original.replace("`soft`, `high-contrast` (og-bundle's `MOODS`", "`high-contrast` (og-bundle's `MOODS`"))).toEqual([
+    "docs/art.md §2.10 names the moods bright, dark, warm, cold, high-contrast; the look takes bright, dark, warm, cold, soft, high-contrast (og-bundle's MOODS)",
+  ]);
 });
 
 test("every og.* name and Type.field a guide writes exists in the generated API", () => {
