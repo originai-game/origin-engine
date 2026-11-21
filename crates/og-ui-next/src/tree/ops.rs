@@ -288,6 +288,7 @@ impl Tree {
             queued: false,
             record,
             holds: Box::default(),
+            line: None,
             eff: self.root,
         });
         if self.by_js.len() <= id as usize {
@@ -416,6 +417,9 @@ impl Tree {
                         t => return Err(format!("og.ui ops: unknown tag {t}")),
                     };
                     let e = self.create(id, kind, false)?;
+                    if tag == 6 {
+                        self.els[e as usize].line = Some((Vec::new(), false));
+                    }
                     self.sem
                         .create(self.els[e as usize].node, a11y::Kind::of(tag));
                 }
@@ -453,6 +457,25 @@ impl Tree {
                                 NONE => self.els[e as usize].disabled = queue::signal(on.into()),
                                 s => queue::set(s, on.into()),
                             }
+                        }
+                        // A `<Line>`'s points, numbers split by commas or
+                        // spaces, read into its own buffer.
+                        "points" | "closed" if self.els[e as usize].line.is_some() => {
+                            let (points, closed) =
+                                self.els[e as usize].line.as_mut().expect("a line");
+                            if name == "closed" {
+                                *closed = !matches!(value, "" | "false" | "0");
+                            } else {
+                                points.clear();
+                                points.extend(
+                                    value
+                                        .split([',', ' '])
+                                        .filter(|t| !t.is_empty())
+                                        .map(|t| t.parse::<f32>().unwrap_or(0.0)),
+                                );
+                                points.truncate(points.len() & !1);
+                            }
+                            self.paint = true;
                         }
                         "name" if self.els[e as usize].kind == Kind::Icon => {
                             self.set_text(e, value);
@@ -748,6 +771,52 @@ mod tests {
         b.op(4).u32(1).str("b");
         t.apply(&b.bytes()).unwrap();
         assert_eq!(t.classes.keys.len(), 3);
+    }
+
+    /// A `<Line>` (tag 6) paints one Line quad: its points in its box, its
+    /// stroke's width, colour and closing; a line under 1 px or with one
+    /// point paints none.
+    #[test]
+    fn a_line_paints_its_points_as_one_stroke() {
+        let mut t = tree();
+        t.set_resolver(Box::new(|class, _, _| {
+            let mut r = Record::default();
+            if class.contains("w2") {
+                r.stroke_width = 2.0;
+                r.stroke = Some([1.0, 0.0, 0.0, 1.0]);
+            }
+            if class.contains("thin") {
+                r.stroke_width = 0.5;
+            }
+            r
+        }));
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(6);
+        b.op(4).u32(1).str("w2");
+        b.op(6).u32(1).str("points").str("0,10 5 0, 9.5,10 7");
+        b.op(6).u32(1).str("closed").str("true");
+        b.op(1).u32(2).u8(6);
+        b.op(4).u32(2).str("thin");
+        b.op(6).u32(2).str("points").str("0 0 4 4");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(8).u32(0).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let lines: Vec<_> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Line as u32)
+            .collect();
+        assert_eq!(lines.len(), 1, "the thin line paints nothing");
+        let q = lines[0];
+        // An odd number is dropped: three points.
+        assert_eq!(
+            (q.b, q.p[0], q.p[1], q.color),
+            (3, 2.0, 1.0, [1.0, 0.0, 0.0, 1.0])
+        );
+        let pts = &t.drawn.points[q.a as usize..(q.a + q.b) as usize];
+        assert_eq!(pts, [[0.0, 10.0], [5.0, 0.0], [9.5, 10.0]]);
     }
 
     #[test]

@@ -76,6 +76,7 @@ pub(crate) const PRIMITIVES: &[(&str, &str, Compiled)] = &[
     (UI, "Icon", Compiled::Host("icon")),
     (UI, "Scroll", Compiled::Host("scroll")),
     (UI, "Input", Compiled::Host("input")),
+    (UI, "Line", Compiled::Host("line")),
     (UI, "Show", Compiled::Show),
     (UI, "For", Compiled::For),
 ];
@@ -1498,12 +1499,12 @@ mod tests {
     fn primitives_compile_in_place() {
         let code = flat(
             &compile(
-                r#"import { Icon, Image, Input, Scroll, Text, View } from "@origingame/engine/ui";
-            export const a = <View><Text>t</Text><Image src="x" /><Icon name="i" /><Input /><Scroll /></View>;"#,
+                r#"import { Icon, Image, Input, Line, Scroll, Text, View } from "@origingame/engine/ui";
+            export const a = <View><Text>t</Text><Image src="x" /><Icon name="i" /><Input /><Line points={[0, 0, 4, 4]} /><Scroll /></View>;"#,
             )
             .unwrap(),
         );
-        for tag in ["view", "text", "image", "icon", "input", "scroll"] {
+        for tag in ["view", "text", "image", "icon", "input", "line", "scroll"] {
             assert!(code.contains(&format!(r#"_$element("{tag}")"#)), "{code}");
         }
         assert!(!code.contains(r#"from "@origingame/engine/ui";"#), "{code}");

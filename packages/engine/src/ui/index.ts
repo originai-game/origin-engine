@@ -89,6 +89,13 @@ export const Text = host<HostProps>("text");
 export const Image = host<HostProps & { src?: string | undefined }>("image");
 export const Icon = host<HostProps & { name?: string | undefined }>("icon");
 export const Scroll = host<HostProps>("scroll");
+/**
+ * A polyline in its box: `points` are x, y pairs in CSS px from the box's
+ * top left, stroked by `stroke-*` classes (colour and width; the ink and 1
+ * px without), round joins and caps, `closed` back to the first point. No
+ * fill, curves or dashes: what can be an image is an `Image`.
+ */
+export const Line = host<HostProps & { points: readonly number[]; closed?: boolean | undefined }>("line");
 export const Input = host<HostProps & { value?: string | undefined; placeholder?: string | undefined }>("input");
 
 /** `<Show when={c} fallback={…} keyed>`: compiled to the renderer's `cond`. */

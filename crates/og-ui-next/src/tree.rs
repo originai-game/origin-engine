@@ -126,6 +126,9 @@ struct El {
     /// each row of an `{#each}` sets its own of the same rule.
     holds: Box<[u64]>,
     eff: Inherit,
+    /// A `<Line>`'s points (x, y pairs in its box, CSS px) and whether it
+    /// closes; `None` for any other node.
+    line: Option<(Vec<f32>, bool)>,
 }
 
 struct IfBlock {
@@ -770,6 +773,7 @@ impl Tree {
             queued: false,
             record,
             holds: Box::default(),
+            line: None,
             eff: self.root,
         });
         self.ordered = false;
@@ -1159,6 +1163,13 @@ impl Tree {
     }
 
     fn repaint(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) {
+        /// A line's stroke: its own colour faded, else the ink (already faded).
+        fn s_line_color(stroke: &Option<Rgba>, ink: Rgba, alpha: f32) -> Rgba {
+            stroke.map_or(ink, |mut c| {
+                c[3] *= alpha;
+                c
+            })
+        }
         let (vw, vh) = self.env.size.get();
         let screen = [0.0, 0.0, vw, vh];
         let p = &mut self.drawn;
@@ -1401,6 +1412,24 @@ impl Tree {
             }
             let mut ink = own_ink;
             ink[3] *= alpha;
+            if let Some((points, closed)) = &el.line {
+                let stroke = s_line_color(&r.stroke, ink, alpha);
+                let n = points.len() / 2;
+                if r.stroke_width >= 1.0 && n >= 2 && stroke[3] > 0.0 {
+                    let first = p.points.len() as u32;
+                    p.points.extend_from_slice(points.as_chunks::<2>().0);
+                    p.quads.push(quad(
+                        PaintKind::Line,
+                        rect,
+                        clip,
+                        stroke,
+                        [0.0; 4],
+                        [r.stroke_width, f32::from(u8::from(*closed)), 0.0, 0.0],
+                        first,
+                        n as u32,
+                    ));
+                }
+            }
             if el.kind == Kind::Icon && !el.text.is_empty() {
                 let size = b.w.min(b.h).max(1.0);
                 let square = [x + (b.w - size) / 2.0, y + (b.h - size) / 2.0, size, size];

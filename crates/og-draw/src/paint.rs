@@ -50,6 +50,10 @@ pub enum PaintKind {
     /// drawn with [`IMAGE_FILL`] (flags in `b`; no insets and the fill:
     /// the plain image). `wipe` cuts it radially ([`PaintQuad::wipe`]).
     Image = 7,
+    /// A polyline (`<Line>`): points `a..a + b` of [`Paint::points`]
+    /// (CSS px from `rect`'s top left), stroked `p`'s x wide in `color`,
+    /// round joins and caps, closed when `p`'s y is 1.
+    Line = 8,
 }
 
 /// One quad of the arena (`struct PaintIn` in ui_paint.wgsl's terms
@@ -131,6 +135,8 @@ pub struct Paint {
     /// as `[a, b, c, d, e, f, 0, 0]` (x' = a x + c y + e); entry 0 is the
     /// identity, which the shader skips.
     pub transforms: Vec<[f32; 8]>,
+    /// The points of the [`PaintKind::Line`] quads.
+    pub points: Vec<[f32; 2]>,
     /// Every built-in icon's segments: one table, shared by every paint.
     pub icons: Option<Arc<[IconSegment]>>,
     /// Bumped each time anything above changes.
@@ -143,6 +149,7 @@ impl Paint {
         self.quads.clear();
         self.gradients.clear();
         self.stops.clear();
+        self.points.clear();
         self.transforms.clear();
         self.transforms.push(IDENTITY);
     }

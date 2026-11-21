@@ -9,7 +9,7 @@ use crate::motion;
 use crate::style::{GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Text};
 use nsh_tailwind::effects::{Filter, GradientKind, Keyframes};
 use nsh_tailwind::geometry::{DefiniteLength, Points, Size};
-use nsh_tailwind::style::{Color, Style, StyleValue, TextAlign, TextTransform};
+use nsh_tailwind::style::{Color, Style, StyleValue, SvgPaint, TextAlign, TextTransform};
 use nsh_tailwind::tailwind::{self, ClassEnvironment, ClassList, ClassProps, Context, Theme};
 use nsh_tailwind::transform::TransformKind;
 use rune_taffy::CompactStyle;
@@ -230,6 +230,15 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         if side == k {
             r.safe[1] |= 1 << k;
         }
+    }
+    // A `<Line>`'s stroke: `stroke-accent`, `stroke-2`.
+    match &style.paint.stroke {
+        Some(SvgPaint::Color(c)) => r.stroke = Some(linear(*c)),
+        Some(SvgPaint::None) => r.stroke = Some([0.0; 4]),
+        Some(SvgPaint::CurrentColor) | None => {}
+    }
+    if let Some(w) = style.paint.stroke_width {
+        r.stroke_width = w.0;
     }
     let (view, text, skin) = (&style.view, &style.text, &mut r.skin);
     skin.fill = linear(view.background_color);
@@ -659,5 +668,16 @@ mod tests {
         // A variant the pack lacks keeps the slot's; a slot it lacks is unknown.
         assert_eq!(c.record("@Panel.frame.menu", &env).skin.opacity, 0.5);
         assert_eq!(c.unknown("@Card.body"), ["@Card.body"]);
+    }
+
+    #[test]
+    fn a_stroke_class_sets_a_lines_colour_and_width() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        let env = Env::default();
+        let r = c.record("stroke-red-500 stroke-3", &env);
+        assert_eq!(r.stroke_width, 3.0);
+        assert!(r.stroke.is_some_and(|s| s[0] > s[1]), "red: {:?}", r.stroke);
+        let r = c.record("stroke-current", &env);
+        assert_eq!((r.stroke, r.stroke_width), (None, 1.0), "the ink, 1 px");
     }
 }

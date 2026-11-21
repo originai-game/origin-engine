@@ -468,6 +468,10 @@ pub struct Record {
     /// Its `transition-*`, `duration-*`, `ease-*`, `delay-*` and
     /// `animate-*`.
     pub motion: crate::motion::Spec,
+    /// A `<Line>`'s stroke (`stroke-*`): its colour, `None` for the ink
+    /// (`currentColor`, the default), and its width in CSS px.
+    pub stroke: Option<Rgba>,
+    pub stroke_width: f32,
 }
 
 impl Record {
@@ -518,6 +522,8 @@ impl Default for Record {
             inked: false,
             fixed: false,
             motion: crate::motion::Spec::default(),
+            stroke: None,
+            stroke_width: 1.0,
         }
     }
 }
