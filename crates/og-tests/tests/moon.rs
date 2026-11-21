@@ -3,26 +3,14 @@
 //! (so the disc's own pixels are measured).
 
 use glam::Vec3;
-use og_render::{RenderScene, RenderTarget, Renderer, RgbaImage};
-use og_tests::{p2_scenes, scenes};
-
-fn frame(scene: &RenderScene) -> RgbaImage {
-    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
-    renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("render");
-    renderer.read_offscreen().expect("capture")
-}
-
-fn luma(img: &RgbaImage, x: u32, y: u32) -> f32 {
-    let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
-    0.2126 * p[0] as f32 + 0.7152 * p[1] as f32 + 0.0722 * p[2] as f32
-}
+use og_render::RgbaImage;
+use og_tests::harness::{base_image, luma_at};
+use og_tests::p2_scenes;
 
 fn moon(phase: f32, size: f32) -> RgbaImage {
     let mut scene = p2_scenes::moon_scene(phase, size);
     scene.look.post.bloom = None;
-    frame(&scene)
+    base_image(&scene)
 }
 
 /// The moon's disc on screen: its centre and radius in pixels, from the
@@ -59,7 +47,7 @@ fn mean(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> f32 {
     let mut sum = 0.0;
     for y in y0..y1 {
         for x in x0..x1 {
-            sum += luma(img, x, y);
+            sum += luma_at(img, x, y);
         }
     }
     sum / ((x1 - x0) * (y1 - y0)) as f32
@@ -108,7 +96,7 @@ fn the_phase_lights_the_disc() {
     );
     let brightest_in_disc = (cy - inner..=cy + inner)
         .flat_map(|y| (cx - inner..=cx + inner).map(move |x| (x, y)))
-        .map(|(x, y)| luma(&new, x, y))
+        .map(|(x, y)| luma_at(&new, x, y))
         .fold(0.0f32, f32::max);
     assert!(
         brightest_in_disc < 60.0,
@@ -131,11 +119,11 @@ fn the_moon_sets_below_the_horizon() {
     if let Some(look) = scene.lighting.environment.sky.look.as_mut() {
         look.moon_direction = (p2_scenes::moon_direction() * Vec3::new(1.0, -1.0, 1.0)).normalize();
     }
-    let set = frame(&scene);
+    let set = base_image(&scene);
     if let Some(look) = scene.lighting.environment.sky.look.as_mut() {
         look.moon_size = 0.0;
     }
-    let without = frame(&scene);
+    let without = base_image(&scene);
     let differ: Vec<usize> = (0..set.pixels.len() / 4)
         .filter(|&i| set.pixels[i * 4..i * 4 + 3] != without.pixels[i * 4..i * 4 + 3])
         .collect();

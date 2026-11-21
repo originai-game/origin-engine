@@ -5,10 +5,7 @@
 //! frame (`debug-overlay`), and from frames: a wireframe draws edges, not
 //! its faces; debug draw is not hidden by the geometry in front of it.
 
-fn px(img: &og_render::RgbaImage, x: u32, y: u32) -> [u8; 3] {
-    let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
-    [p[0], p[1], p[2]]
-}
+use og_tests::harness::px;
 
 /// An unlit cube seen from a corner on a blue background, the material
 /// `m` (its map `map`) under the material style `style`.

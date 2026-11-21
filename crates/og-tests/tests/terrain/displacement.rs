@@ -36,11 +36,11 @@ fn displaced_levels_leave_no_cracks() {
             .expect("render");
         let img = renderer.read_offscreen().expect("capture");
         if step == 0 {
-            keep("displaced-cracks", &img);
+            save("og-terrain", "displaced-cracks", &img);
         }
         let holes = (0..img.height)
             .flat_map(|y| (0..img.width).map(move |x| (x, y)))
-            .filter(|&(x, y)| magenta(px(&img, x, y)))
+            .filter(|&(x, y)| magenta(px_f32(&img, x, y)))
             .count();
         assert_eq!(holes, 0, "step {step}: background through the ground");
     }
@@ -88,7 +88,7 @@ fn a_terrain_whose_corner_pipeline_arrives_late_is_drawn_once_it_does() {
         let img = renderer.read_offscreen().expect("capture");
         let background = (0..img.height)
             .flat_map(|y| (0..img.width).map(move |x| (x, y)))
-            .filter(|&(x, y)| magenta(px(&img, x, y)))
+            .filter(|&(x, y)| magenta(px_f32(&img, x, y)))
             .count();
         (
             background,
@@ -139,14 +139,14 @@ fn each_sett_takes_its_own_tone() {
                 let mut c = [0.0f32; 3];
                 for y in by..by + b {
                     for x in bx..bx + b {
-                        let p = px(&img, x, y);
+                        let p = px_f32(&img, x, y);
                         c = [c[0] + p[0], c[1] + p[1], c[2] + p[2]];
                     }
                 }
                 blocks.push(c.map(|v| v / (b * b) as f32));
             }
         }
-        blocks.sort_by(|a, b| luma(*a).total_cmp(&luma(*b)));
+        blocks.sort_by(|a, b| luma_f32(*a).total_cmp(&luma_f32(*b)));
         let tops = &blocks[blocks.len() / 2..];
         let n = tops.len() as f32;
         let std = |f: &dyn Fn(&[f32; 3]) -> f32| {
@@ -157,7 +157,7 @@ fn each_sett_takes_its_own_tone() {
             )
         };
         let (warm, _) = std(&|c| (c[0] - c[2]) / (c[0] + c[1] + c[2]).max(1.0));
-        let (bright, m) = std(&|c| luma(*c));
+        let (bright, m) = std(&|c| luma_f32(*c));
         (warm, bright / m.max(1.0))
     };
     let (warm0, bright0) = spread(0.0);

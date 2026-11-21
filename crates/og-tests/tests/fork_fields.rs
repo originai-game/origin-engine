@@ -5,24 +5,14 @@
 //! are named on each test.
 
 use glam::Vec3;
-use og_render::{
-    FrameStats, Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,
-};
+use og_render::{FrameStats, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
 use og_tests::fork_scenes as fs;
-use og_tests::{gfx, scenes};
-use std::path::PathBuf;
+use og_tests::harness::{luma_f32, px_clamped, project, save};
+use og_tests::scenes;
 
 /// Frames are rendered at half the reference size (the same 16:9 view).
 const W: u32 = 640;
 const H: u32 = 360;
-
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-fork-fields")
-}
-
-fn save(name: &str, img: &RgbaImage) {
-    let _ = gfx::save_png(&out_dir().join(format!("{name}.png")), img);
-}
 
 /// A registered scene and its desc at the tests' size.
 fn built(name: &str) -> (RenderDesc, RenderScene) {
@@ -54,17 +44,9 @@ fn render(desc: &RenderDesc, scene: &RenderScene) -> (RgbaImage, FrameStats) {
     render_n(desc, scene, 1)
 }
 
+/// [`px_clamped`] as f32 (0 to 255, not 0 to 1).
 fn px(img: &RgbaImage, x: u32, y: u32) -> [f32; 3] {
-    let i = ((y.min(img.height - 1) * img.width + x.min(img.width - 1)) * 4) as usize;
-    [
-        img.pixels[i] as f32,
-        img.pixels[i + 1] as f32,
-        img.pixels[i + 2] as f32,
-    ]
-}
-
-fn luma(p: [f32; 3]) -> f32 {
-    0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]
+    px_clamped(img, x, y).map(f32::from)
 }
 
 /// Every pixel of a rectangle (x0, y0, x1, y1), exclusive ends.
@@ -99,28 +81,8 @@ fn around(p: (u32, u32), r: u32) -> (u32, u32, u32, u32) {
 }
 
 /// The pixel a world point projects to in a W x H frame of `scene`'s camera.
-fn project(scene: &RenderScene, p: Vec3) -> (u32, u32) {
-    let cam = &scene.frame.camera;
-    let view = glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
-    let proj = match cam.projection {
-        Projection::Perspective { fov_y_degrees } => glam::camera::rh::proj::directx::perspective(
-            fov_y_degrees.to_radians(),
-            W as f32 / H as f32,
-            cam.near,
-            cam.far,
-        ),
-        Projection::Orthographic { height } => {
-            let hh = height * 0.5;
-            let hw = hh * W as f32 / H as f32;
-            glam::camera::rh::proj::directx::orthographic(-hw, hw, -hh, hh, cam.near, cam.far)
-        }
-    };
-    let c = proj * view * p.extend(1.0);
-    let ndc = c.truncate() / c.w;
-    (
-        ((ndc.x * 0.5 + 0.5) * W as f32) as u32,
-        ((0.5 - ndc.y * 0.5) * H as f32) as u32,
-    )
+fn project_in(scene: &RenderScene, p: Vec3) -> (u32, u32) {
+    project(&scene.frame.camera, W, H, p)
 }
 
 fn fmt(p: [f32; 3]) -> String {
@@ -157,29 +119,29 @@ fn the_shadow_box_shadows_inside_it_and_lights_outside_it() {
     let scene = fs::shadow_box_scene();
     let (near, open_near) = shadow_of(fs::BOX_NEAR_POST);
     let (far, open_far) = shadow_of(fs::BOX_FAR_POST);
-    let near = around(project(&scene, near), 2);
-    let open_near = around(project(&scene, open_near), 2);
-    let far = around(project(&scene, far), 1);
-    let open_far = around(project(&scene, open_far), 1);
+    let near = around(project_in(&scene, near), 2);
+    let open_near = around(project_in(&scene, open_near), 2);
+    let far = around(project_in(&scene, far), 1);
+    let open_far = around(project_in(&scene, open_far), 1);
     let with = |f: &dyn Fn(&mut og_render::DirectionalLight)| {
         let mut s = fs::shadow_box_scene();
         f(&mut s.lighting.light);
         render(&desc, &s)
     };
     let (boxed, stats) = render(&desc, &scene);
-    save("shadow-box", &boxed);
+    save("og-fork-fields", "shadow-box", &boxed);
     let (cascades, cstats) = with(&|l| l.shadow_box = 0.0);
-    save("shadow-box-cascades", &cascades);
+    save("og-fork-fields", "shadow-box-cascades", &cascades);
     let (ahead, _) = with(&|l| l.shadow_focus = 42.0);
-    save("shadow-box-focus-42", &ahead);
+    save("og-fork-fields", "shadow-box-focus-42", &ahead);
     let (dropped, _) = with(&|l| l.shadow_focus_drop = 22.0);
-    save("shadow-box-drop-22", &dropped);
+    save("og-fork-fields", "shadow-box-drop-22", &dropped);
     println!(
         "passes: box {}, cascades {}",
         stats.shadow_passes, cstats.shadow_passes
     );
     // Shadowed: darker than the open ground at about the same distance.
-    let dark = |img: &RgbaImage, at, open| luma(mean(img, at)) / luma(mean(img, open));
+    let dark = |img: &RgbaImage, at, open| luma_f32(mean(img, at)) / luma_f32(mean(img, open));
     let rows = [
         ("box", &boxed),
         ("cascades", &cascades),
@@ -251,11 +213,11 @@ fn the_hemisphere_light_lights_by_facing_and_only_diffusely() {
     let (lit, _) = render(&desc, &scene);
     let (dark, _) = render(&desc, &none);
     let (zero, _) = render(&desc, &off(0.0));
-    save("hemisphere-light", &lit);
-    save("hemisphere-light-off", &dark);
-    let floor = around(project(&scene, Vec3::new(-1.5, 0.0, 2.0)), 3);
-    let ceiling = around(project(&scene, Vec3::new(-1.5, fs::HEMI_CEILING, -8.0)), 3);
-    let metal = around(project(&scene, fs::HEMI_METAL), 2);
+    save("og-fork-fields", "hemisphere-light", &lit);
+    save("og-fork-fields", "hemisphere-light-off", &dark);
+    let floor = around(project_in(&scene, Vec3::new(-1.5, 0.0, 2.0)), 3);
+    let ceiling = around(project_in(&scene, Vec3::new(-1.5, fs::HEMI_CEILING, -8.0)), 3);
+    let metal = around(project_in(&scene, fs::HEMI_METAL), 2);
     let gain = |r| {
         let (a, b) = (mean(&lit, r), mean(&dark, r));
         [a[0] - b[0], a[1] - b[1], a[2] - b[2]]

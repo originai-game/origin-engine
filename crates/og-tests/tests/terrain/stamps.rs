@@ -19,7 +19,7 @@ fn a_mirrored_stamp_draws_its_outside() {
     mirrored.world.terrain_stamps[0].transform *= Mat4::from_scale(Vec3::new(-1.0, 1.0, 1.0));
     let (a, _) = render(&plain);
     let (b, _) = render(&mirrored);
-    keep("stamp-mirrored", &b);
+    save("og-terrain", "stamp-mirrored", &b);
     let moved = a
         .pixels
         .as_chunks::<4>()
@@ -51,9 +51,9 @@ fn an_overhangs_underside_takes_the_steepest_rule() {
     let face = Vec3::new(ts::CLIFF_ROCK, LIFT + 6.0, 0.0);
     scene.frame.camera = ts::camera_at(Vec3::new(ts::CLIFF_ROCK + 16.0, 2.0, 4.0), under);
     let (img, _) = render(&scene);
-    keep("stamp-overhang", &img);
-    let under = color_at(&img, project(&scene.frame.camera, under));
-    let face = color_at(&img, project(&scene.frame.camera, face));
+    save("og-terrain", "stamp-overhang", &img);
+    let under = color_at(&img, project(&scene.frame.camera, 1280, 720, under));
+    let face = color_at(&img, project(&scene.frame.camera, 1280, 720, face));
     // The grass is 0.16, 0.38, 0.08 (green over twice its red), the rock
     // 0.42, 0.4, 0.37 (grey).
     for (name, c) in [("underside", under), ("face", face)] {
@@ -82,20 +82,20 @@ fn a_stamps_blend_lays_the_ground_on_its_own_face() {
     grass.albedo = Some(stripes);
     grass.tile = 2.0;
     let (img, _) = render(&scene);
-    keep("stamp-blend-face", &img);
+    save("og-terrain", "stamp-blend-face", &img);
     // Up the face from 0.3 m to 1.8 m, three stripes' worth.
     let up: Vec<[f32; 3]> = (0..16)
         .map(|i| {
             let at = Vec3::new(ts::CLIFF_ROCK, 0.3 + 0.1 * i as f32, 0.0);
-            let (x, y) = project(&scene.frame.camera, at);
-            px(&img, x, y)
+            let (x, y) = project(&scene.frame.camera, 1280, 720, at);
+            px_f32(&img, x, y)
         })
         .collect();
-    let by_luma = |a: &&[f32; 3], b: &&[f32; 3]| luma(**a).total_cmp(&luma(**b));
+    let by_luma = |a: &&[f32; 3], b: &&[f32; 3]| luma_f32(**a).total_cmp(&luma_f32(**b));
     let dark = up.iter().min_by(by_luma).unwrap();
     let bright = up.iter().max_by(by_luma).unwrap();
     assert!(
-        luma(*bright) > 3.0 * luma(*dark).max(4.0),
+        luma_f32(*bright) > 3.0 * luma_f32(*dark).max(4.0),
         "no stripe crosses the face's foot: {up:?}"
     );
     // The layer there is still the ground's grass (green), not the

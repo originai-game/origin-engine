@@ -7,12 +7,9 @@
 //! sheet has fallen onto the ball while the host's meshes never moved.
 
 use og_render::{RenderScene, RenderTarget, Renderer, RgbaImage};
-use og_tests::{gfx, scenes, visual_scenes};
-use std::path::PathBuf;
-
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx")
-}
+use og_tests::gfx;
+use og_tests::harness::out_dir;
+use og_tests::{scenes, visual_scenes};
 
 /// The courtyard after its ticks, one frame each.
 fn frames(scene: &mut RenderScene, ticks: u32) -> RgbaImage {
@@ -53,7 +50,7 @@ fn a_visual_fluid_flows_on_the_gpu_from_its_spawn_box() {
     let mut still = visual_scenes::visual_fluid_scene(false);
     let at_rest = frames(&mut still, 1);
     if std::env::var_os("OG_VISUAL_FRAMES").is_some() {
-        let dir = out_dir();
+        let dir = out_dir("og-gfx");
         gfx::save_png(&dir.join("visual-fluid.png"), &flowed).unwrap();
         gfx::save_png(&dir.join("visual-fluid-rest.png"), &at_rest).unwrap();
     }
@@ -78,7 +75,7 @@ fn visual_bodies_move_on_the_gpu_while_the_host_meshes_stay_at_rest() {
     let mut still = visual_scenes::visual_bodies_scene(false);
     let at_rest = frames(&mut still, visual_scenes::TICKS);
     if std::env::var_os("OG_VISUAL_FRAMES").is_some() {
-        let dir = out_dir();
+        let dir = out_dir("og-gfx");
         gfx::save_png(&dir.join("visual-bodies.png"), &simulated).unwrap();
         gfx::save_png(&dir.join("visual-bodies-rest.png"), &at_rest).unwrap();
     }

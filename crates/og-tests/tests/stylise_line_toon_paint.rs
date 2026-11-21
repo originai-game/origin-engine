@@ -16,6 +16,7 @@ use og_render::{
     Antialias, Background, Camera, DirectionalLight, Exposure, MaterialStyle, OutlinePlace,
     RenderDesc, RenderScene, RenderTarget, Renderer, StandardMaterial, shapes,
 };
+use og_tests::harness::luma;
 use og_tests::scenes;
 
 const W: u32 = 320;
@@ -40,10 +41,6 @@ fn draw(renderer: &mut Renderer, scene: &RenderScene) -> Vec<u8> {
 fn px(img: &[u8], x: u32, y: u32) -> [u8; 3] {
     let i = ((y * W + x) * 4) as usize;
     [img[i], img[i + 1], img[i + 2]]
-}
-
-fn luma(c: [u8; 3]) -> f32 {
-    0.2126 * f32::from(c[0]) + 0.7152 * f32::from(c[1]) + 0.0722 * f32::from(c[2])
 }
 
 /// A sphere of `material` against black, the camera square on, the sun
@@ -84,7 +81,7 @@ fn disc(renderer: &mut Renderer) -> Vec<(u32, u32)> {
     let img = draw(renderer, &sphere_scene(white, false, 0.0));
     let on: Vec<(u32, u32)> = (0..H)
         .flat_map(|y| (0..W).map(move |x| (x, y)))
-        .filter(|&(x, y)| luma(px(&img, x, y)) > 128.0)
+        .filter(|&(x, y)| luma(&px(&img, x, y)) > 128.0)
         .collect();
     assert!(on.len() > 1000, "the sphere covers the frame's middle");
     let (cx, cy) = on.iter().fold((0.0, 0.0), |(a, b), &(x, y)| {
@@ -119,7 +116,7 @@ fn toon_ambient_is_flat() {
     scene.lighting.light.intensity = 0.0;
     scene.lighting.hemisphere = ([1.0; 3], [0.0; 3], 2.0);
     let img = draw(&mut renderer, &scene);
-    let l: Vec<f32> = disc.iter().map(|&(x, y)| luma(px(&img, x, y))).collect();
+    let l: Vec<f32> = disc.iter().map(|&(x, y)| luma(&px(&img, x, y))).collect();
     let (lo, hi) = l
         .iter()
         .fold((f32::MAX, f32::MIN), |(a, b), &v| (a.min(v), b.max(v)));
@@ -129,7 +126,7 @@ fn toon_ambient_is_flat() {
     // The PBR ambient (toon_ambient 1) keeps the gradient: the control.
     scene.look.stylise.material.toon_ambient = 1.0;
     let img = draw(&mut renderer, &scene);
-    let l: Vec<f32> = disc.iter().map(|&(x, y)| luma(px(&img, x, y))).collect();
+    let l: Vec<f32> = disc.iter().map(|&(x, y)| luma(&px(&img, x, y))).collect();
     let (lo, hi) = l
         .iter()
         .fold((f32::MAX, f32::MIN), |(a, b), &v| (a.min(v), b.max(v)));
@@ -186,7 +183,7 @@ fn red(c: [u8; 3]) -> bool {
 fn outlines_outside_ink_round_the_silhouette() {
     let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
     let plain = draw(&mut renderer, &box_scene(OutlinePlace::Inside, 0.0));
-    let on_box = |x, y| luma(px(&plain, x, y)) > 200.0;
+    let on_box = |x, y| luma(&px(&plain, x, y)) > 200.0;
     let count = |img: &[u8], inside: bool| {
         (0..H)
             .flat_map(|y| (0..W).map(move |x| (x, y)))

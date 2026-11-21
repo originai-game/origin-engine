@@ -2,8 +2,8 @@
 //! has the others): each matches its committed reference in og-tests'
 //! references/, plus behaviour read from the frames.
 
+use og_tests::harness::out_dir;
 use og_tests_cooked::gfx;
-use std::path::PathBuf;
 
 #[path = "gfx/effect_beam.rs"]
 mod effect_beam;
@@ -16,12 +16,8 @@ mod meshlets;
 #[path = "gfx/overlay_effects.rs"]
 mod overlay_effects;
 
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx")
-}
-
 fn check(scene: &str) -> gfx::GfxReport {
-    match gfx::check(scene, &out_dir()) {
+    match gfx::check(scene, &out_dir("og-gfx")) {
         Ok(report) => {
             println!("{report}");
             report

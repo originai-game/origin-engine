@@ -6,24 +6,12 @@
 use glam::{Mat4, Vec3};
 use og_core::reflect::Reflect;
 use og_render::{
-    Background, Camera, ColorSpace, FrameStats, RenderDesc, RenderError, RenderScene, RenderTarget,
-    Renderer, RgbaImage, StandardMaterial, TextureCompression, TextureFormat, shapes,
+    Background, Camera, ColorSpace, RenderDesc, RenderError, RenderScene, RenderTarget, Renderer,
+    StandardMaterial, TextureCompression, TextureFormat, shapes,
 };
+use og_tests::harness::{frame, out_dir, px};
 use og_tests::{blocks, compare, scenes};
 use std::path::PathBuf;
-
-fn frame(desc: &RenderDesc, scene: &RenderScene) -> (RgbaImage, FrameStats) {
-    let mut renderer = Renderer::new_blocking(desc).expect("renderer");
-    let stats = renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("render");
-    (renderer.read_offscreen().expect("capture"), stats)
-}
-
-fn pixel(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
-    let i = ((y * img.width + x) * 4) as usize;
-    [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
-}
 
 /// The reflected schema is the IDL's `render.StandardMaterialDesc`: every
 /// IDL field exists under the same three.js name with the same default.
@@ -264,7 +252,7 @@ fn compressed_formats_are_chosen_per_tier_and_draw_like_rgba8() {
         let mut distinct = std::collections::HashSet::new();
         for y in (300..700).step_by(7) {
             for x in (100..600).step_by(7) {
-                distinct.insert(pixel(&compressed, x, y));
+                distinct.insert(px(&compressed, x, y));
             }
         }
         println!(
@@ -307,7 +295,7 @@ fn compressed_formats_are_chosen_per_tier_and_draw_like_rgba8() {
             }
         }
     }
-    let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-render");
+    let out = out_dir("og-render");
     std::fs::create_dir_all(&out).expect("out dir");
     let text = format!(
         "| preference | color | normal | supported | RMSE vs RGBA8 | max diff |\n|---|---|---|---|---|---|\n{}\n",
@@ -377,8 +365,8 @@ fn linked_lists_order_equal_depths_by_key_not_by_draw() {
     // All four overlap at the centre, two by two further out.
     let c = forward.width / 2;
     assert_ne!(
-        pixel(&forward, c, c),
-        pixel(&forward, 2, 2),
+        px(&forward, c, c),
+        px(&forward, 2, 2),
         "the quads drawn"
     );
     let differ = forward

@@ -15,8 +15,8 @@ use og_render::{
     SkinnedInstance, Sprite, Tonemap, Trail, TrailStyle, shapes,
 };
 use og_tests::fx_scenes as fx;
+use og_tests::harness::{frame, luma, out_dir, project, px_clamped, save};
 use og_tests::{gfx, scenes};
-use std::path::PathBuf;
 
 #[path = "effects/models.rs"]
 mod models;
@@ -30,10 +30,6 @@ mod quality;
 mod sight;
 #[path = "effects/sprites.rs"]
 mod sprites;
-
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-effects")
-}
 
 fn small() -> RenderDesc {
     RenderDesc {
@@ -62,30 +58,13 @@ fn run(
     (renderer.read_offscreen().expect("capture"), stats, renderer)
 }
 
-fn frame(desc: &RenderDesc, scene: &RenderScene) -> (RgbaImage, FrameStats) {
-    let mut renderer = Renderer::new_blocking(desc).expect("renderer");
-    let stats = renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("render");
-    (renderer.read_offscreen().expect("capture"), stats)
-}
-
-fn px(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
-    let i = ((y.min(img.height - 1) * img.width + x.min(img.width - 1)) * 4) as usize;
-    [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
-}
-
-fn luma(p: [u8; 3]) -> f32 {
-    0.2126 * p[0] as f32 + 0.7152 * p[1] as f32 + 0.0722 * p[2] as f32
-}
-
 /// Mean luma over a rectangle (x0, y0, x1, y1), exclusive ends.
 fn region(img: &RgbaImage, r: (u32, u32, u32, u32)) -> f32 {
     let mut sum = 0.0;
     let mut n = 0.0;
     for y in r.1..r.3 {
         for x in r.0..r.2 {
-            sum += luma(px(img, x, y));
+            sum += luma(&px_clamped(img, x, y));
             n += 1.0;
         }
     }
@@ -99,34 +78,6 @@ fn differing(a: &RgbaImage, b: &RgbaImage, by: f32) -> usize {
         .0
         .iter()
         .zip(b.pixels.as_chunks::<4>().0.iter())
-        .filter(|(p, q)| (luma([p[0], p[1], p[2]]) - luma([q[0], q[1], q[2]])).abs() > by)
+        .filter(|(p, q)| (luma(&[p[0], p[1], p[2]]) - luma(&[q[0], q[1], q[2]])).abs() > by)
         .count()
-}
-
-/// The pixel a world point projects to.
-fn project(cam: &Camera, w: u32, h: u32, p: Vec3) -> (u32, u32) {
-    let view = glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
-    let proj = match cam.projection {
-        Projection::Perspective { fov_y_degrees } => glam::camera::rh::proj::directx::perspective(
-            fov_y_degrees.to_radians(),
-            w as f32 / h as f32,
-            cam.near,
-            cam.far,
-        ),
-        Projection::Orthographic { height } => {
-            let hh = height * 0.5;
-            let hw = hh * w as f32 / h as f32;
-            glam::camera::rh::proj::directx::orthographic(-hw, hw, -hh, hh, cam.near, cam.far)
-        }
-    };
-    let c = proj * view * p.extend(1.0);
-    let ndc = c.truncate() / c.w;
-    (
-        ((ndc.x * 0.5 + 0.5) * w as f32) as u32,
-        ((0.5 - ndc.y * 0.5) * h as f32) as u32,
-    )
-}
-
-fn save(name: &str, img: &RgbaImage) {
-    let _ = gfx::save_png(&out_dir().join(format!("{name}.png")), img);
 }

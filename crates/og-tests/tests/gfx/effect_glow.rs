@@ -51,7 +51,7 @@ fn draw(mesh: MeshData, material: EffectMaterial, scale: Vec3, color: f32) -> (V
         billboard: false,
     });
     let desc = scenes::base_desc();
-    let (img, _) = frame(&desc, &scene, 1);
+    let (img, _) = repeat(&desc, &scene, 1);
     let red = (0..img.width * img.height)
         .map(|i| {
             let c = img.pixels[(i * 4) as usize] as f32 / 255.0;

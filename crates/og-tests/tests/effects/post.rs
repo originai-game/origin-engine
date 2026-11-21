@@ -30,7 +30,7 @@ fn zoom_blur_keeps_a_thin_highlight_continuous() {
             "gap in the highlight at x={x}: {brightness}"
         );
     }
-    assert_eq!(px(&image, 190, 90), [0; 3], "outside the streak");
+    assert_eq!(px_clamped(&image, 190, 90), [0; 3], "outside the streak");
     let (again, _) = frame(&small(), &scene);
     assert_eq!(
         image.pixels, again.pixels,
@@ -92,7 +92,7 @@ fn lens_distortion_bends_by_its_formula() {
         let (mut sum, mut n) = (Vec2::ZERO, 0.0);
         for y in (near.y as i32 - 30).max(0)..(near.y as i32 + 30).min(h as i32) {
             for x in (near.x as i32 - 30).max(0)..(near.x as i32 + 30).min(w as i32) {
-                let k = (luma(px(img, x as u32, y as u32)) - 63.0).max(0.0) / 192.0;
+                let k = (luma(&px_clamped(img, x as u32, y as u32)) - 63.0).max(0.0) / 192.0;
                 if k > 0.05 {
                     sum += Vec2::new(x as f32 + 0.5, y as f32 + 0.5) * k;
                     n += k;
@@ -147,9 +147,9 @@ fn lens_distortion_bends_by_its_formula() {
         let lens = LensDistortion { amount, center };
         let (bent, stats) = frame(&small(), &scene(Some(lens)));
         assert_eq!(stats.graph_passes, off.graph_passes + 1, "{name}: one pass");
-        let corners = [(0, 0), (319, 0), (0, 179), (319, 179)].map(|(x, y)| px(&bent, x, y));
+        let corners = [(0, 0), (319, 0), (0, 179), (319, 179)].map(|(x, y)| px_clamped(&bent, x, y));
         assert!(
-            corners.iter().all(|&p| p == px(&plain, 0, 0)),
+            corners.iter().all(|&p| p == px_clamped(&plain, 0, 0)),
             "{name}: a corner is not the background: {corners:?}"
         );
         for &m in &marks {
@@ -168,7 +168,7 @@ fn sharpness(img: &RgbaImage, r: (u32, u32, u32, u32)) -> f32 {
     let mut n = 0.0;
     for y in r.1..r.3 {
         for x in r.0..r.2 - 1 {
-            sum += (luma(px(img, x, y)) - luma(px(img, x + 1, y))).powi(2);
+            sum += (luma(&px_clamped(img, x, y)) - luma(&px_clamped(img, x + 1, y))).powi(2);
             n += 1.0;
         }
     }
@@ -250,9 +250,9 @@ fn depth_of_field_blurs_outside_the_focus_band() {
     };
     let (flashed, unflashed) = (whole(true), whole(false));
     let seen = |x: u32, y: u32| {
-        let (a, b) = (px(&on_black, x, y), px(&on_white, x, y));
+        let (a, b) = (px_clamped(&on_black, x, y), px_clamped(&on_white, x, y));
         (0..3).all(|c| a[c].abs_diff(b[c]) <= 2)
-            && luma(px(&flashed, x, y)) - luma(px(&unflashed, x, y)) > 30.0
+            && luma(&px_clamped(&flashed, x, y)) - luma(&px_clamped(&unflashed, x, y)) > 30.0
     };
     // A summed-area table of the pixels not seen around the search area,
     // so a window's count is four reads.
@@ -286,7 +286,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
                 if !all_seen(lo, hi) {
                     continue;
                 }
-                let fall = luma(px(&sharp, first.0, first.1)) - luma(px(&sharp, last.0, last.1));
+                let fall = luma(&px_clamped(&sharp, first.0, first.1)) - luma(&px_clamped(&sharp, last.0, last.1));
                 if best.is_none_or(|(_, f)| fall > f) {
                     best = Some((run, fall));
                 }
@@ -299,7 +299,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
     let profile = |img: &RgbaImage| -> [f32; 6] {
         std::array::from_fn(|i| {
             let (x, y) = at(run, i as u32);
-            luma(px(img, x, y))
+            luma(&px_clamped(img, x, y))
         })
     };
     let reference = profile(&sharp);

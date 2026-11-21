@@ -10,21 +10,9 @@ use og_render::{
     Background, Camera, DirectionalLight, Environment, Exposure, RenderScene, RenderTarget,
     Renderer, RgbaImage, StandardMaterial, shapes,
 };
+use og_tests::harness::{base_image, px_f32};
 use og_tests::physical_scenes::stripes;
 use og_tests::scenes;
-
-fn frame(scene: &RenderScene) -> RgbaImage {
-    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
-    renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("render");
-    renderer.read_offscreen().expect("capture")
-}
-
-fn px(img: &RgbaImage, x: u32, y: u32) -> [f32; 3] {
-    let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
-    [p[0] as f32, p[1] as f32, p[2] as f32]
-}
 
 /// The pixels of a box (x0..x1, y0..y1).
 fn area(x0: u32, x1: u32, y0: u32, y1: u32) -> impl Iterator<Item = (u32, u32)> {
@@ -34,7 +22,7 @@ fn area(x0: u32, x1: u32, y0: u32, y1: u32) -> impl Iterator<Item = (u32, u32)> 
 fn mean(img: &RgbaImage, pixels: impl Iterator<Item = (u32, u32)>) -> [f32; 3] {
     let (mut sum, mut n) = ([0.0f32; 3], 0.0);
     for (x, y) in pixels {
-        let p = px(img, x, y);
+        let p = px_f32(img, x, y);
         for c in 0..3 {
             sum[c] += p[c];
         }
@@ -91,7 +79,7 @@ fn transmission_refracts_the_scene_behind() {
         let sphere = scene.add_mesh(shapes::sphere(64, 48));
         let h = scene.add_standard_material(m);
         scene.add_instance(sphere, h, Mat4::from_scale(Vec3::splat(2.0)));
-        frame(&scene)
+        base_image(&scene)
     };
     let make = |m| make_on(m, false);
     let glass = StandardMaterial {
@@ -140,7 +128,7 @@ fn transmission_refracts_the_scene_behind() {
     let thick = make_on(glass, true);
     let swapped = area(500, 780, 200, 520)
         .filter(|&(x, y)| {
-            let (a, b) = (px(&thin, x, y), px(&thick, x, y));
+            let (a, b) = (px_f32(&thin, x, y), px_f32(&thick, x, y));
             (a[0] - a[1]) * (b[0] - b[1]) < -400.0
         })
         .count();
@@ -344,7 +332,7 @@ fn a_transmission_map_masks_the_glass() {
             ..Default::default()
         });
         scene.add_instance(quad, h, Mat4::IDENTITY);
-        frame(&scene)
+        base_image(&scene)
     };
     let (plain, masked) = (make(false), make(true));
     // Across the quad's front: every column red without the map, white
@@ -396,7 +384,7 @@ fn ball_normals(mut scene: RenderScene, m: StandardMaterial, radius: f32) -> Vec
     let sphere = scene.add_mesh(shapes::sphere(96, 64));
     let h = scene.add_standard_material(m);
     scene.add_instance(sphere, h, Mat4::from_scale(Vec3::splat(2.0 * radius)));
-    let img = frame(&scene);
+    let img = base_image(&scene);
     let eye = scene.frame.camera.position;
     let og_render::Projection::Perspective { fov_y_degrees } = scene.frame.camera.projection else {
         panic!("a perspective camera");
@@ -419,7 +407,7 @@ fn ball_normals(mut scene: RenderScene, m: StandardMaterial, radius: f32) -> Vec
                 continue;
             }
             let n = (eye + ray * (-b - disc.sqrt())) / radius;
-            out.push((n, px(&img, x, y)));
+            out.push((n, px_f32(&img, x, y)));
         }
     }
     out
@@ -535,7 +523,7 @@ fn light_comes_through_a_thin_subsurface_sheet() {
         let quad = scene.add_mesh(shapes::plane_xy(1.0, 1.0));
         let h = scene.add_standard_material(m);
         scene.add_instance(quad, h, Mat4::IDENTITY);
-        let img = frame(&scene);
+        let img = base_image(&scene);
         mean(&img, area(600, 680, 320, 400))
     };
     let white = StandardMaterial {
@@ -786,7 +774,7 @@ fn light_behind_hair_comes_through_it() {
             ..blond
         });
         scene.add_instance(quad, h, Mat4::IDENTITY);
-        mean(&frame(&scene), area(600, 680, 320, 400))
+        mean(&base_image(&scene), area(600, 680, 320, 400))
     };
     let (none, lock, mane, closed) = (
         sheet(0.0, 2),
@@ -831,14 +819,14 @@ fn the_iris_lies_under_the_cornea() {
             ..Default::default()
         });
         scene.add_instance(quad, h, turn);
-        frame(&scene)
+        base_image(&scene)
     };
     // The centre of the pupil (the pixels darker than the iris) and how many it is.
     let pupil = |img: &RgbaImage| {
         let (mut x, mut y, mut n) = (0.0f32, 0.0f32, 0.0f32);
         // Within the iris, which is blue.
         for (px_x, px_y) in area(604, 676, 324, 396) {
-            let c = px(img, px_x, px_y);
+            let c = px_f32(img, px_x, px_y);
             if c[2] < 20.0 {
                 x += px_x as f32;
                 y += px_y as f32;
@@ -881,12 +869,12 @@ fn the_iris_lies_under_the_cornea() {
     // The white of the eye is the surface itself: no pixel of it moves
     // (but the iris's rim, filtered over both).
     let (a, b) = (shot(false, about_y), shot(true, about_y));
-    let white = |img: &RgbaImage, x: u32, y: u32| px(img, x, y)[0] > 150.0;
+    let white = |img: &RgbaImage, x: u32, y: u32| px_f32(img, x, y)[0] > 150.0;
     let (mut moved, mut whites) = (0, 0);
     for (x, y) in area(440, 840, 160, 560) {
         if white(&a, x, y) {
             whites += 1;
-            if px(&a, x, y) != px(&b, x, y) {
+            if px_f32(&a, x, y) != px_f32(&b, x, y) {
                 moved += 1;
             }
         }
@@ -897,7 +885,7 @@ fn the_iris_lies_under_the_cornea() {
     let ends = |img: &RgbaImage| {
         let blue: Vec<u32> = (440..840)
             .filter(|&x| {
-                let c = px(img, x, 360);
+                let c = px_f32(img, x, 360);
                 c[0] < 100.0 && c[2] > 40.0
             })
             .collect();

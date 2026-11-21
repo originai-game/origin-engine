@@ -1,9 +1,5 @@
 use super::*;
-
-fn overlay_px(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
-    let i = ((y * img.width + x) * 4) as usize;
-    [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
-}
+use og_tests::harness::px;
 
 fn srgb8(linear: f32) -> f32 {
     if linear <= 0.0031308 {
@@ -49,30 +45,30 @@ fn the_overlay_is_drawn_after_post_untonemapped_and_clipped() {
     let track = [0.1, 0.1, 0.1];
     for img in &frames {
         assert!(
-            near(overlay_px(img, 100, 102), fill, 1.5),
+            near(px(img, 100, 102), fill, 1.5),
             "fill {:?}",
-            overlay_px(img, 100, 102)
+            px(img, 100, 102)
         );
         assert!(
-            near(overlay_px(img, 239, 102), fill, 1.5),
+            near(px(img, 239, 102), fill, 1.5),
             "fill edge {:?}",
-            overlay_px(img, 239, 102)
+            px(img, 239, 102)
         );
         assert!(
-            near(overlay_px(img, 240, 102), track, 1.5),
+            near(px(img, 240, 102), track, 1.5),
             "track edge {:?}",
-            overlay_px(img, 240, 102)
+            px(img, 240, 102)
         );
     }
     // The crosshair over the scene: white, whatever the scene's depth.
-    assert!(near(overlay_px(img, 639, 352), [1.0, 1.0, 1.0], 12.0));
+    assert!(near(px(img, 639, 352), [1.0, 1.0, 1.0], 12.0));
     // The list: the first row is cut at the clip's top (y 300), not dropped;
     // above the clip nothing of it shows.
     let row = [0.2, 0.22, 0.26];
     assert!(
-        near(overlay_px(img, 1100, 302), row, 1.5),
+        near(px(img, 1100, 302), row, 1.5),
         "the cut row at the clip's top {:?}",
-        overlay_px(img, 1100, 302)
+        px(img, 1100, 302)
     );
     let without = {
         let g = built("overlay");
@@ -92,8 +88,8 @@ fn the_overlay_is_drawn_after_post_untonemapped_and_clipped() {
     for x in (990..1230).step_by(7) {
         for y in [282u32, 290, 298, 452, 460, 470] {
             assert_eq!(
-                overlay_px(img, x, y),
-                overlay_px(&without, x, y),
+                px(img, x, y),
+                px(&without, x, y),
                 "a clipped row shows at ({x}, {y}), outside its clip"
             );
         }
@@ -127,8 +123,8 @@ fn skeleton_2d_gpu_weighting_matches_cpu_triangles() {
                 }
                 scene
             };
-            let (cpu, cpu_stats) = frame(&desc, &make(false), 1);
-            let (gpu, gpu_stats) = frame(&desc, &make(true), 1);
+            let (cpu, cpu_stats) = repeat(&desc, &make(false), 1);
+            let (gpu, gpu_stats) = repeat(&desc, &make(true), 1);
             assert_eq!(cpu_stats.sprite_draws, gpu_stats.sprite_draws);
             // LBS changes arithmetic order but not the image: one channel
             // quantum accommodates fragment rounding, not changed coverage.

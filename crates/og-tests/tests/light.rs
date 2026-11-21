@@ -7,6 +7,7 @@
 //! ceiling, which the unbaked box leaves dark.
 
 use og_tests::gfx;
+use og_tests::harness::project;
 
 fn mean(img: &og_render::RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> [f32; 3] {
     let mut s = [0.0f32; 3];
@@ -128,26 +129,6 @@ fn a_renderer_restore_keeps_the_baked_frame() {
     );
 }
 
-/// Where a world point lands on a 1280x720 frame of `camera`.
-fn project(camera: &og_render::Camera, p: glam::Vec3) -> (u32, u32) {
-    let view = glam::camera::rh::view::look_at_mat4(camera.position, camera.target, camera.up);
-    let og_render::Projection::Perspective { fov_y_degrees } = camera.projection else {
-        unreachable!("perspective cameras only")
-    };
-    let proj = glam::camera::rh::proj::directx::perspective(
-        fov_y_degrees.to_radians(),
-        1280.0 / 720.0,
-        camera.near,
-        camera.far,
-    );
-    let c = proj * view * p.extend(1.0);
-    let ndc = c.truncate() / c.w;
-    (
-        ((ndc.x * 0.5 + 0.5) * 1280.0) as u32,
-        ((0.5 - ndc.y * 0.5) * 720.0) as u32,
-    )
-}
-
 /// A full custom lit shader lights a rect light as the standard material
 /// does: as an area (the floor under the panel within a few percent of
 /// the standard floor's) with its soft shadow (the post's foot dark).
@@ -173,7 +154,7 @@ fn a_full_custom_shader_lights_rect_lights_with_their_shadow() {
             .expect("save");
         }
         points.map(|p| {
-            let (x, y) = project(&built.scene.frame.camera, p);
+            let (x, y) = project(&built.scene.frame.camera, 1280, 720, p);
             let c = mean(&img, x - 4, y - 3, x + 4, y + 3);
             0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
         })
@@ -249,7 +230,7 @@ fn fog_in_a_region_lies_where_its_volume_puts_it() {
         renderer.read_offscreen().expect("capture")
     };
     let luma = |img: &og_render::RgbaImage, p: Vec3| {
-        let (x, y) = project(&camera, p);
+        let (x, y) = project(&camera, 1280, 720, p);
         let c = mean(img, x - 6, y - 6, x + 6, y + 6);
         0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
     };
@@ -361,7 +342,7 @@ fn a_grounded_ground_catches_what_stands_on_it() {
     };
     // The mean light of the ground about a world point, `w` by `h` pixels.
     let ground = |img: &og_render::RgbaImage, p: Vec3, w: u32, h: u32| {
-        let (x, y) = project(&camera, p);
+        let (x, y) = project(&camera, 1280, 720, p);
         let c = mean(img, x - w / 2, y - h / 2, x + w / 2, y + h / 2);
         0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
     };

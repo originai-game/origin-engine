@@ -23,7 +23,7 @@ fn a_cards_trunk_is_in_its_own_crowns_shadow() {
     let mut r = Renderer::new_blocking(&og_tests::scenes::base_desc()).expect("renderer");
     r.render(&scene, &RenderTarget::Offscreen).expect("render");
     let img = r.read_offscreen().expect("capture");
-    let dir = super::out_dir();
+    let dir = super::out_dir("og-gfx");
     std::fs::create_dir_all(&dir).expect("out dir");
     image::save_buffer(
         dir.join("impostor-self-shadow.png"),
@@ -119,7 +119,7 @@ fn a_card_seen_from_below_is_whole() {
             scene.frame.camera.position = eye;
             r.render(&scene, &RenderTarget::Offscreen).expect("render");
             let img = r.read_offscreen().expect("capture");
-            let dir = super::out_dir();
+            let dir = super::out_dir("og-gfx");
             std::fs::create_dir_all(&dir).expect("out dir");
             image::save_buffer(
                 dir.join(format!("impostor-below-{name}-{below}.png")),
@@ -415,7 +415,7 @@ fn a_trimmed_card_draws_what_its_whole_square_does() {
     // step: the sky's and the frames' noise turn per frame rendered.
     let mut rs: [Renderer; 3] =
         std::array::from_fn(|_| Renderer::new_blocking(&desc).expect("renderer"));
-    let dir = super::out_dir();
+    let dir = super::out_dir("og-gfx");
     std::fs::create_dir_all(&dir).expect("out dir");
     for name in ["oak", "pine", "bush"] {
         let mut scene = og_tests_cooked::plant_scenes::card_scene(name).expect("the cooked card");

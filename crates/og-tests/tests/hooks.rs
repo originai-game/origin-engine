@@ -7,20 +7,12 @@
 
 use glam::{Mat4, Vec3};
 use og_render::{
-    AmbientOcclusion, AoMethod, MaterialHandle, MaterialShader, ParamKind, RenderScene,
-    RenderTarget, Renderer, RgbaImage, ShaderParam, SkinnedInstance, StandardMaterial, Wind,
-    shapes,
+    AmbientOcclusion, AoMethod, MaterialHandle, MaterialShader, ParamKind, RenderScene, RgbaImage,
+    ShaderParam, SkinnedInstance, StandardMaterial, Wind, shapes,
 };
 use og_tests::compare::{Tolerance, compare};
-use og_tests::{fx_scenes, p2_scenes, scenes};
-
-fn frame(scene: &RenderScene) -> RgbaImage {
-    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
-    renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("render");
-    renderer.read_offscreen().expect("capture")
-}
+use og_tests::harness::base_image;
+use og_tests::{fx_scenes, p2_scenes};
 
 /// Pixels with a channel more than 8 apart, and the RMSE.
 fn diff(a: &RgbaImage, b: &RgbaImage) -> (usize, f64) {
@@ -89,7 +81,7 @@ fn an_offset_mesh_draws_shadows_and_occludes_where_it_moved() {
         };
         let m = rippled(&mut scene, offset);
         scene.add_instance(cube, m, Mat4::from_translation(at));
-        frame(&scene)
+        base_image(&scene)
     };
     let (shader, transform) = (render(true), render(false));
     let (off, rmse) = diff(&shader, &transform);
@@ -121,7 +113,7 @@ fn an_offset_skinned_mesh_draws_shadows_and_occludes_where_it_moved() {
                 i,
             ));
         }
-        frame(&scene)
+        base_image(&scene)
     };
     let (shader, transform) = (render(true), render(false));
     let (off, rmse) = diff(&shader, &transform);
@@ -182,7 +174,7 @@ fn a_mesh_moved_by_the_wind_in_its_hooks_draws_shadows_and_occludes_where_it_mov
             at += direction * (strength * 1.5);
         }
         scene.add_instance(cube, m, Mat4::from_translation(at));
-        frame(&scene)
+        base_image(&scene)
     };
     let (wind, transform) = (render(true), render(false));
     let (off, rmse) = diff(&wind, &transform);
@@ -238,7 +230,7 @@ fn a_full_lit_shader_takes_decals_and_weather_as_the_standard_material() {
                 if custom {
                     full_lit(&mut scene);
                 }
-                frame(&scene)
+                base_image(&scene)
             };
             diff(&draw(true), &draw(false)).0
         };

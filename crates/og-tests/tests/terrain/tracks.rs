@@ -131,7 +131,7 @@ fn lying_snow_keeps_a_track_that_fills_in_again() {
     scene.atmosphere.grass_pushers.clear();
     scene.atmosphere.surface_weather = snow();
     let clean = draw(&mut scene, 20);
-    keep("track-clean", &clean);
+    save("og-terrain", "track-clean", &clean);
     let c = read(&clean);
     scene.atmosphere.grass_pushers = pusher(1.0);
     let mut above = draw(&mut scene, 21);
@@ -151,7 +151,7 @@ fn lying_snow_keeps_a_track_that_fills_in_again() {
     for tick in 26..=28 {
         pressed = draw(&mut scene, tick);
     }
-    keep("track-pressed", &pressed);
+    save("og-terrain", "track-pressed", &pressed);
     let p = read(&pressed);
     println!("pressed {p:?}");
     assert!(c[0] > 60.0, "the snow is drawn: {c:?}");
@@ -184,7 +184,7 @@ fn lying_snow_keeps_a_track_that_fills_in_again() {
             half = Some(read(&later));
         }
     }
-    keep("track-filled", &later);
+    save("og-terrain", "track-filled", &later);
     let (h, f) = (half.expect("drawn"), read(&later));
     println!("half filled {h:?}, filled {f:?}");
     let left = (c[0] - h[0]) / (c[0] - p[0]);
@@ -211,7 +211,7 @@ fn lying_snow_keeps_a_track_that_fills_in_again() {
     for tick in 302..=304 {
         trodden = draw(&mut scene, tick);
     }
-    keep("track-sand", &trodden);
+    save("og-terrain", "track-sand", &trodden);
     let t = read(&trodden);
     println!("sand {sand:?}, trodden {t:?}");
     assert!(

@@ -1,7 +1,8 @@
 use super::*;
+use og_render::FrameStats;
+use og_tests::harness::px;
 
 /// A sprite drawn from an array shows the layer it names, sampled with the
-/// array's filter; a layer past the array's count, or an array that was
 /// removed, is refused.
 #[test]
 #[ignore = "requires GPU"]
@@ -41,7 +42,7 @@ fn a_sprite_draws_the_layer_of_its_texture_array() {
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let desc = scenes::base_desc();
-    let (img, stats) = frame(&desc, &scene, 1);
+    let (img, stats) = repeat(&desc, &scene, 1);
     let at = |x: u32| {
         let i = ((img.height / 2 * img.width + x) * 4) as usize;
         [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
@@ -99,11 +100,6 @@ fn rgb_array(scene: &mut RenderScene) -> og_render::TextureArrayHandle {
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     array
-}
-
-fn pixel(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
-    let i = ((y * img.width + x) * 4) as usize;
-    [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
 }
 
 /// A sprite-mode emitter with a texture array draws each particle from a
@@ -197,7 +193,7 @@ fn array_particles_take_their_layers_by_age_or_at_random() {
     // One big particle at the centre: a round one's corner is dark.
     let (square, _) = run(SheetMode::OverLife { cycles: 1.0 }, false, 9.0, false).expect("frame");
     let (round, _) = run(SheetMode::OverLife { cycles: 1.0 }, true, 9.0, false).expect("frame");
-    let corner = |img: &RgbaImage| pixel(img, 640 - 300, 360 - 300);
+    let corner = |img: &RgbaImage| px(img, 640 - 300, 360 - 300);
     assert_eq!(corner(&square), [0, 255, 0], "a square particle's corner");
     assert!(
         corner(&round)[1] < 40,

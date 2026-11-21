@@ -126,7 +126,7 @@ fn fog_of_war_covers_the_ground_a_team_does_not_see() {
     let clear = draw(&scene);
     scene.look.fog_of_war = Some(fog(SightPlane::Ground));
     let fogged = draw(&scene);
-    let _ = gfx::save_png(&out_dir().join("fog-of-war.png"), &fogged);
+    let _ = gfx::save_png(&out_dir("og-effects").join("fog-of-war.png"), &fogged);
     let scale = 128.0 / (40.0 * 30f32.to_radians().tan());
     check(&clear, &fogged, scale, 1.0);
 
@@ -165,6 +165,6 @@ fn fog_of_war_covers_a_2d_worlds_plane() {
     let clear = draw(&scene);
     scene.look.fog_of_war = Some(fog(SightPlane::Flat));
     let fogged = draw(&scene);
-    let _ = gfx::save_png(&out_dir().join("fog-of-war-2d.png"), &fogged);
+    let _ = gfx::save_png(&out_dir("og-effects").join("fog-of-war-2d.png"), &fogged);
     check(&clear, &fogged, 256.0 / 48.0, -1.0);
 }

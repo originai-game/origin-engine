@@ -69,7 +69,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     let first = r.render(&scene, &RenderTarget::Offscreen).expect("render");
     let img = r.read_offscreen().expect("capture");
-    keep("scatter-fade", &img);
+    save("og-terrain", "scatter-fade", &img);
     assert!(first.scatter_built >= 4, "{first:?}");
     let again = r.render(&scene, &RenderTarget::Offscreen).expect("render");
     assert_eq!(again.scatter_built, 0, "a second frame builds nothing");
@@ -85,7 +85,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
         if x < 0 || y < 0 || x >= 1280 || y >= 720 {
             return false;
         }
-        let p = px(&img, x as u32, y as u32);
+        let p = px_f32(&img, x as u32, y as u32);
         p[0] > 150.0 && p[1] < 60.0
     };
     let placed = scene.world.terrains[0].scatter(
@@ -182,7 +182,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
     assert!(solid > 5 && thinned > 3, "{solid} solid, {thinned} thinned");
     // Nothing past the distance: no red in the corners' ring beyond 92 m.
     for (x, y) in [(0u32, 0u32), (1279, 0), (0, 719), (1279, 719)] {
-        let p = px(&img, x, y);
+        let p = px_f32(&img, x, y);
         assert!(p[0] < 100.0, "red at the corner {x},{y}");
     }
     for (_, m) in &placed {
@@ -376,7 +376,7 @@ fn wind_sways_scattered_copies_downwind() {
                 let (mut sum, mut w) = (Vec2::ZERO, 0.0);
                 for y in (near.y as i32 - 36).max(0)..(near.y as i32 + 36).min(720) {
                     for x in (near.x as i32 - 36).max(0)..(near.x as i32 + 36).min(1280) {
-                        let p = px(img, x as u32, y as u32);
+                        let p = px_f32(img, x as u32, y as u32);
                         let at = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
                         if p[0] > 100.0 && p[1] < 60.0 && at.distance(near) < 36.0 {
                             sum += at * p[0];

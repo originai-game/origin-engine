@@ -26,7 +26,7 @@ fn ball_pixel(c: [f32; 3]) -> bool {
 #[ignore = "requires GPU"]
 fn a_leaf_card_lets_the_sun_through_from_behind() {
     let (leaf, _) = render(&is::impostor_backlit_scene(Some(0.8)));
-    keep("impostor-backlit", &leaf);
+    save("og-terrain", "impostor-backlit", &leaf);
     let (solid, _) = render(&is::impostor_backlit_scene(Some(0.0)));
     let (plain, _) = render(&is::impostor_backlit_scene(None));
     let scene = is::impostor_backlit_scene(None);
@@ -47,10 +47,10 @@ fn a_leaf_card_lets_the_sun_through_from_behind() {
             .map(|&(dx, dy)| {
                 let c = color_at(
                     img,
-                    project(&scene.frame.camera, is::BACKLIT_AT + Vec3::new(dx, dy, 0.8)),
+                    project(&scene.frame.camera, 1280, 720, is::BACKLIT_AT + Vec3::new(dx, dy, 0.8)),
                 );
                 assert!(ball_pixel(c), "the card covers ({dx}, {dy}): {c:?}");
-                luma(c)
+                luma_f32(c)
             })
             .sum::<f32>()
             / points.len() as f32

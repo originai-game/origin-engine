@@ -20,13 +20,13 @@ use og_render::{
     RenderDesc, RenderError, RenderScene, RenderTarget, Renderer, RgbaImage, TextureCompression,
     TextureFormat, TextureSource,
 };
+use og_tests::harness::out_dir;
 use og_tests::scenes;
-use std::path::PathBuf;
 
 /// A 64×64 colour texture cooked (ETC1S, a Basis encoding) into a scratch
 /// project.
 fn cooked() -> CookedTexture {
-    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-device-formats");
+    let root = out_dir("og-device-formats");
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("assets/tex")).expect("assets dir");
     let image = image::RgbaImage::from_fn(64, 64, |x, y| {

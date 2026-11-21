@@ -161,8 +161,8 @@ fn the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing() {
     // x1, y1) where the refinement shows (its mean luma and the pixels
     // moved there).
     let report = |what: &str, a: &RgbaImage, b: &RgbaImage, rect: (u32, u32, u32, u32)| {
-        save(&format!("quality {what} a"), a);
-        save(&format!("quality {what} b"), b);
+        save("og-effects", &format!("quality {what} a"), a);
+        save("og-effects", &format!("quality {what} b"), b);
         let m = moved(a, b, 2);
         let crop = |img: &RgbaImage| RgbaImage {
             width: rect.2 - rect.0,

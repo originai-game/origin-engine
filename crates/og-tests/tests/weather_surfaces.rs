@@ -6,18 +6,10 @@
 
 use glam::{Mat4, Vec3};
 use og_render::{
-    Camera, ColorSpace, DirectionalLight, Exposure, Mips, RenderScene, RenderTarget, Renderer,
-    RgbaImage, StandardMaterial, SurfaceWeather, TextureData, shapes,
+    Camera, ColorSpace, DirectionalLight, Exposure, Mips, RenderScene, RgbaImage,
+    StandardMaterial, SurfaceWeather, TextureData, shapes,
 };
-use og_tests::scenes;
-
-fn frame(scene: &RenderScene) -> RgbaImage {
-    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
-    renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("render");
-    renderer.read_offscreen().expect("capture")
-}
+use og_tests::harness::base_image;
 
 /// The mean luminance of each 16 px block of a box (x0..x1, y0..y1).
 fn blocks(img: &RgbaImage, x0: u32, x1: u32, y0: u32, y1: u32) -> Vec<f32> {
@@ -80,7 +72,7 @@ fn plain(m: StandardMaterial, wall: bool, weather: Option<SurfaceWeather>) -> Rg
         };
     }
     scene.atmosphere.surface_weather = weather.map(|w| SurfaceWeather { shelter: 0.0, ..w });
-    frame(&scene)
+    base_image(&scene)
 }
 
 fn concrete() -> StandardMaterial {
@@ -217,5 +209,5 @@ fn plain_with(
         ..Default::default()
     };
     scene.atmosphere.surface_weather = weather.map(|w| SurfaceWeather { shelter: 0.0, ..w });
-    frame(&scene)
+    base_image(&scene)
 }

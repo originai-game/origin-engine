@@ -133,8 +133,8 @@ fn a_source_radius_keeps_nearby_lit_smoke_from_burning_white() {
         let capture = |radius| run(&desc, &mut scene(radius), 2, |s, _| fx::tick_all(s, 1)).0;
         let before = capture(0.0);
         let after = capture(0.75);
-        save(&format!("source-radius-{spot}-point"), &before);
-        save(&format!("source-radius-{spot}-sphere"), &after);
+        save("og-effects", &format!("source-radius-{spot}-point"), &before);
+        save("og-effects", &format!("source-radius-{spot}-sphere"), &after);
         let centre = |image: &RgbaImage| region(image, (312, 172, 328, 188));
         println!(
             "spot={spot}: centre {} -> {}",
@@ -185,7 +185,7 @@ fn particles_are_deterministic(path: ParticleSimulation) {
     let (a, sa) = capture(&mut fx::particles_scene(), 601, stepped);
     let (b, _) = capture(&mut fx::particles_scene(), 601, stepped);
     let (c, _) = capture(&mut fx::particles_scene(), 1, |s, _| fx::tick_all(s, 600));
-    save(&format!("particles-600-{path:?}"), &a);
+    save("og-effects", &format!("particles-600-{path:?}"), &a);
     assert!(sa.particle_systems >= 6, "{} systems", sa.particle_systems);
     let lit = a
         .pixels
@@ -333,7 +333,7 @@ fn a_systems_hue_turns_the_colour_it_draws() {
             .zip(&turned.pixels)
             .filter(|(a, b)| a.abs_diff(**b) > 8)
             .count();
-        save(&format!("hue-turned-{path:?}"), &turned);
+        save("og-effects", &format!("hue-turned-{path:?}"), &turned);
         assert!(moved > 500, "{path:?}: the hue moved only {moved} channels");
         assert!(
             worst <= 1,
@@ -480,7 +480,7 @@ fn trails_remember_the_path_for_their_lifetime() {
         r.render(scene, &RenderTarget::Offscreen).expect("render");
         let img = r.read_offscreen().expect("capture");
         let lit: Vec<u32> = (0..img.width * img.height)
-            .filter(|&i| luma(px(&img, i % img.width, i / img.width)) > 30.0)
+            .filter(|&i| luma(&px_clamped(&img, i % img.width, i / img.width)) > 30.0)
             .map(|i| i % img.width)
             .collect();
         let span = lit
@@ -759,7 +759,7 @@ fn an_effect_material_given_another_texture_draws_it() {
             }
             fx::tick_all(s, f as u64);
         });
-        px(&img, img.width / 2, img.height / 2)
+        px_clamped(&img, img.width / 2, img.height / 2)
     };
     let (kept, swapped) = (colour(false), colour(true));
     assert!(
@@ -928,7 +928,7 @@ fn lit_box(desc: &RenderDesc, mut scene: RenderScene) -> Option<(u32, u32)> {
     let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0, 0);
     for y in 0..img.height {
         for x in 0..img.width {
-            if luma(px(&img, x, y)) > 60.0 {
+            if luma(&px_clamped(&img, x, y)) > 60.0 {
                 (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
             }
         }
@@ -1201,12 +1201,12 @@ fn a_particles_trail_follows_its_path_and_narrows_to_its_tail() {
             draw(Some(only)),
             draw(Some(og_render::ParticleTrail { head: true, ..only })),
         );
-        save(&format!("trail-{path:?}"), &streak);
+        save("og-effects", &format!("trail-{path:?}"), &streak);
         let lit = |img: &RgbaImage| {
             let mut cols = vec![0u32; img.width as usize];
             for y in 0..img.height {
                 for x in 0..img.width {
-                    if luma(px(img, x, y)) > 40.0 {
+                    if luma(&px_clamped(img, x, y)) > 40.0 {
                         cols[x as usize] += 1;
                     }
                 }
@@ -1306,8 +1306,8 @@ fn subtractive_and_multiply_particles_change_what_is_behind() {
             });
             let (w, h) = (img.width, img.height);
             (
-                px(&img, 2, 2).map(f32::from),
-                px(&img, w / 2, h / 2).map(f32::from),
+                px_clamped(&img, 2, 2).map(f32::from),
+                px_clamped(&img, w / 2, h / 2).map(f32::from),
             )
         };
         let (bg, sub) = centre(og_render::ParticleBlend::Subtractive);
@@ -1538,7 +1538,7 @@ fn a_blended_sheet_fades_into_the_next_frame_and_holds_the_last() {
         let (img, _, _) = run(&desc, &mut scene, ticks + 1, |s, f| {
             fx::tick_all(s, f as u64)
         });
-        let [r, _, b] = px(&img, img.width / 2, img.height / 2).map(f32::from);
+        let [r, _, b] = px_clamped(&img, img.width / 2, img.height / 2).map(f32::from);
         (r, b)
     };
     for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {

@@ -11,10 +11,6 @@
 
 use super::*;
 
-fn luma(c: [f32; 3]) -> f32 {
-    0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
-}
-
 /// G3's meadow: red blades 0.6 m tall over a dark flat terrain to 2.5 m
 /// from a camera at ankle height (0.12 m) looking along +x, against a
 /// black sky, so every red pixel above the frame's middle row is a blade
@@ -69,7 +65,7 @@ fn blade_pixels_above(img: &RgbaImage) -> usize {
     (0..img.height / 2 - 2)
         .flat_map(|y| (0..img.width).map(move |x| (x, y)))
         .filter(|&(x, y)| {
-            let p = px(img, x, y);
+            let p = px_f32(img, x, y);
             p[0] > 30.0 && p[0] > 2.5 * p[1]
         })
         .count()
@@ -103,7 +99,7 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
     for tick in 2..=10 {
         pressed = draw(&mut scene, tick);
     }
-    keep("grass-trample", &pressed);
+    save("og-terrain", "grass-trample", &pressed);
     let under = blade_pixels_above(&pressed);
     scene.atmosphere.grass_pushers.clear();
     // 1.5 s later (the recovery and half a second), drawn every 4 ticks.
@@ -111,7 +107,7 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
     for tick in (14..=100).step_by(4) {
         after = draw(&mut scene, tick);
     }
-    keep("grass-trample-recovered", &after);
+    save("og-terrain", "grass-trample-recovered", &after);
     let back = blade_pixels_above(&after);
     println!(
         "blade pixels above the ankle: untouched {untouched}, pressed {under}, recovered {back}"
@@ -216,7 +212,7 @@ fn a_low_sun_darkens_the_meadow_towards_its_roots() {
         ..Default::default()
     };
     let (img, _) = render(&scene);
-    keep("grass-low-sun", &img);
+    save("og-terrain", "grass-low-sun", &img);
     // Rows 0.8 m tall over the frame's height, centred 0.25 m up: the
     // band 0.02..0.1 m over the ground and the band 0.38..0.46 m.
     let row = |y: f32| ((0.25 + 0.4 - y) / 0.8 * img.height as f32) as u32;
@@ -224,9 +220,9 @@ fn a_low_sun_darkens_the_meadow_towards_its_roots() {
         let (mut sum, mut n) = (0.0, 0);
         for y in row(hi)..row(lo) {
             for x in 0..img.width {
-                let c = px(&img, x, y);
+                let c = px_f32(&img, x, y);
                 if c[1] > 2.0 {
-                    sum += luma(c);
+                    sum += luma_f32(c);
                     n += 1;
                 }
             }
@@ -288,12 +284,12 @@ fn a_decal_marks_the_grass_that_stands_in_it() {
         ..Decal::on_surface(Vec3::Y * 0.35, Vec3::Y, Vec2::splat(2.0), 0.3, 0.0)
     });
     let marked = capture(&scene);
-    keep("grass-decal", &marked);
+    save("og-terrain", "grass-decal", &marked);
     // The square is the frame's middle quarter (2 m of the 8 m height).
     let (w, h) = (bare.width, bare.height);
     let side = h / 4;
     let inside = |x: u32, y: u32| x.abs_diff(w / 2) < side / 2 && y.abs_diff(h / 2) < side / 2;
-    let redder = |x: u32, y: u32| px(&marked, x, y)[0] > px(&bare, x, y)[0] + 30.0;
+    let redder = |x: u32, y: u32| px_f32(&marked, x, y)[0] > px_f32(&bare, x, y)[0] + 30.0;
     let all = || (0..h).flat_map(|y| (0..w).map(move |x| (x, y)));
     let within = all().filter(|&(x, y)| inside(x, y) && redder(x, y)).count();
     let beyond = all()

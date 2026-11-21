@@ -6,26 +6,10 @@
 //! cube's shadows in a third of the passes, PCSS widens the sun's penumbra
 //! with the caster's height, and FXAA and TAA's sharpening work on edges.
 
-use og_render::{
-    FrameStats, PointShadows, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, Tonemap,
-};
+use og_render::{PointShadows, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, Tonemap};
 use og_tests::compare::{Tolerance, compare};
+use og_tests::harness::{luma, repeat};
 use og_tests::{scenes, shadow_scenes};
-
-fn frame(desc: &RenderDesc, scene: &RenderScene, frames: u32) -> (RgbaImage, FrameStats) {
-    let mut renderer = Renderer::new_blocking(desc).expect("renderer");
-    let mut stats = FrameStats::default();
-    for _ in 0..frames.max(1) {
-        stats = renderer
-            .render(scene, &RenderTarget::Offscreen)
-            .expect("render");
-    }
-    (renderer.read_offscreen().expect("capture"), stats)
-}
-
-fn luma(p: &[u8]) -> f32 {
-    0.2126 * p[0] as f32 + 0.7152 * p[1] as f32 + 0.0722 * p[2] as f32
-}
 
 /// The contact scenes' camera (`shadow_scenes::local_contact_camera`)
 /// for a frame of `img`'s size.
@@ -279,7 +263,7 @@ fn contact_shadows_never_darken_what_lies_behind_a_silhouette() {
                 if !on {
                     s.lighting.lights[0].intensity = 0.0;
                 }
-                frame(&desc, &s, 1).0
+                repeat(&desc, &s, 1).0
             };
             (take(true, true), take(false, true), take(false, false))
         };
@@ -384,8 +368,8 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
             );
         }
         let cached = renderer.read_offscreen().expect("capture");
-        let still = frame(&desc, &scene, 16).0;
-        let fresh = frame(&desc, &scene, 1).0;
+        let still = repeat(&desc, &scene, 16).0;
+        let fresh = repeat(&desc, &scene, 1).0;
         for (i, s) in stats.iter().enumerate() {
             println!(
                 "{culling} dense {dense} frame {i}: {} shadow passes, {} cached, {} casters drawn",

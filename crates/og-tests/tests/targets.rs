@@ -5,14 +5,7 @@
 //! the monitor and nowhere else.
 
 use og_tests::gfx;
-
-fn frame(scene: &og_render::RenderScene) -> og_render::RgbaImage {
-    let mut r =
-        og_render::Renderer::new_blocking(&og_tests::scenes::base_desc()).expect("renderer");
-    r.render(scene, &og_render::RenderTarget::Offscreen)
-        .expect("render");
-    r.read_offscreen().expect("capture")
-}
+use og_tests::harness::base_image;
 
 /// A view draws what the main pass draws over its opaque scene: glass, a
 /// world sprite, particles and lines on layer 1 alone change the monitor
@@ -26,8 +19,8 @@ fn a_view_draws_transparents_sprites_particles_and_lines_on_its_layers() {
     let on_monitor = |x: u32, y: u32| (543..738).contains(&x) && (181..293).contains(&y);
     let mut failures = Vec::new();
     for kind in ViewKind::ALL {
-        let seen = frame(&view_kinds_scene(&[kind], 3, 60));
-        let unseen = frame(&view_kinds_scene(&[kind], 1, 60));
+        let seen = base_image(&view_kinds_scene(&[kind], 3, 60));
+        let unseen = base_image(&view_kinds_scene(&[kind], 1, 60));
         let (mut inside, mut outside) = (0, 0);
         for y in 0..seen.height {
             for x in 0..seen.width {
@@ -70,8 +63,8 @@ fn a_view_draws_the_main_passs_effects() {
     use og_tests::target_scenes::{ViewFx, view_fx_scene};
     let mut failures = Vec::new();
     for fx in ViewFx::ALL {
-        let on = frame(&view_fx_scene(fx, true));
-        let off = frame(&view_fx_scene(fx, false));
+        let on = base_image(&view_fx_scene(fx, true));
+        let off = base_image(&view_fx_scene(fx, false));
         if let Ok(dir) = std::env::var("OG_VIEW_FX_OUT") {
             gfx::save_png(
                 std::path::Path::new(&format!("{dir}/view-fx-{fx:?}.png")),
@@ -111,7 +104,7 @@ fn a_view_draws_the_main_passs_effects() {
         // Soft particles fade where they meet the wall: they differ from
         // the same particles drawn hard.
         if fx == ViewFx::SoftParticles {
-            let hard = frame(&view_fx_scene(ViewFx::HardParticles, true));
+            let hard = base_image(&view_fx_scene(ViewFx::HardParticles, true));
             let faded = (0..(on.width * on.height) as usize)
                 .filter(|&i| {
                     (0..3).any(|c| on.pixels[i * 4 + c].abs_diff(hard.pixels[i * 4 + c]) > 12)

@@ -40,8 +40,9 @@
 use glam::Vec3;
 use og_render::{
     Antialias, Background, Camera, DitherPattern, Exposure, PosterizeMode, Quantize, RenderDesc,
-    RenderScene, RenderTarget, Renderer, StyliseSpace, Tonemap,
+    RenderScene, Renderer, StyliseSpace, Tonemap,
 };
+use og_tests::harness::pixels;
 use og_tests::scenes;
 
 const W: usize = 320;
@@ -76,13 +77,6 @@ fn field(rgb: [u8; 3]) -> RenderScene {
         ..Default::default()
     };
     scene
-}
-
-fn frame(renderer: &mut Renderer, scene: &RenderScene) -> Vec<u8> {
-    renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("frame");
-    renderer.read_offscreen().expect("capture").pixels
 }
 
 /// Fine albedo stripes must not become ink lines, but a broad tone step
@@ -147,7 +141,7 @@ fn print_ignores_texture_grain_but_keeps_light_edges() {
         depth: 0.0,
         ..Default::default()
     });
-    let printed = frame(&mut renderer, &scene);
+    let printed = pixels(&mut renderer, &scene);
     let dark = |x: usize, y: usize| printed[(y * W + x) * 4] < 40;
     let grain = (40..140)
         .flat_map(|y| {
@@ -178,14 +172,14 @@ fn print_ignores_texture_grain_but_keeps_light_edges() {
         distance: 0.0,
         keep_color: false,
     });
-    let hatched = frame(&mut renderer, &scene);
+    let hatched = pixels(&mut renderer, &scene);
     for y in 0..H {
         for x in 0..W / 2 {
             texture.rgba[(y * W + x) * 4..][..3].fill(150);
         }
     }
     assert!(scene.set_texture(map, texture));
-    let mean = frame(&mut renderer, &scene);
+    let mean = pixels(&mut renderer, &scene);
     let error = (40..140)
         .flat_map(|y| (40..128).map(move |x| (y * W + x) * 4))
         .map(|i| f32::from(hatched[i].abs_diff(mean[i])))
@@ -256,14 +250,14 @@ fn hatching_leaves_distant_equal_tones_bare_in_every_pattern_space() {
             distance: 0.0,
             keep_color,
         });
-        let plain = frame(&mut renderer, &scene);
+        let plain = pixels(&mut renderer, &scene);
         let (near, far) = (ink(&plain, 75), ink(&plain, 210));
         assert!(
             (near - far).abs() < 0.03 && near > 0.1,
             "{space:?}: equal-tone control {near}/{far}"
         );
         scene.look.stylise.hatching.as_mut().unwrap().distance = 20.0;
-        let aerial = frame(&mut renderer, &scene);
+        let aerial = pixels(&mut renderer, &scene);
         let (near, far) = (ink(&aerial, 75), ink(&aerial, 210));
         assert!(
             far < near * 0.5 && near > 0.1,
@@ -318,7 +312,7 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
     let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
     // Without the conformed set the look's quantise steps the art: the
     // fallback a plain material gets.
-    let plain = colours(&frame(&mut renderer, &posterized(ART)));
+    let plain = colours(&pixels(&mut renderer, &posterized(ART)));
     println!("unconformed: {plain:?}");
     assert!(
         plain.len() >= 2,
@@ -326,7 +320,7 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
     );
     let mut scene = posterized(ART);
     scene.add_conformed_colors(&[ART, [12, 40, 200]]);
-    let kept = colours(&frame(&mut renderer, &scene));
+    let kept = colours(&pixels(&mut renderer, &scene));
     println!("conformed: {kept:?}");
     assert_eq!(kept.len(), 1, "one colour, the art's: {kept:?}");
     assert!(
@@ -337,7 +331,7 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
     // kept as drawn.
     let mut near = posterized([113, 147, 104]);
     near.add_conformed_colors(&[ART]);
-    let close = colours(&frame(&mut renderer, &near));
+    let close = colours(&pixels(&mut renderer, &near));
     println!("near: {close:?}");
     assert_eq!(
         close.len(),
@@ -351,7 +345,7 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
     let mut toned = posterized(ART);
     toned.look.post.tonemap = Tonemap::Aces;
     toned.add_conformed_colors(&[ART]);
-    let curved = colours(&frame(&mut renderer, &toned));
+    let curved = colours(&pixels(&mut renderer, &toned));
     println!("tone-mapped: {curved:?}");
     assert_eq!(
         curved.len(),
@@ -366,7 +360,7 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
         q.posterize = 2;
     }
     one_bit.add_conformed_colors(&[ART]);
-    let dithered = colours(&frame(&mut renderer, &one_bit));
+    let dithered = colours(&pixels(&mut renderer, &one_bit));
     println!("1-bit: {dithered:?}");
     assert!(
         dithered.len() >= 2,
@@ -375,7 +369,7 @@ fn conformed_art_keeps_its_colour_while_the_rest_still_quantises() {
     // A lit tone farther off is not conformed: stepped and dithered.
     let mut lit = posterized([128, 160, 110]);
     lit.add_conformed_colors(&[ART]);
-    let stepped = colours(&frame(&mut renderer, &lit));
+    let stepped = colours(&pixels(&mut renderer, &lit));
     println!("lit: {stepped:?}");
     assert!(
         stepped.len() >= 2,
@@ -406,7 +400,7 @@ fn tone_posterize_keeps_a_colours_hue_as_its_light_moves() {
     };
     // The tint of a frame's one colour: its channels over the largest.
     let tint = |renderer: &mut Renderer, scene: &RenderScene| {
-        let c = colours(&frame(renderer, scene));
+        let c = colours(&pixels(renderer, scene));
         assert_eq!(c.len(), 1, "a flat field stays one colour: {c:?}");
         let v = f32::from(*c[0].iter().max().expect("three channels")).max(1.0);
         (c[0], c[0].map(|x| f32::from(x) / v))

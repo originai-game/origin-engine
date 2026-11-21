@@ -27,7 +27,7 @@ use support::*;
 
 /// The kit's iconoir set and body font cooked into a scratch project.
 fn cooked() -> (CookedFont, CookedFont) {
-    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-ui-materials");
+    let root = og_tests::harness::out_dir("og-ui-materials");
     let _ = std::fs::remove_dir_all(&root);
     let kit = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/ui-text/assets");
     let icons = root.join("assets/icons/iconoir");

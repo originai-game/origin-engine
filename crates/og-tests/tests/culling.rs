@@ -16,13 +16,9 @@
 use og_render::{FrameStats, RenderTarget, Renderer, RgbaImage};
 use og_tests::compare::{Tolerance, compare};
 use og_tests::gfx;
+use og_tests::harness::out_dir;
 use og_tests::scenes;
 use std::fmt::Write as _;
-use std::path::PathBuf;
-
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-culling")
-}
 
 /// One scene rendered for some frames.
 struct Run {
@@ -123,7 +119,7 @@ const SCENES: &[(&str, u32)] = &[
 #[test]
 #[ignore = "requires GPU"]
 fn gpu_culling_draws_the_cpu_paths_frame() {
-    let dir = out_dir();
+    let dir = out_dir("og-culling");
     std::fs::create_dir_all(&dir).expect("output directory");
     let mut log = String::new();
     let mut failures = Vec::new();
@@ -255,7 +251,7 @@ fn crowd_cards_draw_the_far_members_and_only_them() {
         renderer.read_offscreen().expect("capture")
     };
     let (cards, meshes, empty) = (run(true, true), run(false, true), run(true, false));
-    let dir = out_dir();
+    let dir = out_dir("og-culling");
     std::fs::create_dir_all(&dir).expect("output directory");
     gfx::save_png(&dir.join("crowd-lods.cards.png"), &cards).expect("save");
     gfx::save_png(&dir.join("crowd-lods.meshes.png"), &meshes).expect("save");

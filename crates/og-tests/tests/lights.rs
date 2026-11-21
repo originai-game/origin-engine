@@ -6,25 +6,10 @@
 //! lights, which is the frame of a scene holding only those.
 
 use glam::Vec3;
-use og_render::{
-    Camera, FrameStats, Light, MAX_LIGHTS, Projection, RenderDesc, RenderScene, RenderTarget,
-    Renderer, RgbaImage,
-};
+use og_render::{Camera, Light, MAX_LIGHTS, Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
 use og_tests::compare::{Tolerance, compare};
+use og_tests::harness::{frame, out_dir};
 use og_tests::{gfx, p2_scenes, scenes};
-use std::path::PathBuf;
-
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx")
-}
-
-fn frame(desc: &RenderDesc, scene: &RenderScene) -> (RgbaImage, FrameStats) {
-    let mut renderer = Renderer::new_blocking(desc).expect("renderer");
-    let stats = renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("render");
-    (renderer.read_offscreen().expect("capture"), stats)
-}
 
 fn max_diff(a: &RgbaImage, b: &RgbaImage) -> u8 {
     compare(
@@ -97,8 +82,8 @@ fn a_spherical_source_widens_specular_without_changing_roughness() {
         pixels.iter().filter(|p| p[0] > peak / 2).count()
     };
     println!("highlight pixels: {} -> {}", lit(&point), lit(&sphere));
-    gfx::save_png(&out_dir().join("source-point-specular.png"), &point).unwrap();
-    gfx::save_png(&out_dir().join("source-sphere-specular.png"), &sphere).unwrap();
+    gfx::save_png(&out_dir("og-gfx").join("source-point-specular.png"), &point).unwrap();
+    gfx::save_png(&out_dir("og-gfx").join("source-sphere-specular.png"), &sphere).unwrap();
     assert!(lit(&point) > 0, "punctual control must have a highlight");
     assert!(
         lit(&sphere) > lit(&point) * 2,
@@ -125,7 +110,7 @@ fn moving_the_depth_slices_changes_nothing() {
         let d = changed(&base, &other);
         println!("near {near} far {far}: {d} pixels changed");
         if d > 20 {
-            let dir = out_dir().join("lights");
+            let dir = out_dir("og-gfx").join("lights");
             gfx::save_png(&dir.join("slices-base.png"), &base).expect("save");
             gfx::save_png(&dir.join(format!("slices-{near}-{far}.png")), &other).expect("save");
         }

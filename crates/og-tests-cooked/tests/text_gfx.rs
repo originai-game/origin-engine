@@ -19,6 +19,7 @@ use crate::support;
 use og_cook::runtime::{Bundle, CookedFont};
 use og_cook::{CookOptions, cook_project};
 use og_render::{RenderDesc, RenderScene};
+use og_tests::harness::out_dir;
 use std::path::{Path, PathBuf};
 use support::text_scenes::{FONTS, TEXT_SCENES, fonts_from, text_scene};
 use support::*;
@@ -41,7 +42,7 @@ fn copy_dir(from: &Path, to: &Path) {
 /// into a scratch directory, the fonts read back from the blobs' bytes
 /// (one test: one cook).
 fn cooked() -> Vec<CookedFont> {
-    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-ui-text-fonts");
+    let root = out_dir("og-ui-text-fonts");
     let _ = std::fs::remove_dir_all(&root);
     let here = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../og-ui");
     copy_dir(&here.join("tests/text-fonts"), &root);

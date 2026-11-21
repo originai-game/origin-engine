@@ -15,6 +15,8 @@ pub mod fx_scenes;
 pub mod geometry_scenes;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod gfx;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod harness;
 pub mod grass_scenes;
 pub mod ibl_scenes;
 pub mod impostor_scenes;

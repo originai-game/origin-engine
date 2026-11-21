@@ -5,9 +5,10 @@
 
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
-    Antialias, Background, Camera, DebugView, FrameStats, RenderDesc, RenderError, RenderScene,
-    RenderTarget, Renderer, RgbaImage, Sprite, Tonemap,
+    Antialias, Background, Camera, DebugView, RenderDesc, RenderError, RenderScene, RenderTarget,
+    Renderer, RgbaImage, Sprite, Tonemap,
 };
+use og_tests::harness::repeat;
 use og_tests::scenes::{self, GfxScene};
 
 #[path = "gfx/effect_glow.rs"]
@@ -16,18 +17,6 @@ mod effect_glow;
 mod overlay_effects;
 #[path = "gfx/sprites_post.rs"]
 mod sprites_post;
-
-/// Renders `frames` frames of `scene` with `desc` and returns the last one.
-fn frame(desc: &RenderDesc, scene: &RenderScene, frames: u32) -> (RgbaImage, FrameStats) {
-    let mut renderer = Renderer::new_blocking(desc).expect("renderer");
-    let mut stats = FrameStats::default();
-    for _ in 0..frames.max(1) {
-        stats = renderer
-            .render(scene, &RenderTarget::Offscreen)
-            .expect("render");
-    }
-    (renderer.read_offscreen().expect("capture"), stats)
-}
 
 fn built(name: &str) -> GfxScene {
     scenes::build(name).expect("scene")
@@ -38,12 +27,12 @@ fn built(name: &str) -> GfxScene {
 fn cascade_frames(tall: bool) -> (RgbaImage, RgbaImage, RgbaImage) {
     let g = built("cascades-200m");
     let mut scene = scenes::cascades_200m(tall);
-    let (lit, _) = frame(&g.desc, &scene, 1);
+    let (lit, _) = repeat(&g.desc, &scene, 1);
     scene.lighting.light.cast_shadows = false;
-    let (unshadowed, _) = frame(&g.desc, &scene, 1);
+    let (unshadowed, _) = repeat(&g.desc, &scene, 1);
     scene.lighting.light.cast_shadows = true;
     scene.frame.debug = DebugView::Cascades;
-    let (debug, _) = frame(&g.desc, &scene, 1);
+    let (debug, _) = repeat(&g.desc, &scene, 1);
     (debug, lit, unshadowed)
 }
 

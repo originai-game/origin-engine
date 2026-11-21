@@ -14,10 +14,9 @@ use og_render::{
     RenderScene, RenderTarget, Renderer, RgbaImage, Terrain, TerrainControl, TerrainData,
     TerrainLayer, TerrainScatter, Tonemap, Water, Wind, shapes,
 };
-use og_tests::gfx;
+use og_tests::harness::{luma_f32, project, px_f32, save};
 use og_tests::scenes;
 use og_tests::terrain_scenes as ts;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 #[path = "terrain/displacement.rs"]
@@ -96,15 +95,15 @@ fn decals_project_on_terrain_and_reject_back_faces() {
     };
     scene.effects.decals.push(decal);
     let marked = capture(&scene);
-    keep("terrain-decal", &marked);
-    assert!(px(&marked, 48, 48)[0] > px(&bare, 48, 48)[0] + 30.0);
-    assert_eq!(px(&marked, 12, 12), px(&bare, 12, 12));
+    save("og-terrain", "terrain-decal", &marked);
+    assert!(px_f32(&marked, 48, 48)[0] > px_f32(&bare, 48, 48)[0] + 30.0);
+    assert_eq!(px_f32(&marked, 12, 12), px_f32(&bare, 12, 12));
     scene.effects.decals[0] = Decal {
         emissive: decal.emissive,
         ..Decal::on_surface(Vec3::ZERO, -Vec3::Y, Vec2::new(3.0, 2.0), 1.0, 0.0)
     };
     let backwards = capture(&scene);
-    assert_eq!(px(&backwards, 48, 48), px(&bare, 48, 48));
+    assert_eq!(px_f32(&backwards, 48, 48), px_f32(&bare, 48, 48));
 }
 
 /// Writes a frame a test reads to `<target tmp>/og-terrain/<name>.png`
@@ -161,31 +160,11 @@ fn a_removed_terrain_frees_its_tiles_on_the_gpu() {
     assert_eq!(renderer.gpu_memory().textures, drawn);
 }
 
-fn keep(name: &str, img: &RgbaImage) {
-    let path = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-        .join("og-terrain")
-        .join(format!("{name}.png"));
-    let _ = gfx::save_png(&path, img);
-}
-
-fn px(img: &RgbaImage, x: u32, y: u32) -> [f32; 3] {
-    let i = ((y * img.width + x) * 4) as usize;
-    [
-        img.pixels[i] as f32,
-        img.pixels[i + 1] as f32,
-        img.pixels[i + 2] as f32,
-    ]
-}
-
-fn luma(p: [f32; 3]) -> f32 {
-    0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]
-}
-
 fn mean(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> f32 {
     let mut sum = 0.0;
     for y in y0..y1 {
         for x in x0..x1 {
-            sum += luma(px(img, x, y));
+            sum += luma_f32(px_f32(img, x, y));
         }
     }
     sum / ((x1 - x0) * (y1 - y0)) as f32
@@ -200,34 +179,13 @@ fn color_at(img: &RgbaImage, (x, y): (u32, u32)) -> [f32; 3] {
     let mut c = [0.0; 3];
     for yy in y - 2..=y + 2 {
         for xx in x - 2..=x + 2 {
-            let p = px(img, xx, yy);
+            let p = px_f32(img, xx, yy);
             for i in 0..3 {
                 c[i] += p[i] / 25.0;
             }
         }
     }
     c
-}
-
-/// Where a world point lands on a 1280x720 frame of `camera`.
-fn project(camera: &Camera, p: Vec3) -> (u32, u32) {
-    let view = glam::camera::rh::view::look_at_mat4(camera.position, camera.target, camera.up);
-    let fov = match camera.projection {
-        Projection::Perspective { fov_y_degrees } => fov_y_degrees,
-        Projection::Orthographic { .. } => unreachable!("perspective cameras only"),
-    };
-    let proj = glam::camera::rh::proj::directx::perspective(
-        fov.to_radians(),
-        1280.0 / 720.0,
-        camera.near,
-        camera.far,
-    );
-    let c = proj * view * p.extend(1.0);
-    let ndc = c.truncate() / c.w;
-    (
-        ((ndc.x * 0.5 + 0.5) * 1280.0) as u32,
-        ((0.5 - ndc.y * 0.5) * 720.0) as u32,
-    )
 }
 
 /// A cone of plain-coloured layers: red on the flat, blue on slopes past
@@ -325,8 +283,8 @@ fn layers_follow_slope_altitude_and_the_control_map() {
         ..Default::default()
     };
     let (img, _) = render(&scene);
-    keep("layers", &img);
-    let at = |p: Vec3| color_at(&img, project(&scene.frame.camera, p));
+    save("og-terrain", "layers", &img);
+    let at = |p: Vec3| color_at(&img, project(&scene.frame.camera, 1280, 720, p));
     let dominant = |c: [f32; 3]| {
         if c[0] > 100.0 && c[1] > 100.0 && c[2] > 100.0 {
             "white"
@@ -396,12 +354,12 @@ fn the_underwater_view_fogs_shows_the_surface_and_caustics() {
     let redness = |c: [f32; 3]| c[0] - (c[1] + c[2]) * 0.5;
     let p_under = color_at(
         &under,
-        project(&below.frame.camera, Vec3::new(0.0, -3.0, -30.0)),
+        project(&below.frame.camera, 1280, 720, Vec3::new(0.0, -3.0, -30.0)),
     );
     let above_scene = make(3.0, 0.0);
     let p_above = color_at(
         &above,
-        project(&above_scene.frame.camera, Vec3::new(0.0, 2.0, -30.0)),
+        project(&above_scene.frame.camera, 1280, 720, Vec3::new(0.0, 2.0, -30.0)),
     );
     assert!(redness(p_above) > 60.0, "the post from above: {p_above:?}");
     assert!(
@@ -434,7 +392,7 @@ fn the_underwater_view_fogs_shows_the_surface_and_caustics() {
         let mut v = 0.0;
         for y in 420..620 {
             for x in 440..840 {
-                v += (luma(px(img, x, y)) - m).powi(2);
+                v += (luma_f32(px_f32(img, x, y)) - m).powi(2);
             }
         }
         (v / (400.0 * 200.0)).sqrt()

@@ -76,13 +76,13 @@ fn wet_decals_multiply_colour_and_cover_receiver_normals() {
     let multiplied = capture(true, 1.0, true, false, true);
     let expected = capture(false, 1.0, false, true, true);
     assert_eq!(
-        px(&multiplied, 160, 90),
-        px(&expected, 160, 90),
+        px_clamped(&multiplied, 160, 90),
+        px_clamped(&expected, 160, 90),
         "wet albedo is not receiver × tint"
     );
-    save("wet-decal-full", &full);
-    save("wet-decal-mix", &mix);
-    save("wet-decal-partial", &partial);
+    save("og-effects", "wet-decal-full", &full);
+    save("og-effects", "wet-decal-mix", &mix);
+    save("og-effects", "wet-decal-partial", &partial);
 }
 
 /// A rough floor covered with a white wet decal must reflect the scene
@@ -119,12 +119,12 @@ fn wet_decals_carry_their_gloss_into_screen_space_reflections() {
     };
     let reference = capture(false);
     let wet = capture(true);
-    save("wet-decal-ssr-reference", &reference);
-    save("wet-decal-ssr", &wet);
-    let red = px(&reference, 120, 140);
+    save("og-effects", "wet-decal-ssr-reference", &reference);
+    save("og-effects", "wet-decal-ssr", &wet);
+    let red = px_clamped(&reference, 120, 140);
     assert!(red[0] > red[1] + 10, "control must reflect the red sphere");
     assert!(
-        px(&reference, 202, 140)[0] > 120,
+        px_clamped(&reference, 202, 140)[0] > 120,
         "control must reflect the bright panel"
     );
     assert_eq!(
@@ -142,7 +142,7 @@ fn decals_project_onto_surfaces_past_the_old_cap() {
     let mut none = fx::decals_scene();
     none.effects.decals.clear();
     let (without, _) = frame(&desc, &none);
-    save("decals", &with);
+    save("og-effects", "decals", &with);
     assert_eq!(stats.decals, base.effects.decals.len() as u32);
     // The scorch at (-1.6, 0, 0.6) darkens the ground; the rune glows.
     let scorch = project(&base.frame.camera, 1280, 720, Vec3::new(-1.6, 0.0, 0.6));
@@ -153,14 +153,14 @@ fn decals_project_onto_surfaces_past_the_old_cap() {
         Vec3::new(0.2 + 0.8, 0.0, 1.6),
     );
     let (s1, s0) = (
-        luma(px(&with, scorch.0, scorch.1)),
-        luma(px(&without, scorch.0, scorch.1)),
+        luma(&px_clamped(&with, scorch.0, scorch.1)),
+        luma(&px_clamped(&without, scorch.0, scorch.1)),
     );
     println!("scorch {s1} vs {s0}");
     assert!(s1 < 0.5 * s0);
     let changed = differing(&with, &without, 8.0);
     assert!(changed > 20_000, "decals changed {changed} pixels");
-    let r = px(&with, rune.0, rune.1);
+    let r = px_clamped(&with, rune.0, rune.1);
     println!("rune ring pixel {r:?}");
     // Past the 32 a frame once drew, every decal still draws: the base
     // scene's five after 40 others off to one side cover what they did.
@@ -181,7 +181,7 @@ fn decals_project_onto_surfaces_past_the_old_cap() {
     many.effects.decals = decals;
     let (late, s) = frame(&desc, &many);
     assert_eq!((s.decals, s.decals_dropped), (45, 0));
-    let s2 = luma(px(&late, scorch.0, scorch.1));
+    let s2 = luma(&px_clamped(&late, scorch.0, scorch.1));
     assert!(s2 < 0.5 * s0, "the 41st decal's scorch: {s2} vs {s0}");
     // Past MAX_CLUSTER_DECALS in one place the oldest there are dropped.
     let mut pile = fx::decals_scene();
@@ -250,10 +250,10 @@ fn a_normal_mapped_sprite_is_lit_by_where_its_normal_faces() {
     };
     let cam = Camera::orthographic_2d(Vec2::ZERO, 8.0);
     let centre = project(&cam, 320, 180, Vec3::ZERO);
-    let at = |img: &RgbaImage| luma(px(img, centre.0, centre.1));
+    let at = |img: &RgbaImage| luma(&px_clamped(img, centre.0, centre.1));
     let tilt = Some(Vec3::new(0.7, 0.0, 0.7).normalize());
     let (right, left) = (lit(2.0, tilt, false), lit(-2.0, tilt, false));
-    save("light2d-normal", &right);
+    save("og-effects", "light2d-normal", &right);
     let (r, l) = (at(&right), at(&left));
     let (mr, ml) = (at(&lit(2.0, tilt, true)), at(&lit(-2.0, tilt, true)));
     let flat = lit(2.0, Some(Vec3::Z), false);

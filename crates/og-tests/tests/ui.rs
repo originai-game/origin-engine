@@ -5,19 +5,12 @@
 //! that leaks, a blur that is not one).
 
 use og_tests::gfx::{self, Rendered};
+use og_tests::harness::px_rendered;
 use og_tests::scenes::{self, GfxScene};
 
 fn render(scene: &str) -> Rendered {
     let mut built: GfxScene = scenes::build(scene).expect("scene");
     gfx::render_built(&mut built).expect("render")
-}
-
-/// The sRGB bytes of pixel (x, y) (the overlay is 1280×720 CSS px on a
-/// 1280×720 frame: one CSS px a pixel).
-fn px(r: &Rendered, x: u32, y: u32) -> [f32; 3] {
-    let i = ((y * r.image.width + x) * 4) as usize;
-    let p = &r.image.pixels;
-    [f32::from(p[i]), f32::from(p[i + 1]), f32::from(p[i + 2])]
 }
 
 fn srgb8(linear: [f32; 4]) -> [f32; 3] {
@@ -70,7 +63,7 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
     // The shapes' top left corners are 20 px into their cells.
     let corner = |col: u32, d: u32| {
         let (x, y) = cell(col, 0);
-        px(&r, x + 20 + d, y + 20 + d)
+        px_rendered(&r, x + 20 + d, y + 20 + d)
     };
     assert!(
         near(corner(0, 12), ink([255, 183, 77]), 2.0),
@@ -94,14 +87,14 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
     );
     // Four radii: top left 0 (square), bottom left 60 (cut deep).
     let (x, y) = cell(4, 0);
-    assert!(near(px(&r, x + 21, y + 21), ink([239, 83, 80]), 2.0));
-    assert!(near(px(&r, x + 24, y + 126), back, 2.0));
+    assert!(near(px_rendered(&r, x + 21, y + 21), ink([239, 83, 80]), 2.0));
+    assert!(near(px_rendered(&r, x + 24, y + 126), back, 2.0));
     // The ring (cell 2, row 1; 130 px square from (25, 10)) has a hole.
     let (x, y) = cell(2, 1);
     let (cx, cy) = (x + 25 + 65, y + 10 + 65);
-    assert!(near(px(&r, cx, cy), back, 2.0), "the ring's hole is drawn");
+    assert!(near(px_rendered(&r, cx, cy), back, 2.0), "the ring's hole is drawn");
     assert!(
-        near(px(&r, cx + 57, cy), ink([186, 104, 200]), 2.0),
+        near(px_rendered(&r, cx + 57, cy), ink([186, 104, 200]), 2.0),
         "the ring"
     );
     // The 120° arc from 12 o'clock: right of centre at 3 o'clock is drawn,
@@ -109,19 +102,19 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
     let (x, y) = cell(4, 1);
     let (cx, cy) = (x + 90, y + 75);
     assert!(
-        near(px(&r, cx + 52, cy), ink([239, 83, 80]), 2.0),
+        near(px_rendered(&r, cx + 52, cy), ink([239, 83, 80]), 2.0),
         "the arc"
     );
-    assert!(near(px(&r, cx - 52, cy), back, 2.0), "past the arc's sweep");
+    assert!(near(px_rendered(&r, cx - 52, cy), back, 2.0), "past the arc's sweep");
     // The dotted ring (cell 2, row 3; r 65 about (530, 625), dots every
     // 16.1 px from 12 o'clock): its outline is no whole number of periods,
     // so the first dot (x 526..534) overlaps the last (x 520..528). The
     // first dot is round on both sides of the outline's start: x 529 is in
     // it, not cut off at the seam.
     assert!(
-        near(px(&r, 529, 560), ink([186, 104, 200]), 2.0),
+        near(px_rendered(&r, 529, 560), ink([186, 104, 200]), 2.0),
         "the dot at the dotted ring's start is cut at the seam: {:?}",
-        px(&r, 529, 560)
+        px_rendered(&r, 529, 560)
     );
     println!(
         "sprite draws {} sprites {}",
@@ -235,7 +228,7 @@ fn ui_ground_drapes_a_layer_over_the_terrain() {
             {
                 continue;
             }
-            let p = px(&r, x, y);
+            let p = px_rendered(&r, x, y);
             // The first two columns are under a backdrop that inverts them.
             let u = (surface.x + 3.0) / 6.0 * 8.0;
             let fu = (flat.x + 3.0) / 6.0 * 8.0;
@@ -269,13 +262,13 @@ fn ui_ground_drapes_a_layer_over_the_terrain() {
     let face = (lo + hi) / 2.0 + Vec3::new(0.0, -0.6, 0.26);
     let c = ground_view().project_point3(face);
     let (fx, fy) = (((c.x + 1.0) * 640.0) as u32, ((1.0 - c.y) * 360.0) as u32);
-    let p = px(&r, fx, fy);
+    let p = px_rendered(&r, fx, fy);
     assert!(
         !near(p, gold, 40.0) && !near(p, blue, 40.0),
         "pillar face ({fx}, {fy}): {p:?}"
     );
-    let sky = px(&r, 640, 8);
-    assert!(near(sky, px(&r, 20, 8), 3.0), "sky: {sky:?}");
+    let sky = px_rendered(&r, 640, 8);
+    assert!(near(sky, px_rendered(&r, 20, 8), 3.0), "sky: {sky:?}");
 }
 
 #[test]
@@ -289,7 +282,7 @@ fn ui_paths_fill_by_their_rule_and_take_every_mode() {
     };
     let at = |col: u32, row: u32, dx: i32, dy: i32| {
         let (x, y) = centre(col, row);
-        px(&r, (x as i32 + dx) as u32, (y as i32 + dy) as u32)
+        px_rendered(&r, (x as i32 + dx) as u32, (y as i32 + dy) as u32)
     };
     let check = |what: &str, got: [f32; 3], want: [f32; 3]| {
         assert!(near(got, want, 3.0), "{what}: {got:?}, not {want:?}");
@@ -313,7 +306,7 @@ fn ui_paths_fill_by_their_rule_and_take_every_mode() {
     check("the even-odd star's spike", at(3, 0, 0, -50), violet);
     // On the lines that cross the nonzero star's inside (its pentagon's
     // top edge, 64·cos 72° above the centre, and a lower one): no seam.
-    check("the nonzero star's inner line", px(&r, 530, 95), amber);
+    check("the nonzero star's inner line", px_rendered(&r, 530, 95), amber);
     check(
         "the nonzero star's inner line, left",
         at(2, 0, -12, -16),
@@ -351,7 +344,7 @@ fn ui_paths_fill_by_their_rule_and_take_every_mode() {
     check("at the turned heart's point", turned(49.0), green);
     check("past the turned heart's point", turned(56.0), back);
     // The 14 px heart at (1060, 60).
-    check("the 14 px heart", px(&r, 1067, 67), ink([255, 241, 118]));
+    check("the 14 px heart", px_rendered(&r, 1067, 67), ink([255, 241, 118]));
 }
 
 /// World-space UI (`docs/ui.md` §1, `ui_scenes::world`): occluders hide a
@@ -364,29 +357,29 @@ fn ui_world_occludes_and_draws_mass_elements() {
     let r = render("ui-world");
     let pink = srgb8([0.9, 0.3, 0.6, 1.0]);
     // The left panel: only sky behind it at 20 m.
-    assert!(near(px(&r, 320, 360), pink, 6.0), "{:?}", px(&r, 320, 360));
+    assert!(near(px_rendered(&r, 320, 360), pink, 6.0), "{:?}", px_rendered(&r, 320, 360));
     // The right one: the wall (12 m) is in front of 20 m.
     assert!(
-        !near(px(&r, 640, 360), pink, 40.0),
+        !near(px_rendered(&r, 640, 360), pink, 40.0),
         "{:?}",
-        px(&r, 640, 360)
+        px_rendered(&r, 640, 360)
     );
     // Bars from x = 80, 120 px: the first's fill to 0.5 (green), its
     // ghost to 0.75 (pale), its back past it (dark).
-    let fill = px(&r, 110, 86);
-    let ghost = px(&r, 160, 86);
-    let back = px(&r, 190, 86);
+    let fill = px_rendered(&r, 110, 86);
+    let ghost = px_rendered(&r, 160, 86);
+    let back = px_rendered(&r, 190, 86);
     assert!(fill[1] > fill[0] + 60.0, "fill {fill:?}");
     assert!(ghost[0] > 200.0 && ghost[1] > 180.0, "ghost {ghost:?}");
     // 85 % opaque over the sky (136, 155, 197).
     assert!(back.iter().all(|&c| c < 110.0), "back {back:?}");
     // The third bar's fill reaches 0.9 (x 188) and has no ghost.
-    assert!(px(&r, 185, 134)[1] > 120.0, "{:?}", px(&r, 185, 134));
+    assert!(px_rendered(&r, 185, 134)[1] > 120.0, "{:?}", px_rendered(&r, 185, 134));
     // The score's glyphs: gold ink in its band at the top centre.
     let gold = (40..90)
         .flat_map(|y| (560..720).map(move |x| (x, y)))
         .filter(|&(x, y)| {
-            let p = px(&r, x, y);
+            let p = px_rendered(&r, x, y);
             // (1, 0.85, 0.3) linear: about (255, 237, 149) in sRGB.
             p[0] > 220.0 && p[1] > 200.0 && p[2] < 180.0
         })
@@ -396,7 +389,7 @@ fn ui_world_occludes_and_draws_mass_elements() {
     let red = (360..720)
         .flat_map(|y| (0..1280).map(move |x| (x, y)))
         .filter(|&(x, y)| {
-            let p = px(&r, x, y);
+            let p = px_rendered(&r, x, y);
             p[0] > 200.0 && p[1] < 120.0 && p[2] < 120.0
         })
         .count();
@@ -407,7 +400,7 @@ fn ui_world_occludes_and_draws_mass_elements() {
         (y0..y1)
             .flat_map(|y| (x0..x1).map(move |x| (x, y)))
             .filter(|&(x, y)| {
-                let p = px(&r, x, y);
+                let p = px_rendered(&r, x, y);
                 p[0] < 150.0 && p[1] > 220.0 && p[2] > 230.0
             })
             .count()

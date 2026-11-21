@@ -130,7 +130,7 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
         ..Default::default()
     };
     let (crowd, stats) = frame(&desc, &scene);
-    save("crowd-baked", &crowd);
+    save("og-effects", "crowd-baked", &crowd);
     assert_eq!(stats.skinned_instances, 35);
 }
 
@@ -200,10 +200,10 @@ fn deformed_vertices_replace_the_mesh() {
     println!("deformed at the bind positions vs the plain mesh: {d} pixels differ");
     assert!(d < 40, "the bind positions are not the mesh ({d} pixels)");
     let (tall, _) = frame(&desc, &build(Some(0.4)));
-    save("deformed-vertices", &tall);
+    save("og-effects", "deformed-vertices", &tall);
     let top = |img: &RgbaImage| {
         (0..180)
-            .find(|&y| (0..320).any(|x| luma(px(img, x, y)) > 20.0))
+            .find(|&y| (0..320).any(|x| luma(&px_clamped(img, x, y)) > 20.0))
             .expect("drawn")
     };
     println!("top row: rest {}, stretched {}", top(&rest), top(&tall));
@@ -340,12 +340,12 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
             run(&desc, &mut scene, 2, |_, _| {}).0
         };
         let (whole, empty) = (shot(Some(1.0), 7), shot(None, 7));
-        let boxed = count(&whole, &|x, y| red(px(&whole, x, y)));
+        let boxed = count(&whole, &|x, y| red(px_clamped(&whole, x, y)));
         assert!(boxed > 1500, "{name}: the box covers {boxed} pixels");
         // Its shadow on the ground: darker with the box than without, and
         // not the box itself.
         let shaded = |x: u32, y: u32| {
-            !red(px(&whole, x, y)) && luma(px(&empty, x, y)) - luma(px(&whole, x, y)) > 25.0
+            !red(px_clamped(&whole, x, y)) && luma(&px_clamped(&empty, x, y)) - luma(&px_clamped(&whole, x, y)) > 25.0
         };
         let shadow = count(&whole, &shaded);
         assert!(shadow > 400, "{name}: the shadow covers {shadow} pixels");
@@ -354,7 +354,7 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
             for y in 0..img.height {
                 for x in 0..img.width {
                     if shaded(x, y) {
-                        sum += luma(px(&empty, x, y)) - luma(px(img, x, y));
+                        sum += luma(&px_clamped(&empty, x, y)) - luma(&px_clamped(img, x, y));
                     }
                 }
             }
@@ -364,15 +364,15 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
         let mut last = full_shade;
         for reveal in [0.75, 0.5, 0.25] {
             let img = shot(Some(reveal), 7);
-            save(&format!("reveal-{name}-{reveal}"), &img);
-            let drawn = count(&img, &|x, y| red(px(&img, x, y))) as f32 / boxed as f32;
+            save("og-effects", &format!("reveal-{name}-{reveal}"), &img);
+            let drawn = count(&img, &|x, y| red(px_clamped(&img, x, y))) as f32 / boxed as f32;
             assert!(
                 (drawn - reveal).abs() < 0.06,
                 "{name}: at reveal {reveal} it draws {drawn} of its pixels"
             );
             // Where it is cut the ground shows, never black or the clear colour.
             let through = count(&img, &|x, y| {
-                red(px(&whole, x, y)) && !red(px(&img, x, y)) && luma(px(&img, x, y)) < 20.0
+                red(px_clamped(&whole, x, y)) && !red(px_clamped(&img, x, y)) && luma(&px_clamped(&img, x, y)) < 20.0
             });
             assert_eq!(through, 0, "{name}: {through} cut pixels are black");
             let s = shade(&img);
@@ -386,20 +386,20 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
         }
         // The pattern turns with the tick, the share drawn does not.
         let (a, b) = (shot(Some(0.5), 7), shot(Some(0.5), 8));
-        let moved = count(&a, &|x, y| red(px(&a, x, y)) != red(px(&b, x, y)));
+        let moved = count(&a, &|x, y| red(px_clamped(&a, x, y)) != red(px_clamped(&b, x, y)));
         assert!(
             moved > boxed / 4,
             "{name}: {moved} of {boxed} pixels changed between two ticks"
         );
         // Nothing of it is left at 0, in any pass.
         let gone = shot(Some(0.0), 7);
-        save(&format!("reveal-{name}-0"), &gone);
+        save("og-effects", &format!("reveal-{name}-0"), &gone);
         assert_eq!(
             differing(&gone, &empty, 1.0),
             0,
             "{name}: at reveal 0 the frame is the one without the box"
         );
-        save(&format!("reveal-{name}-1"), &whole);
+        save("og-effects", &format!("reveal-{name}-1"), &whole);
     }
 }
 
@@ -445,7 +445,7 @@ fn a_hidden_model_compiles_ahead_and_its_fade_waits_for_no_pipeline() {
         let img = renderer.read_offscreen().expect("capture");
         (0..img.width * img.height)
             .filter(|i| {
-                let p = px(&img, i % img.width, i / img.width);
+                let p = px_clamped(&img, i % img.width, i / img.width);
                 p[0] as i32 > p[1] as i32 + 60
             })
             .count()

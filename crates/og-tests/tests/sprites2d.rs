@@ -16,23 +16,12 @@
 
 use glam::{Vec2, Vec3};
 use og_render::{
-    Background, Camera, ColorSpace, FrameStats, Mips, RenderScene, RenderTarget, Renderer,
-    RgbaImage, Sprite, TextureData, TextureFilter, TileAnimation, TileChunk, TileLayer, TileQuad,
-    Tonemap,
+    Background, Camera, ColorSpace, Mips, RenderScene, RenderTarget, Renderer, RgbaImage, Sprite,
+    TextureData, TextureFilter, TileAnimation, TileChunk, TileLayer, TileQuad, Tonemap,
 };
+use og_tests::harness::repeat;
 use og_tests::scenes;
 use std::sync::Arc;
-
-fn frame(scene: &RenderScene, frames: u32) -> (RgbaImage, FrameStats) {
-    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
-    let mut stats = FrameStats::default();
-    for _ in 0..frames.max(1) {
-        stats = renderer
-            .render(scene, &RenderTarget::Offscreen)
-            .expect("render");
-    }
-    (renderer.read_offscreen().expect("capture"), stats)
-}
 
 /// A flat 2D scene: orthographic, 10 units tall, black, untonemapped.
 fn flat() -> RenderScene {
@@ -123,7 +112,7 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
         });
         scene
     };
-    let (img, stats) = frame(&make([None, None]), 1);
+    let (img, stats) = repeat(&scenes::base_desc(), &make([None, None]), 1);
     // The view (x -8.9..8.9, y -5..5) touches two of the sixteen chunks the
     // layer's origin (-8, 8) places: x -8..8 and 8..24 of the top row.
     assert_eq!(stats.tile_chunks, 2, "{stats:?}");
@@ -139,7 +128,7 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
     // The view's left edge (x = -8.9) is left of the layer: empty...
     assert_eq!(at(&img, -8.7, 0.0), [0, 0, 0]);
     // ...until the layer repeats every 64 units.
-    let (img, stats) = frame(&make([Some(64.0), None]), 1);
+    let (img, stats) = repeat(&scenes::base_desc(), &make([Some(64.0), None]), 1);
     assert_eq!(
         at(&img, -8.7, 0.0),
         [0, 0, 255],
@@ -163,7 +152,7 @@ fn tile_layers_cull_chunks_draw_under_their_layer_repeat_and_animate() {
     });
     layer.time = 0.3; // the second frame: blue
     animated.sprite.tile_layers.push(layer);
-    let (img, _) = frame(&animated, 1);
+    let (img, _) = repeat(&scenes::base_desc(), &animated, 1);
     assert_eq!(at(&img, 0.5, 4.5), [0, 0, 255], "the animated quad");
     assert_eq!(at(&img, 1.5, 4.5), [255, 0, 0], "its neighbour");
 
@@ -394,7 +383,7 @@ fn spot_global_and_masked_2d_lights() {
         cast_shadows: false,
         ..Default::default()
     });
-    let (img, _) = frame(&scene, 1);
+    let (img, _) = repeat(&scenes::base_desc(), &scene, 1);
     let ahead = at(&img, 3.0, 0.0)[0];
     let behind = at(&img, -3.0, 0.0)[0];
     let off_axis = at(&img, 3.0, 3.0)[0];
@@ -425,7 +414,7 @@ fn spot_global_and_masked_2d_lights() {
         layers: 2,
         ..Default::default()
     });
-    let (img, _) = frame(&scene, 1);
+    let (img, _) = repeat(&scenes::base_desc(), &scene, 1);
     let left = at(&img, -4.0, 2.0);
     let right = at(&img, 4.0, 2.0);
     assert!(

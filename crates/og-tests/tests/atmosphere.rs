@@ -11,21 +11,8 @@
 
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{Camera, RenderScene, RenderTarget, Renderer, RgbaImage};
+use og_tests::harness::{luma_f32, out_dir, px_f32};
 use og_tests::scenes;
-use std::path::PathBuf;
-
-fn px(img: &RgbaImage, x: u32, y: u32) -> [f32; 3] {
-    let i = ((y * img.width + x) * 4) as usize;
-    [
-        img.pixels[i] as f32,
-        img.pixels[i + 1] as f32,
-        img.pixels[i + 2] as f32,
-    ]
-}
-
-fn luma(p: [f32; 3]) -> f32 {
-    0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]
-}
 
 /// A mesh replaced with RenderScene::set_mesh (cloth) draws its new shape
 /// on the next frame, in place when the sizes match and in new buffers when
@@ -64,7 +51,7 @@ fn a_replaced_mesh_draws_its_new_shape() {
         r.render(s, &RenderTarget::Offscreen).expect("render");
         r.read_offscreen().expect("capture")
     };
-    let lit = |img: &RgbaImage, x: u32| luma(px(img, x, 360)) > 100.0;
+    let lit = |img: &RgbaImage, x: u32| luma_f32(px_f32(img, x, 360)) > 100.0;
     let a = draw(&s);
     assert!(lit(&a, 420) && !lit(&a, 860), "the quad on the left");
     assert!(s.set_mesh(mesh, quad(2.0, 1.0)));
@@ -163,7 +150,7 @@ fn solar_probe() -> RenderScene {
 }
 
 fn linear_pixel(image: &RgbaImage, x: u32, y: u32) -> [f32; 3] {
-    px(image, x, y).map(|v| {
+    px_f32(image, x, y).map(|v| {
         let s = v / 255.0;
         if s <= 0.04045 {
             s / 12.92
@@ -202,9 +189,7 @@ fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
         })
         .unwrap();
         renderer.set_render_scale(scale);
-        let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-            .join("solar-hdr")
-            .join(name);
+        let out = out_dir("solar-hdr").join(name);
         std::fs::create_dir_all(&out).unwrap();
         let mut energy = Vec::new();
         let mut largest_lag = 0.0f32;
@@ -232,7 +217,7 @@ fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
             let mut trail = 0.0;
             for y in 0..180 {
                 for x in 0..320 {
-                    let w = luma(linear_pixel(&image, x, y));
+                    let w = luma_f32(linear_pixel(&image, x, y));
                     total += w;
                     let p = Vec2::new(x as f32, y as f32);
                     centroid += p * w;
@@ -411,7 +396,7 @@ fn the_clouds_shade_the_ground_under_them() {
         let mut sum = 0.0;
         for y in cy - 8..=cy + 8 {
             for x in cx - 8..=cx + 8 {
-                sum += luma(px(img, x, y));
+                sum += luma_f32(px_f32(img, x, y));
             }
         }
         sum / (17.0 * 17.0)
@@ -582,7 +567,7 @@ fn a_night_cloud_takes_the_auroras_light() {
         let mut s = [0.0f32; 3];
         for y in 0..img.height / 3 {
             for x in 0..img.width {
-                let p = px(img, x, y);
+                let p = px_f32(img, x, y);
                 (0..3).for_each(|k| s[k] += linear(p[k]));
             }
         }
@@ -596,8 +581,8 @@ fn a_night_cloud_takes_the_auroras_light() {
     );
     println!("the aurora adds {open:?} to the open sky, {clouded:?} to the overcast");
     assert!(
-        luma(clouded) > luma(open) / 40.0
-            && luma(clouded) < luma(open) / 2.0
+        luma_f32(clouded) > luma_f32(open) / 40.0
+            && luma_f32(clouded) < luma_f32(open) / 2.0
             && clouded[1] > clouded[0]
             && clouded[1] > clouded[2],
         "the overcast under the aurora rises {clouded:?}, the open sky {open:?}"
@@ -670,7 +655,7 @@ fn far_night_clouds_take_the_moonlit_air() {
         let mut s = [0.0f32; 3];
         for y in y0..y1 {
             for x in 0..img.width {
-                let p = px(img, x, y);
+                let p = px_f32(img, x, y);
                 (0..3).for_each(|k| s[k] += linear(p[k]));
             }
         }
@@ -683,7 +668,7 @@ fn far_night_clouds_take_the_moonlit_air() {
     let (open, banked) = (band(&clear), band(&clouded));
     println!("over the horizon: clear {open:?}, under far cumulus {banked:?}");
     assert!(
-        luma(banked) > luma(open) / 3.0 && banked[2] > banked[0],
+        luma_f32(banked) > luma_f32(open) / 3.0 && banked[2] > banked[0],
         "the far cloud over the horizon is {banked:?}, the clear sky there {open:?}"
     );
 }
@@ -759,8 +744,8 @@ fn the_moon_lights_the_clouds_at_night() {
         let (mut sky, mut cloud, mut n) = (0.0, 0.0, 0u32);
         for y in 0..clear.height / 2 {
             for x in 0..clear.width {
-                let a = luma(px(&clear, x, y).map(linear));
-                let b = luma(px(&clouded, x, y).map(linear));
+                let a = luma_f32(px_f32(&clear, x, y).map(linear));
+                let b = luma_f32(px_f32(&clouded, x, y).map(linear));
                 if (a - b).abs() > 0.1 * a.max(b) {
                     (sky, cloud, n) = (sky + a, cloud + b, n + 1);
                 }

@@ -247,8 +247,8 @@ fn a_terrain_honours_its_transform() {
     for (label, transform, at, covered) in cases {
         let scene = strip_scene(transform, false);
         let (img, _) = render(&scene);
-        keep(&format!("transform-{}", label.replace(' ', "-")), &img);
-        let pixel = project(&scene.frame.camera, at);
+        save("og-terrain", &format!("transform-{}", label.replace(' ', "-")), &img);
+        let pixel = project(&scene.frame.camera, 1280, 720, at);
         assert_eq!(
             !is_background(&img, pixel),
             covered,
@@ -274,14 +274,14 @@ fn a_terrain_honours_its_transform() {
     let plain = strip_scene(Mat4::IDENTITY, true);
     let (img, _) = render(&plain);
     assert!(
-        is_background(&img, project(&plain.frame.camera, probe)),
+        is_background(&img, project(&plain.frame.camera, 1280, 720, probe)),
         "6 m bump under 12 m"
     );
     let tall = strip_scene(Mat4::from_scale(Vec3::new(1.0, 3.0, 1.0)), true);
     let (img, _) = render(&tall);
-    keep("transform-tall", &img);
+    save("og-terrain", "transform-tall", &img);
     assert!(
-        !is_background(&img, project(&tall.frame.camera, probe)),
+        !is_background(&img, project(&tall.frame.camera, 1280, 720, probe)),
         "18 m bump over 12 m"
     );
     // Scattered copies on the turned, raised and doubled strip lie on it.
@@ -398,10 +398,10 @@ fn scattered_copies_take_the_decals_and_the_weather() {
         ..Decal::on_surface(Vec3::Y * 1.5, Vec3::Y, Vec2::splat(200.0), 1.0, 0.0)
     });
     let marked = capture(&scene);
-    keep("scatter-decal", &marked);
+    save("og-terrain", "scatter-decal", &marked);
     let all = || (0..bare.height).flat_map(|y| (0..bare.width).map(move |x| (x, y)));
     let tops: Vec<(u32, u32)> = all()
-        .filter(|&(x, y)| px(&marked, x, y)[0] > px(&bare, x, y)[0] + 30.0)
+        .filter(|&(x, y)| px_f32(&marked, x, y)[0] > px_f32(&bare, x, y)[0] + 30.0)
         .collect();
     let frame = (bare.width * bare.height) as usize;
     assert!(
@@ -417,10 +417,10 @@ fn scattered_copies_take_the_decals_and_the_weather() {
         ..Default::default()
     });
     let snowed = capture(&scene);
-    keep("scatter-snow", &snowed);
+    save("og-terrain", "scatter-snow", &snowed);
     let white = tops
         .iter()
-        .filter(|&&(x, y)| luma(px(&snowed, x, y)) > luma(px(&bare, x, y)) + 40.0)
+        .filter(|&&(x, y)| luma_f32(px_f32(&snowed, x, y)) > luma_f32(px_f32(&bare, x, y)) + 40.0)
         .count();
     assert!(
         white * 10 > tops.len() * 8,
@@ -556,11 +556,11 @@ fn a_turned_clearing_keeps_copies_and_grass_off_a_slab() {
                 r.render(&scene, &RenderTarget::Offscreen).expect("render");
             }
             let img = r.read_offscreen().expect("capture");
-            keep(&format!("clearing-{label}-{cleared}"), &img);
+            save("og-terrain", &format!("clearing-{label}-{cleared}"), &img);
             let (mut inside, mut beside) = (0, 0);
             for y in 0..img.height {
                 for x in 0..img.width {
-                    if luma(px(&img, x, y)) < 60.0 {
+                    if luma_f32(px_f32(&img, x, y)) < 60.0 {
                         continue;
                     }
                     // A copy whose root stands just outside reaches 0.5 m in.
@@ -659,7 +659,7 @@ fn grass_grows_only_where_the_height_blend_draws_its_layer() {
             r.render(&scene, &RenderTarget::Offscreen).expect("render");
         }
         let img = r.read_offscreen().expect("capture");
-        keep(&format!("grass-blend-{blend}"), &img);
+        save("og-terrain", &format!("grass-blend-{blend}"), &img);
         img
     };
     // Bright pixels where grass weighs under 0.3 (x < -12.8 m) and over
@@ -669,7 +669,7 @@ fn grass_grows_only_where_the_height_blend_draws_its_layer() {
         for y in 0..img.height {
             for x in 0..img.width {
                 let at = (x as f32 - 640.0) / 12.0;
-                if luma(px(img, x, y)) < 60.0 || at.abs() > 31.0 {
+                if luma_f32(px_f32(img, x, y)) < 60.0 || at.abs() > 31.0 {
                     continue;
                 }
                 if at < -13.8 {

@@ -8,6 +8,7 @@
 //! lights the fluid; the basin's wall hides the fluid behind it.
 
 use og_render::{RenderScene, RenderTarget, Renderer, RgbaImage};
+use og_tests::harness::luma_f32;
 use og_tests::{p2_scenes, scenes};
 
 fn frame(edit: impl FnOnce(&mut RenderScene)) -> RgbaImage {
@@ -44,14 +45,10 @@ fn mean(img: &RgbaImage, r: Rect) -> [f32; 3] {
     sum.map(|c| c / area(r))
 }
 
-fn luma(p: [f32; 3]) -> f32 {
-    0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]
-}
-
 /// Luma's standard deviation over a rectangle (how much detail shows).
 fn contrast(img: &RgbaImage, r: Rect) -> f32 {
-    let m = luma(mean(img, r));
-    (pixels(img, r).map(|p| (luma(p) - m).powi(2)).sum::<f32>() / area(r)).sqrt()
+    let m = luma_f32(mean(img, r));
+    (pixels(img, r).map(|p| (luma_f32(p) - m).powi(2)).sum::<f32>() / area(r)).sqrt()
 }
 
 /// Mean absolute difference over a rectangle (all channels).

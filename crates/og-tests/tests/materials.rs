@@ -5,28 +5,11 @@
 
 use glam::{Mat4, Vec3};
 use og_render::{
-    Background, Camera, DirectionalLight, Environment, Exposure, RenderScene, RenderTarget,
-    Renderer, RgbaImage, StandardMaterial, shapes,
+    Background, Camera, DirectionalLight, Environment, Exposure, RenderScene, RgbaImage,
+    StandardMaterial, shapes,
 };
-use og_tests::{gfx, scenes};
-use std::path::PathBuf;
-
-fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-gfx")
-}
-
-fn frame(scene: &RenderScene) -> RgbaImage {
-    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
-    renderer
-        .render(scene, &RenderTarget::Offscreen)
-        .expect("render");
-    renderer.read_offscreen().expect("capture")
-}
-
-fn luma(img: &RgbaImage, x: u32, y: u32) -> f32 {
-    let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
-    0.2126 * p[0] as f32 + 0.7152 * p[1] as f32 + 0.0722 * p[2] as f32
-}
+use og_tests::gfx;
+use og_tests::harness::{base_image, luma_at, out_dir};
 
 /// One object on black, lit from the upper left, seen from +z.
 fn studio() -> RenderScene {
@@ -72,14 +55,14 @@ fn leaf_backlighting_is_tinted_and_shadowed() {
         };
         let material = scene.add_standard_material(leaf);
         scene.add_instance(card, material, Mat4::IDENTITY);
-        let opaque = frame(&scene);
+        let opaque = base_image(&scene);
         leaf.foliage.x = 0.65;
         scene.set_standard_material(material, leaf);
-        let lit = frame(&scene);
+        let lit = base_image(&scene);
         let x = lit.width / 2;
         let y = lit.height / 2;
         assert!(
-            luma(&lit, x, y) > luma(&opaque, x, y) + 20.0,
+            luma_at(&lit, x, y) > luma_at(&opaque, x, y) + 20.0,
             "backlight never reached the leaf (coat {clearcoat})"
         );
         let p = &lit.pixels[((y * lit.width + x) * 4) as usize..][..3];
@@ -97,18 +80,18 @@ fn leaf_backlighting_is_tinted_and_shadowed() {
             black,
             Mat4::from_translation(scene.lighting.light.direction_to_light),
         );
-        let shadowed = frame(&scene);
+        let shadowed = base_image(&scene);
         assert!(
-            luma(&shadowed, x, y) < luma(&lit, x, y) * 0.4,
+            luma_at(&shadowed, x, y) < luma_at(&lit, x, y) * 0.4,
             "shadow failed to attenuate transmission (coat {clearcoat})"
         );
         gfx::save_png(
-            &out_dir().join(format!("foliage-backlit-{clearcoat}.png")),
+            &out_dir("og-gfx").join(format!("foliage-backlit-{clearcoat}.png")),
             &lit,
         )
         .unwrap();
         gfx::save_png(
-            &out_dir().join(format!("foliage-shadowed-{clearcoat}.png")),
+            &out_dir("og-gfx").join(format!("foliage-shadowed-{clearcoat}.png")),
             &shadowed,
         )
         .unwrap();
@@ -132,13 +115,13 @@ fn clearcoat_adds_a_glossy_layer() {
             ..Default::default()
         });
         scene.add_instance(sphere, m, Mat4::IDENTITY);
-        frame(&scene)
+        base_image(&scene)
     };
     let peak = |img: &RgbaImage| {
         let mut best = 0.0f32;
         for y in 160..560 {
             for x in 440..840 {
-                best = best.max(luma(img, x, y));
+                best = best.max(luma_at(img, x, y));
             }
         }
         best
@@ -156,5 +139,5 @@ fn clearcoat_adds_a_glossy_layer() {
         ..Default::default()
     });
     plain.add_instance(sphere, m, Mat4::IDENTITY);
-    assert_eq!(frame(&plain).pixels, bare.pixels);
+    assert_eq!(base_image(&plain).pixels, bare.pixels);
 }

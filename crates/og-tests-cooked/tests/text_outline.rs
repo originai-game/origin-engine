@@ -23,6 +23,7 @@ use og_render::{
     Background, ColorSpace, FontHandle, Glyph, Mips, MsdfFont, Overlay, RenderDesc, RenderScene,
     RenderTarget, Renderer, Text, TextureData, Tonemap, UiAlign, UiTextEffects, UiTextOutline,
 };
+use og_tests::harness::out_dir;
 use std::path::{Path, PathBuf};
 
 const KIT_FONTS: [&str; 2] = ["NotoSansSC-Regular-subset.ttf", "Inter-Display.ttf"];
@@ -87,7 +88,7 @@ fn lin(byte: u8) -> f32 {
 
 /// The outline's width, CSS px, around `font`'s 16 px "I".
 fn measured_outline(font: &str) -> f32 {
-    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("og-text-outline-{font}"));
+    let root = out_dir(&format!("og-text-outline-{font}"));
     let _ = std::fs::remove_dir_all(&root);
     let dst = root.join("assets/fonts");
     std::fs::create_dir_all(&dst).expect("dir");
