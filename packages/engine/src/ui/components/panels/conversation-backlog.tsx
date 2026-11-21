@@ -51,7 +51,7 @@ export function RpgConversationBacklog(props: RpgConversationBacklogProps) {
           <Text class="shrink">{t("rpg.talk.historyLoading")}</Text>
         </View>
       </Show>
-      <View class={`grow shrink basis-0 gap-3 overflow-auto`} role="log" label={t("rpg.talk.history")}>
+      <View class={`grow shrink gap-3 overflow-auto`} role="log" label={t("rpg.talk.history")}>
         <Show when={(props.hasOlder ?? false)}>
           <View class={`flex-row gap-1 min-h-11 self-center px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" disabled={(props.loading ?? false)} onPress={(e) => props.onOlder?.(e)}>
             <Text>{t("rpg.talk.older")}</Text>
