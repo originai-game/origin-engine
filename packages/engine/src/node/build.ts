@@ -24,7 +24,7 @@
 //
 //   bun src/node/build.ts --entry <src/main.ts> --out <file.js> [--target native|web] [--minify] [--json]
 
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire, isBuiltin } from "node:module";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -64,6 +64,17 @@ declare const Bun: {
   JSONC: { parse(text: string): unknown };
   Transpiler: new (o: { loader: string }) => { scan(text: string): { exports: string[] } };
 };
+
+/** The trace file OG_BUILD_TRACE names (the gate's build trace, crate::commands::bundle): opt-in evidence, never a failure. */
+function bundleTrace(event: string, fields: Record<string, unknown> = {}): void {
+  const file = process.env.OG_BUILD_TRACE;
+  if (!file) return;
+  try {
+    appendFileSync(file, JSON.stringify({ at: Date.now(), pid: process.pid, event, ...fields }) + "\n");
+  } catch {
+    // Diagnostics cannot make a build fail.
+  }
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const ENGINE_ROOT = resolve(here, "..", "..");
@@ -160,6 +171,10 @@ const ADOPT_SITES = `{
 /** Bundle `entry` (whose default export is `og.game(...)`) into `out`, its source map into `<out>.map`. */
 export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" | "web-live" | "web-code" = "native", minify = false, maps: MapOptions = {}, cacheInputs?: ReadonlySet<string>): Promise<Bundled> {
   const t0 = performance.now();
+  bundleTrace("bundle-start", { entry, target });
+  let bundlerMs = 0;
+  let jsxMs = 0;
+  let jsxCount = 0;
   const absEntry = resolve(entry);
   let cacheable = cacheInputs !== undefined && target === "native";
   for (const file of cacheInputs ?? []) {
@@ -255,7 +270,10 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         const asserts = own && text.includes("og.assert.");
         if (asserts) text = placeAssertions(text, relative(project, a.path).split(sep).join("/"));
         if (jsx) {
+          const tJsx = performance.now();
           const out = compileJsx(a.path, text);
+          jsxMs += performance.now() - tJsx;
+          jsxCount++;
           if (!out.ok) throw new Error(out.reason);
           for (const warning of out.warnings) process.stderr.write(`${relative(process.cwd(), a.path)}: ${warning}\n`);
           const map = base64(out.map);
@@ -277,6 +295,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       }));
     },
   };
+  const tBun = performance.now();
   const r = await Bun.build({
     entrypoints: [target === "web" || target === "web-live" ? "og:worker" : target === "native" || target === "web-code" ? "og:game" : absEntry],
     target: target === "native" ? "bun" : "browser",
@@ -286,8 +305,11 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     sourcemap: "external",
     plugins: [engine],
   });
+  bundlerMs = +(performance.now() - tBun).toFixed(1);
+  bundleTrace("bundle-bundler", { ms: bundlerMs, jsxMs: +jsxMs.toFixed(1), jsxCount, minify });
   if (!r.success || r.outputs.length === 0) {
     const reason = r.logs.map((l) => String((l as { message?: string }).message ?? l)).join("\n") || "bun build failed";
+    bundleTrace("bundle-end", { ok: false, ms: +(performance.now() - t0).toFixed(1), bundlerMs, jsxMs: +jsxMs.toFixed(1), jsxCount });
     return { ok: false, out, bytes: 0, ms: performance.now() - t0, reason };
   }
   const code = r.outputs.find((o) => o.kind !== "sourcemap") ?? r.outputs[0]!;
@@ -313,7 +335,9 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     if (maps.link !== false) text = `${text.replace(/\n*$/, "\n")}//# sourceMappingURL=${basename(mapFile)}\n`;
   } else rmSync(mapFile, { force: true });
   await Bun.write(out, text);
-  return { ok: true, out, bytes: new TextEncoder().encode(text).length, ms: +(performance.now() - t0).toFixed(1), ...(sourcemap ? { map: mapFile } : {}), ...(cacheInputs ? { cacheable } : {}) };
+  const ms = +(performance.now() - t0).toFixed(1);
+  bundleTrace("bundle-end", { ok: true, ms, bytes: new TextEncoder().encode(text).length, bundlerMs, jsxMs: +jsxMs.toFixed(1), jsxCount, cacheable });
+  return { ok: true, out, bytes: new TextEncoder().encode(text).length, ms, ...(sourcemap ? { map: mapFile } : {}), ...(cacheInputs ? { cacheable } : {}) };
 }
 
 if (import.meta.main) {
