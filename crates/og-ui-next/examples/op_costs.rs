@@ -1,7 +1,8 @@
 //! A HUD of op nodes as the TS renderer makes it, headless: the batch that
 //! builds it (applied and its first frame), an unchanged frame, one text
 //! changed (a clock), and the pointer coming over a panel whose `hover:`
-//! fill shows and leaving it, each the median of N runs with its
+//! fill shows and leaving it, and a d-pad move of the focus down the
+//! panels, each the median of N runs with its
 //! allocations.
 //!
 //!     cargo run --release -p og-ui-next --example op_costs [N]
@@ -121,6 +122,7 @@ fn main() {
     let build = hud().bytes();
     let (mut builds, mut idle, mut changed) = (Vec::new(), Vec::new(), Vec::new());
     let mut hovered = Vec::new();
+    let mut moved = Vec::new();
     for _ in 0..n {
         let mut t = tree();
         let a = allocations();
@@ -157,12 +159,28 @@ fn main() {
             }
         }
     }
+    for _ in 0..n {
+        let mut t = tree();
+        t.apply(&build).unwrap();
+        t.frame(&fonts, &icons);
+        for k in 0..8 {
+            let a = allocations();
+            let s = Instant::now();
+            t.nav(og_ui::Nav::Down);
+            t.frame(&fonts, &icons);
+            // The first move meets the stops' capacity.
+            if k > 0 {
+                moved.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
+            }
+        }
+    }
     assert_eq!(&MAGIC[..], b"OGOP");
     for (what, v) in [
         ("build", builds),
         ("unchanged", idle),
         ("one text", changed),
         ("hover", hovered),
+        ("d-pad", moved),
     ] {
         let (ms, allocs) = median(v);
         println!("{what:>10}: {ms:.4} ms, {allocs} allocations");

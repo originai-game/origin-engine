@@ -85,8 +85,9 @@ pub struct Input {
     modals: Vec<(u32, u32)>,
     /// The elements with `modal`.
     pub(super) modal_els: Vec<u32>,
-    /// Tab stops, made on a Tab.
+    /// Tab stops, made on a Tab or a move, and a move's candidates.
     stops: Vec<u32>,
+    cands: Vec<(u64, og_ui::Rect)>,
     /// An Enter or Space pressed the focused control this frame: the
     /// `confirm` it is bound to does not press it again.
     keyed: bool,
@@ -406,21 +407,22 @@ impl Tree {
         self.order();
         let mut stops = std::mem::take(&mut self.input.stops);
         stops.clear();
+        let tab = |t: &Tree, e: u32| t.input.per(e).map_or(NO_TAB, |p| p.tab);
+        // Positive `tabIndex` first, sorted (equal ones in tree order: a
+        // stable sort, which allocates nothing for the few there are),
+        // then the rest in tree order.
         for &e in &self.order {
-            if self.focusable(e)
-                && self
-                    .input
-                    .per(e)
-                    .is_some_and(|p| p.tab == NO_TAB || p.tab >= 0)
-            {
+            if tab(self, e) > 0 && self.focusable(e) {
                 stops.push(e);
             }
         }
-        // Stable: equal keys keep tree order.
-        stops.sort_by_key(|&e| match self.input.per(e).map_or(0, |p| p.tab) {
-            t if t > 0 => t,
-            _ => i32::MAX,
-        });
+        stops.sort_by_key(|&e| tab(self, e));
+        for &e in &self.order {
+            let t = tab(self, e);
+            if (t == NO_TAB || t == 0) && self.focusable(e) {
+                stops.push(e);
+            }
+        }
         self.input.stops = stops;
     }
 
@@ -436,6 +438,51 @@ impl Tree {
         self.focus(e);
     }
 
+    /// The element's box on screen, as og-ui's navigation reads it.
+    fn rect(&self, e: u32) -> og_ui::Rect {
+        let (x, y, _, _) = self.abs[e as usize];
+        let b = self.arena.box_of(self.els[e as usize].node);
+        og_ui::Rect {
+            x,
+            y,
+            width: b.w,
+            height: b.h,
+        }
+    }
+
+    /// A d-pad, stick or arrow move (`Up`, `Down`, `Left`, `Right`): the
+    /// focus goes to the nearest Tab stop that way, wrapping to the far
+    /// end of its row or column (og-ui's FocusFinder rule), and shows.
+    /// With nothing focused it lands on the first stop. Whether a stop
+    /// took it.
+    pub fn nav(&mut self, dir: og_ui::Nav) -> bool {
+        self.sync_modals();
+        self.tab_stops();
+        let Some(&first) = self.input.stops.first() else {
+            return false;
+        };
+        self.input.modality = Modality::Keyboard;
+        let f = self.input.focus;
+        if f == NONE || !self.input.stops.contains(&f) {
+            self.focus(first);
+            return true;
+        }
+        let mut cands = std::mem::take(&mut self.input.cands);
+        cands.clear();
+        for &e in &self.input.stops {
+            if e != f {
+                cands.push((u64::from(e), self.rect(e)));
+            }
+        }
+        let to = og_ui::nav_neighbour(&self.rect(f), &cands, dir);
+        self.input.cands = cands;
+        match to {
+            Some(e) => self.focus(e as u32),
+            None => self.set_state(f, FOCUS_VISIBLE, true),
+        }
+        true
+    }
+
     /// A key went down (its `KeyboardEvent.code`): Tab moves the focus,
     /// Enter or Space presses the focused control (NSH's
     /// `presses_focused_control`), and the focused element, or the
@@ -446,6 +493,23 @@ impl Tree {
         if code == "Tab" && !(ctrl || alt || meta) {
             self.tab(shift);
             return true;
+        }
+        let dir = match code {
+            "ArrowUp" => Some(og_ui::Nav::Up),
+            "ArrowDown" => Some(og_ui::Nav::Down),
+            "ArrowLeft" => Some(og_ui::Nav::Left),
+            "ArrowRight" => Some(og_ui::Nav::Right),
+            _ => None,
+        };
+        // An arrow moves the focus, unless the focused node takes keys
+        // itself (a slider, a list): then it hears the arrow instead.
+        let own = self.input.focus != NONE
+            && self.els[self.input.focus as usize].listens & OpEvent::Key.bit() != 0;
+        if let Some(dir) = dir
+            && !own
+            && !(shift || ctrl || alt || meta)
+        {
+            return self.nav(dir);
         }
         let f = self.input.focus;
         if f == NONE {

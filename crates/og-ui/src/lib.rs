@@ -70,6 +70,7 @@ pub mod element;
 pub use element::id;
 pub use input_type::{InputMode, InputType};
 pub use interaction::hud_layout;
+pub use interaction::nav::neighbour as nav_neighbour;
 #[doc(hidden)]
 pub use text::input_type;
 pub mod interaction;

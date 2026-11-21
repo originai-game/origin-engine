@@ -102,6 +102,8 @@ pub(crate) struct Next {
     pub(crate) settle_glyphs: bool,
     /// The device whose bindings the `<Glyph>` nodes show.
     device: Option<og_ui::Device>,
+    /// The left stick's held direction and when it moves the focus again.
+    stick: Option<(og_ui::Nav, f64)>,
 }
 
 fn source(v: &Value) -> Option<(String, String)> {
@@ -236,6 +238,7 @@ impl Next {
             spans: Spans::default(),
             font: false,
             device: None,
+            stick: None,
             language: String::new(),
             a11y: og_ui_next::a11y::Tree::new(),
             fresh: false,
@@ -654,6 +657,45 @@ impl Next {
                     og_input::A11yAct::Decrement => _ = tree.a11y_act(node, Some(false)),
                 }
             }
+            // The d-pad moves the focus on each press; the left stick past
+            // half-way on its dominant axis once, then after og-ui's slow
+            // duration every fast one while held, as og-ui's navigation.
+            let g = &input.gamepad;
+            use og_ui::{GamepadFrame as Pad, Nav};
+            for (bit, nav) in [
+                (Pad::UP, Nav::Up),
+                (Pad::DOWN, Nav::Down),
+                (Pad::LEFT, Nav::Left),
+                (Pad::RIGHT, Nav::Right),
+            ] {
+                if g.pressed & bit != 0 {
+                    tree.nav(nav);
+                }
+            }
+            let s = g.stick;
+            let dir = if s.x.abs().max(s.y.abs()) < 0.5 {
+                None
+            } else if s.x.abs() > s.y.abs() {
+                Some(if s.x > 0.0 { Nav::Right } else { Nav::Left })
+            } else {
+                Some(if s.y > 0.0 { Nav::Down } else { Nav::Up })
+            };
+            let d = ui.theme().durations_ms;
+            self.stick = match (dir, self.stick) {
+                (None, _) => None,
+                (Some(dir), Some((held, next))) if held == dir => {
+                    if time >= next {
+                        tree.nav(dir);
+                        Some((dir, next + f64::from(d.fast) / 1000.0))
+                    } else {
+                        Some((dir, next))
+                    }
+                }
+                (Some(dir), _) => {
+                    tree.nav(dir);
+                    Some((dir, time + f64::from(d.slow) / 1000.0))
+                }
+            };
             tree.input_done();
             let device = ui.device();
             if tree.glyphs_wanted() || self.device != Some(device) {

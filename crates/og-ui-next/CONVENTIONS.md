@@ -157,7 +157,13 @@ machines do (ported as logic).
   hits, and a press on anything else blurs. Focusable means a press or tap
   listener, an `Input`, or a `tabIndex`. Tab and Shift+Tab go to positive
   `tabIndex` first, then tree order, and wrap; `-1` is focused only by a
-  press. Enter or Space presses the focused control; so does `confirm`
+  press. The arrows, the d-pad and the left stick (once past half-way, then
+  repeating after 400 ms every 180 ms) move the focus to the nearest stop
+  that way, in its row or column first, wrapping to the far end of it
+  (og-ui's FocusFinder rule, `og_ui::nav_neighbour`); with nothing focused
+  they land on the first stop. A focused node that listens to `key` hears
+  the arrows instead (a slider), and the d-pad still moves it. Enter or
+  Space presses the focused control; so does `confirm`
   when no node around it lists `confirm`, but not twice in one frame.
 - **Modals**: when a `modal` node shows, focus moves to its first Tab stop
   (else itself) and stays inside it. When it goes, focus returns to the

@@ -1135,6 +1135,10 @@ mod tests {
                         s.flex_direction = taffy::FlexDirection::Row;
                         continue;
                     }
+                    "col" => {
+                        s.flex_direction = taffy::FlexDirection::Column;
+                        continue;
+                    }
                     "b" => 50.0,
                     "hw" if state & HOVERED != 0 => 80.0,
                     "aw" if state & PRESSED != 0 => 60.0,
@@ -1332,5 +1336,59 @@ mod tests {
         assert!(!t.glyphs_wanted());
         let e = t.op(1).unwrap();
         assert_eq!(t.els[e as usize].text, "E");
+    }
+
+    /// Arrows and the d-pad move the focus to the nearest stop that way,
+    /// in its row or column first, and wrap to the far end of the row;
+    /// the first one lands on the first stop. A focused node that hears
+    /// keys gets the arrow instead.
+    #[test]
+    fn arrows_move_the_focus_through_a_grid() {
+        let mut t = stated();
+        // Two rows of two in a column: 1 2 / 3 4.
+        let mut b = Batch::default();
+        b.op(1).u32(99).u8(0);
+        b.op(4).u32(99).str("col");
+        b.op(8).u32(0).u32(99).u32(u32::MAX);
+        for (row, ids) in [(100, [1, 2]), (101, [3, 4])] {
+            b.op(1).u32(row).u8(0);
+            b.op(4).u32(row).str("row");
+            b.op(8).u32(99).u32(row).u32(u32::MAX);
+            for id in ids {
+                b.op(1).u32(id).u8(0);
+                b.op(4).u32(id).str("b");
+                b.op(7).u32(id).u8(Event::Press as u8).u8(1);
+                b.op(8).u32(row).u32(id).u32(u32::MAX);
+            }
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(t.op_box(4).unwrap(), [50.0, 20.0, 50.0, 20.0]);
+        let mut path = Vec::new();
+        for key in [
+            "ArrowDown",
+            "ArrowRight",
+            "ArrowDown",
+            "ArrowLeft",
+            "ArrowUp",
+            "ArrowLeft",
+        ] {
+            assert!(t.key(key, false, false, false, false));
+            path.push(t.focused_id().unwrap());
+        }
+        assert_eq!(
+            path,
+            [1, 2, 4, 3, 1, 2],
+            "the last Left wraps along the row"
+        );
+        let mut b = Batch::default();
+        b.op(7).u32(2).u8(Event::Key as u8).u8(1);
+        t.apply(&b.bytes()).unwrap();
+        t.events.clear();
+        t.key("ArrowDown", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(2), "it took the arrow");
+        assert_eq!((t.events[0].id, &*t.events[0].key), (2, "ArrowDown"));
+        assert!(t.nav(og_ui::Nav::Down), "the d-pad still moves it");
+        assert_eq!(t.focused_id(), Some(4));
     }
 }
