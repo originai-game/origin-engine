@@ -11,13 +11,23 @@ struct ScatterUniform {
   view_proj: mat4x4<f32>,     // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
   wind: vec4<f32>,            // xy: og.Wind's horizontal direction (x, z), z: the scatter's sway (0: still), w: the trample's recovery (s)
-  wind_shape: vec4<f32>,      // x: unused, y: the mesh's top above its origin (m), zw: the frame's origin's x and z (origin.rs)
+  wind_shape: vec4<f32>,      // x: the frame's origin's y, y: the mesh's top above its origin (m), zw: the frame's origin's x and z (origin.rs)
   impostor: vec4<f32>,        // the impostor's sphere in the model's space (impostor.rs): xyz its centre, w its radius
   impostor_grid: vec4<f32>,   // x: frames per side of its atlas, y: the distance past which copies draw as impostors (0: never), z: 1 with alpha to coverage, w: 1 when its material's roughness map is the material atlas (impostor.wgsl imp_material)
   impostor_light: vec4<f32>,  // xyz: towards the sun (the shadow cascades' cards face it), w: an impostor's 1 when its atlases hold the lower hemisphere's frames (impostor.rs Impostor::below; a crowd card's elevation)
   impostor_trim: array<vec4<f32>, 2>, // the impostor card's outline (impostor.rs CardTrim): its strips' boundary half-widths, bottom to top ([0].xyzw, [1].x), and its bottom and top ([1].yz)
   trample: vec4<f32>,         // the trample map (trample.rs): min corner (x, z from the frame's origin), cell, cells a side (0: none)
-  canopy: vec4<f32>,          // xyz: the mesh's canopy centre in its own space, w: 1 when it has foliage (meshlet.rs MeshFoliage)
+  // The mesh's foliage header (meshlet.rs MeshFoliage::pool_rows' first
+  // five: canopy centre and top, flags (x 1 leaf cards, y season, z its
+  // shift, w 1 when the mesh has foliage), the two autumn colours, the
+  // crown's half-extents and extinction); zero without.
+  foliage: array<vec4<f32>, 5>,
+  leaf_year: LeafYear,        // the year the seasonal leaves are drawn in (foliage.wgsl)
+  // The impostor card's leaves' year: rows 1 to 3 of the foliage header
+  // of the plant's part with seasonal leaves (impostor.wgsl imp_leaf),
+  // then that part's own colour before its texture (rgb); zero for a
+  // card as baked.
+  card_leaves: array<vec4<f32>, 4>,
 };
 @group(2) @binding(0) var<uniform> scatter: ScatterUniform;
 // The frame's wind (wind.rs WindField) and the simulated field's lean
@@ -44,6 +54,28 @@ struct ScatterInstance {
   // carries how much of it is hidden (instance.wgsl look_hidden).
   @location(8) look: vec4<f32>,
 };
+
+// A foliage mesh's vertex stream (meshlet.rs MeshFoliage, resources.rs
+// FOLIAGE_LAYOUT): its branch pivot and stiffness, its leaf anchor and
+// flutter. A mesh without foliage draws with zero rows (`SCATTER_RIGID`).
+struct ScatterFoliage {
+  @location(9) branch: vec4<f32>,
+  @location(10) leaf: vec4<f32>,
+};
+
+const SCATTER_RIGID = ScatterFoliage(vec4<f32>(0.0), vec4<f32>(0.0));
+
+// The frame's origin (origin.rs), which places a copy's tree in the world.
+fn scatter_origin() -> vec3<f32> {
+  return vec3<f32>(scatter.wind_shape.z, scatter.wind_shape.x, scatter.wind_shape.w);
+}
+
+// A foliage vertex of the copy `model` in its year (foliage.wgsl
+// `meshlet_leaf`): how much of its leaf is there, how far it turned, and
+// its colour lot. Whole without the year or a seasonal species.
+fn scatter_leaf(f: ScatterFoliage, model: mat4x4<f32>) -> MeshletLeaf {
+  return meshlet_leaf(scatter.foliage[1], f.leaf, model, scatter_origin(), scatter.leaf_year);
+}
 
 // How much of a copy standing at `at` shows: 1 inside the fade, 0 past the distance.
 fn scatter_fade(at: vec3<f32>) -> f32 {
@@ -97,30 +129,51 @@ fn scatter_shrunk(model: mat4x4<f32>, s: f32) -> mat4x4<f32> {
   return mat4x4<f32>(model[0] * s, model[1] * s, model[2] * s, model[3]);
 }
 
-// How the wind moves a vertex at `local` (mesh space) of the copy standing
-// at `base` with uniform scale `scale`, now or as last drawn (`previous`):
-// by the lean of the wind field at the copy's root (wind_common.wgsl
-// wind_lean: the field every tier shares, or og.Wind's analytic lean
-// without it) times the scatter's sway times its height times its height
-// over the mesh's top, lowered to keep its distance from the root. Each
-// copy reads the field a little upwind or downwind of its root (by its
-// place's hash, up to a wavelength's sixth), so neighbours do not sway in
-// step. Trampled copies (trample.rs) part away from what pressed them.
-fn scatter_sway(local: vec3<f32>, base: vec3<f32>, scale: f32, previous: bool) -> vec3<f32> {
-  let sway = scatter.wind.z;
-  let top = scatter.wind_shape.y;
-  if (sway <= 0.0 || top <= 0.0 || local.y <= 0.0) {
-    return vec3<f32>(0.0);
-  }
+// The copy standing at `base` with uniform scale `scale` leans by, now or
+// as last drawn (`previous`): the lean of the wind field at its root
+// (wind_common.wgsl wind_lean: the field every tier shares, or og.Wind's
+// analytic lean without it) times the scatter's sway, read a little upwind
+// or downwind of the root (by its place's hash, up to a wavelength's
+// sixth) so neighbours do not sway in step; a trampled copy (trample.rs)
+// parts away from what pressed it.
+fn scatter_lean(base: vec3<f32>, scale: f32, previous: bool) -> vec2<f32> {
   let jitter = scatter_copy_unit(base) * WIND_WAVELENGTH / (2.0 * PI);
   let lean4 = wind_lean(scatter_wind_tex, scatter_wind, base.xz - scatter.wind.xy * jitter);
   // Trampled (G3): parted away from the pusher, as the grass is.
-  let tall = top * scale;
+  let tall = scatter.wind_shape.y * scale;
   let tr = vegetation_trample(scatter_trample_tex, scatter.trample, base, tall, scatter.wind.w);
-  let lean = select(lean4.xy, lean4.zw, previous) * sway * (1.0 - clamp(tr.z, 0.0, 1.0)) + tr.xy * 1.2;
+  return select(lean4.xy, lean4.zw, previous) * scatter.wind.z * (1.0 - clamp(tr.z, 0.0, 1.0)) + tr.xy * 1.2;
+}
+
+// How the wind moves a vertex at `local` (mesh space) of the copy standing
+// at `base` with uniform scale `scale`, now or as last drawn (`previous`):
+// by its lean (`scatter_lean`) times its height times its height over the
+// mesh's top, lowered to keep its distance from the root.
+fn scatter_sway(local: vec3<f32>, base: vec3<f32>, scale: f32, previous: bool) -> vec3<f32> {
+  let top = scatter.wind_shape.y;
+  if (scatter.wind.z <= 0.0 || top <= 0.0 || local.y <= 0.0) {
+    return vec3<f32>(0.0);
+  }
+  let lean = scatter_lean(base, scale, previous);
   let h = local.y * scale;
   let d = lean * h * min(local.y / top, 1.0);
   let dl = min(length(d), h);
   let drop = h - sqrt(max(h * h - dl * dl, 0.0));
   return vec3<f32>(d.x, -drop, d.y);
+}
+
+// How the wind moves a foliage mesh's vertex at `local` (its stream `f`)
+// of the copy standing at `base` (`model` its shrunk transform, `scale`
+// its uniform scale), now or as last drawn (`previous`, `wind` that
+// frame's og.Wind): as the meshlet path bends a model's tree (foliage.wgsl
+// `foliage_offset`: its leaf about its anchor, its branch about its pivot,
+// the trunk about its root) by the copy's lean (`scatter_lean`).
+fn scatter_foliage_sway(local: vec3<f32>, f: ScatterFoliage, model: mat4x4<f32>, base: vec3<f32>, scale: f32, wind: FoliageWind, previous: bool) -> vec3<f32> {
+  let top = scatter.wind_shape.y;
+  if (scatter.wind.z <= 0.0 || top <= 0.0) {
+    return vec3<f32>(0.0);
+  }
+  var w = wind;
+  w.gust_top.y = top;
+  return foliage_offset(local, f.branch, f.leaf, model, w, scatter_lean(base, scale, previous));
 }

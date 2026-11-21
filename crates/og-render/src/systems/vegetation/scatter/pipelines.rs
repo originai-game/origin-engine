@@ -93,8 +93,12 @@ impl ScatterRenderer {
         side: Side,
         pass: ScatterPass,
         impostor: bool,
+        foliage: bool,
     ) {
-        let kind = pass as u8 + if impostor { IMPOSTOR_KIND } else { 0 };
+        let foliage = foliage && !impostor;
+        let kind = pass as u8
+            + if impostor { IMPOSTOR_KIND } else { 0 }
+            + if foliage { FOLIAGE_KIND } else { 0 };
         // The shadow pass reads no material shader (copies cast as cut by the material's alpha).
         let shader = shader.filter(|_| pass != ScatterPass::Shadow);
         let key = if impostor {
@@ -116,7 +120,7 @@ impl ScatterRenderer {
                     self.shadow_module.clone(),
                 );
                 crate::ShadowSet::lazy(move |t| {
-                    Self::mesh_shadow_pipeline(&device, &layout, &module, side, t)
+                    Self::mesh_shadow_pipeline(&device, &layout, &module, side, foliage, t)
                 })
             };
             self.shadow_pipelines.insert(key, set);
@@ -126,9 +130,10 @@ impl ScatterRenderer {
             Some(sh) => self.hooked[&sh].clone(),
             None => (self.lit_module.clone(), self.declared),
         };
-        let (vs, fs, buffers, cull) = match impostor {
-            true => ("vs_impostor", "fs_impostor", IMPOSTOR_BUFFERS, None),
-            false => ("vs", "fs", MESH_BUFFERS, crate::cull_mode(side)),
+        let (vs, fs, buffers, cull) = match (impostor, foliage) {
+            (true, _) => ("vs_impostor", "fs_impostor", IMPOSTOR_BUFFERS, None),
+            (false, false) => ("vs", "fs", MESH_BUFFERS, crate::cull_mode(side)),
+            (false, true) => ("vs_foliage", "fs", FOLIAGE_BUFFERS, crate::cull_mode(side)),
         };
         let d = LitDesc {
             label: match (impostor, pass) {
@@ -208,9 +213,13 @@ impl ScatterRenderer {
         layout: &wgpu::PipelineLayout,
         module: &wgpu::ShaderModule,
         side: Side,
+        foliage: bool,
         target: crate::ShadowTarget,
     ) -> wgpu::RenderPipeline {
-        let buffers = [Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)];
+        let (buffers, vs) = match foliage {
+            true => (FOLIAGE_BUFFERS, "vs_shadow_foliage"),
+            false => (MESH_BUFFERS, "vs_shadow"),
+        };
         crate::traffic::create_render_pipeline(
             device,
             &wgpu::RenderPipelineDescriptor {
@@ -218,9 +227,9 @@ impl ScatterRenderer {
                 layout: Some(layout),
                 vertex: wgpu::VertexState {
                     module,
-                    entry_point: Some("vs_shadow"),
+                    entry_point: Some(vs),
                     compilation_options: Default::default(),
-                    buffers: &buffers,
+                    buffers,
                 },
                 primitive: wgpu::PrimitiveState {
                     cull_mode: target.cull(side),
@@ -305,6 +314,12 @@ fn card_shadow(
 /// The scattered meshes', impostors' and crowd cards' vertex buffers.
 const MESH_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
     &[Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)];
+/// A foliage mesh's: its foliage stream third ([`FOLIAGE_KIND`]).
+const FOLIAGE_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] = &[
+    Some(crate::VERTEX_LAYOUT),
+    Some(crate::INSTANCE_LAYOUT),
+    Some(crate::FOLIAGE_LAYOUT),
+];
 const IMPOSTOR_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
     &[Some(crate::INSTANCE_LAYOUT)];
 pub(super) const CARD_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] = &[Some(CARD_LAYOUT)];

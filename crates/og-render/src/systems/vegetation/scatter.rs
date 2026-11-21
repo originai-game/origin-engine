@@ -433,10 +433,57 @@ struct ScatterGpu {
     impostor_trim: [[f32; 4]; 2],
     /// The trample map (`trample.rs` `Trample::grid`).
     trample: [f32; 4],
-    /// The mesh's canopy centre in its own space (xyz) and 1 in w when it
-    /// has foliage ([`crate::RenderScene::set_mesh_foliage`]), for its
-    /// leaves' dome normals.
-    canopy: [f32; 4],
+    /// The mesh's foliage header ([`crate::meshlet::MeshFoliage::pool_rows`]'s
+    /// first five rows: canopy centre and top, flags, season and shift, the
+    /// two autumn colours, the crown and its extinction), row 1's w 1 when
+    /// it has foliage; zero without.
+    foliage: [[f32; 4]; 5],
+    /// The year the seasonal leaves are drawn in (foliage.wgsl `LeafYear`).
+    leaf_year: [[f32; 4]; 2],
+    /// The year the impostor card's leaf texels follow ([`card_leaves_gpu`]):
+    /// rows 1 to 3 of the header of the plant's part with seasonal leaves,
+    /// which is rarely the part that draws the card (a tree's wood), then
+    /// that part's own colour before its texture; zero for a card as baked.
+    card_leaves: [[f32; 4]; 4],
+}
+
+/// [`ScatterGpu::card_leaves`] of a plant of `parts` (mesh, material): of
+/// the first part whose leaves follow the year, its foliage header's rows
+/// 1 to 3 and the colour its leaves are before their texture, its
+/// material's colour times its mesh's mean vertex colour, which the card
+/// divides out of its baked albedo to put the autumn colour in at the
+/// point the mesh does (impostor.wgsl imp_leaf_surface).
+fn card_leaves_gpu(
+    scene: &crate::RenderScene,
+    parts: impl IntoIterator<Item = (crate::MeshHandle, crate::MaterialHandle)>,
+) -> [[f32; 4]; 4] {
+    for (mesh, material) in parts {
+        let Some(f) = scene.mesh_foliage(mesh).filter(|f| f.season.season > 0.0) else {
+            continue;
+        };
+        let rows = f.pool_rows();
+        let vertices = scene.mesh(mesh).map_or(&[][..], |m| &m.vertices[..]);
+        let mean = vertices
+            .iter()
+            .fold(Vec3::ZERO, |a, v| a + Vec3::from_slice(&v.color[..3]))
+            / vertices.len().max(1) as f32;
+        let mean = if vertices.is_empty() { Vec3::ONE } else { mean };
+        let own = scene
+            .standard_material(material)
+            .map_or(Vec3::ONE, |m| m.color)
+            * mean;
+        return [rows[1], rows[2], rows[3], own.extend(1.0).to_array()];
+    }
+    [[0.0; 4]; 4]
+}
+
+/// [`ScatterGpu::foliage`] of a mesh's foliage.
+fn foliage_gpu(f: Option<&crate::meshlet::MeshFoliage>) -> [[f32; 4]; 5] {
+    let Some(f) = f else { return [[0.0; 4]; 5] };
+    let rows = f.pool_rows();
+    let mut out = [rows[0], rows[1], rows[2], rows[3], rows[4]];
+    out[1][3] = 1.0;
+    out
 }
 
 /// [`ScatterGpu::impostor_trim`] for `t`.
@@ -474,6 +521,21 @@ const CARD_KIND: u8 = 6;
 /// reject the hidden ones before shading them (a LessEqual test that writes
 /// depth from a shader that may discard shades every fragment first).
 const EQUAL_KIND: u8 = 9;
+/// Past a mesh pipeline's kind, its twin for a mesh with foliage
+/// ([`crate::RenderScene::set_mesh_foliage`]): it reads the mesh's foliage
+/// stream ([`crate::FOLIAGE_LAYOUT`]) as a third vertex buffer, so its
+/// copies bend, flutter, grow, turn and drop their leaves and shade their
+/// crown as the meshlet path's (foliage.wgsl).
+const FOLIAGE_KIND: u8 = 16;
+
+/// A scattered mesh's buffers as a draw binds them: its vertices, indices
+/// and index count, and its foliage stream when it has foliage.
+pub(crate) struct ScatterMesh<'a> {
+    pub vertices: wgpu::BufferSlice<'a>,
+    pub indices: &'a wgpu::Buffer,
+    pub count: u32,
+    pub foliage: Option<wgpu::BufferSlice<'a>>,
+}
 
 /// A crowd card's record (crowd.rs `card_record`, `CardIn`): a skinned
 /// record's stride, its transform's columns, then (its place, flash, flash
@@ -601,6 +663,8 @@ pub(crate) struct ScatterBatch {
     /// The impostor's material: the chunks' copies past the impostor
     /// distance draw as it.
     impostor: Option<usize>,
+    /// Its mesh has foliage: it draws with the [`FOLIAGE_KIND`] pipelines.
+    foliage: bool,
 }
 
 /// The vertices of an impostor's card: four strips up its height, two
@@ -610,7 +674,12 @@ pub(crate) const IMPOSTOR_CARD_VERTICES: u32 = 6 * crate::impostor::CARD_ROWS as
 
 /// What one batch of model impostors shares: the atlas, and the bits of
 /// their sway and top ([`crate::ImpostorDraw`]; 0 and 0: still).
-pub(crate) type ImpostorKey = (crate::Impostor, u32, u32);
+pub(crate) type ImpostorKey = (
+    crate::Impostor,
+    u32,
+    u32,
+    Option<(crate::MeshHandle, crate::MaterialHandle)>,
+);
 
 /// The model impostors of one atlas and sway drawn this frame
 /// ([`crate::RenderScene::impostors`]): a range of the frame's impostor

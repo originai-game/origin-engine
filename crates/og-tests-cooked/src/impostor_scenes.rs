@@ -142,6 +142,7 @@ pub fn impostor_scene(below: bool) -> Result<(RenderScene, (Vec3, Vec3)), String
         top: 0.0,
         reveal: 1.0,
         fade_out: false,
+        foliage: None,
     });
     let mid = (model.min + model.max) * 0.5;
     scene.frame.camera = Camera {

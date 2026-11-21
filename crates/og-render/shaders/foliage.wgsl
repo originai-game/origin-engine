@@ -226,6 +226,24 @@ fn meshlet_leaf(h1: vec4<f32>, f1: vec4<f32>, model: mat4x4<f32>, origin: vec3<f
   return l;
 }
 
+// The leaves a far copy's card draws at `p` (the model's space about its
+// centre, at its scale; an impostor's leaf texel): the crown's cell of
+// `CROWN_CELL` metres about `p` drawn as one leaf in its year
+// (`meshlet_leaf`), its lot from the cell, on the tree standing at
+// `world_root`, so the card's crown thins and turns leaf by leaf as its
+// mesh's does, in clumps a leaf's size that stay where they are as the
+// eye moves.
+const CROWN_CELL: f32 = 0.1;
+
+fn crown_cell_leaf(h1: vec4<f32>, p: vec3<f32>, world_root: vec3<f32>, year: LeafYear) -> MeshletLeaf {
+  var l = MeshletLeaf(SeasonLeaf(1.0, 0.0, 0.0), 0.0);
+  if (h1.y <= 0.0 || year.fall.w < 0.5) { return l; }
+  let lot = leaf_order_pick(floor(p / CROWN_CELL) * CROWN_CELL);
+  l.leaf = season_leaf(lot.x, foliage_tree(world_root), h1.y, h1.z, year);
+  l.pick = lot.y;
+  return l;
+}
+
 // Where the leaf's year and its level put a vertex resting at `p`: drawn
 // in to its anchor as the leaf is less than whole (a bud, a dropped leaf),
 // out from it on a thinned level (`grow`: the year's kept share times the

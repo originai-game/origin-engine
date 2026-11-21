@@ -5,10 +5,12 @@
 // Shading: the material's colour (factor, texture and the mesh's vertex
 // colours), alpha cut-off, roughness and metalness, emissive, unlit and
 // flat modes, lit by the directional light with its cascades, the local
-// lights, the image-based light and caustics under water, then fog. A leaf
-// material is lit as on a model: its normals domed about the mesh's canopy
-// (domeNormals; scatter.canopy, the mesh's foliage), the sun let through
-// by its translucency. Normal
+// lights, the image-based light and caustics under water, then fog. A
+// mesh with foliage (its stream, `vs_foliage`) draws as the meshlet path
+// draws a model's tree (foliage.wgsl): its leaves grown, turned and
+// dropped through the year, bent about their anchors, branches and trunk
+// by the wind, domed about its canopy (domeNormals) and shaded by its own
+// crown, the sun let through by their translucency. Normal
 // maps and the material effects (toon, rim, dissolve) are not drawn on
 // scattered copies. A material shader's hooks run as on meshes: the copy's
 // vertex_offset in the vertex stage, surface_color (before the cut-off),
@@ -28,6 +30,10 @@ struct ScatterOut {
   @location(5) cur_clip: vec4<f32>,
   @location(6) prev_clip: vec4<f32>,
   @location(7) local: vec3<f32>,
+  // A seasonal leaf's autumn colour (foliage.wgsl `season_leaf_color`; 0
+  // without foliage) and what its crown hides (`meshlet_crown`).
+  @location(9) season: vec4<f32>,
+  @location(10) crown: vec2<f32>,
 };
 
 fn scatter_hook(in: ScatterOut, front: bool) -> Hook {
@@ -48,23 +54,54 @@ fn scatter_hook(in: ScatterOut, front: bool) -> Hook {
 
 @vertex
 fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
+  return scatter_vertex(v, i, SCATTER_RIGID, false);
+}
+
+// A foliage mesh's copy (pipelines.rs FOLIAGE_KIND).
+@vertex
+fn vs_foliage(v: ScatterVertex, i: ScatterInstance, f: ScatterFoliage) -> ScatterOut {
+  return scatter_vertex(v, i, f, true);
+}
+
+fn scatter_vertex(v: ScatterVertex, i: ScatterInstance, f: ScatterFoliage, foliage: bool) -> ScatterOut {
   let size = scatter_scale(i.m3);
   let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), size);
   var o: ScatterOut;
   o.fade = scatter_near(i.m3);
   o.object = clump_id(i.m3);
   let scale = length(i.m1) * size;
-  let sway = scatter_sway(v.position, i.m3, scale, false);
-  var world = model * vec4<f32>(v.position, 1.0) + vec4<f32>(sway, 0.0);
-  // A leaf's canopy dome (the material's domeNormals, coat.w), as a model's
-  // leaves take it (meshlet.wgsl vs_meshlet). The vertex stands for its
-  // leaf's anchor: a copy carries no foliage stream, and a leaf is small
-  // beside its canopy.
-  let dome = foliage_normal(v.normal, v.position, scatter.canopy.xyz, material.coat.w * scatter.canopy.w);
+  // A leaf in its year: drawn in to its anchor while in bud or fallen.
+  var rest = v.position;
+  var leaf = MeshletLeaf(SeasonLeaf(1.0, 0.0, 0.0), 0.0);
+  if (foliage) {
+    leaf = scatter_leaf(f, model);
+    rest = meshlet_grown(rest, f.leaf, leaf.leaf.kept);
+  }
+  var sway: vec3<f32>;
+  var prev_sway: vec3<f32>;
+  if (foliage) {
+    sway = scatter_foliage_sway(rest, f, model, i.m3, scale, foliage_wind_unpack(frame.foliage_wind[0]), false);
+    prev_sway = scatter_foliage_sway(rest, f, model, i.m3, scale, foliage_wind_unpack(frame.foliage_wind[1]), true);
+  } else {
+    sway = scatter_sway(rest, i.m3, scale, false);
+    prev_sway = scatter_sway(rest, i.m3, scale, true);
+  }
+  var world = model * vec4<f32>(rest, 1.0) + vec4<f32>(sway, 0.0);
+  // A leaf's canopy dome (the material's domeNormals, coat.w) about its
+  // anchor, as a model's leaves take it (meshlet.wgsl vs_meshlet).
+  let dome = foliage_normal(v.normal, f.leaf.xyz, scatter.foliage[0].xyz, material.coat.w * f32(foliage));
   o.normal = normalize((model * vec4<f32>(dome, 0.0)).xyz);
+  // Its autumn colour, which the fragment puts in place of its own, and
+  // the light its crown hides (meshlet.wgsl vs_meshlet).
+  if (foliage) {
+    o.season = meshlet_leaf_color(scatter.foliage[2], scatter.foliage[3], leaf);
+    let axis = meshlet_crown_axis(v.normal, f.leaf, scatter.foliage[0], scatter.foliage[1]);
+    let sun = meshlet_model_dir(model, frame.light_dir.xyz);
+    o.crown = meshlet_crown(rest, axis, sun, scatter.foliage[0], scatter.foliage[4]);
+  }
   var h: Hook;
   h.world = world.xyz;
-  h.local = v.position;
+  h.local = rest;
   h.normal = o.normal;
   h.uv = v.uv;
   h.color = v.color;
@@ -76,14 +113,13 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);
   o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, world), size > 0.0 && o.fade > 0.0);
   o.world = world.xyz;
-  o.local = v.position;
+  o.local = rest;
   o.uv = v.uv;
   o.color = v.color;
   // The camera and the wind move the copies on screen: where the vertex
   // was swayed to the previous frame.
   o.cur_clip = mul_point(scatter.view_proj, world);
-  let prev_sway = scatter_sway(v.position, i.m3, scale, true);
-  h.world = (model * vec4<f32>(v.position, 1.0)).xyz + prev_sway;
+  h.world = (model * vec4<f32>(rest, 1.0)).xyz + prev_sway;
   h.time = frame.time.w;
   h.wind = frame.foliage_wind[1][0];
   let previous = h.world + vertex_offset(h, previous_shader_params());
@@ -101,7 +137,7 @@ fn scatter_cavity(uv: vec2<f32>) -> f32 {
 @fragment
 fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let h = scatter_hook(in, front);
-  let base = surface_color(h, shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
+  let base = surface_color(h, shader_params(), season_mix(material.base_color * in.color, in.season) * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)));
   let dpx = dpdxFine(in.world);
   let dpy = dpdyFine(in.world);
   let dlx = dpdxFine(in.local);
@@ -125,7 +161,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
 @fragment
 fn fs_equal(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let h = scatter_hook(in, front);
-  let base = surface_color(h, shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
+  let base = surface_color(h, shader_params(), season_mix(material.base_color * in.color, in.season) * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)));
   return scatter_lit(in, h, base, 1.0, dpdxFine(in.world), dpdyFine(in.world), dpdxFine(in.local), dpdyFine(in.local));
 }
 
@@ -182,6 +218,9 @@ fn scatter_lit(in: ScatterOut, h: Hook, base: vec4<f32>, out_a: f32, dpx: vec3<f
   if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0)) {
     shadow = cascade_shadow_lookup(in.world, leaf_shadow_normal(s, n, l), abs(dot(n, l)), false);
   }
+  // Inside its crown, what the crown's leaves let through (crown_sun).
+  let map_shadow = shadow;
+  shadow = crown_sun(shadow, in.crown.y);
   // The sun under the frame's material style (lighting.wgsl style_sun: its
   // toon bands, shadow darkness and tint), as every lit surface's, unless
   // the material is unstyled (mode 8, as pbr_fs.wgsl).
@@ -193,6 +232,7 @@ fn scatter_lit(in: ScatterOut, h: Hook, base: vec4<f32>, out_a: f32, dpx: vec3<f
     sun = style_sun(s, n, v, l, shadow, band_aa);
     sun.direct += styled_wrap(made, l, shadow);
   }
+  sun.direct += crown_passed_sun(s, map_shadow, in.crown.y);
   // What the material's AO map keeps of the light around the copy.
   var keep = 1.0;
   if (material.flags.y >= 0.0) {
@@ -202,7 +242,10 @@ fn scatter_lit(in: ScatterOut, h: Hook, base: vec4<f32>, out_a: f32, dpx: vec3<f
   // lit surface's (surface_shade.wgsl); the screen-space reflections unless
   // blended: then it lies over the surface they were traced for.
   let at = ShadeAt(in.world, n, v, in.clip.xy, true, (mode & 4u) == 0u, styled);
-  let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive + decaled.emissive, material.flags.z, keep);
+  // The light around a leaf inside its crown (crown_ambient), as a model's.
+  let direct = surface_direct(s, at, sun.direct, n_dot_l * shadow);
+  let around = crown_ambient(surface_ambient(s, at, n), s, clamp(dot(n_geo, v), 1e-4, 1.0), in.crown.x);
+  let lit = surface_sum(s, direct, around, emissive + decaled.emissive, material.flags.z, keep * sun.keep);
   if (frame.light_color.w > 2.5) {
     return vec4<f32>(shaded_debug(lit, s.albedo, u32(frame.light_color.w + 0.5)), out_a);
   }
@@ -217,7 +260,7 @@ struct ScatterPrepass {
 
 @fragment
 fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrepass {
-  let base = surface_color(scatter_hook(in, front), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
+  let base = surface_color(scatter_hook(in, front), shader_params(), season_mix(material.base_color * in.color, in.season) * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)));
   let flat_n = normalize(cross(dpdxFine(in.world), dpdyFine(in.world)));
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dither_cut(scatter_hidden(in.fade), in.clip.xy, frame.drawn.w)) {
     discard;

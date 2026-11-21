@@ -52,7 +52,7 @@ impl ScatterRenderer {
             .light
             .direction_to_light
             .normalize_or(Vec3::Y);
-        for (k, ((imp, sway, top), members)) in groups.iter().enumerate() {
+        for (k, ((imp, sway, top, foliage), members)) in groups.iter().enumerate() {
             let (sway, top) = (f32::from_bits(*sway), f32::from_bits(*top));
             let first = transforms.len() as u32;
             let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
@@ -87,6 +87,7 @@ impl ScatterRenderer {
             let slot = first_slot + k;
             let mut gpu = base;
             gpu.impostor(imp, 0.0, light, self.samples > 1);
+            gpu.card_leaves = super::card_leaves_gpu(scene, *foliage);
             if sway > 0.0 && lean_cap > 0.0 {
                 gpu.wind = [wind_dir.x, wind_dir.y, sway, 0.0];
                 gpu.wind_shape[1] = top;
@@ -111,7 +112,7 @@ impl ScatterRenderer {
             crate::traffic::write_buffer(queue, buffer, 0, bytemuck::cast_slice(&transforms));
         }
         for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
-            self.pipeline(device, None, Side::Double, pass, true);
+            self.pipeline(device, None, Side::Double, pass, true, false);
         }
         out
     }
@@ -184,6 +185,7 @@ impl ScatterRenderer {
                 d.impostor,
                 if swaying { d.sway.to_bits() } else { 0 },
                 if swaying { d.top.to_bits() } else { 0 },
+                d.foliage,
             );
             match groups.iter_mut().find(|g| g.0 == key) {
                 Some(g) => g.1.push(i),
@@ -211,13 +213,20 @@ impl ScatterRenderer {
             view_proj: view_proj.to_cols_array_2d(),
             prev_view_proj: prev_view_proj.to_cols_array_2d(),
             wind: [0.0; 4],
-            wind_shape: [0.0, 0.0, scene.frame.origin.x, scene.frame.origin.z],
+            wind_shape: [
+                scene.frame.origin.y,
+                0.0,
+                scene.frame.origin.x,
+                scene.frame.origin.z,
+            ],
             impostor: [0.0; 4],
             impostor_grid: [0.0; 4],
             impostor_light: [0.0; 4],
             impostor_trim: super::trim_gpu(crate::CardTrim::FULL),
             trample: [0.0; 4],
-            canopy: [0.0; 4],
+            foliage: [[0.0; 4]; 5],
+            leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
+            card_leaves: [[0.0; 4]; 4],
         };
         let wind_dir = {
             let d = wind.map_or(Vec3::X, |w| w.direction);
@@ -695,21 +704,36 @@ impl ScatterRenderer {
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 wind: wind_row,
-                wind_shape: [0.0, mesh_top, scene.frame.origin.x, scene.frame.origin.z],
+                wind_shape: [
+                    scene.frame.origin.y,
+                    mesh_top,
+                    scene.frame.origin.x,
+                    scene.frame.origin.z,
+                ],
                 impostor: [0.0; 4],
                 impostor_grid: [0.0; 4],
                 impostor_light: [0.0; 4],
                 impostor_trim: super::trim_gpu(crate::CardTrim::FULL),
                 trample,
-                canopy: scene
-                    .mesh_foliage(d.mesh)
-                    .map_or([0.0; 4], |f| f.canopy_center.extend(1.0).to_array()),
+                foliage: super::foliage_gpu(scene.mesh_foliage(d.mesh)),
+                leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
+                // Its card's leaves: of it and the further parts drawn with it.
+                card_leaves: super::card_leaves_gpu(
+                    scene,
+                    scene
+                        .world
+                        .scatters
+                        .iter()
+                        .enumerate()
+                        .filter(|(k, e)| *k == si || e.with == Some(si))
+                        .map(|(_, e)| (e.mesh, e.material)),
+                ),
             };
             let impostor = d.impostor.filter(|_| d.impostor_distance > 0.0);
             if let Some(i) = &impostor {
                 gpu.impostor(i, d.impostor_distance, light, self.samples > 1);
                 for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
-                    self.pipeline(device, None, Side::Double, pass, true);
+                    self.pipeline(device, None, Side::Double, pass, true, false);
                 }
             }
             crate::traffic::write_buffer(
@@ -718,6 +742,13 @@ impl ScatterRenderer {
                 si as u64 * SLOT,
                 bytemuck::bytes_of(&gpu),
             );
+            // Its levels bend as it does when each has its foliage stream
+            // (the cook keeps the anchors through every level).
+            let foliage = scene.mesh_foliage(d.mesh).is_some()
+                && d.lods
+                    .iter()
+                    .map_while(|l| *l)
+                    .all(|(m, _)| scene.mesh_foliage(m).is_some());
             let shader = shader_of(d.material.index());
             if let Some(sh) = shader
                 && !self.hooked.contains_key(&sh)
@@ -731,7 +762,7 @@ impl ScatterRenderer {
                 self.hooked.insert(sh, (module, declared));
             }
             for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
-                self.pipeline(device, shader, side, pass, false);
+                self.pipeline(device, shader, side, pass, false, foliage);
             }
             // Its coarser levels, as far as they follow one another: each
             // one's mesh, index count and error.
@@ -802,6 +833,7 @@ impl ScatterRenderer {
                 impostor: impostor
                     .filter(|_| d.with.is_none())
                     .map(|i| i.material.index()),
+                foliage,
             });
         }
         let frame = self.frame;

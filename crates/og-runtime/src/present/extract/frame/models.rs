@@ -411,10 +411,7 @@ pub(super) fn models(
             && !r.crowd
             && !debug_lod)
             .then(|| {
-                let turned = last_drawn
-                    .get(&e)
-                    .copied()
-                    .filter(|&p| p as usize != level);
+                let turned = last_drawn.get(&e).copied().filter(|&p| p as usize != level);
                 let fade = match (turned, lod_fades.get(&e).copied()) {
                     (Some(p), Some((from, start))) if from as usize == level => {
                         // Back towards the level it was leaving.
@@ -480,6 +477,11 @@ pub(super) fn models(
                     top: rs.wind.tops.get(&asset).copied().unwrap_or(0.0),
                     reveal: look.fx.reveal,
                     fade_out: look.fx.fade_out,
+                    foliage: parts.iter().map(|p| (p.0, p.1)).find(|&(m, _)| {
+                        rs.scene
+                            .mesh_foliage(m)
+                            .is_some_and(|f| f.season.season > 0.0)
+                    }),
                 });
                 continue;
             }
@@ -494,7 +496,8 @@ pub(super) fn models(
                 // A crowd draws whole: its cards read the look's flash word as is.
                 let mut look = look;
                 look.fx.reveal = 1.0;
-                if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, lods, look, keys) {
+                if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, lods, look, keys)
+                {
                     continue;
                 }
             }
@@ -525,9 +528,9 @@ pub(super) fn models(
                     && sway > 0.0
                     && let Some(&top) = rs.wind.tops.get(&asset)
                 {
-                    selected_material = rs
-                        .wind
-                        .material(&mut rs.scene, selected_material, sway, top);
+                    selected_material =
+                        rs.wind
+                            .material(&mut rs.scene, selected_material, sway, top);
                 }
                 let material = selected_material;
                 // A part with fewer levels than the model draws its
@@ -536,8 +539,7 @@ pub(super) fn models(
                 // its clusters hold every level, the same as the part's
                 // meshes. One partly hidden is drawn off that path
                 // (og-render's `batches.rs`), as its level's mesh.
-                let meshlet =
-                    look.fx.reveal >= 1.0 && rs.scene.meshlet_drawable(mesh, material);
+                let meshlet = look.fx.reveal >= 1.0 && rs.scene.meshlet_drawable(mesh, material);
                 if meshlet {
                     let at = rs.scene.objects.instances.len();
                     rs.scene.objects.instance_levels.resize(at + 1, u8::MAX);

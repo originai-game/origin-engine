@@ -108,8 +108,10 @@ volume), so the leaves and wood deep in a crown take less of the sky's
 light and of the sun and reflect less of the sky, and what light they do
 take is tinted by the leaves around them, less of it each leaf deeper; a translucent leaf also takes the sky's light
 through from behind. Nothing to set: a denser crown is darker inside.
-The meshlet path draws it (render capabilities `compute` and `indirect`);
-scattered copies and impostor cards are lit without it. A leaf takes the
+The meshlet path draws it (render capabilities `compute` and `indirect`),
+and so does og.TerrainScatter for its copies of a plant on every device,
+with their leaves' flutter and year; impostor cards are lit without it
+(their bake holds the crown's light). A leaf takes the
 light around it along its canopy's rounded normal (`foliage.y`) but
 reflects the sky off its own face, as a crown of leaves at every angle
 does, so its inner leaves show no sheen of the sky at their edge.

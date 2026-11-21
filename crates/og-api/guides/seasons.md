@@ -110,8 +110,12 @@ it, and a world that never names it is unchanged.
 - An autumn colour reads as autumn when it is warm and dark: a linear
   red or orange under 0.5 with blue under 0.05. A bright one (above 0.6)
   glows against a winter sky.
-- The leaves follow the year on the GPU's meshlet path, which takes any
-  model with cooked foliage. A device without compute or indirect draws
-  (RenderCapabilities.caps.compute and `.indirect`, the GL tier) draws
-  them as modelled and does not sway them. Scattered copies
-  (og.TerrainScatter) and impostor cards are drawn as modelled for now.
+- The leaves follow the year wherever a plant is drawn: a model's
+  meshes on the GPU's meshlet path, og.TerrainScatter's copies of a mesh
+  with cooked foliage on every device, and the impostor cards of both,
+  whose leaves turn and drop in clumps about a leaf's size. A model on a
+  device without compute or indirect draws (RenderCapabilities.caps.compute
+  and `.indirect`, the GL tier) draws its leaves as modelled and does not
+  sway them. A card's shadow keeps its leaves (a far tree in winter casts
+  its summer shadow), and a model merged into an HLOD proxy has no
+  leaves to follow: cut-out leaves are never merged.

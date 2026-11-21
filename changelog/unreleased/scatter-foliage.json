@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.TerrainScatter",
+      "summary": "A scattered plant whose mesh has cooked foliage (a cooked plant, or a model with its foliage block) is now drawn as the same plant placed as a model is: its leaves grow, turn their autumn colours and drop through og.Season's year, flutter about their stems while their branches and trunk bend in the wind, and its crown darkens inside and passes the sun on through its leaves. Its levels and its impostor cards follow the year too, the cards leaf texel by leaf texel. Before, a scattered tree stayed green all year, swayed as one stiff piece and was lit without its crown."
+    },
+    {
+      "member": "og.Model",
+      "summary": "A model's impostor card now follows the year as its meshes do: its leaves turn and drop in clumps about a leaf's size, so a seasonal tree no longer turns green again when it reaches its impostor level."
+    }
+  ]
+}

@@ -24,11 +24,14 @@ struct ImpostorOut {
   @location(5) @interpolate(flat) fade: f32,
   @location(6) cur_clip: vec4<f32>,
   @location(7) prev_clip: vec4<f32>,
-  // The model's turn (its columns, normalised) and its sphere's radius in the world.
+  // The model's turn (its columns, normalised).
   @location(8) @interpolate(flat) m0: vec3<f32>,
   @location(9) @interpolate(flat) m1: vec3<f32>,
   @location(10) @interpolate(flat) m2: vec3<f32>,
-  @location(11) @interpolate(flat) extent: f32,
+  // xyz: where the copy's root stands (its transform's translation),
+  // whose tree lot its leaves' year takes (imp_leaf); w: its sphere's
+  // radius in the world.
+  @location(11) @interpolate(flat) root_extent: vec4<f32>,
   // The copy's id in the outline target, its mesh's (scatter.wgsl). Here,
   // not last: a scalar after `rest` packs it, and naga's Metal output then
   // fails to multiply it by a matrix.
@@ -66,7 +69,7 @@ fn imp_vertex(vertex: u32, i: ScatterInstance) -> ImpostorOut {
   o.m0 = normalize(i.m0);
   o.m1 = normalize(i.m1);
   o.m2 = normalize(i.m2);
-  o.extent = card.extent;
+  o.root_extent = vec4<f32>(model[3].xyz, card.extent);
   o.centre = mul_point(model, vec4<f32>(scatter.impostor.xyz, 1.0)).xyz;
   o.object = clump_id(i.m3);
   return o;
@@ -110,11 +113,11 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   var ray = eye;
   if (any(turn != vec3<f32>(0.0))) { ray = normalize(eye + turn); }
   let along = toward + m3 * (ray - eye);
-  let dd = imp_depths(transpose(m3) * (in.rest - in.centre) / in.extent, ray, in.frames);
+  let dd = imp_depths(transpose(m3) * (in.rest - in.centre) / in.root_extent.w, ray, in.frames);
   let par01 = vec4<f32>(imp_frame_par(ray, in.frames.x), imp_frame_par(ray, in.frames.y));
   let uvs = imp_uvs(in.uv01, in.uv2, par01, imp_frame_par(ray, in.frames.z), in.frames, dd, in.weights, centre_eye.y < 0.0);
   let c = imp_coverage(uvs.uv01, uvs.uv2, in.frames, uvs.weights);
-  return imp_surface_of(in, c, in.world + along * imp_blended_step(c, dd) * in.extent);
+  return imp_surface_of(in, c, in.world + along * imp_blended_step(c, dd) * in.root_extent.w);
 }
 
 // The surface the frames blend where coverage `c` samples them, lit at
@@ -135,6 +138,33 @@ fn imp_surface_of(in: ImpostorOut, c: ImpCoverage, world: vec3<f32>) -> ImpSurfa
   s.agree = clamp(length(nd.xyz) / total, 0.0, 1.0);
   s.world = world;
   return s;
+}
+
+// The leaf of its tree's crown in its year that the card's surface `s`
+// draws (foliage.wgsl `crown_cell_leaf`) where it is a leaf (the material
+// atlas's translucency) of a plant with seasonal leaves (scatter.card_leaves,
+// their part's season and autumn colours); whole elsewhere. The caller cuts what has fallen by
+// the dither and turns the colour (`imp_leaf_surface`).
+fn imp_leaf(in: ImpostorOut, s: ImpSurface) -> MeshletLeaf {
+  let whole = MeshletLeaf(SeasonLeaf(1.0, 0.0, 0.0), 0.0);
+  if (scatter.card_leaves[0].y <= 0.0 || scatter.leaf_year.fall.w < 0.5 || imp_material(s.coverage).y <= 0.0) { return whole; }
+  let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
+  let p = transpose(m3) * (s.world - (in.world - in.rest) - in.centre);
+  return crown_cell_leaf(scatter.card_leaves[0], p, in.root_extent.xyz + scatter_origin(), scatter.leaf_year);
+}
+
+// `s` with its leaf `l`'s autumn colour in place of its own where the
+// mesh puts it (pbr.wgsl season_base: the own colour turned, then the
+// texture): the baked albedo over the leaves' own colour (card_leaves[3])
+// is the texture's share, which the turned colour is multiplied by, so
+// a tree keeps its hue as it hands off between mesh and card.
+fn imp_leaf_surface(s: ImpSurface, l: MeshletLeaf) -> ImpSurface {
+  let season = meshlet_leaf_color(scatter.card_leaves[1], scatter.card_leaves[2], l);
+  if (season.a <= 0.0) { return s; }
+  let own = max(scatter.card_leaves[3].rgb, vec3<f32>(1e-3));
+  var o = s;
+  o.albedo = season_mix(vec4<f32>(own, 1.0), season).rgb * (s.albedo / own);
+  return o;
 }
 
 // The surface's roughness, translucency and metallic, blended as its
@@ -262,12 +292,15 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   // copy's is (scatter.wgsl).
   let a2c = scatter.impostor_grid.z > 0.5;
   let coverage = clamp((alpha - imp_cutoff()) / max(fwidthFine(alpha), 1e-4) + 0.5, 0.0, 1.0);
-  if (select(alpha < imp_cutoff(), coverage <= 0.0, a2c) || dither_cut(in.fade, in.clip.xy, frame.drawn.w)) {
+  // Its leaves fallen this year are cut by the one dither (common.wgsl
+  // dither_cut), as a fade is.
+  let leaf = imp_leaf(in, surface);
+  if (select(alpha < imp_cutoff(), coverage <= 0.0, a2c) || dither_cut(in.fade, in.clip.xy, frame.drawn.w) || dither_cut(1.0 - leaf.leaf.kept, in.clip.xy, frame.drawn.w)) {
     discard;
   }
   var o: ImpostorLit;
   o.depth = imp_depth(surface.world);
-  o.color = imp_shade(in, surface, select(1.0, coverage, a2c));
+  o.color = imp_shade(in, imp_leaf_surface(surface, leaf), select(1.0, coverage, a2c));
   return o;
 }
 
@@ -318,13 +351,13 @@ fn imp_shade(in: ImpostorOut, surface: ImpSurface, alpha: f32) -> vec4<f32> {
   // it, and its own shadow on the rest of the scene is the surface's.
   let rel = surface.world - in.centre;
   let b = dot(rel, l);
-  let leave = -b + sqrt(max(b * b - dot(rel, rel) + in.extent * in.extent, 0.0));
+  let leave = -b + sqrt(max(b * b - dot(rel, rel) + in.root_extent.w * in.root_extent.w, 0.0));
   // Past the sphere the cascades shadow it; inside it its own depth atlas.
   let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
-  let x = transpose(m3) * rel / in.extent;
+  let x = transpose(m3) * rel / in.root_extent.w;
   let own = imp_self_shadow(x, normalize(transpose(m3) * l));
   var outside = 1.0;
-  if (frame.light_dir.w > 0.5) { outside = cascade_shadow(surface.world + l * (max(leave, 0.0) + 0.5 * in.extent), n, max(n_dot_l, 0.05)); }
+  if (frame.light_dir.w > 0.5) { outside = cascade_shadow(surface.world + l * (max(leave, 0.0) + 0.5 * in.root_extent.w), n, max(n_dot_l, 0.05)); }
   if (n_dot_l > 0.0 || surface.agree < 1.0 || s.translucency > 0.0) { shadow = outside * own * mat.w; }
   // The light through the leaves takes no shadow of the card's own: the
   // depth atlas is a solid shell, so a face away from the sun always
@@ -362,7 +395,8 @@ struct ImpostorPrepass {
 fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
   imp_set_level(in.uv01.xy);
   let surface = imp_surface(in);
-  if (surface.coverage.alpha < imp_cutoff() || dither_cut(in.fade, in.clip.xy, frame.drawn.w)) {
+  let leaf = imp_leaf(in, surface);
+  if (surface.coverage.alpha < imp_cutoff() || dither_cut(in.fade, in.clip.xy, frame.drawn.w) || dither_cut(1.0 - leaf.leaf.kept, in.clip.xy, frame.drawn.w)) {
     discard;
   }
   let v = toward_eye(surface.world);
@@ -405,8 +439,8 @@ fn vs_impostor_front(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> 
   var o = imp_vertex(vertex, i);
   let ortho = frame.view_pos.w > 0.5;
   let toward = select(normalize(frame.view_pos.xyz - o.centre), -frame.view_forward.xyz, ortho);
-  let front = mul_point(frame.view_proj, vec4<f32>(o.centre + toward * o.extent, 1.0));
-  let inside = !ortho && distance(frame.view_pos.xyz, o.centre) <= o.extent;
+  let front = mul_point(frame.view_proj, vec4<f32>(o.centre + toward * o.root_extent.w, 1.0));
+  let inside = !ortho && distance(frame.view_pos.xyz, o.centre) <= o.root_extent.w;
   let z = select(clamp(front.z / max(front.w, 1e-6), 0.0, 1.0), 0.0, inside);
   if (o.clip.w > 0.0 && o.clip.z <= o.clip.w) { o.clip.z = z * o.clip.w; }
   return o;
@@ -427,7 +461,7 @@ fn fs_impostor_kept(in: ImpostorOut) -> @location(0) vec4<f32> {
   // In the model's space about its rest pose (the frames' depths are the
   // unswayed model's), in radii.
   let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
-  let x = transpose(m3) * (world - (in.world - in.rest) - in.centre) / in.extent;
+  let x = transpose(m3) * (world - (in.world - in.rest) - in.centre) / in.root_extent.w;
   let uv01 = vec4<f32>(imp_frame_uv(x, in.frames.x), imp_frame_uv(x, in.frames.y));
   let uv2 = imp_frame_uv(x, in.frames.z);
   let c = imp_coverage(uv01, uv2, in.frames, in.weights);
@@ -442,5 +476,7 @@ fn fs_impostor_kept(in: ImpostorOut) -> @location(0) vec4<f32> {
   if (is_sky_depth(t) || c.alpha < imp_cutoff() || off > IMP_AGREE || dot(x, x) > 1.21 || dither_cut(in.fade, in.clip.xy, frame.drawn.w)) {
     discard;
   }
-  return imp_shade(in, imp_surface_of(in, c, world), 1.0);
+  // The prepass cut the fallen leaves; this pass draws only what it kept.
+  let surface = imp_surface_of(in, c, world);
+  return imp_shade(in, imp_leaf_surface(surface, imp_leaf(in, surface)), 1.0);
 }

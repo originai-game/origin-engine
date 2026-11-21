@@ -56,7 +56,7 @@
 //! draws its copies past [`crate::ScatterDraw::impostor_distance`] as
 //! impostors (dithered across the last tenth before it).
 
-use crate::scene::MaterialHandle;
+use crate::scene::{MaterialHandle, MeshHandle};
 use glam::{Mat4, Vec2, Vec3};
 
 /// The most frames a side of the grid holds.
@@ -142,6 +142,11 @@ pub struct ImpostorDraw {
     /// `dither_cut`), or fading in.
     pub reveal: f32,
     pub fade_out: bool,
+    /// The model's part (mesh and material) whose leaves follow the year
+    /// ([`crate::RenderScene::set_mesh_foliage`]: their season, shift and
+    /// autumn colours; the material's colour): the card's leaf texels turn
+    /// and drop as those leaves do nearer. `None` draws the card as baked.
+    pub foliage: Option<(MeshHandle, MaterialHandle)>,
 }
 
 /// The hemi-octahedral map of a unit direction to `[-1, 1]²`: +y at the
@@ -278,4 +283,3 @@ pub fn march_wgsl() -> String {
 pub fn march_stamp() -> Vec<u8> {
     march_wgsl().into_bytes()
 }
-

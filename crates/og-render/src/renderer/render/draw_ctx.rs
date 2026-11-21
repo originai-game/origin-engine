@@ -46,16 +46,14 @@ impl<'f> DrawCtx<'f> {
     }
 
     /// A scattered copy's mesh buffers and index count, by mesh index.
-    #[allow(clippy::type_complexity)]
-    pub(super) fn scatter_mesh(
-        &self,
-        m: usize,
-    ) -> Option<(wgpu::BufferSlice<'f>, &'f wgpu::Buffer, u32)> {
+    pub(super) fn scatter_mesh(&self, m: usize) -> Option<scatter::ScatterMesh<'f>> {
         let &DrawCtx { r, .. } = self;
-        r.cache
-            .meshes
-            .get(m)
-            .map(|g| (g.vertex_slice(false), &g.indices, g.index_count))
+        r.cache.meshes.get(m).map(|g| scatter::ScatterMesh {
+            vertices: g.vertex_slice(false),
+            indices: &g.indices,
+            count: g.index_count,
+            foliage: g.foliage.as_ref().map(|f| f.vertices.slice(..)),
+        })
     }
 
     /// A pass's effect group without the planar reflection, for its

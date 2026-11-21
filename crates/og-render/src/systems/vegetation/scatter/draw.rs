@@ -60,7 +60,7 @@ impl ScatterRenderer {
         kind: ScatterPass,
         all: &ScatterBatches,
         material_group: impl Fn(usize) -> Option<&'a wgpu::BindGroup>,
-        mesh: impl Fn(usize) -> Option<(wgpu::BufferSlice<'a>, &'a wgpu::Buffer, u32)>,
+        mesh: impl Fn(usize) -> Option<ScatterMesh<'a>>,
         visible: impl Fn(Vec3, f32) -> bool,
         mut probes: Option<&mut crate::probe_select::Binder>,
         fx_group: Option<&wgpu::BindGroup>,
@@ -120,7 +120,11 @@ impl ScatterRenderer {
             }
             let shader = b.shader.filter(|_| kind != ScatterPass::Shadow);
             let equal = kind == ScatterPass::Lit && camera && prepass_depth;
-            let lit = (shader, b.side, kind as u8);
+            let lit = (
+                shader,
+                b.side,
+                kind as u8 + if b.foliage { FOLIAGE_KIND } else { 0 },
+            );
             let p = match equal {
                 true => pipeline(&(lit.0, lit.1, lit.2 + EQUAL_KIND)).or_else(|| pipeline(&lit)),
                 false => pipeline(&lit),
@@ -143,9 +147,20 @@ impl ScatterRenderer {
                     None => group,
                 };
                 let mut bound = false;
-                let Some((vertices, indices, count)) = mesh(m) else {
+                let Some(ScatterMesh {
+                    vertices,
+                    indices,
+                    count,
+                    foliage,
+                }) = mesh(m)
+                else {
                     continue;
                 };
+                // A foliage batch's pipeline reads each level's own stream.
+                let foliage = foliage.filter(|_| b.foliage);
+                if b.foliage && foliage.is_none() {
+                    continue;
+                }
                 let mut mesh_bound = false;
                 for (n, k) in b.chunks.iter().enumerate() {
                     let Some(c) = self.chunks.get(k) else {
@@ -167,6 +182,9 @@ impl ScatterRenderer {
                     }
                     if !mesh_bound {
                         pass.set_vertex_buffer(0, vertices);
+                        if let Some(f) = foliage {
+                            pass.set_vertex_buffer(2, f);
+                        }
                         pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
                         mesh_bound = true;
                     }

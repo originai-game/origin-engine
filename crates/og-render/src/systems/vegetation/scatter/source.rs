@@ -44,10 +44,15 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
 /// The scattered copies' shadow module.
 pub(crate) fn scatter_shadow_source() -> String {
     format!(
-        "{LIBRARY_WGSL}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}{}{}",
+        "{LIBRARY_WGSL}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}{}{}{}",
         crate::wind::WIND_COMMON_WGSL,
         crate::wind::WIND_LEAN_WGSL,
         crate::trample::READ_WGSL,
+        if crate::WORLD_3D {
+            crate::foliage::WGSL
+        } else {
+            ""
+        },
         wgsl3d!("scatter_common.wgsl"),
         wgsl3d!("scatter_shadow.wgsl"),
         og_render_data::impostor::march_wgsl(),

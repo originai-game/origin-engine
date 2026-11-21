@@ -196,7 +196,17 @@ impl Renderer {
                 .is_none_or(|f| !std::sync::Arc::ptr_eq(&f.source, source))
             {
                 let data = &scene.meshes()[i];
+                let vertices = crate::buffer_init(
+                    &self.device,
+                    &self.queue,
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("foliage vertices"),
+                        contents: bytemuck::cast_slice(&source.vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    },
+                );
                 mesh.foliage = Some(FoliageMesh {
+                    vertices,
                     source: source.clone(),
                     // As its levels draw it: a thinned one's leaves larger.
                     rest: source

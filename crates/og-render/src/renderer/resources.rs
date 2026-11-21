@@ -134,7 +134,20 @@ pub(crate) struct FoliageMesh {
     pub(crate) source: std::sync::Arc<crate::meshlet::MeshFoliage>,
     pub(crate) rest: Option<(Vec3, Vec3)>,
     pub(crate) deformation: crate::foliage::FoliageBounds,
+    /// Its vertices' branch pivots and leaf anchors as a vertex stream
+    /// ([`crate::foliage::FoliageVertex`], [`FOLIAGE_LAYOUT`]): what the
+    /// scattered copies of the mesh read their foliage from.
+    pub(crate) vertices: wgpu::Buffer,
 }
+
+/// A foliage mesh's vertex stream ([`FoliageMesh::vertices`]): per vertex
+/// its branch pivot and stiffness (location 9) and its leaf anchor and
+/// flutter (location 10), scatter_common.wgsl `ScatterFoliage`.
+pub(crate) const FOLIAGE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+    array_stride: std::mem::size_of::<crate::foliage::FoliageVertex>() as u64,
+    step_mode: wgpu::VertexStepMode::Vertex,
+    attributes: &wgpu::vertex_attr_array![9 => Float32x4, 10 => Float32x4],
+};
 
 impl GpuMesh {
     /// What a draw binds: the compact vertices for a [`Batch::compact`]
