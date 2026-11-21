@@ -77,7 +77,7 @@ function Portrait(props: { slot: () => DraftSlot; small?: boolean }) {
       <View class="size-full rounded-[0.571rem] overflow-hidden flex-row items-center justify-center bg-[#1a1e29]">
         <Show when={(s().portrait ?? 0) != 0} fallback={
           <Show when={(s().icon ?? "") != ""}>
-            <Icon class="size-4 text-fg data-banned:text-white/66 data-banned:opacity-40" name={s().icon ?? ""} data-banned={hasName()} />
+            <Icon class="size-4 text-fg data-banned:text-fg/66 data-banned:opacity-40" name={s().icon ?? ""} data-banned={hasName()} />
           </Show>
         }>
           <Image class="size-full data-banned:opacity-40" src={s().portrait ?? 0} data-banned={hasName()} />
@@ -102,27 +102,27 @@ function DraftTeam(props: { team: "a" | "b"; name: string; active: boolean; slot
   return (
     <View class="min-w-0 flex-1 flex-col gap-y-1 compact:flex-none" role="group" label={props.name} current={props.active === true}>
       <Text role="heading" level={3} class={`pb-1 text-[1.286rem] leading-[1.15] font-bold tracking-[0.04em] uppercase ${ink} ${rule}`}>{props.name}</Text>
-      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-white/78 whitespace-nowrap">{t("arena.draft.bans")}</Text>
+      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap">{t("arena.draft.bans")}</Text>
       <View class="flex-row flex-wrap gap-1" role="list" label={t("arena.draft.bans")}>
         <For each={bans()} key={(s) => s.id}>
           {(s) => (
             <View class="shrink basis-auto min-w-16 max-w-full flex-col items-center gap-y-0.5" role="listitem" current={s().active === true}>
               <Portrait slot={s} small={true} />
               <Text
-                class={`${TAG} data-banning:bg-[#38e8ff] data-banning:text-[#15181f] data-banning:shadow-none data-open:text-white/66`}
+                class={`${TAG} data-banning:bg-[#38e8ff] data-banning:text-[#15181f] data-banning:shadow-none data-open:text-fg/66`}
                 data-banning={s().active === true}
                 data-open={!s().active && (s().name ?? "") == ""}
               >
                 {s().active ? t("arena.draft.banning") : (s().name ?? "") != "" ? t("arena.draft.banned") : t("arena.draft.open")}
               </Text>
               <Show when={(s().name ?? "") != ""}>
-                <Text class="max-w-full text-center text-[0.929rem] leading-[1.2] text-white/66">{s().name}</Text>
+                <Text class="max-w-full text-center text-[0.929rem] leading-[1.2] text-fg/66">{s().name}</Text>
               </Show>
             </View>
           )}
         </For>
       </View>
-      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-white/78 whitespace-nowrap">{t("arena.draft.picks")}</Text>
+      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap">{t("arena.draft.picks")}</Text>
       <View class="flex-col gap-y-1" role="list" label={t("arena.draft.picks")}>
         <For each={picks()} key={(s) => s.id}>
           {(s) => (
@@ -135,14 +135,14 @@ function DraftTeam(props: { team: "a" | "b"; name: string; active: boolean; slot
               <Portrait slot={s} />
               <View class="flex-1 min-w-0 flex-col">
                 <Text
-                  class="min-w-0 text-start text-[1.071rem] leading-[1.15] font-bold text-fg data-empty:text-white/66"
+                  class="min-w-0 text-start text-[1.071rem] leading-[1.15] font-bold text-fg data-empty:text-fg/66"
                   data-empty={(s().name ?? "") == ""}
                 >
                   {(s().name ?? "") != "" ? s().name : t("arena.draft.open")}
                 </Text>
                 <View class="min-w-0 flex-row flex-wrap gap-x-1">
                   <Show when={(s().player ?? "") != ""}>
-                    <Text class="min-w-0 text-start text-[0.929rem] text-white/66 data-active:text-white/78" data-active={s().active === true}>{s().player}</Text>
+                    <Text class="min-w-0 text-start text-[0.929rem] text-fg/66 data-active:text-fg/78" data-active={s().active === true}>{s().player}</Text>
                   </Show>
                   <Show when={s().active === true}>
                     <Text class={`${TAG} bg-[#38e8ff] text-[#15181f] shadow-none`}>{t("arena.draft.picking")}</Text>
@@ -185,7 +185,7 @@ export function ArenaDraft(props: ArenaDraftProps) {
         </Show>
       </View>
       <Show when={slots().length} fallback={
-        <Text class="p-4 text-center text-[1.143rem] text-white/66" role="status">{t("arena.draft.empty")}</Text>
+        <Text class="p-4 text-center text-[1.143rem] text-fg/66" role="status">{t("arena.draft.empty")}</Text>
       }>
         <Scroll class="min-h-0">
           <View class="flex-row items-start gap-x-3 w-full compact:flex-col compact:items-stretch">

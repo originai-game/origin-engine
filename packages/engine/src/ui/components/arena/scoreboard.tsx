@@ -57,7 +57,7 @@ export interface ArenaScoreboardProps {
  * at the list's foot is dropped, and a long word wraps without breaking.
  */
 const TAG = `shrink-0 py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-[#1b1f29e0] whitespace-nowrap ${packClass("Chip", "frame")}`;
-const CAPTION = "text-end whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-white/78";
+const CAPTION = "text-end whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78";
 const STAT = "text-end whitespace-nowrap text-[1.143rem] font-bold tabular-nums text-fg compact:flex-1 compact:min-w-0";
 
 function TeamTable(props: { team: "a" | "b"; name: string; score: string; columns: string; rows: ReadonlyArray<ScoreboardRow> }) {
@@ -100,7 +100,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
                   <Text class={TAG}>{t("arena.you")}</Text>
                 </Show>
                 <Show when={r().disconnected === true}>
-                  <Text class={`${TAG} text-white/66`}>{t("arena.score.disconnected")}</Text>
+                  <Text class={`${TAG} text-fg/66`}>{t("arena.score.disconnected")}</Text>
                 </Show>
               </View>
               <Show when={kda()}>
@@ -127,10 +127,10 @@ export function ArenaScoreboard(props: ArenaScoreboardProps) {
   return (
     <View class="w-full min-w-0 max-h-full flex-col gap-y-3 text-fg" label={heading()}>
       <View class="flex-none flex-row w-full min-h-0">
-        <Text class="flex-1 min-w-0 text-center text-[1.143rem] font-semibold tracking-[0.14em] uppercase text-white/78">{heading()}</Text>
+        <Text class="flex-1 min-w-0 text-center text-[1.143rem] font-semibold tracking-[0.14em] uppercase text-fg/78">{heading()}</Text>
       </View>
       <Show when={rows().length} fallback={
-        <Text class="p-4 text-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-white/78" role="status">{t("arena.score.empty")}</Text>
+        <Text class="p-4 text-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78" role="status">{t("arena.score.empty")}</Text>
       }>
         <Scroll class="min-h-0 flex-1">
           <View class="grid grid-cols-1 items-start gap-4 w-full data-split:grid-cols-2" data-split={props.split === true}>

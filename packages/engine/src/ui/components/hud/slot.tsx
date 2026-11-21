@@ -110,7 +110,7 @@ export function HudSlot(props: HudSlotProps) {
           <Show when={(props.icon ?? 0) > 0} fallback={
             <View class="absolute inset-0 flex-col items-center justify-center bg-linear-to-b from-[#2a2c3a] to-[#191b28]">
               <Show when={(props.glyph ?? "") !== ""}>
-                <Icon class={`size-1/2 text-white text-shadow-2xs ${cooling() || unaffordable() ? "opacity-45" : ""}`} name={props.glyph} />
+                <Icon class={`size-1/2 text-fg text-shadow-2xs ${cooling() || unaffordable() ? "opacity-45" : ""}`} name={props.glyph} />
               </Show>
             </View>
           }>
@@ -124,7 +124,7 @@ export function HudSlot(props: HudSlotProps) {
           </Show>
           <Show when={cooling() && (props.time ?? "") !== ""}>
             <View class="absolute inset-0 flex-row items-center justify-center">
-              <Text class={`${ultimate() ? "text-[1.143rem]" : "text-[1.714rem]"} leading-none font-bold tabular-nums whitespace-nowrap text-white text-stroke-3 text-stroke-bg text-shadow-2xs`}>{props.time}</Text>
+              <Text class={`${ultimate() ? "text-[1.143rem]" : "text-[1.714rem]"} leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-2xs`}>{props.time}</Text>
             </View>
           </Show>
           <Show when={unaffordable() && (props.reason ?? "") !== "" && cooldown() <= 0}>
@@ -134,12 +134,12 @@ export function HudSlot(props: HudSlotProps) {
           </Show>
           <Show when={ultimate() && charge() < 1}>
             <View class="absolute inset-0 flex-row items-center justify-center">
-              <Text class="text-[1.143rem] leading-none font-bold tabular-nums whitespace-nowrap text-white text-stroke-3 text-stroke-bg text-shadow-2xs">{`${formatNumber(charge() * 100, { decimals: 0 })}%`}</Text>
+              <Text class="text-[1.143rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-2xs">{`${formatNumber(charge() * 100, { decimals: 0 })}%`}</Text>
             </View>
           </Show>
           <Show when={(props.count ?? 0) > 0}>
             <View class="absolute top-0 right-0">
-              <Text class="max-w-[4.386rem] -mt-[0.429rem] -mr-[0.286rem] bg-[#171a21e0] shadow-[inset_0px_0.071rem_0px_0px_#ffffff38] px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap leading-[1.4] text-white rounded-bl-[0.286rem] overflow-hidden">
+              <Text class="max-w-[4.386rem] -mt-[0.429rem] -mr-[0.286rem] bg-[#171a21e0] shadow-[inset_0px_0.071rem_0px_0px_#ffffff38] px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap leading-[1.4] text-fg rounded-bl-[0.286rem] overflow-hidden">
                 {t("hud.slot.count", { count: formatNumber(props.count ?? 0) })}
               </Text>
             </View>

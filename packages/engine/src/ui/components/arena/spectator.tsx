@@ -63,9 +63,9 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
       label={heading()}
       busy={props.loading}
     >
-      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-white/78">{heading()}</Text>
+      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78">{heading()}</Text>
       <Show when={(props.detail ?? "") != ""}>
-        <Text class="text-[0.929rem] font-semibold text-white/66">{props.detail}</Text>
+        <Text class="text-[0.929rem] font-semibold text-fg/66">{props.detail}</Text>
       </Show>
       <Text class="text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg" role="status">
         {props.freeCamera ? t("spectator.free") : props.selected ? t("spectator.following") : t("spectator.choose")}
@@ -77,7 +77,7 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
               <For each={props.targets ?? []} key={(p) => p.id}>
                 {(p) => (
                   <View
-                    class={`flex-col gap-y-[0.071rem] w-full min-h-11 py-1 px-3 text-start bg-linear-to-r from-[#282e3cc7] to-[#1c202bd1] shadow-[inset_3px_0px_0px_0px_rgb(255_255_255/0.3)] hover:bg-none hover:bg-linear-to-r hover:from-[#373d4ff2] hover:to-[#232837f5] data-selected:bg-[#38e8ff26] data-selected:shadow-[inset_0.429rem_0px_0px_0px_#38e8ff,inset_0px_1px_0px_0px_rgb(255_255_255/0.18)] disabled:text-white/66 transition duration-317`}
+                    class={`flex-col gap-y-[0.071rem] w-full min-h-11 py-1 px-3 text-start bg-linear-to-r from-[#282e3cc7] to-[#1c202bd1] shadow-[inset_3px_0px_0px_0px_rgb(255_255_255/0.3)] hover:bg-none hover:bg-linear-to-r hover:from-[#373d4ff2] hover:to-[#232837f5] data-selected:bg-[#38e8ff26] data-selected:shadow-[inset_0.429rem_0px_0px_0px_#38e8ff,inset_0px_1px_0px_0px_rgb(255_255_255/0.18)] disabled:text-fg/66 transition duration-317`}
                     role="button"
                     label={p().name}
                     pressed={followed(p().id)}
@@ -87,13 +87,13 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
                   >
                     <Text class="text-[1.071rem] leading-[1.15] font-bold text-fg">{p().name}</Text>
                     <Show when={(p().team ?? "") != ""}>
-                      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-white/78">{p().team}</Text>
+                      <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78">{p().team}</Text>
                     </Show>
                     <Show when={(p().detail ?? "") != ""}>
-                      <Text class="text-[0.929rem] text-white/66">{p().detail}</Text>
+                      <Text class="text-[0.929rem] text-fg/66">{p().detail}</Text>
                     </Show>
                     <Show when={followed(p().id)}>
-                      <Text class="text-[0.929rem] text-white/66">{t("spectator.current")}</Text>
+                      <Text class="text-[0.929rem] text-fg/66">{t("spectator.current")}</Text>
                     </Show>
                   </View>
                 )}
@@ -102,10 +102,10 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
           </Scroll>
         </Show>
       }>
-        <Text class="text-[0.929rem] font-semibold text-white/66" role="status">{t("spectator.loading")}</Text>
+        <Text class="text-[0.929rem] font-semibold text-fg/66" role="status">{t("spectator.loading")}</Text>
       </Show>
       <Show when={!props.loading && (props.targets ?? []).length == 0}>
-        <Text class="text-[0.929rem] font-semibold text-white/66" role="status">{t("spectator.empty")}</Text>
+        <Text class="text-[0.929rem] font-semibold text-fg/66" role="status">{t("spectator.empty")}</Text>
       </Show>
       <View class="flex-row flex-wrap gap-x-1 gap-y-1">
         <View class={BUTTON} role="button" label={t("spectator.previous")} disabled={props.loading || !(props.canCycle ?? true) || (props.targets ?? []).length == 0} onPress={(e) => props.onPrevious?.(e)}>

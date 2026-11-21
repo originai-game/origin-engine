@@ -51,14 +51,14 @@ export function ArenaReady(props: ArenaReadyProps) {
     <View class={`flex-col gap-y-2 text-fg ${CARD}`} label={heading()} busy={props.loading}>
       <Text class="text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg text-center">{heading()}</Text>
       <Show when={(props.detail ?? "") != ""}>
-        <Text class="text-[0.929rem] font-semibold text-white/66 text-center">{props.detail}</Text>
+        <Text class="text-[0.929rem] font-semibold text-fg/66 text-center">{props.detail}</Text>
       </Show>
       <Show when={props.closed} fallback={
         <Show when={(props.timeText ?? "") != ""}>
           <Text class="text-[3.857rem] leading-none font-bold tabular-nums text-[#ffcf5a] text-center">{props.timeText}</Text>
         </Show>
       }>
-        <Text class="text-[0.929rem] font-bold tracking-[0.14em] uppercase text-white/66 text-center" role="status">{t("ready.closed")}</Text>
+        <Text class="text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg/66 text-center" role="status">{t("ready.closed")}</Text>
       </Show>
       <Show when={props.loading} fallback={
         <Show when={(props.players ?? []).length}>
@@ -72,9 +72,9 @@ export function ArenaReady(props: ArenaReadyProps) {
                     data-ready={p().state == "ready"}
                     data-declined={p().state == "declined"}
                   >
-                    <Text class={`flex-1 basis-16 min-w-0 text-[1.071rem] font-semibold text-fg data-offline:text-white/66`} data-offline={p().state == "offline"}>{p().name}</Text>
+                    <Text class={`flex-1 basis-16 min-w-0 text-[1.071rem] font-semibold text-fg data-offline:text-fg/66`} data-offline={p().state == "offline"}>{p().name}</Text>
                     <Text
-                      class={`ml-auto text-[0.929rem] leading-[1.3] font-bold tracking-[0.14em] uppercase text-white/66 text-center data-ready:text-[#55e39a] data-declined:text-[#ff7a83]`}
+                      class={`ml-auto text-[0.929rem] leading-[1.3] font-bold tracking-[0.14em] uppercase text-fg/66 text-center data-ready:text-[#55e39a] data-declined:text-[#ff7a83]`}
                       data-ready={p().state == "ready"}
                       data-declined={p().state == "declined"}
                     >
@@ -87,10 +87,10 @@ export function ArenaReady(props: ArenaReadyProps) {
           </Scroll>
         </Show>
       }>
-        <Text class="text-[0.929rem] font-semibold text-white/66 text-center" role="status">{t("ready.loading")}</Text>
+        <Text class="text-[0.929rem] font-semibold text-fg/66 text-center" role="status">{t("ready.loading")}</Text>
       </Show>
       <Show when={!props.loading && (props.players ?? []).length == 0}>
-        <Text class="text-[0.929rem] font-semibold text-white/66 text-center" role="status">{t("ready.empty")}</Text>
+        <Text class="text-[0.929rem] font-semibold text-fg/66 text-center" role="status">{t("ready.empty")}</Text>
       </Show>
       <View class="flex-row flex-wrap gap-x-1 gap-y-1">
         <View

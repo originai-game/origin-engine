@@ -71,7 +71,7 @@ export function Loadout(props: LoadoutProps) {
                   <For each={(props.slots ?? []).filter((s) => s.category == c().id)} key={(s) => s.id}>
                     {(s) => (
                       <View
-                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut bg-[#232837ed] hover:bg-[#323848ed] data-selected:bg-[#38e8ff26] disabled:opacity-100 disabled:text-white/66 transition duration-317`}
+                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut bg-[#232837ed] hover:bg-[#323848ed] data-selected:bg-[#38e8ff26] disabled:opacity-100 disabled:text-fg/66 transition duration-317`}
                         role="button"
                         label={s().name}
                         pressed={s().id == props.selected}
@@ -80,13 +80,13 @@ export function Loadout(props: LoadoutProps) {
                         data-selected={s().id == props.selected}
                         data-locked={s().locked === true}
                       >
-                        <Icon class="shrink-0 size-6 text-fg group-data-locked/item:text-white/66" name={s().locked ? "lock" : s().icon ?? ""} />
+                        <Icon class="shrink-0 size-6 text-fg group-data-locked/item:text-fg/66" name={s().locked ? "lock" : s().icon ?? ""} />
                         <View class="flex-1 min-w-0 flex-col items-start gap-y-[0.071rem]">
                           <Text class="w-full text-start text-[1.071rem] leading-[1.15] font-bold text-fg">{s().name}</Text>
                           <Show when={(s().detail ?? "") != "" || s().equipped}>
                             <View class="flex-row flex-wrap items-center gap-x-1 gap-y-[0.071rem]">
                               <Show when={(s().detail ?? "") != ""}>
-                                <Text class="text-start text-[0.929rem] font-semibold whitespace-nowrap text-white/66">{s().detail}</Text>
+                                <Text class="text-start text-[0.929rem] font-semibold whitespace-nowrap text-fg/66">{s().detail}</Text>
                               </Show>
                               <Show when={s().equipped}>
                                 <Text class={`shrink py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#0f2c1d] nine-chip-cut bg-[#9becca] ${packClass("Chip", "frame")}`}>
@@ -98,8 +98,8 @@ export function Loadout(props: LoadoutProps) {
                         </View>
                         <Show when={(s().cost ?? "") != ""}>
                           <View class="shrink-0 flex-row items-center gap-x-1">
-                            <Icon class="shrink-0 size-4 text-[#ffcf5a] group-data-locked/item:text-white/66" name="coin" />
-                            <Text class="text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-[#ffcf5a] group-data-locked/item:text-white/66">{s().cost}</Text>
+                            <Icon class="shrink-0 size-4 text-[#ffcf5a] group-data-locked/item:text-fg/66" name="coin" />
+                            <Text class="text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-[#ffcf5a] group-data-locked/item:text-fg/66">{s().cost}</Text>
                           </View>
                         </Show>
                       </View>
@@ -110,7 +110,7 @@ export function Loadout(props: LoadoutProps) {
             )}
           </For>
           <Show when={(props.slots ?? []).length == 0}>
-            <Text class="text-[1.143rem] text-white/66">{t("shooter.loadout.empty")}</Text>
+            <Text class="text-[1.143rem] text-fg/66">{t("shooter.loadout.empty")}</Text>
           </Show>
           </View>
         </Scroll>

@@ -75,11 +75,11 @@ export function ArenaLobby(props: ArenaLobbyProps) {
       <View class="flex-row flex-wrap items-baseline gap-x-3 gap-y-1">
         <Text class="min-w-0 text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg">{heading()}</Text>
         <Show when={(props.detail ?? "") != ""}>
-          <Text class="min-w-0 text-[0.929rem] font-semibold text-white/66">{props.detail}</Text>
+          <Text class="min-w-0 text-[0.929rem] font-semibold text-fg/66">{props.detail}</Text>
         </Show>
       </View>
       <Show when={slots().length} fallback={
-        <Text class="p-4 text-center text-[1.143rem] text-white/66" role="status">{t("arena.lobby.empty")}</Text>
+        <Text class="p-4 text-center text-[1.143rem] text-fg/66" role="status">{t("arena.lobby.empty")}</Text>
       }>
         <Scroll class="min-h-0">
           <View class="flex-col gap-y-1" role="list" label={t("arena.lobby.players")}>
@@ -95,14 +95,14 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   <View class={`${PORTRAIT} ${s().open ? "p-px bg-none bg-[#ffffff47]" : ""}`}>
                     <View class="size-full rounded-[0.714rem] bg-[#1d212c] flex-row items-center justify-center overflow-hidden">
                       <Show when={(s().portrait ?? 0) != 0 && !s().open} fallback={
-                        <Icon class={s().open ? "size-6 text-white/66" : "size-6 text-fg"} glyph={s().open ? "plus" : (s().icon ?? "")} />
+                        <Icon class={s().open ? "size-6 text-fg/66" : "size-6 text-fg"} glyph={s().open ? "plus" : (s().icon ?? "")} />
                       }>
                         <Image class="size-full" src={s().portrait ?? 0} />
                       </Show>
                     </View>
                   </View>
                   <View class="flex-1 min-w-0 flex-col gap-y-0.5 compact:basis-[6.857rem]">
-                    <Text class={`text-start text-[1.071rem] leading-[1.15] font-bold text-fg ${s().open ? "text-white/66" : ""}`}>{s().open ? t("arena.lobby.open") : s().name}</Text>
+                    <Text class={`text-start text-[1.071rem] leading-[1.15] font-bold text-fg ${s().open ? "text-fg/66" : ""}`}>{s().open ? t("arena.lobby.open") : s().name}</Text>
                     <Show when={s().host || s().local}>
                       <View class="flex-row flex-wrap gap-x-0.5 gap-y-0.5">
                         <Show when={s().host}>
@@ -116,7 +116,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   </View>
                   <Show when={!s().open}>
                     <View
-                      class={`flex-row items-center gap-x-1 whitespace-nowrap text-[0.929rem] font-bold tracking-[0.14em] uppercase compact:ml-auto ${s().ready ? "text-[#55e39a] shadow-[0px_0px_0.571rem_rgb(85_227_154/0.7)]" : "text-white/66"}`}
+                      class={`flex-row items-center gap-x-1 whitespace-nowrap text-[0.929rem] font-bold tracking-[0.14em] uppercase compact:ml-auto ${s().ready ? "text-[#55e39a] shadow-[0px_0px_0.571rem_rgb(85_227_154/0.7)]" : "text-fg/66"}`}
                     >
                       <Icon class="size-4" glyph={s().ready ? "check" : "clock"} />
                       <Text class="whitespace-nowrap">{s().ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</Text>

@@ -24,7 +24,7 @@ export interface CelebrationProps {
 export function Celebration(props: CelebrationProps) {
   const level = () => (props.kind ?? "") == "levelUp";
   return (
-    <View class="absolute inset-0 text-white text-shadow-2xs">
+    <View class="absolute inset-0 text-fg text-shadow-2xs">
       <For each={props.shots ?? []} key={(s) => s.id}>
         {() => (
           <View class="absolute inset-0 flex-col items-center justify-center" data-level={level()} data-burst={(props.kind ?? "") == "burst"} data-fireworks={(props.kind ?? "") == "fireworks"}>
@@ -35,7 +35,7 @@ export function Celebration(props: CelebrationProps) {
                   {props.title || t("component.celebration.level-up")}
                 </Text>
                 <Show when={props.value}>
-                  <Text class="relative text-[8.571rem] font-bold tabular-nums leading-flat whitespace-nowrap text-white shadow-none animate-pop compact:text-[2.429rem]">{props.value}</Text>
+                  <Text class="relative text-[8.571rem] font-bold tabular-nums leading-flat whitespace-nowrap text-fg shadow-none animate-pop compact:text-[2.429rem]">{props.value}</Text>
                 </Show>
               </View>
             </Show>

@@ -174,12 +174,12 @@ export function MinimapView(props: MinimapViewProps) {
           </View>
           <View class="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0px_0px_0px_0.071rem_#ffffff33,inset_0px_0px_2.143rem_#1a1e28b3] data-square:rounded-[0.714rem]" data-square={props.square === true} />
         </View>
-        <Text class="absolute top-[0.482rem] left-1/2 -translate-x-1/2 min-w-[1.714rem] h-[1.714rem] flex-row items-center justify-center rounded-full bg-[#ff4d5e] shadow-[0px_0px_0px_0.143rem_#262a33,0px_0px_0.714rem_#ff4d5eb3] text-[0.929rem] font-bold leading-none text-white whitespace-nowrap">
+        <Text class="absolute top-[0.482rem] left-1/2 -translate-x-1/2 min-w-[1.714rem] h-[1.714rem] flex-row items-center justify-center rounded-full bg-[#ff4d5e] shadow-[0px_0px_0px_0.143rem_#262a33,0px_0px_0.714rem_#ff4d5eb3] text-[0.929rem] font-bold leading-none text-fg whitespace-nowrap">
           {t("component.minimap-view.north")}
         </Text>
       </View>
       <Show when={(props.zone ?? "") !== ""}>
-        <Text class={`py-[0.143rem] px-[0.571rem] text-[0.929rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-white nine-plate-cut bg-[#1e2637e5] ${packClass("Plate", "frame")}`}>
+        <Text class={`py-[0.143rem] px-[0.571rem] text-[0.929rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg nine-plate-cut bg-[#1e2637e5] ${packClass("Plate", "frame")}`}>
           {props.zone}
         </Text>
       </Show>

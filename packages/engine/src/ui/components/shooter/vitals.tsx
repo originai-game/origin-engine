@@ -53,7 +53,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
         <View class="absolute inset-[0.143rem] rounded-[0.857rem] overflow-hidden bg-linear-to-b from-[#2a2c3a] to-[#191b28]">
           <Show when={(props.portrait ?? 0) > 0} fallback={
             <View class="size-full flex-row items-center justify-center">
-              <Icon class="size-1/2 text-white/66" name="person" />
+              <Icon class="size-1/2 text-fg/66" name="person" />
             </View>
           }>
             <Image class="size-full" src={props.portrait ?? 0} />
@@ -76,7 +76,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
             <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg group-data-low/vitals:text-[#ff4d5e] compact:text-[1.143rem]">
               {formatNumber(props.health)}
             </Text>
-            <Text class="text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-white/66 text-shadow-2xs text-stroke-3 text-stroke-bg">
+            <Text class="text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">
               {t("shooter.vitals.max", { max: formatNumber(healthMax()) })}
             </Text>
           </View>

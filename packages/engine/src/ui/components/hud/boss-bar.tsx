@@ -85,7 +85,7 @@ export function BossBar(props: BossBarProps) {
           {(props.name ?? "") !== "" ? props.name : t("hud.boss-bar.name")}
         </Text>
         <Show when={(props.epithet ?? "") !== ""}>
-          <Text class={`shrink min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-white/78 text-shadow-2xs compact:hidden`}>
+          <Text class={`shrink min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs compact:hidden`}>
             {props.epithet}
           </Text>
         </Show>
@@ -123,7 +123,7 @@ export function BossBar(props: BossBarProps) {
           <View class={`flex-row items-center justify-between w-full min-w-0 gap-x-3`}>
             <Show when={(props.stagger ?? -1) >= 0}>
               <View class={`shrink min-w-0 flex-row items-center gap-x-[0.286rem]`}>
-                <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-white/78 text-shadow-2xs`}>{t("hud.boss-bar.stagger")}</Text>
+                <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 text-shadow-2xs`}>{t("hud.boss-bar.stagger")}</Text>
                 <View
                   class={`relative w-[12.143rem] min-w-[2.857rem] h-[0.571rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] compact:h-[0.357rem]`}
                   role="meter"
@@ -141,7 +141,7 @@ export function BossBar(props: BossBarProps) {
             </Show>
             <View class={`flex-row items-center ml-auto min-w-0 gap-x-[0.286rem]`}>
               <Show when={(props.defeated ?? false) || invulnerable()}>
-                <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-white/78 text-shadow-2xs data-defeated:text-[#55e39a]`} role="status" data-defeated={props.defeated}>
+                <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 text-shadow-2xs data-defeated:text-[#55e39a]`} role="status" data-defeated={props.defeated}>
                   {(props.defeated ?? false) ? t("hud.boss-bar.defeated") : t("hud.boss-bar.invulnerable")}
                 </Text>
               </Show>
@@ -169,7 +169,7 @@ export function BossBar(props: BossBarProps) {
       }>
         <View class={`flex-row items-center gap-x-[0.286rem]`}>
           <Spinner size={18} name={t("hud.boss-bar.loading")} />
-          <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-white/78 text-shadow-2xs`} role="status">
+          <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 text-shadow-2xs`} role="status">
             {t("hud.boss-bar.loading")}
           </Text>
         </View>

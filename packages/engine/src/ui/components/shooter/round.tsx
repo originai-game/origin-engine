@@ -34,7 +34,7 @@ export function ShooterRound(props: ShooterRoundProps) {
           class={`shrink basis-auto min-w-0 flex-row items-baseline gap-1 py-[0.214rem] px-2 nine-plate-cut bg-[#1e2637e5] compact:flex-wrap ${packClass("Plate", "frame")}`}
         >
           <Show when={(props.round ?? 0) > 0}>
-            <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-white/78">
+            <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg/78">
               {t("shooter.round.label", { round: props.round ?? 0 })}
             </Text>
           </Show>

@@ -79,7 +79,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
           </Text>
         </View>
         <View class={`shrink-0 ${ROUND_PLATE} compact:basis-full compact:flex-row compact:flex-wrap compact:min-w-0 compact:gap-y-2 compact:py-0.5 compact:px-2`}>
-          <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-white/78 whitespace-nowrap compact:whitespace-normal compact:text-center">
+          <Text class="text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap compact:whitespace-normal compact:text-center">
             {(props.rounds ?? 0) > 0 ? t("arena.round.roundOf", { round: props.round ?? 0, rounds: props.rounds ?? 0 }) : t("arena.round.round", { round: props.round ?? 0 })}
           </Text>
           <Show when={(props.timeLeft ?? -1) >= 0}>

@@ -57,7 +57,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
         </Text>
       </Show>
       <Show when={(props.quantity ?? 0) > 0}>
-        <Text class={`shrink-0 text-[1rem] font-bold tabular-nums whitespace-nowrap text-white/66 text-shadow-2xs data-legendary:text-[#ffcf5a]`} data-legendary={rarity() === "legendary"}>
+        <Text class={`shrink-0 text-[1rem] font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs data-legendary:text-[#ffcf5a]`} data-legendary={rarity() === "legendary"}>
           {props.currency ? t("hud.loot-entry.gain", { quantity: formatNumber(props.quantity ?? 0) }) : t("hud.loot-entry.count", { quantity: formatNumber(props.quantity ?? 0) })}
         </Text>
       </Show>

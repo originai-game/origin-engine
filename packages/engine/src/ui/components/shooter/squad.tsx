@@ -61,7 +61,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
                   <View class="absolute inset-[0.143rem] rounded-[0.571rem] overflow-hidden bg-[#1e2637e5]">
                     <Show when={(m().portrait ?? 0) > 0} fallback={
                       <View class="size-full flex-row items-center justify-center">
-                        <Icon class="size-[50%] text-white/66" name="person" />
+                        <Icon class="size-[50%] text-fg/66" name="person" />
                       </View>
                     }>
                       <Image class="size-full data-out:opacity-45" src={m().portrait ?? 0} data-out={m().state == "out"} />
@@ -72,7 +72,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
                   <Text class="min-w-0 text-[1.071rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem]">{m().name}</Text>
                   <Show when={(m().status ?? "") != ""}>
                     <Text
-                      class={`shrink-0 max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-white/78 text-shadow-2xs text-stroke-3 text-stroke-bg data-reviving:text-[#4fd8ff] data-down:text-[#ff4d5e]`}
+                      class={`shrink-0 max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs text-stroke-3 text-stroke-bg data-reviving:text-[#4fd8ff] data-down:text-[#ff4d5e]`}
                       data-reviving={m().state == "reviving"}
                       data-down={down()}
                     >

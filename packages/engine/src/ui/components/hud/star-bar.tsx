@@ -48,7 +48,7 @@ export function StarBar(props: StarBarProps) {
         <Show when={(props.label ?? "") !== "" && !props.compact}>
           <Text class="text-caption text-fg-muted text-shadow-xs">{props.label}</Text>
         </Show>
-        <Text class="text-[27.36px] font-bold tabular-nums whitespace-nowrap text-white text-shadow-xs data-compact:text-[20.64px]">{props.valueText || formatNumber(props.value ?? 0)}</Text>
+        <Text class="text-[27.36px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs data-compact:text-[20.64px]">{props.valueText || formatNumber(props.value ?? 0)}</Text>
       </View>
       <View class={`relative data-compact:w-[10rem] w-[14.286rem] data-compact:h-6 h-8`}>
         <View class="absolute inset-x-4 top-3 h-2 overflow-hidden rounded-capsule bg-[#0a1120] data-compact:inset-x-3 data-compact:top-[10px] data-compact:h-1">

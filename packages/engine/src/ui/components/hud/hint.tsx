@@ -21,7 +21,7 @@ export function HudHint(props: HudHintProps) {
           {props.key}
         </Text>
       </Show>
-      <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-white/78 whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg">{props.label}</Text>
+      <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg">{props.label}</Text>
     </View>
   );
 }

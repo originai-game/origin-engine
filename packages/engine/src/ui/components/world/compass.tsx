@@ -74,7 +74,7 @@ function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
         <Icon class="size-[0.857rem]" name={props.poi.icon} style={{ color: ink() }} />
       </Show>
       <Show when={(props.poi.distance ?? -1) >= 0}>
-        <Text class="text-[0.929rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-white text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0)}${props.units}`}</Text>
+        <Text class="text-[0.929rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0)}${props.units}`}</Text>
       </Show>
     </View>
   );
@@ -103,7 +103,7 @@ export function Compass(props: CompassProps) {
               const opacity = Math.min(Math.max((d - 0.05) * 25, 0), 1);
               return (
                 <Text
-                  class={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${p().cardinal ? "text-[1.429rem] leading-none text-white" : "text-[1.143rem] leading-[1.2] text-white/66"}`}
+                  class={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${p().cardinal ? "text-[1.429rem] leading-none text-fg" : "text-[1.143rem] leading-[1.2] text-fg/66"}`}
                   style={{ left: `${(p().at / 9) * 100}%`, opacity }}
                 >
                   {t(p().key)}

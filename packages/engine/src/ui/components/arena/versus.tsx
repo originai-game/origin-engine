@@ -50,7 +50,7 @@ export interface ArenaVersusProps {
  */
 const PORTRAIT = "shrink-0 size-[4.571rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 data-compact:size-[2.857rem]";
 const NAME = "min-w-0 text-start text-[1.286rem] leading-[1.15] font-bold text-fg";
-const CAPTION = "min-w-0 text-start text-[0.929rem] leading-[1.3] font-semibold text-white/66";
+const CAPTION = "min-w-0 text-start text-[0.929rem] leading-[1.3] font-semibold text-fg/66";
 const YOU = `flex-none self-start py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-[#1b1f29e0] whitespace-nowrap ${packClass("Chip", "frame")}`;
 
 function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<VersusFighter> }) {
@@ -65,7 +65,7 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
     <View class="flex-1 min-w-0 flex-col gap-y-1 compact:flex-none compact:gap-y-1" role="group" label={heading()}>
       <Text class={`pb-1 max-w-full ${props.team == "b" ? "text-end " : "text-start "}${ink()} ${glow()} text-[3.286rem] leading-none font-bold uppercase tracking-[0.04em] data-compact:text-[2rem] whitespace-normal`}>{heading()}</Text>
       <Show when={fighters().length} fallback={
-        <Text class="p-4 text-center text-[1.143rem] text-white/66 text-shadow-2xs" role="status">{t("arena.versus.waiting")}</Text>
+        <Text class="p-4 text-center text-[1.143rem] text-fg/66 text-shadow-2xs" role="status">{t("arena.versus.waiting")}</Text>
       }>
         <View class="flex-col gap-y-1" role="list" label={heading()}>
           <For each={fighters()} key={(f) => f.id}>
@@ -87,10 +87,10 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
                 <View class="flex-1 min-w-0 flex-col gap-y-0.5">
                   <Text class={`${NAME} ${props.team == "b" ? "text-end" : ""}`}>{f().name}</Text>
                   <Show when={(f().character ?? "") != ""}>
-                    <Text class={`${CAPTION} ${props.team == "b" ? "text-end" : ""} data-local:text-white/78`}>{f().character}</Text>
+                    <Text class={`${CAPTION} ${props.team == "b" ? "text-end" : ""} data-local:text-fg/78`}>{f().character}</Text>
                   </Show>
                   <Show when={(f().rank ?? "") != ""}>
-                    <Text class={`min-w-0 text-start text-[0.929rem] leading-[1.3] font-semibold text-[#ffcf5a] ${props.team == "b" ? "text-end" : ""} data-local:text-white/78`}>{f().rank}</Text>
+                    <Text class={`min-w-0 text-start text-[0.929rem] leading-[1.3] font-semibold text-[#ffcf5a] ${props.team == "b" ? "text-end" : ""} data-local:text-fg/78`}>{f().rank}</Text>
                   </Show>
                   <Show when={f().local}>
                     <Text class={`${YOU} ${props.team == "b" ? "self-end" : ""}`}>{t("arena.you")}</Text>

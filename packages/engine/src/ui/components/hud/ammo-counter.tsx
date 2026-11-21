@@ -49,7 +49,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
     >
       <Show when={(props.secondary ?? "") != ""}>
         <View class="flex-row items-center gap-1 max-w-full min-w-0 opacity-80">
-          <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-white/78 whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg min-w-0">{props.secondary}</Text>
+          <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg min-w-0">{props.secondary}</Text>
           <Show when={(props.secondaryAmmo ?? -1) >= 0}>
             <Text class="shrink-0 text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem]">{formatNumber(props.secondaryAmmo ?? 0)}</Text>
           </Show>
@@ -64,7 +64,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
         <Text class="min-w-0 text-[5.429rem] leading-[0.9] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-low:text-[#ffb547] data-empty:text-[#ff4d5e] compact:text-[2.571rem]" data-low={low()} data-empty={empty()}>
           {formatNumber(props.magazine)}
         </Text>
-        <Text class="shrink-0 text-[2rem] leading-none font-bold tabular-nums whitespace-nowrap text-white/66 text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem]">{formatNumber(props.reserve)}</Text>
+        <Text class="shrink-0 text-[2rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem]">{formatNumber(props.reserve)}</Text>
       </View>
       <Show when={props.capacity > 0}>
         <Show
@@ -90,18 +90,18 @@ export function AmmoCounter(props: AmmoCounterProps) {
         </View>
         <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg whitespace-nowrap truncate text-shadow-2xs text-stroke-3 text-stroke-bg">{props.weapon}</Text>
         <Show when={(props.mode ?? "auto") == "auto"}>
-          <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-white/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.auto")}</Text>
+          <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.auto")}</Text>
         </Show>
         <Show when={(props.mode ?? "auto") == "burst"}>
-          <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-white/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.burst")}</Text>
+          <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.burst")}</Text>
         </Show>
         <Show when={(props.mode ?? "auto") == "single"}>
-          <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-white/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.single")}</Text>
+          <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.single")}</Text>
         </Show>
       </View>
       <Show when={(props.reloading ?? -1) >= 0}>
         <View class="flex-row items-center gap-1 w-full">
-          <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-white/78 whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.reloading")}</Text>
+          <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.reloading")}</Text>
           <View class="flex-1 h-[0.286rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]">
             <View class="h-full bg-hud transition-layout duration-180 ease-out" style={{ width: `${Math.min(props.reloading ?? 0, 1) * 100}%` }} />
           </View>
