@@ -395,10 +395,10 @@ export class A11yMirror {
     if (RANGES.has(node.role)) {
       // The tree's numbers (valueNow, valueMin, valueMax); a tree without
       // them reads the value text, a percent taking 0 to 100.
-      const n = node.valueNow ?? Number.parseFloat(node.value);
+      const n = tidy(node.valueNow ?? Number.parseFloat(node.value));
       const percent = node.value.endsWith("%");
-      const min = node.valueMin ?? (percent ? 0 : null);
-      const max = node.valueMax ?? (percent ? 100 : null);
+      const min = node.valueMin != null ? tidy(node.valueMin) : percent ? 0 : null;
+      const max = node.valueMax != null ? tidy(node.valueMax) : percent ? 100 : null;
       set("aria-valuenow", Number.isFinite(n) ? String(n) : null);
       set("aria-valuemin", min !== null && Number.isFinite(min) ? String(min) : null);
       set("aria-valuemax", max !== null && Number.isFinite(max) ? String(max) : null);
@@ -466,6 +466,13 @@ export class A11yMirror {
     this.#elements.clear();
   }
 }
+
+/**
+ * A number as a reader is told it: twelve significant digits, so a step's
+ * float error (0.9500000000000001) reads as the value it is (0.95), as a
+ * native range's own value does.
+ */
+const tidy = (x: number) => (Number.isFinite(x) ? Number(x.toPrecision(12)) : x);
 
 /** The path of the mirrored element an event landed on (or inside). */
 function pathOf(target: EventTarget | null): string | null {

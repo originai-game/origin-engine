@@ -843,7 +843,12 @@ impl Next {
                 };
                 match act {
                     og_input::A11yAct::Focus => tree.a11y_focus(node),
-                    og_input::A11yAct::Activate => _ = tree.a11y_act(node, None),
+                    // A reader's activation lands where its cursor is: the
+                    // focus moves there, as a press on it moves it.
+                    og_input::A11yAct::Activate => {
+                        tree.a11y_focus(node);
+                        _ = tree.a11y_act(node, None);
+                    }
                     og_input::A11yAct::Increment => _ = tree.a11y_act(node, Some(true)),
                     og_input::A11yAct::Decrement => _ = tree.a11y_act(node, Some(false)),
                 }

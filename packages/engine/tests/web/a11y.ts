@@ -4,7 +4,7 @@
 // one render per `frame` call as reference.ts drives it, on its settings
 // dialog. Checked:
 //
-// - The DOM mirror is og.ui.a11y()'s tree: one element per node, in tree
+// - The DOM mirror is the new core's tree: one element per node, in tree
 //   order, nested under its parent, each at its node's bounds over the
 //   canvas, with its role, name, value and states as ARIA (the settings
 //   dialog, the section tabs (radios) with Audio chosen, the Master slider at
@@ -86,7 +86,7 @@ const result: Record<string, unknown> = { tier };
 /** One mirrored element, as the DOM has it. */
 type Mirrored = { path: string; parentPath: string | null; role: string | null; label: string | null; text: string; attrs: Record<string, string>; box: [number, number, number, number] };
 type TreeNode = { path: string; parent: string; role: string; name: string; value: string; states: string[]; x: number; y: number; width: number; height: number };
-type Element = { id: string; parent: string; role: string; name: string; states: string[]; width: number; height: number };
+type Element = { id: string; parent: string; role: string; name: string; text: string; states: string[]; width: number; height: number };
 
 const MIRROR = `(() => [...document.querySelectorAll("[data-og-path]")].map((el) => {
   const r = el.getBoundingClientRect();
@@ -133,19 +133,7 @@ try {
     await t.eval("new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))");
   };
   const elements = async () => (await t.eval<{ elements: Element[] }>(`__og_shell__.probe("dump", { what: "ui" })`)).elements;
-  const element = async (path: string) => {
-    const els = await elements();
-    const parts = path.split("/");
-    return els.find((e) => {
-      if (e.id !== parts[parts.length - 1]) return false;
-      let p = e.parent;
-      for (let k = parts.length - 2; k >= 0; k--) {
-        if (p !== parts[k]) return false;
-        p = els.find((x) => x.id === p)?.parent ?? "";
-      }
-      return true;
-    });
-  };
+
 
   await commands("0.05:show:settings");
   await frames(45);
@@ -208,7 +196,8 @@ try {
   await t.eval(`document.querySelector('[data-og-path="${mutePath}"]').click()`);
   const changed = await frames(4);
   check(changed > 0, `the click changed the tree (${changed} frames carried one)`);
-  const toggled = await element(mutePath);
+  // The UI's own word: dump_ui's switch of that name (its ids are the renderer's, not the tree's).
+  const toggled = (await elements()).find((e) => e.role === "switch" && (e.name || e.text) === "Mute everything");
   check(!!toggled?.states.includes("checked"), "the click reached the UI: the Mute switch is checked", toggled);
   const after = (await t.eval<Mirrored[]>(MIRROR)).find((d) => d.path === mutePath);
   check(after?.attrs["aria-checked"] === "true", "the mirror's aria-checked followed", after);
@@ -224,7 +213,7 @@ try {
   const done = graphicsDom.find((d) => d.role === "button" && d.label === "Done")!;
   await t.eval(`document.querySelector('[data-og-path="${done.path}"]').click()`);
   await frames(10);
-  const polite = await t.eval<string>(`document.querySelector('[data-og-a11y-live="polite"]').textContent`);
+  const polite = await t.eval<string>(`document.querySelector('[data-og-a11y] [aria-live="polite"]')?.textContent ?? ""`);
   check(/Settings saved/.test(polite), "Done saved, and the toast was written into the polite live region", polite);
 
   // The page's contrast preference reaches the theme, both ways, with no reload.

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "web export",
+      "summary": "A screen reader's activation of a TSX control moves the UI's focus to it, as a press does, and the page's focus follows. A range's value reaches the reader rounded to twelve significant digits (0.95, not 0.9500000000000001), so it agrees with the native range's own value."
+    }
+  ]
+}
