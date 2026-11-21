@@ -93,7 +93,7 @@ struct VertexOut {
   // `season_leaf_color`: rgb, and a, how far it replaces the leaf's own;
   // zero: its own), set by the meshlet path's foliage.
   @location(10) season: vec4<f32>,
-  // What its tree's crown hides (meshlet_sway.wgsl `meshlet_crown`; 0:
+  // What its tree's crown hides (foliage.wgsl `meshlet_crown`; 0:
   // none, every surface but a tree's): x of the light around it, y of the
   // sun.
   @location(11) crown: vec2<f32>,
@@ -106,9 +106,7 @@ struct VertexOut {
 // colour, with a seasonal leaf's autumn colour in its place by `season`'s
 // a (`VertexOut::season`), times the base texture's `sample`.
 fn season_base(sample: vec4<f32>, color: vec4<f32>, season: vec4<f32>) -> vec4<f32> {
-  if (season.a <= 0.0) { return material.base_color * sample * color; }
-  let own = material.base_color * color;
-  return vec4<f32>(mix(own.rgb, season.rgb, season.a), own.a) * sample;
+  return season_mix(material.base_color * color, season) * sample;
 }
 
 // A colour packed 8:8:8 in an exact integer (instances.rs `fx_bits`; flat,

@@ -347,14 +347,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) {
     shadow = cascade_shadow(in.world_pos, leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
   }
-  // Inside a tree's crown, the sun is at most what the crown's leaves
-  // let through on its path (meshlet_sway.wgsl `meshlet_crown`): the
-  // shadow map holds the leaves as cards at its texel size, filtered
-  // and biased, and lets through the sun a crown of them hides from its
-  // depths (Hegeman et al. 2006), so a crown's inside is lit like its
-  // outside. The map's own where it is darker (another tree, a wall).
+  // Inside a tree's crown, what its leaves let through (crown_sun).
   let map_shadow = shadow;
-  if (in.crown.y > 0.0) { shadow = min(shadow, 1.0 - in.crown.y); }
+  shadow = crown_sun(shadow, in.crown.y);
   if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
     toon_edges(dot(n, l));
     if (s.metallic > 0.0) {
@@ -380,19 +375,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   // Caustics where the surface lies under the frame's water (0 without).
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
-  // The sun its crown's leaves took from a leaf in their shadow is not
-  // all lost: they pass some on (`crown_passed`; Boulanger, Pattanaik and
-  // Bouatouch, "Rendering trees with indirect lighting in real time",
-  // EGSR 2009), in their colour, less the deeper the leaf, so a leaf in
-  // its crown's shade keeps its hue and the crown its depth. Only of the
-  // sun that reaches the crown: where the map is darker than the crown
-  // alone, something else (another tree, a wall) took the rest.
-  if (s.translucency > 0.0 && in.crown.y > 0.0 && frame.light_dir.w > 0.5) {
-    let through = 1.0 - in.crown.y;
-    let reach = clamp(map_shadow / max(through, 1e-3), 0.0, 1.0);
-    let passed = crown_passed(in.crown.y, crown_forward(s)) - vec3<f32>(through);
-    color += frame.light_color.rgb * reach * max(passed, vec3<f32>(0.0)) * s.albedo * (1.0 - s.metallic) / PI;
-  }
+  // What the crown's leaves pass on of the sun they took (crown_passed_sun).
+  color += crown_passed_sun(s, map_shadow, in.crown.y);
   // The material style's shadow darkness: where the sun does not reach, the
   // surface loses that share of the sun's ramp and of the ambient light.
   let keep = shadow_keep(n_dot_l * shadow, mode);

@@ -148,7 +148,7 @@ fn crown_passed(hidden: f32, forward: vec3<f32>) -> vec3<f32> {
 }
 
 // The light around a surface inside its tree's crown, which hides
-// `crown` of the sky (meshlet_sway.wgsl `meshlet_crown`, Hegeman et al.
+// `crown` of the sky (foliage.wgsl `meshlet_crown`, Hegeman et al.
 // 2006): the diffuse light is what comes through the gaps and what the
 // leaves pass on (`crown_passed`), in their colour, darker and greener
 // each leaf deeper; its reflection of the sky is occluded as Lagarde and
@@ -163,6 +163,41 @@ fn crown_ambient(a: Ambient, s: Surface, n_dot_v: f32, crown: f32) -> Ambient {
   let specular = clamp(pow(n_dot_v + seen, exp2(-16.0 * s.roughness - 1.0)) - 1.0 + seen, 0.0, 1.0);
   o.specular *= specular;
   return o;
+}
+
+// The sun a surface inside its tree's crown sees: at most what the
+// crown's leaves let through on its path (`crown`: foliage.wgsl
+// `meshlet_crown`'s y), below `shadow` the shadow map's. The map holds
+// the leaves as cards at its texel size, filtered and biased, and lets
+// through the sun a crown of them hides from its depths (Hegeman et al.
+// 2006), so a crown's inside is lit like its outside; the map's own where
+// it is darker (another tree, a wall).
+fn crown_sun(shadow: f32, crown: f32) -> f32 {
+  return select(shadow, min(shadow, 1.0 - crown), crown > 0.0);
+}
+
+// The sun a leaf's crown took from it (`crown`, as `crown_sun`'s) is not
+// all lost: its leaves pass some on (`crown_passed`; Boulanger, Pattanaik
+// and Bouatouch, "Rendering trees with indirect lighting in real time",
+// EGSR 2009), in their colour, less the deeper the leaf, so a leaf in its
+// crown's shade keeps its hue and the crown its depth. Only of the sun
+// that reaches the crown: where the map (`map_shadow`) is darker than the
+// crown alone, something else took the rest. Zero for a surface that is
+// not a translucent leaf.
+fn crown_passed_sun(s: Surface, map_shadow: f32, crown: f32) -> vec3<f32> {
+  if (s.translucency <= 0.0 || crown <= 0.0 || frame.light_dir.w <= 0.5) { return vec3<f32>(0.0); }
+  let through = 1.0 - crown;
+  let reach = clamp(map_shadow / max(through, 1e-3), 0.0, 1.0);
+  let passed = crown_passed(crown, crown_forward(s)) - vec3<f32>(through);
+  return frame.light_color.rgb * reach * max(passed, vec3<f32>(0.0)) * s.albedo * (1.0 - s.metallic) / PI;
+}
+
+// A seasonal leaf's colour: its own (`own`, the material's base colour
+// times the vertex colour) with its autumn colour in its place by
+// `season`'s a (foliage.wgsl `season_leaf_color`).
+fn season_mix(own: vec4<f32>, season: vec4<f32>) -> vec4<f32> {
+  if (season.a <= 0.0) { return own; }
+  return vec4<f32>(mix(own.rgb, season.rgb, season.a), own.a);
 }
 
 // A shaded surface's light in the parts the debug views show

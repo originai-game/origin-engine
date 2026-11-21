@@ -28,7 +28,7 @@ struct RasterParams {
   wind: array<FoliageWind, 2>,
   // The leaves' year (foliage.wgsl `LeafYear`).
   leaf_year: LeafYear,
-  // xyz: towards the sun (meshlet_sway.wgsl `meshlet_crown`).
+  // xyz: towards the sun (foliage.wgsl `meshlet_crown`).
   sun: vec4<f32>,
 };
 
@@ -76,7 +76,7 @@ fn raster_retro(clip: vec4<f32>) -> vec4<f32> {
 }
 
 // The leaf of vertex `local` of a foliage cluster whose first row's w is
-// `region`, on the instance at `now` (meshlet_sway.wgsl `meshlet_leaf`).
+// `region`, on the instance at `now` (foliage.wgsl `meshlet_leaf`).
 fn raster_leaf(local: u32, region: u32, now: mat4x4<f32>) -> MeshletLeaf {
   let at = meshlet_sway_row(region, local);
   return meshlet_leaf(vertices[region], vertices[at + 1u], now, raster.wind[0].origin.xyz, raster.leaf_year);
@@ -361,7 +361,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   // `meshlet_leaf_color`), which the resolve puts in place of its own.
   var season = vec4<f32>(0.0);
   // How much of the light around it and of the sun its crown hides
-  // (meshlet_sway.wgsl `meshlet_crown`).
+  // (foliage.wgsl `meshlet_crown`).
   var crown = vec2<f32>(0.0);
   let sun = meshlet_model_dir(model, raster.sun.xyz);
   for (var j = 0u; j < 3u; j++) {

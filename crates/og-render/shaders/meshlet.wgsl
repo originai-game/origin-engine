@@ -38,7 +38,7 @@ struct MeshletVertex {
   // Where the vertex rests, as its leaf's year has grown it (the swayed
   // position is v.position).
   rest: vec3<f32>,
-  // Its leaf in its year (meshlet_sway.wgsl `meshlet_leaf`).
+  // Its leaf in its year (foliage.wgsl `meshlet_leaf`).
   leaf: MeshletLeaf,
 };
 
