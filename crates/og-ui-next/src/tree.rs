@@ -1299,7 +1299,11 @@ impl Tree {
                     0,
                 ));
             }
-            if s.fill[3] > 0.0 {
+            let im = &s.image;
+            let image = og_draw::TextureHandle::from_slot(im.texture).filter(|_| im.wipe > 0.0);
+            // A fill-tinted image takes the fill's colour in its place.
+            let fill_tints = image.is_some() && im.tint == crate::style::Tint::Fill;
+            if s.fill[3] > 0.0 && !fill_tints {
                 p.quads.push(quad(
                     PaintKind::Solid,
                     rect,
@@ -1331,19 +1335,16 @@ impl Tree {
                 ));
             }
             // Its image over the fill, nine-sliced, radially wiped.
-            let im = &s.image;
-            if let Some(t) = og_draw::TextureHandle::from_slot(im.texture)
-                && im.wipe > 0.0
-            {
+            if let Some(t) = image {
                 let width = if im.width == [0.0; 4] {
                     im.slice
                 } else {
                     im.width
                 };
-                let color = if im.mask {
-                    faded(own_ink)
-                } else {
-                    [1.0, 1.0, 1.0, alpha]
+                let color = match im.tint {
+                    crate::style::Tint::Own => [1.0, 1.0, 1.0, alpha],
+                    crate::style::Tint::Ink => faded(own_ink),
+                    crate::style::Tint::Fill => faded(s.fill),
                 };
                 let flags = u32::from(im.fill) * og_draw::paint::IMAGE_FILL
                     | u32::from(im.tile) * og_draw::paint::IMAGE_TILE;
@@ -2057,6 +2058,54 @@ mod tests {
             d.quads[2..].iter().all(|q| q.xf == cq.xf),
             "the text rides its parents"
         );
+    }
+
+    /// A fill-tinted image takes the box's fill colour and replaces the
+    /// fill under it; an image in its own colours sits over the fill.
+    #[test]
+    fn a_fill_tinted_image_takes_the_fill_in_its_place() {
+        for tint in [crate::style::Tint::Fill, crate::style::Tint::Own] {
+            let doc = UiDocument::parse(
+                "n.svelte",
+                "<meta name=\"component\" content=\"n\">\n\
+                 <div id=\"B\"></div>\n\
+                 <style>\n#B { width: 40px; height: 20px; background: #ff0000; }\n</style>",
+            )
+            .unwrap();
+            let look = Rc::new(Look::load(
+                &[Layer {
+                    tokens: crate::look::default_tokens(),
+                    surfaces: crate::look::DEFAULT_SURFACES,
+                }],
+                "dark",
+            ));
+            let mut tree = Tree::new(look, [Arc::new(doc)]);
+            tree.resize(100.0, 100.0);
+            tree.mount("n", &[]).unwrap();
+            for el in &mut tree.els {
+                if el.record.skin.fill[3] > 0.0 {
+                    el.record.skin.image = crate::style::Slice {
+                        texture: 3,
+                        tint,
+                        ..Default::default()
+                    };
+                }
+            }
+            tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+            let q = &tree.drawn.quads;
+            let kinds: Vec<u32> = q.iter().map(|q| q.kind).collect();
+            let image = q
+                .iter()
+                .find(|q| q.kind == PaintKind::Image as u32)
+                .unwrap();
+            if tint == crate::style::Tint::Fill {
+                assert_eq!(kinds, [PaintKind::Image as u32], "no fill under it");
+                assert_eq!(image.color, [1.0, 0.0, 0.0, 1.0], "the fill's colour");
+            } else {
+                assert_eq!(kinds, [PaintKind::Solid as u32, PaintKind::Image as u32]);
+                assert_eq!(image.color, [1.0; 4], "its own colours");
+            }
+        }
     }
 
     /// A `display: none` element paints nothing, nor does what is under

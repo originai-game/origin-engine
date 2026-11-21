@@ -351,6 +351,19 @@ impl Decoration {
     pub const LINE_THROUGH: u8 = 4;
 }
 
+/// What colours a box's image.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Tint {
+    /// Its own colours.
+    #[default]
+    Own,
+    /// Times the text colour (an icon mask).
+    Ink,
+    /// Times the box's fill (`bg-*`), which then is not drawn under it: a
+    /// pack's plate art follows the theme and scheme.
+    Fill,
+}
+
 /// A box's image (generated panel, button, frame and slot art): a texture
 /// region, nine-sliced, over the fill and under the border. Its texture is
 /// a handle resolved at run time, so the TSX applier writes it; no sheet
@@ -369,8 +382,8 @@ pub struct Slice {
     pub fill: bool,
     /// Tile edges and centre in whole tiles instead of stretching.
     pub tile: bool,
-    /// Tinted by the ink (a mask) instead of drawn in its own colours.
-    pub mask: bool,
+    /// What colours it: its own, or a white mask tinted.
+    pub tint: Tint,
     /// A radial wipe: the fraction shown, 0..1 (1 whole), from `wipe_start`
     /// (radians, 0 up, clockwise), counter-clockwise with `wipe_ccw`.
     pub wipe: f32,
@@ -387,7 +400,7 @@ impl Default for Slice {
             width: [0.0; 4],
             fill: true,
             tile: false,
-            mask: false,
+            tint: Tint::Own,
             wipe: 1.0,
             wipe_start: 0.0,
             wipe_ccw: false,
