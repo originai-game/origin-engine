@@ -58,8 +58,8 @@ export function News(props: NewsProps) {
                                 </Text>
                               </Show>
                             </View>
-                            <View class={`tracking-xs text-fg-muted w-full`} role="heading" aria-level="3">
-                              <View class={`w-full min-h-11 text-start px-0`} role="button" aria-expanded={entry().id === props.selected} label={entry().title} disabled={(props.disabled ?? false)} onPress={(e) => props.onChoose?.(e, entry().id)}>
+                            <View class={`tracking-xs text-fg-muted w-full`} role="heading" level={3}>
+                              <View class={`w-full min-h-11 text-start px-0`} role="button" expanded={entry().id === props.selected} label={entry().title} disabled={(props.disabled ?? false)} onPress={(e) => props.onChoose?.(e, entry().id)}>
                                 <Text class={`font-bold text-[1.429rem] leading-6.5 text-fg w-full whitespace-normal`}>
                                   {entry().title}
                                 </Text>
