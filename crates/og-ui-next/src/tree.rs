@@ -1261,6 +1261,32 @@ mod tests {
         assert!(level(true) > level(false), "the text over its panel");
     }
 
+    /// An `auto` margin takes the free space, as flex places it: a row's
+    /// last item pushed to its end, a `center` layout centred.
+    #[test]
+    fn an_auto_margin_takes_the_free_space() {
+        let doc = UiDocument::parse(
+            "m.svelte",
+            "<meta name=\"component\" content=\"m\">\n\
+             <div id=\"R\" layout=\"row\"><div id=\"A\"></div><div id=\"B\"></div></div>\n\
+             <style>\n#R { width: 200px; }\n#A, #B { width: 20px; height: 10px; }\n\
+             #B { margin-left: auto; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: &crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [doc]);
+        tree.resize(400.0, 400.0);
+        tree.mount("m", &[]).unwrap();
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        assert_eq!(tree.find("B").unwrap().0, 180.0, "pushed to the row's end");
+    }
+
     /// Each row of an `{#each}` holds its own state: one row's `state:done`
     /// is not another's.
     #[test]

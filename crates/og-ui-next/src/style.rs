@@ -624,6 +624,31 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         }
         op::MARGIN => {
             let m = if s.code == 0 { 15 } else { s.code };
+            // NaN is `auto`: the free space on that side, as flex places it.
+            if [a, b, cc, d].iter().any(|v| v.is_nan()) {
+                let side = |v: f32| {
+                    if v.is_nan() {
+                        LengthPercentageAuto::auto()
+                    } else {
+                        LengthPercentageAuto::length(v)
+                    }
+                };
+                l.modify_cold(|st| {
+                    if m & 1 != 0 {
+                        st.margin.top = side(a);
+                    }
+                    if m & 2 != 0 {
+                        st.margin.right = side(b);
+                    }
+                    if m & 4 != 0 {
+                        st.margin.bottom = side(cc);
+                    }
+                    if m & 8 != 0 {
+                        st.margin.left = side(d);
+                    }
+                });
+                return;
+            }
             if m & 1 != 0 {
                 l.set_margin_top(a);
             }
@@ -792,7 +817,16 @@ fn words(v: &str) -> impl Iterator<Item = &str> {
 
 /// Up to four lengths in CSS's top, right, bottom, left shorthand order.
 fn sides(v: &str) -> Option<[f32; 4]> {
-    let parts: Vec<f32> = words(v).map(px).collect::<Option<_>>()?;
+    sides_with(v, px)
+}
+
+/// A margin's length: `auto` is NaN (the side takes the free space).
+fn margin_px(w: &str) -> Option<f32> {
+    if w == "auto" { Some(f32::NAN) } else { px(w) }
+}
+
+fn sides_with(v: &str, len: impl Fn(&str) -> Option<f32>) -> Option<[f32; 4]> {
+    let parts: Vec<f32> = words(v).map(len).collect::<Option<_>>()?;
     Some(match parts[..] {
         [a] => [a; 4],
         [a, b] => [a, b, a, b],
@@ -918,7 +952,7 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
             true
         }
         "padding" => sides(v).is_some_and(|s| push(op::PAD, 0, s)),
-        "margin" => sides(v).is_some_and(|s| push(op::MARGIN, 0, s)),
+        "margin" => sides_with(v, margin_px).is_some_and(|s| push(op::MARGIN, 0, s)),
         "padding-top" | "padding-right" | "padding-bottom" | "padding-left" | "padding-inline"
         | "padding-block" | "margin-top" | "margin-right" | "margin-bottom" | "margin-left"
         | "margin-inline" | "margin-block" => {
@@ -933,7 +967,8 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
                 "inline" => &[1, 3],
                 _ => &[0, 2],
             };
-            let vals: Vec<f32> = match words(v).map(px).collect::<Option<Vec<f32>>>() {
+            let len = if o == op::MARGIN { margin_px } else { px };
+            let vals: Vec<f32> = match words(v).map(len).collect::<Option<Vec<f32>>>() {
                 Some(v) => v,
                 None => return false,
             };
