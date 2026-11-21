@@ -1,5 +1,6 @@
 import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
+import { ProgressBar } from "../hud/progress-bar";
 import "./general.en.ogt";
 
 export interface AchievementsProps {
@@ -28,15 +29,6 @@ export interface AchievementsProps {
  * game owns every number; the list reports claim (an achievement's key). It
  * fills its height and scrolls inside it.
  */
-/** A meter stands in for hud/progress-bar (its port pending): track, fill, spoken value. */
-function Meter(props: { value: number; valueText: string; tone?: string }) {
-  return (
-    <View class={`grow shrink basis-0 bg-tile shadow-sunk h-[0.571rem] rounded-capsule overflow-hidden`} role="progressbar" label={props.valueText} valueMin={0} valueMax={100} valueNow={Math.round(Math.min(1, Math.max(0, props.value)) * 100)} valueText={props.valueText}>
-      <View class={`h-full bg-accent data-tone-success:bg-success`} data-tone-success={props.tone === 'success'} style={{ width: `${Math.min(1, Math.max(0, props.value)) * 100}%` }} />
-    </View>
-  );
-}
-
 export function Achievements(props: AchievementsProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.achievements.name")}>
@@ -50,7 +42,7 @@ export function Achievements(props: AchievementsProps) {
           <Text class={`text-[2.857rem] font-bold tabular-nums text-fg whitespace-nowrap leading-flat compact:text-[2rem]`}>
             {props.summary}
           </Text>
-          <Meter value={props.done} valueText={props.summary} />
+          <ProgressBar value={props.done} valueText={props.summary} />
         </View>
       </Show>
       <Show when={props.achievements.length} fallback={
@@ -88,7 +80,7 @@ export function Achievements(props: AchievementsProps) {
                         </View>
                     }>
                       <View class="w-72 max-w-full shrink">
-                        <Meter value={a().progress} valueText={a().progressText} />
+                        <ProgressBar value={a().progress} valueText={a().progressText} />
                       </View>
                       <Text class="whitespace-nowrap font-bold tabular-nums text-fg" label={t("general.achievements.progress")}>
                         {a().progressText}

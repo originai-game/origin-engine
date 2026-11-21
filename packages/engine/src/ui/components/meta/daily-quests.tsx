@@ -1,5 +1,6 @@
 import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
+import { ProgressBar } from "../hud/progress-bar";
 import { Spinner } from "../base/spinner";
 import "./general.en.ogt";
 
@@ -26,15 +27,6 @@ export interface DailyQuestsProps {
  * their own. The game owns progress, rewards and the clock; the list
  * reports claim (a quest's key).
  */
-/** A meter stands in for hud/progress-bar (its port pending): track, fill, spoken value. */
-function Meter(props: { value: number; valueText: string; tone?: string }) {
-  return (
-    <View class={`grow shrink basis-0 bg-tile shadow-sunk h-[0.571rem] rounded-capsule overflow-hidden`} role="progressbar" label={props.valueText} valueMin={0} valueMax={100} valueNow={Math.round(Math.min(1, Math.max(0, props.value)) * 100)} valueText={props.valueText}>
-      <View class={`h-full bg-accent data-tone-success:bg-success`} data-tone-success={props.tone === 'success'} style={{ width: `${Math.min(1, Math.max(0, props.value)) * 100}%` }} />
-    </View>
-  );
-}
-
 export function DailyQuests(props: DailyQuestsProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.quests.name")} busy={props.loading}>
@@ -71,7 +63,7 @@ export function DailyQuests(props: DailyQuestsProps) {
                         {q().name}
                       </Text>
                       <View class="group/progress flex-row items-center w-full gap-1" data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
-                        <Meter value={q().progress} valueText={q().progressText} tone={q().state === 'claimed' ? 'success' : ''} />
+                        <ProgressBar value={q().progress} valueText={q().progressText} tone={q().state === 'claimed' ? 'success' : ''} />
                         <Text class="whitespace-nowrap font-bold tabular-nums text-fg group-data-state-done/progress:text-gold">
                           {q().progressText}
                         </Text>
