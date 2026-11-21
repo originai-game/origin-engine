@@ -28,6 +28,7 @@ og-ui = { path = "../og-ui", default-features = false }
 # The reactive session and its wire format, which the new core's stores use.
 og-reactive = { path = "../og-reactive" }
 # og-ui's new core: every document runs on it.
+og-ui-model = { path = "../og-ui-model" }
 og-ui-next = { path = "../og-ui-next" }
 og-css = { path = "../og-css" }
 og-input = { path = "../og-input" }

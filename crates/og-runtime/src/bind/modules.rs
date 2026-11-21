@@ -20,16 +20,16 @@
 //! audio stream (its resources).
 
 mod ui_config;
-pub(crate) use ui_config::{
-    LoadedStyle, UiSettings, load_style, new_ui, settings, ui_font, unit_of,
-};
+pub(crate) use ui_config::{LoadedStyle, UiSettings, load_style, new_ui, settings, ui_font};
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
+mod ui_frame;
 pub(crate) use ui_desc::{UiAnswers, srgb8, with_ui};
 pub use ui_desc::{
     og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer, og_ui_frame_theme,
     og_ui_frame_viewport, og_ui_has_icon, og_ui_seconds, og_ui_theme, og_ui_viewport,
 };
+pub(crate) use ui_frame::{UiFrame, unit_of, with_frame};
 mod widgets;
 pub(crate) use widgets::emit;
 mod game_widgets;
@@ -162,6 +162,7 @@ pub(crate) fn mount_front(
                     .with_a11y(&asked)
                     .with_actions(og_input::actions::lock(&feed).feed());
                 let viewport = viewport_of(engine_id);
+                ui_frame::record(engine_id, &input, viewport, &ctx.time());
                 shared.lock().begin(input, viewport);
                 BUILDING.with(|b| b.set(Some(engine_id)));
                 LAST.with(|l| l.set(Some(engine_id)));

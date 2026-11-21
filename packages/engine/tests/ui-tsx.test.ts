@@ -434,6 +434,45 @@ test("og.ui's unitScale lays the tree out in its units, and the probe and the vi
   }
 });
 
+// og.ui's frame answers come from og-runtime's UI frame (og.ui.begin's
+// record): the surface in units, the clock by the world's tick. Ways it
+// could fail: an answer read from a frame nothing fills (the default
+// 1280x720 at unit 1, tick 0), the unit not applied, or a clock that a
+// snapshot restore leaves running on (the UI's own count, not the tick's).
+test("og.ui's frame answers are the tick's surface in units and its clock, restored with the world", () => {
+  loadNativeHost();
+  const seen: { width: number; height: number; dpr: number; tick: number; seconds: number; dir: string }[] = [];
+  const Watch = defineSystem("UiFrameWatch", { reads: [] }, () => {
+    const v = og.ui.frameViewport();
+    seen.push({ width: v.width, height: v.height, dpr: v.dpr, tick: og.ui.tick(), seconds: og.ui.seconds(), dir: og.ui.frameDirection() });
+  });
+  const game = og.game({
+    systems: [Watch],
+    start(world) {
+      og.ui.configure(world, { unitScale: 2 });
+    },
+  });
+  const created = createEngine(game as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  try {
+    og.ui.previewViewport(engine.world, { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" } as never);
+    engine.advance(2);
+    const snap = engine.probe.snapshot() as { id: string };
+    engine.advance(1);
+    const third = seen.at(-1)!;
+    // Two CSS px to the unit: half the surface, twice the density.
+    expect([third.width, third.height, third.dpr]).toEqual([640, 360, 2]);
+    expect([third.tick, third.seconds, third.dir]).toEqual([3, 3 / 60, "ltr"]);
+    expect(engine.probe.restore(snap.id)).toBeTrue();
+    engine.advance(1);
+    // The restored world's next tick is the third again.
+    expect(seen.at(-1)!.tick).toBe(3);
+  } finally {
+    engine.destroy();
+  }
+});
+
 test("a glyph prompt shows the player's rebinding on the next frame", () => {
   loadNativeHost();
   const game = og.game({

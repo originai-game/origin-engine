@@ -103,13 +103,6 @@ pub(crate) fn settings(eng: &Engine, v: &Viewport, unit: f32) -> UiSettings {
     }
 }
 
-/// The unit engine `eng`'s UI lays out in on viewport `v`; 1 without a UI.
-/// Locks the UI: never called while it is held.
-pub(crate) fn unit_of(eng: &Engine, v: &Viewport) -> f32 {
-    let ui = eng.state.borrow().ui.clone();
-    ui.map_or(1.0, |ui| ui.lock().unit_for(v))
-}
-
 pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;

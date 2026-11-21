@@ -22,6 +22,15 @@ pub(crate) fn srgb8(linear: f32) -> u8 {
 /// Runs `f` on the UI whose frame is open; outside a frame, logs a warning
 /// on the engine that opened one last and answers `None`.
 pub(crate) fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> {
+    let eng = building(call)?;
+    let ui = eng.state.borrow().ui.clone()?;
+    let mut guard = ui.lock();
+    Some(f(&mut guard))
+}
+
+/// The engine whose UI frame is open; outside a frame, logs a warning that
+/// `call` does nothing there on the engine that opened one last.
+pub(crate) fn building(call: &str) -> Option<std::rc::Rc<Engine>> {
     let building = BUILDING.with(Cell::get);
     let target = building.or_else(|| LAST.with(Cell::get));
     let eng = target.and_then(|id| engine(id).ok())?;
@@ -37,22 +46,14 @@ pub(crate) fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> 
         }
         return None;
     }
-    let ui = eng.state.borrow().ui.clone()?;
-    let mut guard = ui.lock();
-    Some(f(&mut guard))
+    Some(eng)
 }
 
 pub fn og_ui_viewport(world: u32) -> crate::host::wire::Viewport {
     // In og-ui units, as the frame lays out (og.ui.frameViewport).
     let css = viewport_of(world);
-    let (hud, unit) = engine(world)
-        .ok()
-        .and_then(|e| e.state.borrow().ui.clone())
-        .map_or((og_ui::HUD_MAX_ASPECT, 1.0), |ui| {
-            let ui = ui.lock();
-            (ui.hud_max_aspect(), ui.unit_for(&css))
-        });
-    viewport_wire(&css.zoomed(unit), hud)
+    let unit = engine(world).map_or(1.0, |e| unit_of(&e, &css));
+    viewport_wire(&css.zoomed(unit))
 }
 
 pub fn og_ui_theme(world: u32) -> crate::host::wire::UiTheme {
@@ -66,9 +67,9 @@ pub fn og_ui_theme(world: u32) -> crate::host::wire::UiTheme {
     theme_wire(world, &settings)
 }
 
-/// A viewport as og.ui.viewport answers it, with the HUD band the UI's
-/// `hud_max_aspect` makes of it (og-ui's `Ui::hud_area`).
-fn viewport_wire(v: &Viewport, hud_max_aspect: f32) -> crate::host::wire::Viewport {
+/// A viewport as og.ui.viewport answers it, with its HUD band (at most
+/// [`og_ui_model::HUD_MAX_ASPECT`] wide).
+fn viewport_wire(v: &Viewport) -> crate::host::wire::Viewport {
     let [small, large] = v.extremes();
     wire::Viewport {
         width: v.width,
@@ -89,35 +90,31 @@ fn viewport_wire(v: &Viewport, hud_max_aspect: f32) -> crate::host::wire::Viewpo
         high_contrast: Some(v.high_contrast),
         covered: Some(rect_wire(&v.covered)),
         breakpoint: match v.breakpoint() {
-            og_ui::Breakpoint::PhonePortrait => wire::Breakpoint::PhonePortrait,
-            og_ui::Breakpoint::PhoneLandscape => wire::Breakpoint::PhoneLandscape,
-            og_ui::Breakpoint::Tablet => wire::Breakpoint::Tablet,
-            og_ui::Breakpoint::Desktop => wire::Breakpoint::Desktop,
+            og_ui_model::Breakpoint::PhonePortrait => wire::Breakpoint::PhonePortrait,
+            og_ui_model::Breakpoint::PhoneLandscape => wire::Breakpoint::PhoneLandscape,
+            og_ui_model::Breakpoint::Tablet => wire::Breakpoint::Tablet,
+            og_ui_model::Breakpoint::Desktop => wire::Breakpoint::Desktop,
         },
-        hud: Some(rect_wire(&v.hud_rect(hud_max_aspect))),
+        hud: Some(rect_wire(&v.hud_rect(og_ui_model::HUD_MAX_ASPECT))),
     }
 }
 
 pub fn og_ui_frame_viewport() -> String {
-    let (v, hud) = with_ui("og.ui.frameViewport", |ui| {
-        (ui.viewport(), ui.hud_max_aspect())
-    })
-    .unwrap_or((Viewport::default(), og_ui::HUD_MAX_ASPECT));
+    let v = with_frame("og.ui.frameViewport", UiFrame::viewport).unwrap_or_default();
     // The UI kit asks many times a tick (each component that adapts to the
     // surface) and the viewport rarely changes: the last answer is kept with
     // what it was made from, as og_ui_frame_theme's is. Built each call, it
     // was a fifth of a kit frame in the dev build.
     answered(|a| {
         let last = a.map(|a| &mut a.viewport);
-        if let Some(Some((lv, lh, text))) = last.as_deref()
+        if let Some(Some((lv, text))) = last.as_deref()
             && *lv == v
-            && lh.to_bits() == hud.to_bits()
         {
             return text.clone();
         }
-        let text = wire::text_of(&viewport_wire(&v, hud));
+        let text = wire::text_of(&viewport_wire(&v));
         if let Some(last) = last {
-            *last = Some((v, hud, text.clone()));
+            *last = Some((v, text.clone()));
         }
         text
     })
@@ -127,7 +124,7 @@ pub fn og_ui_frame_viewport() -> String {
 /// from (`State::ui_answers`).
 #[derive(Default)]
 pub(crate) struct UiAnswers {
-    viewport: Option<(Viewport, f32, String)>,
+    viewport: Option<(Viewport, String)>,
     theme: Option<(super::UiSettings, String, String)>,
 }
 
@@ -162,8 +159,8 @@ pub fn og_ui_frame_cursor() -> String {
 }
 
 pub fn og_ui_frame_pointer() -> crate::host::wire::UiPointer {
-    with_ui("og.ui.framePointer", |ui| {
-        let i = ui.input();
+    with_frame("og.ui.framePointer", |f| {
+        let i = &f.input;
         wire::UiPointer {
             x: i.pointer.x,
             y: i.pointer.y,
@@ -180,10 +177,7 @@ pub fn og_ui_frame_pointer() -> crate::host::wire::UiPointer {
 }
 
 pub fn og_ui_frame_direction() -> String {
-    let rtl = with_ui("og.ui.frameDirection", |ui| {
-        ui.direction() == og_i18n::Direction::Rtl
-    })
-    .unwrap_or(false);
+    let rtl = with_frame("og.ui.frameDirection", |f| f.rtl).unwrap_or(false);
     if rtl { "rtl" } else { "ltr" }.to_owned()
 }
 
@@ -192,7 +186,7 @@ pub fn og_ui_has_icon(name: String) -> bool {
 }
 
 pub fn og_ui_seconds() -> f64 {
-    with_ui("og.ui.seconds", |ui| ui.seconds()).unwrap_or(0.0)
+    with_frame("og.ui.seconds", UiFrame::seconds).unwrap_or(0.0)
 }
 
 pub fn og_ui_frame_theme() -> String {

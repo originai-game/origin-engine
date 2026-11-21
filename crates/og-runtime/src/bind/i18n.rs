@@ -136,6 +136,11 @@ fn tag(engine: u32) -> String {
     })
 }
 
+/// The active locale writes right to left (og.ui.frameDirection).
+pub(crate) fn rtl(engine: u32) -> bool {
+    with(engine, |s| s.catalog.direction() == og_i18n::Direction::Rtl)
+}
+
 /// A document's unformatted message. Its binding supplies arguments and
 /// formats once; formatting here would discard plural/select branches.
 pub(crate) fn message(engine: u32, key: &str) -> Option<String> {

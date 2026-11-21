@@ -204,6 +204,8 @@ pub(crate) struct State {
     pub ui_warned: BTreeSet<String>,
     /// The UI's last frame answers (og.ui.frameViewport, frameTheme).
     pub ui_answers: crate::bind::modules::UiAnswers,
+    /// The UI frame og.ui.begin recorded last.
+    pub ui_frame: crate::bind::modules::UiFrame,
     /// The host mirrors the UI's accessibility tree (create option `a11y`,
     /// the web Worker): frame answers carry what changed in it.
     pub a11y_mirror: bool,

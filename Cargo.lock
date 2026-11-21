@@ -3665,6 +3665,7 @@ dependencies = [
  "og-timeline",
  "og-tween",
  "og-ui",
+ "og-ui-model",
  "og-ui-next",
  "og-video",
  "pollster",

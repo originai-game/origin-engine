@@ -149,7 +149,7 @@ pub(crate) struct Next {
     /// bindings' revision they show ([`og_ui::Ui::bindings_rev`]).
     device: Option<(og_ui::Device, u64)>,
     /// The left stick's held direction and when it moves the focus again.
-    stick: Option<(og_ui::Nav, f64)>,
+    stick: Option<(og_input::frame::Nav, f64)>,
 }
 
 fn source(v: &Value) -> Option<(String, String)> {
@@ -594,9 +594,9 @@ fn resolver(
 impl Next {
     /// Gives the tree the class resolver of the pack, the scheme and the
     /// box's size class, when it has another one: every op node restyles.
-    fn resolve(&mut self, engine: u32, ui: &og_ui::Ui) {
+    fn resolve(&mut self, engine: u32) {
         let Some(tree) = &mut self.tree else { return };
-        let v = ui.frame().viewport;
+        let v = frame_of(engine).viewport();
         let window = [v.width, v.height];
         let dark = self.dark;
         // The page's `prefers-contrast: more`, as the host reports it.
@@ -633,12 +633,23 @@ impl Next {
     }
 }
 
+/// Engine `engine`'s UI frame, as og.ui.begin recorded it last; the
+/// default without the engine.
+fn frame_of(engine: u32) -> crate::bind::modules::UiFrame {
+    crate::engine::engine(engine).map_or_else(
+        |_| Default::default(),
+        |eng| eng.state.borrow().ui_frame.clone(),
+    )
+}
+
 /// Engine `engine`'s UI settings under the frame's viewport; the default
 /// desc's when the engine is gone.
-fn settings_of(engine: u32, ui: &og_ui::Ui) -> crate::bind::modules::UiSettings {
-    let v = ui.frame().viewport;
+fn settings_of(engine: u32) -> crate::bind::modules::UiSettings {
     match crate::engine::engine(engine) {
-        Ok(eng) => crate::bind::modules::settings(&eng, &v, ui.unit_for(&v)),
+        Ok(eng) => {
+            let f = eng.state.borrow().ui_frame.clone();
+            crate::bind::modules::settings(&eng, &f.css, f.unit)
+        }
         Err(_) => crate::bind::modules::UiSettings::of(&Value::Null, String::new(), (false, false)),
     }
 }
@@ -975,7 +986,7 @@ impl Next {
         // from its first frame.
         self.pack = active_pack(engine).map(|(id, _)| id);
         self.resolved = None;
-        self.resolve(engine, ui);
+        self.resolve(engine);
         // A new arena: the mirror is sent its whole tree again.
         self.a11y.reset();
         self.fresh = true;
@@ -989,7 +1000,7 @@ impl Next {
     /// paints. The reply is the events since the last batch, or the
     /// refusal of an op.
     pub(crate) fn ops(&mut self, engine: u32, ui: &og_ui::Ui, bytes: &[u8]) -> Vec<u8> {
-        self.dark = settings_of(engine, ui).dark;
+        self.dark = settings_of(engine).dark;
         self.build(engine, ui, &crate::author::probe::now_ms);
         let tree = self.tree.as_mut().expect("built above");
         let mut out = Vec::new();
@@ -1120,7 +1131,7 @@ impl Next {
         world: Option<&dyn Fn(u64) -> Option<og_core::glam::Vec3>>,
     ) -> Vec<String> {
         let mut warnings = std::mem::take(&mut self.held);
-        let settings = settings_of(engine, ui);
+        let settings = settings_of(engine);
         // A tree of op nodes stays: its texts are the renderer's, and a new
         // look restyles it in place.
         let ops = self.tree.as_ref().is_some_and(|t| t.has_ops());
@@ -1154,13 +1165,14 @@ impl Next {
             tree.set_look(look.clone());
         }
         self.build(engine, ui, now);
-        self.resolve(engine, ui);
+        self.resolve(engine);
         warnings.append(&mut self.held);
         let a0 = allocations();
         let t0 = now();
-        // The viewport and the input are in og-ui units already
-        // (`Ui::begin` zooms them): the tree lays out in them.
-        self.unit = ui.frame().unit.max(1.0);
+        // The viewport and the input are in og-ui units already (the UI
+        // frame's): the tree lays out in them.
+        let frame = frame_of(engine);
+        self.unit = frame.unit.max(1.0);
         let Some(tree) = &mut self.tree else {
             return warnings;
         };
@@ -1171,9 +1183,9 @@ impl Next {
             t.extend_from_slice(textures);
             tree.repaint_images();
         }
-        let v = ui.frame().viewport;
+        let v = frame.viewport();
         tree.resize(v.width, v.height);
-        let hud = v.hud_insets(ui.hud_max_aspect());
+        let hud = v.hud_insets(og_ui_model::HUD_MAX_ASPECT);
         tree.set_insets([hud.top, hud.right, hud.bottom, hud.left]);
         tree.set_time(time, settings.reduced_motion);
         tree.set_cover(cover, settings.reduced_motion);
@@ -1193,7 +1205,7 @@ impl Next {
         });
         // The pointer, in the units og-ui's input is in, on the tree's
         // surface: a press and a release over one element click it.
-        let input = ui.input();
+        let input = &frame.input;
         let mut done = Vec::new();
         // A finger pans what scrolls and long-presses.
         let device = ui.device();
@@ -1201,7 +1213,7 @@ impl Next {
         // A pad's virtual cursor turns pad 0 into this pointer while it
         // shows (its A the button, its right stick the wheel).
         let g = &input.gamepad;
-        let a = og_ui::GamepadFrame::A;
+        let a = og_input::frame::GamepadFrame::A;
         let mut pad = og_ui_next::tree::CursorPad {
             stick: [g.stick.x, g.stick.y],
             stick_r: [g.stick_r.x, g.stick_r.y],
@@ -1264,7 +1276,7 @@ impl Next {
             // half-way on its dominant axis once, then after og-ui's slow
             // duration every fast one while held, as og-ui's navigation.
             let g = &input.gamepad;
-            use og_ui::{GamepadFrame as Pad, Nav};
+            use og_input::frame::{GamepadFrame as Pad, Nav};
             for (bit, nav) in [
                 (Pad::UP, Nav::Up),
                 (Pad::DOWN, Nav::Down),

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui.tick",
+      "summary": "og.ui.tick and og.ui.seconds count the world's ticks (the tick being built, from 1), so a restored snapshot's next frame answers that tick again instead of a count the UI kept on its own. og.ui.frameViewport, og.ui.framePointer and og.ui.frameDirection answer the same frame og.ui.begin recorded for the tick, in UI units."
+    }
+  ]
+}

@@ -178,6 +178,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         physics_heightfields: IdMap::new(),
         ui_warned: BTreeSet::new(),
         ui_answers: Default::default(),
+        ui_frame: Default::default(),
         a11y_mirror: options["a11y"].as_bool().unwrap_or(false),
         cursor_images: Default::default(),
         cursor_sent: None,

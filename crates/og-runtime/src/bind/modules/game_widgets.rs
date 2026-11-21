@@ -46,7 +46,7 @@ pub fn og_ui_virtual_cursor() -> Option<crate::host::wire::VirtualCursor> {
 }
 
 pub fn og_ui_tick() -> u32 {
-    with_ui("og.ui.tick", |ui| ui.tick() as u32).unwrap_or(0)
+    with_frame("og.ui.tick", |f| f.tick as u32).unwrap_or(0)
 }
 
 pub fn og_ui_preview_viewport(world: u32, viewport: String) {
