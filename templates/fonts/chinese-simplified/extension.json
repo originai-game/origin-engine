@@ -3,7 +3,7 @@
   "kind": "font",
   "name": "chinese-simplified",
   "version": "1.0.0",
-  "description": "Noto Sans SC: GB 2312 symbols and level 1 hanzi (3,755)",
+  "description": "Noto Sans SC: GB 2312 whole, its symbols and both levels of hanzi (6,763)",
   "scripts": [
     "Hans"
   ],

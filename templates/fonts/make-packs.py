@@ -61,8 +61,9 @@ KSX = codec("euc_kr", range(0xA1, 0xAD), range(0xA1, 0xFF)) | codec("euc_kr", ra
 # Big5 symbols and level 1 hanzi (5,401), plus bopomofo.
 BIG5_TRAIL = list(range(0x40, 0x7F)) + list(range(0xA1, 0xFF))
 BIG5 = codec("big5", range(0xA1, 0xA4), BIG5_TRAIL) | codec("big5", range(0xA4, 0xC7), BIG5_TRAIL) | rng(0x3100, 0x312F)
-# GB 2312 rows 1-9 (symbols) and level 1 hanzi (3,755).
-GB = codec("gb2312", range(0xA1, 0xAA), range(0xA1, 0xFF)) | codec("gb2312", range(0xB0, 0xD8), range(0xA1, 0xFF))
+# GB 2312 whole: rows 1-9 (symbols) and both levels of hanzi (3,755 and
+# 3,008: 6,763), so a name's less common character (薇, 喆) draws.
+GB = codec("gb2312", range(0xA1, 0xAA), range(0xA1, 0xFF)) | codec("gb2312", range(0xB0, 0xF8), range(0xA1, 0xFF))
 LATIN = ASCII | rng(0xA0, 0x24F) | rng(0x0300, 0x036F) | rng(0x1E00, 0x1EFF) | rng(0x2000, 0x206F) | rng(0x20A0, 0x20CF) | {0x2122, 0x2190, 0x2192}
 CYRILLIC_GREEK = rng(0x0370, 0x03FF) | rng(0x0400, 0x04FF) | rng(0x0500, 0x052F) | rng(0x1F00, 0x1FFF)
 
@@ -128,11 +129,12 @@ PACKS = {
         [("NotoSansTC-Regular.ttf", "notosanstc/NotoSansTC[wght].ttf", (BIG5 | CJK_PUNCT) - ASCII)],
     ),
     "chinese-simplified": (
-        "Noto Sans SC: GB 2312 symbols and level 1 hanzi (3,755)",
+        "Noto Sans SC: GB 2312 whole, its symbols and both levels of hanzi (6,763)",
         ["Hans"],
         "zh zh-Hans zh-CN zh-SG".split(),
         [("NotoSansSC-Regular.ttf", "notosanssc/NotoSansSC[wght].ttf", (GB | CJK_PUNCT) - ASCII)],
-    ),    "emoji": (
+    ),
+    "emoji": (
         "Noto Color Emoji (COLRv1): every emoji with its sequences (skin tones, ZWJ families, flags), painted in colour when first shown",
         ["Zsye"],
         [],
