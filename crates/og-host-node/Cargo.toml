@@ -55,6 +55,8 @@ napi = { version = "3", default-features = false, features = ["napi8"] }
 napi-derive = "3"
 pollster = { workspace = true }
 serde_json = "1"
+# `og build`'s JSX compile (src/jsx.rs).
+nsh-jsx = { path = "../../third_party/nsh-jsx" }
 og-audio = { path = "../og-audio" }
 og-net = { path = "../og-net", features = ["ws"] }
 og-shared = { path = "../og-shared", features = ["client"] }

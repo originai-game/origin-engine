@@ -939,6 +939,7 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     let mut report = checker.check(&target, default_checkers())?;
     untyped_documents(&target, &mut report);
     module_state(p, &mut report);
+    unknown_classes(p, &mut report);
     fields::check(p, &mut report);
     if json {
         println!("{}", report.json());
@@ -1270,6 +1271,57 @@ fn module_state(p: &Project, report: &mut Report) {
     }
 }
 
+/// The unknown Tailwind classes in the game's TSX (crates/og-ui-next/
+/// CONVENTIONS.md §JSX compile): each an error naming the class, at its
+/// line and column, against the engine's default pack laid under the game's
+/// own (`assets/styles/game/pack.json`). A class with no field in the
+/// record is unknown too, so none is dropped silently.
+fn unknown_classes(p: &Project, report: &mut Report) {
+    let dir = p.entry.parent().unwrap_or(&p.root);
+    let mut files = Vec::new();
+    crate::lockstep_lint::sources(dir, &mut files);
+    files.retain(|f| f.extension().is_some_and(|e| e == "tsx" || e == "jsx"));
+    if files.is_empty() {
+        return;
+    }
+    use og_ui_next::pack::{Layer, Pack, Scheme};
+    let mut layers = vec![Layer::default_pack()];
+    let game = p.root.join("assets/styles/game/pack.json");
+    if let Ok(text) = std::fs::read_to_string(&game) {
+        match Layer::parse(&text) {
+            Ok(layer) => layers.push(layer),
+            // The cook refuses the same file and says why.
+            Err(_) => return,
+        }
+    }
+    let Ok(theme) = nsh_jsx::Theme::from_json(&Pack::new(&layers).theme_json(Scheme::Dark)) else {
+        return;
+    };
+    for path in files {
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let file = typescript_path(path.strip_prefix(&p.root).unwrap_or(&path));
+        for u in nsh_jsx::unknown_classes(&path.to_string_lossy(), &text, &theme) {
+            let message = format!("unknown class `{}`", u.class);
+            report.raw.push_str(&format!(
+                "{file}({},{}): error OG{UNKNOWN_CLASS}: {message}\n",
+                u.line, u.column
+            ));
+            report.diagnostics.push(Diagnostic {
+                file: Some(file.clone()),
+                line: Some(u.line as u32),
+                col: Some(u.column as u32),
+                code: UNKNOWN_CLASS,
+                message,
+            });
+        }
+    }
+}
+
+/// The diagnostic code of an unknown class in a game's TSX.
+const UNKNOWN_CLASS: u32 = 9105;
+
 /// `gate`, and `Err` on a type error as well: what stops a bundle.
 pub fn require(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     let report = gate(p, package, json)?;
@@ -1376,6 +1428,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     untyped_documents(&target, &mut report);
     if let Some(p) = &project {
         module_state(p, &mut report);
+        unknown_classes(p, &mut report);
         fields::check(p, &mut report);
     }
     if json {

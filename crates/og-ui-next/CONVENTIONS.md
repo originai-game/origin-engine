@@ -37,29 +37,47 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
 - **Primitives**, imported from `@origingame/engine/ui` (NSH's rule: tags
   are PascalCase imports; a lowercase tag is an error): `View`, `Text`,
   `Image`, `Icon`, `Scroll`, `Input`, `Svg` with its shapes, and the
-  control flow `Show`, `For`, `Switch`/`Match`. Every other tag is a
-  component call.
+  control flow `<Show when fallback keyed>` and `<For each key>{(item,
+  index) => …}</For>` (`item` and `index` are accessors). Every other tag
+  is a component call. Every optional prop also takes `undefined`.
 - **Props** keep camelCase names. Reading `props.x` inside JSX is
   reactive; a component body runs once (Solid's model), so derived values
   are functions or `createMemo`.
-- **State** comes from the engine's stores (`og.ui.scope`, `UiReactor`) as
-  signals; a component never reads the simulation directly.
+- **State**: props are plain values or getters the renderer follows, never
+  stores. A store (`og.ui.scope`) reaches a component as a signal through
+  `useStore(store)`; a component never reads the simulation directly.
+  `createSignal`, `createMemo`, `createEffect`, `onCleanup`, `batch`,
+  `untrack` and context are exported beside the primitives.
 - **Events** are `onPress`, `onTap`, `onPointerDown`/`Move`/`Up`, `onWheel`,
-  `onFocus`, `onBlur`, `onKey`, `onChange`: JS functions, called by id.
-- **Mounting**: `og.ui.mount(Component, props, { layer })` on a scope;
-  layers are `hud`, `menu`, `modal`, `popover`, `toast`, `tooltip`,
-  `system`, as before.
-- **Strings** go through `t(key, params)`; text in JSX is literal or bound,
-  never concatenated from translated pieces.
+  `onFocus`, `onBlur`, `onKey`, `onChange`: JS functions, called by id at
+  the tick boundary (the platform pump), batched and untracked, with
+  `{ world, type, x, y, key, value }`. Input actions where focus is:
+  `onAction={{ confirm, details }}` (wire: `setProp(id, "actions",
+  "confirm details")` and event 10 `action` with the action in `key`). A
+  `Text` with `glyph="use"` shows that action's binding glyph (input
+  fills it).
+- **Mounting**: `mount(world, Component, props, { layer })` from
+  `@origingame/engine/ui` returns the unmount; layers are `hud`, `menu`,
+  `modal`, `popover`, `toast`, `tooltip`, `system` (the mount's root
+  carries `setProp("layer", …)`).
+- **Strings** go through `t(key, params)` (and `formatNumber`,
+  `formatCompact`, `formatDuration`, `formatCurrency`), which read the
+  mount's world; text in JSX is literal or bound, never concatenated from
+  translated pieces.
 
 ## JSX compile (head 2)
 
-`og build` bundles game.js with Bun.build; a plugin runs NSH's JSX
-transform (`nsh-bundler` `jsx.rs`/`compile.rs`, oxc) on `.tsx`. A host
-element becomes one function that makes it; a static value is set once,
-a changing one (an expression that calls or reads a member) is followed.
-`og check` runs NSH's class check (`classes.rs`): an unknown class is an
-error with its line and column. Class strings the compile sees as
+`og build` bundles game.js with Bun.build; its plugin
+(`packages/engine/src/node/build.ts`) runs NSH's JSX transform, vendored as
+`third_party/nsh-jsx` and reached through the addon's `og_node_jsx`, on
+every `.tsx`/`.jsx` outside `node_modules`. A host element becomes one
+function that makes it; a static value is set once, a changing one (an
+expression that calls or reads a member) is followed. The compiled code
+imports the renderer, `@origingame/engine/ui/rt` (`packages/engine/src/ui/
+rt.ts`), which writes the §Ops batch and sends it when the mount is made
+and at every tick boundary. `og check` runs NSH's class check against the
+merged default and game packs: an unknown class is error OG9105 with its
+line and column. Class strings the compile sees as
 literals are listed for the cook, which resolves them into records ahead
 of time; only bound class strings go through the runtime cache.
 

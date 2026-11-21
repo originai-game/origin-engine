@@ -25,10 +25,27 @@
 //   bun src/node/build.ts --entry <src/main.ts> --out <file.js> [--target native|web] [--minify] [--json]
 
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { isBuiltin } from "node:module";
+import { createRequire, isBuiltin } from "node:module";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { placeAssertions } from "./assert-sites.ts";
+import { addonPath } from "./index.ts";
+
+type Compiled = { ok: true; code: string; map: string; warnings: string[] } | { ok: false; reason: string };
+let jsxAddon: { og_node_jsx(path: string, source: string): string } | undefined;
+
+function base64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/** A TSX/JSX module through nsh-jsx (the native addon's og_node_jsx). */
+export function compileJsx(path: string, source: string): Compiled {
+  jsxAddon ??= createRequire(import.meta.url)(addonPath()) as typeof jsxAddon;
+  return JSON.parse(jsxAddon!.og_node_jsx(path, source)) as Compiled;
+}
 
 declare const Bun: {
   build(o: {
@@ -208,13 +225,27 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       }
       // og.assert's places (src/node/assert-sites.ts), in the game's own files only.
       const project = projectRoot(absEntry);
+      // TSX and JSX (the game's and the engine's UI components) compile with
+      // nsh-jsx to the UI renderer's calls (crates/og-ui-next/CONVENTIONS.md
+      // §JSX compile), after the og.assert sites are placed.
       build.onLoad({ filter: /\.[cm]?[jt]sx?$/, namespace: "file" }, (a) => {
-        if (!a.path.startsWith(project + sep) || a.path.includes(`${sep}node_modules${sep}`) || a.path.startsWith(ENGINE_ROOT + sep)) return undefined;
-        const text = readFileSync(a.path, "utf8");
-        const file = relative(project, a.path).split(sep).join("/");
-        if (!text.includes("og.assert.")) return undefined;
-        const loader = /\.[cm]?tsx$/.test(a.path) ? "tsx" : /\.[cm]?ts$/.test(a.path) ? "ts" : /x$/.test(a.path) ? "jsx" : "js";
-        return { contents: placeAssertions(text, file), loader };
+        if (a.path.includes(`${sep}node_modules${sep}`)) return undefined;
+        const own = a.path.startsWith(project + sep) && !a.path.startsWith(ENGINE_ROOT + sep);
+        const jsx = /x$/.test(a.path);
+        if (!own && !jsx) return undefined;
+        let text = readFileSync(a.path, "utf8");
+        const asserts = own && text.includes("og.assert.");
+        if (asserts) text = placeAssertions(text, relative(project, a.path).split(sep).join("/"));
+        if (jsx) {
+          const out = compileJsx(a.path, text);
+          if (!out.ok) throw new Error(out.reason);
+          for (const warning of out.warnings) process.stderr.write(`${relative(process.cwd(), a.path)}: ${warning}\n`);
+          const map = base64(out.map);
+          return { contents: `${out.code}\n//# sourceMappingURL=data:application/json;base64,${map}\n`, loader: "js" };
+        }
+        if (!asserts) return undefined;
+        const loader = /\.[cm]?ts$/.test(a.path) ? "ts" : "js";
+        return { contents: text, loader };
       });
       // The bundle's entry: the game's own (og:game, native) or the worker that
       // starts it (og:worker, web), each giving its og.game() token the og.assert

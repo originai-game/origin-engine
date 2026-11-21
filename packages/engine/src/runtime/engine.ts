@@ -10,6 +10,7 @@ import { type CursorImage, type Result, json, parse, refused } from "./result.ts
 import { rt } from "./state.ts";
 import { QueryImpl, learnBuild } from "./views.ts";
 import { rates, uiReactor, uiReactors, worldFor, worlds } from "./world.ts";
+import { renderers } from "../ui/index.ts";
 
 // ── the dispatcher ────────────────────────────────────────────────────────
 
@@ -26,6 +27,13 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
   if (kind === 5) {
     try {
       engines.get(engine)?.pumpPlatform();
+      // The TSX UI's ops since the last boundary, and its events back.
+      const ui = renderers.get(engine);
+      if (ui) {
+        ui.flush();
+        const errors = ui.errors.splice(0);
+        if (errors.length > 0) return errors.join("\n");
+      }
       return "";
     } catch (e) {
       return message(e);

@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/ui",
+      "summary": "Game UI can be TSX components (crates/og-ui-next/CONVENTIONS.md \u00a7Components): `og build` compiles .tsx/.jsx with NSH's JSX compiler to renderer calls, the primitives View, Text, Image, Icon, Scroll, Input, Svg, Show and For come from @origingame/engine/ui, `mount(world, Component, props, { layer })` puts a component on a world's UI, `useStore` reads a store as a signal, `t` and the formatters read the mount's world, and handlers get the world on their event. Signals, memos and effects follow Solid's model."
+    },
+    {
+      "member": "og check",
+      "summary": "An unknown Tailwind class in a game's TSX is an error (OG9105) at its line and column, checked against the default style pack and the game's own (assets/styles/game/pack.json)."
+    }
+  ]
+}

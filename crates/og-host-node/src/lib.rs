@@ -33,6 +33,8 @@
 //!   from disk (`Hooks::read_asset`) and og-bundle's Basis transcoder for
 //!   textures (the `Hooks::texture` default with og-bundle's `transcode`).
 
+mod jsx;
+
 /// The exports, one per binding symbol (`og api gen`).
 #[doc(hidden)]
 #[rustfmt::skip]

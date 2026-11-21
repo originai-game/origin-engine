@@ -30,6 +30,14 @@
     "./provider": "./src/provider.ts",
     "./runtime": "./src/runtime.ts",
     "./sourcemap": "./src/sourcemap.ts",
+    "./ui": {
+      "types": "./src/ui/index.ts",
+      "default": "./src/ui/index.ts"
+    },
+    "./ui/rt": {
+      "types": "./src/ui/rt.ts",
+      "default": "./src/ui/rt.ts"
+    },
     "./bindings.json": "./types/bindings.json",
     "./schema.json": "./schema/api.schema.json",
     "./playtest": "./src/playtest.ts",
