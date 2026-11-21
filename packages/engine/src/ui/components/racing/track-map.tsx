@@ -20,18 +20,15 @@ export interface RacingTrackMapProps {
   length: string;
 }
 
-/** The map's box is 220 px wide; the path's box is 260 by 220, so one scale. */
-const S = 220 / 260;
-
 /**
  * Walks an SVG path's M/L/C commands (the racing line's forms), sampling
- * the cubics into a polyline of points scaled into the map's box. All
+ * the cubics into a polyline of points in the path's 260 by 220 box. All
  * commands are read as absolute (the game's paths are).
  */
 function pathPoints(d: string): { points: number[]; closed: boolean } {
   const toks = d.match(/[MLCZmlcz]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) ?? [];
   const points: number[] = [];
-  const push = (x: number, y: number) => points.push(Math.round(x * S * 1000) / 1000, Math.round(y * S * 1000) / 1000);
+  const push = (x: number, y: number) => points.push(Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000);
   let i = 0;
   let cmd = "";
   let cx = 0, cy = 0, sx = 0, sy = 0;
@@ -88,17 +85,19 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
     <View class={`flex-col gap-y-[0.286rem] w-[15.714rem] max-w-full text-fg compact:w-[8.571rem]`} role="group" label={props.name !== "" ? props.name : t("racing.map.name")}>
       <View class="relative w-full aspect-[13/11]" role="image" label={t("racing.map.name")}>
         <Show when={props.path !== ""}>
-          {/* The road's band, then its line, from the same path data. */}
-          <Line class="absolute inset-0 size-full stroke-[#060910e6] stroke-[14px]" points={track().points} closed={track().closed} />
-          <Line class="absolute inset-0 size-full stroke-[#ffffffd9] stroke-[4px]" points={track().points} closed={track().closed} />
+          {/* The road's band, then its line, from the same path data; the
+              points stay in the path's 260 by 220 box and the tree maps
+              them onto the plate, which already has the box's aspect. */}
+          <Line class="absolute inset-0 size-full stroke-[#060910e6] stroke-[14px]" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
+          <Line class="absolute inset-0 size-full stroke-[#ffffffd9] stroke-[4px]" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
         </Show>
         <Show when={props.driven !== ""}>
-          <Line class="absolute inset-0 size-full stroke-[#38e8ff] stroke-[4px]" points={driven().points} />
+          <Line class="absolute inset-0 size-full stroke-[#38e8ff] stroke-[4px]" points={driven().points} viewBox={[260, 220]} fit="fill" />
         </Show>
         <Show when={props.path !== ""}>
           <View
             class="absolute w-[13.5px] h-[4.2px] bg-fg"
-            style={{ left: `${props.startX * S}px`, top: `${props.startY * S}px`, transform: `translate(-50%,-50%) rotate(${props.startAngle}deg)` }}
+            style={{ left: `${props.startX / 260 * 100}%`, top: `${props.startY / 220 * 100}%`, transform: `translate(-50%,-50%) rotate(${props.startAngle}deg)` }}
           />
         </Show>
         <For each={props.cars ?? []} key={(c) => c.id}>
@@ -108,7 +107,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
               fallback={
                 <View
                   class="absolute size-[11.9px] rounded-full border-2 border-[#060910e6] bg-[#ffffff8c]"
-                  style={{ left: `${c().x * S}px`, top: `${c().y * S}px`, transform: "translate(-50%,-50%)", backgroundColor: c().color || undefined }}
+                  style={{ left: `${c().x / 260 * 100}%`, top: `${c().y / 220 * 100}%`, transform: "translate(-50%,-50%)", backgroundColor: c().color || undefined }}
                   role="image"
                   label={c().name}
                 />
@@ -117,7 +116,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
               {/* The arrow: a filled triangle from borders, turned to its heading. */}
               <View
                 class="absolute size-0 border-x-[7px] border-b-[11px] border-x-transparent border-b-fg"
-                style={{ left: `${c().x * S}px`, top: `${c().y * S}px`, transform: `translate(-50%,-55%) rotate(${c().heading}deg)` }}
+                style={{ left: `${c().x / 260 * 100}%`, top: `${c().y / 220 * 100}%`, transform: `translate(-50%,-55%) rotate(${c().heading}deg)` }}
                 role="image"
                 label={c().name}
               />
