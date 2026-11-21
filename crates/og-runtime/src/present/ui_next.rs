@@ -83,6 +83,9 @@ pub(crate) struct Next {
     /// The pack's glyph art (its `icons`), texture slots by og-input's
     /// glyph name (`xbox.a`, `key.keye`), loaded with its images.
     icons: BTreeMap<String, u32>,
+    /// The screen transition cover a timeline set this tick, taken at its
+    /// end ([`cover`]).
+    cover: Option<og_ui_next::cover::Cover>,
     /// The pack's sounds with their clips loaded, by scope and event,
     /// loaded with its images ([`pack_images`]).
     sounds: Rc<og_ui_next::tree::SoundTable>,
@@ -276,6 +279,21 @@ pub(crate) fn pack_images(engine: u32) {
     }
 }
 
+/// Covers the frame this tick with a timeline's screen transition
+/// (presentation only: the tree draws it at the tick's end, over
+/// everything).
+pub(crate) fn cover(engine: u32, cover: og_ui_next::cover::Cover) {
+    let Ok(eng) = crate::engine::engine(engine) else {
+        return;
+    };
+    // A game with no UI mounted has no new core yet: the cover makes it.
+    eng.render
+        .borrow_mut()
+        .ui_next
+        .get_or_insert_with(|| Box::new(Next::new()))
+        .cover = Some(cover);
+}
+
 /// Style `id`'s pack (its `pack.json`, cooked as an `og.UiPack`), if it
 /// has one.
 fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {
@@ -431,6 +449,7 @@ impl Next {
             images: BTreeMap::new(),
             images_for: None,
             icons: BTreeMap::new(),
+            cover: None,
             sounds: Rc::default(),
             signals: BTreeMap::new(),
             rows: BTreeMap::new(),
@@ -896,7 +915,10 @@ impl Next {
                 self.tree = None;
             }
         }
-        if self.mounts.is_empty() && !ops {
+        // A timeline's transition covers the frame with no UI mounted too:
+        // an empty tree draws it.
+        let cover = self.cover.take();
+        if self.mounts.is_empty() && !ops && cover.is_none() && self.tree.is_none() {
             return warnings;
         }
         if self.load_look(engine, ui, now)
@@ -925,6 +947,7 @@ impl Next {
         let v = ui.frame().viewport;
         tree.resize(v.width, v.height);
         tree.set_time(time, ui.theme().reduced_motion);
+        tree.set_cover(cover, ui.theme().reduced_motion);
         let commit = tree.commit();
         // Anchored nodes where the tick's camera sees their entity or point
         // (CONVENTIONS.md §World); none without a camera or a world.

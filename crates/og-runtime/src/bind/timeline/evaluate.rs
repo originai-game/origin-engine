@@ -79,7 +79,6 @@ pub(super) fn evaluate(
     ctx: &mut SystemContext<'_>,
     engine_id: u32,
     r: &Rec,
-    ui: &og_ui::SharedUi,
     lt: &mut Loaded,
     run: &mut Run,
     step: &Step<'_>,
@@ -135,7 +134,6 @@ pub(super) fn evaluate(
                     ctx,
                     engine_id,
                     r,
-                    ui,
                     &mut cl,
                     run,
                     &Step {
@@ -363,31 +361,26 @@ pub(super) fn evaluate(
             }
             Track::Transition(ks) => {
                 if let Some(c) = eval::cover_at(ks, t) {
+                    use og_ui_next::cover::{Cover, Side, Wipe};
                     let kind = match c.kind {
-                        TransitionKind::Cut | TransitionKind::Fade => og_ui::ScreenWipe::Fade,
-                        TransitionKind::Wipe => og_ui::ScreenWipe::Wipe,
-                        TransitionKind::Dissolve => og_ui::ScreenWipe::Dissolve,
-                        TransitionKind::Iris => og_ui::ScreenWipe::Iris,
-                        TransitionKind::Slide => og_ui::ScreenWipe::Slide,
+                        TransitionKind::Cut | TransitionKind::Fade => Wipe::Fade,
+                        TransitionKind::Wipe => Wipe::Wipe,
+                        TransitionKind::Dissolve => Wipe::Dissolve,
+                        TransitionKind::Iris => Wipe::Iris,
+                        TransitionKind::Slide => Wipe::Slide,
                     };
-                    let side = [
-                        og_ui::Side::Left,
-                        og_ui::Side::Right,
-                        og_ui::Side::Top,
-                        og_ui::Side::Bottom,
-                    ];
-                    let byte = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
-                    let desc = og_ui::ScreenTransitionDesc {
-                        kind,
-                        color: Some(og_ui::Srgba {
-                            rgb: [byte(c.color.x), byte(c.color.y), byte(c.color.z)],
-                            alpha: 1.0,
-                            p3: None,
-                        }),
-                        from: side[(c.from as usize).min(3)],
-                        ..Default::default()
-                    };
-                    ui.lock().cover(&desc, c.amount, c.revealing);
+                    let side = [Side::Left, Side::Right, Side::Top, Side::Bottom];
+                    let lin = og_core::color::srgb_to_linear;
+                    crate::present::ui_next::cover(
+                        engine_id,
+                        Cover {
+                            kind,
+                            from: side[(c.from as usize).min(3)],
+                            amount: c.amount,
+                            revealing: c.revealing,
+                            color: [lin(c.color.x), lin(c.color.y), lin(c.color.z), 1.0],
+                        },
+                    );
                 }
             }
             _ => {}

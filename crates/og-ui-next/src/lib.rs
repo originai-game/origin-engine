@@ -8,6 +8,7 @@ pub mod a11y;
 pub mod arena;
 pub mod classes;
 pub mod cooked;
+pub mod cover;
 pub mod doc;
 pub mod icons;
 pub mod look;

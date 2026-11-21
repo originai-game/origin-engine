@@ -7,7 +7,8 @@
 //! material emissive intensity), hides a crate, raises og.PostEffects'
 //! bloom, opens a face's blendshape, rolls the camera and keeps "hero" in
 //! focus, and from 1 s nests `timelines/door.ogt` at double speed (a door
-//! sliding 4 m over 2 s and a marker at 1 s).
+//! sliding 4 m over 2 s and a marker at 1 s), and at 1 s wipes the screen
+//! red from the right.
 //!
 //! Ways this could fail: a value accumulated over ticks instead of read at
 //! the time (a seek lands elsewhere than playing does); a nested timeline
@@ -110,6 +111,15 @@ track timeline {
     speed 2
   }
 }
+track transition {
+  key 1 {
+    kind wipe
+    from right
+    mode out
+    duration 0.5
+    color 1 0 0
+  }
+}
 "#;
 
 const DOOR: &str = r#"type timeline
@@ -183,6 +193,11 @@ impl Hooks for Game {
     }
 }
 
+thread_local! {
+    /// The last frame's UI paint: its width, and the red cover's box.
+    static COVER: RefCell<(f32, Option<[f32; 4]>)> = const { RefCell::new((0.0, None)) };
+}
+
 /// The lamp material's emissive intensity in the last frame drawn.
 type Drawn = Rc<RefCell<Option<f32>>>;
 
@@ -208,6 +223,13 @@ impl RenderBackend for Recorder {
             .iter()
             .find_map(|i| lamp(i.material))
             .map(|m| m.emissiveIntensity);
+        let paint = &scene.ui.paint;
+        let red = paint
+            .quads
+            .iter()
+            .find(|q| q.color == [1.0, 0.0, 0.0, 1.0])
+            .map(|q| q.rect);
+        COVER.with(|c| *c.borrow_mut() = (paint.width, red));
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
@@ -425,12 +447,24 @@ fn every_new_track_seeks_as_it_plays_and_a_nested_timeline_runs_on_its_own_time(
         assert_eq!(res(&a, rec), res(&b, rec), "{rec}");
     }
     assert_eq!(hash(a.engine), hash(b.engine), "the whole world");
+    // The transition, from 1 s over 0.5 s, wipes red in from the right
+    // over a game with no UI mounted: half the width at 1.25 s (smooth
+    // step at 0.5), drawn over everything.
+    let (w, red) = COVER.with(|c| *c.borrow());
+    let red = red.expect("the cover is drawn with no UI mounted");
+    assert!(
+        w > 0.0 && (red[0] - w / 2.0).abs() < 0.01 && (red[2] - w / 2.0).abs() < 0.01,
+        "{red:?} of {w}"
+    );
 
     // Past 2 s the crate hides; the door's marker came once, named by its
     // timeline, at the parent's 1 + 1/2 s (tick 91: 1 tick at 0, then 90),
     // read by the game the tick after.
     frame(a.engine, 55);
     assert_eq!(get(&a, "crate", "og.Mesh")["visible"], json!(false));
+    // An `out` transition stays covered after its duration.
+    let (w, red) = COVER.with(|c| *c.borrow());
+    assert_eq!(red.map(|r| (r[0], r[2])), Some((0.0, w)), "the whole width");
     let seen: Vec<(u32, String)> = a
         .markers
         .borrow()
