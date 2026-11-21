@@ -10,12 +10,12 @@
 # Every target and profile uses rustc's LLVM backend.
 [build]
 rustc-wrapper = "scripts/rustc-wrapper"
-rustflags = ["-Zthreads=4"]
+rustflags = ["-Zthreads=8"]
 
 [target.'cfg(target_os = "linux")']
-rustflags = ["-Zthreads=4", "-C", "link-arg=-fuse-ld=mold"]
+rustflags = ["-Zthreads=8", "-C", "link-arg=-fuse-ld=mold"]
 
 # rust-lld selects its lld-link frontend for MSVC. Unverified on studio-win.
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld"
-rustflags = ["-Zthreads=4"]
+rustflags = ["-Zthreads=8"]

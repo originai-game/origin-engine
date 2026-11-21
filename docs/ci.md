@@ -81,16 +81,16 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | Chrome for Testing (`make web-reference`, browser tests) | the newest agent-browser install | `CHROME`, else `~/.agent-browser/browsers/chrome-<version>` (`tests/web/cdp.ts`); `libnss3`, `libnspr4` and unprivileged user namespaces from `.agents/setup`; outside the gate |
 | Mesa lavapipe (CPU rendering in orbs) | minimum 25.0.7 | `.agents/setup`; Debian bookworm-backports supplies Mesa and apt resolves its dependencies |
 
-Every target and profile uses LLVM with four frontend threads
-(`-Zthreads=4`); there are no backend overrides. Metadata embedding and the
+Every target and profile uses LLVM with eight frontend threads
+(`-Zthreads=8`); there are no backend overrides. Metadata embedding and the
 build-directory layout use Cargo's defaults, and consumers read Cargo's
 artifact messages, not guessed executable paths.
 
 | Native target | Dev/test backend and frontend | Linker | Verification |
 |---|---|---|---|
-| arm64 macOS | LLVM, `-Zthreads=4` | platform linker | verified on macrunner |
-| x86_64 Linux | LLVM, `-Zthreads=4` | mold | unverified |
-| x86_64-pc-windows-msvc (studio-win) | LLVM, `-Zthreads=4` | rust-lld (lld-link), not link.exe | verified on studio-win (RTX 5060, DX12 and Vulkan) |
+| arm64 macOS | LLVM, `-Zthreads=8` | platform linker | verified on macrunner |
+| x86_64 Linux | LLVM, `-Zthreads=8` | mold | unverified |
+| x86_64-pc-windows-msvc (studio-win) | LLVM, `-Zthreads=8` | rust-lld (lld-link), not link.exe | verified on studio-win (RTX 5060, DX12 and Vulkan) |
 
 wgpu and naga stay on 30.0.1 until 31 is on crates.io; the move is kept
 when its frames look right.
