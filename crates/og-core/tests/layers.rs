@@ -100,6 +100,8 @@ const DOMAINS: &[&[&str]] = &[
 const KNOWN: &[(&str, &str)] = &[
     ("og-probe", "og-input"),
     ("og-ui", "og-input"),
+    // og-ui-next's control zones feed og-input actions (Cargo.toml).
+    ("og-ui-next", "og-input"),
     ("og-ui", "og-probe"),
     ("og-ui", "og-tween"),
 ];
