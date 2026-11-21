@@ -4,6 +4,8 @@
 // over the brightest and darkest scenes; and the `linear` fills draw in
 // linear light what their CSS values draw in a browser.
 
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "bun:test";
 import tokens from "../tokens.json";
 
@@ -170,4 +172,38 @@ test("high contrast reads 7:1 for text and 3:1 for edges, tracks and tiles, in b
     }
   }
   expect(low).toEqual([]);
+});
+
+test("docs/ui.md §3.1's token families exist in the tokens", () => {
+  // The section's tables are pointers, not copies: they name each family and
+  // what it controls, and the CSS owns every value and member list. What they
+  // name must exist, so a family renamed or removed there fails here instead
+  // of leaving the doc pointing at nothing. The doc-facing names are the theme
+  // generator's aliases, so the set the doc can point at is the CSS's declared
+  // and referenced names plus tokens.json's keys (the emitted hooks among
+  // them); names no part of packages/design declares are written out in full,
+  // never as a family.
+  const names = new Set<string>();
+  for (const file of readdirSync(join(import.meta.dir, "../tokens"))) {
+    const text = readFileSync(join(import.meta.dir, "../tokens", file), "utf8");
+    for (const m of text.matchAll(/(--[a-z0-9-]+)\s*:/g)) names.add(m[1]!.slice(2));
+    for (const m of text.matchAll(/var\(\s*(--[a-z0-9-]+)/g)) names.add(m[1]!.slice(2));
+  }
+  const walk = (o: unknown) => {
+    if (o === null || typeof o !== "object") return;
+    for (const [k, v] of Object.entries(o)) {
+      if (v !== null && typeof v === "object") walk(v);
+      else if (!k.startsWith("--")) names.add(k);
+    }
+  };
+  walk(tokens);
+  const doc = readFileSync(join(import.meta.dir, "../../../docs/ui.md"), "utf8");
+  const section = doc.slice(doc.indexOf("### 3.1"), doc.indexOf("### 3.2"));
+  expect(section).toContain("Token family");
+  const orphan = new Set<string>();
+  for (const m of section.matchAll(/--[a-z0-9]+(?:-[a-z0-9]+)*-\*/g)) {
+    const family = m[0].slice(2, -2);
+    if (![...names].some(n => n === family || n.startsWith(`${family}-`))) orphan.add(m[0]);
+  }
+  expect([...orphan].sort()).toEqual([]);
 });

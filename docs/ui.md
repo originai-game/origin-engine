@@ -1749,12 +1749,12 @@ glass material without a CSS fill keeps its opaque material ground.
 |---|---|
 | `--seed-primary`, `--seed-accent`, `--seed-neutral`, `--seed-danger`, `--seed-warn`, `--seed-success`, `--seed-info`, `--seed-team`, `--seed-hud` | The seed colours every colour below is derived from (below); `--seed-hud` the game components' light, by default the accent or, when the accent has no hue, the instrument cyan |
 | `--color-*`, the role names (`--ink`, `--primary`…), `--team1` to `--team8` | Colours, per scheme, derived from the seeds; `--color-track`, `--color-minimap`, `--color-minimap-edge`, `--color-slot-selected-edge` for the engine's own parts |
-| `--common`, `--uncommon`, `--rare`, `--epic`, `--legendary`, `--mythic` | The rarity colours (by default each a status colour: `--line-strong`, `--success`, `--info`, `--xp`, `--warn`, `--danger`) |
-| `--space-*`, `--radius-*`, `--size-*`, `--stroke-*` | Spacing, corners, icon and art sizes (`--size-xs` to `--size-7xl`; a layout takes a step, never a multiple of one), line widths (`--stroke-edge` the material hairline) |
-| `--type-*`, `--text-*`, `--font-*` | The type ramp and its roles, authored at 100 %: a `--type-*-size` or line height set in px grows with the player's text scale wherever it is set (the root, a pack's sheet, a component), as the ramp widgets draw with does, so text set with `font: var(--text-sm)` follows it; `--font-leading-*` (`flat`, `tight`, `snug`, `normal`), `--font-tracking-*` and `--font-weight-*` for text a part sizes itself; `--font-step-2xs` to `--font-step-6xl` are sizes in `em` of the surrounding text, so a part sized with one follows the player's text scale; `--font-step-px` is one px at 100 % text grown by the scale, for a part that grows with the text as a whole |
+| `--common`, `--uncommon`, `--rare`, `--epic`, `--legendary`, `--mythic` | The rarity colours, each by default a status colour |
+| `--space-*`, `--radius-*`, `--size-*`, `--stroke-*` | Spacing, corners, icon and art sizes (the ramp's steps; a layout takes a step, never a multiple of one), line widths (`--stroke-edge` the material hairline) |
+| `--type-*`, `--text-*`, `--font-*` | The type ramp and its roles, authored at 100 %: a `--type-*-size` or line height set in px grows with the player's text scale wherever it is set (the root, a pack's sheet, a component), as the ramp widgets draw with does, so text set with `font: var(--text-sm)` follows it; `--font-leading-*`, `--font-tracking-*` and `--font-weight-*` for text a part sizes itself; the `--font-step-*` steps are sizes in `em` of the surrounding text, so a part sized with one follows the player's text scale, and `--font-step-px` is one px at 100 % text grown by the scale, for a part that grows with the text as a whole |
 | `--density-compact-*`, `--density-pad-*`, `--density-touch-*` | Each input's control, row and header heights, gutter and section |
 | `--control-sm/md/lg`, `--row`, `--header`, `--gutter`, `--section`, `--touch-target` | The input's density, and the smallest finger target |
-| `--motion-duration-*`, `--motion-easing-*`, `--motion-named-*`, `--motion-scale-*` | Durations (the transition steps, then the loops and long plays: `turn` 800 ms, `pulse`, `flare`, `ping`, `sweep`, `breathe`, `sheen`, `drift`, `fanfare`, `orbit` 6 s), the controls' enter and exit curves (`in-out` for what loops), the named transitions' springs (`ui`, `panel`, `emphasis`, `playful`, `enter`, `exit`), how far a moment scales (`press`, `swell`, `pop`, `shrink`) and how low a waiting thing breathes (`breathe`) |
+| `--motion-duration-*`, `--motion-easing-*`, `--motion-named-*`, `--motion-scale-*` | Durations (the transition steps, then the loops and long plays, each named for the loop it was measured on), the controls' enter and exit curves (`in-out` for what loops), the named transitions' springs, how far a moment scales, and how low a waiting thing breathes |
 | `--state-*` | Hover wash, press scales (`press-scale` a button's part, `control-press-scale` a control row's), lift, disabled opacities (`touch-disabled-opacity` the stick, pad and action button), press duration, focus ring and player rings |
 | `--opacity-*`, `--filter-*` | How strongly a thing shows (`faint`, `dim` what cannot be used, `muted` what is done, `soft`, `wash` how much of a colour a soft wash lays over what is under it), and what art takes out of reach (`--filter-locked`, `--filter-spent`) |
 | `--shadow-*`, `--elevation-*`, `--glass-*` | Shadows per scheme and the controls' inset shadows, the two drop elevations, glass blur and saturation |
@@ -1773,9 +1773,12 @@ glass material without a CSS fill keeps its opaque material ground.
 | `--joystick-size`, `--dpad-size`, `--action-size` | The touch controls' default sizes |
 
 **Control hooks.** Everything a pack restyles a core control with is a
-token its rule reads, so a pack is `:root` values and no rules. A hook the
-default declares (`packages/design/tokens/state.css`) is the value it
-draws with. One it does not declare falls back to the hook it refines
+token its rule reads, so a pack is `:root` values and no rules. A control's
+hooks are its family in the table above; what the default declares of them
+is `packages/design/tokens/state.css`'s `--<control>-<property>` group,
+written there with the `controls-` prefix and emitted without it. A hook the
+default declares is the value it draws with. One it does not declare falls
+back to the hook it refines
 (`--button-hover-rim` to `--button-rim`, `--button-primary-image-hover` to
 `--button-primary-image`) and last to the control's own value through
 `revert-layer`, which a `var()` fallback rolls back as the keyword written
@@ -1786,16 +1789,16 @@ inserts the variant (`--button-primary-hover-fill`).
 
 | Control | Hooks |
 |---|---|
-| Button (`button::part(base)`) | `--button-ink/fill/rim/rim-width/base-shadow/image/image-slice/image-width/corner-shape/font/font-size/tracking/transform/text-shadow/pad/pad-inline/pressed-pad/min-height`; per state `-hover-`, `-pressed-`, `-disabled-` fill, ink, rim and image, `--button-hover-shadow`, `--button-base-pressed-shadow`, `--button-disabled-shadow`; per variant `--button-primary-*` (fill, ink, rim, shadow, image and their states), `--button-danger-fill/hover-fill/pressed-fill/disabled-fill/rim/shadow/ink/text-shadow`, `--button-ghost-ink/hover-ink/pressed-ink/rim/hover-fill/pressed-fill`, `--button-quiet-ink/hover-ink/pressed-ink/hover-fill/pressed-fill`, `--button-selected-fill/ink/rim/shadow` (`aria-pressed`). A quiet button is text: it wears no rim, shadow or image. `--button-shadow` and `--button-pressed-shadow` stay the stepper's, details' and keys'. The focus ring follows the button's corners and their shape; `--button-focus-radius` and `--button-focus-corner-shape` give it its own |
-| Checkbox, radio, switch | `--checkbox-box-fill/rim/shadow/hover-fill/hover-rim`, `--checkbox-checked-fill/rim/rim-width/shadow/disabled-fill`, `--checkbox-disabled-fill/rim` (a radio ring's too), `--checkbox-row-hover-fill`, `--checkbox-radius` (the box's, by default the field radius), `--checkbox-corner-shape`; `--radio-ring-fill/rim/shadow/hover-rim`, `--radio-checked-fill/rim/rim-width/shadow`, `--radio-dot-fill`, `--radio-option-hover-fill`, `--radio-corner-shape`, `--radio-card-fill/rim/rim-width/hover-fill/hover-rim/checked-fill/checked-rim/checked-shadow/checked-ink/corner-shape`, `--radio-chosen-fill/rim`; `--switch-track-fill/rim/shadow`, `--switch-checked-fill/rim/shadow`, `--switch-knob-fill/rim/shadow`, `--switch-corner-shape` |
-| Tabs | `--tabs-track-fill/border/rule/shadow`, `--tabs-tab-fill/hover-fill/pressed-fill/selected-fill/selected-shadow/ink/hover-ink/selected-ink/disabled-ink`, `--tabs-font/font-size/tracking/transform`, `--tabs-indicator-fill/height/glow/radius` |
-| Slider | `--slider-track-fill/rim/rim-width/shadow`, `--slider-fill/fill-shadow/tick-fill`, `--slider-knob-fill/rim/rim-width/shadow/hover-shadow/pressed-fill/disabled-fill/corner-shape`, `--slider-core-fill`, `--slider-bubble-fill/rim/shadow/radius` |
-| Field, select, stepper | `--field-fill/rim/rim-width/frame-shadow/hover-fill/hover-rim/focus-rim/focus-shadow/disabled-fill/disabled-rim/invalid-rim/ink/font/placeholder-ink/selection-fill/caret-fill/corner-shape`; `--dropdown-list-fill/rim/rim-width/radius`, `--dropdown-option-hover-fill/pressed-fill/selected-fill/selected-ink` (a group's label wears `--label-*`); `--stepper-button-fill/hover-fill/pressed-fill/disabled-fill/rim/hover-rim/ink`, which a number field's spin buttons take too |
-| Details | `--details-summary-fill/hover-fill/open-fill/ink/open-ink/border/rule/shadow/font` (by default `--label-font`), `--details-content-ink` |
-| Surfaces | `--panel-fill/rim/shadow/glass/corner-shape` (a panel and a dialog's panel; `panel.glass` blurs only with the global backdrop opt-in), `--dialog-backdrop`, `--tooltip-fill/rim/rim-width/radius/shadow/glass/corner-shape`, `--hud-fill/rim/rim-width/shadow/glass/corner-shape`; a `-glass` is the `backdrop-filter`, `none` a solid surface; `--popover-arrow-fill`, `--spotlight-edge` |
-| Slot, badge, bars | `--slot-fill/rim/rim-width/shadow/hover-rim/hover-shadow/pressed-fill/selected-rim/selected-shadow/corner-shape` (`--slot-shadow` none by default); `--badge-<tone>-fill/ink` (neutral, primary, info, success, warn, danger), `--badge-rim/rim-width` (by default the badge's ink, its tone's), `--badge-font/tracking/transform`; `--meter-track-fill/rim/rim-width/shadow`, `--meter-fill/suboptimum-fill/poor-fill/health-fill/mana-fill`, `--progress-fill` |
-| Keyboard, touch | `--keyboard-panel-fill`, `--keyboard-key-fill/rim/hover-fill/hover-rim/pressed-fill/pressed-rim/shadow/ink/font` (its candidates too); `--touch-plate-fill/rim`, `--touch-knob-fill`, `--touch-active-fill` |
-| Text | `--heading-flourish` (h1–h3), `--scrollbar-fill/radius`, `--icon-secondary-ink` |
+| Button (`button::part(base)`) | The `--button-*` hooks, their state and variant hooks as the rule above composes them. A quiet button is text: it wears no rim, shadow or image. `--button-shadow` and `--button-pressed-shadow` stay the stepper's, details' and keys'. The focus ring follows the button's corners and their shape; `--button-focus-radius` and `--button-focus-corner-shape` give it its own |
+| Checkbox, radio, switch | The `--checkbox-*`, `--radio-*` (`--radio-card-*` a card's) and `--switch-*` hooks |
+| Tabs | The `--tabs-*` hooks |
+| Slider | The `--slider-*` hooks |
+| Field, select, stepper | The `--field-*`, `--dropdown-*` and `--stepper-*` hooks (a group's label wears `--label-*`; a number field's spin buttons take the stepper's too) |
+| Details | The `--details-*` hooks |
+| Surfaces | The `--panel-*`, `--tooltip-*` and `--hud-*` hooks and `--dialog-backdrop` (a panel and a dialog's panel; `panel.glass` blurs only with the global backdrop opt-in); a `-glass` is the `backdrop-filter`, `none` a solid surface; `--popover-arrow-fill`, `--spotlight-edge` |
+| Slot, badge, bars | The `--slot-*` and `--meter-*` hooks; `--badge-<tone>-fill/ink` one per tone, `--badge-rim/rim-width` by default the badge's ink, its tone's |
+| Keyboard, touch | The `--keyboard-*` hooks, and the touch controls' `--touch-plate-fill/rim`, `--touch-knob-fill` and `--touch-active-fill` |
+| Text | `--scrollbar-fill/radius`, `--heading-flourish` (h1–h3) and `--icon-secondary-ink` |
 
 Disabled text values use `--field-disabled-ink` (default `--ink-disabled`).
 `--field-disabled-shadow` overrides input/textarea frames, select triggers
