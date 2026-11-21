@@ -19,6 +19,7 @@
 use crate::support;
 
 use og_ui::*;
+use og_ui_next::icons::{IconAtlas, InlineImage};
 use serde_json::json;
 use support::*;
 

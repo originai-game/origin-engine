@@ -240,7 +240,7 @@ pub(crate) fn write(data: &UiVectorData, stamp: u64) -> Vec<u8> {
 
 // ── the SVG model (og-ui's, shared with documents' inline `<svg>`) ───────
 
-use og_ui::svg::{
+use og_ui_next::svg::{
     Cap, Element, GradientDef, Join, PaintRef, Style, bounds, gradient_defs, length_attr, numbers,
     parse_xml, shape_path,
 };
@@ -260,7 +260,7 @@ fn linear_rgba(c: [f32; 4]) -> [f32; 4] {
 }
 
 /// A placed gradient as the UI pass's, its stops linear.
-fn ui_gradient(g: og_ui::svg::PlacedGradient) -> UiGradient {
+fn ui_gradient(g: og_ui_next::svg::PlacedGradient) -> UiGradient {
     UiGradient {
         kind: if g.radial {
             UiGradientKind::Radial
@@ -406,7 +406,7 @@ fn draw(ctx: &Ctx, el: &Element, parent: &Style, mesh: &mut Mesh) -> Result<(), 
         let along = if dashes.is_empty() {
             path.clone()
         } else {
-            og_ui::svg::dashed(&path, &dashes, style.dash_offset * t.scale())
+            og_ui_next::svg::dashed(&path, &dashes, style.dash_offset * t.scale())
         };
         let stroke = kurbo::Stroke::new(f64::from(width))
             .with_caps(match style.cap {

@@ -179,10 +179,10 @@ pub(crate) fn scan_with(
     // or a look. Keep its outline-only face separate and lazy like a
     // font-pack face; projects with no UI do not carry it at all.
     if code.tsx {
-        let settings = format!("{}.ogt", og_ui::DEFAULT_FONT_ASSET);
+        let settings = format!("{}.ogt", og_ui_next::fonts::DEFAULT_FONT_ASSET);
         for f in look::styles()
             .iter()
-            .filter(|f| f.id() == og_ui::DEFAULT_FONT_ASSET || f.id() == settings)
+            .filter(|f| f.id() == og_ui_next::fonts::DEFAULT_FONT_ASSET || f.id() == settings)
         {
             builtins.insert(f.id().to_string(), f.bytes());
         }

@@ -190,7 +190,11 @@ pub(super) fn texts(rs: &mut RenderState, vp: (f32, f32)) {
         if ndc.z < 0.0 || ndc.z > 1.0 {
             continue;
         }
-        let Some(body) = rs.ui_fonts.for_text(og_ui::FontRole::Body, &t.text).handle else {
+        let Some(body) = rs
+            .ui_fonts
+            .for_text(og_ui_next::fonts::FontRole::Body, &t.text)
+            .handle
+        else {
             continue;
         };
         let pages = rs

@@ -289,7 +289,7 @@ pub fn set_physics_clock(clock: fn() -> f64) {
 
 /// The fonts an engine's UI lays out and draws with, as og.ui.configure,
 /// the locale and the style left them; `None` for no engine.
-pub fn ui_fonts(engine: u32) -> Option<og_ui::Fonts> {
+pub fn ui_fonts(engine: u32) -> Option<og_ui_next::fonts::Fonts> {
     Some(
         engine::engine(engine)
             .ok()?

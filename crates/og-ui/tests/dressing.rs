@@ -5,6 +5,7 @@
 
 use crate::support::*;
 use og_ui::*;
+use og_ui_next::fonts::{FamilyFace, Fonts};
 use serde_json::{Value, json};
 
 #[test]

@@ -86,6 +86,7 @@ fn ui_rive_text_draws_its_run_in_its_cooked_font() {
     use og_cook::runtime::Bundle;
     use og_render::{RenderDesc, RenderScene, RenderTarget, Renderer};
     use og_ui::*;
+    use og_ui_next::fonts::Fonts;
     let root = out_dir("og-rive-text");
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("assets/ui")).unwrap();
@@ -275,6 +276,7 @@ fn colr_label(
 ) -> (Vec<u8>, [f32; 4]) {
     use og_render::{RenderDesc, RenderTarget, Renderer};
     use og_ui::*;
+    use og_ui_next::fonts::Fonts;
     let font = UiFont::new(handles[0], scene.font(handles[0]).unwrap());
     let mut ui = Ui::new(UiDesc {
         fonts: Fonts {

@@ -93,7 +93,10 @@ fn a_project_without_ui_carries_no_default_face() {
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let ids: Vec<&str> = bundle.manifest().outputs().map(|o| o.id.as_str()).collect();
     assert!(ids.contains(&"@palettes/handheld4.hex"), "{ids:?}");
-    assert!(!ids.contains(&og_ui::DEFAULT_FONT_ASSET), "{ids:?}");
+    assert!(
+        !ids.contains(&og_ui_next::fonts::DEFAULT_FONT_ASSET),
+        "{ids:?}"
+    );
 }
 
 #[test]

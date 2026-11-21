@@ -13,6 +13,8 @@ doctest = false
 
 [dev-dependencies]
 og-ui = { path = "../og-ui" }
+# The fonts and icons og-ui's test support names.
+og-ui-next = { path = "../og-ui-next" }
 # The tests draw what the UI built.
 og-render = { path = "../og-render" }
 # og-ui's test support (crates/og-ui/tests/support, included by path) names

@@ -6,9 +6,9 @@
 //! and allocates nothing.
 
 use crate::arena::{Arena, Id, Run};
+use crate::icons::{IconAtlas, IconCell};
 use crate::record::{Record, Rgba, Shadow, Text, TextStroke};
 use og_draw::paint::{Paint, PaintKind, PaintQuad};
-use og_ui::{IconAtlas, IconCell};
 
 const NONE: u32 = u32::MAX;
 
@@ -829,7 +829,7 @@ impl Tree {
 
     /// Lays out what changed and paints. The
     /// fonts measure text; `icons` draws icons.
-    pub fn frame(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) -> Frame {
+    pub fn frame(&mut self, fonts: &crate::fonts::Fonts, icons: &IconAtlas) -> Frame {
         let (laid_out, painted) = self.present(fonts, icons);
         Frame { laid_out, painted }
     }
@@ -845,7 +845,7 @@ impl Tree {
     /// Samples motion at the tick's time, lays out what is dirty and paints
     /// again when anything changed or moves: whether it laid out, and
     /// whether it painted.
-    pub fn present(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) -> (bool, bool) {
+    pub fn present(&mut self, fonts: &crate::fonts::Fonts, icons: &IconAtlas) -> (bool, bool) {
         for e in self.entering.drain(..) {
             self.els[e as usize].entering = None;
         }
@@ -956,7 +956,7 @@ impl Tree {
         }
     }
 
-    fn repaint(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) {
+    fn repaint(&mut self, fonts: &crate::fonts::Fonts, icons: &IconAtlas) {
         /// A line's stroke: its own colour faded, else the ink (already faded).
         fn s_line_color(stroke: &Option<Rgba>, ink: Rgba, alpha: f32) -> Rgba {
             stroke.map_or(ink, |mut c| {
@@ -1769,9 +1769,9 @@ fn radii(r: [f32; 4], w: f32, h: f32) -> [f32; 4] {
 }
 
 /// The font a text draws in: the body's mixed font (the body face, then
-/// the faces it falls back to for what it lacks: `og_ui::Fonts::link`),
+/// the faces it falls back to for what it lacks: `crate::fonts::Fonts::link`),
 /// else the body alone.
-fn text_font(fonts: &og_ui::Fonts) -> &og_ui::UiFont {
+fn text_font(fonts: &crate::fonts::Fonts) -> &og_text::text::UiFont {
     fonts.body.metrics.mixed.as_deref().unwrap_or(&fonts.body)
 }
 

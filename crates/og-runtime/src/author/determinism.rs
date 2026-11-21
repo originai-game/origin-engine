@@ -267,6 +267,7 @@ const TEXT_LAYOUT: &str = r#"<meta name="component" content="text-layout">
 /// the same cooked OpenType bytes on both hosts. No renderer or system fonts.
 pub fn text_layout_hash() -> u64 {
     use og_ui::*;
+    use og_ui_next::fonts::Fonts;
     use std::sync::Arc;
     let mut scene = og_render::RenderScene::new();
     let handle = scene.add_font(og_render::MsdfFont {

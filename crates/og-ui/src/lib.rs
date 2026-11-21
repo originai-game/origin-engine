@@ -43,14 +43,8 @@ pub fn set_base_css(css: Option<&str>) -> Result<bool, String> {
     doc::stylesheet::replace_base(css)
 }
 
-/// The default UI's runtime-outline face, bundled for games with UI documents
-/// and loaded only when no game font or style supplies the role.
-pub const DEFAULT_FONT_ASSET: &str = "@styles/shared/InstrumentSans[wdth,wght].ttf";
-
 mod default_icons;
-pub use default_icons::DEFAULT_ICON_NAMES;
 pub use default_icons::commands as builtin_icon;
-pub use default_icons::svg as builtin_icon_svg;
 
 #[doc(hidden)]
 pub mod a11y;
@@ -96,7 +90,7 @@ pub use text::rich;
 pub mod style;
 pub use og_text::text::add_segmentation;
 pub use og_text::{glyphs, ink, shape};
-pub use paint::svg;
+pub(crate) use paint::svg;
 pub use style::style_file;
 mod text;
 pub use interaction::vcursor;
@@ -146,8 +140,8 @@ pub use layout::anchor;
 pub use layout::float::ImageAlpha;
 pub use layout::{
     Align, Anchor, Bidi, Calc, CalcOp, Contain, ContentVisibility, Cross, Direction, Element,
-    Family, FlexItem, FloatSide, Flow, FontRole, Insets, Length, Margin, Multicol, Rect, Size,
-    SizeBasis, TablePart, TextAlign, VerticalAlign,
+    FlexItem, FloatSide, Flow, Insets, Length, Margin, Multicol, Rect, Size, SizeBasis, TablePart,
+    TextAlign, VerticalAlign,
 };
 pub use motion::{
     Choreo, Ease, EventKind, GestureInfo, Key, KeyEase, MotionDump, MotionToken, MotionTokens,
@@ -174,9 +168,8 @@ pub use text_path::{PathShape, TextPath};
 pub use tokens::StyleTokens;
 pub use ui::highlight::{Highlight, HighlightRange};
 pub use ui::{
-    ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, CjkLocale, FaceStyle, FamilyFace, FeedbackPlay,
-    FontFace, FontFamily, FontQuery, Fonts, IconAtlas, IconCell, InlineImage, Synth, Ui,
-    UiDebugElement, UiDebugStyle, UiDesc, UiFrame, debug_overlay,
+    ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, FeedbackPlay, Ui, UiDebugElement, UiDebugStyle,
+    UiDesc, UiFrame, debug_overlay,
 };
 pub(crate) use ui::{ControlSize, ImageDesc, LabelDesc, NumberInputOptions, Response};
 pub use vcursor::VirtualCursorDesc;
@@ -186,6 +179,8 @@ pub use world::{
     AnchorPoint, AnchorScale, Declutter, EdgeClamp, GroundQuad, MassHandle, MetaDesc, MetaKind,
     WorldCmd, WorldFrame, WorldOcclusion, WorldTarget, WorldView,
 };
+
+pub(crate) use og_ui_next::fonts::{FontFamily, FontQuery, FontRole, Fonts, Synth};
 
 /// The probe's element type: what `dump_ui` lists and the id and text lookups search.
 pub use og_probe::UiElement;

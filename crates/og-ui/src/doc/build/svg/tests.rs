@@ -500,7 +500,7 @@ fn svg_text_sits_on_its_point_and_scales_with_the_view_box() {
 #[test]
 fn an_svg_image_fills_its_rect_from_the_atlas() {
     let mut ui = Ui::new(UiDesc::default());
-    ui.set_icons(crate::IconAtlas {
+    ui.set_icons(crate::ui::IconAtlas {
         texture: og_draw::TextureHandle::from_slot(3),
         columns: 2,
         rows: 1,

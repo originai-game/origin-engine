@@ -598,8 +598,11 @@ pub(crate) fn group(
         .filter(|s| s.kind == &font_pack::FONT_PACK)
         .flat_map(font_pack::faces)
         .collect();
-    if sources.iter().any(|s| s.rel == og_ui::DEFAULT_FONT_ASSET) {
-        pack_faces.insert(og_ui::DEFAULT_FONT_ASSET.to_string());
+    if sources
+        .iter()
+        .any(|s| s.rel == og_ui_next::fonts::DEFAULT_FONT_ASSET)
+    {
+        pack_faces.insert(og_ui_next::fonts::DEFAULT_FONT_ASSET.to_string());
     }
     Grouped {
         groups,

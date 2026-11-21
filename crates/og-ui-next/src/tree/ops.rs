@@ -1293,7 +1293,7 @@ mod tests {
     }
 
     fn frame(t: &mut Tree) {
-        t.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        t.frame(&crate::fonts::Fonts::default(), &IconAtlas::default());
     }
 
     /// Nodes a batch makes lay out where their inserts put them (`before`
@@ -2160,7 +2160,7 @@ mod tests {
         assert!(t.leaving.is_empty() && t.els.iter().filter(|e| e.js == 4).all(|e| e.dead));
         // Nothing moves: the next frame paints nothing.
         t.set_time(1.8, false);
-        let (_, painted) = t.present(&og_ui::Fonts::default(), &IconAtlas::default());
+        let (_, painted) = t.present(&crate::fonts::Fonts::default(), &IconAtlas::default());
         assert!(!painted);
     }
 
@@ -3303,7 +3303,7 @@ mod tests {
     #[test]
     fn an_input_edits_at_its_caret_and_hears_change() {
         use og_text::text::{FontMetrics, UiFont};
-        let fonts = og_ui::Fonts {
+        let fonts = crate::fonts::Fonts {
             body: UiFont {
                 handle: Some(og_draw::FontHandle::from_index(0)),
                 metrics: FontMetrics::fixed(0.5),
@@ -3831,7 +3831,7 @@ mod tests {
         let cjk = face(5, FontMetrics::fixed(1.0));
         let mut mixed = body.clone();
         mixed.metrics.runs = Some(vec![cjk].into());
-        let mut fonts = og_ui::Fonts {
+        let mut fonts = crate::fonts::Fonts {
             body,
             ..Default::default()
         };
@@ -3885,9 +3885,9 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
     }
 
-    fn fixed_fonts() -> og_ui::Fonts {
-        og_ui::Fonts {
-            body: og_ui::UiFont {
+    fn fixed_fonts() -> crate::fonts::Fonts {
+        crate::fonts::Fonts {
+            body: og_text::text::UiFont {
                 handle: Some(og_draw::FontHandle::from_index(0)),
                 metrics: og_text::text::FontMetrics::fixed(0.5),
             },
@@ -4096,7 +4096,7 @@ mod tests {
         let mut b = Batch::default();
         b.op(6).u32(1).str("name").str("clock");
         t.apply(&b.bytes()).unwrap();
-        t.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        t.frame(&crate::fonts::Fonts::default(), &IconAtlas::default());
         let (first, count) = crate::icons::icons().find("clock").unwrap();
         let q = t
             .drawn

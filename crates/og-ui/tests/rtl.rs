@@ -27,6 +27,7 @@
 use og_i18n::Direction;
 use og_ui::shape::FontFile;
 use og_ui::*;
+use og_ui_next::fonts::Fonts;
 use std::sync::Arc;
 
 fn arabic() -> FontMetrics {

@@ -19,6 +19,8 @@ og-anim = { path = "../og-anim" }
 og-env = { path = "../og-env" }
 # ui-rive plays its converted artboards with og-ui's Rive player.
 og-ui = { path = "../og-ui" }
+# The fonts og-ui's test support names.
+og-ui-next = { path = "../og-ui-next" }
 glam = { workspace = true }
 # gltf_scenes writes its glTFs' JSON.
 serde_json = "1"

@@ -8,14 +8,14 @@ description = "og-ui's new core: a flat element arena, styles compiled to typed 
 
 [dependencies]
 og-css = { path = "../og-css" }
+# Interned family lists (fonts.rs).
+elsa = "1.11.2"
 # Text measure: the engine's one text stack (Parley, HarfRust, cooked metrics).
 og-text = { path = "../og-text" }
 # Its draw commands name fonts and textures by og-draw's handles.
 og-draw = { path = "../og-draw" }
 # Bindings: the expressions documents bind and their evaluation.
 og-reactive = { path = "../og-reactive" }
-# The .svelte parser (doc::UiDocument), until it moves into this crate at the switch.
-og-ui = { path = "../og-ui" }
 nsh-reactive = { path = "../../third_party/nsh-reactive" }
 # Tailwind classes resolved to styles (NSH's resolver).
 nsh-tailwind = { path = "../../third_party/nsh-tailwind" }

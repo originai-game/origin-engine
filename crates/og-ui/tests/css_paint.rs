@@ -18,6 +18,7 @@
 use crate::support;
 
 use og_ui::*;
+use og_ui_next::icons::IconAtlas;
 use support::*;
 
 #[test]

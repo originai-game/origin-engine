@@ -19,6 +19,7 @@
 
 use crate::support::Doc;
 use og_ui::*;
+use og_ui_next::fonts::Fonts;
 
 /// The font at `path` (from the repository's root), shaped from its file,
 /// drawn under the test font's handle.

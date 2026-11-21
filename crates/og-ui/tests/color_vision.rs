@@ -18,6 +18,8 @@ use crate::support;
 use og_draw::ColorVision;
 use og_ui::reactive::SourceId;
 use og_ui::*;
+use og_ui_next::default_icons::DEFAULT_ICON_NAMES;
+use og_ui_next::icons::{IconAtlas, IconCell};
 use std::collections::BTreeMap;
 use support::*;
 

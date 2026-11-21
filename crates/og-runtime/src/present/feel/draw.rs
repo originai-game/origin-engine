@@ -624,7 +624,9 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
         // into one piece per font when it mixes them: a style's Chinese
         // companion draws the Chinese of a line whose Latin is the body's.
         let body = Some({
-            let font = rs.ui_fonts.for_text(og_ui::FontRole::Body, &t.text);
+            let font = rs
+                .ui_fonts
+                .for_text(og_ui_next::fonts::FontRole::Body, &t.text);
             og_ui::pieces(font, &t.text, direction, 0.0)
         });
         let age = (now - t.start) as f32;

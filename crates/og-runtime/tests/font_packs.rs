@@ -363,7 +363,7 @@ fn chinese_locales_never_take_the_other_script() {
 fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
     let bundle = og_cook::runtime::Bundle::open(&project().join("cooked")).unwrap();
     let cooked = bundle
-        .load_font(og_ui::DEFAULT_FONT_ASSET)
+        .load_font(og_ui_next::fonts::DEFAULT_FONT_ASSET)
         .expect("a UI game bundles its default face");
     assert!(
         cooked.pages.is_empty(),
@@ -384,15 +384,18 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
     {
         let fonts = ui_fonts(engine).unwrap();
         for role in [
-            og_ui::FontRole::Body,
-            og_ui::FontRole::Display,
-            og_ui::FontRole::Mono,
-            og_ui::FontRole::Rounded,
-            og_ui::FontRole::Family(og_ui::Family::new("Instrument Sans", og_ui::FontRole::Body)),
+            og_ui_next::fonts::FontRole::Body,
+            og_ui_next::fonts::FontRole::Display,
+            og_ui_next::fonts::FontRole::Mono,
+            og_ui_next::fonts::FontRole::Rounded,
+            og_ui_next::fonts::FontRole::Family(og_ui_next::fonts::Family::new(
+                "Instrument Sans",
+                og_ui_next::fonts::FontRole::Body,
+            )),
         ] {
             let (face, synth) = fonts.for_styled(
                 role,
-                og_ui::FontQuery::new(700, false).at_width(Some(75.0)),
+                og_ui_next::fonts::FontQuery::new(700, false).at_width(Some(75.0)),
                 "Victory",
             );
             let file = face.metrics.file.as_ref().expect("the default's outlines");
@@ -401,7 +404,7 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
             assert!(file.variations().contains(&(*b"wdth", 75.0)));
             assert!(!synth.bold, "the variable face supplies bold outlines");
         }
-        let japanese = fonts.for_text(og_ui::FontRole::Body, "はじめる");
+        let japanese = fonts.for_text(og_ui_next::fonts::FontRole::Body, "はじめる");
         assert_ne!(
             japanese.metrics.file.as_ref().unwrap().bytes().as_slice(),
             source

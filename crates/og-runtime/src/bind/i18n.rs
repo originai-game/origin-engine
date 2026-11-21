@@ -205,10 +205,10 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         && eng
             .assets
             .borrow()
-            .bundle_for(og_ui::DEFAULT_FONT_ASSET)
-            .is_ok_and(|(bundle, _)| bundle.output(og_ui::DEFAULT_FONT_ASSET).is_ok())
+            .bundle_for(og_ui_next::fonts::DEFAULT_FONT_ASSET)
+            .is_ok_and(|(bundle, _)| bundle.output(og_ui_next::fonts::DEFAULT_FONT_ASSET).is_ok())
     {
-        paths.insert(0, og_ui::DEFAULT_FONT_ASSET.to_string());
+        paths.insert(0, og_ui_next::fonts::DEFAULT_FONT_ASSET.to_string());
     }
     let mut default_font = None;
     let mut chain = Vec::with_capacity(paths.len());
@@ -223,7 +223,7 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
         drawn.push(p.clone());
         let i = crate::world::assets::load_font(eng, p).map_err(|e| format!("font '{p}': {e}"))?;
         let font = crate::bind::modules::ui_font(eng, crate::world::assets::handle(i) as f64)?;
-        if p == og_ui::DEFAULT_FONT_ASSET {
+        if p == og_ui_next::fonts::DEFAULT_FONT_ASSET {
             default_font = Some(font);
         } else {
             chain.push(font);
@@ -231,9 +231,9 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
     }
     {
         let mut rs = eng.render.borrow_mut();
-        let mut fonts = og_ui::Fonts {
+        let mut fonts = og_ui_next::fonts::Fonts {
             chain,
-            cjk_locale: og_ui::CjkLocale::of_locale(&tag(eng.id)),
+            cjk_locale: og_ui_next::fonts::CjkLocale::of_locale(&tag(eng.id)),
             ..rs.ui_fonts.clone()
         };
         if let Some(font) = default_font {
@@ -247,7 +247,7 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
                 }
             }
             fonts.families.retain(|f| f.document != "@default");
-            fonts.families.push(og_ui::FamilyFace {
+            fonts.families.push(og_ui_next::fonts::FamilyFace {
                 family: "Instrument Sans".into(),
                 document: "@default".into(),
                 weight: (400, 700),

@@ -687,7 +687,7 @@ impl Next {
     /// body's handle, so an installed font pack that covers them loads.
     pub(crate) fn take_missing(
         &mut self,
-        fonts: &og_ui::Fonts,
+        fonts: &og_ui_next::fonts::Fonts,
     ) -> Option<(og_render::FontHandle, Vec<char>)> {
         let chars = self.tree.as_mut()?.take_missing();
         let body = fonts.body.handle?;
@@ -781,7 +781,7 @@ impl Next {
     pub(crate) fn end(
         &mut self,
         engine: u32,
-        (fonts, icons): (&og_ui::Fonts, &og_ui::IconAtlas),
+        (fonts, icons): (&og_ui_next::fonts::Fonts, &og_ui_next::icons::IconAtlas),
         view: Option<og_ui::WorldView>,
         textures: &[og_render::TextureHandle],
         time: f64,
@@ -1018,7 +1018,7 @@ impl Next {
     /// (CONVENTIONS.md §World). The next tick's end places them again.
     pub(crate) fn follow_anchors(
         &mut self,
-        (fonts, icons): (&og_ui::Fonts, &og_ui::IconAtlas),
+        (fonts, icons): (&og_ui_next::fonts::Fonts, &og_ui_next::icons::IconAtlas),
         project: impl FnMut(
             og_ui_next::tree::AnchorTarget,
             [f32; 3],

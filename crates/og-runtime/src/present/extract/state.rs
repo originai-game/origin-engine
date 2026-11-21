@@ -213,8 +213,8 @@ pub(crate) struct RenderState {
     /// The UI's fonts (og.ui.configure's, the locale's chain and the
     /// style's families) and icon atlas, which the new core lays out and
     /// paints with.
-    pub ui_fonts: og_ui::Fonts,
-    pub ui_icons: og_ui::IconAtlas,
+    pub ui_fonts: og_ui_next::fonts::Fonts,
+    pub ui_icons: og_ui_next::icons::IconAtlas,
     /// The documents, on og-ui's new core.
     pub ui_next: Option<Box<crate::present::ui_next::Next>>,
     /// A UI font's first atlas page → every page, so text is drawn per page.

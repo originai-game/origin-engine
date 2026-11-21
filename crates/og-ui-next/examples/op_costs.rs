@@ -10,7 +10,7 @@
 //!
 //!     cargo run --release -p og-ui-next --example op_costs [N]
 
-use og_ui::IconAtlas;
+use og_ui_next::icons::IconAtlas;
 use og_ui_next::record::Record;
 use og_ui_next::tree::{MAGIC, Tree};
 use std::time::Instant;
@@ -170,7 +170,7 @@ fn expire(b: &mut Batch, k: u32) {
 }
 
 /// A face with its file: every glyph laid out and painted.
-fn face() -> og_ui::Fonts {
+fn face() -> og_ui_next::fonts::Fonts {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../templates/fonts/latin/NotoSans-Latin.ttf"
@@ -186,8 +186,8 @@ fn face() -> og_ui::Fonts {
         glyphs: Vec::new(),
         kerning: Vec::new(),
     };
-    og_ui::Fonts {
-        body: og_ui::UiFont {
+    og_ui_next::fonts::Fonts {
+        body: og_text::text::UiFont {
             handle: Some(og_draw::FontHandle::from_index(0)),
             metrics: og_text::text::FontMetrics::from_msdf(&atlas).with_file(Some(file)),
         },
@@ -205,7 +205,7 @@ fn main() {
         .nth(1)
         .and_then(|a| a.parse().ok())
         .unwrap_or(21);
-    let fonts = og_ui::Fonts::default();
+    let fonts = og_ui_next::fonts::Fonts::default();
     let icons = IconAtlas::default();
     let build = hud().bytes();
     let (mut builds, mut idle, mut changed) = (Vec::new(), Vec::new(), Vec::new());

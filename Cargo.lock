@@ -3760,6 +3760,7 @@ dependencies = [
  "og-render",
  "og-tests",
  "og-ui",
+ "og-ui-next",
  "pollster",
  "serde_json",
 ]
@@ -3776,6 +3777,7 @@ dependencies = [
  "og-render",
  "og-tests",
  "og-ui",
+ "og-ui-next",
  "pollster",
  "serde_json",
 ]
@@ -3862,6 +3864,7 @@ dependencies = [
  "og-text",
  "og-tween",
  "og-ui-model",
+ "og-ui-next",
  "parley",
  "parley_engine",
  "precomputed-hash",
@@ -3896,6 +3899,7 @@ version = "0.9.0"
 dependencies = [
  "accesskit",
  "bytemuck",
+ "elsa",
  "nsh-input",
  "nsh-reactive",
  "nsh-tailwind",
@@ -3906,7 +3910,6 @@ dependencies = [
  "og-input",
  "og-reactive",
  "og-text",
- "og-ui",
  "og-ui-model",
  "rune-motion",
  "rune-taffy",

@@ -57,6 +57,7 @@
 use crate::support::Doc;
 use og_draw::FontHandle;
 use og_ui::*;
+use og_ui_next::fonts::{FaceStyle, Family, FamilyFace, FontFace, FontQuery, FontRole, Fonts};
 
 const NOTO: &str = "templates/fonts/latin/NotoSans-Latin.ttf";
 const INTER: &str = "tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf";

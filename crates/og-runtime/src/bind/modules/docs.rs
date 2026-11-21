@@ -36,7 +36,7 @@ pub(super) fn sheet_faces(
     faces: &[og_ui::doc::at_rules::FontFace],
     source: &str,
     owner: &str,
-) -> Result<Vec<og_ui::FamilyFace>, String> {
+) -> Result<Vec<og_ui_next::fonts::FamilyFace>, String> {
     let mut out = Vec::new();
     for face in faces {
         let Some(src) = face
@@ -67,21 +67,21 @@ pub(super) fn sheet_faces(
         };
         let (w0, w1) = face.weight.unwrap_or_else(|| axis(b"wght", 400.0));
         let (s0, s1) = face.stretch.unwrap_or_else(|| axis(b"wdth", 100.0));
-        out.push(og_ui::FamilyFace {
+        out.push(og_ui_next::fonts::FamilyFace {
             family: face.family.clone(),
             document: owner.to_owned(),
             weight: (weight(w0), weight(w1)),
             stretch: (
-                og_ui::FontQuery::width_tenths(s0),
-                og_ui::FontQuery::width_tenths(s1),
+                og_ui_next::fonts::FontQuery::width_tenths(s0),
+                og_ui_next::fonts::FontQuery::width_tenths(s1),
             ),
             style: match face.style.as_str() {
-                "italic" => og_ui::FaceStyle::Italic,
-                "oblique" => og_ui::FaceStyle::Oblique,
-                _ => og_ui::FaceStyle::Normal,
+                "italic" => og_ui_next::fonts::FaceStyle::Italic,
+                "oblique" => og_ui_next::fonts::FaceStyle::Oblique,
+                _ => og_ui_next::fonts::FaceStyle::Normal,
             },
             font,
-            ..og_ui::FamilyFace::default()
+            ..og_ui_next::fonts::FamilyFace::default()
         });
     }
     Ok(out)

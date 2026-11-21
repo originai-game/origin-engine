@@ -52,8 +52,10 @@ use og_physics::{
     MeshDesc, OverlapDesc, Physics, PhysicsQuery, PhysicsSystem, QueryFilter, RaycastDesc,
     ShapeCastDesc, ShapeDesc,
 };
-use og_ui::{Fonts, IconAtlas, Srgba, UiFont};
+use og_ui::{Srgba, UiFont};
 use og_ui_model::{Insets, Viewport};
+use og_ui_next::fonts::Fonts;
+use og_ui_next::icons::IconAtlas;
 use serde_json::{Map, Value, json};
 use std::cell::Cell;
 

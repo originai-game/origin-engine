@@ -8,6 +8,7 @@
 mod theme_codegen;
 
 use og_ui::{Srgba, dress::PartRef};
+use og_ui_next::fonts::FontRole;
 use std::path::PathBuf;
 
 fn tokens() -> serde_json::Value {

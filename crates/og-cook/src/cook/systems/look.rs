@@ -153,8 +153,8 @@ pub fn pack_files(source: &str, text: &str) -> Vec<(&'static str, &'static [u8])
 /// those of each `type strings` table's Chinese, Japanese or Korean
 /// `locale` (`zh-TW` traditional, `zh` simplified). A style's companions
 /// of a locale join the bundle only then.
-pub fn shown_cjk(root: &Path) -> Vec<og_ui::CjkLocale> {
-    fn walk(dir: &Path, out: &mut Vec<og_ui::CjkLocale>) {
+pub fn shown_cjk(root: &Path) -> Vec<og_ui_next::fonts::CjkLocale> {
+    fn walk(dir: &Path, out: &mut Vec<og_ui_next::fonts::CjkLocale>) {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return;
         };
@@ -184,7 +184,7 @@ pub fn shown_cjk(root: &Path) -> Vec<og_ui::CjkLocale> {
                     .unwrap_or("")
                     .to_ascii_lowercase();
                 if matches!(primary.as_str(), "zh" | "ja" | "ko") {
-                    let l = og_ui::CjkLocale::of_locale(tag);
+                    let l = og_ui_next::fonts::CjkLocale::of_locale(tag);
                     if !out.contains(&l) {
                         out.push(l);
                     }

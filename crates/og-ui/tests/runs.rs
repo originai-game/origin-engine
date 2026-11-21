@@ -50,6 +50,9 @@ use crate::support;
 use og_i18n::Direction;
 use og_ui::shape::FontFile;
 use og_ui::*;
+use og_ui_next::fonts::{
+    CjkLocale, Family, FamilyFace, FontFace, FontFamily, FontQuery, FontRole, Fonts, Synth,
+};
 use std::sync::Arc;
 use support::*;
 

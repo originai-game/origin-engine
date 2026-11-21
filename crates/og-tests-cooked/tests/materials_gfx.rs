@@ -22,6 +22,8 @@ use og_render::{
     Background, ColorSpace, Glyph, Mips, MsdfFont, RenderDesc, RenderScene, TextureData, Tonemap,
 };
 use og_ui::*;
+use og_ui_next::fonts::Fonts;
+use og_ui_next::icons::IconAtlas;
 use std::path::PathBuf;
 use support::*;
 

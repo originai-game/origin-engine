@@ -6,6 +6,7 @@
 
 use og_core::glam::Vec3;
 use og_ui::*;
+use og_ui_next::icons::IconAtlas;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

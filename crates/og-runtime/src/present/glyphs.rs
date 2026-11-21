@@ -751,7 +751,7 @@ fn note(
 pub(crate) fn ui_lacking(rs: &mut RenderState, text: &str) -> Vec<(FontHandle, Vec<char>)> {
     let found: Vec<(FontHandle, Vec<char>)> = {
         let fonts = &rs.ui_fonts;
-        let font = fonts.for_text(og_ui::FontRole::Body, text);
+        let font = fonts.for_text(og_ui_next::fonts::FontRole::Body, text);
         og_ui::pieces(font, text, crate::bind::i18n::direction(rs.engine), 0.0)
             .into_iter()
             .filter_map(|p| {
