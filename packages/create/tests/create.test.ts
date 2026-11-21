@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { artBrief, audioBrief, authoredArt, create, creationDocument, creationLooks, CREATION_CHOICES, FORM_VIEWS, formOf, previewSlots, fontPackFor, fontPacksDir, creationSchema, inferCreationChoices, MOODS, parseCreationInput, pickStyle, presetLook, pseudoMessage, readCatalogue, resolveCreationChoices, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 
+import * as knowledgeBrief from "../../knowledge/scripts/brief.ts";
+
 const pkg = join(import.meta.dir, "..");
 const scratch = realpathSync(mkdtempSync(join(tmpdir(), "og-create-")));
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
@@ -50,6 +52,7 @@ test("no-prompt creation uses source choices even with an outdated packed catalo
   cpSync(fontPacksDir(), join(checkout, "templates/fonts"), { recursive: true });
   mkdirSync(join(source, "looks"), { recursive: true });
   mkdirSync(join(checkout, "packages/knowledge/looks"), { recursive: true });
+  cpSync(join(pkg, "../knowledge/scripts"), join(checkout, "packages/knowledge/scripts"), { recursive: true });
   const catalogue = readFileSync(join(pkg, "../knowledge/looks/catalogue.json"), "utf8");
   writeFileSync(join(checkout, "packages/knowledge/looks/catalogue.json"), catalogue);
   writeFileSync(join(source, "looks/catalogue.json"), catalogue.replaceAll('"ui": "default"', '"ui": "fantasy"'));
@@ -159,7 +162,8 @@ test("creation schema labels preserve every stable choice ID", () => {
 });
 
 test("art and audio briefs remain available without creating a game", () => {
-  expect(readFileSync(join(pkg, "bin/brief.ts"), "utf8")).toBe(readFileSync(join(pkg, "../knowledge/scripts/brief.ts"), "utf8"));
+  // The knowledge package's brief itself, not a copy.
+  expect(artBrief).toBe(knowledgeBrief.artBrief);
   expect(artBrief(presetLook("pixel"), "character", "the courier").image?.grid).toEqual({ width: 16, height: 32, scale: 32 });
   const prop = artBrief(presetLook("faceted-low-poly"), "prop", "a signpost");
   expect([prop.medium, prop.model?.faceBudget, prop.model?.normals]).toEqual(["model", 200, "flat"]);
@@ -190,8 +194,14 @@ test("catalogue suggestions respect profile without installing them", () => {
   expect(resolveCreationChoices("", { look: "low-resolution-3d" })).not.toHaveProperty("mood");
 });
 
-test("the packed package creates the same skeleton and briefs from its own presets", () => {
-  const installed = join(scratch, "installed");
+test("the packed package creates the same skeleton, and briefs with the engine's knowledge beside it", () => {
+  // The release archive's layout: create/ beside engine/, which carries the knowledge package as knowledge/.
+  const installed = join(scratch, "dist", "create");
+  const knowledge = join(scratch, "dist", "engine", "knowledge");
+  const source = join(pkg, "..", "knowledge");
+  const packedKnowledge = Bun.spawnSync(["bun", "scripts/pack.ts"], { cwd: source });
+  expect(packedKnowledge.exitCode, new TextDecoder().decode(packedKnowledge.stderr)).toBe(0);
+  for (const part of [...JSON.parse(readFileSync(join(source, "package.json"), "utf8")).files, "package.json"]) cpSync(join(source, part), join(knowledge, part), { recursive: true });
   const manifest = JSON.parse(readFileSync(join(pkg, "package.json"), "utf8"));
   expect(manifest.files).not.toContain("archetypes");
   expect(manifest.files).not.toContain("template-2d");
@@ -219,24 +229,25 @@ test("the packed package creates the same skeleton and briefs from its own prese
   expect(read("packed/src/main.ts")).toBe(readFileSync(join(pkg, "template/src/main.ts"), "utf8"));
   expect(readdirSync(join(scratch, "packed/assets")).sort()).toEqual([".gitkeep", "fonts", "looks"]);
   expect(readdirSync(join(scratch, "packed/assets/fonts"))).toEqual(["latin"]);
-  // The packed presets carry their variants and previews.
-  const brief = (...look: string[]) => {
-    const r = Bun.spawnSync(["bun", join(installed, "bin/brief.ts"), "sprite", "a bat", ...look, "--json"], { cwd: scratch });
+  // The packed package's briefs are the engine's knowledge's: its presets, variants and previews.
+  const brief = (variant?: string) => {
+    const code = `const c = await import(${JSON.stringify(join(installed, "bin/create.ts"))}); console.log(JSON.stringify(c.artBrief(c.presetLook("pixel", ${JSON.stringify(variant ? { variant } : {})}), "sprite", "a bat")))`;
+    const r = Bun.spawnSync(["bun", "-e", code], { cwd: scratch });
     expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
     return JSON.parse(new TextDecoder().decode(r.stdout));
   };
-  const mono = brief("--look", "pixel", "--variant", "monochrome");
+  const mono = brief("monochrome");
   expect(mono.palette.map((c: { hex: string }) => c.hex)).toEqual(presetLook("pixel", { variant: "monochrome" }).palette?.colours.map(c => c.hex));
   expect(mono.palette).toHaveLength(4);
-  expect(brief("--look", "pixel").references[0].path).toBe(join(installed, "previews/pixel.webp"));
+  expect(brief().references[0].path).toBe(join(knowledge, "previews/pixel.webp"));
 });
 
 test("in a checkout missing a pinned font, create refuses with the one fix and writes nothing", () => {
-  // The checkout's layout: packages/create, packages/knowledge/looks, templates/ with og-assets.json.
+  // The checkout's layout: packages/create, packages/knowledge's looks and scripts, templates/ with og-assets.json.
   const root = join(scratch, "unfetched-checkout");
   const repo = join(pkg, "..", "..");
   for (const part of ["bin", "template", "package.json"]) cpSync(join(pkg, part), join(root, "packages/create", part), { recursive: true });
-  cpSync(join(repo, "packages/knowledge/looks"), join(root, "packages/knowledge/looks"), { recursive: true });
+  for (const part of ["looks", "scripts"]) cpSync(join(repo, "packages/knowledge", part), join(root, "packages/knowledge", part), { recursive: true });
   cpSync(join(repo, "templates/og-assets.json"), join(root, "templates/og-assets.json"));
   cpSync(join(repo, "templates/fonts/latin"), join(root, "templates/fonts/latin"), { recursive: true, filter: (s) => !s.endsWith("NotoSans-Latin.ttf") });
   const r = Bun.spawnSync(["bun", join(root, "packages/create/bin/create.ts"), "game", "--lang", "en", "--no-prompt"], { cwd: scratch });
@@ -339,7 +350,7 @@ test("in a checkout missing the film's pinned clip, form film refuses with the o
   const root = join(scratch, "unfetched-film");
   const repo = join(pkg, "..", "..");
   for (const part of ["bin", "template", "package.json"]) cpSync(join(pkg, part), join(root, "packages/create", part), { recursive: true });
-  cpSync(join(repo, "packages/knowledge/looks"), join(root, "packages/knowledge/looks"), { recursive: true });
+  for (const part of ["looks", "scripts"]) cpSync(join(repo, "packages/knowledge", part), join(root, "packages/knowledge", part), { recursive: true });
   cpSync(join(repo, "templates/og-assets.json"), join(root, "templates/og-assets.json"));
   cpSync(join(repo, "templates/fonts/latin"), join(root, "templates/fonts/latin"), { recursive: true });
   cpSync(join(repo, "templates/film"), join(root, "templates/film"), { recursive: true, filter: (s) => !s.endsWith(".mp4") });

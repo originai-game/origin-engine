@@ -13,5 +13,3 @@ templates/styles/*/art/sheet.png
 # install-tools.sh: og-sccache-wrap as cargo's wrapper on Windows (.cargo/config.toml)
 /scripts/rustc-wrapper.exe
 
-# pack-template.ts copies the knowledge package's art brief here; never commit it.
-/packages/create/bin/brief.ts

@@ -51,7 +51,7 @@ its source and bytes) instead of mounting a copy.
 through it (the `art-review` guide, §2), so the palette, the sizes, the line and the shape
 language a style holds reach the generator, and the cook's conformance has
 little left to change. `@origingame/create-game` re-exports the same
-functions (its `bin/brief.ts` is a byte-for-byte copy of this file).
+functions, importing this file itself (its `bin/knowledge.ts`).
 
 ```ts
 import { artBrief, readLook, presetLook } from "@origingame/create-game/bin/create.ts";

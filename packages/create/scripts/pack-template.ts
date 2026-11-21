@@ -1,5 +1,5 @@
 // The skeleton is tracked in template/. Pack only its supporting catalogues.
-import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { TEMPLATE_SKIP } from "../../knowledge/scripts/lib.ts";
@@ -23,21 +23,8 @@ rmSync(join(pkg, "previews"), { recursive: true, force: true });
 cpSync(join(pkg, "..", "knowledge", "previews"), join(pkg, "previews"), { recursive: true, filter });
 console.log(`pack-template: ${catalogue} -> ${looksTarget}/catalogue.json, previews/`);
 
-// The art brief: bin/brief.ts is the knowledge package's scripts/brief.ts,
-// byte for byte (create.ts re-exports it; tests/create.test.ts fails on a
-// difference), and the look presets with the built-in palettes it reads
-// under ./presets/.
-const brief = join(pkg, "..", "knowledge", "scripts", "brief.ts");
-cpSync(brief, join(pkg, "bin", "brief.ts"));
-const looksDir = join(pkg, "..", "..", "templates", "looks");
-const presetsTarget = join(pkg, "presets");
-rmSync(presetsTarget, { recursive: true, force: true });
-mkdirSync(join(presetsTarget, "assets"), { recursive: true });
-for (const name of readdirSync(looksDir)) if (name.endsWith(".ogt")) cpSync(join(looksDir, name), join(presetsTarget, name));
-cpSync(join(looksDir, "assets", "palettes"), join(presetsTarget, "assets", "palettes"), { recursive: true, filter });
-cpSync(join(looksDir, "moods"), join(presetsTarget, "moods"), { recursive: true, filter });
-cpSync(join(looksDir, "variants"), join(presetsTarget, "variants"), { recursive: true, filter });
-console.log(`pack-template: ${brief} -> bin/brief.ts, ${looksDir} -> presets/`);
+// The art brief is the knowledge package's own (bin/knowledge.ts reads it
+// beside create/), with the presets it carries: nothing of it is copied here.
 
 const stylesTarget = join(pkg, "styles");
 rmSync(stylesTarget, { recursive: true, force: true });

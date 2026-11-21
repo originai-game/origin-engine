@@ -116,8 +116,11 @@ copy from `create/bin/create.ts`.
 ## Art and audio contracts
 
 The package re-exports the knowledge package's art and audio briefs without
-changing their signatures. `bin/brief.ts` is copied byte-for-byte from
-`packages/knowledge/scripts/brief.ts` during prepack.
+changing their signatures. `bin/knowledge.ts` imports
+`packages/knowledge/scripts/brief.ts` itself in a checkout, and the engine
+package's `knowledge/scripts/brief.ts` beside the packed package (the
+release archive's `engine/`, or `@origingame/engine` in `node_modules`), so
+nothing is copied or generated first.
 
 - `presetLook(slug)` reads a preset before a game has art.
 - `readLook(dir)` reads the project's configured look file.
@@ -131,6 +134,6 @@ separately. The cook resolves the look's preset and UI pack; locale fonts
 still need installation and loading as the `screens` guide describes (`og api show screens`).
 
 The release archive carries this package in `create/`. It ships one tracked
-`template/` and the catalogues and presets used by the briefs, but no
+`template/` and the catalogue and previews creation reads, but no
 `template-2d/` or `archetypes/`. `bun run test` checks source and packed
 creation against the same skeleton contract.

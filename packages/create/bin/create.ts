@@ -7,7 +7,7 @@ import type { View } from "./choices.ts";
 import { creationDocument } from "./creation.ts";
 import type { PreviewFile } from "./creation.ts";
 import type { CreationChoices, CreationInput } from "./choices.ts";
-import { profileOf } from "./brief.ts";
+import { profileOf } from "./knowledge.ts";
 import { fontPackFor } from "./languages.ts";
 import type { FontPackLanguages } from "./languages.ts";
 
@@ -18,12 +18,12 @@ export type { CreationCompat, CreationDocument, PreviewFile, PreviewSlot } from 
 export { canonicalTag, fontPackFor, isRtl, localeScript } from "./languages.ts";
 export type { FontPackLanguages, LocaleScript } from "./languages.ts";
 export { PSEUDO_LOCALE, pseudoMessage, pseudoTable } from "./pseudo-locale.ts";
-export { ART_KINDS, ART_RESOURCES, artBrief, authoredArt, colourName, MOODS, parseLook, parsePalette, presetLook, profileOf, readLook, styleArtBriefs } from "./brief.ts";
-export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, AuthoredArt, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, Mood, PaletteColour, ReadLookOptions, StyleArtBrief, StyleArtRequests } from "./brief.ts";
-export { audioBrief, MUSIC_STYLES, readAudioChoices, SFX_PRESETS } from "./brief.ts";
-export type { AudioBrief, AudioBriefInput, AudioFormat, MusicCueBrief, MusicRole, MusicStyle, SfxBrief, SfxPreset, SfxPresetBrief } from "./brief.ts";
-export { RIG_TEMPLATES, rigParts } from "./brief.ts";
-export type { RigJoint, RigPart, RigTemplate } from "./brief.ts";
+export { ART_KINDS, ART_RESOURCES, artBrief, authoredArt, colourName, MOODS, parseLook, parsePalette, presetLook, profileOf, readLook, styleArtBriefs } from "./knowledge.ts";
+export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, AuthoredArt, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, Mood, PaletteColour, ReadLookOptions, StyleArtBrief, StyleArtRequests } from "./knowledge.ts";
+export { audioBrief, MUSIC_STYLES, readAudioChoices, SFX_PRESETS } from "./knowledge.ts";
+export type { AudioBrief, AudioBriefInput, AudioFormat, MusicCueBrief, MusicRole, MusicStyle, SfxBrief, SfxPreset, SfxPresetBrief } from "./knowledge.ts";
+export { RIG_TEMPLATES, rigParts } from "./knowledge.ts";
+export type { RigJoint, RigPart, RigTemplate } from "./knowledge.ts";
 
 export const SKIPPED = new Set(["cooked", "dist", "node_modules", "og-out", ".og"]);
 export const RENAMED: ReadonlyMap<string, string> = new Map([["gitattributes", ".gitattributes"], ["gitignore", ".gitignore"]]);

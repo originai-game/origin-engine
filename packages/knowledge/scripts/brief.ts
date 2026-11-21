@@ -18,9 +18,9 @@
 // The platform calls it: `artBrief`, `readLook`, `presetLook`, their option
 // and result shapes, `ART_KINDS` and `ART_RESOURCES` are a public contract
 // (README §The art brief), kept stable; a change to any of them is a break.
-// @origingame/create-game re-exports them; its bin/brief.ts is a copy of
-// this file (written by its scripts/pack-template.ts, held equal by its
-// tests), so this file imports nothing but node's own modules.
+// @origingame/create-game re-exports them from this file itself (its
+// bin/knowledge.ts imports it beside create/). It runs where the knowledge
+// package is mounted alone, so it imports nothing but node's own modules.
 //
 //   bun scripts/brief.ts <kind> "<subject>" [--project <dir> | --look <slug> [--variant <name>]]
 //                        [--reference <path>]... [--metres <n>] [--json]
@@ -864,7 +864,7 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
 // ---------------------------------------------------------------- reading a look
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-/** The package root: packages/knowledge (or the engine package's knowledge/), or @origingame/create-game. */
+/** The package root: packages/knowledge, or the engine package's knowledge/. */
 const PKG = join(HERE, "..");
 
 /**
@@ -894,10 +894,10 @@ export function presetsDir(): string {
   return dir;
 }
 
-/** The style catalogue this copy reads. */
+/** The style catalogue the package carries. */
 export function catalogueFile(): string {
-  const file = first([join(PKG, "looks", "catalogue.json"), join(PKG, "..", "knowledge", "looks", "catalogue.json")]);
-  if (!file) throw new Error(`no style catalogue next to ${PKG}: expected looks/catalogue.json`);
+  const file = join(PKG, "looks", "catalogue.json");
+  if (!existsSync(file)) throw new Error(`no style catalogue next to ${PKG}: expected looks/catalogue.json`);
   return file;
 }
 
@@ -1099,7 +1099,7 @@ function readStyle(slug: string | null, variant: string | null, catalogue: strin
   // The preview pictures the preset; a variant's palette and grid differ, so it has none to pass on.
   if (v) return { style };
   const root = dirname(dirname(catalogue));
-  const preview = first([join(root, style.preview), join(PKG, style.preview), join(PKG, "..", "knowledge", style.preview)]);
+  const preview = first([join(root, style.preview), join(PKG, style.preview)]);
   return { style, ...(preview ? { preview } : {}) };
 }
 

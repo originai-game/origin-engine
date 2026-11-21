@@ -35,7 +35,7 @@
 //   files/<path>         the overlay's distribution.json binaries, from create-game's template/, sha256-verified
 //   bin/og, bin/og.exe   the og tool
 //   engine/              @origingame/engine as packed, with native/origin-engine.<platform>.node
-//   create/              @origingame/create-game as packed (`og new` runs its bin/create.ts; brief.ts)
+//   create/              @origingame/create-game as packed (`og new` runs its bin/create.ts, which reads engine/knowledge's brief.ts)
 //   design/              @origingame/design as packed (when <dir> has it; npm never had it)
 //   node_modules/@tsrs/<tsrs platform>/   the type checker og check finds beside the engine (none on Windows: tsgo)
 //
