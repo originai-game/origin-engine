@@ -1,4 +1,4 @@
-import { For, Image, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Image, Show, Text, View, createEffect, createMemo, packClass, t, untrack, useClock, useWorld, type UiEvent } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import { Button } from "../../controls/button";
 import "./conversation.en.ogt";
@@ -10,6 +10,8 @@ export interface RpgConversationProps {
   portrait: Texture | 0;
   /** What is said now. */
   line: string;
+  /** Characters of the line shown per second, by the world's tick, starting again with each new line; 0 (and when left out) shows the line at once, and setting 0 finishes a line early. A screen reader always reads the whole line. */
+  rate?: number;
   /** The player's replies, keyed rows of { id, number, text, used }: number the figure before it; used greys a reply already chosen. Empty shows a Continue button. */
   replies: ReadonlyArray<{ id: string; number: number; text: string; used: boolean }>;
   /** The reply the focus rests on; empty is none. */
@@ -34,21 +36,45 @@ export interface RpgConversationProps {
   onSkip?: (e: UiEvent, key?: string) => void;
   /** The toggleAuto event, with the row's key where it comes from a row. */
   onToggleAuto?: (e: UiEvent, key?: string) => void;
+  /** The revealed event: the line is whole, once per line that was revealed at a rate. */
+  onRevealed?: (e: UiEvent) => void;
 }
 
 /**
  * A conversation across the foot of the screen: the speaker's portrait,
  * name and line, and the player's numbered replies. Reports reply (a
  * reply's key) and next (the Continue button, or confirm, while there are
- * no replies). The game decides what a press does.
+ * no replies). With a rate the line shows a few characters at a time by
+ * the world's tick (always whole to a screen reader) and reports revealed
+ * once it is whole; the game decides what a press before that does.
  *
- * Dropped from the .svelte: the typewriter reveal (the rate prop and the
- * revealed event; the TSX primitives have no typewriter yet, so the line
- * shows whole), the name plate's two-tone gold gradient, the row
+ * Dropped from the .svelte: the whole line at once under reduced motion
+ * (the TSX UI cannot read the setting yet), the name plate's two-tone gold gradient, the row
  * entries' lit gradient (a cut shape takes one bg colour), and the auto
  * key's inset gold keyline when on (its gold bar and text stay).
  */
 export function RpgConversation(props: RpgConversationProps) {
+  const clock = useClock();
+  const world = useWorld();
+  // The tick the line started on: a new line starts its reveal again.
+  const start = createMemo(() => (props.line, untrack(clock).tick));
+  const shown = createMemo(() => {
+    const rate = props.rate ?? 0;
+    if (rate <= 0) return props.line;
+    const chars = Array.from(props.line);
+    const c = clock();
+    const n = Math.floor((c.tick - start()) * c.dt * rate);
+    return n >= chars.length ? props.line : chars.slice(0, Math.max(n, 0)).join("");
+  });
+  // Revealed once a line shown at a rate is whole.
+  let told = "";
+  createEffect(() => {
+    const line = props.line;
+    if ((props.rate ?? 0) > 0 && shown() === line && told !== line) {
+      told = line;
+      untrack(() => props.onRevealed?.({ world, type: "revealed", x: 0, y: 0, key: "", value: "" }));
+    }
+  });
   return (
     <View class={`nine-plate-cut bg-[#1e2637e5] text-fg flex-row grow shrink basis-0 flex-wrap overflow-y-auto p-4 gap-4 disabled:text-fg-subtle ${packClass("Plate", "frame")}`} label={props.speaker ? props.speaker : t("rpg.talk.narration")}>
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-gold/50 to-transparent pointer-events-none" />
@@ -61,8 +87,8 @@ export function RpgConversation(props: RpgConversationProps) {
             {props.speaker}
           </Text>
         </Show>
-        <Text class={`text-[1.571rem] font-bold text-fg m-0 compact:text-[1.286rem]`}>
-          {props.line}
+        <Text class={`text-[1.571rem] font-bold text-fg m-0 compact:text-[1.286rem]`} label={props.line}>
+          {shown()}
         </Text>
         <Show when={(props.showControls ?? false)}>
           <View class={`flex-row flex-wrap items-center gap-1`}>
@@ -113,6 +139,7 @@ export const fixtures: Record<string, Partial<RpgConversationProps>> = {
   default: {"speaker":"Lady Marissa","portrait":0,"line":"The road ahead is dangerous.","replies":[{"id":"r1","number":1,"text":"We have no choice.","used":false},{"id":"r2","number":2,"text":"Perhaps another way.","used":true}],"selected":"r1"},
   line: {"speaker":"","portrait":0,"line":"The wind dies.","replies":[],"selected":""},
   controls: {"speaker":"Marissa","line":"There is still time to turn back.","showControls":true,"canSkip":true,"replies":[]},
+  typing: {"speaker":"Marissa","line":"The lanterns went out one by one.","rate":30,"replies":[]},
   auto: {"speaker":"","line":"The bell rings across the marsh.","showControls":true,"auto":true,"replies":[]},
   disabled: {"speaker":"","line":"Choose your answer before continuing.","showControls":true,"canBacklog":false,"canSkip":false,"canAuto":false,"replies":[]},
 };

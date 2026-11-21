@@ -222,8 +222,8 @@ impl Hooks for CHooks {
         Dispatch::answer(text)
     }
 
-    fn pump_platform(&self, engine: u32) -> Result<(), String> {
-        self.dispatch(&Dispatch::platform_pump(engine)).map(|_| ())
+    fn pump_platform(&self, pump: &Dispatch) -> Result<(), String> {
+        self.dispatch(pump).map(|_| ())
     }
 
     fn invalidate_views(&self, moving: bool) {

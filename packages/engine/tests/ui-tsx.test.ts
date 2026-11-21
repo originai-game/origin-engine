@@ -221,10 +221,14 @@ test("a display frame sends the UI's changes at each tick boundary", () => {
   let flushes = 0;
   const flush = ui.flush.bind(ui);
   ui.flush = () => { flushes++; flush(); };
+  const before = ui.clock().tick;
   let ticks = 0;
   for (let i = 0; i < 6; i++) ticks += engine.frame(1000 / 60).ticks ?? 0;
   expect(ticks).toBeGreaterThan(2);
   expect(flushes).toBeGreaterThanOrEqual(ticks);
+  // The UI's clock is the world's: it moves by the ticks run, at the tick's length.
+  expect(ui.clock().tick - before).toBe(ticks);
+  expect(ui.clock().dt).toBeCloseTo(1 / 60, 6);
   renderers.delete(id);
 });
 

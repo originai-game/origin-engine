@@ -30,6 +30,7 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
       // The TSX UI's ops since the last boundary, and its events back.
       const ui = renderers.get(engine);
       if (ui) {
+        ui.clock.set({ tick, dt });
         ui.flush();
         const errors = ui.errors.splice(0);
         if (errors.length > 0) return errors.join("\n");

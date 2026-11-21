@@ -106,6 +106,17 @@ export function useWorld(): World {
   return world;
 }
 
+/**
+ * The world's tick and its length in seconds (`dt`), as of the last tick
+ * boundary: what a component paces itself by (a typewriter's characters per
+ * second), never the wall clock. Read inside a mount.
+ */
+export function useClock(): Accessor<{ tick: number; dt: number }> {
+  const ui = useContext(RendererContext);
+  if (!ui) throw new Error("og.ui: useClock is read inside a mount");
+  return ui.clock;
+}
+
 /** Each world's renderer: its op buffer and handlers. */
 /** @internal */
 export const renderers = new Map<number, Renderer>();

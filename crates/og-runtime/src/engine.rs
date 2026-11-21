@@ -83,17 +83,18 @@ pub struct Dispatch {
 }
 
 impl Dispatch {
-    /// The platform pump (kind 5) of `engine`: what a host's
-    /// [`Hooks::pump_platform`] dispatches.
-    pub fn platform_pump(engine: u32) -> Self {
+    /// The platform pump (kind 5) of `engine` at a tick boundary, with its
+    /// world's time (the TSX UI's clock): what [`Hooks::pump_platform`]
+    /// dispatches.
+    pub fn platform_pump(engine: u32, time: &og_core::Time) -> Self {
         Self {
             kind: 5,
             engine,
             id: 0,
             query: 0,
-            tick: 0.0,
-            dt: 0.0,
-            elapsed: 0.0,
+            tick: time.tick as f64,
+            dt: f64::from(time.dt),
+            elapsed: time.elapsed,
             payload: String::new(),
         }
     }
@@ -123,8 +124,9 @@ pub trait Hooks {
     /// Call the JavaScript dispatcher. `Ok` carries what it answered after
     /// a leading `=` (facts), `Err` the error it reported or threw.
     fn dispatch(&self, call: &Dispatch) -> Result<String, String>;
-    /// Answer host requests between fixed ticks, outside the probe borrow.
-    fn pump_platform(&self, _engine: u32) -> Result<(), String> {
+    /// Answer host requests between fixed ticks, outside the probe borrow:
+    /// dispatch `pump`, a [`Dispatch::platform_pump`].
+    fn pump_platform(&self, _pump: &Dispatch) -> Result<(), String> {
         Ok(())
     }
     /// The views handed out since the last call are retired. A host that

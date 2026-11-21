@@ -72,6 +72,15 @@ export declare function Switch(props: {
 export declare function packClass(component: string, slot: string, variant?: string | undefined): string;
 /** The world of the mount being built or run. */
 export declare function useWorld(): World;
+/**
+ * The world's tick and its length in seconds (`dt`), as of the last tick
+ * boundary: what a component paces itself by (a typewriter's characters per
+ * second), never the wall clock. Read inside a mount.
+ */
+export declare function useClock(): Accessor<{
+    tick: number;
+    dt: number;
+}>;
 /** The UI layers a mount may be on. */
 export type UiLayer = "hud" | "menu" | "modal" | "popover" | "toast" | "tooltip" | "system";
 /**

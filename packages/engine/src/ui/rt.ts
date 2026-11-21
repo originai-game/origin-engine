@@ -89,6 +89,12 @@ export class Renderer {
   /** How many of the recorded string tables this world was sent. */
   private tablesSent = 0;
   errors: string[] = [];
+  /**
+   * The world's tick and its length in seconds, set at each tick boundary
+   * before the flush: the UI's clock (a typewriter's pace), never the wall
+   * clock, so a replay reveals the same characters on the same tick.
+   */
+  readonly clock = createSignal({ tick: 0, dt: 0 }, { equals: (a, b) => a.tick === b.tick && a.dt === b.dt });
 
   private readonly transport: Transport;
   readonly world: World;

@@ -53,9 +53,7 @@ pub(crate) fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
     let tick = loop {
         // A batch has exactly the boundaries of repeated single advances:
         // host answers and pending assets must reach the next fixed tick.
-        if let Some(host) = hooks() {
-            host.pump_platform(eng.id)?;
-        }
+        pump_platform(eng)?;
         tick_boundary(eng)?;
         if start_waiting(eng) {
             break eng.world()?.time().tick;
@@ -64,9 +62,7 @@ pub(crate) fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
         let stepped = rprobe::with_probe(eng, false, |p, w| p.advance(w, chunk));
         super::modules::end_of_ticks();
         super::stream::sound_chunks(eng);
-        if let Some(host) = hooks() {
-            host.pump_platform(eng.id)?;
-        }
+        pump_platform(eng)?;
         let tick = stepped?.map_err(err)?;
         left -= chunk;
         if left == 0 || eng.probe.borrow().quit_requested() {
@@ -122,7 +118,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     let t0 = rprobe::now_ms();
     // The host's pump at each boundary, as an advance has it: host answers
     // and the TSX UI's ops since the last boundary.
-    let pump = || hooks().map_or(Ok(()), |host| host.pump_platform(id));
+    let pump = || pump_platform(&eng);
     if let Err(e) = pump().and_then(|()| tick_boundary(&eng)) {
         return refuse(e);
     }
@@ -578,4 +574,14 @@ pub fn answer_call(id: u32, call: &og_probe::rpc::Call) -> String {
         Ok(a) => a.0,
         Err(e) => json!({ "jsonrpc": "2.0", "id": call.id, "error": { "code": og_probe::rpc::INTERNAL_ERROR, "message": e } }).to_string(),
     }
+}
+
+/// The host's pump at a tick boundary, with the world's time: host answers
+/// and the TSX UI's ops since the last boundary.
+fn pump_platform(eng: &Engine) -> Result<(), String> {
+    let Some(host) = hooks() else {
+        return Ok(());
+    };
+    let time = eng.world()?.time();
+    host.pump_platform(&Dispatch::platform_pump(eng.id, &time))
 }
