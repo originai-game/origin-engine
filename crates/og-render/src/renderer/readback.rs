@@ -25,6 +25,12 @@ pub(crate) struct Reach {
     pub metaballs: bool,
     pub fluids: bool,
     pub lines: bool,
+    /// Screen-space sprites, text or glass over the frame: the overlay's
+    /// pipelines.
+    pub overlay: bool,
+    /// og-ui's old core's shapes, vectors, layers or batches: its UI
+    /// pipelines (og-ui-next paints with the paint pass, made at boot).
+    pub old_ui: bool,
 }
 
 impl Reach {
@@ -49,6 +55,8 @@ impl Reach {
             metaballs: !s.metaballs.is_empty(),
             fluids: !w.fluids_3d.is_empty(),
             lines: !e.lines.is_empty() || !e.points.is_empty(),
+            overlay: scene.ui.overlay.is_some(),
+            old_ui: scene.ui.overlay.as_ref().is_some_and(|o| !o.ui.is_empty()),
         }
     }
 }
@@ -93,8 +101,8 @@ impl Renderer {
                 &self.sprite.sprite_additive_pipeline,
                 &self.sprite.sprite_glow_pipeline,
             ]))
-            || self.overlay.warm()
-            || self.ui.warm()
+            || (r.overlay && self.overlay.warm())
+            || (r.old_ui && self.ui.warm())
             || self.glass.warm()
             || self.post.warm()
             || (world
