@@ -60,7 +60,7 @@ export function Profile(props: ProfileProps) {
                             </View>
                           </Show>
                           <Show when={props.rank}>
-                            <View class={`font-bold text-xs leading-[1.5] text-gold-fg max-w-full tracking-[0.14em] uppercase bg-gold-hi nine-chip-cut py-0 px-1 ${packClass("Chip", "frame")}`}>
+                            <View class={`font-bold text-xs leading-[1.5] text-gold-fg max-w-full tracking-label uppercase bg-gold-hi nine-chip-cut py-0 px-1 ${packClass("Chip", "frame")}`}>
                               <Text>{props.rank}</Text>
                             </View>
                           </Show>
@@ -77,11 +77,11 @@ export function Profile(props: ProfileProps) {
                                 {t("profile.noStats")}
                               </Text>
                           }>
-                            <View class={`grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] compact:grid-cols-[minmax(0,1fr)]`} role="list" label={t("profile.stats")}>
+                            <View class={`grid grid-cols-fill-50 compact:grid-cols-1`} role="list" label={t("profile.stats")}>
                               <For each={props.stats}>
                                 {(s) => (
                                 <View class={`nine-plate-cut bg-plate-hi border border-rim text-fg transition duration-317 py-2 px-3 gap-1 data-selected:border-accent data-done:border-success active:border-accent active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45 compact:py-1 compact:px-3`} role="listitem">
-                                  <View class={`font-semibold text-xs leading-snug text-fg-muted tracking-[0.14em] uppercase`}>
+                                  <View class={`font-semibold text-xs leading-snug text-fg-muted tracking-label uppercase`}>
                                     <Text>{s().label}</Text>
                                   </View>
                                   <View class={`text-fg leading-[1.05] font-bold compact:text-3xl`}>
@@ -110,7 +110,7 @@ export function Profile(props: ProfileProps) {
                       <For each={props.actions}>
                         {(a) => (
                         <View class="grow shrink basis-0 gap-1">
-                          <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo border border-rim nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
+                          <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-label uppercase text-fg bg-raised-lo border border-rim nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
                             <Text class="whitespace-normal">{a().pending ? t("profile.sending") : a().label}</Text>
                           </View>
                           <Show when={a().reason}>
@@ -133,7 +133,7 @@ export function Profile(props: ProfileProps) {
             <Text class={`text-center text-base text-fg-muted m-0`} role="status">
               {props.error}
             </Text>
-            <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo border border-rim nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi hover:bg-transparent`} role="button" onPress={(e) => props.onRetry?.(e)}>
+            <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-label uppercase text-fg bg-raised-lo border border-rim nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi hover:bg-transparent`} role="button" onPress={(e) => props.onRetry?.(e)}>
               <Text class="whitespace-normal">{t("profile.retry")}</Text>
             </View>
           </Show>

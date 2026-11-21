@@ -32,24 +32,24 @@ export function PuzzleBoosters(props: PuzzleBoostersProps) {
           <View class="flex-row items-center w-max min-w-full justify-center pt-1 pb-0.5 px-0.5 gap-1 compact:gap-y-1 compact:gap-x-0.5 compact:w-full compact:min-w-0 compact:justify-center compact:flex-wrap" role="toolbar" label={t("puzzle.boosters.name")}>
             <For each={props.boosters}>
               {(b) => (
-              <View class={`flex-row items-center justify-center gap-1 group/booster w-max min-w-24 max-w-40 min-h-11 py-0.5 px-1 compact:min-w-[91.2px] compact:max-w-none`} role="button" pressed={b().id === props.armed} disabled={!b().available} label={!b().available ? t("puzzle.boosters.unavailable", { name: b().name }) : b().id === props.armed ? t("puzzle.boosters.armedName", { name: b().name, count: b().count }) : t("puzzle.boosters.count", { name: b().name, count: b().count })} onPress={(e) => props.onChoose?.(e, b().id)} data-armed={b().available && b().id === props.armed} data-not-available={!(b().available)} data-out={b().count === 0}>
+              <View class={`flex-row items-center justify-center gap-1 group/booster w-max min-w-24 max-w-40 min-h-11 py-0.5 px-1 compact:min-w-22.75 compact:max-w-none`} role="button" pressed={b().id === props.armed} disabled={!b().available} label={!b().available ? t("puzzle.boosters.unavailable", { name: b().name }) : b().id === props.armed ? t("puzzle.boosters.armedName", { name: b().name, count: b().count }) : t("puzzle.boosters.count", { name: b().name, count: b().count })} onPress={(e) => props.onChoose?.(e, b().id)} data-armed={b().available && b().id === props.armed} data-not-available={!(b().available)} data-out={b().count === 0}>
                 <View class="items-center gap-0.5">
                   <Show when={!b().available || b().id === props.armed} fallback={
-                      <View class="h-[1.243rem] mb-0.5" />
+                      <View class="h-4.25 mb-0.5" />
                   }>
-                    <Text class={`h-[1.243rem] mb-0.5 whitespace-nowrap leading-normal text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted bg-tile shadow-[inset_0px_1px_0px_#ffffff38] text-shadow-2xs py-0 px-0.5 group-data-armed/booster:text-hud-accent-fg group-data-armed/booster:bg-none group-data-armed/booster:bg-hud-accent`} data-armed={b().available && b().id === props.armed}>
+                    <Text class={`h-4.25 mb-0.5 whitespace-nowrap leading-normal text-xs font-semibold tracking-label uppercase text-fg-muted bg-tile shadow-[inset_0px_1px_0px_#ffffff38] text-shadow-2xs py-0 px-0.5 group-data-armed/booster:text-hud-accent-fg group-data-armed/booster:bg-none group-data-armed/booster:bg-hud-accent`} data-armed={b().available && b().id === props.armed}>
                       {b().available ? t("puzzle.boosters.armed") : t("puzzle.boosters.locked")}
                     </Text>
                   </Show>
                   <View class="size-16 compact:size-12">
-                    <View class={`grow shrink basis-0 justify-center items-center absolute shadow-[inset_0px_0px_0px_1.5px_#ffffff47,0px_4.576px_11.424px_#00000080] inset-0 gap-2 rounded-full group-data-armed/booster:shadow-[inset_0px_0px_0px_2.5px_#38e8ff,0px_0px_20.576px_#38e8ff99] group-data-armed/booster:translate-x-0 group-data-armed/booster:translate-y-[-0.429rem]`}>
-                      <Icon class="text-shadow-2xs size-[70%]" name={b().icon} />
+                    <View class={`grow shrink basis-0 justify-center items-center absolute shadow-[inset_0px_0px_0px_1.5px_#ffffff47,0px_4.576px_11.424px_#00000080] inset-0 gap-2 rounded-full group-data-armed/booster:shadow-[inset_0px_0px_0px_2.5px_#38e8ff,0px_0px_20.576px_#38e8ff99] group-data-armed/booster:translate-x-0 group-data-armed/booster:-translate-y-1.5`}>
+                      <Icon class="text-shadow-2xs size-7/10" name={b().icon} />
                     </View>
-                    <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap text-[0.857rem] font-bold text-fg bg-tile nine-chip-cut text-shadow-2xs py-0 px-0.5 data-out:text-gold-fg data-out:bg-none data-out:bg-gold ${packClass("Chip", "frame")}`} data-out={b().count === 0}>
+                    <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap text-xs font-bold text-fg bg-tile nine-chip-cut text-shadow-2xs py-0 px-0.5 data-out:text-gold-fg data-out:bg-none data-out:bg-gold ${packClass("Chip", "frame")}`} data-out={b().count === 0}>
                       {b().count === 0 ? '+' : t("puzzle.boosters.times", { count: formatNumber(b().count) })}
                     </Text>
                   </View>
-                  <Text class={`text-fg max-w-32 text-center line-clamp-2 text-[0.857rem] font-semibold overflow-hidden group-data-armed/booster:text-hud-accent group-data-not-available/booster:text-fg-muted compact:max-w-[91.2px]`}>
+                  <Text class={`text-fg max-w-32 text-center line-clamp-2 text-xs font-semibold overflow-hidden group-data-armed/booster:text-hud-accent group-data-not-available/booster:text-fg-muted compact:max-w-22.75`}>
                     {b().name}
                   </Text>
                 </View>

@@ -33,7 +33,7 @@ export function Achievements(props: AchievementsProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.achievements.name")}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
-        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.achievements.name")}
         </Text>
       </View>
@@ -56,7 +56,7 @@ export function Achievements(props: AchievementsProps) {
             <For each={props.achievements}>
               {(a) => (
               <View class={`group/row flex-row items-center nine-plate-cut text-fg transition duration-317 border border-rim w-full pr-3 pl-2 py-2 gap-3 compact:items-start compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-transparent data-ready:bg-transparent data-hidden:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={a().hidden && a().state !== 'unlocked' ? t("general.achievements.hidden") : a().name} data-ready={a().claimable && !a().claimed} data-hidden={a().hidden && a().state !== 'unlocked'} data-claimed={a().claimed} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'} data-state-locked={(a().state) === 'locked'} data-state-unlocked={(a().state) === 'unlocked'}>
-                <View class={`w-16 h-[70.4px] text-fg-muted bg-linear-to-b from-lit via-current via-40% to-entry-lo to-125% gap-2 group-data-claimed/row:opacity-66 compact:w-12 compact:h-[52.8px] data-tier-rare:text-info data-tier-epic:text-xp data-tier-legendary:text-warn data-state-locked:text-fg-subtle data-state-locked:bg-linear-to-b data-state-locked:from-sheen data-state-locked:to-lit data-state-locked:bg-transparent`} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'} data-state-locked={(a().state) === 'locked'} data-state-unlocked={(a().state) === 'unlocked'}>
+                <View class={`w-16 h-17.5 text-fg-muted bg-linear-to-b from-lit via-current via-40% to-entry-lo to-125% gap-2 group-data-claimed/row:opacity-66 compact:w-12 compact:h-13.25 data-tier-rare:text-info data-tier-epic:text-xp data-tier-legendary:text-warn data-state-locked:text-fg-subtle data-state-locked:bg-linear-to-b data-state-locked:from-sheen data-state-locked:to-lit data-state-locked:bg-transparent`} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'} data-state-locked={(a().state) === 'locked'} data-state-unlocked={(a().state) === 'unlocked'}>
                   <View class="absolute justify-center items-center inset-0 gap-2">
                     <Icon class="size-6" name={a().hidden && a().state !== 'unlocked' ? 'lock' : a().icon} />
                   </View>
@@ -87,7 +87,7 @@ export function Achievements(props: AchievementsProps) {
                       </Text>
                     </Show>
                     <Show when={a().tier}>
-                      <Text class={`whitespace-nowrap font-bold text-caption tracking-[0.14em] uppercase text-fg-muted bg-well py-0 px-1 m-0 rounded-capsule data-tier-rare:text-info data-tier-epic:text-xp data-tier-legendary:text-warn`} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'}>
+                      <Text class={`whitespace-nowrap font-bold text-caption tracking-label uppercase text-fg-muted bg-well py-0 px-1 m-0 rounded-capsule data-tier-rare:text-info data-tier-epic:text-xp data-tier-legendary:text-warn`} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'}>
                         {a().tier === 'legendary' ? t("general.achievements.tierLegendary") : a().tier === 'epic' ? t("general.achievements.tierEpic") : a().tier === 'rare' ? t("general.achievements.tierRare") : t("general.achievements.tierCommon")}
                       </Text>
                     </Show>
@@ -98,7 +98,7 @@ export function Achievements(props: AchievementsProps) {
                     <Text class="whitespace-nowrap text-xl font-bold tabular-nums text-fg group-data-tier-legendary/rarity:text-gold">
                       {a().rarity}
                     </Text>
-                    <Text class="whitespace-nowrap text-caption tracking-[0.14em] uppercase text-fg-subtle">
+                    <Text class="whitespace-nowrap text-caption tracking-label uppercase text-fg-subtle">
                       {t("general.achievements.players")}
                     </Text>
                   </View>
@@ -110,7 +110,7 @@ export function Achievements(props: AchievementsProps) {
                       </Button>
                     </Show>
                 }>
-                  <View class={`flex-row items-center font-bold tracking-[0.14em] uppercase text-success gap-0.5 compact:w-full compact:justify-end animate-stamp`}>
+                  <View class={`flex-row items-center font-bold tracking-label uppercase text-success gap-0.5 compact:w-full compact:justify-end animate-stamp`}>
                     <Icon class="size-4" name="check" />
                     <Text class="whitespace-nowrap shrink">{t("general.achievements.claimed")}</Text>
                   </View>

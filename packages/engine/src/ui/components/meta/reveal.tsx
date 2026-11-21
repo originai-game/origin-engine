@@ -48,14 +48,14 @@ export interface RevealProps {
 export function Reveal(props: RevealProps) {
   return (
     <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.reveal.title")} busy={(props.state ?? "sealed") === 'loading' || (props.state ?? "sealed") === 'revealing'}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-center text-center py-1 px-4 gap-0.5`}>
         <Show when={props.kicker}>
-          <Text class={`text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle`}>
+          <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-subtle`}>
             {props.kicker}
           </Text>
         </Show>
-        <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title || t("meta.reveal.title")}
         </Text>
       </View>
@@ -77,12 +77,12 @@ export function Reveal(props: RevealProps) {
                   <View class={`flex-wrap justify-center w-full p-1 m-0 gap-3 compact:grid compact:grid-cols-2`} label={props.title || t("meta.reveal.title")}>
                     <Show when={((props.rewards ?? []))?.length ?? 0} fallback={<View class="grow shrink basis-0"><EmptyState title={t("meta.reveal.empty")} icon="bag" /></View>}><For each={(props.rewards ?? [])}>
                       {(reward) => (
-                      <View class="shrink basis-[8.571rem]">
+                      <View class="shrink basis-30">
                         <View class={`flex-row items-center justify-center gap-1 group/reward w-full p-0 hover:bg-transparent hover:bg-none hover:shadow-none`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.reward", { name: reward().name, rarity: reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onPress={(e) => props.onInspect?.(e, reward().id)} data-tier-common={(reward().rarity || 'common') === "common"}>
                           <View class="w-full items-center text-center gap-1">
-                            <View class={`grow shrink basis-0 justify-center items-center w-[8.571rem] max-w-full aspect-square bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 compact:w-[6.857rem] ${packClass("Slot", "frame")}`}>
-                              <Icon class="size-[70%]" name={reward().icon} />
-                              <View class="absolute bottom-0 h-0.75 text-border-strong bg-current inset-x-[0.571rem]" />
+                            <View class={`grow shrink basis-0 justify-center items-center w-30 max-w-full aspect-square bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 compact:w-24 ${packClass("Slot", "frame")}`}>
+                              <Icon class="size-7/10" name={reward().icon} />
+                              <View class="absolute bottom-0 h-0.75 text-border-strong bg-current inset-x-2" />
                               <Show when={reward().amount}>
                                 <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-[1.35] whitespace-nowrap text-fg bg-well nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                                   {reward().amount}
@@ -92,7 +92,7 @@ export function Reveal(props: RevealProps) {
                                 <View class={`bg-hud-accent text-fg absolute right-2 top-2 shadow-[0px_0px_9.136px_#38e8ff,0px_0px_0px_1.5px_#060910e5] size-1 rounded-capsule`} label={t("meta.new")} />
                               </Show>
                             </View>
-                            <Text class={`text-xs font-bold tracking-[0.18em] uppercase text-border-strong`}>
+                            <Text class={`text-xs font-bold tracking-kicker uppercase text-border-strong`}>
                               {reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common")}
                             </Text>
                             <Text class={`text-fg max-w-full font-semibold`}>
@@ -120,17 +120,17 @@ export function Reveal(props: RevealProps) {
           <Show when={(props.state ?? "sealed") === 'sealed'} fallback={
               <Show when={(props.state ?? "sealed") === 'revealing' && (props.canSkip ?? true)} fallback={
                   <Show when={(props.state ?? "sealed") === 'revealed'}>
-                    <View class={`flex-row items-center justify-center text-accent shrink basis-[18.571rem] min-h-[50.6px] gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={props.continueLabel || t("meta.continue")} onPress={(e) => props.onContinue?.(e)}>
+                    <View class={`flex-row items-center justify-center text-accent shrink basis-65 min-h-12.75 gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={props.continueLabel || t("meta.continue")} onPress={(e) => props.onContinue?.(e)}>
                       <Text class="whitespace-normal">{props.continueLabel || t("meta.continue")}</Text>
                     </View>
                   </Show>
               }>
-                <View class={`flex-row items-center justify-center shrink basis-[18.571rem] min-h-[50.6px] gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.skip")} onPress={(e) => props.onSkip?.(e)}>
+                <View class={`flex-row items-center justify-center shrink basis-65 min-h-12.75 gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.skip")} onPress={(e) => props.onSkip?.(e)}>
                   <Text class="whitespace-normal">{t("meta.reveal.skip")}</Text>
                 </View>
               </Show>
           }>
-            <View class={`flex-row items-center justify-center text-accent shrink basis-[18.571rem] min-h-[50.6px] gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.open")} onPress={(e) => props.onOpen?.(e)}>
+            <View class={`flex-row items-center justify-center text-accent shrink basis-65 min-h-12.75 gap-1 compact:grow compact:shrink compact:basis-auto`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.open")} onPress={(e) => props.onOpen?.(e)}>
               <Text class="whitespace-normal">{t("meta.reveal.open")}</Text>
             </View>
           </Show>

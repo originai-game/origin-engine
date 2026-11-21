@@ -36,7 +36,7 @@ export function Friends(props: FriendsProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.friends.name")}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
-        <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+        <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.friends.name")}
         </Text>
         <Button class={`min-h-11 ${packClass("Button", "plate")}`} onPress={(e) => props.onAdd?.(e)}>
@@ -47,7 +47,7 @@ export function Friends(props: FriendsProps) {
       <Scroll class="gap-3">
         <Show when={props.requests.length}>
           <View class="w-full gap-1" label={t("general.friends.requests")}>
-            <Text class={`tracking-[0.14em] uppercase text-gold font-bold text-caption py-0.5 px-1 m-0`}>
+            <Text class={`tracking-label uppercase text-gold font-bold text-caption py-0.5 px-1 m-0`}>
               {t("general.friends.requests")}
             </Text>
             <View class="w-full p-0 m-0 gap-0.5">
@@ -85,7 +85,7 @@ export function Friends(props: FriendsProps) {
         </Show>
         <View class="w-full gap-1" label={t("general.friends.list")}>
           <Show when={props.requests.length && props.friends.length}>
-            <Text class={`tracking-[0.14em] uppercase text-gold font-bold text-caption py-0.5 px-1 m-0`}>
+            <Text class={`tracking-label uppercase text-gold font-bold text-caption py-0.5 px-1 m-0`}>
               {t("general.friends.list")}
             </Text>
           </Show>
@@ -105,7 +105,7 @@ export function Friends(props: FriendsProps) {
                         <View class={`flex-row items-center shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] justify-center text-fg gap-0 size-12 rounded-capsule group-data-status-away/avatar-wrap:opacity-45`} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'}>
                           <Icon class="size-6 shrink" name={f().avatar} />
                         </View>
-                        <View class={`bg-current text-fg absolute right-[-1.5px] bottom-[-1.5px] rotate-45 shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] size-2 data-status-offline:bg-none data-status-offline:bg-fg-subtle data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-bg data-tone-warn:bg-none data-tone-warn:bg-warn data-tone-warn:text-bg data-tone-info:bg-none data-tone-info:bg-info data-tone-info:text-bg group-data-status-offline/avatar-wrap:opacity-45`} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'} data-tone-success={(f().status === 'online' ? 'success' : f().status === 'ingame' ? 'info' : f().status === 'away' ? 'warn' : '') === "success"} data-tone-info={(f().status === 'online' ? 'success' : f().status === 'ingame' ? 'info' : f().status === 'away' ? 'warn' : '') === "info"} data-tone-warn={(f().status === 'online' ? 'success' : f().status === 'ingame' ? 'info' : f().status === 'away' ? 'warn' : '') === "warn"} />
+                        <View class={`bg-current text-fg absolute -right-0.5 -bottom-0.5 rotate-45 shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] size-2 data-status-offline:bg-none data-status-offline:bg-fg-subtle data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-bg data-tone-warn:bg-none data-tone-warn:bg-warn data-tone-warn:text-bg data-tone-info:bg-none data-tone-info:bg-info data-tone-info:text-bg group-data-status-offline/avatar-wrap:opacity-45`} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'} data-tone-success={(f().status === 'online' ? 'success' : f().status === 'ingame' ? 'info' : f().status === 'away' ? 'warn' : '') === "success"} data-tone-info={(f().status === 'online' ? 'success' : f().status === 'ingame' ? 'info' : f().status === 'away' ? 'warn' : '') === "info"} data-tone-warn={(f().status === 'online' ? 'success' : f().status === 'ingame' ? 'info' : f().status === 'away' ? 'warn' : '') === "warn"} />
                       </View>
                       <View class="grow shrink basis-0 gap-0">
                         <Text class={`font-semibold text-lg text-fg text-start whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>

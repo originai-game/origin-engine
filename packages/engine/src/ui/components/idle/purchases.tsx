@@ -29,9 +29,9 @@ export interface IdlePurchasesProps {
 export function IdlePurchases(props: IdlePurchasesProps) {
   return (
     <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.purchases.name")}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
-        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
+        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
           {props.title !== '' ? props.title : t("idle.purchases.name")}
         </Text>
         <Show when={(props.amounts ?? []).length}>
@@ -57,8 +57,8 @@ export function IdlePurchases(props: IdlePurchasesProps) {
               <For each={props.upgrades}>
                 {(u) => (
                 <View class={`group/row flex-row items-center nine-plate-cut text-fg transition duration-317 border border-rim-soft border-l-3 border-hud-accent py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap ${packClass("Row", "frame")}`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
-                  <View class={`justify-center items-center bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 size-[3.429rem] group-data-locked/row:opacity-45 compact:size-[2.857rem] ${packClass("Slot", "frame")}`}>
-                    <Icon class="size-[64%]" name={u().locked ? 'lock' : u().icon} />
+                  <View class={`justify-center items-center bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 size-12 group-data-locked/row:opacity-45 compact:size-10 ${packClass("Slot", "frame")}`}>
+                    <Icon class="size-16/25" name={u().locked ? 'lock' : u().icon} />
                   </View>
                   <View class="grow shrink basis-0 gap-0.5 compact:grow compact:shrink compact:basis-0 group-data-locked/row:opacity-45">
                     <View class="flex-row items-center w-full gap-2">
@@ -66,7 +66,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
                         {u().name}
                       </Text>
                       <Show when={u().level > 0}>
-                        <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums text-fg-muted transition duration-317 whitespace-nowrap py-0 px-1 rounded-capsule ${packClass("Chip", "frame")}`} data-tag-level={true}>
+                        <Text class={`font-bold text-xs leading-4.5 tabular-nums text-fg-muted transition duration-317 whitespace-nowrap py-0 px-1 rounded-capsule ${packClass("Chip", "frame")}`} data-tag-level={true}>
                           {t("idle.purchases.level", { level: formatNumber(u().level) })}
                         </Text>
                       </Show>
@@ -77,17 +77,17 @@ export function IdlePurchases(props: IdlePurchasesProps) {
                   </View>
                   <View class="items-end max-w-1/2 gap-1 compact:flex-row compact:grow compact:shrink-0 compact:basis-full compact:items-center compact:max-w-full compact:justify-end">
                     <Show when={u().maxed}>
-                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums nine-chip-cut text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
+                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
                         {t("idle.purchases.maxed")}
                       </Text>
                     </Show>
                     <Show when={!u().maxed && u().locked}>
-                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums nine-chip-cut text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
+                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
                         {t("idle.purchases.locked")}
                       </Text>
                     </Show>
                     <Show when={!u().maxed && !u().locked && !u().affordable}>
-                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums nine-chip-cut text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger data-tag-short:text-bg ${packClass("Chip", "frame")}`} data-tag-short={true}>
+                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger data-tag-short:text-bg ${packClass("Chip", "frame")}`} data-tag-short={true}>
                         {t("idle.purchases.short")}
                       </Text>
                     </Show>
@@ -95,7 +95,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
                       <Button class={`text-accent min-h-11 min-w-32 max-w-full py-0.5 px-2 data-not-affordable:text-danger ${packClass("Button", "plate", "primary")}`} disabled={!u().affordable || u().maxed || u().locked} label={u().cost ? t("idle.purchases.buyFor", { name: u().name, cost: u().cost }) : t("idle.purchases.buyNamed", { name: u().name })} onPress={(e) => props.onBuy?.(e, u().id)} data-not-affordable={!(u().affordable)}>
                         <View class="items-center max-w-full gap-0">
                           <Show when={u().count}>
-                            <Text class={`tabular-nums text-current whitespace-nowrap text-[0.857rem] font-bold opacity-80`}>
+                            <Text class={`tabular-nums text-current whitespace-nowrap text-xs font-bold opacity-80`}>
                               {u().count}
                             </Text>
                           </Show>

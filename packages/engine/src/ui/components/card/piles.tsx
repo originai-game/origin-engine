@@ -25,7 +25,7 @@ export function CardPiles(props: CardPilesProps) {
         {(p) => (
         <View class={`flex-row gap-1 group/pile shrink min-w-11 min-h-11 items-center justify-center p-1`} role="button" disabled={!p().enabled} label={t("card.piles.count", { label: p().label, count: p().count })} onPress={(e) => props.onOpen?.(e, p().id)} data-kind-discard={(p().kind) === 'discard'} data-empty={p().count === 0}>
           <View class="items-center gap-0.5">
-            <View class={`group/stack w-12 h-[67.2px] mr-1 mt-1`}>
+            <View class={`group/stack w-12 h-16.75 mr-1 mt-1`}>
               <Show when={p().count > 1}>
                 <View class="absolute shadow-[inset_0px_0px_0px_1.5px_#ffffff38] -translate-x-1 -translate-y-1 inset-0" />
               </Show>
@@ -33,13 +33,13 @@ export function CardPiles(props: CardPilesProps) {
                 <View class="absolute shadow-[inset_0px_0px_0px_1.5px_#ffffff38] -translate-x-0.5 -translate-y-0.5 inset-0" />
               </Show>
               <View class="flex-row items-center absolute shadow-[inset_0px_0px_0px_1.5px_#ffffff38] justify-center inset-0 gap-0 group-data-empty/stack:bg-none group-data-empty/stack:bg-transparent group-data-empty/stack:shadow-[inset_0px_0px_0px_1.5px_#ffffff47]">
-                <Icon class="text-fg-muted size-[56%] shrink" name={p().icon} />
+                <Icon class="text-fg-muted size-14/25 shrink" name={p().icon} />
               </View>
-              <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap nine-chip-cut bg-fg text-fg-inverse text-[1.143rem] font-bold py-0 px-0.5 group-data-kind-discard/pile:bg-none group-data-kind-discard/pile:bg-danger group-data-empty/stack:bg-none group-data-empty/stack:text-fg-muted ${packClass("Chip", "frame")}`}>
+              <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap nine-chip-cut bg-fg text-fg-inverse text-base font-bold py-0 px-0.5 group-data-kind-discard/pile:bg-none group-data-kind-discard/pile:bg-danger group-data-empty/stack:bg-none group-data-empty/stack:text-fg-muted ${packClass("Chip", "frame")}`}>
                 {formatNumber(p().count)}
               </Text>
             </View>
-            <Text class={`tracking-[0.18em] uppercase text-fg-muted max-w-36 whitespace-nowrap text-ellipsis text-center text-[0.857rem] font-semibold overflow-hidden`}>
+            <Text class={`tracking-kicker uppercase text-fg-muted max-w-36 whitespace-nowrap text-ellipsis text-center text-xs font-semibold overflow-hidden`}>
               {p().label}
             </Text>
           </View>

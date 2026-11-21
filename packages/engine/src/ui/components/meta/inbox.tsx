@@ -33,7 +33,7 @@ export function Inbox(props: InboxProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg h-auto p-4 gap-3 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.inbox.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft py-1 px-4 gap-2`}>
-        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title || t("meta.inbox.title")}
         </Text>
         <Show when={props.summary}>
@@ -45,8 +45,8 @@ export function Inbox(props: InboxProps) {
       <Show when={(props.loading ?? false)} fallback={
           <Show when={props.error} fallback={
               <Show when={!(props.messages ?? []).length} fallback={
-                  <View class={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] compact:grid-cols-[minmax(0,1fr)]`}>
-                    <Scroll class={`max-h-140 p-0.5 m-0 gap-1 compact:min-h-[11.429rem] compact:max-h-48`} label={t("meta.inbox.messages")}>
+                  <View class={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] compact:grid-cols-1`}>
+                    <Scroll class={`max-h-140 p-0.5 m-0 gap-1 compact:min-h-40 compact:max-h-48`} label={t("meta.inbox.messages")}>
                       <For each={(props.messages ?? [])}>
                         {(message) => (
                         <View>
@@ -65,7 +65,7 @@ export function Inbox(props: InboxProps) {
                                 <Text class={`text-caption text-fg-muted shrink`}>
                                   {message().date}
                                 </Text>
-                                <Text class={`font-bold text-caption tabular-nums bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c] text-fg-subtle transition duration-317 tracking-[0.14em] uppercase py-0 px-2 rounded-capsule group-data-unread/row:text-gold shrink`}>
+                                <Text class={`font-bold text-caption tabular-nums bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c] text-fg-subtle transition duration-317 tracking-label uppercase py-0 px-2 rounded-capsule group-data-unread/row:text-gold shrink`}>
                                   {message().unread ? t("meta.inbox.unread") : t("meta.inbox.read")}
                                 </Text>
                                 <Show when={message().hasAttachments}>
@@ -104,7 +104,7 @@ export function Inbox(props: InboxProps) {
                             </Text>
                             <Show when={message().hasAttachments}>
                               <View class={`w-full gap-1`} label={t("meta.inbox.attachments")}>
-                                <Text class="font-bold text-caption tracking-[0.14em] uppercase text-fg-muted m-0">
+                                <Text class="font-bold text-caption tracking-label uppercase text-fg-muted m-0">
                                   {t("meta.inbox.attachments")}
                                 </Text>
                                 <View class="flex-row flex-wrap p-0 m-0 gap-1">

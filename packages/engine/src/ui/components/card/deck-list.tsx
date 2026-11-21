@@ -42,13 +42,13 @@ export function CardDeckList(props: CardDeckListProps) {
   return (
     <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg p-4 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title}>
       <View class={`flex-row items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-2`}>
-        <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden shrink`}>
+        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden shrink`}>
           {props.title}
         </Text>
       </View>
       <Show when={props.limit}>
         <View class={`group/size grid grid-cols-[1fr_auto] w-full items-baseline py-0 px-1`} data-under={props.total < props.limit} data-over={props.total > props.limit}>
-          <Text class="text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-muted">
+          <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-muted">
             {t("card.deck.size")}
           </Text>
           <Text class="whitespace-nowrap text-[18.24px] font-bold text-fg group-data-over/size:text-danger">
@@ -71,7 +71,7 @@ export function CardDeckList(props: CardDeckListProps) {
               <View class={`flex-row items-center text-rim-strong transition duration-317 w-full pr-0.5 gap-0.5 rounded-control data-type-attack:text-danger data-type-skill:text-info data-type-power:text-epic data-type-curse:text-fg-subtle data-down:opacity-45 ${e().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} role="listitem" current={e().id === props.selected} data-type-attack={(e().type) === 'attack'} data-type-curse={(e().type) === 'curse'} data-type-power={(e().type) === 'power'} data-type-skill={(e().type) === 'skill'} data-type-status={(e().type) === 'status'} data-selected={e().id === props.selected}>
                 <Button class={`grow shrink basis-0 min-h-11 px-2 text-fg ${packClass("Button", "plate")}`} label={e().name} onPress={(ev) => props.onChoose?.(ev, e().id)}>
                   <View class="flex-row items-center w-full gap-2">
-                    <View class={`flex-row items-center w-[1.821rem] h-[2.036rem] justify-center bg-linear-to-b from-hud-accent-hi to-hud-accent text-hud-accent-fg font-bold gap-0`} label={t("card.face.cost", { cost: e().cost })}>
+                    <View class={`flex-row items-center w-6.25 h-7.25 justify-center bg-linear-to-b from-hud-accent-hi to-hud-accent text-hud-accent-fg font-bold gap-0`} label={t("card.face.cost", { cost: e().cost })}>
                       <Text class="shrink">{e().cost}</Text>
                     </View>
                     <Text class={`grow shrink basis-0 text-start whitespace-nowrap text-ellipsis font-semibold overflow-hidden`}>

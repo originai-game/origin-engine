@@ -50,9 +50,9 @@ export interface ShopConfirmProps {
 export function ShopConfirm(props: ShopConfirmProps) {
   return (
     <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-2 border compact:nine-panel-cut disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.confirm.name")} busy={props.busy} onAction={{ back: (e) => props.onCancel?.(e) }} data-tier-common={(props.rarity || 'common') === "common"}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start text-start py-1 px-4 gap-0.5`}>
-        <Text class={`font-display text-xs font-semibold leading-tight tracking-[0.18em] uppercase text-fg-subtle m-0`}>
+        <Text class={`font-display text-xs font-semibold leading-tight tracking-kicker uppercase text-fg-subtle m-0`}>
           {props.title !== '' ? props.title : t("general.confirm.name")}
         </Text>
         <Text class={`text-fg text-[20.64px] font-bold line-clamp-3 m-0 overflow-hidden`}>
@@ -61,8 +61,8 @@ export function ShopConfirm(props: ShopConfirmProps) {
       </View>
       <Scroll class="shrink w-full gap-3">
         <View class="flex-row items-center w-full gap-3">
-          <View class={`justify-center items-center bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 size-24 compact:size-[4.571rem] ${packClass("Slot", "frame")}`}>
-            <Icon class="size-[74%]" name={props.icon} />
+          <View class={`justify-center items-center bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 size-24 compact:size-16 ${packClass("Slot", "frame")}`}>
+            <Icon class="size-37/50" name={props.icon} />
           </View>
           <Show when={props.detail}>
             <Text class={`grow shrink basis-0 text-fg-muted m-0`}>
@@ -75,11 +75,11 @@ export function ShopConfirm(props: ShopConfirmProps) {
             {(p, i) => (
             <View class="group/entry w-full py-1 gap-1 data-later:border-t data-later:border-material-control-hover" data-later={i() >= 1} data-short={p().short}>
               <View class="flex-row items-center gap-y-0.5 gap-x-3 w-full flex-wrap">
-                <Text class={`grow shrink basis-0 font-semibold text-xs leading-4.5 text-fg-subtle tracking-[0.18em] uppercase`}>
+                <Text class={`grow shrink basis-0 font-semibold text-xs leading-4.5 text-fg-subtle tracking-kicker uppercase`}>
                   {t("general.shop.price")}
                 </Text>
                 <View class={`flex-row items-center max-w-full ml-auto text-2xl text-fg gap-0.5 group-data-short/entry:text-danger`}>
-                  <Icon class="size-[1.429rem]" name={p().icon} />
+                  <Icon class="size-5" name={p().icon} />
                   <Show when={p().was}>
                     <Text class={`line-through text-fg-muted mr-1 whitespace-nowrap text-reading font-semibold shrink`}>
                       {p().was}
@@ -93,7 +93,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
               <Show when={p().short} fallback={
                   <Show when={p().after}>
                     <View class={`flex-row items-center gap-y-0.5 gap-x-3 w-full flex-wrap`} label={t("general.confirm.afterSaid", { currency: p().label, after: p().after })}>
-                      <Text class={`grow shrink basis-0 font-semibold text-xs leading-4.5 text-fg-subtle tracking-[0.18em] uppercase`}>
+                      <Text class={`grow shrink basis-0 font-semibold text-xs leading-4.5 text-fg-subtle tracking-kicker uppercase`}>
                         {t("general.confirm.balance")}
                       </Text>
                       <Text class="font-bold tabular-nums max-w-full ml-auto text-end">{p().after}</Text>
@@ -101,7 +101,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
                   </Show>
               }>
                 <View class={`flex-row items-center gap-y-0.5 gap-x-3 w-full flex-wrap`} label={p().missing ? t("general.confirm.missingSaid", { amount: p().missing, currency: p().label }) : t("general.confirm.shortOf", { currency: p().label })}>
-                  <Text class="grow shrink basis-0 text-xs font-semibold tracking-[0.18em] uppercase text-danger">
+                  <Text class="grow shrink basis-0 text-xs font-semibold tracking-kicker uppercase text-danger">
                     {t("general.confirm.shortOf", { currency: p().label })}
                   </Text>
                   <Show when={p().missing}>
@@ -126,10 +126,10 @@ export function ShopConfirm(props: ShopConfirmProps) {
           <Text class={`text-danger m-0`} role="status">{props.reason}</Text>
         </Show>
         <View class="flex-row items-center w-full gap-1">
-          <Button class={`grow shrink basis-0 min-h-[50.6px] gap-1 ${packClass("Button", "plate")}`} label={t("general.confirm.cancel")} onPress={(e) => props.onCancel?.(e)}>
+          <Button class={`grow shrink basis-0 min-h-12.75 gap-1 ${packClass("Button", "plate")}`} label={t("general.confirm.cancel")} onPress={(e) => props.onCancel?.(e)}>
             <Text>{t("general.confirm.cancel")}</Text>
           </Button>
-          <Button class={`text-accent grow shrink basis-0 min-h-[50.6px] gap-1 compact:grow ${packClass("Button", "plate", "primary")}`} disabled={!props.canBuy || props.busy} label={props.busy ? t("general.confirm.busy") : t("general.confirm.buy")} onPress={(e) => props.onConfirm?.(e)}>
+          <Button class={`text-accent grow shrink basis-0 min-h-12.75 gap-1 compact:grow ${packClass("Button", "plate", "primary")}`} disabled={!props.canBuy || props.busy} label={props.busy ? t("general.confirm.busy") : t("general.confirm.buy")} onPress={(e) => props.onConfirm?.(e)}>
             <Text>{props.busy ? t("general.confirm.busy") : t("general.confirm.buy")}</Text>
           </Button>
         </View>

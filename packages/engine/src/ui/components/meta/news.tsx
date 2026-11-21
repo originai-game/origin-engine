@@ -28,7 +28,7 @@ export function News(props: NewsProps) {
   return (
     <View class={`border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full max-h-full p-4 gap-3 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.news.title")} busy={(props.loading ?? false)}>
       <View class={`min-h-12 border-b border-rim-soft py-1 px-4`}>
-        <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title || t("meta.news.title")}
         </Text>
       </View>
@@ -42,19 +42,19 @@ export function News(props: NewsProps) {
                         <View>
                           <View class={`border-rim-soft nine-plate-cut border border-rim transition duration-317 items-start py-3 px-4 gap-2 border data-selected:border-accent data-down:opacity-45`} data-unread={entry().unread} data-pinned={entry().pinned}>
                             <View class="flex-row flex-wrap items-center w-full gap-2">
-                              <Text class={`font-bold text-caption text-info tracking-[0.14em] uppercase bg-well py-0 px-1 rounded-capsule shrink`}>
+                              <Text class={`font-bold text-caption text-info tracking-label uppercase bg-well py-0 px-1 rounded-capsule shrink`}>
                                 {entry().kind}
                               </Text>
                               <Text class={`text-caption text-fg-subtle shrink`}>
                                 {entry().date}
                               </Text>
                               <Show when={entry().pinned}>
-                                <Text class={`font-bold text-caption tabular-nums nine-chip-cut bg-gold border border-rim text-gold-fg transition duration-317 tracking-[0.14em] uppercase py-0 px-1 shrink ${packClass("Chip", "frame")}`}>
+                                <Text class={`font-bold text-caption tabular-nums nine-chip-cut bg-gold border border-rim text-gold-fg transition duration-317 tracking-label uppercase py-0 px-1 shrink ${packClass("Chip", "frame")}`}>
                                   {t("meta.news.pinned")}
                                 </Text>
                               </Show>
                               <Show when={entry().unread}>
-                                <Text class={`font-bold text-caption tabular-nums nine-chip-cut bg-gold border border-rim text-gold-fg transition duration-317 tracking-[0.14em] uppercase py-0 px-1 shrink ${packClass("Chip", "frame")}`}>
+                                <Text class={`font-bold text-caption tabular-nums nine-chip-cut bg-gold border border-rim text-gold-fg transition duration-317 tracking-label uppercase py-0 px-1 shrink ${packClass("Chip", "frame")}`}>
                                   {t("meta.news.unread")}
                                 </Text>
                               </Show>
@@ -73,7 +73,7 @@ export function News(props: NewsProps) {
                             </Show>
                             <Show when={entry().id === props.selected}>
                               <Show when={entry().image}>
-                                <Image class={`w-full max-h-60 aspect-[2/1] object-cover nine-plate-cut`} src={entry().image} />
+                                <Image class={`w-full max-h-60 aspect-2/1 object-cover nine-plate-cut`} src={entry().image} />
                               </Show>
                               <Show when={entry().body}>
                                 <Text class={`text-fg-muted m-0`}>

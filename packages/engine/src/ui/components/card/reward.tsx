@@ -36,11 +36,11 @@ export function CardReward(props: CardRewardProps) {
     <View class={`grow shrink basis-0 text-fg items-center justify-center p-0 gap-4 disabled:text-fg-subtle`} label={props.title} onAction={{ back: (e) => props.onSkip?.(e) }}>
       <View class={`min-h-12 border-b border-rim-soft w-full items-center py-1 px-4 gap-0.5`}>
         <Show when={props.kicker}>
-          <Text class={`text-center whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-muted overflow-hidden`}>
+          <Text class={`text-center whitespace-nowrap text-ellipsis text-xs font-semibold tracking-kicker uppercase text-fg-muted overflow-hidden`}>
             {props.kicker}
           </Text>
         </Show>
-        <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg text-center m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg text-center m-0`}>
           {props.title}
         </Text>
       </View>
@@ -49,7 +49,7 @@ export function CardReward(props: CardRewardProps) {
           <Show when={(props.choices)?.length ?? 0} fallback={<Text class="text-center m-0 shrink" role="status">{t("card.reward.empty")}</Text>}><For each={props.choices}>
             {(c) => (
             <Show when={c().relic} fallback={
-                <View class={`flex-row items-stretch gap-1 shrink basis-[13.714rem] min-w-[105.6px] aspect-[7/10] justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
+                <View class={`flex-row items-stretch gap-1 shrink basis-48 min-w-26.5 aspect-7/10 justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
                   <View class="grow w-full">
                     <View class="grow w-full">
                       <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={!c().enabled} />
@@ -60,13 +60,13 @@ export function CardReward(props: CardRewardProps) {
                   </View>
                 </View>
             }>
-              <View class={`flex-row items-stretch gap-1 group/relic shrink basis-[13.714rem] min-w-[105.6px] aspect-[7/10] justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
+              <View class={`flex-row items-stretch gap-1 group/relic shrink basis-48 min-w-26.5 aspect-7/10 justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
                 <View class="grow w-full">
                   <View class={`grow w-full items-center justify-center text-center border-[1.5px] border-gold nine-plate-cut p-2 gap-1 overflow-hidden text-fg ${packClass("Plate", "frame")}`}>
-                    <View class={`flex-row items-center w-[42%] aspect-square justify-center bg-tile-pressed gap-0`}>
-                      <Icon class="text-gold size-[58%] shrink" name={c().icon} />
+                    <View class={`flex-row items-center w-21/50 aspect-square justify-center bg-tile-pressed gap-0`}>
+                      <Icon class="text-gold size-29/50 shrink" name={c().icon} />
                     </View>
-                    <Text class={`w-full whitespace-nowrap text-ellipsis text-[0.786rem] font-bold tracking-[0.14em] uppercase text-gold overflow-hidden`}>
+                    <Text class={`w-full whitespace-nowrap text-ellipsis text-2xs font-bold tracking-label uppercase text-gold overflow-hidden`}>
                       {c().typeLabel || t("card.reward.relic")}
                     </Text>
                     <Text class={`w-full line-clamp-2 text-base font-bold overflow-hidden`}>

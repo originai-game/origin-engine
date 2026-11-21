@@ -45,7 +45,7 @@ export function CardCollection(props: CardCollectionProps) {
     <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg p-4 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("card.collection.cards")}>
       <Show when={props.title}>
         <View class={`flex-row items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-2`}>
-          <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0 shrink`}>
+          <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0 shrink`}>
             {props.title}
           </Text>
         </View>
@@ -59,7 +59,7 @@ export function CardCollection(props: CardCollectionProps) {
                 <View class={`flex-row items-center justify-center group/filter min-h-11 min-w-11 text-fg-muted py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={f().id === props.filter} label={f().label} onPress={(e) => props.onChoosefilter?.(e, f().id)} data-selected={f().id === props.filter}>
                   <Text class="whitespace-nowrap">{f().label}</Text>
                   <Show when={(f().count ?? 0) > 0}>
-                    <Text class={`text-[0.857rem] font-bold ${f().id === props.filter ? "bg-hud-accent text-hud-accent-fg" : `${packClass("Chip", "frame")} text-fg-muted`} py-0 px-1 rounded-capsule`}>
+                    <Text class={`text-xs font-bold ${f().id === props.filter ? "bg-hud-accent text-hud-accent-fg" : `${packClass("Chip", "frame")} text-fg-muted`} py-0 px-1 rounded-capsule`}>
                       {formatNumber(f().count ?? 0)}
                     </Text>
                   </Show>
@@ -77,12 +77,12 @@ export function CardCollection(props: CardCollectionProps) {
           </View>
       }>
         <Scroll class="gap-2">
-          <View class="grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] w-full p-1" role="grid" label={props.title || t("card.collection.cards")}>
+          <View class="grid grid-cols-fill-32 w-full p-1" role="grid" label={props.title || t("card.collection.cards")}>
             <For each={props.cards}>
               {(c) => (
               <View class="items-center gap-0.5">
                 <Show when={c().canAdd} fallback={
-                    <View class={`text-fg transition duration-317 w-full aspect-[7/10] justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().reason || (c().locked ? t("card.collection.locked") : t("card.collection.refused"))} onPress={(e) => props.onInspect?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
+                    <View class={`text-fg transition duration-317 w-full aspect-7/10 justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().reason || (c().locked ? t("card.collection.locked") : t("card.collection.refused"))} onPress={(e) => props.onInspect?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
                       <View class="size-full">
                         <View class="size-full">
                           <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={c().locked} />
@@ -91,7 +91,7 @@ export function CardCollection(props: CardCollectionProps) {
                           <View class="absolute pointer-events-none inset-0" />
                         </Show>
                         <Show when={c().owned > 0}>
-                          <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-tile text-fg text-[0.857rem] font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                          <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-tile text-fg text-xs font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                             {t("card.collection.owned", { count: c().owned })}
                           </Text>
                         </Show>
@@ -101,13 +101,13 @@ export function CardCollection(props: CardCollectionProps) {
                       </View>
                     </View>
                 }>
-                  <View class={`text-fg transition duration-317 w-full aspect-[7/10] justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onAdd?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
+                  <View class={`text-fg transition duration-317 w-full aspect-7/10 justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onAdd?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
                     <View class="size-full">
                       <View class="size-full">
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={false} />
                       </View>
                       <Show when={c().owned > 0}>
-                        <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-tile text-fg text-[0.857rem] font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                        <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-tile text-fg text-xs font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                           {t("card.collection.owned", { count: c().owned })}
                         </Text>
                       </Show>
@@ -117,11 +117,11 @@ export function CardCollection(props: CardCollectionProps) {
                     </View>
                   </View>
                 </Show>
-                <Text class={`max-w-full text-center whitespace-nowrap text-ellipsis text-[0.857rem] font-bold text-fg-muted overflow-hidden data-in-deck:text-hud-accent`} data-in-deck={c().inDeck > 0}>
+                <Text class={`max-w-full text-center whitespace-nowrap text-ellipsis text-xs font-bold text-fg-muted overflow-hidden data-in-deck:text-hud-accent`} data-in-deck={c().inDeck > 0}>
                   {c().inDeck > 0 ? t("card.collection.inDeck", { count: c().inDeck }) : t("card.collection.notInDeck")}
                 </Text>
                 <Show when={!c().canAdd}>
-                  <Text class={`max-w-full text-center text-[0.857rem] font-bold text-danger`}>
+                  <Text class={`max-w-full text-center text-xs font-bold text-danger`}>
                     {c().reason || (c().locked ? t("card.collection.locked") : t("card.collection.refused"))}
                   </Text>
                 </Show>

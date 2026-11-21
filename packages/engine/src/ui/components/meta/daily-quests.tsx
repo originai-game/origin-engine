@@ -31,7 +31,7 @@ export function DailyQuests(props: DailyQuestsProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.quests.name")} busy={props.loading}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
-        <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
+        <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.quests.name")}
         </Text>
         <Show when={props.refresh}>
@@ -70,8 +70,8 @@ export function DailyQuests(props: DailyQuestsProps) {
                         </Text>
                       </View>
                     </View>
-                    <View class="flex-row items-center max-w-[45%] gap-1 compact:max-w-full compact:w-full compact:justify-between">
-                      <View class={`text-fg min-w-[89.6px] max-w-full min-h-16 items-center justify-center bg-glass border border-rim nine-plate-cut py-0.5 px-2 gap-0 compact:flex-row compact:gap-x-1 compact:min-h-0 compact:py-0.5 compact:px-3 data-state-done:text-gold data-state-done:bg-transparent group-data-state-claimed/row:opacity-66`} label={t("general.quests.reward", { reward: q().reward })} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
+                    <View class="flex-row items-center max-w-9/20 gap-1 compact:max-w-full compact:w-full compact:justify-between">
+                      <View class={`text-fg min-w-22.5 max-w-full min-h-16 items-center justify-center bg-glass border border-rim nine-plate-cut py-0.5 px-2 gap-0 compact:flex-row compact:gap-x-1 compact:min-h-0 compact:py-0.5 compact:px-3 data-state-done:text-gold data-state-done:bg-transparent group-data-state-claimed/row:opacity-66`} label={t("general.quests.reward", { reward: q().reward })} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
                         <Icon class="size-6" name={q().rewardIcon} />
                         <Text class="text-center text-xl font-bold tabular-nums">{q().reward}</Text>
                       </View>
@@ -81,7 +81,7 @@ export function DailyQuests(props: DailyQuestsProps) {
                         </Button>
                       </Show>
                       <Show when={q().state === 'claimed'}>
-                        <View class={`flex-row items-center font-bold tracking-[0.14em] uppercase text-success gap-0.5 animate-stamp`}>
+                        <View class={`flex-row items-center font-bold tracking-label uppercase text-success gap-0.5 animate-stamp`}>
                           <Icon class="size-4" name="check" />
                           <Text class="whitespace-nowrap shrink">{t("general.quests.claimed")}</Text>
                         </View>

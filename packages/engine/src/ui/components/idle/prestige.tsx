@@ -46,12 +46,12 @@ export interface IdlePrestigeProps {
 export function IdlePrestige(props: IdlePrestigeProps) {
   return (
     <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full h-auto max-h-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.prestige.name")} data-confirming={props.confirming === true} data-met={props.met === true}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start py-1 px-4 gap-0`}>
-        <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-muted overflow-hidden`}>
+        <Text class={`whitespace-nowrap text-ellipsis text-xs font-semibold tracking-kicker uppercase text-fg-muted overflow-hidden`}>
           {t("idle.prestige.kicker")}
         </Text>
-        <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg max-w-full m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg max-w-full m-0`}>
           {props.title !== '' ? props.title : t("idle.prestige.name")}
         </Text>
       </View>
@@ -59,10 +59,10 @@ export function IdlePrestige(props: IdlePrestigeProps) {
         <View class="w-full gap-3">
           <View class="flex-row items-center w-full gap-3">
             <View class={`justify-center items-center bg-tile shadow-[inset_0px_0px_0px_1.5px_#ffffff47,0px_4.576px_11.424px_#00000080] gap-2 size-16 rounded-full`}>
-              <Icon class="size-[70%]" name={props.icon} />
+              <Icon class="size-7/10" name={props.icon} />
             </View>
             <View class="grow shrink basis-0 gap-0">
-              <Text class={`tracking-xs text-fg-muted max-w-full text-[0.857rem] font-semibold`}>
+              <Text class={`tracking-xs text-fg-muted max-w-full text-xs font-semibold`}>
                 {t("idle.prestige.held", { currency: props.currency })}
               </Text>
               <Text class={`tabular-nums text-fg max-w-full text-[2.286rem] font-bold`}>
@@ -70,7 +70,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
               </Text>
             </View>
             <View class="items-end max-w-1/2 gap-0 shrink">
-              <Text class={`tracking-xs text-fg-muted max-w-full text-[0.857rem] font-semibold`}>
+              <Text class={`tracking-xs text-fg-muted max-w-full text-xs font-semibold`}>
                 {t("idle.prestige.gain")}
               </Text>
               <Text class={`tabular-nums text-fg max-w-full text-[2.286rem] font-bold data-tag-gain:text-xp data-tag-gain:text-end`} data-tag-gain={true}>
@@ -92,7 +92,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
                       {r().now}
                     </Text>
                     <Icon class="text-fg-muted size-4 rtl:-scale-x-100 rtl:scale-y-100" name="play" />
-                    <Text class={`whitespace-nowrap font-bold tabular-nums text-fg-muted data-tag-after:text-xp data-tag-after:text-[1.286rem] shrink`} data-tag-after={true}>
+                    <Text class={`whitespace-nowrap font-bold tabular-nums text-fg-muted data-tag-after:text-xp data-tag-after:text-lg shrink`} data-tag-after={true}>
                       {r().after}
                     </Text>
                   </View>
@@ -105,7 +105,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             <View class={`bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff24] p-2 gap-1`} data-met={props.met === true}>
               <View class="flex-row items-center w-full gap-1">
                 <Text class="grow shrink basis-0 text-start text-fg">{props.requirement}</Text>
-                <View class={`flex-row items-center bg-tile nine-chip-cut text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:text-bg ${packClass("Chip", "frame")}`} data-met={props.met === true}>
+                <View class={`flex-row items-center bg-tile nine-chip-cut text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:text-bg ${packClass("Chip", "frame")}`} data-met={props.met === true}>
                   <Icon class="text-shadow-2xs size-3" name={props.met ? 'check' : 'lock'} />
                   <Text class="whitespace-nowrap text-shadow-2xs shrink">
                     {props.met ? t("idle.prestige.met") : t("idle.prestige.notMet")}
@@ -114,10 +114,10 @@ export function IdlePrestige(props: IdlePrestigeProps) {
               </View>
               <Show when={(props.progress ?? -1) >= 0}>
                 <View class="flex-row items-center w-full gap-1">
-                  <View class={`grow shrink basis-0 min-w-12 bg-track shadow-sunk h-[0.714rem] rounded-capsule overflow-hidden`} role="progressbar" label={t("idle.prestige.progress")} valueMin={0} valueMax={100} valueNow={(props.progress ?? -1) * 100} valueText={props.progressText !== '' ? props.progressText : `${formatNumber((props.progress ?? -1) * 100, { decimals: 0 })}%`}>
+                  <View class={`grow shrink basis-0 min-w-12 bg-track shadow-sunk h-2.5 rounded-capsule overflow-hidden`} role="progressbar" label={t("idle.prestige.progress")} valueMin={0} valueMax={100} valueNow={(props.progress ?? -1) * 100} valueText={props.progressText !== '' ? props.progressText : `${formatNumber((props.progress ?? -1) * 100, { decimals: 0 })}%`}>
                     <View class={`bg-hud-accent h-full data-met:bg-none data-met:bg-success`} data-met={props.met === true} style={{ width: `${(100 * ((props.progress ?? -1) > 1 ? 1 : (props.progress ?? -1)))}%` }} />
                   </View>
-                  <Text class="max-w-1/2 whitespace-nowrap text-ellipsis text-[0.857rem] font-bold tabular-nums text-fg-muted overflow-hidden">
+                  <Text class="max-w-1/2 whitespace-nowrap text-ellipsis text-xs font-bold tabular-nums text-fg-muted overflow-hidden">
                     {props.progressText !== '' ? props.progressText : `${formatNumber((props.progress ?? -1) * 100, { decimals: 0 })}%`}
                   </Text>
                 </View>

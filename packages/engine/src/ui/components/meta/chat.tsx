@@ -62,7 +62,7 @@ export function Chat(props: ChatProps) {
           </Scroll>
         </View>
       </Show>
-      <View class={`grow shrink basis-0 nine-plate-cut bg-glass border border-rim w-full py-1 px-[1.5px] gap-0 ${packClass("Field", "frame")}`}>
+      <View class={`grow shrink basis-0 nine-plate-cut bg-glass border border-rim w-full py-1 px-0.5 gap-0 ${packClass("Field", "frame")}`}>
         <Scroll class={`flex-col-reverse grow shrink basis-0 w-full gap-0`} role="log" label={t("general.chat.messages")} live="polite">
           <Show when={props.messages.length} fallback={
               <Text class="text-center text-fg-muted p-4 m-0" role="status">{t("general.chat.empty")}</Text>
@@ -91,7 +91,7 @@ export function Chat(props: ChatProps) {
                       </Text>
                     </View>
                   </Show>
-                  <Text class={`text-start text-fg m-0 group-data-kind-own/message:text-end group-data-kind-own/message:bg-none group-data-kind-own/message:bg-surface-hover group-data-kind-system/message:text-fg-muted group-data-kind-system/message:max-w-full group-data-kind-system/message:p-0 data-bubble:max-w-[88%] data-bubble:bg-glass data-bubble:bg-transparent data-bubble:nine-plate-cut data-bubble:py-1 data-bubble:px-2`} data-bubble={m().kind !== 'system'} data-kind-own={(m().kind) === 'own'} data-kind-system={(m().kind) === 'system'}>
+                  <Text class={`text-start text-fg m-0 group-data-kind-own/message:text-end group-data-kind-own/message:bg-none group-data-kind-own/message:bg-surface-hover group-data-kind-system/message:text-fg-muted group-data-kind-system/message:max-w-full group-data-kind-system/message:p-0 data-bubble:max-w-22/25 data-bubble:bg-glass data-bubble:bg-transparent data-bubble:nine-plate-cut data-bubble:py-1 data-bubble:px-2`} data-bubble={m().kind !== 'system'} data-kind-own={(m().kind) === 'own'} data-kind-system={(m().kind) === 'system'}>
                     {m().text}
                   </Text>
                 </View>

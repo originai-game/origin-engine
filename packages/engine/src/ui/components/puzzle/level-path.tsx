@@ -34,7 +34,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo text-fg w-full p-2 gap-2 rounded-block border`} label={t("puzzle.path.name")}>
       <Show when={(props.levels ?? []).length && (props.chapters ?? []).length} fallback={
           <View class={`grow shrink basis-0 justify-center items-center p-6 gap-2`} role="status">
-            <Text class={`text-[1.143rem] leading-4.5 text-fg text-center bg-tile py-2 px-3 m-0`}>
+            <Text class={`text-base leading-4.5 text-fg text-center bg-tile py-2 px-3 m-0`}>
               {t("puzzle.path.empty")}
             </Text>
           </View>
@@ -45,17 +45,17 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
             <View class="mb-4 gap-0" label={c().label}>
               <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-plate-hi border border-rim nine-plate-cut px-3 gap-1 text-fg ${packClass("Plate", "frame")}`}>
                 <View class="flex-row items-center w-full gap-1">
-                  <Text class={`grow shrink basis-0 font-display text-[1.857rem] font-bold leading-[1.15] tracking-[-0.01em] text-start whitespace-nowrap m-0 overflow-hidden compact:text-[1.429rem]`}>
+                  <Text class={`grow shrink basis-0 font-display text-3xl font-bold leading-[1.15] tracking-tight text-start whitespace-nowrap m-0 overflow-hidden compact:text-xl`}>
                     {c().label}
                   </Text>
-                  <View class={`flex-row items-center text-caption bg-tile shadow-[inset_0px_1px_0px_#ffffff38] text-fg transition duration-317 py-[0.143rem] px-2 gap-0.5 rounded-capsule`} label={t("puzzle.path.chapterStarsName", { earned: c().earned, total: c().total })}>
-                    <Icon class={`text-gold size-[14.3px]`} name="star" />
-                    <Text class="text-[1.143rem] font-bold tabular-nums whitespace-nowrap shrink">
+                  <View class={`flex-row items-center text-caption bg-tile shadow-[inset_0px_1px_0px_#ffffff38] text-fg transition duration-317 py-0.5 px-2 gap-0.5 rounded-capsule`} label={t("puzzle.path.chapterStarsName", { earned: c().earned, total: c().total })}>
+                    <Icon class={`text-gold size-3.5`} name="star" />
+                    <Text class="text-base font-bold tabular-nums whitespace-nowrap shrink">
                       {t("puzzle.path.chapterStars", { earned: c().earned, total: c().total })}
                     </Text>
                   </View>
                 </View>
-                <View class={`w-full h-[0.357rem] bg-lit gap-2`}>
+                <View class={`w-full h-1.25 bg-lit gap-2`}>
                   <View class="absolute top-1 left-1 h-full bg-linear-to-r from-gold to-gold-hi shadow-[0px_0px_11.424px_#ffcf5ab2]" style={{ width: `${(100 * (c().total > 0 ? (c().earned >= c().total ? 1 : c().earned / c().total) : 0))}%` }} />
                 </View>
               </View>
@@ -63,52 +63,52 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                 <For each={props.levels}>
                   {(l, i) => (
                   <Show when={l().chapter === c().id}>
-                    <View class={`group/lane flex-row items-center w-full pt-1 pb-[34.743px] gap-0 data-state-current:pb-[50.743px]`} data-starred={l().state === 'done'} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'} data-selected={l().id === props.selected}>
+                    <View class={`group/lane flex-row items-center w-full pt-1 pb-8.75 gap-0 data-state-current:pb-12.75`} data-starred={l().state === 'done'} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'} data-selected={l().id === props.selected}>
                       <Show when={i() > 0 && (props.levels ?? [])[i() - 1]['chapter'] === l().chapter}>
-                        <View class={`absolute bg-fg shadow-[0px_0px_0px_3.424px_#04060c61,0px_3.424px_6.864px_#00000059] top-[-0.429rem] h-[0.857rem] rounded-capsule data-lit:bg-linear-to-r data-lit:from-gold-hi data-lit:to-gold data-lit:bg-transparent compact:top-[-0.343rem] compact:h-[0.686rem]`} data-lit={l().state === 'done' || l().state === 'current'} />
-                        <View class={`absolute bg-fg shadow-[0px_0px_0px_3.424px_#04060c61,0px_3.424px_6.864px_#00000059] top-[-0.429rem] h-[58.857px] w-[0.857rem] rounded-capsule data-lit:bg-linear-to-r data-lit:from-gold-hi data-lit:to-gold data-lit:bg-transparent compact:top-[-0.343rem] compact:h-[47.886px] compact:w-[0.686rem]`} data-lit={l().state === 'done' || l().state === 'current'} />
+                        <View class={`absolute bg-fg shadow-[0px_0px_0px_3.424px_#04060c61,0px_3.424px_6.864px_#00000059] -top-1.5 h-3 rounded-capsule data-lit:bg-linear-to-r data-lit:from-gold-hi data-lit:to-gold data-lit:bg-transparent compact:-top-1.25 compact:h-2.5`} data-lit={l().state === 'done' || l().state === 'current'} />
+                        <View class={`absolute bg-fg shadow-[0px_0px_0px_3.424px_#04060c61,0px_3.424px_6.864px_#00000059] -top-1.5 h-14.75 w-3 rounded-capsule data-lit:bg-linear-to-r data-lit:from-gold-hi data-lit:to-gold data-lit:bg-transparent compact:-top-1.25 compact:h-12 compact:w-2.5`} data-lit={l().state === 'done' || l().state === 'current'} />
                       </Show>
                       <Show when={i() + 1 < (props.levels ?? []).length && (props.levels ?? [])[i() + 1]['chapter'] === l().chapter}>
-                        <View class={`absolute bg-fg shadow-[0px_0px_0px_3.424px_#04060c61,0px_3.424px_6.864px_#00000059] top-13 w-[0.857rem] rounded-capsule data-lit:bg-linear-to-r data-lit:from-gold-hi data-lit:to-gold data-lit:bg-transparent group-data-state-current/lane:top-auto group-data-state-current/lane:h-3 group-data-state-current/lane:bottom-0 compact:w-[0.686rem]`} data-lit={(props.levels ?? [])[i() + 1]['state'] === 'done' || (props.levels ?? [])[i() + 1]['state'] === 'current'} />
+                        <View class={`absolute bg-fg shadow-[0px_0px_0px_3.424px_#04060c61,0px_3.424px_6.864px_#00000059] top-13 w-3 rounded-capsule data-lit:bg-linear-to-r data-lit:from-gold-hi data-lit:to-gold data-lit:bg-transparent group-data-state-current/lane:top-auto group-data-state-current/lane:h-3 group-data-state-current/lane:bottom-0 compact:w-2.5`} data-lit={(props.levels ?? [])[i() + 1]['state'] === 'done' || (props.levels ?? [])[i() + 1]['state'] === 'current'} />
                       </Show>
                       <View class="shrink basis-0" style={{ flexGrow: String(String(l().x)) }} />
-                      <View class="items-center max-w-105 w-36 h-24 mx-auto gap-2 compact:h-[4.8rem]">
-                        <View class={`flex-row items-center justify-center gap-1 group/node min-h-11 min-w-11 text-fg shadow-[inset_0px_0px_0px_2.288px_#ffffff59,inset_0px_3.424px_0px_#ffffff80,0px_9.136px_18.288px_#00000080] transition duration-317 p-0 size-[4.571rem] rounded-capsule compact:size-[3.657rem] data-state-current:text-hud-accent-fg data-state-current:bg-transparent data-state-current:shadow-[inset_0px_0px_0px_3.424px_#ffffff,0px_0px_0px_9.136px_#38e8ff4d,0px_0px_0px_18.288px_#38e8ff24,0px_0px_41.136px_#38e8ffcc] data-state-current:size-24 data-state-locked:text-fg-subtle data-state-locked:bg-transparent data-state-locked:shadow-[inset_0px_0px_0px_2.288px_#ffffff29,0px_6.864px_13.712px_#00000073] data-state-open:bg-transparent data-state-open:shadow-[inset_0px_0px_0px_3.424px_#38e8ff,inset_0px_4.576px_0px_#ffffff80,0px_9.136px_18.288px_#00000080] hover:shadow-[inset_0px_0px_0px_2.288px_#ffffffb2,inset_0px_3.424px_0px_#ffffff99,0px_11.424px_22.864px_#0000008c] data-selected:shadow-[inset_0px_0px_0px_2.288px_#ffffff59,inset_0px_3.424px_0px_#ffffff80,0px_0px_0px_4.576px_#ffffff,0px_0px_0px_9.136px_#38e8ff] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff59,0px_0px_0px_4.576px_#fffffff2] compact:data-state-current:size-[4.8rem]`} role="option" selected={l().id === props.selected} disabled={l().state === 'locked'} label={l().state === 'locked' ? t("puzzle.path.levelLocked", { number: l().number }) : l().state === 'done' ? t("puzzle.path.levelDone", { number: l().number, stars: l().stars, max: l().maxStars }) : l().state === 'current' ? t("puzzle.path.levelCurrent", { number: l().number }) : t("puzzle.path.levelOpen", { number: l().number })} onPress={(e) => props.onChoose?.(e, l().id)} onAction={{ details: (e) => props.onDetails?.(e, l().id) }} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'} data-selected={l().id === props.selected}>
+                      <View class="items-center max-w-105 w-36 h-24 mx-auto gap-2 compact:h-16.75">
+                        <View class={`flex-row items-center justify-center gap-1 group/node min-h-11 min-w-11 text-fg shadow-[inset_0px_0px_0px_2.288px_#ffffff59,inset_0px_3.424px_0px_#ffffff80,0px_9.136px_18.288px_#00000080] transition duration-317 p-0 size-16 rounded-capsule compact:size-12.75 data-state-current:text-hud-accent-fg data-state-current:bg-transparent data-state-current:shadow-[inset_0px_0px_0px_3.424px_#ffffff,0px_0px_0px_9.136px_#38e8ff4d,0px_0px_0px_18.288px_#38e8ff24,0px_0px_41.136px_#38e8ffcc] data-state-current:size-24 data-state-locked:text-fg-subtle data-state-locked:bg-transparent data-state-locked:shadow-[inset_0px_0px_0px_2.288px_#ffffff29,0px_6.864px_13.712px_#00000073] data-state-open:bg-transparent data-state-open:shadow-[inset_0px_0px_0px_3.424px_#38e8ff,inset_0px_4.576px_0px_#ffffff80,0px_9.136px_18.288px_#00000080] hover:shadow-[inset_0px_0px_0px_2.288px_#ffffffb2,inset_0px_3.424px_0px_#ffffff99,0px_11.424px_22.864px_#0000008c] data-selected:shadow-[inset_0px_0px_0px_2.288px_#ffffff59,inset_0px_3.424px_0px_#ffffff80,0px_0px_0px_4.576px_#ffffff,0px_0px_0px_9.136px_#38e8ff] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff59,0px_0px_0px_4.576px_#fffffff2] compact:data-state-current:size-16.75`} role="option" selected={l().id === props.selected} disabled={l().state === 'locked'} label={l().state === 'locked' ? t("puzzle.path.levelLocked", { number: l().number }) : l().state === 'done' ? t("puzzle.path.levelDone", { number: l().number, stars: l().stars, max: l().maxStars }) : l().state === 'current' ? t("puzzle.path.levelCurrent", { number: l().number }) : t("puzzle.path.levelOpen", { number: l().number })} onPress={(e) => props.onChoose?.(e, l().id)} onAction={{ details: (e) => props.onDetails?.(e, l().id) }} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'} data-selected={l().id === props.selected}>
                           <View class="items-center max-w-105 mx-auto gap-2 size-full">
                             <Show when={l().state === 'locked'} fallback={
-                                <Text class={`text-[2.143rem] leading-flat font-bold tabular-nums whitespace-nowrap text-shadow-xs text-shadow-bg/55 group-data-state-current/node:text-[2.857rem] group-data-state-current/node:text-shadow-none`} data-length-long={(l().number >= 10000 ? 'longer' : l().number >= 1000 ? 'long' : null) === 'long'} data-length-longer={(l().number >= 10000 ? 'longer' : l().number >= 1000 ? 'long' : null) === 'longer'}>
+                                <Text class={`text-4xl leading-flat font-bold tabular-nums whitespace-nowrap text-shadow-xs text-shadow-bg/55 group-data-state-current/node:text-display-lg group-data-state-current/node:text-shadow-none`} data-length-long={(l().number >= 10000 ? 'longer' : l().number >= 1000 ? 'long' : null) === 'long'} data-length-longer={(l().number >= 10000 ? 'longer' : l().number >= 1000 ? 'long' : null) === 'longer'}>
                                   {formatNumber(l().number)}
                                 </Text>
                             }>
-                              <Icon class="size-[38%]" name="lock" />
+                              <Icon class="size-19/50" name="lock" />
                             </Show>
                           </View>
                         </View>
                         <Show when={l().state === 'done'}>
-                          <View class={`flex-row items-end absolute left-1/2 translate-x-[-50%] bg-linear-to-b from-plate-hi to-plate-lo shadow-[inset_0px_1px_0px_#ffffff59,0px_3.424px_9.136px_#00000080] py-[0.143rem] px-1 gap-0 rounded-capsule`} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'}>
-                            <Icon class="text-fg-muted size-[1.189rem] compact:size-[0.951rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 1} />
+                          <View class={`flex-row items-end absolute left-1/2 -translate-x-1/2 bg-linear-to-b from-plate-hi to-plate-lo shadow-[inset_0px_1px_0px_#ffffff59,0px_3.424px_9.136px_#00000080] py-0.5 px-1 gap-0 rounded-capsule`} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'}>
+                            <Icon class="text-fg-muted size-4.25 compact:size-3.25 data-lit:text-gold shrink" name="star" data-lit={l().stars >= 1} />
                             <Show when={l().maxStars >= 2}>
-                              <Icon class="text-fg-muted size-[1.463rem] compact:size-[1.17rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 2} />
+                              <Icon class="text-fg-muted size-5 compact:size-4 data-lit:text-gold shrink" name="star" data-lit={l().stars >= 2} />
                             </Show>
                             <Show when={l().maxStars >= 3}>
-                              <Icon class="text-fg-muted size-[1.189rem] compact:size-[0.951rem] data-lit:text-gold shrink" name="star" data-lit={l().stars >= 3} />
+                              <Icon class="text-fg-muted size-4.25 compact:size-3.25 data-lit:text-gold shrink" name="star" data-lit={l().stars >= 3} />
                             </Show>
                           </View>
                         </Show>
                         <Show when={l().state === 'current'} fallback={
                             <Show when={l().id === props.selected} fallback={
                                 <Show when={l().state === 'open'}>
-                                  <Text class={`font-bold text-[0.857rem] leading-[1.6] text-fg absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-tile py-0 px-1`}>
+                                  <Text class={`font-bold text-xs leading-loose text-fg absolute left-1/2 -translate-x-1/2 whitespace-nowrap tracking-label uppercase bg-tile py-0 px-1`}>
                                     {t("puzzle.path.open")}
                                   </Text>
                                 </Show>
                             }>
-                              <Text class={`font-bold text-[0.857rem] leading-[1.6] text-fg absolute left-1/2 translate-x-[-50%] whitespace-nowrap tracking-[0.14em] uppercase bg-tile py-0 px-1`}>
+                              <Text class={`font-bold text-xs leading-loose text-fg absolute left-1/2 -translate-x-1/2 whitespace-nowrap tracking-label uppercase bg-tile py-0 px-1`}>
                                 {t("puzzle.path.selected")}
                               </Text>
                             </Show>
                         }>
-                          <Text class={`absolute left-1/2 translate-x-[-50%] whitespace-nowrap font-bold tracking-[0.14em] uppercase text-[0.929rem] text-hud-accent-fg bg-hud-accent-hi nine-chip-cut py-[0.214rem] px-3 ${packClass("Chip", "frame")}`}>
+                          <Text class={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap font-bold tracking-label uppercase text-caption text-hud-accent-fg bg-hud-accent-hi nine-chip-cut py-0.75 px-3 ${packClass("Chip", "frame")}`}>
                             {t("puzzle.path.play")}
                           </Text>
                         </Show>

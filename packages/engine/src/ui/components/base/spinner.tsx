@@ -17,7 +17,7 @@ export interface SpinnerProps {
 export function Spinner(props: SpinnerProps) {
   return (
     <View role="progressbar" busy={true} label={props.name || t("component.spinner.name")} style={{ width: String((props.size ?? 28) + "px"), height: String((props.size ?? 28) + "px") }}>
-      <View class="size-full rounded-full border-[4px] border-rim border-t-accent animate-spin" />
+      <View class="size-full rounded-full border-4 border-rim border-t-accent animate-spin" />
     </View>
   );
 }

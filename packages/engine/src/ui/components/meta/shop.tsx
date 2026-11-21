@@ -56,15 +56,15 @@ export interface ShopProps {
 export function Shop(props: ShopProps) {
   return (
     <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg p-4 gap-2 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
-        <View class="grow shrink basis-[8.571rem] gap-0.5 compact:basis-full">
+        <View class="grow shrink basis-30 gap-0.5 compact:basis-full">
           <Show when={props.kicker}>
-            <Text class={`text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap text-ellipsis overflow-hidden`}>
+            <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-subtle whitespace-nowrap text-ellipsis overflow-hidden`}>
               {props.kicker}
             </Text>
           </Show>
-          <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg line-clamp-2 m-0 overflow-hidden`}>
+          <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg line-clamp-2 m-0 overflow-hidden`}>
             {props.title !== '' ? props.title : t("general.shop.name")}
           </Text>
         </View>
@@ -73,7 +73,7 @@ export function Shop(props: ShopProps) {
             <For each={props.wallet}>
               {(w) => (
               <View class={`flex-row items-center max-w-full pr-2 pl-1 bg-glass shadow-[inset_0px_0px_0px_1px_#4e586c] py-0.5 gap-1 rounded-capsule`} label={t("general.shop.amount", { amount: w().amount, currency: w().label })}>
-                <Icon class="size-[1.429rem]" name={w().icon} />
+                <Icon class="size-5" name={w().icon} />
                 <Text class={`tabular-nums text-fg whitespace-nowrap font-bold text-ellipsis overflow-hidden shrink`}>
                   {w().amount}
                 </Text>
@@ -113,7 +113,7 @@ export function Shop(props: ShopProps) {
                   </View>
               }>
                 <Scroll class="grow shrink basis-0 gap-2">
-                  <View class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] w-full p-1 gap-1 compact:grid-cols-2" role="grid" label={props.title !== '' ? props.title : t("general.shop.name")}>
+                  <View class="grid grid-cols-fill-45 w-full p-1 gap-1 compact:grid-cols-2" role="grid" label={props.title !== '' ? props.title : t("general.shop.name")}>
                     <For each={props.offers}>
                       {(o) => (
                       <Show when={!o().soldOut && !o().owned && o().affordable} fallback={
@@ -124,12 +124,12 @@ export function Shop(props: ShopProps) {
                                 <Icon class="size-4" name={o().icon} />
                               </View>
                               <Show when={o().featured}>
-                                <Text class={`absolute top-2 text-xs font-bold tracking-[0.14em] uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
+                                <Text class={`absolute top-2 text-xs font-bold tracking-label uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
                                   {t("general.shop.featured")}
                                 </Text>
                               </Show>
                               <Show when={o().badge}>
-                                <Text class={`font-bold text-xs leading-[1.2] tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                                <Text class={`font-bold text-xs leading-[1.2] tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                   {o().badge}
                                 </Text>
                               </Show>
@@ -148,7 +148,7 @@ export function Shop(props: ShopProps) {
                                   {(p) => (
                                   <Show when={p().offer === o().id}>
                                     <View class={`flex-row items-center max-w-full text-lg text-fg gap-0.5 data-short:text-danger`} data-short={p().short}>
-                                      <Icon class="size-[1.286rem]" name={p().icon} />
+                                      <Icon class="size-4.5" name={p().icon} />
                                       <Show when={p().was}>
                                         <Text class={`line-through text-fg-muted mr-1 whitespace-nowrap text-reading font-semibold shrink`}>
                                           {p().was}
@@ -162,18 +162,18 @@ export function Shop(props: ShopProps) {
                                   )}
                                 </For>
                                 <Show when={o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-[0.14em] uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 ${packClass("Chip", "frame")}`}>
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 ${packClass("Chip", "frame")}`}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.soldOut")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={o().owned && !o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-[0.14em] uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-owned:bg-none data-kind-owned:bg-success data-kind-owned:text-boon-fg ${packClass("Chip", "frame")}`} data-kind-owned={true}>
-                                    <Icon class="size-[0.857rem]" name="check" />
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-owned:bg-none data-kind-owned:bg-success data-kind-owned:text-boon-fg ${packClass("Chip", "frame")}`} data-kind-owned={true}>
+                                    <Icon class="size-3" name="check" />
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.owned")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={!o().affordable && !o().soldOut && !o().owned}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-[0.14em] uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-short:bg-none data-kind-short:bg-danger data-kind-short:text-bg ${packClass("Chip", "frame")}`} data-kind-short={true}>
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-short:bg-none data-kind-short:bg-danger data-kind-short:text-bg ${packClass("Chip", "frame")}`} data-kind-short={true}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.short")}</Text>
                                   </View>
                                 </Show>
@@ -191,12 +191,12 @@ export function Shop(props: ShopProps) {
                               <Icon class="size-4" name={o().icon} />
                             </View>
                             <Show when={o().featured}>
-                              <Text class={`absolute top-2 text-xs font-bold tracking-[0.14em] uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
+                              <Text class={`absolute top-2 text-xs font-bold tracking-label uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
                                 {t("general.shop.featured")}
                               </Text>
                             </Show>
                             <Show when={o().badge}>
-                              <Text class={`font-bold text-xs leading-[1.2] tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                              <Text class={`font-bold text-xs leading-[1.2] tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                 {o().badge}
                               </Text>
                             </Show>
@@ -215,7 +215,7 @@ export function Shop(props: ShopProps) {
                                 {(p) => (
                                 <Show when={p().offer === o().id}>
                                   <View class={`flex-row items-center max-w-full text-lg text-fg gap-0.5 data-short:text-danger`} data-short={p().short}>
-                                    <Icon class="size-[1.286rem]" name={p().icon} />
+                                    <Icon class="size-4.5" name={p().icon} />
                                     <Show when={p().was}>
                                       <Text class={`line-through text-fg-muted mr-1 whitespace-nowrap text-reading font-semibold shrink`}>
                                         {p().was}

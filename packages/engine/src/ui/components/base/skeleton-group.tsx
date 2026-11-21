@@ -28,14 +28,14 @@ export function SkeletonGroup(props: SkeletonGroupProps) {
           </Show>
           <Show when={props.shape !== 'avatar' && props.shape !== 'block'}>
             <View class="grow shrink basis-0 gap-1 group-data-row/skeletongroup:gap-3">
-              <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden group-data-row/skeletongroup:w-3/5 group-data-card/skeletongroup:w-[55%] group-data-card/skeletongroup:h-4`}>
+              <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden group-data-row/skeletongroup:w-3/5 group-data-card/skeletongroup:w-11/20 group-data-card/skeletongroup:h-4`}>
                 <View class={`absolute left-0 w-1/4 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 group-data-row/skeletongroup:-left-14 animate-shimmer`} />
               </View>
               <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
                 <View class={`absolute left-0 w-1/4 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 group-data-row/skeletongroup:-left-14 animate-shimmer`} />
               </View>
               <Show when={props.shape !== 'row'}>
-                <View class={`bg-bg-subtle w-[62%] h-3 rounded-capsule overflow-hidden`}>
+                <View class={`bg-bg-subtle w-31/50 h-3 rounded-capsule overflow-hidden`}>
                   <View class={`absolute left-0 w-1/4 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 group-data-row/skeletongroup:-left-14 animate-shimmer`} />
                 </View>
               </Show>
