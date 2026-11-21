@@ -148,12 +148,15 @@ impl BundleCache {
             &mut count,
             0,
         )?;
-        // Engine exports and the fixed build plugin are compiler inputs too.
+        // Engine exports and the fixed build plugin are compiler inputs too,
+        // and a native bundle compiles some of them in (engine TSX such as
+        // the development inspector, the components' string tables): they
+        // are stamped above, so the plan lists them as validated.
         walk(
             &self.package.join("src"),
             &self.package,
             &mut hash,
-            &mut BTreeSet::new(),
+            &mut files,
             &mut count,
             0,
         )?;
