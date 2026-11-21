@@ -223,6 +223,29 @@ pub enum Upscaler {
     Fsr3,
 }
 
+impl Upscaler {
+    /// The upscaler a frame draws under TAA (never `Auto`), the one rule
+    /// for the renderer (renderer/render/fsr_frame.rs) and automatic
+    /// quality's rungs (frame/auto_quality.rs): `render` is the scene's
+    /// size against the output's (`Less`: drawn smaller), `fsr` whether
+    /// the device has FSR ([`Caps::COMPUTE`]). A supersampled frame
+    /// resolves with TAAU.
+    pub fn drawn(self, render: std::cmp::Ordering, fsr: bool) -> Upscaler {
+        let fsr3 = fsr
+            && match self {
+                Upscaler::Taau => false,
+                Upscaler::Auto => render.is_lt(),
+                Upscaler::Fsr3 => render.is_le(),
+            };
+        if fsr3 { Upscaler::Fsr3 } else { Upscaler::Taau }
+    }
+
+    /// This upscaler no costlier than `preset`'s ([`crate::RenderQuality::capped`]).
+    pub fn capped(self, preset: crate::QualityPreset) -> Upscaler {
+        self.min(crate::RenderQuality::preset(preset).upscaler)
+    }
+}
+
 /// What a surface presents ([`RenderDesc::output`]). Offscreen and
 /// headless renderers always present sRGB at standard range, so frames
 /// captured there (every reference) never depend on it.

@@ -344,7 +344,7 @@ pub use atmosphere::{
     BodyLight, DayNightLook, Fog, SkyLook, day_night, day_night_under, moon_phase_light,
 };
 pub use aurora::Aurora;
-pub use auto_quality::{AutoQuality, AutoQualityBounds, FrameSample};
+pub use auto_quality::{AutoQuality, AutoQualityBounds, FrameSample, Rung, step_preset};
 pub use capture::{
     BACKLOG_TIMEOUT, CAPTURE_TIMEOUT, CaptureRequest, capture_timeouts, png, png_best,
 };

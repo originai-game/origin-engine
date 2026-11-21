@@ -221,7 +221,7 @@ impl RenderQuality {
             ssr_step_scale: self.ssr_step_scale.min(row.ssr_step_scale),
             volumetric_step_scale: self.volumetric_step_scale.min(row.volumetric_step_scale),
             msaa_samples: self.msaa_samples.min(row.msaa_samples),
-            upscaler: self.upscaler.min(row.upscaler),
+            upscaler: self.upscaler.capped(preset),
         }
     }
 

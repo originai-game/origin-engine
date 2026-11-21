@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "DisplaySettings.autoQuality",
+      "summary": "Automatic quality prices each rung with the upscaler the frame draws there. Under the default `auto` upscaler, scale 1 resolves with TAAU and every lower scale with FSR 3.1, whose resolve costs several times more at the output's size. The ladder used to price a step by its pixels alone, so the first step below scale 1 saved less than predicted, was judged not to help, and the game went back to scale 1 and stayed there over its budget. Each rung's cost now adds its upscaler's fixed cost (measured from the GPU's timings where the device has them), and a rung that costs no less than the one above it is skipped both ways."
+    }
+  ]
+}

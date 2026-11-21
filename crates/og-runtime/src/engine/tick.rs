@@ -220,9 +220,16 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
     // Automatic quality reads the drawn frame: its interval, the engine's
     // work on it (ticks and render) and the GPU's newest time.
     let page = {
-        let gpu_ms = {
+        let (gpu_ms, upscale_ms) = {
             let st = eng.state.borrow();
-            st.gpu_frame_ms
+            // The upscaler's resolve: the temporal passes (TAAU's or FSR's).
+            let resolve = st
+                .gpu_ms
+                .iter()
+                .filter(|(n, _)| n == "taa" || n == "taa-sharpen")
+                .map(|(_, ms)| *ms)
+                .reduce(|a, b| a + b);
+            (st.gpu_frame_ms, resolve)
         };
         let mut rs = eng.render.borrow_mut();
         if rendered {
@@ -231,6 +238,7 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
                 elapsed_ms,
                 rprobe::now_ms() - frame_t0,
                 gpu_ms,
+                upscale_ms,
             );
         }
         crate::present::display::page_asks(&rs)

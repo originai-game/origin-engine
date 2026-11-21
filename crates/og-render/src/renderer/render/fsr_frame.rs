@@ -23,21 +23,24 @@ impl Renderer {
             slot,
         }: PrepareFsrInputs<'_>,
     ) -> bool {
-        // FSR 3.1 in TAA's place (post/fsr.rs), where the quality asks for
-        // it (`Auto`: while the scene is drawn smaller than the output) and
-        // the frame is not supersampled.
+        // FSR 3.1 in TAA's place (post/fsr.rs), where the quality's
+        // upscaler draws it (`Upscaler::drawn`, automatic quality's rungs'
+        // rule too).
         let post_size = self.history_size();
-        let upscaled = self.width < post_size.0 || self.height < post_size.1;
-        let asked = match scene.frame.quality.upscaler {
-            crate::Upscaler::Taau => false,
-            crate::Upscaler::Auto => upscaled,
-            crate::Upscaler::Fsr3 => true,
+        let render = if self.width > post_size.0 || self.height > post_size.1 {
+            std::cmp::Ordering::Greater
+        } else if self.width < post_size.0 || self.height < post_size.1 {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Equal
         };
         let fsr = taa
-            && self.info.caps.contains(Caps::COMPUTE)
-            && asked
-            && self.width <= post_size.0
-            && self.height <= post_size.1;
+            && scene
+                .frame
+                .quality
+                .upscaler
+                .drawn(render, self.info.caps.contains(Caps::COMPUTE))
+                == crate::Upscaler::Fsr3;
         let no_reactive = self.post.no_reactive.clone();
         match self.graph.fsr_views(&no_reactive, &self.persistent, slot) {
             Some((color, depth, prepass_views, reveal, output, previous_output, sharpened))

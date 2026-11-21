@@ -25,7 +25,9 @@ use crate::engine::engine;
 use crate::host::wire;
 use crate::host::wire::ToJson;
 use crate::present::extract::RenderState;
-use og_render::{AutoQuality, AutoQualityBounds, FrameSample, QualityPreset};
+use og_render::{
+    AutoQuality, AutoQualityBounds, FrameSample, QualityPreset, Upscaler, step_preset,
+};
 use serde_json::{Value, json};
 
 /// The IDL `FrameCap`'s variants, in order.
@@ -304,7 +306,9 @@ impl Default for Mouse {
 }
 
 impl DisplayState {
-    fn bounds(&self, phone: bool) -> AutoQualityBounds {
+    /// `upscaler`: the frame's under TAA (`None` without), `fsr`: the
+    /// device draws FSR 3.1.
+    fn bounds(&self, phone: bool, upscaler: Option<Upscaler>, fsr: bool) -> AutoQualityBounds {
         let display = if self.pacer.display_ms() > 0.0 {
             self.pacer.display_ms()
         } else {
@@ -322,6 +326,8 @@ impl DisplayState {
             } else {
                 display
             },
+            upscaler,
+            fsr,
         }
     }
 }
@@ -349,11 +355,23 @@ pub(crate) fn before_render(rs: &mut RenderState) {
         return;
     }
     let phone = phone(rs);
+    let upscaled = rs.display.settings.auto() && rs.display.kind.displayed();
+    let (upscaler, fsr) = match rs
+        .backend
+        .as_ref()
+        .and_then(|b| upscaled.then(|| b.info()).flatten())
+    {
+        Some(i) => (
+            (i.antialias == og_render::Antialias::Taa).then_some(rs.scene.frame.quality.upscaler),
+            i.caps.contains(og_render::Caps::COMPUTE),
+        ),
+        None => (None, false),
+    };
     let d = &mut rs.display;
     let (scale, step) = if !d.kind.displayed() {
         (d.settings.max_scale(), 0)
     } else if d.settings.auto() {
-        let bounds = d.bounds(phone);
+        let bounds = d.bounds(phone, upscaler, fsr);
         let auto = d.auto.get_or_insert_with(|| AutoQuality::new(bounds));
         if auto.bounds() != bounds {
             auto.set_bounds(bounds);
@@ -365,17 +383,12 @@ pub(crate) fn before_render(rs: &mut RenderState) {
     };
     d.scale = scale;
     d.step = step;
-    if step > 0 {
+    if let Some(preset) = step_preset(step) {
         rs.scene.objects.cloth_subdivisions = rs
             .scene
             .objects
             .cloth_subdivisions
             .min(if step >= 2 { 1 } else { 2 });
-        let preset = if step >= 2 {
-            QualityPreset::Low
-        } else {
-            QualityPreset::Medium
-        };
         rs.scene.frame.quality = rs.scene.frame.quality.capped(preset);
     }
     if let Some(b) = rs.backend.as_mut() {
@@ -384,13 +397,14 @@ pub(crate) fn before_render(rs: &mut RenderState) {
 }
 
 /// After a drawn frame: its interval (ms since the last frame), the
-/// engine's work on it and the GPU's time where measured, for automatic
-/// quality.
+/// engine's work on it and the GPU's time and its upscaler's where
+/// measured, for automatic quality.
 pub(crate) fn after_frame(
     rs: &mut RenderState,
     interval_ms: f64,
     cpu_ms: f64,
     gpu_ms: Option<f64>,
+    upscale_ms: Option<f64>,
 ) {
     if !rs.display.kind.displayed() || interval_ms <= 0.0 {
         return;
@@ -400,6 +414,7 @@ pub(crate) fn after_frame(
             interval_ms,
             cpu_ms,
             gpu_ms,
+            upscale_ms,
         });
     }
 }
@@ -616,11 +631,11 @@ mod tests {
     fn the_budget_is_the_cap_or_the_display() {
         let mut d = DisplayState::default();
         d.pacer.tell(120.0);
-        assert!((d.bounds(true).budget_ms - 1000.0 / 60.0).abs() < 1e-9);
-        assert!((d.bounds(false).budget_ms - 1000.0 / 120.0).abs() < 1e-9);
+        assert!((d.bounds(true, None, false).budget_ms - 1000.0 / 60.0).abs() < 1e-9);
+        assert!((d.bounds(false, None, false).budget_ms - 1000.0 / 120.0).abs() < 1e-9);
         d.pacer.tell(30.0);
-        assert!((d.bounds(true).budget_ms - 1000.0 / 30.0).abs() < 1e-9);
+        assert!((d.bounds(true, None, false).budget_ms - 1000.0 / 30.0).abs() < 1e-9);
         d.pacer.tell(0.0);
-        assert!((d.bounds(false).budget_ms - UNKNOWN_DISPLAY_MS).abs() < 1e-9);
+        assert!((d.bounds(false, None, false).budget_ms - UNKNOWN_DISPLAY_MS).abs() < 1e-9);
     }
 }

@@ -6,11 +6,28 @@
 //! it answers (og-runtime's `display.rs`); it reads no clock and draws
 //! nothing.
 //!
-//! The ladder is one list of rungs, best first: the render scale from the
-//! most to the least in steps of [`SCALE_STEP`], then, at the least scale,
-//! each preset step the host offers (a cap at medium, then at low). A step
-//! down is one rung down and a step up one rung up, so the scale goes first
-//! on the way down and comes back last on the way up.
+//! The ladder is one list of rungs, best first ([`Rung`]): the render scale
+//! from the most to the least in steps of [`SCALE_STEP`], then, at the
+//! least scale, each preset step the host offers (a cap at medium, then at
+//! low). A rung is what the frame draws there: its scale, its preset step
+//! and the upscaler the frame resolves with (the game's upscaler under that
+//! step's cap, as the renderer draws it at that scale:
+//! [`Upscaler::drawn`]), so `auto` is FSR 3.1 on every rung below scale 1
+//! and TAAU at it. A step down goes to the next rung down and a step up to
+//! the next one up, so the scale goes first on the way down and comes back
+//! last on the way up.
+//!
+//! A rung's cost is the pixels' cost times its scale's area and its preset
+//! factor, plus its upscaler's fixed cost: the resolve runs at the output's
+//! size whatever the scale, and FSR 3.1's is several times TAAU's (on an
+//! NVIDIA L4 at 1080p TAAU's resolve is [`UPSCALE_SHARE`]'s first share of
+//! a frame, FSR's [`FSR_PER_TAAU`] times it). The upscaler's time is
+//! measured where the GPU times its passes ([`FrameSample::upscale_ms`],
+//! each upscaler's own, the other's estimated from it by that ratio), else
+//! taken as its share of the frame. A rung that costs no less than the one
+//! above it (scale 1's TAAU against 0.9's FSR on a GPU whose frame is
+//! mostly the resolve) is dominated: it is passed over both ways, so a
+//! step down never lands where it only adds the upscaler's cost.
 //!
 //! Hysteresis, two ways:
 //!
@@ -53,6 +70,8 @@
 //! frames: 1.0 → 0.9 → 0.8 saved 19 and 18 ms, 0.7 cost 3 ms more, and it
 //! went on to 0.5 and a preset step for nothing).
 
+use crate::{QualityPreset, Upscaler};
+
 /// The render scale's step on the ladder.
 pub const SCALE_STEP: f32 = 0.1;
 /// Steps down past this fraction of the budget (GPU time).
@@ -67,6 +86,16 @@ pub const SPREAD_SIGMAS: f64 = 2.0;
 /// The cost a preset step adds back, as a fraction, when the GPU time
 /// predicts a step up.
 pub const PRESET_COST: f64 = 0.3;
+/// FSR 3.1's resolve below scale 1 against TAAU's at it, both at the
+/// output's size: NVIDIA L4 at 1080p (og-tests `fsr::cost`, 2026-11-21),
+/// FSR at 0.9 against TAAU at 1 is 1.03 / 0.26 ms on the grass scene
+/// (3.9x) and 0.78 / 0.16 ms on thin geometry (5.0x); at 0.77, 3.1x and
+/// 4.3x.
+pub const FSR_PER_TAAU: f64 = 4.0;
+/// The share of a frame TAAU's (at scale 1) and FSR 3.1's (below it)
+/// resolves take where the GPU times no pass: the L4's grass scene at
+/// 1080p, 0.26 of 13.1 ms and 1.03 of 13.4 ms (`fsr::cost`).
+pub const UPSCALE_SHARE: [f64; 2] = [0.02, 0.08];
 /// Frames in a row over the budget before a step down.
 pub const DOWN_FRAMES: u32 = 20;
 /// Frames in a row with room before a step up (GPU time).
@@ -102,6 +131,9 @@ pub struct FrameSample {
     /// Milliseconds the GPU spent on the frame, where timestamp queries
     /// measure it (they arrive a frame or two late; the newest is fine).
     pub gpu_ms: Option<f64>,
+    /// Milliseconds of that the upscaler's resolve took (the `taa` and
+    /// `taa-sharpen` passes), where measured.
+    pub upscale_ms: Option<f64>,
 }
 
 /// The bounds the controller moves within.
@@ -117,6 +149,31 @@ pub struct AutoQualityBounds {
     /// Milliseconds a frame may take: the frame cap's interval, or the
     /// display's at no cap.
     pub budget_ms: f64,
+    /// The game's upscaler (`RenderQuality::upscaler`) where the frame
+    /// resolves under TAA; `None` without TAA (a scaled frame is then
+    /// stretched, at no fixed cost).
+    pub upscaler: Option<Upscaler>,
+    /// The device draws FSR 3.1 ([`crate::Caps::COMPUTE`]).
+    pub fsr: bool,
+}
+
+/// One rung of the ladder ([module docs](self)): what a frame draws there.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Rung {
+    pub scale: f32,
+    /// Preset steps below the game's quality ([`step_preset`]).
+    pub step: u8,
+    /// The upscaler the frame resolves with (never `Auto`); `None` without TAA.
+    pub upscaler: Option<Upscaler>,
+}
+
+/// The preset a step caps the game's quality at: medium, then low.
+pub fn step_preset(step: u8) -> Option<QualityPreset> {
+    match step {
+        0 => None,
+        1 => Some(QualityPreset::Medium),
+        _ => Some(QualityPreset::Low),
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -130,9 +187,11 @@ struct Trial {
 #[derive(Clone, Debug)]
 pub struct AutoQuality {
     bounds: AutoQualityBounds,
-    /// The ladder's render scales, best first.
-    scales: Vec<f32>,
+    /// The ladder, best first.
+    rungs: Vec<Rung>,
     rung: usize,
+    /// Each upscaler's smoothed resolve time (TAAU, FSR 3.1), once measured.
+    fixed: [Option<f64>; 2],
     /// The smoothed cost (GPU ms, or the interval) and CPU time; `None`
     /// until the first sample after a change.
     cost: Option<f64>,
@@ -158,8 +217,9 @@ impl AutoQuality {
     pub fn new(bounds: AutoQualityBounds) -> AutoQuality {
         let mut q = AutoQuality {
             bounds,
-            scales: Vec::new(),
+            rungs: Vec::new(),
             rung: 0,
+            fixed: [None; 2],
             cost: None,
             spread: 0.0,
             cpu: 0.0,
@@ -179,7 +239,7 @@ impl AutoQuality {
     /// and step where they are still on the ladder (else the nearest), and
     /// every failed trial and step down that did not help is forgotten.
     pub fn set_bounds(&mut self, bounds: AutoQualityBounds) {
-        let (scale, step) = if self.scales.is_empty() {
+        let (scale, step) = if self.rungs.is_empty() {
             (f32::INFINITY, 0)
         } else {
             (self.scale(), self.step())
@@ -189,15 +249,35 @@ impl AutoQuality {
             min_scale: finite_or(bounds.min_scale, 1.0),
             ..bounds
         };
-        self.scales = ladder(self.bounds.max_scale, self.bounds.min_scale);
-        let rungs = self.rungs();
+        let b = self.bounds;
+        let scales = ladder(b.max_scale, b.min_scale);
+        let least = scales[scales.len() - 1];
+        let rung = |scale: f32, step: u8| Rung {
+            scale,
+            step,
+            upscaler: b.upscaler.map(|u| {
+                let u = step_preset(step).map_or(u, |p| u.capped(p));
+                let render = if scale < 1.0 - 1e-3 {
+                    std::cmp::Ordering::Less
+                } else if scale > 1.0 + 1e-3 {
+                    std::cmp::Ordering::Greater
+                } else {
+                    std::cmp::Ordering::Equal
+                };
+                u.drawn(render, b.fsr)
+            }),
+        };
+        self.rungs = scales.iter().map(|s| rung(*s, 0)).collect();
+        self.rungs
+            .extend((1..=b.preset_steps).map(|step| rung(least, step)));
+        let rungs = self.rungs.len();
         self.rung = if step > 0 {
-            (self.scales.len() - 1 + usize::from(step)).min(rungs - 1)
+            (scales.len() - 1 + usize::from(step)).min(rungs - 1)
         } else {
-            self.scales
+            scales
                 .iter()
                 .position(|s| *s <= scale + 1e-4)
-                .unwrap_or(self.scales.len() - 1)
+                .unwrap_or(scales.len() - 1)
         };
         self.failures = vec![0; rungs];
         self.helped = None;
@@ -210,24 +290,25 @@ impl AutoQuality {
         self.bounds
     }
 
+    /// The rung drawn now.
+    pub fn rung(&self) -> Rung {
+        self.rungs[self.rung]
+    }
+
     /// The render scale to draw at.
     pub fn scale(&self) -> f32 {
-        self.scales[self.rung.min(self.scales.len() - 1)]
+        self.rung().scale
     }
 
     /// The preset steps taken below the game's quality (0: none).
     pub fn step(&self) -> u8 {
-        (self.rung + 1).saturating_sub(self.scales.len()) as u8
+        self.rung().step
     }
 
     /// The smoothed cost the decisions read, ms (GPU time, else the frame
     /// interval); 0 before a sample.
     pub fn cost_ms(&self) -> f64 {
         self.cost.unwrap_or(0.0)
-    }
-
-    fn rungs(&self) -> usize {
-        self.scales.len() + usize::from(self.bounds.preset_steps)
     }
 
     fn restart(&mut self) {
@@ -254,6 +335,13 @@ impl AutoQuality {
             return false;
         }
         let gpu = s.gpu_ms.filter(|g| g.is_finite() && *g >= 0.0);
+        if let (Some(u), Some(ms)) = (
+            self.rung().upscaler,
+            s.upscale_ms.filter(|m| m.is_finite() && *m >= 0.0),
+        ) {
+            let f = &mut self.fixed[upscale_index(u)];
+            *f = Some(f.map_or(ms, |f| f * 0.9 + ms * 0.1));
+        }
         let cost = gpu.unwrap_or(s.interval_ms);
         let smoothed = match self.cost {
             Some(c) => {
@@ -295,7 +383,11 @@ impl AutoQuality {
         if self.rung == 0 {
             return false;
         }
-        let up = self.rung - 1;
+        // The next rung up that the one above it does not dominate.
+        let mut up = self.rung - 1;
+        while up > 0 && self.dominated(smoothed, up) {
+            up -= 1;
+        }
         let room = match gpu {
             Some(_) => self.predicted(up) < budget * UP_AT,
             None => smoothed <= budget * 1.05,
@@ -333,7 +425,7 @@ impl AutoQuality {
     /// else one rung down, unless the floor or the ladder's end holds it.
     fn step_down(&mut self, cost: f64, quantum: f64) -> bool {
         if let Some((from, was)) = self.helped {
-            let predicted = was * (1.0 - self.factor(from, self.rung));
+            let predicted = was - self.cost_at(was, from, self.rung);
             if predicted >= quantum {
                 if was - cost < HELP_AT * predicted {
                     self.floor = Some((from, was));
@@ -354,7 +446,14 @@ impl AutoQuality {
             }
             self.floor = None;
         }
-        if self.rung + 1 >= self.rungs() {
+        // The next rung down that saves anything (a dominated one only
+        // adds its upscaler's cost).
+        let last = self.rungs.len() - 1;
+        let mut down = self.rung + 1;
+        while down < last && self.cost_at(cost, self.rung, down) >= cost {
+            down += 1;
+        }
+        if down > last || self.cost_at(cost, self.rung, down) >= cost {
             return false;
         }
         if let Some(t) = self.trial.take()
@@ -363,33 +462,56 @@ impl AutoQuality {
             self.failures[t.rung] += 1;
         }
         self.helped.get_or_insert((self.rung, cost));
-        self.rung += 1;
+        self.rung = down;
         self.restart();
         true
     }
 
-    /// The cost rung `to` is predicted to take, as a share of rung
-    /// `from`'s (`from` <= `to`): the pixels' ratio for each scale step,
-    /// 1 / (1 + [`PRESET_COST`]) for each preset step.
-    fn factor(&self, from: usize, to: usize) -> f64 {
-        (from..to)
-            .map(|k| {
-                if k + 1 >= self.scales.len() {
-                    1.0 / (1.0 + PRESET_COST)
-                } else {
-                    let ratio = f64::from(self.scales[k + 1] / self.scales[k]);
-                    ratio * ratio
-                }
-            })
-            .product()
+    /// The ms the upscaler `u` resolves in, for a frame of `cost` ms: its
+    /// measured time, else the other's times [`FSR_PER_TAAU`] (or over it),
+    /// else its [`UPSCALE_SHARE`] of the frame.
+    fn fixed_ms(&self, u: Option<Upscaler>, cost: f64) -> f64 {
+        let Some(u) = u else { return 0.0 };
+        let k = upscale_index(u);
+        let ratio = if k == 1 {
+            FSR_PER_TAAU
+        } else {
+            1.0 / FSR_PER_TAAU
+        };
+        self.fixed[k]
+            .or_else(|| self.fixed[1 - k].map(|o| o * ratio))
+            .unwrap_or(UPSCALE_SHARE[k] * cost)
     }
 
-    /// What the smoothed cost would be on rung `to`, one above this one,
+    /// The cost rung `to` is predicted to take where rung `from` costs
+    /// `cost`: the pixels' part by the scales' areas and
+    /// 1 + [`PRESET_COST`] per preset step, plus `to`'s upscaler's fixed
+    /// cost in place of `from`'s.
+    fn cost_at(&self, cost: f64, from: usize, to: usize) -> f64 {
+        let (a, b) = (self.rungs[from], self.rungs[to]);
+        let area = f64::from(b.scale / a.scale).powi(2);
+        let preset = (1.0 + PRESET_COST).powi(i32::from(a.step) - i32::from(b.step));
+        let pixels = (cost - self.fixed_ms(a.upscaler, cost)).max(0.0);
+        pixels * area * preset + self.fixed_ms(b.upscaler, cost)
+    }
+
+    /// Whether rung `k` costs no less than the one above it, at a frame of
+    /// `cost` ms here.
+    fn dominated(&self, cost: f64, k: usize) -> bool {
+        self.cost_at(cost, self.rung, k) >= self.cost_at(cost, self.rung, k - 1)
+    }
+
+    /// What the smoothed cost would be on rung `to`, above this one,
     /// padded by [`SPREAD_SIGMAS`] of the measured spread (GPU time).
     fn predicted(&self, to: usize) -> f64 {
         let cost = self.cost_ms() + SPREAD_SIGMAS * self.spread.max(0.0).sqrt();
-        cost / self.factor(to, to + 1)
+        self.cost_at(cost, self.rung, to)
     }
+}
+
+/// [`AutoQuality::fixed`]'s index for an upscaler drawn (never `Auto`).
+fn upscale_index(u: Upscaler) -> usize {
+    usize::from(u == Upscaler::Fsr3)
 }
 
 fn finite_or(x: f32, or: f32) -> f32 {
@@ -431,6 +553,8 @@ mod tests {
             min_scale: 0.5,
             preset_steps: steps,
             budget_ms: BUDGET,
+            upscaler: None,
+            fsr: false,
         }
     }
 
@@ -455,6 +579,7 @@ mod tests {
                 interval_ms: vsync(g),
                 cpu_ms: 3.0,
                 gpu_ms: Some(g),
+                upscale_ms: None,
             }) {
                 moves.push((q.scale(), q.step()));
             }
@@ -536,6 +661,7 @@ mod tests {
                 interval_ms: if late { 60.0 } else { BUDGET },
                 cpu_ms: 3.0,
                 gpu_ms: Some(if late { 50.0 } else { 8.0 }),
+                upscale_ms: None,
             });
         }
         assert_eq!((q.scale(), q.step()), (1.0, 0));
@@ -555,6 +681,7 @@ mod tests {
                 interval_ms: interval,
                 cpu_ms: 3.0,
                 gpu_ms: None,
+                upscale_ms: None,
             }) {
                 moves.push(q.scale());
             }
@@ -596,6 +723,8 @@ mod tests {
             min_scale: 0.5,
             preset_steps: 1,
             budget_ms: budget,
+            upscaler: None,
+            fsr: false,
         });
         // Measured, not quadratic: 1.6's 11.7 predicts 13.2 for 1.7, which measures 14.6.
         let base = |s: f32| match (s * 10.0).round() as i32 {
@@ -615,6 +744,7 @@ mod tests {
                 interval_ms: (g / budget).ceil().max(1.0) * budget,
                 cpu_ms: 3.0,
                 gpu_ms: Some(g),
+                upscale_ms: None,
             }) {
                 moves.push(q.scale());
             }
@@ -640,6 +770,7 @@ mod tests {
                 interval_ms: (g / BUDGET).ceil().max(1.0) * BUDGET,
                 cpu_ms: 3.0,
                 gpu_ms: Some(g),
+                upscale_ms: None,
             }) {
                 moves.push(q.scale());
             }
@@ -676,6 +807,7 @@ mod tests {
                 interval_ms: interval(&q) + 8.0 * noise.next(),
                 cpu_ms: 5.0,
                 gpu_ms: None,
+                upscale_ms: None,
             }) {
                 moves.push((q.scale(), q.step()));
             }
@@ -691,6 +823,7 @@ mod tests {
                 interval_ms: vsync(g),
                 cpu_ms: 3.0,
                 gpu_ms: Some(g),
+                upscale_ms: None,
             }) {
                 moves.push((q.scale(), q.step()));
             }
@@ -719,9 +852,70 @@ mod tests {
                 interval_ms: 2.0 * BUDGET,
                 cpu_ms: 25.0,
                 gpu_ms: None,
+                upscale_ms: None,
             });
         }
         assert_eq!((q.scale(), q.step()), (1.0, 0));
+    }
+
+    /// A GPU whose frame is `pixels` ms at scale 1 (by the scale's area)
+    /// plus its upscaler's resolve, TAAU's `taau` ms and FSR's
+    /// [`FSR_PER_TAAU`] times that, under `auto` with FSR: the moves.
+    fn run_upscaled(pixels: f64, taau: f64, frames: u32) -> Vec<(f32, u8)> {
+        let mut q = AutoQuality::new(AutoQualityBounds {
+            upscaler: Some(Upscaler::Auto),
+            fsr: true,
+            ..bounds(0)
+        });
+        let mut moves = Vec::new();
+        for _ in 0..frames {
+            let s = f64::from(q.scale());
+            let resolve = match q.rung().upscaler {
+                Some(Upscaler::Fsr3) => taau * FSR_PER_TAAU,
+                _ => taau,
+            };
+            let g = pixels * s * s + resolve;
+            if q.sample(FrameSample {
+                interval_ms: vsync(g),
+                cpu_ms: 3.0,
+                gpu_ms: Some(g),
+                upscale_ms: Some(resolve),
+            }) {
+                moves.push((q.scale(), q.step()));
+            }
+        }
+        moves
+    }
+
+    /// `auto` draws TAAU at scale 1 and FSR below it, whose resolve costs
+    /// more: 1.0 → 0.9 saves less than its pixels. Priced by the pixels
+    /// alone, that step was judged not to help, went back to 1.0 and held
+    /// there over the budget (the half-systems audit's #18). With each
+    /// rung's upscaler priced it goes on down to the rung that fits.
+    #[test]
+    fn a_step_into_fsr_is_priced_with_its_resolve() {
+        let (pixels, taau) = (18.0, 0.8);
+        let at = |s: f64, fsr: bool| pixels * s * s + if fsr { taau * FSR_PER_TAAU } else { taau };
+        // The scenario: past the budget at 1.0 and 0.9, under it at 0.8,
+        // and 0.9 saves less than half of what its pixels predict.
+        assert!(at(1.0, false) > DOWN_AT * BUDGET && at(0.9, true) > DOWN_AT * BUDGET);
+        assert!(at(0.8, true) < DOWN_AT * BUDGET);
+        assert!(at(1.0, false) - at(0.9, true) < HELP_AT * at(1.0, false) * (1.0 - 0.81));
+        assert_eq!(run_upscaled(pixels, taau, 20_000), vec![(0.9, 0), (0.8, 0)]);
+    }
+
+    /// A rung that costs more than the one above it (0.9 under FSR against
+    /// 1.0 under TAAU, where the resolve is much of the frame) is passed
+    /// over on the way down and on the way back up.
+    #[test]
+    fn a_rung_dearer_than_the_one_above_is_passed_over() {
+        let (pixels, taau) = (14.0, 1.5);
+        let at = |s: f64, fsr: bool| pixels * s * s + if fsr { taau * FSR_PER_TAAU } else { taau };
+        assert!(at(0.9, true) >= at(1.0, false), "0.9 is dominated");
+        assert!(at(1.0, false) > DOWN_AT * BUDGET);
+        let moves = run_upscaled(pixels, taau, 20_000);
+        assert!(!moves.contains(&(0.9, 0)), "{moves:?}");
+        assert_eq!(moves.first(), Some(&(0.8, 0)), "{moves:?}");
     }
 
     /// The bounds hold: no preset step when none is offered, never under the
