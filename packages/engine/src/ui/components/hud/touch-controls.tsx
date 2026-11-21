@@ -51,7 +51,7 @@ const ENGINE_DEAD_ZONE = 0.15;
 function Stick(props: { action: string; deadZone: number; disabled: boolean; label: string }) {
   return (
     <View
-      class="relative size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate active:border-rim-strong disabled:opacity-45"
+      class="relative size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate active:bg-tile-pressed disabled:opacity-45"
       role="slider"
       label={props.label}
       valueMin={-1}
@@ -66,15 +66,18 @@ function Stick(props: { action: string; deadZone: number; disabled: boolean; lab
   );
 }
 
-/** A touch d-pad: its cross and its box, which is the action's d-pad zone. */
+/**
+ * A touch d-pad: its cross and its box, which is the action's d-pad zone.
+ * The cross is two outlined bars; the hub over their crossing hides the
+ * outlines inside it, so the cross reads as one outline.
+ */
 function Pad(props: { action: string; disabled: boolean; label: string }) {
-  const arm = "absolute rounded-[0.286rem] bg-tile border border-rim-soft";
+  const bar = "absolute rounded-[0.286rem] bg-tile border border-rim-soft";
   return (
     <View class="relative size-40 compact:size-28 active:scale-97 disabled:opacity-45" role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
-      <View class={`${arm} bottom-[38%] left-[30%] right-[30%] top-0`} />
-      <View class={`${arm} top-[38%] left-[30%] right-[30%] bottom-0`} />
-      <View class={`${arm} right-[38%] top-[30%] bottom-[30%] left-0`} />
-      <View class={`${arm} left-[38%] top-[30%] bottom-[30%] right-0`} />
+      <View class={`${bar} left-[30%] right-[30%] top-0 bottom-0`} />
+      <View class={`${bar} top-[30%] bottom-[30%] left-0 right-0`} />
+      <View class="absolute inset-[30%] bg-tile" />
     </View>
   );
 }

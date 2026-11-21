@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "TouchControls",
+      "summary": "The d-pad's cross draws as one outline: its arms no longer overlap with seams across the middle."
+    },
+    {
+      "member": "TouchControls",
+      "summary": "The stick's ring darkens while a touch holds it; its pressed border had no width, so it showed nothing."
+    }
+  ]
+}
