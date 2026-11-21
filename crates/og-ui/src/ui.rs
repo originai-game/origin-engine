@@ -40,7 +40,6 @@ pub(crate) use text_controls::FieldInk;
 use crate::draw::{DrawCmd, DrawItem, EmitDesc, emit};
 use crate::element::{Affine, LayoutStats, Overlap};
 use crate::id::{Id, child_key};
-use crate::input::{InputFrame, Nav};
 use crate::layout::{
     Align, Anchor, Content, Cross, Direction, Element, Float, FontRole, Insets, Measure, Metrics,
     NONE, Node, Rect, Shape, Size, TextAlign, TextContent, Widget, layout, preorder,
@@ -53,6 +52,7 @@ use crate::text::{FontMetrics, UiFont};
 use og_core::IdMap;
 use og_core::glam::Vec2;
 use og_draw::{Overlay, TextureHandle};
+use og_input::frame::{InputFrame, Nav};
 use og_probe::UiElement;
 use og_probe::hooks::{find_by_id, find_by_text};
 use og_ui_model::{Breakpoint, HUD_MAX_ASPECT, Viewport};

@@ -7,11 +7,11 @@
 //! the stick shows it again, so a mouse and a pad share one screen.
 
 use crate::draw::DrawCmd;
-use crate::input::{GamepadFrame, InputFrame};
 use crate::layout::Rect;
 use crate::style::Srgba;
 use crate::ui::{HIT_NAV, HIT_OFFSCREEN, HIT_POINTER, HIT_TEXT, Ui};
 use og_core::glam::Vec2;
+use og_input::frame::{GamepadFrame, InputFrame};
 
 /// How a pad's virtual cursor moves ([`Ui::set_virtual_cursor`]). The zero
 /// value is a cursor at 900 units a second, a quarter second from a fine

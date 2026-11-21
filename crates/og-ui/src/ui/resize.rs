@@ -47,7 +47,7 @@ impl crate::ui::Tree {
     /// size. Answers whether the pointer is the handle's this tick.
     pub(crate) fn resize_input(
         &mut self,
-        input: &crate::input::InputFrame,
+        input: &og_input::frame::InputFrame,
         env: &crate::ui::Env,
         interaction: &mut crate::ui::Interaction,
     ) -> bool {

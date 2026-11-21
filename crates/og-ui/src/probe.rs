@@ -1,8 +1,8 @@
 //! The live tree for the probe, and the system that runs the UI in the tick.
 
-use crate::input::{InputFrame, OgInput};
 use crate::ui::Ui;
 use og_ecs::{SystemContext, SystemDesc, World};
+use og_input::frame::{InputFrame, OgInput};
 use og_probe::{UiElement, UiTree};
 use og_ui_model::Viewport;
 use std::sync::{Arc, Mutex, MutexGuard};

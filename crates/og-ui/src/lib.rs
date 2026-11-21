@@ -75,7 +75,6 @@ pub use interaction::nav::neighbour as nav_neighbour;
 pub use text::input_type;
 pub mod interaction;
 #[doc(hidden)]
-pub use interaction::input;
 pub(crate) use motion::juice;
 #[doc(hidden)]
 pub use ui::layer_stack;
@@ -141,7 +140,6 @@ pub use element::{
 };
 pub use hud_layout::{HudEditInfo, HudPlacement};
 pub use id::{Id, ui_id, ui_idi};
-pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
 pub(crate) use juice::{BurstDesc, CounterDesc};
 pub use juice::{ScreenTransitionDesc, ScreenWipe, Side, format_count};
 pub use layer_stack::{LayerInfo, LayerOp};
@@ -158,6 +156,7 @@ pub use motion::{
     StateTransition, Timeline, TimelineEvent, TimelineTrack, Transition, TransitionKind, UiEvent,
     VisualState, cubic_bezier, ease_exit, ease_out,
 };
+pub use og_input::frame::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
 pub use og_ui_model::{Breakpoint, HUD_MAX_ASPECT, Viewport};
 pub use particles::{EmitFrom, ParticlesDesc};
 pub(crate) use rich::RichTextDesc;

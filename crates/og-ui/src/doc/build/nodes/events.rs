@@ -109,7 +109,7 @@ impl Ui {
                 .keys_held
                 .iter()
                 .any(|k| matches!(*k, "Enter" | "NumpadEnter" | "Space"))
-                || self.interaction.input().gamepad.held & crate::input::GamepadFrame::A != 0);
+                || self.interaction.input().gamepad.held & og_input::frame::GamepadFrame::A != 0);
         // A disabled element holds nothing: disabled mid-press, its count
         // starts over and it never fires (a timed prompt that expired).
         let pressing = !r.flag("disabled")

@@ -16,11 +16,11 @@
 //! coming in from outside returns to.
 
 use crate::element::{FocusGroup, GestureSpec};
-use crate::input::InputFrame;
 use crate::layout::{NONE, Node};
 use crate::ui::{HIT_NAV, HIT_SELECT, HIT_TEXT, Ui};
 use og_core::IdMap;
 use og_core::glam::Vec2;
+use og_input::frame::InputFrame;
 
 /// A focus group as the last frame had it.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

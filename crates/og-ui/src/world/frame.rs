@@ -491,7 +491,7 @@ impl crate::world::WorldUi {
     /// world panel its ray meets, before anything is hit tested.
     pub(crate) fn world_begin(
         &mut self,
-        input: &mut crate::input::InputFrame,
+        input: &mut og_input::frame::InputFrame,
         env: &crate::ui::Env,
         interaction: &crate::ui::Interaction,
     ) {

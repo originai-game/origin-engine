@@ -227,7 +227,7 @@ impl Ui {
     /// decided what is hot: a press on text over what it would land on
     /// selects (and holds the pointer, so nothing behind it scrolls), a
     /// drag extends, a press anywhere else clears; Ctrl or Cmd+C copies.
-    pub(crate) fn select_input(&mut self, input: &crate::input::InputFrame, hot: u64) {
+    pub(crate) fn select_input(&mut self, input: &og_input::frame::InputFrame, hot: u64) {
         let p = input.pointer;
         let tick = self.interaction.state.tick;
         let coarse = self.env.viewport.coarse_pointer;
@@ -337,7 +337,7 @@ impl Ui {
             .is_some_and(|h| h.has(HIT_TEXT));
         if shortcut
             && !editing
-            && input.keys.contains(&crate::input::UiKey::KeyC)
+            && input.keys.contains(&og_input::frame::UiKey::KeyC)
             && let Some(text) = self
                 .interaction
                 .selected_text(&self.tree)

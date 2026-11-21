@@ -35,11 +35,11 @@
 //! The glyph boxes below ([`boxes`], [`nearest`], [`word_at`]) place read-
 //! only text's selection (`user-select`, vertical lines too) and its marks.
 
-use crate::input::UiKey;
 use crate::layout::{FontRole, Rect};
 use crate::text::FontMetrics;
 use og_core::glam::Vec2;
 use og_i18n::Direction;
+use og_input::frame::UiKey;
 use og_text::text::paragraph::Brush;
 use parley::{Affinity, Cursor, Layout, Selection};
 

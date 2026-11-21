@@ -20,6 +20,7 @@
 pub mod actions;
 pub mod control;
 pub mod event;
+pub mod frame;
 pub mod glyph;
 pub mod keys;
 pub mod padmap;

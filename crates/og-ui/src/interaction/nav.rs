@@ -19,9 +19,9 @@
 //! - Navigation that lands on a control outside its scroll container's view
 //!   scrolls it into view.
 
-use crate::input::{GamepadFrame, InputFrame, Nav, UiKey};
 use crate::layout::Rect;
 use crate::ui::{HIT_ADJUST, HIT_MULTILINE, HIT_NAV, HIT_TEXT, Hit, Ui};
+use og_input::frame::{GamepadFrame, InputFrame, Nav, UiKey};
 
 /// The control nearest `from` in direction `dir` among `cands`, wrapping
 /// (also the new core's, `og_ui::nav_neighbour`).
@@ -535,7 +535,7 @@ impl Ui {
 
     /// One extra pad's intents: its d-pad, A and B edges, and its stick
     /// (past half-way once, then after the slow duration every fast one).
-    fn pad_intents(&self, g: crate::input::GamepadFrame, stick: &mut (u8, u64)) -> Vec<Nav> {
+    fn pad_intents(&self, g: og_input::frame::GamepadFrame, stick: &mut (u8, u64)) -> Vec<Nav> {
         let mut out = Vec::new();
         for (bit, nav) in [
             (GamepadFrame::UP, Nav::Up),

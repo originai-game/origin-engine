@@ -8,11 +8,11 @@
 
 use crate::DrawCmd;
 use crate::element::Customize;
-use crate::input::InputFrame;
 use crate::layout::Rect;
 use crate::style::Srgba;
 use crate::ui::Ui;
 use og_core::glam::Vec2;
+use og_input::frame::InputFrame;
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 

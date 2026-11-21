@@ -15,8 +15,8 @@
 //! action bar ([`Ui::action_bar`]) is the data an action bar component
 //! reads: the actions the top layer accepts, each with its hint and glyph.
 
-use crate::input::InputFrame;
 use crate::ui::Ui;
+use og_input::frame::InputFrame;
 use serde_json::{Value, json};
 
 /// When an action fires.

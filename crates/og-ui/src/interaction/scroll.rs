@@ -126,7 +126,7 @@ pub struct Thumb {
 impl Ui {
     /// Two touches: track them, and move what is under them. Answers
     /// whether a two-finger gesture holds the pointer this tick.
-    fn two_touches(&mut self, input: &crate::input::InputFrame) -> bool {
+    fn two_touches(&mut self, input: &og_input::frame::InputFrame) -> bool {
         let p = &input.pointers;
         let held: Vec<u32> = (0..og_input::MAX_POINTERS as u32)
             .filter(|&id| p.down(id))
@@ -332,7 +332,7 @@ impl Ui {
             .push((container, key));
     }
 
-    pub(crate) fn scroll_input(&mut self, input: &crate::input::InputFrame) -> Option<u64> {
+    pub(crate) fn scroll_input(&mut self, input: &og_input::frame::InputFrame) -> Option<u64> {
         let p = input.pointer;
         self.interaction.gesture = self.two_touches(input);
         if self.interaction.gesture {

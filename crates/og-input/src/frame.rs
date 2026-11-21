@@ -6,12 +6,12 @@
 //! (`og-input`'s, version 2); pointing the UI at another resource is the one
 //! `pub type OgInput` line below plus an `impl InputSource` for it.
 
+use crate::PointerButton;
 use og_core::glam::Vec2;
 use og_ecs::World;
-use og_input::PointerButton;
 
 /// The world's `og.Input` resource as the UI reads it.
-pub type OgInput = og_input::Input;
+pub type OgInput = crate::Input;
 
 /// Keys the UI acts on (text editing and dismissal).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -203,27 +203,27 @@ pub struct GamepadFrame {
     pub held: u32,
     /// The pad's family, when the host told it (`og.Gamepad`'s devices):
     /// its glyphs are shown once it is used.
-    pub device: Option<og_input::Device>,
+    pub device: Option<crate::Device>,
 }
 
 impl GamepadFrame {
     /// Pad 0 of the world's `og.Gamepad` (og-input's resource).
-    pub fn from_gamepad(pad: &og_input::Gamepad) -> GamepadFrame {
+    pub fn from_gamepad(pad: &crate::Gamepad) -> GamepadFrame {
         GamepadFrame::from_pad(pad, 0)
     }
 
     /// Pad `n` (0 to 7) of the world's `og.Gamepad`.
-    pub fn from_pad(pad: &og_input::Gamepad, n: u32) -> GamepadFrame {
+    pub fn from_pad(pad: &crate::Gamepad, n: u32) -> GamepadFrame {
         GamepadFrame {
             pressed: pad.masks(n).1,
             held: pad.masks(n).0,
             stick: Vec2::new(
-                pad.axis(og_input::GamepadAxis::LeftX, n),
-                pad.axis(og_input::GamepadAxis::LeftY, n),
+                pad.axis(crate::GamepadAxis::LeftX, n),
+                pad.axis(crate::GamepadAxis::LeftY, n),
             ),
             stick_r: Vec2::new(
-                pad.axis(og_input::GamepadAxis::RightX, n),
-                pad.axis(og_input::GamepadAxis::RightY, n),
+                pad.axis(crate::GamepadAxis::RightX, n),
+                pad.axis(crate::GamepadAxis::RightY, n),
             ),
             device: pad.device(n),
         }
@@ -276,7 +276,7 @@ impl Nav {
     }
 }
 
-impl InputSource for og_input::Input {
+impl InputSource for crate::Input {
     fn pointer(&self) -> Vec2 {
         self.pointer
     }
@@ -325,7 +325,7 @@ impl InputSource for og_input::Input {
         }
         let shift = self.down("ShiftLeft") || self.down("ShiftRight");
         for c in (0x20u8..=0x7e).map(char::from) {
-            if let Some((code, shifted)) = og_input::key_for_char(c)
+            if let Some((code, shifted)) = crate::key_for_char(c)
                 && shifted == shift
                 && self.pressed(&code)
             {
@@ -390,18 +390,18 @@ pub struct InputFrame {
     /// Every pointer at once (og-input's `og.Pointers`): touch controls
     /// (joystick, d-pad, action buttons) also answer pointers 1 to 4, so a
     /// stick and a button can be held together.
-    pub pointers: og_input::Pointers,
+    pub pointers: crate::Pointers,
     /// An assistive technology's requests this tick (og-input's
     /// `og.A11yAction`, from the shell's mirror of the accessibility tree):
     /// the action and the control's path.
-    pub a11y: Vec<(og_input::A11yAct, String)>,
+    pub a11y: Vec<(crate::A11yAct, String)>,
     /// Every key held, and every key that went down this tick, by code
-    /// (og-input's [`og_input::KEY_CODES`]): what UI actions bind.
+    /// (og-input's [`crate::KEY_CODES`]): what UI actions bind.
     pub keys_held: Vec<&'static str>,
     pub keys_pressed: Vec<&'static str>,
     /// og-input's gameplay actions this tick (their state and bindings),
     /// which a UI action may follow ([`crate::ActionDesc::action`]).
-    pub actions: Vec<og_input::ActionFeed>,
+    pub actions: Vec<crate::ActionFeed>,
 }
 
 impl InputFrame {
@@ -457,14 +457,14 @@ impl InputFrame {
             alt: source.alt(),
             gamepad: source.gamepad(),
             extra_pads: [GamepadFrame::default(); 3],
-            pointers: og_input::Pointers::default(),
+            pointers: crate::Pointers::default(),
             a11y: Vec::new(),
-            keys_held: og_input::KEY_CODES
+            keys_held: crate::KEY_CODES
                 .iter()
                 .copied()
                 .filter(|c| source.key_down(c))
                 .collect(),
-            keys_pressed: og_input::KEY_CODES
+            keys_pressed: crate::KEY_CODES
                 .iter()
                 .copied()
                 .filter(|c| source.key_pressed(c))
@@ -474,7 +474,7 @@ impl InputFrame {
     }
 
     /// Adds og-input's actions this tick (what followed UI actions read).
-    pub fn with_actions(mut self, actions: Vec<og_input::ActionFeed>) -> InputFrame {
+    pub fn with_actions(mut self, actions: Vec<crate::ActionFeed>) -> InputFrame {
         self.actions = actions;
         self
     }
@@ -483,8 +483,8 @@ impl InputFrame {
     /// `extra_pads`) and `og.Pointers` to a frame.
     pub fn with(
         mut self,
-        gamepad: Option<&og_input::Gamepad>,
-        pointers: Option<&og_input::Pointers>,
+        gamepad: Option<&crate::Gamepad>,
+        pointers: Option<&crate::Pointers>,
     ) -> InputFrame {
         if let Some(g) = gamepad {
             self.gamepad = GamepadFrame::from_gamepad(g);
@@ -503,7 +503,7 @@ impl InputFrame {
     /// composition is what an input method shows. With no event the frame
     /// keeps the key-derived text (the UI drops it once a world has had a
     /// stream: `crate::Ui` remembers).
-    pub fn with_text(mut self, events: &[og_input::TextInput]) -> InputFrame {
+    pub fn with_text(mut self, events: &[crate::TextInput]) -> InputFrame {
         if events.is_empty() {
             return self;
         }
@@ -527,7 +527,7 @@ impl InputFrame {
 
     /// Adds this tick's `og.A11yAction` events (a screen reader focusing,
     /// activating or adjusting a mirrored control).
-    pub fn with_a11y(mut self, events: &[og_input::A11yAction]) -> InputFrame {
+    pub fn with_a11y(mut self, events: &[crate::A11yAction]) -> InputFrame {
         for e in events {
             if let Some(act) = e.act() {
                 self.a11y.push((act, e.path.as_str().to_owned()));
@@ -541,8 +541,8 @@ impl InputFrame {
     pub fn from_world(world: &World) -> Option<InputFrame> {
         let input = world.resource::<OgInput>().ok()?;
         let frame = InputFrame::read(&*input);
-        let pad = world.resource::<og_input::Gamepad>().ok().map(|g| *g);
-        let pointers = world.resource::<og_input::Pointers>().ok().map(|p| *p);
+        let pad = world.resource::<crate::Gamepad>().ok().map(|g| *g);
+        let pointers = world.resource::<crate::Pointers>().ok().map(|p| *p);
         Some(frame.with(pad.as_ref(), pointers.as_ref()))
     }
 

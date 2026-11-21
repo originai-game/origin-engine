@@ -36,7 +36,7 @@ impl RetainedHost {
         // Keys, typing and pads reach the focused controls as they build
         // (a field's edits, a list's arrows, a range's steps).
         let i = ui.interaction.input();
-        let idle_pad = crate::interaction::input::GamepadFrame::default();
+        let idle_pad = og_input::frame::GamepadFrame::default();
         if !i.keys.is_empty()
             || !i.text.is_empty()
             || i.composition.is_some()
