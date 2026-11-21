@@ -430,6 +430,16 @@ fn keep_coverage(levels: &mut [Image], first: &Image, cut: u8) {
 /// over it, none did.
 const COVERAGE_MARGIN: u8 = 8;
 
+/// Whether every texel on the image's border is fully transparent.
+fn clear_border(img: &Image) -> bool {
+    let (w, h) = (img.width as usize, img.height as usize);
+    let a = |x: usize, y: usize| img.rgba[(y * w + x) * 4 + 3];
+    w > 0
+        && h > 0
+        && (0..w).all(|x| a(x, 0) == 0 && a(x, h - 1) == 0)
+        && (0..h).all(|y| a(0, y) == 0 && a(w - 1, y) == 0)
+}
+
 fn has_alpha(img: &Image) -> bool {
     img.rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 255)
 }
@@ -464,11 +474,18 @@ fn encode_basisu(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, 
     params
         .source_image_mut(0)
         .init(&img.rgba, img.width, img.height, 4);
-    if let Some(cut) = opts.cutout.filter(|_| opts.mipmaps) {
-        // A cut-out's own levels, handed to basisu whole.
+    let clear = clear_border(img);
+    if opts.mipmaps && (opts.cutout.is_some() || clear) {
+        // Our own levels, handed to basisu whole: a cut-out's keep their
+        // coverage; an image with a clear border (a UI plate, a sprite)
+        // keeps its clear texels clear, where basisu's Kaiser filter spreads
+        // alpha a texel or two past every edge (a chamfer's clear corner
+        // took alpha 39 at level 2, a dark line beside it on screen).
         params.set_generate_mipmaps(false);
         let mut levels = cutout_mips(img, k == kind::COLOR);
-        keep_coverage(&mut levels, img, cut);
+        if let Some(cut) = opts.cutout {
+            keep_coverage(&mut levels, img, cut);
+        }
         for (i, l) in levels.iter().enumerate() {
             params
                 .source_mipmap_image_mut(0, i as u32)
@@ -1233,6 +1250,60 @@ mod tests {
         let mut kept = cutout_mips(&card, true);
         keep_coverage(&mut kept, &card, 90);
         assert!(chain.iter().zip(&kept).all(|(a, b)| a.rgba == b.rgba));
+    }
+
+    /// An image with a clear border (a UI plate clear outside its
+    /// chamfer) keeps its clear texels clear in its mips: basisu's own
+    /// Kaiser filter spreads alpha past every edge, the dark line a scifi
+    /// button showed beside its cut corner.
+    #[cfg(feature = "basis")]
+    #[test]
+    fn a_clear_bordered_image_keeps_its_clear_texels_clear_in_the_mips() {
+        use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat};
+        // A white square on clear, its edges on 4 x 4 block bounds at every
+        // level tested, so the encoder itself is exact and only the mip
+        // filter can put alpha outside it.
+        let n = 64usize;
+        let inside = |x: usize, y: usize| (16..48).contains(&x) && (16..48).contains(&y);
+        let mut rgba = vec![0u8; n * n * 4];
+        for y in 0..n {
+            for x in 0..n {
+                if inside(x, y) {
+                    rgba[(y * n + x) * 4..][..4].copy_from_slice(&[255; 4]);
+                }
+            }
+        }
+        let img = Image {
+            width: n as u32,
+            height: n as u32,
+            rgba,
+        };
+        let opts = TextureOptions {
+            color_uastc: true,
+            ..TextureOptions::default()
+        };
+        let basis = encode_basisu(&img, kind::COLOR, &opts).unwrap();
+        let mut t = Transcoder::new();
+        t.prepare_transcoding(&basis).unwrap();
+        for level_index in 1..3u32 {
+            let rgba = t
+                .transcode_image_level(
+                    &basis,
+                    TranscoderTextureFormat::RGBA32,
+                    TranscodeParameters {
+                        image_index: 0,
+                        level_index,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+            let (s, m) = (1usize << level_index, n >> level_index);
+            let leaked = (0..m * m)
+                .filter(|&i| !inside((i % m) * s, (i / m) * s) && rgba[i * 4 + 3] > 0)
+                .count();
+            assert_eq!(leaked, 0, "level {level_index}: clear texels took alpha");
+        }
+        t.end_transcoding();
     }
 
     /// A cut-out's levels reach the encoded texture, and only a cut-out's: the bamboo card through basisu keeps a
