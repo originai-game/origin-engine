@@ -28,7 +28,7 @@ impl Renderer {
             } else {
                 &self.post.white
             };
-            self.world.terrain.fx.bind(
+            self.world.terrain_fx.bind(
                 &self.device,
                 crate::terrain::fx::TerrainFxBinds {
                     fx: &self.lights.fx_buffer,

@@ -58,8 +58,11 @@ impl Renderer {
                 ))
             })
             .collect();
-        let water_draws = match self.graph.try_view("scene-copy") {
-            Some(copy) if !scene_water.is_empty() => self.world.water.prepare(
+        let water_draws = match (
+            self.graph.try_view("scene-copy"),
+            self.world.water.get_mut(),
+        ) {
+            (Some(copy), Some(water)) if !scene_water.is_empty() => water.prepare(
                 &self.device,
                 &self.queue,
                 scene_water,
@@ -96,15 +99,13 @@ impl Renderer {
         };
         // The water as each due capture's faces draw it, through the face's
         // copy and over its depth (water.rs `face_draws`).
-        let face_water: Vec<Vec<water::WaterDraw>> = if water_draws.is_empty() {
-            Vec::new()
-        } else {
-            probe_frame
+        let face_water: Vec<Vec<water::WaterDraw>> = match self.world.water.get_mut() {
+            Some(water) if !water_draws.is_empty() => probe_frame
                 .due
                 .iter()
                 .map(|&(slot, _)| {
                     let t = self.probes.targets_of(slot);
-                    self.world.water.face_draws(
+                    water.face_draws(
                         &self.device,
                         &self.queue,
                         scene_water,
@@ -115,7 +116,8 @@ impl Renderer {
                         &|h| self.cache.textures.get(h.index()).map(|t| &t.view),
                     )
                 })
-                .collect()
+                .collect(),
+            _ => Vec::new(),
         };
         // The 3D fluids' bounding sphere: the reflection probe their one
         // composite draw samples.
@@ -135,8 +137,11 @@ impl Renderer {
             }),
         )
         .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo).length() * 0.5));
-        let fluid_frame = match fluid3d::views(&self.graph, scene_depth) {
-            Some(views) if fluids_3d => self.world.fluid3d.prepare(
+        let fluid_frame = match (
+            fluid3d::views(&self.graph, scene_depth),
+            self.world.fluid3d.get_mut(),
+        ) {
+            (Some(views), Some(fluid3d)) if fluids_3d => fluid3d.prepare(
                 &self.device,
                 &self.queue,
                 &scene.world.fluids_3d,
@@ -151,9 +156,11 @@ impl Renderer {
             ),
             _ => None,
         };
-        if let Some(fluids) = self.world.visual_fluids.as_mut() {
+        if let (Some(fluids), Some(fluid3d)) =
+            (self.world.visual_fluids.as_mut(), self.world.fluid3d.get())
+        {
             let slots = match fluid_frame {
-                Some(_) => self.world.fluid3d.visual.as_slice(),
+                Some(_) => fluid3d.visual.as_slice(),
                 None => &[],
             };
             fluids.prepare(
@@ -163,43 +170,44 @@ impl Renderer {
                 &scene.world.colliders,
                 scene.frame.tick,
                 scene.frame.tick_rate,
-                self.world.fluid3d.instances(),
+                fluid3d.instances(),
             );
         }
         // The 3D fluids as each due capture face draws them: the frame's
         // particles through the face camera into the face's own targets,
         // over its depth and through its copy (fluid3d.rs `camera_frame`).
-        let face_fluids: Vec<Option<fluid3d::Fluid3dFrame>> = match &fluid_frame {
-            Some(main) if face_fluid => probe_frame
-                .due
-                .iter()
-                .enumerate()
-                .flat_map(|(d, &(slot, _))| {
-                    let t = self.probes.targets_of(slot);
-                    probe_faces[d].iter().map(move |f| (t, f))
-                })
-                .map(|(t, f)| {
-                    let views = self.world.fluid3d.face(t.size).views(
-                        &t.prepass.lindepth,
-                        t.copy.as_ref().expect("made with the fluids"),
-                    );
-                    self.world.fluid3d.camera_frame(
-                        &self.device,
-                        &self.queue,
-                        &scene.world.fluids_3d,
-                        main,
-                        &fluid3d::Fluid3dCamera {
-                            view: f.view,
-                            proj: f.proj,
-                            orthographic: f.orthographic,
-                        },
-                        (t.size, t.size),
-                        &views,
-                    )
-                })
-                .collect(),
-            _ => Vec::new(),
-        };
+        let face_fluids: Vec<Option<fluid3d::Fluid3dFrame>> =
+            match (&fluid_frame, self.world.fluid3d.get()) {
+                (Some(main), Some(fluid3d)) if face_fluid => probe_frame
+                    .due
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(d, &(slot, _))| {
+                        let t = self.probes.targets_of(slot);
+                        probe_faces[d].iter().map(move |f| (t, f))
+                    })
+                    .map(|(t, f)| {
+                        let views = fluid3d.face(t.size).views(
+                            &t.prepass.lindepth,
+                            t.copy.as_ref().expect("made with the fluids"),
+                        );
+                        fluid3d.camera_frame(
+                            &self.device,
+                            &self.queue,
+                            &scene.world.fluids_3d,
+                            main,
+                            &fluid3d::Fluid3dCamera {
+                                view: f.view,
+                                proj: f.proj,
+                                orthographic: f.orthographic,
+                            },
+                            (t.size, t.size),
+                            &views,
+                        )
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
         PrepareWaterAndFluidsOutputs {
             water_draws,
             face_water,

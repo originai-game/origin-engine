@@ -94,6 +94,8 @@ fn rgb(c: &Color) -> Vec3 {
 /// arrived (web findings #5: Lantern Vale's first frame drew no ground, on
 /// one host at tick 0 and on the other at tick 1, and auto exposure
 /// started from that frame's metering).
+// A guarded entry into the 3D world's engine module (wasm-modules.json).
+#[inline(never)]
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Vec<(u64, u32)> {
     rs.scene.world.terrains.clear();
     rs.ids.terrains.clear();
@@ -541,6 +543,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
 /// to be far below. With a key for what makes it (the terrain's heights'
 /// version, its placement, the rectangle), so the tick and the frame share
 /// one field and rebuild it only when one changes.
+// A guarded entry into the 3D world's engine module (wasm-modules.json).
+#[inline(never)]
 pub(crate) fn seabed_grid(
     t: &TerrainState,
     index: usize,

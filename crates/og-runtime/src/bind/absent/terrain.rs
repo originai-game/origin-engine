@@ -108,11 +108,8 @@ pub(crate) fn field_of_geometry(
     None
 }
 
-pub(crate) fn ground_drop_shadows(_rs: &mut RenderState) {}
-
-/// No terrain is loaded, so none is freed with its bundle.
-pub(crate) fn free_released(_eng: &crate::engine::Engine) {}
-
+// Named by wasm-modules.json `entries`, as the 3D profile's is.
+#[inline(never)]
 pub(crate) fn extract(
     _world: &World,
     _rs: &mut RenderState,
@@ -183,6 +180,8 @@ pub fn og_terrain_set_layer(
 }
 
 /// No terrain, no seabed (the full module's `seabed_grid`).
+// Named by wasm-modules.json `entries`, as the 3D profile's is.
+#[inline(never)]
 pub(crate) fn seabed_grid(
     _t: &TerrainState,
     _index: usize,

@@ -141,7 +141,7 @@ impl Renderer {
                 None,
             );
             if let Some(indices) = terrain_indices {
-                pass.set_bind_group(3, self.world.terrain.fx.group(false), &[]);
+                pass.set_bind_group(3, self.world.terrain_fx.group(false), &[]);
                 stats.draw_calls += terrain::draw_levels(
                     &mut pass,
                     terrain_draws,
@@ -565,7 +565,7 @@ impl Pass for ViewPass {
             view_groups: &frame.groups,
             view_lists: &frame.lists,
             view_skinned,
-            terrain_indices: r.world.terrain.index_buffer(),
+            terrain_indices: r.world.terrain.get().and_then(|x| x.index_buffer()),
             terrain_draws,
             view_blended: &frame.blended,
             view_boards,

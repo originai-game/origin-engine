@@ -98,6 +98,8 @@ interface Table {
   modules: Record<string, string[]>;
   roots: string[];
   entries: string[];
+  /** Entries only the 3D profile builds: the 2D profile compiles their calls out. */
+  entries3d: string[];
 }
 
 /** A name without its crates' disambiguators (`og_runtime[1a2b3c…]` → `og_runtime`), as wasm-modules.json's patterns read it. */
@@ -151,12 +153,14 @@ export function keepShared(assigned: Map<string, string>, calls: Map<string, str
  * primary whatever their names, so no game's frame calls into a module it
  * does not use (a body the linker folded under a module type's name
  * included). An entry no function is named any more is an error: its
- * guard's boundary moved.
+ * guard's boundary moved (`entries3d` only in the 3D profile, which alone
+ * builds the calls they name).
  */
-export function framePath(wasmFile: string, names: string[], table: Table, calls: Map<string, string[]>): Set<string> {
+export function framePath(wasmFile: string, names: string[], table: Table, calls: Map<string, string[]>, profile: "2d" | "3d"): Set<string> {
   const roots = table.roots.map((p) => new RegExp(p));
-  const entries = table.entries.map((p) => new RegExp(p));
-  const missing = table.entries.filter((_, i) => !names.some((n) => entries[i]!.test(plain(n))));
+  const required = profile === "3d" ? [...table.entries, ...table.entries3d] : table.entries;
+  const entries = [...table.entries, ...table.entries3d].map((p) => new RegExp(p));
+  const missing = required.filter((p) => !names.some((n) => new RegExp(p).test(plain(n))));
   if (missing.length) throw new Error(`wasm-modules.json entries name no function of ${wasmFile}: ${missing.join(", ")} (inlined or renamed: name the guarded call that replaced it)`);
   const seen = new Set(names.filter((n) => roots.some((r) => r.test(plain(n)))));
   if (seen.size === 0) throw new Error(`wasm-modules.json roots name no function of ${wasmFile}`);
@@ -213,7 +217,7 @@ export function splitEngine(bound: string, out: string, profile: "2d" | "3d", ra
     }
     const names = functionNames(named);
     const calls = callGraph(wasmFile);
-    for (const name of framePath(wasmFile, names, table, calls)) keep.add(name);
+    for (const name of framePath(wasmFile, names, table, calls, profile)) keep.add(name);
     const assigned = new Map<string, string>();
     for (const name of names) {
       const m = keep.has(name) ? null : moduleOf(name, rules);

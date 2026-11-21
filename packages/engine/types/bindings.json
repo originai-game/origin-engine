@@ -15,6 +15,9 @@
     "story": [
       "story"
     ],
+    "terrain": [
+      "world3d"
+    ],
     "video": [
       "video"
     ],
@@ -7338,6 +7341,9 @@
       "name": "Terrain",
       "schema": "og.Terrain",
       "module": "terrain",
+      "split": [
+        "world3d"
+      ],
       "fields": [
         {
           "name": "data",
@@ -7389,6 +7395,9 @@
       "name": "TerrainStamp",
       "schema": "og.TerrainStamp",
       "module": "terrain",
+      "split": [
+        "world3d"
+      ],
       "fields": [
         {
           "name": "data",
@@ -7423,6 +7432,9 @@
       "name": "TerrainScatter",
       "schema": "og.TerrainScatter",
       "module": "terrain",
+      "split": [
+        "world3d"
+      ],
       "fields": [
         {
           "name": "data",
@@ -7558,6 +7570,9 @@
       "name": "Grass",
       "schema": "og.Grass",
       "module": "terrain",
+      "split": [
+        "world3d"
+      ],
       "fields": [
         {
           "name": "data",
@@ -7753,6 +7768,9 @@
       "name": "GrassType",
       "schema": "og.GrassType",
       "module": "terrain",
+      "split": [
+        "world3d"
+      ],
       "fields": [
         {
           "name": "height",
@@ -7803,6 +7821,9 @@
       "name": "GrassPusher",
       "schema": "og.GrassPusher",
       "module": "terrain",
+      "split": [
+        "world3d"
+      ],
       "fields": [
         {
           "name": "radius",
@@ -7829,6 +7850,9 @@
       "name": "ScatterClearing",
       "schema": "og.ScatterClearing",
       "module": "terrain",
+      "split": [
+        "world3d"
+      ],
       "fields": [
         {
           "name": "size",

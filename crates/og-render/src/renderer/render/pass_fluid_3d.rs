@@ -11,7 +11,7 @@ impl Pass for Fluid3dPass {
         name: "fluid-3d",
         needs: Caps::NONE,
     };
-    type State = fluid3d::Fluid3dRenderer;
+    type State = OnDemand<fluid3d::Fluid3dRenderer>;
     type Frame = ();
     type PlanIn<'a> = ();
     type UploadIn<'a> = ();
@@ -40,7 +40,9 @@ impl Pass for Fluid3dPass {
         cx: &mut EncodeCx<'_, 'f>,
     ) {
         let r = cx.ctx.r;
-        if let (Some(f), Some(views)) = (plan, fluid3d::views(&r.graph, cx.scene_depth)) {
+        if let (Some(f), Some(views), Some(st)) =
+            (plan, fluid3d::views(&r.graph, cx.scene_depth), st.get())
+        {
             cx.stats.draw_calls += st.encode(cx.encoder, f, cx.frame_bind_group, &views);
         }
     }

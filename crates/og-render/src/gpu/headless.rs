@@ -58,7 +58,8 @@ impl Renderer {
         let Some(buffer) = self
             .world
             .water
-            .probe_sea(&self.device, &self.queue, &frame)
+            .get()
+            .and_then(|w| w.probe_sea(&self.device, &self.queue, &frame))
         else {
             return Ok(Vec::new());
         };

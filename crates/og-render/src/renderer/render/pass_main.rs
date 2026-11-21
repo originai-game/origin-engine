@@ -269,7 +269,7 @@ impl Renderer {
         );
         part!("main: terrain");
         if let Some(indices) = terrain_indices {
-            pass.set_bind_group(3, self.world.terrain.fx.group(true), &[]);
+            pass.set_bind_group(3, self.world.terrain_fx.group(true), &[]);
             let (n, tris) = terrain::draw_levels(
                 &mut pass,
                 terrain_draws,
@@ -288,22 +288,29 @@ impl Renderer {
         let card_depth = shared_depth
             .then(|| self.graph.try_view("lindepth"))
             .flatten()
-            .and_then(|v| self.world.scatter.card_depth_group(&self.device, v));
-        let (n, copies) = self.world.scatter.draw(
-            &mut pass,
-            scatter::ScatterPass::Lit,
-            scatter_batches,
-            |m| ctx.scatter_material(m),
-            |m| ctx.scatter_mesh(m),
-            |c, r| view_frustum.intersects_sphere(c, r),
-            Some(&mut probe_select::Binder::new(probe_binding)),
-            Some(fx_group),
-            true,
-            shared_depth,
-            card_depth.as_ref(),
-            cards,
-            ShadowTarget::Cascade,
-        );
+            .and_then(|v| {
+                self.world
+                    .scatter
+                    .get()
+                    .and_then(|x| x.card_depth_group(&self.device, v))
+            });
+        let (n, copies) = self.world.scatter.get().map_or(Default::default(), |x| {
+            x.draw(
+                &mut pass,
+                scatter::ScatterPass::Lit,
+                scatter_batches,
+                |m| ctx.scatter_material(m),
+                |m| ctx.scatter_mesh(m),
+                |c, r| view_frustum.intersects_sphere(c, r),
+                Some(&mut probe_select::Binder::new(probe_binding)),
+                Some(fx_group),
+                true,
+                shared_depth,
+                card_depth.as_ref(),
+                cards,
+                ShadowTarget::Cascade,
+            )
+        });
         if n > 0 {
             // The copies' group 2 is theirs: the effects' back for what follows.
             pass.set_bind_group(2, fx_group, &[]);
@@ -312,13 +319,15 @@ impl Renderer {
         stats.scatter_draws += n;
         stats.scatter_copies += copies;
         part!("main: grass");
-        stats.draw_calls += self.world.grass.draw(
-            &mut pass,
-            grass::GrassPass::Lit,
-            grass_frame,
-            Some(fx_group),
-            f32::INFINITY,
-        );
+        stats.draw_calls += self.world.grass.get().map_or(Default::default(), |x| {
+            x.draw(
+                &mut pass,
+                grass::GrassPass::Lit,
+                grass_frame,
+                Some(fx_group),
+                f32::INFINITY,
+            )
+        });
         // The clouds the cloud pass marched at half the frame's size, when it ran (pass_clouds.rs): the sky draws
         // them from there.
         let clouds_low = self.graph.try_view("clouds").map(|clouds| {
@@ -402,15 +411,18 @@ impl Renderer {
             pass.set_bind_group(0, frame_bind_group, &[]);
             // Each surface and the fluids with their reflection probe (probe_select.rs).
             let mut binder = probe_select::Binder::new(probe_binding);
-            stats.draw_calls +=
-                self.world
-                    .water
-                    .draw(&mut pass, water_draws, &mut binder, self.frame_features);
+            stats.draw_calls += self.world.water.get().map_or(Default::default(), |x| {
+                x.draw(&mut pass, water_draws, &mut binder, self.frame_features)
+            });
             if let Some(f) = fluid_frame {
                 if let Some((c, r)) = fluid_bounds {
                     binder.at(&mut pass, c, r);
                 }
-                stats.draw_calls += self.world.fluid3d.draw(&mut pass, f);
+                stats.draw_calls += self
+                    .world
+                    .fluid3d
+                    .get()
+                    .map_or(Default::default(), |x| x.draw(&mut pass, f));
                 binder.reset(&mut pass);
             }
         }

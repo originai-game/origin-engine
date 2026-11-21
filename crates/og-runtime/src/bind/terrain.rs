@@ -506,6 +506,8 @@ fn local(size: Vec2, m: Mat4, x: f32, z: f32) -> (Vec2, bool) {
 /// under it (`ShadowGround::fit`), sampled as og.terrain.sample samples
 /// them. Where terrains overlap the highest counts. Runs after the frame's
 /// sprites and terrains are extracted.
+// A guarded entry into the 3D world's engine module (wasm-modules.json).
+#[inline(never)]
 pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
     if rs.scene.sprite.sprite_shadows.is_empty() || rs.scene.world.terrains.is_empty() {
         return;

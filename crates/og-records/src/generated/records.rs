@@ -30291,7 +30291,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Terrain",
         schema: "og.Terrain",
-        split: &[],
+        split: &["world3d"],
         fields: &[
             FieldDecl {
                 name: "data",
@@ -30435,7 +30435,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "TerrainStamp",
         schema: "og.TerrainStamp",
-        split: &[],
+        split: &["world3d"],
         fields: &[
             FieldDecl {
                 name: "data",
@@ -30528,7 +30528,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "TerrainScatter",
         schema: "og.TerrainScatter",
-        split: &[],
+        split: &["world3d"],
         fields: &[
             FieldDecl {
                 name: "data",
@@ -30927,7 +30927,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "Grass",
         schema: "og.Grass",
-        split: &[],
+        split: &["world3d"],
         fields: &[
             FieldDecl {
                 name: "data",
@@ -31462,7 +31462,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "GrassType",
         schema: "og.GrassType",
-        split: &[],
+        split: &["world3d"],
         fields: &[
             FieldDecl {
                 name: "height",
@@ -31572,7 +31572,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "GrassPusher",
         schema: "og.GrassPusher",
-        split: &[],
+        split: &["world3d"],
         fields: &[
             FieldDecl {
                 name: "radius",
@@ -31631,7 +31631,7 @@ pub const RECORDS: &[RecordDecl] = &[
         kind: "component",
         name: "ScatterClearing",
         schema: "og.ScatterClearing",
-        split: &[],
+        split: &["world3d"],
         fields: &[
             FieldDecl {
                 name: "size",

@@ -15,6 +15,8 @@ use crate::world::assets::{Payload, naming};
 /// persisted cell. Runs at each tick boundary, after the
 /// bundles released by then closed; a terrain still named stays and is
 /// looked at again at the next boundary.
+// A guarded entry into the 3D world's engine module (wasm-modules.json).
+#[inline(never)]
 pub(crate) fn free_released(eng: &Engine) {
     let candidates: Vec<(usize, bool)> = {
         let rs = eng.render.borrow();

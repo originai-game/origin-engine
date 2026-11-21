@@ -316,6 +316,23 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
     }
 }
 
+/// Whether the frame has a terrain to extract: one loaded, one drawn last
+/// frame, or an og.Terrain (which names no loaded terrain yet).
+fn uses_terrain(world: &World, rs: &RenderState) -> bool {
+    #[cfg(not(feature = "profile2d"))]
+    let named = rs
+        .draw
+        .terrain
+        .as_ref()
+        .is_some_and(|l| !super::column_rows(world, l).is_empty());
+    #[cfg(feature = "profile2d")]
+    let named = {
+        let _ = world;
+        false
+    };
+    rs.terrain.loaded.iter().next().is_some() || !rs.scene.world.terrains.is_empty() || named
+}
+
 /// The effects games declare, the atmosphere, the environment, probes,
 /// terrain, the camera's feel, sprites, tiles and the 2D drawables: the
 /// viewport (CSS pixels) and the tick.
@@ -349,8 +366,12 @@ fn effects(
     super::environment::extract(world, rs);
     super::probes::extract(world, rs, h);
     super::probes::extract_light_volumes(world, rs, h);
-    // Scattered copies are instances too, keyed by their terrain cell.
-    keys.extend(super::terrain::extract(world, rs, h));
+    // Scattered copies are instances too, keyed by their terrain cell. A
+    // world that has loaded no terrain and has no og.Terrain extracts none:
+    // terrain is the 3D world's engine module (docs/web-export.md §Modules).
+    if uses_terrain(world, rs) {
+        keys.extend(super::terrain::extract(world, rs, h));
+    }
     colliders(world, rs, h);
     force_fields(world, rs, h);
     let vp = super::fx::viewport(rs);
@@ -475,8 +496,12 @@ fn finish(
     // Which entity each instance came from, for the probe's id pass.
     rs.ids.instances.clear();
     rs.ids.instances.extend(keys.iter().map(|k| k.0));
-    // Drop shadows over the terrain under their sprites.
-    super::terrain::ground_drop_shadows(rs);
+    // Drop shadows over the terrain under their sprites (the 2D profile
+    // draws no terrain).
+    #[cfg(not(feature = "profile2d"))]
+    if !rs.scene.world.terrains.is_empty() && !rs.scene.sprite.sprite_shadows.is_empty() {
+        super::terrain::ground_drop_shadows(rs);
+    }
 
     // Each video's texture shows its player's frame.
     super::video::extract(world, rs);

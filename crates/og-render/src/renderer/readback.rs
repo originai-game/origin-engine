@@ -158,11 +158,11 @@ impl Renderer {
                 }))
             || (r.particles && self.particles.gpu.warm())
             || (r.lights_2d && self.lights_2d.warm())
-            || (WORLD_3D && r.water && self.world.water.warm())
-            || (WORLD_3D && r.terrain && self.world.terrain.warm())
-            || (WORLD_3D && r.scatter && self.world.scatter.warm())
+            || (WORLD_3D && r.water && self.world.water.get().is_some_and(|w| w.warm()))
+            || (WORLD_3D && r.terrain && self.world.terrain.get().is_some_and(|t| t.warm()))
+            || (WORLD_3D && r.scatter && self.world.scatter.get().is_some_and(|s| s.warm()))
             || (r.metaballs && self.world.metaballs.warm())
-            || (WORLD_3D && r.fluids && self.world.fluid3d.warm())
+            || (WORLD_3D && r.fluids && self.world.fluid3d.get().is_some_and(|f| f.warm()))
             || (r.lines && self.lines.warm())
     }
 
@@ -229,7 +229,9 @@ impl Renderer {
     /// not the last one rendered.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn finish_stats(&mut self, stats: &mut FrameStats) -> bool {
-        self.world.scatter.finish_counts(&self.device, &self.queue);
+        if let Some(s) = self.world.scatter.get_mut() {
+            s.finish_counts(&self.device, &self.queue);
+        }
         if !stats.gpu_culling {
             return false;
         }
@@ -306,7 +308,7 @@ impl Renderer {
     /// `None` without the GPU cull (no compute), or before its first
     /// counts land.
     pub fn scatter_counts(&self) -> Option<&crate::ScatterCounts> {
-        self.world.scatter.counts()
+        self.world.scatter.get()?.counts()
     }
 
     /// Forgets the TAA history: the next frame starts from its own samples
@@ -350,14 +352,18 @@ impl Renderer {
         } else {
             1
         };
-        self.world.terrain.settled = true;
+        if let Some(t) = self.world.terrain.get_mut() {
+            t.settled = true;
+        }
         self.capturing = true;
         let mut stats = self.render(scene, target);
         for _ in 1..warmup {
             stats = self.render(scene, target);
         }
         self.capturing = false;
-        self.world.terrain.settled = false;
+        if let Some(t) = self.world.terrain.get_mut() {
+            t.settled = false;
+        }
         self.put_frames(&kept);
         stats
     }

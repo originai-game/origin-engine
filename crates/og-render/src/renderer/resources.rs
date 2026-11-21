@@ -940,13 +940,57 @@ pub(crate) struct SpriteState {
     pub(crate) sprite_shader: deferred::Module,
 }
 
+/// A 3D world renderer made by the first frame that draws what it draws.
+/// Its functions and its shader text are the engine's `world3d` module
+/// (packages/engine/scripts/wasm-modules.json), which a game that draws no
+/// terrain, scattered copy, grass, planar water or 3D fluid never loads:
+/// `make` calls into it, through a closure the frame path does not follow.
+pub(crate) struct OnDemand<T> {
+    value: Option<T>,
+    make: Option<deferred::MakeAnywhere<T>>,
+}
+
+impl<T> OnDemand<T> {
+    pub(crate) fn new(make: deferred::MakeAnywhere<T>) -> Self {
+        OnDemand {
+            value: None,
+            make: Some(make),
+        }
+    }
+
+    /// The renderer, once a frame made it.
+    pub(crate) fn get(&self) -> Option<&T> {
+        self.value.as_ref()
+    }
+
+    pub(crate) fn get_mut(&mut self) -> Option<&mut T> {
+        self.value.as_mut()
+    }
+
+    /// The renderer, made now if no frame made it yet; and whether it was.
+    pub(crate) fn make(&mut self) -> (&mut T, bool) {
+        let made = self.value.is_none();
+        if made {
+            let make = self
+                .make
+                .take()
+                .expect("an on-demand renderer is made once");
+            self.value = Some(make());
+        }
+        (self.value.as_mut().expect("made above"), made)
+    }
+}
+
 /// The 3D world's renderers: water, 3D fluids, terrain, scattered copies, grass, metaballs, the wind field and trample map, the visual simulations, surfaces and garments, and the crowds' GPU path and impostors.
 pub(crate) struct WorldRenderers {
-    pub(crate) water: water::WaterRenderer,
-    pub(crate) fluid3d: fluid3d::Fluid3dRenderer,
-    pub(crate) terrain: terrain::TerrainRenderer,
-    pub(crate) scatter: scatter::ScatterRenderer,
-    pub(crate) grass: grass::GrassRenderer,
+    pub(crate) water: OnDemand<water::WaterRenderer>,
+    pub(crate) fluid3d: OnDemand<fluid3d::Fluid3dRenderer>,
+    pub(crate) terrain: OnDemand<terrain::TerrainRenderer>,
+    /// The terrains' effect group (every frame binds it, whether or not it
+    /// draws a terrain).
+    pub(crate) terrain_fx: terrain::fx::TerrainFx,
+    pub(crate) scatter: OnDemand<scatter::ScatterRenderer>,
+    pub(crate) grass: OnDemand<grass::GrassRenderer>,
     pub(crate) metaballs: metaballs::MetaballRenderer,
     /// The vegetation's simulated wind field (`wind_field.rs`).
     pub(crate) wind_field: wind_field::WindFieldSim,

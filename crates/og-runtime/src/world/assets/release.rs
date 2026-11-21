@@ -25,8 +25,13 @@ pub(crate) fn resolve_releases(eng: &Engine) {
                 Status::Failed(format!("bundle release refused: {reason}"));
         }
     }
-    // The released bundles' terrains nothing names any more.
-    crate::bind::terrain::free_released(eng);
+    // The released bundles' terrains nothing names any more (none to free
+    // in an engine that loaded none: the 3D world's engine module; the 2D
+    // profile loads none).
+    #[cfg(not(feature = "profile2d"))]
+    if eng.render.borrow().terrain.loaded.iter().next().is_some() {
+        crate::bind::terrain::free_released(eng);
+    }
 }
 
 /// A record that names what a release looks for.

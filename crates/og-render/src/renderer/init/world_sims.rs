@@ -18,12 +18,12 @@ pub(super) struct WorldSimsOutputs {
     pub garments: Option<garment_gpu::Pipelines>,
     pub visual: Option<visual_sim::VisualPipelines>,
     pub visual_fluids: Option<visual_fluid::VisualFluids>,
-    pub water: water::WaterRenderer,
+    pub water: OnDemand<water::WaterRenderer>,
     pub vegetation_compute: bool,
     pub wind_field: wind_field::WindFieldSim,
     pub trample: trample::Trample,
     pub metaballs: metaballs::MetaballRenderer,
-    pub fluid3d: fluid3d::Fluid3dRenderer,
+    pub fluid3d: OnDemand<fluid3d::Fluid3dRenderer>,
 }
 
 impl Renderer {
@@ -49,13 +49,15 @@ impl Renderer {
         let visual_fluids = surfaces
             .as_ref()
             .map(|_| crate::visual_fluid::VisualFluids::new(device));
-        let water = water::WaterRenderer::new(
-            device,
-            frame_layout,
-            off,
-            samples,
-            flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
-        );
+        // The water and the 3D fluids: made by the first frame with one
+        // (OnDemand, the 3D world's engine module).
+        let water = {
+            let (device, frame_layout) = (device.clone(), frame_layout.clone());
+            let compute = flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS);
+            OnDemand::new(Box::new(move || {
+                water::WaterRenderer::new(&device, &frame_layout, off, samples, compute)
+            }))
+        };
         // The vegetation's wind field (G2), simulated where compute runs.
         let vegetation_compute = WORLD_3D && flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS);
         let wind_field = crate::wind_field::WindFieldSim::new(device, vegetation_compute);
@@ -67,12 +69,17 @@ impl Renderer {
             &off.leave_out(FRAME_WGSL.to_string()),
             samples,
         );
-        let fluid3d = fluid3d::Fluid3dRenderer::new(
-            device,
-            frame_layout,
-            &off.leave_out(fluid_shared_source()),
-            samples,
-        );
+        let fluid3d = {
+            let (device, frame_layout) = (device.clone(), frame_layout.clone());
+            OnDemand::new(Box::new(move || {
+                fluid3d::Fluid3dRenderer::new(
+                    &device,
+                    &frame_layout,
+                    &off.leave_out(fluid_shared_source()),
+                    samples,
+                )
+            }))
+        };
         WorldSimsOutputs {
             surfaces,
             garments,

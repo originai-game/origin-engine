@@ -295,6 +295,7 @@ impl WorldRenderers {
         } = sims;
         let WorldGroundOutputs {
             terrain,
+            terrain_fx,
             scatter,
             grass,
         } = ground;
@@ -302,6 +303,7 @@ impl WorldRenderers {
             water,
             fluid3d,
             terrain,
+            terrain_fx,
             scatter,
             grass,
             metaballs,

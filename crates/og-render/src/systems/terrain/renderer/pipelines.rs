@@ -76,7 +76,7 @@ impl TerrainRenderer {
                 shadow: &self.shadow_layout,
                 terrain: &layout,
                 stamp: &self.stamp_layout,
-                fx: &self.fx.layout,
+                fx: &self.fx_layout,
                 corners: &self.corners_layout,
                 corners_write: &self.corners_write_layout,
             },
@@ -147,7 +147,7 @@ impl TerrainRenderer {
                     shadow: &self.shadow_layout,
                     terrain: layout,
                     stamp: &self.stamp_layout,
-                    fx: &self.fx.layout,
+                    fx: &self.fx_layout,
                     corners: &self.corners_layout,
                     corners_write: &self.corners_write_layout,
                 },
@@ -245,7 +245,6 @@ impl TerrainRenderer {
         // group 2), written at 0 of the writer's group 0.
         let corners_layout = storage(true, wgpu::ShaderStages::VERTEX);
         let corners_write_layout = storage(false, wgpu::ShaderStages::COMPUTE);
-        let fx = fx::TerrainFx::new(device);
         let passes = terrain_passes(
             device,
             TerrainPassLayouts {
@@ -253,7 +252,7 @@ impl TerrainRenderer {
                 shadow: p.shadow_layout,
                 terrain: &layout,
                 stamp: &stamp_layout,
-                fx: &fx.layout,
+                fx: p.fx_layout,
                 corners: &corners_layout,
                 corners_write: &corners_write_layout,
             },
@@ -319,7 +318,7 @@ impl TerrainRenderer {
         TerrainRenderer {
             layout,
             passes,
-            fx,
+            fx_layout: p.fx_layout.clone(),
             settled: false,
             features: crate::pipeline_features::Features::ALL,
             off: p.off,

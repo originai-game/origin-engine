@@ -101,6 +101,7 @@ for (const profile of ["3d", "2d"]) {
     expect(late.modules).toContain("physics");
     for (const m of ["nav", "motion", "destruction", "video"]) expect(late.modules).not.toContain(m);
     expect(early.modules).toEqual(["destruction", "motion", "nav", "physics", "story", "video"]);
+    expect(late.modules).not.toContain("world3d");
   }, 180_000);
 
   // Each module carries the read-only data only its functions read, out of
@@ -121,6 +122,14 @@ for (const profile of ["3d", "2d"]) {
     const run = JSON.parse(out.trim().split("\n").pop()!) as { tick: number; modules: string[] };
     expect(run.modules).toEqual([]);
     expect(run.tick).toBeGreaterThan(30);
+  }, 120_000);
+
+  // A 3D game that calls og.terrain loads the 3D world's module, and only it.
+  test.skipIf(STALE_WASM || NO_SPLIT || profile === "2d")(`a ${profile} game calling og.terrain loads the 3D world's module`, () => {
+    const r = Bun.spawnSync(["bun", "tests/support/module-free.ts", "--profile", profile, "--terrain"], { cwd: pkg });
+    const out = new TextDecoder().decode(r.stdout);
+    if (r.exitCode !== 0) throw new Error(`${new TextDecoder().decode(r.stderr)}${out}`);
+    expect((JSON.parse(out.trim().split("\n").pop()!) as { modules: string[] }).modules).toEqual(["world3d"]);
   }, 120_000);
 }
 

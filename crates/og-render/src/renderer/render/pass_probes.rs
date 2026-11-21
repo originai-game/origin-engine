@@ -112,15 +112,14 @@ impl Renderer {
                 }
                 // Its 3D fluids' depth, thickness and smoothing.
                 let fluid = face_fluids.get(k).and_then(Option::as_ref);
-                if let (Some(f), Some(t)) = (fluid, targets) {
-                    let views = self.world.fluid3d.face(t.size).views(
+                if let (Some(f), Some(t), Some(fluid3d)) =
+                    (fluid, targets, self.world.fluid3d.get())
+                {
+                    let views = fluid3d.face(t.size).views(
                         &t.prepass.lindepth,
                         t.copy.as_ref().expect("made with the fluids"),
                     );
-                    stats.draw_calls +=
-                        self.world
-                            .fluid3d
-                            .encode(encoder, f, &face_groups[k], &views);
+                    stats.draw_calls += fluid3d.encode(encoder, f, &face_groups[k], &views);
                 }
                 let (view, resolve_target) = match &s.msaa {
                     Some(m) => (m, Some(&s.faces[face])),
@@ -200,7 +199,7 @@ impl Renderer {
                     None,
                 );
                 if let Some(indices) = terrain_indices {
-                    pass.set_bind_group(3, self.world.terrain.fx.group(false), &[]);
+                    pass.set_bind_group(3, self.world.terrain_fx.group(false), &[]);
                     stats.draw_calls += terrain::draw_levels(
                         &mut pass,
                         terrain_draws,
@@ -211,21 +210,23 @@ impl Renderer {
                     )
                     .0;
                 }
-                let (n, _) = self.world.scatter.draw(
-                    &mut pass,
-                    scatter::ScatterPass::Lit,
-                    scatter_batches,
-                    |m| ctx.scatter_material(m),
-                    |m| ctx.scatter_mesh(m),
-                    scattered,
-                    None,
-                    Some(fx_group),
-                    false,
-                    false,
-                    None,
-                    scatter::CardSource::Cpu,
-                    ShadowTarget::Cascade,
-                );
+                let (n, _) = self.world.scatter.get().map_or(Default::default(), |x| {
+                    x.draw(
+                        &mut pass,
+                        scatter::ScatterPass::Lit,
+                        scatter_batches,
+                        |m| ctx.scatter_material(m),
+                        |m| ctx.scatter_mesh(m),
+                        scattered,
+                        None,
+                        Some(fx_group),
+                        false,
+                        false,
+                        None,
+                        scatter::CardSource::Cpu,
+                        ShadowTarget::Cascade,
+                    )
+                });
                 if n > 0 {
                     pass.set_bind_group(2, fx_group, &[]);
                 }
@@ -264,15 +265,22 @@ impl Renderer {
                     pass = begin(encoder, false);
                     pass.set_bind_group(0, &face_groups[k], &[]);
                     if let Some(water) = water {
-                        stats.draw_calls += self.world.water.draw(
-                            &mut pass,
-                            water,
-                            &mut probe_select::Binder::new(None),
-                            self.frame_features,
-                        );
+                        stats.draw_calls +=
+                            self.world.water.get().map_or(Default::default(), |x| {
+                                x.draw(
+                                    &mut pass,
+                                    water,
+                                    &mut probe_select::Binder::new(None),
+                                    self.frame_features,
+                                )
+                            });
                     }
                     if let Some(f) = fluid {
-                        stats.draw_calls += self.world.fluid3d.draw(&mut pass, f);
+                        stats.draw_calls += self
+                            .world
+                            .fluid3d
+                            .get()
+                            .map_or(Default::default(), |x| x.draw(&mut pass, f));
                     }
                     pass.set_bind_group(2, fx_group, &[]);
                 }
@@ -601,7 +609,7 @@ impl Pass for ProbesPass {
             fx_group,
             probe_lists: &frame.lists,
             probe_skinned,
-            terrain_indices: r.world.terrain.index_buffer(),
+            terrain_indices: r.world.terrain.get().and_then(|x| x.index_buffer()),
             terrain_draws,
             scatter_batches,
             probe_blended: &frame.blended,

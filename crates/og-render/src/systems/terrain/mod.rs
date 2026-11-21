@@ -351,7 +351,9 @@ type GroupKey = (
 pub(crate) struct TerrainRenderer {
     layout: wgpu::BindGroupLayout,
     passes: TerrainPasses,
-    pub fx: fx::TerrainFx,
+    /// The effect group's layout ([`fx::TerrainFx`], which the renderer
+    /// holds: every frame binds it, terrain or not).
+    fx_layout: wgpu::BindGroupLayout,
     /// Draw every resident streamed tile faded in, without stepping the
     /// fades (a capture, `Renderer::render_capture`: tiles arrive by wall
     /// time, so a capture draws them settled).
@@ -429,6 +431,8 @@ const TABLE_BYTES: u64 = MAX_TERRAIN_TILES as u64 * 4;
 pub(crate) struct TerrainPipelines<'a> {
     pub frame_layout: &'a wgpu::BindGroupLayout,
     pub shadow_layout: &'a wgpu::BindGroupLayout,
+    /// The effect group's ([`fx::TerrainFx`]).
+    pub fx_layout: &'a wgpu::BindGroupLayout,
     /// The lit features the renderer is made without (pipeline_features.rs):
     /// out of the lit source.
     pub off: crate::pipeline_features::Features,

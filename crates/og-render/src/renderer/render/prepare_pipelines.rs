@@ -90,9 +90,9 @@ impl Renderer {
         } else {
             Vec::new()
         };
-        self.world
-            .fluid3d
-            .keep_faces(&self.device, &self.probes.target_sizes(), &fluid_faces);
+        if let Some(f) = self.world.fluid3d.get_mut() {
+            f.keep_faces(&self.device, &self.probes.target_sizes(), &fluid_faces);
+        }
         self.ensure_pipelines(
             batches,
             skinned_batches,

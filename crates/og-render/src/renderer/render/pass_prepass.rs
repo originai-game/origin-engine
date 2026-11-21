@@ -222,37 +222,41 @@ impl Renderer {
         );
         part!("prepass: terrain");
         if let Some(indices) = terrain_indices {
-            p.set_bind_group(3, self.world.terrain.fx.group(true), &[]);
+            p.set_bind_group(3, self.world.terrain_fx.group(true), &[]);
             let prepass = terrain::TerrainPass::Prepass;
             let (n, _) =
                 terrain::draw_levels(&mut p, terrain_draws, indices, prepass, view_frustum, None);
             stats.prepass_draws += n;
         }
         part!("prepass: scatter");
-        let (n, _) = self.world.scatter.draw(
-            &mut p,
-            scatter::ScatterPass::Prepass,
-            scatter_batches,
-            |m| ctx.scatter_material(m),
-            |m| ctx.scatter_mesh(m),
-            |c, r| view_frustum.intersects_sphere(c, r),
-            None,
-            Some(fx_group),
-            true,
-            false,
-            None,
-            cards,
-            ShadowTarget::Cascade,
-        );
+        let (n, _) = self.world.scatter.get().map_or(Default::default(), |x| {
+            x.draw(
+                &mut p,
+                scatter::ScatterPass::Prepass,
+                scatter_batches,
+                |m| ctx.scatter_material(m),
+                |m| ctx.scatter_mesh(m),
+                |c, r| view_frustum.intersects_sphere(c, r),
+                None,
+                Some(fx_group),
+                true,
+                false,
+                None,
+                cards,
+                ShadowTarget::Cascade,
+            )
+        });
         stats.prepass_draws += n;
         part!("prepass: grass");
-        stats.prepass_draws += self.world.grass.draw(
-            &mut p,
-            grass::GrassPass::Prepass,
-            grass_frame,
-            Some(fx_group),
-            f32::INFINITY,
-        );
+        stats.prepass_draws += self.world.grass.get().map_or(Default::default(), |x| {
+            x.draw(
+                &mut p,
+                grass::GrassPass::Prepass,
+                grass_frame,
+                Some(fx_group),
+                f32::INFINITY,
+            )
+        });
         stats.draw_calls += stats.prepass_draws;
         drop(p);
         if let Some(object) = self
@@ -356,7 +360,11 @@ impl Renderer {
                     multiview_mask: None,
                 });
                 p.set_bind_group(0, frame_bind_group, &[]);
-                stats.draw_calls += self.world.water.draw_ao_depth(&mut p, water_draws);
+                stats.draw_calls += self
+                    .world
+                    .water
+                    .get()
+                    .map_or(Default::default(), |x| x.draw_ao_depth(&mut p, water_draws));
             }
         }
     }

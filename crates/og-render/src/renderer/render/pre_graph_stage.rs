@@ -104,7 +104,8 @@ impl Renderer {
             FramePass::WaterFields => self
                 .world
                 .water
-                .encode_fields(encoder)
+                .get_mut()
+                .and_then(|w| w.encode_fields(encoder))
                 .map(|q| ("water fields".to_string(), q))
                 .into_iter()
                 .collect(),
@@ -178,7 +179,9 @@ impl Renderer {
             }
             // The grass's blades, generated before every pass that draws them.
             FramePass::Grass => {
-                self.world.grass.encode(encoder, grass_frame, terrain_draws);
+                if let Some(g) = self.world.grass.get() {
+                    g.encode(encoder, grass_frame, terrain_draws);
+                }
                 Vec::new()
             }
             // The scattered copies placed on the GPU this frame, then those the
@@ -186,8 +189,10 @@ impl Renderer {
             // depth pyramid the culling drew.
             FramePass::Scatter => {
                 let textures = &self.cache.textures;
-                self.world
-                    .scatter
+                let Some(scatter) = self.world.scatter.get_mut() else {
+                    return Vec::new();
+                };
+                scatter
                     .encode(
                         &self.device,
                         &self.queue,

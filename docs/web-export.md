@@ -305,7 +305,9 @@ Each publish module, single-threaded and lanes, is split (Binaryen's `wasm-split
 `scripts/install-tools.sh`; `packages/engine/scripts/wasm-split.ts`) into
 the primary, which boots, and one module per optional capability:
 `physics`, `story` (with og.flow), `nav` (with og.ai), `motion`,
-`destruction` and `video` (`scripts/wasm-modules.json` assigns the
+`destruction`, `video` and `world3d` (terrain, scattered copies and
+grass, planar water, the 3D fluids and volumetric fog's shaders, with
+og.terrain) (`scripts/wasm-modules.json` assigns the
 functions). What a game using none of them runs stays in the primary,
 so such a game loads none: every function its ticks, snapshots and
 restores run (profiled by `scripts/wasm-profile.ts`), and every function
@@ -313,7 +315,11 @@ a frame, a canvas attach or a geometry call reaches by direct calls
 (`roots`, from Binaryen's call graph), whatever its name, up to the
 `entries`: the engine's calls into a module that run only once the game
 uses it (og.motion once og.MotionAgent is registered, a dynamic geometry's
-update, the physics debug view, a playing video's stream). A generated
+update, the physics debug view, a playing video's stream, the terrain's
+extraction once a terrain is loaded or an og.Terrain placed). og-render
+makes each 3D world renderer when a frame first draws what it draws
+(`renderer/resources.rs` `OnDemand`), so a frame without terrain,
+scattered copies, grass, water or 3D fluids calls into none of them. A generated
 geometry is not handed to physics until a collider names it. The split
 fails when an entry names no function any more. A lanes module's
 modules sit in `modules-lanes/` beside it. Each lanes pool Worker

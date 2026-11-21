@@ -33,7 +33,9 @@ impl Renderer {
         } else {
             super::setup::scene_features(scene)
         };
-        self.world.terrain.features = self.frame_features;
+        if let Some(t) = self.world.terrain.get_mut() {
+            t.features = self.frame_features;
+        }
         self.reach = super::readback::Reach::of(scene);
         // Match the surface's two-frame latency. Wait for the oldest frame,
         // not the entire queue: motion and readbacks share this device.
@@ -55,7 +57,13 @@ impl Renderer {
         // With its materials' (toon, the dissolve), as the material pass
         // left them (a capture's are all of them already).
         self.frame_features = self.frame_features | self.cache.material_features;
-        self.world.scatter.features = self.frame_features;
+        if let Some(s) = self.world.scatter.get_mut() {
+            s.features = self.frame_features;
+        }
+        // The 3D world's renderers this frame draws with, made by the first
+        // that does (resources.rs OnDemand); the scattered copies' again
+        // with the crowds' cards (world_prepare.rs).
+        self.make_world(scene, false);
         // What the frame keeps for each of its passes from their plan
         // steps to their encode, and what they encode from (pass.rs).
         let mut frames = PassFrames::default();
@@ -277,8 +285,8 @@ impl Renderer {
         // on worker threads before the batches' pipelines (deferred.rs):
         // the terrains', the frame's longest compiles, the sky's and the
         // post chain's.
-        if WORLD_3D {
-            self.world.terrain.start_passes(scene, effects.prepass);
+        if let Some(t) = self.world.terrain.get().filter(|_| WORLD_3D) {
+            t.start_passes(scene, effects.prepass);
         }
         {
             use crate::deferred::Start;
@@ -303,7 +311,9 @@ impl Renderer {
             }
         }
         self.post.start(self.history.taa_history.is_some());
-        self.world.water.start(scene_water, self.frame_features);
+        if let Some(w) = self.world.water.get_mut() {
+            w.start(scene_water, self.frame_features);
+        }
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
@@ -1113,7 +1123,9 @@ impl Renderer {
         };
 
         // The scattered copies' counts landed since the last frame.
-        self.world.scatter.poll_counts();
+        if let Some(s) = self.world.scatter.get_mut() {
+            s.poll_counts();
+        }
         // The frame's statistics so far (frame_stats.rs).
         let FrameStatsOutputs { mut stats } = self.frame_stats(FrameStatsInputs {
             scene,
@@ -1140,8 +1152,13 @@ impl Renderer {
             skinned_visible: &skinned_visible,
             skinned_gpu: cull.skinned_gpu,
         });
-        if !water_fluids.water_draws.is_empty() {
-            stats.foam_steps = self.world.water.foam_steps;
+        if let Some(w) = self
+            .world
+            .water
+            .get()
+            .filter(|_| !water_fluids.water_draws.is_empty())
+        {
+            stats.foam_steps = w.foam_steps;
         }
         // The frame's bind groups (frame_binds.rs).
         let binds = self.bind_frame(BindFrameInputs {
@@ -1283,7 +1300,7 @@ impl Renderer {
             fx_group: binds.fx_group,
             sprite_fx_group: binds.sprite_fx_group,
             glow_fx_group: binds.glow_fx_group,
-            terrain_indices: self.world.terrain.index_buffer(),
+            terrain_indices: self.world.terrain.get().and_then(|t| t.index_buffer()),
             terrain_draws: &world_frame.terrain_draws,
             scatter_batches: &world_frame.scatter_batches,
             grass_frame: &world_frame.grass_frame,

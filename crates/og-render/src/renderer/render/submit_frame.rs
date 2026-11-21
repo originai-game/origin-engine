@@ -121,7 +121,9 @@ impl Renderer {
         if let Some(gc) = self.visibility.gpu_cull.as_mut().filter(|_| gpu_cull) {
             gc.after_submit();
         }
-        self.world.scatter.after_submit();
+        if let Some(s) = self.world.scatter.get_mut() {
+            s.after_submit();
+        }
         // A request covers the frame submitted (instances_stage, the
         // scatter's cull), and with it the cull record's GPU words.
         if let Some(records) = self.visibility.records.as_mut() {

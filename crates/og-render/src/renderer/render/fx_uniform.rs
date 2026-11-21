@@ -87,8 +87,7 @@ impl Renderer {
             Some(_) => 1.0,
         };
         self.world
-            .terrain
-            .fx
+            .terrain_fx
             .write(&self.queue, &fx_uniform, self.world.trample.grid());
         // w: 1 with the GI's bounce in the AO texture's gba, 2 with GTAO's
         // bent normal there.

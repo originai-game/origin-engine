@@ -165,7 +165,12 @@ impl Renderer {
             previous_sway: self.instances.previous_sway.clone(),
             drawn_origin: self.history.drawn_origin,
             stylise_chain: self.stylise_chain,
-            terrain: self.world.terrain.save(),
+            terrain: self
+                .world
+                .terrain
+                .get()
+                .map(|t| t.save())
+                .unwrap_or_default(),
             gpu: Some(gpu),
         }
     }
@@ -231,7 +236,9 @@ impl Renderer {
         self.instances.sway_serial = None;
         self.history.drawn_origin = s.drawn_origin;
         self.stylise_chain = s.stylise_chain;
-        self.world.terrain.restore(&s.terrain);
+        if let Some(t) = self.world.terrain.get_mut() {
+            t.restore(&s.terrain);
+        }
         let mut whole = s.gpu.is_some();
         if let Some(g) = &s.gpu {
             let e: &mut wgpu::CommandEncoder = &mut encoder;

@@ -139,7 +139,7 @@ impl Renderer {
         stats.reflection_draws += n;
         if let (Some(indices), Some(r)) = (terrain_indices, reflections.get(k)) {
             let frustum = Frustum::from_view_proj(r.3);
-            pass.set_bind_group(3, self.world.terrain.fx.group(false), &[]);
+            pass.set_bind_group(3, self.world.terrain_fx.group(false), &[]);
             let (n, _) = terrain::draw_levels(
                 &mut pass,
                 terrain_draws,
@@ -157,32 +157,36 @@ impl Renderer {
         if let Some(r) = reflections.get(k) {
             let frustum = Frustum::from_view_proj(r.3);
             let fx = &reflection_fx_group[k];
-            let (n, _) = self.world.scatter.draw(
-                &mut pass,
-                scatter::ScatterPass::Lit,
-                scatter_batches,
-                |m| ctx.scatter_material(m),
-                |m| ctx.scatter_mesh(m),
-                |c, r| frustum.intersects_sphere(c, r),
-                None,
-                Some(fx),
-                false,
-                false,
-                None,
-                scatter::CardSource::Cpu,
-                ShadowTarget::Cascade,
-            );
+            let (n, _) = self.world.scatter.get().map_or(Default::default(), |x| {
+                x.draw(
+                    &mut pass,
+                    scatter::ScatterPass::Lit,
+                    scatter_batches,
+                    |m| ctx.scatter_material(m),
+                    |m| ctx.scatter_mesh(m),
+                    |c, r| frustum.intersects_sphere(c, r),
+                    None,
+                    Some(fx),
+                    false,
+                    false,
+                    None,
+                    scatter::CardSource::Cpu,
+                    ShadowTarget::Cascade,
+                )
+            });
             if n > 0 {
                 // The copies' group 2 is theirs: the effects' back for what follows.
                 pass.set_bind_group(2, fx, &[]);
             }
-            let n = n + self.world.grass.draw(
-                &mut pass,
-                grass::GrassPass::Lit,
-                grass_frame,
-                Some(fx),
-                f32::INFINITY,
-            );
+            let n = n + self.world.grass.get().map_or(Default::default(), |x| {
+                x.draw(
+                    &mut pass,
+                    grass::GrassPass::Lit,
+                    grass_frame,
+                    Some(fx),
+                    f32::INFINITY,
+                )
+            });
             stats.draw_calls += n;
             stats.reflection_draws += n;
         }
@@ -435,7 +439,7 @@ impl Pass for ReflectionPass {
             reflection_list: &frame.list,
             skinned_visible,
             lit_skinned_standard,
-            terrain_indices: r.world.terrain.index_buffer(),
+            terrain_indices: r.world.terrain.get().and_then(|x| x.index_buffer()),
             reflections,
             terrain_draws,
             scatter_batches,

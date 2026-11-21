@@ -437,7 +437,9 @@ impl Renderer {
             }
             self.queue.submit(Some(encoder.finish()));
             self.lights.fx_groups = None;
-            self.world.terrain.forget_groups();
+            if let Some(t) = self.world.terrain.get_mut() {
+                t.forget_groups();
+            }
         }
         // Stream textures' new frames, written in place (no rebinding). A
         // texture uploaded again (its slot replaced) takes its frame again.

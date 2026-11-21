@@ -212,21 +212,27 @@ impl Renderer {
         {
             p.set_samples(samples);
         }
-        for lit in self
-            .world
-            .water
-            .pipeline
-            .each()
-            .chain(self.world.water.mesh_pipeline.each())
-        {
-            lit.set_samples(samples);
+        // The 3D world's renderers made so far (one made later is made at
+        // the count, world_prepare.rs make_world).
+        if let Some(w) = self.world.water.get() {
+            for lit in w.pipeline.each().chain(w.mesh_pipeline.each()) {
+                lit.set_samples(samples);
+            }
         }
         self.world.metaballs.set_samples(samples);
-        self.world.fluid3d.set_samples(samples);
+        if let Some(f) = self.world.fluid3d.get() {
+            f.set_samples(samples);
+        }
         self.lines.set_samples(samples);
-        self.world.terrain.set_samples(samples);
-        self.world.scatter.set_samples(samples);
-        self.world.grass.set_samples(samples);
+        if let Some(t) = self.world.terrain.get_mut() {
+            t.set_samples(samples);
+        }
+        if let Some(s) = self.world.scatter.get_mut() {
+            s.set_samples(samples);
+        }
+        if let Some(g) = self.world.grass.get_mut() {
+            g.set_samples(samples);
+        }
         if let Some(a) = &self.sprite.sprite_arrays {
             a.set_samples(samples);
         }

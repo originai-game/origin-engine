@@ -6,7 +6,11 @@
 // renderer outside a browser: the tick side of a frame), a snapshot, a hash
 // and a restore. Prints JSON { tick, modules }.
 //
-//   bun tests/support/module-free.ts --profile 3d|2d
+// --terrain: the game also places an og.Terrain, so the frames call into
+// the 3D world's module (world3d), the one module the host loads; any other
+// still fails.
+//
+//   bun tests/support/module-free.ts --profile 3d|2d [--terrain]
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -20,10 +24,16 @@ const profile = argv.includes("--profile") ? argv[argv.indexOf("--profile") + 1]
 if (profile !== "3d" && profile !== "2d") throw new Error(`--profile ${profile}: 3d or 2d`);
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const dir = join(pkg, "dist", profile === "2d" ? "web-publish-2d" : "web-publish");
+const terrain = argv.includes("--terrain");
 const refuse = (name: string): never => {
   throw new Error(`a game using no optional module called into engine module ${name}`);
 };
-const host: ModuleHost = { load: async (name) => refuse(name), loadSync: (name) => refuse(name) };
+const { fileModuleHost } = await import("../../src/node/modules.ts");
+const files = fileModuleHost(dir);
+const host: ModuleHost = {
+  load: async (name, imports) => (terrain && name === "world3d" ? files.load(name, imports) : refuse(name)),
+  loadSync: (name, imports) => (terrain && name === "world3d" ? files.loadSync!(name, imports) : refuse(name)),
+};
 const { loadWebHost, loadedEngineModules } = await import("../../src/web/host.ts");
 const glue = await import(join(dir, "origin-engine.js"));
 await loadWebHost(glue, readFileSync(join(dir, "origin-engine_bg.wasm")), undefined, host);
@@ -46,6 +56,8 @@ const game = og.game({
       const e = must(world.spawn({ name: `shape-${i}`, position: { x: i * 2, y: 0.5, z: 0 } }));
       world.insert(e, og.Mesh, { geometry, material });
     });
+    // A terrain call (refused: it names no loaded terrain) runs og.terrain's binding, in world3d.
+    if (terrain && og.terrain.bounds(world, 0 as never).ok) throw new Error("og.terrain.bounds answered an unknown terrain");
   },
 }) as unknown as GameToken;
 const engine = must(createEngine(game, profile === "2d" ? { project: 'type project\nversion 1\n---\ncreate {\n  form "2d"\n}\n' } : {}));
