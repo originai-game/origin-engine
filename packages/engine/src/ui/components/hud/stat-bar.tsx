@@ -77,7 +77,7 @@ export function StatBar(props: StatBarProps) {
           <Icon class="size-4 shrink-0" name={props.icon} />
         </Show>
         <Show when={props.label}>
-          <View class="bg-[#1b1f29e0] shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-control py-0 px-1 shrink-0">
+          <View class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-control py-0 px-1 shrink-0">
             <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted text-shadow-2xs">{props.label}</Text>
           </View>
         </Show>
@@ -87,13 +87,13 @@ export function StatBar(props: StatBarProps) {
           <Show when={(props.heal ?? 0) > 0}>
             <View class="absolute left-0 top-0 h-full bg-success/50" style={{ width: `${Math.min((props.value + (props.heal ?? 0)) / max(), 1) * 100}%` }} />
           </Show>
-          <View class="absolute left-0 top-0 h-full bg-health shadow-[inset_0px_1px_0px_0px_#ffffff6b] transition-layout duration-180 ease-out group-data-mana/stat:bg-mana group-data-stamina/stat:bg-success group-data-xp/stat:bg-xp group-data-low/stat:bg-warn group-data-critical/stat:bg-[#de2634]" style={{ width: `${fraction() * 100}%` }} />
+          <View class="absolute left-0 top-0 h-full bg-health shadow-[inset_0px_1px_0px_0px_#ffffff6b] transition-layout duration-180 ease-out group-data-mana/stat:bg-mana group-data-stamina/stat:bg-success group-data-xp/stat:bg-xp group-data-low/stat:bg-warn group-data-critical/stat:bg-critical" style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.shieldMax ?? 0) > 0 && (props.shield ?? 0) > 0}>
             <View class="absolute left-0 top-0 w-full h-[34%] bg-info" style={{ width: `${Math.min((props.shield ?? 0) / (props.shieldMax ?? 1), 1) * 100}%` }} />
           </Show>
           <Show when={cells() > 0}>
             <For each={Array.from({ length: cells() }, (_, i) => i)}>
-              {(i) => <View class="absolute top-0 bottom-0 w-[0.8%] bg-[#151820eb] -translate-x-full" style={{ left: `${(i() + 1) * block() * 100}%` }} />}
+              {(i) => <View class="absolute top-0 bottom-0 w-[0.8%] bg-glass/95 -translate-x-full" style={{ left: `${(i() + 1) * block() * 100}%` }} />}
             </For>
           </Show>
           <Show when={props.showValue && props.valueInside}>
@@ -103,7 +103,7 @@ export function StatBar(props: StatBarProps) {
           </Show>
         </View>
         <Show when={props.showValue && !props.valueInside}>
-          <View class="bg-[#1b1f29e0] shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-control py-0 px-1 shrink-0">
+          <View class="bg-raised-pressed/88 shadow-[inset_0px_0px_0px_1px_#ffffff38] rounded-control py-0 px-1 shrink-0">
             <Text class="text-[14.88px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs group-data-critical/stat:text-danger">{text()}</Text>
           </View>
         </Show>

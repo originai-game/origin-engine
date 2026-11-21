@@ -36,7 +36,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
       <View class={`shrink size-[6rem] compact:size-[4rem] rounded-[1rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 p-[2px]`}>
         <Show when={props.jacket} fallback={
           <View class={`size-full rounded-[0.857rem] bg-plate-hi flex-row items-center justify-center`}>
-            <Icon class={`size-[44%] text-[#38e8ff]`} name="music" />
+            <Icon class={`size-[44%] text-hud-accent`} name="music" />
           </View>
         }>
           <Image class={`size-full rounded-[0.857rem] object-cover`} src={props.jacket} />
@@ -55,7 +55,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
           <View class={`flex flex-row flex-wrap gap-1 mt-0.5`}>
             <Show when={props.chart !== ""}>
               <Text
-                class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-white bg-[#32a0e6] nine-chip-cut data-tier-easy:bg-[#34c778] data-tier-hard:bg-[#ffa528] data-tier-expert:bg-[#ff3d8a] data-tier-master:bg-[#a05aff] data-tier-special:bg-[#a05aff] ${packClass("Chip", "frame")}`}
+                class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-white bg-chart-normal nine-chip-cut data-tier-easy:bg-chart-easy data-tier-hard:bg-chart-hard data-tier-expert:bg-fever data-tier-master:bg-chart-master data-tier-special:bg-chart-master ${packClass("Chip", "frame")}`}
                 data-tier-easy={props.tier === "easy"}
                 data-tier-hard={props.tier === "hard"}
                 data-tier-expert={props.tier === "expert"}
@@ -67,7 +67,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
             </Show>
             <For each={props.modifiers ?? []} key={(m) => m.id}>
               {(m) => (
-                <Text class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`}>
+                <Text class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-well nine-chip-cut ${packClass("Chip", "frame")}`}>
                   {m().label}
                 </Text>
               )}

@@ -24,7 +24,7 @@ export function RpgHints(props: RpgHintsProps) {
         <View class={`flex-row items-center min-w-0 max-w-full gap-1`} role="listitem">
           <Show when={h().key}>
             <Text
-              class={`shrink min-w-[1.714rem] max-w-[8.571rem] px-1 text-xs leading-[1.6] font-bold text-center text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis`}
+              class={`shrink min-w-[1.714rem] max-w-[8.571rem] px-1 text-xs leading-[1.6] font-bold text-center text-hud-accent-fg bg-linear-to-b from-white to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis`}
             >
               {h().key}
             </Text>

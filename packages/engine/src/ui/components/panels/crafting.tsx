@@ -4,7 +4,7 @@ import { Spinner } from "../base/spinner";
 import "./economy.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-[#ffffff] to-[#c9d1e2] text-[#0b0f18] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] font-bold leading-[1.5] py-0 px-1`;
+const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-accent-hover to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] font-bold leading-[1.5] py-0 px-1`;
 
 export interface RpgCraftingProps {
   /** The station name; empty uses Crafting. */
@@ -87,8 +87,8 @@ export function RpgCrafting(props: RpgCraftingProps) {
           <View class={`gap-1 overflow-auto compact:grow-0 compact:shrink compact:basis-auto compact:max-h-2/5`} role="listbox" label={t("rpg.craft.title")}>
             <For each={(props.recipes ?? [])} key={(recipe) => recipe.id}>
               {(recipe) => (
-              <View class={`group/row relative nine-plate-cut bg-[#090e1a8c] border border-rim-soft border-l-3 text-fg transition duration-317 w-full min-h-11 pr-2 pl-3 py-1 hover:bg-none hover:bg-[#151e32b2] data-selected:bg-transparent data-selected:bg-[#38e8ff33] data-selected:text-fg disabled:text-fg-subtle data-down:opacity-45 data-tier-uncommon:border-l-uncommon data-tier-rare:border-l-rare data-tier-epic:border-l-epic data-tier-legendary:border-l-legendary data-tier-mythic:border-l-mythic data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic`} role="option" selected={recipe().id === props.selected} disabled={(props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onChoose?.(e, recipe().id)} data-not-can={!(recipe().canCraft)} data-selected={recipe().id === props.selected} data-tier-uncommon={(recipe().rarity || 'common') === "uncommon"} data-tier-rare={(recipe().rarity || 'common') === "rare"} data-tier-epic={(recipe().rarity || 'common') === "epic"} data-tier-legendary={(recipe().rarity || 'common') === "legendary"} data-tier-mythic={(recipe().rarity || 'common') === "mythic"}>
-                <View class="absolute left-0 inset-y-0 w-[3.424px] bg-[#38e8ff] hidden group-data-selected/row:block" />
+              <View class={`group/row relative nine-plate-cut bg-tile/55 border border-rim-soft border-l-3 text-fg transition duration-317 w-full min-h-11 pr-2 pl-3 py-1 hover:bg-none hover:bg-surface/70 data-selected:bg-transparent data-selected:bg-hud-accent/20 data-selected:text-fg disabled:text-fg-subtle data-down:opacity-45 data-tier-uncommon:border-l-uncommon data-tier-rare:border-l-rare data-tier-epic:border-l-epic data-tier-legendary:border-l-legendary data-tier-mythic:border-l-mythic data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic`} role="option" selected={recipe().id === props.selected} disabled={(props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onChoose?.(e, recipe().id)} data-not-can={!(recipe().canCraft)} data-selected={recipe().id === props.selected} data-tier-uncommon={(recipe().rarity || 'common') === "uncommon"} data-tier-rare={(recipe().rarity || 'common') === "rare"} data-tier-epic={(recipe().rarity || 'common') === "epic"} data-tier-legendary={(recipe().rarity || 'common') === "legendary"} data-tier-mythic={(recipe().rarity || 'common') === "mythic"}>
+                <View class="absolute left-0 inset-y-0 w-[3.424px] bg-hud-accent hidden group-data-selected/row:block" />
                 <View class={`items-center w-full gap-2`}>
                   <View class={`justify-center items-center bg-tile border-[1.5px] border-common nine-plate-cut gap-2 size-[3.143rem] shrink-0 group-data-not-can/row:opacity-45 data-tier-uncommon:border-uncommon data-tier-rare:border-rare data-tier-epic:border-epic data-tier-legendary:border-legendary data-tier-mythic:border-mythic ${packClass("Slot", "frame")}`}>
                     <Icon class={`size-[74%]`} name={recipe().icon} />
@@ -143,7 +143,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
                       <View class={`grid grid-cols-[repeat(auto-fill,minmax(9.286rem,1fr))] p-0 m-0 gap-1`}>
                         <For each={(props.ingredients ?? [])} key={(ingredient) => ingredient.id}>
                           {(ingredient) => (
-                          <View class={`bg-[#090e1a8c] border border-rim-soft nine-plate-cut py-1 px-2 gap-0.5 data-not-sufficient:bg-none data-not-sufficient:bg-danger/10 data-not-sufficient:border-danger/55`} data-not-sufficient={!(ingredient().sufficient)}>
+                          <View class={`bg-tile/55 border border-rim-soft nine-plate-cut py-1 px-2 gap-0.5 data-not-sufficient:bg-none data-not-sufficient:bg-danger/10 data-not-sufficient:border-danger/55`} data-not-sufficient={!(ingredient().sufficient)}>
                             <Text class={`text-fg-muted`}>
                               {ingredient().name}
                             </Text>
@@ -171,7 +171,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
                       <View class={`min-w-11 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("rpg.economy.less")} disabled={!(props.canDecrease ?? false) || (props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onDecrease?.(e, recipe().id)}>
                         <Text>{t("rpg.economy.minus")}</Text>
                       </View>
-                      <View class={`grid items-center justify-items-center min-w-[4.571rem] min-h-11 text-lg font-bold bg-[#04060c8c] border border-white/6 shrink`} label={t("rpg.economy.quantity", { quantity: (props.quantity ?? 1) })}>
+                      <View class={`grid items-center justify-items-center min-w-[4.571rem] min-h-11 text-lg font-bold bg-well/62 border border-white/6 shrink`} label={t("rpg.economy.quantity", { quantity: (props.quantity ?? 1) })}>
                         <Text class="tabular-nums">{formatNumber((props.quantity ?? 1))}</Text>
                       </View>
                       <View class={`min-w-11 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("rpg.economy.more")} disabled={!(props.canIncrease ?? false) || (props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onIncrease?.(e, recipe().id)}>

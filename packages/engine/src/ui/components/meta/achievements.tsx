@@ -87,7 +87,7 @@ export function Achievements(props: AchievementsProps) {
                       </Text>
                     </Show>
                     <Show when={a().tier}>
-                      <Text class={`whitespace-nowrap font-bold text-caption tracking-[0.14em] uppercase text-fg-muted bg-[#0609108c] py-0 px-1 m-0 rounded-capsule data-tier-rare:text-info data-tier-epic:text-xp data-tier-legendary:text-warn`} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'}>
+                      <Text class={`whitespace-nowrap font-bold text-caption tracking-[0.14em] uppercase text-fg-muted bg-well/62 py-0 px-1 m-0 rounded-capsule data-tier-rare:text-info data-tier-epic:text-xp data-tier-legendary:text-warn`} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'}>
                         {a().tier === 'legendary' ? t("general.achievements.tierLegendary") : a().tier === 'epic' ? t("general.achievements.tierEpic") : a().tier === 'rare' ? t("general.achievements.tierRare") : t("general.achievements.tierCommon")}
                       </Text>
                     </Show>

@@ -26,8 +26,8 @@ export interface CrosshairProps {
 export function Crosshair(props: CrosshairProps) {
   const gap = () => 0.571 + Math.min(Math.max(props.spread, 0), 1) * 2.286;
   const tick = () => (props.hit ?? "none") != "none";
-  const tickClass = `absolute w-[1rem] h-[0.214rem] bg-white shadow-[0px_0px_0px_0.107rem_#000000b3] data-headshot:bg-[#ff4d5e] data-headshot:shadow-[0px_0px_0.571rem_#ff4d5e] data-kill:h-[0.286rem] data-kill:bg-[#ff4d5e] data-kill:shadow-[0px_0px_0.571rem_#ff4d5e] data-shieldbreak:bg-[#4fd8ff] data-shieldbreak:shadow-[0px_0px_0.571rem_#4fd8ff] animate-pop`;
-  const armClass = `absolute bg-white shadow-[0px_0px_0px_0.107rem_#000000b3] data-aimed:bg-[#ff4d5e] data-dot:hidden data-circle:hidden`;
+  const tickClass = `absolute w-[1rem] h-[0.214rem] bg-white shadow-[0px_0px_0px_0.107rem_#000000b3] data-headshot:bg-foe data-headshot:shadow-[0px_0px_0.571rem_#ff4d5e] data-kill:h-[0.286rem] data-kill:bg-foe data-kill:shadow-[0px_0px_0.571rem_#ff4d5e] data-shieldbreak:bg-ally data-shieldbreak:shadow-[0px_0px_0.571rem_#4fd8ff] animate-pop`;
+  const armClass = `absolute bg-white shadow-[0px_0px_0px_0.107rem_#000000b3] data-aimed:bg-foe data-dot:hidden data-circle:hidden`;
   return (
     <View class="relative size-24" role="image" label={t("shooter.crosshair.name")} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"}>
       <View class={`${armClass} w-[0.143rem] h-[0.714rem]`} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"} style={{ left: "calc(50% - 0.0715rem)", bottom: `calc(50% + ${gap()}rem)` }} />
@@ -35,13 +35,13 @@ export function Crosshair(props: CrosshairProps) {
       <View class={`${armClass} w-[0.714rem] h-[0.143rem]`} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"} style={{ top: "calc(50% - 0.0715rem)", right: `calc(50% + ${gap()}rem)` }} />
       <View class={`${armClass} w-[0.714rem] h-[0.143rem]`} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"} style={{ top: "calc(50% - 0.0715rem)", left: `calc(50% + ${gap()}rem)` }} />
       <View
-        class="absolute rounded-full border-[0.143rem] border-white shadow-[0px_0px_0px_0.107rem_#000000b3] hidden data-circle:block data-aimed:border-[#ff4d5e]"
+        class="absolute rounded-full border-[0.143rem] border-white shadow-[0px_0px_0px_0.107rem_#000000b3] hidden data-circle:block data-aimed:border-foe"
         data-circle={(props.shape ?? "cross") == "circle"}
         data-aimed={props.aimed}
         style={{ left: `calc(50% - ${gap()}rem - 0.357rem)`, top: `calc(50% - ${gap()}rem - 0.357rem)`, width: `calc(${gap() * 2}rem + 0.714rem)`, height: `calc(${gap() * 2}rem + 0.714rem)` }}
       />
       <View
-        class="absolute size-[0.286rem] rounded-full bg-white shadow-[0px_0px_0px_0.107rem_#000000b3] data-aimed:bg-[#ff4d5e]"
+        class="absolute size-[0.286rem] rounded-full bg-white shadow-[0px_0px_0px_0.107rem_#000000b3] data-aimed:bg-foe"
         data-aimed={props.aimed}
         style={{ left: "calc(50% - 0.143rem)", top: "calc(50% - 0.143rem)" }}
       />

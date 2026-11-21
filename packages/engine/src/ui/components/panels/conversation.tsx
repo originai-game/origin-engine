@@ -76,14 +76,14 @@ export function RpgConversation(props: RpgConversationProps) {
     }
   });
   return (
-    <View class={`nine-plate-cut bg-[#1e2637e5] text-fg flex-row grow shrink basis-0 flex-wrap overflow-y-auto p-4 gap-4 disabled:text-fg-subtle ${packClass("Plate", "frame")}`} label={props.speaker ? props.speaker : t("rpg.talk.narration")}>
+    <View class={`nine-plate-cut bg-plate-hi text-fg flex-row grow shrink basis-0 flex-wrap overflow-y-auto p-4 gap-4 disabled:text-fg-subtle ${packClass("Plate", "frame")}`} label={props.speaker ? props.speaker : t("rpg.talk.narration")}>
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-gold/50 to-transparent pointer-events-none" />
       <Show when={props.portrait}>
         <Image class="w-[11.4rem] object-cover object-top compact:size-24 shrink-0" src={props.portrait} />
       </Show>
       <View class="w-[42%] py-3 px-0 gap-2 compact:w-full compact:grow compact:shrink compact:basis-0 compact:p-0">
         <Show when={props.speaker}>
-          <Text class={`font-bold text-lg text-[#241a04] self-start max-w-full pr-4 pl-2 tracking-[0.14em] bg-gold nine-chip-cut py-0.5 m-0`}>
+          <Text class={`font-bold text-lg text-gold-fg self-start max-w-full pr-4 pl-2 tracking-[0.14em] bg-gold nine-chip-cut py-0.5 m-0`}>
             {props.speaker}
           </Text>
         </Show>
@@ -116,10 +116,10 @@ export function RpgConversation(props: RpgConversationProps) {
           <For each={props.replies} key={(r) => r.id}>
             {(r) => (
             <View class="w-full">
-              <View class={`group/row relative nine-plate-cut bg-entry-hi border border-rim text-fg transition duration-317 w-full min-h-9 pointer-coarse:min-h-11 py-1 px-3 hover:bg-none hover:bg-entry-hi data-selected:bg-transparent data-selected:bg-[#38e8ff33] data-selected:text-fg disabled:text-fg-subtle data-used:text-fg-subtle data-down:opacity-45`} role="option" selected={r().id === props.selected} onPress={(e) => props.onReply?.(e, r().id)} data-used={r().used} data-selected={r().id === props.selected}>
-                <View class="absolute left-0 inset-y-0 w-[3.424px] bg-[#38e8ff] hidden group-data-selected/row:block" />
+              <View class={`group/row relative nine-plate-cut bg-entry-hi border border-rim text-fg transition duration-317 w-full min-h-9 pointer-coarse:min-h-11 py-1 px-3 hover:bg-none hover:bg-entry-hi data-selected:bg-transparent data-selected:bg-hud-accent/20 data-selected:text-fg disabled:text-fg-subtle data-used:text-fg-subtle data-down:opacity-45`} role="option" selected={r().id === props.selected} onPress={(e) => props.onReply?.(e, r().id)} data-used={r().used} data-selected={r().id === props.selected}>
+                <View class="absolute left-0 inset-y-0 w-[3.424px] bg-hud-accent hidden group-data-selected/row:block" />
                 <View class="flex-row items-center w-full gap-3">
-                  <Text class={`tabular-nums text-gold min-w-6 text-center font-bold bg-[#060910b8] py-0 px-0.5 nine-chip-cut group-data-selected/row:text-[#241a04] group-data-selected/row:bg-none group-data-selected/row:bg-gold group-data-used/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
+                  <Text class={`tabular-nums text-gold min-w-6 text-center font-bold bg-well/82 py-0 px-0.5 nine-chip-cut group-data-selected/row:text-gold-fg group-data-selected/row:bg-none group-data-selected/row:bg-gold group-data-used/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
                     {t("rpg.talk.number", { number: r().number })}
                   </Text>
                   <Text class="grow shrink basis-0 text-start">{r().text}</Text>

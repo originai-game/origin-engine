@@ -30,10 +30,10 @@ export interface RacingGarageProps {
   onBuy?: (e: UiEvent, id: string) => void;
 }
 
-const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#1e2637eb] hover:bg-[#2a3242eb] disabled:opacity-45 nine-plate-cut ${packClass("Button", "plate")}`;
-const stepButton = `size-11 items-center justify-center p-0 text-fg bg-[#1e2637eb] hover:bg-[#2a3242eb] nine-plate-cut ${packClass("Button", "plate")}`;
-const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#1e2637eb] hover:bg-[#2a3242eb] disabled:opacity-45 flex-1 min-w-[8.571rem] nine-plate-cut ${packClass("Button", "plate", "primary")}`;
-const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-white to-[#c9d1e2] text-[#0b0f18] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] leading-[1.5] py-0 px-1`;
+const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi/95 disabled:opacity-45 nine-plate-cut ${packClass("Button", "plate")}`;
+const stepButton = `size-11 items-center justify-center p-0 text-fg bg-plate-hi hover:bg-glass-hi/95 nine-plate-cut ${packClass("Button", "plate")}`;
+const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi/95 disabled:opacity-45 flex-1 min-w-[8.571rem] nine-plate-cut ${packClass("Button", "plate", "primary")}`;
+const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-white to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] leading-[1.5] py-0 px-1`;
 
 /**
  * Choosing a car: the shown car large (its picture, name and class) with
@@ -50,11 +50,11 @@ export function RacingGarage(props: RacingGarageProps) {
   const stats = () => props.stats ?? [];
   const shownVehicle = () => vehicles().find((v) => v.id === props.shown);
   return (
-    <View class={`relative flex-col gap-6 w-full h-full overflow-hidden bg-[#0d1119] text-fg p-6 compact:p-2`} role="group" label={heading()}>
+    <View class={`relative flex-col gap-6 w-full h-full overflow-hidden bg-tile text-fg p-6 compact:p-2`} role="group" label={heading()}>
       <Show when={shownVehicle()?.image} keyed>
         {(img) => <Image src={img()} class="absolute inset-0 size-full" />}
       </Show>
-      <View class="absolute inset-0 pointer-events-none bg-linear-to-b from-[#060910b3] via-transparent to-[#060910eb] compact:bottom-auto compact:h-[38%]" />
+      <View class="absolute inset-0 pointer-events-none bg-linear-to-b from-well/80 via-transparent to-plate-lo compact:bottom-auto compact:h-[38%]" />
       <View class="relative flex-row w-full shrink-0">
         <Text class={`flex-1 min-w-0 text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg text-stroke-3 text-stroke-bg`}>{heading()}</Text>
       </View>
@@ -78,7 +78,7 @@ export function RacingGarage(props: RacingGarageProps) {
                   <Show when={!v().image}>
                     <View class={`w-full aspect-[3.2] bg-white/4 nine-panel-cut`} />
                   </Show>
-                  <Text class={`w-full text-left text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-[#38e8ff] text-stroke-3 text-stroke-bg`}>{v().body}</Text>
+                  <Text class={`w-full text-left text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-hud-accent text-stroke-3 text-stroke-bg`}>{v().body}</Text>
                   <Text class={`w-full text-left text-[4.714rem] leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>
                 </View>
               )}
@@ -95,7 +95,7 @@ export function RacingGarage(props: RacingGarageProps) {
               </View>
             </View>
           </View>
-          <View class={`grow-[0.6] max-w-full flex-col gap-3 p-3 bg-[#1a2130] nine-panel-cut compact:w-full compact:shrink-0 compact:p-2 ${packClass("Panel", "frame")}`}>
+          <View class={`grow-[0.6] max-w-full flex-col gap-3 p-3 bg-raised-pressed nine-panel-cut compact:w-full compact:shrink-0 compact:p-2 ${packClass("Panel", "frame")}`}>
             <View class="flex-col gap-3" role="list" label={t("racing.garage.stats")}>
               <For each={stats()} key={(s) => s.id}>
                 {(s) => (
@@ -149,7 +149,7 @@ export function RacingGarage(props: RacingGarageProps) {
             <For each={vehicles()} key={(v) => v.id}>
               {(v) => (
                 <View
-                  class={`shrink-0 w-[12.143rem] min-h-16 px-2 py-1 bg-[#141a26] nine-plate-cut data-selected:bg-[#1a2130] data-locked:text-fg-muted compact:w-[8.857rem]`}
+                  class={`shrink-0 w-[12.143rem] min-h-16 px-2 py-1 bg-glass nine-plate-cut data-selected:bg-raised-pressed data-locked:text-fg-muted compact:w-[8.857rem]`}
                   role="option"
                   selected={v().id === props.shown}
                   label={v().title}
@@ -161,7 +161,7 @@ export function RacingGarage(props: RacingGarageProps) {
                   <View class="flex-col gap-1 w-full items-start">
                     <Text class={`w-full text-left text-[0.929rem] leading-[1.15] font-bold text-fg`}>{v().title}</Text>
                     <Text
-                      class={`max-w-full py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase bg-[#060910e0] nine-chip-cut text-fg data-driving:text-[#0b0f18] data-driving:bg-[#38e8ff] data-locked:text-fg-muted data-price:text-gold ${packClass("Chip", "frame")}`}
+                      class={`max-w-full py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase bg-well nine-chip-cut text-fg data-driving:text-hud-accent-fg data-driving:bg-hud-accent data-locked:text-fg-muted data-price:text-gold ${packClass("Chip", "frame")}`}
                       data-driving={v().id === props.chosen}
                       data-locked={v().locked && v().id !== props.chosen}
                       data-price={!v().locked && v().id !== props.chosen && !v().owned}

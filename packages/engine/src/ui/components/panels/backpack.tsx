@@ -2,7 +2,7 @@ import { For, Icon, Show, Text, View, formatCompact, formatNumber, packClass, t,
 import "./backpack.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-[#ffffff] to-[#c9d1e2] text-[#0b0f18] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] font-bold leading-[1.5] py-0 px-1`;
+const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-accent-hover to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] font-bold leading-[1.5] py-0 px-1`;
 
 export interface RpgBackpackProps {
   /** The bag's heading (Backpack, Stash, a chest's name). */
@@ -71,7 +71,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
           </Text>
         </View>
         <Show when={props.gold}>
-          <View class={`flex-row items-center pr-2 pl-0.5 bg-[#04060c8c] py-0.5 gap-1 nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.gold", { gold: props.gold })}>
+          <View class={`flex-row items-center pr-2 pl-0.5 bg-well/62 py-0.5 gap-1 nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.gold", { gold: props.gold })}>
             <Icon class="size-[1.571rem] text-gold" name="coin" />
             <Text class={`tabular-nums text-fg whitespace-nowrap font-bold shrink`}>
               {props.gold}
@@ -89,11 +89,11 @@ export function RpgBackpack(props: RpgBackpackProps) {
                 <View class={`group/tab text-fg-muted transition duration-317 min-h-11 py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={c().id === props.tab} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.tab}>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
-                    <Text class={`text-[0.857rem] font-bold bg-material-edge text-fg-subtle py-0 px-1 nine-chip-cut group-data-selected/tab:bg-none group-data-selected/tab:bg-[#38e8ff] group-data-selected/tab:text-[#041016] ${packClass("Chip", "frame")}`}>
+                    <Text class={`text-[0.857rem] font-bold bg-material-edge text-fg-subtle py-0 px-1 nine-chip-cut group-data-selected/tab:bg-none group-data-selected/tab:bg-hud-accent group-data-selected/tab:text-hud-accent-fg ${packClass("Chip", "frame")}`}>
                       {formatNumber(c().count)}
                     </Text>
                   </Show>
-                  <Text class="absolute bottom-0 h-0.75 bg-[#38e8ff] shadow-[0px_0px_11.424px_#38e8ff] opacity-0 inset-x-1 group-data-selected/tab:opacity-100" />
+                  <Text class="absolute bottom-0 h-0.75 bg-hud-accent shadow-[0px_0px_11.424px_#38e8ff] opacity-0 inset-x-1 group-data-selected/tab:opacity-100" />
                 </View>
                 )}
               </For>
@@ -120,7 +120,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
             <For each={props.items} key={(i) => i.id}>
               {(i) => (
               <View class={`group/cell text-fg transition duration-317 w-full aspect-square min-w-11 p-0.5 data-active:scale-96 data-down:opacity-45`} role="gridcell" selected={i().id === props.selected} label={i().name} onPress={(e) => props.onChoose?.(e, i().id)} draggable={i().locked ? undefined : i().id} dropTarget={i().id} onDrop={(e) => { if (e.key !== i().id) props.onMove?.(e, { dragged: e.key, target: i().id }); }} data-selected={i().id === props.selected} data-tier-uncommon={(i().rarity || 'common') === "uncommon"} data-tier-rare={(i().rarity || 'common') === "rare"} data-tier-epic={(i().rarity || 'common') === "epic"} data-tier-legendary={(i().rarity || 'common') === "legendary"} data-tier-mythic={(i().rarity || 'common') === "mythic"}>
-                <View class={`grow shrink basis-0 justify-center items-center w-full bg-tile border-[1.5px] border-common nine-plate-cut gap-0 hover:border-rim-strong group-data-selected/cell:border-[#38e8ff] data-tier-uncommon:border-uncommon data-tier-rare:border-rare data-tier-epic:border-epic data-tier-legendary:border-legendary data-tier-mythic:border-mythic ${packClass("Slot", "frame")}`}>
+                <View class={`grow shrink basis-0 justify-center items-center w-full bg-tile border-[1.5px] border-common nine-plate-cut gap-0 hover:border-rim-strong group-data-selected/cell:border-hud-accent data-tier-uncommon:border-uncommon data-tier-rare:border-rare data-tier-epic:border-epic data-tier-legendary:border-legendary data-tier-mythic:border-mythic ${packClass("Slot", "frame")}`}>
                   <Icon class="size-[68%]" name={i().icon} />
                   <View class="absolute bottom-0 h-0.75 bg-current inset-x-[0.571rem] text-common data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic" />
                   <Show when={i().broken}>
@@ -130,22 +130,22 @@ export function RpgBackpack(props: RpgBackpackProps) {
                   </Show>
                 </View>
                 <Show when={i().count > 1}>
-                  <Text class={`font-bold text-[0.857rem] leading-[1.35] tabular-nums bg-[#060910e0] text-fg transition duration-317 absolute whitespace-nowrap right-1 bottom-2 py-0 px-0.5 nine-chip-cut group-data-broken/cell:bottom-[29.943px] ${packClass("Chip", "frame")}`} label={formatNumber(i().count)}>
+                  <Text class={`font-bold text-[0.857rem] leading-[1.35] tabular-nums bg-well text-fg transition duration-317 absolute whitespace-nowrap right-1 bottom-2 py-0 px-0.5 nine-chip-cut group-data-broken/cell:bottom-[29.943px] ${packClass("Chip", "frame")}`} label={formatNumber(i().count)}>
                     {formatCompact(i().count)}
                   </Text>
                 </Show>
                 <Show when={i().equipped}>
-                  <Text class={`absolute text-[0.857rem] font-bold leading-[1.35] text-[#04100a] bg-success whitespace-nowrap left-1 top-1 py-0 px-1 nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.equipped")}>
+                  <Text class={`absolute text-[0.857rem] font-bold leading-[1.35] text-boon-fg bg-success whitespace-nowrap left-1 top-1 py-0 px-1 nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.equipped")}>
                     {t("rpg.backpack.equippedMark")}
                   </Text>
                 </Show>
                 <Show when={i().locked}>
-                  <View class={`absolute items-center justify-center text-fg bg-[#060910e0] right-1 top-1 p-0 size-[1.429rem] nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.locked")}>
+                  <View class={`absolute items-center justify-center text-fg bg-well right-1 top-1 p-0 size-[1.429rem] nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.locked")}>
                     <Icon class="size-[64%]" name="lock" />
                   </View>
                 </Show>
                 <Show when={i().fresh}>
-                  <View class={`bg-[#38e8ff] absolute right-2 top-2 shadow-[0px_0px_9.136px_#38e8ff,0px_0px_0px_1.5px_#060910e5] size-1 rounded-capsule data-locked:right-[33.714px]`} label={t("rpg.backpack.new")} data-locked={i().locked} />
+                  <View class={`bg-hud-accent absolute right-2 top-2 shadow-[0px_0px_9.136px_#38e8ff,0px_0px_0px_1.5px_#060910e5] size-1 rounded-capsule data-locked:right-[33.714px]`} label={t("rpg.backpack.new")} data-locked={i().locked} />
                 </Show>
                 <Show when={i().id === props.selected}>
                   <View class="absolute pointer-events-none inset-0">
@@ -176,7 +176,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
             </Text>
           </View>
           <View class={`bg-track shadow-sunk h-[0.714rem] mx-1 rounded-capsule data-over:shadow-[0px_0px_0px_1px_#ffa53d,0px_0px_13.712px_#ffa53d99]`} role="meter" label={t("rpg.backpack.weight")} valueText={props.weight} data-over={props.load > 1}>
-            <View class={`bg-[#38e8ff] absolute left-0 inset-y-0 data-over:bg-none data-over:bg-warn`} data-over={props.load > 1} style={{ width: `${(100 * (props.load > 1 ? 1 : props.load))}%` }} />
+            <View class={`bg-hud-accent absolute left-0 inset-y-0 data-over:bg-none data-over:bg-warn`} data-over={props.load > 1} style={{ width: `${(100 * (props.load > 1 ? 1 : props.load))}%` }} />
           </View>
           <Show when={props.load > 1}>
             <Text class={`text-caption text-warn m-0`}>

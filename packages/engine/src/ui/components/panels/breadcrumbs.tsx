@@ -36,7 +36,7 @@ export function Breadcrumbs(props: BreadcrumbsProps) {
                   <Line class={`text-fg-subtle w-2 h-3 shrink-0 rtl:-scale-x-100`} points={[2, 1, 6, 6, 2, 11]} viewBox="0 0 8 12" />
                 </>
             }>
-              <Text class={`text-fg pb-0.5 text-[1.071rem] font-bold leading-snug tracking-normal normal-case border-b-2 border-[#38e8ff] shrink-0 min-w-0`} current={true}>
+              <Text class={`text-fg pb-0.5 text-[1.071rem] font-bold leading-snug tracking-normal normal-case border-b-2 border-hud-accent shrink-0 min-w-0`} current={true}>
                 {crumb().label}
               </Text>
             </Show>

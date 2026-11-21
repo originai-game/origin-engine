@@ -61,10 +61,10 @@ export interface ArenaDraftProps {
  * stretch is dropped, and the scroll fade at the teams' foot is dropped,
  * and a long word wraps without breaking.
  */
-const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-[#232837ed] compact:p-2 ${packClass("Panel", "frame")}`;
+const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi compact:p-2 ${packClass("Panel", "frame")}`;
 const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg whitespace-nowrap nine-chip-cut ${packClass("Chip", "frame")}`;
-const KEYCAP = "shrink-0 size-6 min-w-6 text-center text-caption leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
-const CONFIRM = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-[#15181f] nine-plate-cut bg-[#38e8ff] hover:bg-[#5defff] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`;
+const KEYCAP = "shrink-0 size-6 min-w-6 text-center text-caption leading-[1.6] font-bold text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
+const CONFIRM = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-glass nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`;
 
 function Portrait(props: { slot: () => DraftSlot; small?: boolean }) {
   const s = props.slot;
@@ -74,7 +74,7 @@ function Portrait(props: { slot: () => DraftSlot; small?: boolean }) {
       class={`relative shrink-0 ${props.small ? "size-[3.143rem]" : "size-[3.714rem]"} compact:size-[2.857rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 overflow-hidden data-empty:p-px data-empty:bg-none data-empty:bg-white/28`}
       data-empty={!hasName()}
     >
-      <View class="size-full rounded-[0.571rem] overflow-hidden flex-row items-center justify-center bg-[#1a1e29]">
+      <View class="size-full rounded-[0.571rem] overflow-hidden flex-row items-center justify-center bg-surface">
         <Show when={(s().portrait ?? 0) != 0} fallback={
           <Show when={(s().icon ?? "") != ""}>
             <Icon class="size-4 text-fg data-banned:text-fg/66 data-banned:opacity-40" name={s().icon ?? ""} data-banned={hasName()} />
@@ -109,7 +109,7 @@ function DraftTeam(props: { team: "a" | "b"; name: string; active: boolean; slot
             <View class="shrink basis-auto min-w-16 max-w-full flex-col items-center gap-y-0.5" role="listitem" current={s().active === true}>
               <Portrait slot={s} small={true} />
               <Text
-                class={`${TAG} data-banning:bg-[#38e8ff] data-banning:text-[#15181f] data-banning:shadow-none data-open:text-fg/66`}
+                class={`${TAG} data-banning:bg-hud-accent data-banning:text-glass data-banning:shadow-none data-open:text-fg/66`}
                 data-banning={s().active === true}
                 data-open={!s().active && (s().name ?? "") == ""}
               >
@@ -145,7 +145,7 @@ function DraftTeam(props: { team: "a" | "b"; name: string; active: boolean; slot
                     <Text class="min-w-0 text-start text-caption text-fg/66 data-active:text-fg/78" data-active={s().active === true}>{s().player}</Text>
                   </Show>
                   <Show when={s().active === true}>
-                    <Text class={`${TAG} bg-[#38e8ff] text-[#15181f] shadow-none`}>{t("arena.draft.picking")}</Text>
+                    <Text class={`${TAG} bg-hud-accent text-glass shadow-none`}>{t("arena.draft.picking")}</Text>
                   </Show>
                 </View>
               </View>
@@ -168,7 +168,7 @@ export function ArenaDraft(props: ArenaDraftProps) {
         <View class="flex-1 min-w-0 flex-row flex-wrap items-center gap-x-3 gap-y-1">
           <Text class="min-w-0 text-[1.714rem] leading-[1.1] font-bold tracking-[0.04em] uppercase text-fg">{heading()}</Text>
           <Show when={props.phase == "ban" || props.phase == "pick" || props.phase == "done"}>
-            <Text class="shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut bg-gold text-[#1e1604]">
+            <Text class="shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut bg-gold text-gold-fg">
               {props.phase == "ban" ? t("arena.draft.ban") : props.phase == "pick" ? t("arena.draft.pick") : t("arena.draft.done")}
             </Text>
           </Show>
@@ -204,7 +204,7 @@ export function ArenaDraft(props: ArenaDraftProps) {
             onPress={(e) => props.onConfirm?.(e)}
           >
             <Text class={KEYCAP} glyph="details" />
-            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-[#15181f]">{t("arena.draft.confirm")}</Text>
+            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-glass">{t("arena.draft.confirm")}</Text>
           </View>
         </View>
       </Show>

@@ -56,14 +56,14 @@ export function ResultsScreen(props: ResultsScreenProps) {
         <Scroll class="grow shrink basis-0 gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
           <View class="items-end gap-6 compact:items-start compact:gap-3">
             <View class="grow shrink basis-0 gap-3 compact:gap-2">
-              <Text class={`font-display font-bold leading-[0.9] tracking-xs uppercase text-transparent bg-linear-to-b from-white from-18% via-[#ffecaa] via-52% to-warn m-0 short:text-[4.429rem] data-outcome-lost:bg-linear-to-b data-outcome-lost:from-white data-outcome-lost:from-10% data-outcome-lost:via-danger data-outcome-lost:via-48% data-outcome-lost:to-[#de2634] data-outcome-lost:bg-transparent`} data-outcome-lost={!props.won} data-outcome-won={props.won}>
+              <Text class={`font-display font-bold leading-[0.9] tracking-xs uppercase text-transparent bg-linear-to-b from-white from-18% via-gold-hi via-52% to-warn m-0 short:text-[4.429rem] data-outcome-lost:bg-linear-to-b data-outcome-lost:from-white data-outcome-lost:from-10% data-outcome-lost:via-danger data-outcome-lost:via-48% data-outcome-lost:to-critical data-outcome-lost:bg-transparent`} data-outcome-lost={!props.won} data-outcome-won={props.won}>
                 {props.title}
               </Text>
               <View class="h-[1.5px]">
                 <Text class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] rotate-45 bg-white shadow-[0px_0px_11.424px_#38e8ff] size-[0.643rem]" />
               </View>
               <View class="items-center max-w-[45.714rem] gap-3">
-                <Text class="text-center leading-[3.857rem] bg-linear-to-b from-[#463482] to-[#1c143b] text-fg text-[1.714rem] font-bold tabular-nums size-[3.857rem] compact:leading-[2.857rem] compact:text-[1.143rem] compact:size-[2.857rem]">
+                <Text class="text-center leading-[3.857rem] bg-linear-to-b from-epic to-glass-lo text-fg text-[1.714rem] font-bold tabular-nums size-[3.857rem] compact:leading-[2.857rem] compact:text-[1.143rem] compact:size-[2.857rem]">
                   {props.level}
                 </Text>
                 <View class="grow shrink basis-0 gap-1">
@@ -121,7 +121,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                         {s().name}
                       </Text>
                       <Show when={s().best}>
-                        <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#141a02] bg-[#fff2c4] nine-chip-cut whitespace-nowrap py-0 px-1 ${packClass("Chip", "frame")}`}>
+                        <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase text-gold-fg bg-gold-hi nine-chip-cut whitespace-nowrap py-0 px-1 ${packClass("Chip", "frame")}`}>
                           {t("screen.results.best")}
                         </Text>
                       </Show>

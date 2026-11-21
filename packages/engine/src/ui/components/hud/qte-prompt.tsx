@@ -61,7 +61,7 @@ export function QtePrompt(props: QtePromptProps) {
         data-action={(props.action ?? "") !== "" ? props.action : undefined}
       >
         <Show when={(props.keyLabel ?? "") !== ""}>
-          <Text class="shrink-0 text-[0.929rem] leading-[1.6] font-bold text-center text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap text-shadow-none px-1">{props.keyLabel}</Text>
+          <Text class="shrink-0 text-[0.929rem] leading-[1.6] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap text-shadow-none px-1">{props.keyLabel}</Text>
         </Show>
         <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg text-shadow-xs">
           {hold ? t("hud.qte-prompt.hold") : (props.mode ?? "press") === "mash" ? t("hud.qte-prompt.mash") : t("hud.qte-prompt.press")}

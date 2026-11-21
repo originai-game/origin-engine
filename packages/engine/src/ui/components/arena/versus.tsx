@@ -51,7 +51,7 @@ export interface ArenaVersusProps {
 const PORTRAIT = "shrink-0 size-[4.571rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 data-compact:size-[2.857rem]";
 const NAME = "min-w-0 text-start text-lg leading-[1.15] font-bold text-fg";
 const CAPTION = "min-w-0 text-start text-caption leading-[1.3] font-semibold text-fg/66";
-const YOU = `flex-none self-start py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-[#1b1f29e0] whitespace-nowrap ${packClass("Chip", "frame")}`;
+const YOU = `flex-none self-start py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-raised-pressed/88 whitespace-nowrap ${packClass("Chip", "frame")}`;
 
 function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<VersusFighter> }) {
   const heading = () => (props.name ?? "") != "" ? props.name : props.team == "a" ? t("arena.team.a") : t("arena.team.b");
@@ -71,7 +71,7 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
           <For each={fighters()} key={(f) => f.id}>
             {(f) => (
               <View
-                class={`flex-row items-center justify-start gap-x-3 py-1 px-3 ${row()} data-local:bg-none data-local:bg-[#38e8ff26] compact:gap-x-1 compact:py-0.5 compact:px-1`}
+                class={`flex-row items-center justify-start gap-x-3 py-1 px-3 ${row()} data-local:bg-none data-local:bg-hud-accent/15 compact:gap-x-1 compact:py-0.5 compact:px-1`}
                 role="listitem"
                 data-local={f().local === true}
               >

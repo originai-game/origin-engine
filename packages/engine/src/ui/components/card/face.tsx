@@ -60,7 +60,7 @@ export function CardFace(props: CardFaceProps) {
         </Text>
       </Show>
       <Show when={props.cost}>
-        <View class={`flex-row items-center absolute left-0 top-0 w-[2.143rem] h-[2.4rem] justify-center bg-linear-to-b from-[#d6fdff] to-[#38e8ff] text-[#041016] text-[1.286rem] font-bold gap-0`} label={t("card.face.cost", { cost: props.cost })}>
+        <View class={`flex-row items-center absolute left-0 top-0 w-[2.143rem] h-[2.4rem] justify-center bg-linear-to-b from-hud-accent-hi to-hud-accent text-hud-accent-fg text-[1.286rem] font-bold gap-0`} label={t("card.face.cost", { cost: props.cost })}>
           <Text class="whitespace-nowrap shrink">{props.cost}</Text>
         </View>
       </Show>

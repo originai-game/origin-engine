@@ -58,7 +58,7 @@ export function RhythmResults(props: RhythmResultsProps) {
             <View class={`flex-row items-center gap-4 shrink`}>
               <Show when={props.grade !== ""}>
                 <Text
-                  class={`shrink min-w-[4rem] pr-2 text-[7.857rem] compact:text-[3.571rem] leading-[0.9] font-bold italic text-center whitespace-nowrap text-gold data-not-cleared:text-[#ff4d5e]`}
+                  class={`shrink min-w-[4rem] pr-2 text-[7.857rem] compact:text-[3.571rem] leading-[0.9] font-bold italic text-center whitespace-nowrap text-gold data-not-cleared:text-foe`}
                   label={t("rhythm.results.gradeName", { grade: props.grade })}
                   data-not-cleared={!props.cleared}
                 >
@@ -67,7 +67,7 @@ export function RhythmResults(props: RhythmResultsProps) {
               </Show>
               <View class={`flex-col items-start gap-0.5 min-w-0`}>
                 <Text
-                  class={`whitespace-nowrap py-0 px-2 text-[1.143rem] font-bold tracking-[0.14em] uppercase text-[#141a02] bg-[#38e8ff] nine-chip-cut data-tag-failed:text-fg data-tag-failed:bg-[#de2634] ${packClass("Chip", "frame")}`}
+                  class={`whitespace-nowrap py-0 px-2 text-[1.143rem] font-bold tracking-[0.14em] uppercase text-gold-fg bg-hud-accent nine-chip-cut data-tag-failed:text-fg data-tag-failed:bg-critical ${packClass("Chip", "frame")}`}
                   data-tag-cleared={props.cleared}
                   data-tag-failed={!props.cleared}
                 >
@@ -75,7 +75,7 @@ export function RhythmResults(props: RhythmResultsProps) {
                 </Text>
                 <Show when={props.mark !== ""}>
                   <Text
-                    class={`whitespace-nowrap py-0 px-2 text-[1.143rem] font-bold tracking-[0.14em] uppercase text-white bg-[#a05aff] nine-chip-cut ${packClass("Chip", "frame")}`}
+                    class={`whitespace-nowrap py-0 px-2 text-[1.143rem] font-bold tracking-[0.14em] uppercase text-white bg-chart-master nine-chip-cut ${packClass("Chip", "frame")}`}
                     data-tag-fullcombo={props.mark === "fullCombo"}
                     data-tag-allperfect={props.mark === "allPerfect"}
                   >
@@ -90,7 +90,7 @@ export function RhythmResults(props: RhythmResultsProps) {
               <View class={`flex flex-row flex-wrap items-center gap-1`}>
                 <Show when={props.newBest}>
                   <Text
-                    class={`whitespace-nowrap py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#3d2c00] bg-gold nine-chip-cut ${packClass("Chip", "frame")}`}
+                    class={`whitespace-nowrap py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-gold-fg bg-gold nine-chip-cut ${packClass("Chip", "frame")}`}
                     data-tag-newbest={true}
                   >
                     {t("rhythm.results.newBest")}
@@ -128,7 +128,7 @@ export function RhythmResults(props: RhythmResultsProps) {
                     <View
                       role="listitem"
                       label={c().label}
-                      class={`flex-row items-baseline gap-3 py-0.5 w-full text-fg data-judgement-perfect:text-gold data-judgement-great:text-[#38e8ff] data-judgement-good:text-[#55e39a] data-judgement-bad:text-[#ffb547] data-judgement-miss:text-fg-muted`}
+                      class={`flex-row items-baseline gap-3 py-0.5 w-full text-fg data-judgement-perfect:text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
                       data-judgement-perfect={c().judgement === "perfect"}
                       data-judgement-great={c().judgement === "great"}
                       data-judgement-good={c().judgement === "good"}
@@ -161,10 +161,10 @@ export function RhythmResults(props: RhythmResultsProps) {
           onPress={(e) => props.onNext?.(e)}
           onKey={(e) => { if (e.key === "Escape") props.onNext?.(e); }}
           onAction={{ back: (e) => props.onNext?.(e) }}
-          class={`min-h-[3.143rem] min-w-[8.571rem] compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 rounded-[4.576px] bg-[#38e8ff] shadow-[inset_0px_2px_0px_#ffffff59] ${packClass("Button", "plate", "primary")}`}
+          class={`min-h-[3.143rem] min-w-[8.571rem] compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 rounded-[4.576px] bg-hud-accent shadow-[inset_0px_2px_0px_#ffffff59] ${packClass("Button", "plate", "primary")}`}
         >
-          <Text class={`shrink h-[1.75rem] min-w-[1.75rem] px-1 text-center rounded-[4.576px] bg-linear-to-b from-white to-[#c9d1e2] text-[#0b0f18] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] pointer-coarse:hidden`} glyph="back" />
-          <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#141a02]`}>{t("rhythm.results.next")}</Text>
+          <Text class={`shrink h-[1.75rem] min-w-[1.75rem] px-1 text-center rounded-[4.576px] bg-linear-to-b from-white to-key-lo text-hud-accent-fg shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] pointer-coarse:hidden`} glyph="back" />
+          <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase text-gold-fg`}>{t("rhythm.results.next")}</Text>
         </View>
       </View>
     </View>

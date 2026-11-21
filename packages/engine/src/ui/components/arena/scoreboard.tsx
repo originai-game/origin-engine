@@ -56,7 +56,7 @@ export interface ArenaScoreboardProps {
  * opacity, the hover wash is dropped (the same fill), the scroll fade
  * at the list's foot is dropped, and a long word wraps without breaking.
  */
-const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-[#1b1f29e0] whitespace-nowrap ${packClass("Chip", "frame")}`;
+const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-raised-pressed/88 whitespace-nowrap ${packClass("Chip", "frame")}`;
 const CAPTION = "text-end whitespace-nowrap text-xs font-semibold tracking-[0.14em] uppercase text-fg/78";
 const STAT = "text-end whitespace-nowrap text-base font-bold tabular-nums text-fg compact:flex-1 compact:min-w-0";
 
@@ -88,7 +88,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
         <For each={props.rows ?? []} key={(r) => r.id}>
           {(r) => (
             <View
-              class={`flex-row items-center min-h-8 compact:flex-wrap ${wash} ${edge} data-local:bg-none data-local:bg-[#38e8ff26] data-disconnected:opacity-45`}
+              class={`flex-row items-center min-h-8 compact:flex-wrap ${wash} ${edge} data-local:bg-none data-local:bg-hud-accent/15 data-disconnected:opacity-45`}
               role="row"
               current={r().local === true}
               data-local={r().local === true}

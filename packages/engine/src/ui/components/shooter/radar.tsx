@@ -68,7 +68,7 @@ export function ShooterRadar(props: ShooterRadarProps) {
         <For each={props.blips ?? []} key={(b) => b.id}>
           {(b) => (
             <View
-              class={`absolute size-[0.643rem] compact:size-[0.5rem] -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-[#4fd8ff] data-ally:shadow-[0px_0px_0px_0.143rem_#1b1f29cc] data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-[0px_0px_0.571rem_#ff4d5ee6] data-objective:size-[0.929rem] data-objective:rotate-45 data-objective:bg-gold`}
+              class={`absolute size-[0.643rem] compact:size-[0.5rem] -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-ally data-ally:shadow-[0px_0px_0px_0.143rem_#1b1f29cc] data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-[0px_0px_0.571rem_#ff4d5ee6] data-objective:size-[0.929rem] data-objective:rotate-45 data-objective:bg-gold`}
               label={b().label}
               style={{
                 left: `calc(${SIDE / 2}rem + ${(b().x - cx()) * (SIDE / zoom())}rem)`,

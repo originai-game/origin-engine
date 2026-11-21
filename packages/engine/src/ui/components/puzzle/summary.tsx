@@ -44,7 +44,7 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
   return (
     <View class={`pt-6 pb-4 border-rim-soft nine-panel-cut bg-card border border-white/18 transition duration-317 w-full max-w-115.5 px-6 gap-3 border compact:pt-4 compact:pb-3 compact:px-3 compact:gap-1 data-selected:border-accent data-down:opacity-45 ${packClass("Panel", "frame")}`} label={props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onAction={{ back: (e) => props.onMenu?.(e) }} data-result-lose={(props.result) === 'lose'}>
       <View class={`group/band items-center p-0 gap-0.5`} data-result-lose={(props.result) === 'lose'}>
-        <Text class={`font-display text-[2rem] font-bold leading-tight tracking-sm uppercase text-transparent text-center bg-linear-to-b from-white from-18% via-[#ffecaa] via-52% to-warn m-0 group-data-result-lose/band:bg-linear-to-b group-data-result-lose/band:from-white group-data-result-lose/band:from-10% group-data-result-lose/band:via-danger group-data-result-lose/band:via-48% group-data-result-lose/band:to-[#de2634] group-data-result-lose/band:bg-transparent`}>
+        <Text class={`font-display text-[2rem] font-bold leading-tight tracking-sm uppercase text-transparent text-center bg-linear-to-b from-white from-18% via-gold-hi via-52% to-warn m-0 group-data-result-lose/band:bg-linear-to-b group-data-result-lose/band:from-white group-data-result-lose/band:from-10% group-data-result-lose/band:via-danger group-data-result-lose/band:via-48% group-data-result-lose/band:to-critical group-data-result-lose/band:bg-transparent`}>
           {props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")}
         </Text>
         <Show when={props.level}>
@@ -68,7 +68,7 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
           {t("puzzle.summary.stars", { stars: props.stars, max: (props.maxStars ?? 3) })}
         </Text>
         <Show when={props.record}>
-          <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums nine-chip-cut bg-[#fff2c4] text-[#1e1604] transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-2 ${packClass("Chip", "frame")}`}>
+          <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums nine-chip-cut bg-gold-hi text-gold-fg transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-2 ${packClass("Chip", "frame")}`}>
             {t("puzzle.summary.record")}
           </Text>
         </Show>

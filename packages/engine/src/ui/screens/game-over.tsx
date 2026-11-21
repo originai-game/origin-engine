@@ -37,7 +37,7 @@ export function GameOverScreen(props: GameOverScreenProps) {
   return (
     <View class="grow shrink basis-0 justify-center items-center w-full p-8 gap-2 compact:p-4">
       <View class={`text-fg items-center w-full max-w-105 p-0 gap-4 disabled:text-fg-subtle short:grid short:items-center short:gap-y-2 short:gap-x-6 short:max-w-210 short:grid-cols-[1fr_1fr] short:grid-rows-[1fr_auto_auto_auto_auto_1fr] short:justify-items-center ${packClass("Panel", "frame")}`}>
-        <Text class={`font-display font-bold leading-[0.95] tracking-md uppercase text-transparent max-w-full text-center bg-linear-to-b from-white from-10% via-danger via-48% to-[#de2634] m-0 short:text-[4.429rem]`}>
+        <Text class={`font-display font-bold leading-[0.95] tracking-md uppercase text-transparent max-w-full text-center bg-linear-to-b from-white from-10% via-danger via-48% to-critical m-0 short:text-[4.429rem]`}>
           {props.title}
         </Text>
         <View class="w-full h-[1.5px]">

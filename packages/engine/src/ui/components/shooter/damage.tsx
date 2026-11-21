@@ -46,7 +46,7 @@ export function ShooterDamage(props: ShooterDamageProps) {
               </Text>
             </Show>
             <Text
-              class={`text-[2.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-headshot:text-gold data-kill:text-gold data-shield:text-[#4fd8ff] compact:text-[1.571rem]`}
+              class={`text-[2.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-headshot:text-gold data-kill:text-gold data-shield:text-ally compact:text-[1.571rem]`}
               data-headshot={h().kind == "headshot"}
               data-kill={h().kind == "kill"}
               data-shield={h().kind == "shield"}

@@ -30,7 +30,7 @@ const VARIANT: Record<string, "danger" | "primary" | undefined> = {
 /** The hold's progress fill, in the variant's ink. */
 const FILL: Record<string, string> = {
   danger: "bg-danger",
-  primary: "bg-[#011e0f]",
+  primary: "bg-boon-fg",
   secondary: "bg-fg",
 };
 

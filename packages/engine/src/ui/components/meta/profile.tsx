@@ -39,7 +39,7 @@ export interface ProfileProps {
 
 export function Profile(props: ProfileProps) {
   return (
-    <View class={`nine-panel-cut bg-[#0f1522ed] border border-white/14 text-fg w-full p-4 gap-3 compact:p-2`} label={t("profile.title")} busy={props.loading}>
+    <View class={`nine-panel-cut bg-glass/96 border border-white/14 text-fg w-full p-4 gap-3 compact:p-2`} label={t("profile.title")} busy={props.loading}>
       <Show when={props.loading} fallback={
           <Show when={props.error} fallback={
               <Show when={props.empty} fallback={
@@ -60,7 +60,7 @@ export function Profile(props: ProfileProps) {
                             </View>
                           </Show>
                           <Show when={props.rank}>
-                            <View class={`font-bold text-xs leading-[1.5] text-[#1e1604] max-w-full tracking-[0.14em] uppercase bg-[#fff2c4] nine-chip-cut py-0 px-1 ${packClass("Chip", "frame")}`}>
+                            <View class={`font-bold text-xs leading-[1.5] text-gold-fg max-w-full tracking-[0.14em] uppercase bg-gold-hi nine-chip-cut py-0 px-1 ${packClass("Chip", "frame")}`}>
                               <Text>{props.rank}</Text>
                             </View>
                           </Show>
@@ -103,14 +103,14 @@ export function Profile(props: ProfileProps) {
                         </Text>
                       </Show>
                     </Scroll>
-                    <View class={`absolute bottom-0 h-4 pointer-events-none bg-linear-to-b from-transparent to-[#0b101c] inset-x-0`} />
+                    <View class={`absolute bottom-0 h-4 pointer-events-none bg-linear-to-b from-transparent to-tile inset-x-0`} />
                   </View>
                   <Show when={props.actions.length}>
                     <View class={`flex-row flex-wrap items-center gap-2`}>
                       <For each={props.actions}>
                         {(a) => (
                         <View class="grow shrink basis-0 gap-1">
-                          <View class={`min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-[#212b40eb] border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-[#2f3c58f2] hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
+                          <View class={`min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo/92 border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi/95 hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
                             <Text class="whitespace-normal">{a().pending ? t("profile.sending") : a().label}</Text>
                           </View>
                           <Show when={a().reason}>
@@ -133,7 +133,7 @@ export function Profile(props: ProfileProps) {
             <Text class={`text-center text-base text-fg/66 m-0`} role="status">
               {props.error}
             </Text>
-            <View class={`min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-[#212b40eb] border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-[#2f3c58f2] hover:bg-transparent`} role="button" onPress={(e) => props.onRetry?.(e)}>
+            <View class={`min-h-11 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-raised-lo/92 border border-white/24 nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi/95 hover:bg-transparent`} role="button" onPress={(e) => props.onRetry?.(e)}>
               <Text class="whitespace-normal">{t("profile.retry")}</Text>
             </View>
           </Show>

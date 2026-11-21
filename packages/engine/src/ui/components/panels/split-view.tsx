@@ -31,7 +31,7 @@ export function SplitView(props: SplitViewProps) {
         {props.start?.()}
       </View>
       <View class={`bg-white/5 hover:bg-white/10 justify-center items-center w-2 gap-0 group-data-column/splitview:w-full group-data-column/splitview:h-2`} role="separator" label={props.label || t("component.split-view.name")} valueNow={ratio() * 100} valueMin={0} valueMax={100} onPointerDown={(e) => props.onResize?.(e)} onPointerMove={(e) => props.onResize?.(e)}>
-        <View class={`bg-[#38e8ff] w-0.5 h-3 shadow-[0px_0px_9.136px_#38e8ff] rounded-capsule group-data-column/splitview:w-3 group-data-column/splitview:h-0.5`} />
+        <View class={`bg-hud-accent w-0.5 h-3 shadow-[0px_0px_9.136px_#38e8ff] rounded-capsule group-data-column/splitview:w-3 group-data-column/splitview:h-0.5`} />
       </View>
       <View class={`grow shrink basis-0 overflow-auto`}>{props.end?.()}</View>
     </View>

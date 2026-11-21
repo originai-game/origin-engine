@@ -45,11 +45,11 @@ export function CreditsScreen(props: CreditsScreenProps) {
             {(s) => (
             <View class="w-full max-w-140 items-center text-center gap-y-4">
               <View class="flex-row items-center justify-center gap-x-3 w-full">
-                <Text class={`shrink basis-[2.857rem] min-w-2 h-px bg-linear-to-r from-transparent to-[#38e8ffe5]`} />
-                <Text class={`tracking-[0.24em] uppercase text-[#38e8ff] shrink text-[0.929rem] font-bold m-0 compact:tracking-[0.14em]`}>
+                <Text class={`shrink basis-[2.857rem] min-w-2 h-px bg-linear-to-r from-transparent to-hud-accent/90`} />
+                <Text class={`tracking-[0.24em] uppercase text-hud-accent shrink text-[0.929rem] font-bold m-0 compact:tracking-[0.14em]`}>
                   {s().title}
                 </Text>
-                <Text class={`shrink basis-[2.857rem] min-w-2 h-px bg-linear-to-r from-transparent to-[#38e8ffe5] -scale-x-100 scale-y-100`} />
+                <Text class={`shrink basis-[2.857rem] min-w-2 h-px bg-linear-to-r from-transparent to-hud-accent/90 -scale-x-100 scale-y-100`} />
               </View>
               <For each={s().names}>
                 {(n) => (
@@ -73,7 +73,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
         </View>
       </View>
       <View class="flex-row absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg/74 pointer-coarse:hidden compact:hidden">
-        <Text class="text-[0.857rem] leading-[1.6] font-bold text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] shrink">
+        <Text class="text-[0.857rem] leading-[1.6] font-bold text-hud-accent-fg bg-linear-to-b from-white to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] shrink">
           {t("screen.credits.fasterKey")}
         </Text>
         <Text class="shrink">{t("screen.credits.faster")}</Text>

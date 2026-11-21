@@ -56,12 +56,12 @@ export function SplashScreen(props: SplashScreenProps) {
             <Counter class="text-[0.929rem] font-bold text-fg/74" value={props.progress > 1 ? 1 : props.progress} format="percent" decimals={0} />
           </View>
           <View class={`bg-white/10 shadow-sunk h-[0.286rem] rounded-capsule overflow-hidden`}>
-            <View class={`bg-linear-to-r from-[#38e8ff99] to-white h-full shadow-[0px_0px_13.712px_#38e8ff] duration-317`} style={{ width: `${(100 * (props.progress > 1 ? 1 : props.progress))}%` }} />
+            <View class={`bg-linear-to-r from-hud-accent/60 to-white h-full shadow-[0px_0px_13.712px_#38e8ff] duration-317`} style={{ width: `${(100 * (props.progress > 1 ? 1 : props.progress))}%` }} />
           </View>
         </View>
       </Show>
       <View class={`flex-row absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg/74 compact:bottom-4 compact:justify-center compact:inset-x-4`}>
-        <Text class="text-[0.857rem] leading-[1.6] font-bold text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden shrink">
+        <Text class="text-[0.857rem] leading-[1.6] font-bold text-hud-accent-fg bg-linear-to-b from-white to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden shrink">
           {t("screen.splash.skipKey")}
         </Text>
         <Text class="pointer-coarse:hidden shrink">{t("screen.splash.skip")}</Text>

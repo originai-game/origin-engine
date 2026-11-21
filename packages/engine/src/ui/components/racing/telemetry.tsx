@@ -61,7 +61,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
         <View class="absolute inset-0 nine-ring bg-white/85" wipe={revFrac()} wipeStart={REV_START} />
         <Show when={props.redline > 0 && max() > 0 && props.redline < max()}>
           <View
-            class="absolute inset-0 nine-ring bg-[#de263459] group-data-redline/tel:bg-[#de2634]"
+            class="absolute inset-0 nine-ring bg-critical/35 group-data-redline/tel:bg-critical"
             wipe={0.75 - 0.75 * at(props.redline)}
             wipeStart={REV_START + 1.5 * Math.PI * at(props.redline)}
           />
@@ -74,12 +74,12 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
             return (
               <>
                 <View
-                  class={`absolute w-[0.143rem] h-[0.5rem] bg-white data-red:bg-[#ff4d5e] compact:h-[0.357rem]`}
+                  class={`absolute w-[0.143rem] h-[0.5rem] bg-white data-red:bg-foe compact:h-[0.357rem]`}
                   style={{ left: `${50 + Math.sin(a()) * 40.5}%`, top: `${50 - Math.cos(a()) * 40.5}%`, transform: `translate(-50%,-50%) rotate(${deg()}deg)` }}
                   data-red={red()}
                 />
                 <Text
-                  class={`absolute text-[0.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg data-red:text-[#ff4d5e] compact:hidden`}
+                  class={`absolute text-[0.857rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg data-red:text-foe compact:hidden`}
                   style={{ left: `${50 + Math.sin(a()) * 35}%`, top: `${50 - Math.cos(a()) * 35}%`, transform: "translate(-50%,-50%)" }}
                   data-red={red()}
                 >
@@ -90,7 +90,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
           }}
         </For>
         <View
-          class={`absolute inset-0 m-auto w-[60%] aspect-square flex-col items-center justify-center gap-y-[0.214rem] p-[0.429rem] rounded-full bg-[#0d1526] shadow-[inset_0px_1px_0px_#ffffff4d,0px_10px_30px_#00000099] compact:gap-y-[0.071rem] compact:p-[0.214rem]`}
+          class={`absolute inset-0 m-auto w-[60%] aspect-square flex-col items-center justify-center gap-y-[0.214rem] p-[0.429rem] rounded-full bg-glass shadow-[inset_0px_1px_0px_#ffffff4d,0px_10px_30px_#00000099] compact:gap-y-[0.071rem] compact:p-[0.214rem]`}
           role="group"
           label={t("racing.telemetry.speed", { speed: props.speed, units: props.units })}
         >
@@ -104,7 +104,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
               valueNow={(props.lights ?? 0) >= 1 ? 100 : (props.lights ?? 0) * 100}
             >
               <View
-                class="absolute left-0 top-0 h-full bg-linear-to-r from-[#55e39a] from-[43%] via-[#ffd23f] via-[72%] to-[#ff4d5e]"
+                class="absolute left-0 top-0 h-full bg-linear-to-r from-boon from-[43%] via-gold via-[72%] to-foe"
                 style={{ width: `${Math.min(Math.max(props.lights ?? 0, 0), 1) * 100}%` }}
               />
             </View>
@@ -115,7 +115,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
             <View class={`flex-row items-center justify-center gap-x-[0.571rem] max-w-full min-w-0 mt-[0.286rem] compact:absolute compact:top-full compact:left-0 compact:right-0 compact:mt-[0.143rem] compact:gap-x-[0.357rem] compact:justify-start`}>
               <Show when={props.gear !== ""}>
                 <Text
-                  class={`shrink-0 py-0 px-2 text-[1.143rem] leading-[1.2] font-bold tabular-nums whitespace-nowrap text-[#141a02] bg-[#38e8ff] nine-chip-cut compact:text-[0.929rem] ${packClass("Chip", "frame")}`}
+                  class={`shrink-0 py-0 px-2 text-[1.143rem] leading-[1.2] font-bold tabular-nums whitespace-nowrap text-gold-fg bg-hud-accent nine-chip-cut compact:text-[0.929rem] ${packClass("Chip", "frame")}`}
                   role="image"
                   label={t("racing.telemetry.gearValue", { gear: props.gear })}
                 >
@@ -127,7 +127,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
                   <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:hidden compact:tracking-normal compact:leading-none`}>{props.mode}</Text>
                 </Show>
               }>
-                <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ff4d5e] compact:tracking-normal compact:leading-none`} role="status">{t("racing.telemetry.shift")}</Text>
+                <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-foe compact:tracking-normal compact:leading-none`} role="status">{t("racing.telemetry.shift")}</Text>
               </Show>
             </View>
           </Show>

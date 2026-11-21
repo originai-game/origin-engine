@@ -80,7 +80,7 @@ export function HudSlot(props: HudSlotProps) {
             {(i) => (
               <View class="relative w-[0.857rem] h-[0.357rem] rounded-[0.071rem] bg-white/22 overflow-hidden">
                 <View
-                  class="absolute inset-y-0 left-0 bg-[#38e8ff] shadow-[0px_0px_0.429rem_#38e8ff]"
+                  class="absolute inset-y-0 left-0 bg-hud-accent shadow-[0px_0px_0.429rem_#38e8ff]"
                   style={{ width: `${Math.min(Math.max(charges() - i(), 0), 1) * 100}%` }}
                 />
               </View>
@@ -104,11 +104,11 @@ export function HudSlot(props: HudSlotProps) {
           </View>
         </Show>
         <View
-          class={`absolute inset-[0.143rem] rounded-[0.429rem] data-ultimate:inset-[0.429rem] data-ultimate:rounded-capsule overflow-hidden ${ready() ? "bg-linear-to-b from-white to-[#38e8ff]" : "bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14"}`}
+          class={`absolute inset-[0.143rem] rounded-[0.429rem] data-ultimate:inset-[0.429rem] data-ultimate:rounded-capsule overflow-hidden ${ready() ? "bg-linear-to-b from-white to-hud-accent" : "bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14"}`}
           data-ultimate={ultimate()}
         >
           <Show when={(props.icon ?? 0) > 0} fallback={
-            <View class="absolute inset-0 flex-col items-center justify-center bg-linear-to-b from-[#2a2c3a] to-[#191b28]">
+            <View class="absolute inset-0 flex-col items-center justify-center bg-linear-to-b from-raised-lo to-surface">
               <Show when={(props.glyph ?? "") !== ""}>
                 <Icon class={`size-1/2 text-fg text-shadow-2xs ${cooling() || unaffordable() ? "opacity-45" : ""}`} name={props.glyph} />
               </Show>
@@ -117,7 +117,7 @@ export function HudSlot(props: HudSlotProps) {
             <Image class={`absolute inset-0 size-full ${cooling() || unaffordable() ? "opacity-45" : ""}`} src={props.icon ?? 0} />
           </Show>
           <Show when={unaffordable()}>
-            <View class="absolute inset-0 bg-[#191b2180]" />
+            <View class="absolute inset-0 bg-surface/50" />
           </Show>
           <Show when={cooling() && !unaffordable()}>
             <View class="absolute inset-0 nine-disc bg-black/55" wipe={Math.min(cooldown(), 1)} wipeCcw />
@@ -129,7 +129,7 @@ export function HudSlot(props: HudSlotProps) {
           </Show>
           <Show when={unaffordable() && (props.reason ?? "") !== "" && cooldown() <= 0}>
             <View class="absolute inset-0 flex-row items-center justify-center px-[0.143rem]">
-              <Text class="max-w-full max-h-[84%] text-center text-[0.857rem] leading-none font-bold tracking-normal uppercase whitespace-nowrap overflow-hidden text-[#78b2ff] text-shadow-2xs">{props.reason}</Text>
+              <Text class="max-w-full max-h-[84%] text-center text-[0.857rem] leading-none font-bold tracking-normal uppercase whitespace-nowrap overflow-hidden text-mana text-shadow-2xs">{props.reason}</Text>
             </View>
           </Show>
           <Show when={ultimate() && charge() < 1}>
@@ -139,7 +139,7 @@ export function HudSlot(props: HudSlotProps) {
           </Show>
           <Show when={(props.count ?? 0) > 0}>
             <View class="absolute top-0 right-0">
-              <Text class="max-w-[4.386rem] -mt-[0.429rem] -mr-[0.286rem] bg-[#171a21e0] shadow-[inset_0px_0.071rem_0px_0px_#ffffff38] px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap leading-[1.4] text-fg rounded-bl-[0.286rem] overflow-hidden">
+              <Text class="max-w-[4.386rem] -mt-[0.429rem] -mr-[0.286rem] bg-surface/88 shadow-[inset_0px_0.071rem_0px_0px_#ffffff38] px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap leading-[1.4] text-fg rounded-bl-[0.286rem] overflow-hidden">
                 {t("hud.slot.count", { count: formatNumber(props.count ?? 0) })}
               </Text>
             </View>
@@ -148,7 +148,7 @@ export function HudSlot(props: HudSlotProps) {
       </View>
       <Show when={(props.key ?? "") !== ""}>
         <Text
-          class={`min-w-[1.714rem] max-w-[4.754rem] px-[0.25rem] pointer-coarse:hidden text-[0.857rem] leading-[1.6] font-bold text-center rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none whitespace-nowrap overflow-hidden ${ultimate() ? "text-[#1a1408] bg-linear-to-b from-[#ffe9b0] to-gold" : "text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2]"}`}
+          class={`min-w-[1.714rem] max-w-[4.754rem] px-[0.25rem] pointer-coarse:hidden text-[0.857rem] leading-[1.6] font-bold text-center rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none whitespace-nowrap overflow-hidden ${ultimate() ? "text-gold-fg bg-linear-to-b from-gold-hi to-gold" : "text-key-fg bg-linear-to-b from-white to-key-hi"}`}
         >
           {props.key}
         </Text>

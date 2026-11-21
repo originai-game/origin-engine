@@ -87,12 +87,12 @@ export function Compass(props: CompassProps) {
   return (
     <View class="flex-col items-center w-160 max-w-full" role="status" label={t("component.compass.name")} valueText={`${formatNumber(degrees())}°`}>
       <View class="flex-col items-center relative z-[1] -mb-[0.286rem]">
-        <Text class="py-0 px-[0.357rem] text-xs leading-[1.35] font-bold tabular-nums text-[#262b38] bg-[#38e8ff] rounded-tl-[0.286rem] rounded-br-[0.286rem] text-shadow-none">
+        <Text class="py-0 px-[0.357rem] text-xs leading-[1.35] font-bold tabular-nums text-key-fg bg-hud-accent rounded-tl-[0.286rem] rounded-br-[0.286rem] text-shadow-none">
           {(degrees() < 9.5 ? "00" : degrees() < 99.5 ? "0" : "") + formatNumber(degrees()) + "°"}
         </Text>
       </View>
       <View class="relative w-full h-[3.571rem] overflow-hidden">
-        <View class="absolute inset-x-0 top-0 h-[2.571rem] bg-linear-to-b from-[#171a2100] to-[#171a218c]" />
+        <View class="absolute inset-x-0 top-0 h-[2.571rem] bg-linear-to-b from-surface/0 to-surface/55" />
         <View
           class="absolute top-0 bottom-0 left-1/2 w-[900%]"
           style={{ transform: `translateX(${(-(heading() * K + 3) / 9) * 100}%)` }}
@@ -137,7 +137,7 @@ export function Compass(props: CompassProps) {
             )}
           </For>
         </View>
-        <View class="absolute top-[2.286rem] left-1/2 -translate-x-1/2 size-[0.571rem] rotate-45 bg-[#38e8ff]" />
+        <View class="absolute top-[2.286rem] left-1/2 -translate-x-1/2 size-[0.571rem] rotate-45 bg-hud-accent" />
       </View>
     </View>
   );

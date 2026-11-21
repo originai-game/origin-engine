@@ -36,7 +36,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
       data-ready={props.ready}
     >
       <View
-        class={`relative flex-1 min-h-0 w-[1.857rem] compact:w-[1.143rem] overflow-hidden -skew-y-[12deg] group-data-side-end/gauge:skew-y-[12deg] bg-[#04060cb8] shadow-[0px_0px_0px_1px_#ffffff40,0px_3px_8px_#00000073] data-danger:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12px_#ff4d5eb3] data-danger:animate-pulse data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_0px_0px_1px_#ffffff40]`}
+        class={`relative flex-1 min-h-0 w-[1.857rem] compact:w-[1.143rem] overflow-hidden -skew-y-[12deg] group-data-side-end/gauge:skew-y-[12deg] bg-well/82 shadow-[0px_0px_0px_1px_#ffffff40,0px_3px_8px_#00000073] data-danger:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12px_#ff4d5eb3] data-danger:animate-pulse data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_0px_0px_1px_#ffffff40]`}
         role="meter"
         label={(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
         valueMin={0}
@@ -46,14 +46,14 @@ export function RhythmGauge(props: RhythmGaugeProps) {
         data-ready={props.ready}
       >
         <View
-          class={`absolute bottom-0 left-0 w-full bg-[#55e39a] shadow-[0px_0px_6px_#55e39a66] group-data-kind-fever/gauge:bg-[#ff3d8a] group-data-kind-fever/gauge:shadow-[0px_0px_6px_#ff3d8a66] group-data-danger/gauge:bg-[#de2634]`}
+          class={`absolute bottom-0 left-0 w-full bg-boon shadow-[0px_0px_6px_#55e39a66] group-data-kind-fever/gauge:bg-fever group-data-kind-fever/gauge:shadow-[0px_0px_6px_#ff3d8a66] group-data-danger/gauge:bg-critical`}
           style={{ height: `${full * 100}%` }}
         />
         <For each={Array.from({ length: 9 }, (_, i) => i)}>
           {(i) => <View class={`absolute left-0 right-0 h-[3px] bg-black/85`} style={{ top: `${(i() + 1) * 10}%`, marginTop: "-1.5px" }} />}
         </For>
       </View>
-      <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-[#ff3d8a]`}>
+      <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 text-stroke-3 text-stroke-bg group-data-kind-fever/gauge:text-fever`}>
         {(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
       </Text>
       <Show when={props.failed} fallback={
@@ -68,13 +68,13 @@ export function RhythmGauge(props: RhythmGaugeProps) {
         </Text>
       </Show>
       <Show when={props.ready}>
-        <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-[#ff3d8a] text-stroke-3 text-stroke-bg`}>
+        <Text role="status" class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fever text-stroke-3 text-stroke-bg`}>
           {t("rhythm.gauge.ready")}
         </Text>
       </Show>
       <Show when={props.key !== ""}>
         <Text
-          class={`max-w-full px-1 text-center text-[0.857rem] font-bold bg-linear-to-b from-white to-[#c9d1e2] text-[#0b0f18] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-ready:bg-linear-to-b data-ready:from-[#dffbff] data-ready:to-[#38e8ff] data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
+          class={`max-w-full px-1 text-center text-[0.857rem] font-bold bg-linear-to-b from-white to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-ready:bg-linear-to-b data-ready:from-hud-accent-hi data-ready:to-hud-accent data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
           data-ready={props.ready}
         >
           {props.key}

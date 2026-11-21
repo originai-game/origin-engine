@@ -77,7 +77,7 @@ export function IdleOffline(props: IdleOfflineProps) {
       </Show>
       <View class="flex-row flex-wrap items-center w-full justify-end gap-2">
         <Show when={props.canDouble}>
-          <Button class={`text-[#2a1400] bg-linear-to-b from-[#fff1c2] to-gold min-h-11 min-w-30 max-w-full gap-1 active:bg-linear-to-b active:from-[#fff1c2] active:to-gold active:bg-transparent hover:bg-linear-to-b hover:from-[#fff1c2] hover:to-gold hover:bg-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0 ${packClass("Button", "plate")}`} onPress={(e) => props.onDouble?.(e)}>
+          <Button class={`text-gold-fg bg-linear-to-b from-gold-hi to-gold min-h-11 min-w-30 max-w-full gap-1 active:bg-linear-to-b active:from-gold-hi active:to-gold active:bg-transparent hover:bg-linear-to-b hover:from-gold-hi hover:to-gold hover:bg-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0 ${packClass("Button", "plate")}`} onPress={(e) => props.onDouble?.(e)}>
             <View class="items-center max-w-full gap-0">
               <Text>{t("idle.offline.double")}</Text>
               <Show when={props.doubleText !== ''}>

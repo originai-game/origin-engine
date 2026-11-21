@@ -67,7 +67,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
               <Text class="min-w-0 text-[1.143rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs text-stroke-3 text-stroke-bg">{props.name}</Text>
             </Show>
             <Show when={(props.level ?? 0) > 0}>
-              <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#38e8ff] text-shadow-2xs text-stroke-3 text-stroke-bg">
+              <Text class="shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-hud-accent text-shadow-2xs text-stroke-3 text-stroke-bg">
                 {t("shooter.vitals.level", { level: props.level ?? 0 })}
               </Text>
             </Show>
@@ -90,7 +90,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
             valueMax={shieldMax()}
             valueNow={props.shield ?? 0}
           >
-            <View class="absolute left-0 top-0 h-full bg-[#4fd8ff] shadow-[0.143rem_0px_0.714rem_rgb(79_216_255/0.8)]" style={{ width: `${shieldShare() * 100}%` }}>
+            <View class="absolute left-0 top-0 h-full bg-ally shadow-[0.143rem_0px_0.714rem_rgb(79_216_255/0.8)]" style={{ width: `${shieldShare() * 100}%` }}>
               <View class="absolute left-0 right-0 top-0 h-[42%] bg-linear-to-b from-white/55 to-transparent" />
             </View>
             <View class="absolute inset-0 pointer-events-none">

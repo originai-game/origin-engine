@@ -71,7 +71,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
                 </View>
               </Show>
               <Show when={q().count > 1}>
-                <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-xs font-bold whitespace-nowrap bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-xs font-bold whitespace-nowrap bg-well ${packClass("Chip", "frame")}`}>
                   {t("strategy.queue.stack", { count: q().count })}
                 </Text>
               </Show>
@@ -89,19 +89,19 @@ export function StrategyQueue(props: StrategyQueueProps) {
       </View>
       <Show when={props.limit > 0} fallback={
           <Show when={props.full}>
-            <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })}>
+            <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })}>
               {t("strategy.queue.full")}
             </Text>
           </Show>
       }>
-        <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-xs font-bold tabular-nums whitespace-nowrap text-fg data-full:text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })} data-full={props.full}>
+        <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-xs font-bold tabular-nums whitespace-nowrap text-fg data-full:text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })} data-full={props.full}>
           {props.full ? t("strategy.queue.fullCount", { count: props.queued, limit: props.limit }) : t("strategy.queue.capacity", { count: props.queued, limit: props.limit })}
         </Text>
       </Show>
       <For each={props.items ?? []} key={(q) => q.id}>
         {(q) => (
         <Show when={q().state === "paused" || q().state === "blocked"}>
-          <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap text-fg data-state-paused:text-gold data-state-blocked:text-danger nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status" data-state-paused={q().state === "paused"} data-state-blocked={q().state === "blocked"}>
+          <Text class={`shrink py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap text-fg data-state-paused:text-gold data-state-blocked:text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`} role="status" data-state-paused={q().state === "paused"} data-state-blocked={q().state === "blocked"}>
             {q().state === "paused" ? t("strategy.queue.paused") : t("strategy.queue.blocked")}
           </Text>
           <Show when={q().reason !== ""}>

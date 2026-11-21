@@ -48,7 +48,7 @@ export interface ArenaVoteProps {
  * Approximations: the chosen tile's wash is flat and keeps no rim (a cut
  * takes one fill), and the scroll fade at the list's foot is dropped.
  */
-const CARD = `w-full max-h-full p-4 nine-panel-cut bg-[#232837ed] compact:p-2 ${packClass("Panel", "frame")}`;
+const CARD = `w-full max-h-full p-4 nine-panel-cut bg-plate-hi compact:p-2 ${packClass("Panel", "frame")}`;
 
 export function ArenaVote(props: ArenaVoteProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("vote.title");
@@ -72,7 +72,7 @@ export function ArenaVote(props: ArenaVoteProps) {
               <For each={props.options ?? []} key={(o) => o.id}>
                 {(o) => (
                   <View
-                    class={`group/vote flex-row flex-wrap items-center gap-x-2 gap-y-1 w-full min-h-11 py-2 px-3 text-start nine-plate-cut bg-[#2b3141e6] hover:bg-[#3a4152e6] data-selected:bg-[#38e8ff26] disabled:text-fg/66 transition duration-317 compact:py-1 compact:px-2`}
+                    class={`group/vote flex-row flex-wrap items-center gap-x-2 gap-y-1 w-full min-h-11 py-2 px-3 text-start nine-plate-cut bg-glass-hi/93 hover:bg-raised-hi/90 data-selected:bg-hud-accent/15 disabled:text-fg/66 transition duration-317 compact:py-1 compact:px-2`}
                     role="button"
                     label={o().name}
                     pressed={props.selected == o().id}
@@ -90,7 +90,7 @@ export function ArenaVote(props: ArenaVoteProps) {
                         <Text class="text-caption text-fg/66">{o().detail}</Text>
                       </Show>
                       <Show when={props.selected == o().id}>
-                        <Text class="text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#38e8ff]">{t("vote.selected")}</Text>
+                        <Text class="text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-hud-accent">{t("vote.selected")}</Text>
                       </Show>
                       <Show when={props.closed && props.winner == o().id}>
                         <Text class="text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-success">{t("vote.winner")}</Text>

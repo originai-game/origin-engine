@@ -40,8 +40,8 @@ export interface ArenaReadyProps {
  * local readiness is faked. Approximations: the scroll fade at the
  * list's foot is dropped.
  */
-const CARD = `w-full max-h-full p-4 nine-panel-cut bg-[#232837ed] ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 ${packClass("Button", "plate")}`;
+const CARD = `w-full max-h-full p-4 nine-panel-cut bg-plate-hi ${packClass("Panel", "frame")}`;
+const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-glass-hi/95 hover:bg-raised-hi/95 disabled:opacity-45 ${packClass("Button", "plate")}`;
 const STATE_EDGE = "shadow-[inset_3px_0px_0px_0px_rgb(255_255_255/0.3)]";
 
 export function ArenaReady(props: ArenaReadyProps) {
@@ -94,7 +94,7 @@ export function ArenaReady(props: ArenaReadyProps) {
       </Show>
       <View class="flex-row flex-wrap gap-x-1 gap-y-1">
         <View
-          class={`${BUTTON} text-[#011e0f] bg-none bg-success hover:bg-success ${packClass("Button", "plate", "primary")}`}
+          class={`${BUTTON} text-boon-fg bg-none bg-success hover:bg-success ${packClass("Button", "plate", "primary")}`}
           role="button"
           label={t("ready.accept")}
           pressed={props.response == "ready"}
@@ -102,7 +102,7 @@ export function ArenaReady(props: ArenaReadyProps) {
           onPress={(e) => props.onAccept?.(e)}
           data-selected={props.response == "ready"}
         >
-          <Text class="text-[#011e0f]">{t("ready.accept")}</Text>
+          <Text class="text-boon-fg">{t("ready.accept")}</Text>
         </View>
         <View
           class={BUTTON}

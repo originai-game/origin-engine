@@ -59,9 +59,9 @@ export interface ArenaLobbyProps {
  * octagon edge is rounded, the scroll fade at the list's foot is
  * dropped, and a long word wraps without breaking.
  */
-const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-[#232837ed] compact:p-2 ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
-const KEYCAP = "shrink-0 size-6 min-w-6 text-center text-caption leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
+const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi compact:p-2 ${packClass("Panel", "frame")}`;
+const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-glass-hi/95 hover:bg-raised-hi/95 disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
+const KEYCAP = "shrink-0 size-6 min-w-6 text-center text-caption leading-[1.6] font-bold text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
 const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut ${packClass("Chip", "frame")}`;
 const PORTRAIT = "shrink-0 size-[3.714rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 compact:size-[2.857rem]";
 const PORTRAIT_OPEN = "data-open:p-px data-open:bg-none data-open:bg-white/28";
@@ -93,7 +93,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   data-open={s().open === true}
                 >
                   <View class={`${PORTRAIT} ${s().open ? "p-px bg-none bg-white/28" : ""}`}>
-                    <View class="size-full rounded-[0.714rem] bg-[#1d212c] flex-row items-center justify-center overflow-hidden">
+                    <View class="size-full rounded-[0.714rem] bg-raised-pressed flex-row items-center justify-center overflow-hidden">
                       <Show when={(s().portrait ?? 0) != 0 && !s().open} fallback={
                         <Icon class={s().open ? "size-6 text-fg/66" : "size-6 text-fg"} glyph={s().open ? "plus" : (s().icon ?? "")} />
                       }>
@@ -106,10 +106,10 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                     <Show when={s().host || s().local}>
                       <View class="flex-row flex-wrap gap-x-0.5 gap-y-0.5">
                         <Show when={s().host}>
-                          <Text class={`${TAG} text-[#5a3d05] bg-gold`}>{t("arena.lobby.host")}</Text>
+                          <Text class={`${TAG} text-gold-fg bg-gold`}>{t("arena.lobby.host")}</Text>
                         </Show>
                         <Show when={s().local}>
-                          <Text class={`${TAG} text-[#15181f] bg-[#38e8ff]`}>{t("arena.you")}</Text>
+                          <Text class={`${TAG} text-glass bg-hud-accent`}>{t("arena.you")}</Text>
                         </Show>
                       </View>
                     </Show>
@@ -124,7 +124,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   </Show>
                   <Show when={s().open && props.canInvite}>
                     <View
-                      class="flex-none flex-row items-center gap-x-0.5 min-h-8 px-4 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-[#2c3140eb] to-[#1b1f29f2] shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.24),inset_0px_1px_0px_0px_rgb(255_255_255/0.6)] rounded-tl-[0.429rem] hover:bg-none hover:bg-linear-to-b hover:from-[#373d4ff2] hover:to-[#232837f5] compact:ml-auto"
+                      class="flex-none flex-row items-center gap-x-0.5 min-h-8 px-4 text-caption font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-glass-hi/95 to-raised-pressed/95 shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.24),inset_0px_1px_0px_0px_rgb(255_255_255/0.6)] rounded-tl-[0.429rem] hover:bg-none hover:bg-linear-to-b hover:from-raised-hi/95 hover:to-raised-lo/96 compact:ml-auto"
                       role="button"
                       label={t("arena.lobby.invite")}
                       onPress={(e) => props.onInvite?.(e, s().id)}
@@ -153,13 +153,13 @@ export function ArenaLobby(props: ArenaLobbyProps) {
         </Show>
         <Show when={props.isHost}>
           <View
-            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-[#15181f] nine-plate-cut bg-[#38e8ff] hover:bg-[#5defff] disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
+            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-glass nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
             role="button"
             label={t("arena.lobby.start")}
             disabled={!(props.canStart ?? false)}
             onPress={(e) => props.onStart?.(e)}
           >
-            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-[#15181f]">{t("arena.lobby.start")}</Text>
+            <Text class="text-caption font-bold tracking-[0.14em] uppercase text-glass">{t("arena.lobby.start")}</Text>
           </View>
         </Show>
       </View>

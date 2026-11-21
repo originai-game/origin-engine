@@ -3,7 +3,7 @@ import "./menu.en.ogt";
 
 /** One entry row: dim type washed in the HUD accent from its lit leading edge under the pointer, the keys or the focus; a disabled row faint and shadowless. */
 const row =
-  "group/row transition duration-317 w-full h-auto min-h-[2.714rem] p-0 pointer-coarse:min-h-11 text-fg-muted hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:text-fg hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] focus-visible:bg-transparent focus-visible:bg-linear-to-r focus-visible:from-[#38e8ff3d] focus-visible:via-[#38e8ff14] focus-visible:via-55% focus-visible:to-[#38e8ff08] focus-visible:text-fg focus-visible:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-danger:text-danger data-danger:hover:text-danger data-danger:focus-visible:text-danger disabled:data-danger:text-fg-subtle data-down:opacity-45";
+  "group/row transition duration-317 w-full h-auto min-h-[2.714rem] p-0 pointer-coarse:min-h-11 text-fg-muted hover:bg-transparent hover:bg-linear-to-r hover:from-hud-accent/24 hover:via-hud-accent/8 hover:via-55% hover:to-hud-accent/3 hover:text-fg hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] focus-visible:bg-transparent focus-visible:bg-linear-to-r focus-visible:from-hud-accent/24 focus-visible:via-hud-accent/8 focus-visible:via-55% focus-visible:to-hud-accent/3 focus-visible:text-fg focus-visible:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-danger:text-danger data-danger:hover:text-danger data-danger:focus-visible:text-danger disabled:data-danger:text-fg-subtle data-down:opacity-45";
 
 export interface MenuProps {
   /** Its entries, submenus' too, a keyed collection of { id, label, kind, icon, shortcut, checked, danger, disabled, parent, more }: kind item, check, radio, separator or header; icon an icon name before the label (empty: none); shortcut shown at the end (Ctrl+S); checked a check or radio entry is on; danger a destructive command in the danger ink; disabled shown but inert; parent the id of the entry whose submenu it is in (empty: the top level); more it opens a submenu (a chevron at its end). */
@@ -32,7 +32,7 @@ export interface MenuProps {
  */
 export function Menu(props: MenuProps) {
   return (
-    <View class={`pt-1 pb-2 bg-linear-to-b from-[#171f30f5] to-[#080c16f7] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c,0px_20.576px_45.712px_#00000099] text-fg min-w-[17.143rem] max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
+    <View class={`pt-1 pb-2 bg-linear-to-b from-raised-pressed/96 to-glass-lo shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c,0px_20.576px_45.712px_#00000099] text-fg min-w-[17.143rem] max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
       <Show when={props.submenu !== ""}>
         <View class={row} role="menuitem" label={t("component.menu.back")} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center w-full gap-2">
@@ -64,17 +64,17 @@ export function Menu(props: MenuProps) {
                         <Icon class="size-full" name={e().icon} />
                       </Show>
                       <Show when={e().kind === "check" && e().checked}>
-                        <Icon name="check" class="text-[#38e8ff] size-3/4" />
+                        <Icon name="check" class="text-hud-accent size-3/4" />
                       </Show>
                       <Show when={e().kind === "radio" && e().checked}>
-                        <View class="bg-[#38e8ff] rotate-45 size-[45%]" />
+                        <View class="bg-hud-accent rotate-45 size-[45%]" />
                       </Show>
                     </View>
                     <Text class="grow shrink text-start text-base leading-snug font-semibold break-words">
                       {e().label}
                     </Text>
                     <Show when={e().shortcut}>
-                      <Text class={`font-bold text-xs leading-snug text-fg-muted tracking-sm whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_0px_0px_1px_#ffffff29] py-0.5 px-1 group-disabled/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
+                      <Text class={`font-bold text-xs leading-snug text-fg-muted tracking-sm whitespace-nowrap bg-well shadow-[inset_0px_0px_0px_1px_#ffffff29] py-0.5 px-1 group-disabled/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
                         {e().shortcut}
                       </Text>
                     </Show>

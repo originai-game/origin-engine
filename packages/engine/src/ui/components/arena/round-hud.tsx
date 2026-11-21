@@ -54,8 +54,8 @@ const TEAM_B_PLATE = "shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.18),inset_
 const NAME = "min-w-0 text-base leading-[1.15] font-bold uppercase tracking-[0.04em] text-fg";
 const SCORE_A = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team1 shadow-[0px_0px_1rem_rgb(80_170_255/0.5)] compact:text-3xl";
 const SCORE_B = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team2 shadow-[0px_0px_1rem_rgb(255_106_94/0.5)] compact:text-3xl";
-const YOU = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-[#15181f] nine-chip-cut bg-[#38e8ff] whitespace-nowrap ${packClass("Chip", "frame")}`;
-const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 bg-[#1b1f29e0] ${PLATE_RIM} ${packClass("Plate", "frame")}`;
+const YOU = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-glass nine-chip-cut bg-hud-accent whitespace-nowrap ${packClass("Chip", "frame")}`;
+const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 bg-raised-pressed/88 ${PLATE_RIM} ${packClass("Plate", "frame")}`;
 
 export function ArenaRoundHud(props: ArenaRoundHudProps) {
   const nameA = () => (props.nameA ?? "") != "" ? props.nameA : t("arena.team.a");
@@ -105,7 +105,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
         <Show when={ended()}>
           <View class="flex-col items-center gap-y-1 max-w-full">
             <Text
-              class={`max-w-full text-center text-[6rem] leading-none font-bold uppercase tracking-[0.02em] text-[#ffe9a8] shadow-[0px_0px_1.571rem_rgb(255_207_90/0.55)] data-lost:text-danger data-lost:shadow-[0px_0px_1.571rem_rgb(222_38_52/0.6)]`}
+              class={`max-w-full text-center text-[6rem] leading-none font-bold uppercase tracking-[0.02em] text-gold-hi shadow-[0px_0px_1.571rem_rgb(255_207_90/0.55)] data-lost:text-danger data-lost:shadow-[0px_0px_1.571rem_rgb(222_38_52/0.6)]`}
               data-lost={props.outcome == "lost"}
             >
               {props.outcome == "won" ? t("arena.round.won") : props.outcome == "lost" ? t("arena.round.lost") : t("arena.round.draw")}

@@ -17,7 +17,7 @@ export function HudHint(props: HudHintProps) {
   return (
     <View class={`flex-row items-center gap-1 w-fit min-w-0 max-w-full pointer-coarse:hidden`}>
       <Show when={props.key}>
-        <Text class={`shrink max-w-[8.571rem] min-w-[1.714rem] py-0 px-1 text-[0.857rem] leading-[1.6] font-bold text-center text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate`}>
+        <Text class={`shrink max-w-[8.571rem] min-w-[1.714rem] py-0 px-1 text-[0.857rem] leading-[1.6] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate`}>
           {props.key}
         </Text>
       </Show>

@@ -41,7 +41,7 @@ export interface DataGridProps {
  */
 export function DataGrid(props: DataGridProps) {
   return (
-    <View class={`nine-panel-cut bg-[#1e2637e5] text-fg w-full p-0 gap-0 ${packClass("Panel", "frame")}`} role="grid" label={props.label} busy={props.loading}>
+    <View class={`nine-panel-cut bg-plate-hi text-fg w-full p-0 gap-0 ${packClass("Panel", "frame")}`} role="grid" label={props.label} busy={props.loading}>
       <View class={`min-h-8 border-b border-white/8 grid gap-x-3 w-full py-2 px-3 compact:flex compact:gap-x-3 compact:flex-wrap compact:gap-y-0.5 compact:items-baseline`} role="row" style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
         <For each={props.columns} key={(c) => c.id}>
           {(c, i) => (
@@ -57,8 +57,8 @@ export function DataGrid(props: DataGridProps) {
                   <View class="w-full h-60 overflow-y-auto">
                     <For each={props.rows} key={(r) => r.id}>
                       {(r) => (
-                      <View class={`group/row relative nine-plate-cut bg-entry-hi border border-rim w-full min-w-0 items-baseline grid gap-x-3 py-1 px-3 compact:flex compact:flex-wrap compact:gap-x-3 compact:gap-y-0.5 compact:py-2 hover:bg-none hover:bg-entry-hi data-selected:bg-transparent data-selected:bg-[#38e8ff3d] data-down:opacity-45`} role="row" selected={r().id === props.selected} onPress={(e) => props.onChoose?.(e, r().id)} data-selected={r().id === props.selected} style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
-                        <View class="absolute left-0 inset-y-0 w-[3.424px] bg-[#38e8ff] hidden group-data-selected/row:block" />
+                      <View class={`group/row relative nine-plate-cut bg-entry-hi border border-rim w-full min-w-0 items-baseline grid gap-x-3 py-1 px-3 compact:flex compact:flex-wrap compact:gap-x-3 compact:gap-y-0.5 compact:py-2 hover:bg-none hover:bg-entry-hi data-selected:bg-transparent data-selected:bg-hud-accent/24 data-down:opacity-45`} role="row" selected={r().id === props.selected} onPress={(e) => props.onChoose?.(e, r().id)} data-selected={r().id === props.selected} style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
+                        <View class="absolute left-0 inset-y-0 w-[3.424px] bg-hud-accent hidden group-data-selected/row:block" />
                         <For each={r().cells} key={(c) => c.id}>
                           {(c, i) => (
                           <>
@@ -77,7 +77,7 @@ export function DataGrid(props: DataGridProps) {
                   </View>
               }>
                 <View class={`w-full items-center p-6 gap-3`} role="status">
-                  <View class={`grow shrink basis-0 bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] justify-center items-center gap-3 size-16 rounded-capsule`}>
+                  <View class={`grow shrink basis-0 bg-well/71 shadow-[inset_0px_0px_0px_1px_#ffffff1a] justify-center items-center gap-3 size-16 rounded-capsule`}>
                     <Icon class="size-4" name="bag" />
                   </View>
                   <Text class={`font-semibold text-lg text-fg text-center w-full m-0`}>

@@ -52,7 +52,7 @@ export function DamageDirection(props: DamageDirectionProps) {
               <View class="relative size-[6.25rem]">
                 <Line
                   points={arcPoints(h().angle, strength)}
-                  class={h().kind === "shield" ? "stroke-[#4fd8ff] stroke-[2.5]" : h().kind === "critical" ? "stroke-[#ff4d5e] stroke-[3.5]" : "stroke-[#ff4d5e] stroke-[2.5]"}
+                  class={h().kind === "shield" ? "stroke-ally stroke-[2.5]" : h().kind === "critical" ? "stroke-foe stroke-[3.5]" : "stroke-foe stroke-[2.5]"}
                 />
               </View>
             </View>

@@ -42,7 +42,7 @@ export interface RpgQuestDetailProps {
  */
 export function RpgQuestDetail(props: RpgQuestDetailProps) {
   return (
-    <View class={`group/frame flex-col size-full min-h-0 overflow-hidden nine-panel-cut bg-[#101725f0] text-fg ${packClass("Panel", "frame")}`} label={props.name} data-with-scenery={props.scenery !== 0}>
+    <View class={`group/frame flex-col size-full min-h-0 overflow-hidden nine-panel-cut bg-glass text-fg ${packClass("Panel", "frame")}`} label={props.name} data-with-scenery={props.scenery !== 0}>
       {/* Band */}
       <View class={`relative shrink-0 w-full min-h-[6.857rem] group-data-with-scenery/frame:min-h-[13.714rem]`}>
         <Show when={props.scenery !== 0}>
@@ -80,7 +80,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                           {o().text}
                         </Text>
                         <Show when={o().optional}>
-                          <Text class={`shrink py-0 px-1 whitespace-nowrap text-caption tracking-[0.14em] uppercase bg-[#0c10178c] shadow-[inset_0px_0px_0px_1px_#ffffff2e] rounded-capsule ${packClass("Chip", "frame")}`}>
+                          <Text class={`shrink py-0 px-1 whitespace-nowrap text-caption tracking-[0.14em] uppercase bg-tile/55 shadow-[inset_0px_0px_0px_1px_#ffffff2e] rounded-capsule ${packClass("Chip", "frame")}`}>
                             {t("rpg.quest.optional")}
                           </Text>
                         </Show>
@@ -91,7 +91,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
               </View>
             </Show>
             <Show when={(props.rewards ?? []).length}>
-              <View class={`flex-col gap-1 p-2 nine-panel-cut bg-[#0c1017b8]`} role="group" label={t("rpg.quest.rewards")}>
+              <View class={`flex-col gap-1 p-2 nine-panel-cut bg-tile/72`} role="group" label={t("rpg.quest.rewards")}>
                 <View class="flex-row items-center gap-1" role="heading">
                   <Text class={`text-caption font-semibold tracking-[0.14em] uppercase text-fg-muted`}>{t("rpg.quest.rewards")}</Text>
                   <View class="grow h-px bg-rim" />
@@ -99,9 +99,9 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                 <View class={`flex-row flex-wrap items-stretch gap-2`} role="list">
                   <For each={props.rewards ?? []} key={(r) => r.id}>
                     {(r) => (
-                      <View class={`group/reward flex-row items-center gap-3 grow min-w-[17.829rem] compact:min-w-0 compact:w-full py-1 pl-1 pr-3 nine-chip-cut bg-[#101725d9] ${packClass("Chip", "frame")}`} role="listitem" data-unique={r().detail !== ""}>
-                        <View class={`shrink-0 size-12 rounded-[6.858px] p-[1.5px] bg-linear-to-b from-white/50 via-white/12 via-50% to-white/6 data-unique:from-[#fff3cf] data-unique:via-gold data-unique:via-45% data-unique:to-[#ffcf5a66]`}>
-                          <View class={`size-full rounded-[5.143px] flex-row items-center justify-center bg-[#1f2430] data-unique:bg-[#3a2f0e]`}>
+                      <View class={`group/reward flex-row items-center gap-3 grow min-w-[17.829rem] compact:min-w-0 compact:w-full py-1 pl-1 pr-3 nine-chip-cut bg-glass/88 ${packClass("Chip", "frame")}`} role="listitem" data-unique={r().detail !== ""}>
+                        <View class={`shrink-0 size-12 rounded-[6.858px] p-[1.5px] bg-linear-to-b from-white/50 via-white/12 via-50% to-white/6 data-unique:from-gold-hi data-unique:via-gold data-unique:via-45% data-unique:to-gold/40`}>
+                          <View class={`size-full rounded-[5.143px] flex-row items-center justify-center bg-raised-pressed data-unique:bg-gold-fg`}>
                             <Icon class={`size-6 text-fg data-unique:text-gold`} name={r().icon} />
                           </View>
                         </View>
@@ -120,7 +120,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
           </View>
         </Scroll>
         <Show when={props.canTrack || props.canLocate}>
-          <View class="absolute bottom-0 inset-x-0 h-6 bg-linear-to-b from-transparent to-[#101725f0]" />
+          <View class="absolute bottom-0 inset-x-0 h-6 bg-linear-to-b from-transparent to-glass" />
         </Show>
       </View>
       <Show when={props.canTrack || props.canLocate}>

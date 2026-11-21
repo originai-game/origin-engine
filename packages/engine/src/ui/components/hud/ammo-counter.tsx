@@ -54,14 +54,14 @@ export function AmmoCounter(props: AmmoCounterProps) {
             <Text class="shrink-0 text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[0.929rem]">{formatNumber(props.secondaryAmmo ?? 0)}</Text>
           </Show>
           <Show when={(props.secondaryKey ?? "") != ""}>
-            <Text class={`shrink max-w-1/2 min-w-[1.429rem] py-0 px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate pointer-coarse:hidden`}>
+            <Text class={`shrink max-w-1/2 min-w-[1.429rem] py-0 px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate pointer-coarse:hidden`}>
               {props.secondaryKey}
             </Text>
           </Show>
         </View>
       </Show>
       <View class="flex-row items-baseline gap-2 max-w-full">
-        <Text class="min-w-0 text-[5.429rem] leading-[0.9] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-low:text-[#ffb547] data-empty:text-[#ff4d5e] compact:text-[2.571rem]" data-low={low()} data-empty={empty()}>
+        <Text class="min-w-0 text-[5.429rem] leading-[0.9] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs text-stroke-3 text-stroke-bg data-low:text-warn data-empty:text-foe compact:text-[2.571rem]" data-low={low()} data-empty={empty()}>
           {formatNumber(props.magazine)}
         </Text>
         <Text class="shrink-0 text-[2rem] leading-none font-bold tabular-nums whitespace-nowrap text-fg/66 text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem]">{formatNumber(props.reserve)}</Text>
@@ -108,7 +108,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
         </View>
       </Show>
       <Show when={props.magazine <= 0 && (props.reloading ?? -1) < 0}>
-        <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#ff4d5e] animate-pulse text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.empty")}</Text>
+        <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-foe animate-pulse text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.empty")}</Text>
       </Show>
     </View>
   );

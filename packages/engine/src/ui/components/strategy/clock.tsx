@@ -36,12 +36,12 @@ export function StrategyClock(props: StrategyClockProps) {
       </Text>
       <Show when={props.paused} fallback={
           <Show when={props.speed !== ""}>
-            <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-xs font-bold tabular-nums text-center whitespace-nowrap nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+            <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-xs font-bold tabular-nums text-center whitespace-nowrap nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
               {props.speed}
             </Text>
           </Show>
       }>
-        <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-xs font-bold tabular-nums text-center whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status">
+        <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-xs font-bold tabular-nums text-center whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`} role="status">
           {t("strategy.clock.paused")}
         </Text>
       </Show>

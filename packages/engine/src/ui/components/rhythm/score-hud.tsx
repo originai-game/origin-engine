@@ -57,7 +57,7 @@ export function RhythmScoreHud(props: RhythmScoreHudProps) {
             {formatNumber(props.best ?? 0)}
           </Text>
           <Text
-            class={`shrink py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] nine-chip-cut text-success data-trend-down:text-danger ${packClass("Chip", "frame")}`}
+            class={`shrink py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-well nine-chip-cut text-success data-trend-down:text-danger ${packClass("Chip", "frame")}`}
             data-trend-up={props.score >= (props.best ?? 0)}
             data-trend-down={props.score < (props.best ?? 0)}
           >

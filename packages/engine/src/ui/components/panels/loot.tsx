@@ -4,7 +4,7 @@ import { Spinner } from "../base/spinner";
 import "./economy.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden size-6 min-w-6 text-center text-caption font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none`;
+const keyCap = `shrink-0 pointer-coarse:hidden size-6 min-w-6 text-center text-caption font-bold text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none`;
 
 /** An item's socket: its ground tinted by its rarity, the icon over it. */
 const socket =
@@ -88,7 +88,7 @@ export function RpgLoot(props: RpgLootProps) {
           <For each={items()}>
             {(item) => (
               <View
-                class={`group/row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut bg-entry-lo border-l-3 border-transparent hover:bg-entry-hi focus-within:bg-[#38e8ff24] focus-within:border-[#38e8ff] transition duration-317 group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic`}
+                class={`group/row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut bg-entry-lo border-l-3 border-transparent hover:bg-entry-hi focus-within:bg-hud-accent/14 focus-within:border-hud-accent transition duration-317 group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic`}
                 data-not-available={!item().available}
                 data-tier-common={(item().rarity || "common") === "common"}
                 data-tier-uncommon={(item().rarity || "common") === "uncommon"}

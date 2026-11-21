@@ -4,7 +4,7 @@ import { Spinner } from "../base/spinner";
 import "./economy.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden size-6 min-w-6 text-center text-caption font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none`;
+const keyCap = `shrink-0 pointer-coarse:hidden size-6 min-w-6 text-center text-caption font-bold text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none`;
 
 /** An item's socket: its ground tinted by its rarity, the icon over it. */
 const socket =
@@ -12,7 +12,7 @@ const socket =
 
 /** One good's row: its rarity on the leading edge, washed flat in the HUD accent when chosen. */
 const goodRow =
-  "group/row w-full min-h-11 pr-2 pl-3 py-1 nine-plate-cut bg-entry-lo border-l-3 border-transparent transition duration-317 hover:bg-entry-hi focus-visible:bg-[#38e8ff3d] focus-visible:border-[#38e8ff] data-selected:bg-[#38e8ff3d] data-selected:border-[#38e8ff] group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-down:opacity-45";
+  "group/row w-full min-h-11 pr-2 pl-3 py-1 nine-plate-cut bg-entry-lo border-l-3 border-transparent transition duration-317 hover:bg-entry-hi focus-visible:bg-hud-accent/24 focus-visible:border-hud-accent data-selected:bg-hud-accent/24 data-selected:border-hud-accent group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-down:opacity-45";
 
 export interface RpgTradeProps {
   /** The merchant or trade title; empty uses Trade. */

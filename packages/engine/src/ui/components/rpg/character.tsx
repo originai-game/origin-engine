@@ -38,7 +38,7 @@ export interface RpgCharacterProps {
 export function RpgCharacter(props: RpgCharacterProps) {
   return (
     <View
-      class={`group/sheet flex-col text-fg p-4 nine-panel-cut bg-[#0f1522ed] compact:p-2 ${packClass("Panel", "frame")}`}
+      class={`group/sheet flex-col text-fg p-4 nine-panel-cut bg-glass/96 compact:p-2 ${packClass("Panel", "frame")}`}
       label={props.title !== "" ? props.title : props.name}
       data-narrow={props.compact}
       data-dense={props.dense}
@@ -77,7 +77,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
           <View class={`w-[3.429rem] h-4 shrink-0`} />
         </View>
       </Show>
-      <View class={`relative flex-row justify-between w-full px-1 py-2 bg-linear-to-b from-[#38e8ff1a] to-transparent`}>
+      <View class={`relative flex-row justify-between w-full px-1 py-2 bg-linear-to-b from-hud-accent/10 to-transparent`}>
         <Show when={props.figure !== 0}>
           <View class={`absolute left-[18%] top-0 bottom-0 w-[64%]`}>
             <Image class={`size-full`} src={props.figure} label="" />
@@ -88,7 +88,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "start"}>
               <View
-                class={`group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-[#0b101c] data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
+                class={`group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}
@@ -119,7 +119,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "end"}>
               <View
-                class={`group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-[#0b101c] data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
+                class={`group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}

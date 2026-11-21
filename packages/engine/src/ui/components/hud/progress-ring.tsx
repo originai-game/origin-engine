@@ -38,7 +38,7 @@ export function ProgressRing(props: ProgressRingProps) {
     >
       <Show when={props.spinning} fallback={
         <>
-          <View class="absolute inset-0 rounded-full bg-[#151820]">
+          <View class="absolute inset-0 rounded-full bg-glass">
             <View
               class={`absolute inset-0 nine-ring bg-accent group-data-tone-success/ring:bg-success group-data-tone-warn/ring:bg-warn group-data-tone-danger/ring:bg-danger group-data-tone-info/ring:bg-info transition-layout duration-300 ease-out`}
               wipe={share()}

@@ -74,7 +74,7 @@ export function PassTrack(props: PassTrackProps) {
                   <Scroll class="grow shrink basis-0 w-full gap-3">
                     <View class={`flex-row items-center w-full gap-3`}>
                       <Show when={props.level}>
-                        <View class={`justify-center items-center text-[1.714rem] font-bold text-[#041016] bg-linear-to-b from-[#b7fbff] to-[#38e8ff] gap-2 size-16`} label={t("meta.pass.level", { level: props.level })}>
+                        <View class={`justify-center items-center text-[1.714rem] font-bold text-hud-accent-fg bg-linear-to-b from-hud-accent-hi to-hud-accent gap-2 size-16`} label={t("meta.pass.level", { level: props.level })}>
                           <Text>{props.level}</Text>
                         </View>
                       </Show>
@@ -88,7 +88,7 @@ export function PassTrack(props: PassTrackProps) {
                           </Text>
                         </View>
                         <View class={`bg-track shadow-sunk w-full h-[0.714rem] mx-1 rounded-capsule`} role="meter" label={t("meta.pass.progress")} valueText={props.progressText || `${formatNumber((props.progress ?? 0) * 100, { decimals: 0 })}%`}>
-                          <View class={`bg-[#38e8ff] absolute left-0 inset-y-0`} style={{ width: `${(100 * ((props.progress ?? 0) > 1 ? 1 : (props.progress ?? 0) < 0 ? 0 : (props.progress ?? 0)))}%` }} />
+                          <View class={`bg-hud-accent absolute left-0 inset-y-0`} style={{ width: `${(100 * ((props.progress ?? 0) > 1 ? 1 : (props.progress ?? 0) < 0 ? 0 : (props.progress ?? 0)))}%` }} />
                         </View>
                       </View>
                     </View>

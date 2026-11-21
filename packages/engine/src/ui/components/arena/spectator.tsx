@@ -52,7 +52,7 @@ export interface ArenaSpectatorProps {
  * is flat, the scroll fade at the list's foot is dropped, and the ghost
  * Leave wears the standard button look.
  */
-const BUTTON = `flex-1 basis-40 flex-row items-center justify-center gap-x-1 min-h-11 px-3 text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-[#2c3140eb] hover:bg-[#373d4ff2] disabled:opacity-45 ${packClass("Button", "plate")}`;
+const BUTTON = `flex-1 basis-40 flex-row items-center justify-center gap-x-1 min-h-11 px-3 text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-glass-hi/95 hover:bg-raised-hi/95 disabled:opacity-45 ${packClass("Button", "plate")}`;
 
 export function ArenaSpectator(props: ArenaSpectatorProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("spectator.title");
@@ -77,7 +77,7 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
               <For each={props.targets ?? []} key={(p) => p.id}>
                 {(p) => (
                   <View
-                    class={`flex-col gap-y-[0.071rem] w-full min-h-11 py-1 px-3 text-start bg-linear-to-r from-entry-hi to-entry-lo shadow-[inset_3px_0px_0px_0px_rgb(255_255_255/0.3)] hover:bg-none hover:bg-linear-to-r hover:from-[#373d4ff2] hover:to-[#232837f5] data-selected:bg-[#38e8ff26] data-selected:shadow-[inset_0.429rem_0px_0px_0px_#38e8ff,inset_0px_1px_0px_0px_rgb(255_255_255/0.18)] disabled:text-fg/66 transition duration-317`}
+                    class={`flex-col gap-y-[0.071rem] w-full min-h-11 py-1 px-3 text-start bg-linear-to-r from-entry-hi to-entry-lo shadow-[inset_3px_0px_0px_0px_rgb(255_255_255/0.3)] hover:bg-none hover:bg-linear-to-r hover:from-raised-hi/95 hover:to-raised-lo/96 data-selected:bg-hud-accent/15 data-selected:shadow-[inset_0.429rem_0px_0px_0px_#38e8ff,inset_0px_1px_0px_0px_rgb(255_255_255/0.18)] disabled:text-fg/66 transition duration-317`}
                     role="button"
                     label={p().name}
                     pressed={followed(p().id)}

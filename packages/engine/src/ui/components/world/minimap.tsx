@@ -57,7 +57,7 @@ export function Minimap(props: MinimapProps) {
     <View class="flex-col items-center gap-y-[0.857rem]" role="image" label={props.label ?? ""}>
       <View class="relative overflow-hidden rounded-button border border-rim shadow-plate" style={{ width: `${size()}px`, height: `${size()}px` }}>
         <Show when={(props.texture ?? 0) > 0} fallback={
-          <View class="absolute inset-0 bg-[#0a0f1a]">
+          <View class="absolute inset-0 bg-tile">
             <For each={Array.from({ length: 7 }, (_, k) => k)} key={(k) => `h${k}`}>
               {(k) => <View class="absolute bg-white/14" style={{ left: `${((k() + 1) / 8) * 100}%`, top: 0, width: `${100 / size()}%`, height: "100%" }} />}
             </For>
@@ -80,7 +80,7 @@ export function Minimap(props: MinimapProps) {
         <For each={props.markers ?? []} key={(m) => m.id}>
           {(m) => (
             <View
-              class={`absolute rounded-full ${m().player ? "size-[0.857rem] border-2 border-[#e8e8ed]" : "size-[0.571rem]"}`}
+              class={`absolute rounded-full ${m().player ? "size-[0.857rem] border-2 border-accent" : "size-[0.571rem]"}`}
               style={{
                 background: markerTone(m()),
                 left: `${m().x * 100}%`,

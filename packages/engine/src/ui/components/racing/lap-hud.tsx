@@ -69,7 +69,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
               label={props.laps > 0 && props.lap > 0 ? t("racing.lap.lapValue", { lap: props.lap, laps: props.laps }) : t("racing.lap.lap")}
               data-final={props.finalLap}
             >
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 group-data-final/lap:text-[#38e8ff]`}>
+              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 group-data-final/lap:text-hud-accent`}>
                 {props.finalLap ? t("racing.lap.finalLap") : t("racing.lap.lap")}
               </Text>
               <Text class={`text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg`}>{props.lap > 0 ? formatNumber(props.lap) : t("racing.lap.pending")}</Text>
@@ -81,9 +81,9 @@ export function RacingLapHud(props: RacingLapHudProps) {
           <Show when={props.gained !== 0}>
             <View class="group/gained flex-row items-center gap-x-[0.357rem] max-w-full min-w-0" data-trend-down={props.gained < 0}>
               <View
-                class={`shrink-0 size-[0.571rem] -rotate-45 border-l-2 border-b-2 border-[#38e8ff] group-data-trend-down/gained:rotate-45 group-data-trend-down/gained:border-t-2 group-data-trend-down/gained:border-r-2 group-data-trend-down/gained:border-l-0 group-data-trend-down/gained:border-b-0 group-data-trend-down/gained:border-[#ff4d5e]`}
+                class={`shrink-0 size-[0.571rem] -rotate-45 border-l-2 border-b-2 border-hud-accent group-data-trend-down/gained:rotate-45 group-data-trend-down/gained:border-t-2 group-data-trend-down/gained:border-r-2 group-data-trend-down/gained:border-l-0 group-data-trend-down/gained:border-b-0 group-data-trend-down/gained:border-foe`}
               />
-              <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#38e8ff] group-data-trend-down/gained:text-[#ff4d5e] compact:tracking-normal`}>
+              <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-hud-accent group-data-trend-down/gained:text-foe compact:tracking-normal`}>
                 {props.gained > 0 ? t("racing.lap.up", { n: props.gained }) : t("racing.lap.down", { n: -props.gained })}
               </Text>
             </View>
@@ -100,7 +100,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
           <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.last")}</Text>
           <View class="flex-row items-baseline gap-x-[0.429rem]">
             <Show when={props.freshBest}>
-              <Text class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-epic bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`}>{t("racing.lap.newBest")}</Text>
+              <Text class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-epic bg-well nine-chip-cut ${packClass("Chip", "frame")}`}>{t("racing.lap.newBest")}</Text>
             </Show>
             <Text class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg-muted group-data-fresh/lastrow:text-epic`}>{props.last !== "" ? props.last : t("racing.lap.none")}</Text>
           </View>
@@ -125,7 +125,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
           >
             <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 compact:tracking-normal`}>{props.sector !== "" ? props.sector : t("racing.lap.split")}</Text>
             <Text
-              class={`shrink-0 py-0 px-[0.429rem] text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-[#060910e0] nine-chip-cut data-ahead:bg-[#55e39a] data-ahead:text-[#0d2417] data-behind:bg-[#ff4d5e] data-behind:text-fg ${packClass("Chip", "frame")}`}
+              class={`shrink-0 py-0 px-[0.429rem] text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-well nine-chip-cut data-ahead:bg-boon data-ahead:text-boon-fg data-behind:bg-foe data-behind:text-fg ${packClass("Chip", "frame")}`}
               data-ahead={(props.splitState ?? "even") === "ahead"}
               data-behind={(props.splitState ?? "even") === "behind"}
             >

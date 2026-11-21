@@ -37,7 +37,7 @@ export function Inbox(props: InboxProps) {
           {props.title || t("meta.inbox.title")}
         </Text>
         <Show when={props.summary}>
-          <Text class={`text-caption text-fg bg-[#060910b8] border border-white/8 nine-chip-cut py-0.5 px-2 shrink ${packClass("Chip", "frame")}`}>
+          <Text class={`text-caption text-fg bg-well/82 border border-white/8 nine-chip-cut py-0.5 px-2 shrink ${packClass("Chip", "frame")}`}>
             {props.summary}
           </Text>
         </Show>
@@ -78,7 +78,7 @@ export function Inbox(props: InboxProps) {
                         )}
                       </For>
                     </Scroll>
-                    <View class="max-h-140 overflow-y-hidden bg-[#060910b8] shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] py-3 px-4 rounded-card compact:max-h-none">
+                    <View class="max-h-140 overflow-y-hidden bg-well/82 shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] py-3 px-4 rounded-card compact:max-h-none">
                       <Show when={!props.selected}>
                         <Text class={`text-caption text-fg-muted m-0`}>
                           {t("meta.inbox.select")}
@@ -111,7 +111,7 @@ export function Inbox(props: InboxProps) {
                                   <For each={(props.attachments ?? [])}>
                                     {(attachment) => (
                                     <Show when={attachment().message === message().id}>
-                                      <View class={`flex-row items-center pr-3 pl-2 bg-[#060910b8] border border-gold/60 nine-chip-cut py-1 gap-2 shrink ${packClass("Chip", "frame")}`}>
+                                      <View class={`flex-row items-center pr-3 pl-2 bg-well/82 border border-gold/60 nine-chip-cut py-1 gap-2 shrink ${packClass("Chip", "frame")}`}>
                                         <Icon class={`text-gold size-4`} name={attachment().icon} />
                                         <View class={`shrink`}>
                                           <Text>{attachment().name}</Text>

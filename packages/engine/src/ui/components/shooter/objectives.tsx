@@ -39,7 +39,7 @@ export function ShooterObjectives(props: ShooterObjectivesProps) {
       label={heading()}
     >
       <Show when={(props.goals ?? []).length}>
-        <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-[#38e8ff] text-shadow-2xs text-stroke-3 text-stroke-bg compact:hidden`}>{heading()}</Text>
+        <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-hud-accent text-shadow-2xs text-stroke-3 text-stroke-bg compact:hidden`}>{heading()}</Text>
         <For each={props.goals ?? []} key={(g) => g.id}>
           {(g) => (
             <View class={`flex-row items-center gap-1 min-w-0 opacity-66 data-current:opacity-100 compact:hidden data-current:compact:flex`}>

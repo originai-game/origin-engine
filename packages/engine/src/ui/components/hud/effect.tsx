@@ -34,9 +34,9 @@ export function HudEffect(props: HudEffectProps) {
       label={props.label ? t("hud.effect.label", { name: props.name, label: props.label }) : props.name}
       data-harmful={props.harmful}
     >
-      <View class="relative size-[2.143rem] compact:size-[1.857rem] rounded-tl-[0.357rem] bg-[#55e39a] data-harmful:bg-[#ff4d5e]">
+      <View class="relative size-[2.143rem] compact:size-[1.857rem] rounded-tl-[0.357rem] bg-boon data-harmful:bg-foe">
         <Show when={props.icon} fallback={
-          <View class="absolute inset-[0.143rem] rounded-tl-[0.357rem] flex-row items-center justify-center bg-[#2a2d38]">
+          <View class="absolute inset-[0.143rem] rounded-tl-[0.357rem] flex-row items-center justify-center bg-raised-lo">
             <Show when={props.glyph}>
               <Icon class="size-[60%] text-fg" name={props.glyph} />
             </Show>
@@ -49,7 +49,7 @@ export function HudEffect(props: HudEffectProps) {
         </Show>
       </View>
       <Show when={props.label}>
-        <Text class={`max-w-[4.571rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-[#1b1f29e0] compact:px-[0.214rem] data-harmful:text-[#ff4d5e] ${packClass("Chip", "frame")}`}>
+        <Text class={`max-w-[4.571rem] py-0 px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-2xs nine-chip-cut bg-raised-pressed/88 compact:px-[0.214rem] data-harmful:text-foe ${packClass("Chip", "frame")}`}>
           {props.label}
         </Text>
       </Show>

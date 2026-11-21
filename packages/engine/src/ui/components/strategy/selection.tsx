@@ -48,7 +48,7 @@ export function StrategySelection(props: StrategySelectionProps) {
           </Text>
       }>
         <View class={`flex-col gap-y-[0.357rem] shrink min-w-[6.171rem] compact:gap-y-[0.214rem] compact:min-w-[3.429rem]`}>
-          <View class={`self-center size-[6.171rem] compact:size-[3.429rem] p-[0.143rem] nine-plate-cut bg-[#38e8ff]`}>
+          <View class={`self-center size-[6.171rem] compact:size-[3.429rem] p-[0.143rem] nine-plate-cut bg-hud-accent`}>
             <View class={`size-full flex-row items-center justify-center overflow-hidden nine-plate-cut bg-plate-hi`}>
               <Show when={props.portrait} fallback={
                   <Icon class={`size-[55%] text-fg`} name={props.icon} />
@@ -102,13 +102,13 @@ export function StrategySelection(props: StrategySelectionProps) {
             <Show when={(props.stats ?? []).length || props.status !== ""}>
               <View class={`flex-row flex-wrap items-center justify-end gap-x-[0.357rem] gap-y-[0.286rem] min-w-0`} role="list" label={t("strategy.selection.stats")}>
                 <Show when={props.status !== ""}>
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status">
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`} role="status">
                     {props.status}
                   </Text>
                 </Show>
                 <For each={props.stats ?? []} key={(s) => s.id}>
                   {(s) => (
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="listitem" label={t("strategy.selection.stat", { label: s().label, value: s().value })}>
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-xs font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-well ${packClass("Chip", "frame")}`} role="listitem" label={t("strategy.selection.stat", { label: s().label, value: s().value })}>
                     {t("strategy.selection.stat", { label: s().label, value: s().value })}
                   </Text>
                   )}
@@ -122,7 +122,7 @@ export function StrategySelection(props: StrategySelectionProps) {
               <For each={props.units ?? []} key={(u) => u.id}>
                 {(u, i) => (
                 <View
-                  class={`shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] nine-chip-cut bg-white/75 data-selected:bg-[#38e8ff] compact:data-past:hidden ${packClass("Button", "plate")}`}
+                  class={`shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] nine-chip-cut bg-white/75 data-selected:bg-hud-accent compact:data-past:hidden ${packClass("Button", "plate")}`}
                   role="option"
                   label={u().name}
                   description={t("strategy.selection.unitValue", { count: u().count, now: u().health, max: u().healthMax })}
@@ -141,7 +141,7 @@ export function StrategySelection(props: StrategySelectionProps) {
                       <Image class="absolute inset-0 size-full" src={u().portrait} />
                     </Show>
                     <Show when={u().count > 1}>
-                      <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-xs font-bold whitespace-nowrap bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                      <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-xs font-bold whitespace-nowrap bg-well ${packClass("Chip", "frame")}`}>
                         {t("strategy.selection.count", { count: u().count })}
                       </Text>
                     </Show>
@@ -157,7 +157,7 @@ export function StrategySelection(props: StrategySelectionProps) {
                 )}
               </For>
               <Show when={(props.units ?? []).length > 4}>
-                <View class={`hidden compact:flex-row compact:items-center compact:justify-center shrink compact:size-[2.286rem] text-caption font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status" label={t("strategy.selection.more", { n: (props.units ?? []).length - 4 })}>
+                <View class={`hidden compact:flex-row compact:items-center compact:justify-center shrink compact:size-[2.286rem] text-caption font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-well ${packClass("Chip", "frame")}`} role="status" label={t("strategy.selection.more", { n: (props.units ?? []).length - 4 })}>
                   <Text>{t("strategy.selection.moreCount", { n: (props.units ?? []).length - 4 })}</Text>
                 </View>
               </Show>

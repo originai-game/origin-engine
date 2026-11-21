@@ -53,7 +53,7 @@ export function SpeechBubble(props: SpeechBubbleProps) {
     >
       <View class="relative flex-col gap-y-[0.143rem] min-w-0 max-w-[12.6rem] py-2 px-[0.929rem] text-[1.036rem] leading-[1.32] nine-plate-cut bg-plate-hi">
         <Show when={speaker() !== ""}>
-          <Text class="min-w-0 max-w-full text-[0.75rem] font-bold tracking-[0.13em] uppercase whitespace-nowrap truncate text-success text-shadow-2xs group-data-reaction-hostile:text-danger group-data-reaction-neutral:text-gold group-data-reaction-player:text-[#38e8ff]">{speaker()}</Text>
+          <Text class="min-w-0 max-w-full text-[0.75rem] font-bold tracking-[0.13em] uppercase whitespace-nowrap truncate text-success text-shadow-2xs group-data-reaction-hostile:text-danger group-data-reaction-neutral:text-gold group-data-reaction-player:text-hud-accent">{speaker()}</Text>
         </Show>
         <Text class="min-w-0 group-data-shout:font-bold">{props.text}</Text>
         <Show when={left() >= 0}>

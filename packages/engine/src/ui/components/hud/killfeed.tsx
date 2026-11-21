@@ -38,23 +38,23 @@ export function Killfeed(props: KillfeedProps) {
       <For each={props.rows ?? []} key={(r) => r.id}>
         {(r) => (
           <View
-            class={`group/row relative flex-row items-center min-w-0 max-w-full pl-3 bg-linear-to-l from-[#1a1e28db] to-[#1a1e2859] compact:pl-2 transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0`}
+            class={`group/row relative flex-row items-center min-w-0 max-w-full pl-3 bg-linear-to-l from-surface/86 to-surface/35 compact:pl-2 transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0`}
             label={t("shooter.killfeed.row", { killer: r().killer, victim: r().victim, weapon: r().weapon ?? "" })}
             data-self={r().self}
           >
-            <Text class={`shrink min-w-0 py-[0.214rem] text-[1rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-[#4fd8ff] data-enemy:text-[#ff4d5e] data-self-ally:text-[#38e8ff]`} data-enemy={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") === "ally" && r().self}>
+            <Text class={`shrink min-w-0 py-[0.214rem] text-[1rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-ally data-enemy:text-foe data-self-ally:text-hud-accent`} data-enemy={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") === "ally" && r().self}>
               {r().killer}
             </Text>
             <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs`}>{r().weapon ?? ""}</Text>
-            <Text class={`shrink min-w-0 py-[0.214rem] text-[1rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-[#ff4d5e] data-ally:text-[#4fd8ff] data-self-ally:text-[#38e8ff]`} data-ally={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") !== "ally" && r().self}>
+            <Text class={`shrink min-w-0 py-[0.214rem] text-[1rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-foe data-ally:text-ally data-self-ally:text-hud-accent`} data-ally={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") !== "ally" && r().self}>
               {r().victim}
             </Text>
             <Show when={r().headshot}>
-              <Text class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-[#ff4d5e] text-shadow-none nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}>
+              <Text class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-foe text-shadow-none nine-chip-cut bg-raised-pressed/88 ${packClass("Chip", "frame")}`}>
                 {t("shooter.killfeed.hs")}
               </Text>
             </Show>
-            <View class={`shrink-0 self-stretch w-[0.214rem] ml-1 bg-white/60 group-data-self/row:bg-[#38e8ff]`} />
+            <View class={`shrink-0 self-stretch w-[0.214rem] ml-1 bg-white/60 group-data-self/row:bg-hud-accent`} />
           </View>
         )}
       </For>

@@ -28,7 +28,7 @@ export function RhythmTiming(props: RhythmTimingProps) {
               <View
                 role="listitem"
                 label={c().label}
-                class={`flex-row items-baseline gap-4 compact:gap-1 text-fg data-judgement-perfect:text-gold data-judgement-great:text-[#38e8ff] data-judgement-good:text-[#55e39a] data-judgement-bad:text-[#ffb547] data-judgement-miss:text-fg-muted`}
+                class={`flex-row items-baseline gap-4 compact:gap-1 text-fg data-judgement-perfect:text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
                 data-judgement-perfect={c().judgement === "perfect"}
                 data-judgement-great={c().judgement === "great"}
                 data-judgement-good={c().judgement === "good"}
@@ -47,12 +47,12 @@ export function RhythmTiming(props: RhythmTimingProps) {
           {t("rhythm.timing.label")}
         </Text>
         <View class={`flex flex-row flex-wrap justify-between items-center gap-y-0.5 gap-x-1 compact:flex-nowrap`}>
-          <View class={`relative h-[6px] flex-1 basis-full compact:basis-0 compact:min-w-0 bg-[#04060cb8] shadow-[0px_0px_0px_1px_#ffffff38]`}>
+          <View class={`relative h-[6px] flex-1 basis-full compact:basis-0 compact:min-w-0 bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38]`}>
             <View class={`absolute left-1/2 -translate-x-1/2 top-0 -mt-[4px] w-[2px] h-[14px] bg-white`} />
             <For each={props.hits ?? []} key={(h) => h.id}>
               {(h) => (
                 <View
-                  class={`absolute top-0 -translate-x-1/2 w-[3px] h-[12px] -mt-[3px] bg-gold data-judgement-great:bg-[#38e8ff] data-judgement-good:bg-[#55e39a] data-judgement-bad:bg-[#ffb547] data-judgement-miss:bg-fg-muted`}
+                  class={`absolute top-0 -translate-x-1/2 w-[3px] h-[12px] -mt-[3px] bg-gold data-judgement-great:bg-hud-accent data-judgement-good:bg-boon data-judgement-bad:bg-warn data-judgement-miss:bg-fg-muted`}
                   style={{
                     left: `${(h().offset <= -1 ? 0 : h().offset >= 1 ? 1 : (h().offset + 1) / 2) * 100}%`,
                     opacity: 1 - (h().age <= 0 ? 0 : h().age >= 1 ? 1 : h().age) * 0.8,

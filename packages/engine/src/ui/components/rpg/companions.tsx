@@ -58,7 +58,7 @@ export function RpgCompanions(props: RpgCompanionsProps) {
           </Show>
           <Show when={m().key}>
             <Text
-              class={`row-span-3 self-center min-w-[1.571rem] max-w-[5.143rem] px-1 text-xs leading-[1.5] font-bold text-center text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
+              class={`row-span-3 self-center min-w-[1.571rem] max-w-[5.143rem] px-1 text-xs leading-[1.5] font-bold text-center text-hud-accent-fg bg-linear-to-b from-white to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
             >
               {m().key}
             </Text>

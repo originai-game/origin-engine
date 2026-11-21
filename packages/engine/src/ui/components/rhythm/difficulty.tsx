@@ -29,7 +29,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
         </Text>
       </View>
       <Show when={(props.levels ?? []).length} fallback={
-        <View role="status" class={`self-start py-2 px-3 bg-[#060910e0]`}>
+        <View role="status" class={`self-start py-2 px-3 bg-well`}>
           <Text class={`text-[1.143rem] text-fg`}>{t("rhythm.difficulty.empty")}</Text>
         </View>
       }>
@@ -38,7 +38,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
             <For each={props.levels ?? []} key={(l) => l.id}>
               {(l) => (
                 <View
-                  class={`relative grow shrink basis-[10.714rem] min-w-0 min-h-[6.286rem] compact:min-h-[3.143rem] flex-col items-stretch justify-start pt-[13px] compact:pt-[7px] px-[18px] compact:px-[10px] pb-2 compact:pb-1 transition duration-317 bg-[#0b0f1ae6] hover:bg-[#131a29f0] shadow-none rounded-none data-selected:bg-linear-to-r data-selected:from-[#38e8ff3d] data-selected:via-[#38e8ff14] data-selected:to-[#38e8ff08] data-selected:shadow-[inset_3px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] data-selected:-translate-y-[6px] compact:data-selected:translate-y-0 disabled:opacity-55 disabled:bg-[#0b0f1ae6] disabled:shadow-none`}
+                  class={`relative grow shrink basis-[10.714rem] min-w-0 min-h-[6.286rem] compact:min-h-[3.143rem] flex-col items-stretch justify-start pt-[13px] compact:pt-[7px] px-[18px] compact:px-[10px] pb-2 compact:pb-1 transition duration-317 bg-tile/90 hover:bg-glass shadow-none rounded-none data-selected:bg-linear-to-r data-selected:from-hud-accent/24 data-selected:via-hud-accent/8 data-selected:to-hud-accent/3 data-selected:shadow-[inset_3px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] data-selected:-translate-y-[6px] compact:data-selected:translate-y-0 disabled:opacity-55 disabled:bg-tile/90 disabled:shadow-none`}
                   role="option"
                   label={t("rhythm.difficulty.ratingName", { label: l().label, rating: l().rating })}
                   selected={l().id === props.selected}
@@ -53,20 +53,20 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                   data-tier-special={l().tier === "special"}
                   data-selected={l().id === props.selected}
                 >
-                  <View class={`absolute left-0 right-0 top-0 h-[5px] bg-[#50b4f0] data-tier-easy:bg-[#34c778] data-tier-hard:bg-[#ffaf3c] data-tier-expert:bg-[#ff5c9c] data-tier-master:bg-[#b882ff] data-tier-special:bg-[#ff7ab0]`} />
+                  <View class={`absolute left-0 right-0 top-0 h-[5px] bg-chart-normal data-tier-easy:bg-chart-easy data-tier-hard:bg-chart-hard data-tier-expert:bg-chart-expert data-tier-master:bg-chart-master data-tier-special:bg-fever`} />
                   <View class={`flex-col items-start grow gap-0.5 compact:flex-row compact:flex-wrap compact:items-center compact:gap-x-1`}>
                     <View class={`flex-row items-center flex-wrap gap-y-0.5 gap-x-1 max-w-full min-w-0 compact:flex-1 compact:basis-full`}>
-                      <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-hidden text-[#50b4f0] data-tier-easy:text-[#34c778] data-tier-hard:text-[#ffaf3c] data-tier-expert:text-[#ff5c9c] data-tier-master:text-[#b882ff] data-tier-special:text-[#ff7ab0] data-selected:text-fg`}>
+                      <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-hidden text-chart-normal data-tier-easy:text-chart-easy data-tier-hard:text-chart-hard data-tier-expert:text-chart-expert data-tier-master:text-chart-master data-tier-special:text-fever data-selected:text-fg`}>
                         {l().label}
                       </Text>
                       <Show when={l().locked}>
-                        <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-locked={true}>
+                        <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-locked={true}>
                           <Icon class={`size-[1.143rem] text-fg-muted`} name="lock" />
                           <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted`}>{t("rhythm.difficulty.locked")}</Text>
                         </View>
                       </Show>
                       <Show when={l().id === props.selected}>
-                        <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-selected={true}>
+                        <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-selected={true}>
                           <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg`}>{t("rhythm.difficulty.selected")}</Text>
                         </View>
                       </Show>
@@ -78,7 +78,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                     </View>
                     <View class={`flex-row items-center max-w-full min-w-0 compact:flex-none`}>
                       <Show when={l().grade !== ""}>
-                        <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-grade={true}>
+                        <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-grade={true}>
                           <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-gold`}>{l().grade}</Text>
                         </View>
                       </Show>

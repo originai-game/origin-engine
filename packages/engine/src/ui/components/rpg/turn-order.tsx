@@ -37,7 +37,7 @@ export function RpgTurnOrder(props: RpgTurnOrderProps) {
       </View>
       <View class="flex-row items-center w-full gap-2">
         <View class={`grow h-px bg-rim`} role="separator" />
-        <View class={`shrink py-1 px-6 text-lg font-bold tabular-nums whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+        <View class={`shrink py-1 px-6 text-lg font-bold tabular-nums whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
           <Text class={`text-stroke-3 text-stroke-bg`}>{t("rpg.turns.round", { round: props.round })}</Text>
         </View>
         <View class={`grow h-px bg-rim`} role="separator" />

@@ -34,7 +34,7 @@ export function RpgExperience(props: RpgExperienceProps) {
       </Text>
       <View class={`w-full h-[0.429rem] bg-track compact:h-[0.286rem]`}>
         <View
-          class={`h-full bg-linear-to-r from-[#8a6bff] to-[#d7b8ff] shadow-[0px_0px_10px_#a98bff]`}
+          class={`h-full bg-linear-to-r from-xp to-xp shadow-[0px_0px_10px_#a98bff]`}
           style={{ width: `${(props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value) * 100}%` }}
         />
       </View>

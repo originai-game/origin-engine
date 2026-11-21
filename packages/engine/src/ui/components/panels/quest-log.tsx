@@ -59,14 +59,14 @@ export function RpgQuestLog(props: RpgQuestLogProps) {
                 <For each={props.quests}>
                   {(q) => (
                   <Show when={q().group === g().id}>
-                    <View class={`group/row text-fg transition duration-317 w-full min-h-11 pr-2 pl-3 py-0 rounded-control hover:bg-entry-hi active:bg-entry-lo data-selected:bg-transparent data-selected:bg-linear-to-r data-selected:from-[#38e8ff3d] data-selected:via-[#38e8ff14] data-selected:via-55% data-selected:to-[#38e8ff08] data-selected:text-fg data-selected:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="option" data-fresh={q().fresh} selected={q().id === props.selected} label={q().name} onPress={(e) => props.onChoose?.(e, q().id)} onAction={{ details: (e) => props.onTrack?.(e, q().id) }} data-tracked={q().tracked} data-done={g().done} data-selected={q().id === props.selected}>
+                    <View class={`group/row text-fg transition duration-317 w-full min-h-11 pr-2 pl-3 py-0 rounded-control hover:bg-entry-hi active:bg-entry-lo data-selected:bg-transparent data-selected:bg-linear-to-r data-selected:from-hud-accent/24 data-selected:via-hud-accent/8 data-selected:via-55% data-selected:to-hud-accent/3 data-selected:text-fg data-selected:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="option" data-fresh={q().fresh} selected={q().id === props.selected} label={q().name} onPress={(e) => props.onChoose?.(e, q().id)} onAction={{ details: (e) => props.onTrack?.(e, q().id) }} data-tracked={q().tracked} data-done={g().done} data-selected={q().id === props.selected}>
                       <View class="flex-row items-center w-full gap-3">
                         <View class={`text-fg rotate-45 shadow-[inset_0px_0px_0px_2.288px_#979faf] mx-0.5 size-2 data-tracked:bg-gold data-tracked:bg-none data-tracked:shadow-[0px_0px_0px_3.424px_#ffcf5a38,0px_0px_11.424px_#ffcf5ab2] data-done:bg-success/60 data-done:bg-none data-done:shadow-none`} data-tracked={q().tracked} data-done={g().done} />
                         <Text class="grow shrink basis-0 text-start font-semibold whitespace-nowrap text-ellipsis overflow-hidden group-data-done/row:text-fg-subtle group-data-done/row:line-through">
                           {q().name}
                         </Text>
                         <Show when={q().fresh && !g().done}>
-                          <Text class={`font-bold text-caption tracking-[0.14em] uppercase whitespace-nowrap text-[#241a04] bg-gold nine-chip-cut py-0 px-1 animate-pop ${packClass("Chip", "frame")}`}>
+                          <Text class={`font-bold text-caption tracking-[0.14em] uppercase whitespace-nowrap text-gold-fg bg-gold nine-chip-cut py-0 px-1 animate-pop ${packClass("Chip", "frame")}`}>
                             {t("rpg.quests.fresh")}
                           </Text>
                         </Show>

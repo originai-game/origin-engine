@@ -56,14 +56,14 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           </Show>
           <View class={`flex-col items-center gap-0.5 compact:flex-row compact:items-baseline compact:gap-2`}>
             <Text
-              class={`text-[1.143rem] font-semibold uppercase whitespace-nowrap text-[#38e8ff] tracking-[0.4em] compact:tracking-[0.14em] data-broken:text-fg-muted data-broken:tracking-[0.14em]`}
+              class={`text-[1.143rem] font-semibold uppercase whitespace-nowrap text-hud-accent tracking-[0.4em] compact:tracking-[0.14em] data-broken:text-fg-muted data-broken:tracking-[0.14em]`}
               data-broken={props.broken}
             >
               {props.broken ? t("rhythm.judge.broken") : t("rhythm.judge.combo")}
             </Text>
             <Show when={!props.broken && props.mark !== ""}>
               <Text
-                class={`mt-1 compact:mt-0 py-0 px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`}
+                class={`mt-1 compact:mt-0 py-0 px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold bg-well nine-chip-cut ${packClass("Chip", "frame")}`}
                 data-mark-fullcombo={props.mark === "fullCombo"}
                 data-mark-allperfect={props.mark === "allPerfect"}
               >
@@ -84,7 +84,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           data-judgement-miss={judgement === "miss"}
         >
           <Text
-            class={`max-w-full min-w-0 text-[4.571rem] compact:text-[1.714rem] leading-[1.05] font-bold italic tracking-[0.12em] uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-[#38e8ff] data-judgement-good:text-[#55e39a] data-judgement-bad:text-[#ffb547] data-judgement-miss:text-fg-muted`}
+            class={`max-w-full min-w-0 text-[4.571rem] compact:text-[1.714rem] leading-[1.05] font-bold italic tracking-[0.12em] uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
             data-judgement-perfect={judgement === "perfect"}
             data-judgement-great={judgement === "great"}
             data-judgement-good={judgement === "good"}
@@ -97,7 +97,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
             <View class={`flex-row items-baseline justify-center gap-1`}>
               <Show when={props.timing !== ""}>
                 <Text
-                  class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg data-timing-early:text-[#38e8ff] data-timing-late:text-[#ff8c46]`}
+                  class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg data-timing-early:text-hud-accent data-timing-late:text-late`}
                   data-timing-early={props.timing === "early"}
                   data-timing-late={props.timing === "late"}
                 >
@@ -106,7 +106,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
               </Show>
               <Show when={props.offset !== ""}>
                 <Text
-                  class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-gold data-timing-early:text-[#38e8ff] data-timing-late:text-[#ff8c46]`}
+                  class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-gold data-timing-early:text-hud-accent data-timing-late:text-late`}
                   data-timing-early={props.timing === "early"}
                   data-timing-late={props.timing === "late"}
                 >

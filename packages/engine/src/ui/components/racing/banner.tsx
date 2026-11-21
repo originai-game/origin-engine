@@ -41,7 +41,7 @@ export function RacingBanner(props: RacingBannerProps) {
           {kind() === "countdown" ? formatNumber(props.figure) : kind() === "go" ? t("racing.banner.go") : kind() === "finalLap" ? t("racing.banner.finalLap") : kind() === "finish" ? t("racing.banner.finish") : props.text}
         </Text>
         <Show when={kind() === "finish" && props.place > 0}>
-          <Text class={`shrink-0 text-[1.714rem] font-bold tabular-nums whitespace-nowrap text-[#38e8ff] compact:text-[1.143rem]`}>{ordinal(props.place)}</Text>
+          <Text class={`shrink-0 text-[1.714rem] font-bold tabular-nums whitespace-nowrap text-hud-accent compact:text-[1.143rem]`}>{ordinal(props.place)}</Text>
         </Show>
       </View>
       <Show when={props.detail !== ""}>

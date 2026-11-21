@@ -30,7 +30,7 @@ export function Celebration(props: CelebrationProps) {
           <View class="absolute inset-0 flex-col items-center justify-center" data-level={level()} data-burst={(props.kind ?? "") == "burst"} data-fireworks={(props.kind ?? "") == "fireworks"}>
             <Show when={level()}>
               <View class="relative w-[30rem] max-w-full min-h-[20.571rem] flex-col items-center justify-center">
-                <View class="absolute size-[18.857rem] rounded-full border-[0.286rem] border-gold shadow-[0px_0px_1.143rem_#ffd23f,inset_0px_0px_1.143rem_#ffd23f] bg-[#3a2c1050] animate-stamp compact:size-[6.8rem]" />
+                <View class="absolute size-[18.857rem] rounded-full border-[0.286rem] border-gold shadow-[0px_0px_1.143rem_#ffd23f,inset_0px_0px_1.143rem_#ffd23f] bg-gold-fg/31 animate-stamp compact:size-[6.8rem]" />
                 <Text class="relative max-w-full mb-3 text-[1.714rem] font-bold tracking-[0.14em] uppercase text-center text-gold animate-stamp">
                   {props.title || t("component.celebration.level-up")}
                 </Text>

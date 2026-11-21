@@ -66,7 +66,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                   valueNow={(s().charge ?? 0) <= 0 ? 0 : (s().charge ?? 0) >= 1 ? 100 : (s().charge ?? 0) * 100}
                 >
                   <View
-                    class="absolute inset-x-0 bottom-0 bg-[#38e8ff]"
+                    class="absolute inset-x-0 bottom-0 bg-hud-accent"
                     style={{ height: `${Math.min(Math.max(s().charge ?? 0, 0), 1) * 100}%` }}
                   />
                 </View>
@@ -75,7 +75,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                 class={`absolute inset-0 flex-row items-center justify-center data-ultimate:inset-[11%]`}
               >
                 <View
-                  class={`relative size-full rounded-[0.714rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 data-ready:from-white data-ready:to-[#38e8ff] data-ready:shadow-[0px_0px_0.714rem_rgb(56_232_255/0.55)] data-disabled:opacity-45 group-data-ultimate/ability:rounded-tl-[0.357rem] group-data-ultimate/ability:rounded-tr-[0.357rem]`}
+                  class={`relative size-full rounded-[0.714rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 data-ready:from-white data-ready:to-hud-accent data-ready:shadow-[0px_0px_0.714rem_rgb(56_232_255/0.55)] data-disabled:opacity-45 group-data-ultimate/ability:rounded-tl-[0.357rem] group-data-ultimate/ability:rounded-tr-[0.357rem]`}
                 >
                   <View class="absolute inset-[0.143rem] rounded-[0.571rem] overflow-hidden bg-plate-hi">
                     <Show when={s().icon} fallback={
@@ -120,7 +120,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
             </View>
             <Show when={(s().key ?? "") != ""}>
               <Text
-                class={`shrink basis-auto max-w-full min-w-[1.571rem] py-0 px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate pointer-coarse:hidden`}
+                class={`shrink basis-auto max-w-full min-w-[1.571rem] py-0 px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate pointer-coarse:hidden`}
               >
                 {s().key}
               </Text>

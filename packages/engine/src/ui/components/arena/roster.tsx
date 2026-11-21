@@ -59,10 +59,10 @@ export interface ArenaRosterProps {
  * (a cut takes one fill), a locked or taken portrait's greying filter
  * is an opacity, and the scroll fade at the grid's foot is dropped.
  */
-const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-[#232837ed] data-compact:p-2 ${packClass("Panel", "frame")}`;
-const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-xs leading-[1.5] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] rounded-[0.286rem] data-ready:bg-none data-ready:bg-success data-ready:text-[#011e0f]";
-const TAG = `flex-none max-w-full self-center py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-center text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`;
-const CELL = "flex-col gap-y-0.5 pb-2 nine-panel-cut bg-[#2b3141e6] hover:bg-[#3a4152e6] data-selected:bg-[#38e8ff26] data-disabled:text-fg/66 data-disabled:bg-[#2b3141e6]";
+const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi data-compact:p-2 ${packClass("Panel", "frame")}`;
+const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-xs leading-[1.5] font-bold text-key-fg bg-linear-to-b from-white to-key-hi shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] rounded-[0.286rem] data-ready:bg-none data-ready:bg-success data-ready:text-boon-fg";
+const TAG = `flex-none max-w-full self-center py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-center text-fg nine-chip-cut bg-raised-pressed/88 ${packClass("Chip", "frame")}`;
+const CELL = "flex-col gap-y-0.5 pb-2 nine-panel-cut bg-glass-hi/93 hover:bg-raised-hi/90 data-selected:bg-hud-accent/15 data-disabled:text-fg/66 data-disabled:bg-glass-hi/93";
 
 export function ArenaRoster(props: ArenaRosterProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.roster.title");
@@ -128,7 +128,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
         </Scroll>
         <Show when={(props.selected ?? "") != "" && chosen()}>
           <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-entry-hi data-compact:gap-y-1 data-compact:py-1 px-2" role="status">
-            <Text class={`${TAG} bg-[#38e8ff] text-[#15181f] shadow-none`}>{t("arena.roster.chosen")}</Text>
+            <Text class={`${TAG} bg-hud-accent text-glass shadow-none`}>{t("arena.roster.chosen")}</Text>
             <Text class="min-w-0 text-3xl leading-[1.1] font-bold uppercase text-fg data-compact:text-xl">{chosen()?.name}</Text>
             <Text class="shrink min-w-0 max-w-full text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78">{chosen()?.roleLabel}</Text>
           </View>

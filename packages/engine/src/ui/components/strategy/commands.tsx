@@ -34,7 +34,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                 {c().name}
               </Text>
               <Show when={c().key}>
-                <Text class={`shrink min-w-[1.429rem] max-w-[40%] py-0 px-[0.357rem] leading-[1.5] text-xs font-bold text-center text-[#0b0f18] bg-linear-to-b from-white to-[#c9d1e2] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
+                <Text class={`shrink min-w-[1.429rem] max-w-[40%] py-0 px-[0.357rem] leading-[1.5] text-xs font-bold text-center text-hud-accent-fg bg-linear-to-b from-white to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
                   {c().key}
                 </Text>
               </Show>
@@ -57,12 +57,12 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                   </View>
                 </Show>
                 <Show when={c().cooldownText}>
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-xs font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-xs font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                     {c().cooldownText}
                   </Text>
                 </Show>
                 <Show when={c().readyText}>
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-xs font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.5] text-xs font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                     {c().readyText}
                   </Text>
                 </Show>
@@ -83,7 +83,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
           <Show when={c().name} fallback={
               <View class={`nine-plate-cut bg-sheen`} />
           }>
-            <View class={`group/cmd flex p-[0.143rem] nine-plate-cut bg-white/75 data-active:bg-[#38e8ff] disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
+            <View class={`group/cmd flex p-[0.143rem] nine-plate-cut bg-white/75 data-active:bg-hud-accent disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
               <View class="relative size-full overflow-hidden">
                 <Show when={c().icon} fallback={
                     <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">
@@ -112,7 +112,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                   </Text>
                 </Show>
                 <Show when={!c().affordable && c().cost}>
-                  <Text class={`absolute right-[0.214rem] bottom-[0.214rem] max-w-[97%] py-0 px-1 leading-[1.35] text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-danger nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                  <Text class={`absolute right-[0.214rem] bottom-[0.214rem] max-w-[97%] py-0 px-1 leading-[1.35] text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                     {c().cost}
                   </Text>
                 </Show>

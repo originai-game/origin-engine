@@ -56,7 +56,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
             <View class="w-full pt-0 pb-4 px-0 m-0 gap-1" label={props.title !== '' ? props.title : t("idle.purchases.name")}>
               <For each={props.upgrades}>
                 {(u) => (
-                <View class={`group/row flex-row items-center nine-plate-cut bg-entry-lo text-fg transition duration-317 border border-rim-soft border-l-3 border-[#38e8ff] py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
+                <View class={`group/row flex-row items-center nine-plate-cut bg-entry-lo text-fg transition duration-317 border border-rim-soft border-l-3 border-hud-accent py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
                   <View class={`justify-center items-center bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 size-[3.429rem] group-data-locked/row:opacity-45 compact:size-[2.857rem] ${packClass("Slot", "frame")}`}>
                     <Icon class="size-[64%]" name={u().locked ? 'lock' : u().icon} />
                   </View>

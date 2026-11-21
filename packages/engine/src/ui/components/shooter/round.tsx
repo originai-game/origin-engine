@@ -52,7 +52,7 @@ export function ShooterRound(props: ShooterRoundProps) {
       <View class="min-w-0 flex-1 compact:hidden" />
       <Show when={score()}>
         <View class="shrink-0 flex-row items-baseline gap-1">
-          <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-[#4fd8ff] text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem]">
+          <Text class="text-[1.714rem] leading-none font-bold tabular-nums whitespace-nowrap text-ally text-shadow-2xs text-stroke-3 text-stroke-bg compact:text-[1.143rem]">
             {formatNumber(props.ours ?? 0)}
           </Text>
           <View class="self-center w-[0.714rem] h-[0.143rem] bg-white/66" />

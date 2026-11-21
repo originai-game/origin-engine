@@ -48,7 +48,7 @@ export function CardHand(props: CardHandProps) {
                       <View class="w-full">
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={true} />
                       </View>
-                      <View class={`flex-row items-center absolute left-[36.286px] right-1 top-2 nine-plate-cut bg-[#28080ef0] border border-danger/60 text-danger text-[0.786rem] font-bold tracking-xs py-0.5 px-1 gap-0.5 data-not-cost:left-1`} data-not-cost={!(!!c().cost)}>
+                      <View class={`flex-row items-center absolute left-[36.286px] right-1 top-2 nine-plate-cut bg-foe-fg/94 border border-danger/60 text-danger text-[0.786rem] font-bold tracking-xs py-0.5 px-1 gap-0.5 data-not-cost:left-1`} data-not-cost={!(!!c().cost)}>
                         <Icon class="size-[0.786rem]" name="lock" />
                         <Text class="text-start line-clamp-2 leading-[1.15] m-0 overflow-hidden shrink">
                           {c().reason || t("card.hand.unplayable")}

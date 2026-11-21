@@ -88,7 +88,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 };
                 return (
                 <Show when={entry().page === props.page}>
-                  <View class={`group/row bg-linear-to-r from-entry-lo to-entry-lo/50 text-fg transition duration-317 hover:bg-transparent hover:bg-[#38e8ff3d] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={entry().description}>
+                  <View class={`group/row bg-linear-to-r from-entry-lo to-entry-lo/50 text-fg transition duration-317 hover:bg-transparent hover:bg-hud-accent/24 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={entry().description}>
                     <Show when={entry().kind === "toggle"}>
                       <View class="group/switch min-h-16 text-[1.286rem] grow shrink text-fg/74 py-1 px-4 compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
                         <Text>{entry().name}</Text>
@@ -154,7 +154,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                             <View class={`flex-col rounded-[4.576px] bg-tile shadow-[inset_0px_0px_0px_1px_#4e586c] overflow-hidden`} role="listbox" label={entry().name} onAction={{ back: (e) => openChoice.set("") }}>
                               <For each={entry().options ?? []}>
                                 {(opt) => (
-                                  <View class="flex-row items-center justify-start gap-2 min-h-8 py-0 px-3 text-start text-sm font-semibold text-fg bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c,inset_0px_1px_0px_0px_#ffffff1f] transition duration-317 hover:bg-none hover:bg-raised-hover-lo data-selected:text-accent data-selected:bg-[#38e8ff26] data-selected:shadow-[inset_0px_0px_0px_1px_#38e8ff]" role="option" tabIndex={0} selected={opt() === String(entry().value)} label={opt()} onPress={(e) => { props.onChange?.(e, entry().id, opt()); openChoice.set(""); }}>
+                                  <View class="flex-row items-center justify-start gap-2 min-h-8 py-0 px-3 text-start text-sm font-semibold text-fg bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c,inset_0px_1px_0px_0px_#ffffff1f] transition duration-317 hover:bg-none hover:bg-raised-hover-lo data-selected:text-accent data-selected:bg-hud-accent/15 data-selected:shadow-[inset_0px_0px_0px_1px_#38e8ff]" role="option" tabIndex={0} selected={opt() === String(entry().value)} label={opt()} onPress={(e) => { props.onChange?.(e, entry().id, opt()); openChoice.set(""); }}>
                                     <Text class="whitespace-nowrap">{opt()}</Text>
                                   </View>
                                 )}
@@ -165,7 +165,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       </View>
                     </Show>
                     <Show when={entry().kind === "binding"}>
-                      <View class={`grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-[1.286rem] py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:text-accent data-listening:bg-[#38e8ff14]`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => listening.set(listening() === entry().id ? "" : entry().id)} onKey={(e) => {
+                      <View class={`grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-[1.286rem] py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:text-accent data-listening:bg-hud-accent/8`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => listening.set(listening() === entry().id ? "" : entry().id)} onKey={(e) => {
                         if (listening() !== entry().id) return;
                         if (e.key === "Escape") {
                           listening.set("");

@@ -84,12 +84,12 @@ export function Reveal(props: RevealProps) {
                               <Icon class="size-[70%]" name={reward().icon} />
                               <View class="absolute bottom-0 h-0.75 text-border-strong bg-current inset-x-[0.571rem]" />
                               <Show when={reward().amount}>
-                                <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-[1.35] whitespace-nowrap text-fg bg-[#060910e0] nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                                <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-[1.35] whitespace-nowrap text-fg bg-well nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                                   {reward().amount}
                                 </Text>
                               </Show>
                               <Show when={reward().fresh}>
-                                <View class={`bg-[#38e8ff] text-fg absolute right-2 top-2 shadow-[0px_0px_9.136px_#38e8ff,0px_0px_0px_1.5px_#060910e5] size-1 rounded-capsule`} label={t("meta.new")} />
+                                <View class={`bg-hud-accent text-fg absolute right-2 top-2 shadow-[0px_0px_9.136px_#38e8ff,0px_0px_0px_1.5px_#060910e5] size-1 rounded-capsule`} label={t("meta.new")} />
                               </Show>
                             </View>
                             <Text class={`text-xs font-bold tracking-[0.18em] uppercase text-border-strong`}>

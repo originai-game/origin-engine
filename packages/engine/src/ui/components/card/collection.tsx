@@ -59,11 +59,11 @@ export function CardCollection(props: CardCollectionProps) {
                 <View class={`group/filter min-h-11 min-w-11 text-fg-muted py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={f().id === props.filter} label={f().label} onPress={(e) => props.onChoosefilter?.(e, f().id)} data-selected={f().id === props.filter}>
                   <Text class="whitespace-nowrap">{f().label}</Text>
                   <Show when={(f().count ?? 0) > 0}>
-                    <Text class={`text-[0.857rem] font-bold bg-white/8 text-fg-muted py-0 px-1 rounded-capsule group-data-selected/filter:bg-none group-data-selected/filter:bg-[#38e8ff] group-data-selected/filter:text-[#041016]`}>
+                    <Text class={`text-[0.857rem] font-bold bg-white/8 text-fg-muted py-0 px-1 rounded-capsule group-data-selected/filter:bg-none group-data-selected/filter:bg-hud-accent group-data-selected/filter:text-hud-accent-fg`}>
                       {formatNumber(f().count ?? 0)}
                     </Text>
                   </Show>
-                  <View class="absolute bottom-0 h-0.75 bg-[#38e8ff] shadow-[0px_0px_11.424px_#38e8ff] opacity-0 inset-x-1 group-data-selected/filter:opacity-100" />
+                  <View class="absolute bottom-0 h-0.75 bg-hud-accent shadow-[0px_0px_11.424px_#38e8ff] opacity-0 inset-x-1 group-data-selected/filter:opacity-100" />
                 </View>
                 )}
               </For>
@@ -117,7 +117,7 @@ export function CardCollection(props: CardCollectionProps) {
                     </View>
                   </View>
                 </Show>
-                <Text class={`max-w-full text-center whitespace-nowrap text-ellipsis text-[0.857rem] font-bold text-fg-muted overflow-hidden data-in-deck:text-[#38e8ff]`} data-in-deck={c().inDeck > 0}>
+                <Text class={`max-w-full text-center whitespace-nowrap text-ellipsis text-[0.857rem] font-bold text-fg-muted overflow-hidden data-in-deck:text-hud-accent`} data-in-deck={c().inDeck > 0}>
                   {c().inDeck > 0 ? t("card.collection.inDeck", { count: c().inDeck }) : t("card.collection.notInDeck")}
                 </Text>
                 <Show when={!c().canAdd}>

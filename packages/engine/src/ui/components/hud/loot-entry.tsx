@@ -32,14 +32,14 @@ export function HudLootEntry(props: HudLootEntryProps) {
   const rarity = () => props.rarity ?? "common";
   return (
     <View
-      class={`flex-row items-center w-fit min-w-0 max-w-full pr-3 bg-linear-to-r from-[#1a1e28db] to-[#1a1e2859] data-fading:opacity-55`}
+      class={`flex-row items-center w-fit min-w-0 max-w-full pr-3 bg-linear-to-r from-surface/86 to-surface/35 data-fading:opacity-55`}
       role="group"
       label={(props.quantity ?? 0) > 0 ? t("hud.loot-entry.row", { name: props.name, quantity: props.currency ? t("hud.loot-entry.gain", { quantity: formatNumber(props.quantity ?? 0) }) : t("hud.loot-entry.count", { quantity: formatNumber(props.quantity ?? 0) }) }) : props.name}
       data-rarity={rarity()}
       data-fading={props.fading}
     >
       <View class={`shrink-0 self-stretch w-[0.214rem] mr-1 bg-white/60 data-uncommon:bg-uncommon data-rare:bg-rare data-epic:bg-epic data-legendary:bg-legendary`} data-uncommon={rarity() === "uncommon"} data-rare={rarity() === "rare"} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"} />
-      <View class="relative shrink-0 my-[0.214rem] size-[1.429rem] nine-chip-cut overflow-hidden bg-[#2a2d38] compact:size-[1.286rem]">
+      <View class="relative shrink-0 my-[0.214rem] size-[1.429rem] nine-chip-cut overflow-hidden bg-raised-lo compact:size-[1.286rem]">
         <Show when={props.icon} fallback={
           <Show when={props.glyph}>
             <Icon class="absolute inset-0 size-full text-fg" name={props.glyph} />
@@ -48,11 +48,11 @@ export function HudLootEntry(props: HudLootEntryProps) {
           <Image class="absolute inset-0 size-full" src={props.icon} />
         </Show>
       </View>
-      <Text class={`min-w-0 text-[1rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs data-epic:text-[#dcb8ff] data-legendary:text-legendary`} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"}>
+      <Text class={`min-w-0 text-[1rem] font-semibold whitespace-nowrap truncate text-fg text-shadow-2xs data-epic:text-epic-hi data-legendary:text-legendary`} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"}>
         {props.name}
       </Text>
       <Show when={props.label}>
-        <Text class={`shrink min-w-0 py-0 px-[0.357rem] text-[0.857rem] font-bold whitespace-nowrap truncate text-fg nine-chip-cut bg-[#1b1f29e0] ${packClass("Chip", "frame")}`}>
+        <Text class={`shrink min-w-0 py-0 px-[0.357rem] text-[0.857rem] font-bold whitespace-nowrap truncate text-fg nine-chip-cut bg-raised-pressed/88 ${packClass("Chip", "frame")}`}>
           {props.label}
         </Text>
       </Show>

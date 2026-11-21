@@ -55,7 +55,7 @@ export function Loadout(props: LoadoutProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("shooter.loadout.title");
   const selected = () => (props.slots ?? []).find((s) => s.id == props.selected);
   const categoryLabel = (c: LoadoutCategory) => (c.label ?? "") != "" ? c.label : t(`shooter.loadout.category.${c.id}`);
-  const KEY = "shrink-0 size-6 min-w-6 text-center text-[0.929rem] leading-[1.6] font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
+  const KEY = "shrink-0 size-6 min-w-6 text-center text-[0.929rem] leading-[1.6] font-bold text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
   const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-raised-lo hover:bg-raised-hover-lo disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
   return (
     <View class="flex-col w-full h-full max-w-full gap-y-4 text-fg" role="group" label={heading()}>
@@ -71,7 +71,7 @@ export function Loadout(props: LoadoutProps) {
                   <For each={(props.slots ?? []).filter((s) => s.category == c().id)} key={(s) => s.id}>
                     {(s) => (
                       <View
-                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut bg-entry-lo hover:bg-entry-hi data-selected:bg-[#38e8ff26] disabled:opacity-100 disabled:text-fg/66 transition duration-317`}
+                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut bg-entry-lo hover:bg-entry-hi data-selected:bg-hud-accent/15 disabled:opacity-100 disabled:text-fg/66 transition duration-317`}
                         role="button"
                         label={s().name}
                         pressed={s().id == props.selected}

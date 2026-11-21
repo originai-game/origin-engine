@@ -3,7 +3,7 @@ import type { Texture } from "@origingame/engine";
 import "./tooltip-card.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden size-6 min-w-6 text-center text-caption font-bold text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none`;
+const keyCap = `shrink-0 pointer-coarse:hidden size-6 min-w-6 text-center text-caption font-bold text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none`;
 
 /** One stat row of either card: its words left, its figure right, a hairline rule under all but the last. */
 const statRow =
@@ -55,7 +55,7 @@ export function TooltipCard(props: TooltipCardProps) {
   return (
     <View class="flex-row flex-wrap items-start max-w-full text-fg gap-2 compact:flex-col-reverse compact:flex-nowrap compact:items-stretch" role="tooltip" label={props.title} description={props.body}>
       <Show when={props.compareTitle !== ""}>
-        <View class={`bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff1f,inset_0px_1px_0px_#ffffff66] text-fg w-[21.429rem] max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
+        <View class={`bg-linear-to-b from-raised-pressed/84 to-plate-lo/95 shadow-[inset_0px_0px_0px_1px_#ffffff1f,inset_0px_1px_0px_#ffffff66] text-fg w-[21.429rem] max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
           <Text class="font-semibold text-xs leading-snug text-fg-subtle tracking-[0.14em] uppercase">
             {props.compareTitle}
           </Text>
@@ -91,7 +91,7 @@ export function TooltipCard(props: TooltipCardProps) {
         </Show>
         <View class="relative flex-row items-center gap-y-2 gap-x-3 w-full">
           <Show when={props.image || props.icon}>
-            <View class="flex-row items-center justify-center gap-2 size-[3.429rem] overflow-hidden bg-[#0b111f]">
+            <View class="flex-row items-center justify-center gap-2 size-[3.429rem] overflow-hidden bg-tile">
               <Show when={tiered()}>
                 <View class="absolute inset-0 bg-current opacity-40" />
               </Show>
@@ -157,7 +157,7 @@ export function TooltipCard(props: TooltipCardProps) {
                       </View>
                     </Show>
                   }>
-                    <Text class={`font-bold text-[10px] leading-snug text-success tracking-[0.14em] whitespace-nowrap bg-[#060910e0] py-0.5 px-1 group-data-change-removed/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
+                    <Text class={`font-bold text-[10px] leading-snug text-success tracking-[0.14em] whitespace-nowrap bg-well py-0.5 px-1 group-data-change-removed/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
                       {s().change === "added" ? t("tooltip.change.added") : t("tooltip.change.removed")}
                     </Text>
                   </Show>

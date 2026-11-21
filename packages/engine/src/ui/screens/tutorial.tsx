@@ -48,8 +48,8 @@ function StepCard(props: TutorialScreenProps) {
         <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase tabular-nums text-fg m-0 shrink`}>
           {t("screen.tutorial.Step", { step: props.step, steps: props.steps })}
         </Text>
-        <View class="grow shrink basis-0 min-w-0 h-0.5 bg-[#3d465e]">
-          <View class="h-full bg-[#38e8ff] shadow-[0px_0px_4.571px_#38e8ff]" style={{ width: `${(props.step / (props.steps || 1)) * 100}%` }} />
+        <View class="grow shrink basis-0 min-w-0 h-0.5 bg-raised-hi">
+          <View class="h-full bg-hud-accent shadow-[0px_0px_4.571px_#38e8ff]" style={{ width: `${(props.step / (props.steps || 1)) * 100}%` }} />
         </View>
       </View>
       <Show when={props.texture !== 0}>

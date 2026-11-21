@@ -61,7 +61,7 @@ export function StrategyWave(props: StrategyWaveProps) {
                 : (props.name !== "" ? t("strategy.wave.titleNamed", { wave: props.wave, name: props.name }) : t("strategy.wave.title", { wave: props.wave }))}
             </Text>
             <Show when={props.finalWave}>
-              <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-xs font-bold whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+              <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-xs font-bold whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                 {t("strategy.wave.final")}
               </Text>
             </Show>
@@ -88,14 +88,14 @@ export function StrategyWave(props: StrategyWaveProps) {
         <View class={`flex-col gap-y-[0.214rem] min-w-0`} role="list" label={t("strategy.wave.incoming")}>
           <For each={props.enemies ?? []} key={(e) => e.id}>
             {(e) => (
-            <View class={`group/enemy flex-row items-center gap-x-[0.429rem] min-w-0 pt-[0.143rem] pb-[0.143rem] pr-[0.714rem] bg-linear-to-r from-[#070b14db] to-[#070b1459]`} role="listitem" label={e().scouted ? t("strategy.wave.enemyName", { count: e().count, name: e().name }) : t("strategy.wave.unknown")} data-boss={e().boss} data-unscouted={!e().scouted}>
+            <View class={`group/enemy flex-row items-center gap-x-[0.429rem] min-w-0 pt-[0.143rem] pb-[0.143rem] pr-[0.714rem] bg-linear-to-r from-well to-well/40`} role="listitem" label={e().scouted ? t("strategy.wave.enemyName", { count: e().count, name: e().name }) : t("strategy.wave.unknown")} data-boss={e().boss} data-unscouted={!e().scouted}>
               <View class={`shrink self-stretch w-[0.214rem] mr-[0.286rem] bg-danger group-data-unscouted/enemy:bg-white/60`} />
               <Icon class={`shrink size-[1.143rem] text-fg`} name={e().icon} />
               <Text class={`flex-1 min-w-0 text-sm font-semibold whitespace-nowrap overflow-hidden group-data-unscouted/enemy:text-fg-muted`}>
                 {e().scouted ? e().name : t("strategy.wave.unknown")}
               </Text>
               <Show when={e().boss}>
-                <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-xs font-bold whitespace-nowrap text-danger nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
+                <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-xs font-bold whitespace-nowrap text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                   {t("strategy.wave.boss")}
                 </Text>
               </Show>

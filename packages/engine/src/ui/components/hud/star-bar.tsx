@@ -57,7 +57,7 @@ export function StarBar(props: StarBarProps) {
         <For each={stars()} key={(star) => star.id}>
           {(star) => (
             <View
-              class={`absolute top-0 size-8 rounded-full border bg-[#29210e] flex-row items-center justify-center data-compact:size-6 ${lit(star().at) ? "border-gold data-lit:animate-beat" : "border-white/42"}`}
+              class={`absolute top-0 size-8 rounded-full border bg-gold-fg flex-row items-center justify-center data-compact:size-6 ${lit(star().at) ? "border-gold data-lit:animate-beat" : "border-white/42"}`}
               data-lit={lit(star().at)}
               style={{ left: `calc(${star().at} * (100% - ${props.compact ? "1.5rem" : "2rem"}))` }}
             >

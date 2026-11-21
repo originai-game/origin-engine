@@ -41,14 +41,14 @@ export function RacingStandings(props: RacingStandingsProps) {
       data-fallback={!props.hasPlayer}
     >
       <Show when={rows().length} fallback={
-        <Text class={`py-[0.286rem] px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 bg-linear-to-r from-[#0d1526db] to-[#0d152659]`} role="status">{t("racing.standings.empty")}</Text>
+        <Text class={`py-[0.286rem] px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 bg-linear-to-r from-glass/89 to-entry-lo/47`} role="status">{t("racing.standings.empty")}</Text>
       }>
         <Scroll class="w-full min-h-0 flex-1">
           <View class="flex-col w-full gap-y-[0.286rem] compact:gap-y-[0.143rem]" role="list" label={name()}>
             <For each={rows()} key={(r) => r.id}>
               {(r, i) => (
                 <View
-                  class={`group/srow flex-row items-center gap-x-[0.571rem] w-full min-w-0 pr-[0.857rem] bg-[#0d1526db] nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-[#38e8ff] compact:gap-x-[0.429rem] compact:pr-[0.571rem] compact:hidden compact:data-on:flex compact:data-fallback:data-top:flex`}
+                  class={`group/srow flex-row items-center gap-x-[0.571rem] w-full min-w-0 pr-[0.857rem] bg-glass/89 nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-hud-accent compact:gap-x-[0.429rem] compact:pr-[0.571rem] compact:hidden compact:data-on:flex compact:data-fallback:data-top:flex`}
                   role="listitem"
                   label={r().name}
                   current={r().player}
@@ -68,7 +68,7 @@ export function RacingStandings(props: RacingStandingsProps) {
                   <Text class={`flex-1 min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-[0.929rem]`}>{r().name}</Text>
                   <Show when={r().state !== "racing"}>
                     <Text
-                      class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg bg-[#060910e0] nine-chip-cut data-pitting:text-gold data-retired:text-[#ff4d5e] ${packClass("Chip", "frame")}`}
+                      class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg bg-well nine-chip-cut data-pitting:text-gold data-retired:text-foe ${packClass("Chip", "frame")}`}
                       label={r().state === "pitting" ? t("racing.standings.pittingName") : r().state === "retired" ? t("racing.standings.retiredName") : t("racing.standings.finishedName")}
                       data-pitting={r().state === "pitting"}
                       data-retired={r().state === "retired"}
@@ -77,7 +77,7 @@ export function RacingStandings(props: RacingStandingsProps) {
                     </Text>
                   </Show>
                   <Show when={r().gap !== "" || (r().position === 1 && r().state !== "retired")}>
-                    <Text class={`shrink-0 text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg group-data-player/srow:text-[#141a02] data-leader:text-fg-muted compact:text-[0.929rem]`} data-leader={r().gap === ""}>
+                    <Text class={`shrink-0 text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg group-data-player/srow:text-gold-fg data-leader:text-fg-muted compact:text-[0.929rem]`} data-leader={r().gap === ""}>
                       {r().gap !== "" ? r().gap : t("racing.standings.leader")}
                     </Text>
                   </Show>
