@@ -226,6 +226,14 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         };
       });
       build.onResolve({ filter: /^og:(worker|game)$/ }, (a) => ({ path: a.path.slice(3), namespace: "og" }));
+      // A component's string table resolves here, ahead of the cache's
+      // catch-all: an import that catch-all resolves (returning nothing) is
+      // dropped from the bundle as unused, and its strings() call with it.
+      build.onResolve({ filter: /\.ogt$/ }, (a) => {
+        const file = resolve(a.resolveDir || process.cwd(), a.path);
+        if (cacheInputs && !(existsSync(file) && cacheInputs.has(realpathSync(file)))) cacheable = false;
+        return { path: file };
+      });
       if (cacheInputs) {
         build.onResolve({ filter: /.*/ }, (a) => {
           if (isBuiltin(a.path) || a.path === "bun" || a.path.startsWith("bun:")) return undefined;

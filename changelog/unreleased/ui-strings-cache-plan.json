@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og run",
+      "summary": "A built-in TSX component's text shows on og run, og test and every other native run that bundles with the bundle cache's plan: the plan's catch-all resolver left a component's `import \"./x.en.ogt\"` to the default resolution, which dropped it from the bundle as unused, and its table was never registered, so First Light's quest tracker drew the raw key rpg.quests.main and og.i18n.t warned that no table had the ability bar's and slot's keys. A string table now resolves ahead of it."
+    }
+  ]
+}

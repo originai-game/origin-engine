@@ -140,15 +140,19 @@ test("a native bundle compiles the engine's TSX components with the game's", asy
     writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
     writeFileSync(join(dir, "main.ts"), `export { Spinner } from "@origingame/engine/ui/components";\n`);
     const out = join(dir, "game.js");
-    const b = await bundleGame(join(dir, "main.ts"), out, "native");
-    if (!b.ok) throw new Error(b.reason);
-    const code = readFileSync(out, "utf8");
-    // Loaded as an external module, Bun's own JSX transform would have kept
-    // the compile-time Show/For imports, which the engine does not export.
-    expect(code).not.toContain("@origingame/engine/ui/components");
-    expect(code).toMatch(/from ["'][^"']*ui\/rt(\.ts)?["']/);
-    // The component's `import "./spinner.en.ogt"` records the table's bundle id.
-    expect(code).toMatch(/strings\d*\("@ui\/components\/base\/spinner\.en\.ogt"\)/);
+    // As og run builds it too: with a cache plan, whose catch-all resolver
+    // once dropped the table's import, and its strings() call, as unused.
+    for (const plan of [undefined, new Set([join(dir, "main.ts")])]) {
+      const b = await bundleGame(join(dir, "main.ts"), out, "native", false, {}, plan);
+      if (!b.ok) throw new Error(b.reason);
+      const code = readFileSync(out, "utf8");
+      // Loaded as an external module, Bun's own JSX transform would have kept
+      // the compile-time Show/For imports, which the engine does not export.
+      expect(code).not.toContain("@origingame/engine/ui/components");
+      expect(code).toMatch(/from ["'][^"']*ui\/rt(\.ts)?["']/);
+      // The component's `import "./spinner.en.ogt"` records the table's bundle id.
+      expect(code).toMatch(/strings\d*\("@ui\/components\/base\/spinner\.en\.ogt"\)/);
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
