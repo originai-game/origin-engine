@@ -183,23 +183,28 @@ fn gradient_at(gi: u32, p: vec2<f32>, half: vec2<f32>) -> vec4<f32> {
 // end slices are `a` and `b` CSS px wide on screen and `sa` and `sb` texture
 // pixels in a region `n` pixels long. The texture pixel it samples, kept
 // half a texel inside its own slice so filtering never bleeds a neighbour
-// in, and 1 in the centre.
-fn slice_axis(x: f32, w: f32, a: f32, b: f32, sa: f32, sb: f32, n: f32, tile: bool) -> vec2<f32> {
+// in; 1 in the centre; and the texture pixels per CSS px of that slice,
+// which the mip level is chosen by (the region's scale across the whole box
+// is not any slice's: a wide art squeezed into a chip would blur its edges).
+fn slice_axis(x: f32, w: f32, a: f32, b: f32, sa: f32, sb: f32, n: f32, tile: bool) -> vec3<f32> {
   if (x < a) {
-    return vec2<f32>(inside(x / max(a, 1e-4) * sa, 0.0, sa), 0.0);
+    return vec3<f32>(inside(x / max(a, 1e-4) * sa, 0.0, sa), 0.0, sa / max(a, 1e-4));
   }
   if (x > w - b) {
-    return vec2<f32>(inside(n - (w - x) / max(b, 1e-4) * sb, n - sb, n), 0.0);
+    return vec3<f32>(inside(n - (w - x) / max(b, 1e-4) * sb, n - sb, n), 0.0, sb / max(b, 1e-4));
   }
   let centre = max(n - sa - sb, 1e-4);
   let span = max(w - a - b, 1e-4);
   var t = (x - a) / span;
+  var k = centre / span;
   if (tile) {
     // Whole tiles, the source's scale along the slices (CSS's round).
-    let k = select(1.0, a / sa, sa > 0.0 && a > 0.0);
-    t = fract(t * max(round(span / (centre * k)), 1.0));
+    let s = select(1.0, a / sa, sa > 0.0 && a > 0.0);
+    let tiles = max(round(span / (centre * s)), 1.0);
+    t = fract(t * tiles);
+    k *= tiles;
   }
-  return vec2<f32>(inside(sa + t * centre, sa, n - sb), 1.0);
+  return vec3<f32>(inside(sa + t * centre, sa, n - sb), 1.0, k);
 }
 
 // `v` kept half a texel inside `lo..hi` (the middle of a slice too thin).
@@ -236,8 +241,8 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   // Sampled before any branch: derivatives need uniform control flow.
   let m = textureSample(page, page_sampler, in.uv);
   let screen_tex = vec2<f32>(1.0) / fwidthFine(in.uv);
-  let uv_dx = dpdx(in.uv);
-  let uv_dy = dpdy(in.uv);
+  let local_dx = dpdx(in.local);
+  let local_dy = dpdy(in.local);
   let q = quads[in.index];
   let css = in.position.xy / frame.output.z;
   if (css.x < q.clip.x || css.y < q.clip.y || css.x >= q.clip.z || css.y >= q.clip.w) {
@@ -331,7 +336,16 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
       let at = in.local + half;
       let x = slice_axis(at.x, 2.0 * half.x, q.r.w, q.r.y, q.p.w, q.p.y, region.x, tile);
       let y = slice_axis(at.y, 2.0 * half.y, q.r.x, q.r.z, q.p.x, q.p.z, region.y, tile);
-      let s = textureSampleGrad(page, page_sampler, q.uv.xy + vec2<f32>(x.x, y.x) / size, uv_dx, uv_dy);
+      // Each axis's slice scale over the fragment's step in the box. A
+      // stretched middle is uniform along its stretch (the art is made so),
+      // so it filters by the other axis's scale: a squeezed strip would
+      // otherwise take a mip that smears the thin edge across it.
+      var kx = x.z;
+      var ky = y.z;
+      if (!tile && x.y > 0.5) { kx = min(kx, ky); }
+      if (!tile && y.y > 0.5) { ky = min(ky, x.z); }
+      let k = vec2<f32>(kx, ky) / size;
+      let s = textureSampleGrad(page, page_sampler, q.uv.xy + vec2<f32>(x.x, y.x) / size, local_dx * k, local_dy * k);
       rgb *= s.rgb;
       a *= s.a;
       if (!fill && x.y > 0.5 && y.y > 0.5) {
