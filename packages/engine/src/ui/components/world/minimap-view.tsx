@@ -171,7 +171,7 @@ export function MinimapView(props: MinimapViewProps) {
           </View>
           <View class="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0px_0px_0px_0.071rem_#ffffff33,inset_0px_0px_2.143rem_#1a1e28b3] data-square:rounded-card" data-square={props.square === true} />
         </View>
-        <Text class="absolute top-1.75 left-1/2 -translate-x-1/2 min-w-6 h-6 flex-row items-center justify-center rounded-full bg-danger shadow-[0px_0px_0px_0.143rem_#262a33,0px_0px_0.714rem_#ff4d5eb3] text-caption font-bold leading-none text-fg whitespace-nowrap">
+        <Text class="absolute top-1.75 left-1/2 -translate-x-1/2 min-w-6 h-6 flex-row items-center justify-center rounded-full bg-foe shadow-[0px_0px_0px_0.143rem_#262a33,0px_0px_0.714rem_#ff4d5eb3] text-caption font-bold leading-none text-foe-fg whitespace-nowrap">
           {t("component.minimap-view.north")}
         </Text>
       </View>

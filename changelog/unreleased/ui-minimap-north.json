@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "MinimapView",
+      "summary": "The north badge is the HUD's red fill with the ink that holds on it (`bg-foe text-foe-fg`), the same in every pack and scheme. It was the pale body ink on `danger`, which is itself a pale ink in the dark scheme, so the N read about 1.9:1."
+    }
+  ]
+}
