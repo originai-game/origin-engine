@@ -1,4 +1,4 @@
-import { Show, Text, View, type UiEvent, t } from "@origingame/engine/ui";
+import { Show, Text, View, createSignal, type UiEvent, t } from "@origingame/engine/ui";
 import "./qte-prompt.en.ogt";
 
 export interface QtePromptProps {
@@ -26,9 +26,9 @@ export interface QtePromptProps {
 
 /**
  * A keyed prompt over the scene: what to attempt, a big trigger (press,
- * hold or mash — the hold's fill has no TSX surface, so a hold confirms
- * on press), its state in words, and the game-supplied time left (and, for
- * a mash, the response progress) as thin bars. Only the active state
+ * hold or mash — the hold runs holdMs with its fill, and confirms when it
+ * completes), its state in words, and the game-supplied time left (and,
+ * for a mash, the response progress) as thin bars. Only the active state
  * accepts input; the game owns resolution and expiry. Read only beyond
  * the respond.
  */
@@ -37,6 +37,8 @@ export function QtePrompt(props: QtePromptProps) {
   const hold = (props.mode ?? "press") === "hold";
   const active = () => state === "active" && !props.disabled;
   const stateInk = () => state === "success" ? "text-[#45e08f]" : state === "failure" || state === "expired" ? "text-[#ff9599]" : "text-fg-muted";
+  const holdFill = createSignal(0);
+  const held = () => holdFill() > 0;
   return (
     <View
       class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2`}
@@ -47,12 +49,15 @@ export function QtePrompt(props: QtePromptProps) {
     >
       <Text class="text-[0.929rem] font-semibold text-fg text-shadow-xs">{(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}</Text>
       <View
-        class={`flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] rounded-button border active:bg-none active:bg-tile-pressed active:scale-96 disabled:opacity-50 disabled:scale-100`}
+        class={`relative flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed active:scale-96 disabled:opacity-50 disabled:scale-100`}
         role="button"
         label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
-        onPress={(e) => props.onRespond?.(e)}
+        {...(hold ? { hold: Math.max(props.holdMs ?? 600, 1) / 1000, onHold: (e: UiEvent) => holdFill.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1)) } : {})}
+        onPress={(e) => {
+          holdFill.set(0);
+          props.onRespond?.(e);
+        }}
         disabled={!active()}
-        data-hold={hold ? String(Math.max(props.holdMs ?? 600, 1)) : undefined}
         data-action={(props.action ?? "") !== "" ? props.action : undefined}
       >
         <Show when={(props.keyLabel ?? "") !== ""}>
@@ -61,6 +66,9 @@ export function QtePrompt(props: QtePromptProps) {
         <Text class="min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg text-shadow-xs">
           {hold ? t("hud.qte-prompt.hold") : (props.mode ?? "press") === "mash" ? t("hud.qte-prompt.mash") : t("hud.qte-prompt.press")}
         </Text>
+        <Show when={held()}>
+          <View class="absolute bottom-0 left-0 h-[2px] bg-accent" style={{ width: `${holdFill() * 100}%` }} />
+        </Show>
       </View>
       <Text class={`text-caption text-shadow-xs ${stateInk()}`} role="status">
         {state === "success" ? t("hud.qte-prompt.success") : state === "failure" ? t("hud.qte-prompt.failure") : state === "expired" ? t("hud.qte-prompt.expired") : state === "waiting" ? t("hud.qte-prompt.waiting") : props.disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}
