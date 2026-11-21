@@ -51292,7 +51292,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The engine modules this build carries beyond the core (`physics`, `audio`, `ui`, `cook`), so a client knows which members do something."
+          "description": "The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.film) and `video`. Every build carries all of them; the web loads each on a game's first call into it."
         }
       },
       "required": [

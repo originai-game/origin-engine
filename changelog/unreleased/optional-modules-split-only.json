@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "probe hello (Hello.modules)",
+      "summary": "`hello`'s `modules` names the engine's real modules: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.film) and `video`, the parts the web loads on a game's first call into one. It was a fixed list (`audio`, `cook`, `physics`, `render`, `ui`) whatever the build carried. Every engine carries every module: the builds that left one out, with calls answering a refusal naming the missing feature, are gone, and none ever shipped."
+    }
+  ]
+}

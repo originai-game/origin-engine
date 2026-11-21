@@ -987,9 +987,22 @@ pub(crate) fn attach(eng: &Engine, backend: Option<Box<dyn crate::RenderBackend>
     }
 }
 
-/// The engine modules beyond the core this runtime was built with.
-pub(crate) fn modules() -> Vec<&'static str> {
-    vec!["audio", "cook", "physics", "render", "ui"]
+/// The engine modules beyond the core: the split modules the web loads on
+/// first use, by their names in the split's own list. Every build carries
+/// all of them (natively linked, on the web loaded when a game calls in).
+pub(crate) fn modules() -> Vec<String> {
+    let split: Value = serde_json::from_str(include_str!(
+        "../../../../packages/engine/scripts/wasm-modules.json"
+    ))
+    .expect("wasm-modules.json is JSON");
+    let mut names: Vec<String> = split["modules"]
+        .as_object()
+        .expect("wasm-modules.json names its modules")
+        .keys()
+        .cloned()
+        .collect();
+    names.sort();
+    names
 }
 
 /// Outputs as the `og_engine_take_outputs` JSON.

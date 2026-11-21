@@ -199,7 +199,10 @@ test("with deferStart, GameDesc.start waits for the first tick boundary; asking 
   // The web Worker attaches its renderer and hands over the transcoded
   // textures here, between createEngine and the first tick boundary.
   expect(starts).toBe(0);
-  expect((engine.probe.hello() as { substrate?: string }).substrate).toBe("origin-engine");
+  const hello = engine.probe.hello();
+  expect(hello.substrate).toBe("origin-engine");
+  // The split modules, every one carried (packages/engine/scripts/wasm-modules.json).
+  expect(hello.modules).toEqual(["destruction", "motion", "nav", "physics", "story", "video"]);
   expect(starts).toBe(0);
   expect(engine.advance(0).ok).toBeTrue();
   expect(starts).toBe(1);

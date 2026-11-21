@@ -28307,7 +28307,7 @@ export interface Hello {
   /** The probe members this build serves. */
   readonly members: readonly string[];
   /**
-   * The engine modules this build carries beyond the core (`physics`, `audio`, `ui`, `cook`), so a client knows which members do something.
+   * The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.film) and `video`. Every build carries all of them; the web loads each on a game's first call into it.
    */
   readonly modules: readonly string[];
 }
