@@ -182,14 +182,14 @@ pub fn default_json(ix: &Index<'_>, ty: &TypeRef, explicit: Option<&[Value]>) ->
 fn literal_json(ix: &Index<'_>, ty: &TypeRef, values: &[Value]) -> Json {
     // A List.String const's (or default's) value is its members,
     // whitespace-separated in one string.
-    if ty.is_string_list() {
-        if let [Value::String(s)] = values {
-            return Json::Arr(
-                s.split_whitespace()
-                    .map(|w| Json::str(w.to_string()))
-                    .collect(),
-            );
-        }
+    if ty.is_string_list()
+        && let [Value::String(s)] = values
+    {
+        return Json::Arr(
+            s.split_whitespace()
+                .map(|w| Json::str(w.to_string()))
+                .collect(),
+        );
     }
     if let [single] = values {
         if let Some(b) = single.as_bool() {

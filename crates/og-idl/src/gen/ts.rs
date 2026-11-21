@@ -863,10 +863,10 @@ fn list_members(s: &str) -> Vec<String> {
 /// A constant's TypeScript type: its value as a literal type; a list
 /// constant's members a readonly tuple.
 fn const_type(c: &Const) -> String {
-    if c.ty.is_string_list() {
-        if let og_core::ogt::Value::String(s) = &c.value {
-            return format!("readonly [{}]", list_members(s).join(", "));
-        }
+    if c.ty.is_string_list()
+        && let og_core::ogt::Value::String(s) = &c.value
+    {
+        return format!("readonly [{}]", list_members(s).join(", "));
     }
     const_literal(c)
 }
