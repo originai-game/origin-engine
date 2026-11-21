@@ -44,9 +44,9 @@ export function LoadingScreen(props: LoadingScreenProps) {
       <Show when={!props.keyArt}>
         <View class="absolute inset-0" />
       </Show>
-      <View class={`absolute bg-linear-to-r from-black/45 to-transparent to-55% inset-0`} />
+      <View class={`absolute bg-linear-to-r from-shade-deep to-transparent to-55% inset-0`} />
       <View class="absolute top-auto bottom-0 pt-16 inset-x-0 gap-[1.429rem] compact:pt-[1.429rem] compact:gap-4 short:pt-[1.143rem] short:gap-[0.714rem]">
-        <View class="absolute -top-30 bottom-0 inset-x-0 bg-linear-to-b from-transparent via-black/62 via-30% to-black/92" />
+        <View class="absolute -top-30 bottom-0 inset-x-0 bg-linear-to-b from-transparent via-shade-deep via-30% to-shade-deep" />
         <View class="gap-[1.429rem] short:flex-row short:items-end short:gap-[1.143rem] compact:gap-4">
           <View class="max-w-3/5 gap-0.5 compact:max-w-full short:max-w-[45%] short:grow short:shrink short:basis-0 short:min-w-0">
             <View class={`flex-row items-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-hud-accent gap-[0.714rem] transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
@@ -63,14 +63,14 @@ export function LoadingScreen(props: LoadingScreenProps) {
                 {t("screen.loading.tip")}
               </Text>
               <View class={`flex-row items-center justify-center shrink ml-auto gap-x-1 text-[0.857rem] font-semibold tracking-[0.14em] px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
-                <Text class="min-w-[1.571rem] text-[0.857rem] leading-[1.6] font-bold text-center text-hud-accent-fg bg-linear-to-b from-white to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
+                <Text class="min-w-[1.571rem] text-[0.857rem] leading-[1.6] font-bold text-center text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
                   {t("screen.loading.nextKey")}
                 </Text>
                 <Text>{t("screen.loading.next")}</Text>
               </View>
             </View>
             <Text class="text-body tracking-[0em] text-fg m-0">{props.tip}</Text>
-            <View class="text-caption text-fg/66 short:hidden">{props.lore?.()}</View>
+            <View class="text-caption text-fg-muted short:hidden">{props.lore?.()}</View>
           </View>
         </View>
         <View class="items-center gap-[1.286rem] compact:items-stretch compact:flex-col-reverse compact:gap-[0.857rem]">
@@ -82,7 +82,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
               <Spinner size={22} name={t("screen.loading.busy")} />
             </Show>
             <Show when={!props.ready && props.status}>
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 m-0 shrink`}>
+              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted m-0 shrink`}>
                 {props.status}
               </Text>
             </Show>

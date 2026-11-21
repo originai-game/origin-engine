@@ -37,14 +37,14 @@ export function Calendar(props: CalendarProps) {
       <View class="grid grid-cols-7 gap-0.5" role="grid">
         <For each={props.weekdays}>
           {(w) => (
-          <Text class={`tracking-[0.14em] uppercase text-fg/50 text-center text-[0.857rem] font-semibold pb-0.5`}>
+          <Text class={`tracking-[0.14em] uppercase text-fg-muted text-center text-[0.857rem] font-semibold pb-0.5`}>
             {w().label}
           </Text>
           )}
         </For>
         <For each={props.days}>
           {(d) => (
-          <View class={`flex-row items-center justify-center gap-1 border-rim-soft bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff1a] text-fg transition duration-317 w-full min-h-11 font-bold border data-selected:border-accent data-done:border-success active:border-accent data-outside:bg-none data-outside:bg-transparent data-outside:shadow-none data-outside:text-fg/50 data-today:bg-linear-to-b data-today:from-hud-accent-hi data-today:to-hud-accent data-today:bg-transparent data-today:shadow-none data-today:text-hud-accent-fg active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45`} role="button" current={d().today} onPress={(e) => props.onPick?.(e, d().id)} data-outside={d().outside} data-marked={d().marked} data-today={d().today} data-variant-primary={(d().today ? "primary" : "quiet") === "primary"} data-variant-quiet={(d().today ? "primary" : "quiet") === "quiet"}>
+          <View class={`flex-row items-center justify-center gap-1 border-rim-soft bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff1a] text-fg transition duration-317 w-full min-h-11 font-bold border data-selected:border-accent data-done:border-success active:border-accent data-outside:bg-none data-outside:bg-transparent data-outside:shadow-none data-outside:text-fg-muted data-today:bg-linear-to-b data-today:from-hud-accent-hi data-today:to-hud-accent data-today:bg-transparent data-today:shadow-none data-today:text-hud-accent-fg active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45`} role="button" current={d().today} onPress={(e) => props.onPick?.(e, d().id)} data-outside={d().outside} data-marked={d().marked} data-today={d().today} data-variant-primary={(d().today ? "primary" : "quiet") === "primary"} data-variant-quiet={(d().today ? "primary" : "quiet") === "quiet"}>
             <Text class="tabular-nums">{d().label}</Text>
             <Show when={d().marked}>
               <Text class="absolute bottom-0.5 rotate-45 bg-gold shadow-[0px_0px_9.136px_#ffcf5a] tabular-nums size-1" />

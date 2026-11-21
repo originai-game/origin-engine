@@ -27,7 +27,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
-      <View class={`absolute bg-linear-to-b from-black/86 via-black/70 via-40% to-black/92 inset-0`} />
+      <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
         <Button class={`narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center gap-x-1">
@@ -38,7 +38,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
         <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 narrow:text-[1.857rem] narrow:grow narrow:shrink-0 narrow:basis-full`}>
           {t("screen.mode-select.title")}
         </Text>
-        <View class="grow shrink basis-0 h-px bg-linear-to-r from-white/28 to-transparent to-80% m-0 compact:hidden" />
+        <View class="grow shrink basis-0 h-px bg-linear-to-r from-sheen to-transparent to-80% m-0 compact:hidden" />
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4 narrow:pb-6">
         <View class="grid grid-cols-3 auto-rows-[minmax(calc(320_*_calc(1rem_/_14)),1fr)] h-full gap-6 narrow:grid-cols-[minmax(0,1fr)] narrow:auto-rows-[minmax(calc(170_*_calc(1rem_/_14)),auto)] narrow:h-auto narrow:gap-3" focus-group="wrap">
@@ -47,7 +47,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
             <View class={`group/mode text-fg transition duration-317 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 active:translate-x-0 active:translate-y-0 data-locked:scale-100 data-down:opacity-45 hover:translate-x-0 hover:-translate-y-0.25`} onPress={(e) => props.onSelect?.(e, mode().id)} tabIndex={0} data-selection-off={mode().id !== props.selected} data-selection-on={mode().id === props.selected} data-lock-open={!mode().locked} data-lock-locked={mode().locked}>
               <View class={`grow shrink justify-end nine-panel-cut overflow-hidden`}>
                 <Art class="absolute object-cover inset-0 size-full" kind="levelThumb" src={mode().texture} />
-                <View class={`absolute bg-linear-to-b from-transparent from-35% via-black/55 via-60% to-black/96 inset-0`} />
+                <View class={`absolute bg-linear-to-b from-transparent from-35% via-scrim via-60% to-shade-deep inset-0`} />
                 <Show when={mode().tag}>
                   <Text class={`text-shadow-2xs bg-tile nine-chip-cut absolute top-4 right-4 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-hud-accent data-fresh:bg-none data-fresh:text-hud-accent-fg compact:top-2 compact:right-2 ${packClass("Chip", "frame")}`} data-fresh={mode().locked}>
                     {mode().tag}
@@ -57,7 +57,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                   <Text class={`tracking-xs text-shadow-xs text-shadow-bg/60 text-[3.143rem] leading-tight font-bold m-0 compact:text-[2rem]`}>
                     {mode().name}
                   </Text>
-                  <Text class="text-[1.214rem] leading-snug text-fg/74 line-clamp-2 m-0 compact:text-base">
+                  <Text class="text-[1.214rem] leading-snug text-fg-muted line-clamp-2 m-0 compact:text-base">
                     {mode().line}
                   </Text>
                   <Show when={mode().locked}>

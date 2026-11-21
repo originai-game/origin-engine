@@ -18,9 +18,9 @@ export interface FlowChaptersScreenProps {
 export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
   return (
     <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>
-      <View class={`absolute bg-linear-to-b from-black/90 via-black/82 via-40% to-black/94 inset-0`} />
+      <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1`}>
-        <Button class={`text-fg/74 compact:-ml-2 ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+        <Button class={`text-fg-muted compact:-ml-2 ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
@@ -39,14 +39,14 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
                 <Show when={c().locked} fallback={
                     <Art class={`absolute object-cover inset-0 size-full`} kind="saveThumb" src={c().thumb} />
                 }>
-                  <View class={`absolute items-center justify-center bg-black/92 inset-0 size-full`}>
+                  <View class={`absolute items-center justify-center bg-shade-deep inset-0 size-full`}>
                     <Icon class="text-warn size-6 shrink" name="lock" />
                   </View>
                 </Show>
                 <View class="absolute shadow-[inset_0px_0px_0px_1px_#ffffff29,inset_0px_1px_0px_#ffffff8c] inset-0 group-data-locked/card:shadow-[inset_0px_0px_0px_1px_#ffffff1f] group-data-selected/card:shadow-[inset_0px_0px_0px_2.288px_#38e8ff,inset_0px_3.424px_0px_#ffffff80]" />
               </View>
               <View class="flex-row items-baseline gap-x-2 px-0.5">
-                <Text class={`text-fg/74 grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg/56 compact:text-[1.071rem]`}>
+                <Text class={`text-fg-muted grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg-muted compact:text-[1.071rem]`}>
                   {c().locked ? t("screen.flow-chapters.locked") : c().title}
                 </Text>
               </View>

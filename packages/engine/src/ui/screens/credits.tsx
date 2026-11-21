@@ -29,7 +29,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
-      <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-black/86 compact:via-black/70 compact:via-40% compact:to-black/92 compact:bg-transparent`} />
+      <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-shade-deep compact:via-shade-deep compact:via-40% compact:to-shade-deep compact:bg-transparent`} />
       <View class="flex-row items-center py-4 px-8 gap-2 compact:py-2 compact:px-3">
         <Button class={`shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center gap-x-1">
@@ -58,7 +58,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
                     {n().name}
                   </Text>
                   <Show when={n().role}>
-                    <Text class={`text-[0.929rem] font-semibold tracking-xl uppercase text-fg/56 m-0`}>
+                    <Text class={`text-[0.929rem] font-semibold tracking-xl uppercase text-fg-muted m-0`}>
                       {n().role}
                     </Text>
                   </Show>
@@ -72,8 +72,8 @@ export function CreditsScreen(props: CreditsScreenProps) {
           <View class="w-full max-w-140">{props.licences?.()}</View>
         </View>
       </View>
-      <View class="flex-row absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg/74 pointer-coarse:hidden compact:hidden">
-        <Text class="text-[0.857rem] leading-[1.6] font-bold text-hud-accent-fg bg-linear-to-b from-white to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] shrink">
+      <View class="flex-row absolute right-6 bottom-4 items-center gap-x-2 text-[0.929rem] text-fg-muted pointer-coarse:hidden compact:hidden">
+        <Text class="text-[0.857rem] leading-[1.6] font-bold text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] shrink">
           {t("screen.credits.fasterKey")}
         </Text>
         <Text class="shrink">{t("screen.credits.faster")}</Text>

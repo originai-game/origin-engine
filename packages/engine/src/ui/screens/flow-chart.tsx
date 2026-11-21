@@ -42,9 +42,9 @@ export interface FlowChartScreenProps {
 export function FlowChartScreen(props: FlowChartScreenProps) {
   return (
     <View class="pt-8 pb-6 px-12 gap-y-4 text-accent-hover overflow-hidden compact:pt-4 compact:px-4 compact:gap-y-3">
-      <View class="absolute bg-linear-to-b from-black/90 via-black/82 via-40% to-black/94 inset-0" />
+      <View class="absolute bg-glass inset-0" />
       <View class="items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1">
-        <Button class="text-accent-hover/74 compact:-ml-2" onPress={(e) => props.onBack?.(e)}>
+        <Button class="text-accent-hover compact:-ml-2" onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
@@ -68,7 +68,7 @@ export function FlowChartScreen(props: FlowChartScreenProps) {
         onPan={(e, dx, dy) => props.onPan?.(e, dx, dy)}
       />
       <Show when={props.detail !== ""}>
-        <View class="flex-row flex-wrap items-center gap-x-4 gap-y-2 py-3 px-4 bg-plate-lo/90 ring-1 ring-accent shrink-0">
+        <View class="flex-row flex-wrap items-center gap-x-4 gap-y-2 py-3 px-4 bg-plate-lo ring-1 ring-accent shrink-0">
           <View class="grow shrink basis-50 min-w-0 gap-y-0.5">
             <Text class="text-sm font-bold uppercase tracking-wide text-accent">{t("screen.flow-chart.selected")}</Text>
             <Text class="text-xl font-semibold leading-snug text-fg">{props.detail}</Text>

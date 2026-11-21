@@ -30,9 +30,9 @@ export interface SaveLoadScreenProps {
 export function SaveLoadScreen(props: SaveLoadScreenProps) {
   return (
     <View class={`pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
-      <View class={`absolute bg-linear-to-b from-black/90 via-black/82 via-40% to-black/94 inset-0`} />
+      <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
-        <Button class={`text-fg/74 narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+        <Button class={`text-fg-muted narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
@@ -47,14 +47,14 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
             {t("screen.save-load.saveTitle")}
           </Text>
         </Show>
-        <View class="grow shrink basis-0 h-px bg-linear-to-r from-white/28 to-transparent to-80% m-0 narrow:hidden" />
+        <View class="grow shrink basis-0 h-px bg-linear-to-r from-sheen to-transparent to-80% m-0 narrow:hidden" />
       </View>
       <View class="grow shrink basis-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-[minmax(0,1fr)] gap-x-12 narrow:grid-cols-[minmax(0,1fr)] narrow:grid-rows-[minmax(0,1fr)_auto] narrow:gap-y-3">
         <Scroll class="p-1 -m-1">
           <View class="gap-y-2" focus-group="stop">
             <For each={props.slots}>
               {(s) => (
-              <View class={`flex-row group/slot nine-plate-cut bg-entry-lo text-fg transition duration-317 border border-white/7 items-center gap-x-4 p-2 hover:bg-transparent hover:bg-hud-accent/24 data-selection-on:bg-transparent data-selection-on:bg-hud-accent/24 data-empty-slot:bg-transparent data-empty-slot:bg-none data-empty-slot:justify-center data-empty-slot:min-h-[7.429rem] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
+              <View class={`flex-row group/slot nine-plate-cut text-fg transition duration-317 border border-white/7 items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-[7.429rem] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
                 <Art class={`w-[10.714rem] aspect-[89/50] h-auto object-cover compact:w-[6.857rem] group-data-empty-slot/slot:hidden`} kind="saveThumb" src={s().thumb} />
                 <View class="grow shrink basis-0 gap-y-0.5 pr-12 group-data-empty-slot/slot:pr-0 compact:pr-0">
                   <Show when={s().empty} fallback={
@@ -62,18 +62,18 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
                       <Text class={`text-[1.429rem] leading-tight font-bold line-clamp-1 text-ellipsis m-0 compact:text-[1.214rem]`}>
                         {s().title}
                       </Text>
-                      <Text class="line-clamp-1 text-ellipsis text-base text-fg/74 m-0">{s().place}</Text>
+                      <Text class="line-clamp-1 text-ellipsis text-base text-fg-muted m-0">{s().place}</Text>
                       <View class="flex-row flex-wrap gap-x-3">
-                        <Text class="text-[0.929rem] tabular-nums text-fg/56 m-0 compact:whitespace-nowrap shrink">
+                        <Text class="text-[0.929rem] tabular-nums text-fg-muted m-0 compact:whitespace-nowrap shrink">
                           {t("screen.save-load.Played", { s_played: formatDuration(s().played) })}
                         </Text>
-                        <Text class="text-[0.929rem] tabular-nums text-fg/56 m-0 compact:whitespace-nowrap shrink">
+                        <Text class="text-[0.929rem] tabular-nums text-fg-muted m-0 compact:whitespace-nowrap shrink">
                           {s().date}
                         </Text>
                       </View>
                     </>
                   }>
-                    <Text class="text-[1.143rem] text-fg/56 text-center m-0">
+                    <Text class="text-[1.143rem] text-fg-muted text-center m-0">
                       {t("screen.save-load.empty")}
                     </Text>
                   </Show>
@@ -99,17 +99,17 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
                     {s().title}
                   </Text>
                   <View class="flex-row flex-wrap gap-x-3 gap-y-0.5 narrow:hidden">
-                    <Text class="text-base tabular-nums text-fg/74 grow shrink basis-full line-clamp-2 m-0">
+                    <Text class="text-base tabular-nums text-fg-muted grow shrink basis-full line-clamp-2 m-0">
                       {s().place}
                     </Text>
-                    <Text class="text-base tabular-nums text-fg/74 m-0 shrink">
+                    <Text class="text-base tabular-nums text-fg-muted m-0 shrink">
                       {t("screen.save-load.Played", { s_played: formatDuration(s().played) })}
                     </Text>
-                    <Text class="text-base tabular-nums text-fg/74 m-0 shrink">{s().date}</Text>
+                    <Text class="text-base tabular-nums text-fg-muted m-0 shrink">{s().date}</Text>
                   </View>
                 </>
               }>
-                <Text class="text-[1.286rem] text-fg/56 m-0 narrow:hidden">
+                <Text class="text-[1.286rem] text-fg-muted m-0 narrow:hidden">
                   {t("screen.save-load.empty")}
                 </Text>
               </Show>

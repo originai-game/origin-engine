@@ -51,16 +51,16 @@ export interface ResultsScreenProps {
  */
 export function ResultsScreen(props: ResultsScreenProps) {
   return (
-    <View class="bg-linear-to-r from-black/90 via-black/62 via-55% to-black/81 py-8 px-16 compact:p-3 short:py-3 short:px-4">
+    <View class="bg-linear-to-r from-glass via-glass via-55% to-glass py-8 px-16 compact:p-3 short:py-3 short:px-4">
       <View class={`text-fg max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 shrink ${packClass("Panel", "frame")}`}>
         <Scroll class="grow shrink basis-0 gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
           <View class="items-end gap-6 compact:items-start compact:gap-3">
             <View class="grow shrink basis-0 gap-3 compact:gap-2">
-              <Text class={`font-display font-bold leading-[0.9] tracking-xs uppercase text-transparent bg-linear-to-b from-white from-18% via-gold-hi via-52% to-warn m-0 short:text-[4.429rem] data-outcome-lost:bg-linear-to-b data-outcome-lost:from-white data-outcome-lost:from-10% data-outcome-lost:via-danger data-outcome-lost:via-48% data-outcome-lost:to-critical data-outcome-lost:bg-transparent`} data-outcome-lost={!props.won} data-outcome-won={props.won}>
+              <Text class={`font-display font-bold leading-[0.9] tracking-xs uppercase text-transparent bg-linear-to-b from-glass from-18% via-gold-hi via-52% to-warn m-0 short:text-[4.429rem] data-outcome-lost:bg-linear-to-b data-outcome-lost:from-glass data-outcome-lost:from-10% data-outcome-lost:via-danger data-outcome-lost:via-48% data-outcome-lost:to-critical data-outcome-lost:bg-transparent`} data-outcome-lost={!props.won} data-outcome-won={props.won}>
                 {props.title}
               </Text>
               <View class="h-[1.5px]">
-                <Text class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] rotate-45 bg-white shadow-[0px_0px_11.424px_#38e8ff] size-[0.643rem]" />
+                <Text class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] rotate-45 bg-hud-accent shadow-[0px_0px_11.424px_#38e8ff] size-[0.643rem]" />
               </View>
               <View class="items-center max-w-[45.714rem] gap-3">
                 <Text class="text-center leading-[3.857rem] bg-linear-to-b from-epic to-glass-lo text-fg text-[1.714rem] font-bold tabular-nums size-[3.857rem] compact:leading-[2.857rem] compact:text-[1.143rem] compact:size-[2.857rem]">
@@ -68,7 +68,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                 </Text>
                 <View class="grow shrink basis-0 gap-1">
                   <View class="flex-row flex-wrap items-baseline justify-between gap-x-3">
-                    <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 m-0 compact:hidden shrink">
+                    <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted m-0 compact:hidden shrink">
                       {t("screen.results.LevelValue", { level: props.level })}
                     </Text>
                     <Text class="text-[1.143rem] font-bold tabular-nums text-epic m-0 shrink">
@@ -81,12 +81,12 @@ export function ResultsScreen(props: ResultsScreenProps) {
             </View>
             <Show when={props.grade !== ""}>
               <View class="items-center gap-1">
-                <View class="bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 p-0.75">
+                <View class="bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75">
                   <Text class={`text-center leading-flat font-bold text-fg m-0 compact:leading-[6.143rem] compact:w-[5.357rem] compact:h-[6.143rem] compact:text-[3.571rem] short:leading-[6.143rem] short:w-[5.357rem] short:h-[6.143rem] short:text-[3.571rem]`} role="heading">
                     {props.grade}
                   </Text>
                 </View>
-                <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 m-0 compact:hidden">
+                <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted m-0 compact:hidden">
                   {t("screen.results.grade")}
                 </Text>
               </View>
@@ -117,7 +117,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                   {(s) => (
                   <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-317 border border-white/18 justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3`} data-best={s().best}>
                     <View class="flex-row flex-wrap items-center justify-between gap-1 compact:justify-start compact:grow compact:shrink compact:basis-0 short:justify-start short:grow short:shrink short:basis-0">
-                      <Text class={`tracking-[0.14em] uppercase text-fg/78 text-[0.857rem] font-semibold m-0 shrink`}>
+                      <Text class={`tracking-[0.14em] uppercase text-fg-muted text-[0.857rem] font-semibold m-0 shrink`}>
                         {s().name}
                       </Text>
                       <Show when={s().best}>
@@ -139,14 +139,14 @@ export function ResultsScreen(props: ResultsScreenProps) {
               </View>
               <Show when={props.rewards.length}>
                 <View class="gap-2">
-                  <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 m-0">
+                  <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted m-0">
                     {t("screen.results.rewards")}
                   </Text>
                   <View class="flex-row flex-wrap gap-3">
                     <For each={props.rewards}>
                       {(r) => (
                       <View class={`text-fg transition duration-317 items-center w-[8.286rem] rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:w-24 shrink`}>
-                        <View class="bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 p-0.75 gap-2 size-[7.429rem] compact:size-[4.857rem]">
+                        <View class="bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75 gap-2 size-[7.429rem] compact:size-[4.857rem]">
                           <Art class="absolute bg-linear-to-b from-plate-hi to-plate-lo object-cover inset-0" kind="itemIcon" src={r().texture} />
                         </View>
                         <Text class="-mt-3 mb-0 text-[0.857rem] font-bold tabular-nums text-fg bg-tile shadow-[inset_0px_1px_0px_#ffffff38] whitespace-nowrap py-0 px-1 mx-0">

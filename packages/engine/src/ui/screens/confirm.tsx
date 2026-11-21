@@ -35,7 +35,7 @@ export function Confirm(props: ConfirmProps) {
         {props.title}
       </Text>
       <Scroll class="min-h-[1.657rem] shrink gap-2 data-hidden:hidden" data-hidden={props.body === ""}>
-        <Text class={`text-[1.143rem] leading-normal text-fg/74 m-0`}>
+        <Text class={`text-[1.143rem] leading-normal text-fg-muted m-0`}>
           {props.body}
         </Text>
       </Scroll>

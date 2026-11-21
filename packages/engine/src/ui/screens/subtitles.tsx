@@ -1,4 +1,4 @@
-import { For, Show, Text, View, createMemo } from "@origingame/engine/ui";
+import { For, Show, Text, View, createMemo, packClass } from "@origingame/engine/ui";
 
 export interface SubtitlesProps {
   /** The game's own lines, oldest first, each { id, speaker, text }; the game drops a line when it is done. */
@@ -20,14 +20,14 @@ export function Subtitles(props: SubtitlesProps) {
   return (
     <Show when={all().length > 0}>
       <View class="absolute inset-0 justify-end items-center pt-12 pb-[calc(env(hud-inset-bottom)+48px)] pl-[calc(env(hud-inset-left)+24px)] pr-[calc(env(hud-inset-right)+24px)]" role="log" live="polite">
-        <View class="items-center gap-2 max-w-240 py-6 px-12 bg-shade-deep/55 compact:px-4">
+        <View class={`items-center gap-2 max-w-240 py-6 px-12 bg-glass compact:px-4 ${packClass("Plate", "frame")}`}>
           <For each={all()} key={(l) => l.id}>
             {(l, i) => (
               <View class="group/line items-center gap-0.5" data-past={i() < all().length - 1}>
                 <Show when={l().speaker}>
                   <Text class="text-sm font-bold uppercase tracking-wide text-gold text-shadow-xs text-shadow-bg/80">{l().speaker}</Text>
                 </Show>
-                <Text class="text-2xl font-semibold leading-snug text-center text-white text-shadow-sm text-shadow-bg/90 group-data-past/line:text-sm compact:text-xl">{l().text}</Text>
+                <Text class="text-2xl font-semibold leading-snug text-center text-fg text-shadow-sm text-shadow-bg/90 group-data-past/line:text-sm compact:text-xl">{l().text}</Text>
               </View>
             )}
           </For>
