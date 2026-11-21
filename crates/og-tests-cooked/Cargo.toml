@@ -15,6 +15,8 @@ og-tests = { path = "../og-tests" }
 og-render = { path = "../og-render" }
 og-cook = { path = "../og-cook" }
 og-anim = { path = "../og-anim" }
+# plant-scatter-autumn's leaf year.
+og-env = { path = "../og-env" }
 # ui-rive plays its converted artboards with og-ui's Rive player.
 og-ui = { path = "../og-ui" }
 glam = { workspace = true }

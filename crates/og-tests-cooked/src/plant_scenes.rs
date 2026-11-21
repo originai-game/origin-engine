@@ -539,6 +539,149 @@ fn hill() -> TerrainData {
 }
 
 /// `plant-scatter` ([module docs](self)).
+/// The days of `season_scatter_scene`'s temperate year: the leaves bud
+/// on day 100, open over 21 days, turn 190 days later over 18 and fall
+/// from 10 to 38 days after the turn starts.
+const LEAF_BUD: f32 = 100.0;
+const LEAF_GROWING: f32 = 190.0;
+
+/// `plant-scatter` on `day` of a temperate og.Season year (drawn by every
+/// tier): `plant-scatter-spring` (day 122, an oak's leaves half open:
+/// oaks run 10 days late),
+/// `-summer` (200, whole), `-autumn` (314, turned and half fallen) and
+/// `-winter` (350, bare), on the copies, their levels and their cards.
+pub fn season_scatter_scene(day: f32) -> Result<RenderScene, String> {
+    let mut scene = scatter_scene()?;
+    scene.atmosphere.leaves = Some(og_render::foliage::LeafCalendar {
+        year: og_env::season::LeafYear::Seasonal {
+            bud: LEAF_BUD,
+            growing: LEAF_GROWING,
+            opening: 21.0,
+            turning: 18.0,
+            fall: [10.0, 38.0],
+        },
+        day,
+    });
+    Ok(scene)
+}
+
+/// The days `season_scatter_scene` draws its four seasons on.
+pub const SEASON_DAYS: [f32; 4] = [
+    LEAF_BUD + 22.0,
+    200.0,
+    LEAF_BUD + LEAF_GROWING + 24.0,
+    LEAF_BUD + LEAF_GROWING + 60.0,
+];
+
+/// Where the fade scenes stand their three trees, and the share of the
+/// new level each has drawn (og-runtime's level cross-fade halfway along:
+/// the new level revealed by `t`, the old one fading out by `1 - t`).
+const FADE_AT: [(Vec3, f32); 3] = [
+    (Vec3::new(-8.0, 0.0, 0.0), 0.25),
+    (Vec3::new(0.0, 0.0, -1.0), 0.5),
+    (Vec3::new(8.0, 0.0, 0.0), 0.75),
+];
+
+/// One cross-fading instance's look (og-runtime's `levels` pair).
+fn fading(reveal: f32, fade_out: bool) -> og_render::InstanceFx {
+    og_render::InstanceFx {
+        reveal,
+        fade_out,
+        ..og_render::InstanceFx::NONE
+    }
+}
+
+/// Adds `parts` at `at` with the look `fx`.
+fn add_faded(
+    scene: &mut RenderScene,
+    parts: &[(MeshHandle, MaterialHandle, Mat4)],
+    at: Mat4,
+    fx: og_render::InstanceFx,
+) {
+    for &(mesh, material, local) in parts {
+        scene.add_instance(mesh, material, at * local);
+        scene.objects.instances.last_mut().expect("added").fx = fx;
+    }
+}
+
+/// A plant's parts at its level `k` (0 the full mesh), each part's own
+/// mesh and material where it has the level.
+fn level_parts(p: &Plant, k: usize) -> Vec<(MeshHandle, MaterialHandle, Mat4)> {
+    p.parts
+        .iter()
+        .enumerate()
+        .map(|(i, &(mesh, material, local))| match k.checked_sub(1) {
+            None => (mesh, material, local),
+            Some(l) => {
+                let m = p.levels[i][l].map_or(mesh, |x| x.0);
+                (m, p.level_materials[i][l].unwrap_or(material), local)
+            }
+        })
+        .collect()
+}
+
+/// `plant-lod-fade`: three oaks in the glade caught as their level turns
+/// from the full mesh to its first coarser level, a quarter, half and
+/// three quarters of the way, by the one dither (common.wgsl dither_cut).
+pub fn lod_fade_scene() -> Result<RenderScene, String> {
+    let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
+    let mut scene = RenderScene::new();
+    glade(&mut scene, Vec3::new(0.5, 0.7, 0.45), 60.0, false);
+    let oak = plant(&mut scene, &bundle, "oak")?;
+    let (full, coarse) = (level_parts(&oak, 0), level_parts(&oak, 1));
+    for (at, t) in FADE_AT {
+        let m = Mat4::from_translation(at);
+        add_faded(&mut scene, &coarse, m, fading(t, false));
+        add_faded(&mut scene, &full, m, fading(1.0 - t, true));
+    }
+    scene.frame.camera = fade_camera(Vec3::new(0.0, 2.2, 26.0), 50.0);
+    Ok(scene)
+}
+
+/// `reveal-fade`: the kit's props a quarter, half and three quarters
+/// revealed (a streamed model fading in), and before them a column
+/// cross-fading against a copy of itself half way, as an HLOD proxy
+/// cross-fades with its members: the pair draws each pixel once.
+pub fn reveal_fade_scene() -> Result<RenderScene, String> {
+    use og_tests::kit;
+    let mut scene = RenderScene::new();
+    glade(&mut scene, Vec3::new(0.5, 0.7, 0.45), 60.0, false);
+    let column = kit::prop(&mut scene, "column");
+    let boulder = kit::prop(&mut scene, "boulder");
+    let faded = |scene: &mut RenderScene, from: usize, fx: og_render::InstanceFx| {
+        for inst in &mut scene.objects.instances[from..] {
+            inst.fx = fx;
+        }
+    };
+    for (at, t) in FADE_AT {
+        let n = scene.objects.instances.len();
+        column.place(&mut scene, at, 0.4, 6.0);
+        boulder.place(&mut scene, at + Vec3::new(2.2, 0.0, 2.0), 1.3, 1.4);
+        faded(&mut scene, n, fading(t, false));
+    }
+    let at = Vec3::new(-4.0, 0.0, 8.0);
+    let n = scene.objects.instances.len();
+    column.place(&mut scene, at, 1.1, 4.0);
+    faded(&mut scene, n, fading(0.5, false));
+    let n = scene.objects.instances.len();
+    column.place(&mut scene, at, 1.1, 4.0);
+    faded(&mut scene, n, fading(0.5, true));
+    scene.frame.camera = fade_camera(Vec3::new(0.0, 2.2, 24.0), 50.0);
+    Ok(scene)
+}
+
+/// The fade scenes' camera at `position`, looking at the trees' middle.
+fn fade_camera(position: Vec3, fov_y_degrees: f32) -> Camera {
+    Camera {
+        position,
+        target: Vec3::new(0.0, 4.5, 0.0),
+        far: 4000.0,
+        projection: Projection::Perspective { fov_y_degrees },
+        exposure: og_render::Exposure::linear(0.9),
+        ..Default::default()
+    }
+}
+
 pub fn scatter_scene() -> Result<RenderScene, String> {
     let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
     use og_tests::kit;

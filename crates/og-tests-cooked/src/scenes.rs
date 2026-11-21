@@ -30,6 +30,12 @@ pub const NATIVE_SCENES: &[&str] = &[
     "plant-grown",
     "plant-kinds",
     "plant-scatter",
+    "plant-scatter-spring",
+    "plant-scatter-summer",
+    "plant-scatter-autumn",
+    "plant-scatter-winter",
+    "plant-lod-fade",
+    "reveal-fade",
     "plant-scatter-switch",
     "plant-scatter-toon",
     "ui-vector",
@@ -128,6 +134,40 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "plant-scatter" => |g, _| {
             g.scene = crate::plant_scenes::scatter_scene()?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "plant-scatter-spring" => |g, _| {
+            g.scene =
+                crate::plant_scenes::season_scatter_scene(crate::plant_scenes::SEASON_DAYS[0])?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "plant-scatter-summer" => |g, _| {
+            g.scene =
+                crate::plant_scenes::season_scatter_scene(crate::plant_scenes::SEASON_DAYS[1])?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "plant-scatter-autumn" => |g, _| {
+            g.scene =
+                crate::plant_scenes::season_scatter_scene(crate::plant_scenes::SEASON_DAYS[2])?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "plant-scatter-winter" => |g, _| {
+            g.scene =
+                crate::plant_scenes::season_scatter_scene(crate::plant_scenes::SEASON_DAYS[3])?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "plant-lod-fade" => |g, _| {
+            g.scene = crate::plant_scenes::lod_fade_scene()?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "reveal-fade" => |g, _| {
+            g.scene = crate::plant_scenes::reveal_fade_scene()?;
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]
