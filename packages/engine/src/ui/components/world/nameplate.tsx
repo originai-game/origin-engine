@@ -117,7 +117,7 @@ export function Nameplate(props: NameplateProps) {
       <Show when={health() >= 0 && !props.dead}>
         <View class="relative flex-row items-center gap-x-[0.357rem]">
           <View
-            class={`relative h-2 w-[8.286rem] bg-tile group-data-boss:h-[0.714rem] group-data-boss:w-[14.286rem] group-data-compact:h-[0.429rem] group-data-compact:w-[4.143rem] ${props.targeted ? (elite() ? "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0px_2.5px_#ffd23fb3]" : "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0.714rem_#ffffff59]") : elite() ? "shadow-[0px_0px_0px_1px_#ffd23f,0px_0.143rem_0.429rem_#00000080]" : "shadow-[0px_0px_0px_1px_#ffffff47,0px_0.143rem_0.429rem_#00000080]"}`}
+            class={`relative h-2 w-[8.286rem] bg-track group-data-boss:h-[0.714rem] group-data-boss:w-[14.286rem] group-data-compact:h-[0.429rem] group-data-compact:w-[4.143rem] ${props.targeted ? (elite() ? "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0px_2.5px_#ffd23fb3]" : "shadow-[0px_0px_0px_1.5px_#ffffff,0px_0px_0.714rem_#ffffff59]") : elite() ? "shadow-[0px_0px_0px_1px_#ffd23f,0px_0.143rem_0.429rem_#00000080]" : "shadow-[0px_0px_0px_1px_#ffffff47,0px_0.143rem_0.429rem_#00000080]"}`}
             role="meter"
             label={t("world.nameplate.health")}
             valueMin={0}
@@ -159,7 +159,7 @@ export function Nameplate(props: NameplateProps) {
               <Text class="shrink-0 tracking-normal tabular-nums text-fg">{castTime()}</Text>
             </Show>
           </View>
-          <View class="relative h-[0.357rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffb5478c] group-data-state-locked:shadow-[0px_0px_0px_1px_#c6c9d499] group-data-state-interrupted:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.714rem_#ff4d5ecc]">
+          <View class="relative h-[0.357rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffb5478c] group-data-state-locked:shadow-[0px_0px_0px_1px_#c6c9d499] group-data-state-interrupted:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.714rem_#ff4d5ecc]">
             <View class="absolute left-0 top-0 bottom-0 bg-linear-to-r from-warn/45 via-warn via-80% to-white shadow-[0px_0px_0.571rem_#ffb547] group-data-state-locked:bg-linear-to-r group-data-state-locked:from-[#c6c9d459] group-data-state-locked:via-[#dde0ea] group-data-state-locked:via-85% group-data-state-locked:to-white group-data-state-locked:shadow-none group-data-state-interrupted:bg-danger group-data-state-interrupted:shadow-none" style={{ width: `${castFill() * 100}%` }} />
           </View>
         </View>

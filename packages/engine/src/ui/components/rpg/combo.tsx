@@ -37,7 +37,7 @@ export function RpgCombo(props: RpgComboProps) {
         </View>
         <Show when={(props.remaining ?? -1) >= 0}>
           <View
-            class={`w-[11.429rem] max-w-full h-[0.429rem] mt-[0.429rem] overflow-hidden skew-x-[-22deg] bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_4px_#00000073] compact:w-[7.857rem] compact:h-[0.357rem] compact:mt-[0.286rem]`}
+            class={`w-[11.429rem] max-w-full h-[0.429rem] mt-[0.429rem] overflow-hidden skew-x-[-22deg] bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_4px_#00000073] compact:w-[7.857rem] compact:h-[0.357rem] compact:mt-[0.286rem]`}
           >
             <View
               class={`h-full bg-[#38e8ff] bg-linear-to-b from-white/55 to-transparent to-42% shadow-[2px_0px_10px_#38e8ffbf]`}

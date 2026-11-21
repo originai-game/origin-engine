@@ -82,7 +82,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
                 </View>
               </View>
               <Show when={(m().shieldMax ?? 0) > 0}>
-                <View class="relative self-center w-full h-[0.429rem] compact:h-[0.286rem] overflow-hidden -skew-x-[22deg] bg-tile shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]">
+                <View class="relative self-center w-full h-[0.429rem] compact:h-[0.286rem] overflow-hidden -skew-x-[22deg] bg-track shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]">
                   <View class="absolute left-0 top-0 h-full bg-[rgb(79_216_255)] shadow-[0.143rem_0px_0.714rem_rgb(79_216_255/0.8)]" style={{ width: `${shieldShare() * 100}%` }}>
                     <View class="absolute left-0 right-0 top-0 h-[42%] bg-linear-to-b from-white/55 to-transparent" />
                   </View>
@@ -94,7 +94,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
                 </View>
               </Show>
               <View
-                class="relative self-center w-full h-[0.429rem] compact:h-[0.286rem] overflow-hidden -skew-x-[22deg] bg-tile shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]"
+                class="relative self-center w-full h-[0.429rem] compact:h-[0.286rem] overflow-hidden -skew-x-[22deg] bg-track shadow-[0px_0px_0px_1px_rgb(255_255_255/0.22),inset_0px_1px_0px_0px_rgb(255_255_255/0.14),0px_0.143rem_0.286rem_rgb(0_0_0/0.45)]"
                 role="meter"
                 label={t("shooter.vitals.health")}
                 valueMin={0}

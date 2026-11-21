@@ -42,7 +42,7 @@ export function HudBar(props: HudBarProps) {
   };
   return (
     <View
-      class={`group/bar relative w-full h-[0.429rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] data-low:shadow-[0px_0px_0px_1px_#de2634,0px_0px_0.857rem_#de2634b3] data-low:animate-pulse`}
+      class={`group/bar relative w-full h-[0.429rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] data-low:shadow-[0px_0px_0px_1px_#de2634,0px_0px_0.857rem_#de2634b3] data-low:animate-pulse`}
       role="meter"
       label={props.name != "" && props.name != undefined ? props.name : (props.kind ?? "health") == "mana" ? t("hud.bar.mana") : (props.kind ?? "health") == "stamina" ? t("hud.bar.stamina") : (props.kind ?? "health") == "shield" ? t("hud.bar.shield") : (props.kind ?? "health") == "xp" ? t("hud.bar.xp") : t("hud.bar.health")}
       valueMin={0}

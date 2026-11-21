@@ -74,7 +74,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
           </View>
         </View>
         <View class="items-center gap-[1.286rem] compact:items-stretch compact:flex-col-reverse compact:gap-[0.857rem]">
-          <View class={`group/bar grow shrink h-[0.857rem] bg-tile shadow-sunk gap-2 overflow-hidden compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-full`} role="progressbar" label={props.place} valueMin={0} valueMax={1} valueNow={props.progress} data-ready={props.ready === true}>
+          <View class={`group/bar grow shrink h-[0.857rem] bg-track shadow-sunk gap-2 overflow-hidden compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-full`} role="progressbar" label={props.place} valueMin={0} valueMax={1} valueNow={props.progress} data-ready={props.ready === true}>
             <View class={`absolute top-0 left-0 bg-linear-to-r from-[#38e8ff8c] to-[#38e8ff] h-full shadow-[0px_0px_16px_#38e8ff99,inset_-3.424px_0px_0px_#ffffff] duration-400 group-data-ready/bar:shadow-[0px_0px_16px_#38e8ff99]`} style={{ width: `${(100 * (props.progress <= 0 ? 0 : props.progress >= 1 ? 1 : props.progress))}%` }} />
           </View>
           <View class="flex-row items-center gap-y-2 gap-x-[0.857rem] compact:flex-wrap">

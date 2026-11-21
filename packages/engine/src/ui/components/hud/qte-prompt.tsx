@@ -74,12 +74,12 @@ export function QtePrompt(props: QtePromptProps) {
         {state === "success" ? t("hud.qte-prompt.success") : state === "failure" ? t("hud.qte-prompt.failure") : state === "expired" ? t("hud.qte-prompt.expired") : state === "waiting" ? t("hud.qte-prompt.waiting") : props.disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}
       </Text>
       <Text class="text-caption text-fg-muted text-shadow-xs">{t("hud.qte-prompt.time")}</Text>
-      <View class="relative w-full h-[0.571rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]" role="progressbar" label={t("hud.qte-prompt.time")} valueMin={0} valueMax={100} valueNow={Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}>
+      <View class="relative w-full h-[0.571rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]" role="progressbar" label={t("hud.qte-prompt.time")} valueMin={0} valueMax={100} valueNow={Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}>
         <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-300 ease-out" style={{ width: `${Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}%` }} />
       </View>
       <Show when={(props.mode ?? "press") === "mash"}>
         <Text class="text-caption text-fg-muted text-shadow-xs">{t("hud.qte-prompt.progress")}</Text>
-        <View class="relative w-full h-[0.571rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]" role="progressbar" label={t("hud.qte-prompt.progress")} valueMin={0} valueMax={100} valueNow={Math.min(Math.max(props.progress ?? 0, 0), 1) * 100}>
+        <View class="relative w-full h-[0.571rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]" role="progressbar" label={t("hud.qte-prompt.progress")} valueMin={0} valueMax={100} valueNow={Math.min(Math.max(props.progress ?? 0, 0), 1) * 100}>
           <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-300 ease-out" style={{ width: `${Math.min(Math.max(props.progress ?? 0, 0), 1) * 100}%` }} />
         </View>
       </Show>

@@ -54,7 +54,7 @@ export function CardDeckList(props: CardDeckListProps) {
           <Text class="whitespace-nowrap text-[18.24px] font-bold text-fg group-data-over/size:text-danger">
             {t("card.deck.count", { count: props.total, limit: props.limit })}
           </Text>
-          <View class="col-span-full h-2 bg-tile shadow-sunk overflow-hidden" role="meter" label={t("card.deck.size")} valueText={t("card.deck.count", { count: props.total, limit: props.limit })}>
+          <View class="col-span-full h-2 bg-track shadow-sunk overflow-hidden" role="meter" label={t("card.deck.size")} valueText={t("card.deck.count", { count: props.total, limit: props.limit })}>
             <View class="absolute left-0 bg-[#38e8ff] inset-y-0 data-tone-danger:text-danger data-tone-danger:bg-none data-tone-danger:bg-danger" data-tone-danger={((props.total > props.limit ? 'danger' : '') === 'danger') || ((props.total > props.limit ? 'danger' : '') === "danger")} style={{ width: `${(100 * (props.limit ? (props.total > props.limit ? 1 : props.total / props.limit) : 0))}%` }} />
           </View>
         </View>

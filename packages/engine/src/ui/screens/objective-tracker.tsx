@@ -31,7 +31,7 @@ export function ObjectiveTracker(props: ObjectiveTrackerProps) {
               </Text>
             </View>
             <Show when={!o().done}>
-              <View class={`bg-tile shadow-sunk h-[0.357rem] ml-[1.429rem] rounded-control overflow-hidden`}>
+              <View class={`bg-track shadow-sunk h-[0.357rem] ml-[1.429rem] rounded-control overflow-hidden`}>
                 <View class={`bg-gold h-full`} style={{ width: `${(100 * (o().progress))}%` }} />
                 <Show when={o().steps > 1}>
                   <View class="absolute inset-0" />

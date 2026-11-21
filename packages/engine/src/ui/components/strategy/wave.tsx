@@ -76,7 +76,7 @@ export function StrategyWave(props: StrategyWaveProps) {
                 {formatDuration(next())}
               </Text>
               <Show when={props.nextTotal > 0}>
-                <View class={`relative flex-1 min-w-[5.486rem] compact:min-w-[3.429rem] h-[0.429rem] overflow-hidden bg-tile shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]`}>
+                <View class={`relative flex-1 min-w-[5.486rem] compact:min-w-[3.429rem] h-[0.429rem] overflow-hidden bg-track shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]`}>
                   <View class={`absolute inset-y-0 left-0 bg-danger bg-linear-to-b from-white/40 to-transparent to-42%`} style={{ width: `${(next() >= props.nextTotal ? 1 : next() / props.nextTotal) * 100}%` }} />
                 </View>
               </Show>

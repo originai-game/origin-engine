@@ -108,7 +108,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
         </View>
       </View>
       <Show when={props.maxLevel > 0}>
-        <View class={`bg-tile shadow-sunk h-1 rounded-capsule`} style={{ width: `${((12 * (props.maxLevel)) + -4)}px` }}>
+        <View class={`bg-track shadow-sunk h-1 rounded-capsule`} style={{ width: `${((12 * (props.maxLevel)) + -4)}px` }}>
           <View class={`bg-gold h-1`} style={{ width: `${((12 * (props.level)) + -4)}px` }} />
         </View>
       </Show>

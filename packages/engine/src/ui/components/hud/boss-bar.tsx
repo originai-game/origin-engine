@@ -93,7 +93,7 @@ export function BossBar(props: BossBarProps) {
       <Show when={props.loading} fallback={
         <>
           <View
-            class={`group/health relative w-full h-[1rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] data-critical:shadow-[0px_0px_0px_1px_#ff9599,0px_0px_0.857rem_#ff9599b3] data-critical:animate-pulse compact:h-[0.643rem]`}
+            class={`group/health relative w-full h-[1rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] data-critical:shadow-[0px_0px_0px_1px_#ff9599,0px_0px_0.857rem_#ff9599b3] data-critical:animate-pulse compact:h-[0.643rem]`}
             role="meter"
             label={t("hud.boss-bar.health")}
             valueMin={0}
@@ -125,7 +125,7 @@ export function BossBar(props: BossBarProps) {
               <View class={`shrink min-w-0 flex-row items-center gap-x-[0.286rem]`}>
                 <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 text-shadow-2xs`}>{t("hud.boss-bar.stagger")}</Text>
                 <View
-                  class={`relative w-[12.143rem] min-w-[2.857rem] h-[0.571rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] compact:h-[0.357rem]`}
+                  class={`relative w-[12.143rem] min-w-[2.857rem] h-[0.571rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] compact:h-[0.357rem]`}
                   role="meter"
                   label={t("hud.boss-bar.stagger")}
                   valueMin={0}

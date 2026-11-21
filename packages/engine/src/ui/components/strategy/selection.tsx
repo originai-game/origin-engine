@@ -59,7 +59,7 @@ export function StrategySelection(props: StrategySelectionProps) {
           </View>
           <Show when={(props.healthMax ?? 1) > 0}>
             <View
-              class={`group/health relative h-2 compact:h-[0.357rem] overflow-hidden bg-tile shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]`}
+              class={`group/health relative h-2 compact:h-[0.357rem] overflow-hidden bg-track shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]`}
               role="meter"
               label={t("strategy.selection.health")}
               valueMin={0}
@@ -146,7 +146,7 @@ export function StrategySelection(props: StrategySelectionProps) {
                       </Text>
                     </Show>
                     <View
-                      class={`group/meter absolute left-[0.214rem] right-[0.214rem] bottom-[0.214rem] h-[0.214rem] overflow-hidden bg-tile`}
+                      class={`group/meter absolute left-[0.214rem] right-[0.214rem] bottom-[0.214rem] h-[0.214rem] overflow-hidden bg-track`}
                       data-hurt={u().healthMax > 0 && u().health / u().healthMax <= 0.6 && u().health / u().healthMax > 0.3}
                       data-low={u().healthMax > 0 && u().health / u().healthMax <= 0.3}
                     >

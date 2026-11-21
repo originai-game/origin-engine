@@ -173,7 +173,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
               {props.weight}
             </Text>
           </View>
-          <View class={`bg-tile shadow-sunk h-[0.714rem] mx-1 rounded-capsule data-over:shadow-[0px_0px_0px_1px_#ffa53d,0px_0px_13.712px_#ffa53d99]`} role="meter" label={t("rpg.backpack.weight")} valueText={props.weight} data-over={props.load > 1}>
+          <View class={`bg-track shadow-sunk h-[0.714rem] mx-1 rounded-capsule data-over:shadow-[0px_0px_0px_1px_#ffa53d,0px_0px_13.712px_#ffa53d99]`} role="meter" label={t("rpg.backpack.weight")} valueText={props.weight} data-over={props.load > 1}>
             <View class={`bg-[#38e8ff] absolute left-0 inset-y-0 data-over:bg-none data-over:bg-warn`} data-over={props.load > 1} style={{ width: `${(100 * (props.load > 1 ? 1 : props.load))}%` }} />
           </View>
           <Show when={props.load > 1}>

@@ -92,7 +92,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                     <Show when={entry().kind === "toggle"}>
                       <View class="group/switch min-h-16 text-[1.286rem] grow shrink text-fg/74 py-1 px-4 compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
                         <Text>{entry().name}</Text>
-                        <View class="ml-auto relative h-4 w-7 rounded-capsule bg-tile shadow-[inset_0px_0px_0px_1px_#4e586c]">
+                        <View class="ml-auto relative h-4 w-7 rounded-capsule bg-track shadow-[inset_0px_0px_0px_1px_#4e586c]">
                           <View class="absolute top-0.5 left-0.5 size-3 rounded-capsule bg-fg-muted transition-transform duration-200 ease-out group-data-checked/switch:translate-x-3 group-data-checked/switch:bg-accent" />
                         </View>
                       </View>
@@ -117,7 +117,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                             else if (e.key === "ArrowLeft" || e.key === "ArrowDown") props.onChange?.(e, entry().id, Math.max(entry().min ?? 0, now - step));
                           }}
                         >
-                          <View class="relative grow shrink basis-0 h-1 rounded-capsule bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]" onPointerDown={dragged} onPointerMove={dragged}>
+                          <View class="relative grow shrink basis-0 h-1 rounded-capsule bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]" onPointerDown={dragged} onPointerMove={dragged}>
                             <View class="absolute left-0 top-0 h-full rounded-capsule bg-accent" style={{ width: `${at}%` }} />
                             <View class="absolute top-0 size-2.5 -translate-y-1 rounded-capsule bg-accent shadow-panel" style={{ left: `calc(${at}% - 5px)` }} />
                           </View>

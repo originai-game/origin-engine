@@ -83,7 +83,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
         </View>
         <Show when={shieldMax() > 0}>
           <View
-            class={`relative w-full h-[0.643rem] compact:h-[0.429rem] overflow-hidden -skew-x-[22deg] bg-tile ${rim}`}
+            class={`relative w-full h-[0.643rem] compact:h-[0.429rem] overflow-hidden -skew-x-[22deg] bg-track ${rim}`}
             role="meter"
             label={t("shooter.vitals.shield")}
             valueMin={0}
@@ -101,7 +101,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
           </View>
         </Show>
         <View
-          class={`relative w-full h-[1.143rem] compact:h-[0.786rem] overflow-hidden -skew-x-[22deg] bg-tile ${rim} group-data-low/vitals:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.857rem_rgb(255_77_94/0.7)] group-data-low/vitals:animate-pulse`}
+          class={`relative w-full h-[1.143rem] compact:h-[0.786rem] overflow-hidden -skew-x-[22deg] bg-track ${rim} group-data-low/vitals:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_0.857rem_rgb(255_77_94/0.7)] group-data-low/vitals:animate-pulse`}
           role="meter"
           label={t("shooter.vitals.health")}
           valueMin={0}

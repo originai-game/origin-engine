@@ -77,7 +77,7 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
                         <Show when={!g().locked && g().cycle >= 0} fallback={
                             <Text class="grow shrink basis-0" />
                         }>
-                          <View class={`grow shrink basis-0 min-w-12 bg-tile shadow-sunk h-[0.571rem] rounded-capsule overflow-hidden`} role="progressbar" label={t("idle.generators.cycle")} valueMin={0} valueMax={100} valueNow={g().cycle * 100} valueText={g().cycleText ? g().cycleText : `${formatNumber((g().cycle) * 100, { decimals: 0 })}%`}>
+                          <View class={`grow shrink basis-0 min-w-12 bg-track shadow-sunk h-[0.571rem] rounded-capsule overflow-hidden`} role="progressbar" label={t("idle.generators.cycle")} valueMin={0} valueMax={100} valueNow={g().cycle * 100} valueText={g().cycleText ? g().cycleText : `${formatNumber((g().cycle) * 100, { decimals: 0 })}%`}>
                             <View class={`bg-[#38e8ff] h-full`} style={{ width: `${(100 * (g().cycle > 1 ? 1 : g().cycle))}%` }} />
                           </View>
                           <Text class={`whitespace-nowrap text-[0.857rem] font-bold tabular-nums text-fg/78`}>

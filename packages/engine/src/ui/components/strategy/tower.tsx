@@ -97,7 +97,7 @@ export function StrategyTower(props: StrategyTowerProps) {
                   <Text class={`shrink text-xs font-bold tabular-nums whitespace-nowrap text-fg-muted`}>
                     {t("strategy.tower.tier", { tier: p().tier, tiers: p().tiers })}
                   </Text>
-                  <View class="relative flex-1 min-w-0 h-1 overflow-hidden bg-tile shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]">
+                  <View class="relative flex-1 min-w-0 h-1 overflow-hidden bg-track shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]">
                     <View class={`absolute inset-y-0 left-0 bg-[#38e8ff] bg-linear-to-b from-white/55 to-transparent to-42% group-data-maxed/path:from-white/50 group-data-maxed/path:to-gold`} style={{ width: `${(p().tiers > 0 ? p().tier / p().tiers : 0) * 100}%` }} />
                   </View>
                 </View>

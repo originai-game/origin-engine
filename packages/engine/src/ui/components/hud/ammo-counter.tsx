@@ -102,7 +102,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
       <Show when={(props.reloading ?? -1) >= 0}>
         <View class="flex-row items-center gap-1 w-full">
           <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap text-shadow-2xs text-stroke-3 text-stroke-bg">{t("shooter.ammo.reloading")}</Text>
-          <View class="flex-1 h-[0.286rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]">
+          <View class="flex-1 h-[0.286rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]">
             <View class="h-full bg-hud transition-layout duration-180 ease-out" style={{ width: `${Math.min(props.reloading ?? 0, 1) * 100}%` }} />
           </View>
         </View>

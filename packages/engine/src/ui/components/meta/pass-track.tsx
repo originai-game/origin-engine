@@ -87,7 +87,7 @@ export function PassTrack(props: PassTrackProps) {
                             {props.progressText || `${formatNumber((props.progress ?? 0) * 100, { decimals: 0 })}%`}
                           </Text>
                         </View>
-                        <View class={`bg-tile shadow-sunk w-full h-[0.714rem] mx-1 rounded-capsule`} role="meter" label={t("meta.pass.progress")} valueText={props.progressText || `${formatNumber((props.progress ?? 0) * 100, { decimals: 0 })}%`}>
+                        <View class={`bg-track shadow-sunk w-full h-[0.714rem] mx-1 rounded-capsule`} role="meter" label={t("meta.pass.progress")} valueText={props.progressText || `${formatNumber((props.progress ?? 0) * 100, { decimals: 0 })}%`}>
                           <View class={`bg-[#38e8ff] absolute left-0 inset-y-0`} style={{ width: `${(100 * ((props.progress ?? 0) > 1 ? 1 : (props.progress ?? 0) < 0 ? 0 : (props.progress ?? 0)))}%` }} />
                         </View>
                       </View>

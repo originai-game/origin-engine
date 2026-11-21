@@ -114,7 +114,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
               </View>
               <Show when={(props.progress ?? -1) >= 0}>
                 <View class="flex-row items-center w-full gap-1">
-                  <View class={`grow shrink basis-0 min-w-12 bg-tile shadow-sunk h-[0.714rem] rounded-capsule overflow-hidden`} role="progressbar" label={t("idle.prestige.progress")} valueMin={0} valueMax={100} valueNow={(props.progress ?? -1) * 100} valueText={props.progressText !== '' ? props.progressText : `${formatNumber((props.progress ?? -1) * 100, { decimals: 0 })}%`}>
+                  <View class={`grow shrink basis-0 min-w-12 bg-track shadow-sunk h-[0.714rem] rounded-capsule overflow-hidden`} role="progressbar" label={t("idle.prestige.progress")} valueMin={0} valueMax={100} valueNow={(props.progress ?? -1) * 100} valueText={props.progressText !== '' ? props.progressText : `${formatNumber((props.progress ?? -1) * 100, { decimals: 0 })}%`}>
                     <View class={`bg-[#38e8ff] h-full data-met:bg-none data-met:bg-success`} data-met={props.met === true} style={{ width: `${(100 * ((props.progress ?? -1) > 1 ? 1 : (props.progress ?? -1)))}%` }} />
                   </View>
                   <Text class="max-w-1/2 whitespace-nowrap text-ellipsis text-[0.857rem] font-bold tabular-nums text-fg/78 overflow-hidden">

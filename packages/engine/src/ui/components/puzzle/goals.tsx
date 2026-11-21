@@ -77,7 +77,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
           </View>
           <Show when={(props.progress ?? -1) >= 0}>
             <View class="w-full h-4">
-              <View class={`bg-tile shadow-sunk absolute top-[30%] h-[0.571rem] inset-x-0 rounded-capsule overflow-hidden`}>
+              <View class={`bg-track shadow-sunk absolute top-[30%] h-[0.571rem] inset-x-0 rounded-capsule overflow-hidden`}>
                 <View class={`bg-gold h-full`} style={{ width: `${(100 * ((props.progress ?? -1) > 1 ? 1 : (props.progress ?? -1)))}%` }} />
               </View>
               <For each={props.stars}>

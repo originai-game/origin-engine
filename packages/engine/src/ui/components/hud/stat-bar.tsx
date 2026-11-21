@@ -81,7 +81,7 @@ export function StatBar(props: StatBarProps) {
             <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted text-shadow-2xs">{props.label}</Text>
           </View>
         </Show>
-        <View class="relative min-w-0 flex-1 h-[1.286rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] data-critical:shadow-[0px_0px_0px_1px_#de2634,0px_0px_0.857rem_#de2634b3] data-critical:animate-pulse">
+        <View class="relative min-w-0 flex-1 h-[1.286rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073] data-critical:shadow-[0px_0px_0px_1px_#de2634,0px_0px_0.857rem_#de2634b3] data-critical:animate-pulse">
           <View class="absolute left-0 top-0 h-full bg-fg-muted/80" style={{ width: `${Math.min(Math.max((props.recoverable ?? 0) / max(), fraction()), 1) * 100}%` }} />
           <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold/15 to-gold/85" style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.heal ?? 0) > 0}>

@@ -55,7 +55,7 @@ export function ProgressBar(props: ProgressBarProps) {
           </Show>
         </View>
       </Show>
-      <View class="relative w-full h-[0.571rem] overflow-hidden bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]">
+      <View class="relative w-full h-[0.571rem] overflow-hidden bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24,0px_0.143rem_0.286rem_#00000073]">
         <Show when={!props.indeterminate}>
           <View
             class={`absolute left-0 top-0 h-full opacity-25 bg-accent group-data-tone-success/progress:bg-success group-data-tone-warn/progress:bg-warn group-data-tone-danger/progress:bg-danger group-data-tone-info/progress:bg-info`}
