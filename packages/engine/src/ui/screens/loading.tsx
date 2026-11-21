@@ -53,7 +53,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
               <View class="w-8 h-[0.143rem] bg-[#38e8ff] shadow-[0px_0px_6.864px_#38e8ff]" />
               <Text class="shrink">{t("screen.loading.entering")}</Text>
             </View>
-            <Text class={`font-display font-bold leading-[1.04] tracking-[-0.01em] text-accent-hover text-shadow-xs text-shadow-bg/55 m-0 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
+            <Text class={`font-display font-bold leading-[1.04] tracking-[-0.01em] text-accent-hover text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 m-0 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
               {props.place}
             </Text>
           </View>
@@ -87,7 +87,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
               </Text>
             </Show>
             <Show when={!(props.ready && props.waits)}>
-              <Text class={`tabular-nums text-fg text-shadow-xs text-shadow-bg/55 min-w-[5.143rem] text-[2.857rem] leading-flat text-end font-bold whitespace-nowrap m-0 data-ready:text-[#38e8ff] compact:ml-auto compact:min-w-0 compact:text-[2rem] short:text-[1.714rem] shrink`} data-ready={props.ready}>
+              <Text class={`tabular-nums text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 min-w-[5.143rem] text-[2.857rem] leading-flat text-end font-bold whitespace-nowrap m-0 data-ready:text-[#38e8ff] compact:ml-auto compact:min-w-0 compact:text-[2rem] short:text-[1.714rem] shrink`} data-ready={props.ready}>
                 {t("screen.loading.Percent", { progress: `${formatNumber((props.progress) * 100, { decimals: 0 })}%` })}
               </Text>
             </Show>

@@ -3,7 +3,7 @@ import { Button } from "../controls/button";
 import "./confirm.en.ogt";
 
 export interface ConfirmProps {
-  /** Shown (written back false when the player dismisses it). */
+  /** Shown; the game writes it false to close (onCancel does on a dismissal). */
   open?: boolean;
   /** Its question, the dialog's heading and accessible name. */
   title: string;
@@ -23,7 +23,8 @@ export interface ConfirmProps {
 
 export function Confirm(props: ConfirmProps) {
   return (
-    <View class="grow shrink basis-0 w-[32.857rem] max-w-full h-auto pt-6 pb-4 text-accent-hover px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4" modal={true} label={props.title} data-danger={props.danger}>
+    <Show when={props.open}>
+      <View class="grow shrink basis-0 w-[32.857rem] max-w-full h-auto pt-6 pb-4 text-accent-hover px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4" modal={true} label={props.title} data-danger={props.danger} onAction={{ back: (e) => props.onCancel?.(e) }}>
       <Show when={props.danger}>
         <View class={`items-center gap-x-2 text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#ff8076]`}>
           <Text class="rotate-45 bg-[#ff8076] size-[0.571rem]" />
@@ -42,11 +43,12 @@ export function Confirm(props: ConfirmProps) {
         <Button class="text-accent-hover bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none grow shrink max-w-full min-h-11 py-2 disabled:border-transparent active:bg-linear-to-b active:from-[#171f30d6] active:to-[#080c16e0] active:bg-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent hover:shadow-[inset_0px_2px_0px_#38e8ff] data-pressed:hover:border-transparent" onPress={(e) => props.onCancel?.(e)}>
           <Text class="whitespace-normal">{props.cancel}</Text>
         </Button>
-        <Button class="rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none grow shrink max-w-full min-h-11 py-2 data-variant-danger:text-danger data-variant-primary:text-accent" onPress={(e) => props.onConfirm?.(e)} data-variant-danger={(props.danger ? "danger" : "primary") === "danger"} data-variant-primary={(props.danger ? "danger" : "primary") === "primary"}>
+        <Button class="rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none grow shrink max-w-full min-h-11 py-2 text-accent data-danger:text-danger" onPress={(e) => props.onConfirm?.(e)}>
           <Text class="whitespace-normal">{props.confirm}</Text>
         </Button>
       </View>
     </View>
+    </Show>
   );
 }
 

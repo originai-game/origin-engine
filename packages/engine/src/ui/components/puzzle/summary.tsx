@@ -1,4 +1,5 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import { StarBar } from "../hud/star-bar";
 import "./puzzle.en.ogt";
 
 export interface PuzzleSummaryProps {
@@ -62,23 +63,7 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
             </For>
           </View>
         </Show>
-        <View class={`items-center flex-col gap-1 w-full`} role="meter" label={t("puzzle.summary.stars", { stars: props.stars, max: (props.maxStars ?? 3) })} valueMin={0} valueMax={(props.scoreMax ?? 1)} valueNow={props.score} valueText={formatNumber(props.score)}>
-          <Text class={`font-display text-[1.714rem] font-bold tabular-nums text-fg whitespace-nowrap`}>
-            {formatNumber(props.score)}
-          </Text>
-          <View class="relative w-56 h-6">
-            <View class="absolute inset-x-3 top-1/2 -translate-y-1/2 h-1.5 bg-tile rounded-capsule overflow-hidden">
-              <View class="h-full bg-gold" style={{ width: `${Math.min(1, props.score / ((props.scoreMax ?? 1) || 1)) * 100}%` }} />
-            </View>
-            <For each={props.thresholds}>
-              {(s) => (
-                <View class="absolute top-0 translate-x-[-50%]" style={{ left: `${(s().at ?? 0) * 100}%` }}>
-                  <Icon class={`size-6 text-fg-subtle data-lit:text-gold`} name="star" data-lit={props.score >= (s().at ?? 0) * (props.scoreMax ?? 1)} />
-                </View>
-              )}
-            </For>
-          </View>
-        </View>
+        <StarBar value={props.score} max={(props.scoreMax ?? 1)} stars={props.thresholds ?? []} label="" valueText="" />
         <Text class={`font-semibold text-[0.857rem] leading-4.5 text-accent-hover/78 whitespace-nowrap tracking-[0.14em] uppercase`}>
           {t("puzzle.summary.stars", { stars: props.stars, max: (props.maxStars ?? 3) })}
         </Text>
