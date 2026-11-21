@@ -39,6 +39,76 @@ pub(crate) struct DrawIds {
     pub grass: Vec<u64>,
 }
 
+/// The owners of one drawn frame's drawables, parallel to its cull record
+/// (og-render's `CullRecord`): kept past the extraction that makes `ids`
+/// again, until the record is read ([`keep_drawn`]).
+#[cfg(not(feature = "publish"))]
+#[derive(Clone, Debug, Default)]
+pub(crate) struct CullIds {
+    frame: u64,
+    /// Per scene instance.
+    instances: Vec<u64>,
+    /// Per skinned instance: the entity its palette was made for.
+    skinned: Vec<u64>,
+    /// `(sprite index, entity)` for og.Sprite rows.
+    sprites: Vec<(u32, u64)>,
+    /// What lays itself out around the camera (terrains, stamps, grass):
+    /// drawn when extracted.
+    laid_out: Vec<u64>,
+    /// Models drawn at a level: those with no instance of their own drew
+    /// as an impostor card or a crowd.
+    levels: Vec<u64>,
+    /// Models an HLOD proxy drew in place of.
+    hlod: Vec<u64>,
+}
+
+#[cfg(not(feature = "publish"))]
+impl CullIds {
+    fn of(rs: &RenderState, frame: u64) -> CullIds {
+        let by_palette: IdMap<u32, u64> =
+            IdMap::from_iter(rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)));
+        #[cfg(not(feature = "profile2d"))]
+        let laid_out = (rs.ids.terrains.iter())
+            .chain(&rs.ids.stamps)
+            .chain(&rs.ids.grass)
+            .copied()
+            .collect();
+        #[cfg(feature = "profile2d")]
+        let laid_out = Vec::new();
+        CullIds {
+            frame,
+            instances: rs.ids.instances.clone(),
+            skinned: (rs.scene.objects.skinned_instances.iter())
+                .map(|s| by_palette.get(&s.palette).copied().unwrap_or(0))
+                .collect(),
+            sprites: rs.ids.sprites.clone(),
+            laid_out,
+            levels: rs.lod_drawn.keys().copied().collect(),
+            hlod: rs.hlod.replaced.keys().copied().collect(),
+        }
+    }
+}
+
+/// Keeps the owners of the frame drawn last ([`CullIds`]) before `ids`
+/// describe another: a probe call's extraction, or a frame whose record
+/// lands frames later (the web's readback).
+#[cfg(not(feature = "publish"))]
+pub(crate) fn keep_drawn(rs: &mut RenderState) {
+    /// As many frames as the renderer keeps waiting for their words.
+    const KEPT: usize = 4;
+    let Some(frame) = rs.drawn_frame.take() else {
+        return;
+    };
+    if rs.cull_ids.iter().any(|i| i.frame == frame) {
+        return;
+    }
+    if rs.cull_ids.len() == KEPT {
+        rs.cull_ids.pop_front();
+    }
+    let ids = CullIds::of(rs, frame);
+    rs.cull_ids.push_back(ids);
+}
+
 pub(crate) struct RuntimeView {
     pub render: Rc<RefCell<RenderState>>,
     #[cfg_attr(feature = "publish", allow(dead_code))]
@@ -67,6 +137,8 @@ impl RuntimeView {
     fn pass(&self, world: &World, describe: bool) -> Option<Pass> {
         let mut rs = self.render.try_borrow_mut().ok()?;
         rs.terrain.settle = true;
+        #[cfg(not(feature = "publish"))]
+        keep_drawn(&mut rs);
         extract(world, &mut rs);
         let (css_w, css_h) = crate::present::fx::viewport(&rs);
         let (fw, fh) = match rs.backend.as_ref().map(|b| b.size()) {
@@ -310,84 +382,83 @@ impl SceneView for RuntimeView {
         })
     }
 
-    /// The main camera's cull (og-render's `cull_record`) of the frame at
-    /// the current tick, per entity: its instances, skinned instances,
-    /// sprites and terrains drawn and culled; a model drawn only as an
-    /// impostor or a crowd counts drawn; one in an HLOD proxy's place
-    /// `hlod`; a shown model whose asset has not loaded `loading`.
+    /// The main camera's cull record of the last frame drawn (og-render's
+    /// `Renderer::cull_record`, what the frame's own culls decided), per
+    /// entity: its instances, skinned instances, sprites and terrains drawn
+    /// and culled; a model drawn only as an impostor or a crowd counts
+    /// drawn; one in an HLOD proxy's place `hlod`; a shown model whose
+    /// asset has not loaded `loading`. `None` without a renderer, or before
+    /// a record answers (the web's first call asks for the next frame's).
     #[cfg(not(feature = "publish"))]
     fn drawn(&self, world: &World) -> Option<Vec<og_probe::Drawn>> {
         use og_probe::DrawReason;
         use og_render::Culled;
         let mut rs = self.render.try_borrow_mut().ok()?;
-        rs.terrain.settle = true;
-        extract(world, &mut rs);
-        let (css_w, css_h) = crate::present::fx::viewport(&rs);
-        let aspect = match rs.backend.as_ref().map(|b| b.size()) {
-            Some((w, h)) if w > 0 && h > 0 => w as f32 / h as f32,
-            _ => css_w / css_h.max(1.0),
+        let record = rs.backend.as_mut()?.cull_record()?;
+        let ids = match rs.cull_ids.iter().find(|i| i.frame == record.frame) {
+            Some(ids) => ids.clone(),
+            None if rs.drawn_frame == Some(record.frame) => CullIds::of(&rs, record.frame),
+            None => return None,
         };
-        let cull = og_render::cull_record(&rs.scene, aspect);
-        // Per entity: drawn, off the layers, outside the view, nothing to draw.
-        let mut tally: std::collections::BTreeMap<u64, [u32; 4]> = Default::default();
+        // Per entity, its drawables by what the cull made of them.
+        const KINDS: usize = Culled::Empty as usize + 1;
+        let mut tally: std::collections::BTreeMap<u64, [u32; KINDS]> = Default::default();
         let mut add = |e: u64, c: Culled| {
             if e != 0 {
                 tally.entry(e).or_default()[c as usize] += 1;
             }
         };
-        for (k, &c) in cull.instances.iter().enumerate() {
-            add(rs.ids.instances.get(k).copied().unwrap_or(0), c);
+        for (&e, &c) in ids.instances.iter().zip(&record.instances) {
+            add(e, c);
         }
-        let by_palette: IdMap<u32, u64> =
-            IdMap::from_iter(rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)));
-        let skinned = &rs.scene.objects.skinned_instances;
-        for (s, &c) in skinned.iter().zip(&cull.skinned) {
-            add(by_palette.get(&s.palette).copied().unwrap_or(0), c);
+        for (&e, &c) in ids.skinned.iter().zip(&record.skinned) {
+            add(e, c);
         }
-        for &(i, e) in &rs.ids.sprites {
-            if let Some(&c) = cull.sprites.get(i as usize) {
+        for &(i, e) in &ids.sprites {
+            if let Some(&c) = record.sprites.get(i as usize) {
                 add(e, c);
             }
         }
-        // A terrain lays itself out around the camera: drawn when extracted.
-        #[cfg(not(feature = "profile2d"))]
-        for &e in rs
-            .ids
-            .terrains
-            .iter()
-            .chain(&rs.ids.stamps)
-            .chain(&rs.ids.grass)
-        {
+        for &e in &ids.laid_out {
             add(e, Culled::Drawn);
         }
         // Models drawn as an impostor card or a crowd: no instance of their own.
-        for &e in rs.lod_drawn.keys() {
-            tally.entry(e).or_insert([1, 0, 0, 0]);
+        for &e in &ids.levels {
+            tally.entry(e).or_insert_with(|| {
+                let mut t = [0; KINDS];
+                t[Culled::Drawn as usize] = 1;
+                t
+            });
         }
-        let verdict = |e: u64, reason: DrawReason, detail: String, t: [u32; 4]| og_probe::Drawn {
+        let verdict = |e: u64, reason: DrawReason, detail: &str, t: [u32; KINDS]| og_probe::Drawn {
             entity: Entity::from_bits(e),
             reason,
-            detail,
+            detail: detail.into(),
             drawn: t[Culled::Drawn as usize],
-            culled: t[Culled::Layer as usize] + t[Culled::OutsideView as usize],
+            culled: t[Culled::Layer as usize]
+                + t[Culled::OutsideView as usize]
+                + t[Culled::Occluded as usize],
         };
         let mut out: Vec<og_probe::Drawn> = Vec::with_capacity(tally.len());
         for (&e, &t) in &tally {
-            let reason = if t[Culled::Drawn as usize] > 0 {
-                DrawReason::Drawn
-            } else if t[Culled::OutsideView as usize] > 0 {
-                DrawReason::OutsideView
-            } else if t[Culled::Layer as usize] > 0 {
-                DrawReason::Layer
-            } else {
-                // Only meshes not loaded or empty.
-                DrawReason::Loading
-            };
-            out.push(verdict(e, reason, String::new(), t));
+            // The first that holds, from what shows to what has nothing.
+            let (reason, detail) = [
+                (Culled::Drawn, DrawReason::Drawn, ""),
+                (Culled::Occluded, DrawReason::Occluded, ""),
+                (Culled::OutsideView, DrawReason::OutsideView, ""),
+                (Culled::Layer, DrawReason::Layer, ""),
+                (Culled::FadingIn, DrawReason::FadingIn, ""),
+                (Culled::Lines, DrawReason::Untracked, "wireframe"),
+            ]
+            .into_iter()
+            .find(|&(c, ..)| t[c as usize] > 0)
+            // Only meshes not loaded or empty.
+            .map_or((DrawReason::Loading, ""), |(_, r, d)| (r, d));
+            out.push(verdict(e, reason, detail, t));
         }
-        for &e in rs.hlod.replaced.keys() {
+        for &e in &ids.hlod {
             if !tally.contains_key(&e) {
-                out.push(verdict(e, DrawReason::Hlod, String::new(), [0; 4]));
+                out.push(verdict(e, DrawReason::Hlod, "", [0; KINDS]));
             }
         }
         // A shown model whose parts have not loaded, or whose textures are
@@ -419,7 +490,7 @@ impl SceneView for RuntimeView {
                 let path = crate::world::assets::index_of(model.asset as f64)
                     .and_then(|i| eng.assets.borrow().entries.get(i).map(|a| a.path.clone()))
                     .unwrap_or_default();
-                out.push(verdict(bits, DrawReason::Loading, path, [0; 4]));
+                out.push(verdict(bits, DrawReason::Loading, &path, [0; KINDS]));
             }
         }
         Some(out)

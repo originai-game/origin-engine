@@ -65,6 +65,7 @@ pub(super) fn faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_
         &[],
         1,
         &eye,
+        None,
     )
     .expect("a frame");
     assert_eq!(
@@ -106,6 +107,7 @@ pub(super) fn faced_sprites_sort_back_to_front_cull_to_the_frustum_and_cast_sun_
         &[],
         1,
         &NO_EYE,
+        None,
     )
     .expect("a frame");
     assert_eq!(f.culled, 0, "no frustum, nothing culled");
@@ -156,6 +158,7 @@ pub(super) fn frame(scene: &RenderScene) -> SpriteFrame {
         &[],
         1,
         &NO_EYE,
+        None,
     )
     .expect("a frame")
 }
@@ -204,7 +207,8 @@ pub(super) fn a_drop_shadow_draws_first_in_its_layer_projected_along_the_sun() {
             None,
             &[],
             1,
-            &NO_EYE
+            &NO_EYE,
+            None,
         )
         .is_err()
     );
@@ -411,7 +415,8 @@ pub(super) fn a_sprite_mesh_is_one_run_in_its_layers_sprite_order() {
             None,
             &[],
             1,
-            &NO_EYE
+            &NO_EYE,
+            None,
         )
         .is_err()
     );
@@ -467,6 +472,7 @@ pub(super) fn particles_simulated_in_compute_draw_their_range_in_layer_order_and
             &[],
             1,
             &NO_EYE,
+            None,
         )
         .expect("a frame")
     };
@@ -505,6 +511,7 @@ pub(super) fn particles_simulated_in_compute_draw_their_range_in_layer_order_and
         &[],
         2,
         &NO_EYE,
+        None,
     )
     .expect("a frame");
     assert!(

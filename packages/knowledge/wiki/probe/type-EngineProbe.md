@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 823</sub>
+<sub>Module `probe` line 825</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>Module `probe` line 828</sub>
+<sub>Module `probe` line 830</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -97,7 +97,7 @@ fn capture {
 }
 ```
 
-<sub>Module `probe` line 833</sub>
+<sub>Module `probe` line 835</sub>
 
 <a id="member-EngineProbe-captureViews"></a>
 
@@ -143,13 +143,13 @@ fn captureViews {
 }
 ```
 
-<sub>Module `probe` line 854</sub>
+<sub>Module `probe` line 856</sub>
 
 <a id="member-EngineProbe-visible"></a>
 
 #### `EngineProbe.visible`
 
-Whether the main camera draws an entity at the current tick and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled. Answers without a renderer too (the cull runs on the CPU over the extracted frame).
+Whether the main camera drew an entity in the last frame drawn and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled, as the frame's own culls decided (occlusion included). Without a renderer nothing is culled: drawables answer untracked.
 
 See `testing §4`.
 
@@ -169,7 +169,7 @@ Binding symbol `og_engine_probe_visible` · publish builds: dropped
 
 ```ogt
 fn visible {
-  doc "Whether the main camera draws an entity at the current tick and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled. Answers without a renderer too (the cull runs on the CPU over the extracted frame)."
+  doc "Whether the main camera drew an entity in the last frame drawn and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled, as the frame's own culls decided (occlusion included). Without a renderer nothing is culled: drawables answer untracked."
   guide "testing §4"
   aliases "why is it not drawn, invisible, not showing, culled, frustum, hidden"
   param id String "The probe id."
@@ -177,7 +177,7 @@ fn visible {
 }
 ```
 
-<sub>Module `probe` line 870</sub>
+<sub>Module `probe` line 872</sub>
 
 <a id="member-EngineProbe-marks"></a>
 
@@ -216,7 +216,7 @@ fn marks {
 }
 ```
 
-<sub>Module `probe` line 877</sub>
+<sub>Module `probe` line 879</sub>
 
 <a id="member-EngineProbe-timeline"></a>
 
@@ -239,7 +239,7 @@ fn timeline {
 }
 ```
 
-<sub>Module `probe` line 887</sub>
+<sub>Module `probe` line 889</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -269,7 +269,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 891</sub>
+<sub>Module `probe` line 893</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -292,7 +292,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 898</sub>
+<sub>Module `probe` line 900</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -315,7 +315,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 902</sub>
+<sub>Module `probe` line 904</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -344,7 +344,7 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 906</sub>
+<sub>Module `probe` line 908</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -374,7 +374,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 912</sub>
+<sub>Module `probe` line 914</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -402,7 +402,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 919</sub>
+<sub>Module `probe` line 921</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -432,7 +432,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 924</sub>
+<sub>Module `probe` line 926</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -455,7 +455,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 931</sub>
+<sub>Module `probe` line 933</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -478,7 +478,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 935</sub>
+<sub>Module `probe` line 937</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -506,7 +506,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 939</sub>
+<sub>Module `probe` line 941</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -529,7 +529,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 944</sub>
+<sub>Module `probe` line 946</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -559,7 +559,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 948</sub>
+<sub>Module `probe` line 950</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -582,7 +582,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 955</sub>
+<sub>Module `probe` line 957</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -616,7 +616,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 959</sub>
+<sub>Module `probe` line 961</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -650,7 +650,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 969</sub>
+<sub>Module `probe` line 971</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -680,4 +680,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 979</sub>
+<sub>Module `probe` line 981</sub>

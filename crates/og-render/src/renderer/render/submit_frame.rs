@@ -112,7 +112,10 @@ impl Renderer {
         }
         self.world.scatter.after_submit();
         // A request covers the frame submitted (instances_stage, the
-        // scatter's cull).
+        // scatter's cull), and with it the cull record's GPU words.
+        if let Some(records) = self.visibility.records.as_mut() {
+            records.submitted(gpu_cull && self.visibility.culling_counts);
+        }
         self.visibility.culling_counts = false;
         if let (Some(t), Some(c)) = (self.gpu_timer.as_mut(), self.clock) {
             t.after_submit(

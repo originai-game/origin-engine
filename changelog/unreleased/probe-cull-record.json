@@ -1,0 +1,16 @@
+{
+  "breaking": [
+    {
+      "member": "probe.visible, dump_entity visible, dump_drawn",
+      "change": "The verdict is the renderer's record of the last frame drawn, written by the culls that drew it (the GPU cull's camera pass with its occlusion test, or the CPU cull on the GL tier), instead of a separate CPU frustum test over a fresh extraction. Without a renderer no cull runs: an entity with a drawing component answers untracked (visible null) instead of drawn, outside_view or layer, and an expect:entity:<id>:visible.* check is unchecked. On the web the record is the newest frame whose readback landed (a frame or two old); the first call after a while answers untracked and asks for the next frame's. An entity in view but behind the occluders answers occluded instead of drawn, one fading in with nothing shown fading_in instead of loading, one whose material is wireframe untracked (detail wireframe) instead of loading, and Visibility.culled counts occluded drawables too.",
+      "fix": "Run the checks that read a verdict with a renderer (og test on a GPU host, og run); call visible again a frame later on the web; accept occluded and fading_in where a test expected drawn or loading for such entities.",
+      "find": ["visible.reason", "\"outside_view\"", "\"loading\"", "dump_drawn", "probe visible"]
+    }
+  ],
+  "added": [
+    {
+      "member": "probe.DrawReason.occluded, probe.DrawReason.fading_in",
+      "summary": "Two reason codes from the frame's own cull: occluded (inside the camera's view, behind what the occluders drew) and fading_in (og.render.reveal, none of it shown yet)."
+    }
+  ]
+}

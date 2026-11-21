@@ -457,6 +457,12 @@ impl RenderBackend for WindowBackend {
     fn gpu_timing_absent(&self) -> Option<&'static str> {
         self.renderer.gpu_timing_absent()
     }
+    fn cull_record(&mut self) -> Option<og_render::CullRecord> {
+        self.renderer.cull_record().cloned()
+    }
+    fn cull_asked(&self) -> Option<u64> {
+        self.renderer.cull_asked()
+    }
     fn read_counts(&mut self) {
         self.renderer.finish_stats(&mut self.stats);
     }

@@ -471,19 +471,21 @@ module probe {
     variant loading "Its model has not loaded yet, or is held back until its textures arrive; detail names the asset."
     variant layer "Every drawable of it is off the camera's layers (og.Camera.layers)."
     variant outside_view "Every drawable of it lies outside the camera's view, past near or far included."
-    variant untracked "It draws through a path the cull record does not follow (particles, lines, text, a tilemap); detail names the component. Whether it shows is not known."
+    variant occluded "A drawable of it is inside the camera's view but behind what the occluders drew (the GPU cull's occlusion test), and none is drawn."
+    variant fading_in "It is fading in (og.render.reveal) and none of it shows yet."
+    variant untracked "It draws through a path the cull record does not follow (particles, lines, text, a tilemap, a wireframe material); detail names the component, or `wireframe`. Whether it shows is not known."
     variant nothing_to_draw "It has no component that draws."
   }
 
   struct Visibility {
-    doc "One entity's verdict in the main camera's cull of the frame at the current tick (the frame is extracted as the renderer draws it; no GPU needed)."
+    doc "One entity's verdict in the main camera's cull of the last frame drawn, as the culls that drew it decided (the GPU's with occlusion, or the CPU's). Natively the frame drawn last; on the web the newest whose GPU readback has landed, a frame or two before."
     field visible Option.bool "Whether the camera draws it: true for drawn and hlod, null for untracked."
     field reason DrawReason "Why."
     field detail String "What the reason names: the hiding field, the loading asset, the untracked component; absent for none." {
       optional true
     }
     field drawn u32 "Its drawables (instances, skinned instances, sprites, terrains) that survived the cull."
-    field culled u32 "Its drawables culled by the layers or the view."
+    field culled u32 "Its drawables culled by the layers, the view or the occluders."
   }
 
   struct DrawnEntity {
@@ -500,7 +502,7 @@ module probe {
   }
 
   struct DrawnDump {
-    doc "What the main camera's cull keeps of the frame at the current tick (dump_drawn): every entity with something to draw, in entity order."
+    doc "What the main camera's cull kept of the last frame drawn (dump_drawn, as Visibility): every entity with something to draw, in entity order."
     field tick u32 "The tick."
     field drawn u32 "Entities drawn (drawn or hlod)."
     field notDrawn u32 "Entities not drawn (untracked ones are neither)."
@@ -868,7 +870,7 @@ module probe {
       returns Option.ViewFrames "Null without a renderer."
     }
     fn visible {
-      doc "Whether the main camera draws an entity at the current tick and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled. Answers without a renderer too (the cull runs on the CPU over the extracted frame)."
+      doc "Whether the main camera drew an entity in the last frame drawn and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled, as the frame's own culls decided (occlusion included). Without a renderer nothing is culled: drawables answer untracked."
       guide "testing §4"
       aliases "why is it not drawn, invisible, not showing, culled, frustum, hidden"
       param id String "The probe id."

@@ -456,6 +456,10 @@ pub(crate) struct SkinnedFrame {
     /// Per entry of `data` its world box (min, max) in its pose
     /// ([`skin::skinned_box`]), which both culling paths test.
     pub(crate) boxes: Vec<(Vec3, Vec3)>,
+    /// Per entry of `data` (before the culls append their copies), its
+    /// index in [`crate::RenderScene::skinned_instances`]; `u32::MAX` for
+    /// a crowd member drawn on the CPU.
+    pub(crate) origins: Vec<u32>,
     /// The palette buffer's current section: the joints, then the weight
     /// and deformed vertex slots (`skin.rs`, its layout).
     pub(crate) matrices: Vec<[[f32; 4]; 4]>,

@@ -93,6 +93,17 @@ pub trait RenderBackend {
     /// (blocking, between ticks); the web host asks for the next frame's,
     /// which a later call reads (null before).
     fn read_counts(&mut self) {}
+    /// What the main camera's cull made of each drawable of the last frame
+    /// drawn (og-render's `Renderer::cull_record`); `None` for a backend
+    /// without a renderer, or in a publish build.
+    fn cull_record(&mut self) -> Option<og_render::CullRecord> {
+        None
+    }
+    /// The last frame drawn, when its cull record answers on a later call
+    /// (og-render's `Renderer::cull_asked`: the web's readback).
+    fn cull_asked(&self) -> Option<u64> {
+        None
+    }
     /// Reflection probe `id`'s capture read back (og-render's
     /// `Renderer::read_reflection_probe`): native hosts, for `og bake probes`.
     fn read_reflection_probe(&self, _id: u64) -> Option<Result<og_render::ProbeCapture, String>> {

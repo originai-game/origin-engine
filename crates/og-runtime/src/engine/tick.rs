@@ -465,12 +465,24 @@ fn render(
     let mut gpu = Vec::new();
     let mut frame = og_render::FrameStats::default();
     let notes = {
+        // The drawables' owners are made again: until the frame is drawn
+        // they describe no frame's cull record.
+        #[cfg(not(feature = "publish"))]
+        {
+            eng.render.borrow_mut().drawn_frame = None;
+        }
         extract_frame(eng, eng.world()?, alpha, true)?;
         let mut rs = eng.render.borrow_mut();
         let rs = &mut *rs;
+        #[cfg(not(feature = "publish"))]
+        let mut cull_asked = None;
         if let Some(b) = rs.backend.as_mut() {
             b.set_clock(Some(rprobe::now_ms));
             b.render(&rs.scene)?;
+            #[cfg(not(feature = "publish"))]
+            {
+                cull_asked = b.cull_asked();
+            }
             // The decoded models' pairs were started by this frame.
             rs.scene.objects.prepare.clear();
             passes = b.pass_timings();
@@ -480,6 +492,16 @@ fn render(
             // The fades held for pipelines this frame made ahead.
             rs.reveal.drawn(frame.compiling_ahead);
             crate::author::perf::held(eng.id, frame.compiling_ahead, rs.reveal.held());
+            #[cfg(not(feature = "publish"))]
+            {
+                rs.drawn_frame = Some(frame.frame);
+            }
+        }
+        // A frame whose cull record answers on a later call keeps the
+        // owners of its drawables until then (describe.rs).
+        #[cfg(not(feature = "publish"))]
+        if cull_asked.is_some_and(|f| Some(f) == rs.drawn_frame) {
+            crate::author::describe::keep_drawn(rs);
         }
         crate::present::loading::compile_step(rs);
         super::assets::release_uploaded_textures(eng, rs);

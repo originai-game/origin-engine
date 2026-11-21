@@ -85,6 +85,21 @@ impl Renderer {
                 .any(|b| self.cache.materials[b.material].occluder);
         // The main camera's layers (views.rs).
         let mask = scene.frame.camera_layers;
+        // The cull record's verdicts on the sorted instances: the CPU
+        // cull's and the transparent sort's below (the GPU's land later).
+        let mut record = self
+            .visibility
+            .records
+            .as_mut()
+            .and_then(|r| r.frame.take());
+        let mut verdict = |k: usize, c: Culled| {
+            if let Some(v) = record
+                .as_mut()
+                .and_then(|f| f.record.instances.get_mut(submission[k] as usize))
+            {
+                *v = c;
+            }
+        };
         let (main_list, mut culled) = if gpu_cull {
             let g = vis.gpu_pass(cull_gpu::PassKind::Main, view_frustum, None, None);
             if occlusion {
@@ -100,7 +115,7 @@ impl Renderer {
                 .retain(|r| meshlet_taken.binary_search(&r.0).is_err());
             (list, 0)
         } else {
-            self.cull(
+            let culled = self.cull(
                 batches,
                 spheres,
                 transforms,
@@ -109,8 +124,31 @@ impl Renderer {
                 view_frustum,
                 true,
                 |b| !b.transparent && b.layers & mask != 0,
-            )
+            );
+            for b in batches.iter().filter(|b| !b.transparent) {
+                let first = b.first as usize;
+                let members = &cull_inside.inside[first..first + b.count as usize];
+                for (j, &inside) in members.iter().enumerate() {
+                    verdict(
+                        first + j,
+                        match (b.layers & mask != 0, inside) {
+                            (false, _) => Culled::Layer,
+                            (true, true) => Culled::Drawn,
+                            (true, false) => Culled::OutsideView,
+                        },
+                    );
+                }
+            }
+            culled
         };
+        for b in batches
+            .iter()
+            .filter(|b| b.transparent && b.layers & mask == 0)
+        {
+            for k in b.first as usize..(b.first + b.count) as usize {
+                verdict(k, Culled::Layer);
+            }
+        }
         // The meshlet dispatch's views: the camera's, then one per
         // reflection, view, probe face and shadow pass that fits
         // (`meshlet_view`: its index, 0 none: that pass keeps its list).
@@ -131,7 +169,19 @@ impl Renderer {
             cam.forward,
             mask,
             &sprites::depths(&sprite_frame.billboards),
+            |k, inside| {
+                verdict(
+                    k,
+                    match inside {
+                        true => Culled::Drawn,
+                        false => Culled::OutsideView,
+                    },
+                )
+            },
         );
+        if let (Some(records), Some(f)) = (self.visibility.records.as_mut(), record) {
+            records.frame = Some(f);
+        }
         culled += blended_culled + skinned_culled;
         // The OIT pass runs when the main camera draws a blended surface
         // after culling (`oit_frame` says the frame may).

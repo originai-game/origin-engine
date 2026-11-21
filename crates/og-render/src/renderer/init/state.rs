@@ -14,6 +14,7 @@ impl Visibility {
             gpu_cull: None,
             meshlet: None,
             culling_counts: false,
+            records: cfg!(not(feature = "publish")).then(Default::default),
             lean: false,
         }
     }

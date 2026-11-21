@@ -866,7 +866,14 @@ impl Probe {
 
     /// One entity's verdict in the main camera's cull, as JSON.
     fn visibility(&self, world: &World, e: Entity) -> Option<Value> {
-        let culled = self.host.scene_view.as_ref()?.drawn(world)?;
+        // No record yet (no renderer, or the web's first ask): no cull is
+        // claimed, the components answer.
+        let culled = self
+            .host
+            .scene_view
+            .as_ref()?
+            .drawn(world)
+            .unwrap_or_default();
         let found = culled.into_iter().find(|d| d.entity == e);
         Some(found.unwrap_or_else(|| Self::undrawn(world, e)).to_json())
     }
@@ -904,8 +911,8 @@ impl Probe {
         }
     }
 
-    /// `dump_drawn`: what the main camera's cull keeps of the frame at the
-    /// current tick, every entity with something to draw in entity order
+    /// `dump_drawn`: what the main camera's cull kept of the last frame
+    /// drawn, every entity with something to draw in entity order
     /// (IDL `probe.DrawnDump`); empty without a scene view.
     pub fn dump_drawn(&self, world: &World) -> Value {
         let mut drawn = self

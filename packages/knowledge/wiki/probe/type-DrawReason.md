@@ -20,7 +20,9 @@ A string: one of the variants below. The zero value is `"drawn"`.
 | `"loading"` | Its model has not loaded yet, or is held back until its textures arrive; detail names the asset. |
 | `"layer"` | Every drawable of it is off the camera's layers (og.Camera.layers). |
 | `"outside_view"` | Every drawable of it lies outside the camera's view, past near or far included. |
-| `"untracked"` | It draws through a path the cull record does not follow (particles, lines, text, a tilemap); detail names the component. Whether it shows is not known. |
+| `"occluded"` | A drawable of it is inside the camera's view but behind what the occluders drew (the GPU cull's occlusion test), and none is drawn. |
+| `"fading_in"` | It is fading in (og.render.reveal) and none of it shows yet. |
+| `"untracked"` | It draws through a path the cull record does not follow (particles, lines, text, a tilemap, a wireframe material); detail names the component, or `wireframe`. Whether it shows is not known. |
 | `"nothing_to_draw"` | It has no component that draws. |
 
 ```ogt
@@ -33,7 +35,9 @@ enum DrawReason {
   variant loading "Its model has not loaded yet, or is held back until its textures arrive; detail names the asset."
   variant layer "Every drawable of it is off the camera's layers (og.Camera.layers)."
   variant outside_view "Every drawable of it lies outside the camera's view, past near or far included."
-  variant untracked "It draws through a path the cull record does not follow (particles, lines, text, a tilemap); detail names the component. Whether it shows is not known."
+  variant occluded "A drawable of it is inside the camera's view but behind what the occluders drew (the GPU cull's occlusion test), and none is drawn."
+  variant fading_in "It is fading in (og.render.reveal) and none of it shows yet."
+  variant untracked "It draws through a path the cull record does not follow (particles, lines, text, a tilemap, a wireframe material); detail names the component, or `wireframe`. Whether it shows is not known."
   variant nothing_to_draw "It has no component that draws."
 }
 ```

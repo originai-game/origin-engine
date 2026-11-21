@@ -177,6 +177,7 @@ impl GpuCulling {
             occlusion: false,
             readbacks,
             latest: None,
+            seen: None,
             last: None,
             copy: false,
             max_binding,

@@ -498,6 +498,7 @@ impl Pass for ProbesPass {
                         f.forward,
                         u32::MAX,
                         &sprites::depths(&face_boards[6 * d + face].0),
+                        |_, _| {},
                     )
                     .0,
                 );

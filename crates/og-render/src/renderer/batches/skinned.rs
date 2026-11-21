@@ -172,6 +172,7 @@ impl Renderer {
         let mut batches: Vec<Batch> = Vec::new();
         let mut data = Vec::with_capacity(order.len());
         let mut boxes = Vec::with_capacity(order.len());
+        let mut origins = Vec::with_capacity(order.len());
         // Each (mesh, baked clip)'s box over every frame, once a frame.
         let mut clip_boxes: std::collections::HashMap<(usize, u32), Option<(Vec3, Vec3)>> =
             Default::default();
@@ -262,6 +263,7 @@ impl Renderer {
                 clip,
                 morphing,
             ));
+            origins.push(i as u32);
             if let Some(b) = s.baked {
                 // Bakes stay in their own buffer; only the previous
                 // transform belongs to the frame's dynamic palette.
@@ -388,6 +390,7 @@ impl Renderer {
             garments,
             data,
             boxes,
+            origins,
             matrices,
             previous_slots,
             baked_moved,
@@ -396,26 +399,50 @@ impl Renderer {
 
     /// The skinned batches the camera sees: instances whose posed box
     /// touches `frustum`, appended to `frame.data` as new runs.
-    /// Only the batches on a layer of `layers` (`views.rs`).
+    /// Only the batches on a layer of `layers` (`views.rs`). With `seen`
+    /// (the cull record's, per skinned instance), what it made of each.
     pub(crate) fn cull_skinned(
         frame: &mut SkinnedFrame,
         frustum: &Frustum,
         layers: u32,
+        mut seen: Option<&mut [crate::Culled]>,
     ) -> (Vec<Batch>, u32) {
+        let SkinnedFrame {
+            batches,
+            data,
+            boxes,
+            origins,
+            ..
+        } = frame;
+        let mut record = |k: usize, c: crate::Culled| {
+            if let Some(v) = seen
+                .as_deref_mut()
+                .and_then(|s| s.get_mut(origins[k] as usize))
+            {
+                *v = c;
+            }
+        };
         let mut visible = Vec::new();
         let mut culled = 0;
-        for b in frame.batches.iter().filter(|b| b.layers & layers != 0) {
-            let first = frame.data.len() as u32;
-            for k in b.first as usize..(b.first + b.count) as usize {
-                let (lo, hi) = frame.boxes[k];
+        for b in batches.iter() {
+            let members = b.first as usize..(b.first + b.count) as usize;
+            if b.layers & layers == 0 {
+                members.for_each(|k| record(k, crate::Culled::Layer));
+                continue;
+            }
+            let first = data.len() as u32;
+            for k in members {
+                let (lo, hi) = boxes[k];
                 if frustum.intersects_box(lo, hi) {
-                    let d = frame.data[k];
-                    frame.data.push(d);
+                    let d = data[k];
+                    data.push(d);
+                    record(k, crate::Culled::Drawn);
                 } else {
                     culled += 1;
+                    record(k, crate::Culled::OutsideView);
                 }
             }
-            let count = frame.data.len() as u32 - first;
+            let count = data.len() as u32 - first;
             if count > 0 {
                 visible.push(Batch { first, count, ..*b });
             }

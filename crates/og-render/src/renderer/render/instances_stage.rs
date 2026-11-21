@@ -95,6 +95,23 @@ impl Renderer {
                 copy_counts,
                 content,
             });
+            // The cull record's opaque and skinned verdicts are the camera
+            // pass's words, read back after the frame (cull_record.rs).
+            if let Some(f) = self
+                .visibility
+                .records
+                .as_mut()
+                .and_then(|r| r.frame.as_mut())
+            {
+                f.gpu = Some(crate::visibility::cull_record::GpuSlots {
+                    sorted: origins[..sorted as usize].to_vec(),
+                    base: sorted,
+                    skinned: match skinned_gpu {
+                        true => skinned.origins.clone(),
+                        false => Vec::new(),
+                    },
+                });
+            }
             // The CPU-culled lists sit after the sorted instances, in this buffer.
             ListsMoved { gpu_cull, sorted }.apply(std::iter::once(blended_list));
             (commands, Some(counts))

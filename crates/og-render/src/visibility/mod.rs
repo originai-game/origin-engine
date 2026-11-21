@@ -2,6 +2,7 @@
 
 pub(crate) mod bounds;
 pub(crate) mod cull_gpu;
+pub(crate) mod cull_record;
 pub(crate) mod instances;
 pub mod lod;
 pub(crate) mod meshlet_gpu;

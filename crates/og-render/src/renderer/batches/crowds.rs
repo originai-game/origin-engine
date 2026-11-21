@@ -121,6 +121,10 @@ impl Renderer {
             });
         }
         skinned.data.extend(data);
+        // A crowd member is no skinned instance of the scene's.
+        skinned
+            .origins
+            .resize(skinned.origins.len() + boxes.len(), u32::MAX);
         skinned.boxes.extend(boxes);
         skinned.baked_moved |= frame.moved;
         (card_runs, cards)

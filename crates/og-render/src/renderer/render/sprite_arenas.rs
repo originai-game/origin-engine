@@ -176,6 +176,12 @@ impl Renderer {
             tiles: self.sprite.tiles_gpu_supported.then(Vec::new),
             ..Default::default()
         };
+        // The main camera's sprites into the cull record (cull_record.rs).
+        let mut record = self
+            .visibility
+            .records
+            .as_mut()
+            .and_then(|r| r.frame.take());
         let mut sprite_frame = sprites::build(
             scene,
             font,
@@ -192,7 +198,11 @@ impl Renderer {
                 forward: Some(cam.forward),
                 frustum: Some(view_frustum),
             },
+            record.as_mut().map(|f| &mut f.record.sprites[..]),
         )?;
+        if let Some(records) = self.visibility.records.as_mut() {
+            records.frame = record;
+        }
         // Each view's world sprites, 2D particles and text on its layers
         // (views.rs), their instances after the main camera's in the
         // sprite buffer, lit by the view's own 2D light map, its 2D fluids
@@ -242,6 +252,7 @@ impl Renderer {
                     forward: Some(p.frame.forward),
                     frustum: Some(&Frustum::from_view_proj(p.frame.view_proj)),
                 },
+                None,
             )?;
             let in_buffer = |r: &sprites::SpriteRun| {
                 !matches!(
@@ -304,6 +315,7 @@ impl Renderer {
                         forward: Some(cam.forward),
                         frustum: Some(&frustum),
                     },
+                    None,
                 )?;
                 let base = sprite_frame.instances.len() as u32;
                 sprite_frame.instances.extend_from_slice(&f.instances);

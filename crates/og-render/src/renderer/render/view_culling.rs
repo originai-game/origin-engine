@@ -20,7 +20,7 @@ impl Renderer {
             .iter()
             .map(|p| {
                 let f = Frustum::from_view_proj(p.frame.view_proj);
-                Self::cull_skinned(skinned, &f, p.layers).0
+                Self::cull_skinned(skinned, &f, p.layers, None).0
             })
             .collect();
         (view_plans, view_skinned)
@@ -45,7 +45,7 @@ impl Renderer {
             .flatten()
             .map(|f| {
                 let frustum = Frustum::from_view_proj(f.view_proj);
-                Self::cull_skinned(skinned, &frustum, u32::MAX).0
+                Self::cull_skinned(skinned, &frustum, u32::MAX, None).0
             })
             .collect();
         (probe_faces, probe_skinned)

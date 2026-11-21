@@ -257,6 +257,12 @@ impl RenderBackend for CanvasBackend {
     fn sprite_shader_errors(&self) -> Vec<(usize, String)> {
         self.renderer.sprite_shader_errors()
     }
+    fn cull_record(&mut self) -> Option<og_render::CullRecord> {
+        self.renderer.cull_record().cloned()
+    }
+    fn cull_asked(&self) -> Option<u64> {
+        self.renderer.cull_asked()
+    }
     fn read_counts(&mut self) {
         self.renderer.request_culling_counts();
     }

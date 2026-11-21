@@ -27197,13 +27197,15 @@ export interface EntityDump {
  * - `"loading"`: Its model has not loaded yet, or is held back until its textures arrive; detail names the asset.
  * - `"layer"`: Every drawable of it is off the camera's layers (og.Camera.layers).
  * - `"outside_view"`: Every drawable of it lies outside the camera's view, past near or far included.
- * - `"untracked"`: It draws through a path the cull record does not follow (particles, lines, text, a tilemap); detail names the component. Whether it shows is not known.
+ * - `"occluded"`: A drawable of it is inside the camera's view but behind what the occluders drew (the GPU cull's occlusion test), and none is drawn.
+ * - `"fading_in"`: It is fading in (og.render.reveal) and none of it shows yet.
+ * - `"untracked"`: It draws through a path the cull record does not follow (particles, lines, text, a tilemap, a wireframe material); detail names the component, or `wireframe`. Whether it shows is not known.
  * - `"nothing_to_draw"`: It has no component that draws.
  */
-export type DrawReason = "drawn" | "hlod" | "hidden" | "loading" | "layer" | "outside_view" | "untracked" | "nothing_to_draw";
+export type DrawReason = "drawn" | "hlod" | "hidden" | "loading" | "layer" | "outside_view" | "occluded" | "fading_in" | "untracked" | "nothing_to_draw";
 
 /**
- * One entity's verdict in the main camera's cull of the frame at the current tick (the frame is extracted as the renderer draws it; no GPU needed).
+ * One entity's verdict in the main camera's cull of the last frame drawn, as the culls that drew it decided (the GPU's with occlusion, or the CPU's). Natively the frame drawn last; on the web the newest whose GPU readback has landed, a frame or two before.
  */
 export interface Visibility {
   /** Whether the camera draws it: true for drawn and hlod, null for untracked. */
@@ -27216,7 +27218,7 @@ export interface Visibility {
   readonly detail?: string;
   /** Its drawables (instances, skinned instances, sprites, terrains) that survived the cull. */
   readonly drawn: number;
-  /** Its drawables culled by the layers or the view. */
+  /** Its drawables culled by the layers, the view or the occluders. */
   readonly culled: number;
 }
 
@@ -27239,7 +27241,7 @@ export interface DrawnEntity {
 }
 
 /**
- * What the main camera's cull keeps of the frame at the current tick (dump_drawn): every entity with something to draw, in entity order.
+ * What the main camera's cull kept of the last frame drawn (dump_drawn, as Visibility): every entity with something to draw, in entity order.
  */
 export interface DrawnDump {
   /** The tick. */
@@ -27783,7 +27785,7 @@ export interface EngineProbe extends RuntimeProbe {
    */
   captureViews(views: readonly Viewpoint[], width?: number, height?: number, fit?: number): ViewFrames | null;
   /**
-   * Whether the main camera draws an entity at the current tick and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled. Answers without a renderer too (the cull runs on the CPU over the extracted frame).
+   * Whether the main camera drew an entity in the last frame drawn and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled, as the frame's own culls decided (occlusion included). Without a renderer nothing is culled: drawables answer untracked.
    * See `testing §4`.
    *
    * @param id The probe id.

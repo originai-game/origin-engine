@@ -61,6 +61,12 @@ impl Renderer {
             let _ = crate::traffic::poll(&self.device, wgpu::PollType::Poll);
         }
         let lagged = gc.poll_counts();
+        // A frame's cull record whose GPU words landed (cull_record.rs).
+        if let Some((f, words)) = gc.take_seen()
+            && let Some(records) = self.visibility.records.as_mut()
+        {
+            records.landed(f, &words);
+        }
         debug_assert!(vis.cull_passes.len() <= max_passes);
         // The sorted instances' previous transforms (as the CPU path's
         // below), compacted with the camera pass's and, for foliage,

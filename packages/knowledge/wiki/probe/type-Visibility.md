@@ -6,7 +6,7 @@ Module [`probe`](../probe.md) · [index](../index.md)
 
 ### `Visibility` (struct)
 
-One entity's verdict in the main camera's cull of the frame at the current tick (the frame is extracted as the renderer draws it; no GPU needed).
+One entity's verdict in the main camera's cull of the last frame drawn, as the culls that drew it decided (the GPU's with occlusion, or the CPU's). Natively the frame drawn last; on the web the newest whose GPU readback has landed, a frame or two before.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -14,19 +14,19 @@ One entity's verdict in the main camera's cull of the frame at the current tick 
 | `reason` | `DrawReason` | `"drawn"` | — | — | — | Why. |
 | `detail` | `string` | `""` | — | — | optional | What the reason names: the hiding field, the loading asset, the untracked component; absent for none. |
 | `drawn` | `number` | `0` | — | — | — | Its drawables (instances, skinned instances, sprites, terrains) that survived the cull. |
-| `culled` | `number` | `0` | — | — | — | Its drawables culled by the layers or the view. |
+| `culled` | `number` | `0` | — | — | — | Its drawables culled by the layers, the view or the occluders. |
 
 ```ogt
 struct Visibility {
-  doc "One entity's verdict in the main camera's cull of the frame at the current tick (the frame is extracted as the renderer draws it; no GPU needed)."
+  doc "One entity's verdict in the main camera's cull of the last frame drawn, as the culls that drew it decided (the GPU's with occlusion, or the CPU's). Natively the frame drawn last; on the web the newest whose GPU readback has landed, a frame or two before."
   field visible Option.bool "Whether the camera draws it: true for drawn and hlod, null for untracked."
   field reason DrawReason "Why."
   field detail String "What the reason names: the hiding field, the loading asset, the untracked component; absent for none." {
     optional true
   }
   field drawn u32 "Its drawables (instances, skinned instances, sprites, terrains) that survived the cull."
-  field culled u32 "Its drawables culled by the layers or the view."
+  field culled u32 "Its drawables culled by the layers, the view or the occluders."
 }
 ```
 
-<sub>Module `probe` line 478</sub>
+<sub>Module `probe` line 480</sub>

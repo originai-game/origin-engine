@@ -266,6 +266,16 @@ pub(crate) struct RenderState {
     pub geo: crate::present::geometry::GeoState,
     /// The entity of each drawable of the last extraction (`crate::author::describe`).
     pub ids: crate::author::describe::DrawIds,
+    /// The frame drawn last (og-render's `FrameStats::frame`) while `ids`
+    /// still describe it: the owners its cull record is read with.
+    #[cfg(not(feature = "publish"))]
+    pub drawn_frame: Option<u64>,
+    /// The owners of the drawables of frames drawn before `ids` were made
+    /// again, kept until their cull record answers (the web's readback, or
+    /// a probe call that extracted since), newest last
+    /// (`crate::author::describe`).
+    #[cfg(not(feature = "publish"))]
+    pub cull_ids: std::collections::VecDeque<crate::author::describe::CullIds>,
     /// Render targets, secondary cameras and custom post passes (`crate::present::views`).
     pub views: crate::present::views::ViewState,
     /// Baked lighting of the scenes instantiated (`crate::present::baked`).
@@ -353,6 +363,10 @@ impl RenderState {
             zero: Vec3::ZERO,
             geo: Default::default(),
             ids: Default::default(),
+            #[cfg(not(feature = "publish"))]
+            drawn_frame: None,
+            #[cfg(not(feature = "publish"))]
+            cull_ids: Default::default(),
             views: Default::default(),
             baked: Default::default(),
             hlod: Default::default(),

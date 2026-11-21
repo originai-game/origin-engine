@@ -36,6 +36,15 @@ const NO_CAST: u32 = 32u;
 // The floats of a skinned instance's record (skin.rs SkinnedInstanceGpu).
 const SKINNED_FLOATS: u32 = 28u;
 
+// What the camera pass made of an instance (`scan[k]`, cull_record.rs
+// `seen`): kept, off its layers, outside its planes, behind the occluders'
+// depth, or not one of its batches (a transparent one: the CPU sorts it).
+const SEEN_DRAWN: u32 = 1u;
+const SEEN_LAYER: u32 = 2u;
+const SEEN_OUTSIDE: u32 = 3u;
+const SEEN_OCCLUDED: u32 = 4u;
+const SEEN_OTHER: u32 = 5u;
+
 struct PassGpu {
   planes: array<vec4<f32>, 12>,
   // x: kind, y: planes, z: the pass's global index, w: its layer mask
@@ -74,8 +83,9 @@ struct BatchGpu {
 // texture-array layer and its look (instances.rs `GpuTransform`).
 @group(0) @binding(1) var<storage, read_write> instances: array<f32>;
 @group(0) @binding(2) var<storage, read> batches: array<BatchGpu>;
-// [0, N): last frame's main visibility; then per pass N + 1 prefix
-// entries; then per pass `blocks` workgroup sums.
+// [0, N): what the camera pass made of each instance (SEEN_*), last
+// frame's until it runs; then per pass N + 1 prefix entries; then per
+// pass `blocks` workgroup sums.
 @group(0) @binding(3) var<storage, read_write> scan: array<u32>;
 // Per (pass, batch) five words of DrawIndexedIndirect, then per pass the
 // instances inside its planes, then per batch the camera pass's instances
@@ -166,9 +176,10 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
     // The CPU path's sphere, widened by its rounding.
     let radius = b.bounds.w * scale * (1.0 + 1e-5);
     let boxed = (b.flags & SKINNED) != 0u;
-    var inside = (kind == FRUSTUM_ALL || (b.flags & TRANSPARENT) == 0u)
-      && (kind != FRUSTUM_ALL || (b.flags & NO_CAST) == 0u)
-      && (b.layers & pass_info.w) != 0u;
+    let batch_drawn = (kind == FRUSTUM_ALL || (b.flags & TRANSPARENT) == 0u)
+      && (kind != FRUSTUM_ALL || (b.flags & NO_CAST) == 0u);
+    let on_layers = (b.layers & pass_info.w) != 0u;
+    var inside = batch_drawn && on_layers;
     for (var p = 0u; p < pass_info.y && inside; p++) {
       let plane = passes[pass_at(wid.y)].planes[p];
       // A box (a skinned instance's): each plane against its corner
@@ -182,7 +193,7 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
       inside = plane_keeps(plane, center, reach);
     }
     if (inside) { atomicAdd(&shared_inside, 1u); }
-    let occluder = (b.flags & OCCLUDER) != 0u && scan[k] != 0u;
+    let occluder = (b.flags & OCCLUDER) != 0u && scan[k] == SEEN_DRAWN;
     switch kind {
       case OCCLUDERS: {
         visible = u32(inside && occluder && large_occluder(m, b.bounds.xyz, b.extent.xyz));
@@ -195,7 +206,17 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
         let hidden = inside && (b.flags & OCCLUDABLE) != 0u
           && occluded(m, b.bounds.xyz, b.extent.xyz * (1.0 + 1e-5) + vec3<f32>(1e-6));
         visible = u32(inside && !hidden);
-        scan[k] = visible;
+        var seen = SEEN_DRAWN;
+        if (!batch_drawn) {
+          seen = SEEN_OTHER;
+        } else if (!on_layers) {
+          seen = SEEN_LAYER;
+        } else if (!inside) {
+          seen = SEEN_OUTSIDE;
+        } else if (hidden) {
+          seen = SEEN_OCCLUDED;
+        }
+        scan[k] = seen;
         if (hidden) {
           let slot = bi - first_batch;
           if (slot < 2u) {

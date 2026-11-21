@@ -250,7 +250,10 @@ impl GpuCulling {
             self.max_binding,
             Self::args_usage(),
         );
-        let count_bytes = args_words * 4;
+        // The camera pass's words follow the counts: the cull record's
+        // (cull_record.rs), which a publish build does not keep.
+        let seen = if cfg!(feature = "publish") { 0 } else { n };
+        let count_bytes = (args_words + seen as u64) * 4;
         let readback_size = count_bytes.next_power_of_two().max(256);
         // A readback too small for this frame's counts is replaced once it
         // is free; one in flight keeps its frame's counts (its layout says
@@ -607,6 +610,7 @@ impl GpuCulling {
                 })
                 .map(|(_, x)| x.count)
                 .sum(),
+            seen: if main.is_empty() { 0 } else { seen },
         };
         self.copy = copy_counts;
         self.last = Some((layout, stats_given));

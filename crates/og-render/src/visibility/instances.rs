@@ -622,6 +622,26 @@ impl SortedInstances {
         self.spheres = spheres;
     }
 
+    /// What the last update made of each submitted instance it left out
+    /// (`seen` per submission; the sorted ones are their culls'): a
+    /// wireframe material's (the lines pass draws it), one fading in that
+    /// shows nothing yet, else one with nothing to draw.
+    pub(crate) fn record_left_out(&self, scene: &RenderScene, seen: &mut [crate::Culled]) {
+        for ((&slot, inst), seen) in self.slots.iter().zip(&scene.objects.instances).zip(seen) {
+            if slot != u32::MAX {
+                continue;
+            }
+            let material = drawn(scene, &self.params_moved, inst.material.index()) as u32;
+            *seen = if self.skipped.binary_search(&material).is_ok() {
+                crate::Culled::Lines
+            } else if hidden(inst) {
+                crate::Culled::FadingIn
+            } else {
+                crate::Culled::Empty
+            };
+        }
+    }
+
     /// Sorts and derives everything again; returns how many instances it
     /// computed (all those drawn).
     fn rebuild(

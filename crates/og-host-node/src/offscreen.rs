@@ -185,6 +185,12 @@ impl RenderBackend for OffscreenBackend {
     fn visibility_buffer_refused(&self) -> Option<String> {
         self.renderer.visibility_buffer_refused().map(str::to_owned)
     }
+    fn cull_record(&mut self) -> Option<og_render::CullRecord> {
+        self.renderer.cull_record().cloned()
+    }
+    fn cull_asked(&self) -> Option<u64> {
+        self.renderer.cull_asked()
+    }
     fn read_counts(&mut self) {
         self.renderer.finish_stats(&mut self.stats);
     }

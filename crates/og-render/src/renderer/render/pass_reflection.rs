@@ -342,6 +342,7 @@ impl Pass for ReflectionPass {
                     m.2.forward,
                     mask,
                     &[],
+                    |_, _| {},
                 )
                 .0,
             );

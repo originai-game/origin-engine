@@ -392,6 +392,7 @@ impl Pass for ViewPass {
                     p.frame.forward,
                     p.layers,
                     &sprites::depths(&boards.0),
+                    |_, _| {},
                 )
                 .0
             })

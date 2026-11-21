@@ -308,6 +308,10 @@ struct CountLayout {
     /// Triangles per instance, per batch.
     triangles: Vec<u64>,
     opaque: u32,
+    /// The camera pass's words copied after the counts (`scan[0..seen)`,
+    /// one per culled instance: the cull record's, `cull_record.rs`); 0
+    /// in a publish build, which keeps no record.
+    seen: u32,
 }
 
 impl CountLayout {
@@ -321,6 +325,27 @@ impl CountLayout {
     /// The first of the crowds' count words.
     fn crowd_word(passes: usize, batches: u32) -> u64 {
         passes as u64 * (batches as u64 * 5 + 1) + batches as u64
+    }
+
+    /// The bytes a readback of this layout holds: the counts, then the
+    /// camera pass's words.
+    fn bytes(&self) -> u64 {
+        (Self::words(self.kinds.len(), self.batches) + self.seen as u64) * 4
+    }
+
+    /// Copies the frame's counts (from `args`) and the camera pass's
+    /// words (from `scan`) into `to`.
+    fn copy(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        (args, scan): (&wgpu::Buffer, &wgpu::Buffer),
+        to: &wgpu::Buffer,
+    ) {
+        let counts = Self::words(self.kinds.len(), self.batches) * 4;
+        encoder.copy_buffer_to_buffer(args, 0, to, 0, counts);
+        if self.seen > 0 {
+            encoder.copy_buffer_to_buffer(scan, 0, to, counts, self.seen as u64 * 4);
+        }
     }
 
     fn counts(&self, words: &[u32]) -> GpuCounts {
@@ -458,6 +483,9 @@ pub(crate) struct GpuCulling {
     occlusion: bool,
     readbacks: Vec<Readback>,
     latest: Option<GpuCounts>,
+    /// The newest frame's camera-pass words landed and not yet taken
+    /// ([`Self::take_seen`]).
+    seen: Option<(u64, Vec<u32>)>,
     /// The last encoded frame's layout and given counts (`finish` copies
     /// its counts late when it found no readback free).
     last: Option<(CountLayout, GpuCounts)>,

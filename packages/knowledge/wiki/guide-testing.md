@@ -171,11 +171,17 @@ it once. Read state before guessing at it:
   that differs from its text, and among its `states` `disabled`,
   `checked` and `focused`.
 - Something not on screen: `og probe visible '{"id": "door"}'` (or
-  `dump_entity`'s `visible`) says whether the main camera draws it and
-  why, as a reason code: `drawn`, `hlod`, `hidden` (with the `visible`
-  field that hides it), `loading` (with the asset), `layer`,
-  `outside_view`, `untracked` (it draws through particles, lines or text,
-  which the cull record does not follow) or `nothing_to_draw`.
+  `dump_entity`'s `visible`) says whether the main camera drew it in the
+  last frame and why, as the frame's own culls decided: `drawn`, `hlod`,
+  `hidden` (with the `visible` field that hides it), `loading` (with the
+  asset), `layer`, `outside_view`, `occluded` (in view, behind what the
+  occluders drew), `fading_in` (`og.render.reveal`, nothing shown yet),
+  `untracked` (it draws through particles, lines, text or a wireframe,
+  which the cull record does not follow) or `nothing_to_draw`. Without a
+  renderer no cull runs: a drawable answers `untracked`, and an
+  `expect:entity:<id>:visible.reason` is unchecked. On the web the answer
+  is the newest frame whose readback landed; the first call after a
+  while may answer `untracked` while it asks for the next frame's.
   `dump_drawn` lists that verdict for every entity with something to draw.
 - `get:<Resource>.<field>` and `set:<Resource>.<field>=<value>` read and
   set reflected state in a script.

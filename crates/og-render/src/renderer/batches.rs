@@ -242,7 +242,9 @@ impl Renderer {
     /// [`sprites::SpriteFrame::billboards`]): a run is cut where one falls
     /// between two of its instances, and [`DrawList::before`] says how many
     /// draw before each run (a billboard as far as a mesh draws after it).
-    /// Returns the list and how many were outside the view.
+    /// Returns the list and how many were outside the view; `seen` is
+    /// told each tested instance (its sorted slot) and whether it is in
+    /// view.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn sort_transparent(
         &self,
@@ -256,6 +258,7 @@ impl Renderer {
         forward: Vec3,
         layers: u32,
         billboards: &[f32],
+        mut seen: impl FnMut(usize, bool),
     ) -> (DrawList, u32) {
         let mut keyed: Vec<(f32, u32, usize, u32)> = Vec::new();
         let mut culled = 0;
@@ -263,7 +266,9 @@ impl Renderer {
         for (b_index, b) in batches.iter().enumerate().filter(|(_, b)| drawn(b)) {
             for k in b.first as usize..(b.first + b.count) as usize {
                 let (c, r) = spheres[k];
-                if frustum.intersects_sphere(c, r) {
+                let inside = frustum.intersects_sphere(c, r);
+                seen(k, inside);
+                if inside {
                     keyed.push(((c - eye).dot(forward), submission[k], k, b_index as u32));
                 } else {
                     culled += 1;
@@ -345,8 +350,12 @@ pub(crate) struct Visibility {
     /// The meshlet path (meshlet_gpu.rs), once a scene has a clustered mesh.
     pub(crate) meshlet: Option<meshlet_gpu::MeshletGpu>,
     /// Whether the next frame's GPU culling counts are read back
-    /// ([`Renderer::request_culling_counts`]).
+    /// ([`Renderer::request_culling_counts`]), with the camera pass's
+    /// words of the cull record.
     pub(crate) culling_counts: bool,
+    /// The main camera's cull record ([`Renderer::cull_record`]): where
+    /// the probe is (every build but `publish`).
+    pub(crate) records: Option<crate::visibility::cull_record::Records>,
     /// This frame culls too few instances for the stages that pay off only
     /// with many ([`OCCLUSION_MIN_INSTANCES`], and no crowd): occlusion
     /// and the visibility buffer's software rasteriser are left out (each

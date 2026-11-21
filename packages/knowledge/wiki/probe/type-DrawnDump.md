@@ -6,7 +6,7 @@ Module [`probe`](../probe.md) · [index](../index.md)
 
 ### `DrawnDump` (struct)
 
-What the main camera's cull keeps of the frame at the current tick (dump_drawn): every entity with something to draw, in entity order.
+What the main camera's cull kept of the last frame drawn (dump_drawn, as Visibility): every entity with something to draw, in entity order.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -17,7 +17,7 @@ What the main camera's cull keeps of the frame at the current tick (dump_drawn):
 
 ```ogt
 struct DrawnDump {
-  doc "What the main camera's cull keeps of the frame at the current tick (dump_drawn): every entity with something to draw, in entity order."
+  doc "What the main camera's cull kept of the last frame drawn (dump_drawn, as Visibility): every entity with something to draw, in entity order."
   field tick u32 "The tick."
   field drawn u32 "Entities drawn (drawn or hlod)."
   field notDrawn u32 "Entities not drawn (untracked ones are neither)."
@@ -25,4 +25,4 @@ struct DrawnDump {
 }
 ```
 
-<sub>Module `probe` line 502</sub>
+<sub>Module `probe` line 504</sub>

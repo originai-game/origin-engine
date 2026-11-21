@@ -73,6 +73,41 @@ impl Renderer {
         self.visibility.culling_counts = true;
     }
 
+    /// What the main camera's cull made of each drawable of the last frame
+    /// drawn (`visibility/cull_record.rs`), written by the culls that
+    /// decided: the GPU cull's camera pass (with occlusion), the CPU cull
+    /// on the GL tier, the transparent sort, the skinned cull and the
+    /// sprites' build. Natively it waits for the GPU's part; on the web it
+    /// asks for the next frame's and answers the newest whole record.
+    /// `None` in a publish build, or before a frame was drawn.
+    pub fn cull_record(&mut self) -> Option<&crate::CullRecord> {
+        let pending = self.visibility.records.as_ref()?.pending();
+        if let (Some(frame), Some(gc)) = (pending, self.visibility.gpu_cull.as_mut()) {
+            #[cfg(not(target_arch = "wasm32"))]
+            gc.finish(&self.device, &self.queue, frame);
+            #[cfg(target_arch = "wasm32")]
+            {
+                let _ = frame;
+                self.visibility.culling_counts = true;
+                gc.poll_counts();
+            }
+            if let Some((f, words)) = gc.take_seen()
+                && let Some(records) = self.visibility.records.as_mut()
+            {
+                records.landed(f, &words);
+            }
+        }
+        self.visibility.records.as_ref()?.newest()
+    }
+
+    /// The last frame drawn, when its cull record's GPU words were copied
+    /// for a later [`Self::cull_record`] (the web's): the caller keeps
+    /// what it needs of that frame (which entity each drawable is) until
+    /// the record answers it.
+    pub fn cull_asked(&self) -> Option<u64> {
+        self.visibility.records.as_ref()?.asked()
+    }
+
     /// Makes one pipeline that the last scene rendered can reach and no
     /// frame has drawn with yet: of the systems that scene has
     /// ([`Reach`]), the variants a frame did not draw (the full lit

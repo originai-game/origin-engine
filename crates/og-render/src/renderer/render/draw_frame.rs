@@ -125,6 +125,20 @@ impl Renderer {
             }
         }
         let mut origins = submission.clone();
+        // The main camera's cull record (cull_record.rs): what the sort
+        // left out now, what each cull below decides as it does.
+        if let Some(records) = self.visibility.records.as_mut() {
+            let f = records.frame.get_or_insert_default();
+            f.begin(
+                self.frame_index,
+                scene.objects.instances.len(),
+                scene.objects.skinned_instances.len(),
+                scene.sprite.sprites.len(),
+            );
+            self.instances
+                .sorted
+                .record_left_out(scene, &mut f.record.instances);
+        }
         self.prepare_full_meshes(scene, &batches);
         stages.end("batches");
         // Crowds (crowd.rs): their members as the crowd cull's tables, the
@@ -173,8 +187,16 @@ impl Renderer {
             self.prepare_view_culling(scene, &camera, &mut skinned);
         let (probe_faces, mut probe_skinned) =
             self.prepare_probe_culling(&probe_frame, &active_probes, &camera, &mut skinned);
-        let (mut skinned_visible, mut skinned_culled) =
-            Self::cull_skinned(&mut skinned, &view_frustum, scene.frame.camera_layers);
+        let (mut skinned_visible, mut skinned_culled) = Self::cull_skinned(
+            &mut skinned,
+            &view_frustum,
+            scene.frame.camera_layers,
+            self.visibility
+                .records
+                .as_mut()
+                .and_then(|r| r.frame.as_mut())
+                .map(|f| &mut f.record.skinned[..]),
+        );
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
         // The skinned instances' batches; the crowds' GPU draws after them.
         let skinned_plain = skinned_batches.len();

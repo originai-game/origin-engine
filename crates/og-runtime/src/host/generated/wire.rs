@@ -19654,15 +19654,17 @@ pub enum DrawReason {
     Loading,
     Layer,
     OutsideView,
+    Occluded,
+    FadingIn,
     Untracked,
     NothingToDraw,
 }
 
 impl DrawReason {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["drawn", "hlod", "hidden", "loading", "layer", "outside_view", "untracked", "nothing_to_draw"];
+    pub const NAMES: &'static [&'static str] = &["drawn", "hlod", "hidden", "loading", "layer", "outside_view", "occluded", "fading_in", "untracked", "nothing_to_draw"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Drawn, Self::Hlod, Self::Hidden, Self::Loading, Self::Layer, Self::OutsideView, Self::Untracked, Self::NothingToDraw];
+    pub const ALL: &'static [Self] = &[Self::Drawn, Self::Hlod, Self::Hidden, Self::Loading, Self::Layer, Self::OutsideView, Self::Occluded, Self::FadingIn, Self::Untracked, Self::NothingToDraw];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]

@@ -16,16 +16,21 @@ impl GpuCulling {
             if let Some(layout) = r.layout.take()
                 && ok
             {
-                let counts = r
-                    .buffer
-                    .slice(..)
-                    .get_mapped_range()
-                    .ok()
-                    .map(|data| layout.counts(bytemuck::cast_slice(&data)));
-                if let Some(counts) = counts
-                    && self.latest.is_none_or(|l| l.frame < counts.frame)
+                let read = r.buffer.slice(..).get_mapped_range().ok().map(|data| {
+                    let words: &[u32] = bytemuck::cast_slice(&data);
+                    let at = CountLayout::words(layout.kinds.len(), layout.batches) as usize;
+                    let seen = words[at..at + layout.seen as usize].to_vec();
+                    (layout.counts(words), seen)
+                });
+                // A frame read twice (its counts copied late too) keeps
+                // its words for the second reader.
+                if let Some((counts, seen)) = read
+                    && self.latest.is_none_or(|l| l.frame <= counts.frame)
                 {
                     self.latest = Some(counts);
+                    if layout.seen > 0 {
+                        self.seen = Some((counts.frame, seen));
+                    }
                 }
             }
             if ok {
@@ -58,15 +63,14 @@ impl GpuCulling {
                 // Every readback in flight lands and is taken.
                 crate::traffic::poll(device, wgpu::PollType::wait_indefinitely()).ok()?;
                 self.poll_counts();
-                let words = CountLayout::words(layout.kinds.len(), layout.batches);
                 let r = self
                     .readbacks
                     .iter_mut()
-                    .find(|r| r.layout.is_none() && r.buffer.size() >= words * 4)?;
+                    .find(|r| r.layout.is_none() && r.buffer.size() >= layout.bytes())?;
                 let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("cull counts"),
                 });
-                encoder.copy_buffer_to_buffer(&self.args, 0, &r.buffer, 0, words * 4);
+                layout.copy(&mut encoder, (&self.args, &self.scan), &r.buffer);
                 r.layout = Some(layout);
                 r.applied = given;
                 r.unmapped = true;
@@ -91,6 +95,12 @@ impl GpuCulling {
         self.latest
             .filter(|l| l.frame == frame)
             .map(|exact| (exact, applied))
+    }
+
+    /// The camera pass's words of the newest frame landed since the last
+    /// call (per culled instance, `cull.wgsl` `SEEN_*`), with its frame.
+    pub fn take_seen(&mut self) -> Option<(u64, Vec<u32>)> {
+        self.seen.take()
     }
 
     /// A frame whose commands were dropped unsubmitted (a covered surface,
@@ -158,7 +168,7 @@ impl GpuCulling {
         let Some((layout, given)) = self.last.clone() else {
             return;
         };
-        let bytes = CountLayout::words(layout.kinds.len(), layout.batches) * 4;
+        let bytes = layout.bytes();
         let Some(r) = self.readbacks.iter_mut().find(|r| {
             r.layout.is_none()
                 && r.buffer.size() >= bytes
@@ -166,7 +176,7 @@ impl GpuCulling {
         }) else {
             return;
         };
-        encoder.copy_buffer_to_buffer(&self.args, 0, &r.buffer, 0, bytes);
+        layout.copy(encoder, (&self.args, &self.scan), &r.buffer);
         r.layout = Some(layout);
         r.unmapped = true;
         r.applied = given;

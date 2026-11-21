@@ -222,6 +222,11 @@ pub enum DrawReason {
     /// Every drawable of it lies outside the camera's view, past near or
     /// far included.
     OutsideView,
+    /// A drawable of it lies inside the camera's view, behind what the
+    /// occluders drew (the GPU cull's occlusion test), and none is drawn.
+    Occluded,
+    /// It is fading in (`og.render.reveal`) and none of it shows yet.
+    FadingIn,
     /// It draws through a path the cull record does not follow (particles,
     /// lines, text, a tilemap; the detail names the component): whether
     /// it shows is not known.
@@ -232,7 +237,8 @@ pub enum DrawReason {
 
 impl DrawReason {
     /// The reason code: `drawn`, `hlod`, `hidden`, `loading`, `layer`,
-    /// `outside_view`, `untracked`, `nothing_to_draw`.
+    /// `outside_view`, `occluded`, `fading_in`, `untracked`,
+    /// `nothing_to_draw`.
     pub fn code(self) -> &'static str {
         match self {
             DrawReason::Drawn => "drawn",
@@ -241,6 +247,8 @@ impl DrawReason {
             DrawReason::Loading => "loading",
             DrawReason::Layer => "layer",
             DrawReason::OutsideView => "outside_view",
+            DrawReason::Occluded => "occluded",
+            DrawReason::FadingIn => "fading_in",
             DrawReason::Untracked => "untracked",
             DrawReason::NothingToDraw => "nothing_to_draw",
         }
@@ -300,11 +308,13 @@ pub trait SceneView {
     fn seen(&mut self, world: &World, cover: &[[f32; 4]]) -> Option<Seen>;
     /// What is under a point of the play surface, in CSS pixels.
     fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick>;
-    /// What the main camera's cull made of the frame at the current tick:
-    /// every entity the renderer drew, culled or held back (`drawn`,
-    /// `hlod`, `loading`, `layer`, `outside_view`), any order. The probe
-    /// answers every other entity from its components (`hidden`,
-    /// `untracked`, `nothing_to_draw`). `None` when the host has no scene.
+    /// What the main camera's cull made of the last frame drawn, as the
+    /// culls that drew it decided: every entity the renderer drew, culled
+    /// or held back (`drawn`, `hlod`, `loading`, `layer`, `outside_view`,
+    /// `occluded`, `fading_in`, `untracked` for a wireframe), any order.
+    /// The probe answers every other entity from its components
+    /// (`hidden`, `untracked`, `nothing_to_draw`). `None` when the host
+    /// has no renderer or has drawn no frame.
     fn drawn(&self, world: &World) -> Option<Vec<Drawn>> {
         let _ = world;
         None

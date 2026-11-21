@@ -740,7 +740,14 @@ impl Probe {
             r.reason = format!("no renderer, {path} unchecked");
             return;
         }
-        // `visible.reason` extracts the frame; a field's path does not.
+        // The cull's verdict (visible.reason) is the renderer's record of
+        // the frame it drew; without one: unchecked.
+        if !self.host.has_renderer() && path.split('.').next() == Some("visible") {
+            r.status = Status::Unchecked;
+            r.reason = format!("no renderer, {path} unchecked");
+            return;
+        }
+        // `visible.reason` reads the cull record; a field's path does not.
         let mut dump = if path.split('.').next() == Some("visible") {
             self.dump_entity(world, e)
         } else {

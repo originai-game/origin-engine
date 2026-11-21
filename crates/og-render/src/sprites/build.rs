@@ -123,7 +123,8 @@ pub(super) fn tile_instances(
 /// with it is left out, with its shadow and glow (`views.rs`). A faced
 /// sprite ([`RenderScene::sprite_facing`]) is keyed back to front from
 /// `eye` unless it has a key of its own, and left out (its glow too, not
-/// its drop shadow) when its bounds miss the eye's frustum.
+/// its drop shadow) when its bounds miss the eye's frustum. With `seen`
+/// (the cull record's, per scene sprite), what it made of each.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build<'a>(
     scene: &RenderScene,
@@ -137,7 +138,13 @@ pub(crate) fn build<'a>(
     strips: &[LayeredStrip],
     mask: u32,
     eye: &SpriteEye,
+    mut seen: Option<&mut [crate::Culled]>,
 ) -> Result<SpriteFrame, RenderError> {
+    let mut verdict = |i: usize, c: crate::Culled| {
+        if let Some(v) = seen.as_deref_mut().and_then(|s| s.get_mut(i)) {
+            *v = c;
+        }
+    };
     // Per-sprite effects by index (the last entry for an index wins).
     let mut fx: HashMap<u32, &crate::SpriteFx> = HashMap::new();
     for f in &scene.sprite.sprite_fx {
@@ -241,8 +248,16 @@ pub(crate) fn build<'a>(
             )));
         }
         if crate::views::layer_of(&scene.sprite.sprite_layers, i) & mask == 0 {
+            verdict(i, crate::Culled::Layer);
             continue;
         }
+        verdict(
+            i,
+            match s.size.x != 0.0 && s.size.y != 0.0 {
+                true => crate::Culled::Drawn,
+                false => crate::Culled::Empty,
+            },
+        );
         let found = if fx.is_empty() {
             None
         } else {
@@ -333,6 +348,7 @@ pub(crate) fn build<'a>(
             && let Some(frustum) = eye.frustum
             && !frustum.intersects_sphere(s.position, sprite_radius(s))
         {
+            verdict(i, crate::Culled::OutsideView);
             culled += 1;
             continue;
         }

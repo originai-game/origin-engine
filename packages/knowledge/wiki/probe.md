@@ -80,9 +80,9 @@ module probe {
 | [`WorldDump`](probe/type-WorldDump.md) | struct |  | The world: tables, systems, resources. |
 | [`EntityDump`](probe/type-EntityDump.md) | struct |  | One entity. |
 | [`DrawReason`](probe/type-DrawReason.md) | enum |  | Why the main camera draws an entity or not, the first that holds. |
-| [`Visibility`](probe/type-Visibility.md) | struct |  | One entity's verdict in the main camera's cull of the frame at the current tick (the frame is extracted as the renderer draws it; no GPU needed). |
+| [`Visibility`](probe/type-Visibility.md) | struct |  | One entity's verdict in the main camera's cull of the last frame drawn, as the culls that drew it decided (the GPU's with occlusion, or the CPU's). |
 | [`DrawnEntity`](probe/type-DrawnEntity.md) | struct |  | One entity of dump_drawn. |
-| [`DrawnDump`](probe/type-DrawnDump.md) | struct |  | What the main camera's cull keeps of the frame at the current tick (dump_drawn): every entity with something to draw, in entity order. |
+| [`DrawnDump`](probe/type-DrawnDump.md) | struct |  | What the main camera's cull kept of the last frame drawn (dump_drawn, as Visibility): every entity with something to draw, in entity order. |
 | [`EntityPrefab`](probe/type-EntityPrefab.md) | struct |  | Where an entity placed from a prefab came from (its og.PrefabLink, resolved) and what its instance overrides. |
 | [`DescribedPrefab`](probe/type-DescribedPrefab.md) | struct |  | The instances of one prefab in the world. |
 | [`UiElement`](probe/type-UiElement.md) | struct |  | One UI element with its bounds. |
