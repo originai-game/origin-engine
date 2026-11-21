@@ -18,8 +18,7 @@
 # (origin-engine.node, and the og binary when native/og.<platform>-<arch>
 # exists), then @origingame/engine itself (the TypeScript API, the runtime,
 # the web hosts in dist/web, dist/web-publish and dist/web-publish-2d (each
-# publish directory with its profile's lanes variant) and their twins with
-# remote <iframe>s, dist/web-publish-frames and dist/web-publish-2d-frames, the player shell, the Basis
+# publish directory with its profile's lanes variant), the player shell, the Basis
 # transcoder, the knowledge in knowledge/, the built-in UI styles in styles/,
 # og.motion's verified download pin in motion.json; no native code: npm installs the platform package through
 # optionalDependencies). Prints each tarball with its size and sha256.
@@ -42,9 +41,7 @@ mkdir -p "$out/stage"
 bun "$root/scripts/assets.ts" ensure "$here" "$root/templates"
 [ "$native_only" = 1 ] || for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm dist/web-publish-2d/origin-engine_bg.wasm dist/web-publish-2d/origin-engine.js \
     dist/web-publish/origin-engine-lanes_bg.wasm dist/web-publish/origin-engine-lanes.js dist/web-publish/snippets \
-    dist/web-publish-2d/origin-engine-lanes_bg.wasm dist/web-publish-2d/origin-engine-lanes.js dist/web-publish-2d/snippets \
-    dist/web-publish-frames/origin-engine_bg.wasm dist/web-publish-frames/origin-engine-lanes_bg.wasm \
-    dist/web-publish-2d-frames/origin-engine_bg.wasm dist/web-publish-2d-frames/origin-engine-lanes_bg.wasm; do
+    dist/web-publish-2d/origin-engine-lanes_bg.wasm dist/web-publish-2d/origin-engine-lanes.js dist/web-publish-2d/snippets; do
   [ -e "$here/$f" ] || { echo "pack: $here/$f is missing; run OG_RELEASE=1 sh scripts/build.sh first" >&2; exit 1; }
 done
 sum() { if command -v sha256sum >/dev/null; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
@@ -148,9 +145,6 @@ tar -czf "$out/origingame-engine-wasm-symbols-$version.tgz" -C "$out/stage" wasm
 # dist/build-facts.json, so an install's first og build does not spend a
 # core-minute per module on it (docs/web-export.md §The og commands).
 bun "$here/src/node/web-build.ts" --engine-facts
-# The signed package carries only hashes, not the remote-frame wasm twins.
-# Upload these content-addressed optional packs before publishing the release.
-bun -e 'const {packFrameHosts} = await import(process.argv[1]); packFrameHosts(process.argv[2], process.argv[3])' "$here/src/node/frame-hosts.ts" "$here/dist" "$out/frames"
 # The main package: its files list leaves native/ and the test pages out.
 (cd "$here" && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null)
 rm -rf "$out/stage"

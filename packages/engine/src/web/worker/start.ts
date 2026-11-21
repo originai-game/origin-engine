@@ -7,7 +7,7 @@
 import { boundHost, createEngine, isPublishBuild, systemClock, type GameToken } from "../../runtime.ts";
 import { SourceMap } from "../../sourcemap.ts";
 import { useSourceMap } from "../../spawn-site.ts";
-import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installRemoteFetcher, installTranscoder, installVideo, onBar, pageSvg, preloadBundle, prepareTextures } from "../boot.ts";
+import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installTranscoder, installVideo, onBar, preloadBundle, prepareTextures } from "../boot.ts";
 import { fetchModuleHost, loadEngineModules, loadWebHost } from "../host.ts";
 import type { EngineModules } from "../split.ts";
 import * as pipelines from "../pipelines.ts";
@@ -142,8 +142,6 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     installImageDecoder(glue);
     // Every Basis texture the engine asks for, from any bundle or pack, is transcoded by the Workers' pool.
     installTranscoder(glue, data.basis);
-    // A document's http(s) images are fetched here and decoded by the browser (an SVG by the page).
-    installRemoteFetcher(glue, (bytes) => pageSvg.ask(bytes));
     progress(data.expect ? received.value : 0.1, "bundle");
     let fetched: Fetched | null = null;
     if (data.root !== undefined) {

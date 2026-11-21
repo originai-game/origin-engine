@@ -3671,7 +3671,6 @@ dependencies = [
  "og-ui-next",
  "og-video",
  "pollster",
- "resvg",
  "ring",
  "serde",
  "serde_json",

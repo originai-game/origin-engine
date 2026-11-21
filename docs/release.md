@@ -60,21 +60,15 @@ removing names. A future public symbols endpoint requires the platform's
 download filename allowlist to accept optional artifacts first.
 
 **Optional engine data.** The installed `engine/motion.json` pins motion
-weights, fetched only by cooks that use motion. The installed
-`engine/dist/frame-hosts.json` pins the two remote-frame publish archives,
-each holding its single-threaded and lanes modules. A publish build whose
-project settings declare `frames` fetches the matching profile automatically.
-Both caches live under `ORIGIN_ENGINE_CACHE` (default
-`~/.cache/origin-engine`), verify SHA256 before use, never modify the engine
-install, and report missing data offline as an error. A verified cache
-works offline. A game with neither feature downloads neither payload.
+weights, fetched only by cooks that use motion. The cache lives under
+`ORIGIN_ENGINE_CACHE` (default `~/.cache/origin-engine`), verifies SHA256
+before use, never modifies the engine install, and reports missing data
+offline as an error. A verified cache works offline. A game without motion
+downloads none of it.
 
-Pack writes remote-frame archives under `dist/pack/frames/<sha256>.tar.gz`
-with an `og-assets.json` pinning them; `scripts/release.sh publish` pushes
-them to the platform's engine asset store (docs/ci.md §The asset store) and
-verifies them there before releasing the engine that pins them, whose
-`frame-hosts.json` and `motion.json` name the store's
-`/api/engine-assets/sha256/<hex>` URLs. Engines up to 0.9.0 name the frozen
+`scripts/release.sh publish` verifies the weights in the platform's engine
+asset store (docs/ci.md §The asset store) before releasing the engine whose
+`motion.json` names the store's `/api/engine-assets/sha256/<hex>` URL. Engines up to 0.9.0 name the frozen
 R2 bucket `origin-engine-models` instead. They are content-addressed, not target install
 manifest entries. Retain the matching named wasm modules in private symbols
 storage even for hosts omitted from default installs.
@@ -350,8 +344,7 @@ does the rest, so the key never leaves it.
 2. On the Mac (macrunner, the release worktree at that commit): `nice -n 10
    scripts/release.sh pack`. It packs the darwin-arm64 and linux-x64
    tarballs, create-game and design into `dist/release/<v>/` and ends by
-   naming the missing win32-x64 tarball; the remote-frame archives land in
-   `packages/engine/dist/pack/frames/`.
+   naming the missing win32-x64 tarball.
 2a. On the GPU host (the `gcp-l4` orb, a checkout at the same commit with
    the Mac's `dist/release/<v>/` tarballs copied in): `scripts/release.sh
    previews <v>`, which writes `dist/release/<v>/previews/` and
@@ -361,11 +354,10 @@ does the rest, so the key never leaves it.
    packages/engine/scripts/pack.sh --native`, giving
    `packages/engine/dist/pack/origingame-engine-win32-x64-<v>.tgz`. It never
    compiles the wasm.
-4. Both hosts send their tarballs, and the Mac its frame archives, to the
+4. Both hosts send their tarballs to the
    orb by Amp's thread file transfer, and the GPU host its previews and
    `looks-render.json`. In the orb: copy them into
-   `dist/release/<v>/` (the frame archives into
-   `packages/engine/dist/pack/frames/`), then `scripts/release.sh archive`,
+   `dist/release/<v>/`, then `scripts/release.sh archive`,
    `scripts/release.sh verify` (the full install test, not `--core`, host
    and container), `scripts/release.sh sign`, and `scripts/release.sh
    publish` with `OG_PLATFORM_ENGINE_UPLOAD_TOKEN`.

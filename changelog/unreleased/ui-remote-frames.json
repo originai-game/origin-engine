@@ -1,0 +1,17 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "<iframe>",
+      "change": "Remote `<iframe src=\"https://…\">` frames are gone with the old UI core, together with project.ogt's `frames` setting and the `*-frames` web engine variants it chose. `og build` now refuses a project.ogt that still names `frames`.",
+      "fix": "Delete the `frames` line from project.ogt. Build what the remote page showed as game UI from TSX components.",
+      "find": ["<iframe", "frames:"]
+    },
+    {
+      "member": "url()",
+      "change": "An `http(s)://` image in a `url()` is no longer fetched at run time, with its `integrity()` modifier: images come only from the game's cooked assets.",
+      "fix": "Download the image into the game's assets and name it by its asset path.",
+      "find": ["url(\"http", "url(http", "url('http"]
+    }
+  ]
+}

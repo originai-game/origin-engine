@@ -126,12 +126,12 @@ for variants in all reference dev; do
       printf '%s\n' "$dest" >> "$OG_WASM_OUT/built-${1:-dev}.txt"
     }
     step_wasm_build >/dev/null || exit 1
-    case "$variants" in all) expected="dev publish publish2d publishframes publish2dframes lanes lanes2d lanesframes lanes2dframes" ;; reference) expected="dev lanes publish" ;; dev) expected=dev ;; esac
+    case "$variants" in all) expected="dev publish publish2d lanes lanes2d" ;; reference) expected="dev lanes publish" ;; dev) expected=dev ;; esac
     [ "$(ls "$OG_WASM_OUT"/*.wasm | xargs -n1 basename | sed 's/\.wasm$//' | sort | xargs)" = "$(printf '%s\n' $expected | sort | xargs)" ] || exit 1
     [ "$(wc -l < "$OG_WASM_OUT/built.txt" | tr -d ' ')" = "$(printf '%s\n' $expected | wc -l | tr -d ' ')" ] || exit 1
   ) || { echo "FAIL OG_WASM_VARIANTS=$variants builds the wrong modules"; exit 1; }
 done
-echo 'ok   landings build only development wasm; references omit 2D and frames variants; all builds include frames'
+echo 'ok   landings build only development wasm; references omit the 2D variants'
 
 # OG_GATE_SKIP drops named steps: an unknown name fails before anything runs,
 # and a skipped step is printed and summarised as not run, never as a pass.

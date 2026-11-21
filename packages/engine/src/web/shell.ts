@@ -241,15 +241,6 @@ export class Shell {
         this.#onLoadFailure?.(m as unknown as { file: string; reason: string });
         return;
       }
-      // A document's remote SVG, which the Worker cannot draw (boot.ts PageSvg): drawn here at its own size.
-      if (m.type === "og-svg") {
-        const { id: svg, bytes } = m as unknown as { id: number; bytes: Uint8Array };
-        drawSvg(bytes).then(
-          (bitmap) => worker.postMessage({ type: "svg", id: svg, bitmap }, [bitmap]),
-          (e: unknown) => worker.postMessage({ type: "svg", id: svg, error: e instanceof Error ? e.message : String(e) }),
-        );
-        return;
-      }
       if (m.type === "beat") {
         this.#deadline.beat((m as { tick?: number | null }).tick);
         // A host that answers later (an ad's answer after the resume) or sends notices on its own.
@@ -560,15 +551,3 @@ export class Shell {
   }
 }
 
-/** An SVG drawn by the page's own image decoder at its own size (a Worker has none), as an ImageBitmap. */
-async function drawSvg(bytes: Uint8Array): Promise<ImageBitmap> {
-  const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: "image/svg+xml" }));
-  try {
-    const image = new Image();
-    image.src = url;
-    await image.decode();
-    return await createImageBitmap(image, { premultiplyAlpha: "none" });
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}

@@ -56,12 +56,9 @@ bincode = "1.3.3"
 # decodes with WebCodecs (or rav1d's wasm module) beside the engine Worker.
 og-video = { path = "../og-video" }
 image = { workspace = true, features = ["exr", "webp"] }
-# A remote SVG image natively (world/remote.rs), drawn as the cook draws a
-# package's SVG (feature `fetch`).
-resvg = { version = "0.48.1", default-features = false, features = ["text", "raster-images"], optional = true }
 
 [features]
-default = ["shaping", "physics2d", "physics3d", "fetch", "frames"]
+default = ["shaping", "physics2d", "physics3d", "fetch"]
 # A published game: the probe keeps only its player-facing members, the
 # renderer times no pass on the GPU (og-render's `publish`), and the
 # reflected and record field docs are empty (og-core's and og-api's
@@ -80,19 +77,10 @@ shaping = ["og-ui/shaping"]
 # §Variants), and the other profile's calls answer that it is not built.
 physics2d = ["og-physics/physics2d"]
 physics3d = ["og-physics/physics3d"]
-# Natively, the http(s) images documents name in url() (world/remote.rs):
-# og-net's HTTP client and resvg for SVG. On the web the engine Worker
-# fetches, so the wasm takes neither; a native build without it warns
-# that it fetches nothing.
-fetch = ["og-net/http", "dep:resvg"]
-# Remote <iframe>s (og-ui's `frames`; world/remote.rs): fetching a frame's
-# document from an origin project.ogt's `frames` lists, defining it, the
-# executor's wait for it, and og.ui.frameMessages. Without it a remote src
-# is refused when its document is parsed, og.ui.remoteFrames answers false
-# and og.ui.frameMessages stays empty; local frames are always built.
-# `og build` ships the web variants that have it only to a game whose
-# project.ogt lists `frames` (docs/web-export.md §Variants).
-frames = ["og-ui/frames"]
+# Natively, og.load.data's integrity check of a version's files
+# (world/data.rs, og-net's sha384). On the web the engine Worker's fetch
+# checks it, so the wasm takes none.
+fetch = ["og-net/http"]
 
 [dev-dependencies]
 # tests/stream_release.rs cooks a small project with streaming groups.

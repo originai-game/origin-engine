@@ -21,9 +21,7 @@
 //   origin-engine.js, origin-engine_bg.wasm   the web host: dist/web (every member, both physics
 //                              profiles), or with --publish the variant of the game's profile:
 //                              dist/web-publish (3D) or dist/web-publish-2d (2D), each with only
-//                              its profile's physics (docs/web-export.md §Variants); for a game whose
-//                              project.ogt lists `frames`, that directory's twin with remote <iframe>s
-//                              (dist/web-publish-frames, dist/web-publish-2d-frames)
+//                              its profile's physics (docs/web-export.md §Variants)
 //   origin-engine-lanes.js, origin-engine-lanes_bg.wasm, snippets/
 //                              (--publish, isolation not "off") the lanes variant of the same
 //                              profile, from the same directory: wasm atomics, rayon on a pool of
@@ -60,7 +58,6 @@ import bindingsJson from "../../types/bindings.json" with { type: "json" };
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { availableParallelism } from "node:os";
 import { bundleGame, ENGINE_ROOT } from "./build.ts";
-import { frameHost } from "./frame-hosts.ts";
 import { unhashed } from "../sourcemap.ts";
 import { decoderSource } from "../web/audio-decoder.ts";
 import { av1WorkerSource } from "../web/video.ts";
@@ -207,8 +204,6 @@ export interface ProjectSettings {
   readonly id: string;
   /** The engine version project.ogt pins. */
   readonly engine: string;
-  /** project.ogt's `frames`: the origins remote `<iframe>`s load from. */
-  readonly frames?: readonly string[];
   readonly publish: PublishSettings;
 }
 
@@ -324,15 +319,6 @@ export interface BuildManifest {
    * Content-Security-Policy must allow (`connect-src`). Null: no content base.
    */
   readonly content: { readonly base: string; readonly origin: string } | null;
-  /**
-   * The origins the game's remote `<iframe>`s load documents from
-   * (project.ogt's `frames`, docs/web-export.md §Frames): what the page's
-   * Content-Security-Policy must allow (`connect-src`; the engine fetches
-   * a frame's document and images, it never navigates a browsing context).
-   * Empty: the game embeds no remote document, and a publish build ships
-   * the engine without remote frames (docs/web-export.md §Variants).
-   */
-  readonly frames: readonly string[];
   /**
    * A split engine's modules (docs/web-export.md §Modules): `referenced`, the
    * ones the game names, which the boot fetches beside the primary (the
@@ -1006,20 +992,10 @@ export async function webBuild(project: string, entry: string, out: string, publ
   // lanes variant of that profile from the same directory (one lanes module
   // per profile since owed row 71: a 2D game's lanes page never downloads
   // rapier3d, nor a 3D game's rapier2d).
-  // Remote <iframe>s only for a game that lists `frames`: their twin
-  // directory, so a game without them downloads none of their code.
   const variant: BuildManifest["variant"] = publish ? profile : "full";
-  const frames = (settings.frames ?? []).length > 0 ? "-frames" : "";
-  let engineDir = join(ENGINE_ROOT, "dist", variant === "2d" ? `web-publish-2d${frames}` : publish ? `web-publish${frames}` : "web");
-  if (publish && frames) {
-    try {
-      engineDir = await frameHost(ENGINE_ROOT, variant === "2d" ? "web-publish-2d-frames" : "web-publish-frames");
-    } catch (error) {
-      return fail(String(error));
-    }
-  }
+  const engineDir = join(ENGINE_ROOT, "dist", variant === "2d" ? "web-publish-2d" : publish ? "web-publish" : "web");
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) {
-    if (!existsSync(join(engineDir, f))) return fail(`${join(engineDir, f)} is missing: build the web host with \`bun run build\` in packages/engine (scripts/build.sh)${variant === "2d" ? "; a 2d game ships the 2D publish variant, dist/web-publish-2d" : ""}${frames && publish ? "; a game that lists `frames` ships the variant with remote <iframe>s" : ""}`);
+    if (!existsSync(join(engineDir, f))) return fail(`${join(engineDir, f)} is missing: build the web host with \`bun run build\` in packages/engine (scripts/build.sh)${variant === "2d" ? "; a 2d game ships the 2D publish variant, dist/web-publish-2d" : ""}`);
   }
   const vendor = join(ENGINE_ROOT, "vendor", "basis");
   if (!existsSync(join(vendor, "basis_transcoder.wasm"))) return fail(`${vendor} is missing the Basis transcoder`);
@@ -1239,7 +1215,6 @@ export async function webBuild(project: string, entry: string, out: string, publ
     crossOriginIsolation: p.isolation,
     assets: p.assets ? { base: p.assets, origin: new URL(p.assets).origin } : null,
     content: p.content ? { base: p.content, origin: new URL(p.content).origin } : null,
-    frames: settings.frames ?? [],
     modules: single
       ? { referenced: single.referenced, base: single.base || "modules/", origin: single.base ? new URL(single.base).origin : null, local: single.base === "" }
       : null,

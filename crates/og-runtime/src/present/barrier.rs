@@ -66,10 +66,7 @@ pub(crate) fn busy(eng: &Engine) -> bool {
         let a = eng.assets.borrow();
         a.stream.preparing() || a.stream.holding()
     };
-    drawing
-        || streaming
-        || crate::world::remote::pending(eng)
-        || crate::engine::hooks().is_some_and(|h| !h.loading_idle(eng.id))
+    drawing || streaming || crate::engine::hooks().is_some_and(|h| !h.loading_idle(eng.id))
 }
 
 /// og.motion only once the game named it (its og.MotionAgent registered,

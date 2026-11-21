@@ -360,9 +360,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             ui.read_theme_tokens();
         }
         drop(ui);
-        if let Some((pack, ..)) = &style {
-            crate::world::remote::request(&eng, &pack.sheet.remote);
-        }
         eng.render.borrow_mut().color_filter =
             UiSettings::of(&d, String::new(), (false, false)).color_filter();
         let mut st = eng.state.borrow_mut();

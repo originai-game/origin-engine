@@ -965,7 +965,7 @@ an attribute with no prop, an id, and `:host` in a component whose root
 is itself an instance.
 
 `<iframe src="news.svelte" items={$news}>` embeds another document of the
-game (the [frames guide](../crates/og-api/guides/frames.md)). `src` is a
+game. `src` is a
 literal path relative to the embedder, which the cook bundles as it does a
 component and refuses when missing; a bound `src` is refused. The other attributes are the embedded document's
 props, read in the embedder's context; it reads no store of the mount, and
@@ -978,27 +978,6 @@ pack and colour scheme still apply. The `<iframe>` is a replaced box,
 content-…` (CSS Sizing 4) makes that axis the document's laid-out size
 when the document declares `<meta name="responsive-embedded-sizing">`. A
 document never embeds one it is inside.
-
-A remote frame's `src` is an `https://` URL (`http://` on localhost) from
-an origin project.ogt's `frames` lists (og_ui::doc::frames; refused at cook
-and, for a frame a remote document names, at run time), with HTML's
-`integrity` as url()'s request modifier (`crossorigin` and
-`referrerpolicy` are refused, as url()'s are); its request key names it. The host fetches the run-time
-`.svelte` source as it fetches a remote image (og-runtime's
-world/remote.rs; an executor waits for the chain) and defines it under that
-key (`Ui::define_frame_document`), its relative urls and `<iframe>`s beside
-its URL. Until then, and when `frames::refusal` refuses it (a `$store`
-other than `$ui`, a component that is not a loaded `@ui/` one, past 256
-KiB, 4,096 nodes, 64 images or 3 frames deep), the frame builds no child
-and warns. `bind:` on it is refused. Events from inside it leave the
-document events as `og.ui.frameMessages` (`FrameMessage`: frame path,
-origin, kind, name, inner path, value). `crates/og-ui-fuzz` fuzzes the
-parse and build of a document's text (docs/ci.md §Fuzzing). All of this is
-og-ui's `frames` feature (og-runtime's and og-host-web's pass it on), in
-the engine a game gets only when its project.ogt lists `frames`
-(docs/web-export.md §Variants); without it a remote `src` is refused at
-parse (`frames::ABSENT`), the budgets, the nesting walk and the message
-split are not built, and `og.ui.remoteFrames` answers false.
 
 A screen opts into CSS View Transitions 1 and 2 with `@view-transition {
 navigation: auto; }`. The engine's mapping:
@@ -2406,48 +2385,6 @@ every pack, the way to see what a pack changes.
 Review frames before recording references. The
 [screens guide](../crates/og-api/guides/screens.md#3-style-packs) shows
 loading, selectors, tokens and asset URLs.
-
-#### Remote images
-
-A `url()` naming an `http(s)://` image (in a document, an inline style or
-a style pack) is fetched at run time, not cooked. og-ui reads the URL
-and CSS Values 5's `integrity()` request modifier into one request key
-(`crates/og-ui/src/css/request.rs`), which a sheet lists in
-`Sheet::remote`; a package file takes no modifiers. `cross-origin()` and
-`referrer-policy()` are refused as not needed: the engine sends no
-cookies, credentials or referrer of its own, so they protect nothing. The runtime (`crates/og-runtime/src/world/remote.rs`) fetches
-each key once per engine when its document or pack loads and binds the
-decoded image under the key (`Ui::define_texture`, which restyles what is
-mounted); a layer naming an unbound key draws nothing and warns nothing.
-
-- **Fetch.** No credentials and no referrer, with the integrity
-  metadata. The web host fetches from the engine Worker in CORS mode (the
-  browser reads another origin's response only so) and decodes with the
-  browser (an SVG on the page, which a Worker cannot draw); the native
-  host fetches with og-net's client (`crates/og-net/src/http.rs`), which
-  follows redirects and applies SRI's strongest-hash match, and decodes
-  PNG, JPEG and WebP with `image` and SVG with resvg at its own size, as
-  the cook does. Natively no CORS check is made: no request carries
-  anything for one to protect.
-- **Presentation only.** An image is bound at a UI build (the `UI_END`
-  system) after it lands; nothing fetched reaches the world or a journal.
-  The native host waits there for every fetch started, so executors'
-  frames are the same on every run; the web draws what has landed.
-  `og.loading.idle` is false while one is pending.
-- **Failures** (integrity, HTTP status, decoding; on the web also CORS)
-  are one warning per key naming the URL and the reason.
-- A build without og-runtime's `fetch` feature fetches nothing natively
-  and warns per key.
-- **Orientation.** Both hosts read the image's EXIF orientation from its
-  metadata with one reader (og-runtime's `exif_orientation`: PNG `eXIf`,
-  JPEG APP1, WebP `EXIF`) and set it on the texture
-  (`RenderScene::set_texture_orientation`); the texels stay as the file
-  stores them and `image-orientation` turns them at draw time, as for a
-  cooked image. The web's `createImageBitmap` always turns an image
-  upright, so the Worker reads the orientation through the wasm
-  (`og_web_image_orientation`) and draws the bitmap turned back
-  (boot.ts `storedTurn`) before handing its texels over
-  (tests/web/remote-images.ts).
 
 ### 3.4 Font packs
 

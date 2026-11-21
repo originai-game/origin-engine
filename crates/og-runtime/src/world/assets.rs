@@ -189,8 +189,6 @@ pub(crate) struct Assets {
     pub content_later: bool,
     /// og.load.data's loads and the manifests they read.
     pub data: crate::world::data::Data,
-    /// The http(s) images documents name, by request key.
-    pub remote: crate::world::remote::Remote,
 }
 
 /// GltfDesc's `castShadow` and `receiveShadow`: what world.instantiate of

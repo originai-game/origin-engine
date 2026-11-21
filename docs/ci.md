@@ -393,9 +393,8 @@ wrapper and sccache. To restart a server, run `sccache --stop-server`; a
 server started by hand must go without the jobserver: `env -u
 CARGO_MAKEFLAGS -u MAKEFLAGS -u MFLAGS sccache --start-server`.
 
-The wrapper also makes the release wasm reproducible on any host, so the
-remote-frame archives pinned by hash rebuild to the same bytes on Linux and
-macOS. Cargo's `-C metadata` takes in the host triple through every
+The wrapper also makes the release wasm reproducible on any host, so it
+rebuilds to the same bytes on Linux and macOS. Cargo's `-C metadata` takes in the host triple through every
 proc-macro and build script a crate depends on, and rustc derives crate ids,
 mangled names and type ids from it; `scripts/release-wasm.sh` sets
 `OG_WASM_REPRODUCIBLE`, under which each wasm32 unit gets a crate id of its
@@ -557,9 +556,7 @@ origingame.ai; public objects are read anonymously, private ones and uploads
 need a platform key the store lets write): the reference frames, the vfx
 packs, the engine package's extensions, sheets and vendor files, the
 templates' fonts, styles and look art, the test fixtures, og-tests' assets,
-og.motion's weights (read by cooks through `motion.json`'s `url`), the
-remote-frame archives (`frame-hosts.json`, pushed by `scripts/release.sh
-publish`) and every showcase project's assets. Git keeps only the binaries a
+og.motion's weights (read by cooks through `motion.json`'s `url`) and every showcase project's assets. Git keeps only the binaries a
 bare cargo build compiles in, the knowledge package's previews, the install
 test's sample and vendored `third_party/` data; `scripts/assets.test.ts`
 fails on any other. Engines up to 0.9.0 read the frozen public R2 bucket

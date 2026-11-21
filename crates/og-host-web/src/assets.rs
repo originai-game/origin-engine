@@ -368,45 +368,9 @@ pub fn og_web_set_image_decoder(decode: js_sys::Function) {
     IMAGE_DECODER.with(|f| *f.borrow_mut() = Some(decode));
 }
 
-/// The Worker's `fetchImage(key, url, integrity)`, called for a
-/// document's http(s) image (og-runtime's world/remote.rs): it `fetch()`es
-/// the URL in CORS mode, without credentials or a referrer, with the
-/// integrity metadata given (empty: none), decodes it with the browser, and answers with `og_web_put_image` or `og_web_fail_image`.
+/// What an image decode answered: RGBA8 rows top to bottom.
 #[wasm_bindgen]
-pub fn og_web_set_remote_fetcher(fetch: js_sys::Function) {
-    crate::REMOTE_FETCHER.with(|f| *f.borrow_mut() = Some(fetch));
-}
-
-/// The Worker's `fetchText(key, url, integrity)`, called for a remote `<iframe>`'s document
-/// (og-runtime's world/remote.rs): it `fetch()`es the URL as
-/// `og_web_set_remote_fetcher`'s does and answers with the response's
-/// bytes through `og_web_put_text`, or `og_web_fail_text`. Only in a
-/// module with remote frames (the `frames` feature); the Worker installs
-/// it when the module exports it.
-#[cfg(feature = "frames")]
-#[wasm_bindgen]
-pub fn og_web_set_remote_text_fetcher(fetch: js_sys::Function) {
-    crate::REMOTE_TEXT_FETCHER.with(|f| *f.borrow_mut() = Some(fetch));
-}
-
-/// The bytes a remote document's fetch answered.
-#[cfg(feature = "frames")]
-#[wasm_bindgen]
-pub fn og_web_put_text(key: f64, bytes: Vec<u8>) {
-    crate::FETCHED_TEXTS.with(|m| m.borrow_mut().insert(key as u64, Ok(bytes)));
-}
-
-/// A remote document that did not arrive, and why.
-#[cfg(feature = "frames")]
-#[wasm_bindgen]
-pub fn og_web_fail_text(key: f64, reason: String) {
-    crate::FETCHED_TEXTS.with(|m| m.borrow_mut().insert(key as u64, Err(reason)));
-}
-
-/// What an image decode answered: RGBA8 rows top to bottom as the file
-/// stores them, and the EXIF orientation it names for them (1: upright).
-#[wasm_bindgen]
-pub fn og_web_put_image(key: f64, width: u32, height: u32, rgba: Vec<u8>, orientation: u32) {
+pub fn og_web_put_image(key: f64, width: u32, height: u32, rgba: Vec<u8>) {
     DECODED_IMAGES.with(|m| {
         m.borrow_mut().insert(
             key as u64,
@@ -414,19 +378,9 @@ pub fn og_web_put_image(key: f64, width: u32, height: u32, rgba: Vec<u8>, orient
                 width,
                 height,
                 rgba,
-                orientation,
             }),
         )
     });
-}
-
-/// The EXIF orientation (1 to 8) a fetched PNG, JPEG or WebP's metadata
-/// names: the native host's reader (og-runtime's `exif_orientation`), so
-/// the Worker turns `createImageBitmap`'s upright texels back as stored
-/// and both hosts hold the same texels and orientation.
-#[wasm_bindgen]
-pub fn og_web_image_orientation(bytes: &[u8]) -> u32 {
-    og_runtime::exif_orientation(bytes)
 }
 
 /// An image the browser could not decode, and why.

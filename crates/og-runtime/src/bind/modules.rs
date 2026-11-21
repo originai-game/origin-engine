@@ -187,9 +187,6 @@ pub(crate) fn mount_back(
             move |ctx| {
                 if let Ok(eng) = engine(engine_id) {
                     crate::bind::i18n::ensure_packs(&eng);
-                    // Remote images that landed are bound before the build
-                    // (natively each one started is waited for).
-                    crate::world::remote::settle(&eng);
                 }
                 // Motion's clock: the tick's end, unscaled (a paused game's
                 // menus still move), never the wall clock.

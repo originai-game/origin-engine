@@ -256,7 +256,6 @@ export function checkLayout(dir: string, t: Target): void {
     "engine/dist/web-publish-2d/origin-engine_bg.wasm",
     "engine/dist/web-publish/origin-engine-lanes_bg.wasm",
     "engine/dist/web-publish/origin-engine-lanes.js",
-    "engine/dist/frame-hosts.json",
     `engine/native/origin-engine.${platform}.node`,
     "create/bin/create.ts",
     "create/template/project.ogt",

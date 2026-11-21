@@ -539,37 +539,13 @@ export function installInflater(glue: Pick<WebExtras, "og_web_set_inflater" | "o
 }
 
 /**
- * Where an upright image's texels go to stand as its file stores them,
- * under EXIF orientation `exif` (1 to 8; anything else is upright): the
- * stored size and the 2D context transform (`setTransform(a, b, c, d, e,
- * f)`) that draws the upright `width` × `height` image there. The inverse
- * of the turn og-draw's UiOrientation names, which createImageBitmap's
- * `from-image` has applied.
- */
-export function storedTurn(exif: number, width: number, height: number): { width: number; height: number; matrix: [number, number, number, number, number, number] } {
-  const [w, h] = exif >= 5 && exif <= 8 ? [height, width] : [width, height];
-  const matrix: Record<number, [number, number, number, number, number, number]> = {
-    2: [-1, 0, 0, 1, w, 0],
-    3: [-1, 0, 0, -1, w, h],
-    4: [1, 0, 0, -1, 0, h],
-    5: [0, 1, 1, 0, 0, 0],
-    6: [0, -1, 1, 0, 0, h],
-    7: [0, -1, -1, 0, w, h],
-    8: [0, 1, -1, 0, w, 0],
-  };
-  return { width: w, height: h, matrix: matrix[exif] ?? [1, 0, 0, 1, 0, 0] };
-}
-
-/**
  * An ImageBitmap's RGBA8 texels, straight alpha, read back through an
- * OffscreenCanvas; the bitmap is closed. With `exif`, the bitmap is
- * upright and its texels are turned back as its file stores them.
+ * OffscreenCanvas; the bitmap is closed.
  */
-function texels(bitmap: ImageBitmap, Canvas: new (w: number, h: number) => OffscreenCanvas, exif = 1): { width: number; height: number; rgba: Uint8Array } {
-  const { width, height, matrix } = storedTurn(exif, bitmap.width, bitmap.height);
+function texels(bitmap: ImageBitmap, Canvas: new (w: number, h: number) => OffscreenCanvas): { width: number; height: number; rgba: Uint8Array } {
+  const { width, height } = bitmap;
   const ctx = new Canvas(width, height).getContext("2d", { willReadFrequently: true }) as OffscreenCanvasRenderingContext2D | null;
   if (!ctx) throw new Error("no 2D context to read the image's texels");
-  ctx.setTransform(...matrix);
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
   return { width, height, rgba: new Uint8Array(ctx.getImageData(0, 0, width, height).data.buffer) };
@@ -592,108 +568,10 @@ export function installImageDecoder(glue: Pick<WebExtras, "og_web_set_image_deco
     decode(new Blob([new Uint8Array(bytes)]), { premultiplyAlpha: "none", colorSpaceConversion: "none" })
       .then((bitmap) => {
         const t = texels(bitmap, Canvas);
-        put(key, t.width, t.height, t.rgba, 1);
+        put(key, t.width, t.height, t.rgba);
       })
       .catch((e: unknown) => fail(key, `the browser could not decode it (${e instanceof Error ? e.message : String(e)})`));
   });
   return true;
 }
 
-/** Whether fetched bytes are an SVG image: UTF-8 text holding an `<svg` element (og-cook's and the native host's test). */
-export function isSvg(bytes: Uint8Array): boolean {
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes).includes("<svg");
-  } catch {
-    return false;
-  }
-}
-
-/**
- * The SVGs this Worker asked the page to draw (a Worker has no SVG
- * decoder): `ask` posts `{ type: "og-svg", id, bytes }`, and the page's
- * `{ type: "svg", id, bitmap | error }` settles it through `answer`.
- */
-export class PageSvg {
-  #next = 0;
-  readonly #waiting = new Map<number, { ok: (b: ImageBitmap) => void; fail: (e: Error) => void }>();
-  readonly #post: (message: unknown, transfer: Transferable[]) => void;
-  constructor(post: (message: unknown, transfer: Transferable[]) => void) {
-    this.#post = post;
-  }
-  ask(bytes: Uint8Array): Promise<ImageBitmap> {
-    const id = this.#next++;
-    return new Promise((ok, fail) => {
-      this.#waiting.set(id, { ok, fail });
-      const copy = bytes.slice();
-      this.#post({ type: "og-svg", id, bytes: copy }, [copy.buffer]);
-    });
-  }
-  answer(m: { id: number; bitmap?: ImageBitmap; error?: string }): void {
-    const w = this.#waiting.get(m.id);
-    this.#waiting.delete(m.id);
-    if (m.bitmap) w?.ok(m.bitmap);
-    else w?.fail(new Error(m.error ?? "the page did not draw it"));
-  }
-}
-
-/** This Worker's SVG requests to its page (worker.ts answers them). */
-export const pageSvg = new PageSvg((m, transfer) => (globalThis as unknown as { postMessage(m: unknown, t: Transferable[]): void }).postMessage(m, transfer));
-
-/**
- * Gives the engine the Worker's `fetch()` for the http(s) images documents
- * name in url() (og-runtime's world/remote.rs, docs/ui.md §3.3 Remote
- * images): CORS mode (as a browser reads another origin's response), the
- * url()'s integrity metadata, and no credentials or referrer, as natively
- * (og-net's http.rs). A PNG, JPEG, WebP or GIF is decoded as og.load.imageData's
- * are; an SVG, which a Worker cannot draw, by the page (`svg`), at its own
- * size. Answered by key with og_web_put_image or og_web_fail_image. The
- * browser's HTTP cache keeps what it fetched.
- *
- * The texels are handed over as the file stores them, with the EXIF
- * orientation the engine's own reader finds in the bytes
- * (og_web_image_orientation): createImageBitmap always turns an image
- * upright, so it is drawn turned back, and CSS image-orientation turns it
- * at draw time as on the native host.
- */
-export function installRemoteFetcher(glue: Pick<WebExtras, "og_web_set_remote_fetcher" | "og_web_put_image" | "og_web_fail_image" | "og_web_image_orientation" | "og_web_set_remote_text_fetcher" | "og_web_put_text" | "og_web_fail_text">, svg: (bytes: Uint8Array) => Promise<ImageBitmap>): boolean {
-  const g = globalThis as { createImageBitmap?: (b: Blob, o?: Record<string, string>) => Promise<ImageBitmap>; OffscreenCanvas?: new (w: number, h: number) => OffscreenCanvas };
-  const { og_web_set_remote_fetcher: set, og_web_put_image: put, og_web_fail_image: fail } = glue;
-  if (!g.createImageBitmap || !g.OffscreenCanvas || !set || !put || !fail) return false;
-  const decode = g.createImageBitmap;
-  const Canvas = g.OffscreenCanvas;
-  const init = (integrity: string): RequestInit => ({
-    mode: "cors",
-    credentials: "omit",
-    referrerPolicy: "no-referrer",
-    ...(integrity ? { integrity } : {}),
-    ...(typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {}),
-  });
-  // The browser names no reason for a refused CORS or integrity check: a TypeError.
-  const reason = (e: unknown) => (e instanceof TypeError ? `refused or unreachable (${e.message}: the network, CORS or integrity)` : e instanceof Error ? e.message : String(e));
-  // A remote <iframe>'s document: its bytes, under the same request rules.
-  const { og_web_set_remote_text_fetcher: setText, og_web_put_text: putText, og_web_fail_text: failText } = glue;
-  if (setText && putText && failText) {
-    setText((key, url, integrity) => {
-      fetch(url, init(integrity))
-        .then(async (r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          putText(key, new Uint8Array(await r.arrayBuffer()));
-        })
-        .catch((e: unknown) => failText(key, reason(e)));
-    });
-  }
-  set((key, url, integrity) => {
-    fetch(url, init(integrity))
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const bytes = new Uint8Array(await r.arrayBuffer());
-        const vector = isSvg(bytes);
-        const exif = vector ? 1 : (glue.og_web_image_orientation?.(bytes) ?? 1);
-        const bitmap = vector ? await svg(bytes) : await decode(new Blob([bytes]), { imageOrientation: "from-image", premultiplyAlpha: "none", colorSpaceConversion: "none" });
-        const t = texels(bitmap, Canvas, exif);
-        put(key, t.width, t.height, t.rgba, exif);
-      })
-      .catch((e: unknown) => fail(key, reason(e)));
-  });
-  return true;
-}

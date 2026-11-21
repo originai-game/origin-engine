@@ -162,9 +162,6 @@ lanes_check() {
       continue
     fi
     while read -r vname vfeat; do
-      # A `frames` twin adds no threaded code: its unthreaded module and
-      # the dev module (which has frames) check what it adds.
-      [ "${vname%frames}" = "$vname" ] || continue
       og_say "lanes check $vname: $c (--no-default-features --features $vfeat)"
       "$OG_ROOT/scripts/wasm-lanes.sh" check --profile "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" \
         -p "$c" --no-default-features --features "$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" --lib || return 1
@@ -244,7 +241,7 @@ step_wasm_build() {
       continue
     fi
     while read -r vname vfeat; do
-      [ "$variants" != reference ] || { [ "$vname" != publish2d ] && [ "${vname%frames}" = "$vname" ]; } || continue
+      [ "$variants" != reference ] || [ "$vname" != publish2d ] || continue
       og_say "publish variant $vname: $c (--no-default-features --features $vfeat)"
       wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
     done <<EOF_VARIANTS
@@ -264,7 +261,7 @@ EOF_VARIANTS
     fi
     # One lanes module per game profile (scripts/wasm-crates.txt `lanes`).
     while read -r vname vfeat; do
-      [ "$variants" != reference ] || { [ "$vname" != lanes2d ] && [ "${vname%frames}" = "$vname" ]; } || continue
+      [ "$variants" != reference ] || [ "$vname" != lanes2d ] || continue
       og_say "lanes variant $vname: $c (--no-default-features --features $vfeat, wasm atomics: scripts/wasm-lanes.sh)"
       wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
     done <<EOF_LANES
@@ -331,7 +328,6 @@ wasm_split() {
   for d in "$OG_WASM_OUT"/bindgen/og_host_web-publish* "$OG_WASM_OUT"/bindgen/og_host_web-lanes*; do
     [ -d "$d" ] || continue
     name="$(basename "$d")"
-    [ "${name%frames}" = "$name" ] || continue
     og_need wasm-split || return 1
     mkdir -p "$OG_WASM_OUT/split/$name"
     profile=3d

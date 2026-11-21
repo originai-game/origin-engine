@@ -253,31 +253,6 @@ pub trait Hooks {
         let _ = (key, bytes);
         false
     }
-    /// Starts fetching a document's http(s) image (`request`: its URL, CORS
-    /// credentials, integrity and referrer policy) and decoding it, answered
-    /// by [`Hooks::image_decode_take`] under `key`: the web host's engine
-    /// Worker `fetch()`es it in CORS mode and decodes it with the browser.
-    /// `false`: this host cannot, and the runtime fetches and decodes on a
-    /// worker thread natively (feature `fetch`; world/remote.rs).
-    fn remote_image_start(&self, key: u64, request: &og_ui::css::request::UrlRequest) -> bool {
-        let _ = (key, request);
-        false
-    }
-    /// Starts fetching a remote `<iframe>`'s document (`request`: its URL
-    /// and request attributes, as [`Hooks::remote_image_start`]'s), its
-    /// bytes answered by [`Hooks::fetch_take`] under `key`: the web host's
-    /// engine Worker `fetch()`es it in CORS mode. `false`: this host
-    /// cannot, and the runtime fetches on a worker thread natively.
-    #[cfg(feature = "frames")]
-    fn remote_text_start(&self, key: u64, request: &og_ui::css::request::UrlRequest) -> bool {
-        let _ = (key, request);
-        false
-    }
-    /// The bytes a started [`Hooks::remote_text_start`] answered, once.
-    #[cfg(feature = "frames")]
-    fn fetch_take(&self, key: u64) -> Fetch<Vec<u8>> {
-        Fetch::Failed(format!("fetch {key} was never started"))
-    }
     /// The RGBA8 image a started decode answered, once (`Pending` until then).
     fn image_decode_take(&self, key: u64) -> Fetch<crate::world::uncooked::Decoded> {
         Fetch::Failed(format!("image decode {key} was never started"))
@@ -530,9 +505,6 @@ pub(crate) struct ProjectGame {
     /// `publish { loading game }`: who draws the loading screen
     /// (og.loading.status answers it on every host).
     pub loading: Option<String>,
-    /// `frames "https://events.example.com"`: the origins remote
-    /// `<iframe>`s may load from (og_ui::doc::frames); none by default.
-    pub frames: Vec<String>,
     /// `create { form "2d" }`: the 2D profile (og-bundle's
     /// `look::project_profile`); any other form, or none, is 3D.
     pub two_d: bool,
@@ -618,7 +590,6 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         .and_then(|e| e.values.first())
         .and_then(|v| v.as_word().or_else(|| v.as_str()))
         .map(str::to_string);
-    let frames = og_ui::doc::frames::project_origins(b).map_err(|e| format!("project.ogt:{e}"))?;
     let two_d = og_bundle::look::project_profile(b).map_err(|e| format!("project.ogt:{e}"))?
         == og_bundle::look::Profile::TwoD;
     Ok(ProjectGame {
@@ -629,7 +600,6 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         look,
         save_version,
         loading,
-        frames,
         two_d,
     })
 }

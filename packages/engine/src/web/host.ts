@@ -212,17 +212,9 @@ export interface WebExtras {
   og_web_set_image_decoder?(decode: (key: number, bytes: Uint8Array) => void): void;
   /** The engine modules content being prepared needs (the cooked manifest's `modules`): fetched now (split.ts loadEngineModules). */
   og_web_set_module_prefetcher?(prefetch: (names: string[]) => void): void;
-  /** RGBA8 rows as the file stores them, and the EXIF orientation it names for them (1: upright). */
-  og_web_put_image?(key: number, width: number, height: number, rgba: Uint8Array, orientation: number): void;
-  /** The EXIF orientation (1 to 8) a PNG, JPEG or WebP names: the native host's reader (og-runtime's exif_orientation). */
-  og_web_image_orientation?(bytes: Uint8Array): number;
+  /** RGBA8 rows top to bottom. */
+  og_web_put_image?(key: number, width: number, height: number, rgba: Uint8Array): void;
   og_web_fail_image?(key: number, reason: string): void;
-  /** A document's http(s) image (og-runtime's world/remote.rs), answered with og_web_put_image or og_web_fail_image. */
-  og_web_set_remote_fetcher?(fetch: (key: number, url: string, integrity: string) => void): void;
-  /** A remote <iframe>'s document (og-runtime's world/remote.rs), answered with og_web_put_text or og_web_fail_text. */
-  og_web_set_remote_text_fetcher?(fetch: (key: number, url: string, integrity: string) => void): void;
-  og_web_put_text?(key: number, bytes: Uint8Array): void;
-  og_web_fail_text?(key: number, reason: string): void;
   og_web_bundle_files(manifest: string): string;
   /** Each cooked file's integrity, `{ "<file>": "sha384-…" }` (or `{ error }`), for a package from an asset base. */
   og_web_bundle_integrity(manifest: string): string;

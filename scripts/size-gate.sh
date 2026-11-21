@@ -49,10 +49,6 @@ entries=""
 # What a player downloads it as (scripts/wasm-crates.txt names the variants).
 download_of() {
   case "$1" in
-    *-publishframes.wasm) echo "3D publish, frames" ;;
-    *-publish2dframes.wasm) echo "2D publish, frames" ;;
-    *-lanes2dframes.wasm) echo "2D lanes, frames" ;;
-    *-lanesframes.wasm) echo "3D lanes, frames" ;;
     *-publish.wasm) echo "3D publish" ;;
     *-publish2d.wasm) echo "2D publish" ;;
     *-lanes2d.wasm) echo "2D lanes" ;;

@@ -185,7 +185,6 @@ pub use host::platform::{
 /// The counting allocator the hosts install (`#[global_allocator]`), for the probe's `memory`.
 pub use og_core::alloc::Counting as CountingAlloc;
 pub use og_render::png;
-pub use og_ui::css::request::UrlRequest;
 pub use present::atmosphere::{
     og_atmosphere_time_of_day, og_load_shader, og_render_set_material_shader,
     og_render_set_shader_param, og_render_shader_material,
@@ -232,7 +231,6 @@ pub use present::views::{
     og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,
 };
 pub use world::assets::{Fetch, prepare_textures};
-pub use world::remote::exif_orientation;
 pub use world::save::{
     og_save_edit_close, og_save_edit_drop_type, og_save_edit_get_version, og_save_edit_records,
     og_save_edit_rename_field, og_save_edit_rename_type, og_save_edit_set_records,
