@@ -23,6 +23,7 @@ Binding symbol `og_render_extrude_geometry` · publish builds: kept
 
 ```ogt
 fn extrudeGeometry {
+  custom true
   doc "Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding."
   param world World "The world whose renderer owns the geometry."
   param desc ExtrudeGeometryDesc "The shapes, depth, bevel and path."
@@ -30,4 +31,4 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>Module `render` line 3829</sub>
+<sub>Module `render` line 3832</sub>

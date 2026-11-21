@@ -23,6 +23,7 @@ Binding symbol `og_reflect_define_event` · publish builds: kept
 
 ```ogt
 fn defineEvent {
+  custom true
   doc "Declare a reflected gameplay event. Its stable name and packed field layout identify recorded intents; changing that layout refuses old intent recordings."
   generic F Fields
   param name String "The event's unique name, PascalCase."
@@ -31,4 +32,4 @@ fn defineEvent {
 }
 ```
 
-<sub>Module `reflect` line 123</sub>
+<sub>Module `reflect` line 125</sub>

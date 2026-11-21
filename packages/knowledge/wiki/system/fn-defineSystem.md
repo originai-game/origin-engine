@@ -26,6 +26,7 @@ Binding symbol `og_system_define_system` · publish builds: kept
 
 ```ogt
 fn defineSystem {
+  custom true
   doc "Declare a system: the game's code that runs every tick (movement, AI, scoring), with the components it reads and writes and its order among the other systems. List it in GameDesc.systems."
   aliases "update loop, Update, _process, per-tick logic, ECS system, game loop"
   param name String "The system's unique name, PascalCase."
@@ -35,4 +36,4 @@ fn defineSystem {
 }
 ```
 
-<sub>Module `system` line 95</sub>
+<sub>Module `system` line 98</sub>

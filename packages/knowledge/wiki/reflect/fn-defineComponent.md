@@ -25,6 +25,7 @@ Binding symbol `og_reflect_define_component` · publish builds: kept
 
 ```ogt
 fn defineComponent {
+  custom true
   doc "Declare a component: plain data stored per entity in engine memory, one column per field."
   doc "Registration is by name, so a hot reload re-registers the same component and migrates its fields by name."
   generic F Fields

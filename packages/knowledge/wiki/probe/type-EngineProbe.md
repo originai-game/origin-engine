@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 821</sub>
+<sub>Module `probe` line 823</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>Module `probe` line 826</sub>
+<sub>Module `probe` line 828</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -97,7 +97,7 @@ fn capture {
 }
 ```
 
-<sub>Module `probe` line 831</sub>
+<sub>Module `probe` line 833</sub>
 
 <a id="member-EngineProbe-captureViews"></a>
 
@@ -143,7 +143,7 @@ fn captureViews {
 }
 ```
 
-<sub>Module `probe` line 852</sub>
+<sub>Module `probe` line 854</sub>
 
 <a id="member-EngineProbe-visible"></a>
 
@@ -177,7 +177,7 @@ fn visible {
 }
 ```
 
-<sub>Module `probe` line 868</sub>
+<sub>Module `probe` line 870</sub>
 
 <a id="member-EngineProbe-marks"></a>
 
@@ -216,7 +216,7 @@ fn marks {
 }
 ```
 
-<sub>Module `probe` line 875</sub>
+<sub>Module `probe` line 877</sub>
 
 <a id="member-EngineProbe-timeline"></a>
 
@@ -239,7 +239,7 @@ fn timeline {
 }
 ```
 
-<sub>Module `probe` line 885</sub>
+<sub>Module `probe` line 887</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -269,7 +269,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 889</sub>
+<sub>Module `probe` line 891</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -292,7 +292,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 896</sub>
+<sub>Module `probe` line 898</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -315,7 +315,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 900</sub>
+<sub>Module `probe` line 902</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -337,13 +337,14 @@ Binding symbol `og_engine_probe_restore` · publish builds: dropped
 
 ```ogt
 fn restore {
+  custom true
   doc "Restore a snapshot taken by this process."
   param id String "The snapshot id."
   returns bool "False for an unknown id."
 }
 ```
 
-<sub>Module `probe` line 904</sub>
+<sub>Module `probe` line 906</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -373,7 +374,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 909</sub>
+<sub>Module `probe` line 912</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -401,7 +402,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 916</sub>
+<sub>Module `probe` line 919</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -431,7 +432,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 921</sub>
+<sub>Module `probe` line 924</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -454,7 +455,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 928</sub>
+<sub>Module `probe` line 931</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -477,7 +478,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 932</sub>
+<sub>Module `probe` line 935</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -505,7 +506,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 936</sub>
+<sub>Module `probe` line 939</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -528,7 +529,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 941</sub>
+<sub>Module `probe` line 944</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -558,7 +559,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 945</sub>
+<sub>Module `probe` line 948</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -581,7 +582,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 952</sub>
+<sub>Module `probe` line 955</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -615,7 +616,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 956</sub>
+<sub>Module `probe` line 959</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -649,7 +650,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 966</sub>
+<sub>Module `probe` line 969</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -679,4 +680,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 976</sub>
+<sub>Module `probe` line 979</sub>

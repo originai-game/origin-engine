@@ -132,6 +132,4 @@ export const assertModule = Object.freeze({
   each(this: unknown, key: unknown, condition: boolean, name: string) {
     assert("each", this, name, condition, keyText(key), null);
   },
-  record: (world: { readonly id: number }, record: unknown) =>
-    abi()?.og_assert_record(world.id, record === null || record === undefined ? "null" : JSON.stringify(record)) ?? 0,
 });

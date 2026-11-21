@@ -23,6 +23,7 @@ Binding symbol `og_render_sweep_geometry` · publish builds: kept
 
 ```ogt
 fn sweepGeometry {
+  custom true
   doc "Make a section swept along a path for og.Mesh, tapered and twisted by keys."
   param world World "The world whose renderer owns the geometry."
   param desc SweepGeometryDesc "The section, path, keys and caps."
@@ -30,4 +31,4 @@ fn sweepGeometry {
 }
 ```
 
-<sub>Module `render` line 3878</sub>
+<sub>Module `render` line 3882</sub>

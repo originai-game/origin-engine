@@ -10,7 +10,6 @@ A declared game, the bundle's default export.
 
 ```ogt
 interface Game {
-  doc "A declared game, the bundle's default export."
   # members follow, each quoted below
 ```
 
@@ -32,7 +31,7 @@ Binding symbol `og_game_get_tick` · publish builds: kept
 prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
 ```
 
-<sub>Module `game` line 85</sub>
+<sub>Module `game` line 86</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -50,4 +49,4 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>Module `game` line 86</sub>
+<sub>Module `game` line 87</sub>

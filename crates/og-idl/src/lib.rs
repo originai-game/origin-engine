@@ -239,6 +239,10 @@ pub fn generate(api: &Api) -> Vec<Generated> {
             contents: r#gen::host::abi_ts(&ix),
         },
         Generated {
+            path: "packages/engine/src/generated/calls.ts".to_string(),
+            contents: r#gen::calls::calls_ts(&ix),
+        },
+        Generated {
             path: "packages/engine/src/generated/exports.ts".to_string(),
             contents: r#gen::ts::exports_ts(&ix),
         },

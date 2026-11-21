@@ -729,6 +729,7 @@ module audio {
   }
 
   fn createSound {
+    custom true
     doc "Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves."
     param world World "The world that owns the sound."
     param desc SoundDesc "The samples and their format."
@@ -736,6 +737,7 @@ module audio {
   }
 
   fn outputLatency {
+    custom true
     doc "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency and the mixer's buffer; 0 headless. Host input, written to og.Audio between ticks, so a replay carries it."
     guide "audio §3"
     doc "Inside a system og.Audio must be among its reads or writes."

@@ -247,6 +247,7 @@ module world {
     prop tick u32 "Fixed steps taken since the world was created."
 
     fn spawn {
+      custom true
       doc "Spawn an entity."
       aliases "instantiate, create entity, spawn object, Unity Instantiate, Godot add_child"
       param desc SpawnDesc "Name, parent and initial transform."
@@ -254,6 +255,7 @@ module world {
     }
 
     fn despawn {
+      custom true
       doc "Despawn an entity and its descendants. Its name is free again once the despawn applies: at once between ticks; inside a system when the system returns, so a later system of the same tick may spawn the name again but the despawning system itself may not."
       aliases "destroy entity, delete object, Unity Destroy, Godot queue_free"
       param entity Entity "The entity."
@@ -275,6 +277,7 @@ module world {
     }
 
     fn insert {
+      custom true
       doc "Add a component to an entity, or overwrite it when present. A structural change. Every field is checked against its reflected min/max before the component is changed; an out-of-range value returns an error, never a clamped value."
       generic C AnyComponent
       param entity Entity "The entity."
@@ -286,6 +289,7 @@ module world {
     }
 
     fn remove {
+      custom true
       doc "Remove a component from an entity. A structural change."
       generic C AnyComponent
       param entity Entity "The entity."
@@ -294,6 +298,7 @@ module world {
     }
 
     fn get {
+      custom true
       doc "Copy one entity's component value. For bulk work use a system's typed views."
       generic C AnyComponent
       param entity Entity "The entity."
@@ -302,6 +307,7 @@ module world {
     }
 
     fn set {
+      custom true
       doc "Write some fields of one entity's component."
       generic C AnyComponent
       param entity Entity "The entity."
@@ -311,6 +317,7 @@ module world {
     }
 
     fn resource {
+      custom true
       doc "A resource's live value: the same handle every time, its fields typed reads and writes of the resource's packed record (no JSON; ease strings in the host timing codec). A read after an engine call or a system boundary sees the engine's value; writes reach the engine before the next engine call and when the system or command returns. Inside a system the resource must be among its reads or writes (writes to set a field): undeclared, it throws in a dev or release build naming the system and resource and fails the tick; a publish build refuses it and logs once per system."
       generic R AnyResource
       param resource R "The resource token."
@@ -324,6 +331,7 @@ module world {
     }
 
     fn removed {
+      custom true
       doc "Entities that lost a component: removed from them, or despawned with it. Inside a system, since the system last ran (the component among its reads or writes); between ticks, since the last tick began. The world keeps a tick's removals through the next tick. The component must be tracked (a system filters on it: SystemDesc.changed, added or removed)."
       generic C AnyComponent
       param component C "The component token."
@@ -331,6 +339,7 @@ module world {
     }
 
     fn spatial {
+      custom true
       doc "A spatial hash of the entities SpatialDesc selects, for radius and k-nearest queries on entities without colliders (og.physics answers those with). Inside a system, og.Transform must be among its reads or writes; the index holds the positions as the system sees them when it is built."
       param desc SpatialDesc "Which entities, and the cell size." {
         optional true
@@ -370,12 +379,14 @@ module world {
     }
 
     fn query {
+      custom true
       doc "A query over the current archetypes, for commands and callbacks (GameDesc.start, a command, a UI callback). Inside a system it is refused, by design: a system receives its one query (every component of its reads and writes) as its first argument; loop over another archetype in a system of its own."
       param desc QueryDesc "The components to match."
       returns Result.Query
     }
 
     fn events {
+      custom true
       doc "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once)."
       generic E AnyEvent
       param event E "The event token."
@@ -383,6 +394,7 @@ module world {
     }
 
     fn emit {
+      custom true
       doc "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once)."
       generic E AnyEvent
       param event E "The event token."
@@ -391,6 +403,7 @@ module world {
     }
 
     fn instantiate {
+      custom true
       doc "Spawn a loaded scene, prefab or glTF asset into the world: a root entity from the desc, then (for a scene or prefab) every entity under it with its components (a scene's with their names, a prefab's unnamed, each with an og.PrefabLink to it), or (for a glTF) a Model on the root."
       doc "Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns."
       doc "Inside a system the root is spawned as world.spawn spawns one there, and what is under it is in the world when the system returns."
@@ -400,6 +413,7 @@ module world {
     }
 
     fn snapshot {
+      custom true
       doc "The whole world as text: every entity with its components and names, every resource (og.Time and og.Rng too), the pending events and the modules' state, each type with its schema hash, and GameDesc.saveVersion, after `og-save:3:`. Every build has it, publish too; the same world saves to the same text on both hosts. With SnapshotDesc's `with` or `resources`, a selection. Inside a system it is the world mid-tick as that system sees it, without the structural changes it queued, and a restore completes that tick: make it the system's last write. Between ticks it is the world between two ticks."
       guide "saves"
       aliases "save game, savegame, checkpoint, serialise the world, persist state, quick save"
@@ -410,12 +424,14 @@ module world {
     }
 
     fn openSave {
+      custom true
       doc "Open a save for editing, as a migration does (SaveEdit): the engine's own migrations applied (an engine upgrade's changes to its components and its modules' state, such as og.ui's state of engine 0.7.7), the game's not yet. world.restore opens and migrates by itself; use this to read a save without restoring it, or to migrate one by hand."
       param save String "The text world.snapshot returned."
       returns Result.SaveEdit "Refused for text world.snapshot did not write, or a save of a newer GameDesc.saveVersion."
     }
 
     fn restore {
+      custom true
       doc "Replace the world with a world.snapshot save (a selection replaces only its tagged entities and resources). The engine's migrations, then GameDesc.migrations from the save's version to saveVersion, run on the save; a step that refuses or throws refuses the restore. It then hashes as the saved world did; the session stays (saves §4). In a system it applies when the tick ends, in a command before the next tick, elsewhere at once (saves §1); the tick after delivers og.WorldRestored. A mid-tick save's next step completes its tick. The meshes its colliders name must be loaded first."
       guide "saves"
       param save String "The text world.snapshot returned."
@@ -425,6 +441,7 @@ module world {
   }
 
   interface Query {
+    custom true
     doc "A set of matched archetypes. Iterate archetypes, never entities one by one."
     fn archetypes {
       doc "The matched archetypes this tick."
@@ -438,6 +455,7 @@ module world {
   }
 
   interface ArchetypeView {
+    custom true
     doc "One archetype's columns for this tick. Views are invalidated by structural changes; using a stale view throws with the tick and the system it belonged to."
     prop count u32 "The number of entities in the archetype."
     prop tick u32 "The tick this view belongs to."

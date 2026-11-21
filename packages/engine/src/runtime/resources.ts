@@ -4,7 +4,7 @@ import { type RecordField, decodeField, encodeField } from "./record-bytes.ts";
 import { type Result, parse } from "./result.ts";
 import { rt } from "./state.ts";
 import { checkAccess } from "./views.ts";
-import { WorldImpl } from "./world.ts";
+import { type Custom, RngStream, type World, resourceMethods } from "../generated/calls.ts";
 
 // ── resources as live values ──────────────────────────────────────────────
 //
@@ -123,7 +123,7 @@ export function refresh(r: RecordCopy): boolean {
 }
 
 /** The handle of a resource read through its packed bytes, shared by every `world.resource` of it. */
-export function recordHandle(world: WorldImpl, r: RecordCopy): object {
+export function recordHandle(world: World, r: RecordCopy): object {
   if (r.handle) return r.handle;
   const id = world.id;
   const name = r.name;
@@ -186,64 +186,31 @@ export function recordHandle(world: WorldImpl, r: RecordCopy): object {
   return (r.handle = Object.seal(out));
 }
 
-/** The methods a built-in resource's handle carries beside its fields. */
+/** The methods a built-in resource's handle carries beside its fields (generated). */
 function methods(id: number, name: string, out: Record<string, unknown>): void {
-  if (name === "og.Input") {
-    Object.assign(out, {
-      down: (key: string) => abi().og_input_down(id, key),
-      justPressed: (key: string) => abi().og_input_just_pressed(id, key),
-      justReleased: (key: string) => abi().og_input_just_released(id, key),
-      axis: (negative: string, positive: string) => abi().og_input_axis(id, negative, positive),
-      axis2: (left: string, right: string, down: string, up: string) => parse(abi().og_input_axis2(id, left, right, down, up)),
-      buttonDown: (button: string) => abi().og_input_button_down(id, button),
-      buttonJustPressed: (button: string) => abi().og_input_button_just_pressed(id, button),
-      buttonJustReleased: (button: string) => abi().og_input_button_just_released(id, button),
-    });
-  }
-  if (name === "og.Pointers") {
-    Object.assign(out, {
-      down: (pointer: number) => abi().og_pointers_down(id, pointer),
-      justPressed: (pointer: number) => abi().og_pointers_just_pressed(id, pointer),
-      justReleased: (pointer: number) => abi().og_pointers_just_released(id, pointer),
-      position: (pointer: number) => parse(abi().og_pointers_position(id, pointer)),
-      start: (pointer: number) => parse(abi().og_pointers_start(id, pointer)),
-      count: () => abi().og_pointers_count(id),
-    });
-  }
-  if (name === "og.Gamepad") {
-    Object.assign(out, {
-      connected: (pad?: number) => abi().og_gamepad_connected(id, pad),
-      down: (button: string, pad?: number) => abi().og_gamepad_down(id, button, pad),
-      justPressed: (button: string, pad?: number) => abi().og_gamepad_just_pressed(id, button, pad),
-      justReleased: (button: string, pad?: number) => abi().og_gamepad_just_released(id, button, pad),
-      axis: (axis: string, pad?: number) => abi().og_gamepad_axis(id, axis, pad),
-    });
-  }
-  if (name === "og.Camera") {
-    Object.assign(out, {
-      lookAt: (target: unknown) => abi().og_camera_look_at(id, JSON.stringify(target)),
-      worldToScreen: (point: unknown) => parse(abi().og_camera_world_to_screen(id, JSON.stringify(point))),
-      screenToRay: (x: number, y: number) => parse(abi().og_camera_screen_to_ray(id, x, y)),
-    });
-  }
+  const made = resourceMethods[name];
+  if (made) Object.assign(out, made(id));
 }
 
+/** og.Rng's draws (IDL `custom`): a draw moves the stream, so it needs og.Rng among the system's writes; a fork reads the seed only. */
+export const rngCustom: Custom["Rng"] = {
+  next: (world) => (checkAccess("write", "og.Rng"), abi().og_rng_next(world)),
+  range: (world, low, high) => (checkAccess("write", "og.Rng"), abi().og_rng_range(world, low, high)),
+  integer: (world, low, high) => (checkAccess("write", "og.Rng"), abi().og_rng_integer(world, low, high)),
+  chance: (world, p) => (checkAccess("write", "og.Rng"), abi().og_rng_chance(world, p)),
+  weighted: (world, weights) => (checkAccess("write", "og.Rng"), abi().og_rng_weighted(world, JSON.stringify(weights))),
+  permutation: (world, n) => (checkAccess("write", "og.Rng"), parse<number[]>(abi().og_rng_permutation(world, n))),
+  fork: (world, label) => (checkAccess("read", "og.Rng"), new RngStream(abi().og_rng_fork(world, label))),
+};
+
 /** A resource read as JSON (og.Time, og.Rng): computed by the engine, read only. */
-export function jsonResource(world: WorldImpl, token: Token, value: Record<string, unknown>): object {
+export function jsonResource(world: World, token: Token, value: Record<string, unknown>): object {
   const id = world.id;
   if (token.name === "og.Rng") {
     return Object.freeze({
       get seed() { return parse<{ ok: boolean; value?: { seed: number } }>(abi().og_world_resource(id, "og.Rng")).value?.seed ?? 0; },
       get state() { return parse<{ ok: boolean; value?: { state: number } }>(abi().og_world_resource(id, "og.Rng")).value?.state ?? 0; },
-      // A draw moves the stream: it needs og.Rng among the system's writes. A fork reads the seed only.
-      next: () => (checkAccess("write", "og.Rng"), abi().og_rng_next(id)),
-      range: (low: number, high: number) => (checkAccess("write", "og.Rng"), abi().og_rng_range(id, low, high)),
-      integer: (low: number, high: number) => (checkAccess("write", "og.Rng"), abi().og_rng_integer(id, low, high)),
-      chance: (p: number) => (checkAccess("write", "og.Rng"), abi().og_rng_chance(id, p)),
-      weighted: (weights: readonly number[]) =>
-        (checkAccess("write", "og.Rng"), abi().og_rng_weighted(id, JSON.stringify(weights))),
-      permutation: (n: number) => (checkAccess("write", "og.Rng"), parse<number[]>(abi().og_rng_permutation(id, n))),
-      fork: (label: string) => (checkAccess("read", "og.Rng"), rngStream(abi().og_rng_fork(id, label))),
+      ...resourceMethods["og.Rng"]!(id),
     });
   }
   // Every getter reads through to the store, kept while no other engine
@@ -265,17 +232,4 @@ export function jsonResource(world: WorldImpl, token: Token, value: Record<strin
   for (const key of Object.keys(value)) Object.defineProperty(out, key, { enumerable: true, get: () => read()[key] });
   methods(id, name, out);
   return Object.seal(out);
-}
-
-function rngStream(handle: number): object {
-  return Object.freeze({
-    get seed() { return abi().og_rng_stream_get_seed(handle); },
-    next: () => abi().og_rng_stream_next(handle),
-    range: (low: number, high: number) => abi().og_rng_stream_range(handle, low, high),
-    integer: (low: number, high: number) => abi().og_rng_stream_integer(handle, low, high),
-    chance: (p: number) => abi().og_rng_stream_chance(handle, p),
-    weighted: (weights: readonly number[]) => abi().og_rng_stream_weighted(handle, JSON.stringify(weights)),
-    permutation: (n: number) => parse<number[]>(abi().og_rng_stream_permutation(handle, n)),
-    fork: (label: string) => rngStream(abi().og_rng_stream_fork(handle, label)),
-  });
 }

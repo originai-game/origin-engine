@@ -56,6 +56,7 @@ Binding symbol `og_world_spawn` · publish builds: kept
 
 ```ogt
 fn spawn {
+  custom true
   doc "Spawn an entity."
   aliases "instantiate, create entity, spawn object, Unity Instantiate, Godot add_child"
   param desc SpawnDesc "Name, parent and initial transform."
@@ -87,6 +88,7 @@ Binding symbol `og_world_despawn` · publish builds: kept
 
 ```ogt
 fn despawn {
+  custom true
   doc "Despawn an entity and its descendants. Its name is free again once the despawn applies: at once between ticks; inside a system when the system returns, so a later system of the same tick may spawn the name again but the despawning system itself may not."
   aliases "destroy entity, delete object, Unity Destroy, Godot queue_free"
   param entity Entity "The entity."
@@ -94,7 +96,7 @@ fn despawn {
 }
 ```
 
-<sub>Module `world` line 256</sub>
+<sub>Module `world` line 257</sub>
 
 <a id="member-World-alive"></a>
 
@@ -122,7 +124,7 @@ fn alive {
 }
 ```
 
-<sub>Module `world` line 263</sub>
+<sub>Module `world` line 265</sub>
 
 <a id="member-World-has"></a>
 
@@ -153,7 +155,7 @@ fn has {
 }
 ```
 
-<sub>Module `world` line 269</sub>
+<sub>Module `world` line 271</sub>
 
 <a id="member-World-insert"></a>
 
@@ -177,6 +179,7 @@ Binding symbol `og_world_insert` · publish builds: kept
 
 ```ogt
 fn insert {
+  custom true
   doc "Add a component to an entity, or overwrite it when present. A structural change. Every field is checked against its reflected min/max before the component is changed; an out-of-range value returns an error, never a clamped value."
   generic C AnyComponent
   param entity Entity "The entity."
@@ -188,7 +191,7 @@ fn insert {
 }
 ```
 
-<sub>Module `world` line 277</sub>
+<sub>Module `world` line 279</sub>
 
 <a id="member-World-remove"></a>
 
@@ -211,6 +214,7 @@ Binding symbol `og_world_remove` · publish builds: kept
 
 ```ogt
 fn remove {
+  custom true
   doc "Remove a component from an entity. A structural change."
   generic C AnyComponent
   param entity Entity "The entity."
@@ -219,7 +223,7 @@ fn remove {
 }
 ```
 
-<sub>Module `world` line 288</sub>
+<sub>Module `world` line 291</sub>
 
 <a id="member-World-get"></a>
 
@@ -242,6 +246,7 @@ Binding symbol `og_world_get` · publish builds: kept
 
 ```ogt
 fn get {
+  custom true
   doc "Copy one entity's component value. For bulk work use a system's typed views."
   generic C AnyComponent
   param entity Entity "The entity."
@@ -250,7 +255,7 @@ fn get {
 }
 ```
 
-<sub>Module `world` line 296</sub>
+<sub>Module `world` line 300</sub>
 
 <a id="member-World-set"></a>
 
@@ -274,6 +279,7 @@ Binding symbol `og_world_set` · publish builds: kept
 
 ```ogt
 fn set {
+  custom true
   doc "Write some fields of one entity's component."
   generic C AnyComponent
   param entity Entity "The entity."
@@ -283,7 +289,7 @@ fn set {
 }
 ```
 
-<sub>Module `world` line 304</sub>
+<sub>Module `world` line 309</sub>
 
 <a id="member-World-resource"></a>
 
@@ -305,6 +311,7 @@ Binding symbol `og_world_resource` · publish builds: kept
 
 ```ogt
 fn resource {
+  custom true
   doc "A resource's live value: the same handle every time, its fields typed reads and writes of the resource's packed record (no JSON; ease strings in the host timing codec). A read after an engine call or a system boundary sees the engine's value; writes reach the engine before the next engine call and when the system or command returns. Inside a system the resource must be among its reads or writes (writes to set a field): undeclared, it throws in a dev or release build naming the system and resource and fails the tick; a publish build refuses it and logs once per system."
   generic R AnyResource
   param resource R "The resource token."
@@ -312,7 +319,7 @@ fn resource {
 }
 ```
 
-<sub>Module `world` line 313</sub>
+<sub>Module `world` line 319</sub>
 
 <a id="member-World-children"></a>
 
@@ -340,7 +347,7 @@ fn children {
 }
 ```
 
-<sub>Module `world` line 320</sub>
+<sub>Module `world` line 327</sub>
 
 <a id="member-World-removed"></a>
 
@@ -362,6 +369,7 @@ Binding symbol `og_world_removed` · publish builds: kept
 
 ```ogt
 fn removed {
+  custom true
   doc "Entities that lost a component: removed from them, or despawned with it. Inside a system, since the system last ran (the component among its reads or writes); between ticks, since the last tick began. The world keeps a tick's removals through the next tick. The component must be tracked (a system filters on it: SystemDesc.changed, added or removed)."
   generic C AnyComponent
   param component C "The component token."
@@ -369,7 +377,7 @@ fn removed {
 }
 ```
 
-<sub>Module `world` line 326</sub>
+<sub>Module `world` line 333</sub>
 
 <a id="member-World-spatial"></a>
 
@@ -391,6 +399,7 @@ Binding symbol `og_world_spatial` · publish builds: kept
 
 ```ogt
 fn spatial {
+  custom true
   doc "A spatial hash of the entities SpatialDesc selects, for radius and k-nearest queries on entities without colliders (og.physics answers those with). Inside a system, og.Transform must be among its reads or writes; the index holds the positions as the system sees them when it is built."
   param desc SpatialDesc "Which entities, and the cell size." {
     optional true
@@ -399,7 +408,7 @@ fn spatial {
 }
 ```
 
-<sub>Module `world` line 333</sub>
+<sub>Module `world` line 341</sub>
 
 <a id="member-World-state"></a>
 
@@ -427,7 +436,7 @@ fn state {
 }
 ```
 
-<sub>Module `world` line 341</sub>
+<sub>Module `world` line 350</sub>
 
 <a id="member-World-setState"></a>
 
@@ -457,7 +466,7 @@ fn setState {
 }
 ```
 
-<sub>Module `world` line 347</sub>
+<sub>Module `world` line 356</sub>
 
 <a id="member-World-find"></a>
 
@@ -485,7 +494,7 @@ fn find {
 }
 ```
 
-<sub>Module `world` line 354</sub>
+<sub>Module `world` line 363</sub>
 
 <a id="member-World-prefabOf"></a>
 
@@ -513,7 +522,7 @@ fn prefabOf {
 }
 ```
 
-<sub>Module `world` line 360</sub>
+<sub>Module `world` line 369</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -541,7 +550,7 @@ fn nameOf {
 }
 ```
 
-<sub>Module `world` line 366</sub>
+<sub>Module `world` line 375</sub>
 
 <a id="member-World-query"></a>
 
@@ -563,13 +572,14 @@ Binding symbol `og_world_query` · publish builds: kept
 
 ```ogt
 fn query {
+  custom true
   doc "A query over the current archetypes, for commands and callbacks (GameDesc.start, a command, a UI callback). Inside a system it is refused, by design: a system receives its one query (every component of its reads and writes) as its first argument; loop over another archetype in a system of its own."
   param desc QueryDesc "The components to match."
   returns Result.Query
 }
 ```
 
-<sub>Module `world` line 372</sub>
+<sub>Module `world` line 381</sub>
 
 <a id="member-World-events"></a>
 
@@ -591,6 +601,7 @@ Binding symbol `og_world_events` · publish builds: kept
 
 ```ogt
 fn events {
+  custom true
   doc "The events of one type emitted during the previous tick and this one, oldest first. Inside a system the event must be among its reads or writes (undeclared: thrown, or in a publish build refused and logged once)."
   generic E AnyEvent
   param event E "The event token."
@@ -598,7 +609,7 @@ fn events {
 }
 ```
 
-<sub>Module `world` line 378</sub>
+<sub>Module `world` line 388</sub>
 
 <a id="member-World-emit"></a>
 
@@ -621,6 +632,7 @@ Binding symbol `og_world_emit` · publish builds: kept
 
 ```ogt
 fn emit {
+  custom true
   doc "Emit an event; readers see it this tick and the next. Inside a system the event must be among its writes (undeclared: thrown, or in a publish build refused and logged once)."
   generic E AnyEvent
   param event E "The event token."
@@ -629,7 +641,7 @@ fn emit {
 }
 ```
 
-<sub>Module `world` line 385</sub>
+<sub>Module `world` line 396</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -656,6 +668,7 @@ Binding symbol `og_world_instantiate` · publish builds: kept
 
 ```ogt
 fn instantiate {
+  custom true
   doc "Spawn a loaded scene, prefab or glTF asset into the world: a root entity from the desc, then (for a scene or prefab) every entity under it with its components (a scene's with their names, a prefab's unnamed, each with an og.PrefabLink to it), or (for a glTF) a Model on the root."
   doc "Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns."
   doc "Inside a system the root is spawned as world.spawn spawns one there, and what is under it is in the world when the system returns."
@@ -665,7 +678,7 @@ fn instantiate {
 }
 ```
 
-<sub>Module `world` line 393</sub>
+<sub>Module `world` line 405</sub>
 
 <a id="member-World-snapshot"></a>
 
@@ -691,6 +704,7 @@ Binding symbol `og_world_snapshot` · publish builds: kept
 
 ```ogt
 fn snapshot {
+  custom true
   doc "The whole world as text: every entity with its components and names, every resource (og.Time and og.Rng too), the pending events and the modules' state, each type with its schema hash, and GameDesc.saveVersion, after `og-save:3:`. Every build has it, publish too; the same world saves to the same text on both hosts. With SnapshotDesc's `with` or `resources`, a selection. Inside a system it is the world mid-tick as that system sees it, without the structural changes it queued, and a restore completes that tick: make it the system's last write. Between ticks it is the world between two ticks."
   guide "saves"
   aliases "save game, savegame, checkpoint, serialise the world, persist state, quick save"
@@ -701,7 +715,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `world` line 402</sub>
+<sub>Module `world` line 415</sub>
 
 <a id="member-World-openSave"></a>
 
@@ -723,13 +737,14 @@ Binding symbol `og_world_open_save` · publish builds: kept
 
 ```ogt
 fn openSave {
+  custom true
   doc "Open a save for editing, as a migration does (SaveEdit): the engine's own migrations applied (an engine upgrade's changes to its components and its modules' state, such as og.ui's state of engine 0.7.7), the game's not yet. world.restore opens and migrates by itself; use this to read a save without restoring it, or to migrate one by hand."
   param save String "The text world.snapshot returned."
   returns Result.SaveEdit "Refused for text world.snapshot did not write, or a save of a newer GameDesc.saveVersion."
 }
 ```
 
-<sub>Module `world` line 412</sub>
+<sub>Module `world` line 426</sub>
 
 <a id="member-World-restore"></a>
 
@@ -754,6 +769,7 @@ Binding symbol `og_world_restore` · publish builds: kept
 
 ```ogt
 fn restore {
+  custom true
   doc "Replace the world with a world.snapshot save (a selection replaces only its tagged entities and resources). The engine's migrations, then GameDesc.migrations from the save's version to saveVersion, run on the save; a step that refuses or throws refuses the restore. It then hashes as the saved world did; the session stays (saves §4). In a system it applies when the tick ends, in a command before the next tick, elsewhere at once (saves §1); the tick after delivers og.WorldRestored. A mid-tick save's next step completes its tick. The meshes its colliders name must be loaded first."
   guide "saves"
   param save String "The text world.snapshot returned."
@@ -762,4 +778,4 @@ fn restore {
 }
 ```
 
-<sub>Module `world` line 418</sub>
+<sub>Module `world` line 433</sub>

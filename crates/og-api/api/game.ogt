@@ -81,12 +81,14 @@ module game {
   }
 
   interface Game {
+    custom true
     doc "A declared game, the bundle's default export."
     prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
     prop systems List.System "The systems in declaration order."
   }
 
   fn game {
+    custom true
     doc "Declare the game. The bundle's default export is its result."
     param desc GameDesc "Tick, scenes, systems and commands."
     returns Game

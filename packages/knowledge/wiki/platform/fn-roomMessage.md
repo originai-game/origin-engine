@@ -23,6 +23,7 @@ Binding symbol `og_platform_room_message` · publish builds: kept
 
 ```ogt
 fn roomMessage {
+  custom true
   doc "A message og.RoomMessage announced: who sent it and what it carries. The engine keeps the last 256."
   param world World "The world."
   param message u32 "og.RoomMessage.message."
@@ -30,4 +31,4 @@ fn roomMessage {
 }
 ```
 
-<sub>Module `platform` line 646</sub>
+<sub>Module `platform` line 647</sub>

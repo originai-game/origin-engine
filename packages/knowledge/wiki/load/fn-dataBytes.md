@@ -25,6 +25,7 @@ Binding symbol `og_load_data_bytes` · publish builds: kept
 
 ```ogt
 fn dataBytes {
+  custom true
   doc "The bytes of a ready og.load.data file read as `bytes`."
   guide "loading §14"
   param world World "The world that owns the asset."

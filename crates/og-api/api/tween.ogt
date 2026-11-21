@@ -284,6 +284,7 @@ module tween {
       returns TweenTimeline
     }
     fn add {
+      custom true
       doc "Nest a running tween, sequence, parallel group or timeline (its `tween` handle) at the position: it stops running on its own and plays as part of this one. A string adds a label."
       param child OneOf.Tween.String "The handle to nest, or a label."
       param position OneOf.f64.String "Where." {

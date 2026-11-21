@@ -273,6 +273,7 @@ Binding symbol `og_tween_timeline_add` · publish builds: kept
 
 ```ogt
 fn add {
+  custom true
   doc "Nest a running tween, sequence, parallel group or timeline (its `tween` handle) at the position: it stops running on its own and plays as part of this one. A string adds a label."
   param child OneOf.Tween.String "The handle to nest, or a label."
   param position OneOf.f64.String "Where." {
@@ -312,7 +313,7 @@ fn play {
 }
 ```
 
-<sub>Module `tween` line 294</sub>
+<sub>Module `tween` line 295</sub>
 
 <a id="member-TweenTimeline-pause"></a>
 
@@ -342,7 +343,7 @@ fn pause {
 }
 ```
 
-<sub>Module `tween` line 301</sub>
+<sub>Module `tween` line 302</sub>
 
 <a id="member-TweenTimeline-resume"></a>
 
@@ -365,7 +366,7 @@ fn resume {
 }
 ```
 
-<sub>Module `tween` line 308</sub>
+<sub>Module `tween` line 309</sub>
 
 <a id="member-TweenTimeline-reverse"></a>
 
@@ -395,7 +396,7 @@ fn reverse {
 }
 ```
 
-<sub>Module `tween` line 312</sub>
+<sub>Module `tween` line 313</sub>
 
 <a id="member-TweenTimeline-restart"></a>
 
@@ -418,7 +419,7 @@ fn restart {
 }
 ```
 
-<sub>Module `tween` line 319</sub>
+<sub>Module `tween` line 320</sub>
 
 <a id="member-TweenTimeline-seek"></a>
 
@@ -446,7 +447,7 @@ fn seek {
 }
 ```
 
-<sub>Module `tween` line 323</sub>
+<sub>Module `tween` line 324</sub>
 
 <a id="member-TweenTimeline-progress"></a>
 
@@ -476,7 +477,7 @@ fn progress {
 }
 ```
 
-<sub>Module `tween` line 328</sub>
+<sub>Module `tween` line 329</sub>
 
 <a id="member-TweenTimeline-time"></a>
 
@@ -499,7 +500,7 @@ fn time {
 }
 ```
 
-<sub>Module `tween` line 335</sub>
+<sub>Module `tween` line 336</sub>
 
 <a id="member-TweenTimeline-duration"></a>
 
@@ -522,7 +523,7 @@ fn duration {
 }
 ```
 
-<sub>Module `tween` line 339</sub>
+<sub>Module `tween` line 340</sub>
 
 <a id="member-TweenTimeline-timeScale"></a>
 
@@ -552,7 +553,7 @@ fn timeScale {
 }
 ```
 
-<sub>Module `tween` line 343</sub>
+<sub>Module `tween` line 344</sub>
 
 <a id="member-TweenTimeline-isActive"></a>
 
@@ -575,7 +576,7 @@ fn isActive {
 }
 ```
 
-<sub>Module `tween` line 350</sub>
+<sub>Module `tween` line 351</sub>
 
 <a id="member-TweenTimeline-kill"></a>
 
@@ -598,4 +599,4 @@ fn kill {
 }
 ```
 
-<sub>Module `tween` line 354</sub>
+<sub>Module `tween` line 355</sub>

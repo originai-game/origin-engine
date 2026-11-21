@@ -22,10 +22,11 @@ Binding symbol `og_game_game` · publish builds: kept
 
 ```ogt
 fn game {
+  custom true
   doc "Declare the game. The bundle's default export is its result."
   param desc GameDesc "Tick, scenes, systems and commands."
   returns Game
 }
 ```
 
-<sub>Module `game` line 89</sub>
+<sub>Module `game` line 90</sub>

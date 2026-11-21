@@ -22,6 +22,7 @@ Binding symbol `og_debug_view` · publish builds: dropped
 
 ```ogt
 fn view {
+  custom true
   doc "The debug view shown."
   param world World "The world asked."
   returns DebugView

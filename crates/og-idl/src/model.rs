@@ -392,6 +392,10 @@ pub struct Function {
     /// (sugar such as `og.assert.always`), so it has no binding symbol and no
     /// host trait method.
     pub host: bool,
+    /// `custom`: a host member whose TypeScript side is more than a call
+    /// forwarded to its symbol (a callback table, a cache, an access check),
+    /// so the generated runtime member calls `src/runtime/custom.ts` instead.
+    pub custom: bool,
     /// `guide` lines: the guide sections that carry its workflow.
     pub see: Vec<GuideRef>,
     pub line: usize,
@@ -517,6 +521,8 @@ pub struct Prop {
     /// false: a property the TypeScript runtime holds (og.Shape.holes), with
     /// no host getter.
     pub host: bool,
+    /// `custom`: as a fn's, a getter `src/runtime/custom.ts` implements.
+    pub custom: bool,
     pub see: Vec<GuideRef>,
     pub line: usize,
 }
@@ -557,6 +563,9 @@ pub struct Interface {
     pub aliases: Vec<String>,
     pub extends: Option<String>,
     pub publish: Option<bool>,
+    /// `custom`: the runtime builds its objects itself (a declared token, a
+    /// view with its own checks), so no class is generated for it.
+    pub custom: bool,
     pub members: Vec<Member>,
     /// `guide` lines: the guide sections that carry its workflow.
     pub see: Vec<GuideRef>,

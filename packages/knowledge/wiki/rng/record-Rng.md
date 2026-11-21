@@ -25,38 +25,45 @@ resource Rng {
     readonly true
   }
   fn next {
+    custom true
     doc "Uniform in [0, 1)."
     returns f64
   }
   fn range {
+    custom true
     doc "Uniform in [low, high)."
     param low f64 "The inclusive lower bound."
     param high f64 "The exclusive upper bound."
     returns f64
   }
   fn integer {
+    custom true
     doc "A uniform integer in [low, high]."
     param low i32 "The inclusive lower bound."
     param high i32 "The inclusive upper bound."
     returns i32
   }
   fn chance {
+    custom true
     doc "True with probability p."
     param p f64 "The probability, between 0 and 1."
     returns bool
   }
   fn weighted {
+    custom true
     doc "An index drawn in proportion to its weight (one draw): `weighted([1, 3])` is 1 three times in four. Zero, negative and non-finite weights are never drawn; -1 when none is positive."
     param weights List.f64 "One weight per choice."
     returns i32
   }
   fn permutation {
+    custom true
     doc "0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`."
     aliases "shuffle, random order, Fisher-Yates, shuffle a deck"
     param n u32 "How many indices."
     returns List.u32
   }
   fn fork {
+    custom true
     doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough."
     param label String "The subsystem's name, such as `spawner`."
     returns RngStream
@@ -82,6 +89,7 @@ Binding symbol `og_rng_next` · publish builds: kept
 
 ```ogt
 fn next {
+  custom true
   doc "Uniform in [0, 1)."
   returns f64
 }
@@ -110,6 +118,7 @@ Binding symbol `og_rng_range` · publish builds: kept
 
 ```ogt
 fn range {
+  custom true
   doc "Uniform in [low, high)."
   param low f64 "The inclusive lower bound."
   param high f64 "The exclusive upper bound."
@@ -117,7 +126,7 @@ fn range {
 }
 ```
 
-<sub>Module `rng` line 59</sub>
+<sub>Module `rng` line 60</sub>
 
 <a id="member-Rng-integer"></a>
 
@@ -140,6 +149,7 @@ Binding symbol `og_rng_integer` · publish builds: kept
 
 ```ogt
 fn integer {
+  custom true
   doc "A uniform integer in [low, high]."
   param low i32 "The inclusive lower bound."
   param high i32 "The inclusive upper bound."
@@ -147,7 +157,7 @@ fn integer {
 }
 ```
 
-<sub>Module `rng` line 65</sub>
+<sub>Module `rng` line 67</sub>
 
 <a id="member-Rng-chance"></a>
 
@@ -169,13 +179,14 @@ Binding symbol `og_rng_chance` · publish builds: kept
 
 ```ogt
 fn chance {
+  custom true
   doc "True with probability p."
   param p f64 "The probability, between 0 and 1."
   returns bool
 }
 ```
 
-<sub>Module `rng` line 71</sub>
+<sub>Module `rng` line 74</sub>
 
 <a id="member-Rng-weighted"></a>
 
@@ -197,13 +208,14 @@ Binding symbol `og_rng_weighted` · publish builds: kept
 
 ```ogt
 fn weighted {
+  custom true
   doc "An index drawn in proportion to its weight (one draw): `weighted([1, 3])` is 1 three times in four. Zero, negative and non-finite weights are never drawn; -1 when none is positive."
   param weights List.f64 "One weight per choice."
   returns i32
 }
 ```
 
-<sub>Module `rng` line 76</sub>
+<sub>Module `rng` line 80</sub>
 
 <a id="member-Rng-permutation"></a>
 
@@ -227,6 +239,7 @@ Binding symbol `og_rng_permutation` · publish builds: kept
 
 ```ogt
 fn permutation {
+  custom true
   doc "0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`."
   aliases "shuffle, random order, Fisher-Yates, shuffle a deck"
   param n u32 "How many indices."
@@ -234,7 +247,7 @@ fn permutation {
 }
 ```
 
-<sub>Module `rng` line 81</sub>
+<sub>Module `rng` line 86</sub>
 
 <a id="member-Rng-fork"></a>
 
@@ -256,10 +269,11 @@ Binding symbol `og_rng_fork` · publish builds: kept
 
 ```ogt
 fn fork {
+  custom true
   doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough."
   param label String "The subsystem's name, such as `spawner`."
   returns RngStream
 }
 ```
 
-<sub>Module `rng` line 87</sub>
+<sub>Module `rng` line 93</sub>

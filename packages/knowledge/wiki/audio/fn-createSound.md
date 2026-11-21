@@ -23,6 +23,7 @@ Binding symbol `og_audio_create_sound` · publish builds: kept
 
 ```ogt
 fn createSound {
+  custom true
   doc "Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves."
   param world World "The world that owns the sound."
   param desc SoundDesc "The samples and their format."

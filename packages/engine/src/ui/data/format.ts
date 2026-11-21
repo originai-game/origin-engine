@@ -4,8 +4,9 @@
 
 import type * as Api from "@origingame/engine";
 import type { DateStyle } from "@origingame/engine";
-import { i18n } from "../../e6.ts";
-import { currentCall } from "../../runtime.ts";
+import { calls, currentCall } from "../../runtime.ts";
+
+const { i18n } = calls;
 
 const world = () => ({ id: currentCall()?.engine ?? 0 });
 

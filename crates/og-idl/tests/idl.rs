@@ -525,3 +525,68 @@ fn a_record_list_field_carries_its_element_and_capacity_into_every_output() {
         "{wiki}"
     );
 }
+
+/// A host member is generated as its symbol's call, so one the runtime
+/// cannot forward (a game callback) must be marked `custom`, and a `custom`
+/// one calls src/runtime/custom.ts's table, which `Custom` types.
+#[test]
+fn a_member_that_takes_a_callback_is_custom_and_calls_the_runtime() {
+    let source = |custom: &str| {
+        format!(
+            r#"type api
+version 1
+---
+package "@origingame/custom-test"
+doc "Custom fixture."
+module reflect {{
+  doc "Reflection."
+  place top
+  struct FieldOptions {{
+    doc "Field metadata."
+    desc true
+  }}
+}}
+module a {{
+  doc "Module a."
+  callback Run {{
+    doc "Called once."
+  }}
+  fn listen {{
+    doc "Call `run` later."{custom}
+    param run Run "What to call."
+  }}
+  fn count {{
+    doc "How many."
+    param name String "A name."
+    returns u32
+  }}
+}}
+"#
+        )
+    };
+    let refused = og_idl::parse(&source("")).expect_err("a forwarded callback was accepted");
+    assert!(
+        refused.iter().any(|d| d
+            .message
+            .contains("`og.a.listen` takes the callback `run`: mark it `custom true`")),
+        "{refused:?}"
+    );
+    let api = og_idl::parse(&source("\n    custom true")).unwrap_or_else(|d| panic!("{d:?}"));
+    let calls = og_idl::generate(&api)
+        .into_iter()
+        .find(|f| f.path.ends_with("src/generated/calls.ts"))
+        .unwrap()
+        .contents;
+    assert!(
+        calls.contains("listen: (run: Function): unknown => custom.a.listen(run),"),
+        "{calls}"
+    );
+    assert!(
+        calls.contains("count: (name: string): number => abi().og_a_count(name),"),
+        "{calls}"
+    );
+    assert!(
+        calls.contains("  readonly a: {\n    listen(run: Function): unknown;\n  };"),
+        "{calls}"
+    );
+}

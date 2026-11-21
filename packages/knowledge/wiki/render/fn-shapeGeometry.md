@@ -23,6 +23,7 @@ Binding symbol `og_render_shape_geometry` · publish builds: kept
 
 ```ogt
 fn shapeGeometry {
+  custom true
   doc "Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh."
   param world World "The world whose renderer owns the geometry."
   param desc ShapeGeometryDesc "The shapes and their tessellation."
@@ -30,4 +31,4 @@ fn shapeGeometry {
 }
 ```
 
-<sub>Module `render` line 3822</sub>
+<sub>Module `render` line 3824</sub>

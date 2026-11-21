@@ -10,11 +10,10 @@ A set of matched archetypes. Iterate archetypes, never entities one by one.
 
 ```ogt
 interface Query {
-  doc "A set of matched archetypes. Iterate archetypes, never entities one by one."
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 427</sub>
+<sub>Module `world` line 443</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -38,7 +37,7 @@ fn archetypes {
 }
 ```
 
-<sub>Module `world` line 429</sub>
+<sub>Module `world` line 446</sub>
 
 <a id="member-Query-count"></a>
 
@@ -61,4 +60,4 @@ fn count {
 }
 ```
 
-<sub>Module `world` line 434</sub>
+<sub>Module `world` line 451</sub>

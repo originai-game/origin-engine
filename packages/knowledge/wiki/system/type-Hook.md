@@ -10,7 +10,6 @@ A declared hook.
 
 ```ogt
 interface Hook {
-  doc "A declared hook."
   # members follow, each quoted below
 ```
 
@@ -32,4 +31,4 @@ Binding symbol `og_hook_get_name` · publish builds: kept
 prop name String "The hook's unique name."
 ```
 
-<sub>Module `system` line 68</sub>
+<sub>Module `system` line 69</sub>

@@ -10,12 +10,12 @@
 // systems' series), never Math.sin or Math.cos.
 
 import type * as Api from "@origingame/engine";
-import type { HostAbi } from "./generated/abi.ts";
-import { boundHost } from "./runtime.ts";
+import type { Custom } from "./generated/calls.ts";
+import { abi } from "./runtime/host.ts";
+import { json, parse } from "./runtime/result.ts";
 import { sincos } from "./math.ts";
 
 type V2 = { x: number; y: number };
-type W = { readonly id: number };
 
 const TAU = 2 * 3.141592653589793;
 const EPSILON = 2.220446049250313e-16;
@@ -209,15 +209,6 @@ export class Shape extends Path2 {
 
 // ── the render calls ────────────────────────────────────────────────────────
 
-function abi(): HostAbi<Uint32Array, unknown> {
-  const h = boundHost();
-  if (!h) throw new Error("no engine host is loaded: start the game through @origingame/engine's web or node loader");
-  return h.abi;
-}
-
-const parse = <T>(text: string): T => JSON.parse(text) as T;
-const json = (value: unknown): string | undefined => (value === undefined ? undefined : JSON.stringify(value));
-
 type Desc = Record<string, unknown>;
 
 /** A shape as it crosses: its points and its holes' points. */
@@ -245,16 +236,9 @@ function section(desc: unknown): string | undefined {
   return JSON.stringify(d);
 }
 
-export const geomRender = Object.freeze({
-  shapeGeometry: (world: W, desc?: unknown) => parse(abi().og_render_shape_geometry(world.id, shapes(desc))),
-  extrudeGeometry: (world: W, desc?: unknown) => parse(abi().og_render_extrude_geometry(world.id, shapes(desc))),
-  latheGeometry: (world: W, desc?: unknown) => parse(abi().og_render_lathe_geometry(world.id, json(desc))),
-  polyhedronGeometry: (world: W, desc?: unknown) => parse(abi().og_render_polyhedron_geometry(world.id, json(desc))),
-  icosahedronGeometry: (world: W, desc?: unknown) => parse(abi().og_render_icosahedron_geometry(world.id, json(desc))),
-  dodecahedronGeometry: (world: W, desc?: unknown) => parse(abi().og_render_dodecahedron_geometry(world.id, json(desc))),
-  octahedronGeometry: (world: W, desc?: unknown) => parse(abi().og_render_octahedron_geometry(world.id, json(desc))),
-  tetrahedronGeometry: (world: W, desc?: unknown) => parse(abi().og_render_tetrahedron_geometry(world.id, json(desc))),
-  sweepGeometry: (world: W, desc?: unknown) => parse(abi().og_render_sweep_geometry(world.id, section(desc))),
-  csgGeometry: (world: W, desc?: unknown) => parse(abi().og_render_csg_geometry(world.id, json(desc))),
-  mergeGeometries: (world: W, desc?: unknown) => parse(abi().og_render_merge_geometries(world.id, json(desc))),
-});
+/** The `custom` render members that take shapes (IDL `render`): a Shape crosses as its points. */
+export const shapeCustom: Pick<Custom["render"], "shapeGeometry" | "extrudeGeometry" | "sweepGeometry"> = {
+  shapeGeometry: (world, desc) => parse(abi().og_render_shape_geometry(world.id, shapes(desc))),
+  extrudeGeometry: (world, desc) => parse(abi().og_render_extrude_geometry(world.id, shapes(desc))),
+  sweepGeometry: (world, desc) => parse(abi().og_render_sweep_geometry(world.id, section(desc))),
+};

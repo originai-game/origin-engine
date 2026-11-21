@@ -13,8 +13,9 @@
 // angles go through `sincos` (math.ts), never Math.sin, and rotations through
 // og.transform.lookAt, which the engine computes.
 
+import type { World } from "@origingame/engine";
 import { sincos } from "../math.ts";
-import { defineSystem, transform, ui, BUILTINS, type SystemToken, type Token, type WorldImpl } from "../runtime.ts";
+import { calls, defineSystem, ui, BUILTINS, type SystemToken, type Token } from "../runtime.ts";
 
 const T = BUILTINS as unknown as Record<string, Token>;
 const Transform = T.Transform!;
@@ -53,14 +54,14 @@ interface CameraValue {
   quaternion: Q;
 }
 
-function camera(world: WorldImpl): CameraValue | null {
-  const c = world.resource(Camera);
+function camera(world: World): CameraValue | null {
+  const c = world.resource(Camera as never);
   return c.ok ? (c.value as unknown as CameraValue) : null;
 }
 
 function aim(cam: CameraValue, eye: V3, target: V3): void {
   cam.position = eye;
-  cam.quaternion = transform.lookAt(eye, target) as Q;
+  cam.quaternion = calls.transform.lookAt(eye, target) as Q;
 }
 
 interface ArchetypeLike {
@@ -82,7 +83,7 @@ interface InputValue {
 export const orbitCamera = defineSystem(
   "og.orbitCamera",
   { reads: [Transform, Input], writes: [OrbitCamera, Camera] },
-  (q: QueryLike, time: { dt: number }, world: WorldImpl) => {
+  (q: QueryLike, time: { dt: number }, world: World) => {
     for (const a of q.archetypes()) {
       if (a.count === 0) continue;
       const o = a.column(OrbitCamera);
@@ -90,7 +91,7 @@ export const orbitCamera = defineSystem(
       let azimuth = o.azimuth[0]!;
       let polar = o.polar[0]!;
       let distance = o.distance[0]!;
-      const input = world.resource(Input);
+      const input = world.resource(Input as never);
       if (o.enabled[0] && input.ok) {
         const i = input.value as unknown as InputValue;
         const ptr = o.pointer;
@@ -100,7 +101,7 @@ export const orbitCamera = defineSystem(
           ptr[1] = i.pointer.y;
         }
         if (o.dragging[0] && i.buttonDown("left")) {
-          const height = Math.max(1, (ui.viewport(world) as { height: number }).height);
+          const height = Math.max(1, (ui.viewport(world as never) as { height: number }).height);
           const k = (TAU / height) * o.rotateSpeed[0]!;
           azimuth -= (i.pointer.x - ptr[0]!) * k;
           polar -= (i.pointer.y - ptr[1]!) * k;
@@ -133,7 +134,7 @@ export const orbitCamera = defineSystem(
 export const followCamera = defineSystem(
   "og.followCamera",
   { reads: [Transform, FollowCamera], writes: [Camera] },
-  (q: QueryLike, time: { dt: number }, world: WorldImpl) => {
+  (q: QueryLike, time: { dt: number }, world: World) => {
     for (const a of q.archetypes()) {
       if (a.count === 0) continue;
       const f = a.column(FollowCamera);
@@ -164,7 +165,7 @@ export const followCamera = defineSystem(
 export const follow2D = defineSystem(
   "og.follow2D",
   { reads: [Transform], writes: [Follow2D, Camera] },
-  (q: QueryLike, time: { dt: number }, world: WorldImpl) => {
+  (q: QueryLike, time: { dt: number }, world: World) => {
     for (const a of q.archetypes()) {
       if (a.count === 0) continue;
       const f = a.column(Follow2D);

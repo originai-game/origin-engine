@@ -25,6 +25,7 @@ Binding symbol `og_system_define_hook` · publish builds: kept
 
 ```ogt
 fn defineHook {
+  custom true
   doc "Declare a hook on a component; list it in GameDesc.hooks."
   generic C AnyComponent
   param name String "The hook's unique name."
@@ -35,4 +36,4 @@ fn defineHook {
 }
 ```
 
-<sub>Module `system` line 71</sub>
+<sub>Module `system` line 72</sub>

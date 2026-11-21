@@ -1,4 +1,5 @@
 import type * as Api from "@origingame/engine";
+import { type Custom, EngineProbe, RuntimeProbe } from "../generated/calls.ts";
 import { DISPATCH_COMMAND, DISPATCH_CONDITION, DISPATCH_FACTS, DISPATCH_HOOK, DISPATCH_PLATFORM, DISPATCH_SYSTEM, DISPATCH_UI, type Dispatcher } from "../generated/abi.ts";
 import type { A11yUpdate } from "../web/a11y.ts";
 import { type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice, noPlatform } from "../platform-local.ts";
@@ -425,49 +426,29 @@ export function createEngine(game: GameToken, options: CreateOptions = {}): Resu
 }
 
 function makeProbe(id: number) {
-  const a = abi;
-  return checkedProbe({
-    get version() { return a().og_runtime_probe_get_version(id); },
-    tick: () => a().og_runtime_probe_tick(id),
-    state: () => parse(a().og_runtime_probe_state(id)),
-    advance: (steps: number) => { const t = a().og_runtime_probe_advance(id, steps); rt.epoch++; return t; },
-    pause: () => a().og_runtime_probe_pause(id),
-    resume: () => a().og_runtime_probe_resume(id),
-    input: (event: unknown) => a().og_runtime_probe_input(id, JSON.stringify(event)),
-    accepted: () => a().og_runtime_probe_accepted(id),
-    pick: (x: number, y: number) => parse(a().og_runtime_probe_pick(id, x, y)),
-    entity: (pid: string) => parse(a().og_runtime_probe_entity(id, pid)),
-    bounds: (pid: string) => parse(a().og_runtime_probe_bounds(id, pid)),
-    patch: (pid: string, parameter: string, value: unknown) => a().og_runtime_probe_patch(id, pid, parameter, JSON.stringify(value)),
-    run: (program: unknown) => { const r = parse(a().og_runtime_probe_run(id, JSON.stringify(program))); rt.epoch++; return r; },
-    hello: () => parse(a().og_engine_probe_hello(id)),
-    capture: (width?: number, height?: number, fit?: number, region?: unknown) =>
-      parse(a().og_engine_probe_capture(id, width, height, fit, json(region ?? undefined))),
-    marks: (desc?: unknown) => parse(a().og_engine_probe_marks(id, json(desc))),
-    timeline: () => parse(a().og_engine_probe_timeline(id)),
-    sweep: (desc?: unknown) => parse(a().og_engine_probe_sweep(id, json(desc))),
-    reload: () => parse(a().og_engine_probe_reload(id)),
-    snapshot: () => parse(a().og_engine_probe_snapshot(id)),
-    restore: (sid: string) => {
-      rt.epoch++;
-      const restored = a().og_engine_probe_restore(id, sid);
-      uiReactors.get(id)?.restoreMounts();
-      return restored;
-    },
-    dump: (desc?: unknown) => parse(a().og_engine_probe_dump(id, json(desc))),
-    commands: (script: string) => parse(a().og_engine_probe_commands(id, script)),
-    listen: (seconds?: number) => parse(a().og_engine_probe_listen(id, seconds)),
-    memory: () => parse(a().og_engine_probe_memory(id)),
-    describe: () => parse(a().og_engine_probe_describe(id)),
-    captureViews: (views: unknown[], width?: number, height?: number, fit?: number) =>
-      parse(a().og_engine_probe_capture_views(id, JSON.stringify(views), width, height, fit)),
-    visible: (entity: string) => parse(a().og_engine_probe_visible(id, entity)),
-    expect: (what: string) => parse(a().og_engine_probe_expect(id, what)),
-    expectations: () => parse(a().og_engine_probe_expectations(id)),
-    assertions: (take?: boolean) => parse(a().og_engine_probe_assertions(id, take)),
-    assertionEvents: () => parse(a().og_engine_probe_assertion_events(id)),
-    observe: (records?: readonly string[] | null, types?: boolean) => parse(a().og_engine_probe_observe(id, json(records ?? undefined), types)),
-    saveScene: (write?: boolean, spawned?: boolean) => parse(a().og_engine_probe_save_scene(id, write, spawned)),
-    pickUi: (x: number, y: number) => parse(a().og_engine_probe_pick_ui(id, x, y)),
-  });
+  return checkedProbe(new EngineProbe(id));
 }
+
+/** The probe's `custom` members (IDL `probe`): stepping and restoring make every view stale, and a restore remounts the UI. */
+export const runtimeProbeCustom: Custom["RuntimeProbe"] = {
+  advance(probe, steps) {
+    const t = abi().og_runtime_probe_advance(RuntimeProbe.handleOf(probe), steps);
+    rt.epoch++;
+    return t;
+  },
+  run(probe, program) {
+    const r = parse(abi().og_runtime_probe_run(RuntimeProbe.handleOf(probe), JSON.stringify(program)));
+    rt.epoch++;
+    return r;
+  },
+};
+
+export const engineProbeCustom: Custom["EngineProbe"] = {
+  restore(probe, sid) {
+    rt.epoch++;
+    const id = EngineProbe.handleOf(probe);
+    const restored = abi().og_engine_probe_restore(id, sid);
+    uiReactors.get(id)?.restoreMounts();
+    return restored;
+  },
+};

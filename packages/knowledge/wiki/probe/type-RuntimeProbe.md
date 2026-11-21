@@ -105,6 +105,7 @@ Binding symbol `og_runtime_probe_advance` · publish builds: dropped
 
 ```ogt
 fn advance {
+  custom true
   doc "Take whole fixed steps regardless of the wall clock."
   param steps u32 "Fixed steps, at most PLAYTEST_MAX_TICKS."
   returns u32 "The tick after the steps."
@@ -134,7 +135,7 @@ fn pause {
 }
 ```
 
-<sub>Module `probe` line 771</sub>
+<sub>Module `probe` line 772</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -157,7 +158,7 @@ fn resume {
 }
 ```
 
-<sub>Module `probe` line 775</sub>
+<sub>Module `probe` line 776</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -186,7 +187,7 @@ fn input {
 }
 ```
 
-<sub>Module `probe` line 779</sub>
+<sub>Module `probe` line 780</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -209,7 +210,7 @@ fn accepted {
 }
 ```
 
-<sub>Module `probe` line 785</sub>
+<sub>Module `probe` line 786</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -240,7 +241,7 @@ fn pick {
 }
 ```
 
-<sub>Module `probe` line 789</sub>
+<sub>Module `probe` line 790</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -269,7 +270,7 @@ fn entity {
 }
 ```
 
-<sub>Module `probe` line 796</sub>
+<sub>Module `probe` line 797</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -297,7 +298,7 @@ fn bounds {
 }
 ```
 
-<sub>Module `probe` line 802</sub>
+<sub>Module `probe` line 803</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -329,7 +330,7 @@ fn patch {
 }
 ```
 
-<sub>Module `probe` line 807</sub>
+<sub>Module `probe` line 808</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -351,10 +352,11 @@ Binding symbol `og_runtime_probe_run` · publish builds: dropped
 
 ```ogt
 fn run {
+  custom true
   doc "Run a program of the members above in order, stopping at the first refusal."
   param program List.ProbeOperation "At most PROBE_PROGRAM_MAX_OPERATIONS operations."
   returns ProbeProgramResult
 }
 ```
 
-<sub>Module `probe` line 814</sub>
+<sub>Module `probe` line 815</sub>

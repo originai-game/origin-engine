@@ -24,6 +24,7 @@ Binding symbol `og_platform_room_send` · publish builds: kept
 
 ```ogt
 fn roomSend {
+  custom true
   doc "Send a message to every other peer in the room, or to one: a JSON value, or bytes (a Uint8Array). It arrives as og.RoomMessage, after every earlier message of this peer."
   param world World "The world."
   param data OneOf.Bytes.Json "What to send: a Uint8Array, or any JSON value; at most 64 KiB encoded."

@@ -764,6 +764,7 @@ module probe {
       returns ProbeState
     }
     fn advance {
+      custom true
       doc "Take whole fixed steps regardless of the wall clock."
       param steps u32 "Fixed steps, at most PLAYTEST_MAX_TICKS."
       returns u32 "The tick after the steps."
@@ -812,6 +813,7 @@ module probe {
       returns bool "False is a refusal."
     }
     fn run {
+      custom true
       doc "Run a program of the members above in order, stopping at the first refusal."
       param program List.ProbeOperation "At most PROBE_PROGRAM_MAX_OPERATIONS operations."
       returns ProbeProgramResult
@@ -902,6 +904,7 @@ module probe {
       returns Option.SnapshotInfo
     }
     fn restore {
+      custom true
       doc "Restore a snapshot taken by this process."
       param id String "The snapshot id."
       returns bool "False for an unknown id."

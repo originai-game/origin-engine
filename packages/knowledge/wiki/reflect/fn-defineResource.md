@@ -23,6 +23,7 @@ Binding symbol `og_reflect_define_resource` · publish builds: kept
 
 ```ogt
 fn defineResource {
+  custom true
   doc "Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults."
   generic F Fields
   param name String "The resource's unique name, PascalCase."
@@ -31,4 +32,4 @@ fn defineResource {
 }
 ```
 
-<sub>Module `reflect` line 115</sub>
+<sub>Module `reflect` line 116</sub>

@@ -79,6 +79,39 @@ impl<'a> Validator<'a, '_> {
         });
     }
 
+    /// A binding the generated runtime forwards (not `custom`) takes and
+    /// answers only what crosses without the runtime's state: no game
+    /// callback, and no object of an interface the runtime builds itself.
+    fn forwardable(&mut self, b: &crate::r#gen::Binding<'_>, line: usize) {
+        let ix = self.ix;
+        let custom_iface =
+            |name: &str| matches!(ix.decl(name), Some(TypeDecl::Interface(i)) if i.custom);
+        if b.function.is_some_and(|f| f.custom)
+            || b.prop.is_some_and(|p| p.custom)
+            || b.owner.is_some_and(custom_iface)
+        {
+            return;
+        }
+        let mut why = None;
+        if let Some(f) = b.function {
+            if let Some(p) = f
+                .params
+                .iter()
+                .find(|p| matches!(ix.decl(p.ty.name()), Some(TypeDecl::Callback(_))))
+            {
+                why = Some(format!("takes the callback `{}`", p.name));
+            } else if custom_iface(f.returns.name()) {
+                why = Some(format!(
+                    "answers a {}, which the runtime builds",
+                    f.returns.name()
+                ));
+            }
+        }
+        if let Some(why) = why {
+            self.error(line, format!("`{}` {why}: mark it `custom true` and implement it in packages/engine/src/runtime/custom.ts", b.path));
+        }
+    }
+
     fn doc(&mut self, doc: &[String], line: usize, what: impl FnOnce() -> String) {
         if doc.iter().all(|d| d.trim().is_empty()) {
             self.error(line, format!("missing doc on {}", what()));
@@ -121,6 +154,7 @@ impl<'a> Validator<'a, '_> {
                 .map(|f| f.line)
                 .or(b.prop.map(|p| p.line))
                 .unwrap_or(0);
+            self.forwardable(&b, line);
             if let Some(prev) = symbols.insert(b.symbol.clone(), b.path.clone()) {
                 self.error(
                     line,

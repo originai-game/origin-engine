@@ -2,7 +2,7 @@ import bindings from "../../types/bindings.json" with { type: "json" };
 import { declare } from "./host.ts";
 import { type Result, json, parse } from "./result.ts";
 import { rt } from "./state.ts";
-import { SaveEditImpl } from "./world.ts";
+import type { SaveEdit } from "../generated/calls.ts";
 
 // ── tokens and declarations ───────────────────────────────────────────────
 
@@ -216,7 +216,7 @@ export interface GameDescIn {
 
 export interface SaveMigrationIn {
   readonly from: number;
-  readonly migrate: (save: SaveEditImpl) => Result<void> | void;
+  readonly migrate: (save: SaveEdit) => Result<void> | void;
 }
 
 /** Each game's save migrations (GameDesc.migrations), by its token; the steps run here, before world.restore reaches the host. */

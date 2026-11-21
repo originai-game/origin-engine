@@ -229,6 +229,7 @@
   }
 
   fn shapeGeometry {
+    custom true
     doc "Make a flat shape for og.Mesh (one-sided, as circleGeometry): an og.Shape with holes, or a points array. Physics can use it as a triangle-mesh Collider.mesh."
     param world World "The world whose renderer owns the geometry."
     param desc ShapeGeometryDesc "The shapes and their tessellation."
@@ -236,6 +237,7 @@
   }
 
   fn extrudeGeometry {
+    custom true
     doc "Make an extruded solid for og.Mesh: a three.js extrusion is a paste (`og.render.extrudeGeometry(world, { shapes: shape, depth: 0.2, bevelEnabled: true })`). Gears, signs, keys, logos, cookie cutters; along a path, a rail or a moulding."
     param world World "The world whose renderer owns the geometry."
     param desc ExtrudeGeometryDesc "The shapes, depth, bevel and path."
@@ -285,6 +287,7 @@
   }
 
   fn sweepGeometry {
+    custom true
     doc "Make a section swept along a path for og.Mesh, tapered and twisted by keys."
     param world World "The world whose renderer owns the geometry."
     param desc SweepGeometryDesc "The section, path, keys and caps."

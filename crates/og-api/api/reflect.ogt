@@ -104,6 +104,7 @@ module reflect {
   }
 
   fn defineComponent {
+    custom true
     doc "Declare a component: plain data stored per entity in engine memory, one column per field."
     doc "Registration is by name, so a hot reload re-registers the same component and migrates its fields by name."
     generic F Fields
@@ -113,6 +114,7 @@ module reflect {
   }
 
   fn defineResource {
+    custom true
     doc "Declare a resource: a reflected singleton, such as a tuning table. Its fields start at their defaults."
     generic F Fields
     param name String "The resource's unique name, PascalCase."
@@ -121,6 +123,7 @@ module reflect {
   }
 
   fn defineEvent {
+    custom true
     doc "Declare a reflected gameplay event. Its stable name and packed field layout identify recorded intents; changing that layout refuses old intent recordings."
     generic F Fields
     param name String "The event's unique name, PascalCase."

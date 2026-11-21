@@ -27,23 +27,29 @@ const PROBE_PARAMS = new Map(
     ]),
 );
 
-function checkedProbe<T extends Record<string, unknown>>(members: T): T {
+/** The probe's members, its parameters checked: one plain object over the probe's class, its getters read through. */
+function checkedProbe<T extends object>(probe: T): T {
   const out: Record<string, unknown> = {};
-  for (const [name, member] of Object.entries(Object.getOwnPropertyDescriptors(members))) {
-    const params = PROBE_PARAMS.get(name) ?? [];
-    const f = member.value as ((...args: unknown[]) => unknown) | undefined;
-    if (params.length === 0 || typeof f !== "function") {
-      Object.defineProperty(out, name, member);
-      continue;
-    }
-    out[name] = (...args: unknown[]) => {
-      for (const p of params) {
-        const v = args[p.at];
-        if (v === undefined && p.optional) continue;
-        if (typeof v !== p.want) throw new TypeError(`probe.${name}: ${p.name} must be a ${p.want}, not ${v === null ? "null" : typeof v}`);
+  for (let p: object | null = probe; p && p !== Object.prototype; p = Object.getPrototypeOf(p)) {
+    for (const [name, member] of Object.entries(Object.getOwnPropertyDescriptors(p))) {
+      if (name === "constructor" || Object.hasOwn(out, name)) continue;
+      if (member.get) {
+        const get = member.get;
+        Object.defineProperty(out, name, { enumerable: true, get: () => get.call(probe) });
+        continue;
       }
-      return f(...args);
-    };
+      const f = member.value as ((...args: unknown[]) => unknown) | undefined;
+      if (typeof f !== "function") continue;
+      const params = PROBE_PARAMS.get(name) ?? [];
+      out[name] = (...args: unknown[]) => {
+        for (const p of params) {
+          const v = args[p.at];
+          if (v === undefined && p.optional) continue;
+          if (typeof v !== p.want) throw new TypeError(`probe.${name}: ${p.name} must be a ${p.want}, not ${v === null ? "null" : typeof v}`);
+        }
+        return f.apply(probe, args);
+      };
+    }
   }
   return Object.freeze(out) as T;
 }

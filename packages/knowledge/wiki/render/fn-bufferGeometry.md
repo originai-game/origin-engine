@@ -23,6 +23,7 @@ Binding symbol `og_render_buffer_geometry` · publish builds: kept
 
 ```ogt
 fn bufferGeometry {
+  custom true
   doc "Make a geometry from attribute arrays (three.js BufferGeometry): procedural levels, 2D polygons, meshes a tool made. It draws as any geometry (og.Mesh), its BVH is built for og.render.raycast, and (desc.physics) it is a Collider.mesh at once."
   param world World "The world whose renderer owns the geometry."
   param desc BufferGeometryDesc "The attributes."

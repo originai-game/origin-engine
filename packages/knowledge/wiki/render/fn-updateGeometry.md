@@ -24,6 +24,7 @@ Binding symbol `og_render_update_geometry` · publish builds: kept
 
 ```ogt
 fn updateGeometry {
+  custom true
   doc "Rewrite a dynamic geometry's attributes in place (desc as og.render.bufferGeometry's, every attribute given again; `dynamic` and `physics` keep their values from when it was made). The same vertex and index counts rewrite its GPU buffers in place; other counts reallocate them, which costs more and is fine now and then. Its BVH is rebuilt, and its physics mesh re-registered (colliders made from it are rebuilt at the next step). Every og.Mesh, og.Lines and og.Points showing it changes."
   param world World "The world whose renderer owns the geometry."
   param geometry Geometry "A geometry og.render.bufferGeometry made with dynamic true."
@@ -32,4 +33,4 @@ fn updateGeometry {
 }
 ```
 
-<sub>Module `render` line 3319</sub>
+<sub>Module `render` line 3320</sub>

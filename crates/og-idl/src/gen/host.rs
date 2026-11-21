@@ -184,7 +184,7 @@ impl Wire {
         }
     }
 
-    fn ts(self) -> &'static str {
+    pub fn ts(self) -> &'static str {
         match self {
             Wire::Unit => "void",
             Wire::Bool => "boolean",

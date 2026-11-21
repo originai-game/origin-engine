@@ -4,37 +4,10 @@
 // from the IDL fails `bun run typecheck`.
 
 import type * as Api from "@origingame/engine";
-import {
-  anim,
-  BUILTINS,
-  commands,
-  defineGame,
-  defineRecord,
-  defineSystem as defineSystemImpl,
-  defineHook as defineHookImpl,
-  load,
-  physics,
-  atmosphere,
-  audio,
-  render,
-  transform,
-  ui,
-  time,
-  camera,
-  tween,
-  tilemap,
-  fieldSpec,
-  type FieldSpec,
-} from "./runtime.ts";
+import { BUILTINS, calls, clip, fieldSpec, top, ui } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
-import { ai, i18n, nav, net, platform, shared, story } from "./e6.ts";
-import { input } from "./input.ts";
-import { destruction, film, loading, motion, path, procgen, scene, sight, stream, terrain, timeline, vfx, video } from "./p2.ts";
-import { debug, depthRender } from "./depth.ts";
 import { assertModule } from "./assert.ts";
-import { geomRender, Path2, Shape } from "./geom.ts";
-import { targetsLoad, targetsRender } from "./targets.ts";
-import { lightRender } from "./light.ts";
+import { Path2, Shape } from "./geom.ts";
 import { uiKit } from "./ui-kit/index.ts";
 import { formatNotation } from "./ui/data/format.ts";
 
@@ -50,61 +23,22 @@ export const list = ((of, capacity, options) =>
 export * from "./generated/exports.ts";
 export * from "./generated/vocabulary.ts";
 
-export const defineComponent: typeof Api.defineComponent = (name, fields) =>
-  defineRecord("component", name, fields as unknown as Record<string, FieldSpec>) as never;
-
-export const defineResource: typeof Api.defineResource = (name, fields) =>
-  defineRecord("resource", name, fields as unknown as Record<string, FieldSpec>) as never;
-
-export const defineEvent: typeof Api.defineEvent = (name, fields) =>
-  defineRecord("event", name, fields as unknown as Record<string, FieldSpec>) as never;
-
-export const defineSystem: typeof Api.defineSystem = (name, desc, run) =>
-  defineSystemImpl(name, desc as never, run) as never;
-
-export const defineHook: typeof Api.defineHook = (name, component, desc, run) =>
-  defineHookImpl(name, component as never, desc as never, run) as never;
+// The package's own functions and og's namespaces are generated from the IDL
+// (src/generated/calls.ts); what is added here is TypeScript the IDL declares
+// `host false` (og.anim.clip, og.assert's sites, og.Shape) and og.ui, whose
+// hand-written members go once its IDL settles.
+export const { defineComponent, defineResource, defineEvent, defineSystem, defineHook } = top as unknown as Pick<
+  typeof Api,
+  "defineComponent" | "defineResource" | "defineEvent" | "defineSystem" | "defineHook"
+>;
 
 export const og: typeof Api.og = Object.freeze({
   ...BUILTINS,
-  game: (desc?: Api.GameDesc) => defineGame(desc as never),
-  transform,
+  ...calls,
   Shape,
   Path2,
-  render: Object.freeze({ ...render, ...depthRender, ...geomRender, ...targetsRender, ...lightRender }),
-  load: Object.freeze({ ...load, ...targetsLoad }),
-  commands,
-  physics,
-  atmosphere,
-  audio,
-  anim,
-  time,
-  camera,
-  tween,
-  tilemap,
-  nav,
-  ai,
-  story,
-  platform,
-  i18n,
-  net,
-  shared,
-  input,
-  terrain,
-  stream,
-  scene,
-  loading,
-  debug,
-  assert: assertModule,
-  path,
-  procgen,
-  sight,
-  timeline,
-  motion,
-  destruction,
-  vfx,
-  video,
-  film,
+  anim: Object.freeze({ ...calls.anim, clip }),
+  assert: Object.freeze({ ...calls.assert, ...assertModule }),
   ui: Object.freeze({ ...ui, ...uiKit, formatNumber: formatNotation }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

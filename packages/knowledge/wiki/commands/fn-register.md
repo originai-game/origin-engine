@@ -26,6 +26,7 @@ Binding symbol `og_commands_register` · publish builds: dropped
 
 ```ogt
 fn register {
+  custom true
   doc "Register an action into the command channel. GameDesc.commands does this for a game's own actions."
   aliases "console command, cheat, debug command, dev console, cvar"
   param name String "The action name, snake_case, such as `spawn_wave`."

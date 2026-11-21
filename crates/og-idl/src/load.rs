@@ -162,6 +162,7 @@ impl Loader {
             returns_doc: Vec::new(),
             publish: None,
             host: true,
+            custom: false,
             see: Vec::new(),
             line: node.line,
         };
@@ -199,9 +200,10 @@ impl Loader {
                 }
                 "publish" => f.publish = self.bool_value(child),
                 "host" => f.host = self.bool_value(child).unwrap_or(true),
+                "custom" => f.custom = self.bool_value(child).unwrap_or(true),
                 other => self.error(
                     child.line,
-                    format!("unknown key `{other}` in fn `{}`: expected doc, guide, generic, param, returns, publish or host", f.name),
+                    format!("unknown key `{other}` in fn `{}`: expected doc, guide, generic, param, returns, publish, host or custom", f.name),
                 ),
             }
         }
@@ -472,6 +474,7 @@ impl Loader {
             aliases: Vec::new(),
             extends: None,
             publish: None,
+            custom: false,
             members: Vec::new(),
             see: Vec::new(),
             line: node.line,
@@ -483,6 +486,7 @@ impl Loader {
                 "aliases" => i.aliases.extend(self.doc_line(child)),
                 "extends" => i.extends = child.values.first().and_then(Value::as_word).map(str::to_string),
                 "publish" => i.publish = self.bool_value(child),
+                "custom" => i.custom = self.bool_value(child).unwrap_or(true),
                 "prop" => {
                     let Some(name) = self.name(child, "prop") else {
                         continue;
@@ -496,6 +500,7 @@ impl Loader {
                         doc: self.inline(child, 2),
                         publish: None,
                         host: true,
+                        custom: false,
                         see: Vec::new(),
                         line: child.line,
                     };
@@ -505,7 +510,8 @@ impl Loader {
                             "guide" => prop.see.extend(self.guide_ref(g)),
                             "publish" => prop.publish = self.bool_value(g),
                             "host" => prop.host = self.bool_value(g).unwrap_or(true),
-                            other => self.error(g.line, format!("unknown key `{other}` in prop: expected doc, guide, publish or host")),
+                            "custom" => prop.custom = self.bool_value(g).unwrap_or(true),
+                            other => self.error(g.line, format!("unknown key `{other}` in prop: expected doc, guide, publish, host or custom")),
                         }
                     }
                     i.members.push(Member::Prop(prop));
@@ -517,7 +523,7 @@ impl Loader {
                 }
                 other => self.error(
                     child.line,
-                    format!("unknown key `{other}` in interface `{}`: expected doc, guide, aliases, extends, publish, prop or fn", i.name),
+                    format!("unknown key `{other}` in interface `{}`: expected doc, guide, aliases, extends, publish, custom, prop or fn", i.name),
                 ),
             }
         }

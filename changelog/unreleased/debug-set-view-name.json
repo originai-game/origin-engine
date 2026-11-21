@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.debug.setView",
+      "summary": "Shows the view it names (physics, nav, bounds, …) again: it sent the name quoted as JSON, which matched no view, so every call showed none."
+    }
+  ]
+}
