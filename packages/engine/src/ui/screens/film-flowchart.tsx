@@ -42,7 +42,7 @@ export interface FilmFlowchartScreenProps {
 export function FilmFlowchartScreen(props: FilmFlowchartScreenProps) {
   return (
     <View class="pt-8 pb-6 px-12 gap-y-4 text-accent-hover overflow-hidden compact:pt-4 compact:px-4 compact:gap-y-3">
-      <View class="absolute bg-linear-to-b from-[#03060ee5] via-[#03060ed1] via-40% to-[#03060ef0] inset-0" />
+      <View class="absolute bg-linear-to-b from-black/90 via-black/82 via-40% to-black/94 inset-0" />
       <View class="items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1">
         <Button class="text-accent-hover/74 compact:-ml-2" onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
