@@ -351,26 +351,10 @@ impl f32x4 {
     }
 
     pub fn recip_fast(self) -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(all(feature = "simd", target_feature = "sse2"))] {
-                Self(unsafe { _mm_rcp_ps(self.0) })
-            } else if #[cfg(all(feature = "simd", target_feature = "simd128"))] {
-                Self(f32x4_div(f32x4_splat(1.0), self.0))
-            } else if #[cfg(all(feature = "simd", target_arch = "aarch64", target_feature = "neon"))] {
-                unsafe {
-                    let a = vrecpeq_f32(self.0);
-                    let a = vmulq_f32(vrecpsq_f32(self.0, a), a);
-                    Self(a)
-                }
-            } else {
-                Self::from([
-                    1.0 / self.0[0],
-                    1.0 / self.0[1],
-                    1.0 / self.0[2],
-                    1.0 / self.0[3],
-                ])
-            }
-        }
+        // og (PATCHED.md): an exact reciprocal on every target. SSE's
+        // `_mm_rcp_ps` and NEON's estimate are approximate to a precision
+        // the CPU chooses, so a pixel would differ between hosts.
+        Self::splat(1.0) / self
     }
 
     pub fn recip_sqrt(self) -> Self {
