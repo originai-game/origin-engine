@@ -223,7 +223,8 @@ pub(crate) fn mount_back(
                     if let Ok(eng) = engine(engine_id)
                         && let Some(next) = &mut eng.render.borrow_mut().ui_next
                     {
-                        out.0.extend(next.end(&ui, &crate::author::probe::now_ms));
+                        out.0
+                            .extend(next.end(engine_id, &ui, &crate::author::probe::now_ms));
                     }
                     // The on-screen controls documents laid out feed their
                     // actions from the next tick's sample (docs/ui.md §3.3).

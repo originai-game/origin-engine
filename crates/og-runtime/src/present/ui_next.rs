@@ -69,6 +69,8 @@ pub(crate) struct Next {
     pub spans: Spans,
     /// Whether the body font draws (has a handle in the scene).
     font: bool,
+    /// The locale the tree's strings are in.
+    language: String,
     /// The overlay texts and sprites its last emit added.
     pub emitted: std::cell::Cell<(usize, usize, usize)>,
 }
@@ -104,6 +106,7 @@ impl Next {
             frame: og_ui::UiFrame::default(),
             spans: Spans::default(),
             font: false,
+            language: String::new(),
             emitted: Default::default(),
         }
     }
@@ -280,9 +283,20 @@ impl Next {
 
     /// The UI's tick is ending: the tree is made again if a mount changed
     /// or the scheme did, then commits, lays out and paints.
-    pub(crate) fn end(&mut self, ui: &og_ui::Ui, now: &dyn Fn() -> f64) -> Vec<String> {
+    pub(crate) fn end(
+        &mut self,
+        engine: u32,
+        ui: &og_ui::Ui,
+        now: &dyn Fn() -> f64,
+    ) -> Vec<String> {
         let mut warnings = Vec::new();
         let scheme = ui.theme().scheme;
+        // A new locale is a new tree: its bindings read the strings anew.
+        let language = crate::bind::i18n::language(engine);
+        if language != self.language {
+            self.language = language;
+            self.tree = None;
+        }
         if scheme != self.scheme {
             self.scheme = scheme;
             self.look = None;
@@ -317,6 +331,10 @@ impl Next {
                 .filter_map(|n| ui.document(&n).cloned());
             let look = self.look.clone().expect("loaded above");
             let mut tree = Tree::new(look, library);
+            tree.set_strings(
+                &self.language,
+                Box::new(move |key| crate::bind::i18n::message(engine, key)),
+            );
             for (doc, inputs) in self.mounts.values() {
                 let inputs: Vec<(&str, u32)> =
                     inputs.iter().map(|(n, s)| (n.as_str(), *s)).collect();
