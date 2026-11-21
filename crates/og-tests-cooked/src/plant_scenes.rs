@@ -670,6 +670,47 @@ pub fn reveal_fade_scene() -> Result<RenderScene, String> {
     Ok(scene)
 }
 
+/// `plant-impostor-fade`: three oaks caught as they hand off from their
+/// coarsest level to their impostor card, a quarter, half and three
+/// quarters of the way, seen from where og-runtime makes the switch (a
+/// card texel a pixel: `card_distance`).
+pub fn impostor_fade_scene() -> Result<RenderScene, String> {
+    let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
+    let mut scene = RenderScene::new();
+    glade(&mut scene, Vec3::new(0.5, 0.7, 0.45), 160.0, false);
+    let oak = plant(&mut scene, &bundle, "oak")?;
+    let impostor = oak
+        .impostor
+        .ok_or("the oak was cooked without its impostor")?;
+    let coarsest = (0..=2)
+        .rev()
+        .find(|&k| k == 0 || oak.levels.iter().any(|l| l[k - 1].is_some()))
+        .unwrap_or(0);
+    let mesh = level_parts(&oak, coarsest);
+    let foliage = oak
+        .parts
+        .iter()
+        .map(|p| (p.0, p.1))
+        .find(|&(m, _)| scene.mesh_foliage(m).is_some_and(|f| f.season.season > 0.0));
+    for (at, t) in FADE_AT {
+        let m = Mat4::from_translation(at);
+        add_faded(&mut scene, &mesh, m, fading(1.0 - t, true));
+        scene.objects.impostors.push(og_render::ImpostorDraw {
+            impostor,
+            transform: m,
+            cast_shadows: true,
+            sway: 0.0,
+            top: 0.0,
+            reveal: t,
+            fade_out: false,
+            foliage,
+        });
+    }
+    let d = card_distance(impostor);
+    scene.frame.camera = fade_camera(Vec3::new(0.0, 4.0, d), 50.0);
+    Ok(scene)
+}
+
 /// The fade scenes' camera at `position`, looking at the trees' middle.
 fn fade_camera(position: Vec3, fov_y_degrees: f32) -> Camera {
     Camera {

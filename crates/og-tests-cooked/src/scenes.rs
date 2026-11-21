@@ -35,6 +35,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "plant-scatter-autumn",
     "plant-scatter-winter",
     "plant-lod-fade",
+    "plant-impostor-fade",
     "reveal-fade",
     "plant-scatter-switch",
     "plant-scatter-toon",
@@ -163,6 +164,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "plant-lod-fade" => |g, _| {
             g.scene = crate::plant_scenes::lod_fade_scene()?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "plant-impostor-fade" => |g, _| {
+            g.scene = crate::plant_scenes::impostor_fade_scene()?;
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]
