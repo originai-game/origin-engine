@@ -2,21 +2,9 @@
   "version": 1,
   "files": [
     {
-      "path": "tests/fixtures/axes-test.ttf",
-      "sha256": "1bee819dd2b81ee6b58887c5f26e72306491f391ec19c8b1ba480b7b56b91fa4",
-      "size": 1744,
-      "visibility": "public"
-    },
-    {
       "path": "tests/fixtures/emoji-text-test.ttf",
       "sha256": "69266660c5b62ec022552732bf564b8bbe9fd24924620a5b1270652180b856cf",
       "size": 792,
-      "visibility": "public"
-    },
-    {
-      "path": "tests/fixtures/palette-test.ttf",
-      "sha256": "28a44e7609db06400a8220a0fb3851966d8cd3b2b67e80b85624863e4c62b1dd",
-      "size": 1036,
       "visibility": "public"
     },
     {

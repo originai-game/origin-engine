@@ -38,18 +38,6 @@
       "visibility": "public"
     },
     {
-      "path": "vulkan/color-emoji-1280.png",
-      "sha256": "88030eea21f4831306e3d3a49db861d2ab026086f3a84a30cc26510d045c614c",
-      "size": 18540,
-      "visibility": "public"
-    },
-    {
-      "path": "vulkan/color-emoji-390.png",
-      "sha256": "839a7a29ef9a8317caa6e7e3aaaed57c0c9c8a58eddfc14ffe00e0603738d991",
-      "size": 14435,
-      "visibility": "public"
-    },
-    {
       "path": "vulkan/css-effects-1280.png",
       "sha256": "dbe9fbba53b87139857aa4558da28579cc50dec6390764602a3a35b2c6915e17",
       "size": 86626,
@@ -1523,18 +1511,6 @@
       "path": "vulkan/documents/tutorial-default-390.png",
       "sha256": "c116b2202031cef5dfd3e2995845e7dee52bdbf8d9011aa644f911ff3d26275b",
       "size": 37340,
-      "visibility": "public"
-    },
-    {
-      "path": "vulkan/font-packs-1280.png",
-      "sha256": "525b841c3023304f7b183caa98b955c8cdd03b7b98ae8fbe868af7155328dda2",
-      "size": 11124,
-      "visibility": "public"
-    },
-    {
-      "path": "vulkan/font-packs-390.png",
-      "sha256": "48d333f9bcb9f55a2bb87dfe5c1039f4cd21112a136e0dda1e03495429ba84c0",
-      "size": 8377,
       "visibility": "public"
     },
     {

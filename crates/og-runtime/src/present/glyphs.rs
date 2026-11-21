@@ -782,10 +782,7 @@ mod tests {
     /// default, its outline wider by the difference.
     #[test]
     fn a_variable_instance_gets_a_font_rendering_at_its_location() {
-        let path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../og-ui/tests/fixtures/axes-test.ttf"
-        );
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/axes-test.ttf");
         let bytes = std::fs::read(path).unwrap();
         let file = FontFile::new(Arc::new(bytes.clone())).unwrap();
         let mut rs = RenderState::new(serde_json::Value::Null);
@@ -856,7 +853,7 @@ mod tests {
         use og_text::shape::{Palette, PaletteBase, PaletteSpec};
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../og-ui/tests/fixtures/palette-test.ttf"
+            "/tests/fixtures/palette-test.ttf"
         );
         let file = FontFile::new(Arc::new(std::fs::read(path).unwrap())).unwrap();
         let mut rs = RenderState::new(serde_json::Value::Null);

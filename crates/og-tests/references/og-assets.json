@@ -86,6 +86,18 @@
       "visibility": "public"
     },
     {
+      "path": "vulkan/color-emoji-1280.png",
+      "sha256": "88030eea21f4831306e3d3a49db861d2ab026086f3a84a30cc26510d045c614c",
+      "size": 18540,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/color-emoji-390.png",
+      "sha256": "839a7a29ef9a8317caa6e7e3aaaed57c0c9c8a58eddfc14ffe00e0603738d991",
+      "size": 14435,
+      "visibility": "public"
+    },
+    {
       "path": "vulkan/crowd-lods.png",
       "sha256": "becfbbc94ae12a874fe3b4475264a2e835dd0b686f5d44a02708187cc723f7f4",
       "size": 1324095,
@@ -125,6 +137,18 @@
       "path": "vulkan/fluid-3d.png",
       "sha256": "2f2759aad4690edb0903a8c62873f33154685a1f990ce1b9cedd86fbf5740979",
       "size": 1613551,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/font-packs-1280.png",
+      "sha256": "525b841c3023304f7b183caa98b955c8cdd03b7b98ae8fbe868af7155328dda2",
+      "size": 11124,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/font-packs-390.png",
+      "sha256": "48d333f9bcb9f55a2bb87dfe5c1039f4cd21112a136e0dda1e03495429ba84c0",
+      "size": 8377,
       "visibility": "public"
     },
     {
