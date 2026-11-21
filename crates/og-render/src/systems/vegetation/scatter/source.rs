@@ -31,6 +31,7 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
             },
             wgsl3d!("scatter_common.wgsl"),
             wgsl3d!("scatter.wgsl"),
+            &og_render_data::impostor::march_wgsl(),
             wgsl3d!("impostor_common.wgsl"),
             wgsl3d!("impostor.wgsl"),
             wgsl3d!("crowd_card_common.wgsl"),
@@ -43,12 +44,13 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
 /// The scattered copies' shadow module.
 pub(crate) fn scatter_shadow_source() -> String {
     format!(
-        "{LIBRARY_WGSL}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}{}",
+        "{LIBRARY_WGSL}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}{}{}",
         crate::wind::WIND_COMMON_WGSL,
         crate::wind::WIND_LEAN_WGSL,
         crate::trample::READ_WGSL,
         wgsl3d!("scatter_common.wgsl"),
         wgsl3d!("scatter_shadow.wgsl"),
+        og_render_data::impostor::march_wgsl(),
         wgsl3d!("impostor_common.wgsl"),
         wgsl3d!("impostor_shadow.wgsl"),
         wgsl3d!("crowd_card_common.wgsl"),

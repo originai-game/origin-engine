@@ -209,3 +209,66 @@ pub fn blend_frames(d: Vec3, grid: u32, below: bool) -> [((u32, u32), f32); 3] {
         ]
     }
 }
+
+/// The rules a card's fragment stage finds the surface by
+/// (impostor_common.wgsl `imp_parallax`), stated once: [`march_wgsl`]
+/// writes them into the shader as its `IMP_` constants, and the cook
+/// bounds a card's outline by the same values (og-cook's `card_trim`),
+/// with [`march_stamp`] in the model blob's stamp, so a new rule cooks
+/// every card's outline again.
+pub mod march {
+    /// The fixed-point steps on the coarse depth that land most rays.
+    pub const FIXED_STEPS: u32 = 2;
+    /// How many levels coarser than the colour the fixed point reads the
+    /// depth: its steps land a texel from as far as that level's
+    /// footprint.
+    pub const COARSE_LEVELS: u32 = 2;
+    /// How far a landing's fine depth may stand from the fixed point's
+    /// (radii, at level 0; doubling a level) and still be the surface the
+    /// ray meets.
+    pub const LANDED: f32 = 0.06;
+    /// The march's step along the ray, in texels of the level read.
+    pub const STEP: f32 = 3.0;
+    /// The most steps the march takes across the model's sphere.
+    pub const STEPS: u32 = 24;
+    /// The halvings that place a hit between the march's last two steps.
+    pub const BISECT: u32 = 4;
+    /// How many levels coarser an uncovered landing's coverage is read to
+    /// say the model is near it (none: the ray passes clear, unmarched).
+    pub const NEAR: f32 = 1.0;
+    /// How far apart (radii) a frame's depth and the point the march found
+    /// may stand and still be one surface.
+    pub const AGREE: f32 = 0.12;
+    /// The level from which a card no longer marches.
+    pub const MARCH_LEVEL: f32 = 1.0;
+    /// How far behind a frame's front surface (radii) the ray may meet it
+    /// and still meet that surface; past it, the ray passed behind it.
+    pub const THICK: f32 = 0.25;
+}
+
+/// The card's strips and the march's rules as WGSL constants, placed
+/// before impostor_common.wgsl, which reads them.
+pub fn march_wgsl() -> String {
+    use march::*;
+    format!(
+        "const IMP_ROWS: u32 = {CARD_ROWS}u;\n\
+         const IMP_FIXED_STEPS: u32 = {FIXED_STEPS}u;\n\
+         const IMP_COARSE: f32 = {COARSE_LEVELS:?};\n\
+         const IMP_LANDED: f32 = {LANDED:?};\n\
+         const IMP_STEP: f32 = {STEP:?};\n\
+         const IMP_STEPS: f32 = {STEPS}.0;\n\
+         const IMP_BISECT: u32 = {BISECT}u;\n\
+         const IMP_NEAR: f32 = {NEAR:?};\n\
+         const IMP_AGREE: f32 = {AGREE:?};\n\
+         const IMP_MARCH_LEVEL: f32 = {MARCH_LEVEL:?};\n\
+         const IMP_THICK: f32 = {THICK:?};\n",
+        COARSE_LEVELS = COARSE_LEVELS as f32,
+    )
+}
+
+/// The bytes of every rule [`march_wgsl`] writes: what a cooked outline
+/// depends on beside the cook's own rule.
+pub fn march_stamp() -> Vec<u8> {
+    march_wgsl().into_bytes()
+}
+

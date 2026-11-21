@@ -38,7 +38,7 @@ use super::GltfSource;
 use crate::cook::texture::Image;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use og_render_data::impostor::{
-    CardTrim, blend_frames, frame_basis, frame_direction, hemi_oct_decode,
+    CardTrim, blend_frames, frame_basis, frame_direction, hemi_oct_decode, march,
 };
 
 /// How a model's impostor is baked: frames per side (0: by the model,
@@ -727,16 +727,29 @@ pub fn bake(
     })
 }
 
-/// The rule [`card_trim`] bounds a card by, in the model blob's stamp.
-pub const TRIM_VERSION: u32 = 1;
+/// The rule [`card_trim`] bounds a card by beside the values it reads,
+/// which [`trim_stamp`] hashes: bumped only when its code changes.
+const TRIM_VERSION: u32 = 1;
 
-/// How far (radii) behind a frame's front surface the card's ray may meet
-/// it: impostor_common.wgsl `IMP_THICK`.
-const IMP_THICK: f32 = 0.25;
+/// What a cooked outline depends on, in the model blob's stamp: the
+/// rule's version, its own values and the shader's march
+/// (og-render-data's `impostor::march`), so a change to any cooks the
+/// outlines again.
+pub fn trim_stamp() -> Vec<u8> {
+    let mut b = TRIM_VERSION.to_le_bytes().to_vec();
+    b.extend((TRIM_WINDOW as u32).to_le_bytes());
+    b.extend(TRIM_VIEWS.to_le_bytes());
+    b.extend(TRIM_PAD_TEXELS.to_le_bytes());
+    b.extend((TRIM_BINS as u32).to_le_bytes());
+    b.extend(og_render_data::impostor::march_stamp());
+    b
+}
+
 /// Texels about a covered texel whose depths the card's parallax steps may
-/// read for it: the fixed point's coarse depth (two levels down, filtered)
-/// lands it from as far.
-const TRIM_WINDOW: usize = 12;
+/// read for it: three texels (its bilinear footprint and a step's spread)
+/// of the coarse level the fixed point reads (`march::COARSE_LEVELS`), in
+/// the frame's own texels.
+const TRIM_WINDOW: usize = 3 << march::COARSE_LEVELS;
 /// Views sampled along each side of a grid cell for the outline.
 const TRIM_VIEWS: u32 = 4;
 /// Atlas texels the outline keeps past every covered texel: the bilinear
@@ -749,7 +762,7 @@ const TRIM_BINS: usize = 256;
 /// A frame's covered texels for [`card_trim`]: each texel's point in the
 /// frame's square (`[-1, 1]²`, y up) and the range of depths (radii,
 /// towards the viewer) the card's parallax steps may land it at: its own,
-/// back to `IMP_THICK` behind it, and its neighbours' (`TRIM_WINDOW`),
+/// back to `march::THICK` behind it, and its neighbours' (`TRIM_WINDOW`),
 /// as the atlas stores them (dilated out from the silhouette).
 fn frame_cover(
     albedo: &[u8],
@@ -794,7 +807,7 @@ fn frame_cover(
             [
                 unit(k % f),
                 -unit(k / f),
-                lo[k].unwrap_or(z).min(z - IMP_THICK),
+                lo[k].unwrap_or(z).min(z - march::THICK),
                 hi[k].unwrap_or(z).max(z),
             ]
         })

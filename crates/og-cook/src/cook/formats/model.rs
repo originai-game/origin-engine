@@ -841,7 +841,7 @@ fn plan_model<'a>(
     let st = stamp(&[
         b"lod-surface-v6-etc1s-normal",
         &st.to_le_bytes(),
-        &impostor::TRIM_VERSION.to_le_bytes(),
+        &impostor::trim_stamp(),
     ]);
     let prepared = std::sync::Arc::new(PreparedModel {
         source: s,

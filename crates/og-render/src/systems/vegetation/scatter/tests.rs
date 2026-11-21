@@ -323,11 +323,7 @@ fn chunk_keys_compare_by_value() {
 /// vertices past it) while the CPU path draws it whole.
 #[test]
 fn every_path_draws_the_cards_strips() {
-    let rows = IMPOSTOR_CARD_VERTICES / 6;
-    assert!(
-        include_str!("../../../../shaders/impostor_common.wgsl")
-            .contains(&format!("const IMP_ROWS: u32 = {rows}u;"))
-    );
+    // impostor_common.wgsl's IMP_ROWS is CARD_ROWS (`march_wgsl`).
     assert!(
         include_str!("../../../../shaders/scatter_place.wgsl")
             .contains(&format!("bitcast<f32>({IMPOSTOR_CARD_VERTICES}u), total"))

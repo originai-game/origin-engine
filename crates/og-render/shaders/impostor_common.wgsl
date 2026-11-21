@@ -142,8 +142,7 @@ fn imp_frame_par(v: vec3<f32>, f: u32) -> vec2<f32> {
 // (scatter_sway); one quad's two heights drew that as a straight line, so
 // a trunk's lower half stood twice and more too far downwind and its foot
 // slid with the gusts, a second image beside its mesh through the
-// crossfade.
-const IMP_ROWS: u32 = 4u;
+// crossfade. IMP_ROWS: og-render-data's CARD_ROWS (`march_wgsl`).
 
 // The card's corner `vertex` (0..6 × IMP_ROWS, two triangles a strip) of
 // the copy `model` facing `toward` (a point, or a direction when `is_dir`).
@@ -228,26 +227,10 @@ fn imp_depth_at(f: u32, at: vec2<f32>, level: f32) -> ImpDepthAt {
   return o;
 }
 
-// How far a landing's fine depth may stand from the fixed point's (radii,
-// at level 0; doubling a level) and still be the surface the ray meets.
-const IMP_LANDED: f32 = 0.06;
-// The march's step along the ray, in texels of the level read, and the
-// most steps it takes across the model's sphere.
-const IMP_STEP: f32 = 3.0;
-const IMP_STEPS: f32 = 24.0;
-// The halvings that place a hit between the march's last two steps.
-const IMP_BISECT: i32 = 4;
-// How many levels coarser an uncovered landing's coverage is read to say
-// the model is near it (none: the ray passes clear, and is not marched).
-const IMP_NEAR: f32 = 1.0;
-// How far apart (radii) a frame's depth and the point the march found
-// may stand and still be one surface.
-const IMP_AGREE: f32 = 0.12;
-// The level from which a card no longer marches.
-const IMP_MARCH_LEVEL: f32 = 1.0;
-// How far behind a frame's front surface the ray may meet it and still
-// meet that surface (radii; past it, the ray passed behind the surface).
-const IMP_THICK: f32 = 0.25;
+// The march's rules (IMP_FIXED_STEPS, IMP_COARSE, IMP_LANDED, IMP_STEP,
+// IMP_STEPS, IMP_BISECT, IMP_NEAR, IMP_AGREE, IMP_MARCH_LEVEL, IMP_THICK)
+// and IMP_ROWS are og-render-data's (impostor.rs `march`, written before
+// this module by `march_wgsl`), which the cook bounds a card's outline by.
 
 // Where frame `f` sees the surface the eye's ray through the card's point
 // meets, from its image `uv` of the card's point (`par`: imp_frame_par of
@@ -257,7 +240,7 @@ const IMP_THICK: f32 = 0.25;
 // frame's square, or a ray that meets nothing, is uncovered. Returns the
 // point in the frame's square and z there.
 //
-// Two fixed-point steps on the depth two levels coarser find it where the
+// IMP_FIXED_STEPS fixed-point steps on the depth IMP_COARSE levels coarser find it where the
 // depth is smooth (most of a card, and every card seen from above). Seen
 // from below, a thin trunk stands before the crown: the fixed point jumps
 // between the two sides of that step in depth, each frame lands on a
@@ -270,8 +253,8 @@ const IMP_THICK: f32 = 0.25;
 fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32, march: bool) -> vec3<f32> {
   var at = uv;
   var z = 0.0;
-  for (var k = 0; k < 2; k++) {
-    z = imp_depth_at(f, at, imp_level + 2.0).depth;
+  for (var k = 0u; k < IMP_FIXED_STEPS; k++) {
+    z = imp_depth_at(f, at, imp_level + IMP_COARSE).depth;
     at = uv + par * (z - pd);
   }
   if (!march || imp_level >= IMP_MARCH_LEVEL) {
@@ -314,7 +297,7 @@ fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32, march: bool) -> 
     // a step, close enough for the other frames to confirm (imp_seen).
     var hit = zk;
     if (k > 0.0) {
-      for (var b = 0; b < IMP_BISECT; b++) {
+      for (var b = 0u; b < IMP_BISECT; b++) {
         let zm = 0.5 * (front + hit);
         let s = imp_depth_at(f, o + par * zm, imp_level);
         if (s.covered && s.depth >= zm) {
