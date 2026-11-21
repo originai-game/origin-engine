@@ -464,6 +464,89 @@ mod tests {
     }
 
     #[test]
+    fn borders_shadows_and_the_other_paint_fields_compile_into_the_record() {
+        let sheet = style::Sheet::compile(
+            ".a { border: 2px solid #ff0000; border-left: 0; border-radius: 1px 2px 3px 4px; \
+             box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.5), 0 4px 14px -6px #000000; \
+             outline: 3px solid #00ff00; outline-offset: 2px; translate: 4px 5px; scale: 150%; \
+             rotate: 90deg; transform-origin: top left; backdrop-filter: blur(12px); \
+             text-shadow: 1px 2px 3px #0000ff; text-decoration: underline line-through 2px #ff0000; \
+             background: linear-gradient(to top right, #000000, #ffffff); } \
+             .b { box-shadow: none; } .c { box-shadow: 1px 1px; } .d { box-shadow: 1px; }",
+            &Tokens::default(),
+        );
+        assert_eq!(
+            sheet.skipped,
+            ["box-shadow: 1px"],
+            "one length is no shadow"
+        );
+        let rec = |n: &[&str]| {
+            let names: Vec<u32> = n.iter().map(|n| sheet.name(n).unwrap()).collect();
+            sheet.record(&names, style::State::Base)
+        };
+        let a = rec(&[".a"]);
+        assert_eq!(a.border, [2.0, 2.0, 2.0, 0.0], "a side over the shorthand");
+        assert_eq!(a.border_color[0], 1.0);
+        let t = taffy::Style::from(&a.layout);
+        assert_eq!(
+            (t.border.top, t.border.left),
+            (
+                taffy::LengthPercentage::length(2.0),
+                taffy::LengthPercentage::length(0.0)
+            ),
+            "borders take space"
+        );
+        assert_eq!(a.radius, [1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(a.shadow_count, 2);
+        let [inner, outer] = [a.shadows[0], a.shadows[1]];
+        assert!(inner.inset && !outer.inset, "the first layer is inset");
+        assert_eq!(
+            (outer.offset, outer.blur, outer.spread),
+            ([0.0, 4.0], 14.0, -6.0)
+        );
+        assert!((inner.color[3] - 0.5).abs() < 1e-3 && outer.color[3] == 1.0);
+        assert_eq!(
+            (a.outline.width, a.outline.offset, a.outline.color[1]),
+            (3.0, 2.0, 1.0)
+        );
+        let m = a.transform;
+        assert_eq!(
+            (m.translate, m.scale, m.origin),
+            ([4.0, 5.0], [1.5, 1.5], [0.0, 0.0])
+        );
+        assert!((m.rotate - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
+        assert_eq!(a.backdrop_blur, 12.0);
+        assert_eq!(
+            (a.text_shadow.offset, a.text_shadow.blur),
+            ([1.0, 2.0], 3.0)
+        );
+        assert_eq!(
+            (
+                a.decoration.line,
+                a.decoration.thickness,
+                a.decoration.color[0]
+            ),
+            (
+                style::Decoration::UNDERLINE | style::Decoration::LINE_THROUGH,
+                2.0,
+                1.0
+            )
+        );
+        assert_eq!(
+            a.gradient.unwrap().corner,
+            [1, -1],
+            "to top right: the corner"
+        );
+        assert_eq!(rec(&[".a", ".b"]).shadow_count, 0, "none clears the layers");
+        let c = rec(&[".c"]).shadows[0];
+        assert_eq!(
+            (c.offset, c.color),
+            ([1.0, 1.0], [0.0, 0.0, 0.0, 1.0]),
+            "black when unnamed"
+        );
+    }
+
+    #[test]
     fn tokens_resolve_through_var_chains_and_fallbacks() {
         let t = Tokens::parse(
             ":root { --a: 4px; --b: calc(var(--a) * 2); --c: var(--missing, var(--b)); }\n\

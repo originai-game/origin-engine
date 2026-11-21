@@ -122,6 +122,28 @@ mod op {
     pub const GRADIENT: u8 = 47;
     /// A gradient's stop: `v` its colour, its offset (0..1) in the pad.
     pub const STOP: u8 = 48;
+    /// Border widths, as [`PAD`] (code: the sides it sets, 0 all).
+    pub const BORDER: u8 = 49;
+    pub const BORDER_COLOR: u8 = 50;
+    /// A shadow layer: `v` x, y, blur, spread; code 1 inset. Its colour is
+    /// the [`SHADOW_COLOR`] step after it.
+    pub const SHADOW: u8 = 51;
+    pub const SHADOW_COLOR: u8 = 52;
+    /// `box-shadow: …` starts over: no layers.
+    pub const SHADOWS: u8 = 53;
+    /// Outline: `v` width, offset; its colour [`OUTLINE_COLOR`].
+    pub const OUTLINE: u8 = 54;
+    pub const OUTLINE_COLOR: u8 = 55;
+    /// code 0: translate x y; 1: scale x y; 2: rotate (radians); 3: origin
+    /// (fractions of the box).
+    pub const MOVE: u8 = 56;
+    pub const BACKDROP_BLUR: u8 = 57;
+    /// Text shadow: `v` x, y, blur; its colour [`TEXT_SHADOW_COLOR`].
+    pub const TEXT_SHADOW: u8 = 58;
+    pub const TEXT_SHADOW_COLOR: u8 = 59;
+    /// Text decoration: code its lines; `v[0]` thickness (0: auto).
+    pub const DECORATION: u8 = 60;
+    pub const DECORATION_COLOR: u8 = 61;
 }
 
 /// A length's kind in a step's code.
@@ -248,6 +270,9 @@ pub const GRADIENT_STOPS: usize = 8;
 pub struct Gradient {
     /// Radians, CSS's: 0 up, clockwise.
     pub angle: f32,
+    /// `to <corner>`: x and y, -1 or 1, aimed at the box's corner at paint
+    /// time; `[0, 0]`: `angle`.
+    pub corner: [i8; 2],
     pub count: u8,
     /// (offset 0..1, linear RGBA), `count` of them.
     pub stops: [(f32, Rgba); GRADIENT_STOPS],
@@ -259,6 +284,73 @@ impl Gradient {
     }
 }
 
+/// The most box-shadow layers a record keeps.
+pub const SHADOWS: usize = 4;
+
+/// A shadow layer (`box-shadow`, `ring-*`, `text-shadow`); a colour of 0
+/// alpha draws nothing.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Shadow {
+    pub offset: [f32; 2],
+    pub blur: f32,
+    pub spread: f32,
+    pub color: Rgba,
+    pub inset: bool,
+}
+
+/// An outline: outside the border, `offset` out, taking no space.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Outline {
+    pub width: f32,
+    pub offset: f32,
+    pub color: Rgba,
+}
+
+/// A paint-time transform around the box (layout never moves).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Transform {
+    pub translate: [f32; 2],
+    pub scale: [f32; 2],
+    /// Radians, clockwise.
+    pub rotate: f32,
+    /// Fractions of the box.
+    pub origin: [f32; 2],
+}
+
+impl Default for Transform {
+    fn default() -> Self {
+        Transform {
+            translate: [0.0; 2],
+            scale: [1.0; 2],
+            rotate: 0.0,
+            origin: [0.5; 2],
+        }
+    }
+}
+
+impl Transform {
+    pub fn is_identity(&self) -> bool {
+        self.translate == [0.0; 2] && self.scale == [1.0; 2] && self.rotate == 0.0
+    }
+}
+
+/// A text's decoration lines.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Decoration {
+    /// Bits: [`Decoration::UNDERLINE`], `OVERLINE`, `LINE_THROUGH`.
+    pub line: u8,
+    /// 0 alpha: the text's ink.
+    pub color: Rgba,
+    /// 0: from the font size.
+    pub thickness: f32,
+}
+
+impl Decoration {
+    pub const UNDERLINE: u8 = 1;
+    pub const OVERLINE: u8 = 2;
+    pub const LINE_THROUGH: u8 = 4;
+}
+
 /// An element's computed look: what its rules set, folded in order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Record {
@@ -267,7 +359,20 @@ pub struct Record {
     /// A gradient over `fill` (`background: linear-gradient(…), <colour>`).
     pub gradient: Option<Gradient>,
     pub ink: Rgba,
-    pub radius: f32,
+    /// Corner radii: top left, top right, bottom right, bottom left.
+    pub radius: [f32; 4],
+    /// Border widths, top, right, bottom, left (also in `layout`).
+    pub border: [f32; 4],
+    pub border_color: Rgba,
+    /// Box shadows, `shadow_count` of them, first on top.
+    pub shadows: [Shadow; SHADOWS],
+    pub shadow_count: u8,
+    pub outline: Outline,
+    pub transform: Transform,
+    /// `backdrop-filter: blur()`, CSS px; 0 none.
+    pub backdrop_blur: f32,
+    pub text_shadow: Shadow,
+    pub decoration: Decoration,
     pub opacity: f32,
     pub font_size: f32,
     /// An SVG shape's fill and stroke paint, and its stroke's width.
@@ -329,7 +434,16 @@ impl Default for Record {
             fill: [0.0; 4],
             gradient: None,
             ink: [0.0, 0.0, 0.0, 1.0],
-            radius: 0.0,
+            radius: [0.0; 4],
+            border: [0.0; 4],
+            border_color: [0.0; 4],
+            shadows: [Shadow::default(); SHADOWS],
+            shadow_count: 0,
+            outline: Outline::default(),
+            transform: Transform::default(),
+            backdrop_blur: 0.0,
+            text_shadow: Shadow::default(),
+            decoration: Decoration::default(),
             opacity: 1.0,
             font_size: 16.0,
             paint: [0.0, 0.0, 0.0, 1.0],
@@ -731,6 +845,7 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::GRADIENT => {
             r.gradient = Some(Gradient {
                 angle: a,
+                corner: [b as i8, cc as i8],
                 count: 0,
                 stops: [(0.0, [0.0; 4]); GRADIENT_STOPS],
             })
@@ -748,7 +863,61 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
             r.ink = s.v;
             r.inked = true;
         }
-        op::RADIUS => r.radius = a,
+        op::RADIUS => r.radius = s.v,
+        op::BORDER => {
+            let m = if s.code == 0 { 15 } else { s.code };
+            for k in 0..4 {
+                if m & (1 << k) != 0 {
+                    r.border[k] = s.v[k];
+                }
+            }
+            r.layout.set_border(r.border);
+        }
+        op::BORDER_COLOR => r.border_color = s.v,
+        op::SHADOWS => r.shadow_count = 0,
+        op::SHADOW => {
+            if usize::from(r.shadow_count) < SHADOWS {
+                r.shadows[usize::from(r.shadow_count)] = Shadow {
+                    offset: [a, b],
+                    blur: cc,
+                    spread: d,
+                    color: [0.0; 4],
+                    inset: s.code == 1,
+                };
+                r.shadow_count += 1;
+            }
+        }
+        op::SHADOW_COLOR => {
+            if let Some(k) = usize::from(r.shadow_count).checked_sub(1) {
+                r.shadows[k].color = s.v;
+            }
+        }
+        // Code 0: the width (`outline`), 1: the offset.
+        op::OUTLINE => match s.code {
+            0 => r.outline.width = a,
+            _ => r.outline.offset = b,
+        },
+        op::OUTLINE_COLOR => r.outline.color = s.v,
+        op::MOVE => match s.code {
+            0 => r.transform.translate = [a, b],
+            1 => r.transform.scale = [a, b],
+            2 => r.transform.rotate = a,
+            _ => r.transform.origin = [a, b],
+        },
+        op::BACKDROP_BLUR => r.backdrop_blur = a,
+        op::TEXT_SHADOW => {
+            r.text_shadow = Shadow {
+                offset: [a, b],
+                blur: cc,
+                ..Shadow::default()
+            }
+        }
+        op::TEXT_SHADOW_COLOR => r.text_shadow.color = s.v,
+        op::DECORATION => {
+            r.decoration.line = s.code;
+            r.decoration.thickness = a;
+        }
+        op::DECORATION_COLOR => r.decoration.color = s.v,
         op::OPACITY => r.opacity = a,
         op::FONT_SIZE => {
             r.font_size = a;
@@ -936,8 +1105,9 @@ fn background(steps: &mut Vec<Step>, v: &str) -> bool {
         _ => return false,
     };
     steps.push(step(op::FILL, 0, base));
-    if let Some((angle, stops)) = gradient {
-        steps.push(step(op::GRADIENT, 0, [angle, 0.0, 0.0, 0.0]));
+    if let Some((angle, corner, stops)) = gradient {
+        let [x, y] = corner.map(f32::from);
+        steps.push(step(op::GRADIENT, 0, [angle, x, y, 0.0]));
         for (offset, c) in stops {
             let mut s = step(op::STOP, 0, c);
             s._pad = ((offset.clamp(0.0, 1.0) * f32::from(u16::MAX)).round() as u16).to_le_bytes();
@@ -949,10 +1119,14 @@ fn background(steps: &mut Vec<Step>, v: &str) -> bool {
 
 /// A `linear-gradient(…)`: its angle (radians) and stops (offset 0..1,
 /// linear RGBA), unplaced stops spread evenly between their neighbours.
-fn linear_gradient(v: &str) -> Option<(f32, Vec<(f32, Rgba)>)> {
+/// A parsed linear gradient: its angle, its `to` corner and its stops.
+type Linear = (f32, [i8; 2], Vec<(f32, Rgba)>);
+
+fn linear_gradient(v: &str) -> Option<Linear> {
     let body = v.strip_prefix("linear-gradient(")?.strip_suffix(')')?;
     let mut args: Vec<&str> = top_level(body, ',').collect();
     let first = *args.first()?;
+    let mut corner = [0i8; 2];
     let angle = if let Some(to) = first.strip_prefix("to ") {
         let (mut x, mut y) = (0.0f32, 0.0f32);
         for w in to.split_whitespace() {
@@ -964,7 +1138,11 @@ fn linear_gradient(v: &str) -> Option<(f32, Vec<(f32, Rgba)>)> {
                 _ => return None,
             }
         }
-        // A corner is taken at 45° (CSS aims it at the box's corner).
+        // A corner's angle depends on the box: paint aims it (`corner`);
+        // 45° stands for it until then.
+        if x != 0.0 && y != 0.0 {
+            corner = [x as i8, y as i8];
+        }
         use std::f32::consts::{FRAC_PI_2 as Q, FRAC_PI_4 as E, PI};
         match (x as i8, y as i8) {
             (0, -1) => Some(0.0),
@@ -1036,7 +1214,98 @@ fn linear_gradient(v: &str) -> Option<(f32, Vec<(f32, Rgba)>)> {
         }
         k = end;
     }
-    Some((angle, out))
+    Some((angle, corner, out))
+}
+
+/// A `border` or `outline` line: `<width> [<style>] [<colour>]` in any
+/// order, `none` or `0`; its width and colour, if it names one.
+fn border_line(v: &str) -> Option<(f32, Option<Rgba>)> {
+    if v == "none" || v == "0" {
+        return Some((0.0, None));
+    }
+    let (mut w, mut c) = (None, None);
+    for word in top_level(v, ' ') {
+        match word {
+            "solid" | "dashed" | "dotted" | "double" => {}
+            "none" | "hidden" => w = Some(0.0),
+            "thin" => w = Some(1.0),
+            "medium" => w = Some(3.0),
+            "thick" => w = Some(5.0),
+            word => match px(word) {
+                Some(x) => w = Some(x),
+                None => c = Some(color(word)?),
+            },
+        }
+    }
+    // CSS's initial width is medium.
+    Some((w.unwrap_or(3.0), c))
+}
+
+/// One shadow layer: `[inset] <x> <y> [<blur> [<spread>]] [<colour>]`;
+/// whether it is inset, its lengths and its colour (black when unnamed).
+fn shadow_layer(v: &str) -> Option<(bool, [f32; 4], Rgba)> {
+    let (mut inset, mut lens, mut c) = (false, Vec::with_capacity(4), None);
+    for word in top_level(v, ' ') {
+        if word == "inset" {
+            inset = true;
+        } else if let Some(x) = px(word) {
+            lens.push(x);
+        } else {
+            c = Some(color(word)?);
+        }
+    }
+    if !(2..=4).contains(&lens.len()) {
+        return None;
+    }
+    lens.resize(4, 0.0);
+    Some((
+        inset,
+        [lens[0], lens[1], lens[2], lens[3]],
+        c.unwrap_or([0.0, 0.0, 0.0, 1.0]),
+    ))
+}
+
+/// `box-shadow`: `none`, or up to [`SHADOWS`] layers.
+fn shadows(steps: &mut Vec<Step>, v: &str) -> bool {
+    let mut layers = Vec::new();
+    if v != "none" {
+        for l in top_level(v, ',') {
+            match shadow_layer(l) {
+                Some(x) => layers.push(x),
+                None => return false,
+            }
+        }
+    }
+    if layers.len() > SHADOWS {
+        return false;
+    }
+    steps.push(step(op::SHADOWS, 0, [0.0; 4]));
+    for (inset, v, c) in layers {
+        steps.push(step(op::SHADOW, u8::from(inset), v));
+        steps.push(step(op::SHADOW_COLOR, 0, c));
+    }
+    true
+}
+
+/// An angle in radians (`45deg`, `0.25turn`, `1rad`, `0`).
+fn angle(v: &str) -> Option<f32> {
+    if v == "0" {
+        return Some(0.0);
+    }
+    [
+        ("deg", 1.0f32.to_radians()),
+        ("grad", 0.9f32.to_radians()),
+        ("rad", 1.0),
+        ("turn", std::f32::consts::TAU),
+    ]
+    .iter()
+    .find_map(|(unit, k)| {
+        v.strip_suffix(unit)?
+            .trim()
+            .parse::<f32>()
+            .ok()
+            .map(|n| n * k)
+    })
 }
 
 fn index<T: Copy>(table: &[(&str, T)], v: &str) -> Option<u8> {
@@ -1289,7 +1558,125 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
         "background-color" => color(v).is_some_and(|c| push(op::FILL, 0, c)),
         "background" => background(steps, v),
         "color" => color(v).is_some_and(|c| push(op::INK, 0, c)),
-        "border-radius" => px(v).is_some_and(|x| push(op::RADIUS, 0, [x, 0.0, 0.0, 0.0])),
+        "border-radius" => sides(v).is_some_and(|c| push(op::RADIUS, 0, c)),
+        "border" | "border-top" | "border-right" | "border-bottom" | "border-left" => {
+            let Some((w, c)) = border_line(v) else {
+                return false;
+            };
+            let mask = match name {
+                "border-top" => 1,
+                "border-right" => 2,
+                "border-bottom" => 4,
+                "border-left" => 8,
+                _ => 0,
+            };
+            push(op::BORDER, mask, [w; 4]);
+            match c {
+                Some(c) => push(op::BORDER_COLOR, 0, c),
+                None => true,
+            }
+        }
+        "border-width" => sides(v).is_some_and(|w| push(op::BORDER, 0, w)),
+        "border-color" => color(v).is_some_and(|c| push(op::BORDER_COLOR, 0, c)),
+        "box-shadow" => shadows(steps, v),
+        "outline" => match border_line(v) {
+            Some((w, c)) => {
+                push(op::OUTLINE, 0, [w, 0.0, 0.0, 0.0]);
+                c.is_none_or(|c| push(op::OUTLINE_COLOR, 0, c))
+            }
+            None => false,
+        },
+        "outline-offset" => px(v).is_some_and(|o| push(op::OUTLINE, 1, [0.0, o, 0.0, 0.0])),
+        "outline-color" => color(v).is_some_and(|c| push(op::OUTLINE_COLOR, 0, c)),
+        "translate" => {
+            let w: Vec<f32> = match words(v).map(px).collect::<Option<_>>() {
+                Some(w) => w,
+                None => return false,
+            };
+            match w[..] {
+                [x] => push(op::MOVE, 0, [x, 0.0, 0.0, 0.0]),
+                [x, y] => push(op::MOVE, 0, [x, y, 0.0, 0.0]),
+                _ => false,
+            }
+        }
+        "scale" => {
+            let num = |w: &str| match w.strip_suffix('%') {
+                Some(p) => p.parse::<f32>().ok().map(|p| p / 100.0),
+                None => w.parse::<f32>().ok(),
+            };
+            let w: Vec<f32> = match words(v).map(num).collect::<Option<_>>() {
+                Some(w) => w,
+                None => return false,
+            };
+            match w[..] {
+                [k] => push(op::MOVE, 1, [k, k, 0.0, 0.0]),
+                [x, y] => push(op::MOVE, 1, [x, y, 0.0, 0.0]),
+                _ => false,
+            }
+        }
+        "rotate" => angle(v).is_some_and(|a| push(op::MOVE, 2, [a, 0.0, 0.0, 0.0])),
+        "transform-origin" => {
+            let at = |w: &str| match w {
+                "left" | "top" => Some(0.0),
+                "center" => Some(0.5),
+                "right" | "bottom" => Some(1.0),
+                w => w.strip_suffix('%')?.parse::<f32>().ok().map(|p| p / 100.0),
+            };
+            let w: Vec<&str> = words(v).collect();
+            let (x, y) = match w[..] {
+                [one] if one == "top" || one == "bottom" => (Some(0.5), at(one)),
+                [one] => (at(one), Some(0.5)),
+                [a, b] if a == "top" || a == "bottom" => (at(b), at(a)),
+                [a, b] => (at(a), at(b)),
+                _ => return false,
+            };
+            match (x, y) {
+                (Some(x), Some(y)) => push(op::MOVE, 3, [x, y, 0.0, 0.0]),
+                _ => false,
+            }
+        }
+        "backdrop-filter" => {
+            if v == "none" {
+                return push(op::BACKDROP_BLUR, 0, [0.0; 4]);
+            }
+            v.strip_prefix("blur(")
+                .and_then(|b| b.strip_suffix(')'))
+                .and_then(px)
+                .is_some_and(|b| push(op::BACKDROP_BLUR, 0, [b, 0.0, 0.0, 0.0]))
+        }
+        "text-shadow" => {
+            if v == "none" {
+                push(op::TEXT_SHADOW, 0, [0.0; 4]);
+                return push(op::TEXT_SHADOW_COLOR, 0, [0.0; 4]);
+            }
+            match shadow_layer(v) {
+                Some((false, [x, y, blur, 0.0], c)) => {
+                    push(op::TEXT_SHADOW, 0, [x, y, blur, 0.0]);
+                    push(op::TEXT_SHADOW_COLOR, 0, c)
+                }
+                _ => false,
+            }
+        }
+        "text-decoration" | "text-decoration-line" => {
+            let (mut line, mut c, mut thick) = (0u8, None, 0.0);
+            for w in top_level(v, ' ') {
+                match w {
+                    "none" => {}
+                    "underline" => line |= Decoration::UNDERLINE,
+                    "overline" => line |= Decoration::OVERLINE,
+                    "line-through" => line |= Decoration::LINE_THROUGH,
+                    "solid" => {}
+                    w => match (px(w), color(w)) {
+                        (Some(t), _) if name == "text-decoration" => thick = t,
+                        (_, Some(k)) if name == "text-decoration" => c = Some(k),
+                        _ => return false,
+                    },
+                }
+            }
+            push(op::DECORATION, line, [thick, 0.0, 0.0, 0.0]);
+            c.is_none_or(|c| push(op::DECORATION_COLOR, 0, c))
+        }
+        "text-decoration-color" => color(v).is_some_and(|c| push(op::DECORATION_COLOR, 0, c)),
         "opacity" => v
             .parse()
             .is_ok_and(|x| push(op::OPACITY, 0, [x, 0.0, 0.0, 0.0])),

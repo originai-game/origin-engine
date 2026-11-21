@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI styles",
+      "summary": "On og-ui's new core, a style takes border (and its sides, width and colour, which take layout space), per-corner border-radius, box-shadow (up to four layers, inset or not), outline and outline-offset, translate, scale, rotate, transform-origin, backdrop-filter: blur(), text-shadow and text-decoration, and a linear-gradient's to-corner direction. The paint pass does not draw them yet."
+    }
+  ]
+}

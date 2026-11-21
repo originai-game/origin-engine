@@ -1102,7 +1102,13 @@ impl Tree {
             let p = &mut self.drawn;
             let alpha = el.eff.opacity;
             let rect = [x, y, b.w, b.h];
-            let radius = r.radius.min(b.w.min(b.h) / 2.0);
+            // One radius a quad until the pass takes four corners.
+            let radius = r
+                .radius
+                .iter()
+                .copied()
+                .fold(0.0, f32::max)
+                .min(b.w.min(b.h) / 2.0);
             if r.fill[3] > 0.0 {
                 let mut c = r.fill;
                 c[3] *= alpha;
