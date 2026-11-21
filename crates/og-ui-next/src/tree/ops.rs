@@ -1017,6 +1017,13 @@ pub struct OpNode<'a> {
     /// each as `end of the line|start of the next`: a text measured
     /// narrower than it draws. Empty: none.
     pub broken: Vec<String>,
+    /// Its text as drawn: the ink (linear RGB, alpha with its opacity),
+    /// the font size in CSS px, and each line's box on screen (x, y,
+    /// width, height: the em at its baseline). Empty lines: it draws no
+    /// text.
+    pub ink: [f32; 4],
+    pub size: f32,
+    pub lines: Vec<[f32; 4]>,
 }
 
 impl Tree {
@@ -1050,6 +1057,10 @@ impl Tree {
             .filter_map(|(e, el)| {
                 let &(x, y, shown, _) = self.abs.get(e)?;
                 let b = self.arena.box_of(el.node);
+                let glyphs = (!el.text.is_empty())
+                    .then(|| self.glyphs.get(e))
+                    .flatten()
+                    .filter(|g| !g.quads.is_empty());
                 let parent = match el.parent {
                     NONE => 0,
                     p => self.els[p as usize].js,
@@ -1063,6 +1074,38 @@ impl Tree {
                     text: &el.text,
                     broken: self.glyphs.get(e).map_or(Vec::new(), |g| {
                         crate::text::broken_words(&g.text, &g.line_text)
+                    }),
+                    ink: self.shown.get(e).map_or([0.0; 4], |s| {
+                        [s.ink[0], s.ink[1], s.ink[2], s.ink[3] * s.alpha]
+                    }),
+                    size: glyphs.map_or(0.0, |g| f32::from_bits(g.key[1])),
+                    lines: glyphs.zip(el.leaf).map_or(Vec::new(), |(g, leaf)| {
+                        let lb = self.arena.box_of(leaf);
+                        let size = f32::from_bits(g.key[1]);
+                        // Under a transform, each box through it, bounded.
+                        let xf = self.xfs.get(e).copied().unwrap_or(0);
+                        let m = self.drawn.transforms.get(xf as usize).filter(|_| xf != 0);
+                        g.lines
+                            .iter()
+                            .map(|&[dx, baseline, w]| {
+                                let r = [x + lb.x + dx, y + lb.y + baseline - 0.8 * size, w, size];
+                                let Some(&[a, b, c, d, tx, ty, _, _]) = m else {
+                                    return r;
+                                };
+                                let pts = [
+                                    (r[0], r[1]),
+                                    (r[0] + w, r[1]),
+                                    (r[0], r[1] + size),
+                                    (r[0] + w, r[1] + size),
+                                ]
+                                .map(|(px, py)| (a * px + c * py + tx, b * px + d * py + ty));
+                                let x0 = pts.iter().map(|p| p.0).fold(f32::INFINITY, f32::min);
+                                let y0 = pts.iter().map(|p| p.1).fold(f32::INFINITY, f32::min);
+                                let x1 = pts.iter().map(|p| p.0).fold(f32::NEG_INFINITY, f32::max);
+                                let y1 = pts.iter().map(|p| p.1).fold(f32::NEG_INFINITY, f32::max);
+                                [x0, y0, x1 - x0, y1 - y0]
+                            })
+                            .collect()
                     }),
                 })
             })

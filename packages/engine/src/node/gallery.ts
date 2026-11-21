@@ -8,10 +8,11 @@
 // with og.ui.configure and screenshots every page. The frames land in <out>/<pack>/ (default
 // target/ui-gallery/out) with index.html, one row per fixture and one column per pack. A run
 // draws on the GPU og finds; without one, run it on a GPU host. `--only` keeps the fixtures
-// whose `<dir>/<file> · <fixture>` contains TEXT.
+// whose `<dir>/<file> · <fixture>` contains TEXT (or any of TEXT,TEXT,…).
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { inflateSync } from "node:zlib";
 
 declare const Bun: {
   spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe"; env: Record<string, string | undefined> }): { exited: Promise<number>; stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array> };
@@ -177,6 +178,104 @@ export function generate(dir: string, list: Page[], packNames: string[]): void {
 }
 
 /** The index page: one row per fixture, one column per pack. */
+/** A PNG's pixels: 8-bit RGB or RGBA, not interlaced (what `og run`'s screenshots are), as RGBA. */
+export function decodePng(bytes: Uint8Array): { width: number; height: number; rgba: Uint8Array } {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let at = 8, width = 0, height = 0, channels = 4;
+  const idat: Uint8Array[] = [];
+  while (at < bytes.length) {
+    const len = view.getUint32(at), type = String.fromCharCode(...bytes.subarray(at + 4, at + 8));
+    const data = bytes.subarray(at + 8, at + 8 + len);
+    if (type === "IHDR") {
+      width = view.getUint32(at + 8);
+      height = view.getUint32(at + 12);
+      const [depth, colour, , , interlace] = data.subarray(8, 13);
+      if (depth !== 8 || (colour !== 2 && colour !== 6) || interlace !== 0) throw new Error(`PNG: depth ${depth}, colour type ${colour}, interlace ${interlace} unsupported`);
+      channels = colour === 6 ? 4 : 3;
+    } else if (type === "IDAT") idat.push(data);
+    at += 12 + len;
+  }
+  const packed = new Uint8Array(idat.reduce((n, d) => n + d.length, 0));
+  idat.reduce((o, d) => (packed.set(d, o), o + d.length), 0);
+  const raw = inflateSync(packed);
+  const stride = width * channels, rgba = new Uint8Array(width * height * 4);
+  let prev = new Uint8Array(stride), line = new Uint8Array(stride);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)]!, src = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    for (let i = 0; i < stride; i++) {
+      const a = i >= channels ? line[i - channels]! : 0, b = prev[i]!, c = i >= channels ? prev[i - channels]! : 0;
+      const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+      const pred = filter === 1 ? a : filter === 2 ? b : filter === 3 ? (a + b) >> 1 : filter === 4 ? (pa <= pb && pa <= pc ? a : pb <= pc ? b : c) : 0;
+      line[i] = (src[i]! + pred) & 255;
+    }
+    for (let x = 0; x < width; x++) {
+      const o = (y * width + x) * 4;
+      rgba[o] = line[x * channels]!; rgba[o + 1] = line[x * channels + 1]!; rgba[o + 2] = line[x * channels + 2]!;
+      rgba[o + 3] = channels === 4 ? line[x * channels + 3]! : 255;
+    }
+    [prev, line] = [line, prev];
+  }
+  return { width, height, rgba };
+}
+
+/** WCAG 2's contrast ratio of two sRGB colours (0-255). */
+export function contrast(a: readonly number[], b: readonly number[]): number {
+  const lum = (c: readonly number[]) => [0.2126, 0.7152, 0.0722].reduce((s, k, i) => {
+    const v = c[i]! / 255;
+    return s + k * (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  }, 0);
+  const [x, y] = [lum(a), lum(b)];
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+interface TextElement { id?: string; parent?: string; text?: string; disabled?: boolean; ink?: number[]; fontSize?: number; textLines?: number[][] }
+
+/**
+ * The texts of a UI dump that read under the screens guide's contrast bar (crates/og-api/guides/screens.md
+ * §5: 4.5:1, 3:1 over 24 px; a disabled control's text is exempt) on the ground the frame shows under
+ * their lines. The ground is the pixels of each line's box least like the ink (the glyphs are the
+ * rest), so art, a translucent plate over the stage and a halo all count as drawn; the worse fifth
+ * of them is what is read. `scale`: frame px per CSS px.
+ */
+export function lowContrast(dump: { elements?: TextElement[] }, frame: { width: number; height: number; rgba: Uint8Array }, scale: number): string[] {
+  const els = dump.elements ?? [];
+  const byId = new Map(els.map((e) => [e.id ?? "", e]));
+  const disabled = (e: TextElement | undefined): boolean => !!e && (e.disabled === true || (!!e.parent && disabled(byId.get(e.parent))));
+  const out: string[] = [];
+  for (const e of els) {
+    const ink = e.ink, lines = e.textLines;
+    if (!ink || !lines?.length || ink[3]! < 0.05 || disabled(e)) continue;
+    const ratios: number[] = [];
+    let ground = [0, 0, 0];
+    for (const [lx, ly, lw, lh] of lines) {
+      const x0 = Math.max(0, Math.round(lx! * scale)), y0 = Math.max(0, Math.round(ly! * scale));
+      const x1 = Math.min(frame.width, Math.round((lx! + lw!) * scale)), y1 = Math.min(frame.height, Math.round((ly! + lh!) * scale));
+      const px: number[][] = [];
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+        const o = (y * frame.width + x) * 4;
+        px.push([frame.rgba[o]!, frame.rgba[o + 1]!, frame.rgba[o + 2]!]);
+      }
+      if (px.length < 4) continue;
+      const far = (p: number[]) => (p[0]! - ink[0]!) ** 2 + (p[1]! - ink[1]!) ** 2 + (p[2]! - ink[2]!) ** 2;
+      px.sort((p, q) => far(q) - far(p));
+      for (const g of px.slice(0, Math.ceil(px.length * 0.4))) {
+        const drawn = [0, 1, 2].map((i) => ink[i]! * ink[3]! + g[i]! * (1 - ink[3]!));
+        ratios.push(contrast(drawn, g));
+      }
+      ground = px[Math.floor(px.length * 0.2)]!;
+    }
+    if (!ratios.length) continue;
+    ratios.sort((a, b) => a - b);
+    const read = ratios[Math.floor(ratios.length * 0.2)]!;
+    const bar = (e.fontSize ?? 0) > 24 ? 3 : 4.5;
+    if (read < bar) {
+      const hex = (c: number[]) => "#" + c.slice(0, 3).map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+      out.push(`"${(e.text ?? "").slice(0, 40)}" ${hex(ink)} on ${hex(ground)} ${read.toFixed(2)}:1 (under ${bar}:1)`);
+    }
+  }
+  return out;
+}
+
 function index(list: Page[], packNames: string[], file: (pack: string, n: number) => string): string {
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
   const rows = list.map((p, n) => `<tr><th>${esc(p.name)}<br><small>${esc(p.fixture)}</small></th>${packNames.map((k) => `<td><a href="${file(k, n)}"><img loading="lazy" src="${file(k, n)}"></a></td>`).join("")}</tr>`);
@@ -196,7 +295,7 @@ async function main(): Promise<number> {
   const exe = process.platform === "win32" ? ".exe" : "";
   const og = arg("--og") ?? [join(repo, "target", "debug", `og${exe}`), join(repo, "target", "release", `og${exe}`)].find((p) => existsSync(p)) ?? "og";
   const only = arg("--only");
-  const list = pages().filter((p) => !only || `${p.name} · ${p.fixture}`.includes(only));
+  const list = pages().filter((p) => !only || only.split(",").some((t) => `${p.name} · ${p.fixture}`.includes(t)));
   const all = packs();
   const packNames = arg("--packs")?.split(",") ?? all;
   for (const p of packNames) if (!all.includes(p)) throw new Error(`no pack ${p} (${all.join(", ")})`);
@@ -218,7 +317,9 @@ async function main(): Promise<number> {
     return { ok: (await p.exited) === 0, log: o + e };
   };
   const keys = tableKeys();
-  /** The hard defects, by fixture: a mount that threw, a raw string key drawn, a word broken across lines. */
+  const size = arg("--size") ?? "1280x720";
+  const width = Number(size.split("x")[0]);
+  /** The hard defects, by fixture: a mount that threw, a raw string key drawn, a word broken across lines, text under the contrast bar on its drawn ground. */
   const defects: string[] = [];
   if (!(await run(["cook", "."])).ok) return 1;
   // A pack loads its look and fonts over a few frames; a page settles in 12 ticks.
@@ -235,7 +336,7 @@ async function main(): Promise<number> {
     });
     steps.push(`${at(LEAD + list.length * STEP + 1)}:quit`);
     console.log(`${pack}: ${list.length} fixtures`);
-    const r = await run(["run", ".", "--headless", "--no-check", "--size", arg("--size") ?? "1280x720", "--out", shots, "--commands", steps.join(";")]);
+    const r = await run(["run", ".", "--headless", "--no-check", "--size", size, "--out", shots, "--commands", steps.join(";")]);
     if (!r.ok) return 1;
     const where = (n: number) => `${pack} ${list[n]!.name} · ${list[n]!.fixture}`;
     const threw = new Set<number>();
@@ -245,6 +346,7 @@ async function main(): Promise<number> {
       threw.add(n);
       defects.push(`${where(n)}: threw at mount: ${m[2]}`);
     }
+    const frameFiles = readdirSync(shots).filter((f) => /^screenshot-\d+\.png$/.test(f)).sort();
     const dumps = readdirSync(shots).filter((f) => /^dump_ui-\d+\.json$/.test(f)).sort();
     dumps.forEach((f, n) => {
       if (n < list.length && !threw.has(n)) {
@@ -253,10 +355,13 @@ async function main(): Promise<number> {
         if (raw.length) defects.push(`${where(n)}: draws raw string keys ${raw.join(", ")}`);
         const broken = brokenWords(dump);
         if (broken.length) defects.push(`${where(n)}: breaks inside a word ${broken.join(", ")}`);
+        const shot = frameFiles[n];
+        const frame = shot ? decodePng(readFileSync(join(shots, shot))) : undefined;
+        for (const low of frame ? lowContrast(dump, frame, frame.width / width) : []) defects.push(`${where(n)}: reads under the contrast bar: ${low}`);
       }
       rmSync(join(shots, f));
     });
-    const frames = readdirSync(shots).filter((f) => /^screenshot-\d+\.png$/.test(f)).sort();
+    const frames = frameFiles;
     if (frames.length !== list.length) {
       console.error(`${pack}: ${frames.length} frames for ${list.length} fixtures`);
       return 1;

@@ -1480,13 +1480,25 @@ impl Next {
                     y,
                     width,
                     height,
-                    // A word its lines cut where UAX #14 has no break.
-                    detail: if n.broken.is_empty() {
-                        Default::default()
-                    } else {
-                        [("brokenWords".to_string(), json!(n.broken))]
-                            .into_iter()
-                            .collect()
+                    detail: {
+                        let mut d = serde_json::Map::new();
+                        // A word its lines cut where UAX #14 has no break.
+                        if !n.broken.is_empty() {
+                            d.insert("brokenWords".into(), json!(n.broken));
+                        }
+                        // Its text as drawn, for reading its ground in a
+                        // frame: the ink as sRGB 0-255 with alpha 0-1, the
+                        // font size and each line's box, in CSS px.
+                        if !n.lines.is_empty() {
+                            let [r, g, b, a] = n.ink;
+                            let srgb = og_core::color::linear_to_srgb8;
+                            d.insert("ink".into(), json!([srgb(r), srgb(g), srgb(b), a]));
+                            d.insert("fontSize".into(), json!(n.size * unit));
+                            let lines: Vec<[f32; 4]> =
+                                n.lines.iter().map(|l| l.map(|v| v * unit)).collect();
+                            d.insert("textLines".into(), json!(lines));
+                        }
+                        d.into_iter().collect()
                     },
                     ..Default::default()
                 }
