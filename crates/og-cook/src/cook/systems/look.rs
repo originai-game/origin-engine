@@ -125,6 +125,30 @@ pub fn shared_files(source: &str, css: &str) -> Vec<(&'static str, &'static [u8]
     out
 }
 
+/// Built-in assets a `pack.json` (at `source`) names, its fonts, images,
+/// icons and sounds under `@styles/…`, together with their import settings.
+/// A pack that does not parse names none (its own cook reports why).
+pub fn pack_files(source: &str, text: &str) -> Vec<(&'static str, &'static [u8])> {
+    let Ok(mut layer) = og_ui_next::pack::Layer::parse(text) else {
+        return Vec::new();
+    };
+    layer.resolve(source.rsplit_once('/').map_or("", |(dir, _)| dir));
+    let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
+    for r in layer.assets() {
+        let settings = format!("{r}.ogt");
+        for f in styles()
+            .iter()
+            .filter(|f| f.id() == r || f.id() == settings)
+        {
+            let f = f.pair();
+            if !out.contains(&f) {
+                out.push(f);
+            }
+        }
+    }
+    out
+}
+
 /// The CJK forms the project under `root` (its assets directory) shows:
 /// those of each `type strings` table's Chinese, Japanese or Korean
 /// `locale` (`zh-TW` traditional, `zh` simplified). A style's companions
@@ -215,10 +239,15 @@ pub(crate) fn builtin_files(
     {
         let files = style_files(&id);
         for (source, bytes) in &files {
-            if !source.ends_with(".css") {
+            let text = String::from_utf8_lossy(bytes);
+            let named = if source.ends_with(".css") {
+                shared_files(source, &text)
+            } else if crate::cook::ui_documents::is_pack(source) {
+                pack_files(source, &text)
+            } else {
                 continue;
-            }
-            for f in shared_files(source, &String::from_utf8_lossy(bytes)) {
+            };
+            for f in named {
                 if !out.contains(&f) {
                     out.push(f);
                 }

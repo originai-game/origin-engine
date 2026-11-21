@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Style pack fonts",
+      "summary": "A pack.json face, image, icon or sound under `@styles/shared/` or `@styles/cjk/` joins the game's bundle. Before, only those a CSS `url()` also named did, so a pack naming any other built-in failed to cook with 'assets are missing'."
+    }
+  ]
+}

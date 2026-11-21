@@ -751,11 +751,13 @@ fn a_pack_with_an_unknown_class_or_a_missing_asset_is_refused() {
 }
 
 /// A variant naming the pack's nine-slice art cooks, its image resolved
-/// beside pack.json.
+/// beside pack.json, and a built-in face the pack names (no CSS naming it)
+/// joins the bundle.
 #[test]
 fn a_variant_names_nine_slice_art() {
     let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" rx="8" fill="#336699"/></svg>"##;
-    let pack = r#"{ "images": { "frame": { "src": "art/frame.svg", "slice": 12 } }, "variants": { "Panel.frame": "p-4 nine-frame" } }"#;
+    let pack = r#"{ "images": { "frame": { "src": "art/frame.svg", "slice": 12 } }, "variants": { "Panel.frame": "p-4 nine-frame" },
+        "fonts": [{ "family": "Mine", "src": "@styles/shared/PTMono-Regular.ttf" }] }"#;
     let root = project(
         "pack-nine",
         &[
@@ -772,4 +774,5 @@ fn a_variant_names_nine_slice_art() {
             .unwrap();
     assert_eq!(layer.images[1]["frame"].src, "styles/mine/art/frame.svg");
     assert!(bundle.output("styles/mine/art/frame.svg").is_ok());
+    assert!(bundle.output("@styles/shared/PTMono-Regular.ttf").is_ok());
 }

@@ -191,6 +191,15 @@ pub(crate) fn scan_with(
                 builtins.insert(id.to_string(), bytes);
             }
         }
+        // So can a game's own pack.json.
+        if crate::cook::ui_documents::is_pack(rel)
+            && let Ok(text) =
+                read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
+        {
+            for (id, bytes) in look::pack_files(rel, &text) {
+                builtins.insert(id.to_string(), bytes);
+            }
+        }
     }
     // The built-in components the game's documents use and the built-in
     // screens its code names, that it does not declare, join it as well
