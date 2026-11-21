@@ -92,7 +92,26 @@ pub(super) struct Per {
     /// The pack slot its class names (`@Component.slot[.variant]`, from
     /// `packClass`, without the `@`): the scope of its sounds.
     pub slot: Box<str>,
+    /// `draggable`: its data (non-empty: a drag source), and `dropTarget`:
+    /// its id (non-empty: a drop target).
+    pub drag: Box<str>,
+    pub drop: Box<str>,
 }
+
+/// A node being dragged, or a press on one not yet past the slop.
+#[derive(Clone, Copy)]
+struct Drag {
+    src: u32,
+    /// Where the press went down.
+    from: (f32, f32),
+    /// Picked up: past the slop, or by a key.
+    live: bool,
+    /// Carried by the keys (or an assistive technology): focus moves it.
+    keys: bool,
+}
+
+/// How far a mouse press moves before it drags (a finger's is the pan's).
+const DRAG_SLOP: f32 = 4.0;
 
 /// A sound the pack gives an event: one of `clips` (sound handles) at
 /// random, at a volume and pitch from their ranges.
@@ -248,6 +267,7 @@ pub struct Input {
     sound_rng: u64,
     /// A press `confirm` made: it sounds `confirm`, not `press`.
     confirming: bool,
+    drag: Option<Drag>,
 }
 
 impl Input {
@@ -270,6 +290,181 @@ impl Input {
 }
 
 impl Tree {
+    /// The `draggable` node `e` is in, itself first (NONE: none).
+    fn drag_up(&self, mut e: u32) -> u32 {
+        while e != NONE {
+            if self.input.per(e).is_some_and(|p| !p.drag.is_empty()) && !self.disabled(e) {
+                return e;
+            }
+            e = self.els[e as usize].parent;
+        }
+        NONE
+    }
+
+    /// The `dropTarget` node `e` is in, itself first (NONE: none).
+    fn drop_up(&self, mut e: u32) -> u32 {
+        while e != NONE {
+            if self.input.per(e).is_some_and(|p| !p.drop.is_empty()) && !self.disabled(e) {
+                return e;
+            }
+            e = self.els[e as usize].parent;
+        }
+        NONE
+    }
+
+    fn drop_at(&self, x: f32, y: f32) -> u32 {
+        self.drop_up(self.hit_where(x, y, |el| el.js != NONE))
+    }
+
+    fn centre(&self, e: u32) -> (f32, f32) {
+        let Some(&(x, y, ..)) = self.abs.get(e as usize) else {
+            return (0.0, 0.0);
+        };
+        let b = self.arena.box_of(self.els[e as usize].node);
+        (x + b.w / 2.0, y + b.h / 2.0)
+    }
+
+    fn box_text(&self, e: u32) -> Box<str> {
+        let Some(&(x, y, ..)) = self.abs.get(e as usize) else {
+            return Box::default();
+        };
+        let b = self.arena.box_of(self.els[e as usize].node);
+        format!("{x} {y} {} {}", b.w, b.h).into()
+    }
+
+    /// Fires a drag event on `e` when it listens.
+    fn fire_drag(&mut self, e: u32, event: OpEvent, x: f32, y: f32, key: &str, value: Box<str>) {
+        let el = &self.els[e as usize];
+        if el.listens & event.bit() != 0 {
+            let mut f = Fired::at(el.js, event, x, y);
+            f.key = key.into();
+            f.value = value;
+            self.events.push(f);
+        }
+    }
+
+    fn data_of(&self, e: u32) -> Box<str> {
+        self.input
+            .per(e)
+            .map_or_else(Box::default, |p| p.drag.clone())
+    }
+
+    fn target_id(&self, t: u32) -> Box<str> {
+        match t {
+            NONE => Box::default(),
+            t => self
+                .input
+                .per(t)
+                .map_or_else(Box::default, |p| p.drop.clone()),
+        }
+    }
+
+    /// A carried node is over target `t` (NONE: none): its source hears
+    /// `dragmove` with the target's id.
+    fn drag_over(&mut self, t: u32, x: f32, y: f32) {
+        let Some(d) = self.input.drag else { return };
+        let src = d.src;
+        let (data, id) = (self.data_of(src), self.target_id(t));
+        self.fire_drag(src, OpEvent::DragMove, x, y, &data, id);
+    }
+
+    fn pick_up(&mut self, src: u32, x: f32, y: f32) {
+        self.set_state(src, PRESSED, true);
+        let (data, b) = (self.data_of(src), self.box_text(src));
+        self.fire_drag(src, OpEvent::DragStart, x, y, &data, b);
+        self.sound(src, "select");
+    }
+
+    /// The pointer moved while a press holds a `draggable`: past the slop
+    /// it picks it up (the press then clicks nothing); once carried, each
+    /// move reports the target under it.
+    fn drag_moved(&mut self, x: f32, y: f32) {
+        let Some(d) = self.input.drag else { return };
+        if d.keys {
+            return;
+        }
+        if !d.live {
+            let slop = if self.input.touch {
+                TOUCH_SLOP
+            } else {
+                DRAG_SLOP
+            };
+            let (dx, dy) = (x - d.from.0, y - d.from.1);
+            if dx * dx + dy * dy <= slop * slop {
+                return;
+            }
+            self.cancel_press();
+            if let Some(d) = &mut self.input.drag {
+                d.live = true;
+            }
+            self.pick_up(d.src, x, y);
+        }
+        let t = self.drop_at(x, y);
+        self.drag_over(t, x, y);
+    }
+
+    /// Puts the carried node down on target `t` (NONE: back where it
+    /// was): the target hears `drop` with the node's data, the node
+    /// `dragend` with the target's id ("" when put back).
+    fn put_down(&mut self, t: u32, x: f32, y: f32) {
+        let Some(d) = self.input.drag.take() else {
+            return;
+        };
+        let src = d.src;
+        self.set_state(src, PRESSED, false);
+        let (data, id) = (self.data_of(src), self.target_id(t));
+        if t != NONE {
+            let b = self.box_text(t);
+            self.fire_drag(t, OpEvent::Drop, x, y, &data, b);
+            self.sound(t, "confirm");
+        } else {
+            self.sound(src, "cancel");
+        }
+        self.fire_drag(src, OpEvent::DragEnd, x, y, &data, id);
+        // Drop targets are focus stops only while a node is carried.
+        if d.keys && self.input.focus != NONE && !self.focusable(self.input.focus) {
+            self.focus(src);
+        }
+    }
+
+    /// Confirm (a key, the action or an assistive technology) on `e`:
+    /// with a node carried by the keys, puts it down on the target `e` is
+    /// in (else back); else picks `e` up when it is `draggable`. Whether
+    /// it did either.
+    fn carry(&mut self, e: u32) -> bool {
+        if e == NONE {
+            return false;
+        }
+        match self.input.drag {
+            Some(d) if d.live && d.keys => {
+                let t = self.drop_up(e);
+                let (x, y) = self.centre(e);
+                self.put_down(t, x, y);
+                true
+            }
+            Some(_) => false,
+            None if self.input.per(e).is_some_and(|p| !p.drag.is_empty()) && !self.disabled(e) => {
+                self.input.drag = Some(Drag {
+                    src: e,
+                    from: self.centre(e),
+                    live: true,
+                    keys: true,
+                });
+                let (x, y) = self.centre(e);
+                self.pick_up(e, x, y);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// `e` is freed: a drag of it ends without events.
+    pub(super) fn forget_drag(&mut self, e: u32) {
+        if self.input.drag.is_some_and(|d| d.src == e) {
+            self.input.drag = None;
+        }
+    }
+
     /// The pack's sounds, their clips loaded (the host's).
     pub fn set_sounds(&mut self, sounds: std::rc::Rc<SoundTable>) {
         self.input.sounds = sounds;
@@ -623,6 +818,7 @@ impl Tree {
             }
         }
         if moved && !pressed {
+            self.drag_moved(x, y);
             self.finger_moved(x, y);
         }
         let mut took = false;
@@ -647,6 +843,15 @@ impl Tree {
                     second,
                 });
                 self.set_state(e, PRESSED, true);
+                let src = self.drag_up(e);
+                if src != NONE && self.input.drag.is_none() {
+                    self.input.drag = Some(Drag {
+                        src,
+                        from: (x, y),
+                        live: false,
+                        keys: false,
+                    });
+                }
                 if self.input.per(e).is_some_and(|p| p.hold > 0.0) {
                     self.input.holding = Some(Holding {
                         e,
@@ -678,6 +883,14 @@ impl Tree {
             }
         }
         if released {
+            match self.input.drag {
+                Some(d) if d.live && !d.keys => {
+                    let t = self.drop_at(x, y);
+                    self.put_down(t, x, y);
+                }
+                Some(d) if !d.live => self.input.drag = None,
+                _ => {}
+            }
             let c = std::mem::replace(&mut self.input.capture, NONE);
             let to = if c != NONE && !self.els[c as usize].dead {
                 c
@@ -954,7 +1167,12 @@ impl Tree {
         let Some(p) = self.input.per(e) else {
             return false;
         };
-        let takes = p.tab != NO_TAB || p.input || el.clickable;
+        let carrying = self.input.drag.is_some_and(|d| d.live && d.keys);
+        let takes = p.tab != NO_TAB
+            || p.input
+            || el.clickable
+            || !p.drag.is_empty()
+            || (carrying && !p.drop.is_empty());
         takes
             && !el.dead
             && el.js != NONE
@@ -1025,6 +1243,11 @@ impl Tree {
                 a = self.els[a as usize].parent;
             }
             self.fire(e, OpEvent::Focus, 0.0, 0.0);
+            if self.input.drag.is_some_and(|d| d.live && d.keys) {
+                let t = self.drop_up(e);
+                let (cx, cy) = self.centre(e);
+                self.drag_over(t, cx, cy);
+            }
         }
     }
 
@@ -1158,6 +1381,17 @@ impl Tree {
             alt,
             cmd: meta,
         };
+        // A carried node: Escape puts it back, Enter or Space puts it down
+        // (or picks the focused one up).
+        let plain = !(shift || ctrl || alt || meta);
+        if plain && code == "Escape" && self.input.drag.is_some_and(|d| d.live) {
+            self.put_down(NONE, 0.0, 0.0);
+            return true;
+        }
+        if plain && matches!(code, "Enter" | "NumpadEnter" | "Space") && self.carry(f) {
+            self.input.keyed = true;
+            return true;
+        }
         let press = match code {
             "Enter" | "NumpadEnter" => Some(nsh_input::keymap::Key::Enter),
             "Space" => Some(nsh_input::keymap::Key::Char(' ')),
@@ -1194,6 +1428,16 @@ impl Tree {
     /// Whether an op node took it.
     pub fn action(&mut self, name: &str) -> bool {
         self.sync_modals();
+        // `confirm` picks the focused draggable up or puts a carried node
+        // down; `back` puts it back.
+        let f = self.input.focus;
+        if name == "confirm" && f != NONE && !self.input.keyed && self.carry(f) {
+            return true;
+        }
+        if name == "back" && self.input.drag.is_some_and(|d| d.live) {
+            self.put_down(NONE, 0.0, 0.0);
+            return true;
+        }
         let lists = |p: Option<&Per>| p.is_some_and(|p| p.actions.split(' ').any(|a| a == name));
         let from = match self.input.focus {
             NONE => self.input.modals.last().map_or(NONE, |m| m.0),
@@ -1339,7 +1583,7 @@ impl Tree {
         let (dx, dy) = (x - ox, y - oy);
         if f.mode == Touch::Pending && dx * dx + dy * dy > TOUCH_SLOP * TOUCH_SLOP {
             let horizontal = dx.abs() > dy.abs();
-            let mode = if self.input.capture != NONE {
+            let mode = if self.input.capture != NONE || self.input.drag.is_some_and(|d| d.live) {
                 Touch::Drag
             } else {
                 self.chain_at(ox, oy);
@@ -1498,6 +1742,7 @@ impl Tree {
             return false;
         }
         match step {
+            None if self.carry(e) => true,
             None if self.els[e as usize].clickable => {
                 self.click(e, 0.0, 0.0, false);
                 true

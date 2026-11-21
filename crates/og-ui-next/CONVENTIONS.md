@@ -133,7 +133,7 @@ uniform and centred, the stroke staying in px); there are no others. What can be
 `PaintKind::Line` quad over its box (og-draw paint.rs): its points in
 `Paint.points`, box-relative, width `p.x`, closed `p.y`. Events: 0 press, 1 tap, 2 pointerdown,
 3 pointermove, 4 pointerup, 5 wheel, 6 focus, 7 blur, 8 key, 9 change,
-10 action, 11 longpress, 12 hold.
+10 action, 11 longpress, 12 hold, 13 dragstart, 14 dragmove, 15 dragend, 16 drop.
 
 The reply is `OGEV`, a u32 count and the events since the last batch, each
 an id (u32), event (u8), x and y on the UI's surface (f32), then key and
@@ -223,6 +223,19 @@ machines do (ported as logic).
   from outside replaces the text (caret at its end, no `change`);
   `placeholder` shows at half ink while it is empty. One line, no
   selection, undo or input-method composition yet.
+- **Drag and drop**: a node with `draggable="<data>"` is picked up when a
+  press on it moves past the slop (4 px for a mouse, a finger's 8 px pan
+  slop) and then clicks nothing; a node with `dropTarget="<id>"` takes it.
+  Events 13 `dragstart` (on the source: `key` its data, `value` its box),
+  14 `dragmove` (source: `value` the target under it, "" none), 15
+  `dragend` (source: `value` the target, "" cancelled) and 16 `drop` (on
+  the target: `key` the data, `value` its box). The carried node keeps
+  `active:`. Keys and pads: Enter, Space or `confirm` on a focused
+  draggable picks it up; while carried, the targets are focus stops (Tab,
+  the arrows, the d-pad); Enter or `confirm` puts it down on the focused
+  target, Escape or `back` puts it back. An assistive technology's
+  activate does the same. Sounds: the pack's `select` on pick-up,
+  `confirm` on a drop, `cancel` when put back.
 - **On-screen controls**: a node with `touchStick`, `touchPad` or
   `touchButton` is an input source of the og-input action it names, as a
   document's `<joystick action>`, `<dpad action>` and `<button
@@ -241,6 +254,8 @@ machines do (ported as logic).
 | `hold` | seconds | a press or `confirm` must be held this long to press it |
 | `value` | text | an `Input`'s text, set from outside |
 | `placeholder` | text | what an empty `Input` shows |
+| `draggable` | data | it can be picked up and dragged, carrying this data |
+| `dropTarget` | an id | a carried node can be dropped on it |
 | `touchStick` | an action's name | its box is a stick of that action (x, y from its centre) |
 | `touchPad` | an action's name | its box is a d-pad of that action (eight directions) |
 | `touchButton` | an action's name | its box is a button of that action (1 while held) |

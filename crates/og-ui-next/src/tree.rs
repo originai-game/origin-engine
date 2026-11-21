@@ -105,7 +105,7 @@ struct El {
     /// The renderer's id of an op node ([`ops`]); NONE for a document's.
     js: u32,
     /// An op node's events (bits by [`ops::Event`]) and its class entry.
-    listens: u16,
+    listens: u32,
     class: u32,
     /// The element its arena node is a child of (a fixed one: none).
     arena_parent: u32,

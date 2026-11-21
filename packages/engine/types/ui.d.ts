@@ -87,6 +87,18 @@ export interface HostProps {
   hold?: number | undefined;
   /** Takes focus when it appears (a dialog's first control). */
   autofocus?: boolean | undefined;
+  /** Makes it draggable, carrying this data: a press moved past the slop picks it up, as do Enter, Space or `confirm` on it when focused. */
+  draggable?: string | undefined;
+  /** Makes it a drop target with this id: a carried node let go over it, or put down while it has the focus, drops here. While a node is carried by the keys, targets are focus stops. */
+  dropTarget?: string | undefined;
+  /** It was picked up: `key` its `draggable` data, `value` its box. */
+  onDragStart?: Handler;
+  /** It moved while carried: `key` its data, `value` the `dropTarget` under it (or focused), "" over none. */
+  onDragMove?: Handler;
+  /** It was put down: `key` its data, `value` the target's id, "" when cancelled (Escape, `back`, or let go over no target). */
+  onDragEnd?: Handler;
+  /** A carried node was dropped on this target: `key` that node's data, `value` this target's box. */
+  onDrop?: Handler;
   /** An on-screen stick: its box feeds this input action's x and y (from its centre, y up), with no handler. */
   touchStick?: string | undefined;
   /** An on-screen d-pad: its box feeds this input action, the nearest of eight directions. */

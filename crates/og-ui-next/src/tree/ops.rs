@@ -37,10 +37,22 @@ pub enum Event {
     /// A held press on a node with a `hold` duration: its progress, 0 to
     /// 1, in `value` each frame; "0" when it lets go early (`onHold`).
     Hold,
+    /// A `draggable` node was picked up: its data in `key`, its box in
+    /// `value` (`onDragStart`).
+    DragStart,
+    /// A carried node moved: its data in `key`, the `dropTarget` under it
+    /// (or focused) in `value`, "" over none (`onDragMove`).
+    DragMove,
+    /// A carried node was put down: its data in `key`, the `dropTarget` it
+    /// went to in `value`, "" when cancelled (`onDragEnd`).
+    DragEnd,
+    /// A carried node was dropped on this `dropTarget`: the node's data in
+    /// `key`, this target's box in `value` (`onDrop`).
+    Drop,
 }
 
 impl Event {
-    const ALL: [Event; 13] = [
+    const ALL: [Event; 17] = [
         Event::Press,
         Event::Tap,
         Event::PointerDown,
@@ -54,10 +66,14 @@ impl Event {
         Event::Action,
         Event::LongPress,
         Event::Hold,
+        Event::DragStart,
+        Event::DragMove,
+        Event::DragEnd,
+        Event::Drop,
     ];
 
-    pub fn bit(self) -> u16 {
-        1 << self as u16
+    pub fn bit(self) -> u32 {
+        1 << self as u32
     }
 }
 
@@ -459,6 +475,7 @@ impl Tree {
         self.sem.release(node);
         self.input.modal_els.retain(|&m| m != e);
         self.input.zone_els.retain(|&z| z != e);
+        self.forget_drag(e);
         self.anchored.retain(|&a| a != e);
         self.leaving.retain(|l| l.0 != e);
         if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
@@ -635,6 +652,8 @@ impl Tree {
                             }
                             self.show_value(e);
                         }
+                        "draggable" => self.input.per[e as usize].drag = value.trim().into(),
+                        "dropTarget" => self.input.per[e as usize].drop = value.trim().into(),
                         "deadZone" => {
                             self.input.per[e as usize].dead_zone =
                                 value.trim().parse::<f32>().unwrap_or(0.0).clamp(0.0, 0.95);
@@ -2375,6 +2394,99 @@ mod tests {
         heard(&mut t);
         assert!(t.action("confirm"));
         assert_eq!(heard(&mut t), [40], "node {f} pressed by confirm");
+    }
+
+    /// A `draggable` pressed and moved past the slop is picked up (its
+    /// press then clicks nothing), reports the `dropTarget` under it and,
+    /// let go there, drops on it; the keys do the same: Enter picks the
+    /// focused one up, Tab reaches the targets, Enter puts it down, Escape
+    /// puts it back.
+    #[test]
+    fn a_draggable_drops_on_a_target_by_pointer_and_by_keys() {
+        let mut t = stated();
+        let mut b = Batch::default();
+        b.op(1).u32(100).u8(0);
+        b.op(4).u32(100).str("row");
+        b.op(8).u32(0).u32(100).u32(u32::MAX);
+        for id in [1, 2, 3] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("b");
+            // Only the item takes presses: the targets are focus stops
+            // only while it is carried.
+            for ev in [
+                Event::Press,
+                Event::DragStart,
+                Event::DragMove,
+                Event::DragEnd,
+                Event::Drop,
+            ] {
+                if ev != Event::Press || id == 1 {
+                    b.op(7).u32(id).u8(ev as u8).u8(1);
+                }
+            }
+            b.op(8).u32(100).u32(id).u32(u32::MAX);
+        }
+        b.op(6).u32(1).str("draggable").str("sword");
+        b.op(6).u32(2).str("dropTarget").str("slot-a");
+        b.op(6).u32(3).str("dropTarget").str("slot-b");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        // Ids 1, 2, 3 are 50 wide from x 0.
+        let seen = |t: &mut Tree| -> Vec<(u32, Event, String, String)> {
+            let out = t
+                .events
+                .iter()
+                .filter(|f| f.event != Event::Focus)
+                .map(|f| (f.id, f.event, f.key.to_string(), f.value.to_string()))
+                .collect();
+            t.events.clear();
+            out
+        };
+        let ev = |id, e, k: &str, v: &str| (id, e, k.to_string(), v.to_string());
+        at(&mut t, 10.0, 5.0, true, false);
+        at(&mut t, 12.0, 5.0, false, false);
+        assert!(seen(&mut t).is_empty(), "within the slop nothing drags");
+        at(&mut t, 125.0, 5.0, false, false);
+        at(&mut t, 125.0, 5.0, false, true);
+        assert_eq!(
+            seen(&mut t),
+            [
+                ev(1, Event::DragStart, "sword", "0 0 50 20"),
+                ev(1, Event::DragMove, "sword", "slot-b"),
+                ev(3, Event::Drop, "sword", "100 0 50 20"),
+                ev(1, Event::DragEnd, "sword", "slot-b"),
+            ],
+            "no press on release"
+        );
+        // A click without a move still presses.
+        at(&mut t, 10.0, 5.0, true, false);
+        at(&mut t, 10.0, 5.0, false, true);
+        assert_eq!(seen(&mut t), [ev(1, Event::Press, "", "")]);
+        // The keys: 1 has the focus from the click.
+        t.input_done(false);
+        assert!(t.key("Enter", false, false, false, false));
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(2), "a target is a stop while carrying");
+        assert!(t.key("Enter", false, false, false, false));
+        assert_eq!(
+            seen(&mut t),
+            [
+                ev(1, Event::DragStart, "sword", "0 0 50 20"),
+                ev(1, Event::DragMove, "sword", "slot-a"),
+                ev(2, Event::Drop, "sword", "50 0 50 20"),
+                ev(1, Event::DragEnd, "sword", "slot-a"),
+            ]
+        );
+        assert_eq!(t.focused_id(), Some(1), "focus goes back to the node");
+        t.input_done(false);
+        assert!(t.key("Enter", false, false, false, false));
+        assert!(t.key("Escape", false, false, false, false));
+        let s = seen(&mut t);
+        assert_eq!(s.last(), Some(&ev(1, Event::DragEnd, "sword", "")), "{s:?}");
+        t.input_done(false);
+        assert!(t.action("confirm"), "confirm picks up too");
+        assert!(t.action("back"));
+        assert_eq!(seen(&mut t).len(), 2);
     }
 
     /// An on-screen control's box is a zone of the action it names, in
