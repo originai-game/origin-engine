@@ -77,6 +77,10 @@ pub struct Input {
     hover: Vec<u32>,
     next: Vec<u32>,
     held: Option<Held>,
+    /// The element that heard `pointerdown`: the pointer's moves and its
+    /// release go to it until the release, wherever the pointer is (the
+    /// DOM's implicit capture of a touch), so a drag follows the finger.
+    capture: u32,
     /// The last click: its element, time and place, for a double press.
     first: Option<(u32, f64, (f32, f32))>,
     focus: u32,
@@ -99,6 +103,7 @@ impl Input {
     pub(super) fn new() -> Input {
         Input {
             focus: NONE,
+            capture: NONE,
             ..Input::default()
         }
     }
@@ -238,8 +243,13 @@ impl Tree {
         self.sync_modals();
         self.hover_to(x, y);
         let under = self.input.hover.first().copied().unwrap_or(NONE);
-        if moved && under != NONE {
-            let l = self.up(under, |el| el.listens & OpEvent::PointerMove.bit() != 0);
+        // While a pointerdown holds it, the moves go to its listener.
+        let to = match self.input.capture {
+            c if c != NONE && !self.els[c as usize].dead => c,
+            _ => under,
+        };
+        if moved && to != NONE {
+            let l = self.up(to, |el| el.listens & OpEvent::PointerMove.bit() != 0);
             if l != NONE {
                 self.fire(l, OpEvent::PointerMove, x, y);
             }
@@ -251,6 +261,7 @@ impl Tree {
                 if l != NONE {
                     self.fire(l, OpEvent::PointerDown, x, y);
                 }
+                self.input.capture = l;
             }
             let e = self.hit(x, y);
             if e != NONE && self.els[e as usize].js != NONE {
@@ -276,8 +287,14 @@ impl Tree {
             }
         }
         if released {
-            if under != NONE {
-                let l = self.up(under, |el| el.listens & OpEvent::PointerUp.bit() != 0);
+            let c = std::mem::replace(&mut self.input.capture, NONE);
+            let to = if c != NONE && !self.els[c as usize].dead {
+                c
+            } else {
+                under
+            };
+            if to != NONE {
+                let l = self.up(to, |el| el.listens & OpEvent::PointerUp.bit() != 0);
                 if l != NONE {
                     self.fire(l, OpEvent::PointerUp, x, y);
                 }
@@ -639,6 +656,7 @@ impl Tree {
             if let Some(h) = self.input.held.take() {
                 self.set_state(h.e, PRESSED, false);
             }
+            self.input.capture = NONE;
             self.tab_stops();
             let first = self.input.stops.first().copied().unwrap_or(m);
             self.focus(first);

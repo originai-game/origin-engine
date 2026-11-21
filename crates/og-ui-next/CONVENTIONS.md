@@ -148,7 +148,9 @@ machines do (ported as logic).
 - **Events**: `press` and `tap` on a release within the retention (`value`
   is `"2"` on the second press of a double press: 0.5 s, 4 px);
   `pointerdown`, `pointermove`, `pointerup` and `wheel` (x and y carry the
-  wheel's deltas) go to the innermost node under the pointer that listens;
+  wheel's deltas) go to the innermost node under the pointer that listens,
+  except that the node that heard `pointerdown` hears the moves and the
+  `pointerup` until the release, wherever the pointer goes (a drag);
   `focus` and `blur` as focus moves; `key` (`key` is the
   `KeyboardEvent.code`) to the focused node or the nearest around it that
   listens; `action` to the focused node or the nearest around it whose

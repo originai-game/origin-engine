@@ -1391,4 +1391,49 @@ mod tests {
         assert!(t.nav(og_ui::Nav::Down), "the d-pad still moves it");
         assert_eq!(t.focused_id(), Some(4));
     }
+
+    /// A pointerdown's listener hears the moves and the release until the
+    /// release, though the pointer left it (a drag); its neighbour under
+    /// the pointer hears none of them, and after the release moves go to
+    /// what is under the pointer again.
+    #[test]
+    fn a_pointerdown_captures_the_moves_until_the_release() {
+        let mut t = stated();
+        let mut b = Batch::default();
+        b.op(1).u32(100).u8(0);
+        b.op(4).u32(100).str("row");
+        b.op(8).u32(0).u32(100).u32(u32::MAX);
+        for id in [1, 2] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("b");
+            for ev in [Event::PointerDown, Event::PointerMove, Event::PointerUp] {
+                b.op(7).u32(id).u8(ev as u8).u8(1);
+            }
+            b.op(8).u32(100).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        at(&mut t, 10.0, 10.0, true, false);
+        // Over 2, then off everything.
+        at(&mut t, 70.0, 10.0, false, false);
+        at(&mut t, 300.0, 200.0, false, true);
+        let got: Vec<_> = t.events.iter().map(|f| (f.id, f.event)).collect();
+        assert_eq!(
+            got,
+            [
+                // It came over 1 as it went down.
+                (1, Event::PointerMove),
+                (1, Event::PointerDown),
+                (1, Event::PointerMove),
+                (1, Event::PointerMove),
+                (1, Event::PointerUp)
+            ]
+        );
+        t.events.clear();
+        at(&mut t, 70.0, 10.0, false, false);
+        assert_eq!(
+            t.events[0].id, 2,
+            "released: the moves go under the pointer"
+        );
+    }
 }

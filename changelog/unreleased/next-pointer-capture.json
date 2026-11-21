@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og-ui input (TSX)",
+      "summary": "A drag follows the pointer: the node that heard `onPointerDown` hears `onPointerMove` and `onPointerUp` until the release, wherever the pointer or finger goes, as the DOM captures a touch. Before, moves went to whatever was under the pointer, so a drag that left its node lost its moves and its release."
+    }
+  ]
+}
