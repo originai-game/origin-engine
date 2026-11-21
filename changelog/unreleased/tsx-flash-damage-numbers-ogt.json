@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "DamageNumbers imported the world components' string table from the hud directory, which failed every cook with \"assets/@ui: @ui/components/hud/world.en.ogt: No such file or directory\". The import is gone: the component reads no strings."
+    }
+  ]
+}
