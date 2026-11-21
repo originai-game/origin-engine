@@ -1459,7 +1459,9 @@ mod tests {
     /// An `aspect-[7/10]` flex item in an `items-center` row takes its
     /// height from its used width through the ratio, as CSS does, while
     /// content taller than that still grows it: a reward screen's card
-    /// offers, which were their text's height.
+    /// offers, which were their text's height. A column's own width is its
+    /// items' contributions, not what their flexed heights give through
+    /// their ratios: it stays 0 while its square items are 80 wide.
     #[test]
     fn a_flex_item_takes_its_cross_size_from_its_aspect_ratio() {
         use taffy::prelude::*;
@@ -1478,6 +1480,23 @@ mod tests {
                 }
                 "wide" => s.size = Size::from_lengths(210.0, 80.0),
                 "tall" => s.size = Size::from_lengths(50.0, 100.0),
+                "box" => {
+                    s.flex_direction = FlexDirection::Row;
+                    s.size = Size::from_lengths(400.0, 168.0);
+                }
+                "col" => {
+                    s.flex_direction = FlexDirection::Column;
+                    s.align_items = AlignItems::CENTER;
+                    s.size.height = percent(1.0);
+                    s.gap.height = length(8.0);
+                }
+                "sq" => {
+                    s.flex_grow = 1.0;
+                    s.flex_basis = length(0.0);
+                    s.min_size.height = length(0.0);
+                    s.max_size.width = length(100.0);
+                    s.aspect_ratio = Some(1.0);
+                }
                 _ => {}
             }
             Record {
@@ -1503,6 +1522,23 @@ mod tests {
         assert_eq!([wide[2], wide[3]], [210.0, 300.0], "210 wide at 7:10");
         let tall = t.op_box(4).unwrap();
         assert_eq!([tall[2], tall[3]], [50.0, 100.0], "its content, past 7:10");
+
+        let mut b = Batch::default();
+        for (id, class, parent) in [(6, "box", 0), (7, "col", 6), (8, "sq", 7), (9, "sq", 7)] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let col = t.op_box(7).unwrap();
+        assert_eq!(col[2], 0.0, "the column's width ignores its items' ratios");
+        let sq = t.op_box(8).unwrap();
+        assert_eq!(
+            [sq[2], sq[3]],
+            [80.0, 80.0],
+            "a square at its flexed height"
+        );
     }
 
     /// A row sized to its content (a `justify-items-center` grid item)

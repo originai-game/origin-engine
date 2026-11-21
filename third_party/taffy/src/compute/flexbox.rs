@@ -456,8 +456,12 @@ fn compute_preliminary(tree: &mut impl LayoutFlexboxContainer, node: NodeId, inp
 
     // 7. Determine the hypothetical cross size of each item.
     debug_log!("determine_hypothetical_cross_size");
+    // A column container's width asked for alone is its intrinsic inline size: its items'
+    // contributions, not the widths their flexed heights give through their aspect ratios
+    // https://drafts.csswg.org/css-flexbox-1/#intrinsic-cross-sizes
+    let transfer_main = !(run_mode == RunMode::ComputeSize && !constants.is_row && inputs.axis == RequestedAxis::Horizontal);
     for line in &mut flex_lines {
-        determine_hypothetical_cross_size(tree, line, &constants, known_dimensions, available_space);
+        determine_hypothetical_cross_size(tree, line, &constants, known_dimensions, available_space, transfer_main);
     }
 
     // Calculate child baselines. This function is internally smart and only computes child baselines
@@ -1979,6 +1983,7 @@ fn determine_hypothetical_cross_size(
     constants: &AlgoConstants,
     node_size: Size<Option<f32>>,
     available_space: Size<AvailableSpace>,
+    transfer_main: bool,
 ) {
     // If the flex container is single-line and has a definite cross size then that is the cross size of the
     // line, whatever the hypothetical cross sizes of the items are
@@ -2066,7 +2071,7 @@ fn determine_hypothetical_cross_size(
             // size in the ratio-dependent axis) and floors the measured content size, which may
             // still make it taller (min-height: auto), as the intrinsic main size step does
             // https://drafts.csswg.org/css-sizing-4/#aspect-ratio-automatic
-            .maybe_max(child.aspect_ratio.map(|ratio| {
+            .maybe_max(child.aspect_ratio.filter(|_| transfer_main).map(|ratio| {
                 let main = child.target_size.main(constants.dir);
                 if constants.is_row { main / ratio } else { main * ratio }
             }))

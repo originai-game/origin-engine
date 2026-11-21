@@ -3,7 +3,7 @@
   "fixed": [
     {
       "member": "og.ui layout",
-      "summary": "A flex item with `aspect-*` and no cross size (an `items-center` row's card) now takes its cross size from its used main size through the ratio, as CSS does, with taller content still growing it; it was its content's size, so a 7:10 card in a row laid out as short as its text."
+      "summary": "A flex item with `aspect-*` and no cross size (an `items-center` row's card) now takes its cross size from its used main size through the ratio, as CSS does, with taller content still growing it; it was its content's size, so a 7:10 card in a row laid out as short as its text. A column sized to its items still takes its width from their widths, not from what their flexed heights give through their ratios (CSS's intrinsic cross size)."
     }
   ]
 }
