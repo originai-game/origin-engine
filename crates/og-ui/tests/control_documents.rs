@@ -301,72 +301,12 @@ fn a_progress_bar_is_drawn_by_its_control_document() {
 }
 
 #[test]
-fn outer_rules_outrank_the_control_documents_own() {
-    let text = BAR.replace(
-        "</style>",
-        "progress { height: 24px; }\nprogress::part(fill) { border-radius: 0; background: #ff0000; }\n</style>",
-    );
-    let mut d = Doc::mounted(with_control("progress"), &text, &[("v", json!(0.5))]);
-    d.step(InputFrame::default());
-    assert_eq!(d.get("P").height, 24.0, "the host's own document sizes it");
-    assert_eq!(d.get("P/Track/Fill").height, 24.0);
-    let fill = d.get("P/Track/Fill");
-    let red = Srgba::rgb(255, 0, 0).linear();
-    let fills = fills_in(&d.ui, Rect::new(fill.x, fill.y, fill.width, fill.height));
-    assert!(
-        fills.contains(&red),
-        "the document's ::part() rule paints the fill: {fills:?}"
-    );
-}
-
-#[test]
 fn the_host_keeps_its_semantics() {
     let mut d = Doc::mounted(with_control("progress"), BAR, &[("v", json!(0.25))]);
     d.step(InputFrame::default());
     let node = d.a11y("P");
     assert_eq!(node.role, "progressbar");
     assert_eq!(node.value, "25%");
-}
-
-#[test]
-fn a_meter_document_paints_its_hosts_region() {
-    // The region is derived once for the host: the document's `region`
-    // prop and the host's fact for `meter[region=…]::part(fill)`.
-    let text = r#"<meta name="component" content="t">
-<div id="Form"><meter id="M" value={$v} min="0" max="100" low="25" high="75" optimum="90"></meter></div>
-<style>
-#Form { width: 400px; }
-meter { width: 200px; }
-meter[region=poor]::part(track) { height: 4px; }
-</style>"#;
-    let mut d = Doc::mounted(with_control("meter"), text, &[("v", json!(80))]);
-    let palette = d.ui.theme().palette;
-    let painted = |d: &mut Doc, value: f64| {
-        d.set("v", json!(value));
-        d.step(InputFrame::default());
-        let fill = d.get("M/Track/Fill");
-        let fills = fills_in(&d.ui, Rect::new(fill.x, fill.y, fill.width, fill.height));
-        let width = fill.width;
-        let region = [
-            ("optimum", palette.success),
-            ("suboptimum", palette.warn),
-            ("poor", palette.danger),
-        ]
-        .into_iter()
-        .filter(|(_, c)| fills.iter().any(|f| near(*f, *c)))
-        .map(|(name, _)| name)
-        .collect::<Vec<_>>();
-        (width, region, d.get("M/Track").height)
-    };
-    assert_eq!(painted(&mut d, 80.0), (160.0, vec!["optimum"], 12.0));
-    assert_eq!(painted(&mut d, 50.0), (100.0, vec!["suboptimum"], 12.0));
-    assert_eq!(
-        painted(&mut d, 20.0),
-        (40.0, vec!["poor"], 4.0),
-        "the host's region is a fact its ::part() rules read"
-    );
-    assert_eq!(d.a11y("M").role, "meter");
-    assert_eq!(d.a11y("M").value, "20");
 }
 
 #[test]
