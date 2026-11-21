@@ -854,7 +854,10 @@ fn const_literal(c: &Const) -> String {
 
 /// A string-list constant's members as TypeScript string literals.
 fn list_members(s: &str) -> Vec<String> {
-    s.split_whitespace().map(Json::str).map(|j| j.render().trim_end().to_string()).collect()
+    s.split_whitespace()
+        .map(Json::str)
+        .map(|j| j.render().trim_end().to_string())
+        .collect()
 }
 
 /// A constant's TypeScript type: its value as a literal type; a list
