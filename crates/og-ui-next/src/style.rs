@@ -675,8 +675,11 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::INSET => {
             // The sides it sets over those the record has.
             let had = l.inset();
+            // NaN is `auto` (`inset: 4px auto auto 4px`, an anchor's).
             let side = |k: usize, was: LengthPercentageAuto| {
-                if s.code & (1 << k) != 0 {
+                if s.code & (1 << k) != 0 && s.v[k].is_nan() {
+                    LengthPercentageAuto::auto()
+                } else if s.code & (1 << k) != 0 {
                     LengthPercentageAuto::length(s.v[k])
                 } else {
                     was
@@ -820,7 +823,8 @@ fn sides(v: &str) -> Option<[f32; 4]> {
     sides_with(v, px)
 }
 
-/// A margin's length: `auto` is NaN (the side takes the free space).
+/// A margin's or an inset's length: `auto` is NaN (a margin takes the
+/// free space; an inset leaves the side to the others).
 fn margin_px(w: &str) -> Option<f32> {
     if w == "auto" { Some(f32::NAN) } else { px(w) }
 }
@@ -1010,14 +1014,16 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
         "top" | "right" | "bottom" | "left" | "inset" => {
             // Only the sides it names: fold keeps the element's others.
             let last = if name == "inset" {
-                let Some(s) = sides(v) else { return false };
+                let Some(s) = sides_with(v, margin_px) else {
+                    return false;
+                };
                 step(op::INSET, 0b1111, s)
             } else {
                 let k = ["top", "right", "bottom", "left"]
                     .iter()
                     .position(|s| *s == name)
                     .unwrap();
-                let Some(x) = px(v) else { return false };
+                let Some(x) = margin_px(v) else { return false };
                 let mut v = [0.0; 4];
                 v[k] = x;
                 step(op::INSET, 1 << k, v)

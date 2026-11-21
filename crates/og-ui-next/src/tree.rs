@@ -1342,6 +1342,32 @@ mod tests {
         assert_eq!(texts, 1, "only the shown text");
     }
 
+    /// An inset with `auto` sides places the box by the others: an
+    /// anchor's `inset: 4px auto auto 4px` sits 4px in from the top left.
+    #[test]
+    fn an_auto_inset_side_leaves_the_box_to_the_others() {
+        let doc = UiDocument::parse(
+            "i.svelte",
+            "<meta name=\"component\" content=\"i\">\n\
+             <div id=\"P\"><div id=\"B\"></div></div>\n\
+             <style>\n#P { width: 100px; height: 100px; }\n\
+             #B { position: absolute; inset: 4px auto auto 6px; width: 10px; height: 10px; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
+        tree.resize(200.0, 200.0);
+        tree.mount("i", &[]).unwrap();
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        assert_eq!(tree.find("B"), Some((6.0, 4.0, 10.0, 10.0)));
+    }
+
     /// An `auto` margin takes the free space, as flex places it: a row's
     /// last item pushed to its end, a `center` layout centred.
     #[test]
