@@ -91,22 +91,15 @@ function measureViewport(w: string, h: string): [number, number] | undefined {
   return [r.width, r.height];
 }
 
-/** The page's preferences og-ui follows, each with the viewport field it sets. */
+/** The page's preferences the UI follows, each with the viewport field it sets. */
 export const PAGE_PREFERENCES = [
   ["reducedMotion", "(prefers-reduced-motion: reduce)"],
   ["highContrast", "(prefers-contrast: more)"],
-  ["reducedTransparency", "(prefers-reduced-transparency: reduce)"],
 ] as const;
 
-/** The page's motion, contrast and transparency preferences and the platform's editing keys, as the viewport carries them to og-ui. */
-export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean; reducedTransparency: boolean; macKeys: boolean } {
+/** The page's motion and contrast preferences, as the viewport carries them to the UI. */
+export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean } {
   const query = (q: string) => globalThis.matchMedia?.(q).matches ?? false;
-  const [motion, contrast, transparency] = PAGE_PREFERENCES.map(([, q]) => query(q));
-  return { reducedMotion: motion!, highContrast: contrast!, reducedTransparency: transparency!, macKeys: macKeys() };
-}
-
-/** Whether the page runs on an Apple platform, whose text fields take Command and Option (og-ui's `Viewport.macKeys`). */
-export function macKeys(nav: { platform?: string; userAgentData?: { platform?: string } } | undefined = globalThis.navigator as never): boolean {
-  const platform = nav?.userAgentData?.platform || nav?.platform || "";
-  return /^(mac|iphone|ipad|ipod)/i.test(platform);
+  const [motion, contrast] = PAGE_PREFERENCES.map(([, q]) => query(q));
+  return { reducedMotion: motion!, highContrast: contrast! };
 }

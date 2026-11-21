@@ -21,7 +21,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `warn` | `Color \| null` | `null` | — | — | — | The warning hue. |
 | `success` | `Color \| null` | `null` | — | — | — | The success hue (the ok state, healing). |
 | `info` | `Color \| null` | `null` | — | — | — | The information hue. |
-| `team` | `Color \| null` | `null` | — | — | — | Picks the first team (`--team1` to `--team8`, UiTheme.tokens.team): of six colours every colour vision tells apart (vermilion, yellow, bluish green, blue, violet, reddish purple), the one nearest its hue; teams 2 to 6 follow in Okabe-Ito order, 7 and 8 are fixed. |
+| `team` | `Color \| null` | `null` | — | — | — | Picks the first team (`--team1` to `--team8`): of six colours every colour vision tells apart (vermilion, yellow, bluish green, blue, violet, reddish purple), the one nearest its hue; teams 2 to 6 follow in Okabe-Ito order, 7 and 8 are fixed. |
 
 ```ogt
 struct UiSeeds {
@@ -35,8 +35,8 @@ struct UiSeeds {
   field warn Option.Color "The warning hue."
   field success Option.Color "The success hue (the ok state, healing)."
   field info Option.Color "The information hue."
-  field team Option.Color "Picks the first team (`--team1` to `--team8`, UiTheme.tokens.team): of six colours every colour vision tells apart (vermilion, yellow, bluish green, blue, violet, reddish purple), the one nearest its hue; teams 2 to 6 follow in Okabe-Ito order, 7 and 8 are fixed."
+  field team Option.Color "Picks the first team (`--team1` to `--team8`): of six colours every colour vision tells apart (vermilion, yellow, bluish green, blue, violet, reddish purple), the one nearest its hue; teams 2 to 6 follow in Okabe-Ito order, 7 and 8 are fixed."
 }
 ```
 
-<sub>Module `ui` line 231</sub>
+<sub>Module `ui` line 217</sub>

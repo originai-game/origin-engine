@@ -300,7 +300,7 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
 }
 
 #[test]
-fn configure_retains_clears_and_disables_the_glass_backdrop_override() {
+fn configure_retains_and_clears_the_glass_backdrop_override() {
     let e = engine();
     let style = value(og_runtime::host_impl::answer(og_load_style(
         e,
@@ -336,18 +336,6 @@ fn configure_retains_clears_and_disables_the_glass_backdrop_override() {
         theme(e)["glassBackdrop"],
         json!("auto"),
         "omission retains auto"
-    );
-    configure(e, json!({ "reducedTransparency": true }));
-    assert_eq!(
-        theme(e)["glassBackdrop"],
-        json!("none"),
-        "accessibility wins"
-    );
-    configure(e, json!({ "reducedTransparency": false }));
-    assert_eq!(
-        theme(e)["glassBackdrop"],
-        json!("auto"),
-        "override survives accessibility"
     );
     configure(e, json!({ "glassBackdrop": null }));
     assert_eq!(

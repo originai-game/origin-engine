@@ -86,7 +86,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             theme.seeds = og_ui::Seeds(given.map(|c| c.as_ref().map(|c| [c.r, c.g, c.b])));
         }
         theme.reduced_motion = u.reduced_motion;
-        theme.reduced_transparency = u.reduced_transparency;
         theme.glass_backdrop = u.glass_backdrop.map(|backdrop| match backdrop {
             wire::GlassBackdrop::None => og_ui::GlassBackdrop::None,
             wire::GlassBackdrop::Auto => og_ui::GlassBackdrop::Auto,
@@ -104,7 +103,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         } else {
             0.0
         };
-        theme.density = DensityMode::from_name(u.density.as_str()).unwrap_or_default();
         if let Some(sounds) = &u.sounds {
             for e in og_ui::UiSound::ALL {
                 let given = match e {
@@ -213,8 +211,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
                 },
             }))
         };
-        let mut atlas = atlas_of("icons", &u.icons)?.unwrap_or_default();
-        atlas.fallback = atlas_of("fallbackIcons", &u.fallback_icons)?.map(Box::new);
+        let atlas = atlas_of("icons", &u.icons)?.unwrap_or_default();
         // Pictures rich text draws inline by name ([img=…]).
         let mut images = std::collections::BTreeMap::new();
         for im in &u.images {
@@ -302,7 +299,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             // set above (installing a style reads it again itself).
             ui.read_theme_tokens();
         }
-        ui.set_hud_max_aspect(u.hud_max_aspect);
         drop(ui);
         if let Some((pack, ..)) = &style {
             crate::world::remote::request(&eng, &pack.sheet.remote);

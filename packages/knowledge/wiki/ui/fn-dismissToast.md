@@ -30,4 +30,4 @@ fn dismissToast {
 }
 ```
 
-<sub>Module `ui` line 606</sub>
+<sub>Module `ui` line 587</sub>

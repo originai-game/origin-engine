@@ -25397,9 +25397,8 @@ export type DurationStyle = "clock" | "short";
 
 
 // ── ui ──────────────────────────────────────────────────────────
-// The engine's UI: screen and component documents, mounted through og.ui.scope or pushed on the layer stack (og.ui.push), which the engine lays out, styles with one CSS cascade (its default style, a style pack, the game's own CSS), draws over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from. These calls configure it and read it back.
-// The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
-// Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
+// The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwind classes and the style pack, laid out and drawn over the frame, and answered to the probe (dump_ui, touch_move_to). These calls configure it and read it back.
+// Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree.
 
 /**
  * How the lines of a label align.
@@ -25565,9 +25564,7 @@ export interface Paint {
   readonly opacity?: number;
 }
 
-/**
- * The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit.
- */
+/** The play surface the UI lays out in, in CSS px and device pixels per CSS px. */
 export interface Viewport {
   /**
    * Its width; omitted is 1280.
@@ -25628,21 +25625,13 @@ export interface Viewport {
    */
   readonly highContrast?: boolean;
   /**
-   * The page prefers less transparency (prefers-reduced-transparency: reduce, from the web shell): glass parts are opaque surfaces and the scrim and translucent fills flat, whatever UiDesc.reducedTransparency says (UiTheme.reducedTransparency). Omitted is false.
-   */
-  readonly reducedTransparency?: boolean;
-  /**
-   * Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it from the browser's platform (Apple's); a native host sets it on macOS, so a script that holds Ctrl or Meta edits as a person on that OS would (og.ui.previewViewport pins either). Omitted is false.
-   */
-  readonly macKeys?: boolean;
-  /**
-   * Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px; its name shows beside it for the first seconds of play). A document's CSS `env(safe-area-inset-*)` clears it: it is folded into the one edge's inset that costs the least surface (the left one on a landscape surface, the top one on a portrait one), so a HUD placed at the insets (`position: fixed; left: calc(env(safe-area-inset-left) + 16px)`) never draws under it. A game drawing its own corner reads it from og.ui.frameViewport. Empty (omitted) is none: native hosts and pages without Back.
+   * Where the host's own control covers the surface: on a published page the web shell's round Back to the Portal, top left (about 12, 12 to 52, 52 CSS px). It is folded into the safe-area inset that costs the least surface. Empty (omitted) is none: native hosts and pages without Back.
    */
   readonly covered?: UiRect;
   /** Its size class: phone portrait or landscape, tablet, desktop. */
   readonly breakpoint: Breakpoint;
   /**
-   * The HUD band (read only): the safe area at most UiDesc.hudMaxAspect times its height wide, centred, where toasts lay out and a HUD document's CSS env(-og-hud-inset-*) places it; a game drawing its own HUD reads it so it sits with them on an ultrawide. Ignored where a host passes a viewport in.
+   * The HUD band (read only): the safe area, where toasts lay out and a HUD document's CSS env(-og-hud-inset-*) places it; a game drawing its own HUD reads it so it sits with them on an ultrawide. Ignored where a host passes a viewport in.
    */
   readonly hud?: UiRect;
 }
@@ -25690,7 +25679,7 @@ export interface UiDesc {
    */
   readonly roundedFont?: Font | null;
   /**
-   * Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for a text the role's font cannot draw whole. A text mixing scripts takes each run from the first font that has it (the role's for its Latin, a fallback for its CJK or Arabic), one label in several fonts.
+   * Fonts for other scripts (Hebrew, Devanagari, a CJK face with `font { runtime true }`), tried in order after the locale's (og.i18n) for text the role's font cannot draw: each run of a mixed text takes the first font that has it.
    *
    * @default []
    */
@@ -25714,7 +25703,7 @@ export interface UiDesc {
    */
   readonly reducedMotion?: boolean;
   /**
-   * The player's text size (a settings screen's slider, kept with the other settings): every text size and leading is multiplied by it and the layout grows around the text (control, row and header heights by the leading body text gains), never clipping it. 1 is the style's sizes, 1.5 the largest (a larger one lays out at 1.5): docs/ui.md §6.1 holds every screen to 1.5, 200 % deferred.
+   * The player's text size (a settings screen's slider): every text size and leading is multiplied by it and the layout grows around the text, never clipping it. 1 is the style's sizes, 1.5 the largest (a larger one lays out at 1.5).
    *
    * @default 1
    * @range 1..2
@@ -25722,7 +25711,7 @@ export interface UiDesc {
    */
   readonly textScale?: number;
   /**
-   * The og-ui unit in CSS px (docs/ui.md §6.1): the UI lays out in units (og.ui.viewport and og.ui.frameViewport are the surface over it) and draws them at it, so every length grows with the surface (the style's text, space, radii and controls, and a game's own px, alike) and the player's textScale multiplies over it. 0 is auto: on a mouse or pad surface its 1080p-equivalent height (the shorter of the height and the width's 16:9 height) over 720, 1 to 2, so a 1280x720 layout fills a 1080p window with body text at 21 CSS px and the smallest step at 18; a touch surface keeps CSS px (1). A value of 1 to 2 pins it (a game that lays out for one size).
+   * The UI unit in CSS px: the TSX tree lays out in units and draws them at it, so every length grows with the surface; the probe reads boxes in surface px. 0 is auto: on a mouse or pad surface its 1080p-equivalent height over 720, 1 to 2; a touch surface keeps 1. 1 to 2 pins it.
    *
    * @default 0
    * @range 0..2
@@ -25730,19 +25719,7 @@ export interface UiDesc {
    */
   readonly unitScale?: number;
   /**
-   * Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.
-   *
-   * @default false
-   */
-  readonly reducedTransparency?: boolean;
-  /**
-   * Override the style's backdrop blur: auto enables it for glass surfaces, none disables it even when the style opts in. Omitted keeps the previous override; null clears it to inherit the style. Reduced transparency always disables backdrop blur.
-   *
-   * @default null
-   */
-  readonly glassBackdrop?: GlassBackdrop | null;
-  /**
-   * The player's colour vision (a settings screen's colour-blind mode): the whole frame, the scene and the UI alike, is recoloured for it after every other effect (colorVisionFilter), and a document's CSS reads it as @media (-og-color-vision: protanopia) to add the cues it needs. none (the default) draws the frame as it is. Simulation uses Viénot 1999 for protanopia and deuteranopia and Brettel 1997 for tritanopia; correction is Fidaner 2005's daltonisation over them (docs/ui.md §3.2).
+   * The player's colour vision (a colour-blind mode): the whole frame, scene and UI, is recoloured for it after every other effect (colorVisionFilter); none (the default) draws it as it is. Viénot 1999 and Brettel 1997 simulate; Fidaner 2005's daltonisation corrects.
    *
    * @default "none"
    */
@@ -25768,24 +25745,11 @@ export interface UiDesc {
    */
   readonly icons?: IconAtlasDesc | null;
   /**
-   * The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set under a style pack's few painted icons. A document's `<og-icon>`, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it. Names absent from both sets use the engine's on-demand vector icons: back, bag, bolt, check, chevronDown, chevronLeft, chevronRight, clock, close, coin, flag, lock, map, music, person, play, plus, skull, star, trophy. Unknown names still warn. null is no game fallback.
-   *
-   * @default null
-   */
-  readonly fallbackIcons?: IconAtlasDesc | null;
-  /**
    * Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours.
    *
    * @default []
    */
   readonly images?: readonly UiInlineImage[];
-  /**
-   * The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) a HUD document placed at its CSS env(-og-hud-inset-*) (`right: calc(env(-og-hud-inset-right) + 24px)`) lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect.
-   *
-   * @default 2.3333333
-   * @range 0..
-   */
-  readonly hudMaxAspect?: number;
   /**
    * A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the default style (fonts, icons and a primary colour given here still win); null is the default style, the design language the engine shares with origin-agent.
    *
@@ -25849,7 +25813,7 @@ export interface UiSeeds {
    */
   readonly info?: Color | null;
   /**
-   * Picks the first team (`--team1` to `--team8`, UiTheme.tokens.team): of six colours every colour vision tells apart (vermilion, yellow, bluish green, blue, violet, reddish purple), the one nearest its hue; teams 2 to 6 follow in Okabe-Ito order, 7 and 8 are fixed.
+   * Picks the first team (`--team1` to `--team8`): of six colours every colour vision tells apart (vermilion, yellow, bluish green, blue, violet, reddish purple), the one nearest its hue; teams 2 to 6 follow in Okabe-Ito order, 7 and 8 are fixed.
    *
    * @default null
    */
@@ -25930,10 +25894,6 @@ export interface TypeStep {
    * Style-driven locale-sensitive uppercase, applied before measurement without rewriting source text or editable values.
    */
   readonly uppercase: boolean;
-  /**
-   * The OpenType features the step turns on, as tags: smcp (small caps), c2sc (capitals to small caps), tnum (tabular figures), lnum (lining figures), case (case-sensitive forms). A style sets them after a type role's font (`display 42 48 0.02 700 display smcp`); they apply where the role's font is imported with the same `features` line, and a font without one draws its defaults.
-   */
-  readonly features: readonly string[];
 }
 
 /** The control, row and header heights and the gutter of the density in effect. */
@@ -26005,10 +25965,6 @@ export interface UiTheme {
   /** The configured style's name; empty for the default style. */
   readonly style: string;
   /**
-   * The configured style file's version: 1 for a version-1 style, whose game keeps the controls and dialogs it shipped with (docs/ui.md §3); 2 for a version-2 style and the default style.
-   */
-  readonly styleVersion: number;
-  /**
    * The variant in effect: high when the game asked for it or the page prefers more contrast.
    */
   readonly contrast: Contrast;
@@ -26020,10 +25976,6 @@ export interface UiTheme {
    * The player's text scale in effect (UiDesc.textScale, 1 to 1.5): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this.
    */
   readonly textScale: number;
-  /**
-   * The og-ui unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what every length the UI reads and gives is in, og.ui.bounds and og.ui.viewport too. Only what leaves the UI for the page is CSS px: the probe's dump_ui and og.render's screen sprites; a game drawing its own screen sprites beside the UI multiplies by it.
-   */
-  readonly unit: number;
   /** The player's colour vision in effect (UiDesc.colorVision). */
   readonly colorVision: ColorVision;
   /** Whether the frame is corrected or simulated for it. */
@@ -26031,17 +25983,9 @@ export interface UiTheme {
   /** Its severity, 0 to 1. */
   readonly colorVisionStrength: number;
   /**
-   * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
-   */
-  readonly reducedTransparency: boolean;
-  /**
-   * The backdrop blur policy in effect, after the configured override and style; none when reduced transparency is active or neither opts in.
+   * The backdrop blur policy in effect, after the configured override and style; none when neither opts in.
    */
   readonly glassBackdrop: GlassBackdrop;
-  /**
-   * The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, `cues` (each colour token's cue besides its hue, by name: `{ icon: <index in the style's icons> }`, `{ pattern: <name> }` or `{ pips: <n> }`; docs/ui.md §3.2), and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses).
-   */
-  readonly tokens: unknown;
 }
 
 
@@ -38531,9 +38475,8 @@ export declare namespace og {
     function formatDuration(world: World, seconds: number, style?: DurationStyle): string;
   }
   /**
-   * The engine's UI: screen and component documents, mounted through og.ui.scope or pushed on the layer stack (og.ui.push), which the engine lays out, styles with one CSS cascade (its default style, a style pack, the game's own CSS), draws over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from. These calls configure it and read it back.
-   * The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
-   * Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
+   * The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwind classes and the style pack, laid out and drawn over the frame, and answered to the probe (dump_ui, touch_move_to). These calls configure it and read it back.
+   * Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree.
    */
   namespace ui {
     /**
@@ -38545,7 +38488,7 @@ export declare namespace og {
      */
     function configure(world: World, desc?: UiDesc): Result<void>;
     /**
-     * This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in og-ui units (CSS pixels over UiTheme.unit, docs/ui.md §6.1: 1 on touch and up to 720p, so CSS pixels there) and device pixels per unit, from what the host reports.
+     * This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in CSS px and device pixels per CSS px, from what the host reports.
      *
      * @param world The world.
      */

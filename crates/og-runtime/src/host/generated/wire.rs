@@ -16580,8 +16580,6 @@ pub struct Viewport {
     pub coarse_pointer: bool,
     pub reduced_motion: Option<bool>,
     pub high_contrast: Option<bool>,
-    pub reduced_transparency: Option<bool>,
-    pub mac_keys: Option<bool>,
     pub covered: Option<UiRect>,
     pub breakpoint: Breakpoint,
     pub hud: Option<UiRect>,
@@ -16601,8 +16599,6 @@ impl Default for Viewport {
             coarse_pointer: Default::default(),
             reduced_motion: Default::default(),
             high_contrast: Default::default(),
-            reduced_transparency: Default::default(),
-            mac_keys: Default::default(),
             covered: Default::default(),
             breakpoint: Default::default(),
             hud: Default::default(),
@@ -16628,8 +16624,6 @@ impl FromJson for Viewport {
             coarse_pointer: field(o, "coarsePointer", d.coarse_pointer)?,
             reduced_motion: field(o, "reducedMotion", d.reduced_motion)?,
             high_contrast: field(o, "highContrast", d.high_contrast)?,
-            reduced_transparency: field(o, "reducedTransparency", d.reduced_transparency)?,
-            mac_keys: field(o, "macKeys", d.mac_keys)?,
             covered: field(o, "covered", d.covered)?,
             breakpoint: field(o, "breakpoint", d.breakpoint)?,
             hud: field(o, "hud", d.hud)?,
@@ -16663,12 +16657,6 @@ impl ToJson for Viewport {
         if let Some(x) = &self.high_contrast {
             o.insert("highContrast".into(), x.to_json());
         }
-        if let Some(x) = &self.reduced_transparency {
-            o.insert("reducedTransparency".into(), x.to_json());
-        }
-        if let Some(x) = &self.mac_keys {
-            o.insert("macKeys".into(), x.to_json());
-        }
         if let Some(x) = &self.covered {
             o.insert("covered".into(), x.to_json());
         }
@@ -16695,15 +16683,11 @@ pub struct UiDesc {
     pub reduced_motion: bool,
     pub text_scale: f32,
     pub unit_scale: f32,
-    pub reduced_transparency: bool,
-    pub glass_backdrop: Option<GlassBackdrop>,
     pub color_vision: ColorVision,
     pub color_vision_filter: ColorVisionFilter,
     pub color_vision_strength: f32,
     pub icons: Option<IconAtlasDesc>,
-    pub fallback_icons: Option<IconAtlasDesc>,
     pub images: Vec<UiInlineImage>,
-    pub hud_max_aspect: f32,
     pub style: Option<u64>,
     pub sounds: Option<UiSounds>,
 }
@@ -16723,15 +16707,11 @@ impl Default for UiDesc {
             reduced_motion: Default::default(),
             text_scale: 1.0_f32,
             unit_scale: 0.0_f32,
-            reduced_transparency: Default::default(),
-            glass_backdrop: Default::default(),
             color_vision: Default::default(),
             color_vision_filter: Default::default(),
             color_vision_strength: 1.0_f32,
             icons: Default::default(),
-            fallback_icons: Default::default(),
             images: Default::default(),
-            hud_max_aspect: 2.3333333_f32,
             style: Default::default(),
             sounds: Default::default(),
         }
@@ -16757,15 +16737,11 @@ impl FromJson for UiDesc {
             reduced_motion: field(o, "reducedMotion", d.reduced_motion)?,
             text_scale: field(o, "textScale", d.text_scale)?,
             unit_scale: field(o, "unitScale", d.unit_scale)?,
-            reduced_transparency: field(o, "reducedTransparency", d.reduced_transparency)?,
-            glass_backdrop: field(o, "glassBackdrop", d.glass_backdrop)?,
             color_vision: field(o, "colorVision", d.color_vision)?,
             color_vision_filter: field(o, "colorVisionFilter", d.color_vision_filter)?,
             color_vision_strength: field(o, "colorVisionStrength", d.color_vision_strength)?,
             icons: field(o, "icons", d.icons)?,
-            fallback_icons: field(o, "fallbackIcons", d.fallback_icons)?,
             images: field(o, "images", d.images)?,
-            hud_max_aspect: field(o, "hudMaxAspect", d.hud_max_aspect)?,
             style: field(o, "style", d.style)?,
             sounds: field(o, "sounds", d.sounds)?,
         })
@@ -16787,15 +16763,11 @@ impl ToJson for UiDesc {
         o.insert("reducedMotion".into(), self.reduced_motion.to_json());
         o.insert("textScale".into(), self.text_scale.to_json());
         o.insert("unitScale".into(), self.unit_scale.to_json());
-        o.insert("reducedTransparency".into(), self.reduced_transparency.to_json());
-        o.insert("glassBackdrop".into(), self.glass_backdrop.to_json());
         o.insert("colorVision".into(), self.color_vision.to_json());
         o.insert("colorVisionFilter".into(), self.color_vision_filter.to_json());
         o.insert("colorVisionStrength".into(), self.color_vision_strength.to_json());
         o.insert("icons".into(), self.icons.to_json());
-        o.insert("fallbackIcons".into(), self.fallback_icons.to_json());
         o.insert("images".into(), self.images.to_json());
-        o.insert("hudMaxAspect".into(), self.hud_max_aspect.to_json());
         o.insert("style".into(), self.style.to_json());
         o.insert("sounds".into(), self.sounds.to_json());
         Value::Object(o)
@@ -16928,7 +16900,6 @@ pub struct TypeStep {
     pub cjk_tracking_em: f32,
     pub weight: u32,
     pub uppercase: bool,
-    pub features: Vec<String>,
 }
 
 impl Default for TypeStep {
@@ -16941,7 +16912,6 @@ impl Default for TypeStep {
             cjk_tracking_em: Default::default(),
             weight: Default::default(),
             uppercase: Default::default(),
-            features: Default::default(),
         }
     }
 }
@@ -16960,7 +16930,6 @@ impl FromJson for TypeStep {
             cjk_tracking_em: field(o, "cjkTrackingEm", d.cjk_tracking_em)?,
             weight: field(o, "weight", d.weight)?,
             uppercase: field(o, "uppercase", d.uppercase)?,
-            features: field(o, "features", d.features)?,
         })
     }
 }
@@ -16975,7 +16944,6 @@ impl ToJson for TypeStep {
         o.insert("cjkTrackingEm".into(), self.cjk_tracking_em.to_json());
         o.insert("weight".into(), self.weight.to_json());
         o.insert("uppercase".into(), self.uppercase.to_json());
-        o.insert("features".into(), self.features.to_json());
         Value::Object(o)
     }
 }
@@ -17049,17 +17017,13 @@ pub struct UiTheme {
     pub sizes: ControlSizes,
     pub durations_ms: BTreeMap<String, f32>,
     pub style: String,
-    pub style_version: u32,
     pub contrast: Contrast,
     pub reduced_motion: bool,
     pub text_scale: f32,
-    pub unit: f32,
     pub color_vision: ColorVision,
     pub color_vision_filter: ColorVisionFilter,
     pub color_vision_strength: f32,
-    pub reduced_transparency: bool,
     pub glass_backdrop: GlassBackdrop,
-    pub tokens: Value,
 }
 
 impl Default for UiTheme {
@@ -17073,17 +17037,13 @@ impl Default for UiTheme {
             sizes: Default::default(),
             durations_ms: Default::default(),
             style: Default::default(),
-            style_version: Default::default(),
             contrast: Default::default(),
             reduced_motion: Default::default(),
             text_scale: Default::default(),
-            unit: Default::default(),
             color_vision: Default::default(),
             color_vision_filter: Default::default(),
             color_vision_strength: Default::default(),
-            reduced_transparency: Default::default(),
             glass_backdrop: Default::default(),
-            tokens: Default::default(),
         }
     }
 }
@@ -17103,17 +17063,13 @@ impl FromJson for UiTheme {
             sizes: field(o, "sizes", d.sizes)?,
             durations_ms: field(o, "durationsMs", d.durations_ms)?,
             style: field(o, "style", d.style)?,
-            style_version: field(o, "styleVersion", d.style_version)?,
             contrast: field(o, "contrast", d.contrast)?,
             reduced_motion: field(o, "reducedMotion", d.reduced_motion)?,
             text_scale: field(o, "textScale", d.text_scale)?,
-            unit: field(o, "unit", d.unit)?,
             color_vision: field(o, "colorVision", d.color_vision)?,
             color_vision_filter: field(o, "colorVisionFilter", d.color_vision_filter)?,
             color_vision_strength: field(o, "colorVisionStrength", d.color_vision_strength)?,
-            reduced_transparency: field(o, "reducedTransparency", d.reduced_transparency)?,
             glass_backdrop: field(o, "glassBackdrop", d.glass_backdrop)?,
-            tokens: field(o, "tokens", d.tokens)?,
         })
     }
 }
@@ -17129,17 +17085,13 @@ impl ToJson for UiTheme {
         o.insert("sizes".into(), self.sizes.to_json());
         o.insert("durationsMs".into(), self.durations_ms.to_json());
         o.insert("style".into(), self.style.to_json());
-        o.insert("styleVersion".into(), self.style_version.to_json());
         o.insert("contrast".into(), self.contrast.to_json());
         o.insert("reducedMotion".into(), self.reduced_motion.to_json());
         o.insert("textScale".into(), self.text_scale.to_json());
-        o.insert("unit".into(), self.unit.to_json());
         o.insert("colorVision".into(), self.color_vision.to_json());
         o.insert("colorVisionFilter".into(), self.color_vision_filter.to_json());
         o.insert("colorVisionStrength".into(), self.color_vision_strength.to_json());
-        o.insert("reducedTransparency".into(), self.reduced_transparency.to_json());
         o.insert("glassBackdrop".into(), self.glass_backdrop.to_json());
-        o.insert("tokens".into(), self.tokens.to_json());
         Value::Object(o)
     }
 }

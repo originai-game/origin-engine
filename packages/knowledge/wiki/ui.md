@@ -2,11 +2,9 @@
 
 # The `ui` module
 
-The engine's UI: screen and component documents, mounted through og.ui.scope or pushed on the layer stack (og.ui.push), which the engine lays out, styles with one CSS cascade (its default style, a style pack, the game's own CSS), draws over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from. These calls configure it and read it back.
+The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwind classes and the style pack, laid out and drawn over the frame, and answered to the probe (dump_ui, touch_move_to). These calls configure it and read it back.
 
-The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
-
-Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
+Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree.
 
 - **TypeScript**: functions are the namespace `og.ui`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -14,9 +12,8 @@ Lengths are CSS pixels of the play surface (origin top left, y down), the unit o
 
 ```ogt
 module ui {
-  doc "The engine's UI: screen and component documents, mounted through og.ui.scope or pushed on the layer stack (og.ui.push), which the engine lays out, styles with one CSS cascade (its default style, a style pack, the game's own CSS), draws over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from. These calls configure it and read it back."
-  doc "The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick."
-  doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi(\"Slot\", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it."
+  doc "The engine's UI: TSX components (@origingame/engine/ui's mount) styled by Tailwind classes and the style pack, laid out and drawn over the frame, and answered to the probe (dump_ui, touch_move_to). These calls configure it and read it back."
+  doc "Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Input is decided against the previous tick's boxes, so a scripted touch_move_to and a click agree."
   # declarations follow, each on its own page
 ```
 
@@ -34,7 +31,7 @@ module ui {
 | [`TypeStepName`](ui/type-TypeStepName.md) | enum |  | A step of the style's type ramp. |
 | [`Insets`](ui/type-Insets.md) | struct |  | Padding or margins on four sides. |
 | [`Paint`](ui/type-Paint.md) | desc struct |  | A colour: a theme token, a role of the style, or a Color (linear RGB, as every Color of the API), with an opacity. |
-| [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in og-ui units (CSS px over UiTheme.unit) and device pixels per unit. |
+| [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in CSS px and device pixels per CSS px. |
 | [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, the density, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. |
 | [`UiSeeds`](ui/type-UiSeeds.md) | desc struct |  | The colours a UI palette is derived from (packages/design/tokens/seed.css): every ground, ink, accent, state, status and team colour follows them, each scheme keeping its text and team inks at 4.5:1,… |
 | [`UiSounds`](ui/type-UiSounds.md) | desc struct |  | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
@@ -42,7 +39,7 @@ module ui {
 | [`ControlSizes`](ui/type-ControlSizes.md) | struct |  | The control, row and header heights and the gutter of the density in effect. |
 | [`UiTheme`](ui/type-UiTheme.md) | struct |  | The style values the UI draws with, read-only. |
 | [`og.ui.configure`](ui/fn-configure.md) | function | `(world: World, desc?: UiDesc): Result<void>` | Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. |
-| [`og.ui.viewport`](ui/fn-viewport.md) | function | `(world: World): Viewport` | This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in og-ui units (CSS pixels over UiTheme.unit, docs/ui.md §6.1: 1 on touch and up to 720p, so … |
+| [`og.ui.viewport`](ui/fn-viewport.md) | function | `(world: World): Viewport` | This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in CSS px and device pixels per CSS px, from what the host reports. |
 | [`og.ui.theme`](ui/fn-theme.md) | function | `(world: World): UiTheme` | The style values the UI draws with. |
 | [`TextSpan`](ui/type-TextSpan.md) | struct |  | A named attribute range in plain text for a store and the Svelte text spans binding. |
 | [`Anchor`](ui/type-Anchor.md) | enum |  | A point of the safe area an anchored group sits at. |
@@ -226,7 +223,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1311</sub>
+<sub>Module `ui` line 1292</sub>
 
 ```ogt
 column UiMaterial {
@@ -237,4 +234,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1318</sub>
+<sub>Module `ui` line 1299</sub>
