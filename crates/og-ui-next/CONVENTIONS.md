@@ -562,6 +562,9 @@ Every look has these images, white masks coloured by the element's fill
 |---|---|---|
 | `disc` | a filled circle, stretched whole | a round slot's cooldown sweep (`wipe`) |
 | `ring` | a thin circle outline, stretched whole | progress, ultimate and timer rings (`wipe`) |
+| `cross` | a plus with arms 40% wide, stretched whole | a d-pad's body |
+| `cross-rim` | the cross's outline, stretched whole | a d-pad's rim, over `cross` |
+| `cross-arm` | the cross's top arm in the cross's box, stretched whole | a d-pad's pressed way, over `cross`; `rotate-90`, `rotate-180` and `-rotate-90` turn it to the other arms |
 | `tile` | a square at `--radius-field` | a square slot's sweep |
 | `plate-cut` | leading top and trailing bottom corners cut 6 | a HUD plate |
 | `panel-cut` | the same corners cut 12 | a HUD panel |

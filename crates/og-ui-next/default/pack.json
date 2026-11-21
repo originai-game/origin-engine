@@ -239,6 +239,21 @@
       "tint": true,
       "width": 6
     },
+    "cross": {
+      "slice": 0,
+      "src": "@styles/shared/shapes/cross.svg",
+      "tint": true
+    },
+    "cross-arm": {
+      "slice": 0,
+      "src": "@styles/shared/shapes/cross-arm.svg",
+      "tint": true
+    },
+    "cross-rim": {
+      "slice": 0,
+      "src": "@styles/shared/shapes/cross-rim.svg",
+      "tint": true
+    },
     "disc": {
       "slice": 0,
       "src": "@styles/shared/shapes/disc.svg",

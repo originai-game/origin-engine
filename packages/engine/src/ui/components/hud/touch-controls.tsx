@@ -68,16 +68,21 @@ function Stick(props: { action: string; deadZone: number; disabled: boolean; lab
 
 /**
  * A touch d-pad: its cross and its box, which is the action's d-pad zone.
- * The cross is two outlined bars; the hub over their crossing hides the
- * outlines inside it, so the cross reads as one outline.
+ * The cross is one shape (the pack's `cross`) under its outline
+ * (`cross-rim`), so it reads as one outline at any scale. Over each arm
+ * lies the arm's own shape (`cross-arm`, turned), which lights while the
+ * pad reads that way: the zone carries it as
+ * `data-dir-up|right|down|left`, two on a diagonal.
  */
 function Pad(props: { action: string; disabled: boolean; label: string }) {
-  const bar = "absolute rounded-[0.286rem] bg-tile border border-rim-soft";
+  const arm = "absolute inset-0 nine-cross-arm bg-transparent";
   return (
-    <View class="relative size-40 compact:size-28 active:scale-97 disabled:opacity-45" role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
-      <View class={`${bar} left-[30%] right-[30%] top-0 bottom-0`} />
-      <View class={`${bar} top-[30%] bottom-[30%] left-0 right-0`} />
-      <View class="absolute inset-[30%] bg-tile" />
+    <View class="group/pad relative size-40 compact:size-28 nine-cross bg-tile active:scale-97 disabled:opacity-45" role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
+      <View class={`${arm} group-data-dir-up/pad:bg-accent`} />
+      <View class={`${arm} rotate-90 group-data-dir-right/pad:bg-accent`} />
+      <View class={`${arm} rotate-180 group-data-dir-down/pad:bg-accent`} />
+      <View class={`${arm} -rotate-90 group-data-dir-left/pad:bg-accent`} />
+      <View class="absolute inset-0 nine-cross-rim bg-rim-soft" />
     </View>
   );
 }

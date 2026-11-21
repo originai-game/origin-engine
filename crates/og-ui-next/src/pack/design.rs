@@ -251,12 +251,18 @@ pub const SLOTS: [(&str, &str, &str); 10] = [
 /// wipe), a square slot's `tile` at the slot radius (`--radius-field`),
 /// and the HUD's bevels: `plate-cut` (`--hud-plate-cut`, 6) and
 /// `panel-cut` (`--hud-panel-cut`, 12) cut the leading top and trailing
-/// bottom corners, `chip-cut` the trailing top one; then the art.
+/// bottom corners, `chip-cut` the trailing top one; a d-pad's `cross`,
+/// its outline `cross-rim` and its top arm `cross-arm` (each stretched
+/// whole over the pad's box: one shape, so no scale opens a seam in it);
+/// then the art.
 fn shapes() -> Value {
     let mut out = Map::new();
     for (name, slice, width) in [
         ("disc", 0, None),
         ("ring", 0, None),
+        ("cross", 0, None),
+        ("cross-rim", 0, None),
+        ("cross-arm", 0, None),
         ("tile", 24, Some(6)),
         ("plate-cut", 24, Some(6)),
         ("panel-cut", 48, Some(12)),
