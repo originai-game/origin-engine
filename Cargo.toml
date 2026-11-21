@@ -398,3 +398,5 @@ basis-universal = { path = "third_party/basis-universal" }
 glamx = { path = "third_party/glamx" }
 # Segmenters from the host, so ICU's dictionaries load with a locale (third_party/parley_engine/PATCHED.md).
 parley_engine = { path = "third_party/parley_engine" }
+# Layout, patched at the root (third_party/taffy/README.md).
+taffy = { path = "third_party/taffy" }
