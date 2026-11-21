@@ -553,6 +553,19 @@ impl Next {
     /// or the scheme did, then commits, lays out and paints.
     /// `time` is the UI tick's end in seconds, unscaled, which motion
     /// samples at; `now` times the spans only.
+    /// Behind the play gate (`loading::warm_tick`): a mounted document's
+    /// tree is built, laid out and painted now, its glyphs asked for, so
+    /// the first played frame only commits. Only when there is no tree yet:
+    /// a live tree and its motion clock are left alone. Its warnings wait
+    /// for the tick's end.
+    pub(crate) fn warm(&mut self, engine: u32, ui: &og_ui::Ui) {
+        if self.tree.is_some() || self.mounts.is_empty() {
+            return;
+        }
+        let warnings = self.end(engine, ui, 0.0, &crate::author::probe::now_ms);
+        self.held.extend(warnings);
+    }
+
     pub(crate) fn end(
         &mut self,
         engine: u32,
