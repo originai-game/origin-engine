@@ -29,7 +29,7 @@ function ordinal(n: number): string {
 
 const hudLabel = `text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`;
 const actionButton = `min-h-11 min-w-[8.571rem] flex-row items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi shadow-[inset_0px_0px_0px_1px_#ffffff3d] hover:bg-glass-hi/95 disabled:opacity-45 compact:flex-1 compact:min-w-0 ${packClass("Button", "plate")}`;
-const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-white to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] leading-[1.5] py-0 px-1`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-[1.286rem] leading-none`;
 
 /**
  * The classification after the flag: place, driver, time or gap, points

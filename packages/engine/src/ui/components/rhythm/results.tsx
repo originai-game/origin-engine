@@ -163,7 +163,7 @@ export function RhythmResults(props: RhythmResultsProps) {
           onAction={{ back: (e) => props.onNext?.(e) }}
           class={`min-h-[3.143rem] min-w-[8.571rem] compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 rounded-[4.576px] bg-hud-accent shadow-[inset_0px_2px_0px_#ffffff59] ${packClass("Button", "plate", "primary")}`}
         >
-          <Text class={`shrink h-[1.75rem] min-w-[1.75rem] px-1 text-center rounded-[4.576px] bg-linear-to-b from-white to-key-lo text-hud-accent-fg shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] pointer-coarse:hidden`} glyph="back" />
+          <Text class={`shrink-0 pointer-coarse:hidden text-[1.75rem] leading-none text-gold-fg`} glyph="back" />
           <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase text-gold-fg`}>{t("rhythm.results.next")}</Text>
         </View>
       </View>

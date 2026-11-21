@@ -4,7 +4,7 @@ import { Spinner } from "../base/spinner";
 import "./economy.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-accent-hover to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] font-bold leading-[1.5] py-0 px-1`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-[1.286rem] leading-none`;
 
 export interface RpgCraftingProps {
   /** The station name; empty uses Crafting. */

@@ -55,7 +55,7 @@ export function Loadout(props: LoadoutProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("shooter.loadout.title");
   const selected = () => (props.slots ?? []).find((s) => s.id == props.selected);
   const categoryLabel = (c: LoadoutCategory) => (c.label ?? "") != "" ? c.label : t(`shooter.loadout.category.${c.id}`);
-  const KEY = "shrink-0 size-6 min-w-6 text-center text-[0.929rem] leading-[1.6] font-bold text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none pointer-coarse:hidden";
+  const KEY = "shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none";
   const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[7.5rem] text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-raised-lo hover:bg-raised-hover-lo disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
   return (
     <View class="flex-col w-full h-full max-w-full gap-y-4 text-fg" role="group" label={heading()}>
@@ -127,7 +127,7 @@ export function Loadout(props: LoadoutProps) {
               disabled={selected()?.locked || selected()?.equipped}
               onPress={(e) => props.onEquip?.(e, props.selected ?? "")}
             >
-              <Text class={KEY} glyph="details" />
+              <Text class={`${KEY} text-accent-fg`} glyph="details" />
               <Text class="text-accent-fg">{t("shooter.loadout.equip")}</Text>
             </View>
           </Show>

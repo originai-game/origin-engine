@@ -33,7 +33,7 @@ export interface RacingGarageProps {
 const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi/95 disabled:opacity-45 nine-plate-cut ${packClass("Button", "plate")}`;
 const stepButton = `size-11 items-center justify-center p-0 text-fg bg-plate-hi hover:bg-glass-hi/95 nine-plate-cut ${packClass("Button", "plate")}`;
 const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi/95 disabled:opacity-45 flex-1 min-w-[8.571rem] nine-plate-cut ${packClass("Button", "plate", "primary")}`;
-const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-white to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] leading-[1.5] py-0 px-1`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-[1.286rem] leading-none`;
 
 /**
  * Choosing a car: the shown car large (its picture, name and class) with

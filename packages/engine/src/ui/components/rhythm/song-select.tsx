@@ -206,7 +206,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               data-selected={s().id === props.previewing}
                               class={`min-h-[3.143rem] compact:min-h-[2.514rem] min-w-[8.571rem] compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-glass/93 nine-plate-cut hover:bg-plate-hi data-selected:bg-hud-accent disabled:opacity-50 disabled:bg-glass/93 ${packClass("Button", "plate")}`}
                             >
-                              <Text class={`shrink h-[1.75rem] min-w-[1.75rem] px-1 text-center rounded-[4.576px] bg-linear-to-b from-white to-key-lo text-hud-accent-fg shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] pointer-coarse:hidden`} glyph="details" />
+                              <Text class={`shrink-0 pointer-coarse:hidden text-[1.75rem] leading-none`} glyph="details" />
                               <Show when={s().id === props.previewing}>
                                 <View class={`shrink flex-row items-end gap-0.5 h-[11px] compact:hidden`}>
                                   <View class={`w-[3px] h-[60%] bg-hud-accent animate-pulse`} />

@@ -3,7 +3,7 @@ import type { Texture } from "@origingame/engine";
 import "./tooltip-card.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden size-6 min-w-6 text-center text-caption font-bold text-key-fg bg-linear-to-b from-white to-key-hi rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none`;
 
 /** One stat row of either card: its words left, its figure right, a hairline rule under all but the last. */
 const statRow =

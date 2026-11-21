@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Built-in components' key caps",
+      "summary": "The key and button prompts in the built-in components (item card, loot, tooltip card, trade, crafting, backpack, action hints, arena lobby and draft, shooter loadout, racing garage and results, rhythm results and song select) draw only the binding's glyph art, one em square in their label's ink, without a white cap of their own around it, so a keyboard prompt is no longer a cap drawn inside a cap."
+    }
+  ]
+}
