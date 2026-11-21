@@ -4,8 +4,8 @@
 //! pack rule of [`super::literals`], with no `:root` to hold values), its
 //! markup writes no literal colour (`#hex` or a colour function in an
 //! attribute or a binding; a colour a game passes in a prop is the game's),
-//! every part its markup names is listed in its `<meta name="parts">`, which
-//! lists nothing else, and a prop it declares is read bare (`{title}`), so
+//! its parts are og-ui-next's unqualified surface names (`part="frame"`, not
+//! `part="Comp.frame"`) with no `<meta name="parts">` line, and a prop it declares is read bare (`{title}`), so
 //! the document serves as an instance and as a mount; `$name` is left to
 //! the engine's stores.
 
@@ -34,25 +34,16 @@ pub fn findings(directory: &Path, out: &mut Vec<String>) -> Result<(), String> {
 }
 
 fn document(file: &str, text: &str, out: &mut Vec<String>) -> Result<(), String> {
-    const META: &str = "<meta name=\"parts\" content=\"";
-    let declared: BTreeSet<&str> = text
-        .find(META)
-        .map(|at| &text[at + META.len()..])
-        .and_then(|rest| rest.split_once('"'))
-        .map(|(list, _)| list.split_whitespace().collect())
-        .unwrap_or_default();
-    let authored = og_ui::doc::schema::parts::authored_parts(file, text)?;
-    let authored: BTreeSet<&str> = authored.iter().map(|(_, part)| part.as_str()).collect();
-    for part in authored.difference(&declared) {
+    if text.contains("<meta name=\"parts\"") {
         out.push(format!(
-            "{file}: part \"{part}\" is not listed in <meta name=\"parts\">"
+            "{file}: <meta name=\"parts\"> is the old core's; parts need no listing"
         ));
     }
-    // A bound `part={…}` names parts this reading cannot see.
-    if !text.contains("part={") {
-        for part in declared.difference(&authored) {
+    for (_, part) in og_ui::doc::schema::parts::authored_parts(file, text)? {
+        if part.contains('.') {
+            let bare = part.rsplit('.').next().unwrap_or(&part);
             out.push(format!(
-                "{file}: <meta name=\"parts\"> lists \"{part}\", which no element names"
+                "{file}: part \"{part}\" is qualified; write part=\"{bare}\""
             ));
         }
     }
@@ -149,23 +140,23 @@ mod tests {
 
     /// Ways it could fail: a literal in a style block missed or reported on
     /// the wrong line, a markup colour missed or a fragment reference taken for
-    /// one, an unlisted part or a stale listing missed, a bound
-    /// part reported as stale, a token value reported, a declared prop read
+    /// one, an old-core parts line or a qualified part missed, an
+    /// unqualified part reported, a token value reported, a declared prop read
     /// as `$name` missed, or an engine store's `$name` reported.
     #[test]
     fn a_document_reports_literals_and_parts_out_of_step_with_its_meta() {
         let mut out = Vec::new();
         document(
             "a.svelte",
-            "<meta name=\"component\" content=\"A\">\n<meta name=\"parts\" content=\"A.frame A.gone\">\n<div part=\"A.frame\"><p part=\"A.row\">x</p></div>\n<svg><use href=\"#Face\"></use><rect fill=\"#ffffffb3\"></rect></svg>\n<style>\n.a { gap: var(--space-sm); width: 50%; }\n.b { padding: 4px; }\n</style>\n",
+            "<meta name=\"component\" content=\"A\">\n<meta name=\"parts\" content=\"A.frame\">\n<div part=\"frame\"><p part=\"A.row\">x</p></div>\n<svg><use href=\"#Face\"></use><rect fill=\"#ffffffb3\"></rect></svg>\n<style>\n.a { gap: var(--space-sm); width: 50%; }\n.b { padding: 4px; }\n</style>\n",
             &mut out,
         )
         .unwrap();
         assert_eq!(
             out,
             [
-                "a.svelte: part \"A.row\" is not listed in <meta name=\"parts\">",
-                "a.svelte: <meta name=\"parts\"> lists \"A.gone\", which no element names",
+                "a.svelte: <meta name=\"parts\"> is the old core's; parts need no listing",
+                "a.svelte: part \"A.row\" is qualified; write part=\"row\"",
                 "a.svelte:4: literal colour `#ffffffb3` in markup; set it in <style> from a token",
                 "a.svelte:7: padding: literal length `4px` in a built-in document; name a token with var()",
             ]
@@ -173,7 +164,7 @@ mod tests {
         let mut out = Vec::new();
         document(
             "b.svelte",
-            "<meta name=\"component\" content=\"B\">\n<meta name=\"parts\" content=\"B.frame\">\n<div part={\"B.frame[x=\" + x + \"]\"}></div>\n",
+            "<meta name=\"component\" content=\"B\">\n<div part=\"frame\" variant={x}></div>\n",
             &mut out,
         )
         .unwrap();

@@ -67,6 +67,7 @@ const LAYERS: &[(&str, &[&str])] = &[
             "og-text",
             "og-tween",
             "og-ui",
+            "og-ui-next",
             "og-video",
             "og-video-wasm",
         ],
@@ -91,7 +92,7 @@ const LAYERS: &[(&str, &[&str])] = &[
 /// The domains made of more than one crate; every other domain crate is
 /// a domain of its own.
 const DOMAINS: &[&[&str]] = &[
-    &["og-reactive", "og-rive", "og-text", "og-ui"],
+    &["og-reactive", "og-rive", "og-text", "og-ui", "og-ui-next"],
     &["og-video", "og-video-wasm"],
 ];
 
