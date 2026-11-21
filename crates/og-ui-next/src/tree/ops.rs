@@ -1037,12 +1037,17 @@ pub struct OpNode<'a> {
     /// narrower than it draws. Empty: none.
     pub broken: Vec<String>,
     /// Its text as drawn: the ink (linear RGB, alpha with its opacity),
-    /// the font size in CSS px, and each line's box on screen (x, y,
-    /// width, height: the em at its baseline). Empty lines: it draws no
-    /// text.
+    /// the font size in CSS px, and each line's box (x, y, width, height:
+    /// the em at its baseline) before `transform`. Empty lines: it draws
+    /// no text.
     pub ink: [f32; 4],
     pub size: f32,
     pub lines: Vec<[f32; 4]>,
+    /// The transform its lines are drawn through, `[a, b, c, d, tx, ty]`
+    /// (a point `(x, y)` lands at `(a x + c y + tx, b x + d y + ty)`), when
+    /// it or an ancestor has one: a line's quad on screen is its box
+    /// through it.
+    pub transform: Option<[f32; 6]>,
 }
 
 impl Tree {
@@ -1101,31 +1106,20 @@ impl Tree {
                     lines: glyphs.zip(el.leaf).map_or(Vec::new(), |(g, leaf)| {
                         let lb = self.arena.box_of(leaf);
                         let size = f32::from_bits(g.key[1]);
-                        // Under a transform, each box through it, bounded.
-                        let xf = self.xfs.get(e).copied().unwrap_or(0);
-                        let m = self.drawn.transforms.get(xf as usize).filter(|_| xf != 0);
                         g.lines
                             .iter()
                             .map(|&[dx, baseline, w]| {
-                                let r = [x + lb.x + dx, y + lb.y + baseline - 0.8 * size, w, size];
-                                let Some(&[a, b, c, d, tx, ty, _, _]) = m else {
-                                    return r;
-                                };
-                                let pts = [
-                                    (r[0], r[1]),
-                                    (r[0] + w, r[1]),
-                                    (r[0], r[1] + size),
-                                    (r[0] + w, r[1] + size),
-                                ]
-                                .map(|(px, py)| (a * px + c * py + tx, b * px + d * py + ty));
-                                let x0 = pts.iter().map(|p| p.0).fold(f32::INFINITY, f32::min);
-                                let y0 = pts.iter().map(|p| p.1).fold(f32::INFINITY, f32::min);
-                                let x1 = pts.iter().map(|p| p.0).fold(f32::NEG_INFINITY, f32::max);
-                                let y1 = pts.iter().map(|p| p.1).fold(f32::NEG_INFINITY, f32::max);
-                                [x0, y0, x1 - x0, y1 - y0]
+                                [x + lb.x + dx, y + lb.y + baseline - 0.8 * size, w, size]
                             })
                             .collect()
                     }),
+                    transform: self
+                        .xfs
+                        .get(e)
+                        .copied()
+                        .filter(|&xf| xf != 0)
+                        .and_then(|xf| self.drawn.transforms.get(xf as usize))
+                        .map(|&[a, b, c, d, tx, ty, _, _]| [a, b, c, d, tx, ty]),
                 })
             })
             .collect()

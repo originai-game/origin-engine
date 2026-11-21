@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og probe dump_ui",
+      "summary": "A text's `textLines` are its line boxes before its transform, and a transformed text (a card fanned in a hand, a dialog scaling in) also carries `textTransform` `[a, b, c, d, tx, ty]`, so a line's quad on screen is exact instead of the upright box round it. The UI gallery's contrast pass reads the ground inside that quad, padded a fifth of the line's height, so a rotated card's label is read on its own band and short bold figures (a price) on the plate round them, not their own antialiased edges."
+    },
+    {
+      "member": "Built-in UI components",
+      "summary": "Song select's Preview button is `data-pressed` while previewing and carries its ink on the button, so the pressed plate's ink reaches Previewing in every pack (it read light on the accent fill) and its level bars draw in that ink. Loadout's price reads in the pack's `accent-ink`, which a pack sets for its own plates, beside the gold coin."
+    }
+  ]
+}

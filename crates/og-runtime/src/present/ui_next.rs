@@ -1518,7 +1518,8 @@ impl Next {
                         }
                         // Its text as drawn, for reading its ground in a
                         // frame: the ink as sRGB 0-255 with alpha 0-1, the
-                        // font size and each line's box, in CSS px.
+                        // font size and each line's box, in CSS px, before
+                        // its transform.
                         if !n.lines.is_empty() {
                             let [r, g, b, a] = n.ink;
                             let srgb = og_core::color::linear_to_srgb8;
@@ -1527,6 +1528,14 @@ impl Next {
                             let lines: Vec<[f32; 4]> =
                                 n.lines.iter().map(|l| l.map(|v| v * unit)).collect();
                             d.insert("textLines".into(), json!(lines));
+                            // A transformed text's lines are boxes through
+                            // this matrix (the quad it draws in).
+                            if let Some([a, b, c, d2, tx, ty]) = n.transform {
+                                d.insert(
+                                    "textTransform".into(),
+                                    json!([a, b, c, d2, tx * unit, ty * unit]),
+                                );
+                            }
                         }
                         d.into_iter().collect()
                     },

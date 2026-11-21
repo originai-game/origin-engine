@@ -231,14 +231,16 @@ export function contrast(a: readonly number[], b: readonly number[]): number {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
-interface TextElement { id?: string; parent?: string; text?: string; disabled?: boolean; ink?: number[]; fontSize?: number; textLines?: number[][] }
+interface TextElement { id?: string; parent?: string; text?: string; disabled?: boolean; ink?: number[]; fontSize?: number; textLines?: number[][]; textTransform?: number[] }
 
 /**
  * The texts of a UI dump that read under the screens guide's contrast bar (crates/og-api/guides/screens.md
  * §5: 4.5:1, 3:1 over 24 px; a disabled control's text is exempt) on the ground the frame shows under
- * their lines. The ground is the pixels of each line's box least like the ink (the glyphs are the
- * rest), so art, a translucent plate over the stage and a halo all count as drawn; the worse fifth
- * of them is what is read. `scale`: frame px per CSS px.
+ * their lines. The ground is the pixels of each line's box, padded a fifth of its height all round,
+ * least like the ink (the glyphs are the rest: bold figures fill more than half the bare box), so
+ * art, a translucent plate over the stage and a halo all count as drawn; the worse fifth
+ * of them is what is read. A transformed text (a card fanned in a hand) is read inside each line's
+ * quad, its box through `textTransform`, not the upright box round it. `scale`: frame px per CSS px.
  */
 export function lowContrast(dump: { elements?: TextElement[] }, frame: { width: number; height: number; rgba: Uint8Array }, scale: number): string[] {
   const els = dump.elements ?? [];
@@ -250,11 +252,21 @@ export function lowContrast(dump: { elements?: TextElement[] }, frame: { width: 
     if (!ink || !lines?.length || ink[3]! < 0.05 || disabled(e)) continue;
     const ratios: number[] = [];
     let ground = [0, 0, 0];
-    for (const [lx, ly, lw, lh] of lines) {
-      const x0 = Math.max(0, Math.round(lx! * scale)), y0 = Math.max(0, Math.round(ly! * scale));
-      const x1 = Math.min(frame.width, Math.round((lx! + lw!) * scale)), y1 = Math.min(frame.height, Math.round((ly! + lh!) * scale));
+    // A point on screen (CSS px) back in the lines' own space, and the screen box round a line.
+    const [a, b, c, d, tx, ty] = e.textTransform ?? [1, 0, 0, 1, 0, 0];
+    const det = a! * d! - b! * c!;
+    const local = (x: number, y: number) => [(d! * (x - tx!) - c! * (y - ty!)) / det, (a! * (y - ty!) - b! * (x - tx!)) / det] as const;
+    for (const [bx, by, bw, bh] of lines) {
+      if (Math.abs(det) < 1e-6) break;
+      const pad = bh! * 0.2;
+      const [lx, ly, lw, lh] = [bx! - pad, by! - pad, bw! + 2 * pad, bh! + 2 * pad];
+      const corners = [[lx!, ly!], [lx! + lw!, ly!], [lx!, ly! + lh!], [lx! + lw!, ly! + lh!]].map(([x, y]) => [a! * x! + c! * y! + tx!, b! * x! + d! * y! + ty!]);
+      const x0 = Math.max(0, Math.floor(Math.min(...corners.map((p) => p[0]!)) * scale)), y0 = Math.max(0, Math.floor(Math.min(...corners.map((p) => p[1]!)) * scale));
+      const x1 = Math.min(frame.width, Math.ceil(Math.max(...corners.map((p) => p[0]!)) * scale)), y1 = Math.min(frame.height, Math.ceil(Math.max(...corners.map((p) => p[1]!)) * scale));
       const px: number[][] = [];
       for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+        const [u, v] = local((x + 0.5) / scale, (y + 0.5) / scale);
+        if (u < lx! || u > lx! + lw! || v < ly! || v > ly! + lh!) continue;
         const o = (y * frame.width + x) * 4;
         px.push([frame.rgba[o]!, frame.rgba[o + 1]!, frame.rgba[o + 2]!]);
       }

@@ -99,7 +99,7 @@ export function Loadout(props: LoadoutProps) {
                         <Show when={(s().cost ?? "") != ""}>
                           <View class="shrink-0 flex-row items-center gap-x-1">
                             <Icon class="shrink-0 size-4 text-gold group-data-locked/item:text-fg-muted" name="coin" />
-                            <Text class="text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-gold group-data-locked/item:text-fg-muted">{s().cost}</Text>
+                            <Text class="text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-accent-ink group-data-locked/item:text-fg-muted">{s().cost}</Text>
                           </View>
                         </Show>
                       </View>
