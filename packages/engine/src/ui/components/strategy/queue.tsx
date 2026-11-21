@@ -29,14 +29,14 @@ export interface StrategyQueueProps {
 export function StrategyQueue(props: StrategyQueueProps) {
   return (
     <View class={`flex-row flex-wrap items-center gap-x-[0.714rem] gap-y-1 w-full min-w-0 text-fg compact:gap-x-[0.429rem]`} label={props.title !== "" ? props.title : t("strategy.queue.title")} data-full={props.full}>
-      <Text class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 compact:text-xs compact:tracking-normal`}>
+      <Text class={`min-w-0 text-xs font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:text-xs compact:tracking-normal`}>
         {props.title !== "" ? props.title : t("strategy.queue.title")}
       </Text>
       <View class={`flex-row items-center gap-x-[0.429rem] min-w-0 shrink overflow-hidden compact:gap-x-1`} role="group" label={t("strategy.queue.items")}>
         <For each={props.items ?? []} key={(q) => q.id}>
           {(q, i) => (
           <View
-            class={`flex-row items-center justify-center gap-1 shrink size-[1.914rem] compact:size-[1.783rem] p-[0.143rem] nine-chip-cut bg-white/75 data-state-blocked:bg-danger data-first:size-[2.514rem] compact:data-first:size-[2.286rem] text-fg ${packClass("Button", "plate")}`}
+            class={`flex-row items-center justify-center gap-1 shrink size-[1.914rem] compact:size-[1.783rem] p-[0.143rem] nine-chip-cut bg-plate-hi data-state-blocked:bg-danger data-first:size-[2.514rem] compact:data-first:size-[2.286rem] text-fg ${packClass("Button", "plate")}`}
             role="button"
             label={t("strategy.queue.cancel", { name: q().name })}
             description={q().reason !== "" ? q().reason : q().timeText}
@@ -54,11 +54,11 @@ export function StrategyQueue(props: StrategyQueueProps) {
                 <Image class="absolute inset-0 size-full" src={q().picture} />
               </Show>
               <Show when={q().state === "blocked"}>
-                <View class="absolute inset-0 bg-black/55" />
+                <View class="absolute inset-0 bg-shade-deep" />
               </Show>
               <Show when={q().state !== "waiting"}>
                 <View
-                  class="absolute inset-0 nine-tile bg-black/68"
+                  class="absolute inset-0 nine-tile bg-shade-deep"
                   wipe={1 - Math.min(1, Math.max(0, q().progress))}
                   wipeStart={Math.min(1, Math.max(0, q().progress)) * 2 * Math.PI}
                 />

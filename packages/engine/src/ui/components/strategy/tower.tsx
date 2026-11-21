@@ -58,7 +58,7 @@ export function StrategyTower(props: StrategyTowerProps) {
           <For each={props.stats ?? []} key={(s) => s.id}>
             {(s) => (
             <View class="flex-row items-baseline w-full" role="listitem" data-next={!!s().next}>
-              <Text class={`flex-1 min-w-0 text-xs font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap overflow-hidden`}>
+              <Text class={`flex-1 min-w-0 text-xs font-semibold tracking-[0.14em] uppercase text-fg-muted whitespace-nowrap overflow-hidden`}>
                 {s().label}
               </Text>
               <Text class={`shrink text-base font-bold tabular-nums whitespace-nowrap text-fg`}>
@@ -75,14 +75,14 @@ export function StrategyTower(props: StrategyTowerProps) {
         </View>
       </Show>
       <Show when={(props.paths ?? []).length} fallback={
-          <View class={`p-3 text-center text-xs font-semibold tracking-[0.14em] uppercase text-fg/78`} role="status">
+          <View class={`p-3 text-center text-xs font-semibold tracking-[0.14em] uppercase text-fg-muted`} role="status">
             <Text>{t("strategy.tower.empty")}</Text>
           </View>
       }>
         <Scroll class="min-h-0 flex-1" role="list" label={t("strategy.tower.paths")}>
           <For each={props.paths ?? []} key={(p) => p.id}>
             {(p) => (
-            <View class={`group/path flex-row items-center gap-x-[0.714rem] p-2 bg-linear-to-r from-well to-well/40`} role="listitem" label={p().name} data-affordable={p().state === "affordable"} data-locked={p().state === "locked"} data-maxed={p().state === "maxed"} data-unaffordable={p().state === "unaffordable"}>
+            <View class={`group/path flex-row items-center gap-x-[0.714rem] p-2 bg-well`} role="listitem" label={p().name} data-affordable={p().state === "affordable"} data-locked={p().state === "locked"} data-maxed={p().state === "maxed"} data-unaffordable={p().state === "unaffordable"}>
               <Icon class={`shrink size-[2.286rem] text-fg group-data-affordable/path:text-hud-accent group-data-unaffordable/path:text-danger group-data-maxed/path:text-gold`} name={p().icon} />
               <View class="flex-1 min-w-0 overflow-hidden flex-col gap-y-0.5">
                 <Text class={`min-w-0 text-reading font-bold whitespace-nowrap overflow-hidden`}>
@@ -98,7 +98,7 @@ export function StrategyTower(props: StrategyTowerProps) {
                     {t("strategy.tower.tier", { tier: p().tier, tiers: p().tiers })}
                   </Text>
                   <View class="relative flex-1 min-w-0 h-1 overflow-hidden bg-track shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]">
-                    <View class={`absolute inset-y-0 left-0 bg-hud-accent bg-linear-to-b from-white/55 to-transparent to-42% group-data-maxed/path:from-white/50 group-data-maxed/path:to-gold`} style={{ width: `${(p().tiers > 0 ? p().tier / p().tiers : 0) * 100}%` }} />
+                    <View class={`absolute inset-y-0 left-0 bg-hud-accent bg-linear-to-b from-sheen to-transparent to-42% group-data-maxed/path:from-sheen group-data-maxed/path:to-gold`} style={{ width: `${(p().tiers > 0 ? p().tier / p().tiers : 0) * 100}%` }} />
                   </View>
                 </View>
                 <Show when={p().state === "locked" && p().reason}>
