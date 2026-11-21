@@ -109,10 +109,6 @@ fn content_visibility_skips_contents_off_screen() {
         }
         let gone = d.get("Gone");
         assert_eq!((gone.width, gone.height), (50.0, 20.0));
-        assert!(
-            !format!("{:?}", d.ui.a11y()).contains("GoneButton"),
-            "hidden contents leave the accessibility tree"
-        );
         // Far above the viewport: skipped from the frame after it was
         // seen there, sized by its intrinsic size; with `auto`, by the
         // size it had on that first frame. Its flow place shows in where

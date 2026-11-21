@@ -565,8 +565,6 @@ pub struct Tree {
     pub(crate) index: tree::TreeIndex,
     /// The frame's orders and each feature's nodes (`visit`).
     pub(crate) orders: visit::Orders,
-    /// What may have changed for screen readers, by frame (`tree`).
-    pub(crate) semantics: tree::SemanticLog,
     pub(crate) building: bool,
     /// Open focus scopes this frame, in build order.
     pub(crate) scopes: Vec<usize>,
@@ -588,6 +586,11 @@ pub struct Tree {
 impl Tree {
     pub fn nodes(&self) -> &[Node] {
         &self.nodes
+    }
+    /// Whether node `i` is in one of this frame's trees (a vacated slot
+    /// is not).
+    pub fn in_tree(&self, i: usize) -> bool {
+        self.index.in_tree.get(i) == Some(&true)
     }
     /// Node `i`'s accessibility semantics, to write.
     pub fn semantics_mut(&mut self, i: usize) -> &mut crate::a11y::A11y {

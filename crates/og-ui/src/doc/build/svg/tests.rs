@@ -291,8 +291,7 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
     let dots = all.iter().find(|s| matches!(&s.geometry, og_draw::UiGeometry::Path(p) if p.path.elements().iter().filter(|e| matches!(e, og_draw::kurbo::PathEl::MoveTo(_))).count() == 16));
     assert!(dots.is_some(), "16 dot tiles over the 20×20 rect");
     let name = |ui: &Ui| {
-        ui.a11y()
-            .nodes
+        ui.elements()
             .iter()
             .find(|a| a.path == "test:icons/Icons")
             .map(|a| (a.role.clone(), a.name.clone()))
@@ -418,14 +417,13 @@ fn svg_text_sits_on_its_point_and_scales_with_the_view_box() {
     };
     let rect = |ui: &Ui, id: &str| {
         let a = ui
-            .a11y()
-            .nodes
+            .elements()
             .iter()
             .find(|a| a.path == format!("test:chart/Chart/{id}"))
             .unwrap_or_else(|| {
                 panic!(
-                    "{id} in the a11y tree: {:?}",
-                    ui.a11y().nodes.iter().map(|a| &a.path).collect::<Vec<_>>()
+                    "{id} in the elements: {:?}",
+                    ui.elements().iter().map(|a| &a.path).collect::<Vec<_>>()
                 )
             });
         (a.x, a.y, a.width, a.height)

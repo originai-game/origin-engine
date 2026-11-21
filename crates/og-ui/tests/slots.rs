@@ -38,12 +38,7 @@ fn missing_document_images_keep_names_out_of_the_drawing() {
                 assert_eq!(d.get("Image").text, "Hero image");
                 let unnamed = d.get("Unnamed");
                 assert_eq!(unnamed.text, "");
-                assert!(
-                    d.ui.a11y()
-                        .nodes
-                        .iter()
-                        .all(|node| { node.path != unnamed.path || node.name.is_empty() })
-                );
+                assert!(unnamed.name.is_empty());
                 assert!(
                     d.ui.art_slots()
                         .iter()

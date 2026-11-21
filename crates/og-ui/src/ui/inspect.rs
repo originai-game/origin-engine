@@ -1,5 +1,5 @@
 //! What the last frame shows, for inspection: the probe's element list,
-//! the accessibility tree, overlaps, dense and sideways
+//! overlaps, dense and sideways
 //! regions and motion in flight. None of it is made while a frame is
 //! drawn; each is made from the finished frame's nodes the first time it
 //! is asked for, and kept until the next `end`.
@@ -7,11 +7,10 @@ use super::*;
 use std::cell::OnceCell;
 
 /// The last frame's inspection, made on demand ([`Ui::elements`],
-/// [`Ui::a11y`], [`Ui::overlaps`], …).
+/// [`Ui::overlaps`], …).
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Inspection {
     elements: OnceCell<(Vec<UiElement>, Vec<Option<crate::dress::PartRef>>)>,
-    a11y: OnceCell<crate::a11y::A11yTree>,
     overlaps: OnceCell<Vec<Overlap>>,
     dense: OnceCell<Vec<String>>,
     sideways: OnceCell<Vec<String>>,
@@ -24,7 +23,6 @@ impl Inspection {
     pub(crate) fn none() -> Self {
         let out = Self::default();
         let _ = out.elements.set(Default::default());
-        let _ = out.a11y.set(Default::default());
         let _ = out.overlaps.set(Vec::new());
         let _ = out.dense.set(Vec::new());
         let _ = out.sideways.set(Vec::new());
@@ -128,16 +126,6 @@ impl Ui {
         find_by_text(self.elements(), query)
     }
 
-    /// The accessibility tree of the last frame: each element with a role,
-    /// its name, value, states and bounds, and the focus order
-    /// (`crate::a11y`).
-    pub fn a11y(&self) -> &crate::a11y::A11yTree {
-        self.paint
-            .inspection
-            .a11y
-            .get_or_init(|| self.finished().inspected_a11y())
-    }
-
     /// Overlaps between elements (docs/ui.md §2), other than those the
     /// engine places on purpose, for `og ui check`.
     pub fn overlaps(&self) -> &[Overlap] {
@@ -236,152 +224,6 @@ impl Ui {
         let (r, c) = (&n.placed.screen, &n.placed.clip);
         let outside = r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
         outside || (r.intersect(c).is_empty() && !r.is_empty())
-    }
-
-    fn inspected_a11y(&self) -> crate::a11y::A11yTree {
-        let order = self.inspected_draw_order();
-        let reach = self.reach();
-        let mut tree: Vec<(u64, crate::a11y::A11yNode)> = Vec::new();
-        // The path of each node with a role, by node: read for every node's
-        // nearest named ancestor, so an array, not a map.
-        let mut tree_path: Vec<Option<String>> = vec![None; self.tree.nodes.len()];
-        for &i in order.iter().skip(1) {
-            let n = &self.tree.nodes[i];
-            let parent = || {
-                let mut up = if n.parent == NONE { n.anchor } else { n.parent };
-                loop {
-                    if up == NONE || up == 0 {
-                        break String::new();
-                    }
-                    if let Some(p) = &tree_path[up] {
-                        break p.clone();
-                    }
-                    up = self.a11y_up(up);
-                }
-            };
-            let Some(node) = self.a11y_record(i, parent) else {
-                if !self.offscreen(i) {
-                    self.link_nodes(i, String::new(), &mut tree);
-                }
-                continue;
-            };
-            tree_path[i] = Some(node.path.clone());
-            tree.push((n.key, node));
-            if !self.offscreen(i) {
-                let parent = tree_path[i].clone().unwrap_or_default();
-                self.link_nodes(i, parent, &mut tree);
-            }
-        }
-        for (key, node) in &mut tree {
-            self.mark(&reach, *key, &mut node.states);
-        }
-        let focus_order: Vec<String> = reach
-            .iter()
-            .filter_map(|k| {
-                tree.iter()
-                    .find(|(t, _)| t == k)
-                    .map(|(_, n)| n.path.clone())
-            })
-            .collect();
-        crate::a11y::A11yTree {
-            focused: tree
-                .iter()
-                .find(|(k, _)| *k != 0 && *k == self.interaction.state.focus)
-                .map_or(String::new(), |(_, n)| n.path.clone()),
-            nodes: tree.into_iter().map(|(_, n)| n).collect(),
-            focus_order,
-        }
-    }
-
-    /// The node above `i` in the accessibility tree's walk: its parent, or
-    /// for a layer the element it is placed against.
-    fn a11y_up(&self, i: usize) -> usize {
-        let n = &self.tree.nodes[i];
-        if n.parent == NONE { n.anchor } else { n.parent }
-    }
-
-    /// Node `i`'s accessibility record under the node `parent` names, or
-    /// `None` when it has no role. Its focus states are `mark`'s.
-    fn a11y_record(
-        &self,
-        i: usize,
-        parent: impl FnOnce() -> String,
-    ) -> Option<crate::a11y::A11yNode> {
-        let n = &self.tree.nodes[i];
-        let (role, name, description, value, mut states) = self.a11y_info(i);
-        // CSS `visibility: hidden` leaves the tree (its visible children stay).
-        // Skipped by `content-visibility: hidden` too; an `auto` element's
-        // skipped contents stay in the tree (CSS Containment 2 §4.1).
-        if role.is_empty()
-            || self.tree.orders.hidden_of.get(i) == Some(&true)
-            || self.tree.orders.skip_of.get(i) == Some(&super::visit::SKIP_HIDDEN)
-        {
-            return None;
-        }
-        let r = &n.placed.screen;
-        let range = crate::a11y::range_of(n);
-        let (live, atomic) = crate::a11y::live_of(role, n.a11y.live, n.a11y.atomic);
-        if self.offscreen(i) {
-            states.push("offscreen".to_owned());
-        }
-        Some(crate::a11y::A11yNode {
-            parent: parent(),
-            path: self.tree.path_of(i),
-            role: role.to_owned(),
-            name,
-            description,
-            value,
-            states,
-            value_min: range.and_then(|r| r.min),
-            value_max: range.and_then(|r| r.max),
-            value_now: range.map(|r| r.now),
-            level: n.a11y.level,
-            live: live.name().to_owned(),
-            atomic: live != crate::a11y::Live::Off && atomic,
-            notify: live != crate::a11y::Live::Off && (n.a11y.notify || role == "alert"),
-            x: r.x,
-            y: r.y,
-            width: r.width,
-            height: r.height,
-        })
-    }
-
-    /// A rich text's links: nodes of their own under its node.
-    fn link_nodes(&self, i: usize, parent: String, tree: &mut Vec<(u64, crate::a11y::A11yNode)>) {
-        let n = &self.tree.nodes[i];
-        if n.layout.links.is_empty() {
-            return;
-        }
-        let Content::Rich(rc) = &*n.content else {
-            return;
-        };
-        let at = self.tree.path_of(i);
-        for (l, lr) in self.rich_links(i) {
-            let lr = n.placed.world.map_rect(&lr);
-            if lr.intersect(&n.placed.clip).is_empty() {
-                continue;
-            }
-            let text: String = rc
-                .spans
-                .iter()
-                .filter(|s| s.link.as_deref() == Some(l.as_str()))
-                .map(|s| s.text.as_str())
-                .collect();
-            tree.push((
-                child_key(n.key, &l),
-                crate::a11y::A11yNode {
-                    path: format!("{at}/{l}"),
-                    parent: parent.clone(),
-                    role: "link".into(),
-                    name: text,
-                    x: lr.x,
-                    y: lr.y,
-                    width: lr.width,
-                    height: lr.height,
-                    ..crate::a11y::A11yNode::default()
-                },
-            ));
-        }
     }
 
     fn inspected_elements(&self) -> &(Vec<UiElement>, Vec<Option<crate::dress::PartRef>>) {
@@ -598,9 +440,9 @@ mod tests {
         };
         frame(&mut ui, "First");
         ui.end();
-        let done = (ui.elements().to_vec(), ui.a11y().clone());
+        let done = ui.elements().to_vec();
         frame(&mut ui, "Second");
-        assert_eq!((ui.elements().to_vec(), ui.a11y().clone()), done);
+        assert_eq!(ui.elements().to_vec(), done);
         ui.end();
         let label = ui.element("Go").unwrap().name.clone();
         assert_eq!(label, "Second");

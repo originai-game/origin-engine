@@ -2012,11 +2012,6 @@ fn generated_content_alternative_text_names_it() {
     assert_eq!(drawn(&d, "D"), "▶|body");
     assert_eq!(d.a11y("D/::before").name, "Play");
     assert_eq!(drawn(&d, "E"), "◆|plain");
-    let tree = &d.ui.a11y().nodes;
-    assert!(
-        !tree.iter().any(|n| n.path.contains("/E/::before")),
-        "{tree:?}"
-    );
 }
 
 /// CSS Inline 3 §4: a span's alignment baseline meets the same baseline of

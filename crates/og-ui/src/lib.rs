@@ -123,7 +123,7 @@ pub use probe::{SharedUi, UiProbe};
 #[cfg(test)]
 mod structure;
 
-pub use a11y::{A11yNode, A11yTree, ANNOUNCEMENTS, Announcement, ROLES, Semantics};
+pub use a11y::{ROLES, Semantics};
 pub use actions::{ActionDesc, ActionHint, ActionTrigger, Device, Glyph};
 pub use doc::UiDocument;
 pub use doc::build::DocEvent;

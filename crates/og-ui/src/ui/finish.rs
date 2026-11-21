@@ -1604,9 +1604,8 @@ impl Ui {
                 );
             }
         }
-        let repainted = self.paint.cache.repainted.take();
-        self.tree
-            .note_semantics(repainted.as_deref(), &self.layout, &self.interaction);
+        self.paint.cache.repainted = None;
+        self.tree.index.moved_keys.clear();
         let matched = self.tree.orders.with(visit::feat::MATCH).to_vec();
         self.record_matches(&matched);
         // A view transition's groups draw over the trees (and a cover);

@@ -77,10 +77,7 @@ text { padding: 0 0 0 50px; }
             assert_eq!(d.get(id).text, id_text(id), "{id}");
         }
         assert_eq!(d.a11y("Title").role, "heading");
-        assert_eq!(d.a11y("Title").level, Some(1));
-        assert_eq!(d.a11y("Sub").level, Some(3));
         assert_eq!(d.a11y("Para").role, "text");
-        assert_eq!(d.a11y("Para").level, None);
         // HTML's UA steps: an h1 is taller than an h3, which is taller
         // than a paragraph at the body step.
         assert!(d.get("Title").height > d.get("Sub").height);
@@ -141,10 +138,7 @@ div#Hidden { display: none; }
         ] {
             assert_eq!(d.a11y(id).role, role, "{id}");
         }
-        assert!(
-            !d.ui.a11y().nodes.iter().any(|n| n.path.ends_with("/Plain")),
-            "an unnamed section is no region"
-        );
+        assert_eq!(d.a11y("Plain").role, "", "an unnamed section is no region");
     });
     let refused = UiDocument::parse(
         "ui/t.svelte",

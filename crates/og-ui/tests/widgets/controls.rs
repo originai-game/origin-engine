@@ -63,16 +63,11 @@ fn virtual_rows_leave_focus_selection_and_padding_to_their_controls() {
         let b = format!("Rows/{prefix}#b/Content#b/Row");
         let c = format!("Rows/{prefix}#c/Content#c/Row");
         assert_eq!(
-            d.ui.a11y().focus_order,
-            [&a, &b, &c].map(|p| format!("test:t/{p}")),
-            "only authored controls enter the focus order ({tag})"
-        );
-        assert_eq!(
             d.get(&format!("{a}/Name")).x,
             d.get("Heading").x,
             "cells align with the heading"
         );
-        assert!(d.ui.a11y().nodes.iter().all(|n| n.role != "option"));
+        assert!(d.ui.elements().iter().all(|n| n.role != "option"));
         assert!(d.a11y(&b).states.contains(&"selected".to_string()));
         d.ui.navigate(Nav::Next);
         idle(&mut d, 1);
@@ -104,18 +99,8 @@ fn virtual_rows_leave_focus_selection_and_padding_to_their_controls() {
         );
         assert!(d.get(&b).y < d.get(&a).y);
         d.set("controls", json!(false));
-        assert_eq!(
-            d.ui.a11y().focus_order,
-            ["b", "a", "c"].map(|key| format!("test:t/Rows/{prefix}#{key}")),
-            "plain content restores the selectable wrapper"
-        );
         assert_eq!(d.a11y(&format!("Rows/{prefix}#b")).role, "option");
         d.set("controls", json!(true));
-        assert_eq!(
-            d.ui.a11y().focus_order,
-            [&b, &a, &c].map(|p| format!("test:t/{p}")),
-            "retained control insertion removes the wrapper focus again"
-        );
         assert_eq!(d.get(&format!("{a}/Name")).x, d.get("Heading").x);
         for index in 0..12 {
             d.edit(
@@ -147,7 +132,7 @@ fn virtual_rows_leave_focus_selection_and_padding_to_their_controls() {
         let last = d.get(&format!("Rows/{prefix}#tail11/Content#tail11/Row"));
         let viewport = d.get("Rows");
         assert!((last.y + last.height - viewport.y - viewport.height).abs() < 0.5);
-        assert!(d.ui.a11y().nodes.iter().all(|n| n.role != "option"));
+        assert!(d.ui.elements().iter().all(|n| n.role != "option"));
         d.step(InputFrame {
             wheel: Vec2::new(0.0, -5000.0),
             ..InputFrame::hover(at.x, at.y)
@@ -318,14 +303,12 @@ fn a_grid_out_of_view_builds_only_its_own_rows() {
 </style>"#,
         &[("bag", json!(bag))],
     );
-    // Out of view the cells are not shown, but a screen reader still
-    // reads every one built.
-    let built =
-        d.ui.a11y()
-            .nodes
-            .iter()
-            .filter(|n| n.path.contains("/Bag/Cell#") && !n.path.ends_with("/Item"))
-            .count();
+    // Out of view the cells are not shown, but every one built is a node.
+    let built = (0..d.ui.tree.nodes().len())
+        .filter(|&i| d.ui.tree.in_tree(i))
+        .map(|i| d.ui.tree.path_of(i))
+        .filter(|p| p.contains("/Bag/Cell#") && !p.contains("/Item"))
+        .count();
     assert!(built > 0, "the grid is built");
     // 300 px holds four 64 px cells across; 150 px shows two or three rows,
     // plus one past each edge: at most five rows of four.

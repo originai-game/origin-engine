@@ -110,8 +110,6 @@ fn the_pointer_passes_through_none_and_hidden() {
     frame(&mut ui, shown);
     assert_eq!(frame(&mut ui, shown), Cursor::Default);
     assert_eq!(urls(&ui), [("/ui/grip.svg".into(), None)]);
-    let a11y = format!("{:?}", ui.a11y());
-    assert!(a11y.contains("Shown") && !a11y.contains("Lost"), "{a11y}");
 }
 
 #[test]

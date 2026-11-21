@@ -133,7 +133,6 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
             direct.frame().items,
             "styled={styled}"
         );
-        assert_eq!(patched.a11y(), direct.a11y(), "styled={styled}");
     }
 }
 

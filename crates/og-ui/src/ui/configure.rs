@@ -73,7 +73,6 @@ impl Ui {
                 last_closed: NONE,
                 index: Default::default(),
                 orders: Default::default(),
-                semantics: Default::default(),
                 building: false,
                 scopes: Vec::new(),
                 draws: Default::default(),
@@ -702,7 +701,6 @@ impl Ui {
         let intents = self.intents(&input);
         self.apply_nav(&intents);
         self.apply_list_keys(&input);
-        self.apply_a11y(&input.a11y);
         self.apply_pads(&input);
         self.interaction.state.pointer = p;
         // Once a world has a typed-text stream, key presses type nothing.

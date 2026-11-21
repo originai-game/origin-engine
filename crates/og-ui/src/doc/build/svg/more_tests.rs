@@ -155,8 +155,7 @@ fn markers_lines_text_paths_and_foreign_objects_draw_in_the_view_box() {
     // End (30,30): pointing down +y.
     assert!(near(tips[2].0, Vec2::new(30.0, 32.0)), "{tips:?}");
     let rect = |id: &str| {
-        ui.a11y()
-            .nodes
+        ui.elements()
             .iter()
             .filter(|a| a.path.starts_with(&format!("test:pic/S/{id}")) && !a.name.is_empty())
             .map(|a| (a.name.clone(), a.x, a.y, a.width, a.height))

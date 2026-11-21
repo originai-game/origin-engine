@@ -2025,7 +2025,6 @@ fn aria_attributes_reach_the_accessibility_tree() {
                 (tabs.role.as_str(), tabs.name.as_str()),
                 ("tablist", "Modes")
             );
-            assert_eq!(tabs.description, "Pick a tab");
             let one = d.a11y("One");
             assert_eq!(one.role, "tab");
             assert!(
@@ -2044,10 +2043,6 @@ fn aria_attributes_reach_the_accessibility_tree() {
             assert_eq!(
                 (bar.role.as_str(), bar.value.as_str()),
                 ("progressbar", "3 of 10")
-            );
-            assert_eq!(
-                (bar.value_min, bar.value_max, bar.value_now),
-                (Some(0.0), Some(10.0), Some(3.0))
             );
             let sep = d.a11y("Sep");
             assert_eq!(sep.role, "separator");
@@ -2234,8 +2229,7 @@ fn titles_and_popovers_show_against_their_controls() {
             far.y < open.y + open.height + 200.0,
             "closed popovers take no room in the page"
         );
-        // title: after a rest, a tooltip; always its description.
-        assert_eq!(d.a11y("Help").description, "Opens the help");
+        // title: after a rest, a tooltip.
         hover(d, "Help", 90);
         assert!(
             d.ui.probe_elements()

@@ -178,14 +178,13 @@ impl Doc {
         self.el(id).unwrap_or_else(|| panic!("no {id}"))
     }
 
-    pub(crate) fn a11y(&self, path_end: &str) -> A11yNode {
+    pub(crate) fn a11y(&self, path_end: &str) -> UiElement {
         self.ui
-            .a11y()
-            .nodes
+            .elements()
             .iter()
             .find(|n| n.path.ends_with(&format!("/{path_end}")) || n.path == path_end)
             .cloned()
-            .unwrap_or_else(|| panic!("no a11y node {path_end}"))
+            .unwrap_or_else(|| panic!("no element {path_end}"))
     }
 
     pub(crate) fn click_at(&mut self, at: Vec2) -> Vec<DocEvent> {

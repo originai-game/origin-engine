@@ -1,5 +1,3 @@
-#[path = "../a11y.rs"]
-mod a11y;
 #[path = "../box_decor.rs"]
 mod box_decor;
 #[path = "../button_contrast.rs"]

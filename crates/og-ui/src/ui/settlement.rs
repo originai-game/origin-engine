@@ -444,7 +444,6 @@ mod tests {
         direct.end();
         assert_eq!(patched.elements(), direct.elements());
         assert_eq!(patched.out.frame.items, direct.out.frame.items);
-        assert_eq!(patched.a11y(), direct.a11y());
     }
 
     #[test]

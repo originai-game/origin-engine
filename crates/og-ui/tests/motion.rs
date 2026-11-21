@@ -725,13 +725,6 @@ fn transitions_and_easings_sample_the_specs_curves_by_the_tick() {
         // the end; `normal` flipped on the change.
         let shown = tick < 12;
         assert_eq!(d.el("GoneKid").is_some(), shown, "display at tick {tick}");
-        let folded = !d
-            .ui
-            .a11y()
-            .nodes
-            .iter()
-            .any(|n| n.path.ends_with("/FoldKid"));
-        assert_eq!(folded, !shown, "content-visibility at tick {tick}");
         assert!(d.el("SnapKid").is_none(), "normal display flips at once");
         if tick == 20 {
             saved = Some(d.ui.save_state());
