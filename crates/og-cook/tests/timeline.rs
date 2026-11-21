@@ -173,10 +173,14 @@ fn a_shot_track_cooks_to_its_pinned_text_and_a_key_without_a_camera_is_refused()
         "{text}"
     );
     assert_eq!(
-        (blob.len(), format!("{:016x}", og_core::hash::hash_bytes(text.as_bytes())), {
-            use og_cook::format::BlobKind;
-            og_cook::format::Timeline::schema_version()
-        }),
+        (
+            blob.len(),
+            format!("{:016x}", og_core::hash::hash_bytes(text.as_bytes())),
+            {
+                use og_cook::format::BlobKind;
+                og_cook::format::Timeline::schema_version()
+            }
+        ),
         (338, "eb323fe751ccfc50".to_string(), 1),
         "{text}"
     );

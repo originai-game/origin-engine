@@ -345,7 +345,8 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
         // Its shadow on the ground: darker with the box than without, and
         // not the box itself.
         let shaded = |x: u32, y: u32| {
-            !red(px_clamped(&whole, x, y)) && luma(&px_clamped(&empty, x, y)) - luma(&px_clamped(&whole, x, y)) > 25.0
+            !red(px_clamped(&whole, x, y))
+                && luma(&px_clamped(&empty, x, y)) - luma(&px_clamped(&whole, x, y)) > 25.0
         };
         let shadow = count(&whole, &shaded);
         assert!(shadow > 400, "{name}: the shadow covers {shadow} pixels");
@@ -372,7 +373,9 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
             );
             // Where it is cut the ground shows, never black or the clear colour.
             let through = count(&img, &|x, y| {
-                red(px_clamped(&whole, x, y)) && !red(px_clamped(&img, x, y)) && luma(&px_clamped(&img, x, y)) < 20.0
+                red(px_clamped(&whole, x, y))
+                    && !red(px_clamped(&img, x, y))
+                    && luma(&px_clamped(&img, x, y)) < 20.0
             });
             assert_eq!(through, 0, "{name}: {through} cut pixels are black");
             let s = shade(&img);
@@ -386,7 +389,9 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
         }
         // The pattern turns with the tick, the share drawn does not.
         let (a, b) = (shot(Some(0.5), 7), shot(Some(0.5), 8));
-        let moved = count(&a, &|x, y| red(px_clamped(&a, x, y)) != red(px_clamped(&b, x, y)));
+        let moved = count(&a, &|x, y| {
+            red(px_clamped(&a, x, y)) != red(px_clamped(&b, x, y))
+        });
         assert!(
             moved > boxed / 4,
             "{name}: {moved} of {boxed} pixels changed between two ticks"

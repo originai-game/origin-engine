@@ -442,7 +442,12 @@ mod tests {
                         }
                     }
                 }
-                assert_eq!(h.finish(), want, "mode {k} (bits {:05b}) signed {signed}", mode.bits);
+                assert_eq!(
+                    h.finish(),
+                    want,
+                    "mode {k} (bits {:05b}) signed {signed}",
+                    mode.bits
+                );
             }
         }
     }

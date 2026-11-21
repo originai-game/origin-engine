@@ -323,7 +323,12 @@ mod geom_contracts {
     }
 
     fn fnv(bits: &[u32]) -> u64 {
-        og_core::hash::hash_bytes(&bits.iter().flat_map(|b| b.to_le_bytes()).collect::<Vec<u8>>())
+        og_core::hash::hash_bytes(
+            &bits
+                .iter()
+                .flat_map(|b| b.to_le_bytes())
+                .collect::<Vec<u8>>(),
+        )
     }
 
     // ── counts equal to three.js's ──────────────────────────────────────────────

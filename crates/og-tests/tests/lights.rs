@@ -6,7 +6,10 @@
 //! lights, which is the frame of a scene holding only those.
 
 use glam::Vec3;
-use og_render::{Camera, Light, MAX_LIGHTS, Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
+use og_render::{
+    Camera, Light, MAX_LIGHTS, Projection, RenderDesc, RenderScene, RenderTarget, Renderer,
+    RgbaImage,
+};
 use og_tests::compare::{Tolerance, compare};
 use og_tests::harness::{frame, out_dir};
 use og_tests::{gfx, p2_scenes, scenes};
@@ -83,7 +86,11 @@ fn a_spherical_source_widens_specular_without_changing_roughness() {
     };
     println!("highlight pixels: {} -> {}", lit(&point), lit(&sphere));
     gfx::save_png(&out_dir("og-gfx").join("source-point-specular.png"), &point).unwrap();
-    gfx::save_png(&out_dir("og-gfx").join("source-sphere-specular.png"), &sphere).unwrap();
+    gfx::save_png(
+        &out_dir("og-gfx").join("source-sphere-specular.png"),
+        &sphere,
+    )
+    .unwrap();
     assert!(lit(&point) > 0, "punctual control must have a highlight");
     assert!(
         lit(&sphere) > lit(&point) * 2,

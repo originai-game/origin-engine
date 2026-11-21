@@ -486,7 +486,10 @@ fn random_base(key: &RandomKey<'_>, basis: Basis) -> f64 {
     };
     eat(&mut h, n.dashed.as_bytes());
     eat(&mut h, n.ua.unwrap_or("").as_bytes());
-    eat(&mut h, &if n.element { basis.element } else { 0 }.to_le_bytes());
+    eat(
+        &mut h,
+        &if n.element { basis.element } else { 0 }.to_le_bytes(),
+    );
     eat(&mut h, &basis.document.to_le_bytes());
     // SplitMix64's finaliser, then 53 bits: a uniform [0, 1).
     let z = og_core::hash::splitmix64(h.finish());

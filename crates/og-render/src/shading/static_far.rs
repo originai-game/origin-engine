@@ -290,7 +290,9 @@ fn lights_hash(lights: &[Light], far: &[usize], reach: f32) -> u64 {
         for v in [l.position, l.color] {
             v.to_array().into_iter().for_each(|x| eat(&mut words, x));
         }
-        [l.intensity, l.range, l.radius].into_iter().for_each(|x| eat(&mut words, x));
+        [l.intensity, l.range, l.radius]
+            .into_iter()
+            .for_each(|x| eat(&mut words, x));
         match l.kind {
             LightKind::Point => eat(&mut words, 0.0),
             LightKind::Spot {

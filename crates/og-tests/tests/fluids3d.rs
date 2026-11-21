@@ -48,7 +48,11 @@ fn mean(img: &RgbaImage, r: Rect) -> [f32; 3] {
 /// Luma's standard deviation over a rectangle (how much detail shows).
 fn contrast(img: &RgbaImage, r: Rect) -> f32 {
     let m = luma_f32(mean(img, r));
-    (pixels(img, r).map(|p| (luma_f32(p) - m).powi(2)).sum::<f32>() / area(r)).sqrt()
+    (pixels(img, r)
+        .map(|p| (luma_f32(p) - m).powi(2))
+        .sum::<f32>()
+        / area(r))
+    .sqrt()
 }
 
 /// Mean absolute difference over a rectangle (all channels).

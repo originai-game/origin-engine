@@ -39,11 +39,18 @@ pub fn consts_rs(ix: &Index<'_>) -> String {
                 let _ = writeln!(out, "/// {line}");
             }
             let (ty, value) = match &c.value {
-                og_core::ogt::Value::String(s) => ("&str", Json::str(s.clone()).render().trim_end().to_string()),
+                og_core::ogt::Value::String(s) => {
+                    ("&str", Json::str(s.clone()).render().trim_end().to_string())
+                }
                 v => {
                     let ty = match c.ty {
-                        TypeRef::Named { ref name, args: _ } if name == "u32" || name == "i32" => name.as_str(),
-                        _ => panic!("const `{}`: the Rust constants hold u32, i32 and String", c.name),
+                        TypeRef::Named { ref name, args: _ } if name == "u32" || name == "i32" => {
+                            name.as_str()
+                        }
+                        _ => panic!(
+                            "const `{}`: the Rust constants hold u32, i32 and String",
+                            c.name
+                        ),
                     };
                     (ty, crate::values::show(v))
                 }
@@ -68,14 +75,54 @@ const ABI_CONSTS: &[AbiConst] = &[
         0,
         "A system call (`Dispatch.kind`): the shared buffer opens with the time scale's four doubles, then the system's archetypes from word `FRAME_QUERY_WORD`.",
     ),
-    ("DISPATCH_COMMAND", "u32", 1, "A command handler's call (`Dispatch.kind`): the command's arguments are the payload's JSON list."),
-    ("DISPATCH_FACTS", "u32", 2, "The facts function's call (`Dispatch.kind`): its answer is `=` then the facts' JSON."),
-    ("DISPATCH_CONDITION", "u32", 3, "A system's run condition (`Dispatch.kind`): the answer is `=true` or `=false`."),
-    ("DISPATCH_HOOK", "u32", 4, "A hook's call (`Dispatch.kind`): the payload is the hooked entity."),
-    ("DISPATCH_PLATFORM", "u32", 5, "The platform pump's call (`Dispatch.kind`): the host drains what it handed the engine."),
-    ("DISPATCH_UI", "u32", 6, "A named UI registration pass (`Dispatch.kind`): the world is read only, and a changed world hash refuses it."),
-    ("SHARED_BYTES", "usize", 65536, "The shared buffer's size in bytes: what a host installs, and what both sides view."),
-    ("FRAME_QUERY_WORD", "usize", 8, "Where a system call's archetypes start in the shared buffer, in words: after the time scale's four doubles."),
+    (
+        "DISPATCH_COMMAND",
+        "u32",
+        1,
+        "A command handler's call (`Dispatch.kind`): the command's arguments are the payload's JSON list.",
+    ),
+    (
+        "DISPATCH_FACTS",
+        "u32",
+        2,
+        "The facts function's call (`Dispatch.kind`): its answer is `=` then the facts' JSON.",
+    ),
+    (
+        "DISPATCH_CONDITION",
+        "u32",
+        3,
+        "A system's run condition (`Dispatch.kind`): the answer is `=true` or `=false`.",
+    ),
+    (
+        "DISPATCH_HOOK",
+        "u32",
+        4,
+        "A hook's call (`Dispatch.kind`): the payload is the hooked entity.",
+    ),
+    (
+        "DISPATCH_PLATFORM",
+        "u32",
+        5,
+        "The platform pump's call (`Dispatch.kind`): the host drains what it handed the engine.",
+    ),
+    (
+        "DISPATCH_UI",
+        "u32",
+        6,
+        "A named UI registration pass (`Dispatch.kind`): the world is read only, and a changed world hash refuses it.",
+    ),
+    (
+        "SHARED_BYTES",
+        "usize",
+        65536,
+        "The shared buffer's size in bytes: what a host installs, and what both sides view.",
+    ),
+    (
+        "FRAME_QUERY_WORD",
+        "usize",
+        8,
+        "Where a system call's archetypes start in the shared buffer, in words: after the time scale's four doubles.",
+    ),
 ];
 
 /// The host-ABI constants as Rust items, appended to host.rs.

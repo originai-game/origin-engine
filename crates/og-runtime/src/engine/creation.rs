@@ -283,7 +283,12 @@ pub(crate) fn run_ui_registration(eng: &Engine, callback: Option<u32>) -> Result
     let before = eng.world()?.world_hash();
     // An absent callback on reload is still a registration pass: it disposes
     // the presentation IDs removed with the old GameDesc.ui.
-    let result = call(eng, DISPATCH_UI, callback.unwrap_or(u32::MAX), String::new());
+    let result = call(
+        eng,
+        DISPATCH_UI,
+        callback.unwrap_or(u32::MAX),
+        String::new(),
+    );
     let after = eng.world()?.world_hash();
     let result = if before == after {
         result.map(|_| ())

@@ -87,12 +87,19 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
     );
     // Four radii: top left 0 (square), bottom left 60 (cut deep).
     let (x, y) = cell(4, 0);
-    assert!(near(px_rendered(&r, x + 21, y + 21), ink([239, 83, 80]), 2.0));
+    assert!(near(
+        px_rendered(&r, x + 21, y + 21),
+        ink([239, 83, 80]),
+        2.0
+    ));
     assert!(near(px_rendered(&r, x + 24, y + 126), back, 2.0));
     // The ring (cell 2, row 1; 130 px square from (25, 10)) has a hole.
     let (x, y) = cell(2, 1);
     let (cx, cy) = (x + 25 + 65, y + 10 + 65);
-    assert!(near(px_rendered(&r, cx, cy), back, 2.0), "the ring's hole is drawn");
+    assert!(
+        near(px_rendered(&r, cx, cy), back, 2.0),
+        "the ring's hole is drawn"
+    );
     assert!(
         near(px_rendered(&r, cx + 57, cy), ink([186, 104, 200]), 2.0),
         "the ring"
@@ -105,7 +112,10 @@ fn ui_shapes_cut_their_corners_rings_and_arcs() {
         near(px_rendered(&r, cx + 52, cy), ink([239, 83, 80]), 2.0),
         "the arc"
     );
-    assert!(near(px_rendered(&r, cx - 52, cy), back, 2.0), "past the arc's sweep");
+    assert!(
+        near(px_rendered(&r, cx - 52, cy), back, 2.0),
+        "past the arc's sweep"
+    );
     // The dotted ring (cell 2, row 3; r 65 about (530, 625), dots every
     // 16.1 px from 12 o'clock): its outline is no whole number of periods,
     // so the first dot (x 526..534) overlaps the last (x 520..528). The
@@ -306,7 +316,11 @@ fn ui_paths_fill_by_their_rule_and_take_every_mode() {
     check("the even-odd star's spike", at(3, 0, 0, -50), violet);
     // On the lines that cross the nonzero star's inside (its pentagon's
     // top edge, 64·cos 72° above the centre, and a lower one): no seam.
-    check("the nonzero star's inner line", px_rendered(&r, 530, 95), amber);
+    check(
+        "the nonzero star's inner line",
+        px_rendered(&r, 530, 95),
+        amber,
+    );
     check(
         "the nonzero star's inner line, left",
         at(2, 0, -12, -16),
@@ -344,7 +358,11 @@ fn ui_paths_fill_by_their_rule_and_take_every_mode() {
     check("at the turned heart's point", turned(49.0), green);
     check("past the turned heart's point", turned(56.0), back);
     // The 14 px heart at (1060, 60).
-    check("the 14 px heart", px_rendered(&r, 1067, 67), ink([255, 241, 118]));
+    check(
+        "the 14 px heart",
+        px_rendered(&r, 1067, 67),
+        ink([255, 241, 118]),
+    );
 }
 
 /// World-space UI (`docs/ui.md` §1, `ui_scenes::world`): occluders hide a
@@ -357,7 +375,11 @@ fn ui_world_occludes_and_draws_mass_elements() {
     let r = render("ui-world");
     let pink = srgb8([0.9, 0.3, 0.6, 1.0]);
     // The left panel: only sky behind it at 20 m.
-    assert!(near(px_rendered(&r, 320, 360), pink, 6.0), "{:?}", px_rendered(&r, 320, 360));
+    assert!(
+        near(px_rendered(&r, 320, 360), pink, 6.0),
+        "{:?}",
+        px_rendered(&r, 320, 360)
+    );
     // The right one: the wall (12 m) is in front of 20 m.
     assert!(
         !near(px_rendered(&r, 640, 360), pink, 40.0),
@@ -374,7 +396,11 @@ fn ui_world_occludes_and_draws_mass_elements() {
     // 85 % opaque over the sky (136, 155, 197).
     assert!(back.iter().all(|&c| c < 110.0), "back {back:?}");
     // The third bar's fill reaches 0.9 (x 188) and has no ghost.
-    assert!(px_rendered(&r, 185, 134)[1] > 120.0, "{:?}", px_rendered(&r, 185, 134));
+    assert!(
+        px_rendered(&r, 185, 134)[1] > 120.0,
+        "{:?}",
+        px_rendered(&r, 185, 134)
+    );
     // The score's glyphs: gold ink in its band at the top centre.
     let gold = (40..90)
         .flat_map(|y| (560..720).map(move |x| (x, y)))

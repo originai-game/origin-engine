@@ -618,7 +618,11 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
         }
     }
     assert_eq!(format!("{:016x}", z.world.world_hash()), hash);
-    assert_eq!(trail2.finish(), trail.finish(), "the restored yard moved otherwise");
+    assert_eq!(
+        trail2.finish(),
+        trail.finish(),
+        "the restored yard moved otherwise"
+    );
 }
 
 /// [`a_yard_without_g2_4_features_hashes_and_moves_as_before_it`]'s world

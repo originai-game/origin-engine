@@ -7,7 +7,7 @@
 use glam::Vec3;
 use og_render::{FrameStats, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
 use og_tests::fork_scenes as fs;
-use og_tests::harness::{luma_f32, px_clamped, project, save};
+use og_tests::harness::{luma_f32, project, px_clamped, save};
 use og_tests::scenes;
 
 /// Frames are rendered at half the reference size (the same 16:9 view).
@@ -216,7 +216,10 @@ fn the_hemisphere_light_lights_by_facing_and_only_diffusely() {
     save("og-fork-fields", "hemisphere-light", &lit);
     save("og-fork-fields", "hemisphere-light-off", &dark);
     let floor = around(project_in(&scene, Vec3::new(-1.5, 0.0, 2.0)), 3);
-    let ceiling = around(project_in(&scene, Vec3::new(-1.5, fs::HEMI_CEILING, -8.0)), 3);
+    let ceiling = around(
+        project_in(&scene, Vec3::new(-1.5, fs::HEMI_CEILING, -8.0)),
+        3,
+    );
     let metal = around(project_in(&scene, fs::HEMI_METAL), 2);
     let gain = |r| {
         let (a, b) = (mean(&lit, r), mean(&dark, r));

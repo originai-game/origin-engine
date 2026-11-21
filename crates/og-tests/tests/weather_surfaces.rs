@@ -6,8 +6,8 @@
 
 use glam::{Mat4, Vec3};
 use og_render::{
-    Camera, ColorSpace, DirectionalLight, Exposure, Mips, RenderScene, RgbaImage,
-    StandardMaterial, SurfaceWeather, TextureData, shapes,
+    Camera, ColorSpace, DirectionalLight, Exposure, Mips, RenderScene, RgbaImage, StandardMaterial,
+    SurfaceWeather, TextureData, shapes,
 };
 use og_tests::harness::base_image;
 

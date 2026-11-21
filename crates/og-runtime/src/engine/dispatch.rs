@@ -538,7 +538,14 @@ pub(super) fn run_hook(
     ctx: &mut SystemContext<'_>,
     e: Entity,
 ) -> og_core::Result<()> {
-    run_frame(engine_id, index, ctx, DISPATCH_HOOK, e.to_bits().to_string()).map(|_| ())
+    run_frame(
+        engine_id,
+        index,
+        ctx,
+        DISPATCH_HOOK,
+        e.to_bits().to_string(),
+    )
+    .map(|_| ())
 }
 
 /// Calls a command handler (or the facts function) between ticks.

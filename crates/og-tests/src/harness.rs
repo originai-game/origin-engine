@@ -5,10 +5,10 @@
 //! in [`out_dir`]); the browser's is og-tests-web.
 
 use crate::gfx::Rendered;
+use glam::Vec3;
 use og_render::{
     Camera, FrameStats, Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,
 };
-use glam::Vec3;
 use std::path::PathBuf;
 
 /// One frame of `scene` at `desc` on a fresh blocking renderer: its image

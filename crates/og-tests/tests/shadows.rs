@@ -6,7 +6,9 @@
 //! cube's shadows in a third of the passes, PCSS widens the sun's penumbra
 //! with the caster's height, and FXAA and TAA's sharpening work on edges.
 
-use og_render::{PointShadows, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, Tonemap};
+use og_render::{
+    PointShadows, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, Tonemap,
+};
 use og_tests::compare::{Tolerance, compare};
 use og_tests::harness::{luma, repeat};
 use og_tests::{scenes, shadow_scenes};

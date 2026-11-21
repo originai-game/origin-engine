@@ -359,7 +359,12 @@ fn the_underwater_view_fogs_shows_the_surface_and_caustics() {
     let above_scene = make(3.0, 0.0);
     let p_above = color_at(
         &above,
-        project(&above_scene.frame.camera, 1280, 720, Vec3::new(0.0, 2.0, -30.0)),
+        project(
+            &above_scene.frame.camera,
+            1280,
+            720,
+            Vec3::new(0.0, 2.0, -30.0),
+        ),
     );
     assert!(redness(p_above) > 60.0, "the post from above: {p_above:?}");
     assert!(

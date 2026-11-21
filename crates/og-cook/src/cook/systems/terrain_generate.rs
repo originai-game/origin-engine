@@ -1151,7 +1151,11 @@ mod tests {
         h.write(&a.river_length.to_bits().to_le_bytes());
         assert_eq!(a.heights.len(), 256 * 256);
         assert!(!a.river.is_empty(), "rivers run");
-        assert_eq!(h.finish(), 0x3545_dee3_68d7_5755, "the generated field's hash");
+        assert_eq!(
+            h.finish(),
+            0x3545_dee3_68d7_5755,
+            "the generated field's hash"
+        );
     }
 
     #[test]

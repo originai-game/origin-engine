@@ -47,7 +47,12 @@ fn a_leaf_card_lets_the_sun_through_from_behind() {
             .map(|&(dx, dy)| {
                 let c = color_at(
                     img,
-                    project(&scene.frame.camera, 1280, 720, is::BACKLIT_AT + Vec3::new(dx, dy, 0.8)),
+                    project(
+                        &scene.frame.camera,
+                        1280,
+                        720,
+                        is::BACKLIT_AT + Vec3::new(dx, dy, 0.8),
+                    ),
                 );
                 assert!(ball_pixel(c), "the card covers ({dx}, {dy}): {c:?}");
                 luma_f32(c)

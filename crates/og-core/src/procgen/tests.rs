@@ -205,8 +205,16 @@ fn every_generator_gives_its_pinned_output_for_a_seed() {
     // og.Rng's fork "picks" there), so their hashes stay local pins.
     let pin: serde_json::Value =
         serde_json::from_str(include_str!("../../../../tests/fixtures/procgen-pin.json")).unwrap();
-    let n = |at: &[&str]| -> u64 { pin.pointer(&format!("/{}", at.join("/"))).and_then(|v| v.as_u64()).expect("the fixture's number") };
-    let f = |at: &[&str]| -> f64 { pin.pointer(&format!("/{}", at.join("/"))).and_then(|v| v.as_f64()).expect("the fixture's number") };
+    let n = |at: &[&str]| -> u64 {
+        pin.pointer(&format!("/{}", at.join("/")))
+            .and_then(|v| v.as_u64())
+            .expect("the fixture's number")
+    };
+    let f = |at: &[&str]| -> f64 {
+        pin.pointer(&format!("/{}", at.join("/")))
+            .and_then(|v| v.as_f64())
+            .expect("the fixture's number")
+    };
     let mut r = Rng::new(n(&["weighted", "seed"]) as u32);
     let weights: Vec<f64> = pin["weighted"]["weights"]
         .as_array()

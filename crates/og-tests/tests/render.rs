@@ -364,11 +364,7 @@ fn linked_lists_order_equal_depths_by_key_not_by_draw() {
     let backward = draw([3, 2, 1, 0]).expect("the same device");
     // All four overlap at the centre, two by two further out.
     let c = forward.width / 2;
-    assert_ne!(
-        px(&forward, c, c),
-        px(&forward, 2, 2),
-        "the quads drawn"
-    );
+    assert_ne!(px(&forward, c, c), px(&forward, 2, 2), "the quads drawn");
     let differ = forward
         .pixels
         .chunks(4)

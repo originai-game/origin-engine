@@ -170,7 +170,9 @@ fn the_fixture_hashes_as_the_web_decoder_pins_it() {
     );
     let file = std::fs::read(format!("{base}/frames.qoa")).unwrap();
     let want = u64::from_str_radix(
-        std::fs::read_to_string(format!("{base}/frames.fnv")).unwrap().trim(),
+        std::fs::read_to_string(format!("{base}/frames.fnv"))
+            .unwrap()
+            .trim(),
         16,
     )
     .unwrap();

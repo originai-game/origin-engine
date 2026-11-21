@@ -247,7 +247,11 @@ fn a_terrain_honours_its_transform() {
     for (label, transform, at, covered) in cases {
         let scene = strip_scene(transform, false);
         let (img, _) = render(&scene);
-        save("og-terrain", &format!("transform-{}", label.replace(' ', "-")), &img);
+        save(
+            "og-terrain",
+            &format!("transform-{}", label.replace(' ', "-")),
+            &img,
+        );
         let pixel = project(&scene.frame.camera, 1280, 720, at);
         assert_eq!(
             !is_background(&img, pixel),

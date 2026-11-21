@@ -133,8 +133,16 @@ fn a_source_radius_keeps_nearby_lit_smoke_from_burning_white() {
         let capture = |radius| run(&desc, &mut scene(radius), 2, |s, _| fx::tick_all(s, 1)).0;
         let before = capture(0.0);
         let after = capture(0.75);
-        save("og-effects", &format!("source-radius-{spot}-point"), &before);
-        save("og-effects", &format!("source-radius-{spot}-sphere"), &after);
+        save(
+            "og-effects",
+            &format!("source-radius-{spot}-point"),
+            &before,
+        );
+        save(
+            "og-effects",
+            &format!("source-radius-{spot}-sphere"),
+            &after,
+        );
         let centre = |image: &RgbaImage| region(image, (312, 172, 328, 188));
         println!(
             "spot={spot}: centre {} -> {}",

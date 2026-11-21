@@ -147,7 +147,8 @@ fn lens_distortion_bends_by_its_formula() {
         let lens = LensDistortion { amount, center };
         let (bent, stats) = frame(&small(), &scene(Some(lens)));
         assert_eq!(stats.graph_passes, off.graph_passes + 1, "{name}: one pass");
-        let corners = [(0, 0), (319, 0), (0, 179), (319, 179)].map(|(x, y)| px_clamped(&bent, x, y));
+        let corners =
+            [(0, 0), (319, 0), (0, 179), (319, 179)].map(|(x, y)| px_clamped(&bent, x, y));
         assert!(
             corners.iter().all(|&p| p == px_clamped(&plain, 0, 0)),
             "{name}: a corner is not the background: {corners:?}"
@@ -286,7 +287,8 @@ fn depth_of_field_blurs_outside_the_focus_band() {
                 if !all_seen(lo, hi) {
                     continue;
                 }
-                let fall = luma(&px_clamped(&sharp, first.0, first.1)) - luma(&px_clamped(&sharp, last.0, last.1));
+                let fall = luma(&px_clamped(&sharp, first.0, first.1))
+                    - luma(&px_clamped(&sharp, last.0, last.1));
                 if best.is_none_or(|(_, f)| fall > f) {
                     best = Some((run, fall));
                 }
