@@ -7,7 +7,7 @@ contains its licence. It is used through the workspace's
 `[patch.crates-io]`; `Cargo.toml` is the published one without its
 `[[example]]` tables (the examples are not vendored).
 
-Two changes.
+Four changes; 3 and 4 are marked `Origin Engine` in place.
 
 1. `src/compute/flexbox.rs`, `determine_container_main_size`.
 A container with no definite main size under definite available space
@@ -29,3 +29,19 @@ items in document order, then finds each in-flow child's item by its
 document index. Grid sorts its items by `order` for auto-placement
 only and puts them back in document order after it. Focus and reading
 order stay in document order, as CSS has them.
+
+3. `src/compute/flexbox.rs`, `determine_hypothetical_cross_size`. A flex
+item with an aspect ratio and no cross size took its content's cross
+size, measured at its used main size, so a 7:10 card in an
+`items-center` row was as tall as its text. Its used main size now
+reaches the cross axis through the ratio (CSS Sizing 4's automatic size
+in the ratio-dependent axis) and floors the measured size, which may
+still make it taller (`min-height: auto`), as the intrinsic main-size
+step already does the other way.
+
+4. Same function, its new `transfer_main` argument. When a column
+container's width is asked for alone (`RunMode::ComputeSize` along the
+horizontal axis), that width is its intrinsic inline size, its items'
+width contributions (CSS Flexbox §9.9.3), so change 3's transfer is
+skipped there: a column of flexed square items stays as wide as their
+own widths, not the widths their flexed heights give.

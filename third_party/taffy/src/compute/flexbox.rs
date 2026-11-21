@@ -456,7 +456,8 @@ fn compute_preliminary(tree: &mut impl LayoutFlexboxContainer, node: NodeId, inp
 
     // 7. Determine the hypothetical cross size of each item.
     debug_log!("determine_hypothetical_cross_size");
-    // A column container's width asked for alone is its intrinsic inline size: its items'
+    // Origin Engine (README.md, change 4): a column container's width asked for alone is its
+    // intrinsic inline size: its items'
     // contributions, not the widths their flexed heights give through their aspect ratios
     // https://drafts.csswg.org/css-flexbox-1/#intrinsic-cross-sizes
     let transfer_main = !(run_mode == RunMode::ComputeSize && !constants.is_row && inputs.axis == RequestedAxis::Horizontal);
@@ -1983,6 +1984,7 @@ fn determine_hypothetical_cross_size(
     constants: &AlgoConstants,
     node_size: Size<Option<f32>>,
     available_space: Size<AvailableSpace>,
+    // Origin Engine (README.md, change 4).
     transfer_main: bool,
 ) {
     // If the flex container is single-line and has a definite cross size then that is the cross size of the
@@ -2067,7 +2069,8 @@ fn determine_hypothetical_cross_size(
             )
             .size
             .get_abs(constants.dir.cross_axis())
-            // The used main size is transferred through the item's aspect-ratio (its automatic
+            // Origin Engine (README.md, changes 3 and 4): the used main size is transferred
+            // through the item's aspect-ratio (its automatic
             // size in the ratio-dependent axis) and floors the measured content size, which may
             // still make it taller (min-height: auto), as the intrinsic main size step does
             // https://drafts.csswg.org/css-sizing-4/#aspect-ratio-automatic
