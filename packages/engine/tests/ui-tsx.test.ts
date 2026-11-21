@@ -401,3 +401,30 @@ test("an anchored node sits on its entity's projection and hides behind the came
     engine.destroy();
   }
 });
+
+test("og.ui's unitScale lays the tree out in its units, and the probe reads its boxes in the surface's px", () => {
+  loadNativeHost();
+  const game = og.game({
+    start(world) {
+      og.ui.configure(world, { unitScale: 2 });
+    },
+    ui(world) {
+      mount(world, () => View({ role: "button", label: "Box", onPress: () => {}, class: "absolute left-[10px] top-[30px] w-[40px] h-[20px]" }), {});
+    },
+  });
+  const created = createEngine(game as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  const id = (engine.world as unknown as { id: number }).id;
+  try {
+    og.ui.previewViewport(engine.world, { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" } as never);
+    engine.advance(3);
+    const frame = JSON.parse(native().og_node_ui_frame(id)) as { elements: { name: string; role: string; x: number; y: number; width: number; height: number }[] };
+    const box = frame.elements.find((e) => e.role === "button")!;
+    // Two surface px to the unit: twice the authored lengths.
+    expect([box.x, box.y, box.width, box.height]).toEqual([20, 60, 80, 40]);
+  } finally {
+    renderers.delete(id);
+    engine.destroy();
+  }
+});

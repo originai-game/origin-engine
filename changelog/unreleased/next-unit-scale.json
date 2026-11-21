@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui unitScale (TSX)",
+      "summary": "The TSX UI now lays out in og-ui units, as og-ui's documents do: `og.ui.configure({ unitScale })` and the surface's automatic unit (its height over 720 px, 1 to 2) enlarge it. Before, it laid out in the surface's px, so a sheet built for 1280×720 filled a quarter of a 2560×1440 surface. The probe's element boxes and the on-screen controls' zones stay in the surface's px."
+    }
+  ]
+}

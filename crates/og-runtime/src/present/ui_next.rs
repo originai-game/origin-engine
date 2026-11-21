@@ -121,6 +121,11 @@ pub(crate) struct Next {
     /// as last handed to the action map, which takes the whole set.
     doc_zones: Vec<og_input::ControlZone>,
     zones: Vec<og_input::ControlZone>,
+    /// The og-ui unit the tree lays out in (`UiFrame::unit`): its CSS px
+    /// are that many of the surface's, as og-ui's are, so `unitScale`
+    /// and a large surface enlarge it. What leaves the tree for the
+    /// surface (zones, the probe's and the mirror's boxes) is scaled by it.
+    unit: f32,
     /// The device whose bindings the `<Glyph>` nodes show.
     device: Option<og_ui::Device>,
     /// The left stick's held direction and when it moves the focus again.
@@ -424,6 +429,7 @@ impl Next {
             settle_glyphs: false,
             doc_zones: Vec::new(),
             zones: Vec::new(),
+            unit: 1.0,
         }
     }
 
@@ -786,7 +792,17 @@ impl Next {
             self.doc_zones = docs;
         }
         if let Some(own) = own {
-            self.zones = own;
+            let u = self.unit;
+            self.zones = own
+                .into_iter()
+                .map(|z| og_input::ControlZone {
+                    x: z.x * u,
+                    y: z.y * u,
+                    width: z.width * u,
+                    height: z.height * u,
+                    ..z
+                })
+                .collect();
         }
         Some(self.doc_zones.iter().chain(&self.zones).cloned().collect())
     }
@@ -871,6 +887,9 @@ impl Next {
         warnings.append(&mut self.held);
         let a0 = allocations();
         let t0 = now();
+        // The viewport and the input are in og-ui units already
+        // (`Ui::begin` zooms them): the tree lays out in them.
+        self.unit = ui.frame().unit.max(1.0);
         let Some(tree) = &mut self.tree else {
             return warnings;
         };
@@ -882,14 +901,13 @@ impl Next {
             tree.repaint_images();
         }
         let v = ui.frame().viewport;
-        let unit = ui.frame().unit.max(1.0);
-        tree.resize(v.width * unit, v.height * unit);
+        tree.resize(v.width, v.height);
         tree.set_time(time, ui.theme().reduced_motion);
         let commit = tree.commit();
         // Anchored nodes where the tick's camera sees their entity or point
         // (CONVENTIONS.md §World); none without a camera or a world.
         let view = ui.world_view();
-        let (w, h) = (v.width * unit, v.height * unit);
+        let (w, h) = (v.width, v.height);
         tree.place_anchors(|target, lift| {
             let (view, world) = (view.as_ref()?, world?);
             let p = match target {
@@ -907,8 +925,8 @@ impl Next {
         let device = ui.device();
         tree.set_device(device == og_ui::Device::Touch, device.is_pad());
         tree.pointer(
-            input.pointer.x * unit,
-            input.pointer.y * unit,
+            input.pointer.x,
+            input.pointer.y,
             input.pressed,
             input.released,
             &mut done,
@@ -917,8 +935,8 @@ impl Next {
         // assistive technology's requests; the `<Glyph>` nodes follow the
         // device.
         if tree.has_ops() {
-            let (x, y) = (input.pointer.x * unit, input.pointer.y * unit);
-            tree.wheel(x, y, input.wheel.x * unit, input.wheel.y * unit);
+            let (x, y) = (input.pointer.x, input.pointer.y);
+            tree.wheel(x, y, input.wheel.x, input.wheel.y);
             // Typed text goes into the focused `Input` before its keys
             // edit it, as they arrived.
             if !input.text.is_empty() {
@@ -1040,7 +1058,7 @@ impl Next {
     /// last one; in CSS px, as the tree lays out.
     pub(crate) fn a11y(&mut self) -> Option<Value> {
         let tree = self.tree.as_ref()?;
-        let update = tree.a11y(&mut self.a11y, tree.focused(), 1.0)?;
+        let update = tree.a11y(&mut self.a11y, tree.focused(), self.unit)?;
         Some(og_ui_next::a11y::web(&update))
     }
 
@@ -1078,17 +1096,20 @@ impl Next {
         tree.dump()
             .into_iter()
             .filter(|(_, _, shown, _)| *shown)
-            .map(|(id, [x, y, width, height], _, text)| og_probe::UiElement {
-                id: id.into(),
-                path: id.into(),
-                text: text.into(),
-                x,
-                y,
-                width,
-                height,
-                ..Default::default()
+            .map(|(id, r, _, text)| {
+                let [x, y, width, height] = r.map(|v| v * self.unit);
+                og_probe::UiElement {
+                    id: id.into(),
+                    path: id.into(),
+                    text: text.into(),
+                    x,
+                    y,
+                    width,
+                    height,
+                    ..Default::default()
+                }
             })
-            .chain(Self::op_elements(tree).0)
+            .chain(Self::op_elements(tree, self.unit).0)
             .collect()
     }
 
@@ -1098,7 +1119,7 @@ impl Next {
     /// `path` of op ids (what `touch_move_to` and the captures name), its
     /// box and text; a control's `role`; `disabled`, `checked` and
     /// `focused` among its states; its name only where its text is not it.
-    fn op_elements(tree: &Tree) -> (Vec<og_probe::UiElement>, Vec<String>) {
+    fn op_elements(tree: &Tree, unit: f32) -> (Vec<og_probe::UiElement>, Vec<String>) {
         /// The roles a player operates: what the model may press or move.
         const CONTROLS: &[&str] = &[
             "button",
@@ -1147,7 +1168,8 @@ impl Next {
                 let f = facts.get(&n.node);
                 let control = f
                     .is_some_and(|f| CONTROLS.contains(&f.role) || f.states.contains(&"focusable"));
-                let [x, y, width, height] = n.rect;
+                // In the surface's CSS px, as og-ui's elements are.
+                let [x, y, width, height] = n.rect.map(|v| v * unit);
                 og_probe::UiElement {
                     id: n.id.to_string(),
                     parent: if n.parent == 0 {
@@ -1196,7 +1218,7 @@ impl Next {
     pub(crate) fn op_dump(&self) -> (Vec<og_probe::UiElement>, Vec<String>) {
         self.tree
             .as_ref()
-            .map(Self::op_elements)
+            .map(|tree| Self::op_elements(tree, self.unit))
             .unwrap_or_default()
     }
 
