@@ -27,7 +27,9 @@ version 1
 name "UI cursor"
 id "ui-cursor"
 entry "src/main.ts"
-profile "2d"
+create {
+  form "2d"
+}
 tick 60
 seed 1
 `;
