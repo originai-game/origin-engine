@@ -125,7 +125,7 @@ try {
   await t.eval(`document.querySelector("[data-og-a11y]").style.visibility = "hidden"`);
   const bare = await t.screenshot();
   await t.eval(`document.querySelector("[data-og-a11y]").style.visibility = ""`);
-  check(Buffer.from(shown).equals(Buffer.from(bare)), "the controls over the canvas draw nothing");
+  check(shown.length === bare.length && shown.every((b, i) => b === bare[i]), "the controls over the canvas draw nothing");
   const labels = controls.map((c) => c.label);
   for (const want of ["Audio", "Graphics", "Mute everything", "Subtitles", "Done"]) check(labels.includes(want), `the scan finds ${want}`, labels);
   check(controls.every((c) => c.label !== "" && c.role !== "div"), "every control it finds is one, with a name", controls);
