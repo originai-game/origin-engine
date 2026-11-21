@@ -182,6 +182,14 @@
   --material-scope-color-fill-strong: material-control;
   --material-scope-color-thumb: material-control;
   --material-scope-shadow-rim: lens;
+  /* The six rarity colours, common to mythic: each a status colour, so
+     they keep its contrast in both schemes; a pack names its own. */
+  --color-common: var(--color-border-strong);
+  --color-uncommon: var(--color-success);
+  --color-rare: var(--color-info);
+  --color-epic: var(--color-xp);
+  --color-legendary: var(--color-warn);
+  --color-mythic: var(--color-danger);
 }
 
 :root[data-scheme=dark] {
