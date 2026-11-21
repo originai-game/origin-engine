@@ -10748,6 +10748,7 @@ pub struct Animation {
     pub clips: Vec<ClipInfo>,
     pub nodes: Vec<String>,
     pub skins: Vec<u32>,
+    pub skin_joints: Vec<Vec<u32>>,
     pub morph_targets: u32,
 }
 
@@ -10758,6 +10759,7 @@ impl Default for Animation {
             clips: Default::default(),
             nodes: Default::default(),
             skins: Default::default(),
+            skin_joints: Default::default(),
             morph_targets: Default::default(),
         }
     }
@@ -10774,6 +10776,7 @@ impl FromJson for Animation {
             clips: field(o, "clips", d.clips)?,
             nodes: field(o, "nodes", d.nodes)?,
             skins: field(o, "skins", d.skins)?,
+            skin_joints: field(o, "skinJoints", d.skin_joints)?,
             morph_targets: field(o, "morphTargets", d.morph_targets)?,
         })
     }
@@ -10786,6 +10789,7 @@ impl ToJson for Animation {
         o.insert("clips".into(), self.clips.to_json());
         o.insert("nodes".into(), self.nodes.to_json());
         o.insert("skins".into(), self.skins.to_json());
+        o.insert("skinJoints".into(), self.skin_joints.to_json());
         o.insert("morphTargets".into(), self.morph_targets.to_json());
         Value::Object(o)
     }

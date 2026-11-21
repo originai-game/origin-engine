@@ -8,6 +8,10 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead.
 
+Game systems read the previous completed tick's final FootLock/IK/LookAt/spring pose, not the interpolated draw. Before tick 1: rest bone frame, but no MatrixWorld; use getNodeMatrix.
+
+See `animation §3`.
+
 Also known as: attach to bone, bone socket, Unreal socket, Unity parent to bone, three.js bone.add
 
 Token `og.BoneAttachment`, registered under the schema name `og.BoneAttachment`; its value type is `BoneAttachment`.
@@ -20,6 +24,8 @@ Token `og.BoneAttachment`, registered under the schema name `og.BoneAttachment`;
 component BoneAttachment {
   aliases "attach to bone, bone socket, Unreal socket, Unity parent to bone, three.js bone.add"
   doc "An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead."
+  doc "Game systems read the previous completed tick's final FootLock/IK/LookAt/spring pose, not the interpolated draw. Before tick 1: rest bone frame, but no MatrixWorld; use getNodeMatrix."
+  guide "animation §3"
   field node u32 "A node index in Animation.nodes, not a skin.joints index used by FootLock, IkChain, LookAt, SpringBone and SpringCollider. Non-joint glTF socket helpers work here. Use Animation.nodes.indexOf(name); 0 selects the first node." {
     min 0
   }

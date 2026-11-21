@@ -237,6 +237,15 @@ fn lock_cache<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 impl Shared {
+    fn node_matrices(&self, entity: Entity, skeleton: u64, asset: &SkeletonAsset) -> Vec<Mat4> {
+        match self.states.get(&entity.to_bits()) {
+            Some(st) if st.skeleton == skeleton && st.pose.len() == asset.nodes.len() => {
+                asset.model_matrices(&st.pose)
+            }
+            _ => asset.model_matrices(&asset.rest_pose()),
+        }
+    }
+
     fn binding(&self, skeleton: u64, clip: u64) -> Option<Arc<Vec<u32>>> {
         if let Some(b) = lock_bindings(&self.bindings).get(&(skeleton, clip)) {
             return Some(b.clone());
@@ -631,17 +640,9 @@ impl AnimationSystem {
                 let asset = sh.skeletons.get(&skeleton.asset).ok_or_else(|| {
                     invalid("og.BoneAttachment's skeleton asset is not loaded".into())
                 })?;
-                let nodes = models.entry(parent.to_bits()).or_insert_with(|| {
-                    match sh.states.get(&parent.to_bits()) {
-                        Some(st)
-                            if st.skeleton == skeleton.asset
-                                && st.pose.len() == asset.nodes.len() =>
-                        {
-                            asset.model_matrices(&st.pose)
-                        }
-                        _ => asset.model_matrices(&asset.rest_pose()),
-                    }
-                });
+                let nodes = models
+                    .entry(parent.to_bits())
+                    .or_insert_with(|| sh.node_matrices(parent, skeleton.asset, asset));
                 let matrix = nodes
                     .get(attachment.node as usize)
                     .copied()
@@ -737,6 +738,24 @@ impl AnimationSystem {
             .states
             .get(&entity.to_bits())
             .map(|s| s.pose.clone())
+    }
+
+    /// A node's model matrix from the last completed tick's final pose,
+    /// or rest before first use of `skeleton` on `entity`. No query cache:
+    /// a restored state is visible immediately, without another tick.
+    pub fn node_matrix(&self, entity: Entity, skeleton: u64, node: u32) -> Result<Mat4> {
+        let sh = lock(&self.shared);
+        let asset = sh
+            .skeletons
+            .get(&skeleton)
+            .ok_or_else(|| invalid("og.anim.getNodeMatrix: skeleton asset is not loaded".into()))?;
+        if node as usize >= asset.nodes.len() {
+            return Err(invalid(format!(
+                "og.anim.getNodeMatrix: node {node} is outside Animation.nodes ({} nodes)",
+                asset.nodes.len()
+            )));
+        }
+        Ok(sh.node_matrices(entity, skeleton, asset)[node as usize])
     }
 
     /// The final per-node visible flags of `entity` in the last tick (the

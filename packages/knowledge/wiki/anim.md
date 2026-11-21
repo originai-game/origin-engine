@@ -12,7 +12,7 @@ See `animation §7`.
 
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 52 more are advanced (`og api show anim --all`).
+- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 53 more are advanced (`og api show anim --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -62,6 +62,7 @@ module anim {
 | [`og.AnimationEvent`](anim/record-AnimationEvent.md) | event |  | A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). |
 | [`ClipInfo`](anim/type-ClipInfo.md) | struct |  | One clip of a loaded animation. |
 | [`Animation`](anim/type-Animation.md) | struct |  | What og.load.animation registered from a model's `#anim` blob. |
+| [`og.anim.getNodeMatrix`](anim/fn-getNodeMatrix.md) | function | `(world: World, entity: Entity, node: number): Result<Matrix4>` | A node's matrix in the skeleton entity's frame, including node ancestors, as three.js Bone.matrixWorld relative to its SkinnedMesh; no entity/parent transforms. |
 | [`GraphDesc`](anim/type-GraphDesc.md) | desc struct |  | A blend-tree graph to register. |
 | [`og.anim.graph`](anim/fn-graph.md) | function | `(world: World, desc?: GraphDesc): Result<GraphAsset>` | Register a blend-tree graph for AnimationGraph.asset. |
 | [`Rig`](anim/type-Rig.md) | handle |  | A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles sta… |
@@ -200,7 +201,7 @@ column SpringSpace {
 }
 ```
 
-<sub>Module `anim` line 448</sub>
+<sub>Module `anim` line 451</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -211,7 +212,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>Module `anim` line 522</sub>
+<sub>Module `anim` line 525</sub>
 
 ```ogt
 column Rig {
@@ -222,7 +223,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 601</sub>
+<sub>Module `anim` line 614</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -233,7 +234,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 672</sub>
+<sub>Module `anim` line 685</sub>
 
 ```ogt
 column Rig2D {
@@ -244,4 +245,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 775</sub>
+<sub>Module `anim` line 788</sub>

@@ -4,6 +4,7 @@
 // IK chain, refuses bad graphs by name, and gives the same world hash on the
 // native addon and the wasm module. Each host runs in its own process.
 import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cookProject } from "./support/og-bin.ts";
@@ -39,6 +40,19 @@ test.skipIf(STALE_WASM)("og.anim poses the walker the same way on both hosts", (
   // The rig and its clips, and the same handles for a second load.
   expect(node.animation.clips.length).toBeGreaterThan(0);
   expect(node.animation.skins[0]).toBeGreaterThan(0);
+  // Derive joint order independently from the fixture's original glTF,
+  // translating by name because the cook topologically reorders nodes.
+  const glb = readFileSync(join(project, "assets/models/walker.glb"));
+  const jsonLength = new DataView(glb.buffer, glb.byteOffset, glb.byteLength).getUint32(12, true);
+  const gltf = JSON.parse(new TextDecoder().decode(glb.subarray(20, 20 + jsonLength)));
+  const expectedJoints = gltf.skins.map((skin: { joints: number[] }) =>
+    skin.joints.map((j) => node.animation.nodes.indexOf(gltf.nodes[j].name)));
+  expect(expectedJoints.flat().every((j: number) => j >= 0)).toBe(true);
+  expect(node.animation.skinJoints).toEqual(expectedJoints);
+  expect(web.animation.skinJoints).toEqual(expectedJoints);
+  // The named hand is NOT its skin joint index in this fixture.
+  const handNode = node.animation.nodes.indexOf("hand.L");
+  expect(expectedJoints[0].indexOf(handNode)).not.toBe(handNode);
   expect(node.sameHandles).toBe(true);
   expect(node.uncooked).toMatch(/models\/nothing\.glb/);
   // Written by og.anim: the palette length, the playback time, the graph's state after p0 rose.
@@ -69,6 +83,17 @@ test.skipIf(STALE_WASM)("og.anim poses the walker the same way on both hosts", (
   expect(node.socketCollider).toBe(true);
   expect(node.badSocket).toMatch(/Animation.nodes/);
   expect(node.dynamicSocket).toMatch(/kinematic/);
+  expect(node.badQuery.ok).toBe(false);
+  expect(node.badQuery.reason).toMatch(/Animation.nodes/);
+  // Game systems first read rest, then the completed first tick's IK.
+  for (const [axis, rest, solved] of [[12, 0.85, 0.65], [13, 1.6, 1.6], [14, 0, 0.3]]) {
+    expect(node.querySamples[0].elements[axis!]).toBeCloseTo(rest!, 5);
+    expect(node.querySamples[1].elements[axis!]).toBeCloseTo(solved!, 3);
+    expect(node.nodeMatrix.value.elements[axis!]).toBeCloseTo(solved!, 3);
+  }
+  expect(node.nodeMatrix.ok).toBe(true);
+  expect(web.nodeMatrix).toEqual(node.nodeMatrix);
+  expect(web.querySamples).toEqual(node.querySamples);
   // One engine, two hosts.
   expect(web.hash).toBe(node.hash);
   expect(web.skeleton).toEqual(node.skeleton);

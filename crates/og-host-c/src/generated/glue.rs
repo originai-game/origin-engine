@@ -1644,6 +1644,11 @@ unsafe extern "C" fn og_atmosphere_season(args: *const crate::OgValue, out: *mut
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_anim_get_node_matrix(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as AnimApi>::og_anim_get_node_matrix(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_anim_graph(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as AnimApi>::og_anim_graph(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3916,6 +3921,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_physics_stats", arity: 1, call: og_physics_stats },
     crate::Symbol { name: c"og_atmosphere_time_of_day", arity: 1, call: og_atmosphere_time_of_day },
     crate::Symbol { name: c"og_atmosphere_season", arity: 1, call: og_atmosphere_season },
+    crate::Symbol { name: c"og_anim_get_node_matrix", arity: 3, call: og_anim_get_node_matrix },
     crate::Symbol { name: c"og_anim_graph", arity: 2, call: og_anim_graph },
     crate::Symbol { name: c"og_anim_humanoid", arity: 2, call: og_anim_humanoid },
     crate::Symbol { name: c"og_anim_retarget", arity: 2, call: og_anim_retarget },

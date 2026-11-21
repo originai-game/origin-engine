@@ -18,7 +18,7 @@ Token `og.IkChain`, registered under the schema name `og.IkChain`; its value typ
 | `tip` | `number` | `0` | ≥ 0 | — | — | The end joint (an index into the skin's joints): the foot or the hand. |
 | `bones` | `number` | `2` | 1 … 32 | — | — | How many bones above the tip turn (two-bone always uses 2). |
 | `solver` | `IkSolver` | `"twoBone"` | — | — | — | twoBone (analytic, with a pole) or fabrik (iterative, any length). |
-| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `hook` | Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world). |
+| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `hook` | Where the tip should be, in `space`. For `world`: the skeleton Transform's frame (true world without a parent, parent-local otherwise). Fixed targets and poles follow the parent's translation, rotation and scale, keeping a child rider's targets on a moving platform. |
 | `pole` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `hook` | A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend. |
 | `space` | `IkSpace` | `"world"` | — | — | — | What `target` and `pole` are relative to: world (the frame the skeleton entity's og.Transform is in, so its parent's frame for a child entity, not true world) or model. |
 | `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the solved rotation is applied (0 = the animated pose, 1 = fully solved). |
@@ -41,7 +41,7 @@ component IkChain {
     max 32
   }
   field solver IkSolver "twoBone (analytic, with a pole) or fabrik (iterative, any length)."
-  field target Vector3 "Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world)." {
+  field target Vector3 "Where the tip should be, in `space`. For `world`: the skeleton Transform's frame (true world without a parent, parent-local otherwise). Fixed targets and poles follow the parent's translation, rotation and scale, keeping a child rider's targets on a moving platform." {
     worldspace hook
     unit m
   }
@@ -76,4 +76,4 @@ component IkChain {
 }
 ```
 
-<sub>Module `anim` line 278</sub>
+<sub>Module `anim` line 280</sub>

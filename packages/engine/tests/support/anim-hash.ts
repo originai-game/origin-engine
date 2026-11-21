@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { og, defineResource, defineSystem, u32 } from "@origingame/engine";
-import type { World } from "@origingame/engine";
+import type { Entity, World } from "@origingame/engine";
 import { createEngine, type GameToken } from "../../src/runtime.ts";
 
 const argv = process.argv.slice(2);
@@ -43,6 +43,9 @@ if (which === "node") {
 
 const Tally = defineResource("AnTally", { events: u32(), switched: u32() });
 const out: Record<string, unknown> = { host: which };
+let queryRig = 0 as Entity;
+let queryNode = 0;
+const querySamples: unknown[] = [];
 
 /** p0 rises after one second: the graph's base layer moves from its first state to its second. */
 const Drive = defineSystem("AnDrive", { writes: [og.AnimationGraph] }, (q, time) => {
@@ -53,10 +56,16 @@ const Drive = defineSystem("AnDrive", { writes: [og.AnimationGraph] }, (q, time)
 });
 
 /** Counts the markers og.anim fired last tick. */
-const Count = defineSystem("AnCount", { reads: [og.AnimationEvent], writes: [Tally] }, (_q, _t, world) => {
+const Count = defineSystem("AnCount", { reads: [og.AnimationEvent, og.Skeleton], writes: [Tally] }, (_q, _t, world) => {
   const t = world.resource(Tally);
   const n = world.events(og.AnimationEvent).length;
   if (t.ok && n) t.value.events += n;
+  const a = og.anim.getNodeMatrix(world, queryRig, queryNode);
+  const b = og.anim.getNodeMatrix(world, queryRig, queryNode);
+  if (!a.ok) throw new Error(a.reason);
+  if (!b.ok) throw new Error(b.reason);
+  if (JSON.stringify(a.value) !== JSON.stringify(b.value)) throw new Error("node query advanced animation");
+  if (querySamples.length < 2) querySamples.push(a.value);
 });
 
 function start(world: World): void {
@@ -64,7 +73,7 @@ function start(world: World): void {
   if (!loaded.ok) throw new Error(loaded.reason);
   const again = og.load.animation(world, "models/walker.glb#anim");
   const a = loaded.value;
-  out.animation = { skeleton: a.skeleton, clips: a.clips.map((c) => ({ name: c.name, duration: +c.duration.toFixed(4), markers: c.markers })), nodes: a.nodes.length, skins: a.skins, morphTargets: a.morphTargets };
+  out.animation = { skeleton: a.skeleton, clips: a.clips.map((c) => ({ name: c.name, duration: +c.duration.toFixed(4), markers: c.markers })), nodes: a.nodes, skins: a.skins, skinJoints: a.skinJoints, morphTargets: a.morphTargets };
   out.sameHandles = again.ok && again.value.skeleton === a.skeleton && again.value.clips[0]?.clip === a.clips[0]?.clip;
   out.uncooked = (() => {
     const r = og.load.animation(world, "models/nothing.glb");
@@ -105,6 +114,8 @@ function start(world: World): void {
   // A posed hand and a non-joint glTF node use the same socket API. The
   // rotated, nonuniform parent makes a missing bone frame unambiguous.
   const carrier = spawn("socket-rig", 6);
+  queryRig = carrier;
+  queryNode = a.nodes.indexOf("hand.L");
   world.set(carrier, og.Transform, { quaternion: { x: 0, y: 0, z: Math.SQRT1_2, w: Math.SQRT1_2 }, scale: { x: 2, y: 3, z: 4 } });
   world.insert(carrier, og.AnimationPlayer, { clip: first.clip });
   const grip = world.spawn({ name: "socket-ik" });
@@ -147,6 +158,9 @@ out.chain = get("chain", og.IkChain);
 out.attachment = get("lantern", og.MatrixWorld);
 out.helperSocket = get("helper-socket", og.MatrixWorld);
 out.gripOffset = get("lantern", og.Transform);
+out.querySamples = querySamples;
+out.nodeMatrix = og.anim.getNodeMatrix(w, queryRig, queryNode);
+out.badQuery = og.anim.getNodeMatrix(w, queryRig, 9999);
 const hit = og.physics.castRay(w, { origin: { x: 1.2, y: 1.3, z: 2.2 }, direction: { x: 0, y: 0, z: -1 }, maxDistance: 2 });
 out.socketCollider = hit.ok && hit.value?.entity === w.find("lantern");
 const badNode = w.set(w.find("lantern")!, og.BoneAttachment, { node: 9999 });

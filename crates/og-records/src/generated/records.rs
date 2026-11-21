@@ -23627,7 +23627,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "m",
                 worldspace: "hook",
                 label: "",
-                doc: doc!("Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world)."),
+                doc: doc!("Where the tip should be, in `space`. For `world`: the skeleton Transform's frame (true world without a parent, parent-local otherwise). Fixed targets and poles follow the parent's translation, rotation and scale, keeping a child rider's targets on a moving platform."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

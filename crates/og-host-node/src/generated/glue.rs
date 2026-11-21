@@ -1971,6 +1971,12 @@ pub fn og_atmosphere_season(env: Env, world: u32) -> String {
     <Host as AtmosphereApi>::og_atmosphere_season(&Host, world)
 }
 
+#[napi(js_name = "og_anim_get_node_matrix")]
+pub fn og_anim_get_node_matrix(env: Env, world: u32, entity: f64, node: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AnimApi>::og_anim_get_node_matrix(&Host, world, entity, node)
+}
+
 #[napi(js_name = "og_anim_graph")]
 pub fn og_anim_graph(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

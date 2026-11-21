@@ -1644,6 +1644,11 @@ pub fn og_atmosphere_season(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_anim_get_node_matrix(world: u32, entity: f64, node: u32) -> String {
+    <Host as AnimApi>::og_anim_get_node_matrix(&Host, world, entity, node)
+}
+
+#[wasm_bindgen]
 pub fn og_anim_graph(world: u32, desc: Option<String>) -> String {
     <Host as AnimApi>::og_anim_graph(&Host, world, desc)
 }

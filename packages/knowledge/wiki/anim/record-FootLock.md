@@ -8,6 +8,8 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip; planted when the planting clips hold at least half the pose), it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. World state (the `og.anim` state block).
 
+Lock points use the skeleton Transform's frame: true world without a parent, parent-local otherwise. They resist the skeleton's motion but follow the parent's translation, rotation and scale.
+
 See `animation §8`.
 
 Token `og.FootLock`, registered under the schema name `og.FootLock`; its value type is `FootLock`.
@@ -25,6 +27,7 @@ Token `og.FootLock`, registered under the schema name `og.FootLock`; its value t
 ```ogt
 component FootLock {
   doc "Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip; planted when the planting clips hold at least half the pose), it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. World state (the `og.anim` state block)."
+  doc "Lock points use the skeleton Transform's frame: true world without a parent, parent-local otherwise. They resist the skeleton's motion but follow the parent's translation, rotation and scale."
   guide "animation §8"
   field skeleton Entity "The entity with the og.Skeleton whose foot this holds."
   field foot u32 "The foot joint (an index into the skin's joints); the two bones above it are the leg that bends." {
@@ -58,4 +61,4 @@ component FootLock {
 }
 ```
 
-<sub>Module `anim` line 408</sub>
+<sub>Module `anim` line 410</sub>

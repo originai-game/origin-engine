@@ -119,6 +119,7 @@ export const load = Object.freeze({
 });
 
 export const anim = Object.freeze({
+  getNodeMatrix: (world: WorldImpl, entity: number, node: number) => parse(abi().og_anim_get_node_matrix(world.id, entity, node)),
   graph: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_graph(world.id, json(desc))),
   humanoid: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_humanoid(world.id, json(desc))),
   retarget: (world: WorldImpl, desc?: unknown) => parse(abi().og_anim_retarget(world.id, json(desc))),

@@ -85,9 +85,15 @@ walk or jump, so the generated stride has a start and a run to follow.
 <a id="guide-animation-3"></a>
 ### `animation §3` Clips and graphs
 
-- A graph's parameters are set from systems in the tick. Gameplay that
-  needs a joint (a hand for a sword's hitbox) reads the tick's pose
-  through og.anim's joint queries, never the drawn pose.
+- A graph's parameters and IK targets are set from game systems in the
+  tick. Base gameplay on the tick's simulation pose, never the drawn pose.
+  Animation runs after game systems, so the pose they read is one tick
+  behind their new inputs; allow for that latency when designing grabs
+  and hit detection.
+- Query with og.anim.getNodeMatrix when no attached entity is needed;
+  use a BoneAttachment socket for a prop. Resolve names at load: node
+  indices and a skin's joint indices are different; Animation.skinJoints
+  bridges them. Read `og api show anim` for pose and frame semantics.
 - Retarget a clip library to the game's rig once, at load (og.load.rig
   and og.anim.retarget), never per frame.
 - Hitboxes and damage windows come from the tick: mark them with clip

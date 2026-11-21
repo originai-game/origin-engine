@@ -741,6 +741,8 @@ pub trait AtmosphereApi: Wire {
 
 /// `anim`: packages/knowledge/wiki/anim.md.
 pub trait AnimApi: Wire {
+    /// `og.anim.getNodeMatrix`
+    fn og_anim_get_node_matrix(&self, world: u32, entity: f64, node: u32) -> String;
     /// `og.anim.graph`
     fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String;
     /// `og.anim.humanoid`
@@ -1906,6 +1908,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_stats",
     "og_atmosphere_time_of_day",
     "og_atmosphere_season",
+    "og_anim_get_node_matrix",
     "og_anim_graph",
     "og_anim_humanoid",
     "og_anim_retarget",

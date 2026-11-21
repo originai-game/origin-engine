@@ -149,6 +149,10 @@ macro_rules! __og_host_bindings_animation {
         }
 
         impl $crate::host_impl::api::AnimApi for $host {
+            fn og_anim_get_node_matrix(&self, world: u32, entity: f64, node: u32) -> String {
+                $crate::host_impl::answer($crate::og_anim_get_node_matrix(world, entity, node))
+            }
+
             fn og_anim_graph(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_anim_graph(world, desc))
             }

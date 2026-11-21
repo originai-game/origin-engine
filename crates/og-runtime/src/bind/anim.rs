@@ -295,6 +295,12 @@ pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> 
             .iter()
             .map(|s| s.joints.len() as u32)
             .collect(),
+        skin_joints: cooked
+            .skeleton
+            .skins
+            .iter()
+            .map(|s| s.joints.clone())
+            .collect(),
         morph_targets: cooked.morphs.iter().map(|m| m.names.len()).sum::<usize>() as u32,
     }
     .to_json();
@@ -304,6 +310,24 @@ pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> 
 
 pub fn og_load_animation(world: u32, path: String) -> Result<serde_json::Value, String> {
     engine(world).and_then(|eng| load_animation(&eng, &path))
+}
+
+pub fn og_anim_get_node_matrix(world: u32, entity: f64, node: u32) -> Result<glam::Mat4, String> {
+    use wire::FromJson;
+    // Reuse world.get's live-entity, system access and column-borrow checks.
+    let skeleton = wire::record::Skeleton::from_json(&crate::host::api::og_world_get(
+        world,
+        entity,
+        "og.Skeleton".into(),
+    )?)?;
+    let eng = engine(world)?;
+    system(&eng)?
+        .node_matrix(
+            og_ecs::Entity::from_bits(entity as u64),
+            skeleton.asset,
+            node,
+        )
+        .map_err(|e| e.reason().to_string())
 }
 
 fn graph(eng: &Engine, desc: &GraphDesc) -> Result<Value, String> {

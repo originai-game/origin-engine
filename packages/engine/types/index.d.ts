@@ -19052,6 +19052,8 @@ export interface Skeleton {
 
 /**
  * An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead.
+ * Game systems read the previous completed tick's final FootLock/IK/LookAt/spring pose, not the interpolated draw. Before tick 1: rest bone frame, but no MatrixWorld; use getNodeMatrix.
+ * See `animation §3`.
  *
  * The value of the `BoneAttachment` component (token `og.BoneAttachment`).
  */
@@ -19368,7 +19370,7 @@ export interface IkChain {
   /** twoBone (analytic, with a pole) or fabrik (iterative, any length). */
   solver: IkSolver;
   /**
-   * Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world).
+   * Where the tip should be, in `space`. For `world`: the skeleton Transform's frame (true world without a parent, parent-local otherwise). Fixed targets and poles follow the parent's translation, rotation and scale, keeping a child rider's targets on a moving platform.
    *
    * @unit m (metres)
    * @worldspace hook (how og.WorldOrigin's shift moves it)
@@ -19558,6 +19560,7 @@ export interface JointLimit {
 
 /**
  * Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip; planted when the planting clips hold at least half the pose), it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. World state (the `og.anim` state block).
+ * Lock points use the skeleton Transform's frame: true world without a parent, parent-local otherwise. They resist the skeleton's motion but follow the parent's translation, rotation and scale.
  * See `animation §8`.
  *
  * The value of the `FootLock` component (token `og.FootLock`).
@@ -19833,9 +19836,14 @@ export interface Animation {
   readonly nodes: readonly string[];
   /** Each skin's joint count, in glTF order. */
   readonly skins: readonly number[];
+  /**
+   * Each skin's joints, in glTF skin/joint order, as Animation.nodes indices (not original glTF node indices). skinJoints[skin].indexOf(node) gives the skin joint index for joint-based constraints and Skeleton.rootJoint; -1 means not a joint of that skin.
+   */
+  readonly skinJoints: readonly (readonly number[])[];
   /** Morph targets across the model's meshes. */
   readonly morphTargets: number;
 }
+
 
 /**
  * A blend-tree graph to register.
@@ -36891,6 +36899,8 @@ export declare namespace og {
   const Skeleton: ComponentType<{ readonly asset: FieldSpec<"SkeletonAsset">; readonly skin: FieldSpec<"u32">; readonly rootMotion: FieldSpec<"RootMotion">; readonly rootJoint: FieldSpec<"u32">; readonly jointCount: FieldSpec<"u32"> }, Skeleton>;
   /**
    * An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead.
+   * Game systems read the previous completed tick's final FootLock/IK/LookAt/spring pose, not the interpolated draw. Before tick 1: rest bone frame, but no MatrixWorld; use getNodeMatrix.
+   * See `animation §3`.
    */
   const BoneAttachment: ComponentType<{ readonly node: FieldSpec<"u32"> }, BoneAttachment>;
   /**
@@ -36927,6 +36937,7 @@ export declare namespace og {
   const JointLimit: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly axis: FieldSpec<"Vector3">; readonly swing: FieldSpec<"f32">; readonly twistMin: FieldSpec<"f32">; readonly twistMax: FieldSpec<"f32"> }, JointLimit>;
   /**
    * Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip; planted when the planting clips hold at least half the pose), it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. World state (the `og.anim` state block).
+   * Lock points use the skeleton Transform's frame: true world without a parent, parent-local otherwise. They resist the skeleton's motion but follow the parent's translation, rotation and scale.
    * See `animation §8`.
    */
   const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;
@@ -36975,6 +36986,16 @@ export declare namespace og {
    * See `animation §7`.
    */
   namespace anim {
+    /**
+     * A node's matrix in the skeleton entity's frame, including node ancestors, as three.js Bone.matrixWorld relative to its SkinnedMesh; no entity/parent transforms. Game systems run before og.anim: reads see the previous completed animation tick's final FootLock/IK/LookAt/spring pose, never the interpolated draw or this tick's new inputs. Rest before the first tick or after an asset change. Reads never advance animation; snapshot restore is immediate. Declare read access to og.Skeleton.
+     * See `animation §3`.
+     *
+     * @param world The world whose animation poses the entity.
+     * @param entity The entity with og.Skeleton.
+     * @param node An Animation.nodes index, not a skin joint index: skinJoints[skin][joint] converts one. Non-joint socket helpers work too.
+     * @returns Refused for an invalid entity, missing og.Skeleton, unloaded asset or out-of-range node.
+     */
+    function getNodeMatrix(world: World, entity: Entity, node: number): Result<Matrix4>;
     /**
      * Register a blend-tree graph for AnimationGraph.asset. Its `clip` lines are resolved by name against `clips`.
      *

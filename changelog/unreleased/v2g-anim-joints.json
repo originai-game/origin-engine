@@ -1,0 +1,9 @@
+{
+  "added": [
+    { "member": "Animation.skinJoints", "summary": "Per-skin joint-to-Animation.nodes mapping from og.load.animation, so IK and foot locks can resolve named joints without parsing glTF; their target and lock frame semantics on moving parents are documented." },
+    { "member": "og.anim.getNodeMatrix", "summary": "Read a node's final model-space simulation matrix from the last completed animation tick (rest before the first), including constraints, without creating a socket or advancing animation; snapshot restore is immediately visible. BoneAttachment documents the same pose timing, with MatrixWorld populated only after the first tick." }
+  ],
+  "fixed": [
+    "The animation guide now points to an available joint-pose query and accounts for its one-tick latency in gameplay."
+  ]
+}

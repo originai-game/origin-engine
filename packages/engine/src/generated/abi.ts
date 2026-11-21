@@ -681,6 +681,8 @@ export interface HostAbi<A, V> {
   og_atmosphere_time_of_day(world: number): number;
   /** `og.atmosphere.season` */
   og_atmosphere_season(world: number): string;
+  /** `og.anim.getNodeMatrix` */
+  og_anim_get_node_matrix(world: number, entity: number, node: number): string;
   /** `og.anim.graph` */
   og_anim_graph(world: number, desc: string | undefined): string;
   /** `og.anim.humanoid` */
@@ -1733,6 +1735,7 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_stats",
   "og_atmosphere_time_of_day",
   "og_atmosphere_season",
+  "og_anim_get_node_matrix",
   "og_anim_graph",
   "og_anim_humanoid",
   "og_anim_retarget",
@@ -2276,6 +2279,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_physics_ragdoll_pose(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.physics.ragdollPose", "entity", entity);
       return abi.og_physics_ragdoll_pose(world, entity);
+    },
+    og_anim_get_node_matrix(world: number, entity: number, node: number) {
+      if (typeof entity !== "number") notEntity("og.anim.getNodeMatrix", "entity", entity);
+      return abi.og_anim_get_node_matrix(world, entity, node);
     },
     og_anim_skeleton2d_boxes(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.anim.skeleton2dBoxes", "entity", entity);
