@@ -2349,7 +2349,7 @@ export interface GameDesc {
    */
   readonly migrations?: readonly SaveMigration[];
   /**
-   * How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from every button action and none of the intents. Read by the tool only; the engine and the world never see it.
+   * How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from its own button actions and none of the intents. Read by the tool only; the engine and the world never see it.
    *
    * @default {}
    */

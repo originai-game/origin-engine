@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "GameDesc.explore",
+      "summary": "`og explore` presses the game's own button actions again, not the UI's built-in `ui` map (confirm, back, tabNext, tabPrev, details, rotate) every game has had since that map arrived: those presses diluted the search, and a rare draw went unfound in its budget. Name any of them in `GameDesc.explore.actions` to have them pressed."
+    }
+  ]
+}

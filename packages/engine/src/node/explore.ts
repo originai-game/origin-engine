@@ -295,9 +295,12 @@ function payloads(fields: FieldType[]): Record<string, unknown>[] {
 
 function vocabulary(engine: Engine, desc: ExploreDesc, types: Record<string, { kind?: string; fields: FieldType[] }>): Input[] {
   const inputs: Input[] = [];
-  const actions = og.input.actions(engine.world as never) as unknown as { name: string; kind: string; bindings: Binding[] }[];
+  const actions = og.input.actions(engine.world as never) as unknown as { name: string; kind: string; actionMap: string; bindings: Binding[] }[];
   for (const a of actions) {
-    if (desc.actions?.length ? !desc.actions.includes(a.name) : a.kind !== "button") continue;
+    // The game's own buttons by default: the UI's built-in map (confirm,
+    // back, tabNext…) is in every game, and pressing it dilutes the search
+    // of one that never answers it. GameDesc.explore.actions names any.
+    if (desc.actions?.length ? !desc.actions.includes(a.name) : a.kind !== "button" || a.actionMap === "ui") continue;
     // The first binding the channel can press; an axis by each of its directions.
     for (const b of a.bindings) {
       const parts = a.kind === "button" ? [b.control] : [b.control, b.negative, b.positive, b.up, b.down, b.left, b.right];

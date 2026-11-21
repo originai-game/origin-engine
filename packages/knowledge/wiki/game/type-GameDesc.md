@@ -29,7 +29,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `render` | `RenderOptions` | `{}` | — | — | — | How the renderer is created: antialiasing and shadow map size. Read once, when the host attaches the renderer. |
 | `saveVersion` | `number` | `1` | ≥ 1 | — | — | The game's save version, written into every save: raise it when a release changes a saved type, and add the step from the old version to GameDesc.migrations. Left unset, project.ogt's `saveVersion` (else 1); the two set to different values refuse the engine. |
 | `migrations` | `readonly SaveMigration[]` | `[]` | — | — | — | The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order. The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted. See `saves §5`. |
-| `explore` | `ExploreDesc` | `{}` | — | — | — | How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from every button action and none of the intents. Read by the tool only; the engine and the world never see it. |
+| `explore` | `ExploreDesc` | `{}` | — | — | — | How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from its own button actions and none of the intents. Read by the tool only; the engine and the world never see it. |
 | `look` | `string` | `""` | — | — | — | A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned, before start (which may change any of it); its antialias applies when render leaves it out. Unset or empty: project.ogt's `look` (whose art contract the cook reads), else none; the two naming different looks is refused. |
 
 ```ogt
@@ -70,7 +70,7 @@ struct GameDesc {
   field migrations List.SaveMigration "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order. The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted." {
     guide "saves §5"
   }
-  field explore ExploreDesc "How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from every button action and none of the intents. Read by the tool only; the engine and the world never see it."
+  field explore ExploreDesc "How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from its own button actions and none of the intents. Read by the tool only; the engine and the world never see it."
   field look String "A look (`looks/<name>.ogt`, og.load.look) applied after the first scene spawned, before start (which may change any of it); its antialias applies when render leaves it out. Unset or empty: project.ogt's `look` (whose art contract the cook reads), else none; the two naming different looks is refused."
 }
 ```

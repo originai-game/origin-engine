@@ -22,7 +22,8 @@ inputs from there, and reports what broke.
   brought something new (half the time by state first, half by time
   first); restores its snapshot (the whole world, input
   included); and plays a burst of the game's own inputs from it: its
-  button actions pressed through their key or pad bindings, the intents
+  button actions pressed through their key or pad bindings (not the UI's
+  built-in `ui` map unless `actions` names them), the intents
   GameDesc.explore names, and waits.
 - Everything goes through the recorded input path, the command channel a
   playtest uses, so every trace is a command script.
