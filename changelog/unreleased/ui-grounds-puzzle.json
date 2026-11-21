@@ -1,1 +1,9 @@
-{"simulation":"unchanged","fixed":[{"member":"Puzzle components","summary":"goals, boosters, the level path and the summary draw on pack slots and opaque theme grounds in those grounds' inks, so their text reads over a bright scene in every pack."}]}
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Puzzle components",
+      "summary": "PuzzleSummary, PuzzleLevelPath and PuzzleGoals draw their rims on rim roles instead of white washes, so their text reads over a bright scene in every pack."
+    }
+  ]
+}

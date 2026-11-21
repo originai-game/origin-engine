@@ -33,7 +33,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo text-fg h-auto p-2 gap-2 rounded-block border disabled:text-fg-subtle`} label={t("puzzle.goals.name")} data-low={props.low === true}>
       <View class="flex-row flex-wrap p-1 gap-3 compact:gap-1">
-        <View class={`items-center justify-center min-w-[102.4px] bg-tile border border-white/14 py-1 px-2 gap-0 compact:min-w-[83.2px] data-low:border-[1.5px] data-low:border-warn text-fg ${packClass("Plate", "frame")}`} role={props.counter === 'time' ? 'timer' : 'status'} label={props.counter === 'time' ? t("puzzle.goals.timeLeft", { time: formatDuration(props.seconds) }) : t("puzzle.goals.movesLeft", { moves: props.moves })} data-low={props.low === true}>
+        <View class={`items-center justify-center min-w-[102.4px] bg-tile border border-rim py-1 px-2 gap-0 compact:min-w-[83.2px] data-low:border-[1.5px] data-low:border-warn text-fg ${packClass("Plate", "frame")}`} role={props.counter === 'time' ? 'timer' : 'status'} label={props.counter === 'time' ? t("puzzle.goals.timeLeft", { time: formatDuration(props.seconds) }) : t("puzzle.goals.movesLeft", { moves: props.moves })} data-low={props.low === true}>
           <Text class={`tabular-nums whitespace-nowrap text-[2.857rem] font-bold data-low:text-warn compact:text-[2.143rem]`} data-low={props.low === true}>
             {props.counter === 'time' ? formatDuration(props.seconds) : formatNumber(props.moves)}
           </Text>
