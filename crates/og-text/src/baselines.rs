@@ -123,10 +123,32 @@ impl Baselines {
 /// ([`Baselines::synthesize`]); the mathematical baseline at the minus
 /// sign's centre where it has one.
 pub fn baselines(file: &FontFile) -> Baselines {
-    let mut out = Baselines::synthesize(file.ascent(), file.descent(), file.x_height());
-    let Some(face) = skrifa::FontRef::new(file.bytes()).ok() else {
-        return out;
-    };
+    let synthesized = Baselines::synthesize(file.ascent(), file.descent(), file.x_height());
+    match skrifa::FontRef::new(file.bytes()) {
+        Ok(face) => of_face(&face, synthesized),
+        Err(_) => synthesized,
+    }
+}
+
+/// `face`'s baselines at variation `location`, as [`baselines`] finds them,
+/// synthesized from its metrics there where its `BASE` table is silent.
+pub fn face_baselines(
+    face: &skrifa::FontRef,
+    location: skrifa::instance::LocationRef,
+) -> Baselines {
+    use skrifa::MetadataProvider;
+    let m = face.metrics(skrifa::instance::Size::unscaled(), location);
+    let em = f32::from(m.units_per_em.max(1));
+    let x_height = m.x_height.unwrap_or(m.ascent * 0.56);
+    of_face(
+        face,
+        Baselines::synthesize(m.ascent / em, -m.descent / em, x_height / em),
+    )
+}
+
+/// `face`'s `BASE` baselines over `out`, its synthesized ones.
+fn of_face(face: &skrifa::FontRef, mut out: Baselines) -> Baselines {
+    let face = face.clone();
     let upem = face
         .head()
         .map_or(1000.0, |h| f32::from(h.units_per_em()).max(1.0));
