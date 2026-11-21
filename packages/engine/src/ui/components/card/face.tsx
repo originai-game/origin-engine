@@ -15,7 +15,7 @@ export interface CardFaceProps {
   type: string;
   /** The type line as the game words it (Attack, Skill · Rare); empty hides it. */
   typeLabel: string;
-  /** common, uncommon, rare, epic, legendary or mythic; it reaches the frame as data-rarity. */
+  /** common, uncommon, rare, epic, legendary or mythic; rare and above draw the ornate card frame. */
   rarity: string;
   /** The rules text as the game words it, every number already computed; it wraps, up to four lines and then an ellipsis, and the art window gives it the room. */
   text: string;
@@ -36,7 +36,7 @@ export interface CardFaceProps {
  */
 export function CardFace(props: CardFaceProps) {
   return (
-    <View class={`group/cardface nine-plate-cut bg-entry-hi text-rim-strong w-full p-1 gap-0.5 overflow-hidden`} data-type-attack={(props.type) === 'attack'} data-type-curse={(props.type) === 'curse'} data-type-power={(props.type) === 'power'} data-type-relic={(props.type) === 'relic'} data-type-skill={(props.type) === 'skill'} data-type-status={(props.type) === 'status'} data-dim={props.dim === true} data-medium={props.size === 'medium' || props.size === 'small' || props.size === 'tiny'} data-small={props.size === 'small' || props.size === 'tiny'} data-tiny={props.size === 'tiny'}>
+    <View class={`group/cardface nine-plate-cut bg-entry-hi text-rim-strong size-full p-1 gap-0.5 overflow-hidden data-type-attack:text-danger data-type-skill:text-info data-type-power:text-epic data-type-curse:text-fg-muted data-type-status:text-fg-muted data-type-relic:text-gold data-dim:text-rim`} data-framed={props.rarity === "rare" || props.rarity === "epic" || props.rarity === "legendary"} data-type-attack={(props.type) === 'attack'} data-type-curse={(props.type) === 'curse'} data-type-power={(props.type) === 'power'} data-type-relic={(props.type) === 'relic'} data-type-skill={(props.type) === 'skill'} data-type-status={(props.type) === 'status'} data-dim={props.dim === true} data-medium={props.size === 'medium' || props.size === 'small' || props.size === 'tiny'} data-small={props.size === 'small' || props.size === 'tiny'} data-tiny={props.size === 'tiny'}>
       <View class="absolute bg-linear-to-b from-current to-transparent to-32% opacity-22 inset-0" />
       <View class={`flex-row items-center grow shrink basis-0 min-h-[18%] justify-center nine-plate-cut bg-tile-pressed text-border-strong gap-0 overflow-hidden`}>
         <View class="absolute opacity-45 inset-0" />
@@ -59,6 +59,7 @@ export function CardFace(props: CardFaceProps) {
           {props.text}
         </Text>
       </Show>
+      <View class="absolute inset-0 pointer-events-none hidden group-data-framed/cardface:flex nine-card-frame" />
       <Show when={props.cost}>
         <View class={`flex-row items-center absolute left-0 top-0 w-[2.143rem] h-[2.4rem] justify-center bg-linear-to-b from-hud-accent-hi to-hud-accent text-hud-accent-fg text-[1.286rem] font-bold gap-0`} label={t("card.face.cost", { cost: props.cost })}>
           <Text class="whitespace-nowrap shrink">{props.cost}</Text>

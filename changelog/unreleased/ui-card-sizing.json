@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "@ui/components/card/face, @ui/components/card/hand, @ui/components/card/reward, @ui/components/card/collection",
+      "summary": "A card face fills its box and wears its type's colour; rare, epic and legendary cards draw the gold card frame. The hand sizes each card at 192 x 274 px (120 x 171 compact) and reserves the lift and the Play plate's room, instead of collapsing below the frame; a reward offer is a whole card instead of a strip."
+    }
+  ]
+}

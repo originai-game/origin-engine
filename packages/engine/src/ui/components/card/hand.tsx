@@ -38,14 +38,14 @@ export function CardHand(props: CardHandProps) {
             <Text class="m-0">{t("card.hand.empty")}</Text>
           </View>
       }>
-        <View class="flex-row items-end grow shrink basis-0 w-full justify-center pt-0 gap-0" role="listbox" label={props.label || t("card.hand.name")}>
+        <View class="flex-row items-end grow shrink basis-0 w-full justify-center pt-14 pb-14 px-8 gap-0" role="listbox" label={props.label || t("card.hand.name")}>
           <For each={props.cards}>
             {(c) => (
-            <View class={`shrink origin-[50%_100%] data-tail:shrink-0 data-selected:rotate-0 data-selected:translate-x-0 data-selected:-translate-y-12 data-selected:z-1 hover:translate-x-0 hover:-translate-y-2 transition-transform duration-200 ease-out`} data-playable={c().playable} data-tail={c().at === 1 || props.cards.length === 1} data-selected={c().id === props.selected} style={{ rotate: `${((c().at) * (props.fan))}deg` }}>
-              <View class="absolute left-0 inset-y-0">
+            <View class={`relative shrink min-w-0 basis-[13.714rem] h-[19.592rem] compact:basis-[8.571rem] compact:h-[12.245rem] origin-[50%_100%] data-tail:shrink-0 data-selected:rotate-0 data-selected:translate-x-0 data-selected:-translate-y-12 data-selected:z-1 hover:translate-x-0 hover:-translate-y-2 transition-transform duration-200 ease-out`} data-playable={c().playable} data-tail={c().at === 1 || props.cards.length === 1} data-selected={c().id === props.selected} style={{ rotate: `${((c().at) * (props.fan))}deg` }}>
+              <View class="absolute left-0 inset-y-0 w-[13.714rem] compact:w-[8.571rem]">
                 <Show when={c().playable} fallback={
-                    <View class={`flex-row items-stretch gap-1 border-rim-soft bg-surface-raised shadow-[inset_0px_1px_0px_0px_#ffffff09] transition duration-317 w-full justify-stretch p-0 rounded-block border data-selected:border-accent data-down:opacity-45`} role="option" data-playable={c().playable} selected={c().id === props.selected} label={c().name} description={c().reason || t("card.hand.unplayable")} onPress={(e) => props.onSelect?.(e, c().id)}>
-                      <View class="w-full">
+                    <View class={`flex-row items-stretch gap-1 border-rim-soft bg-surface-raised shadow-[inset_0px_1px_0px_0px_#ffffff09] transition duration-317 size-full justify-stretch p-0 rounded-block border data-selected:border-accent data-down:opacity-45`} role="option" data-playable={c().playable} selected={c().id === props.selected} label={c().name} description={c().reason || t("card.hand.unplayable")} onPress={(e) => props.onSelect?.(e, c().id)}>
+                      <View class="size-full">
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={true} />
                       </View>
                       <View class={`flex-row items-center absolute left-[36.286px] right-1 top-2 nine-plate-cut bg-foe-fg/94 border border-danger/60 text-danger text-[0.786rem] font-bold tracking-xs py-0.5 px-1 gap-0.5 data-not-cost:left-1`} data-not-cost={!(!!c().cost)}>
@@ -56,14 +56,14 @@ export function CardHand(props: CardHandProps) {
                       </View>
                     </View>
                 }>
-                  <View class={`flex-row items-stretch gap-1 border-rim-soft bg-surface-raised shadow-[inset_0px_1px_0px_0px_#ffffff09] transition duration-317 w-full justify-stretch p-0 rounded-block border data-selected:border-accent data-down:opacity-45`} role="option" data-playable={c().playable} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onSelect?.(e, c().id)} onAction={{ details: (e) => props.onPlay?.(e, c().id) }}>
-                    <View class="w-full">
+                  <View class={`flex-row items-stretch gap-1 border-rim-soft bg-surface-raised shadow-[inset_0px_1px_0px_0px_#ffffff09] transition duration-317 size-full justify-stretch p-0 rounded-block border data-selected:border-accent data-down:opacity-45`} role="option" data-playable={c().playable} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onSelect?.(e, c().id)} onAction={{ details: (e) => props.onPlay?.(e, c().id) }}>
+                    <View class="size-full">
                       <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={false} />
                     </View>
                   </View>
                 </Show>
                 <Show when={c().id === props.selected && c().playable}>
-                  <Button class={`text-accent absolute left-[10%] w-4/5 min-h-11 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onPlay?.(e, c().id)}>
+                  <Button class={`text-accent absolute left-[10%] top-full mt-0.5 w-4/5 min-h-11 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onPlay?.(e, c().id)}>
                     <Text>{t("card.hand.play")}</Text>
                   </Button>
                 </Show>
