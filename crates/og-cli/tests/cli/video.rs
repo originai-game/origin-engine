@@ -29,8 +29,8 @@ fn video_edges_writes_the_first_and_last_frame() {
     assert_eq!(a.dimensions(), b.dimensions(), "the same size");
     // This fixture has 120 frames at 30 Hz. Compare the decoded frame
     // numbered 119, not merely a different frame (frame 90 is different too).
-    assert_eq!(a, decoded_frame(&clip, 0));
-    assert_eq!(b, decoded_frame(&clip, 119));
+    assert_eq!(a, decoded_frame(&clip, 0, "rgb24"));
+    assert_eq!(b, decoded_frame(&clip, 119, "rgb24"));
 
     // A `type video` .ogt resolves its source beside it.
     let ogt_dir = TempDir::new("og-cli-video-edges-ogt");
@@ -51,12 +51,15 @@ fn video_edges_writes_the_first_and_last_frame() {
         image::open(ogt_dir.join("shot.last.png"))
             .unwrap()
             .to_rgba8(),
-        decoded_frame(&clip, 29),
+        decoded_frame(&clip, 29, "rgb24"),
         "maxSeconds 1 ends before frame 30"
     );
 }
 
-fn decoded_frame(clip: &Path, index: u32) -> image::RgbaImage {
+/// Frame `index` of `clip` converted to `pix_fmt` as the command under
+/// test converts it (edges writes ffmpeg's RGB PNG, study reads RGBA):
+/// ffmpeg 7's YUV to RGB24 and to RGBA paths differ by a few levels.
+fn decoded_frame(clip: &Path, index: u32, pix_fmt: &str) -> image::RgbaImage {
     let out = Command::new(which_ffmpeg().unwrap())
         .args(["-v", "error", "-nostdin", "-i"])
         .arg(clip)
@@ -65,6 +68,8 @@ fn decoded_frame(clip: &Path, index: u32) -> image::RgbaImage {
             &format!("select=eq(n\\,{index})"),
             "-frames:v",
             "1",
+            "-pix_fmt",
+            pix_fmt,
             "-f",
             "image2pipe",
             "-c:v",
@@ -111,7 +116,7 @@ fn video_study_samples_displayed_frames_and_is_byte_repeatable() {
             .unwrap()
             .to_rgba8();
         assert!(
-            image == decoded_frame(&clip, index),
+            image == decoded_frame(&clip, index, "rgba"),
             "wrong displayed frame at request {i}"
         );
         assert!(
@@ -127,7 +132,7 @@ fn video_study_samples_displayed_frames_and_is_byte_repeatable() {
     let frames: Vec<_> = [0, 7, 15, 22, 30]
         .into_iter()
         .map(|i| {
-            let image = decoded_frame(&clip, i);
+            let image = decoded_frame(&clip, i, "rgba");
             og_probe::frame::Rgba {
                 width: 192,
                 height: 108,
@@ -222,8 +227,9 @@ fn video_study_preserves_variable_pts_and_nonzero_origin() {
     let clip = repo().join("packages/engine/tests/fixtures/video/assets/clips/count.mp4");
     // Keep source frames 0,3,21,45 without retiming: intervals .1,.6,.8.
     // PNG-in-MOV is lossless; a 2-second timestamp offset tests origin
-    // handling. Even with encoder rate 30, passthrough must not fill the
-    // gaps with CFR frames. The muxer chooses the final packet's duration.
+    // handling. Even with a 1/30 s encoder time base, passthrough must not
+    // fill the gaps with CFR frames (ffmpeg 7 refuses -r with passthrough).
+    // The muxer chooses the final packet's duration.
     let out = Command::new(ffmpeg)
         .args(["-v", "error", "-nostdin", "-i"])
         .arg(&clip)
@@ -236,8 +242,8 @@ fn video_study_preserves_variable_pts_and_nonzero_origin() {
             "passthrough",
             "-c:v",
             "png",
-            "-r",
-            "30",
+            "-enc_time_base",
+            "1/30",
             "-output_ts_offset",
             "2",
         ])
