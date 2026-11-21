@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "The HUD's damage numbers and the world blocks the new anchor serves as TSX, beside their .svelte: DamageNumbers, Nameplate, Waypoint, SpeechBubble, InteractionPrompt, OverheadBars and LootLabel. Styles are Tailwind classes; the anchors' edge clamping, chevron, decluttering, avoidance, occlusion fade and max distance, the ground pools and planes (a loot glow, the path, placement, selection-ring and telegraph grounds), the GPU mass figures and overhead bars (pooled, instanced), the plate's lean, the wings' and brackets' and tails' and chevrons' clip-path shapes, the interrupted cast's hatch, the hold ring's drain and the key caps' action glyphs are dropped or stand in (diamonds, a nine-ring wipe, notch marks)."
+    }
+  ]
+}
