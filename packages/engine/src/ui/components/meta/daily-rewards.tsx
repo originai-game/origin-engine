@@ -60,7 +60,7 @@ export function DailyRewards(props: DailyRewardsProps) {
                           <Icon class="text-fg size-12 compact:size-8 group-data-milestone/cell:text-epic-hi group-data-state-today/cell:text-gold" name={d().icon} />
                         </View>
                         <Show when={d().state === 'claimed'}>
-                          <View class="absolute justify-center items-center bg-success text-boon-fg shadow-[0px_0px_0px_3.424px_#55e39a40,0px_4.576px_16px_#00000080] -rotate-8 inset-0 gap-2 size-16 rounded-capsule compact:size-12 animate-stamp">
+                          <View class="absolute justify-center items-center bg-success text-boon-fg shadow-plate ring-3 ring-fill -rotate-8 inset-0 gap-2 size-16 rounded-capsule compact:size-12 animate-stamp">
                             <Icon class="size-6 compact:size-4" name="check" />
                           </View>
                         </Show>

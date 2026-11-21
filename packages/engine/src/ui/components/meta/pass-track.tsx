@@ -93,7 +93,7 @@ export function PassTrack(props: PassTrackProps) {
                       </View>
                     </View>
                     <View class={`grid grid-cols-[7.857rem_minmax(0,1fr)] w-full gap-2 compact:grid-cols-1`} role="group" label={t("meta.pass.rewards")}>
-                      <View class="justify-center pl-2 font-bold text-fg-muted border-l-[3.424px] border-fg-subtle gap-0.5 compact:flex-row compact:justify-start compact:items-baseline compact:py-0.5 compact:gap-1 data-lane-premium:text-gold data-lane-premium:border-l-[3.424px] data-lane-premium:border-gold" data-lane-premium={true}>
+                      <View class="justify-center pl-2 font-bold text-fg-muted border-l-3 border-fg-subtle gap-0.5 compact:flex-row compact:justify-start compact:items-baseline compact:py-0.5 compact:gap-1 data-lane-premium:text-gold data-lane-premium:border-l-3 data-lane-premium:border-gold" data-lane-premium={true}>
                         <Text>{t("meta.pass.premium")}</Text>
                         <Show when={!(props.premiumUnlocked ?? false)}>
                           <Text class={`text-caption text-fg-subtle`}>
@@ -144,7 +144,7 @@ export function PassTrack(props: PassTrackProps) {
                           )}
                         </For>
                       </Scroll>
-                      <View class="justify-center pl-2 font-bold text-fg-muted border-l-[3.424px] border-fg-subtle gap-0.5 compact:flex-row compact:justify-start compact:items-baseline compact:py-0.5 compact:gap-1">
+                      <View class="justify-center pl-2 font-bold text-fg-muted border-l-3 border-fg-subtle gap-0.5 compact:flex-row compact:justify-start compact:items-baseline compact:py-0.5 compact:gap-1">
                         <Text>{t("meta.pass.free")}</Text>
                       </View>
                       <Scroll class={`flex-row items-center pr-12 pl-0.5 py-0.5 m-0 gap-1`} label={t("meta.pass.freeRewards")}>

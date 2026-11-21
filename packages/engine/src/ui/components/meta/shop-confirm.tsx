@@ -55,13 +55,13 @@ export function ShopConfirm(props: ShopConfirmProps) {
         <Text class={`font-display text-xs font-semibold leading-tight tracking-kicker uppercase text-fg-subtle m-0`}>
           {props.title !== '' ? props.title : t("general.confirm.name")}
         </Text>
-        <Text class={`text-fg text-[20.64px] font-bold line-clamp-3 m-0 overflow-hidden`}>
+        <Text class={`text-fg text-xl font-bold line-clamp-3 m-0 overflow-hidden`}>
           {props.name}
         </Text>
       </View>
       <Scroll class="shrink w-full gap-3">
         <View class="flex-row items-center w-full gap-3">
-          <View class={`justify-center items-center bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 size-24 compact:size-16 ${packClass("Slot", "frame")}`}>
+          <View class={`justify-center items-center bg-tile border-2 border-border-strong nine-plate-cut gap-2 size-24 compact:size-16 ${packClass("Slot", "frame")}`}>
             <Icon class="size-37/50" name={props.icon} />
           </View>
           <Show when={props.detail}>
@@ -70,7 +70,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
             </Text>
           </Show>
         </View>
-        <View class={`w-full bg-well shadow-[inset_0px_0px_0px_1px_#ffffff12] py-1 px-2 m-0`} label={t("general.confirm.cost")}>
+        <View class={`w-full bg-well inset-ring-1 inset-ring-rim-soft py-1 px-2 m-0`} label={t("general.confirm.cost")}>
           <For each={props.prices}>
             {(p, i) => (
             <View class="group/entry w-full py-1 gap-1 data-later:border-t data-later:border-material-control-hover" data-later={i() >= 1} data-short={p().short}>
@@ -117,7 +117,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
         </View>
       </Scroll>
       <Show when={props.error}>
-        <Text class={`w-full bg-danger text-bg shadow-[inset_3px_0px_0px_#ff9599] py-1 px-2 m-0`} role="alert">
+        <Text class={`w-full bg-danger text-bg inset-shadow-bar inset-shadow-danger py-1 px-2 m-0`} role="alert">
           {props.error}
         </Text>
       </Show>

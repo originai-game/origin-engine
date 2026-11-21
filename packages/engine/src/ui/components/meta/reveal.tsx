@@ -80,16 +80,16 @@ export function Reveal(props: RevealProps) {
                       <View class="shrink basis-30">
                         <View class={`flex-row items-center justify-center gap-1 group/reward w-full p-0 hover:bg-transparent hover:bg-none hover:shadow-none`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.reward", { name: reward().name, rarity: reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onPress={(e) => props.onInspect?.(e, reward().id)} data-tier-common={(reward().rarity || 'common') === "common"}>
                           <View class="w-full items-center text-center gap-1">
-                            <View class={`grow shrink basis-0 justify-center items-center w-30 max-w-full aspect-square bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 compact:w-24 ${packClass("Slot", "frame")}`}>
+                            <View class={`grow shrink basis-0 justify-center items-center w-30 max-w-full aspect-square bg-tile border-2 border-border-strong nine-plate-cut gap-2 compact:w-24 ${packClass("Slot", "frame")}`}>
                               <Icon class="size-7/10" name={reward().icon} />
                               <View class="absolute bottom-0 h-0.75 text-border-strong bg-current inset-x-2" />
                               <Show when={reward().amount}>
-                                <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-[1.35] whitespace-nowrap text-fg bg-well nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                                <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-snug whitespace-nowrap text-fg bg-well nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                                   {reward().amount}
                                 </Text>
                               </Show>
                               <Show when={reward().fresh}>
-                                <View class={`bg-hud-accent text-fg absolute right-2 top-2 shadow-[0px_0px_9.136px_#38e8ff,0px_0px_0px_1.5px_#060910e5] size-1 rounded-capsule`} label={t("meta.new")} />
+                                <View class={`bg-hud-accent text-fg absolute right-2 top-2 shadow-glow-sm ring-2 ring-shade-deep size-1 rounded-capsule`} label={t("meta.new")} />
                               </Show>
                             </View>
                             <Text class={`text-xs font-bold tracking-kicker uppercase text-border-strong`}>

@@ -65,7 +65,7 @@ export function Inbox(props: InboxProps) {
                                 <Text class={`text-caption text-fg-muted shrink`}>
                                   {message().date}
                                 </Text>
-                                <Text class={`font-bold text-caption tabular-nums bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c] text-fg-subtle transition duration-317 tracking-label uppercase py-0 px-2 rounded-capsule group-data-unread/row:text-gold shrink`}>
+                                <Text class={`font-bold text-caption tabular-nums bg-raised-lo inset-ring-1 inset-ring-rim text-fg-subtle transition duration-317 tracking-label uppercase py-0 px-2 rounded-capsule group-data-unread/row:text-gold shrink`}>
                                   {message().unread ? t("meta.inbox.unread") : t("meta.inbox.read")}
                                 </Text>
                                 <Show when={message().hasAttachments}>
@@ -78,7 +78,7 @@ export function Inbox(props: InboxProps) {
                         )}
                       </For>
                     </Scroll>
-                    <View class="max-h-140 overflow-y-hidden bg-glass shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] py-3 px-4 rounded-card compact:max-h-none">
+                    <View class="max-h-140 overflow-y-hidden bg-glass inset-shadow-lit inset-ring-1 inset-ring-rim-soft py-3 px-4 rounded-card compact:max-h-none">
                       <Show when={!props.selected}>
                         <Text class={`text-caption text-fg-muted m-0`}>
                           {t("meta.inbox.select")}

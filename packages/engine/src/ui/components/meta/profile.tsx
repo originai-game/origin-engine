@@ -51,7 +51,7 @@ export function Profile(props: ProfileProps) {
                           <Avatar name={props.name || t("profile.player")} showName={false} portrait={props.portrait} level={props.level} status={props.status} />
                         </View>
                         <View class="grow shrink basis-0 items-start gap-1">
-                          <Text class={`font-display text-3xl font-bold leading-[1.05] tracking-sm uppercase text-fg max-w-full m-0 compact:text-xl`}>
+                          <Text class={`font-display text-3xl font-bold leading-flat tracking-sm uppercase text-fg max-w-full m-0 compact:text-xl`}>
                             {props.name || t("profile.player")}
                           </Text>
                           <Show when={props.handle}>
@@ -60,14 +60,14 @@ export function Profile(props: ProfileProps) {
                             </View>
                           </Show>
                           <Show when={props.rank}>
-                            <View class={`font-bold text-xs leading-[1.5] text-gold-fg max-w-full tracking-label uppercase bg-gold-hi nine-chip-cut py-0 px-1 ${packClass("Chip", "frame")}`}>
+                            <View class={`font-bold text-xs leading-normal text-gold-fg max-w-full tracking-label uppercase bg-gold-hi nine-chip-cut py-0 px-1 ${packClass("Chip", "frame")}`}>
                               <Text>{props.rank}</Text>
                             </View>
                           </Show>
                         </View>
                       </View>
                       <Show when={props.bio}>
-                        <Text class={`text-reading leading-[1.4] text-fg m-0`}>
+                        <Text class={`text-reading leading-normal text-fg m-0`}>
                           {props.bio}
                         </Text>
                       </Show>
@@ -84,7 +84,7 @@ export function Profile(props: ProfileProps) {
                                   <View class={`font-semibold text-xs leading-snug text-fg-muted tracking-label uppercase`}>
                                     <Text>{s().label}</Text>
                                   </View>
-                                  <View class={`text-fg leading-[1.05] font-bold compact:text-3xl`}>
+                                  <View class={`text-fg leading-flat font-bold compact:text-3xl`}>
                                     <Text class="tabular-nums">{s().value}</Text>
                                   </View>
                                   <Show when={s().detail}>

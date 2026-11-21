@@ -72,7 +72,7 @@ export function Shop(props: ShopProps) {
           <View class={`flex-row flex-wrap items-center justify-end max-w-full p-0 m-0 gap-1 compact:justify-start shrink`} label={t("general.shop.wallet")}>
             <For each={props.wallet}>
               {(w) => (
-              <View class={`flex-row items-center max-w-full pr-2 pl-1 bg-glass shadow-[inset_0px_0px_0px_1px_#4e586c] py-0.5 gap-1 rounded-capsule`} label={t("general.shop.amount", { amount: w().amount, currency: w().label })}>
+              <View class={`flex-row items-center max-w-full pr-2 pl-1 bg-glass inset-ring-1 inset-ring-rim py-0.5 gap-1 rounded-capsule`} label={t("general.shop.amount", { amount: w().amount, currency: w().label })}>
                 <Icon class="size-5" name={w().icon} />
                 <Text class={`tabular-nums text-fg whitespace-nowrap font-bold text-ellipsis overflow-hidden shrink`}>
                   {w().amount}
@@ -96,7 +96,7 @@ export function Shop(props: ShopProps) {
                       {formatNumber(c().count)}
                     </Text>
                   </Show>
-                  <Text class="absolute bottom-0 h-0.75 bg-hud-accent shadow-[0px_0px_11.424px_#38e8ff] opacity-0 inset-x-1 group-data-selected/tab:opacity-100" />
+                  <Text class="absolute bottom-0 h-0.75 bg-hud-accent shadow-glow opacity-0 inset-x-1 group-data-selected/tab:opacity-100" />
                 </View>
                 )}
               </For>
@@ -124,17 +124,17 @@ export function Shop(props: ShopProps) {
                                 <Icon class="size-4" name={o().icon} />
                               </View>
                               <Show when={o().featured}>
-                                <Text class={`absolute top-2 text-xs font-bold tracking-label uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
+                                <Text class={`absolute top-2 text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
                                   {t("general.shop.featured")}
                                 </Text>
                               </Show>
                               <Show when={o().badge}>
-                                <Text class={`font-bold text-xs leading-[1.2] tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                                <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                   {o().badge}
                                 </Text>
                               </Show>
                               <View class="w-full gap-0.5">
-                                <Text class={`text-fg text-start text-[1.214rem] font-bold leading-[1.2] m-0 group-data-refused/offer:text-fg-muted`}>
+                                <Text class={`text-fg text-start text-base font-bold leading-tight m-0 group-data-refused/offer:text-fg-muted`}>
                                   {o().name}
                                 </Text>
                                 <Show when={o().detail}>
@@ -191,17 +191,17 @@ export function Shop(props: ShopProps) {
                               <Icon class="size-4" name={o().icon} />
                             </View>
                             <Show when={o().featured}>
-                              <Text class={`absolute top-2 text-xs font-bold tracking-label uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
+                              <Text class={`absolute top-2 text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
                                 {t("general.shop.featured")}
                               </Text>
                             </Show>
                             <Show when={o().badge}>
-                              <Text class={`font-bold text-xs leading-[1.2] tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                              <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-boon-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                 {o().badge}
                               </Text>
                             </Show>
                             <View class="w-full gap-0.5">
-                              <Text class={`text-fg text-start text-[1.214rem] font-bold leading-[1.2] m-0`}>
+                              <Text class={`text-fg text-start text-base font-bold leading-tight m-0`}>
                                 {o().name}
                               </Text>
                               <Show when={o().detail}>
