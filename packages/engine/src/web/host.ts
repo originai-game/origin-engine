@@ -245,12 +245,10 @@ export interface WebExtras {
   og_web_frame_kind(engine: number, kind: "display" | "scripted" | "recorded"): void;
   /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */
   og_web_lose_device?(engine: number): boolean;
-  /** Fork s60: `span(on)` around the renderer's frame pipelines (og-render set_frame_pipelines_hook), which pipelines.ts makes asynchronously. */
-  og_web_frame_pipelines?(span: ((on: boolean) => void) | null): void;
-  /** `make(on)` around each frame, the tickets handed out, a ticket's readiness and whether any compiles (pipelines.ts makeSpan, ticketCount, ready, anyCompiling; og-render gpu/ready.rs). */
-  og_web_make_pipelines?(make: ((on: boolean) => void) | null, count: (() => number) | null, ready: ((ticket: number) => boolean) | null, compiling: (() => boolean) | null): void;
-  /** Whether the last frame left work whose pipelines still compile for a later one (og-render gpu/ready.rs). */
-  og_web_pipelines_held?(): boolean;
+  /** og-render's pipeline cache's compiler (pipelines.ts `asking`, `count`, `made`, `isCompiled`, `finish`; og-render gpu/deferred.rs). */
+  og_web_pipeline_compiler(asking: (on: boolean) => void, count: () => number, made: () => number, compiled: (n: number) => boolean, finish: (n: number) => void): void;
+  /** The draws the last frame skipped and the work it left for a later frame, each for a pipeline not ready (og-render `frame_skipped`). */
+  og_web_frame_skipped(): number;
   /** Fork s63: the texture bytes a frame uploads at most (0: no limit). */
   og_web_upload_budget?(bytes: number): void;
   /** Fork s63: the textures still drawn from their stand-ins after the last frame. */

@@ -248,8 +248,8 @@ export class ProbeRequests {
     if (!engine) return this.refuse(frame, "the engine has not started", viaRing);
     let out: string;
     try {
-      // Fork s60: a probe call that renders (capture, sweep) draws its frame whole, never one with draws skipped.
-      out = pipelines.drawnWhole(() => engine.call(frame));
+      // A probe call that renders (capture, sweep) waits for the pipelines it meets (og-render gpu/deferred.rs).
+      out = engine.call(frame);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       this.refuse(frame, message, viaRing);
@@ -268,7 +268,7 @@ export class ProbeRequests {
     if (!engine) return;
     for (let i = this.#retries.length - 1; i >= 0; i--) {
       const r = this.#retries[i]!;
-      const out = pipelines.drawnWhole(() => engine.call(r.frame));
+      const out = engine.call(r.frame);
       if (!isPendingCapture(r.frame, out) || performance.now() >= r.until) {
         this.#retries.splice(i, 1);
         this.#answer(out, r.viaRing);

@@ -540,11 +540,15 @@ impl Light2dRenderer {
         if self.count == 0 {
             return;
         }
-        pass.set_pipeline(if dir.is_some() {
+        let Some(pipeline) = (if dir.is_some() {
             &self.pipeline_dir
         } else {
             &self.pipeline
-        });
+        })
+        .get() else {
+            return;
+        };
+        pass.set_pipeline(pipeline);
         pass.set_bind_group(0, group, &[]);
         pass.set_vertex_buffer(0, self.instances.slice(..));
         let strips = self.ranges.len().max(1) as u32;
@@ -798,7 +802,10 @@ impl Shadows {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(&self.pipeline);
+        let Some(pipeline) = self.pipeline.get() else {
+            return;
+        };
+        pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &self.group, &[]);
         pass.set_viewport(0.0, 0.0, self.map.0 as f32, self.rows as f32, 0.0, 1.0);
         pass.draw(0..3, 0..1);

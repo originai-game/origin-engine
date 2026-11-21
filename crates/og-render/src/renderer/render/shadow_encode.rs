@@ -85,8 +85,10 @@ impl DrawCtx<'_> {
             // Skinned casters: those GPU culling's pass for the layer
             // kept (its counts hold them), unculled on the CPU path.
             let g = lists[0].indirect.or(lists[1].indirect);
-            let pipelines: Vec<&wgpu::RenderPipeline> =
-                shadow_skinned.iter().map(|s| s.get(shadow)).collect();
+            let pipelines: Vec<Option<&wgpu::RenderPipeline>> = shadow_skinned
+                .iter()
+                .map(|s| s.map(|s| s.get(shadow)))
+                .collect();
             let n = self.draw_skinned(
                 pass,
                 skinned_batches,

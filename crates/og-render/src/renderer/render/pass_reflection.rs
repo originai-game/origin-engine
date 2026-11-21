@@ -21,7 +21,7 @@ pub(super) struct ReflectionPlan<'f> {
     pub(super) reflection_fx_lean: &'f [Option<wgpu::BindGroup>],
     pub(super) reflection_list: &'f [DrawList],
     pub(super) skinned_visible: &'f [Batch],
-    pub(super) lit_skinned_standard: &'f [&'f wgpu::RenderPipeline],
+    pub(super) lit_skinned_standard: &'f [Option<&'f wgpu::RenderPipeline>],
     pub(super) terrain_indices: Option<&'f wgpu::Buffer>,
     #[allow(clippy::type_complexity)]
     pub(super) reflections: &'f [(usize, Camera, frame::CameraFrame, Mat4, (u32, u32))],
@@ -187,8 +187,8 @@ impl Renderer {
             stats.reflection_draws += n;
         }
         let sky = match scene.lighting.environment.background {
-            Background::Sky => Some(&self.sky.sky_pipeline),
-            Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
+            Background::Sky => self.sky.sky_pipeline.get(),
+            Background::Procedural { .. } => self.sky.sky_look_pipeline.get(),
             Background::Color(_) => None,
         };
         if let Some(sky) = sky {
@@ -247,7 +247,7 @@ pub(super) struct ReflectionBindIn<'f> {
     pub reflections: &'f [camera::PlanarReflection],
     pub batches: &'f [Batch],
     pub skinned_visible: &'f [Batch],
-    pub lit_skinned_standard: &'f [&'f wgpu::RenderPipeline],
+    pub lit_skinned_standard: &'f [Option<&'f wgpu::RenderPipeline>],
     pub terrain_draws: &'f [terrain::TerrainDraw],
     pub scatter_batches: &'f scatter::ScatterBatches,
     pub grass_frame: &'f grass::GrassFrame,

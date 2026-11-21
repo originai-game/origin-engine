@@ -262,7 +262,7 @@ impl GroundCatcher {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(self.bake.get());
+        pass.set_pipeline(self.bake.wait());
         pass.set_bind_group(0, &m.bake_group, &[]);
         pass.draw(0..3, 0..1);
     }

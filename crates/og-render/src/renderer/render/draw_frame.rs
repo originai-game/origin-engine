@@ -15,9 +15,11 @@ impl Renderer {
         if let Some(stale) = scene.stale_handle() {
             return Err(RenderError::InvalidHandle(stale));
         }
-        // Every pipeline this frame makes is asked of the web host
-        // asynchronously (gpu/ready.rs).
-        let _make = crate::gpu::ready::MakeSpan::open();
+        // A display frame draws without what still compiles; every other
+        // frame, a capture's among them, waits for it (gpu/deferred.rs).
+        let _policy = crate::deferred::FramePolicy::open(
+            !scene.frame.display || self.capturing || self.uploads_whole,
+        );
         // Where the call's time goes, with a clock (frame_stages.rs).
         let mut stages = Stages::start(self.clock);
         // What this frame waits for compiles (FrameStats::compile_wait_us).
@@ -309,14 +311,12 @@ impl Renderer {
                 self.cache.sprite_groups[i] = None;
             }
         }
-        frame_pipelines(|| {
-            self.particles.gpu.ensure_pipelines(
-                &self.device,
-                &particle_frame,
-                self.samples,
-                scene.shaders(),
-            )
-        });
+        self.particles.gpu.ensure_pipelines(
+            &self.device,
+            &particle_frame,
+            self.samples,
+            scene.shaders(),
+        );
         let fonts = &self.cache.fonts;
         let arrays = &self.cache.texture_arrays;
         let array_layers = |a: TextureArrayHandle| {

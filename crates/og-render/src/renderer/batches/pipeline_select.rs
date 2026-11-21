@@ -30,27 +30,26 @@ impl Renderer {
         b: &Batch,
         skinned: bool,
         physical: bool,
-    ) -> &wgpu::RenderPipeline {
+    ) -> Option<&wgpu::RenderPipeline> {
         if b.lean && !skinned {
             return self.lit.lean_pipelines[&(b.faces, b.effects, b.derivatives, b.compact)]
                 .get(self.frame_features);
         }
         let key = (b.faces, b.blend, skinned, b.effects);
         if b.array && !physical {
-            return &self.lit.array_maps.as_ref().expect("an array batch").lit[&key];
+            return self.lit.array_maps.as_ref().expect("an array batch").lit[&key].get();
         }
         match (physical, b.shader) {
-            (true, None) => {
-                &self
-                    .lit
-                    .physical
-                    .as_ref()
-                    .expect("a physical batch")
-                    .pipelines[&key]
-            }
-            (true, Some(sh)) => &self.cache.physical_hook_pipelines[&(sh, key)],
+            (true, None) => self
+                .lit
+                .physical
+                .as_ref()
+                .expect("a physical batch")
+                .pipelines[&key]
+                .get(),
+            (true, Some(sh)) => self.cache.physical_hook_pipelines[&(sh, key)].get(),
             (false, Some(sh)) => {
-                &self.cache.hook_pipelines[&(sh, b.faces, b.blend, b.effects, skinned)]
+                self.cache.hook_pipelines[&(sh, b.faces, b.blend, b.effects, skinned)].get()
             }
             (false, None) => self.lit.pbr_pipelines[&key].get(self.frame_features),
         }
@@ -69,21 +68,21 @@ impl Renderer {
                 .cache
                 .surface_prepass_pipelines
                 .get(&(b.shader, b.faces, b.array))
-                .map(|p| p.get());
+                .and_then(|p| p.get());
         }
         if let Some(sh) = b.shader {
             return self
                 .cache
                 .hook_prepass_pipelines
                 .get(&(sh, b.faces, skinned))
-                .map(|p| p.get());
+                .and_then(|p| p.get());
         }
         if b.lean && !skinned {
             return self
                 .prepass
                 .lean_prepass_pipelines
                 .get(&(b.faces, b.derivatives, b.compact))
-                .map(|p| p.get(self.frame_features));
+                .and_then(|p| p.get(self.frame_features));
         }
         if b.array {
             return self
@@ -91,12 +90,12 @@ impl Renderer {
                 .array_maps
                 .as_ref()
                 .and_then(|a| a.prepass.get(&(b.faces, skinned)))
-                .map(|p| p.get());
+                .and_then(|p| p.get());
         }
         self.prepass
             .prepass_pipelines
             .get(&(b.faces, skinned))
-            .map(|p| p.get(self.frame_features))
+            .and_then(|p| p.get(self.frame_features))
     }
 
     /// Makes the lit, shadow and prepass pipelines this frame's batches
@@ -104,29 +103,26 @@ impl Renderer {
     /// where the renderer draws local lights' shadows
     /// ([`RenderInfo::shadowed_lights`]), its local layers', since any light
     /// may start casting on a later frame (shadow_target.rs).
-    /// Fork s60: asynchronous on the WebGPU tier while the host asks for it.
     pub(crate) fn ensure_pipelines(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
-        frame_pipelines(|| self.ensure_pipelines_now(batches, skinned, prepass));
+        self.ensure_pipelines_now(batches, skinned, prepass);
     }
 
     /// Starts the pipelines of `ahead` (the batches of instances not drawn
     /// yet, [`Renderer::ahead_batches`]) as a frame's own are started, and
     /// waits for none: natively they compile on the compile workers while
     /// the frames go on, and [`Renderer::pipelines_compiling`] says when
-    /// they are made. On the web they are made here, inside the host's
-    /// frame span, as a drawn batch's are.
+    /// they are made, on every host.
     pub(crate) fn ensure_ahead(&mut self, ahead: &[Batch], prepass: bool) {
         self.instances.ahead = !ahead.is_empty();
         if !ahead.is_empty() {
-            frame_pipelines(|| self.ensure_pipelines_now(ahead, &[], prepass));
+            self.ensure_pipelines_now(ahead, &[], prepass);
         }
     }
 
     /// Whether a batch pipeline started for this frame's features is not
     /// made yet, without waiting for any. A pass waits for the pipeline of
     /// a batch it draws, so at the end of a frame only those made ahead
-    /// ([`Renderer::ensure_ahead`]) can still compile. Never on the web,
-    /// where the browser compiles them.
+    /// ([`Renderer::ensure_ahead`]) can still compile.
     pub(crate) fn pipelines_compiling(&self) -> bool {
         let f = self.frame_features;
         let varying = self
@@ -149,12 +145,12 @@ impl Renderer {
                     .flat_map(|a| a.lit.values().chain(a.prepass.values())),
             )
             .chain(physical.flat_map(|p| p.pipelines.values()))
-            .any(|p| p.ready().is_none());
+            .any(|p| p.poll().is_none());
         let shadows = (self.shadows.shadow_pipelines.values())
             .chain(self.shadows.compact_shadow_pipelines.values())
             .chain(self.cache.hook_shadow_pipelines.values())
             .chain(array.flat_map(|a| a.shadow.values()))
-            .any(|s| s.ready().is_none());
+            .any(|s| s.poll().is_none());
         varying || once || shadows
     }
 
@@ -177,9 +173,8 @@ impl Renderer {
                     continue;
                 }
             };
-            // Natively each compiles on the compile workers (deferred.rs)
-            // and the pass that first sets it waits for it; on the web it
-            // is made here, inside the host's frame span.
+            // Each is asked for here, ahead of the pass that first sets it
+            // (gpu/deferred.rs).
             if let Slot::ArrayShadow(_)
             | Slot::HookShadow(_)
             | Slot::CompactShadow(_)

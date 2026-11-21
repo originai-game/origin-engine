@@ -225,10 +225,10 @@ impl SkyCapture {
         self.next.set(None);
     }
 
-    /// Whether its pipeline and `ibl`'s filter's are compiled on the web
-    /// host: until they are, the live sky records no step (gpu/ready.rs).
-    pub fn compiled(&self, ibl: &IblGenerator) -> bool {
-        self.pipeline.compiled() & ibl.compiled()
+    /// Whether its pipeline and `ibl`'s filter's are ready: until they
+    /// are, the live sky records no step (gpu/deferred.rs).
+    pub fn ready(&self, ibl: &IblGenerator) -> bool {
+        self.pipeline.ready().is_some() & ibl.ready()
     }
 
     /// This frame's step.
@@ -296,7 +296,7 @@ impl SkyCapture {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_pipeline(self.pipeline.get());
+            pass.set_pipeline(self.pipeline.wait());
             pass.set_bind_group(0, &group, &[]);
             pass.set_bind_group(1, sky_group, &[]);
             pass.draw(0..3, 0..1);

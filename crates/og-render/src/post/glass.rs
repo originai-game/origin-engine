@@ -416,7 +416,7 @@ impl GlassPasses {
             "glass blit",
             output,
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-            &self.blit,
+            self.blit.get(),
             &targets.blit_group,
         );
         1
@@ -444,7 +444,7 @@ impl GlassPasses {
             "color filter",
             output,
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-            &self.filter,
+            self.filter.get(),
             &targets.filter_group,
         );
         1
@@ -476,7 +476,7 @@ impl GlassPasses {
                 "glass down",
                 view,
                 wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                &self.down,
+                self.down.get(),
                 &targets.down_groups[k],
             );
         }

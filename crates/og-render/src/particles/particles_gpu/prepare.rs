@@ -833,7 +833,7 @@ impl ParticleRenderer {
             label: Some("particle sprites"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.sprites_pipeline);
+        pass.set_pipeline(self.sprites_pipeline.wait());
         for (k, r) in ranges.ranges.iter().enumerate() {
             let s = &frame.sprite_systems[r.system];
             let Some(g) = self.systems.get(&s.id).and_then(|st| st.gpu.as_ref()) else {

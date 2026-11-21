@@ -57,7 +57,7 @@ impl Exposure {
                 "meter",
                 cx.graph.view("luminance.0"),
                 CLEAR,
-                &passes.meter,
+                passes.meter.get(),
                 &self.meter.as_ref().expect("metering bound")[cx.slot],
             ),
             FramePass::Reduce(i) => fullscreen_pass(
@@ -65,7 +65,7 @@ impl Exposure {
                 "meter reduce",
                 cx.graph.view(&luminance_name(i + 1)),
                 CLEAR,
-                &passes.reduce,
+                passes.reduce.get(),
                 &self.reduce[i as usize],
             ),
             FramePass::Adapt => fullscreen_pass(
@@ -73,7 +73,7 @@ impl Exposure {
                 "exposure adapt",
                 &passes.exposure.views[cx.slot],
                 CLEAR,
-                &passes.adapt,
+                passes.adapt.get(),
                 &self.adapt.as_ref().expect("adaptation bound")[cx.slot],
             ),
             _ => return None,

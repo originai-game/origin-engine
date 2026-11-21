@@ -46,42 +46,25 @@ fn displaced_levels_leave_no_cracks() {
     }
 }
 
-thread_local! {
-    static TICKETS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
-    static COMPILED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
-/// A web host whose compute pipelines arrive late (og-render gpu/ready.rs):
-/// while the pipeline that fills the terrain's corner cache (before the
-/// frame's passes, outside its spans) still compiles, the terrain is left
-/// out and the frame held for the play gate; once it is made the ground is
-/// drawn whole and nothing is held. Fails if a pass drew the levels from a
-/// cache nothing filled (stray or collapsed triangles over the
-/// background), if the terrain stayed out once its pipeline was made, or
-/// if the frame drawn without it were not held.
+/// A display frame draws without a pipeline that is not ready
+/// (og-render gpu/deferred.rs): while the pipeline that fills the
+/// terrain's corner cache (before the frame's passes) is not ready, the
+/// terrain is left out and the frame says so; a frame that waits draws the
+/// ground whole. Fails if a pass drew the levels from a cache nothing
+/// filled (stray or collapsed triangles over the background), if a frame
+/// drawn without the terrain did not count it, or if a frame that waits
+/// left it out.
 #[test]
 #[ignore = "requires GPU"]
-fn a_terrain_whose_corner_pipeline_arrives_late_is_drawn_once_it_does() {
-    // Every pipeline made is a ticket of its own, compiled once COMPILED.
-    fn count() -> u32 {
-        TICKETS.with(|t| {
-            t.set(t.get() + 1);
-            t.get()
-        })
-    }
-    fn ready(_: u32) -> bool {
-        COMPILED.with(|c| c.get())
-    }
-    fn compiling() -> bool {
-        !COMPILED.with(|c| c.get())
-    }
+fn a_terrain_whose_corner_pipeline_is_not_ready_is_left_out_whole() {
     let mut scene = on_magenta(ts::displaced_scene(ts::DISPLACED_RELIEF));
     let z = ts::DISPLACED_CREST + 1.0;
     scene.frame.camera.position = Vec3::new(0.0, ts::displaced_height(z) + 2.0, z);
     scene.frame.camera.target = Vec3::new(0.3, ts::displaced_height(z - 1.0), z - 1.0);
     let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
-    // The background pixels, and whether the frame left work for a later one.
-    let mut draw = || {
+    // The background pixels, what the frame left for a later one, and all.
+    let mut draw = |display: bool| {
+        scene.frame.display = display;
         renderer
             .render(&scene, &RenderTarget::Offscreen)
             .expect("render");
@@ -92,30 +75,24 @@ fn a_terrain_whose_corner_pipeline_arrives_late_is_drawn_once_it_does() {
             .count();
         (
             background,
-            og_render::pipelines_held(),
-            img.width * img.height,
+            og_render::frame_skipped(),
+            (img.width * img.height) as usize,
         )
     };
-    og_render::set_pipeline_hooks(None, Some((count, ready, compiling)));
-    let waiting = draw();
-    COMPILED.with(|c| c.set(true));
-    let arrived = draw();
-    og_render::set_pipeline_hooks(None, None);
-    let at_once = draw();
-    println!(
-        "background, held: waiting {waiting:?}, arrived {arrived:?}, made at once {at_once:?}"
+    // The first frame's corner pipeline compiles on a worker meanwhile: it
+    // is either ready in time or left out whole, never half drawn.
+    let display = draw(true);
+    let waited = draw(false);
+    println!("background, skipped: display {display:?}, waited {waited:?}");
+    assert!(
+        (display.0 == 0 && display.1 == 0) || (display.0 == display.2 && display.1 > 0),
+        "a display frame drew the terrain partly, or left it out unsaid: {display:?}"
     );
     assert_eq!(
-        (waiting.0, waiting.1),
-        (waiting.2 as usize, true),
-        "the terrain drawn (or the frame not held) while its corner pipeline compiles"
+        (waited.0, waited.1),
+        (0, 0),
+        "the ground in a frame that waits"
     );
-    assert_eq!(
-        (arrived.0, arrived.1),
-        (0, false),
-        "the ground once its pipeline arrived"
-    );
-    assert_eq!(at_once.0, 0, "the ground with pipelines made at once");
 }
 
 /// Each sett its own stone: the layer's `cellVariation` gives each cell its

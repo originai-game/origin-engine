@@ -241,97 +241,115 @@ impl GrassRenderer {
         }
     }
 
-    pub(super) fn make_pipelines(&self, device: &wgpu::Device) -> [wgpu::RenderPipeline; 3] {
-        let module = |label, src: String| {
-            device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(src.into()),
-            })
-        };
-        let lit_module = module("grass", self.off.leave_out(lit_source()));
-        let shadow_module = module("grass shadow", shadow_source());
-        let lit = crate::hdr_pipeline(
-            device,
-            crate::HdrPipeline {
-                alpha_to_coverage: false,
-                label: "grass",
-                layout: &self.lit_layout,
-                module: &lit_module,
-                vs: "vs",
-                fs: "fs",
-                buffers: &[],
-                cull: None,
-                depth_write: true,
-                depth_compare: crate::LIT_DEPTH_COMPARE,
-                blend: None,
-                samples: self.samples,
-            },
+    /// The lit, prepass and shadow pipelines, asked for when a field is in
+    /// the scene (gpu/deferred.rs).
+    pub(super) fn make_pipelines(
+        &self,
+        device: &wgpu::Device,
+    ) -> crate::deferred::Deferred<[wgpu::RenderPipeline; 3]> {
+        let device = device.clone();
+        let (off, samples) = (self.off, self.samples);
+        let (lit_layout, prepass_layout, shadow_layout) = (
+            self.lit_layout.clone(),
+            self.prepass_layout.clone(),
+            self.shadow_layout.clone(),
         );
-        let depth = Some(wgpu::DepthStencilState {
-            format: crate::DEPTH_FORMAT,
-            depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
-            stencil: Default::default(),
-            bias: Default::default(),
-        });
-        let target = |format| {
-            Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })
-        };
-        let raster = |label, layout, module, vs, fs, targets: &[Option<wgpu::ColorTargetState>]| {
-            crate::traffic::create_render_pipeline(
-                device,
-                &wgpu::RenderPipelineDescriptor {
+        let pipelines = crate::deferred::Deferred::anywhere(move || {
+            let device = &device;
+            let module = |label, src: String| {
+                device.create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some(label),
-                    layout: Some(layout),
-                    vertex: wgpu::VertexState {
-                        module,
-                        entry_point: Some(vs),
-                        compilation_options: Default::default(),
-                        buffers: &[],
-                    },
-                    primitive: Default::default(),
-                    depth_stencil: depth.clone(),
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module,
-                        entry_point: Some(fs),
-                        compilation_options: Default::default(),
-                        targets,
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(device).as_ref(),
+                    source: wgpu::ShaderSource::Wgsl(src.into()),
+                })
+            };
+            let lit_module = module("grass", off.leave_out(lit_source()));
+            let shadow_module = module("grass shadow", shadow_source());
+            let lit = crate::hdr_pipeline(
+                device,
+                crate::HdrPipeline {
+                    alpha_to_coverage: false,
+                    label: "grass",
+                    layout: &lit_layout,
+                    module: &lit_module,
+                    vs: "vs",
+                    fs: "fs",
+                    buffers: &[],
+                    cull: None,
+                    depth_write: true,
+                    depth_compare: crate::LIT_DEPTH_COMPARE,
+                    blend: None,
+                    samples,
                 },
-            )
-        };
-        let prepass = raster(
-            "grass prepass",
-            &self.prepass_layout,
-            &lit_module,
-            "vs_prepass",
-            "fs_prepass",
-            &[
-                target(crate::post::GBUFFER_FORMAT),
-                target(crate::post::LINDEPTH_FORMAT),
-                target(crate::post::OUTLINE_FORMAT),
-            ],
-        );
-        let shadow = raster(
-            "grass shadow",
-            &self.shadow_layout,
-            &shadow_module,
-            "vs_shadow",
-            "fs_shadow",
-            &[Some(wgpu::ColorTargetState {
-                format: wgpu::TextureFormat::R32Float,
-                blend: None,
-                write_mask: wgpu::ColorWrites::RED,
-            })],
-        );
-        [lit, prepass, shadow]
+            );
+            let depth = Some(wgpu::DepthStencilState {
+                format: crate::DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: Default::default(),
+                bias: Default::default(),
+            });
+            let target = |format| {
+                Some(wgpu::ColorTargetState {
+                    format,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })
+            };
+            let raster =
+                |label, layout, module, vs, fs, targets: &[Option<wgpu::ColorTargetState>]| {
+                    crate::traffic::create_render_pipeline(
+                        device,
+                        &wgpu::RenderPipelineDescriptor {
+                            label: Some(label),
+                            layout: Some(layout),
+                            vertex: wgpu::VertexState {
+                                module,
+                                entry_point: Some(vs),
+                                compilation_options: Default::default(),
+                                buffers: &[],
+                            },
+                            primitive: Default::default(),
+                            depth_stencil: depth.clone(),
+                            multisample: Default::default(),
+                            fragment: Some(wgpu::FragmentState {
+                                module,
+                                entry_point: Some(fs),
+                                compilation_options: Default::default(),
+                                targets,
+                            }),
+                            multiview_mask: None,
+                            cache: crate::pipeline_cache::of(device).as_ref(),
+                        },
+                    )
+                };
+            let prepass = raster(
+                "grass prepass",
+                &prepass_layout,
+                &lit_module,
+                "vs_prepass",
+                "fs_prepass",
+                &[
+                    target(crate::post::GBUFFER_FORMAT),
+                    target(crate::post::LINDEPTH_FORMAT),
+                    target(crate::post::OUTLINE_FORMAT),
+                ],
+            );
+            let shadow = raster(
+                "grass shadow",
+                &shadow_layout,
+                &shadow_module,
+                "vs_shadow",
+                "fs_shadow",
+                &[Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::R32Float,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::RED,
+                })],
+            );
+            [lit, prepass, shadow]
+        });
+        crate::deferred::Start::start(&pipelines);
+        pipelines
     }
 
     pub(super) fn make_generate(
@@ -339,7 +357,7 @@ impl GrassRenderer {
         device: &wgpu::Device,
         terrain_layout: &wgpu::BindGroupLayout,
         arrayed: bool,
-    ) -> ([wgpu::ComputePipeline; 3], crate::gpu::ready::Tickets) {
+    ) -> crate::deferred::Deferred<[wgpu::ComputePipeline; 3]> {
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("grass generate"),
             source: wgpu::ShaderSource::Wgsl(generate_source(arrayed).into()),
@@ -353,7 +371,9 @@ impl GrassRenderer {
             ],
             immediate_size: 0,
         });
-        crate::gpu::ready::Tickets::during(|| {
+        let device = device.clone();
+        let generate = crate::deferred::Deferred::anywhere(move || {
+            let device = &device;
             ["evaluate", "scan", "compact"].map(|entry| {
                 crate::traffic::create_compute_pipeline(
                     device,
@@ -367,6 +387,8 @@ impl GrassRenderer {
                     },
                 )
             })
-        })
+        });
+        crate::deferred::Start::start(&generate);
+        generate
     }
 }

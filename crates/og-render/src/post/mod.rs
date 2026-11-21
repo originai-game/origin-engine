@@ -394,7 +394,7 @@ pub(crate) fn fullscreen_pass(
     label: &str,
     target: &wgpu::TextureView,
     load: wgpu::LoadOp<wgpu::Color>,
-    pipeline: &wgpu::RenderPipeline,
+    pipeline: Option<&wgpu::RenderPipeline>,
     bind_group: &wgpu::BindGroup,
 ) {
     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -413,6 +413,9 @@ pub(crate) fn fullscreen_pass(
         occlusion_query_set: None,
         multiview_mask: None,
     });
+    // A pipeline not ready (a display frame, gpu/deferred.rs): the target
+    // is only loaded or cleared.
+    let Some(pipeline) = pipeline else { return };
     pass.set_pipeline(pipeline);
     pass.set_bind_group(0, bind_group, &[]);
     pass.draw(0..3, 0..1);

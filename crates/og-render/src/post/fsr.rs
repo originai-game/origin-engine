@@ -813,7 +813,7 @@ impl FsrPasses {
             timestamp_writes: None,
         });
         for ((p, g), (x, y)) in self.passes.iter().zip(&r.groups).zip(dispatches) {
-            pass.set_pipeline(p.pipeline.get());
+            pass.set_pipeline(p.pipeline.wait());
             pass.set_bind_group(0, g, &[]);
             pass.dispatch_workgroups(x, y, 1);
         }
@@ -833,7 +833,7 @@ impl FsrPasses {
             label: Some("fsr rcas"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(self.rcas.pipeline.get());
+        pass.set_pipeline(self.rcas.pipeline.wait());
         pass.set_bind_group(0, g, &[]);
         pass.dispatch_workgroups(r.upscale.0.div_ceil(8), r.upscale.1.div_ceil(8), 1);
         1

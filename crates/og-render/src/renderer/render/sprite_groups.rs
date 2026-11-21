@@ -93,51 +93,45 @@ impl Renderer {
         if let Some(draws) = &gpu_sprites.tiles
             && (!draws.is_empty() || self.sprite.tiles_gpu.is_some())
         {
-            // Fork s60: the tile chunks' pipelines are drawn by the main pass.
-            frame_pipelines(|| {
-                let tiles = self.sprite.tiles_gpu.get_or_insert_with(|| {
-                    tiles_gpu::Tiles::new(
-                        &self.device,
-                        [
-                            &self.frame_layout,
-                            &self.sprite.sprite_layout,
-                            &self.sprite.sprite_fx_layout,
-                        ],
-                        self.samples,
-                        self.info.without.features(),
-                    )
-                });
-                tiles.prepare(
+            let tiles = self.sprite.tiles_gpu.get_or_insert_with(|| {
+                tiles_gpu::Tiles::new(
                     &self.device,
-                    &self.queue,
-                    scene,
-                    draws,
-                    self.sprite
-                        .sprite_normals
-                        .as_ref()
-                        .map(|n| [&self.frame_layout, &n.layout, &self.sprite.sprite_fx_layout]),
+                    [
+                        &self.frame_layout,
+                        &self.sprite.sprite_layout,
+                        &self.sprite.sprite_fx_layout,
+                    ],
                     self.samples,
-                );
+                    self.info.without.features(),
+                )
             });
+            tiles.prepare(
+                &self.device,
+                &self.queue,
+                scene,
+                draws,
+                self.sprite
+                    .sprite_normals
+                    .as_ref()
+                    .map(|n| [&self.frame_layout, &n.layout, &self.sprite.sprite_fx_layout]),
+                self.samples,
+            );
         }
         // The sprite meshes' corners (sprite_mesh.rs), lit as their layers' sprites.
         if !scene.sprite.sprite_meshes.is_empty() {
             let corners = sprite_mesh::vertices(scene, lit, self.sprite.sprite_skin_supported);
             let meshes = self.sprite.sprite_meshes.get_or_insert_with(|| {
-                // Fork s60: drawn by the main pass, as the tiles are.
-                frame_pipelines(|| {
-                    sprite_mesh::SpriteMeshRenderer::new(
-                        &self.device,
-                        [
-                            &self.frame_layout,
-                            &self.sprite.sprite_layout,
-                            &self.sprite.sprite_fx_layout,
-                        ],
-                        self.samples,
-                        self.sprite.sprite_skin_supported,
-                        self.info.without.features(),
-                    )
-                })
+                sprite_mesh::SpriteMeshRenderer::new(
+                    &self.device,
+                    [
+                        &self.frame_layout,
+                        &self.sprite.sprite_layout,
+                        &self.sprite.sprite_fx_layout,
+                    ],
+                    self.samples,
+                    self.sprite.sprite_skin_supported,
+                    self.info.without.features(),
+                )
             });
             if let Some(skin) = &mut meshes.skin {
                 skin.prepare(

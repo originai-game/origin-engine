@@ -8,7 +8,6 @@ impl MeshletGpu {
         max_binding: u64,
         wind_field: wgpu::TextureView,
     ) -> MeshletGpu {
-        let tickets = crate::gpu::ready::Tickets::from_here();
         let c = wgpu::ShaderStages::COMPUTE;
         let cull_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("meshlet cull"),
@@ -87,17 +86,21 @@ impl MeshletGpu {
             bind_group_layouts: &[Some(&cull_layout)],
             immediate_size: 0,
         });
-        let cull = crate::traffic::create_compute_pipeline(
-            device,
-            &wgpu::ComputePipelineDescriptor {
-                label: Some("meshlet cull"),
-                layout: Some(&layout),
-                module: &module,
-                entry_point: Some("cull_clusters"),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            },
-        );
+        let (d, m) = (device.clone(), module.clone());
+        let cull = crate::deferred::Deferred::anywhere(move || {
+            crate::traffic::create_compute_pipeline(
+                &d,
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("meshlet cull"),
+                    layout: Some(&layout),
+                    module: &m,
+                    entry_point: Some("cull_clusters"),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(&d).as_ref(),
+                },
+            )
+        });
+        crate::deferred::Start::start(&cull);
         let no_pyramid = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("meshlet: no depth pyramid"),
@@ -148,7 +151,6 @@ impl MeshletGpu {
         });
         let compact = compact::Compact::new(device);
         MeshletGpu {
-            tickets: tickets.to_here(),
             cull_layout,
             cull,
             compact,

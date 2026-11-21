@@ -53,7 +53,7 @@ impl Bloom {
                 "bloom prefilter",
                 cx.graph.view("bloom.0"),
                 CLEAR,
-                &passes.prefilter,
+                passes.prefilter.get(),
                 &self.prefilter.as_ref().expect("bloom bound")[cx.slot],
             ),
             FramePass::BloomDown(i) => fullscreen_pass(
@@ -61,7 +61,7 @@ impl Bloom {
                 "bloom down",
                 cx.graph.view(&bloom_name(i + 1)),
                 CLEAR,
-                &passes.down,
+                passes.down.get(),
                 &self.down[i as usize],
             ),
             FramePass::BloomUp(i) => fullscreen_pass(
@@ -69,7 +69,7 @@ impl Bloom {
                 "bloom up",
                 cx.graph.view(&bloom_name(i)),
                 wgpu::LoadOp::Load,
-                &passes.up,
+                passes.up.get(),
                 &self.up[i as usize],
             ),
             _ => return None,

@@ -20,10 +20,10 @@ impl MeshletGpu {
         Some(items.div_ceil(ITEM_ALIGN) as u64 * ITEM_ALIGN as u64)
     }
 
-    /// Whether the web host has compiled its cull's pipelines
-    /// (gpu/ready.rs).
-    pub(crate) fn compiled(&self) -> bool {
-        self.tickets.ready()
+    /// Whether its cull's pipelines are ready (asked for when not yet:
+    /// gpu/deferred.rs).
+    pub(crate) fn ready(&self) -> bool {
+        self.cull.ready().is_some() & self.compact.pipelines.ready().is_some()
     }
 
     /// The most work items one frame's dispatch may write (the device's
@@ -314,7 +314,7 @@ impl MeshletGpu {
         }
         let cull_group = &self.cull_group.as_ref().expect("made above").3;
         let dispatch = |pass: &mut wgpu::ComputePass<'_>, slot: u64| {
-            pass.set_pipeline(&self.cull);
+            pass.set_pipeline(self.cull.wait());
             pass.set_bind_group(0, cull_group, &[slot as u32]);
             pass.dispatch_workgroups(
                 workgroups.min(WORKGROUPS_PER_ROW),

@@ -18,7 +18,9 @@ impl GrassRenderer {
             timestamp_writes: None,
         });
         for field in &frame.fields {
-            let Some(([evaluate, scan, compact], _)) = &self.generate[usize::from(field.arrayed)]
+            let Some([evaluate, scan, compact]) = self.generate[usize::from(field.arrayed)]
+                .as_ref()
+                .map(|g| g.wait())
             else {
                 continue;
             };
@@ -48,7 +50,7 @@ impl GrassRenderer {
         fx: Option<&wgpu::BindGroup>,
         reach: f32,
     ) -> u32 {
-        let Some(pipelines) = &self.pipelines else {
+        let Some(pipelines) = self.pipelines.as_ref().and_then(|p| p.get()) else {
             return 0;
         };
         let mut draws = 0;

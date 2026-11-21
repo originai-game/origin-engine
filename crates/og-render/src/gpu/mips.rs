@@ -177,7 +177,7 @@ impl MipGenerator {
 
     /// Records passes filling levels 1.. of `chain`'s texture from level 0.
     pub(crate) fn record_chain(&self, encoder: &mut crate::Encoder, chain: &MipChain) {
-        let pipeline = self.pipelines[&chain.format].get();
+        let pipeline = self.pipelines[&chain.format].wait();
         for (target, bind_group) in chain.levels.iter().skip(1).zip(&chain.groups) {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("mipmap"),

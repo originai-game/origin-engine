@@ -834,9 +834,13 @@ impl LineRenderer {
                     _ => ranges.push((first, count)),
                 }
             }
-            if !ranges.is_empty() {
-                pass.set_pipeline(pipeline);
+            if ranges.is_empty() {
+                continue;
             }
+            let Some(pipeline) = pipeline.get() else {
+                continue;
+            };
+            pass.set_pipeline(pipeline);
             for r in ranges {
                 self.draw(pass, r);
                 draws += 1;
@@ -848,7 +852,10 @@ impl LineRenderer {
                 continue;
             }
             if !wire_set {
-                pass.set_pipeline(&self.wire);
+                let Some(wire) = self.wire.get() else {
+                    break;
+                };
+                pass.set_pipeline(wire);
                 wire_set = true;
             }
             pass.set_bind_group(1, material(index as usize), &[]);
@@ -904,9 +911,12 @@ impl LineRenderer {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        let pipeline = match (&self.linear, srgb_view) {
+        let Some(pipeline) = match (&self.linear, srgb_view) {
             (Some(l), true) => l,
             _ => &self.output,
+        }
+        .get() else {
+            return 0;
         };
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &self.overlay_group, &[]);

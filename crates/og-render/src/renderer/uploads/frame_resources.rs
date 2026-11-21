@@ -250,14 +250,11 @@ impl Renderer {
         {
             return;
         }
-        // The bake's pipelines may still compile on the web host: the frame
-        // groups are made over the cubes as they are, and a later frame
-        // bakes them (gpu/ready.rs).
-        let baking = self.lights.ibl.compiled();
+        // The bake's pipelines may not be ready: the frame groups are made
+        // over the cubes as they are, and a later frame bakes them
+        // (gpu/deferred.rs).
+        let baking = self.lights.ibl.ready();
         self.lights.environment_unbaked = !baking;
-        if !baking {
-            crate::gpu::ready::hold();
-        }
         let view = |i: usize| {
             &self.cache.environment_maps[i]
                 .as_ref()

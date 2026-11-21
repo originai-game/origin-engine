@@ -92,6 +92,10 @@ fn begin(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Begun {
     let blended = rs.interp.drawn;
     rs.atmo.palettes.clear();
     rs.ids.sprites.clear();
+    // A display frame draws without a pipeline that is not ready; every
+    // other kind waits for the pipelines it meets (og-render
+    // gpu/deferred.rs, `FrameKind`).
+    rs.scene.frame.display = rs.display.kind.displayed() && !rs.display.capture_only;
     let scene = &mut rs.scene;
     scene.objects.instances.clear();
     scene.lighting.lights.clear();

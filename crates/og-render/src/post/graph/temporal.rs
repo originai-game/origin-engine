@@ -92,7 +92,7 @@ impl Temporal {
                         "taa",
                         &history[cx.slot],
                         CLEAR,
-                        pipeline,
+                        pipeline.get(),
                         &groups[cx.slot],
                     );
                     1
@@ -106,7 +106,7 @@ impl Temporal {
                         "taa sharpen",
                         cx.graph.view("hdr.sharp"),
                         CLEAR,
-                        pipeline,
+                        pipeline.get(),
                         &groups[cx.slot],
                     );
                     1

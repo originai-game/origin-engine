@@ -43,8 +43,9 @@ fn idle(eng: &Engine) -> bool {
     !crate::present::barrier::busy(eng)
 }
 
-/// The renderer's pipelines compiled off the frame, and how many are made
-/// (og-render's `pipeline_counts`); none without a renderer.
+/// The pipelines the renderer's cache has asked for and how many are made,
+/// the same count on every host (og-render's `pipeline_counts`); none
+/// without a renderer.
 fn pipelines(rs: &crate::present::extract::RenderState) -> (u32, u32) {
     if rs.backend.is_some() {
         og_render::pipeline_counts()
@@ -61,8 +62,8 @@ pub(crate) fn compiling(rs: &crate::present::extract::RenderState) -> bool {
 /// At most this many pipelines compile at once for og.render.compile, so
 /// the ones a frame needs are not queued behind all of them.
 const COMPILING: u32 = 8;
-/// At most this many made a frame: natively each is made on the frame's
-/// thread, and the loading screen keeps drawing.
+/// At most this many asked for a frame (one the renderer makes on its own
+/// thread is made there), so the loading screen keeps drawing.
 const MADE_A_FRAME: u32 = 4;
 
 /// After a frame was drawn: what og.render.compile asked for, a few

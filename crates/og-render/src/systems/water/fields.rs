@@ -117,7 +117,7 @@ impl WaterRenderer {
                 label: Some("sea grid"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(fill.get());
+            pass.set_pipeline(fill.wait());
             for (read, out, [x, y, z]) in &fills {
                 pass.set_bind_group(0, none, &[]);
                 pass.set_bind_group(1, read, &[]);

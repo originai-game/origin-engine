@@ -167,10 +167,9 @@ impl CloudShadow {
         let (true, Some(pass)) = (self.pending, &self.pass) else {
             return;
         };
-        // Its pipeline, or the noise it reads, still compiles on the web
-        // host: baked by a later frame (gpu/ready.rs).
-        if !pass.pipeline.compiled() || !noise.drawn() {
-            crate::gpu::ready::hold();
+        // Its pipeline is not ready, or the noise it reads is not drawn:
+        // baked by a later frame (gpu/deferred.rs).
+        if pass.pipeline.ready().is_none() || !noise.drawn() {
             return;
         }
         self.pending = false;
@@ -200,7 +199,7 @@ impl CloudShadow {
             label: Some("cloud shadow"),
             timestamp_writes: None,
         });
-        compute.set_pipeline(pass.pipeline.get());
+        compute.set_pipeline(pass.pipeline.wait());
         compute.set_bind_group(0, &pass.frame, &[]);
         compute.set_bind_group(1, &group, &[]);
         compute.dispatch_workgroups(SIDE / 8, SIDE / 8, 1);

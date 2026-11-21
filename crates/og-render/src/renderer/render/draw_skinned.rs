@@ -12,7 +12,7 @@ pub(super) struct DrawSkinnedInputs<'a, 'p> {
     pub(super) blended: Option<bool>,
     pub(super) material_group: u32,
     pub(super) palette_at: u32,
-    pub(super) pipelines: &'a [&'a wgpu::RenderPipeline],
+    pub(super) pipelines: &'a [Option<&'a wgpu::RenderPipeline>],
     pub(super) physical_fx: Option<(&'a wgpu::BindGroup, &'a wgpu::BindGroup)>,
     pub(super) probes: Option<probe_select::ProbeGroups<'a>>,
     pub(super) palette_group: Option<&'a wgpu::BindGroup>,
@@ -66,6 +66,10 @@ impl Renderer {
             if batch.crowd.is_some() && crowds.is_none() {
                 continue;
             }
+            // Not ready yet (a display frame, gpu/deferred.rs).
+            let Some(pipeline) = *pipeline else {
+                continue;
+            };
             let physical = batch.physical && physical_fx.is_some();
             binder.bind(pass, batch.probe);
             pass.set_pipeline(pipeline);

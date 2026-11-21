@@ -365,12 +365,13 @@ pub(crate) struct GrassRenderer {
     samples: u32,
     /// The lit features its lit module is made without (pipeline_features.rs).
     off: crate::pipeline_features::Features,
-    /// The lit, prepass and shadow pipelines, made when a field first draws.
-    pipelines: Option<[wgpu::RenderPipeline; 3]>,
+    /// The lit, prepass and shadow pipelines, asked for the first frame a
+    /// field is in the scene (gpu/deferred.rs).
+    pipelines: Option<crate::deferred::Deferred<[wgpu::RenderPipeline; 3]>>,
     /// The generation pipelines (evaluate, scan, compact) over each
-    /// terrain layout, standard then layer arrays.
-    /// Each with its pipelines' tickets (gpu/ready.rs).
-    generate: [Option<([wgpu::ComputePipeline; 3], crate::gpu::ready::Tickets)>; 2],
+    /// terrain layout, standard then layer arrays, asked for as the draw
+    /// pipelines are.
+    generate: [Option<crate::deferred::Deferred<[wgpu::ComputePipeline; 3]>>; 2],
     tile: wgpu::Buffer,
     indices: wgpu::Buffer,
     fields: Vec<FieldGpu>,

@@ -500,7 +500,7 @@ impl ContactPasses {
                 label: Some("contact"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(self.pipeline.get());
+            pass.set_pipeline(self.pipeline.wait());
             let mut slice = 0;
             for list in &self.lights {
                 for d in list {
@@ -515,7 +515,7 @@ impl ContactPasses {
             label: Some("contact compose"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(self.compose.get());
+        pass.set_pipeline(self.compose.wait());
         pass.set_bind_group(0, compose, &[]);
         pass.dispatch_workgroups(self.size.0.div_ceil(8), self.size.1.div_ceil(8), 1);
         dispatches + 1

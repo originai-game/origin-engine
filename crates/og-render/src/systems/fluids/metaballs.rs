@@ -440,7 +440,10 @@ impl MetaballRenderer {
             if range.is_empty() {
                 continue;
             }
-            pass.set_pipeline(&self.field_pipeline);
+            let Some(pipeline) = self.field_pipeline.get() else {
+                continue;
+            };
+            pass.set_pipeline(pipeline);
             pass.set_bind_group(0, frame_group, &[]);
             pass.set_vertex_buffer(0, self.blobs.slice(..));
             pass.draw(0..6, range.clone());
@@ -480,7 +483,10 @@ impl MetaballRenderer {
 
     /// Composites surface `i` (group 0: the frame) from its field's group.
     pub(crate) fn composite(&self, pass: &mut wgpu::RenderPass, group: &wgpu::BindGroup, i: u8) {
-        pass.set_pipeline(&self.composite_pipeline);
+        let Some(pipeline) = self.composite_pipeline.get() else {
+            return;
+        };
+        pass.set_pipeline(pipeline);
         pass.set_bind_group(1, group, &[(i as u64 * SLOT) as u32]);
         pass.draw(0..3, 0..1);
     }

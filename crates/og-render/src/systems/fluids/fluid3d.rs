@@ -714,6 +714,12 @@ impl Fluid3dRenderer {
         frame_group: &wgpu::BindGroup,
         views: &Fluid3dViews,
     ) -> u32 {
+        // Skipped whole while a pipeline is not ready (gpu/deferred.rs).
+        let (Some(depth), Some(thick), Some(blur)) =
+            (self.depth.get(), self.thick.get(), self.blur.get())
+        else {
+            return 0;
+        };
         let far = wgpu::Color {
             r: crate::post::FAR_DEPTH as f64,
             g: 0.0,
@@ -747,7 +753,7 @@ impl Fluid3dRenderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_pipeline(&self.depth);
+            pass.set_pipeline(depth);
             pass.set_bind_group(0, frame_group, &[]);
             pass.set_bind_group(1, &frame.spheres, &[]);
             pass.set_vertex_buffer(0, self.instances.slice(..));
@@ -762,7 +768,7 @@ impl Fluid3dRenderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_pipeline(&self.thick);
+            pass.set_pipeline(thick);
             pass.set_bind_group(0, frame_group, &[]);
             pass.set_bind_group(1, &frame.spheres, &[]);
             pass.set_vertex_buffer(0, self.instances.slice(..));
@@ -782,7 +788,7 @@ impl Fluid3dRenderer {
                 "fluid 3d smoothing",
                 target,
                 wgpu::LoadOp::Clear(far),
-                &self.blur,
+                Some(blur),
                 group,
             );
         }
@@ -792,7 +798,10 @@ impl Fluid3dRenderer {
     /// Draws the surface into the main pass (group 0: the frame). Returns
     /// the draw calls.
     pub(crate) fn draw(&self, pass: &mut wgpu::RenderPass, frame: &Fluid3dFrame) -> u32 {
-        pass.set_pipeline(&self.composite);
+        let Some(composite) = self.composite.get() else {
+            return 0;
+        };
+        pass.set_pipeline(composite);
         pass.set_bind_group(1, &frame.composite, &[]);
         pass.draw(0..3, 0..1);
         1

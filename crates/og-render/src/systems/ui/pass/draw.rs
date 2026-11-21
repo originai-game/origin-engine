@@ -46,19 +46,19 @@ impl Renderer {
                 | OverlaySource::Glass
                 | OverlaySource::Array(_) => {
                     let (pipeline, group) = match run.source {
-                        OverlaySource::Sprite(t) => (&*overlay_pipes.sprite, sprite_group(t)),
+                        OverlaySource::Sprite(t) => (overlay_pipes.sprite.get(), sprite_group(t)),
                         OverlaySource::Font(f) => {
                             let font = &self.cache.fonts[f.index()];
                             // A colour page's glyphs are images.
                             let pipeline = if font.layout.color {
-                                &*overlay_pipes.sprite
+                                overlay_pipes.sprite.get()
                             } else {
-                                &*overlay_pipes.msdf
+                                overlay_pipes.msdf.get()
                             };
                             (pipeline, &font.bind_group)
                         }
                         OverlaySource::Glass => (
-                            &*overlay_pipes.glass,
+                            overlay_pipes.glass.get(),
                             &self
                                 .glass_targets
                                 .as_ref()
@@ -75,7 +75,8 @@ impl Renderer {
                                     .sprite_arrays
                                     .as_ref()
                                     .expect("made before the pass")
-                                    .overlay(kind == TargetKind::Linear),
+                                    .overlay(kind == TargetKind::Linear)
+                                    .into(),
                                 &self.cache.sprite_array_groups[a.index()]
                                     .as_ref()
                                     .expect("made before the pass")
@@ -83,6 +84,9 @@ impl Renderer {
                             )
                         }
                         _ => unreachable!("matched above"),
+                    };
+                    let Some(pipeline) = pipeline else {
+                        continue;
                     };
                     pass.set_pipeline(pipeline);
                     pass.set_bind_group(1, group, &[]);
@@ -97,7 +101,7 @@ impl Renderer {
                     pass.draw(0..6, 0..run.count);
                 }
                 OverlaySource::Ui(ShapeSource::Shape(pipe, t)) => {
-                    pass.set_pipeline(match pipe {
+                    let Some(pipeline) = match pipe {
                         ShapePipe::Normal => &ui.normal,
                         ShapePipe::Multiply => &ui.multiply,
                         ShapePipe::Screen => &ui.screen,
@@ -105,13 +109,20 @@ impl Renderer {
                         ShapePipe::Destination => &ui.destination,
                         ShapePipe::SrgbOver => &ui.srgb_over,
                         op => &ui.operators[operator(op)],
-                    });
+                    }
+                    .get() else {
+                        continue;
+                    };
+                    pass.set_pipeline(pipeline);
                     pass.set_bind_group(1, sprite_group(t), &[]);
                     pass.set_bind_group(2, backdrop, &[]);
                     pass.draw(0..6, range);
                 }
                 OverlaySource::Ui(ShapeSource::Backdrop | ShapeSource::SolidBackdrop) => {
-                    pass.set_pipeline(&ui.backdrop);
+                    let Some(pipeline) = ui.backdrop.get() else {
+                        continue;
+                    };
+                    pass.set_pipeline(pipeline);
                     pass.set_bind_group(1, &self.sprite.white_sprite_group, &[]);
                     pass.set_bind_group(2, backdrop, &[]);
                     pass.draw(0..6, range);
@@ -126,19 +137,23 @@ impl Renderer {
                         ShapePipe::Normal | ShapePipe::Destination => &ui.composite,
                         ShapePipe::SrgbOver => &ui.composite_srgb_over,
                         op => &ui.composite_operators[operator(op)],
-                    };
+                    }
+                    .get();
                     let pipeline = match materials
                         .and_then(|l| l.get(k as usize))
                         .map(|l| l.material)
                     {
                         Some(UiMaterial::Custom(h)) => {
                             match self.ui.custom_pipeline(scene.id(), h, kind) {
-                                Some(p) => p,
+                                Some(p) => Some(p),
                                 // A material that failed (or is compiling) draws plain.
                                 None => plain,
                             }
                         }
                         _ => plain,
+                    };
+                    let Some(pipeline) = pipeline else {
+                        continue;
                     };
                     pass.set_pipeline(pipeline);
                     pass.set_bind_group(1, group, &[]);
@@ -166,7 +181,10 @@ impl Renderer {
                     }
                     .unwrap_or_else(|| sprite_group(t.texture));
                     let stride = std::mem::size_of::<super::super::UiMassInstance>() as u64;
-                    pass.set_pipeline(&ui.mass);
+                    let Some(pipeline) = ui.mass.get() else {
+                        continue;
+                    };
+                    pass.set_pipeline(pipeline);
                     pass.set_bind_group(1, texture, &[]);
                     pass.set_bind_group(2, group, &[]);
                     pass.set_vertex_buffer(
@@ -181,7 +199,10 @@ impl Renderer {
                     let Some(mesh) = self.ui.vectors.get(&(scene.id(), h.index())) else {
                         continue;
                     };
-                    pass.set_pipeline(&ui.vector);
+                    let Some(pipeline) = ui.vector.get() else {
+                        continue;
+                    };
+                    pass.set_pipeline(pipeline);
                     pass.set_bind_group(1, &self.sprite.white_sprite_group, &[]);
                     pass.set_bind_group(2, backdrop, &[]);
                     pass.set_vertex_buffer(0, mesh.vertices.slice(..));

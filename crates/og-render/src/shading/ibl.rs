@@ -169,12 +169,15 @@ pub struct IblGenerator {
 }
 
 impl IblGenerator {
-    /// Whether every pipeline is compiled on the web host (made now, asked
-    /// for asynchronously there, when not yet): a bake waits for them
-    /// (gpu/ready.rs). Every one is asked, so all compile side by side.
-    /// Natively true, and nothing is made to ask.
-    pub(crate) fn compiled(&self) -> bool {
-        self.pipelines.iter().filter(|p| !p.compiled()).count() == 0
+    /// Whether every pipeline is ready (asked for when not yet): a bake
+    /// waits for them (gpu/deferred.rs). Every one is asked, so all
+    /// compile side by side.
+    pub(crate) fn ready(&self) -> bool {
+        self.pipelines
+            .iter()
+            .filter(|p| p.ready().is_none())
+            .count()
+            == 0
     }
 
     /// Makes one pipeline not yet made; false when all are
@@ -573,7 +576,7 @@ impl IblGenerator {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_pipeline(&self.pipelines[p.pipeline]);
+            pass.set_pipeline(self.pipelines[p.pipeline].wait());
             pass.set_bind_group(0, &p.group, &[(i as u64 * SLOT) as u32]);
             pass.draw(0..3, 0..1);
         }
@@ -702,7 +705,7 @@ impl IblGenerator {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_pipeline(&self.pipelines[pipeline]);
+            pass.set_pipeline(self.pipelines[pipeline].wait());
             pass.set_bind_group(0, group, &[(i as u64 * SLOT) as u32]);
             pass.draw(0..3, 0..1);
         }

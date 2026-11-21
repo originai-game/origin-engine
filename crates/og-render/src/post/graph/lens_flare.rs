@@ -71,7 +71,7 @@ impl LensFlare {
             &pass.name(),
             cx.graph.view(target),
             CLEAR,
-            pipeline,
+            pipeline.get(),
             &self.groups[&pass][cx.slot],
         );
         Some(1)

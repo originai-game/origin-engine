@@ -192,11 +192,12 @@ impl GrassRenderer {
                 self.generate[a] = Some(self.make_generate(device, terrain_layout, td.arrayed()));
             }
             // Its blades are generated each frame and drawn from that: while
-            // the web host still compiles the generate pipelines the field is
-            // left out, so no pass draws blades nothing generated
-            // (gpu/ready.rs).
-            if self.generate[a].as_ref().is_some_and(|(_, t)| !t.ready()) {
-                crate::gpu::ready::hold();
+            // the generate pipelines are not ready the field is left out, so
+            // no pass draws blades nothing generated (gpu/deferred.rs).
+            if self.generate[a]
+                .as_ref()
+                .is_some_and(|g| g.ready().is_none())
+            {
                 continue;
             }
             // Its draw pipelines are made the first frame it is in the

@@ -233,8 +233,9 @@ pub(in crate::post) fn ldr_name(i: usize) -> String {
 
 impl FramePass {
     /// Whether what the pass draws is drawn again next frame, so a draw it
-    /// skips costs that one frame: the passes encoded in the web host's
-    /// frame span (fork s60), whose pipelines compile asynchronously there.
+    /// skips for a pipeline not ready costs that one frame (a display
+    /// frame's, gpu/deferred.rs; the shadow layers skip too, and the static
+    /// cache forgets them after such a frame).
     /// Not the passes whose output later frames keep: the shadow maps
     /// (their static casters are kept), the weather map, the live sky's
     /// slices, the probe GI, the reflection probes' captures and the

@@ -44,17 +44,16 @@ export function callsOf(run: Run): Calls {
     /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */
     fault: (_, [site]) => run.glue?.og_web_lanes_fault?.(String(site)) ?? false,
     frame: (e, [ms]) => {
-      // Fork s60: a harness's frame is compared with the native one: nothing in it skipped for a pipeline compiling.
-      // Its time is the harness's and the machine's, not the display's: automatic quality must not read it
-      // (a loaded machine stepped the same script down a render-scale rung at a different tick each run).
-      const answered = pipelines.drawnWhole(() => {
-        run.glue!.og_web_frame_kind(e.id, "scripted");
-        try {
-          return e.frame(Number(ms));
-        } finally {
-          run.glue!.og_web_frame_kind(e.id, "display");
-        }
-      });
+      // A harness's frame is scripted: it waits for every pipeline it meets (og-render gpu/deferred.rs), as the
+      // native one does. Its time is the harness's and the machine's, not the display's: automatic quality must
+      // not read it (a loaded machine stepped the same script down a render-scale rung at a different tick each run).
+      run.glue!.og_web_frame_kind(e.id, "scripted");
+      let answered: ReturnType<typeof e.frame>;
+      try {
+        answered = e.frame(Number(ms));
+      } finally {
+        run.glue!.og_web_frame_kind(e.id, "display");
+      }
       run.relay(answered);
       pumpRoom(e);
       pumpShared(e);

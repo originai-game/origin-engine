@@ -175,12 +175,14 @@ impl SpriteArrayPipelines {
 
     /// The pipeline of a run of `blend`; `tone_mapped` false: the
     /// untonemapped one (alpha-blended runs only, `sprites::build`).
-    pub fn pipeline(&self, blend: SpriteBlend, tone_mapped: bool) -> &wgpu::RenderPipeline {
+    /// `None` while it is not ready (gpu/deferred.rs).
+    pub fn pipeline(&self, blend: SpriteBlend, tone_mapped: bool) -> Option<&wgpu::RenderPipeline> {
         match (blend, tone_mapped) {
             (SpriteBlend::Alpha, false) => &self.untonemapped,
             (SpriteBlend::Alpha, true) => &self.alpha,
             (SpriteBlend::Additive, _) => &self.additive,
         }
+        .get()
     }
 
     /// Makes the overlay's pipelines once: `overlay_layout` is the

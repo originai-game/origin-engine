@@ -399,14 +399,14 @@ struct HeldTables {
 }
 
 pub(crate) struct GpuCulling {
-    /// The pipelines the web host was asked for (gpu/ready.rs).
-    tickets: crate::gpu::ready::Tickets,
     layout: wgpu::BindGroupLayout,
-    stages: CullStages,
+    /// Asked for when it is made; the frame culls on the CPU until they
+    /// are ready (gpu/deferred.rs).
+    stages: crate::deferred::Deferred<CullStages>,
     hiz_base_layout: [wgpu::BindGroupLayout; 2],
     hiz_reduce_layout: wgpu::BindGroupLayout,
     hiz_base: [Option<wgpu::ComputePipeline>; 2],
-    hiz_reduce: wgpu::ComputePipeline,
+    hiz_reduce: crate::deferred::Deferred<wgpu::ComputePipeline>,
     depth_module: wgpu::ShaderModule,
     depth_pipeline_layout: wgpu::PipelineLayout,
     depth_pipelines: HashMap<(Faces, bool, u32), wgpu::RenderPipeline>,
@@ -524,9 +524,10 @@ fn buffer(
 }
 
 impl GpuCulling {
-    /// Whether the web host has compiled its pipelines (gpu/ready.rs).
-    pub(crate) fn compiled(&self) -> bool {
-        self.tickets.ready()
+    /// Whether its pipelines are ready (asked for when not yet:
+    /// gpu/deferred.rs).
+    pub(crate) fn ready(&self) -> bool {
+        self.stages.ready().is_some() & self.hiz_reduce.ready().is_some()
     }
 
     /// Whether `n` instances and `skinned` skinned ones in `passes` passes

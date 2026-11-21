@@ -187,9 +187,9 @@ impl Pipelines {
             };
             match solver {
                 Some(v) => v.encode(encoder, mesh.visual.as_ref().expect("simulated"), true),
-                None => dispatch(encoder, self.pose.get(), g.topology.rest.len()),
+                None => dispatch(encoder, self.pose.wait(), g.topology.rest.len()),
             }
-            dispatch(encoder, self.scatter.get(), g.topology.vertices.len());
+            dispatch(encoder, self.scatter.wait(), g.topology.vertices.len());
             mesh.initialized = true;
         }
     }

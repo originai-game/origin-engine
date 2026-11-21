@@ -55,8 +55,8 @@ struct Uploaded {
 }
 
 pub(crate) struct PaintRenderer {
-    output: wgpu::RenderPipeline,
-    linear: Option<wgpu::RenderPipeline>,
+    output: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    linear: Option<crate::deferred::Deferred<wgpu::RenderPipeline>>,
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     quads: wgpu::Buffer,
@@ -116,9 +116,7 @@ fn write<T: Pod>(
 }
 
 impl PaintRenderer {
-    /// Its pipelines, made now (on the web asked for asynchronously, so
-    /// the page's first frame waits for them behind its gate), and its
-    /// buffers.
+    /// Its pipelines, made now, and its buffers.
     pub fn new(
         device: &wgpu::Device,
         output_format: wgpu::TextureFormat,
@@ -156,38 +154,44 @@ impl PaintRenderer {
             label: Some("ui paint"),
             source: wgpu::ShaderSource::Wgsl(source().into()),
         });
+        // Entries of the pipeline cache (gpu/deferred.rs), asked for now.
         let pipeline = |format| {
-            crate::traffic::create_render_pipeline(
-                device,
-                &wgpu::RenderPipelineDescriptor {
-                    label: Some("ui paint"),
-                    layout: Some(&pl),
-                    vertex: wgpu::VertexState {
-                        module: &module,
-                        entry_point: Some("vs_paint"),
-                        compilation_options: Default::default(),
-                        buffers: &[],
+            let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
+            let entry = crate::deferred::Deferred::anywhere(move || {
+                let device = &device;
+                crate::traffic::create_render_pipeline(
+                    device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("ui paint"),
+                        layout: Some(&pl),
+                        vertex: wgpu::VertexState {
+                            module: &module,
+                            entry_point: Some("vs_paint"),
+                            compilation_options: Default::default(),
+                            buffers: &[],
+                        },
+                        primitive: Default::default(),
+                        depth_stencil: None,
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module: &module,
+                            entry_point: Some("fs_paint"),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format,
+                                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(device).as_ref(),
                     },
-                    primitive: Default::default(),
-                    depth_stencil: None,
-                    multisample: Default::default(),
-                    fragment: Some(wgpu::FragmentState {
-                        module: &module,
-                        entry_point: Some("fs_paint"),
-                        compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format,
-                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                },
-            )
+                )
+            });
+            crate::deferred::Start::start(&entry);
+            entry
         };
-        let (output, linear) =
-            crate::frame_pipelines(|| (pipeline(output_format), linear_format.map(pipeline)));
+        let (output, linear) = (pipeline(output_format), linear_format.map(pipeline));
         PaintRenderer {
             output,
             linear,
@@ -490,9 +494,12 @@ impl PaintRenderer {
         let Some(group) = &self.group else {
             return 0;
         };
-        let pipeline = match (linear, &self.linear) {
+        let Some(pipeline) = match (linear, &self.linear) {
             (true, Some(l)) => l,
             _ => &self.output,
+        }
+        .get() else {
+            return 0;
         };
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, group, &[]);

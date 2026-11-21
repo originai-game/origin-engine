@@ -79,7 +79,7 @@ impl GpuCulling {
         );
         pass.set_bind_group(0, &pyramid.base_group, &[]);
         pass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
-        pass.set_pipeline(&self.hiz_reduce);
+        pass.set_pipeline(self.hiz_reduce.wait());
         for (l, group) in pyramid.reduce_groups.iter().enumerate() {
             let (w, h) = pyramid.level_sizes[l + 1];
             pass.set_bind_group(0, group, &[]);

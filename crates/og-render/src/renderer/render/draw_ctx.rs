@@ -22,7 +22,7 @@ pub(super) struct DrawCtx<'f> {
     pub blended_list: &'f DrawList,
     pub main_list: &'f DrawList,
     pub skinned_visible: &'f [Batch],
-    pub lit_skinned: &'f [&'f wgpu::RenderPipeline],
+    pub lit_skinned: &'f [Option<&'f wgpu::RenderPipeline>],
     /// The effect groups of the standard and the physical pipelines, in
     /// the passes that draw physical materials with theirs.
     pub physical_fx: Option<(&'f wgpu::BindGroup, &'f wgpu::BindGroup)>,
@@ -33,7 +33,7 @@ pub(super) struct DrawCtx<'f> {
     pub terrain_draws: &'f [terrain::TerrainDraw],
     pub scatter_batches: &'f scatter::ScatterBatches,
     pub grass_frame: &'f grass::GrassFrame,
-    pub shadow_skinned: &'f [&'f ShadowSet],
+    pub shadow_skinned: &'f [Option<&'f ShadowSet>],
     pub skinned_batches: &'f [Batch],
     pub terrain_casters: bool,
 }
@@ -83,7 +83,7 @@ impl<'f> DrawCtx<'f> {
 
     /// The blended skinned batches' OIT pipelines (oit.rs), the rest as
     /// `lit_skinned` (not drawn by the OIT pass).
-    pub(super) fn oit_skinned(&self, mode: oit::Oit) -> Vec<&'f wgpu::RenderPipeline> {
+    pub(super) fn oit_skinned(&self, mode: oit::Oit) -> Vec<Option<&'f wgpu::RenderPipeline>> {
         let &DrawCtx {
             r,
             skinned_visible,
@@ -99,7 +99,7 @@ impl<'f> DrawCtx<'f> {
                 b.transparent
                     .then_some(())
                     .filter(|_| b.blend)
-                    .and_then(|_| r.oit_pipeline(Renderer::oit_lit_source(b, true, physical), mode))
+                    .map(|_| r.oit_pipeline(Renderer::oit_lit_source(b, true, physical), mode))
                     .unwrap_or(sorted)
             })
             .collect()
@@ -273,7 +273,7 @@ impl<'f> DrawCtx<'f> {
         transparent: bool,
         material_group: u32,
         palette_at: u32,
-        pipelines: &[&wgpu::RenderPipeline],
+        pipelines: &[Option<&wgpu::RenderPipeline>],
         physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
         probes: Option<probe_select::ProbeGroups>,
         cull_pass: Option<u32>,
@@ -501,9 +501,9 @@ impl<'f> DrawCtx<'f> {
             .filter(|b| !b.transparent && r.prepass_pipeline_of(b, true).is_some())
             .map(|b| Batch { ..*b })
             .collect();
-        let pipelines: Vec<&wgpu::RenderPipeline> = opaque
+        let pipelines: Vec<Option<&wgpu::RenderPipeline>> = opaque
             .iter()
-            .filter_map(|b| r.prepass_pipeline_of(b, true))
+            .map(|b| r.prepass_pipeline_of(b, true))
             .collect();
         draws += self.draw_skinned(
             &mut pass, &opaque, false, 1, 3, &pipelines, None, None, None,

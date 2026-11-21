@@ -94,9 +94,9 @@ impl Renderer {
             self.offscreen_submissions.push_back(_submission);
         }
         self.shadows.shadow_cache.submitted();
-        // Layers drawn while the web host still compiled a pipeline may
-        // have skipped a caster's draws: none is kept (gpu/ready.rs).
-        if crate::gpu::ready::compiling() {
+        // Layers drawn in a frame that skipped a draw for a pipeline not
+        // ready may have skipped a caster's: none is kept (deferred.rs).
+        if crate::deferred::skipped_now() > 0 {
             self.shadows.shadow_cache.forget_layers();
         }
         if let Some(arena) = self

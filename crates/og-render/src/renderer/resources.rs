@@ -670,8 +670,8 @@ pub(crate) struct Lights {
         Vec<wgpu::BindGroup>,
     )>,
     /// Whether `environment`'s groups bind cubes not baked yet: its bake's
-    /// pipelines still compile on the web host (gpu/ready.rs), and a later
-    /// frame bakes them.
+    /// pipelines are not ready (gpu/deferred.rs), and a later frame bakes
+    /// them.
     pub(crate) environment_unbaked: bool,
     /// The frame's decal records and their clusters (`fx.rs`), and the CPU
     /// vectors they are packed in, kept between frames.

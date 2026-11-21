@@ -154,21 +154,15 @@ impl Renderer {
                 });
                 gc.fits(sorted, skinned_n, max_passes)
             }
-            // Culled on the CPU while the web host still compiles the
-            // cull's pipelines (or the meshlet path's, which follows it),
-            // and the play gate draws the frame again (gpu/ready.rs): the
-            // GPU path's frame (the foliage's sway) is the one it shows.
-            // Crowds take the GPU path alone, and wait at their dispatch.
-            && {
-                let compiled = crowd_gpu
-                    || (self.visibility.gpu_cull.as_ref().is_some_and(|gc| gc.compiled())
-                        && (meshlet_taken.is_empty()
-                            || self.visibility.meshlet.as_ref().is_none_or(|m| m.compiled())));
-                if !compiled {
-                    crate::gpu::ready::hold();
-                }
-                compiled
-            };
+            // Culled on the CPU while the cull's pipelines (or the meshlet
+            // path's, which follows it) are not ready, and the host draws
+            // the frame again (gpu/deferred.rs): the GPU path's frame (the
+            // foliage's sway) is the one it shows. Crowds take the GPU path
+            // alone, and wait at their dispatch.
+            && (crowd_gpu
+                || (self.visibility.gpu_cull.as_ref().is_some_and(|gc| gc.ready())
+                    && (meshlet_taken.is_empty()
+                        || self.visibility.meshlet.as_ref().is_none_or(|m| m.ready()))));
         if !gpu_cull {
             meshlet_taken.clear();
         }

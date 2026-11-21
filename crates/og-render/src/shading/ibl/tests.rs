@@ -240,7 +240,7 @@ fn the_brdf_table_is_integrated_with_direct_lights_visibility() {
     let ibl = IblGenerator::new(&device);
     let size = LUT_SIZE as usize;
     let table = drawn(&device, &queue, HDR_FORMAT, (LUT_SIZE, LUT_SIZE), |pass| {
-        pass.set_pipeline(&ibl.pipelines[ibl.lut_pass.pipeline]);
+        pass.set_pipeline(ibl.pipelines[ibl.lut_pass.pipeline].wait());
         pass.set_bind_group(0, &ibl.lut_pass.group, &[0]);
         pass.draw(0..3, 0..1);
     });

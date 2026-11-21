@@ -483,8 +483,7 @@ impl std::ops::Deref for Shader {
 }
 
 /// A built-in lit or prepass pipeline in its variants (pipeline_features.rs):
-/// started for `features` on the compile workers natively, the full one
-/// made at once on the web.
+/// asked for `features` (pipeline_features.rs `Variants::start`).
 pub(crate) fn variants(
     declared: Features,
     features: Features,
@@ -503,9 +502,8 @@ pub(crate) fn variants(
     v
 }
 
-/// A batch pipeline made by `make`: started on the compile workers
-/// natively, made at once on the web (inside the host's frame span, which
-/// asks for it asynchronously).
+/// A batch pipeline made by `make`: an entry of the pipeline cache, asked
+/// for by the host's compiler (gpu/deferred.rs).
 pub(super) fn deferred<T: crate::deferred::AnywhereOnce + 'static>(
     make: impl FnOnce() -> T + crate::deferred::AnywhereOnce + 'static,
 ) -> Deferred<T> {

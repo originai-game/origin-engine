@@ -175,27 +175,27 @@ async function run(kind: Kind, isolate: boolean, pipelines: Pipelines, browser: 
     check(n2! >= n1! && n3! >= n2! && n3! - n1! <= SETTLE_TICKS && n4 === n3, `${label}: the clock holds behind the play gate (only settling ticks, within SETTLE_MS)`, { first: n1, after400ms: n2, afterSettle: n3, after400msMore: n4 });
     // Fork s60: with `pipelines async` the first frame's pipelines went through createRenderPipelineAsync
     // (src/web/pipelines.ts): a wgpu that reaches the browser's createRenderPipeline another way fails here,
-    // not silently slower. With sync none did and the renderer opened no span.
-    const pl = await page.evalChild<{ async: number; sync: number; fallback: number; spans: number; bypassed?: string; mode?: string; reason?: string } | null>("localhost", "__runtime_probe__.boot?.pipelines ?? null");
+    // not silently slower. With sync none did and the pipeline cache asked the compiler for none.
+    const pl = await page.evalChild<{ async: number; sync: number; waited: number; asks: number; bypassed?: string; mode?: string; reason?: string } | null>("localhost", "__runtime_probe__.boot?.pipelines ?? null");
     check(!!pl, `${label}: the probe's boot counts the render pipelines`, pl);
     // Auto (the default) keeps Apple GPUs synchronous and compiles asynchronously on every other GPU.
     const vendor = await page.evalChild<string>("localhost", "navigator.gpu.requestAdapter().then((a) => a?.info?.vendor ?? '')");
     const ran = pipelines === "auto" ? (vendor.toLowerCase() === "apple" ? "sync" : "async") : pipelines;
     check(!!pl && pl.mode === ran && (pipelines === "auto" ? /^auto: /.test(pl.reason ?? "") : pl.reason === `publish { pipelines ${pipelines} }`), `${label}: the probe's boot says the pipelines run ${ran} and why`, { vendor, pl });
-    if (ran === "async") check(!!pl && pl.spans > 0 && pl.async > 0 && !pl.bypassed, `${label}: the frame pipelines compile through createRenderPipelineAsync`, pl);
+    if (ran === "async") check(!!pl && pl.asks > 0 && pl.async > 0 && !pl.bypassed, `${label}: the frame pipelines compile through createRenderPipelineAsync`, pl);
     else if (ran === "prewarm") {
       // The first frame made its pipelines at once; the warm-up behind the gate then asks for the rest
       // asynchronously, and the counts are reported again when it ends.
-      check(!!pl && pl.sync > 0 && pl.fallback === 0, `${label}: the first frame's pipelines are made synchronously`, pl);
+      check(!!pl && pl.sync > 0 && pl.waited === 0, `${label}: the first frame's pipelines are made synchronously`, pl);
       let warmed = pl;
       for (let i = 0; i < 100 && !(warmed && warmed.async > 0); i++) {
         await new Promise((r) => setTimeout(r, 100));
         warmed = await page.evalChild<typeof pl>("localhost", "__runtime_probe__.boot?.pipelines ?? null");
       }
-      check(!!warmed && warmed.async > 0 && warmed.fallback === 0 && !warmed.bypassed, `${label}: the warm-up behind the gate compiles through createRenderPipelineAsync`, warmed);
+      check(!!warmed && warmed.async > 0 && warmed.waited === 0 && !warmed.bypassed, `${label}: the warm-up behind the gate compiles through createRenderPipelineAsync`, warmed);
       const t2b = await c("tick");
       check(t2b.result === tHeld.result, `${label}: the clock still holds while it warms`, { before: tHeld.result, after: t2b.result });
-    } else check(!!pl && pl.sync > 0 && pl.async === 0 && pl.fallback === 0 && pl.spans === 0, `${label}: the pipelines are made synchronously`, pl);
+    } else check(!!pl && pl.sync > 0 && pl.async === 0 && pl.waited === 0 && pl.asks === 0, `${label}: the pipelines are made synchronously`, pl);
     // A real tap on the gate (the middle of the frame) starts it.
     await page.tap(400, 225);
     await new Promise((r) => setTimeout(r, 600));

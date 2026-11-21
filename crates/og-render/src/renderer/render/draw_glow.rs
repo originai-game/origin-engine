@@ -25,17 +25,20 @@ impl Renderer {
             };
             let array = matches!(source, RunSource::Array(..));
             if on_array != Some(array) {
-                pass.set_pipeline(match array {
-                    false => &self.sprite.sprite_glow_pipeline,
-                    true => {
+                let Some(pipeline) = (match array {
+                    false => self.sprite.sprite_glow_pipeline.get(),
+                    true => Some(
                         &self
                             .sprite
                             .sprite_arrays
                             .as_ref()
                             .expect("made before the pass")
-                            .glow
-                    }
-                });
+                            .glow,
+                    ),
+                }) else {
+                    continue;
+                };
+                pass.set_pipeline(pipeline);
                 on_array = Some(array);
             }
             let group = match source {

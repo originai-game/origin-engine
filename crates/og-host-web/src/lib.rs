@@ -91,10 +91,9 @@ thread_local! {
     /// (s58): a boot's hundreds of texture calls parse the 0.5 MB manifest
     /// once, not twice per texture.
     static BUNDLE: RefCell<Option<(String, std::rc::Rc<og_bundle::runtime::Bundle>)>> = const { RefCell::new(None) };
-    /// The Worker's frame-pipeline span (fork s60, `og_web_frame_pipelines`).
-    static FRAME_SPAN: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
-    /// The Worker's make span, ticket count, readiness and compiling (`og_web_make_pipelines`).
-    static MAKE_HOOKS: RefCell<Option<[js_sys::Function; 4]>> = const { RefCell::new(None) };
+    /// The Worker's pipeline compiler: `asking`, `count`, `made`, `compiled`
+    /// and `finish` (`og_web_pipeline_compiler`).
+    static COMPILER: RefCell<Option<[js_sys::Function; 5]>> = const { RefCell::new(None) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// The Worker's `transcode(key, ktx2, target)`, the only way a Basis
@@ -346,55 +345,53 @@ pub fn og_web_warm_tick(engine: u32) {
     og_runtime::warm_tick(engine)
 }
 
-/// Fork s60: the Worker's `span(on)`, called when the renderer begins and
-/// ends making its frame pipelines (og-render `set_frame_pipelines_hook`);
-/// `null` calls nothing. The Worker makes the pipelines asked for in between
-/// with `createRenderPipelineAsync` (src/web/pipelines.ts).
+/// The Worker's pipeline compiler (src/web/pipelines.ts), og-render's
+/// `PipelineCompiler`: `asking(on)` around each pipeline the renderer's
+/// cache makes, so the Worker asks the browser for it with
+/// `createRenderPipelineAsync` (or the compute one) and numbers it;
+/// `count()` the pipelines numbered so far, `made()` how many of them are
+/// compiled or refused, `compiled(n)` whether pipeline `n` is, and
+/// `finish(n)` makes it at once (a use that waits). A page that compiles
+/// synchronously numbers none. (The engine's wasm only: natively the
+/// renderer's compile workers are its compiler.)
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-pub fn og_web_frame_pipelines(span: Option<js_sys::Function>) {
-    let on = span.is_some();
-    FRAME_SPAN.with(|cell| *cell.borrow_mut() = span);
-    og_render::set_frame_pipelines_hook(on.then_some(frame_span as fn(bool)));
-}
-
-/// The Worker's `make(on)` around each frame the renderer draws, `count()`
-/// (the tickets handed out, each a pipeline asked for asynchronously),
-/// `ready(ticket)` and `compiling()` (src/web/pipelines.ts `makeSpan`,
-/// `ticketCount`, `ready`, `anyCompiling`): every pipeline a frame makes is
-/// asked for asynchronously, and the passes whose output the renderer keeps
-/// wait for theirs (og-render gpu/ready.rs). `null`s call nothing.
-#[wasm_bindgen]
-pub fn og_web_make_pipelines(
-    make: Option<js_sys::Function>,
-    count: Option<js_sys::Function>,
-    ready: Option<js_sys::Function>,
-    compiling: Option<js_sys::Function>,
+pub fn og_web_pipeline_compiler(
+    asking: js_sys::Function,
+    count: js_sys::Function,
+    made: js_sys::Function,
+    compiled: js_sys::Function,
+    finish: js_sys::Function,
 ) {
-    let hooks = match (make, count, ready, compiling) {
-        (Some(m), Some(n), Some(r), Some(c)) => Some([m, n, r, c]),
-        _ => None,
-    };
-    let on = hooks.is_some();
-    MAKE_HOOKS.with(|cell| *cell.borrow_mut() = hooks);
-    og_render::set_pipeline_hooks(
-        on.then_some(make_span as fn(bool)),
-        on.then_some((
-            ticket_count as fn() -> u32,
-            ticket_ready as fn(u32) -> bool,
-            any_compiling as fn() -> bool,
-        )),
-    );
+    COMPILER.with(|cell| *cell.borrow_mut() = Some([asking, count, made, compiled, finish]));
+    og_render::set_pipeline_compiler(Some(og_render::PipelineCompiler {
+        asking: |on| {
+            compiler_call(0, &JsValue::from_bool(on));
+        },
+        count: || number(compiler_call(1, &JsValue::NULL)),
+        made: || number(compiler_call(2, &JsValue::NULL)),
+        compiled: |n| {
+            compiler_call(3, &JsValue::from(n))
+                .as_bool()
+                .unwrap_or(true)
+        },
+        finish: |n| {
+            compiler_call(4, &JsValue::from(n));
+        },
+    }));
 }
 
-/// Whether the last frame left work whose pipelines still compile for a
-/// later one: the Worker draws the first frame again until it did not.
+/// The draws the last frame skipped and the work it left for a later frame,
+/// each for a pipeline that was not ready (og-render `frame_skipped`): the
+/// Worker draws the first frame again until it is 0.
 #[wasm_bindgen]
-pub fn og_web_pipelines_held() -> bool {
-    og_render::pipelines_held()
+pub fn og_web_frame_skipped() -> u32 {
+    og_render::frame_skipped()
 }
 
-fn make_hook(i: usize, arg: &JsValue) -> JsValue {
-    MAKE_HOOKS.with(|cell| {
+#[cfg(target_arch = "wasm32")]
+fn compiler_call(i: usize, arg: &JsValue) -> JsValue {
+    COMPILER.with(|cell| {
         cell.borrow()
             .as_ref()
             .and_then(|h| h[i].call1(&JsValue::NULL, arg).ok())
@@ -402,32 +399,9 @@ fn make_hook(i: usize, arg: &JsValue) -> JsValue {
     })
 }
 
-fn make_span(on: bool) {
-    make_hook(0, &JsValue::from_bool(on));
-}
-
-fn ticket_count() -> u32 {
-    make_hook(1, &JsValue::NULL)
-        .as_f64()
-        .map_or(0, |t| t as u32)
-}
-
-fn ticket_ready(ticket: u32) -> bool {
-    make_hook(2, &JsValue::from(ticket))
-        .as_bool()
-        .unwrap_or(true)
-}
-
-fn any_compiling() -> bool {
-    make_hook(3, &JsValue::NULL).as_bool().unwrap_or(false)
-}
-
-fn frame_span(on: bool) {
-    FRAME_SPAN.with(|cell| {
-        if let Some(f) = cell.borrow().as_ref() {
-            let _ = f.call1(&JsValue::NULL, &JsValue::from_bool(on));
-        }
-    });
+#[cfg(target_arch = "wasm32")]
+fn number(v: JsValue) -> u32 {
+    v.as_f64().map_or(0, |n| n as u32)
 }
 
 /// Fork s63: the texture bytes a frame uploads at most (0: no limit); a

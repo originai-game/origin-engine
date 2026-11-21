@@ -105,7 +105,7 @@ impl Fx {
                     entry,
                     cx.graph.view(target),
                     CLEAR,
-                    &cx.passes.fx[entry],
+                    cx.passes.fx[entry].get(),
                     group,
                 );
             }
@@ -119,7 +119,7 @@ impl Fx {
             entry,
             cx.graph.view(target),
             CLEAR,
-            &cx.passes.fx[entry],
+            cx.passes.fx[entry].get(),
             &self.groups[&pass][cx.slot],
         );
         Some(1)

@@ -882,9 +882,9 @@ impl VisualPipelines {
             timestamp_writes: None,
         });
         pass.set_pipeline(if garment {
-            self.garment.get()
+            self.garment.wait()
         } else {
-            self.surface.get()
+            self.surface.wait()
         });
         pass.set_bind_group(0, group, &[]);
         pass.dispatch_workgroups(1, 1, 1);

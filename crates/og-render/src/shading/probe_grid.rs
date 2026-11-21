@@ -346,7 +346,7 @@ impl GridProjector {
             label: Some("probe grid"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(self.pipeline.get());
+        pass.set_pipeline(self.pipeline.wait());
         pass.set_bind_group(0, &group, &[]);
         pass.dispatch_workgroups(1, 1, 1);
     }

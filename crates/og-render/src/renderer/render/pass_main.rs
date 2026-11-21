@@ -16,7 +16,7 @@ pub(super) struct MainPlan<'f> {
     pub(super) backface_fx: Option<&'f wgpu::BindGroup>,
     pub(super) probe_binding: Option<probe_select::ProbeGroups<'f>>,
     pub(super) skinned_visible: &'f [Batch],
-    pub(super) lit_skinned: &'f [&'f wgpu::RenderPipeline],
+    pub(super) lit_skinned: &'f [Option<&'f wgpu::RenderPipeline>],
     pub(super) terrain_indices: Option<&'f wgpu::Buffer>,
     pub(super) terrain_draws: &'f [terrain::TerrainDraw],
     pub(super) view_frustum: &'f Frustum,
@@ -339,10 +339,10 @@ impl Renderer {
             .filter(|_| ground_heights::wanted(scene))
             .map(|m| &m.group);
         let sky = match scene.lighting.environment.background {
-            Background::Sky if ground.is_some() => Some(&self.sky.ground.pipeline),
-            Background::Sky => Some(&self.sky.sky_pipeline),
-            Background::Procedural { .. } if clouds_low.is_some() => Some(&self.sky.clouds_low.sky),
-            Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
+            Background::Sky if ground.is_some() => self.sky.ground.pipeline.get(),
+            Background::Sky => self.sky.sky_pipeline.get(),
+            Background::Procedural { .. } if clouds_low.is_some() => self.sky.clouds_low.sky.get(),
+            Background::Procedural { .. } => self.sky.sky_look_pipeline.get(),
             Background::Color(_) => None,
         };
         part!("main: sky");

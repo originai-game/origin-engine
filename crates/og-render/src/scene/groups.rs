@@ -462,4 +462,9 @@ pub struct SceneFrame {
     /// is drawn as the next frame after the display's, with its history.
     /// False by default; display frames never read it.
     pub reference: bool,
+    /// A frame for the display: it draws without a pipeline that is not
+    /// ready yet (a draw skipped, work kept by later frames left for one;
+    /// gpu/deferred.rs), where any other frame waits for every pipeline it
+    /// meets. False by default; a capture always waits.
+    pub display: bool,
 }

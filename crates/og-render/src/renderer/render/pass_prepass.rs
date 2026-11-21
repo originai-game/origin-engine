@@ -12,7 +12,7 @@ pub(super) struct PrepassPlan<'f> {
     pub(super) object_motion: bool,
     pub(super) batches: &'f [Batch],
     pub(super) skinned_visible: &'f [Batch],
-    pub(super) prepass_skinned: &'f [&'f wgpu::RenderPipeline],
+    pub(super) prepass_skinned: &'f [Option<&'f wgpu::RenderPipeline>],
     pub(super) terrain_indices: Option<&'f wgpu::Buffer>,
     pub(super) terrain_draws: &'f [terrain::TerrainDraw],
     pub(super) view_frustum: &'f Frustum,
@@ -303,9 +303,9 @@ impl Renderer {
                 }
                 stats.draw_calls += 1;
             }
-            let skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
+            let skinned: Vec<Option<&wgpu::RenderPipeline>> = skinned_visible
                 .iter()
-                .map(|b| object.pipeline(b.faces, true))
+                .map(|b| Some(object.pipeline(b.faces, true)))
                 .collect();
             stats.draw_calls += ctx.draw_skinned(
                 &mut p,

@@ -847,7 +847,10 @@ impl FilterRunner {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            rp.set_pipeline(&self.pipeline);
+            let Some(pipeline) = self.pipeline.get() else {
+                return 0;
+            };
+            rp.set_pipeline(pipeline);
             rp.set_bind_group(0, &pass.group, &[]);
             rp.draw(0..3, 0..1);
         }

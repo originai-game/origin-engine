@@ -593,7 +593,7 @@ impl GpuTrails {
             label: Some("trails"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.pipeline);
+        pass.set_pipeline(self.pipeline.wait());
         pass.set_bind_group(0, &planned.group, &[]);
         pass.dispatch_workgroups(planned.jobs.div_ceil(64), 1, 1);
     }

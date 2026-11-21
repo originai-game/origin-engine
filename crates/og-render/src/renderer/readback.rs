@@ -85,11 +85,6 @@ impl Renderer {
     /// with idle time (the web page behind its play gate, og.render.compile)
     /// calls it until it answers false. The frames are the same either way.
     pub fn warm(&mut self) -> bool {
-        // Fork s60: asynchronous on the WebGPU tier while the host asks.
-        frame_pipelines(|| self.warm_now())
-    }
-
-    fn warm_now(&mut self) -> bool {
         let r = self.reach;
         let world = WORLD_3D && r.world;
         (r.sprites

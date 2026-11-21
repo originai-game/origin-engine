@@ -30,7 +30,10 @@ impl Renderer {
             let tone_mapped = run.tone_mapped || view;
             if !tone_mapped && !covered {
                 // The HDR alpha to 1 before the first untonemapped run.
-                pass.set_pipeline(&self.sprite.sprite_cover_pipeline);
+                let Some(cover) = self.sprite.sprite_cover_pipeline.get() else {
+                    continue;
+                };
+                pass.set_pipeline(cover);
                 pass.draw(0..3, 0..1);
                 draws += 1;
                 covered = true;
@@ -136,7 +139,10 @@ impl Renderer {
                     .sprite_arrays
                     .as_ref()
                     .expect("made before the pass");
-                pass.set_pipeline(arrays.pipeline(blend, tone_mapped));
+                let Some(pipeline) = arrays.pipeline(blend, tone_mapped) else {
+                    continue;
+                };
+                pass.set_pipeline(pipeline);
                 let (group, _) = self.cache.sprite_array_groups[a.index()]
                     .as_ref()
                     .expect("made before the pass");
@@ -236,12 +242,16 @@ impl Renderer {
                 ),
             };
             if current != Some((msdf, blend, tone_mapped)) {
-                pass.set_pipeline(match (msdf, blend, tone_mapped) {
+                let Some(pipeline) = match (msdf, blend, tone_mapped) {
                     (true, _, _) => &self.sprite.msdf_pipeline,
                     (false, SpriteBlend::Alpha, false) => &self.sprite.sprite_untonemapped_pipeline,
                     (false, SpriteBlend::Alpha, true) => &self.sprite.sprite_pipeline,
                     (false, SpriteBlend::Additive, _) => &self.sprite.sprite_additive_pipeline,
-                });
+                }
+                .get() else {
+                    continue;
+                };
+                pass.set_pipeline(pipeline);
                 current = Some((msdf, blend, tone_mapped));
             }
             pass.set_bind_group(1, group, &[]);

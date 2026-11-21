@@ -285,7 +285,7 @@ impl SurfacePipelines {
                 label: Some("simulation surface"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(pipeline);
+            pass.set_pipeline(pipeline.wait());
             pass.set_bind_group(0, &mesh.group, &[]);
             // A 2D grid also covers meshes above 65535 workgroups.
             let groups = count.div_ceil(64);

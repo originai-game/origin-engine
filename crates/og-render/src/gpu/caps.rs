@@ -26,8 +26,8 @@ impl Caps {
     pub const COMPUTE: Caps = Caps(1 << 0);
     /// More than one colour attachment in a render pass.
     pub const MRT: Caps = Caps(1 << 1);
-    /// Pipelines compiled off the frame: on worker threads natively
-    /// (`deferred.rs`), asked for asynchronously on the web (`FrameSpan`).
+    /// Pipelines compiled off the frame by the host's compiler: on worker
+    /// threads natively, asked for asynchronously on the web (`deferred.rs`).
     pub const ASYNC_PIPELINES: Caps = Caps(1 << 2);
     /// Timestamp queries, granted by the device (`TIMESTAMP_QUERY`).
     pub const TIMESTAMPS: Caps = Caps(1 << 3);

@@ -614,13 +614,13 @@ pub struct FrameStats {
     pub draw_calls: u32,
     /// Microseconds the frame spent on pipelines natively: making one it
     /// met for the first time, or waiting for one compiling on a worker
-    /// thread (0 on the web, where the browser compiles them). A lit
-    /// feature turned on after the first frame never costs one.
+    /// thread (0 on the web, which times none). A lit feature turned on
+    /// after the first frame never costs one.
     pub compile_wait_us: u32,
     /// A pipeline made ahead of an instance still hidden
-    /// ([`InstanceFx::reveal`] 0) is compiling on a worker thread: the
-    /// frame that first drew the instance now would wait for it, so its
-    /// producer keeps it hidden while this holds. Never on the web.
+    /// ([`InstanceFx::reveal`] 0) is not ready yet (gpu/deferred.rs): the
+    /// frame that first drew the instance now would go without it, so its
+    /// producer keeps it hidden while this holds, on every host.
     pub compiling_ahead: bool,
     /// What moved between the CPU and the GPU since the frame before
     /// (uploads, buffers made, readbacks, waits, pipelines): zero unless

@@ -110,9 +110,9 @@ export class Gate {
     return (glue?.og_web_textures_deferred?.() ?? 0) > 0 || (glue?.og_web_fonts_pending?.() ?? 0) > 0;
   }
 
-  /** Whether the last frame drew less than the scene: pipelines compiling, draws skipped or kept work held for them (s60), textures waiting (s63). */
+  /** Whether the last frame drew less than the scene: draws skipped or work left for a pipeline not ready (og-render gpu/deferred.rs), textures waiting (s63). */
   #frameWaits(): boolean {
-    return pipelines.takeSkipped() > 0 || pipelines.compiling() > 0 || (this.#run.glue?.og_web_pipelines_held?.() ?? false) || this.#texturesWaiting();
+    return (this.#run.glue?.og_web_frame_skipped() ?? 0) > 0 || this.#texturesWaiting();
   }
 
   // og.loading (fork s61): the game's stages reach the page as `og-stage`, and its done (stage
@@ -158,7 +158,7 @@ export class Gate {
       run.relay(answered);
       if (!run.firstFrame && answered.rendered !== false) {
         // A frame that drew less than the scene is drawn again, each try its own task: once no
-        // pipeline compiles (s60, polled without drawing: a frame meanwhile only slows them), or at
+        // pipeline compiles (polled without drawing: a frame meanwhile only slows them), or at
         // once while textures wait to upload (s63). The first frame is the first one drawn whole.
         if (this.#frameWaits()) {
           if (!waiting.since) waiting.since = performance.now();
@@ -184,8 +184,6 @@ export class Gate {
         }
         if (waiting.since) console.info(`renderer: the first frame waited ${Math.round(performance.now() - waiting.since)} ms (${waiting.frames} frames behind the gate)`);
         run.firstFrame = true;
-        // From now a dispatch still compiling makes its pipeline instead of skipping the frame's rest.
-        pipelines.gate(false);
         run.boot.phase("present");
         post(run.boot.firstFrame());
         this.#warmBehindGate();

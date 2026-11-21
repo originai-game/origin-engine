@@ -549,7 +549,6 @@ impl ScatterRenderer {
                     }
                     let place = self.place.as_mut().expect("planned with it");
                     if !place.ready(device, terrain_layout, arrayed) {
-                        crate::gpu::ready::hold();
                         continue;
                     }
                     gpu_budget = gpu_budget.saturating_sub(1);
@@ -803,14 +802,13 @@ impl ScatterRenderer {
             place.upload(device, queue);
         }
         // The copies the GPU culls draw from what it culled into: while the
-        // web host still compiles the cull's pipeline they are left out, so
-        // no pass draws them unculled (a thinned scatter whole), and the
-        // play gate draws the frame again (gpu/ready.rs).
+        // cull's pipeline is not ready they are left out, so no pass draws
+        // them unculled (a thinned scatter whole), and the host draws the
+        // frame again (gpu/deferred.rs).
         if let Some(cull) = &mut self.cull
             && !cull_items.is_empty()
-            && !cull.compiled()
+            && !cull.ready()
         {
-            crate::gpu::ready::hold();
             cull_items.clear();
             batches.clear();
             planned.clear();

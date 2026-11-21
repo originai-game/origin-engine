@@ -830,17 +830,15 @@ impl ScatterCull {
         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_SRC
     }
 
-    /// Whether its pipeline is compiled: made now if it was not yet, and
-    /// asked of the web host then (gpu/ready.rs).
-    pub(crate) fn compiled(&self) -> bool {
-        self.pipeline.compiled()
+    /// Whether its pipeline is ready (asked for when not yet:
+    /// gpu/deferred.rs).
+    pub(crate) fn ready(&self) -> bool {
+        self.pipeline.ready().is_some()
     }
 
-    /// Starts making its pipeline ahead of the first chunk it culls: on a
-    /// compile worker natively, asked of the web host on the web.
+    /// Asks for its pipeline ahead of the first chunk it culls.
     pub(crate) fn start(&self) {
         crate::deferred::Start::start(&self.pipeline);
-        self.pipeline.compiled();
     }
 
     /// A free slot of the pool for a chunk's copies, a page added when
@@ -1119,7 +1117,7 @@ impl ScatterCull {
             label: Some("scatter cull"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.pipeline);
+        pass.set_pipeline(self.pipeline.wait());
         for (d, shared) in self.dispatches.iter().zip(&shared) {
             let map = &maps
                 .iter()

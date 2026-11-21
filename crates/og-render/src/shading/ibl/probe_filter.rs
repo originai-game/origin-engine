@@ -187,7 +187,7 @@ impl IblGenerator {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_pipeline(&self.pipelines[*pipeline]);
+            pass.set_pipeline(self.pipelines[*pipeline].wait());
             pass.set_bind_group(0, group, &[0]);
             pass.draw(0..3, 0..1);
         }

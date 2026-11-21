@@ -80,11 +80,14 @@ impl Renderer {
         pass.set_bind_group(3, group, &[offset]);
         let alpha = usize::from(blend != ParticleBlend::Additive as u8);
         let gpu = self.strips.gpu_trails.as_ref().filter(|_| points);
-        pass.set_pipeline(match (pipeline, gpu) {
-            (Some(p), _) => p,
-            (None, Some(g)) => &g.pipelines[alpha],
-            (None, None) => &self.strips.ribbon_pipelines[alpha],
-        });
+        let Some(pipeline) = (match (pipeline, gpu) {
+            (Some(p), _) => Some(p),
+            (None, Some(g)) => g.pipelines[alpha].get(),
+            (None, None) => self.strips.ribbon_pipelines[alpha].get(),
+        }) else {
+            return;
+        };
+        pass.set_pipeline(pipeline);
         pass.set_bind_group(
             1,
             match texture {

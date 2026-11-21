@@ -92,12 +92,15 @@ impl Renderer {
                     }
                     *current = None;
                 } else if *current != Some(key) {
-                    pass.set_pipeline(match oit {
-                        Some(m) => self
-                            .oit_pipeline(Self::oit_lit_source(batch, false, physical), m)
-                            .expect("made by ensure_oit_pipelines"),
+                    let Some(pipeline) = (match oit {
+                        Some(m) => {
+                            self.oit_pipeline(Self::oit_lit_source(batch, false, physical), m)
+                        }
                         None => self.lit_pipeline_of(batch, false, physical),
-                    });
+                    }) else {
+                        continue;
+                    };
+                    pass.set_pipeline(pipeline);
                     *current = Some(key);
                 }
                 match (lightmapped && !physical, lean, fx) {
@@ -137,23 +140,21 @@ impl Renderer {
                     batch.array,
                 );
                 if shadow_key != Some(key) {
-                    pass.set_pipeline(
-                        match batch.shader {
-                            Some(sh) => {
-                                &self.cache.hook_shadow_pipelines[&(sh, batch.faces, false)]
-                            }
-                            None if batch.array => {
-                                &self.lit.array_maps.as_ref().expect("an array batch").shadow
-                                    [&(batch.faces, batch.dissolve)]
-                            }
-                            None if batch.compact => {
-                                &self.shadows.compact_shadow_pipelines[&batch.faces]
-                            }
-                            None => &self.shadows.shadow_pipelines[&key.0],
+                    let Some(set) = match batch.shader {
+                        Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, batch.faces, false)],
+                        None if batch.array => {
+                            &self.lit.array_maps.as_ref().expect("an array batch").shadow
+                                [&(batch.faces, batch.dissolve)]
                         }
-                        .get()
-                        .get(shadow),
-                    );
+                        None if batch.compact => {
+                            &self.shadows.compact_shadow_pipelines[&batch.faces]
+                        }
+                        None => &self.shadows.shadow_pipelines[&key.0],
+                    }
+                    .get() else {
+                        continue;
+                    };
+                    pass.set_pipeline(set.get(shadow));
                     shadow_key = Some(key);
                 }
                 if batch.dissolve || batch.shader.is_some() {

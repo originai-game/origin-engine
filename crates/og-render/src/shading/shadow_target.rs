@@ -104,8 +104,8 @@ impl ShadowTarget {
 /// A caster's pipelines, one per [`ShadowTarget`]. A [`ShadowSet::lazy`]
 /// set makes a local layer's two when a pass first draws with one, or
 /// when [`ShadowSet::local`] asks for them (the batches' sets, in a frame
-/// whose scene has a shadowed local light: inside the frame span, so the
-/// web host asks for them asynchronously). A scene whose local lights
+/// whose scene has a shadowed local light, so they are asked for ahead:
+/// gpu/deferred.rs). A scene whose local lights
 /// cast no shadow then compiles one shadow pipeline per caster, not three.
 pub(crate) struct ShadowSet<P = wgpu::RenderPipeline> {
     cascade: P,

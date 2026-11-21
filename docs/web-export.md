@@ -496,18 +496,17 @@ How the frame's render and compute pipelines compile on the web
 
 - `sync`: a pipeline is made when a pass first draws with it, and the rest
   are warmed behind the play gate after the first frame.
-- `async`: every pipeline the renderer's frame makes is asked for with
-  `createRenderPipelineAsync` or `createComputePipelineAsync`. A pass drawn
-  again every frame skips a pipeline still compiling; before the first
-  frame a skipped dispatch also skips every later draw and dispatch of that
-  frame, so nothing draws from a buffer it did not fill. A pass whose
-  output the renderer keeps (a scatter chunk's placement, a grass field's
-  blades, the environment's bake, the live sky's step, the clouds' shadow
-  bake) waits for its pipelines' tickets and leaves that work, and its
-  draws, for a later frame (og-render `gpu/ready.rs`); the shadow layers
-  are drawn in a frame span while any pipeline compiles, and the static
-  shadow cache keeps none of them. The gate shows once the first frame is
-  drawn whole and no work was held. Probe captures are always drawn whole.
+- `async`: the renderer's pipeline cache (og-render `gpu/deferred.rs`)
+  asks the browser for every pipeline with `createRenderPipelineAsync` or
+  `createComputePipelineAsync`. Readiness is the cache's and works the same
+  way natively. A display frame skips a draw whose pipeline is not ready
+  yet. Work whose output later frames keep (a scatter chunk's placement, a
+  grass field's blades, the bakes, the compute before the frame's passes)
+  waits for a later frame. A frame that waits (a scripted, recorded or
+  capture frame) has the browser make each such pipeline at once. After a
+  frame that skipped a shadow caster's draw, the static shadow cache keeps
+  none of its layers. The gate shows once a frame skipped nothing
+  (`og_web_frame_skipped`).
 - `prewarm`: as `sync`, with only the warm-up behind the gate
   asynchronous. Opt-in.
 - `auto` (the default): `async` on every GPU except Apple's, which stay

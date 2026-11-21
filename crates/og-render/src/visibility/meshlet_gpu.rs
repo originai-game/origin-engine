@@ -320,15 +320,14 @@ use draw::*;
 pub(crate) use plan::*;
 
 pub(crate) struct MeshletGpu {
-    /// The cull's pipelines the web host was asked for (gpu/ready.rs).
-    tickets: crate::gpu::ready::Tickets,
     /// The visibility buffer: the camera's small clusters rasterised in
     /// compute and resolved per batch ([`vis`]).
     vis_buffer: vis::VisBuffer,
     /// The wind field's lean the foliage sways by (`wind_field.rs`).
     wind_field: wgpu::TextureView,
     cull_layout: wgpu::BindGroupLayout,
-    cull: wgpu::ComputePipeline,
+    /// Asked for when it is made (gpu/deferred.rs).
+    cull: crate::deferred::Deferred<wgpu::ComputePipeline>,
     compact: compact::Compact,
     pub(crate) draw_layout: wgpu::BindGroupLayout,
     lit: HashMap<(Faces, bool), wgpu::RenderPipeline>,

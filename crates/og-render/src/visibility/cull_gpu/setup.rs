@@ -4,7 +4,6 @@ use super::*;
 
 impl GpuCulling {
     pub fn new(device: &wgpu::Device, max_binding: u64, per_draw: bool) -> GpuCulling {
-        let tickets = crate::gpu::ready::Tickets::from_here();
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("cull"),
             entries: &[
@@ -106,10 +105,13 @@ impl GpuCulling {
             )
         });
         let readbacks = Vec::new();
-        let stages = CullStages::new(device, &pipeline_layout, &module);
-        let hiz_reduce = compute_stage(device, &reduce_layout, &hiz_module, "reduce");
+        let (d, l, m) = (device.clone(), pipeline_layout.clone(), module.clone());
+        let stages = crate::deferred::Deferred::anywhere(move || CullStages::new(&d, &l, &m));
+        let (d, l, m) = (device.clone(), reduce_layout.clone(), hiz_module.clone());
+        let hiz_reduce =
+            crate::deferred::Deferred::anywhere(move || compute_stage(&d, &l, &m, "reduce"));
+        crate::deferred::start_all(&[&stages, &hiz_reduce]);
         GpuCulling {
-            tickets: tickets.to_here(),
             stages,
             hiz_reduce,
             hiz_base: [None, None],

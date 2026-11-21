@@ -167,7 +167,7 @@ impl DepthMipsPass {
             label: Some(DEPTH_MIPS_TARGET),
             timestamp_writes: None,
         });
-        pass.set_pipeline(self.pipeline.get());
+        pass.set_pipeline(self.pipeline.wait());
         pass.set_bind_group(0, group, &[]);
         pass.dispatch_workgroups(size.0.div_ceil(16), size.1.div_ceil(16), 1);
     }

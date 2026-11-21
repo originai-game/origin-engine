@@ -363,7 +363,10 @@ pub(crate) struct ParticleRenderer {
         wgpu::ComputePipeline,
     )>,
     pub draw_layout: wgpu::BindGroupLayout,
-    draw: HashMap<(ParticleBlend, u32, DrawKind, Look), wgpu::RenderPipeline>,
+    draw: HashMap<
+        (ParticleBlend, u32, DrawKind, Look),
+        crate::deferred::Deferred<wgpu::RenderPipeline>,
+    >,
     pub(crate) draw_module: crate::deferred::Module,
     /// The draw module with an effect material's hook, by shader index.
     hook_modules: HashMap<usize, wgpu::ShaderModule>,

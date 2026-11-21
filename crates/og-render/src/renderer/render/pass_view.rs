@@ -125,7 +125,7 @@ impl Renderer {
             );
             stats.draw_calls += view_lists[i].ranges.len() as u32;
             stats.draw_calls += self.draw_meshlets(&mut pass, batches, meshlet_views[i]);
-            let pipelines: Vec<&wgpu::RenderPipeline> = view_skinned[i]
+            let pipelines: Vec<Option<&wgpu::RenderPipeline>> = view_skinned[i]
                 .iter()
                 .map(|b| self.lit_pipeline_of(b, true, false))
                 .collect();
@@ -153,8 +153,8 @@ impl Renderer {
                 .0;
             }
             let sky = match scene.lighting.environment.background {
-                Background::Sky => Some(&self.sky.sky_pipeline),
-                Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
+                Background::Sky => self.sky.sky_pipeline.get(),
+                Background::Procedural { .. } => self.sky.sky_look_pipeline.get(),
                 Background::Color(_) => None,
             };
             if let (Some(sky), None) = (sky, p.clear) {

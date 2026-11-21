@@ -12,7 +12,8 @@ pub(super) struct Compact {
     block_sums: wgpu::Buffer,
     params: wgpu::Buffer,
     layout: wgpu::BindGroupLayout,
-    pipelines: [wgpu::ComputePipeline; 4],
+    /// Asked for when it is made (gpu/deferred.rs).
+    pub(super) pipelines: crate::deferred::Deferred<[wgpu::ComputePipeline; 4]>,
     group: Option<(Vec<wgpu::Buffer>, [u32; 4], wgpu::BindGroup)>,
 }
 
@@ -41,19 +42,24 @@ impl Compact {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipelines = ["reduce", "scan_blocks", "prefix", "scatter"].map(|name| {
-            crate::traffic::create_compute_pipeline(
-                device,
-                &wgpu::ComputePipelineDescriptor {
-                    label: Some(name),
-                    layout: Some(&pipeline_layout),
-                    module: &module,
-                    entry_point: Some(name),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                },
-            )
+        let d = device.clone();
+        let pipelines = crate::deferred::Deferred::anywhere(move || {
+            let device = &d;
+            ["reduce", "scan_blocks", "prefix", "scatter"].map(|name| {
+                crate::traffic::create_compute_pipeline(
+                    device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some(name),
+                        layout: Some(&pipeline_layout),
+                        module: &module,
+                        entry_point: Some(name),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(device).as_ref(),
+                    },
+                )
+            })
         });
+        crate::deferred::Start::start(&pipelines);
         Self {
             selected: buffer(device, "meshlet selected", 0, storage_usage()),
             sums: buffer(device, "meshlet sums", 0, storage_usage()),
@@ -147,7 +153,7 @@ impl Compact {
     pub fn encode(&self, pass: &mut wgpu::ComputePass<'_>, slots: u32) {
         let blocks = slots.div_ceil(WG);
         pass.set_bind_group(0, &self.group.as_ref().expect("prepared").2, &[]);
-        for (i, pipeline) in self.pipelines.iter().enumerate() {
+        for (i, pipeline) in self.pipelines.wait().iter().enumerate() {
             pass.set_pipeline(pipeline);
             let n = if i == 1 { 1 } else { blocks };
             pass.dispatch_workgroups(n.min(WORKGROUPS_PER_ROW), n.div_ceil(WORKGROUPS_PER_ROW), 1);

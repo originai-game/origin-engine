@@ -288,7 +288,7 @@ impl Output {
             "display output",
             output,
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-            &self.pipeline,
+            Some(&self.pipeline),
             &group,
         );
     }

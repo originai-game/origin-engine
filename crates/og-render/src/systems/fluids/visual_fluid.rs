@@ -602,7 +602,7 @@ impl VisualFluids {
             let (particles, cells) = (groups(g.n), groups(g.cells()));
             pass.set_bind_group(0, &job.group, &[]);
             let mut run = |entry: usize, count: u32| {
-                pass.set_pipeline(self.pipelines[entry].get());
+                pass.set_pipeline(self.pipelines[entry].wait());
                 pass.dispatch_workgroups(count, 1, 1);
             };
             for _ in 0..job.plan.steps {

@@ -6,10 +6,10 @@ use super::*;
 
 /// The pipelines each skinned batch draws with, by pass.
 pub(super) struct SkinnedPipelines<'a> {
-    pub lit: Vec<&'a wgpu::RenderPipeline>,
-    pub lit_standard: Vec<&'a wgpu::RenderPipeline>,
-    pub shadow: Vec<&'a ShadowSet>,
-    pub prepass: Vec<&'a wgpu::RenderPipeline>,
+    pub lit: Vec<Option<&'a wgpu::RenderPipeline>>,
+    pub lit_standard: Vec<Option<&'a wgpu::RenderPipeline>>,
+    pub shadow: Vec<Option<&'a ShadowSet>>,
+    pub prepass: Vec<Option<&'a wgpu::RenderPipeline>>,
 }
 
 impl Renderer {
@@ -22,22 +22,22 @@ impl Renderer {
     ) -> SkinnedPipelines<'a> {
         // The main pass draws physical materials with their pipelines, the
         // planar reflection with the standard ones.
-        let lit_skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
+        let lit_skinned: Vec<Option<&wgpu::RenderPipeline>> = skinned_visible
             .iter()
             .map(|b| self.lit_pipeline_of(b, true, b.physical))
             .collect();
-        let lit_skinned_standard: Vec<&wgpu::RenderPipeline> = skinned_visible
+        let lit_skinned_standard: Vec<Option<&wgpu::RenderPipeline>> = skinned_visible
             .iter()
             .map(|b| self.lit_pipeline_of(b, true, false))
             .collect();
-        let shadow_skinned: Vec<&ShadowSet> = skinned_batches
+        let shadow_skinned: Vec<Option<&ShadowSet>> = skinned_batches
             .iter()
             .map(|b| match b.shader {
                 Some(sh) => self.cache.hook_shadow_pipelines[&(sh, b.faces, true)].get(),
                 None => self.shadows.shadow_pipelines[&(b.faces, true, b.dissolve)].get(),
             })
             .collect();
-        let prepass_skinned: Vec<&wgpu::RenderPipeline> = if prepass {
+        let prepass_skinned: Vec<Option<&wgpu::RenderPipeline>> = if prepass {
             skinned_visible
                 .iter()
                 .map(|b| {

@@ -24,7 +24,7 @@ impl Renderer {
         self.oit
             .pipelines
             .get(&(source, mode, self.samples))
-            .map(|p| p.get(self.frame_features))
+            .and_then(|p| p.get(self.frame_features))
     }
 
     /// The OIT pipeline source of a blended batch, as `lit_pipeline_of`

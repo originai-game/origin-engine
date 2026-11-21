@@ -139,6 +139,7 @@ impl RenderScene {
                 shake: CameraShake::default(),
                 css_height: 0.0,
                 reference: false,
+                display: false,
             },
             lighting: SceneLighting {
                 light: DirectionalLight::default(),

@@ -579,15 +579,14 @@ impl CloudNoise {
 
     /// Submits the volume's draw [`CloudNoise::make`] planned, waiting for
     /// its pipeline if it is still compiling natively: before the frame's
-    /// own commands, the first that read it. While the web host still
-    /// compiles it the draw waits for a later frame (gpu/ready.rs).
+    /// own commands, the first that read it. While its pipeline is not
+    /// ready the draw waits for a later frame (gpu/deferred.rs).
     pub(crate) fn submit(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         if self
             .pending
             .as_ref()
-            .is_some_and(|(pipeline, _)| !pipeline.compiled())
+            .is_some_and(|(pipeline, _)| pipeline.ready().is_none())
         {
-            crate::gpu::ready::hold();
             return;
         }
         let Some((pipeline, group)) = self.pending.take() else {
@@ -601,7 +600,7 @@ impl CloudNoise {
                 label: Some("cloud noise"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(pipeline.get());
+            pass.set_pipeline(pipeline.wait());
             pass.set_bind_group(0, &group, &[]);
             let n = NOISE_SIZE / 4;
             pass.dispatch_workgroups(n, n, n);

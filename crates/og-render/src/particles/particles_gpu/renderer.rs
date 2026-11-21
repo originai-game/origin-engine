@@ -216,7 +216,7 @@ impl ParticleRenderer {
         depth: &wgpu::TextureView,
         gbuffer: &wgpu::TextureView,
     ) {
-        let (simulate, clear, shift) = &*self.sim;
+        let (simulate, clear, shift) = self.sim.wait();
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("particle sim"),
             timestamp_writes: None,
@@ -402,9 +402,10 @@ impl ParticleRenderer {
             // An effect mesh is blended like a billboard: no depth written.
             let solid = mesh && !s.look.effect_mesh;
             let module = match s.look.hook {
-                Some(h) => &self.hook_modules[&h],
-                None => self.draw_module.get(),
+                Some(h) => self.hook_modules[&h].clone(),
+                None => self.draw_module.get().clone(),
             };
+            let (device, layout) = (device.clone(), self.draw_pl.clone());
             let buffers = if mesh {
                 vec![Some(PARTICLE_LAYOUT), Some(MESH_LAYOUT)]
             } else if trail {
@@ -412,33 +413,38 @@ impl ParticleRenderer {
             } else {
                 vec![Some(PARTICLE_LAYOUT)]
             };
-            let p = crate::hdr_pipeline(
-                device,
-                crate::HdrPipeline {
-                    alpha_to_coverage: false,
-                    label: "particles",
-                    layout: &self.draw_pl,
-                    module,
-                    vs: match s.kind {
-                        DrawKind::Mesh => "vs_mesh",
-                        DrawKind::Trail => "vs_trail",
-                        _ => "vs",
+            let (kind, double_sided) = (s.kind, s.look.double_sided);
+            // An entry of the pipeline cache (gpu/deferred.rs), asked for now.
+            let p = crate::deferred::Deferred::anywhere(move || {
+                crate::hdr_pipeline(
+                    &device,
+                    crate::HdrPipeline {
+                        alpha_to_coverage: false,
+                        label: "particles",
+                        layout: &layout,
+                        module: &module,
+                        vs: match kind {
+                            DrawKind::Mesh => "vs_mesh",
+                            DrawKind::Trail => "vs_trail",
+                            _ => "vs",
+                        },
+                        fs: match kind {
+                            DrawKind::Billboard | DrawKind::Trail => "fs",
+                            DrawKind::Mesh => "fs_mesh",
+                            DrawKind::Distort => "fs_distort",
+                            DrawKind::Sprite => unreachable!("filtered above"),
+                        },
+                        buffers: &buffers,
+                        cull: (mesh && !double_sided).then_some(wgpu::Face::Back),
+                        // Debris occludes what is behind it, and itself.
+                        depth_write: solid,
+                        depth_compare: wgpu::CompareFunction::LessEqual,
+                        blend: Some(blend),
+                        samples,
                     },
-                    fs: match s.kind {
-                        DrawKind::Billboard | DrawKind::Trail => "fs",
-                        DrawKind::Mesh => "fs_mesh",
-                        DrawKind::Distort => "fs_distort",
-                        DrawKind::Sprite => unreachable!("filtered above"),
-                    },
-                    buffers: &buffers,
-                    cull: (mesh && !s.look.double_sided).then_some(wgpu::Face::Back),
-                    // Debris occludes what is behind it, and itself.
-                    depth_write: solid,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
-                    blend: Some(blend),
-                    samples,
-                },
-            );
+                )
+            });
+            crate::deferred::Start::start(&p);
             self.draw.insert(key, p);
         }
         let _ = HDR_FORMAT;
@@ -492,7 +498,10 @@ impl ParticleRenderer {
             });
             let Some(pipeline) = (match part {
                 ParticlePart::Oit(p) => Some(p),
-                _ => self.draw.get(&(s.blend, samples, s.kind, s.look)),
+                _ => self
+                    .draw
+                    .get(&(s.blend, samples, s.kind, s.look))
+                    .and_then(|p| p.get()),
             }) else {
                 continue;
             };

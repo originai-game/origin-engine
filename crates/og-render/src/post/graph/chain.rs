@@ -151,7 +151,7 @@ impl Chain {
                     &pass.name(),
                     cx.graph.view(target),
                     wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    pipeline,
+                    Some(pipeline),
                     &self.groups[&pass],
                 );
                 1
@@ -169,7 +169,7 @@ impl Chain {
                     "smaa history",
                     &cx.persistent.smaa_history.as_ref().unwrap()[cx.slot],
                     CLEAR,
-                    &temporal.blend,
+                    Some(&temporal.blend),
                     &self.groups[&pass],
                 );
                 1
@@ -200,7 +200,14 @@ impl Chain {
                         } else {
                             (cx.graph.view(&ldr_name(i + 1)), to_ldr)
                         };
-                        fullscreen_pass(encoder, &pass.name(), target, CLEAR, pipeline, group);
+                        fullscreen_pass(
+                            encoder,
+                            &pass.name(),
+                            target,
+                            CLEAR,
+                            Some(pipeline),
+                            group,
+                        );
                         1
                     }
                     _ => 0,

@@ -134,7 +134,9 @@ impl WaterRenderer {
 
     /// Draws the surfaces' view depth for the screen AO (`fs_ao_depth`; group 0: the frame). Returns the draw calls.
     pub(crate) fn draw_ao_depth(&self, pass: &mut wgpu::RenderPass, draws: &[WaterDraw]) -> u32 {
-        let [grid, mesh] = self.ao_depth_pipelines.get();
+        let Some([grid, mesh]) = self.ao_depth_pipelines.get() else {
+            return 0;
+        };
         for d in draws {
             pass.set_bind_group(1, &d.group, &[]);
             match &d.mesh {
@@ -168,13 +170,19 @@ impl WaterRenderer {
             pass.set_bind_group(1, &d.group, &[]);
             match &d.mesh {
                 Some((vertices, indices, count, base)) => {
-                    pass.set_pipeline(self.mesh_pipeline.get(features));
+                    let Some(pipeline) = self.mesh_pipeline.get(features) else {
+                        continue;
+                    };
+                    pass.set_pipeline(pipeline);
                     pass.set_vertex_buffer(0, vertices.slice(..));
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..*count, *base, 0..1);
                 }
                 None => {
-                    pass.set_pipeline(self.pipeline.get(features));
+                    let Some(pipeline) = self.pipeline.get(features) else {
+                        continue;
+                    };
+                    pass.set_pipeline(pipeline);
                     pass.draw(0..d.vertices, 0..1);
                 }
             }
@@ -183,14 +191,20 @@ impl WaterRenderer {
         // The spray over every surface (it lies in front of the water it leaves).
         let mut calls = draws.len() as u32;
         for d in draws.iter().filter(|d| d.spray > 0) {
-            pass.set_pipeline(&self.spray_pipeline);
+            let Some(spray) = self.spray_pipeline.get() else {
+                break;
+            };
+            pass.set_pipeline(spray);
             pass.set_bind_group(1, &d.group, &[]);
             pass.draw(0..6, 0..d.spray);
             calls += 1;
         }
         // The waterline over all of it.
         for d in draws.iter().filter(|d| d.waterline) {
-            pass.set_pipeline(&self.waterline_pipeline);
+            let Some(waterline) = self.waterline_pipeline.get() else {
+                break;
+            };
+            pass.set_pipeline(waterline);
             pass.set_bind_group(1, &d.group, &[]);
             pass.draw(0..3, 0..1);
             calls += 1;

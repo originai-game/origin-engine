@@ -1,33 +1,52 @@
-//! GPU objects made the first time a frame uses them.
+//! The pipeline cache: every pipeline the renderer draws with, made when
+//! it is first asked for, with its state.
 //!
 //! Every pipeline is a program to compile before a pass draws with it:
 //! the renderer making all of its fixed pipelines up front cost the web
 //! page of the retired WebGL2 tier 400 to 550 ms before its first frame
-//! (web finding #11), most of them for passes the first frame
-//! does not draw (water, metaballs, fluids, terrain, scatter,
-//! particles, 2D lights, ribbons, bloom, depth of field…). A [`Deferred`]
-//! pipeline is made from the same descriptor when a pass first sets it, so
-//! the first frame compiles what it draws and nothing else, and every frame
-//! is the frame it was. [`Renderer::warm`](crate::Renderer::warm) makes
-//! the rest one at a time when the host has idle time (behind the web
-//! page's play gate), so a pass met later does not stop a frame to compile.
+//! (web finding #11), most of them for passes the first frame does not
+//! draw. So a pipeline (or a set of them, or a pipeline per sample count:
+//! [`Deferred`], [`Sampled`]) is an entry made from its descriptor when it
+//! is first asked for, and is in one of these states ([`State`], Bevy's
+//! `PipelineCache` (MIT/Apache) in this shape):
 //!
-//! **Compiling ahead, natively.** A pipeline compiles on the CPU (DXC and
-//! the driver on DX12 take over a second for the terrain's lit stages),
-//! and a frame used to make what its passes met one after another. A value
-//! made by [`Deferred::anywhere`] (or [`Sampled::anywhere`]) can be started
-//! on a worker thread ([`Deferred::start`]) as soon as the frame knows it
-//! will draw it, before its passes are encoded; the pass that sets it waits
-//! for it there, so the frame's compiles overlap each other and the CPU
-//! work between them. wgpu's native device makes pipelines from any thread
-//! (Bevy's pipeline cache compiles on a task pool the same way); the
-//! pipelines are the same objects from the same descriptors, so nothing a
-//! frame draws changes. On the web a value is made where it is first used,
-//! as before: the browser's GPU process compiles it, and the host's frame
-//! span asks for it asynchronously (`FrameSpan`).
+//! - **Queued**: asked for in the background, held until the renderer's
+//!   second frame has been submitted ([`Priority::Background`],
+//!   [`release_background`]): the full lit variants (pipeline_features.rs).
+//!   A renderer that draws one frame never compiles them, and its drop
+//!   waits for none.
+//! - **Creating**: the host's compiler has it. Natively that is the
+//!   compile workers (wgpu's native device makes pipelines from any
+//!   thread, as Bevy's cache compiles on a task pool); on the web it is
+//!   the browser's `createRenderPipelineAsync` (the host's
+//!   [`PipelineCompiler`]), since a cold driver compiles one for seconds,
+//!   and synchronous ones in one GPU-process task past Chrome's 15 s
+//!   watchdog lose the device. An entry that cannot leave the renderer's
+//!   thread natively ([`Deferred::new`]) is made there when asked for.
+//! - **Ready**.
+//!
+//! A frame asks for what it will draw before it encodes its passes
+//! ([`Start`]), so its compiles overlap each other and the CPU work
+//! between them, and one rule decides what a use does with an entry that
+//! is not ready, the same on every host ([`FramePolicy`]):
+//!
+//! - a frame that waits (the default; a scripted, recorded or capture
+//!   frame) waits for it: natively for its worker, on the web by having the
+//!   browser make it at once;
+//! - a display frame draws without it: a draw in a pass drawn again next
+//!   frame ([`Skipping`]) is skipped ([`Deferred::get`]), and work whose
+//!   output later frames keep (a bake, a scatter chunk's placement, the
+//!   compute before the frame's passes) is left for a later frame
+//!   ([`Deferred::ready`]), its readers with it. A compute dispatch is never
+//!   skipped: what it writes is read later in the same frame. Either way the
+//!   frame counts what it left ([`frame_skipped`]); the host draws its
+//!   first frame again until it left nothing.
+//!
+//! A pipeline still compiling when its entry is dropped is waited for
+//! ([`Pending`]): the driver cannot stop a compile.
 
 use std::cell::{Cell, OnceCell};
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::sync::{Arc, Mutex, OnceLock};
 
 /// A closure that makes a value off the renderer's thread (natively; on
@@ -59,27 +78,310 @@ pub(crate) trait AnywhereOnce {}
 #[cfg(target_arch = "wasm32")]
 impl<T> AnywhereOnce for T {}
 
-/// How a [`Deferred`] value is made.
+/// How an entry not made yet is made.
 enum Make<T> {
-    /// On first use, here.
+    /// When asked for, here.
     Here(Box<dyn FnOnce() -> T>),
-    /// On first use, or on a worker thread once started.
+    /// When asked for, by the host's compiler.
     Anywhere(MakeAnywhere<T>),
-    /// Started on a worker thread.
-    #[cfg(not(target_arch = "wasm32"))]
-    Started(Pending<T>),
+    /// Asked for: queued or creating.
+    Asked(Pending<T>),
 }
 
-impl<T> Make<T> {
-    fn make(self) -> T {
-        match self {
-            Make::Here(make) => timed(make),
-            Make::Anywhere(make) => timed(make),
-            #[cfg(not(target_arch = "wasm32"))]
-            Make::Started(worker) => joined(worker),
+/// An entry's state ([`Deferred::state`]): not asked for yet, or one of
+/// the cache's states (see the module's documentation).
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum State {
+    Unasked,
+    Queued,
+    Creating,
+    Ready,
+}
+
+/// The frame drawing now: whether it waits for the pipelines it meets, and
+/// what it has left for a pipeline not ready ([`FramePolicy`]).
+struct Frame {
+    waits: bool,
+    skipping: u32,
+    skipped: u32,
+    depth: u32,
+}
+
+thread_local! {
+    static FRAME: Cell<Frame> = const {
+        Cell::new(Frame { waits: true, skipping: 0, skipped: 0, depth: 0 })
+    };
+    /// What the last frame left for a pipeline not ready ([`frame_skipped`]).
+    static LAST_SKIPPED: Cell<u32> = const { Cell::new(0) };
+}
+
+fn frame<R>(f: impl FnOnce(&mut Frame) -> R) -> R {
+    FRAME.with(|c| {
+        let mut frame = c.replace(Frame {
+            waits: true,
+            skipping: 0,
+            skipped: 0,
+            depth: 0,
+        });
+        let r = f(&mut frame);
+        c.set(frame);
+        r
+    })
+}
+
+/// The frame's policy, open while the renderer draws one (the outermost
+/// frame's, for a frame drawn inside another): whether it waits for every
+/// pipeline it meets, or draws without one that is not ready (a display
+/// frame). Outside a frame, every use waits.
+pub(crate) struct FramePolicy(bool);
+
+impl FramePolicy {
+    pub(crate) fn open(waits: bool) -> FramePolicy {
+        frame(|f| {
+            f.depth += 1;
+            if f.depth == 1 {
+                f.skipped = 0;
+            }
+            FramePolicy(std::mem::replace(&mut f.waits, waits))
+        })
+    }
+}
+
+impl Drop for FramePolicy {
+    fn drop(&mut self) {
+        frame(|f| {
+            f.depth -= 1;
+            f.waits = self.0;
+            if f.depth == 0 {
+                LAST_SKIPPED.with(|l| l.set(f.skipped));
+            }
+        });
+    }
+}
+
+/// A pass drawn again next frame, open while this lives: in a display
+/// frame, a draw in it whose pipeline is not ready is skipped
+/// ([`Deferred::get`]). Not the passes whose output later frames keep
+/// (`FramePass::redrawn`).
+pub(crate) struct Skipping(());
+
+impl Skipping {
+    pub(crate) fn open() -> Skipping {
+        frame(|f| f.skipping += 1);
+        Skipping(())
+    }
+}
+
+impl Drop for Skipping {
+    fn drop(&mut self) {
+        frame(|f| f.skipping -= 1);
+    }
+}
+
+/// Whether a use now waits for its pipeline.
+fn waits() -> bool {
+    frame(|f| f.waits)
+}
+
+/// Whether a draw now skips a pipeline that is not ready.
+fn skips() -> bool {
+    frame(|f| !f.waits && f.skipping > 0)
+}
+
+fn skipped() {
+    frame(|f| f.skipped += 1);
+}
+
+/// What the frame drawing now has left so far ([`frame_skipped`]).
+pub(crate) fn skipped_now() -> u32 {
+    frame(|f| f.skipped)
+}
+
+/// The draws the frame drawn last skipped and the work it left for a
+/// later frame, each for a pipeline that was not ready: 0 when it was
+/// drawn whole. A host draws its first frame again until it is.
+pub fn frame_skipped() -> u32 {
+    LAST_SKIPPED.with(|l| l.get())
+}
+
+/// The entries made on the renderer's thread without a compiler (natively
+/// [`Deferred::new`]'s; on the web all of them without
+/// [`PipelineCompiler`], or a page that compiles synchronously): each is
+/// asked for and made at once ([`pipeline_counts`]).
+static MADE_HERE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// The entries asked for so far and how many of them are made, on every
+/// host: those made on the renderer's thread, and those the host's
+/// compiler was handed (the compile workers natively, the browser's
+/// asynchronous calls on the web) and has finished, queued ones included.
+/// Both only go up, and are equal when nothing compiles: a loading
+/// screen's count (og.loading.status).
+pub fn pipeline_counts() -> (u32, u32) {
+    let here = MADE_HERE.load(std::sync::atomic::Ordering::Relaxed);
+    let (asked, made) = compiler_counts();
+    (here + asked, here + made)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn compiler_counts() -> (u32, u32) {
+    use std::sync::atomic::Ordering::Relaxed;
+    // Finished first: never more made than asked.
+    let finished = FINISHED.load(Relaxed);
+    (STARTED.load(Relaxed).max(finished), finished)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn compiler_counts() -> (u32, u32) {
+    let queued = web::QUEUED.with(|q| q.get());
+    match web::COMPILER.with(|c| c.get()) {
+        Some(c) => (queued + (c.count)(), (c.made)()),
+        None => (queued, 0),
+    }
+}
+
+/// `make()` on the renderer's thread, counted made here and timed as
+/// waited ([`take_waited_us`]).
+fn made_here<T>(make: impl FnOnce() -> T) -> T {
+    MADE_HERE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    timed(make)
+}
+
+/// The web host's pipeline compiler (packages/engine/src/web/pipelines.ts):
+/// the pipelines made between `asking(true)` and `asking(false)` are asked
+/// of the browser asynchronously, each numbered from 1 in order (`count`:
+/// those numbered so far, `made`: how many of them are compiled or
+/// refused); `compiled(n)` answers whether pipeline `n` is, and
+/// `finish(n)` makes it at once when it is not. A page that compiles
+/// synchronously numbers none.
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Copy)]
+pub struct PipelineCompiler {
+    pub asking: fn(bool),
+    pub count: fn() -> u32,
+    pub made: fn() -> u32,
+    pub compiled: fn(u32) -> bool,
+    pub finish: fn(u32),
+}
+
+/// The web host's compiler (`None`, the default: every entry is made at
+/// once, as natively without workers).
+#[cfg(target_arch = "wasm32")]
+pub fn set_pipeline_compiler(compiler: Option<PipelineCompiler>) {
+    web::COMPILER.with(|c| c.set(compiler));
+}
+
+#[cfg(target_arch = "wasm32")]
+mod web {
+    use super::PipelineCompiler;
+    use std::cell::{Cell, RefCell};
+    use std::rc::{Rc, Weak};
+
+    thread_local! {
+        pub(super) static COMPILER: Cell<Option<PipelineCompiler>> = const { Cell::new(None) };
+        /// Background entries held until the second frame ([`super::release_background`]).
+        pub(super) static HELD: RefCell<Vec<Weak<dyn Release>>> = const { RefCell::new(Vec::new()) };
+        /// How many of them.
+        pub(super) static QUEUED: Cell<u32> = const { Cell::new(0) };
+    }
+
+    /// The pipelines the compiler numbered while an entry was made: after
+    /// `from`, up to `to`.
+    #[derive(Clone, Copy, Debug, Default)]
+    pub(crate) struct Numbers {
+        from: u32,
+        to: u32,
+    }
+
+    impl Numbers {
+        pub(super) fn compiled(self) -> bool {
+            self.from >= self.to
+                || COMPILER
+                    .with(|c| c.get())
+                    .is_none_or(|c| (self.from + 1..=self.to).all(c.compiled))
+        }
+
+        pub(super) fn finish(self) {
+            if let Some(c) = COMPILER.with(|c| c.get()) {
+                for n in self.from + 1..=self.to {
+                    if !(c.compiled)(n) {
+                        (c.finish)(n);
+                    }
+                }
+            }
+        }
+    }
+
+    /// `make()` by the compiler: its pipelines asked of the browser
+    /// asynchronously, numbered.
+    pub(super) fn compile<T>(make: impl FnOnce() -> T) -> (T, Numbers) {
+        let Some(c) = COMPILER.with(|c| c.get()) else {
+            return (super::made_here(make), Numbers::default());
+        };
+        let from = (c.count)();
+        (c.asking)(true);
+        let made = make();
+        (c.asking)(false);
+        let to = (c.count)();
+        if from == to {
+            super::MADE_HERE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        (made, Numbers { from, to })
+    }
+
+    pub(super) trait Release {
+        fn release(&self);
+    }
+
+    /// A background entry, held ([`super::Pending`]).
+    pub(super) struct Held<T> {
+        pub(super) make: RefCell<Option<Box<dyn FnOnce() -> T>>>,
+        pub(super) made: RefCell<Option<(T, Numbers)>>,
+    }
+
+    impl<T> Release for Held<T> {
+        fn release(&self) {
+            let make = self.make.borrow_mut().take();
+            if let Some(make) = make {
+                QUEUED.with(|q| q.set(q.get() - 1));
+                *self.made.borrow_mut() = Some(compile(make));
+            }
+        }
+    }
+
+    impl<T> Drop for Held<T> {
+        fn drop(&mut self) {
+            if self.make.get_mut().is_some() {
+                QUEUED.with(|q| q.set(q.get() - 1));
+            }
+        }
+    }
+
+    pub(super) fn hold<T: 'static>(make: Box<dyn FnOnce() -> T>) -> Rc<Held<T>> {
+        let held = Rc::new(Held {
+            make: RefCell::new(Some(make)),
+            made: RefCell::new(None),
+        });
+        QUEUED.with(|q| q.set(q.get() + 1));
+        let weak: Weak<dyn Release> = Rc::downgrade(&(held.clone() as Rc<dyn Release>));
+        HELD.with(|h| h.borrow_mut().push(weak));
+        held
+    }
+
+    pub(super) fn release_all() {
+        let held = HELD.with(|h| std::mem::take(&mut *h.borrow_mut()));
+        for h in held {
+            if let Some(h) = h.upgrade() {
+                h.release();
+            }
         }
     }
 }
+
+/// A background entry on the web, held until the second frame (or until a
+/// use asks for it).
+#[cfg(target_arch = "wasm32")]
+pub(crate) struct Pending<T>(std::rc::Rc<web::Held<T>>);
 
 /// A value being made on a compile worker ([`spawn`]).
 ///
@@ -152,9 +454,9 @@ fn joined<T>(pending: Pending<T>) -> T {
             Err(panic) => std::panic::resume_unwind(panic),
         };
     }
-    // A background compile waited for runs now, ahead of the others (they
-    // still wait for the frame: [`release_background`]).
-    promote(pending.id);
+    // A compile waited for runs next, ahead of the others (the background
+    // ones still wait for the frame: [`release_background`]).
+    promote(pending.id, true);
     let t0 = std::time::Instant::now();
     let answer = pending.answer.recv();
     WAITED_US.fetch_add(
@@ -283,8 +585,7 @@ pub(crate) fn take_waited_us() -> u64 {
     0
 }
 
-/// When a started value compiles.
-#[cfg(not(target_arch = "wasm32"))]
+/// When an entry asked for compiles.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Priority {
     /// For a frame that is waiting or will wait for it: before any
@@ -410,6 +711,8 @@ pub(crate) fn release_background() {
         q.background.extend(held);
         pool.work.notify_all();
     }
+    #[cfg(target_arch = "wasm32")]
+    web::release_all();
 }
 
 /// Waits until every pipeline compile started so far has finished, in
@@ -419,7 +722,7 @@ pub(crate) fn release_background() {
 /// frames drawn while a variant compiles may differ from later ones in
 /// their last bit (docs/design.md §2.4), so a test that compares display
 /// frames byte for byte settles them first. Natively; nothing on the web,
-/// which makes the full variants only.
+/// which cannot wait.
 pub fn settle_pipelines() {
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -433,20 +736,11 @@ pub fn settle_pipelines() {
 }
 
 /// The jobs handed to the compile workers so far, and those made (or
-/// cancelled before a worker took them): [`crate::pipeline_counts`].
+/// cancelled before a worker took them): [`pipeline_counts`].
 #[cfg(not(target_arch = "wasm32"))]
 static STARTED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 #[cfg(not(target_arch = "wasm32"))]
 static FINISHED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-
-/// [`STARTED`] and [`FINISHED`].
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn worker_counts() -> (u32, u32) {
-    use std::sync::atomic::Ordering::Relaxed;
-    // Finished first: never more made than asked.
-    let finished = FINISHED.load(Relaxed);
-    (STARTED.load(Relaxed).max(finished), finished)
-}
 
 /// Runs `make` on the compile workers, in the order started within its
 /// priority (a frame starts its longest compiles first).
@@ -503,18 +797,24 @@ fn cancel(id: u64) -> Option<Job> {
     job
 }
 
-/// Moves the background job `id`, held or queued, to the front of the
-/// frame's queue (the renderer waits for it); a frame's job, or a running
-/// or finished one, is in neither.
+/// Moves the job `id` to the front of the frame's queue: a background one,
+/// held or queued, when a frame asks for it; any queued one, a frame's
+/// too, when the renderer `waited` for it (else a frame's job waited for
+/// runs only after every one asked before it, and the renderer's thread
+/// idles meanwhile). A running or finished one is in no queue.
 #[cfg(not(target_arch = "wasm32"))]
-fn promote(id: u64) {
+fn promote(id: u64, waited: bool) {
     let pool = pool();
     let mut q = pool.queues.lock().unwrap_or_else(|e| e.into_inner());
     let job = if let Some(i) = q.held.iter().position(|(j, _)| *j == id) {
         Some(q.held.remove(i).1)
+    } else if let Some(i) = q.background.iter().position(|(j, _)| *j == id) {
+        q.background.remove(i).map(|(_, job)| job)
+    } else if waited {
+        let i = q.frame.iter().position(|(j, _)| *j == id);
+        i.and_then(|i| q.frame.remove(i)).map(|(_, job)| job)
     } else {
-        let i = q.background.iter().position(|(j, _)| *j == id);
-        i.and_then(|i| q.background.remove(i)).map(|(_, job)| job)
+        None
     };
     if let Some(job) = job {
         q.frame.push_front((id, job));
@@ -522,258 +822,345 @@ fn promote(id: u64) {
     }
 }
 
-/// A value made by its closure on first use (deref), at most once.
+/// Whether the job `id` is held for the second frame ([`State::Queued`]).
+#[cfg(all(test, not(target_arch = "wasm32")))]
+fn held(id: u64) -> bool {
+    let q = pool().queues.lock().unwrap_or_else(|e| e.into_inner());
+    q.held.iter().any(|(j, _)| *j == id)
+}
+
+/// One entry of the pipeline cache: a value (a pipeline, or a set of them)
+/// made by its closure when first asked for, at most once.
 pub(crate) struct Deferred<T> {
     value: OnceCell<T>,
     make: Cell<Option<Make<T>>>,
-    /// The pipelines the web host was asked for while it was made
-    /// ([`Deferred::compiled`]).
-    tickets: Cell<crate::gpu::ready::Tickets>,
+    /// The pipelines the web host's compiler numbered while it was made.
+    #[cfg(target_arch = "wasm32")]
+    numbers: Cell<web::Numbers>,
 }
 
 impl<T> Deferred<T> {
+    fn with(make: Make<T>) -> Deferred<T> {
+        Deferred {
+            value: OnceCell::new(),
+            make: Cell::new(Some(make)),
+            #[cfg(target_arch = "wasm32")]
+            numbers: Cell::default(),
+        }
+    }
+
+    /// One made on the renderer's thread when asked for (on the web, by the
+    /// host's compiler like every entry).
     pub(crate) fn new<F: FnOnce() -> T + 'static>(make: F) -> Deferred<T> {
         let asker = std::any::type_name::<F>();
-        Deferred {
-            value: OnceCell::new(),
-            make: Cell::new(Some(Make::Here(Box::new(move || logged(asker, make))))),
-            tickets: Cell::default(),
-        }
+        Deferred::with(Make::Here(Box::new(move || logged(asker, make))))
     }
 
-    /// One that [`Start::start`] can make on a worker thread ahead of its
-    /// first use (on the web, made on first use).
+    /// One the host's compiler makes when asked for: natively on the
+    /// compile workers.
     pub(crate) fn anywhere<F: FnOnce() -> T + AnywhereOnce + 'static>(make: F) -> Deferred<T> {
         let asker = std::any::type_name::<F>();
-        Deferred {
-            value: OnceCell::new(),
-            make: Cell::new(Some(Make::Anywhere(Box::new(move || logged(asker, make))))),
-            tickets: Cell::default(),
-        }
+        Deferred::with(Make::Anywhere(Box::new(move || logged(asker, make))))
     }
 
-    /// The value if it is made, or was started and has been made since,
-    /// without waiting.
-    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    pub(crate) fn ready(&self) -> Option<&T> {
-        if let Some(v) = self.value.get() {
-            return Some(v);
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        match self.make.take() {
-            Some(Make::Started(worker)) => match worker.answer.try_recv() {
-                Ok(Ok(value)) => return Some(self.value.get_or_init(|| value)),
-                Ok(Err(panic)) => std::panic::resume_unwind(panic),
-                Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    self.make.set(Some(Make::Started(worker)));
-                }
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    unreachable!("a compile worker always answers")
-                }
-            },
-            other => self.make.set(other),
-        }
-        None
-    }
-
-    /// The value, made now if it was not yet (waited for, if started).
-    pub(crate) fn get(&self) -> &T {
-        self.value.get_or_init(|| {
-            let make = self
-                .make
-                .take()
-                .expect("a deferred value is made once, by its first use");
-            let (value, tickets) = crate::gpu::ready::Tickets::during(|| make.make());
-            self.tickets.set(tickets);
-            value
-        })
-    }
-
-    /// The value, made now if it was not yet, and whether the pipelines
-    /// the web host was asked for in making it are compiled: a pass whose
-    /// output is kept leaves its work for a later frame while they are not
-    /// (gpu/ready.rs). Without the host's hooks (natively) compiled, and
-    /// not made only to ask.
-    pub(crate) fn compiled(&self) -> bool {
-        if !crate::gpu::ready::hooked() {
+    /// Whether it has been asked for (or made).
+    pub(crate) fn asked(&self) -> bool {
+        if self.value.get().is_some() {
             return true;
         }
-        self.get();
-        self.tickets.get().ready()
+        let make = self.make.take();
+        let asked = matches!(make, Some(Make::Asked(_)));
+        self.make.set(make);
+        asked
     }
-
-    /// Whether the value has been made.
-    pub(crate) fn made(&self) -> bool {
-        self.value.get().is_some()
-    }
-
-    /// Whether the value is made and the pipelines the web host was asked
-    /// for in making it are compiled, without making it (gpu/ready.rs).
-    pub(crate) fn usable(&self) -> bool {
-        self.ready().is_some() && self.tickets.get().ready()
-    }
-}
-
-/// Something a frame can start making ahead of the pass that uses it.
-pub(crate) trait Start {
-    /// Starts making it on a worker thread if it can be made there and is
-    /// neither made nor started (natively; on the web nothing).
-    fn start(&self);
 }
 
 impl<T: AnywhereOnce + 'static> Deferred<T> {
-    /// [`Start::start`] at `priority`.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn start_at(&self, priority: Priority) {
-        match self.make.take() {
-            Some(Make::Anywhere(make)) => self.make.set(Some(Make::Started(spawn(priority, make)))),
-            other => self.make.set(other),
+    /// Its state, without asking for it.
+    #[cfg(test)]
+    pub(crate) fn state(&self) -> State {
+        if self.poll().is_some() {
+            return State::Ready;
         }
+        if self.value.get().is_some() {
+            return State::Creating;
+        }
+        let make = self.make.take();
+        let state = match &make {
+            Some(Make::Asked(pending)) if pending.held() => State::Queued,
+            Some(Make::Asked(_)) => State::Creating,
+            _ => State::Unasked,
+        };
+        self.make.set(make);
+        state
     }
-}
 
-impl<T: AnywhereOnce + 'static> Start for Deferred<T> {
-    #[cfg(not(target_arch = "wasm32"))]
-    fn start(&self) {
-        self.start_at(Priority::Frame);
+    /// Asks for it at `priority`, if it is not asked for yet; a background
+    /// entry asked for at [`Priority::Frame`] is moved ahead.
+    pub(crate) fn start_at(&self, priority: Priority) {
+        if self.value.get().is_some() {
+            return;
+        }
+        match self.make.take() {
+            #[cfg(not(target_arch = "wasm32"))]
+            Some(Make::Here(make)) => {
+                let _ = self.value.set(made_here(make));
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Some(Make::Anywhere(make)) => self.make.set(Some(Make::Asked(spawn(priority, make)))),
+            #[cfg(target_arch = "wasm32")]
+            Some(Make::Here(make) | Make::Anywhere(make)) => match priority {
+                Priority::Frame => self.set_compiled(web::compile(make)),
+                Priority::Background => {
+                    self.make.set(Some(Make::Asked(Pending(web::hold(make)))));
+                }
+            },
+            Some(Make::Asked(pending)) => {
+                if priority == Priority::Frame {
+                    pending.promote();
+                }
+                self.make.set(Some(Make::Asked(pending)));
+            }
+            None => {}
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn start(&self) {}
+    fn set_compiled(&self, (value, numbers): (T, web::Numbers)) {
+        self.numbers.set(numbers);
+        let _ = self.value.set(value);
+    }
+
+    /// The value once it is ready, without waiting or asking for it.
+    pub(crate) fn poll(&self) -> Option<&T> {
+        if self.value.get().is_none() {
+            match self.make.take() {
+                #[cfg(not(target_arch = "wasm32"))]
+                Some(Make::Asked(pending)) => match pending.answer.try_recv() {
+                    Ok(Ok(value)) => {
+                        let _ = self.value.set(value);
+                    }
+                    Ok(Err(panic)) => std::panic::resume_unwind(panic),
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {
+                        self.make.set(Some(Make::Asked(pending)));
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        unreachable!("a compile worker always answers")
+                    }
+                },
+                #[cfg(target_arch = "wasm32")]
+                Some(Make::Asked(pending)) => match pending.take() {
+                    Some(made) => self.set_compiled(made),
+                    None => self.make.set(Some(Make::Asked(pending))),
+                },
+                other => self.make.set(other),
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        if !self.numbers.get().compiled() {
+            return None;
+        }
+        self.value.get()
+    }
+
+    /// The value, waited for: made now if it was not asked for, its worker
+    /// waited for natively, made by the browser at once on the web.
+    pub(crate) fn wait(&self) -> &T {
+        let value = self.value.get_or_init(|| {
+            match self.make.take().expect("an entry not made has its maker") {
+                Make::Here(make) => made_here(make),
+                #[cfg(not(target_arch = "wasm32"))]
+                Make::Anywhere(make) => made_here(make),
+                #[cfg(not(target_arch = "wasm32"))]
+                Make::Asked(pending) => joined(pending),
+                #[cfg(target_arch = "wasm32")]
+                Make::Anywhere(make) => {
+                    let (value, numbers) = web::compile(make);
+                    self.numbers.set(numbers);
+                    value
+                }
+                #[cfg(target_arch = "wasm32")]
+                Make::Asked(pending) => {
+                    pending.promote();
+                    let (value, numbers) = pending.take().expect("released just now");
+                    self.numbers.set(numbers);
+                    value
+                }
+            }
+        });
+        #[cfg(target_arch = "wasm32")]
+        {
+            let numbers = self.numbers.get();
+            numbers.finish();
+            self.numbers.set(web::Numbers::default());
+        }
+        value
+    }
+
+    /// The value for a draw, by the frame's policy ([`FramePolicy`]): in a
+    /// pass of a display frame that may skip ([`Skipping`]), asked for and
+    /// `None` until it is ready (the draw is skipped and counted); anywhere
+    /// else waited for.
+    pub(crate) fn get(&self) -> Option<&T> {
+        if !skips() {
+            return Some(self.wait());
+        }
+        self.start_at(Priority::Frame);
+        let value = self.poll();
+        if value.is_none() {
+            skipped();
+        }
+        value
+    }
+
+    /// The value for work whose output later frames keep, which leaves
+    /// itself for a later frame while it is `None` (counted): asked for and
+    /// `None` until it is ready in a display frame, waited for in a frame
+    /// that waits.
+    pub(crate) fn ready(&self) -> Option<&T> {
+        if waits() {
+            return Some(self.wait());
+        }
+        self.start_at(Priority::Frame);
+        let value = self.poll();
+        if value.is_none() {
+            skipped();
+        }
+        value
+    }
 }
 
-/// Starts every one of `items` (see [`Start`]).
+#[cfg(not(target_arch = "wasm32"))]
+impl<T> Pending<T> {
+    #[cfg(test)]
+    fn held(&self) -> bool {
+        held(self.id)
+    }
+
+    fn promote(&self) {
+        promote(self.id, false);
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl<T> Pending<T> {
+    #[cfg(test)]
+    fn held(&self) -> bool {
+        self.0.make.borrow().is_some()
+    }
+
+    fn promote(&self) {
+        use web::Release;
+        self.0.release();
+    }
+
+    fn take(&self) -> Option<(T, web::Numbers)> {
+        self.0.made.borrow_mut().take()
+    }
+}
+
+/// Something a frame can ask for ahead of the pass that uses it.
+pub(crate) trait Start {
+    /// Asks for it ([`Priority::Frame`]) if it is not asked for yet.
+    fn start(&self);
+}
+
+impl<T: AnywhereOnce + 'static> Start for Deferred<T> {
+    fn start(&self) {
+        self.start_at(Priority::Frame);
+    }
+}
+
+/// Asks for every one of `items` (see [`Start`]).
 pub(crate) fn start_all(items: &[&dyn Start]) {
     for item in items {
         item.start();
     }
 }
 
-impl<T> Deref for Deferred<T> {
-    type Target = T;
-    fn deref(&self) -> &T {
-        self.get()
-    }
-}
-
-impl<T> DerefMut for Deferred<T> {
-    fn deref_mut(&mut self) -> &mut T {
-        self.get();
-        self.value.get_mut().expect("made just now")
-    }
-}
-
-/// A pipeline (or anything else) that depends on the renderer's samples
-/// per pixel: made on first use at the current count, as a [`Deferred`],
-/// and again at the first use after [`Sampled::set_samples`] changed the
-/// count (`RenderQuality::msaa_samples`). One is kept per count (one
-/// sample, [`crate::MSAA_SAMPLES`]), so going back costs nothing.
+/// An entry per samples per pixel: a pipeline (or anything else) that
+/// depends on the renderer's sample count, asked for at the current count
+/// and again at the first use after [`Sampled::set_samples`] changed it
+/// (`RenderQuality::msaa_samples`). One is kept per count (one sample,
+/// [`crate::MSAA_SAMPLES`]), so going back costs nothing.
 pub(crate) struct Sampled<T> {
     samples: Cell<u32>,
-    made: [OnceCell<T>; 2],
-    /// The pipelines the web host was asked for while each count's value
-    /// was made ([`Sampled::usable`]).
-    tickets: [Cell<crate::gpu::ready::Tickets>; 2],
-    /// A count's value started on a worker thread ([`Sampled::anywhere`]).
-    #[cfg(not(target_arch = "wasm32"))]
-    started: [Cell<Option<Pending<T>>>; 2],
+    cells: [OnceCell<Deferred<T>>; 2],
     make: SampledMake<T>,
 }
 
 enum SampledMake<T> {
-    Here(Box<dyn Fn(u32) -> T>),
+    Here(std::rc::Rc<dyn Fn(u32) -> T>, &'static str),
     #[cfg(not(target_arch = "wasm32"))]
-    Anywhere(Arc<dyn Fn(u32) -> T + Send + Sync>),
+    Anywhere(Arc<dyn Fn(u32) -> T + Send + Sync>, &'static str),
 }
 
-impl<T> Sampled<T> {
-    fn with(samples: u32, make: SampledMake<T>) -> Sampled<T> {
-        Sampled {
-            samples: Cell::new(samples),
-            made: [OnceCell::new(), OnceCell::new()],
-            tickets: [Cell::default(), Cell::default()],
-            #[cfg(not(target_arch = "wasm32"))]
-            started: [Cell::new(None), Cell::new(None)],
-            make,
-        }
-    }
-
+impl<T: AnywhereOnce + 'static> Sampled<T> {
     pub(crate) fn new<F: Fn(u32) -> T + 'static>(samples: u32, make: F) -> Sampled<T> {
         let asker = std::any::type_name::<F>();
-        Sampled::with(
-            samples,
-            SampledMake::Here(Box::new(move |n| logged(asker, || make(n)))),
-        )
+        Sampled::with(samples, SampledMake::Here(std::rc::Rc::new(make), asker))
     }
 
-    /// One whose value at a count [`Start::start`] can make on a worker
-    /// thread ahead of its first use (on the web, made on first use).
+    /// One whose entries the host's compiler makes (natively on the compile
+    /// workers).
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn anywhere<F: Fn(u32) -> T + Anywhere + 'static>(
         samples: u32,
         make: F,
     ) -> Sampled<T> {
         let asker = std::any::type_name::<F>();
-        Sampled::with(
-            samples,
-            SampledMake::Anywhere(Arc::new(move |n| logged(asker, || make(n)))),
-        )
+        Sampled::with(samples, SampledMake::Anywhere(Arc::new(make), asker))
     }
 
-    /// One whose value at a count [`Start::start`] can make on a worker
-    /// thread ahead of its first use (on the web, made on first use).
+    /// One whose entries the host's compiler makes.
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn anywhere(samples: u32, make: impl Fn(u32) -> T + 'static) -> Sampled<T> {
         Sampled::new(samples, make)
     }
 
-    fn index(&self) -> usize {
-        (self.samples.get() > 1) as usize
+    fn with(samples: u32, make: SampledMake<T>) -> Sampled<T> {
+        Sampled {
+            samples: Cell::new(samples),
+            cells: [OnceCell::new(), OnceCell::new()],
+            make,
+        }
     }
 
-    /// The value at the current count, made now if it was not yet (waited
-    /// for, if started).
-    pub(crate) fn get(&self) -> &T {
-        let i = self.index();
-        self.made[i].get_or_init(|| {
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(worker) = self.started[i].take() {
-                return joined(worker);
+    /// The entry at the current count.
+    pub(crate) fn cell(&self) -> &Deferred<T> {
+        let samples = self.samples.get();
+        self.cells[(samples > 1) as usize].get_or_init(|| match &self.make {
+            SampledMake::Here(make, asker) => {
+                let (make, asker) = (make.clone(), *asker);
+                Deferred::with(Make::Here(Box::new(move || {
+                    logged(asker, || make(samples))
+                })))
             }
-            let (value, tickets) = crate::gpu::ready::Tickets::during(|| match &self.make {
-                SampledMake::Here(make) => timed(|| make(self.samples.get())),
-                #[cfg(not(target_arch = "wasm32"))]
-                SampledMake::Anywhere(make) => timed(|| make(self.samples.get())),
-            });
-            self.tickets[i].set(tickets);
-            value
+            #[cfg(not(target_arch = "wasm32"))]
+            SampledMake::Anywhere(make, asker) => {
+                let (make, asker) = (make.clone(), *asker);
+                Deferred::with(Make::Anywhere(Box::new(move || {
+                    logged(asker, || make(samples))
+                })))
+            }
         })
     }
 
-    /// Whether the value at the current count is made and the pipelines
-    /// the web host was asked for in making it are compiled, without making
-    /// it (gpu/ready.rs).
-    pub(crate) fn usable(&self) -> bool {
-        self.ready().is_some() && self.tickets[self.index()].get().ready()
+    pub(crate) fn start_at(&self, priority: Priority) {
+        self.cell().start_at(priority);
     }
 
-    /// The value at the current count if it is made, or was started and
-    /// has been made since, without waiting.
-    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    pub(crate) fn ready(&self) -> Option<&T> {
-        let i = self.index();
-        if let Some(v) = self.made[i].get() {
-            return Some(v);
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(worker) = self.started[i].take() {
-            match worker.answer.try_recv() {
-                Ok(Ok(value)) => return Some(self.made[i].get_or_init(|| value)),
-                Ok(Err(panic)) => std::panic::resume_unwind(panic),
-                Err(_) => self.started[i].set(Some(worker)),
-            }
-        }
-        None
+    pub(crate) fn poll(&self) -> Option<&T> {
+        self.cell().poll()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn wait(&self) -> &T {
+        self.cell().wait()
+    }
+
+    pub(crate) fn get(&self) -> Option<&T> {
+        self.cell().get()
     }
 
     /// Draw at `samples` per pixel from now on.
@@ -782,62 +1169,20 @@ impl<T> Sampled<T> {
     }
 
     /// The samples per pixel it draws at.
-    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub(crate) fn samples(&self) -> u32 {
         self.samples.get()
-    }
-
-    /// Whether the value at the current count has been made.
-    pub(crate) fn made(&self) -> bool {
-        self.made[self.index()].get().is_some()
-    }
-}
-
-impl<T: AnywhereOnce + 'static> Sampled<T> {
-    /// [`Start::start`] at `priority`.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn start_at(&self, priority: Priority) {
-        let i = self.index();
-        let SampledMake::Anywhere(make) = &self.make else {
-            return;
-        };
-        if self.made() {
-            return;
-        }
-        match self.started[i].take() {
-            Some(worker) => self.started[i].set(Some(worker)),
-            None => {
-                let (make, samples) = (make.clone(), self.samples.get());
-                self.started[i].set(Some(spawn(priority, move || make(samples))));
-            }
-        }
     }
 }
 
 impl<T: AnywhereOnce + 'static> Start for Sampled<T> {
-    #[cfg(not(target_arch = "wasm32"))]
     fn start(&self) {
         self.start_at(Priority::Frame);
     }
-
-    #[cfg(target_arch = "wasm32")]
-    fn start(&self) {}
 }
 
-impl<T> Deref for Sampled<T> {
-    type Target = T;
-    fn deref(&self) -> &T {
-        self.get()
-    }
-}
-
-impl<T> Warm for Sampled<T> {
+impl<T: AnywhereOnce + 'static> Warm for Sampled<T> {
     fn warm(&self) -> bool {
-        if self.made() {
-            return false;
-        }
-        self.get();
-        true
+        self.cell().warm()
     }
 }
 
@@ -923,23 +1268,24 @@ impl AsModule for Module {
     }
 }
 
-/// Something [`Renderer::warm`](crate::Renderer::warm) can make ahead of use.
+/// Something [`Renderer::warm`](crate::Renderer::warm) can ask for ahead
+/// of use.
 pub(crate) trait Warm {
-    /// Make it now if it is not made; true when this call made it.
+    /// Asks for it if it is not asked for yet; true when this call did.
     fn warm(&self) -> bool;
 }
 
-impl<T> Warm for Deferred<T> {
+impl<T: AnywhereOnce + 'static> Warm for Deferred<T> {
     fn warm(&self) -> bool {
-        if self.made() {
+        if self.asked() {
             return false;
         }
-        self.get();
+        self.start();
         true
     }
 }
 
-/// Makes the first of `items` not yet made; false when all are.
+/// Asks for the first of `items` not asked for yet; false when all are.
 pub(crate) fn warm_one(items: &[&dyn Warm]) -> bool {
     items.iter().any(|w| w.warm())
 }
@@ -949,34 +1295,64 @@ mod tests {
     use super::*;
 
     #[test]
-    fn made_once_on_first_use_and_warmed_in_order() {
+    fn made_once_when_asked_and_warmed_in_order() {
         let made = std::rc::Rc::new(Cell::new(0));
         let m = made.clone();
         let a = Deferred::new(move || {
             m.set(m.get() + 1);
             7
         });
-        assert!(!a.made());
+        assert_eq!(a.state(), State::Unasked);
         assert_eq!(made.get(), 0);
-        assert_eq!(*a, 7);
-        assert_eq!(*a.get(), 7);
+        assert_eq!(*a.wait(), 7);
+        assert_eq!(a.get(), Some(&7));
         assert_eq!(made.get(), 1);
         let b = Deferred::new(|| "b");
         let c = Deferred::new(|| "c");
         assert!(warm_one(&[&a, &b, &c]));
-        assert!(b.made() && !c.made());
+        assert!(b.asked() && !c.asked());
         assert!(warm_one(&[&a, &b, &c]));
         assert!(!warm_one(&[&a, &b, &c]));
-        let mut d = Deferred::new(|| vec![1]);
-        d.push(2);
-        assert_eq!(*d, vec![1, 2]);
     }
 
-    /// A started value is made once, on a compile worker, and its first use
-    /// waits for it; a worker's panic reaches that first use.
+    /// In a display frame a draw in a pass that may skip skips an entry
+    /// still compiling and counts it, work that is kept leaves itself for a
+    /// later frame, and every other use waits; a frame that waits waits
+    /// everywhere. What the frame left is reported once it ends.
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
-    fn started_values_are_made_on_a_worker_and_waited_for() {
+    fn a_display_frame_draws_without_what_compiles() {
+        let gate = Arc::new(std::sync::Barrier::new(2));
+        let g = gate.clone();
+        let slow = Deferred::anywhere(move || {
+            g.wait();
+            5
+        });
+        {
+            let _frame = FramePolicy::open(false);
+            {
+                let _pass = Skipping::open();
+                assert_eq!(slow.get(), None, "skipped while it compiles");
+                assert_eq!(slow.state(), State::Creating);
+            }
+            assert_eq!(slow.ready(), None, "kept work waits for a later frame");
+        }
+        assert_eq!(frame_skipped(), 2);
+        gate.wait();
+        {
+            let _frame = FramePolicy::open(true);
+            let _pass = Skipping::open();
+            assert_eq!(slow.get(), Some(&5), "a frame that waits waits");
+        }
+        assert_eq!(frame_skipped(), 0);
+        assert_eq!(slow.state(), State::Ready);
+    }
+
+    /// An entry asked for is made once, on a compile worker, and its first
+    /// wait waits for it; a worker's panic reaches that wait.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn asked_entries_are_made_on_a_worker_and_waited_for() {
         let here = std::thread::current().id();
         let made = Arc::new(std::sync::atomic::AtomicU32::new(0));
         let m = made.clone();
@@ -986,33 +1362,34 @@ mod tests {
         });
         a.start();
         a.start();
-        assert_ne!(*a.get(), here);
+        assert_ne!(*a.wait(), here);
         assert_eq!(made.load(std::sync::atomic::Ordering::SeqCst), 1);
         let s = Sampled::anywhere(4, |n| (n, std::thread::current().id()));
         s.start();
-        assert_eq!(s.get().0, 4);
-        assert_ne!(s.get().1, here);
+        assert_eq!(s.wait().0, 4);
+        assert_ne!(s.wait().1, here);
         let p = Deferred::anywhere(|| -> u32 { panic!("compile failed") });
         p.start();
-        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| *p.get()));
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| *p.wait()));
         assert_eq!(
             panic.unwrap_err().downcast_ref::<&str>(),
             Some(&"compile failed")
         );
     }
 
-    /// A started value dropped before its first use leaves no work behind:
-    /// one still queued is dropped with it, with what its closure owns, and
-    /// one a worker is making is waited for (it is never left inside the
-    /// driver for the process's exit to tear down under it).
+    /// An entry dropped while asked for leaves no work behind: one still
+    /// queued is dropped with it, with what its closure owns, and one a
+    /// worker is making is waited for (it is never left inside the driver
+    /// for the process's exit to tear down under it).
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
-    fn a_dropped_started_value_owns_its_compile() {
+    fn a_dropped_entry_owns_its_compile() {
         use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
         let resource = Arc::new(());
         let captured = resource.clone();
         let held = Deferred::anywhere(move || captured);
         held.start_at(Priority::Background);
+        assert_eq!(held.state(), State::Queued);
         drop(held);
         assert_eq!(Arc::strong_count(&resource), 1, "a held compile is dropped");
         let captured = resource.clone();

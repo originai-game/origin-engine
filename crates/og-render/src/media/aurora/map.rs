@@ -322,11 +322,16 @@ impl AuroraMap {
         let (true, Some(pass)) = (std::mem::take(&mut self.pending), &self.pass) else {
             return;
         };
+        // The map is kept: while its pipelines are not ready it is drawn
+        // by a later frame (gpu/deferred.rs).
+        let Some((footprint, light)) = pass.pipeline.ready() else {
+            self.pending = true;
+            return;
+        };
         let mut compute = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("aurora footprint"),
             timestamp_writes: None,
         });
-        let (footprint, light) = pass.pipeline.get();
         compute.set_pipeline(footprint);
         compute.set_bind_group(0, &pass.group, &[]);
         compute.dispatch_workgroups(FOOTPRINT / 8, FOOTPRINT / 8, 1);

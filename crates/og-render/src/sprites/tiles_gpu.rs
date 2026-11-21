@@ -82,8 +82,8 @@ struct Layer {
 
 pub(crate) struct Tiles {
     layout: wgpu::BindGroupLayout,
-    pipeline: wgpu::RenderPipeline,
-    normal: Option<wgpu::RenderPipeline>,
+    pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    normal: Option<crate::deferred::Deferred<wgpu::RenderPipeline>>,
     params: wgpu::Buffer,
     layers: Vec<Layer>,
     /// The cached layer/chunk of each view's draw.
@@ -277,11 +277,15 @@ impl Tiles {
 
     pub fn draw(&self, pass: &mut wgpu::RenderPass<'_>, index: u32, count: u32, normal: bool) {
         let (layer, chunk) = self.draws[index as usize];
-        pass.set_pipeline(if normal {
+        let Some(pipeline) = (if normal {
             self.normal.as_ref().expect("prepared")
         } else {
             &self.pipeline
-        });
+        })
+        .get() else {
+            return;
+        };
+        pass.set_pipeline(pipeline);
         pass.set_bind_group(
             3,
             self.layers[layer].chunks[chunk]
@@ -301,38 +305,46 @@ fn pipeline(
     samples: u32,
     normal: bool,
     off: crate::pipeline_features::Features,
-) -> wgpu::RenderPipeline {
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some("tiles"),
-        bind_group_layouts: &[
-            Some(layouts[0]),
-            Some(layouts[1]),
-            Some(layouts[2]),
-            Some(tiles),
-        ],
-        immediate_size: 0,
+) -> crate::deferred::Deferred<wgpu::RenderPipeline> {
+    let (device, tiles) = (device.clone(), tiles.clone());
+    let layouts = layouts.map(Clone::clone);
+    // An entry of the pipeline cache (gpu/deferred.rs), asked for now.
+    let entry = crate::deferred::Deferred::anywhere(move || {
+        let (device, layouts, tiles) = (&device, layouts.each_ref(), &tiles);
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("tiles"),
+            bind_group_layouts: &[
+                Some(layouts[0]),
+                Some(layouts[1]),
+                Some(layouts[2]),
+                Some(tiles),
+            ],
+            immediate_size: 0,
+        });
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("tiles"),
+            source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
+        });
+        crate::hdr_pipeline(
+            device,
+            crate::HdrPipeline {
+                alpha_to_coverage: false,
+                label: "tiles",
+                layout: &layout,
+                module: &module,
+                vs: "vs_tile",
+                fs: if normal { "fs_normal" } else { "fs" },
+                buffers: &[],
+                cull: None,
+                depth_write: false,
+                depth_compare: wgpu::CompareFunction::LessEqual,
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                samples,
+            },
+        )
     });
-    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some("tiles"),
-        source: wgpu::ShaderSource::Wgsl(off.leave_out(source()).into()),
-    });
-    crate::hdr_pipeline(
-        device,
-        crate::HdrPipeline {
-            alpha_to_coverage: false,
-            label: "tiles",
-            layout: &layout,
-            module: &module,
-            vs: "vs_tile",
-            fs: if normal { "fs_normal" } else { "fs" },
-            buffers: &[],
-            cull: None,
-            depth_write: false,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-            samples,
-        },
-    )
+    crate::deferred::Start::start(&entry);
+    entry
 }
 
 #[cfg(test)]

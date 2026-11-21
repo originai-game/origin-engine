@@ -490,11 +490,10 @@ impl TerrainRenderer {
                 _ => self.passes.clone(),
             };
             // Every pass draws its levels from the corner cache the frame
-            // fills first: while the web host still compiles the filling
-            // pipeline the terrain is left out, so no pass draws from an
-            // unfilled cache (gpu/ready.rs).
-            if !passes.corners.compiled() {
-                crate::gpu::ready::hold();
+            // fills first: while the filling pipeline is not ready the
+            // terrain is left out, so no pass draws from an unfilled cache
+            // (gpu/deferred.rs).
+            if passes.corners.ready().is_none() {
                 continue;
             }
             let (_, _, corners, corners_write) = slot.corners.as_ref().expect("made above");

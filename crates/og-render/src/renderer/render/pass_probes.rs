@@ -78,8 +78,8 @@ impl Renderer {
             Background::Sky | Background::Procedural { .. } => wgpu::Color::BLACK,
         };
         let sky = match scene.lighting.environment.background {
-            Background::Sky => Some(&self.sky.sky_pipeline),
-            Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
+            Background::Sky => self.sky.sky_pipeline.get(),
+            Background::Procedural { .. } => self.sky.sky_look_pipeline.get(),
             Background::Color(_) => None,
         };
         for (d, &(slot, _)) in probe_frame.due.iter().enumerate() {
@@ -184,7 +184,7 @@ impl Renderer {
                 stats.draw_calls += self.draw_meshlets(&mut pass, batches, meshlet_views[k]);
                 // Skinned meshes in their pose, terrain and
                 // scattered copies, as the main pass draws them.
-                let skinned: Vec<&wgpu::RenderPipeline> = probe_skinned[k]
+                let skinned: Vec<Option<&wgpu::RenderPipeline>> = probe_skinned[k]
                     .iter()
                     .map(|b| self.lit_pipeline_of(b, true, false))
                     .collect();

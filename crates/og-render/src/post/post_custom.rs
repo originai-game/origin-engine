@@ -316,7 +316,7 @@ impl CustomPosts {
             &scene.look.posts[post].name,
             write,
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-            pipeline,
+            Some(pipeline),
             &group,
         );
         1

@@ -127,15 +127,15 @@ fn grid_of(cells: [IVec2; 2], origin: DVec2) -> WindGrid {
 }
 
 struct Gpu {
-    pipelines: [wgpu::ComputePipeline; 5],
+    /// Asked for when the field is made; nothing steps until they are
+    /// ready (gpu/deferred.rs).
+    pipelines: crate::deferred::Deferred<[wgpu::ComputePipeline; 5]>,
     group: wgpu::BindGroup,
     uniform: wgpu::Buffer,
     slots: u64,
     /// The field's state (velocity, lean, pressure and their steps), kept
     /// for a presentation checkpoint's copy.
     buffers: [wgpu::Buffer; 7],
-    /// The pipelines the web host was asked for (gpu/ready.rs).
-    tickets: crate::gpu::ready::Tickets,
 }
 
 /// [`WindFieldSim::save`].
@@ -287,7 +287,9 @@ impl WindFieldSim {
             bind_group_layouts: &[Some(layout)],
             immediate_size: 0,
         });
-        let (pipelines, tickets) = crate::gpu::ready::Tickets::during(|| {
+        let device_ = device.clone();
+        let pipelines = crate::deferred::Deferred::anywhere(move || {
+            let device = &device_;
             [
                 "advect",
                 "divergence_pass",
@@ -309,6 +311,7 @@ impl WindFieldSim {
                 )
             })
         });
+        crate::deferred::Start::start(&pipelines);
         let cells = 2 * u64::from(N) * u64::from(N);
         let buffer = |label, size| {
             crate::traffic::create_buffer(
@@ -374,7 +377,6 @@ impl WindFieldSim {
             uniform,
             slots,
             buffers,
-            tickets,
         });
         self.gpu.as_ref()
     }
@@ -429,11 +431,10 @@ impl WindFieldSim {
             self.grid = NO_GRID;
             return;
         };
-        // Its state is kept from step to step: while the web host still
-        // compiles its pipelines nothing steps (and nothing leans by it),
-        // and the first frame that runs catches up the ticks since.
-        if !gpu.tickets.ready() {
-            crate::gpu::ready::hold();
+        // Its state is kept from step to step: while its pipelines are not
+        // ready nothing steps (and nothing leans by it), and the first
+        // frame that runs catches up the ticks since.
+        if gpu.pipelines.ready().is_none() {
             self.grid = NO_GRID;
             return;
         }
@@ -564,7 +565,7 @@ impl WindFieldSim {
             timestamp_writes: None,
         });
         let groups = N.div_ceil(8);
-        let [advect, divergence, jacobi_a, jacobi_b, project] = &gpu.pipelines;
+        let [advect, divergence, jacobi_a, jacobi_b, project] = gpu.pipelines.wait();
         for k in 0..self.steps {
             pass.set_bind_group(0, &gpu.group, &[(SLOT * u64::from(k)) as u32]);
             let mut run = |p: &wgpu::ComputePipeline| {

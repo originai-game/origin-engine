@@ -13,7 +13,7 @@ pub(crate) fn encode_corners(encoder: &mut crate::Encoder, draws: &[TerrainDraw]
         timestamp_writes: None,
     });
     for d in draws {
-        pass.set_pipeline(d.passes.corners.get());
+        pass.set_pipeline(d.passes.corners.wait());
         pass.set_bind_group(0, &d.corners_write, &[]);
         for l in &d.levels {
             pass.set_bind_group(1, &d.group, &[l.offset]);
@@ -43,11 +43,14 @@ pub(crate) fn draw_levels(
         pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
         // Each terrain's own pipeline: the standard one, or the layer-array
         // variant's.
-        pass.set_pipeline(match which {
+        let Some(pipeline) = (match which {
             TerrainPass::Lit => d.passes.lit[usize::from(d.mirrored)].get(d.features),
             TerrainPass::Prepass => d.passes.prepass[usize::from(d.mirrored)].get(d.features),
-            TerrainPass::Shadow(t) => d.passes.shadow.get().get(t),
-        });
+            TerrainPass::Shadow(t) => d.passes.shadow.get().map(|s| s.get(t)),
+        }) else {
+            continue;
+        };
+        pass.set_pipeline(pipeline);
         pass.set_bind_group(2, &d.corners, &[]);
         for l in &d.levels {
             if !frustum.intersects_sphere(l.center, l.radius) {
@@ -81,11 +84,14 @@ pub(crate) fn draw_levels(
             }
             if bound != Some(st.mirrored) {
                 let m = usize::from(st.mirrored);
-                pass.set_pipeline(match which {
+                let Some(pipeline) = (match which {
                     TerrainPass::Lit => d.passes.stamp_lit[m].get(d.features),
                     TerrainPass::Prepass => d.passes.stamp_prepass[m].get(d.features),
-                    TerrainPass::Shadow(t) => d.passes.stamp_shadow.get().get(t),
-                });
+                    TerrainPass::Shadow(t) => d.passes.stamp_shadow.get().map(|s| s.get(t)),
+                }) else {
+                    continue;
+                };
+                pass.set_pipeline(pipeline);
                 if bound.is_none() {
                     pass.set_bind_group(1, &d.group, &[0]);
                 }

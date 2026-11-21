@@ -88,8 +88,8 @@ impl Renderer {
     ) {
         let clock = self.clock;
         let caps = self.info.caps;
-        // The passes over the finished frame are drawn again each frame, in
-        // one span (FrameSpan).
+        // The passes over the finished frame are drawn again each frame:
+        // they may skip a draw whose pipeline is not ready (deferred.rs).
         let mut tail = None;
         for &pass in self.graph.order() {
             let timed = pass.timed();
@@ -114,22 +114,20 @@ impl Renderer {
                 // pyramid and copies), checked against the device alone.
                 Timed::WhenDrawn => {
                     encoder.expect(caps, caps);
-                    tail.get_or_insert_with(FrameSpan::open);
+                    tail.get_or_insert_with(crate::deferred::Skipping::open);
                 }
             }
             let t0 = clock.map(|c| c());
             let q0 = encoder.used();
             let draws = stats.draw_calls;
-            // The shadow layers too while the web host still compiles a
-            // pipeline: a caster skipped meanwhile is drawn again, as the
-            // static cache forgets its layers after such a frame
-            // (submit_frame.rs, gpu/ready.rs).
+            // The shadow layers too: the static cache forgets its layers
+            // after a frame that skipped a draw (submit_frame.rs), so a
+            // caster skipped is drawn again.
             let shadow = matches!(
                 pass,
                 FramePass::Cascade(_) | FramePass::LocalFace(_) | FramePass::Shelter
             );
-            let _span = (pass.redrawn() || (shadow && crate::gpu::ready::compiling()))
-                .then(FrameSpan::open);
+            let _skipping = (pass.redrawn() || shadow).then(crate::deferred::Skipping::open);
             match pass {
                 _ if plans.encode(
                     pass,

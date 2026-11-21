@@ -58,9 +58,9 @@ impl Tonemap {
             return None;
         }
         let chained = !chain_passes(&cx.graph.passes).is_empty();
-        let (target, pipeline): (_, &wgpu::RenderPipeline) = match &cx.passes.tonemap_ldr {
-            Some(to_ldr) if chained => (cx.graph.view(&ldr_name(0)), to_ldr),
-            _ => (cx.output, &cx.passes.tonemap),
+        let (target, pipeline) = match &cx.passes.tonemap_ldr {
+            Some(to_ldr) if chained => (cx.graph.view(&ldr_name(0)), Some(to_ldr)),
+            _ => (cx.output, cx.passes.tonemap.get()),
         };
         fullscreen_pass(
             encoder,

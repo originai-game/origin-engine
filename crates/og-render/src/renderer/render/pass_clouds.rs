@@ -105,12 +105,17 @@ impl Pass for CloudsPass {
             pass.draw(0..3, 0..1);
             cx.stats.draw_calls += 1;
         };
-        let march = if depth.is_some() {
-            &st.march_depth
-        } else {
-            &st.march
-        }
-        .get();
+        let (Some(march), Some(resolve)) = (
+            if depth.is_some() {
+                &st.march_depth
+            } else {
+                &st.march
+            }
+            .get(),
+            st.resolve.get(),
+        ) else {
+            return;
+        };
         if t.reproject {
             // One texel of each two by two marched, then the history reprojected round it.
             draw(cx, quarter, march, &march_group, "clouds");
@@ -129,13 +134,7 @@ impl Pass for CloudsPass {
                     },
                 ],
             });
-            draw(
-                cx,
-                target,
-                st.resolve.get(),
-                &resolve_group,
-                "clouds resolve",
-            );
+            draw(cx, target, resolve, &resolve_group, "clouds resolve");
         } else {
             draw(cx, target, march, &march_group, "clouds");
         }

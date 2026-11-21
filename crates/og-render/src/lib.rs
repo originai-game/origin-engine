@@ -134,8 +134,11 @@ use systems::destruction::debris;
 use visibility::cull_gpu;
 pub mod debug;
 pub use deferred::{
-    CompileTime, log_compiles, set_compile_workers, settle_pipelines, take_compile_times,
+    CompileTime, frame_skipped, log_compiles, pipeline_counts, set_compile_workers,
+    settle_pipelines, take_compile_times,
 };
+#[cfg(target_arch = "wasm32")]
+pub use deferred::{PipelineCompiler, set_pipeline_compiler};
 use gpu::deferred;
 pub use mesh::foliage;
 use particles::effect;
@@ -216,72 +219,6 @@ pub use ui::{
     ui_material_module_source, ui_scrim,
 };
 
-thread_local! {
-    /// Fork s60: the host's hook around the frame pipelines
-    /// ([`set_frame_pipelines_hook`]).
-    static FRAME_PIPELINES_HOOK: std::cell::Cell<Option<fn(bool)>> = const { std::cell::Cell::new(None) };
-    /// How many [`frame_pipelines`] spans are open (only the outermost calls the hook).
-    static FRAME_PIPELINES_DEPTH: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
-}
-
-/// Fork s60: `hook(true)` before the renderer makes its frame pipelines
-/// (the materials' lit, shadow and prepass pipelines, the blended
-/// surfaces' order-independent transparency ones and its resolve, the
-/// particles', [`Renderer::warm`]'s) or encodes the passes it draws again
-/// every frame (which make their pipelines when they first set them,
-/// deferred.rs), and
-/// `hook(false)` after, on this thread; `None` (the default) calls nothing.
-/// The web host makes the render pipelines asked for in between with
-/// `createRenderPipelineAsync` and, in those passes, skips the draws of one
-/// not made yet (packages/engine/src/web/pipelines.ts), so a frame that
-/// meets dozens of new pipelines does not hold the browser's GPU process
-/// while they compile. The passes whose output later frames keep (shadow
-/// maps, captures, IBL, mips) are encoded outside it and make theirs at
-/// once: their draws must not be skipped.
-pub fn set_frame_pipelines_hook(hook: Option<fn(bool)>) {
-    FRAME_PIPELINES_HOOK.with(|c| c.set(hook));
-}
-
-/// Runs `f`, which makes frame pipelines, inside the host's hook.
-fn frame_pipelines<R>(f: impl FnOnce() -> R) -> R {
-    let _span = FrameSpan::open();
-    f()
-}
-
-/// Fork s60: the host's frame span, open while this lives (only the
-/// outermost calls the hook). What is made and encoded inside is the
-/// frame's: the web host makes its render pipelines asynchronously and
-/// skips a pass's draws while their pipeline compiles, so only passes whose
-/// output is drawn again next frame are encoded in one
-/// (`FramePass::redrawn`); a pass outside makes a pipeline still
-/// compiling at once instead.
-struct FrameSpan(Option<fn(bool)>);
-
-impl FrameSpan {
-    fn open() -> FrameSpan {
-        let hook = FRAME_PIPELINES_HOOK.with(|c| c.get());
-        if let Some(hook) = hook
-            && FRAME_PIPELINES_DEPTH.with(|d| d.replace(d.get() + 1)) == 0
-        {
-            hook(true);
-        }
-        FrameSpan(hook)
-    }
-}
-
-impl Drop for FrameSpan {
-    fn drop(&mut self) {
-        if let Some(hook) = self.0
-            && FRAME_PIPELINES_DEPTH.with(|d| {
-                d.set(d.get() - 1);
-                d.get()
-            }) == 0
-        {
-            hook(false);
-        }
-    }
-}
-
 /// Fork s63: the texture bytes a frame uploads at most (0: no limit, the
 /// default). A texture past it is drawn from a 1x1 stand-in (mid grey and
 /// transparent for colour, a flat normal for a two-channel map, white
@@ -347,7 +284,6 @@ use frame::timing;
 use frame::views;
 pub use garment::{GarmentDeformation, GarmentTopology};
 pub use gpu::caps;
-pub use gpu::ready::{ReadyHooks, pipeline_counts, pipelines_held, set_pipeline_hooks};
 use gpu::targets;
 use gpu::texture;
 use gpu::texture_array;

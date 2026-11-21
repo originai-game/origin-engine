@@ -126,57 +126,35 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
     );
 }
 
-thread_local! {
-    static TICKETS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
-    static COMPILED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
-/// A web host whose compute pipelines arrive late (og-render gpu/ready.rs):
-/// while the grass's generate pipelines still compile, no blade is drawn
-/// (nothing reads the blade buffers nothing generated), and once they are
-/// made the meadow is drawn as with pipelines made at once. Fails if the
-/// field were generated or drawn before its pipelines were ready, or left
-/// out once they were.
+/// A display frame draws without a pipeline that is not ready
+/// (og-render gpu/deferred.rs): while the grass's generate pipelines are
+/// not ready no blade is drawn (nothing reads the blade buffers nothing
+/// generated) and the frame says so, and a frame that waits draws the
+/// meadow. Fails if the field were generated or drawn before its pipelines
+/// were ready, left out unsaid, or left out by a frame that waits.
 #[test]
 #[ignore = "requires GPU"]
-fn grass_whose_generate_pipelines_arrive_late_draws_no_blade_until_they_do() {
-    // Every pipeline made is a ticket of its own, compiled once COMPILED.
-    fn count() -> u32 {
-        TICKETS.with(|t| {
-            t.set(t.get() + 1);
-            t.get()
-        })
-    }
-    fn ready(_: u32) -> bool {
-        COMPILED.with(|c| c.get())
-    }
-    fn compiling() -> bool {
-        !COMPILED.with(|c| c.get())
-    }
+fn grass_whose_generate_pipelines_are_not_ready_draws_no_blade_until_they_are() {
     let mut scene = trample_scene();
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
-    let mut draw = |scene: &mut RenderScene, tick: u64| {
+    let mut draw = |scene: &mut RenderScene, tick: u64, display: bool| {
         scene.frame.tick = tick;
+        scene.frame.display = display;
         r.render(scene, &RenderTarget::Offscreen).expect("render");
-        r.read_offscreen().expect("capture")
+        (
+            r.read_offscreen().expect("capture"),
+            og_render::frame_skipped(),
+        )
     };
-    og_render::set_pipeline_hooks(None, Some((count, ready, compiling)));
-    let waiting = blade_pixels_above(&draw(&mut scene, 0));
-    let still = blade_pixels_above(&draw(&mut scene, 1));
-    COMPILED.with(|c| c.set(true));
-    let arrived = blade_pixels_above(&draw(&mut scene, 2));
-    og_render::set_pipeline_hooks(None, None);
-    let at_once = blade_pixels_above(&draw(&mut scene, 2));
-    println!("blade pixels: waiting {waiting}, {still}; arrived {arrived}; made at once {at_once}");
-    assert_eq!(
-        (waiting, still),
-        (0, 0),
-        "blades drawn while their pipelines compile"
-    );
-    assert!(at_once > 2000, "the meadow shows {at_once} blade pixels");
+    let (first, skipped) = draw(&mut scene, 0, true);
+    let first = blade_pixels_above(&first);
+    let (waited, _) = draw(&mut scene, 1, false);
+    let waited = blade_pixels_above(&waited);
+    println!("blade pixels: display {first} (skipped {skipped}); waited {waited}");
+    assert!(waited > 2000, "the meadow shows {waited} blade pixels");
     assert!(
-        arrived as f32 > 0.9 * at_once as f32,
-        "the meadow once its pipelines arrived: {arrived} of {at_once}"
+        (first == 0 && skipped > 0) || first as f32 > 0.9 * waited as f32,
+        "a display frame drew blades nothing generated, or left them out unsaid"
     );
 }
 

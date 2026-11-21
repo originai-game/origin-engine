@@ -4,7 +4,8 @@
 //! `gpuPasses`: the viewport views over the finished frame, the UI layers,
 //! the glass and the lines drawn among the overlay, the overlay itself,
 //! and the HDR output's encode, in that order. Everything here is drawn
-//! again each frame (FrameSpan).
+//! again each frame: a display frame may skip a draw here whose pipeline is
+//! not ready (gpu/deferred.rs).
 
 use super::*;
 
