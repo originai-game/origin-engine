@@ -22,9 +22,10 @@ pub(crate) use dispatch::{
 pub use dispatch::{begin_bundle, command};
 use dispatch::{run_condition, run_hook, run_system};
 mod tick;
-pub use tick::{advance, answer_call, call_rpc, frame, take_log, take_outputs};
 #[cfg(not(feature = "publish"))]
-pub(crate) use tick::{advance_probe, extract_frame, frame_value};
+pub(crate) use tick::advance_probe;
+pub use tick::{advance, answer_call, call_rpc, frame, take_log, take_outputs};
+pub(crate) use tick::{extract_frame, frame_value};
 mod module_state;
 pub(crate) use module_state::{Modules, Mount};
 mod resources;
