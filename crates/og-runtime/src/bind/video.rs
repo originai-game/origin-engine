@@ -592,9 +592,10 @@ fn run(
         return Ok(());
     };
     let player = &(id, layouts.player.clone());
-    // The tick's length in f64, as og.audio counts it, so a player's time
-    // and its sound's playhead move together.
-    let dt = ctx.time().seconds(1);
+    // The tick's step as og.audio counts it (a whole number of ticks a
+    // second): a player's time advances by speed / rate, the one step the
+    // tick rate gives, so its playhead moves with its sound's.
+    let rate = ctx.time().rate;
     let mut entities: Vec<Entity> = Vec::new();
     let players = QueryDesc {
         write: vec![PLAYER.into()],
@@ -630,7 +631,7 @@ fn run(
         let seek = !fresh && (start < last / fps - 1e-4 || start >= (last + 1.0) / fps + 1e-4);
         let mut time = start;
         if playing {
-            time += dt * speed;
+            time += speed / f64::from(rate);
         }
         let mut finished = false;
         if time >= c.seconds {

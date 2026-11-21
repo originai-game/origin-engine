@@ -386,8 +386,7 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
         world.insert_resource(Audio::default())?;
     }
     world.insert_resource(fresh_mix(world))?;
-    let dt = world.time().dt();
-    let tick_rate = (1.0 / f64::from(dt)).round().max(1.0) as u32;
+    let tick_rate = world.time().rate;
     world.insert_resource(AudioStream {
         hash: 0,
         commands: 0,
