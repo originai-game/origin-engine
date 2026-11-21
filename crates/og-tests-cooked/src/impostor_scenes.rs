@@ -134,6 +134,7 @@ pub fn impostor_scene(below: bool) -> Result<(RenderScene, (Vec3, Vec3)), String
             radius: i.radius,
             material_atlas: atlas.is_some(),
             below: i.below,
+            trim: i.trim,
         },
         transform: Mat4::from_translation(CARD_AT),
         cast_shadows: true,

@@ -836,7 +836,13 @@ fn plan_model<'a>(
             &[],
         )
     };
-    let st = stamp(&[b"lod-surface-v6-etc1s-normal", &st.to_le_bytes()]);
+    // The impostor's card outline is the blob's, from the bake's
+    // frames: a new outline rule cooks it again.
+    let st = stamp(&[
+        b"lod-surface-v6-etc1s-normal",
+        &st.to_le_bytes(),
+        &impostor::TRIM_VERSION.to_le_bytes(),
+    ]);
     let prepared = std::sync::Arc::new(PreparedModel {
         source: s,
         ids,

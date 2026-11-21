@@ -29,8 +29,9 @@
 //! `n · 0.5 + 0.5`) with its depth towards the viewer (`a`, `0.5 + 0.5 ×
 //! depth / radius`).
 //!
-//! **Drawing.** An [`ImpostorDraw`] is a quad of the sphere's size about
-//! its centre, turned to face the eye (in the shadow passes, the light).
+//! **Drawing.** An [`ImpostorDraw`] is a card about the sphere's centre,
+//! its square trimmed to what the frames draw ([`CardTrim`]), turned to
+//! face the eye (in the shadow passes, the light).
 //! Its vertex stage finds the three frames around the eye's direction on
 //! the grid and their weights ([`blend_frames`]); its fragment stage
 //! samples each where that frame sees the card's point (its orthographic
@@ -79,6 +80,46 @@ pub struct Impostor {
     /// Whether the atlases hold the lower hemisphere's frames in their
     /// right half ([module docs](self), `impostorBelow`).
     pub below: bool,
+    /// The card's outline: how much of the sphere's square its frames can
+    /// draw ([`CardTrim`]).
+    pub trim: CardTrim,
+}
+
+/// A card's outline in its square (`[-1, 1]²` about the sphere's centre,
+/// in radii; x right, y up), the cook's bound on where any view's frames
+/// can draw a covered texel: the card is its strips (impostor_common.wgsl
+/// `IMP_ROWS`) spread evenly from `y[0]` to `y[1]`, each a trapezoid whose
+/// boundaries reach `±widths[k]` from bottom to top. Each boundary is
+/// shared by the strips either side, so the outline is watertight. The
+/// rest of the square is what the cards shaded to discard: a tree covers
+/// a seventh of it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CardTrim {
+    pub widths: [f32; CARD_ROWS + 1],
+    pub y: [f32; 2],
+}
+
+/// The strips up a card's height (impostor_common.wgsl `IMP_ROWS`).
+pub const CARD_ROWS: usize = 4;
+
+impl CardTrim {
+    /// The whole square: a card no cook bounded.
+    pub const FULL: CardTrim = CardTrim {
+        widths: [1.0; CARD_ROWS + 1],
+        y: [-1.0, 1.0],
+    };
+
+    /// The outline's area (radii², of the square's 4).
+    pub fn area(&self) -> f32 {
+        let h = (self.y[1] - self.y[0]) / CARD_ROWS as f32;
+        self.widths.windows(2).map(|w| (w[0] + w[1]) * h).sum()
+    }
+}
+
+impl Default for CardTrim {
+    fn default() -> Self {
+        CardTrim::FULL
+    }
 }
 
 /// One impostor drawn this frame ([`crate::RenderScene::impostors`]).

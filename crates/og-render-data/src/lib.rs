@@ -84,7 +84,7 @@ pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderMode, ShaderParam,
     lit_module_source, physical_module_source, shadow_module_source, sprite_module_source,
 };
-pub use impostor::{Impostor, ImpostorDraw, MAX_IMPOSTOR_GRID};
+pub use impostor::{CardTrim, Impostor, ImpostorDraw, MAX_IMPOSTOR_GRID};
 pub use lightmap::PROBE_VOLUMES;
 pub use material::{PhysicalExtensions, Side, StandardMaterial, UvTransform};
 pub use particles::*;

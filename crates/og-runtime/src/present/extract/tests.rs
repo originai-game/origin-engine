@@ -80,6 +80,7 @@ fn the_impostor_ends_the_level_chain() {
         radius: 1.0,
         material_atlas: false,
         below: false,
+        trim: og_render::CardTrim::FULL,
     };
     let lods = ModelLods {
         // One part with levels 3 cm and 12 cm off, another with one.

@@ -443,7 +443,7 @@ pub use id_pass::{
     CullRecord, Culled, IdCamera, IdFrame, IdObject, IdSources, cull_record, id_pass_size,
     projection_name, render_ids, render_ids_from, view_id_cameras,
 };
-pub use impostor::{Impostor, ImpostorDraw, MAX_IMPOSTOR_GRID};
+pub use impostor::{CardTrim, Impostor, ImpostorDraw, MAX_IMPOSTOR_GRID};
 pub use lightmap::{
     BakedLighting, BakedMesh, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume,
 };

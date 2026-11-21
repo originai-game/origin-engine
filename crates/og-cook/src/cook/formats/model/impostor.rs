@@ -37,7 +37,9 @@
 use super::GltfSource;
 use crate::cook::texture::Image;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
-use og_render_data::impostor::{frame_basis, frame_direction};
+use og_render_data::impostor::{
+    CardTrim, blend_frames, frame_basis, frame_direction, hemi_oct_decode,
+};
 
 /// How a model's impostor is baked: frames per side (0: by the model,
 /// [`ImpostorBake::resolved`]), pixels per frame, and whether the lower
@@ -138,6 +140,8 @@ pub struct Baked {
     pub material: Image,
     pub center: Vec3,
     pub radius: f32,
+    /// The card's outline: where any view's frames can draw ([`card_trim`]).
+    pub trim: CardTrim,
 }
 
 /// A texture decoded once, linear, with its box-filtered mips.
@@ -606,6 +610,8 @@ pub fn bake(
         })
         .map(|d| (d, raster(d).depth))
         .collect();
+    // Per frame (row by row), its covered texels for the card's outline.
+    let mut covers = Vec::with_capacity((grid * b.columns()) as usize);
     for j in 0..grid {
         for i in 0..b.columns() {
             let d = frame_direction(i, j, grid);
@@ -702,8 +708,10 @@ pub fn bake(
                 oy,
                 b.frame,
             );
+            covers.push(frame_cover(&albedo, &normal, size, (ox, oy), b.frame));
         }
     }
+    let trim = card_trim(&covers, b);
     let image = |rgba| Image {
         width: size,
         height,
@@ -715,7 +723,193 @@ pub fn bake(
         material: image(material),
         center,
         radius,
+        trim,
     })
+}
+
+/// The rule [`card_trim`] bounds a card by, in the model blob's stamp.
+pub const TRIM_VERSION: u32 = 1;
+
+/// How far (radii) behind a frame's front surface the card's ray may meet
+/// it: impostor_common.wgsl `IMP_THICK`.
+const IMP_THICK: f32 = 0.25;
+/// Texels about a covered texel whose depths the card's parallax steps may
+/// read for it: the fixed point's coarse depth (two levels down, filtered)
+/// lands it from as far.
+const TRIM_WINDOW: usize = 12;
+/// Views sampled along each side of a grid cell for the outline.
+const TRIM_VIEWS: u32 = 4;
+/// Atlas texels the outline keeps past every covered texel: the bilinear
+/// footprint and coverage spread of the levels a card reads before it is
+/// a few pixels wide (level 2), where one more texel is under a pixel.
+const TRIM_PAD_TEXELS: f32 = 4.0;
+/// Rows of the outline's height profile.
+const TRIM_BINS: usize = 256;
+
+/// A frame's covered texels for [`card_trim`]: each texel's point in the
+/// frame's square (`[-1, 1]²`, y up) and the range of depths (radii,
+/// towards the viewer) the card's parallax steps may land it at: its own,
+/// back to `IMP_THICK` behind it, and its neighbours' (`TRIM_WINDOW`),
+/// as the atlas stores them (dilated out from the silhouette).
+fn frame_cover(
+    albedo: &[u8],
+    normal: &[u8],
+    size: u32,
+    (ox, oy): (u32, u32),
+    frame: u32,
+) -> Vec<[f32; 4]> {
+    let f = frame as usize;
+    let at = |x: usize, y: usize| ((oy as usize + y) * size as usize + ox as usize + x) * 4;
+    // A dilated texel's depth (its alpha 0) counts, an empty one's not.
+    let depth: Vec<Option<f32>> = (0..f * f)
+        .map(|k| {
+            let p = at(k % f, k / f);
+            (normal[p..p + 4] != [0; 4]).then(|| f32::from(normal[p + 3]) / 255.0 * 2.0 - 1.0)
+        })
+        .collect();
+    // The window's lowest and highest depth: a row pass, then a column one.
+    let window = |pick: fn(f32, f32) -> f32| {
+        let mut rows = vec![None::<f32>; f * f];
+        for y in 0..f {
+            for x in 0..f {
+                let (a, b) = (x.saturating_sub(TRIM_WINDOW), (x + TRIM_WINDOW).min(f - 1));
+                rows[y * f + x] = (a..=b).filter_map(|k| depth[y * f + k]).reduce(pick);
+            }
+        }
+        let mut out = vec![None::<f32>; f * f];
+        for y in 0..f {
+            for x in 0..f {
+                let (a, b) = (y.saturating_sub(TRIM_WINDOW), (y + TRIM_WINDOW).min(f - 1));
+                out[y * f + x] = (a..=b).filter_map(|k| rows[k * f + x]).reduce(pick);
+            }
+        }
+        out
+    };
+    let (lo, hi) = (window(f32::min), window(f32::max));
+    let unit = |v: usize| (v as f32 + 0.5) / frame as f32 * 2.0 - 1.0;
+    (0..f * f)
+        .filter(|&k| albedo[at(k % f, k / f) + 3] > 0)
+        .map(|k| {
+            let z = depth[k].unwrap_or(0.0);
+            [
+                unit(k % f),
+                -unit(k / f),
+                lo[k].unwrap_or(z).min(z - IMP_THICK),
+                hi[k].unwrap_or(z).max(z),
+            ]
+        })
+        .collect()
+}
+
+/// The card's outline ([`CardTrim`]): over views sampled across the grid
+/// (`TRIM_VIEWS` a cell side, the lower hemisphere's too with `below`;
+/// without, a view from below is the horizon's above it, impostor_common.wgsl
+/// `imp_view`), each of the three frames the card blends for it
+/// ([`blend_frames`]) draws its covered texels (`covers`, per frame row by
+/// row) where the eye's ray through the card's point meets them: the
+/// texel's point at each depth its parallax may land it at, seen along the
+/// view in the view's basis, and where the frame projects without
+/// parallax (a coarse shadow card). The outline holds every such point,
+/// padded by `TRIM_PAD_TEXELS` and by how far a point moves between
+/// sampled views: the card then never cuts a texel a frame would draw.
+fn card_trim(covers: &[Vec<[f32; 4]>], b: ImpostorBake) -> CardTrim {
+    let grid = b.grid.max(2);
+    let n = (grid - 1) * TRIM_VIEWS;
+    let mut views = Vec::new();
+    for j in 0..=n {
+        for i in 0..=n {
+            let d = hemi_oct_decode(Vec2::new(i as f32, j as f32) / n as f32 * 2.0 - 1.0);
+            views.push(d);
+            if b.below && d.y > 0.0 {
+                views.push(Vec3::new(d.x, -d.y, d.z));
+            }
+        }
+    }
+    // The widest step between neighbouring samples (the grid's corners
+    // are its coarsest): a point a radius out moves by as much.
+    let step = (0..n)
+        .flat_map(|j| (0..n).map(move |i| (i, j)))
+        .map(|(i, j)| {
+            let d = |i: u32, j: u32| {
+                hemi_oct_decode(Vec2::new(i as f32, j as f32) / n as f32 * 2.0 - 1.0)
+            };
+            d(i, j).angle_between(d(i + 1, j + 1))
+        })
+        .fold(0.0f32, f32::max);
+    // Per height bin, the widest |x| a point in it reaches.
+    let mut width = [f32::NEG_INFINITY; TRIM_BINS];
+    let bin = |y: f32| (((y * 0.5 + 0.5) * TRIM_BINS as f32) as usize).min(TRIM_BINS - 1);
+    let mut put = |p: Vec2| {
+        if p.y.abs() <= 1.0 + 1e-3 {
+            let k = bin(p.y.clamp(-1.0, 1.0));
+            width[k] = width[k].max(p.x.abs());
+        } else {
+            // Past the square: the card's square is the most it covers.
+            let k = if p.y > 0.0 { TRIM_BINS - 1 } else { 0 };
+            width[k] = width[k].max(p.x.abs());
+        }
+    };
+    let columns = b.columns();
+    for v in views {
+        let (vr, vu) = frame_basis(v);
+        for ((ci, cj), _) in blend_frames(v, grid, b.below) {
+            let Some(cover) = covers.get((cj * columns + ci) as usize) else {
+                continue;
+            };
+            let d = frame_direction(ci, cj, grid);
+            let (r, u) = frame_basis(d);
+            // A frame point (x, y, z) seen along v: x r + y u + z d in
+            // v's basis.
+            let (rx, ux, dx) = (r.dot(vr), u.dot(vr), d.dot(vr));
+            let (ry, uy, dy) = (r.dot(vu), u.dot(vu), d.dot(vu));
+            // Without parallax the card's point projects onto the frame's
+            // point: solve (p·r, p·u) = (x, y) for p = a vr + b vu.
+            let det = rx * uy - ux * ry;
+            for &[x, y, lo, hi] in cover {
+                for z in [lo, hi] {
+                    put(Vec2::new(
+                        x * rx + y * ux + z * dx,
+                        x * ry + y * uy + z * dy,
+                    ));
+                }
+                if det.abs() > 1e-3 {
+                    put(Vec2::new((x * uy - y * ux) / det, (y * rx - x * ry) / det));
+                }
+            }
+        }
+    }
+    let Some(first) = width.iter().position(|w| w.is_finite()) else {
+        return CardTrim::FULL;
+    };
+    let last = width.iter().rposition(|w| w.is_finite()).expect("one is");
+    let pad = TRIM_PAD_TEXELS * 2.0 / b.frame as f32 + 3f32.sqrt() * step * 0.5;
+    let edge = |k: usize| k as f32 / TRIM_BINS as f32 * 2.0 - 1.0;
+    let y = [
+        (edge(first) - pad).max(-1.0),
+        (edge(last + 1) + pad).min(1.0),
+    ];
+    // Each strip as wide as the points within `pad` of its rows; each
+    // boundary as wide as the strips either side.
+    let rows = og_render_data::impostor::CARD_ROWS;
+    let strip = |s: usize| {
+        let (bottom, top) = (
+            y[0] + (y[1] - y[0]) * s as f32 / rows as f32 - pad,
+            y[0] + (y[1] - y[0]) * (s + 1) as f32 / rows as f32 + pad,
+        );
+        (bin(bottom.max(-1.0))..=bin(top.min(1.0)))
+            .map(|k| width[k])
+            .fold(f32::NEG_INFINITY, f32::max)
+    };
+    let strips: Vec<f32> = (0..rows).map(strip).collect();
+    let widths = std::array::from_fn(|k| {
+        let w = strips[k.saturating_sub(1)].max(strips[k.min(rows - 1)]);
+        if w.is_finite() {
+            (w + pad).min(1.0)
+        } else {
+            0.0
+        }
+    });
+    CardTrim { widths, y }
 }
 
 /// Gives a frame's uncovered texels their nearest covered neighbour's

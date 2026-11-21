@@ -526,6 +526,7 @@ pub(crate) fn insert_model(
                             radius: i.radius,
                             material_atlas: atlas.is_some(),
                             below: i.below,
+                            trim: i.trim,
                         },
                         i.error,
                     ))

@@ -427,12 +427,22 @@ struct ScatterGpu {
     impostor: [f32; 4],
     impostor_grid: [f32; 4],
     impostor_light: [f32; 4],
+    /// The impostor's card outline ([`crate::CardTrim`]): its strips'
+    /// boundary half-widths (x..w, then the next row's x), its bottom
+    /// and top (y, z).
+    impostor_trim: [[f32; 4]; 2],
     /// The trample map (`trample.rs` `Trample::grid`).
     trample: [f32; 4],
     /// The mesh's canopy centre in its own space (xyz) and 1 in w when it
     /// has foliage ([`crate::RenderScene::set_mesh_foliage`]), for its
     /// leaves' dome normals.
     canopy: [f32; 4],
+}
+
+/// [`ScatterGpu::impostor_trim`] for `t`.
+fn trim_gpu(t: crate::CardTrim) -> [[f32; 4]; 2] {
+    let w = t.widths;
+    [[w[0], w[1], w[2], w[3]], [w[4], t.y[0], t.y[1], 0.0]]
 }
 
 impl ScatterGpu {
@@ -445,6 +455,7 @@ impl ScatterGpu {
             f32::from(u8::from(i.material_atlas)),
         ];
         self.impostor_light = light.extend(f32::from(u8::from(i.below))).to_array();
+        self.impostor_trim = trim_gpu(i.trim);
     }
 }
 
@@ -607,7 +618,7 @@ pub(crate) struct ScatterBatch {
 /// The vertices of an impostor's card: four strips up its height, two
 /// triangles each (impostor_common.wgsl `IMP_ROWS`; scatter_place.wgsl and
 /// scatter_cull.wgsl write the same count into their cards' draws).
-pub(crate) const IMPOSTOR_CARD_VERTICES: u32 = 24;
+pub(crate) const IMPOSTOR_CARD_VERTICES: u32 = 6 * crate::impostor::CARD_ROWS as u32;
 
 /// What one batch of model impostors shares: the atlas, and the bits of
 /// their sway and top ([`crate::ImpostorDraw`]; 0 and 0: still).

@@ -207,6 +207,7 @@ impl ScatterRenderer {
             impostor: [0.0; 4],
             impostor_grid: [0.0; 4],
             impostor_light: [0.0; 4],
+            impostor_trim: super::trim_gpu(crate::CardTrim::FULL),
             trample: [0.0; 4],
             canopy: [0.0; 4],
         };
@@ -677,6 +678,7 @@ impl ScatterRenderer {
                 impostor: [0.0; 4],
                 impostor_grid: [0.0; 4],
                 impostor_light: [0.0; 4],
+                impostor_trim: super::trim_gpu(crate::CardTrim::FULL),
                 trample,
                 canopy: scene
                     .mesh_foliage(d.mesh)

@@ -391,3 +391,141 @@ fn tree_pixels(img: &og_render::RgbaImage, x0: u32, x1: u32) -> (f32, f32, f32) 
     }
     (n, (hi[0] - lo[0]) as f32, (hi[1] - lo[1]) as f32)
 }
+
+/// A card's outline (og-render's `CardTrim`, the cook's bound on what its
+/// frames draw) cuts nothing they draw: the oak's, the pine's and the
+/// shrub's cards, seen from all round at heights from below their horizon
+/// to straight above and at the distances a texel is one and four
+/// pixels, draw the same frame trimmed as on the sphere's whole square.
+///
+/// Ways this could fail: the outline from frames in their own bases only
+/// (a view between frames reprojects a texel outside it), without the
+/// depths the parallax steps land at (the crown's rim cut where it leans
+/// towards the eye), without the lower views a card turns upright for, or
+/// a strip's boundary shared unequally (a crack across the card).
+#[test]
+#[ignore = "requires GPU"]
+fn a_trimmed_card_draws_what_its_whole_square_does() {
+    let desc = og_render::RenderDesc {
+        width: 480,
+        height: 360,
+        ..og_tests::scenes::base_desc()
+    };
+    // A renderer each for the whole square, the outline and no card, in
+    // step: the sky's and the frames' noise turn per frame rendered.
+    let mut rs: [Renderer; 3] =
+        std::array::from_fn(|_| Renderer::new_blocking(&desc).expect("renderer"));
+    let dir = super::out_dir();
+    std::fs::create_dir_all(&dir).expect("out dir");
+    for name in ["oak", "pine", "bush"] {
+        let mut scene = og_tests_cooked::plant_scenes::card_scene(name).expect("the cooked card");
+        let trim = scene.objects.impostors[0].impostor.trim;
+        let (centre, radius) = {
+            let i = scene.objects.impostors[0].impostor;
+            (i.center, i.radius)
+        };
+        assert_ne!(
+            trim,
+            og_render::CardTrim::FULL,
+            "{name}: the cook bounds its card"
+        );
+        println!(
+            "{name}: outline {trim:?}, {:.0}% of the square",
+            25.0 * trim.area()
+        );
+        // A texel a pixel: the frame's 128 texels over 2 radii in 360 rows
+        // of 50 degrees.
+        let near = radius * 360.0 / (128.0 * 25f32.to_radians().tan());
+        let mut worst = (0u32, String::new());
+        for distance in [near, 4.0 * near] {
+            for elevation in [-25.0f32, 0.0, 12.0, 30.0, 50.0, 70.0, 86.0, 89.9] {
+                for k in 0..12 {
+                    let azimuth = (k as f32 * 30.0 + 7.0).to_radians();
+                    let e = elevation.to_radians();
+                    let eye = centre
+                        + distance
+                            * Vec3::new(e.cos() * azimuth.cos(), e.sin(), e.cos() * azimuth.sin());
+                    scene.frame.camera = og_render::Camera {
+                        position: eye,
+                        target: centre,
+                        ..Default::default()
+                    };
+                    let mut shot = |k: usize, t: Option<og_render::CardTrim>| {
+                        let cards = match t {
+                            Some(t) => {
+                                scene.objects.impostors[0].impostor.trim = t;
+                                None
+                            }
+                            None => Some(std::mem::take(&mut scene.objects.impostors)),
+                        };
+                        rs[k]
+                            .render(&scene, &RenderTarget::Offscreen)
+                            .expect("render");
+                        if let Some(cards) = cards {
+                            scene.objects.impostors = cards;
+                        }
+                        rs[k].read_offscreen().expect("capture")
+                    };
+                    let whole = shot(0, Some(og_render::CardTrim::FULL));
+                    let trimmed = shot(1, Some(trim));
+                    let empty = shot(2, None);
+                    // The pixels the whole card covers and the outline
+                    // leaves empty. The vertices' moves round the
+                    // varyings, so a lone pixel on the coverage cut flips
+                    // either way; a cut is a run of them along a strip's
+                    // edge: count those with a lost neighbour.
+                    let apart =
+                        |a: &[u8], b: &[u8]| a.iter().zip(b).any(|(x, y)| x.abs_diff(*y) > 3);
+                    let (w, h) = (whole.width as i32, whole.height as i32);
+                    let px = |img: &og_render::RgbaImage, x: i32, y: i32| {
+                        let k = ((y * w + x) * 4) as usize;
+                        img.pixels[k..k + 4].to_vec()
+                    };
+                    let is_lost = |x: i32, y: i32| {
+                        x >= 0
+                            && y >= 0
+                            && x < w
+                            && y < h
+                            && apart(&px(&whole, x, y), &px(&empty, x, y))
+                            && !apart(&px(&trimmed, x, y), &px(&empty, x, y))
+                    };
+                    let lost = (0..h)
+                        .flat_map(|y| (0..w).map(move |x| (x, y)))
+                        .filter(|&(x, y)| {
+                            is_lost(x, y)
+                                && (-1..=1)
+                                    .flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)))
+                                    .any(|(dx, dy)| (dx, dy) != (0, 0) && is_lost(x + dx, y + dy))
+                        })
+                        .count() as u32;
+                    if lost > worst.0 {
+                        let at = format!(
+                            "{name} at {distance:.0} m, {elevation} degrees up, azimuth {:.0}",
+                            azimuth.to_degrees()
+                        );
+                        for (img, tag) in [(&whole, "whole"), (&trimmed, "trimmed")] {
+                            image::save_buffer(
+                                dir.join(format!("impostor-trim-{tag}.png")),
+                                &img.pixels,
+                                img.width,
+                                img.height,
+                                image::ColorType::Rgba8,
+                            )
+                            .expect("saved");
+                        }
+                        worst = (lost, at);
+                    }
+                }
+            }
+        }
+        println!(
+            "{name}: at most {} pixels lost in runs ({})",
+            worst.0, worst.1
+        );
+        assert_eq!(
+            worst.0, 0,
+            "{}: {} pixels the whole card covers are empty in its outline (impostor-trim-*.png)",
+            worst.1, worst.0
+        );
+    }
+}

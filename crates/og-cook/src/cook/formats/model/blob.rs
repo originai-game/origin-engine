@@ -687,6 +687,11 @@ pub fn cook(
         let (normal_offset, normal_len) = strings.add(&normal);
         let center = (lo + hi) * 0.5;
         let radius = ((hi - lo) * 0.5).length().max(1e-3);
+        // The card's outline is the bake's: what its frames cover.
+        let trim = src
+            .impostor(b)
+            .map_err(|e| CookError(format!("impostor: {e}")))?
+            .trim;
         impostors.push(ImpostorRow {
             albedo_offset,
             albedo_len,
@@ -700,9 +705,16 @@ pub fn cook(
             radius,
             error: 2.0 * radius / b.frame as f32,
             below: u32::from(b.below),
+            trim_w0: trim.widths[0],
+            trim_w1: trim.widths[1],
+            trim_w2: trim.widths[2],
+            trim_w3: trim.widths[3],
+            trim_w4: trim.widths[4],
+            trim_y0: trim.y[0],
+            trim_y1: trim.y[1],
         });
         notes.push(format!(
-            "impostor: {c}×{g} frames of {f} px ({w}×{s} atlas{below}), one texel {e:.3} units",
+            "impostor: {c}×{g} frames of {f} px ({w}×{s} atlas{below}), one texel {e:.3} units, its card {card:.0}% of the square",
             c = b.columns(),
             g = b.grid,
             f = b.frame,
@@ -713,7 +725,8 @@ pub fn cook(
             } else {
                 ""
             },
-            e = 2.0 * radius / b.frame as f32
+            e = 2.0 * radius / b.frame as f32,
+            card = 100.0 * trim.area() / 4.0,
         ));
     }
     let meta = ModelMeta {

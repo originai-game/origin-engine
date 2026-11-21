@@ -147,10 +147,17 @@ const IMP_ROWS: u32 = 4u;
 
 // The card's corner `vertex` (0..6 × IMP_ROWS, two triangles a strip) of
 // the copy `model` facing `toward` (a point, or a direction when `is_dir`).
+// The strips span the cook's outline of what the frames draw (impostor.rs
+// CardTrim), not the sphere's square: the rest only shaded to discard,
+// in every pass. Each strip boundary's width is shared by the strips
+// either side, so the outline has no cracks.
 fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) -> ImpCard {
   let corner = quad_corner(vertex) * 2.0 - 1.0;
-  let strip = f32(min(vertex / 6u, IMP_ROWS - 1u));
-  let q = vec2<f32>(corner.x, (strip + corner.y * 0.5 + 0.5) / f32(IMP_ROWS) * 2.0 - 1.0);
+  let strip = min(vertex / 6u, IMP_ROWS - 1u);
+  let row = strip + select(0u, 1u, corner.y > 0.0);
+  let trim = scatter.impostor_trim;
+  let width = select(trim[0][min(row, 3u)], trim[1].x, row == IMP_ROWS);
+  let q = vec2<f32>(corner.x * width, mix(trim[1].y, trim[1].z, f32(row) / f32(IMP_ROWS)));
   let m3 = mat3x3<f32>(model[0].xyz, model[1].xyz, model[2].xyz);
   let c = scatter.impostor.xyz;
   let radius = scatter.impostor.w;

@@ -335,6 +335,8 @@ pub struct CookedImpostor {
     /// Whether the atlases hold the lower hemisphere's frames
     /// (`impostorBelow`).
     pub below: bool,
+    /// The card's outline.
+    pub trim: og_render_data::CardTrim,
 }
 
 /// What [`CookedModel::add_to`] added: per part the mesh, the material and
@@ -893,6 +895,10 @@ impl CookedModel {
                 radius: i.radius,
                 error: i.error,
                 below: i.below != 0,
+                trim: og_render_data::CardTrim {
+                    widths: [i.trim_w0, i.trim_w1, i.trim_w2, i.trim_w3, i.trim_w4],
+                    y: [i.trim_y0, i.trim_y1],
+                },
             }),
         };
         Ok(CookedModel {

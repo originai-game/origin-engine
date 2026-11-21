@@ -183,6 +183,7 @@ fn painted_impostor(
         radius: BALL,
         material_atlas: atlas.is_some(),
         below: false,
+        trim: og_render::CardTrim::FULL,
     }
 }
 

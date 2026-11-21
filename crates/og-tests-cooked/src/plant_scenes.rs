@@ -181,6 +181,7 @@ fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, 
                 radius: i.radius,
                 material_atlas: atlas.is_some(),
                 below: i.below,
+                trim: i.trim,
             })
         }
         None => None,
@@ -201,6 +202,30 @@ fn card_distance(impostor: Impostor) -> f32 {
     const ROWS: f32 = 720.0;
     const FRAME: f32 = 128.0;
     impostor.radius * ROWS / (FRAME * 25f32.to_radians().tan())
+}
+
+/// `name`'s card alone (the oak, the pine or the shrub, as og-runtime
+/// makes it) at the origin, under a sun from the front right and the
+/// fair afternoon's sky, the camera set by the caller: the scene's one
+/// [`og_render::ImpostorDraw`], whose outline the caller may widen to the
+/// square ([`og_render::CardTrim::FULL`]) to compare.
+pub fn card_scene(name: &str) -> Result<RenderScene, String> {
+    let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
+    let mut scene = RenderScene::new();
+    og_tests::terrain_scenes::afternoon(&mut scene);
+    scene.lighting.light.direction_to_light = Vec3::new(0.5, 0.7, 0.45).normalize();
+    og_tests::terrain_scenes::fair_sky(&mut scene, 8.6);
+    let impostor = plant(&mut scene, &bundle, name)?
+        .impostor
+        .ok_or_else(|| format!("{name} was cooked without its impostor"))?;
+    scene.objects.impostors.push(og_render::ImpostorDraw {
+        impostor,
+        transform: Mat4::IDENTITY,
+        cast_shadows: false,
+        sway: 0.0,
+        top: 0.0,
+    });
+    Ok(scene)
 }
 
 /// Where `plant-grown` stands its oak, pine and shrub (their roots).

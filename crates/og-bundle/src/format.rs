@@ -421,7 +421,7 @@ row!(
     /// og-render's `impostor`): the whole model drawn as one camera-facing
     /// card from its two atlases, the last level of its chain. At most one
     /// per model (the optional `impostors` table; absent or empty: none).
-    ImpostorRow, "og.ModelImpostor", 2 {
+    ImpostorRow, "og.ModelImpostor", 3 {
         /// The atlases' `og.Texture` ids (in `strings`): the albedo with
         /// its coverage in alpha, and the normal (in each frame's basis)
         /// with the depth towards the viewer.
@@ -444,6 +444,10 @@ row!(
         /// 1: the atlases are twice as wide, their right half the lower
         /// hemisphere's frames (`impostorBelow`, og-render's `impostor`).
         below: u32,
+        /// The card's outline (og-render-data's `CardTrim`): its strips'
+        /// boundary half-widths, bottom to top, and its bottom and top.
+        trim_w0: f32, trim_w1: f32, trim_w2: f32, trim_w3: f32, trim_w4: f32,
+        trim_y0: f32, trim_y1: f32,
     }
 );
 
