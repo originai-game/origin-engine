@@ -126,6 +126,7 @@ pub fn impostor_scene(below: bool) -> Result<(RenderScene, (Vec3, Vec3)), String
         roughness: 0.85,
         ..Default::default()
     });
+    scene.set_impostor_views(material, Some(i.views.clone()));
     scene.objects.impostors.push(ImpostorDraw {
         impostor: Impostor {
             material,

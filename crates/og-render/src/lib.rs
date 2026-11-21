@@ -443,7 +443,7 @@ pub use id_pass::{
     CullRecord, Culled, IdCamera, IdFrame, IdObject, IdSources, cull_record, id_pass_size,
     projection_name, render_ids, render_ids_from, view_id_cameras,
 };
-pub use impostor::{CardTrim, Impostor, ImpostorDraw, MAX_IMPOSTOR_GRID};
+pub use impostor::{CardTrim, Impostor, ImpostorDraw, MAX_IMPOSTOR_GRID, ViewRect};
 pub use lightmap::{
     BakedLighting, BakedMesh, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume,
 };
@@ -472,7 +472,7 @@ pub use wind::{WIND_WAVELENGTH, Wind, wind_phases};
 /// The octahedral impostors' frame layout, shared with the cook's bake.
 pub mod impostors {
     pub use crate::impostor::{
-        blend_frames, frame_basis, frame_direction, hemi_oct_decode, hemi_oct_encode,
+        blend_frames, frame_basis, frame_direction, hemi_oct_decode, hemi_oct_encode, view_cell,
     };
 }
 pub use crowd::{

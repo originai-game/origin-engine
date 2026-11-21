@@ -62,7 +62,7 @@ impl ScatterRenderer {
         let card_depth_layout = (p.compute && p.samples == 1).then(|| {
             let mut entries = uniform_entries().to_vec();
             entries.push(wgpu::BindGroupLayoutEntry {
-                binding: 5,
+                binding: 6,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::StorageTexture {
                     access: wgpu::StorageTextureAccess::ReadOnly,
@@ -132,11 +132,12 @@ impl ScatterRenderer {
                 usage: wgpu::BufferUsages::UNIFORM,
             },
         );
+        let frames = ImpostorFrames::new(device, queue, &[]);
         let (uniform, group) = Self::slots(
             device,
             &uniform_layout,
             [&blue_noise, &wind_uniform],
-            [&p.wind_field, &p.trample],
+            [&p.wind_field, &p.trample, &frames.view],
             4,
         );
         ScatterRenderer {
@@ -166,6 +167,7 @@ impl ScatterRenderer {
             wind_field: p.wind_field,
             trample: p.trample,
             impostor_instances: None,
+            frames,
             card_quad: crate::buffer_init(
                 device,
                 queue,
@@ -206,7 +208,7 @@ pub(super) fn level0_under(layout: &TerrainLayout, a: Vec2, b: Vec2) -> Vec<u32>
 }
 
 /// The scatter group's entries (scatter_common.wgsl group 2).
-fn uniform_entries() -> [wgpu::BindGroupLayoutEntry; 5] {
+fn uniform_entries() -> [wgpu::BindGroupLayoutEntry; 6] {
     [
         wgpu::BindGroupLayoutEntry {
             binding: 0,
@@ -252,6 +254,18 @@ fn uniform_entries() -> [wgpu::BindGroupLayoutEntry; 5] {
         },
         wgpu::BindGroupLayoutEntry {
             binding: 4,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        }, // The impostors' card rectangles (ImpostorFrames), read in the vertex
+        // stage by textureLoad: a storage buffer there needs
+        // VERTEX_STORAGE.
+        wgpu::BindGroupLayoutEntry {
+            binding: 5,
             visibility: wgpu::ShaderStages::VERTEX,
             ty: wgpu::BindingType::Texture {
                 sample_type: wgpu::TextureSampleType::Float { filterable: false },

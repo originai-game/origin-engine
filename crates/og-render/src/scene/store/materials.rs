@@ -12,12 +12,48 @@ impl RenderScene {
         self.push_material(material, None)
     }
 
+    /// Gives an impostor's material (its [`crate::Impostor::material`]) its
+    /// card's rectangle per cell of views, as the cook wrote them
+    /// (og-bundle's `CookedImpostor::views`, one per
+    /// [`crate::impostors::view_cell`]), or takes them away: with them its
+    /// card is drawn over what the frames it blends can show from the
+    /// eye's cell, else over its [`crate::CardTrim`]. False for a handle
+    /// that is not live.
+    pub fn set_impostor_views(
+        &mut self,
+        material: MaterialHandle,
+        views: Option<Vec<crate::ViewRect>>,
+    ) -> bool {
+        let i = material.index();
+        if !self.material_slots.live(i, material.generation()) {
+            return false;
+        }
+        match views.filter(|v| !v.is_empty()) {
+            Some(v) => self.impostor_views.insert(i, v.into()),
+            None => self.impostor_views.remove(&i),
+        };
+        true
+    }
+
+    /// An impostor material's rectangles ([`Self::set_impostor_views`]).
+    pub fn impostor_views(
+        &self,
+        material: MaterialHandle,
+    ) -> Option<&std::sync::Arc<[crate::ViewRect]>> {
+        let i = material.index();
+        self.material_slots
+            .live(i, material.generation())
+            .then(|| self.impostor_views.get(&i))
+            .flatten()
+    }
+
     fn push_material(
         &mut self,
         material: StandardMaterial,
         gltf: Option<Material>,
     ) -> MaterialHandle {
         let (i, generation, reused) = self.material_slots.take(self.materials.len(), true);
+        self.impostor_views.remove(&i);
         self.material_serial += 1;
         self.drawable_serial += 1;
         if reused {
@@ -44,6 +80,7 @@ impl RenderScene {
         }
         self.materials[i] = StandardMaterial::default();
         self.gltf_materials[i] = None;
+        self.impostor_views.remove(&i);
         if let Some(s) = self.material_shaders.get_mut(i) {
             *s = None;
         }

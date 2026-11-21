@@ -517,6 +517,7 @@ pub(crate) fn insert_model(
                         roughness: 0.85,
                         ..Default::default()
                     });
+                    rs.scene.set_impostor_views(material, Some(i.views.clone()));
                     let grid = i.grid.clamp(2, og_render::MAX_IMPOSTOR_GRID);
                     Some((
                         og_render::Impostor {

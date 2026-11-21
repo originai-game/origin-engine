@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "TerrainScatter",
+      "summary": "An impostor card is drawn over the rectangle its three blended frames can show from the current view (each frame's covered box, projected along the eye with its parallax reach), where that is smaller than the card's fixed outline, so the lit, prepass and shadow passes shade less transparent area. Models with `impostor true` are cooked again to carry each frame's box."
+    }
+  ]
+}

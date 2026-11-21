@@ -337,6 +337,9 @@ pub struct CookedImpostor {
     pub below: bool,
     /// The card's outline.
     pub trim: og_render_data::CardTrim,
+    /// The card's rectangle per cell of views (`impostor_views`; none in
+    /// a model cooked before them).
+    pub views: Vec<og_render_data::ViewRect>,
 }
 
 /// What [`CookedModel::add_to`] added: per part the mesh, the material and
@@ -895,6 +898,20 @@ impl CookedModel {
                 radius: i.radius,
                 error: i.error,
                 below: i.below != 0,
+                views: blob
+                    .raw("impostor_views")
+                    .map(|b| {
+                        b.as_chunks::<16>()
+                            .0
+                            .iter()
+                            .map(|v| {
+                                std::array::from_fn(|k| {
+                                    f32::from_le_bytes(v[k * 4..k * 4 + 4].try_into().expect("4"))
+                                })
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
                 trim: og_render_data::CardTrim {
                     widths: [i.trim_w0, i.trim_w1, i.trim_w2, i.trim_w3, i.trim_w4],
                     y: [i.trim_y0, i.trim_y1],

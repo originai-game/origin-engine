@@ -38,7 +38,7 @@ use super::GltfSource;
 use crate::cook::texture::Image;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use og_render_data::impostor::{
-    CardTrim, blend_frames, frame_basis, frame_direction, hemi_oct_decode,
+    CardTrim, ViewRect, blend_frames, frame_basis, frame_direction, hemi_oct_decode, view_cell,
 };
 
 /// How a model's impostor is baked: frames per side (0: by the model,
@@ -142,6 +142,8 @@ pub struct Baked {
     pub radius: f32,
     /// The card's outline: where any view's frames can draw ([`card_trim`]).
     pub trim: CardTrim,
+    /// The card's rectangle per cell of views ([`view_rects`]).
+    pub views: Vec<ViewRect>,
 }
 
 /// A texture decoded once, linear, with its box-filtered mips.
@@ -712,6 +714,7 @@ pub fn bake(
         }
     }
     let trim = card_trim(&covers, b);
+    let views = view_rects(&covers, b);
     let image = |rgba| Image {
         width: size,
         height,
@@ -724,11 +727,12 @@ pub fn bake(
         center,
         radius,
         trim,
+        views,
     })
 }
 
 /// The rule [`card_trim`] bounds a card by, in the model blob's stamp.
-pub const TRIM_VERSION: u32 = 1;
+pub const TRIM_VERSION: u32 = 3;
 
 /// How far (radii) behind a frame's front surface the card's ray may meet
 /// it: impostor_common.wgsl `IMP_THICK`.
@@ -801,6 +805,155 @@ fn frame_cover(
         .collect()
 }
 
+/// Where frame `(ci, cj)`'s covered texels (`cover`, [`frame_cover`])
+/// can be drawn on a card seen in the basis `(vr, vu)`: each texel's point
+/// at the depths its parallax steps may land at, projected along the view,
+/// and the card's point whose image without parallax is the texel's (a
+/// coarse shadow card's, impostor_common.wgsl `imp_parallax`).
+fn frame_points(
+    cover: &[[f32; 4]],
+    (ci, cj): (u32, u32),
+    grid: u32,
+    (vr, vu): (Vec3, Vec3),
+    put: &mut impl FnMut(Vec2),
+) {
+    let d = frame_direction(ci, cj, grid);
+    let (r, u) = frame_basis(d);
+    // A frame point (x, y, z) seen along v: x r + y u + z d in v's basis.
+    let (rx, ux, dx) = (r.dot(vr), u.dot(vr), d.dot(vr));
+    let (ry, uy, dy) = (r.dot(vu), u.dot(vu), d.dot(vu));
+    // Without parallax the card's point projects onto the frame's point:
+    // solve (p·r, p·u) = (x, y) for p = a vr + b vu.
+    let det = rx * uy - ux * ry;
+    for &[x, y, lo, hi] in cover {
+        for z in [lo, hi] {
+            put(Vec2::new(
+                x * rx + y * ux + z * dx,
+                x * ry + y * uy + z * dy,
+            ));
+        }
+        if det.abs() > 1e-3 {
+            put(Vec2::new((x * uy - y * ux) / det, (y * rx - x * ry) / det));
+        }
+    }
+}
+
+/// Views sampled along each side of a grid cell for [`view_rects`].
+const CELL_VIEWS: u32 = 4;
+
+/// The card's rectangle per cell of views ([`ViewRect`], one per
+/// [`view_cell`]): what the cell's three frames can draw from any view in
+/// it. Views are sampled on a lattice `CELL_VIEWS` a cell side (mirrored
+/// for the lower hemisphere's cells); each sample adds, for its own cell
+/// and every cell of its eight neighbours, those cells' frames' points
+/// ([`frame_points`]) in the sample's basis. A view lies in a lattice
+/// square whose corners stand for its cell, so the rectangle is padded by
+/// how far a point moves between neighbouring samples (the farthest
+/// point's reach times their bases' change, which near straight up turns
+/// with the view's azimuth) and by `TRIM_PAD_TEXELS`. A cell no sample
+/// reached is the whole square.
+fn view_rects(covers: &[Vec<[f32; 4]>], b: ImpostorBake) -> Vec<ViewRect> {
+    let grid = b.grid.max(2);
+    let n = (grid - 1) * CELL_VIEWS;
+    let side = (n + 1) as usize;
+    let hemispheres = if b.below { 2 } else { 1 };
+    let cells = 2 * (grid * grid) as usize * hemispheres;
+    let mut rects = vec![[f32::MAX, f32::MAX, f32::MIN, f32::MIN]; cells];
+    let mut sampled = vec![false; cells];
+    let mut turn = vec![0.0f32; cells];
+    // The farthest a covered point stands from the centre.
+    let reach = covers
+        .iter()
+        .flatten()
+        .map(|&[x, y, lo, hi]| (x * x + y * y + lo.abs().max(hi.abs()).powi(2)).sqrt())
+        .fold(0.0f32, f32::max);
+    let columns = b.columns();
+    // The frames cell `k` blends (impostor_common.wgsl `imp_card`).
+    let frames_of = |k: usize| {
+        let lower = k >= 2 * (grid * grid) as usize;
+        let k = k % (2 * (grid * grid) as usize);
+        let (base, half) = ((k / 2) as u32, k % 2 == 1);
+        let (cx, cy) = (base % grid + if lower { grid } else { 0 }, base / grid);
+        if half {
+            [(cx + 1, cy + 1), (cx, cy + 1), (cx + 1, cy)]
+        } else {
+            [(cx, cy), (cx + 1, cy), (cx, cy + 1)]
+        }
+    };
+    for lower in 0..hemispheres {
+        let view = |i: usize, j: usize| {
+            let d = hemi_oct_decode(Vec2::new(i as f32, j as f32) / n as f32 * 2.0 - 1.0);
+            if lower == 1 {
+                Vec3::new(d.x, -d.y.max(1e-6), d.z).normalize()
+            } else {
+                d
+            }
+        };
+        let views: Vec<Vec3> = (0..side * side).map(|k| view(k % side, k / side)).collect();
+        let bases: Vec<(Vec3, Vec3)> = views.iter().map(|&v| frame_basis(v)).collect();
+        let cell: Vec<usize> = views.iter().map(|&v| view_cell(v, grid, b.below)).collect();
+        for j in 0..side {
+            for i in 0..side {
+                let at = j * side + i;
+                let (r, u) = bases[at];
+                let mut near = Vec::with_capacity(9);
+                let mut change = 0.0f32;
+                for (di, dj) in (-1i32..=1).flat_map(|dj| (-1i32..=1).map(move |di| (di, dj))) {
+                    let (ni, nj) = (i as i32 + di, j as i32 + dj);
+                    if ni < 0 || nj < 0 || ni >= side as i32 || nj >= side as i32 {
+                        continue;
+                    }
+                    let other = nj as usize * side + ni as usize;
+                    let (r2, u2) = bases[other];
+                    change = change.max((r - r2).length()).max((u - u2).length());
+                    if !near.contains(&cell[other]) {
+                        near.push(cell[other]);
+                    }
+                }
+                for &k in &near {
+                    sampled[k] = true;
+                    turn[k] = turn[k].max(change);
+                    let rect = &mut rects[k];
+                    let mut put = |p: Vec2| {
+                        *rect = [
+                            rect[0].min(p.x),
+                            rect[1].min(p.y),
+                            rect[2].max(p.x),
+                            rect[3].max(p.y),
+                        ];
+                    };
+                    for (ci, cj) in frames_of(k) {
+                        if let Some(cover) = covers.get((cj * columns + ci) as usize) {
+                            frame_points(cover, (ci, cj), grid, (r, u), &mut put);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let texels = TRIM_PAD_TEXELS * 2.0 / b.frame as f32;
+    rects
+        .into_iter()
+        .zip(sampled)
+        .zip(turn)
+        .map(|((r, sampled), turn)| {
+            if !sampled {
+                return [-1.0, -1.0, 1.0, 1.0];
+            }
+            if r[0] > r[2] {
+                return [1.0, 1.0, -1.0, -1.0];
+            }
+            let pad = texels + reach * turn;
+            [
+                (r[0] - pad).max(-1.0),
+                (r[1] - pad).max(-1.0),
+                (r[2] + pad).min(1.0),
+                (r[3] + pad).min(1.0),
+            ]
+        })
+        .collect()
+}
+
 /// The card's outline ([`CardTrim`]): over views sampled across the grid
 /// (`TRIM_VIEWS` a cell side, the lower hemisphere's too with `below`;
 /// without, a view from below is the horizon's above it, impostor_common.wgsl
@@ -851,30 +1004,10 @@ fn card_trim(covers: &[Vec<[f32; 4]>], b: ImpostorBake) -> CardTrim {
     };
     let columns = b.columns();
     for v in views {
-        let (vr, vu) = frame_basis(v);
+        let basis = frame_basis(v);
         for ((ci, cj), _) in blend_frames(v, grid, b.below) {
-            let Some(cover) = covers.get((cj * columns + ci) as usize) else {
-                continue;
-            };
-            let d = frame_direction(ci, cj, grid);
-            let (r, u) = frame_basis(d);
-            // A frame point (x, y, z) seen along v: x r + y u + z d in
-            // v's basis.
-            let (rx, ux, dx) = (r.dot(vr), u.dot(vr), d.dot(vr));
-            let (ry, uy, dy) = (r.dot(vu), u.dot(vu), d.dot(vu));
-            // Without parallax the card's point projects onto the frame's
-            // point: solve (p·r, p·u) = (x, y) for p = a vr + b vu.
-            let det = rx * uy - ux * ry;
-            for &[x, y, lo, hi] in cover {
-                for z in [lo, hi] {
-                    put(Vec2::new(
-                        x * rx + y * ux + z * dx,
-                        x * ry + y * uy + z * dy,
-                    ));
-                }
-                if det.abs() > 1e-3 {
-                    put(Vec2::new((x * uy - y * ux) / det, (y * rx - x * ry) / det));
-                }
+            if let Some(cover) = covers.get((cj * columns + ci) as usize) {
+                frame_points(cover, (ci, cj), grid, basis, &mut put);
             }
         }
     }

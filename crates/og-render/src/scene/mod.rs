@@ -92,6 +92,9 @@ pub struct RenderScene {
     /// Per material: the copies aliased to it, so an edit of it checks
     /// them again.
     material_copies: Vec<Vec<u32>>,
+    /// Per impostor material (its slot), its card's rectangle per cell of
+    /// views ([`RenderScene::set_impostor_views`]).
+    impostor_views: std::collections::HashMap<usize, std::sync::Arc<[crate::ViewRect]>>,
     fonts: Vec<MsdfFont>,
     /// Bumped by [`RenderScene::set_font`].
     font_revisions: Vec<u64>,

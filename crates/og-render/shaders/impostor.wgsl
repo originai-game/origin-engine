@@ -395,7 +395,7 @@ fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
 // scatter.rs EQUAL_KIND past IMPOSTOR_KIND): the prepass found each pixel's
 // surface (its view depth in `imp_view_depth`), so the lit stage takes it
 // instead of searching the frames again, and writes no depth.
-@group(2) @binding(5) var imp_view_depth: texture_storage_2d<rg32float, read>;
+@group(2) @binding(6) var imp_view_depth: texture_storage_2d<rg32float, read>;
 
 // vs_impostor's card at its sphere's nearest depth: never behind the
 // surface it stands for, so a LessEqual test without a depth write rejects

@@ -86,6 +86,7 @@ impl RenderScene {
             mesh_encodings: Vec::new(),
             mesh_clusters: Vec::new(),
             mesh_foliage: Vec::new(),
+            impostor_views: Default::default(),
             mesh_surfaces: Vec::new(),
             mesh_visual: Vec::new(),
             objects: SceneObjects {

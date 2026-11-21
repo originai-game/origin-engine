@@ -676,6 +676,7 @@ pub fn cook(
     // bounds', as og-runtime's levels use), its error an atlas texel.
     let mut impostors = Vec::new();
     let mut impostor_materials = Vec::new();
+    let mut impostor_views: Vec<u8> = Vec::new();
     if let Some(b) = opts.impostor.filter(|_| !proxy).map(|b| b.resolved(src)) {
         let [albedo, normal, material] = impostor_ids(id);
         let (material_offset, material_len) = strings.add(&material);
@@ -687,11 +688,24 @@ pub fn cook(
         let (normal_offset, normal_len) = strings.add(&normal);
         let center = (lo + hi) * 0.5;
         let radius = ((hi - lo) * 0.5).length().max(1e-3);
-        // The card's outline is the bake's: what its frames cover.
-        let trim = src
+        // The card's outline and its rectangle per cell of views are the
+        // bake's: what its frames cover.
+        let baked = src
             .impostor(b)
-            .map_err(|e| CookError(format!("impostor: {e}")))?
-            .trim;
+            .map_err(|e| CookError(format!("impostor: {e}")))?;
+        let trim = baked.trim;
+        let view_share = baked
+            .views
+            .iter()
+            .map(|r| (r[2] - r[0]).max(0.0) * (r[3] - r[1]).max(0.0) / 4.0)
+            .sum::<f32>()
+            / baked.views.len().max(1) as f32;
+        impostor_views = baked
+            .views
+            .iter()
+            .flatten()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
         impostors.push(ImpostorRow {
             albedo_offset,
             albedo_len,
@@ -714,7 +728,7 @@ pub fn cook(
             trim_y1: trim.y[1],
         });
         notes.push(format!(
-            "impostor: {c}×{g} frames of {f} px ({w}×{s} atlas{below}), one texel {e:.3} units, its card {card:.0}% of the square",
+            "impostor: {c}×{g} frames of {f} px ({w}×{s} atlas{below}), one texel {e:.3} units, its card {card:.0}% of the square ({view:.0}% from a view on average)",
             c = b.columns(),
             g = b.grid,
             f = b.frame,
@@ -727,6 +741,7 @@ pub fn cook(
             },
             e = 2.0 * radius / b.frame as f32,
             card = 100.0 * trim.area() / 4.0,
+            view = 100.0 * view_share,
         ));
     }
     let meta = ModelMeta {
@@ -776,6 +791,9 @@ pub fn cook(
             row_hash::<VariantMappingRow>(),
         )
         .table("impostors", &impostors, row_hash::<ImpostorRow>());
+    if !impostor_views.is_empty() {
+        w.raw("impostor_views", impostor_views, 4);
+    }
     // Only a model baked with the material atlas (G5) has the table.
     if !impostor_materials.is_empty() {
         w.table(

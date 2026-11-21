@@ -76,7 +76,13 @@ impl ScatterRenderer {
             }
             let slot = first_slot + k;
             let mut gpu = base;
-            gpu.impostor(imp, 0.0, light, self.samples > 1);
+            gpu.impostor(
+                imp,
+                self.frames.row(scene, imp.material),
+                0.0,
+                light,
+                self.samples > 1,
+            );
             if sway > 0.0 && lean_cap > 0.0 {
                 gpu.wind = [wind_dir.x, wind_dir.y, sway, 0.0];
                 gpu.wind_shape[1] = top;
@@ -183,13 +189,16 @@ impl ScatterRenderer {
             }
         }
         let slots = (scene.world.scatters.len() + groups.len() + card_inputs.len()) as u64;
-        if self.slots < slots {
-            self.slots = slots.next_power_of_two();
+        // A new impostor's card rectangles make the table again, and the group
+        // binds it.
+        let regroup = self.frames.update(device, queue, scene);
+        if self.slots < slots || regroup {
+            self.slots = self.slots.max(slots.next_power_of_two());
             let (u, g) = Self::slots(
                 device,
                 &self.uniform_layout,
                 [&self.blue_noise, &self.wind_uniform],
-                [&self.wind_field, &self.trample],
+                [&self.wind_field, &self.trample, &self.frames.view],
                 self.slots,
             );
             self.uniform = u;
@@ -207,7 +216,7 @@ impl ScatterRenderer {
             impostor: [0.0; 4],
             impostor_grid: [0.0; 4],
             impostor_light: [0.0; 4],
-            impostor_trim: super::trim_gpu(crate::CardTrim::FULL),
+            impostor_trim: super::trim_gpu(crate::CardTrim::FULL, 0.0),
             trample: [0.0; 4],
             canopy: [0.0; 4],
         };
@@ -678,7 +687,7 @@ impl ScatterRenderer {
                 impostor: [0.0; 4],
                 impostor_grid: [0.0; 4],
                 impostor_light: [0.0; 4],
-                impostor_trim: super::trim_gpu(crate::CardTrim::FULL),
+                impostor_trim: super::trim_gpu(crate::CardTrim::FULL, 0.0),
                 trample,
                 canopy: scene
                     .mesh_foliage(d.mesh)
@@ -686,7 +695,13 @@ impl ScatterRenderer {
             };
             let impostor = d.impostor.filter(|_| d.impostor_distance > 0.0);
             if let Some(i) = &impostor {
-                gpu.impostor(i, d.impostor_distance, light, self.samples > 1);
+                gpu.impostor(
+                    i,
+                    self.frames.row(scene, i.material),
+                    d.impostor_distance,
+                    light,
+                    self.samples > 1,
+                );
                 for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
                     self.pipeline(device, None, Side::Double, pass, true);
                 }

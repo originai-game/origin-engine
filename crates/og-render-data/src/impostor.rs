@@ -30,7 +30,8 @@
 //! depth / radius`).
 //!
 //! **Drawing.** An [`ImpostorDraw`] is a card about the sphere's centre,
-//! its square trimmed to what the frames draw ([`CardTrim`]), turned to
+//! its square trimmed to what the frames draw ([`CardTrim`]), or to
+//! what the three it blends draw from the eye's cell ([`ViewRect`]), turned to
 //! face the eye (in the shadow passes, the light).
 //! Its vertex stage finds the three frames around the eye's direction on
 //! the grid and their weights ([`blend_frames`]); its fragment stage
@@ -97,6 +98,30 @@ pub struct Impostor {
 pub struct CardTrim {
     pub widths: [f32; CARD_ROWS + 1],
     pub y: [f32; 2],
+}
+
+/// The card's rectangle for the views in one cell of the grid (og-cook's
+/// `impostor.rs` `view_rects`, one per [`view_cell`]): `[min x, min y,
+/// max x, max y]` in the card's square (radii, the view's
+/// [`frame_basis`]), what the three frames it blends can draw from any
+/// view in that cell. The card is drawn over it where it is smaller than
+/// its [`CardTrim`]. A cell's rectangle with min past max draws nothing.
+pub type ViewRect = [f32; 4];
+
+/// The cell of the view table ([`ViewRect`]) a card seen along `d` (as
+/// impostor_common.wgsl `imp_view` turns it) reads: per grid cell its two
+/// triangles ([`blend_frames`]), column then row, the lower hemisphere's
+/// after the upper's with `below`; `2 grid²` cells a hemisphere.
+pub fn view_cell(d: Vec3, grid: u32, below: bool) -> usize {
+    let grid = grid.max(2);
+    let n = (grid - 1) as f32;
+    let lower = below && d.y < 0.0;
+    let up = Vec3::new(d.x, if lower { -d.y } else { d.y }, d.z);
+    let g = ((hemi_oct_encode(up) * 0.5 + 0.5) * n).clamp(Vec2::ZERO, Vec2::splat(n));
+    let cell = g.floor().min(Vec2::splat(n - 1.0));
+    let f = g - cell;
+    let base = cell.x as usize + cell.y as usize * grid as usize;
+    2 * base + usize::from(f.x + f.y > 1.0) + if lower { 2 * (grid * grid) as usize } else { 0 }
 }
 
 /// The strips up a card's height (impostor_common.wgsl `IMP_ROWS`).

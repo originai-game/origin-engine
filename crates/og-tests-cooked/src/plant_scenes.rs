@@ -174,6 +174,7 @@ fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, 
                 roughness: 0.85,
                 ..Default::default()
             });
+            scene.set_impostor_views(material, Some(i.views.clone()));
             Some(Impostor {
                 material,
                 grid: i.grid.clamp(2, og_render::MAX_IMPOSTOR_GRID),

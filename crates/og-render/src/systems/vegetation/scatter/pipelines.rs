@@ -5,7 +5,7 @@ impl ScatterRenderer {
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
         [blue_noise, wind]: [&wgpu::Buffer; 2],
-        [wind_field, trample]: [&wgpu::TextureView; 2],
+        [wind_field, trample, frames]: [&wgpu::TextureView; 3],
         n: u64,
     ) -> (wgpu::Buffer, wgpu::BindGroup) {
         let buffer = crate::traffic::create_buffer(
@@ -44,6 +44,10 @@ impl ScatterRenderer {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: wgpu::BindingResource::TextureView(trample),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::TextureView(frames),
                 },
             ],
         });
@@ -88,6 +92,10 @@ impl ScatterRenderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
+                    resource: wgpu::BindingResource::TextureView(&self.frames.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
                     resource: wgpu::BindingResource::TextureView(view),
                 },
             ],

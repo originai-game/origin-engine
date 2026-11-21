@@ -51,6 +51,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 mod draw;
+mod frames;
+use frames::ImpostorFrames;
 mod pipelines;
 mod placement;
 mod prepare;
@@ -429,7 +431,8 @@ struct ScatterGpu {
     impostor_light: [f32; 4],
     /// The impostor's card outline ([`crate::CardTrim`]): its strips'
     /// boundary half-widths (x..w, then the next row's x), its bottom
-    /// and top (y, z).
+    /// and top (y, z), and its row of the card rectangles plus one (w; 0:
+    /// none, [`ImpostorFrames`]).
     impostor_trim: [[f32; 4]; 2],
     /// The trample map (`trample.rs` `Trample::grid`).
     trample: [f32; 4],
@@ -439,14 +442,14 @@ struct ScatterGpu {
     canopy: [f32; 4],
 }
 
-/// [`ScatterGpu::impostor_trim`] for `t`.
-fn trim_gpu(t: crate::CardTrim) -> [[f32; 4]; 2] {
+/// [`ScatterGpu::impostor_trim`] for `t` and card rectangle row `row`.
+fn trim_gpu(t: crate::CardTrim, row: f32) -> [[f32; 4]; 2] {
     let w = t.widths;
-    [[w[0], w[1], w[2], w[3]], [w[4], t.y[0], t.y[1], 0.0]]
+    [[w[0], w[1], w[2], w[3]], [w[4], t.y[0], t.y[1], row]]
 }
 
 impl ScatterGpu {
-    fn impostor(&mut self, i: &crate::Impostor, distance: f32, light: Vec3, msaa: bool) {
+    fn impostor(&mut self, i: &crate::Impostor, row: f32, distance: f32, light: Vec3, msaa: bool) {
         self.impostor = i.center.extend(i.radius).to_array();
         self.impostor_grid = [
             i.grid as f32,
@@ -455,7 +458,7 @@ impl ScatterGpu {
             f32::from(u8::from(i.material_atlas)),
         ];
         self.impostor_light = light.extend(f32::from(u8::from(i.below))).to_array();
-        self.impostor_trim = trim_gpu(i.trim);
+        self.impostor_trim = trim_gpu(i.trim, row);
     }
 }
 
@@ -774,6 +777,8 @@ pub(crate) struct ScatterRenderer {
     trample: wgpu::TextureView,
     /// The frame's model impostors' transforms, and how many it holds.
     impostor_instances: Option<(wgpu::Buffer, u64)>,
+    /// The impostors' card rectangles per cell of views (group 2 binding 5).
+    frames: ImpostorFrames,
     /// A card's quad (6 indices) and the CPU path's card records, with
     /// their capacity in bytes.
     card_quad: wgpu::Buffer,

@@ -145,6 +145,20 @@ fn imp_frame_par(v: vec3<f32>, f: u32) -> vec2<f32> {
 // crossfade.
 const IMP_ROWS: u32 = 4u;
 
+// The impostors' card rectangles (scatter.rs ImpostorFrames): a row per
+// impostor (ScatterUniform.impostor_trim[1].w, plus one), a texel per cell
+// of views (impostor.rs view_cell): where on the card the three frames
+// that cell blends can draw from any view in it, as (min.x, min.y, max.x,
+// max.y). The whole square without a table.
+@group(2) @binding(5) var imp_views: texture_2d<f32>;
+
+fn imp_view_rect(cell: ImpCell, f: vec2<f32>) -> vec4<f32> {
+  let row = i32(scatter.impostor_trim[1].w) - 1;
+  if (row < 0) { return vec4<f32>(-1.0, -1.0, 1.0, 1.0); }
+  let k = 2u * cell.base + select(0u, 1u, f.x + f.y > 1.0);
+  return textureLoad(imp_views, vec2<i32>(i32(k), row), 0);
+}
+
 // The card's corner `vertex` (0..6 × IMP_ROWS, two triangles a strip) of
 // the copy `model` facing `toward` (a point, or a direction when `is_dir`).
 // The strips span the cook's outline of what the frames draw (impostor.rs
@@ -155,9 +169,6 @@ fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) ->
   let corner = quad_corner(vertex) * 2.0 - 1.0;
   let strip = min(vertex / 6u, IMP_ROWS - 1u);
   let row = strip + select(0u, 1u, corner.y > 0.0);
-  let trim = scatter.impostor_trim;
-  let width = select(trim[0][min(row, 3u)], trim[1].x, row == IMP_ROWS);
-  let q = vec2<f32>(corner.x * width, mix(trim[1].y, trim[1].z, f32(row) / f32(IMP_ROWS)));
   let m3 = mat3x3<f32>(model[0].xyz, model[1].xyz, model[2].xyz);
   let c = scatter.impostor.xyz;
   let radius = scatter.impostor.w;
@@ -167,10 +178,7 @@ fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) ->
   let v = imp_view(normalize(transpose(m3) * to_eye));
   let r = imp_right(v);
   let u = cross(v, r);
-  let p = (r * q.x + u * q.y) * radius;
   var o: ImpCard;
-  o.world = mul_point(model, vec4<f32>(c + p, 1.0));
-  o.local = c + p;
   // The three frames around v (impostor.rs `blend_frames`).
   let g = imp_grid();
   let cell = imp_cell(v);
@@ -183,6 +191,26 @@ fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) ->
     o.frames = vec3<u32>(base + g + 1u, base + g, base + 1u);
     o.weights = vec3<f32>(f.x + f.y - 1.0, 1.0 - f.x, 1.0 - f.y);
   }
+  // The card's corner: on the rectangle of v's cell (imp_view_rect)
+  // where it is smaller than the outline.
+  let trim = scatter.impostor_trim;
+  let h = (trim[1].z - trim[1].y) / f32(IMP_ROWS);
+  let outline = (trim[0].x + 2.0 * (trim[0].y + trim[0].z + trim[0].w) + trim[1].x) * h;
+  let rect = imp_view_rect(cell, f);
+  let rect_area = max(rect.z - rect.x, 0.0) * max(rect.w - rect.y, 0.0);
+  var q: vec2<f32>;
+  if (trim[1].w > 0.0 && rect_area < outline) {
+    q = vec2<f32>(
+      mix(rect.x, rect.z, corner.x * 0.5 + 0.5),
+      mix(rect.y, rect.w, f32(row) / f32(IMP_ROWS)),
+    );
+  } else {
+    let width = select(trim[0][min(row, 3u)], trim[1].x, row == IMP_ROWS);
+    q = vec2<f32>(corner.x * width, mix(trim[1].y, trim[1].z, f32(row) / f32(IMP_ROWS)));
+  }
+  let p = (r * q.x + u * q.y) * radius;
+  o.world = mul_point(model, vec4<f32>(c + p, 1.0));
+  o.local = c + p;
   let pr = p / radius;
   o.uv01 = vec4<f32>(imp_frame_uv(pr, o.frames.x), imp_frame_uv(pr, o.frames.y));
   o.uv2 = imp_frame_uv(pr, o.frames.z);

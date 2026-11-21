@@ -393,16 +393,20 @@ fn tree_pixels(img: &og_render::RgbaImage, x0: u32, x1: u32) -> (f32, f32, f32) 
 }
 
 /// A card's outline (og-render's `CardTrim`, the cook's bound on what its
-/// frames draw) cuts nothing they draw: the oak's, the pine's and the
-/// shrub's cards, seen from all round at heights from below their horizon
-/// to straight above and at the distances a texel is one and four
-/// pixels, draw the same frame trimmed as on the sphere's whole square.
+/// frames draw) and its rectangle per cell of views (`ViewRect`, the cook's
+/// bound on what that cell's three frames draw) each cut
+/// nothing the frames draw: the oak's, the pine's and the shrub's cards,
+/// seen from all round at heights from below their horizon to straight
+/// above and at the distances a texel is one and four pixels, draw the
+/// same frame over either as on the sphere's whole square.
 ///
 /// Ways this could fail: the outline from frames in their own bases only
 /// (a view between frames reprojects a texel outside it), without the
 /// depths the parallax steps land at (the crown's rim cut where it leans
-/// towards the eye), without the lower views a card turns upright for, or
-/// a strip's boundary shared unequally (a crack across the card).
+/// towards the eye), without the lower views a card turns upright for, a
+/// strip's boundary shared unequally (a crack across the card); a cell's
+/// rectangle from its sampled views only (a view between them, or one
+/// near straight up whose basis turns, cut), or read from the wrong cell.
 #[test]
 #[ignore = "requires GPU"]
 fn a_trimmed_card_draws_what_its_whole_square_does() {
@@ -413,13 +417,18 @@ fn a_trimmed_card_draws_what_its_whole_square_does() {
     };
     // A renderer each for the whole square, the outline and no card, in
     // step: the sky's and the frames' noise turn per frame rendered.
-    let mut rs: [Renderer; 3] =
+    let mut rs: [Renderer; 4] =
         std::array::from_fn(|_| Renderer::new_blocking(&desc).expect("renderer"));
     let dir = super::out_dir();
     std::fs::create_dir_all(&dir).expect("out dir");
     for name in ["oak", "pine", "bush"] {
         let mut scene = og_tests_cooked::plant_scenes::card_scene(name).expect("the cooked card");
         let trim = scene.objects.impostors[0].impostor.trim;
+        let material = scene.objects.impostors[0].impostor.material;
+        let frames = scene
+            .impostor_views(material)
+            .map(|f| f.to_vec())
+            .expect("the cook gives the card its rectangles per cell of views");
         let (centre, radius) = {
             let i = scene.objects.impostors[0].impostor;
             (i.center, i.radius)
@@ -450,10 +459,13 @@ fn a_trimmed_card_draws_what_its_whole_square_does() {
                         target: centre,
                         ..Default::default()
                     };
-                    let mut shot = |k: usize, t: Option<og_render::CardTrim>| {
+                    // The card over `t`, with its frames' boxes or not;
+                    // no card at all for `None`.
+                    let mut shot = |k: usize, t: Option<(og_render::CardTrim, bool)>| {
                         let cards = match t {
-                            Some(t) => {
+                            Some((t, boxes)) => {
                                 scene.objects.impostors[0].impostor.trim = t;
+                                scene.set_impostor_views(material, boxes.then(|| frames.clone()));
                                 None
                             }
                             None => Some(std::mem::take(&mut scene.objects.impostors)),
@@ -466,14 +478,16 @@ fn a_trimmed_card_draws_what_its_whole_square_does() {
                         }
                         rs[k].read_offscreen().expect("capture")
                     };
-                    let whole = shot(0, Some(og_render::CardTrim::FULL));
-                    let trimmed = shot(1, Some(trim));
-                    let empty = shot(2, None);
-                    // The pixels the whole card covers and the outline
-                    // leaves empty. The vertices' moves round the
-                    // varyings, so a lone pixel on the coverage cut flips
-                    // either way; a cut is a run of them along a strip's
-                    // edge: count those with a lost neighbour.
+                    let full = og_render::CardTrim::FULL;
+                    let whole = shot(0, Some((full, false)));
+                    let outlined = shot(1, Some((trim, false)));
+                    let boxed = shot(2, Some((full, true)));
+                    let empty = shot(3, None);
+                    // The pixels the whole card covers and a bound leaves
+                    // empty. The vertices' moves round the varyings, so a
+                    // lone pixel on the coverage cut flips either way; a
+                    // cut is a run of them along an edge: count those
+                    // with a lost neighbour.
                     let apart =
                         |a: &[u8], b: &[u8]| a.iter().zip(b).any(|(x, y)| x.abs_diff(*y) > 3);
                     let (w, h) = (whole.width as i32, whole.height as i32);
@@ -481,39 +495,43 @@ fn a_trimmed_card_draws_what_its_whole_square_does() {
                         let k = ((y * w + x) * 4) as usize;
                         img.pixels[k..k + 4].to_vec()
                     };
-                    let is_lost = |x: i32, y: i32| {
-                        x >= 0
-                            && y >= 0
-                            && x < w
-                            && y < h
-                            && apart(&px(&whole, x, y), &px(&empty, x, y))
-                            && !apart(&px(&trimmed, x, y), &px(&empty, x, y))
-                    };
-                    let lost = (0..h)
-                        .flat_map(|y| (0..w).map(move |x| (x, y)))
-                        .filter(|&(x, y)| {
-                            is_lost(x, y)
-                                && (-1..=1)
-                                    .flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)))
-                                    .any(|(dx, dy)| (dx, dy) != (0, 0) && is_lost(x + dx, y + dy))
-                        })
-                        .count() as u32;
-                    if lost > worst.0 {
-                        let at = format!(
-                            "{name} at {distance:.0} m, {elevation} degrees up, azimuth {:.0}",
-                            azimuth.to_degrees()
-                        );
-                        for (img, tag) in [(&whole, "whole"), (&trimmed, "trimmed")] {
-                            image::save_buffer(
-                                dir.join(format!("impostor-trim-{tag}.png")),
-                                &img.pixels,
-                                img.width,
-                                img.height,
-                                image::ColorType::Rgba8,
-                            )
-                            .expect("saved");
+                    for (bound, drawn) in [("outline", &outlined), ("view rectangles", &boxed)] {
+                        let is_lost = |x: i32, y: i32| {
+                            x >= 0
+                                && y >= 0
+                                && x < w
+                                && y < h
+                                && apart(&px(&whole, x, y), &px(&empty, x, y))
+                                && !apart(&px(drawn, x, y), &px(&empty, x, y))
+                        };
+                        let lost = (0..h)
+                            .flat_map(|y| (0..w).map(move |x| (x, y)))
+                            .filter(|&(x, y)| {
+                                is_lost(x, y)
+                                    && (-1..=1)
+                                        .flat_map(|dy| (-1..=1).map(move |dx| (dx, dy)))
+                                        .any(|(dx, dy)| {
+                                            (dx, dy) != (0, 0) && is_lost(x + dx, y + dy)
+                                        })
+                            })
+                            .count() as u32;
+                        if lost > worst.0 {
+                            let at = format!(
+                                "{name}'s {bound} at {distance:.0} m, {elevation} degrees up, azimuth {:.0}",
+                                azimuth.to_degrees()
+                            );
+                            for (img, tag) in [(&whole, "whole"), (drawn, "trimmed")] {
+                                image::save_buffer(
+                                    dir.join(format!("impostor-trim-{tag}.png")),
+                                    &img.pixels,
+                                    img.width,
+                                    img.height,
+                                    image::ColorType::Rgba8,
+                                )
+                                .expect("saved");
+                            }
+                            worst = (lost, at);
                         }
-                        worst = (lost, at);
                     }
                 }
             }
@@ -524,7 +542,7 @@ fn a_trimmed_card_draws_what_its_whole_square_does() {
         );
         assert_eq!(
             worst.0, 0,
-            "{}: {} pixels the whole card covers are empty in its outline (impostor-trim-*.png)",
+            "{}: {} pixels the whole card covers are empty in its bound (impostor-trim-*.png)",
             worst.1, worst.0
         );
     }
