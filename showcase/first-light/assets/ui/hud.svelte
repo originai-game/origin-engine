@@ -15,21 +15,29 @@
 -->
 <div id="Hud">
 {#if $shown}
-  <section id="Clock" class="hud" layout="stack" gap="hair" role="status">
-    <div id="Now" layout="row" gap="tight"><og-icon id="ClockIcon" icon="clock"></og-icon><span id="Time">{$clock}</span></div>
-    <span id="Day">{$day}</span>
-    <span id="Sky">{$sky}</span>
-  </section>
-  <div id="Tasks"><RpgQuestTracker name={$quest} steps={$steps} distance="" /></div>
+  <div id="Top" layout="wrap" gap="loose">
+    <section id="Clock" class="hud" layout="stack" gap="hair" role="status">
+      <div id="Now" layout="row" gap="tight"><og-icon id="ClockIcon" icon="clock"></og-icon><span id="Time">{$clock}</span></div>
+      <span id="Day">{$day}</span>
+      <span id="Sky">{$sky}</span>
+    </section>
+    <div id="Tasks"><RpgQuestTracker name={$quest} steps={$steps} distance="" /></div>
+  </div>
   <div id="Hotbar"><AbilityBar slots={$slots} column={false} /></div>
 {/if}
 </div>
 
 <style>
-#Clock {
+/* The clock and the tasks share the top: side by side where they fit,
+   the tasks under the clock where they do not (a phone held upright). */
+#Top {
   position: fixed;
   left: calc(env(-og-hud-inset-left) + var(--space-lg));
+  right: calc(env(-og-hud-inset-right) + var(--space-lg));
   top: calc(env(-og-hud-inset-top) + var(--space-lg));
+  align-items: flex-start;
+}
+#Clock {
   padding: var(--space-sm) var(--space-lg);
   background: var(--panel);
   border-radius: var(--radius-panel);
@@ -40,10 +48,10 @@
 #Day { font: var(--text-body); white-space: nowrap; }
 #Sky { font: var(--text-meta); color: var(--ink-muted); white-space: nowrap; }
 #Tasks {
-  position: fixed;
-  right: calc(env(-og-hud-inset-right) + var(--space-lg));
-  top: calc(env(-og-hud-inset-top) + var(--space-lg));
+  margin-left: auto;
+  flex: 0 1 var(--measure-sm);
   inline-size: var(--measure-sm);
+  min-inline-size: 0;
 }
 #Hotbar {
   position: fixed;
