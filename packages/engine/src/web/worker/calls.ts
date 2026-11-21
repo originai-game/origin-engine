@@ -65,7 +65,7 @@ export function callsOf(run: Run): Calls {
     /** og.net on this page: og.net.status (lockstep running, its start tick, the seats, the first divergent tick) and the shared hash, as `og run --json` reports them natively (`lockstep`, `netHash`). */
     net: (e) => {
       const abi = boundHost()!.abi;
-      return { status: JSON.parse(abi.og_net_status(e.id)), hash: JSON.parse(abi.og_net_hash(e.id)), room: JSON.parse(abi.og_platform_room_info(e.id)) };
+      return { status: JSON.parse(abi.og_net_status(e.id)), hash: abi.og_net_hash(e.id), room: JSON.parse(abi.og_platform_room_info(e.id)) };
     },
     /** Field telemetry: the frames played since the last take, binned from the engine's performance record (og_engine_perf_frames), counting from now on; null when the page's build has telemetry off. */
     telemetry: () => (run.engine ? (JSON.parse(boundHost()!.abi.og_engine_perf_frames(run.engine.id)) as unknown) : null),

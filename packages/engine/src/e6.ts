@@ -141,7 +141,7 @@ export const net = Object.freeze({
     parse(abi().og_net_command(world.id, component.name, JSON.stringify(value ?? {}))),
   commands: (world: W, component: { name: string }) => parse(abi().og_net_commands(world.id, component.name)),
   status: (world: W) => parse(abi().og_net_status(world.id)),
-  hash: (world: W) => parse<string>(abi().og_net_hash(world.id)),
+  hash: (world: W) => abi().og_net_hash(world.id),
   resimulating: (world: W) => abi().og_net_resimulating(world.id) as boolean,
   finalHash: (world: W, tick: number) => parse<string | null>(abi().og_net_final_hash(world.id, tick)),
 });

@@ -856,7 +856,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       tick: dump.tick,
       hash: dump.hash,
       // og.net's shared hash: the world without this peer's session, what lockstep peers compare.
-      netHash: JSON.parse(boundHost()!.abi.og_net_hash(engine.id)) as string,
+      netHash: boundHost()!.abi.og_net_hash(engine.id),
       // With --room: lockstep's state at the end (the tick it started, the waits, the first divergent tick),
       // and the shared hash of the final world at --ticks (in rollback the world may run past it).
       ...(room !== undefined ? { room: JSON.parse(abiRoomInfo()) as unknown, lockstep: netStatus(), confirmedHash: finalHash(ticks ?? dump.tick) } : {}),

@@ -208,7 +208,7 @@ macro_rules! __og_host_bindings_platform {
                 $crate::host_impl::json($crate::og_net_status(world))
             }
             fn og_net_hash(&self, world: u32) -> String {
-                $crate::host_impl::json($crate::og_net_hash(world))
+                $crate::og_net_hash(world)
             }
             fn og_net_resimulating(&self, world: u32) -> bool {
                 $crate::og_net_resimulating(world)
