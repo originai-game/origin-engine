@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "The screens CreatorTools, Results, SaveLoad, Settings, Splash, StarRating, Table, Title, Tree and Tutorial as TSX beside their Svelte sources, same props, states, interaction and accessibility. The Svelte sources stay until the port's deletion head."
+    }
+  ]
+}
