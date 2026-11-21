@@ -134,8 +134,9 @@ pub fn warm_tick(id: u32) {
         // The new core's documents: the real tree, built once (its build
         // is a cache of the mounts; no game code runs).
         crate::present::ui_next::pack_images(id);
-        if let Some(next) = &mut eng.render.borrow_mut().ui_next {
-            next.warm(id, &ui.lock());
+        let rs = &mut *eng.render.borrow_mut();
+        if let Some(next) = &mut rs.ui_next {
+            next.warm(id, &ui.lock(), &rs.textures);
         }
     }
     if let (Some(physics), Ok(world)) = (physics, eng.world()) {

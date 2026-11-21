@@ -239,6 +239,9 @@ pub struct Tree {
     /// Each element's transform in `drawn.transforms` (its own composed
     /// with its ancestors'; 0 none), what its children compose onto.
     xfs: Vec<u32>,
+    /// The host's: an image's source (a texture handle's number, as text)
+    /// as the texture it draws.
+    textures: Option<Textures>,
     /// The mount being made and the key of the row being made.
     mounting: u32,
     row: Rc<str>,
@@ -302,6 +305,9 @@ struct Glyphs {
 mod input;
 mod ops;
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
+
+/// An image's source as its texture ([`Tree::set_textures`]).
+pub type Textures = Box<dyn Fn(&str) -> Option<og_draw::TextureHandle>>;
 
 static NEXT_TREE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
@@ -411,6 +417,18 @@ impl Tree {
         env.strings = Some(strings);
     }
 
+    /// How an image's source resolves to its texture (the host's assets).
+    pub fn set_textures(&mut self, textures: Textures) {
+        self.textures = Some(textures);
+        self.paint = true;
+    }
+
+    /// The textures [`Tree::set_textures`] resolves against changed: the
+    /// next frame paints its images again.
+    pub fn repaint_images(&mut self) {
+        self.paint = true;
+    }
+
     /// An empty tree over `look`, with the documents it may use.
     pub fn new(look: Rc<Look>, library: impl IntoIterator<Item = Arc<UiDocument>>) -> Tree {
         let mut root = look.root.clone();
@@ -446,6 +464,7 @@ impl Tree {
             abs: Vec::new(),
             glyphs: Vec::new(),
             xfs: Vec::new(),
+            textures: None,
             mounting: 0,
             row: "".into(),
             pressed: NONE,
@@ -781,9 +800,12 @@ impl Tree {
         let text = match kind {
             Kind::Label | Kind::Kbd | Kind::Button => prop("text"),
             Kind::Icon => prop("icon"),
+            // An image's source, held as its text (an icon's name is too).
+            Kind::Image => prop("texture"),
             _ => None,
         };
-        let leaf = (text.is_some() && kind != Kind::Icon).then(|| self.arena.text(node, "", 16.0));
+        let leaf = (text.is_some() && !matches!(kind, Kind::Icon | Kind::Image))
+            .then(|| self.arena.text(node, "", 16.0));
         let children = n.children.clone();
         let clickable = kind == Kind::Button
             || n.triggers
@@ -1480,6 +1502,24 @@ impl Tree {
                         n as u32,
                     ));
                 }
+            }
+            // An image: its texture over its box.
+            if el.kind == Kind::Image
+                && let Some(t) = self.textures.as_ref().and_then(|f| f(&el.text))
+            {
+                p.quads.push(PaintQuad {
+                    uv: [0.0, 0.0, 1.0, 1.0],
+                    ..quad(
+                        PaintKind::Image,
+                        rect,
+                        clip,
+                        [1.0, 1.0, 1.0, alpha],
+                        [0.0; 4],
+                        [0.0; 4],
+                        t.to_bits(),
+                        og_draw::paint::IMAGE_FILL,
+                    )
+                });
             }
             if el.kind == Kind::Icon && !el.text.is_empty() {
                 let size = b.w.min(b.h).max(1.0);
@@ -2224,6 +2264,46 @@ mod tests {
         assert_eq!(q[0].rect, q[2].rect, "the outline sits on its glyph");
         assert_eq!(q[0].p[0] - q[2].p[0], 1.5, "half the stroke outside");
         assert_ne!(q[2].color, q[0].color);
+    }
+
+    /// An `<img src={…}>` paints its source's texture over its box, once
+    /// the host resolves it, and nothing for a source it does not know.
+    #[test]
+    fn an_image_paints_the_texture_its_source_names() {
+        let doc = UiDocument::parse(
+            "i.svelte",
+            "<meta name=\"component\" content=\"i\">\n\
+             <img id=\"I\" src=\"7\" alt=\"\">\n\
+             <style>\n#I { width: 30px; height: 20px; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
+        tree.resize(100.0, 100.0);
+        tree.mount("i", &[]).unwrap();
+        let images = |t: &Tree| {
+            t.drawn
+                .quads
+                .iter()
+                .filter(|q| q.kind == PaintKind::Image as u32)
+                .map(|q| (q.a, q.rect))
+                .collect::<Vec<_>>()
+        };
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        assert!(images(&tree).is_empty(), "no resolver yet");
+        let handle = og_draw::TextureHandle::from_index(3);
+        tree.set_textures(Box::new(move |src| {
+            (src.parse::<f64>().ok()? == 7.0).then_some(handle)
+        }));
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        let (x, y, w, h) = tree.find("I").unwrap();
+        assert_eq!(images(&tree), [(handle.to_bits(), [x, y, w, h])]);
     }
 
     /// A `display: none` element paints nothing, nor does what is under

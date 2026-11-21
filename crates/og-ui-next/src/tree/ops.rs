@@ -497,6 +497,7 @@ impl Tree {
                     let id = r.u32()?;
                     let tag = r.u8()?;
                     let kind = match tag {
+                        2 => Kind::Image,
                         5 => Kind::Icon,
                         0..=6 => Kind::Box,
                         t => return Err(format!("og.ui ops: unknown tag {t}")),
@@ -608,6 +609,9 @@ impl Tree {
                             self.paint = true;
                         }
                         "name" if self.els[e as usize].kind == Kind::Icon => {
+                            self.set_text(e, value);
+                        }
+                        "src" if self.els[e as usize].kind == Kind::Image => {
                             self.set_text(e, value);
                         }
                         // The rest are read by their own heads: `data-*`

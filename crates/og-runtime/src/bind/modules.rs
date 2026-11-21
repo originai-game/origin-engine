@@ -225,11 +225,13 @@ pub(crate) fn mount_back(
                     // after og-ui's frame (present/ui_next.rs).
                     crate::present::ui_next::pack_images(engine_id);
                     if let Ok(eng) = engine(engine_id)
-                        && let Some(next) = &mut eng.render.borrow_mut().ui_next
+                        && let rs = &mut *eng.render.borrow_mut()
+                        && let Some(next) = &mut rs.ui_next
                     {
                         out.0.extend(next.end(
                             engine_id,
                             &ui,
+                            &rs.textures,
                             ui_time,
                             &crate::author::probe::now_ms,
                         ));

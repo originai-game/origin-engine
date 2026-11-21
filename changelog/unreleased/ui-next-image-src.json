@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI images",
+      "summary": "On og-ui's new core, an image element shows its texture: a .svelte `<img src={texture}>` and a TSX `<Image src>` paint the Texture handle they name (`og.load.texture`, a video player's texture) over their box, and paint again when a texture loads. A new-core frame painted right after another is no longer dropped: every other repaint was, so a change could stay unseen until the next one."
+    }
+  ]
+}

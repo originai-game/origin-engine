@@ -91,6 +91,9 @@ pub(crate) struct Next {
     /// render scene when it is newer (`widgets::emit`); its generation is
     /// counted here, across trees.
     pub paint: og_render::paint::Paint,
+    /// The last paint's generation: each paint's is newer than any the
+    /// scene holds.
+    generation: u64,
     pub spans: Spans,
     /// Whether the body font draws (has a handle in the scene).
     font: bool,
@@ -100,6 +103,10 @@ pub(crate) struct Next {
     a11y: og_ui_next::a11y::Tree,
     /// A tree was made and has not painted yet.
     fresh: bool,
+    /// The render state's textures by Texture handle index, as of this
+    /// frame: what the tree's images resolve their sources against (the
+    /// tree paints while the render state is borrowed).
+    textures: Rc<RefCell<Vec<og_render::TextureHandle>>>,
     /// The frame's run-time glyphs render all at once, not a few a frame
     /// (`glyphs::generate`): a fresh tree painted, so its text arrives
     /// with its panels.
@@ -323,6 +330,8 @@ impl Next {
             language: String::new(),
             a11y: og_ui_next::a11y::Tree::new(),
             fresh: false,
+            textures: Rc::default(),
+            generation: 0,
             settle_glyphs: false,
         }
     }
@@ -597,6 +606,13 @@ impl Next {
             &self.language,
             Box::new(move |key| crate::bind::i18n::message(engine, key)),
         );
+        // An image's source is a Texture handle (`og.load.texture`, a
+        // video player's texture).
+        let textures = self.textures.clone();
+        tree.set_textures(Box::new(move |src| {
+            let i = crate::world::assets::index_of(src.trim().parse().ok()?)?;
+            textures.borrow().get(i).copied()
+        }));
         for (doc, inputs, _) in self.mounts.values() {
             let inputs: Vec<(&str, u32)> = inputs.iter().map(|(n, s)| (n.as_str(), *s)).collect();
             if let Err(e) = tree.mount(doc, &inputs) {
@@ -659,11 +675,16 @@ impl Next {
     /// the first played frame only commits. Only when there is no tree yet:
     /// a live tree and its motion clock are left alone. Its warnings wait
     /// for the tick's end.
-    pub(crate) fn warm(&mut self, engine: u32, ui: &og_ui::Ui) {
+    pub(crate) fn warm(
+        &mut self,
+        engine: u32,
+        ui: &og_ui::Ui,
+        textures: &[og_render::TextureHandle],
+    ) {
         if self.tree.is_some() || self.mounts.is_empty() {
             return;
         }
-        let warnings = self.end(engine, ui, 0.0, &crate::author::probe::now_ms);
+        let warnings = self.end(engine, ui, textures, 0.0, &crate::author::probe::now_ms);
         self.held.extend(warnings);
     }
 
@@ -671,6 +692,7 @@ impl Next {
         &mut self,
         engine: u32,
         ui: &og_ui::Ui,
+        textures: &[og_render::TextureHandle],
         time: f64,
         now: &dyn Fn() -> f64,
     ) -> Vec<String> {
@@ -713,6 +735,13 @@ impl Next {
         let Some(tree) = &mut self.tree else {
             return warnings;
         };
+        // A texture loaded or replaced: images resolve again.
+        if *self.textures.borrow() != textures {
+            let mut t = self.textures.borrow_mut();
+            t.clear();
+            t.extend_from_slice(textures);
+            tree.repaint_images();
+        }
         let v = ui.frame().viewport;
         let unit = ui.frame().unit.max(1.0);
         tree.resize(v.width * unit, v.height * unit);
@@ -820,9 +849,11 @@ impl Next {
         if painted {
             // The tree paints its items afresh each time: the overlay takes
             // them, and the tree reuses the old ones' capacity.
-            let generation = self.paint.generation + 1;
+            // Numbered here: after `widgets::emit` swaps, `self.paint` is
+            // the scene's older arena, whose generation is behind.
+            self.generation += 1;
             std::mem::swap(&mut self.paint, &mut tree.drawn);
-            self.paint.generation = generation;
+            self.paint.generation = self.generation;
             self.settle_glyphs |= std::mem::take(&mut self.fresh);
         }
         let allocated = allocations() - a0;
