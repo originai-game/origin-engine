@@ -208,4 +208,10 @@ pub trait RenderBackend {
     fn lose_device(&mut self) -> bool {
         false
     }
+    /// The frames drawn that the GPU has not finished, where the host
+    /// cannot wait on the device (the web, og-render's
+    /// `Renderer::frames_in_flight`); 0 where `render` waits itself.
+    fn frames_in_flight(&mut self) -> u32 {
+        0
+    }
 }

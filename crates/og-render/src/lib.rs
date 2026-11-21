@@ -565,6 +565,12 @@ pub struct Renderer {
     /// Native offscreen draws have no surface to bound their frames in flight.
     #[cfg(not(target_arch = "wasm32"))]
     offscreen_submissions: std::collections::VecDeque<wgpu::SubmissionIndex>,
+    /// The web's frames the GPU has not finished, oldest first
+    /// ([`Renderer::frames_in_flight`]): a harness steps the canvas's
+    /// frames faster than the display paces them, and the Worker cannot
+    /// wait on the device.
+    #[cfg(target_arch = "wasm32")]
+    submitted: std::collections::VecDeque<std::sync::Arc<std::sync::atomic::AtomicBool>>,
     samples: u32,
     persistent: post::Persistent,
     graph: post::FrameGraph,

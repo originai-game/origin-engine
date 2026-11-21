@@ -317,6 +317,15 @@ pub fn og_web_lose_device(engine: u32) -> bool {
     og_runtime::lose_device(engine)
 }
 
+/// The frames the engine's renderer drew that the GPU has not finished
+/// (og-render's `Renderer::frames_in_flight`): the engine Worker's harness
+/// `frame` answers once one is left, the bound a native offscreen draw
+/// keeps, so its frames never run ahead of the GPU.
+#[wasm_bindgen]
+pub fn og_web_frames_in_flight(engine: u32) -> u32 {
+    og_runtime::frames_in_flight(engine)
+}
+
 /// Make one pipeline the engine's renderer has not used yet (og-render's
 /// `Renderer::warm`): the engine Worker calls it in idle time behind the
 /// play gate, until it answers false, so the pipelines of the passes the

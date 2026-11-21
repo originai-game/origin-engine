@@ -43,7 +43,7 @@ export function callsOf(run: Run): Calls {
     lanes: () => JSON.parse(run.glue?.og_web_lanes?.() ?? "null"),
     /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */
     fault: (_, [site]) => run.glue?.og_web_lanes_fault?.(String(site)) ?? false,
-    frame: (e, [ms]) => {
+    frame: async (e, [ms]) => {
       // A harness's frame is scripted: it waits for every pipeline it meets (og-render gpu/deferred.rs), as the
       // native one does. Its time is the harness's and the machine's, not the display's: automatic quality must
       // not read it (a loaded machine stepped the same script down a render-scale rung at a different tick each run).
@@ -57,6 +57,9 @@ export function callsOf(run: Run): Calls {
       run.relay(answered);
       pumpRoom(e);
       pumpShared(e);
+      // No display paces it: it answers once one frame is left on the GPU, as a native offscreen frame waits for
+      // frame N-2. Unbounded, a software GPU fell a minute behind, and a capture waited out its budget behind them.
+      while (run.glue!.og_web_frames_in_flight(e.id) > 1) await new Promise((r) => setTimeout(r, 1));
       return answered;
     },
     /** og.shared.status on this page, as `og run --json` reports it natively (`shared`). */

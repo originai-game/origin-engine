@@ -188,6 +188,25 @@ impl Renderer {
         self.lost.get()
     }
 
+    /// The web's frames the GPU has not finished (none on a lost device,
+    /// which finishes nothing). The host's harness frame answers once one
+    /// is left, the bound a native offscreen draw keeps by waiting for
+    /// frame N-2 (`draw_frame`); a frame the display paces needs none.
+    #[cfg(target_arch = "wasm32")]
+    pub fn frames_in_flight(&mut self) -> usize {
+        if self.lost().is_some() {
+            self.submitted.clear();
+        }
+        while self
+            .submitted
+            .front()
+            .is_some_and(|d| d.load(std::sync::atomic::Ordering::Relaxed))
+        {
+            self.submitted.pop_front();
+        }
+        self.submitted.len()
+    }
+
     /// A test hook for device loss: destroys the device, as a GPU reset or
     /// the browser losing it would, and (natively) polls it so the
     /// device-lost callback has run when this returns. On the web the

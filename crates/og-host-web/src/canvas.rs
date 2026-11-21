@@ -347,6 +347,9 @@ impl RenderBackend for CanvasBackend {
         self.renderer.lose_device();
         true
     }
+    fn frames_in_flight(&mut self) -> u32 {
+        self.renderer.frames_in_flight() as u32
+    }
 }
 
 /// Put the renderer on an OffscreenCanvas transferred to this Worker,

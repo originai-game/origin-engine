@@ -239,6 +239,8 @@ export interface WebExtras {
   og_web_frame_kind(engine: number, kind: "display" | "scripted" | "recorded"): void;
   /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */
   og_web_lose_device?(engine: number): boolean;
+  /** The frames the renderer drew that the GPU has not finished (og-render's Renderer::frames_in_flight): a harness's `frame` answers once one is left. */
+  og_web_frames_in_flight(engine: number): number;
   /** og-render's pipeline cache's compiler (pipelines.ts `asking`, `count`, `made`, `isCompiled`, `finish`; og-render gpu/deferred.rs). */
   og_web_pipeline_compiler(asking: (on: boolean) => void, count: () => number, made: () => number, compiled: (n: number) => boolean, finish: (n: number) => void): void;
   /** The draws the last frame skipped and the work it left for a later frame, each for a pipeline not ready (og-render `frame_skipped`). */

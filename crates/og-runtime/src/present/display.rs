@@ -507,6 +507,19 @@ pub fn lose_device(id: u32) -> bool {
     })
 }
 
+/// The frames the renderer drew that the GPU has not finished
+/// (`RenderBackend::frames_in_flight`; 0 without a renderer): a web
+/// harness's frame answers once one is left.
+pub fn frames_in_flight(id: u32) -> u32 {
+    engine(id).map_or(0, |eng| {
+        eng.render
+            .try_borrow_mut()
+            .ok()
+            .and_then(|mut rs| rs.backend.as_mut().map(|b| b.frames_in_flight()))
+            .unwrap_or(0)
+    })
+}
+
 /// The renderer's GPU memory as `GpuMemory`, or null without one.
 pub(crate) fn gpu_memory(rs: &RenderState) -> Value {
     gpu(rs).to_json()

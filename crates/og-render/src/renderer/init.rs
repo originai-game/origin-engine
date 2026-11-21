@@ -650,6 +650,8 @@ impl Renderer {
             capture_spare: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]
             offscreen_submissions: Default::default(),
+            #[cfg(target_arch = "wasm32")]
+            submitted: Default::default(),
             samples,
             persistent,
             graph: post::FrameGraph::default(),

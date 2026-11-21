@@ -191,8 +191,9 @@ pub use present::atmosphere::{
 };
 pub use present::baked::og_render_baked_lighting;
 pub use present::display::{
-    FrameKind, lose_device, og_render_display, og_render_reset_display, og_render_set_display,
-    set_capture_only, set_frame_kind, set_fullscreen, set_mouse_report, set_power_preference,
+    FrameKind, frames_in_flight, lose_device, og_render_display, og_render_reset_display,
+    og_render_set_display, set_capture_only, set_frame_kind, set_fullscreen, set_mouse_report,
+    set_power_preference,
 };
 pub use present::feel::{
     og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,

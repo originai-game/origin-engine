@@ -86,9 +86,20 @@ impl Renderer {
                 .chain(cull_commands)
                 .chain(Some(encoder.finish())),
         );
-        // The web keeps no backlog: its surface paces the frames.
+        // The web cannot wait on the device: each frame's completion is
+        // kept for the Worker, whose harness frames the display does not
+        // pace (`frames_in_flight`).
         #[cfg(target_arch = "wasm32")]
-        let _ = target;
+        {
+            let _ = (target, _submission);
+            let done = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let flag = done.clone();
+            self.queue.on_submitted_work_done(move || {
+                flag.store(true, std::sync::atomic::Ordering::Relaxed);
+            });
+            self.frames_in_flight();
+            self.submitted.push_back(done);
+        }
         #[cfg(not(target_arch = "wasm32"))]
         if matches!(target, RenderTarget::Offscreen) {
             self.offscreen_submissions.push_back(_submission);
