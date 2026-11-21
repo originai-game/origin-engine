@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { bundleGame, compileJsx } from "../src/node/build.ts";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type GameToken } from "../src/runtime.ts";
-import { Text, mount, renderers, useStore } from "../src/ui/index.ts";
+import { Text, View, mount, renderers, useStore } from "../src/ui/index.ts";
 import { Renderer } from "../src/ui/rt.ts";
 import { createSignal } from "../src/ui/signals.ts";
 
@@ -250,5 +250,29 @@ test("FilmChoices shows a film's window from its view and reports the ChoiceView
   } finally {
     rmSync(dir, { recursive: true, force: true });
     renderers.delete(9003);
+  }
+});
+
+// A long press and a hold listen on the tree's codes 11 and 12 (ops.rs
+// Event), after onAction's 10; `hold` and `autofocus` reach it as props, and
+// a hold's event calls its handler.
+test("onLongPress and onHold listen on the tree's codes, with hold and autofocus", () => {
+  const batches: Op[][] = [];
+  let next: Uint8Array = reply([]);
+  const world = { id: 9002 } as unknown as World;
+  renderers.set(9002, new Renderer((bytes) => { batches.push(decode(bytes)); const r = next; next = reply([]); return r; }, world));
+  try {
+    const held: string[] = [];
+    mount(world, () => View({ hold: 0.5, autofocus: true, onLongPress: () => held.push("long"), onHold: (e) => held.push(e.type) }), {});
+    const ops = batches[0]!;
+    expect(ops).toContainEqual(["listen", 2, 11, 1]);
+    expect(ops).toContainEqual(["listen", 2, 12, 1]);
+    expect(ops).toContainEqual(["setProp", 2, "hold", "0.5"]);
+    expect(ops).toContainEqual(["setProp", 2, "autofocus", "true"]);
+    next = reply([[2, 12], [2, 11]]);
+    renderers.get(9002)!.flush();
+    expect(held).toEqual(["hold", "long"]);
+  } finally {
+    renderers.delete(9002);
   }
 });

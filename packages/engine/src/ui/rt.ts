@@ -25,7 +25,7 @@ import {
 
 const TAGS: Record<string, number> = { view: 0, text: 1, image: 2, scroll: 3, input: 4, icon: 5, line: 6 };
 /** Event codes (§Ops) and the handler props they call. */
-const EVENTS = ["onPress", "onTap", "onPointerDown", "onPointerMove", "onPointerUp", "onWheel", "onFocus", "onBlur", "onKey", "onChange", "onAction"] as const;
+const EVENTS = ["onPress", "onTap", "onPointerDown", "onPointerMove", "onPointerUp", "onWheel", "onFocus", "onBlur", "onKey", "onChange", "onAction", "onLongPress", "onHold"] as const;
 const EVENT_CODE = new Map<string, number>(EVENTS.map((name, code) => [name, code]));
 const APPEND = 0xffff_ffff;
 

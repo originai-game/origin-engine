@@ -59,13 +59,16 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
   `createSignal`, `createMemo`, `createEffect`, `onCleanup`, `batch`,
   `untrack` and context are exported beside the primitives.
 - **Events** are `onPress`, `onTap`, `onPointerDown`/`Move`/`Up`, `onWheel`,
-  `onFocus`, `onBlur`, `onKey`, `onChange`: JS functions, called by id at
+  `onFocus`, `onBlur`, `onKey`, `onChange`, `onLongPress` (a finger held
+  still 0.5 s; event 11), `onHold` (with `hold={seconds}`: the held
+  press's progress in `value` each frame, "0" when let go early; event
+  12): JS functions, called by id at
   the tick boundary (the platform pump), batched and untracked, with
   `{ world, type, x, y, key, value }`. Input actions where focus is:
   `onAction={{ confirm, details }}` (wire: `setProp(id, "actions",
   "confirm details")` and event 10 `action` with the action in `key`). A
   `Text` with `glyph="use"` shows that action's binding glyph (input
-  fills it).
+  fills it). `autofocus` takes focus when the node appears.
 - **Mounting**: `mount(world, Component, props, { layer })` from
   `@origingame/engine/ui` returns the unmount; layers are `hud`, `menu`,
   `modal`, `popover`, `toast`, `tooltip`, `system` (the mount's root

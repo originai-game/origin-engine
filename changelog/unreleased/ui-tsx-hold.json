@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "onLongPress",
+      "summary": "TSX elements take `onLongPress` (a finger held still 0.5 s) and `onHold` with `hold={seconds}` (the held press's progress, 0 to 1, in the event's `value` each frame; \"0\" when let go early), and `autofocus`, which takes focus when the element appears."
+    }
+  ]
+}

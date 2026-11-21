@@ -50,7 +50,7 @@ export interface UiEvent {
   readonly y: number;
   /** A key's name (`onKey`) or the input action (`onAction`). */
   readonly key: string;
-  /** A control's new value (`onChange`). */
+  /** A control's new value (`onChange`); a hold's progress, 0 to 1, "0" when let go early (`onHold`). */
   readonly value: string;
 }
 
@@ -73,6 +73,14 @@ export interface HostProps {
   onBlur?: Handler;
   onKey?: Handler;
   onChange?: Handler;
+  /** A finger held still on it for 0.5 s. */
+  onLongPress?: Handler;
+  /** A held press, with `hold` set: its progress each frame in `value`, 0 to 1 when it completes; "0" when it lets go early. */
+  onHold?: Handler;
+  /** How long a press must be held for `onHold` to complete, in seconds. */
+  hold?: number | undefined;
+  /** Takes focus when it appears (a dialog's first control). */
+  autofocus?: boolean | undefined;
   /** Input actions handled where focus is (`{ confirm, details }`); the event's `key` names the action. */
   onAction?: Record<string, Handler> | undefined;
   disabled?: boolean | undefined;
