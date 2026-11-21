@@ -38,6 +38,9 @@
       "types": "./src/ui/components/index.tsx",
       "default": "./src/ui/components/index.tsx"
     },
+    "./ui/components/*": "./src/ui/components/*",
+    "./ui/controls/*": "./src/ui/controls/*",
+    "./ui/screens/*": "./src/ui/screens/*",
     "./ui/rt": {
       "types": "./src/ui/rt.ts",
       "default": "./src/ui/rt.ts"
