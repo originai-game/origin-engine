@@ -319,6 +319,11 @@ pub struct Tree {
     breaks: Vec<(std::ops::Range<usize>, f32)>,
     /// The screen transition cover [`Tree::set_cover`] gave this frame.
     cover: Option<(crate::cover::Cover, bool)>,
+    /// The pad's virtual cursor ([`Tree::virtual_cursor`]), and its
+    /// shadow, ink and focus colours (the pack's `bg-bg`, `text-fg` and
+    /// `bg-focus`, read with the class resolver).
+    vcursor: vcursor::State,
+    cursor_colors: [Rgba; 3],
     /// Each element's transform in `drawn.transforms` (its own composed
     /// with its ancestors'; 0 none), what its children compose onto.
     xfs: Vec<u32>,
@@ -393,8 +398,10 @@ struct Glyphs {
 
 mod input;
 mod ops;
+mod vcursor;
 pub use input::{Cue, Play, SoundTable};
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
+pub use vcursor::{Pad as CursorPad, Pointer as CursorPointer, VirtualCursorDesc};
 
 /// An image's source, a texture handle as the game holds it, as its
 /// texture's slot (`og_draw::TextureHandle::slot`; 0 none)
@@ -583,6 +590,8 @@ impl Tree {
             missing: Vec::new(),
             breaks: Vec::new(),
             cover: None,
+            vcursor: Default::default(),
+            cursor_colors: [[0.0, 0.0, 0.0, 0.45], [1.0; 4], [0.9, 0.9, 0.95, 1.0]],
         }
     }
 
@@ -2007,6 +2016,9 @@ impl Tree {
                 }
             }
         }
+        let mut quads = std::mem::take(&mut self.drawn.quads);
+        self.paint_virtual_cursor(&mut quads);
+        self.drawn.quads = quads;
         // A screen transition's cover, over everything.
         if let Some((cover, reduced)) = self.cover {
             cover.paint(vw, vh, reduced, &mut self.drawn.quads);

@@ -226,6 +226,13 @@ fn answered<T>(f: impl FnOnce(Option<&mut UiAnswers>) -> T) -> T {
 
 pub fn og_ui_frame_cursor() -> String {
     // The last completed frame's: the one the host shows now.
+    // The style draws a pad's virtual cursor: the system's hides.
+    if ui_engine()
+        .and_then(crate::present::ui_next::virtual_cursor)
+        .is_some_and(|(_, shown)| shown)
+    {
+        return og_ui::Cursor::None.name().into();
+    }
     let c = with_ui("og.ui.frameCursor", |ui| ui.frame().cursor).unwrap_or_default();
     match c {
         og_ui::Cursor::Auto => og_ui::Cursor::Default,

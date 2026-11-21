@@ -94,20 +94,22 @@ pub fn og_ui_set_players(count: u32) {
 
 pub fn og_ui_set_virtual_cursor(desc: String) {
     let d = wire::arg::<Option<wire::VirtualCursorDesc>>(Some(&desc), "desc").unwrap_or_default();
-    let desc = d.map(|d| og_ui::VirtualCursorDesc {
+    let desc = d.map(|d| og_ui_next::tree::VirtualCursorDesc {
         speed: d.speed,
         accel: d.accel_ms,
         magnet: d.magnet,
         scroll: d.scroll,
     });
-    with_ui("og.ui.setVirtualCursor", |ui| ui.set_virtual_cursor(desc));
+    if let Some(engine) = super::ui_desc::ui_engine() {
+        crate::present::ui_next::set_virtual_cursor(engine, desc);
+    }
 }
 
 pub fn og_ui_virtual_cursor() -> Option<crate::host::wire::VirtualCursor> {
-    let c = with_ui("og.ui.virtualCursor", |ui| ui.virtual_cursor()).flatten();
-    c.map(|(p, shown)| wire::VirtualCursor {
-        x: p.x,
-        y: p.y,
+    let (p, shown) = crate::present::ui_next::virtual_cursor(super::ui_desc::ui_engine()?)?;
+    Some(wire::VirtualCursor {
+        x: p[0],
+        y: p[1],
         shown,
     })
 }
