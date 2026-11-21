@@ -3706,6 +3706,7 @@ version = "0.9.0"
 dependencies = [
  "font-rs",
  "harfrust",
+ "kurbo",
  "og-core",
  "og-css",
  "og-draw",

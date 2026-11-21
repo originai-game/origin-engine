@@ -136,6 +136,67 @@ impl Rasterizer {
         Some(self.fill(out))
     }
 
+    /// Rasters the band `width` device pixels wide centred on `glyph`'s
+    /// outline, round-joined (CSS `-webkit-text-stroke`, Skia's and
+    /// Godot's outline): kurbo strokes the outline and font-rs fills the
+    /// stroke. Placed as [`Rasterizer::raster`] places a glyph.
+    pub fn raster_stroke(
+        &mut self,
+        glyph: Glyph<'_>,
+        width: f32,
+        out: &mut Vec<u8>,
+    ) -> Option<Placement> {
+        out.clear();
+        let outlines = glyph.font.outline_glyphs();
+        let outline = outlines.get(glyph.id)?;
+        let hinting = match glyph.hinting {
+            Some(_) => skrifa::outline::Hinting::Embedded,
+            None => skrifa::outline::Hinting::None,
+        };
+        let need = outline.draw_memory_size(hinting);
+        if self.memory.len() < need {
+            self.memory.resize(need, 0);
+        }
+        let settings = match glyph.hinting {
+            Some(h) => DrawSettings::hinted(h, false),
+            None => DrawSettings::unhinted(Size::new(glyph.size), LocationRef::new(glyph.coords)),
+        }
+        .with_memory(Some(&mut self.memory[..need]));
+        let mut path = PathPen {
+            path: kurbo::BezPath::new(),
+            dx: f64::from(glyph.x_offset),
+        };
+        outline.draw(settings, &mut path).ok()?;
+        let stroke = kurbo::Stroke::new(f64::from(width)).with_join(kurbo::Join::Round);
+        let band = kurbo::stroke(
+            path.path.elements().iter().copied(),
+            &stroke,
+            &kurbo::StrokeOpts::default(),
+            f64::from(TOLERANCE),
+        );
+        self.pieces.clear();
+        let mut pen = Pen {
+            pieces: &mut self.pieces,
+            dx: 0.0,
+            start: [0.0; 2],
+            at: [0.0; 2],
+        };
+        let p = |p: kurbo::Point| (p.x as f32, p.y as f32);
+        for el in band.elements() {
+            match *el {
+                kurbo::PathEl::MoveTo(a) => pen.move_to(p(a).0, p(a).1),
+                kurbo::PathEl::LineTo(a) => pen.line_to(p(a).0, p(a).1),
+                kurbo::PathEl::QuadTo(c, a) => pen.quad_to(p(c).0, p(c).1, p(a).0, p(a).1),
+                kurbo::PathEl::CurveTo(c0, c1, a) => {
+                    pen.curve_to(p(c0).0, p(c0).1, p(c1).0, p(c1).1, p(a).0, p(a).1)
+                }
+                kurbo::PathEl::ClosePath => pen.close(),
+            }
+        }
+        pen.close();
+        Some(self.fill(out))
+    }
+
     /// Fills the outline's pieces into `out` with font-rs.
     fn fill(&self, out: &mut Vec<u8>) -> Placement {
         if self.pieces.is_empty() {
@@ -187,6 +248,43 @@ impl Rasterizer {
             width: width as u32,
             height: height as u32,
         }
+    }
+}
+
+/// An outline pen that collects the outline as a kurbo path, shifted `dx`.
+struct PathPen {
+    path: kurbo::BezPath,
+    dx: f64,
+}
+
+impl OutlinePen for PathPen {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.path.move_to((f64::from(x) + self.dx, f64::from(y)));
+    }
+
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.path.line_to((f64::from(x) + self.dx, f64::from(y)));
+    }
+
+    fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
+        let d = self.dx;
+        self.path.quad_to(
+            (f64::from(cx) + d, f64::from(cy)),
+            (f64::from(x) + d, f64::from(y)),
+        );
+    }
+
+    fn curve_to(&mut self, c0x: f32, c0y: f32, c1x: f32, c1y: f32, x: f32, y: f32) {
+        let d = self.dx;
+        self.path.curve_to(
+            (f64::from(c0x) + d, f64::from(c0y)),
+            (f64::from(c1x) + d, f64::from(c1y)),
+            (f64::from(x) + d, f64::from(y)),
+        );
+    }
+
+    fn close(&mut self) {
+        self.path.close_path();
     }
 }
 
@@ -488,6 +586,100 @@ mod tests {
                         "{c} at {size} px, bin {bin}: ink {ink}, outline {want}"
                     );
                 }
+            }
+        }
+    }
+
+    /// Distance from `(x, y)` to the nearest of `lines`.
+    fn distance(lines: &[[f32; 4]], x: f32, y: f32) -> f32 {
+        let mut best = f32::MAX;
+        for &[x0, y0, x1, y1] in lines {
+            let (dx, dy) = (x1 - x0, y1 - y0);
+            let len = dx * dx + dy * dy;
+            let t = if len > 0.0 {
+                (((x - x0) * dx + (y - y0) * dy) / len).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            let (px, py) = (x0 + t * dx - x, y0 + t * dy - y);
+            best = best.min((px * px + py * py).sqrt());
+        }
+        best
+    }
+
+    /// A stroke `w` wide covers exactly the points within `w / 2` of the
+    /// outline (a round join is that band's edge): each pixel's coverage
+    /// is its share of the band, as 16 × 16 samples find it, and all the
+    /// ink totals the band's area to 1 %; at 48 px, widths 1, 2 and 4.
+    /// kurbo's stroke overlaps itself at joins, and an overlap inside a
+    /// pixel sums before it is clamped, as in FreeType's gray rasterizer
+    /// (the fill test's rule), so such a pixel reads heavier and is left
+    /// out of the per-pixel check.
+    #[test]
+    fn a_stroke_covers_the_band_around_the_outline() {
+        let latin = bytes("styles/shared/InstrumentSans-Regular.ttf");
+        let font = FontRef::new(&latin).unwrap();
+        let mut r = Rasterizer::new();
+        let mut out = Vec::new();
+        for c in ['O', 'A', 'g'] {
+            for w in [1.0f32, 2.0, 4.0] {
+                let g = Glyph {
+                    font: &font,
+                    id: gid(&font, c),
+                    size: 48.0,
+                    coords: &[],
+                    hinting: None,
+                    x_offset: 0.25,
+                };
+                let p = r.raster_stroke(g, w, &mut out).unwrap();
+                let lines = chords(&font, g.id, 48.0, 0.25);
+                // The stroke's own pieces as fine chords: where their
+                // winding passes one, two pieces overlap.
+                let mut own = Vec::new();
+                for piece in &r.pieces {
+                    match *piece {
+                        Piece::Line(a, b) => own.push([a[0], a[1], b[0], b[1]]),
+                        Piece::Quad(a, c, b) => {
+                            let at = |t: f32| {
+                                let u = 1.0 - t;
+                                [
+                                    u * u * a[0] + 2.0 * u * t * c[0] + t * t * b[0],
+                                    u * u * a[1] + 2.0 * u * t * c[1] + t * t * b[1],
+                                ]
+                            };
+                            for i in 0..32 {
+                                let (p0, p1) = (at(i as f32 / 32.0), at((i + 1) as f32 / 32.0));
+                                own.push([p0[0], p0[1], p1[0], p1[1]]);
+                            }
+                        }
+                    }
+                }
+                let (mut worst, mut ink, mut want) = (0.0f32, 0.0, 0.0);
+                for py in 0..p.height as usize {
+                    for px in 0..p.width as usize {
+                        let (mut n, mut overlap) = (0, false);
+                        for sy in 0..16 {
+                            for sx in 0..16 {
+                                let x = p.left as f32 + px as f32 + (sx as f32 + 0.5) / 16.0;
+                                let y = p.top as f32 - py as f32 - (sy as f32 + 0.5) / 16.0;
+                                n += (distance(&lines, x, y) <= w / 2.0) as u32;
+                                overlap |= winding(&own, x, y).abs() > 1;
+                            }
+                        }
+                        let got = out[py * p.width as usize + px] as f32 / 255.0;
+                        let exp = n as f32 / 256.0;
+                        if !overlap {
+                            worst = worst.max((got - exp).abs());
+                        }
+                        ink += got;
+                        want += exp;
+                    }
+                }
+                assert!(worst < 0.12, "{c}, width {w}: a pixel off by {worst}");
+                assert!(
+                    (ink - want).abs() < 0.01 * want,
+                    "{c}, width {w}: ink {ink}, band {want}"
+                );
             }
         }
     }
