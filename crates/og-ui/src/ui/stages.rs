@@ -441,7 +441,6 @@ impl Layout {
 #[derive(Clone, Debug)]
 pub struct Interaction {
     pub(crate) input: InputFrame,
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) state: State,
     pub(crate) nav: NavFrame,
     /// Navigation declared for this frame (`set_navigation`).

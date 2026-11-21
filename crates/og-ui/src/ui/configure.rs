@@ -32,7 +32,6 @@ impl Ui {
             },
             interaction: Interaction {
                 input: InputFrame::default(),
-                #[cfg(not(target_arch = "wasm32"))]
                 state: State::default(),
                 nav: NavFrame::default(),
                 nav_on: true,

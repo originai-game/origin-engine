@@ -83,7 +83,6 @@ pub use ui::layer_stack;
 pub mod layout;
 pub use text::markup;
 pub mod motion;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod paint;
 pub(crate) use interaction::recognize;
 pub(crate) use interaction::scroll;
