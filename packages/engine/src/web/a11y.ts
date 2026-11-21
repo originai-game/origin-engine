@@ -30,9 +30,18 @@
 //   (an input holds no children). Keys pressed while a mirrored element has
 //   the DOM focus still go to the engine as keys.
 //
-// The elements take no pointer events (the canvas does) and draw nothing:
-// they exist for assistive technology, and a screen reader's focus ring
-// lands where the control is drawn.
+// The elements draw nothing: they are transparent through their background
+// and colour (not opacity, so they count as shown), and a screen reader's
+// focus ring lands where the control is drawn. Only the controls a player
+// operates (`CONTROLS`) take pointer events, so a page's own scan of its
+// controls (an autoplay's: role, label, box, an `elementFromPoint` hit at
+// the centre) finds them over the canvas; everything else lets the pointer
+// through to the canvas (behind an open modal the tree holds only it).
+// A pointer or wheel event on a control is dispatched again on the canvas,
+// so the engine's hit test, hover, press and drag see it exactly as a
+// press on the canvas (the canvas captures the pointer at the press); the
+// click that follows a pointer's press is not an activation, only a
+// screen reader's click (no pointer, `detail` 0) is.
 
 import type { InjectedInput } from "./input.ts";
 
@@ -101,6 +110,10 @@ const EXPANDABLE = new Set(["combobox"]);
 const RANGES = new Set(["slider", "spinbutton", "progressbar", "meter"]);
 /** Roles mirrored as a native range: a screen reader adjusts those itself (their children follow the range as siblings). */
 const ADJUSTABLE = new Set(["slider", "spinbutton"]);
+/** Roles a player operates: mirrored over the canvas, taking the pointer. */
+const CONTROLS = new Set(["button", "link", "menuitem", "menuitemcheckbox", "menuitemradio", "tab", "option", "checkbox", "radio", "switch", "slider", "spinbutton", "textbox", "combobox"]);
+/** Pointer events a control passes to the canvas, and the wheel. */
+const FORWARDED = ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel"] as const;
 /** Roles read as their text content rather than a label. */
 const TEXTS = new Set(["text", "heading", "status", "alert", "tooltip"]);
 
@@ -120,6 +133,8 @@ export class A11yMirror {
   /** What standing in changed: the field's element hidden, its parent owning the textarea. */
   #stood: { hidden: HTMLElement; owner: HTMLElement } | null = null;
   #off: Array<() => void> = [];
+  /** A pointer pressed on a control is held: a range's own input under it is not a reader's adjust. */
+  #held = 0;
 
   constructor(canvas: HTMLCanvasElement, send: (event: InjectedInput) => void) {
     this.#canvas = canvas;
@@ -130,17 +145,61 @@ export class A11yMirror {
     Object.assign(root.style, { position: "fixed", left: "0px", top: "0px", width: "0px", height: "0px", pointerEvents: "none", overflow: "visible", zIndex: "0" } satisfies Partial<CSSStyleDeclaration>);
     doc.body.appendChild(root);
     this.root = root;
+    // A native range draws its thumb whatever its own style says.
+    const style = doc.createElement("style");
+    style.textContent = THUMB;
+    root.appendChild(style);
     const on = <K extends keyof HTMLElementEventMap>(type: K, fn: (e: HTMLElementEventMap[K]) => void) => {
       root.addEventListener(type, fn as EventListener);
       this.#off.push(() => root.removeEventListener(type, fn as EventListener));
     };
-    // A screen reader activates an element with a click (its default action).
+    // A screen reader activates an element with a click (its default
+    // action, with no pointer: detail 0). A pointer's click on a control
+    // follows a press the canvas already had.
     on("click", (e) => {
       const path = pathOf(e.target);
       if (path === null) return;
       e.preventDefault();
+      if (e.detail > 0) return;
       this.#send({ kind: "a11y", action: "activate", path });
     });
+    // The pointer on a control is the canvas's: the same event, dispatched
+    // on it (its press captures the pointer, so the rest of a drag goes
+    // there directly).
+    for (const type of FORWARDED) {
+      on(type, (e: PointerEvent | WheelEvent) => {
+        if (pathOf(e.target) === null) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "pointerdown") this.#held++;
+        this.#canvas.dispatchEvent(e instanceof WheelEvent ? new WheelEvent(e.type, e) : new PointerEvent(e.type, e));
+      });
+    }
+    // A press on a control does not move the page's focus (the UI's moves it).
+    on("mousedown", (e) => e.preventDefault());
+    on("contextmenu", (e) => e.preventDefault());
+    // The canvas's box moves without the tree changing.
+    const view = doc.defaultView;
+    if (view && "ResizeObserver" in view) {
+      const watch = new view.ResizeObserver(() => this.#place());
+      watch.observe(canvas);
+      this.#off.push(() => watch.disconnect());
+    }
+    if (view) {
+      // The canvas has the pointer after the press: its release is the page's.
+      const released = () => (this.#held = Math.max(0, this.#held - 1));
+      for (const type of ["pointerup", "pointercancel"]) {
+        view.addEventListener(type, released, true);
+        this.#off.push(() => view.removeEventListener(type, released, true));
+      }
+      const place = () => this.#place();
+      view.addEventListener("resize", place);
+      view.addEventListener("scroll", place, { passive: true });
+      this.#off.push(() => {
+        view.removeEventListener("resize", place);
+        view.removeEventListener("scroll", place);
+      });
+    }
     // A screen reader adjusted a mirrored range: one step, and back to the UI's value.
     const adjusted = (e: Event) => {
       const el = e.target as HTMLInputElement | null;
@@ -149,7 +208,7 @@ export class A11yMirror {
       const v = Number(el.value);
       const at = Number(el.dataset.ogValue ?? "1");
       el.value = String(at);
-      if (path === null || !Number.isFinite(v) || v === at) return;
+      if (this.#held > 0 || path === null || !Number.isFinite(v) || v === at) return;
       this.#send({ kind: "a11y", action: v > at ? "increment" : "decrement", path });
     };
     on("input", adjusted);
@@ -279,7 +338,10 @@ export class A11yMirror {
       // Tree order is DOM order: append moves an existing element to the end of its parent.
       if (el.parentElement !== parent || parent.lastElementChild !== el) parent.appendChild(el);
       this.#describe(el, node, tree);
+      const control = CONTROLS.has(node.role);
       Object.assign(el.style, {
+        pointerEvents: control ? "auto" : "none",
+        touchAction: control ? "none" : "",
         left: `${node.x - px}px`,
         top: `${node.y - py}px`,
         width: `${Math.max(1, node.width)}px`,
@@ -391,6 +453,9 @@ export class A11yMirror {
       transform: sx === 1 && sy === 1 ? "" : `scale(${sx}, ${sy})`,
       transformOrigin: "0 0",
     });
+    // Over the canvas, whatever its stacking.
+    const z = Number.parseInt(this.#canvas.ownerDocument.defaultView?.getComputedStyle(this.#canvas).zIndex ?? "", 10);
+    this.root.style.zIndex = String(Number.isFinite(z) ? z + 1 : 1);
   }
 
   dispose(): void {
@@ -418,14 +483,24 @@ const NODE: Partial<CSSStyleDeclaration> = {
   margin: "0",
   padding: "0",
   border: "0",
-  opacity: "0",
   overflow: "visible",
   pointerEvents: "none",
   background: "transparent",
   color: "transparent",
+  caretColor: "transparent",
+  textShadow: "none",
+  boxShadow: "none",
+  userSelect: "none",
   outline: "none",
   fontSize: "1px",
   whiteSpace: "nowrap",
   appearance: "none",
   boxSizing: "border-box",
 };
+
+/** A mirrored range's thumb and track, drawing nothing. */
+const THUMB = `[data-og-a11y] input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;background:transparent;border:0;box-shadow:none}
+[data-og-a11y] input[type=range]::-webkit-slider-runnable-track{background:transparent;border:0}
+[data-og-a11y] input[type=range]::-moz-range-thumb{appearance:none;background:transparent;border:0;box-shadow:none}
+[data-og-a11y] input[type=range]::-moz-range-track{background:transparent;border:0}
+[data-og-a11y] *::selection{background:transparent}`;

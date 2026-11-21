@@ -596,10 +596,12 @@ WEB_JOBS_DEFAULT=3
 # Each web_<group> runs in packages/engine; non-zero when any of its runs failed.
 # The same two fx-showcase representatives as its native smoke playtest.
 # The accessibility mirror over its settings screen, a
-# screen reader's click, the live region and the page's preferences.
+# screen reader's click, the live region and the page's preferences; a
+# page scan's taps on the controls over the canvas.
 web_ui() {
   local rc=0
   bun tests/web/a11y.ts || rc=1
+  bun tests/web/autoplay.ts || rc=1
   return "$rc"
 }
 # og-tests' scenes and og-ui's against their tier's reference, else the recording tier's.

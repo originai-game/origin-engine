@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "web export",
+      "summary": "On the page, a TSX UI's controls (buttons, links, tabs, options, checkboxes, radios, switches, sliders, text fields) are elements at their boxes over the canvas, transparent, with their role, name and disabled state, so a page's own scan of its controls (an automated player's) finds and taps them. A pointer or wheel on one reaches the game through the canvas as before: hover, press, drag and wheel are unchanged, and a tap is one press."
+    }
+  ]
+}

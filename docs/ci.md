@@ -549,6 +549,13 @@ structure, bounds, roles, screen-reader-style clicks, the live region,
 `prefers-contrast` and `prefers-reduced-motion`. It writes
 `dist/test-a11y/out/a11y-<tier>.json`.
 
+`packages/engine/tests/web/autoplay.ts` runs the same export and scans the
+page for its controls as a page scanner (the platform's autoplay) does: by
+role, label, box and an `elementFromPoint` hit. It taps and drags them
+with CDP's mouse and touch, checks that each press reaches the engine
+once through the canvas and that the controls draw nothing, and writes
+`dist/test-autoplay/out/autoplay.json`.
+
 ## Updating a budget
 
 Budgets come from `docs/design.md` §7 and live in `scripts/budgets.txt`.
