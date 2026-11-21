@@ -83,13 +83,21 @@ fn project() -> &'static Path {
             "type project\nversion 1\n---\nname \"ui configure\"\nid \"ui-configure\"\nentry \"main.ts\"\n",
         )
         .unwrap();
-        // A TSX UI: the cook bundles the default UI (its font and pack art).
         std::fs::write(
             root.join("main.ts"),
             "import \"@origingame/engine/ui\";\nexport {};\n",
         )
         .unwrap();
-        let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+        // Code that reaches the TSX UI, as the bundler's graph says of
+        // main.ts: the cook bundles the default UI (its font and pack art).
+        let options = og_cook::CookOptions {
+            code: og_cook::cook::CodeGraph {
+                tsx: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let report = og_cook::cook_project(&root, &options).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
     })
