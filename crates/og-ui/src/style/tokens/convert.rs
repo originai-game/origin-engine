@@ -239,23 +239,7 @@ impl StyleTokens {
             stagger_cap_ms: 300.0,
             overshoot,
         };
-        let haptic = |e: SoundEvent| {
-            use HapticPreset as H;
-            use SoundEvent as E;
-            match e {
-                E::Press | E::Select | E::Cancel | E::Back | E::Tab => Some(H::Tick),
-                E::ToggleOn | E::ToggleOff | E::SliderTick | E::RevealUncommon => Some(H::Tick),
-                E::Confirm | E::Notification | E::RevealRare => Some(H::Tap),
-                E::Warning => Some(H::Warning),
-                E::Error => Some(H::Error),
-                E::Success => Some(H::Success),
-                E::Reward | E::RevealEpic => Some(H::Double),
-                E::RevealLegendary => Some(H::Thud),
-                E::RevealMythic => Some(H::Buzz),
-                _ => None,
-            }
-            .map_or(Haptic::NONE, Haptic::preset)
-        };
+        let haptic = |e: SoundEvent| og_ui_model::event_haptic(e.name());
         let feedback = SoundEvent::map_all(|e| Feedback {
             haptic: haptic(e),
             ..Feedback::SILENT

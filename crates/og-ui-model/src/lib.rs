@@ -3,10 +3,12 @@
 //! and og-rive share.
 
 pub mod codec;
+mod haptic;
 mod rect;
 mod transform;
 mod viewport;
 
+pub use haptic::*;
 pub use rect::*;
 pub use transform::*;
 pub use viewport::*;
