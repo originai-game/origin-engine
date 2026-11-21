@@ -12,6 +12,7 @@
 //! as AccessKit removes it. Node ids are arena ids: the arena's root is the
 //! tree's root, a window the size of the viewport.
 
+pub use accesskit;
 use accesskit::{
     Action, Affine, AriaCurrent, Live, Node, NodeId, Rect, Role, Toggled, TreeId, TreeInfo,
     TreeUpdate,
@@ -493,8 +494,9 @@ struct Walk {
 }
 
 /// The tree an assistive client was last sent: each node's fingerprint and
-/// the update that last saw it.
-#[derive(Clone, Debug, Default)]
+/// the update that last saw it. A new one ([`Tree::new`], or
+/// `Default`) sends the whole tree first.
+#[derive(Clone, Debug)]
 pub struct Tree {
     sent: FxHashMap<u64, (u64, u32)>,
     pass: u32,
@@ -507,12 +509,23 @@ pub struct Tree {
     stack: Vec<Walk>,
 }
 
+impl Default for Tree {
+    fn default() -> Tree {
+        Tree::new()
+    }
+}
+
 impl Tree {
     /// A tree whose first update holds all of it.
     pub fn new() -> Tree {
         Tree {
+            sent: FxHashMap::default(),
+            pass: 0,
+            stamp: None,
+            focus: 0,
             full: true,
-            ..Tree::default()
+            slots: Vec::new(),
+            stack: Vec::new(),
         }
     }
 
@@ -1194,7 +1207,8 @@ mod tests {
             .collect();
         let clock = ui.text(0, "06:54");
         ui.lay_out();
-        let mut tree = Tree::new();
+        // A host makes a session's client by `Default` (og-host-node).
+        let mut tree = Tree::default();
         let mut sent = FxHashMap::default();
         let first = tree.update(&ui.arena, &ui.sem, None, VP).unwrap();
         assert!(

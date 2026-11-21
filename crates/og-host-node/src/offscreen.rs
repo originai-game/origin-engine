@@ -25,7 +25,7 @@ struct OffscreenBackend {
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
     frames: Option<og_render::shared_frames::FrameLink>,
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
-    accessibility: (Option<u64>, og_ui::native_a11y::Bridge),
+    accessibility: (Option<u64>, og_runtime::ui_a11y_client::Tree),
     /// The cursor last handed to the window (its keyword and image id).
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
     cursor: Option<(&'static str, u64)>,
@@ -124,34 +124,20 @@ impl RenderBackend for OffscreenBackend {
             if self.accessibility.0 != session {
                 self.accessibility = (session, Default::default());
             }
-            if session.is_some()
-                && let Some(shared) = og_runtime::shared_ui(self.engine)
-            {
-                let mut ui = shared.lock();
-                for value in actions {
-                    if let Ok(action) = serde_json::from_value(value)
-                        && let Some(request) = self.accessibility.1.action(action)
-                    {
-                        ui.queue_accessibility(request);
-                    }
+            if session.is_some() {
+                for request in actions {
+                    og_runtime::ui_a11y_action(self.engine, request);
                 }
                 if let og_render::shared_frames::Presented::Slot {
                     generation, seq, ..
                 } = presented
+                    && let Some(update) = og_runtime::ui_a11y(
+                        self.engine,
+                        &mut self.accessibility.1,
+                        self.renderer.size().0,
+                    )
                 {
-                    let frame = ui.frame();
-                    let (w, h) = self.renderer.size();
-                    let scale = [
-                        f64::from(frame.unit * w as f32 / frame.viewport.width.max(1.0)),
-                        f64::from(frame.unit * h as f32 / frame.viewport.height.max(1.0)),
-                    ];
-                    if let Some(update) = self.accessibility.1.update(&ui, scale) {
-                        frames.accessibility_update(
-                            generation,
-                            seq,
-                            serde_json::to_value(update).expect("AccessKit tree"),
-                        );
-                    }
+                    frames.accessibility_update(generation, seq, update);
                 }
             }
         }

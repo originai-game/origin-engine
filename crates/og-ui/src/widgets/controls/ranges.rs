@@ -836,19 +836,6 @@ impl Ui {
         if held_mem && !built.r.pressed && !down {
             committed = true;
         }
-        // A screen reader's set value lands as a step does.
-        #[cfg(not(target_arch = "wasm32"))]
-        if !disabled {
-            let tkey = crate::id::key_of_path(&built.path);
-            let mut set = v;
-            if self
-                .interaction
-                .accessibility_number(tkey, &mut set, lo, hi, step)
-            {
-                v = snap(set, min, max, step);
-                committed = true;
-            }
-        }
         if !desc.marks.is_empty() {
             self.slider_marks(&desc.marks, min, span, g, track_h);
         }
@@ -1375,19 +1362,6 @@ impl Ui {
         let vkey = crate::id::key_of_path(&val.path);
         if self.interaction.nav.spin.0 == vkey && !disabled {
             v = fit(v + step * self.interaction.nav.spin.1 as f32);
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        if !disabled {
-            let mut set = v;
-            if self.interaction.accessibility_number(
-                vkey,
-                &mut set,
-                min.unwrap_or(f32::MIN),
-                max.unwrap_or(f32::MAX),
-                step,
-            ) {
-                v = fit(set);
-            }
         }
         self.close();
         if !disabled {

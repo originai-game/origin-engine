@@ -4,8 +4,6 @@ use og_render::wgpu as gpu_wgpu;
 #[path = "../../../../tests/gpu.rs"]
 mod gpu_tests;
 
-#[path = "../a11y.rs"]
-mod a11y;
 #[path = "../box_decor.rs"]
 mod box_decor;
 #[path = "../color_vision.rs"]

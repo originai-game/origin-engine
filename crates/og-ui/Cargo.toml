@@ -66,9 +66,6 @@ precomputed-hash = "0.1.1"
 taffy = { version = "=0.15.1", default-features = false, features = ["std", "flexbox", "grid", "block_layout", "float_layout", "calc", "content_size", "detailed_layout_info"] }
 elsa = "1.11.2"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-accesskit = { version = "=0.25.2", features = ["serde"] }
-
 [dev-dependencies]
 # Font files the tests read directly (the version og-text reads them with).
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }

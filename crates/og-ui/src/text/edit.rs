@@ -830,24 +830,6 @@ impl crate::ui::Interaction {
                 }
                 composition = c.clone();
             }
-            // Typed text replaces the selection.
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(accesskit::ActionData::Value(value)) = self.native_input.values.remove(&key)
-            {
-                chars = value
-                    .chars()
-                    .filter(|&c| accepts(c))
-                    .take(if d.max_chars == 0 {
-                        usize::MAX
-                    } else {
-                        d.max_chars as usize
-                    })
-                    .collect();
-                caret = chars.len();
-                anchor = caret;
-                composition.clear();
-                note(&mut kind, EditKind::Other);
-            }
             let typed: Vec<char> = self.input.text.chars().filter(|&c| accepts(c)).collect();
             if !typed.is_empty() {
                 let (a, b) = (caret.min(anchor), caret.max(anchor));

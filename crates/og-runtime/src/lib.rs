@@ -310,6 +310,53 @@ pub fn shared_ui(engine: u32) -> Option<og_ui::SharedUi> {
     engine::engine(engine).ok()?.state.borrow().ui.clone()
 }
 
+/// What a native window's AccessKit session was last sent ([`ui_a11y`]).
+pub use og_ui_next::a11y as ui_a11y_client;
+
+/// The new core's accessibility update for a native window's AccessKit
+/// adapter, as AccessKit's JSON, when what the tree shows changed since
+/// `client` was last updated (a new client: the whole tree). `width`: the
+/// frame's physical pixels across.
+pub fn ui_a11y(
+    engine: u32,
+    client: &mut og_ui_next::a11y::Tree,
+    width: u32,
+) -> Option<serde_json::Value> {
+    let eng = engine::engine(engine).ok()?;
+    let rs = eng.render.try_borrow().ok()?;
+    let update = rs.ui_next.as_ref()?.a11y_native(client, width)?;
+    Some(serde_json::to_value(update).expect("AccessKit's tree is JSON"))
+}
+
+/// A native window's screen reader asked an action of a node of the new
+/// core's accessibility tree (AccessKit's `ActionRequest` as JSON): it
+/// reaches the world as the web mirror's request does, an `a11y` input
+/// naming the node by its id. Answers whether the world took it.
+pub fn ui_a11y_action(engine: u32, request: serde_json::Value) -> bool {
+    use og_ui_next::a11y::accesskit::{Action, ActionRequest};
+    let Ok(request) = serde_json::from_value::<ActionRequest>(request) else {
+        return false;
+    };
+    let action = match request.action {
+        Action::Focus => og_input::A11yAct::Focus,
+        Action::Click => og_input::A11yAct::Activate,
+        Action::Increment => og_input::A11yAct::Increment,
+        Action::Decrement => og_input::A11yAct::Decrement,
+        _ => return false,
+    };
+    let Ok(eng) = engine::engine(engine) else {
+        return false;
+    };
+    let Ok(world) = eng.world() else {
+        return false;
+    };
+    let event = og_input::InjectedInput::A11y {
+        action,
+        path: request.target_node.0.to_string(),
+    };
+    og_input::InputSink::inject(&mut og_input::InputLayer::new(), world, &event)
+}
+
 /// The binary, host-neutral retained UI protocol.
 pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
     match shared_ui(world) {

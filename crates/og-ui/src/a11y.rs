@@ -12,8 +12,6 @@
 //! drawing order: the page, then each layer over it), within the topmost
 //! dialog while one is open. [`A11yTree::focus_order`] lists them.
 
-#[cfg(not(target_arch = "wasm32"))]
-pub mod native_a11y;
 use crate::layout::{Node, Widget};
 
 /// Semantic information from render nodes, shared by navigation and diagnostics.
@@ -157,20 +155,6 @@ pub struct Announcement {
 /// Announcements a host has not taken yet are kept up to this many; older
 /// ones are dropped first (a host that never takes them holds no more).
 pub const ANNOUNCEMENTS: usize = 16;
-
-/// Appends `new` to `queue`, dropping the oldest past [`ANNOUNCEMENTS`].
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn queue_announcements(
-    queue: &mut std::collections::VecDeque<Announcement>,
-    new: impl IntoIterator<Item = Announcement>,
-) {
-    for a in new {
-        if queue.len() == ANNOUNCEMENTS {
-            queue.pop_front();
-        }
-        queue.push_back(a);
-    }
-}
 
 /// The tree a host last sent, as announcing reads it: each node's parent,
 /// live setting, hidden state, own words and children.
@@ -386,8 +370,7 @@ impl A11yTree {
 
     /// What this tree's live regions announce against `before`, the tree a
     /// host last sent (a page's mirror, which is sent whole when it
-    /// changed): as the native bridge announces (`native_a11y::Bridge`),
-    /// with each node's words compared by path. Call it only when the tree
+    /// changed), with each node's words compared by path. Call it only when the tree
     /// changed and the change is news ([`crate::Ui::semantic_news`]).
     pub fn announcements(&self, before: &A11yTree) -> Vec<Announcement> {
         struct Tree<'a> {

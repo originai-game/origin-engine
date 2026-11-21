@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og-ui accessibility (TSX)",
+      "summary": "In a native window, the platform's screen reader (VoiceOver, Narrator, Orca) reads the TSX UI too: the window is sent the new core's accessibility tree, only the nodes that changed after the first, and a reader's focus, activate, increment and decrement reach the game as the web page's do (an `a11y` input naming the node)."
+    }
+  ]
+}

@@ -598,6 +598,11 @@ impl Tree {
         client.update(&self.arena, &self.sem, focus, viewport)
     }
 
+    /// The viewport the tree lays out in, CSS px.
+    pub fn size(&self) -> (f32, f32) {
+        self.env.size.get()
+    }
+
     /// Op node `id`'s box on screen (x, y, width, height) as last painted,
     /// when it shows.
     pub fn op_box(&self, id: u32) -> Option<[f32; 4]> {

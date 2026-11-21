@@ -33,7 +33,6 @@ impl Ui {
             interaction: Interaction {
                 input: InputFrame::default(),
                 #[cfg(not(target_arch = "wasm32"))]
-                native_input: Default::default(),
                 state: State::default(),
                 nav: NavFrame::default(),
                 nav_on: true,
@@ -705,8 +704,6 @@ impl Ui {
         self.apply_nav(&intents);
         self.apply_list_keys(&input);
         self.apply_a11y(&input.a11y);
-        #[cfg(not(target_arch = "wasm32"))]
-        self.apply_native_accessibility();
         self.apply_pads(&input);
         self.interaction.state.pointer = p;
         // Once a world has a typed-text stream, key presses type nothing.

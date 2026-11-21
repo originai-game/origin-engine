@@ -675,6 +675,19 @@ impl Next {
         Some(og_ui_next::a11y::web(&update))
     }
 
+    /// The accessibility update for a native window's AccessKit adapter
+    /// (`client`: what that session was sent), at `width` physical pixels
+    /// across: the tree's CSS px scaled to them by its root.
+    pub(crate) fn a11y_native(
+        &self,
+        client: &mut og_ui_next::a11y::Tree,
+        width: u32,
+    ) -> Option<og_ui_next::a11y::accesskit::TreeUpdate> {
+        let tree = self.tree.as_ref()?;
+        let css = tree.size().0.max(1.0);
+        tree.a11y(client, None, width as f32 / css)
+    }
+
     /// The spans as the probe's timings name them.
     pub(crate) fn timings(&self) -> Vec<(String, f64)> {
         let s = &self.spans;

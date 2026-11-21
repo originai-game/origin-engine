@@ -83,7 +83,6 @@ pub mod layout;
 pub use text::markup;
 pub mod motion;
 #[cfg(not(target_arch = "wasm32"))]
-pub use a11y::native_a11y;
 pub mod paint;
 pub(crate) use interaction::recognize;
 pub(crate) use interaction::scroll;
