@@ -1610,6 +1610,816 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/glyphs/bumper-l.svg",
+      "sha256": "55dedda4b8c04dd624aded8881982f466049c3eb548cddbdfef71404532f8cf2",
+      "size": 349,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/bumper-l1.svg",
+      "sha256": "ed8e5fb9ad01219a2f0b12d1b90426af1aa3f1f9f872ced29389b1a305901f70",
+      "size": 407,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/bumper-lb.svg",
+      "sha256": "4728ec7ddc293f8696338014288f652b158d5f6ec2bdbcca12447542e93a9c35",
+      "size": 584,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/bumper-r.svg",
+      "sha256": "229949877a0050a4b93a963467651270835cfac4e9fdce2160eeac97e8a524b4",
+      "size": 466,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/bumper-r1.svg",
+      "sha256": "77ad588b2bd6938b4a03418880de9a101e38867fb354329d3bb38f9b330d73fe",
+      "size": 611,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/bumper-rb.svg",
+      "sha256": "59d58a79caaea2bac3e4a69f6ab54478aa98c98444d83edde7234cd0a9b26179",
+      "size": 735,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/dpad-down.svg",
+      "sha256": "bd13dd571c8ef1bff5f4aeb3341fd3dec02830216016eca2ee40a2f00bc348fb",
+      "size": 608,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/dpad-left.svg",
+      "sha256": "c9e2b1b4de667959aa50128cf913aad5cb5c11447fa13bb8b380eae22cc403aa",
+      "size": 608,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/dpad-right.svg",
+      "sha256": "5e55018bd9293fe5065699d160e54bb1006c4633016861b5ff871d87576628f6",
+      "size": 608,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/dpad-up.svg",
+      "sha256": "2df199785b7d670b8296c80ceff24ab70abeeaba6301109c6bccb47e98c3e363",
+      "size": 567,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/dpad.svg",
+      "sha256": "9375c04b8116bc6db66590ddf7d696ad0c7c1663c8536d5295edc48308426292",
+      "size": 399,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/face-a.svg",
+      "sha256": "0b9a4da0b67674a8c0815caf019f204b04a1a97b9338092e3586129ca6450097",
+      "size": 302,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/face-b.svg",
+      "sha256": "d08b5b849d5656d2330b0b9959ccd9f2519930e0e7a499a5bdd795745ac47cb9",
+      "size": 421,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/face-x.svg",
+      "sha256": "f8977dc025876a57153122809f116c59c8e0ef95ab14198d632bf02c2fef27f3",
+      "size": 313,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/face-y.svg",
+      "sha256": "d0a9bf3d7bf562f8f68b943c8867ce315e5d4c0120b864432aedfdafa8beccb5",
+      "size": 281,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/home.svg",
+      "sha256": "b8efbb7c4aab862c059ecb1accfe8c7ca776f7f885f01fb06c148c75c35946c4",
+      "size": 265,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-0.svg",
+      "sha256": "fcef4180e542d3c9fc7237289458bdf69b819d8f80b8570fc0aee31a1dddf55d",
+      "size": 509,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-1.svg",
+      "sha256": "cf81e8fb37ea6d4e9a985ab66053531887595842fb8479ac0f17e51aff049edd",
+      "size": 463,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-2.svg",
+      "sha256": "c935f4ca388a7a9bdbc2474e1f9428e81041f21f701d249f5ad4d98dc3269932",
+      "size": 564,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-3.svg",
+      "sha256": "a45f295e434a23848a71d0173d073ba2770c5ed211f80a737ac77f20a4518186",
+      "size": 757,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-4.svg",
+      "sha256": "368abfc11ea0a4a9fcf28c6c80b0df4084074c07bbed9ea88ecc9ae8c5b2aa2a",
+      "size": 449,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-5.svg",
+      "sha256": "393f68457a44c466ac269de8348afddcd32dcff2f26a48d8672239242b0db95d",
+      "size": 695,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-6.svg",
+      "sha256": "5717d1e0d7faea167955d9e4951d22693f1c9bb7a0f412e37ad628f0ffff1b14",
+      "size": 677,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-7.svg",
+      "sha256": "77a035467cba917be2962adc78554ca2fc2a5f438f60b9e350947574e2890cb8",
+      "size": 416,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-8.svg",
+      "sha256": "f864e0de02f2810fe87dc1bde758561d06a1492498250c16fd23292a30c90814",
+      "size": 881,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-9.svg",
+      "sha256": "6ca11c53cf7fca2d2884ed7a17ee215330123d3f56e2cb13fe0782a8199b0682",
+      "size": 772,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-a.svg",
+      "sha256": "4f0705d63e8629d210995215442018d16afa1716e59a8c1d71cad507ef4d861d",
+      "size": 440,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-alt.svg",
+      "sha256": "2f0357d6044afa52f4f7a266b4e1891a05dfbcfd66d1b11b592a4c203c168679",
+      "size": 576,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-arrowdown.svg",
+      "sha256": "d41b807fcf4ed63864c2291e7d7bc9a2fea8d31b4754115805b52ca6e03dc631",
+      "size": 406,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-arrowleft.svg",
+      "sha256": "1b7b0cda8854ec4f94158943b2a83e33d93dc6a1a90d5510728e54633a7863de",
+      "size": 406,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-arrowright.svg",
+      "sha256": "6ec80b4ddba6e5bddbc1c4b7af73662fc12680ea5b87417a7579fd3cf640a4aa",
+      "size": 406,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-arrows.svg",
+      "sha256": "9839619c517da9b5d75b8e8f67d0f43dc69fe63e0b44d36801f3920b187775af",
+      "size": 745,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-arrowup.svg",
+      "sha256": "e1ac3a4c868e2fc3cf809b0a4366df2d110ebd27f7296f7b240f3431902a78b8",
+      "size": 380,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-b.svg",
+      "sha256": "f162be708cc319c253b1fbe152d20b2f73c1981260a132cd1fae89f02d629816",
+      "size": 687,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-backquote.svg",
+      "sha256": "585fed82cc2cde71683addc0b9f72ad25e417ecd8992b3cc8dd7d0a829a467eb",
+      "size": 429,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-backslash.svg",
+      "sha256": "e4ad7b8e0eabeb20585268f363bf0716279c59238b799718dee78d1b98ecc38c",
+      "size": 384,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-backspace.svg",
+      "sha256": "5ea549aa430c78ecf09ffa7e8007162da14b6033473285dd23144b51f9035df9",
+      "size": 649,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-bracketleft.svg",
+      "sha256": "7872e51420b86768ee9a13fc4ef153cdb31cec07bb887e247339a221eb0faec1",
+      "size": 384,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-bracketright.svg",
+      "sha256": "f8636311e900e32848a42bb7b3a87c4287469d71940909f402f2ad73533aa395",
+      "size": 380,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-c.svg",
+      "sha256": "51414e62a21b3d8f8c8cc3e564d9479e7be227ac90601aad04ccb6a6daa98792",
+      "size": 600,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-capslock.svg",
+      "sha256": "807c745100af96788ac04f954b594629e2911d28f53d87842bc9fb326fbf44d8",
+      "size": 1745,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-comma.svg",
+      "sha256": "a614d49fada51eab7da9a50cd0f834c6c2187edd5429cbf661e6fbf304ea16ac",
+      "size": 450,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-contextmenu.svg",
+      "sha256": "7b65c663dce6ddd6510ac573e2f2e56dd84c74a3a373cc870cc444a8bb073710",
+      "size": 734,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-ctrl.svg",
+      "sha256": "63be04e38b058f18350d1b3f8c191bf4c9b24848c50cbb2f0fb8eb33a3c15dcf",
+      "size": 924,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-d.svg",
+      "sha256": "8fd535a0206928ea9ab70245725afd4800d89ada8ac667325f0bac96c6978e32",
+      "size": 609,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-delete.svg",
+      "sha256": "6dd97ab1a55213a3a4cf3e8c76828895aff9b7095009cd6650d717d786a59e6a",
+      "size": 568,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-e.svg",
+      "sha256": "ab5dd2237e52b80ed0feb6fcfc05893abfa9bc908a7b3fd59f51b182b8861b99",
+      "size": 438,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-end.svg",
+      "sha256": "4cf9114b690bee012010375fc918713618a7b2653a1f54beb1594a149a9c9f25",
+      "size": 594,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-enter.svg",
+      "sha256": "67aa544bfbccff6fb322e944270cd2174e7600ac920527133e835ec01e30e329",
+      "size": 437,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-equal.svg",
+      "sha256": "5464806803b039bd53ef27bba434ada5a48b436b9331c21ed0f6c2dab217c389",
+      "size": 401,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-escape.svg",
+      "sha256": "b47d9fd45960d6de235e6f793401ddb9c00d39c9546f74862bf87ea598c8e538",
+      "size": 1015,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f.svg",
+      "sha256": "555555c5097ac53d8b56e64aafbce4cee2d18f78c3610cd7553dad2fe27a979a",
+      "size": 430,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f1.svg",
+      "sha256": "6d096acf3a9b9a76bc1a503d3789aa2b41b05d56b8863f844eea6eb0cf3c213c",
+      "size": 445,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f10.svg",
+      "sha256": "9cb74f061b862d91570a73e76c7cb4295e969f077203a8ad04f976570a4fe917",
+      "size": 728,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f11.svg",
+      "sha256": "6da9d1975745be94522eac4b1de735f16af496abdab4ee09c3092c3006f95501",
+      "size": 622,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f12.svg",
+      "sha256": "58dfcea8484a6ae62790ee35ee19c646277185d5162cca2c471e04af2d4095d3",
+      "size": 807,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f2.svg",
+      "sha256": "6fa7fa83abbe51620f505fe777babb87b828dc21730f5119ebf448b567ecbb38",
+      "size": 732,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f3.svg",
+      "sha256": "e39558557ce8949f77ccaeab55d52815c895b71689dcadd2c27593657204ed65",
+      "size": 730,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f4.svg",
+      "sha256": "feaa6f4d2885b570068111f4245214d51f0280a97094fbe877dc4ce57489d4e3",
+      "size": 545,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f5.svg",
+      "sha256": "3471abc20a37dcfa117d50621d32f9c46b04c69ecde1dd1cfb66b3c84484c96c",
+      "size": 675,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f6.svg",
+      "sha256": "dfa9dce2ad4fa6f11c60d4a82fe4edb5b1a87ad95b328ae7a1cc29d366ad0160",
+      "size": 743,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f7.svg",
+      "sha256": "b66be5af245c7bbb79feea99188ee1d2076db90d39743bf46c32a9e3015fabd0",
+      "size": 469,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f8.svg",
+      "sha256": "73d5a0c471f5dd02584225ee532d8ce959d32379037f4b86192668efae674b09",
+      "size": 818,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-f9.svg",
+      "sha256": "02c6e5fcdcba81870dbe6f01572d871326c808b946f71928a211e283a9f85a96",
+      "size": 781,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-g.svg",
+      "sha256": "1be727325eea0b9a75924284de25ea99dd5d09976f1378a23ad92a75a6c05872",
+      "size": 661,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-h.svg",
+      "sha256": "549d334394868db496a2c388b5fd222a18d7e118fd8847e98b6b2fdd444d40fe",
+      "size": 521,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-home.svg",
+      "sha256": "6f7437a18a78e7ef70cfd464d8595f58de34fb90f343755ba243c8dc754bf2ad",
+      "size": 942,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-i.svg",
+      "sha256": "1212bbf221ada929a9f10bd8de7da5a560285b2693973af2e620e6babaab532b",
+      "size": 493,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-insert.svg",
+      "sha256": "fd9fb898e411d398604b379b0778ed7fafab8bbf7dd200368270219b435f8784",
+      "size": 896,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-intlbackslash.svg",
+      "sha256": "ff53cfa5dfc2dfcdd6af33c897f486e62bc2132f14190d142b7c514d7f10bea1",
+      "size": 460,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-j.svg",
+      "sha256": "094cbb9514e7456133f7a1bc6363ad07c612dff9b325b06ee709e6498f68678e",
+      "size": 486,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-k.svg",
+      "sha256": "7728130ef2861df5077affcecf4f3ce91b05042e83cd1385cbd3ae360579fedc",
+      "size": 420,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-l.svg",
+      "sha256": "389679cdcc6672e30316acbf75cf85f026dd2b870d8ef2a620d98f20babaad08",
+      "size": 404,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-m.svg",
+      "sha256": "fa81b49371e9c5f6b50cab3d3f8375851f8a97af962c0db2a085f6a46f4932c9",
+      "size": 550,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-meta-mac.svg",
+      "sha256": "925550c9fead55af858d5719e78d9956a944b4810d5879c9b549c9f351e3dba7",
+      "size": 1303,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-meta-win.svg",
+      "sha256": "4b60db966ad17ae1e4791e6ca54e45b725de101b8dba25a5c4eabc2f1f1c828a",
+      "size": 587,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-minus.svg",
+      "sha256": "d22916975c9359d1dd937cfd9c848f7dc1ea738161627573458ea77d75b53214",
+      "size": 384,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-n.svg",
+      "sha256": "f9a5cc84e725ff6be1bdca1aec241dc06f85777daafad082f2f93c9e46619546",
+      "size": 512,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-numlock.svg",
+      "sha256": "5c41473bdf24f28dbf2409f6b8181f6f007407808864d7633cc94742eb2461be",
+      "size": 635,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-numpadadd.svg",
+      "sha256": "d6782c46aeee99050996b8841e3f4ce1c76effcbe622a810bc2ed268d9db6695",
+      "size": 422,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-numpadmultiply.svg",
+      "sha256": "483f5390b1f246f7516167f31f366da7ef33b3d0954b329af97514d8dbe93136",
+      "size": 534,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-o.svg",
+      "sha256": "6b55ee69976ab02631315670ec9daf6464747341924b9d7c703c87d0f639c26d",
+      "size": 509,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-p.svg",
+      "sha256": "1c8ee398b5997d8a9cba7958672b9fc186024225e3d4c034256ece1b839bcefc",
+      "size": 572,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-pagedown.svg",
+      "sha256": "d64c92bc2888826b59d03d5f8f50b59f2570ef67536e2984c78b87b65a75e598",
+      "size": 945,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-pageup.svg",
+      "sha256": "e1cf73197257b46530f44454f71f40b406ea86b91b1e60e6f714f5e8af2fe54d",
+      "size": 1340,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-pause.svg",
+      "sha256": "390cb9424085ce57ffcf821809816c3977b4c0a131239280eefdcf9e53bc90c3",
+      "size": 389,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-period.svg",
+      "sha256": "d74d3671cd729b05f8774eb95a1b3678a86d7bd1c8c18852dc02d60379783fbe",
+      "size": 480,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-printscreen.svg",
+      "sha256": "db66531f9a9428245a4adfe7981fc9644f5c16bf7f433492e01de9ca3feb085c",
+      "size": 1309,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-q.svg",
+      "sha256": "38ccddd29e953efc05a98b675578d584b9ce317e48320d4237ae38cc17745837",
+      "size": 746,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-quote.svg",
+      "sha256": "b2c85e6c53a50f2228ae9c033482d744611862d579397c2e72cbcf0c0799d7ab",
+      "size": 390,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-r.svg",
+      "sha256": "10af274fc35a509d6717f5a52616554bf4233505ebfda0a3b18e75ea569aaf9d",
+      "size": 527,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-s.svg",
+      "sha256": "95742e1a9ed57ddd82dd375250414bdc379f5fc174a1f46ad61c789a65ec15c5",
+      "size": 676,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-scrolllock.svg",
+      "sha256": "962eb0b193986547092c59df589dfa5dbbf69ed6dfb888151f7b1bf96ea34e24",
+      "size": 1232,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-semicolon.svg",
+      "sha256": "ece55eaac83034bf8805d4ec78b0f0d8f9360561938250a6729742a6244ead6a",
+      "size": 573,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-shift.svg",
+      "sha256": "29dd0bde49269c4bee9c594f3a7b0e4ea1929031db54be2076f773adfcd04f2d",
+      "size": 472,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-slash.svg",
+      "sha256": "d5655db817856e85c47b274b5b76caed1e47968004bbda9e9432f9f505bd6179",
+      "size": 372,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-space.svg",
+      "sha256": "78d0ce59e1bee4db8be3de5f24754f3d51c01ada1175b28bcc894ff6cd15b50b",
+      "size": 510,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-t.svg",
+      "sha256": "67c021ed153020063b902eb6372888f3e7e0d8b8f27f4c428c276d16bd0ae6d9",
+      "size": 507,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-tab.svg",
+      "sha256": "c8b1298e2a8a6b909e440107d7d958daa188c592e4f9ce7a36705eda677dcd1e",
+      "size": 467,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-u.svg",
+      "sha256": "fad39ffb2b991a6776f6f3f218b5a8a12cf448e807fd55e05466b351f15d8806",
+      "size": 512,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-v.svg",
+      "sha256": "b964321952972f9a5dd56416d48253c59d724cc7c7202c7591cb2f6359d2cfe2",
+      "size": 406,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-w.svg",
+      "sha256": "ed748c6ab1a10827b09095c463c51c70cc7f978b61ea03c119da678652e78f05",
+      "size": 464,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-wasd.svg",
+      "sha256": "5c6cea8528812549263e7af209a7dcb6926e5f8b4ecabea809270c9eef3aa055",
+      "size": 1329,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-x.svg",
+      "sha256": "baca0df1f98efdfadaf0fe8668006661032665349316708fa2fa257d76016adc",
+      "size": 454,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-y.svg",
+      "sha256": "ae88db9ae4f78fac5dde92cc0d167303d1ebcd6e81f5a62161c2981d53b3ca83",
+      "size": 446,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/key-z.svg",
+      "sha256": "e5b3a0688cc740630526bfef06b188a20529c33c8cb6ce4b375aee52de010072",
+      "size": 537,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/menu.svg",
+      "sha256": "a89e2fa642ee2e11f01537f2d9a2d64184fece22bd125c0484b9c048f266ffa0",
+      "size": 398,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/minus.svg",
+      "sha256": "0305e391ca6a72115802bd5978aa2cb9034ec378c4414b59ed03b6fcc1d6ed70",
+      "size": 254,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/mouse-left.svg",
+      "sha256": "dd10b3a45429a54d0443ac49c4f19d8fca7c3447cf4bc92df4f9163a5a39f5ae",
+      "size": 526,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/mouse-middle.svg",
+      "sha256": "93242db6b1b6e6afd3231fe7508236941bcd778901fa47fd1f75e147f9d69231",
+      "size": 439,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/mouse-move.svg",
+      "sha256": "5c747e434f19527d428468f76699f52fc9566668e1ccb4ee0270b14c62976bdb",
+      "size": 957,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/mouse-right.svg",
+      "sha256": "b6ce4bbf075aaf2f8491fb3d6b7a1946739659d5e054569bc509743daa56c2f8",
+      "size": 538,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/mouse-wheel.svg",
+      "sha256": "b256685682fc16fe3da2cca0230900bc1e726ab6d22cf5ae21c5b171d1dde681",
+      "size": 674,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/pad-east.svg",
+      "sha256": "784cedfbfd392f186a1a9f658a7a1d0e8d7f32109d6f224251ca7958bf009aff",
+      "size": 402,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/pad-north.svg",
+      "sha256": "1cc6c002dd6e1cc5f90af86d7776bffe9e946c0ac79f82a15f5fb151e2920a30",
+      "size": 402,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/pad-south.svg",
+      "sha256": "d3205ec63b5a5ccfbacd794d7fac047ef0a9978711069b9c1105328b5055183a",
+      "size": 469,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/pad-west.svg",
+      "sha256": "f496246333aaacb9cf484945e55215742dbf6ba54684fe7f7be06a87d7f7e5f4",
+      "size": 467,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/plus.svg",
+      "sha256": "6bf158f16afcd5ba6760353ca0624c09f4e41976fbfc08a52b3cec23e12718d4",
+      "size": 273,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/ps-circle.svg",
+      "sha256": "0e4585aba4e41bba9607a1cf54d23c802262c0cc4e297bb58ef769cf74aba477",
+      "size": 322,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/ps-create.svg",
+      "sha256": "aa2f34b408b8674badcb6687dc29964508907774a5243df70f5c418a2df681f6",
+      "size": 437,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/ps-cross.svg",
+      "sha256": "78169fcbc2028cc69fbacd3ea15f03a6b791c5d304b7d3b82aa848311d53924e",
+      "size": 381,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/ps-square.svg",
+      "sha256": "324ee3cda6d617d0d206971d99838849f62f575b74a2b8f2079548fba39d26d0",
+      "size": 343,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/ps-triangle.svg",
+      "sha256": "789e489bbdda2c8ced13ad9034c646243598b2447e0cb93222521589245a38ae",
+      "size": 262,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/stick-l-press.svg",
+      "sha256": "a8fa3dee8a98f9e99cc600a70135218a46df57326f9b4ae666c69d47d5d55053",
+      "size": 537,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/stick-l.svg",
+      "sha256": "7b8710fd754a2a42882d32408920a2d9068c08cca712fd396d9edd73349f6019",
+      "size": 404,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/stick-r-press.svg",
+      "sha256": "a64365cacd9b2d32e9f03f915e832b90846b8c133c9a8829df5dcd4ecee17657",
+      "size": 803,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/stick-r.svg",
+      "sha256": "1596517eaf4534e8757e372b5209f2b2ea6d2891b2c45e82bf6014c3136fdd9e",
+      "size": 541,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/touch-tap.svg",
+      "sha256": "c757aff1e5d7e223ba535d772285e422e4036fdbffcfd050067dbe9ec06aa47d",
+      "size": 800,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/trigger-l2.svg",
+      "sha256": "f08bc5254bd85ea4be5251f1d98e1ec11caca343b5cd3479c8855d22ad661a83",
+      "size": 526,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/trigger-lt.svg",
+      "sha256": "5cc204d130f02d34a814b7e1615ded39f8e5f7b9185293fde802c15b8a904e48",
+      "size": 374,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/trigger-r2.svg",
+      "sha256": "8e8c055c4cf7cd7f967913333aaad5288456b8be59349e9768834595eba764ef",
+      "size": 656,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/trigger-rt.svg",
+      "sha256": "b0c05834935d22305887ee6dce85ac7dbb30819ac1a80d1faa7ebbf1cdceee64",
+      "size": 505,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/trigger-zl.svg",
+      "sha256": "09f1f17043b9619db41cc1c65e666d189ce5ca8da9d2599f07cc7dff752ea712",
+      "size": 378,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/trigger-zr.svg",
+      "sha256": "94d0e3c0888e56fe878c00196df349c1b54800b6360dd201e3191e377eba6acf",
+      "size": 504,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glyphs/view.svg",
+      "sha256": "9a926ea6a9f8bffd89f4a7abebf720d2c301b2a5027f8aaecbd50a04c4bd69ae",
+      "size": 659,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/ink-icons.png",
       "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
       "size": 27720,

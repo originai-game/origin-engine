@@ -1,0 +1,10 @@
+type import
+version 1
+---
+# Input prompt glyphs: single-colour masks (their alpha is the shape; the
+# text colour tints them), 128 px square.
+match "*.svg" {
+  texture {
+    kind linear
+  }
+}

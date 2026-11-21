@@ -243,6 +243,111 @@ fn shapes() -> Value {
     Value::Object(out)
 }
 
+/// The input prompt glyphs every look has (`templates/styles/shared/glyphs/`,
+/// single-colour masks the text colour tints), by og-input's glyph names
+/// (`Glyph::icon`): every key og-input binds (`key.<code lowercased>`; a
+/// left and right modifier, a numpad digit or operator and its main key
+/// share one), the Mac's `key.command`, the mouse's, touch's, and each pad
+/// family's buttons, d-pad and sticks.
+fn icons() -> Value {
+    let mut out = Map::new();
+    let mut put = |name: String, file: &str| {
+        out.insert(name, json!(format!("@styles/shared/glyphs/{file}.svg")));
+    };
+    for code in og_input::KEY_CODES {
+        let lower = code.to_ascii_lowercase();
+        let file = match *code {
+            c if c.starts_with("Key") => format!("key-{}", &lower[3..]),
+            c if c.starts_with("Digit") => format!("key-{}", &c[5..]),
+            c if c.starts_with("Numpad") && c[6..].parse::<u8>().is_ok() => {
+                format!("key-{}", &c[6..])
+            }
+            "ShiftLeft" | "ShiftRight" => "key-shift".into(),
+            "ControlLeft" | "ControlRight" => "key-ctrl".into(),
+            "AltLeft" | "AltRight" => "key-alt".into(),
+            "MetaLeft" | "MetaRight" => "key-meta-win".into(),
+            "NumpadSubtract" => "key-minus".into(),
+            "NumpadDivide" => "key-slash".into(),
+            "NumpadDecimal" => "key-period".into(),
+            "NumpadEnter" => "key-enter".into(),
+            "NumpadEqual" => "key-equal".into(),
+            _ => format!("key-{lower}"),
+        };
+        put(format!("key.{lower}"), &file);
+    }
+    for (name, file) in [
+        ("key.command", "key-meta-mac"),
+        ("key.wasd", "key-wasd"),
+        ("key.arrows", "key-arrows"),
+        ("mouse.left", "mouse-left"),
+        ("mouse.middle", "mouse-middle"),
+        ("mouse.right", "mouse-right"),
+        ("mouse.move", "mouse-move"),
+        ("mouse.wheel", "mouse-wheel"),
+        ("touch.tap", "touch-tap"),
+        ("xbox.a", "face-a"),
+        ("xbox.b", "face-b"),
+        ("xbox.x", "face-x"),
+        ("xbox.y", "face-y"),
+        ("xbox.lb", "bumper-lb"),
+        ("xbox.rb", "bumper-rb"),
+        ("xbox.lt", "trigger-lt"),
+        ("xbox.rt", "trigger-rt"),
+        ("xbox.view", "view"),
+        ("xbox.menu", "menu"),
+        ("ps.cross", "ps-cross"),
+        ("ps.circle", "ps-circle"),
+        ("ps.square", "ps-square"),
+        ("ps.triangle", "ps-triangle"),
+        ("ps.l1", "bumper-l1"),
+        ("ps.r1", "bumper-r1"),
+        ("ps.l2", "trigger-l2"),
+        ("ps.r2", "trigger-r2"),
+        ("ps.create", "ps-create"),
+        ("ps.options", "menu"),
+        ("switch.a", "face-a"),
+        ("switch.b", "face-b"),
+        ("switch.x", "face-x"),
+        ("switch.y", "face-y"),
+        ("switch.l", "bumper-l"),
+        ("switch.r", "bumper-r"),
+        ("switch.zl", "trigger-zl"),
+        ("switch.zr", "trigger-zr"),
+        ("switch.minus", "minus"),
+        ("switch.plus", "plus"),
+        ("pad.south", "pad-south"),
+        ("pad.east", "pad-east"),
+        ("pad.west", "pad-west"),
+        ("pad.north", "pad-north"),
+        ("pad.l1", "bumper-l1"),
+        ("pad.r1", "bumper-r1"),
+        ("pad.l2", "trigger-l2"),
+        ("pad.r2", "trigger-r2"),
+        ("pad.select", "view"),
+        ("pad.start", "menu"),
+    ] {
+        put(name.into(), file);
+    }
+    // Every family's d-pad, sticks and home button.
+    for family in ["xbox", "ps", "switch", "pad"] {
+        for (name, file) in [
+            ("dpad", "dpad"),
+            ("dpadUp", "dpad-up"),
+            ("dpadDown", "dpad-down"),
+            ("dpadLeft", "dpad-left"),
+            ("dpadRight", "dpad-right"),
+            ("stickL", "stick-l"),
+            ("stickR", "stick-r"),
+            ("ls", "stick-l-press"),
+            ("rs", "stick-r-press"),
+            ("home", "home"),
+        ] {
+            put(format!("{family}.{name}"), file);
+        }
+    }
+    Value::Object(out)
+}
+
 /// What each scheme's theme takes in high contrast: the entries of the
 /// `:root[data-contrast=more]` tokens' theme that differ from the plain one.
 fn contrast(names: &[String]) -> [Value; 2] {
@@ -278,6 +383,7 @@ pub fn default_pack_json() -> String {
         "contrast": join(&more_light, &more_dark),
         "variants": SLOTS.iter().map(|(slot, _)| (slot.to_string(), json!(""))).collect::<Map<_, _>>(),
         "images": shapes(),
+        "icons": icons(),
     });
     let mut out = serde_json::to_string_pretty(&pack).unwrap();
     out.push('\n');
@@ -294,6 +400,55 @@ mod tests {
             default_pack_json() == DEFAULT_PACK,
             "crates/og-ui-next/default/pack.json is stale: run crates/og-ui-next/scripts/gen-pack.sh"
         );
+    }
+
+    /// Every glyph og-input names has the default pack's art: each key it
+    /// binds, the Mac's Command, every pad family's buttons, sticks and
+    /// d-pad, the mouse's and touch's; and each icon is a pinned file
+    /// (templates/og-assets.json), so none draws as a missing texture.
+    #[test]
+    fn every_binding_has_glyph_art() {
+        use og_input::{Control, Device, GAMEPAD_BUTTONS, KEY_CODES, key_glyph, pad_glyph};
+        let pack: Value = serde_json::from_str(DEFAULT_PACK).unwrap();
+        let icons = pack["icons"].as_object().unwrap();
+        let mut names: Vec<String> = KEY_CODES.iter().map(|c| key_glyph(c).icon).collect();
+        names.push("key.command".into());
+        for device in [
+            Device::Xbox,
+            Device::PlayStation,
+            Device::Switch,
+            Device::Gamepad,
+        ] {
+            names.extend(GAMEPAD_BUTTONS.iter().map(|b| pad_glyph(device, b).icon));
+            for control in ["pad.leftXY", "pad.rightXY", "pad.dpad", "pad.leftTrigger"] {
+                names.push(Control::parse(control).unwrap().glyph(device).icon);
+            }
+        }
+        for control in [
+            "mouse.left",
+            "mouse.middle",
+            "mouse.right",
+            "mouse.xy",
+            "wheel.y",
+            "touch",
+        ] {
+            names.push(
+                Control::parse(control)
+                    .unwrap()
+                    .glyph(Device::KeyboardMouse)
+                    .icon,
+            );
+        }
+        let missing: Vec<&String> = names.iter().filter(|n| !icons.contains_key(*n)).collect();
+        assert!(missing.is_empty(), "glyphs without art: {missing:?}");
+        let pins = include_str!("../../../../templates/og-assets.json");
+        let unpinned: Vec<&str> = icons
+            .values()
+            .filter_map(Value::as_str)
+            .map(|src| src.trim_start_matches('@'))
+            .filter(|src| !pins.contains(&format!("\"path\": \"{src}\"")))
+            .collect();
+        assert!(unpinned.is_empty(), "icons not pinned: {unpinned:?}");
     }
 
     /// WCAG contrast of `ink` on `ground`, a translucent ground over `bg`.
