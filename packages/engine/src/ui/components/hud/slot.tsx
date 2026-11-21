@@ -100,7 +100,7 @@ export function HudSlot(props: HudSlotProps) {
             valueMax={100}
             valueNow={charge() <= 0 ? 0 : charge() >= 1 ? 100 : charge() * 100}
           >
-            <View class="absolute inset-0 nine-ring bg-[#ffcf5a]" wipe={Math.min(Math.max(charge(), 0), 1)} />
+            <View class="absolute inset-0 nine-ring bg-gold" wipe={Math.min(Math.max(charge(), 0), 1)} />
           </View>
         </Show>
         <View
@@ -148,7 +148,7 @@ export function HudSlot(props: HudSlotProps) {
       </View>
       <Show when={(props.key ?? "") !== ""}>
         <Text
-          class={`min-w-[1.714rem] max-w-[4.754rem] px-[0.25rem] pointer-coarse:hidden text-[0.857rem] leading-[1.6] font-bold text-center rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none whitespace-nowrap overflow-hidden ${ultimate() ? "text-[#1a1408] bg-linear-to-b from-[#ffe9b0] to-[#ffcf5a]" : "text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2]"}`}
+          class={`min-w-[1.714rem] max-w-[4.754rem] px-[0.25rem] pointer-coarse:hidden text-[0.857rem] leading-[1.6] font-bold text-center rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] text-shadow-none whitespace-nowrap overflow-hidden ${ultimate() ? "text-[#1a1408] bg-linear-to-b from-[#ffe9b0] to-gold" : "text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2]"}`}
         >
           {props.key}
         </Text>

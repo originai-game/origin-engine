@@ -31,7 +31,7 @@ export interface PickupFeedProps {
  */
 export function PickupFeed(props: PickupFeedProps) {
   return (
-    <View class={`flex-col max-w-full gap-y-[0.286rem] border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2`} label={(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")} busy={props.loading}>
+    <View class={`flex-col max-w-full gap-y-[0.286rem] border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2`} label={(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")} busy={props.loading}>
       <Text class="text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-fg-muted text-shadow-2xs">{(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")}</Text>
       <Show when={props.loading} fallback={
         <>
@@ -48,7 +48,7 @@ export function PickupFeed(props: PickupFeedProps) {
                       <Text class="text-[0.857rem] text-fg-muted text-shadow-2xs truncate">{item().detail}</Text>
                     </Show>
                   </View>
-                  <Text class="shrink-0 text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-[#45e08f] text-shadow-2xs data-down:text-[#ff9599]" data-down={(item().quantity ?? 0) < 0}>
+                  <Text class="shrink-0 text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-success text-shadow-2xs data-down:text-danger" data-down={(item().quantity ?? 0) < 0}>
                     {(item().quantity ?? 0) > 0 ? "+" : ""}{formatNumber(item().quantity ?? 0)}
                   </Text>
                 </View>

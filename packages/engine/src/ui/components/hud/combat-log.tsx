@@ -23,9 +23,9 @@ export interface CombatLogProps {
  * height it is given and fades at its foot. Read only.
  */
 export function RpgCombatLog(props: CombatLogProps) {
-  const tone = (t?: string) => t === "damage" ? "text-[#ff9599]" : t === "heal" ? "text-[#45e08f]" : t === "crit" ? "text-[#ffa53d]" : "text-fg";
+  const tone = (t?: string) => t === "damage" ? "text-danger" : t === "heal" ? "text-success" : t === "crit" ? "text-warn" : "text-fg";
   return (
-    <View class={`flex-col w-full h-full min-h-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border overflow-hidden`} role="log" label={t("rpg.log.name")}>
+    <View class={`flex-col w-full h-full min-h-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border overflow-hidden`} role="log" label={t("rpg.log.name")}>
       <View class="flex-row shrink-0 h-8 items-center px-3">
         <Text class="text-[1rem] font-semibold whitespace-nowrap text-fg text-shadow-xs">{t("rpg.log.name")}</Text>
       </View>
@@ -39,7 +39,7 @@ export function RpgCombatLog(props: CombatLogProps) {
                 data-tone-heal={l().tone === "heal"}
                 data-tone-crit={l().tone === "crit"}
               >
-                <Text class={`text-[0.929rem] group-data-tone-damage/line:text-[#ff9599] group-data-tone-heal/line:text-[#45e08f] group-data-tone-crit/line:text-[#ffa53d] text-shadow-xs`}>{l().text}</Text>
+                <Text class={`text-[0.929rem] group-data-tone-damage/line:text-danger group-data-tone-heal/line:text-success group-data-tone-crit/line:text-warn text-shadow-xs`}>{l().text}</Text>
                 <Show when={l().detail}>
                   <Text class="pl-3 text-caption text-fg-muted text-shadow-xs">{l().detail}</Text>
                 </Show>

@@ -40,13 +40,13 @@ export function OrbMeter(props: OrbMeterProps) {
       data-mana={(props.kind ?? "") === "mana"}
     >
       <View class="relative size-[8rem]">
-        <View class="absolute inset-0 rounded-full bg-[#8892a8] shadow-[0px_0px_0px_1px_#292c32,0px_0.143rem_0.286rem_#00000073]">
+        <View class="absolute inset-0 rounded-full bg-rim-strong shadow-[0px_0px_0px_1px_#292c32,0px_0.143rem_0.286rem_#00000073]">
           <View class="absolute inset-0 rounded-full bg-linear-to-b from-white/60 to-transparent to-45%" />
           <View class="absolute inset-0 rounded-full bg-linear-to-t from-black/60 to-transparent to-45%" />
         </View>
         <View class="absolute inset-[0.429rem] rounded-full bg-[#181a1e]" />
         <View class="absolute inset-[0.643rem] rounded-full overflow-hidden bg-[#0c3215] shadow-[inset_0px_0px_1.429rem_#0000009e] group-data-mana/orb:bg-[#0f253d]">
-          <View class="absolute inset-x-0 bottom-0 border-t-[1.4px] border-t-[#a2eab4] bg-[#30d158] group-data-mana/orb:border-t-[#a9d2ff] group-data-mana/orb:bg-[#409cff]" style={{ height: `${share() * 100}%` }} />
+          <View class="absolute inset-x-0 bottom-0 border-t-[1.4px] border-t-[#a2eab4] bg-health group-data-mana/orb:border-t-[#a9d2ff] group-data-mana/orb:bg-mana" style={{ height: `${share() * 100}%` }} />
           <View class="absolute left-[13.4%] size-[73.2%] rounded-full bg-white/15" style={{ top: `${Math.max(0, Math.min(1, 1.049 - share())) * 100}%` }} />
           <View class="absolute inset-0 bg-linear-to-b from-transparent from-35% to-black/40" />
         </View>

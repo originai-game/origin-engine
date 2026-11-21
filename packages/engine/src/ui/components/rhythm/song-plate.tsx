@@ -33,9 +33,9 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
       role="group"
       label={t("rhythm.plate.name", { title: props.title })}
     >
-      <View class={`shrink size-[6rem] compact:size-[4rem] rounded-[1rem] bg-linear-to-b from-[#ffffffbf] via-[#ffffff38] to-[#ffffff24] p-[2px]`}>
+      <View class={`shrink size-[6rem] compact:size-[4rem] rounded-[1rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 p-[2px]`}>
         <Show when={props.jacket} fallback={
-          <View class={`size-full rounded-[0.857rem] bg-[#1e2637e5] flex-row items-center justify-center`}>
+          <View class={`size-full rounded-[0.857rem] bg-plate-hi flex-row items-center justify-center`}>
             <Icon class={`size-[44%] text-[#38e8ff]`} name="music" />
           </View>
         }>

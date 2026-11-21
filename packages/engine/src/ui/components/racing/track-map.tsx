@@ -89,7 +89,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
               points stay in the path's 260 by 220 box and the tree maps
               them onto the plate, which already has the box's aspect. */}
           <Line class="absolute inset-0 size-full stroke-[#060910e6] stroke-[14px]" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
-          <Line class="absolute inset-0 size-full stroke-[#ffffffd9] stroke-[4px]" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
+          <Line class="absolute inset-0 size-full stroke-white/85 stroke-[4px]" points={track().points} closed={track().closed} viewBox={[260, 220]} fit="fill" />
         </Show>
         <Show when={props.driven !== ""}>
           <Line class="absolute inset-0 size-full stroke-[#38e8ff] stroke-[4px]" points={driven().points} viewBox={[260, 220]} fit="fill" />
@@ -106,7 +106,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
               when={c().player}
               fallback={
                 <View
-                  class="absolute size-[11.9px] rounded-full border-2 border-[#060910e6] bg-[#ffffff8c]"
+                  class="absolute size-[11.9px] rounded-full border-2 border-[#060910e6] bg-white/55"
                   style={{ left: `${c().x / 260 * 100}%`, top: `${c().y / 220 * 100}%`, transform: "translate(-50%,-50%)", backgroundColor: c().color || undefined }}
                   role="image"
                   label={c().name}

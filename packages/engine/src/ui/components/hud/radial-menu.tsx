@@ -66,7 +66,7 @@ export function RadialMenu(props: RadialMenuProps) {
           <View class="absolute inset-0" data-chosen={item().id === chosen()}>
             <View class="absolute inset-0 flex-row items-center justify-center">
               <View class="relative size-[20rem]">
-                <Line points={wedgePoints(item().at, span())} class="stroke-[#343d4f] data-chosen:stroke-[#e8e8ed] stroke-[86px]" />
+                <Line points={wedgePoints(item().at, span())} class="stroke-rim-soft data-chosen:stroke-accent stroke-[86px]" />
               </View>
             </View>
             <View
@@ -94,7 +94,7 @@ export function RadialMenu(props: RadialMenuProps) {
                   <Show when={(item().cost ?? "") !== ""}>
                     <View class="flex-row items-center gap-x-[0.143rem]">
                       <Icon class="size-4 text-fg" name="coin" />
-                      <Text class={`${item().unaffordable ? "text-[#ff9599]" : "text-[#ffa53d]"} text-[14.88px] font-bold tabular-nums whitespace-nowrap text-shadow-xs`}>{item().cost}</Text>
+                      <Text class={`${item().unaffordable ? "text-danger" : "text-warn"} text-[14.88px] font-bold tabular-nums whitespace-nowrap text-shadow-xs`}>{item().cost}</Text>
                     </View>
                   </Show>
                 </View>

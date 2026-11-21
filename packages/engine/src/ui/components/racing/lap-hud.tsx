@@ -64,12 +64,12 @@ export function RacingLapHud(props: RacingLapHudProps) {
         <View class="flex min-w-0 flex-col items-start gap-y-[0.571rem] pb-[0.286rem] compact:gap-y-[0.286rem] compact:pb-0">
           <Show when={props.laps > 0 || props.lap > 0}>
             <View
-              class={`group/lap shrink-0 flex-row items-baseline gap-x-[0.571rem] py-[0.214rem] px-[0.643rem] bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}
+              class={`group/lap shrink-0 flex-row items-baseline gap-x-[0.571rem] py-[0.214rem] px-[0.643rem] bg-plate-hi nine-plate-cut ${packClass("Plate", "frame")}`}
               role="group"
               label={props.laps > 0 && props.lap > 0 ? t("racing.lap.lapValue", { lap: props.lap, laps: props.laps }) : t("racing.lap.lap")}
               data-final={props.finalLap}
             >
-              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] group-data-final/lap:text-[#38e8ff]`}>
+              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 group-data-final/lap:text-[#38e8ff]`}>
                 {props.finalLap ? t("racing.lap.finalLap") : t("racing.lap.lap")}
               </Text>
               <Text class={`text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg`}>{props.lap > 0 ? formatNumber(props.lap) : t("racing.lap.pending")}</Text>
@@ -93,7 +93,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
       {/* Times */}
       <View class="flex-col gap-y-1 compact:gap-y-[0.143rem]" role="list" label={t("racing.lap.times")}>
         <View class="flex-row items-baseline justify-between gap-x-2 min-w-0" role="listitem">
-          <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] compact:tracking-normal`}>{t("racing.lap.current")}</Text>
+          <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 compact:tracking-normal`}>{t("racing.lap.current")}</Text>
           <Text class={`text-[1.714rem] leading-[1.05] font-bold tabular-nums whitespace-nowrap text-fg`}>{props.current !== "" ? props.current : t("racing.lap.none")}</Text>
         </View>
         <View class="group/lastrow flex-row items-baseline justify-between gap-x-2 min-w-0 compact:hidden" role="listitem" data-fresh={props.freshBest}>
@@ -123,7 +123,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
             data-ahead={(props.splitState ?? "even") === "ahead"}
             data-behind={(props.splitState ?? "even") === "behind"}
           >
-            <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] compact:tracking-normal`}>{props.sector !== "" ? props.sector : t("racing.lap.split")}</Text>
+            <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 compact:tracking-normal`}>{props.sector !== "" ? props.sector : t("racing.lap.split")}</Text>
             <Text
               class={`shrink-0 py-0 px-[0.429rem] text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-[#060910e0] nine-chip-cut data-ahead:bg-[#55e39a] data-ahead:text-[#0d2417] data-behind:bg-[#ff4d5e] data-behind:text-fg ${packClass("Chip", "frame")}`}
               data-ahead={(props.splitState ?? "even") === "ahead"}

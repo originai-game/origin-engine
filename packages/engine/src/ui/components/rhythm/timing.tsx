@@ -17,7 +17,7 @@ export interface RhythmTimingProps {
 export function RhythmTiming(props: RhythmTimingProps) {
   return (
     <View
-      class={`flex-col gap-1 w-[14rem] max-w-full py-2 px-3 bg-[#1e2637e5] nine-plate-cut text-fg ${packClass("Plate", "frame")}`}
+      class={`flex-col gap-1 w-[14rem] max-w-full py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}
       role="group"
       label={t("rhythm.timing.name")}
     >
@@ -43,7 +43,7 @@ export function RhythmTiming(props: RhythmTimingProps) {
         </View>
       </Show>
       <View class={`flex-col gap-0.5`}>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] compact:hidden`}>
+        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 compact:hidden`}>
           {t("rhythm.timing.label")}
         </Text>
         <View class={`flex flex-row flex-wrap justify-between items-center gap-y-0.5 gap-x-1 compact:flex-nowrap`}>

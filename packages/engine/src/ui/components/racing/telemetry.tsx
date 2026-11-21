@@ -57,7 +57,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
         valueText={t("racing.telemetry.rpmValue", { rpm: props.rpm })}
       >
         {/* The dial (svg arcs in the svelte): the well ring, then the revs as a nine-ring wipe from the lower left clockwise over the top (the arc spans 270°, so the wipe is the rev share of 0.75), then the red zone as a second nine-ring over its own span. */}
-        <View class="absolute inset-0 rounded-full border-[8px] border-[#ffffff29]" />
+        <View class="absolute inset-0 rounded-full border-[8px] border-white/16" />
         <View class="absolute inset-0 nine-ring bg-white/85" wipe={revFrac()} wipeStart={REV_START} />
         <Show when={props.redline > 0 && max() > 0 && props.redline < max()}>
           <View
@@ -96,7 +96,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
         >
           <Show when={(props.lights ?? -1) >= 0}>
             <View
-              class={`w-[40%] h-[0.429rem] mb-[0.143rem] overflow-hidden bg-[#ffffff38] compact:h-[0.286rem]`}
+              class={`w-[40%] h-[0.429rem] mb-[0.143rem] overflow-hidden bg-white/22 compact:h-[0.286rem]`}
               role="meter"
               label={t("racing.telemetry.lights")}
               valueMin={0}
@@ -110,7 +110,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
             </View>
           </Show>
           <Text class={`text-[4.571rem] leading-[0.82] font-bold tabular-nums whitespace-nowrap text-fg compact:text-[2.571rem] compact:leading-none`}>{formatNumber(props.speed)}</Text>
-          <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] compact:tracking-normal compact:leading-none`}>{props.units}</Text>
+          <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 compact:tracking-normal compact:leading-none`}>{props.units}</Text>
           <Show when={props.gear !== "" || props.mode !== "" || props.shift}>
             <View class={`flex-row items-center justify-center gap-x-[0.571rem] max-w-full min-w-0 mt-[0.286rem] compact:absolute compact:top-full compact:left-0 compact:right-0 compact:mt-[0.143rem] compact:gap-x-[0.357rem] compact:justify-start`}>
               <Show when={props.gear !== ""}>

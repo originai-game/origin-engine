@@ -51,17 +51,17 @@ export function StarBar(props: StarBarProps) {
         <Text class="text-[27.36px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs data-compact:text-[20.64px]">{props.valueText || formatNumber(props.value ?? 0)}</Text>
       </View>
       <View class={`relative data-compact:w-[10rem] w-[14.286rem] data-compact:h-6 h-8`}>
-        <View class="absolute inset-x-4 top-3 h-2 overflow-hidden rounded-capsule bg-[#0a1120] data-compact:inset-x-3 data-compact:top-[10px] data-compact:h-1">
-          <View class="h-full bg-[#ffcf5a]" style={{ width: `${((props.value ?? 0) / max()) * 100}%` }} />
+        <View class="absolute inset-x-4 top-3 h-2 overflow-hidden rounded-capsule bg-bg-subtle data-compact:inset-x-3 data-compact:top-[10px] data-compact:h-1">
+          <View class="h-full bg-gold" style={{ width: `${((props.value ?? 0) / max()) * 100}%` }} />
         </View>
         <For each={stars()} key={(star) => star.id}>
           {(star) => (
             <View
-              class={`absolute top-0 size-8 rounded-full border bg-[#29210e] flex-row items-center justify-center data-compact:size-6 ${lit(star().at) ? "border-[#ffcf5a] data-lit:animate-beat" : "border-white/42"}`}
+              class={`absolute top-0 size-8 rounded-full border bg-[#29210e] flex-row items-center justify-center data-compact:size-6 ${lit(star().at) ? "border-gold data-lit:animate-beat" : "border-white/42"}`}
               data-lit={lit(star().at)}
               style={{ left: `calc(${star().at} * (100% - ${props.compact ? "1.5rem" : "2rem"}))` }}
             >
-              <Icon class={`size-[74%] ${lit(star().at) ? "text-[#ffcf5a]" : "text-white/42"}`} name="star" />
+              <Icon class={`size-[74%] ${lit(star().at) ? "text-gold" : "text-white/42"}`} name="star" />
             </View>
           )}
         </For>

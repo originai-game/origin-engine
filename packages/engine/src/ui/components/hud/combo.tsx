@@ -25,7 +25,7 @@ export function Combo(props: ComboProps) {
   const state = props.state ?? "idle";
   return (
     <View
-      class="flex-col gap-y-1 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate max-w-full p-2 rounded-block"
+      class="flex-col gap-y-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate max-w-full p-2 rounded-block"
       role="status"
       data-active={state == "active"}
       data-broken={state == "broken"}

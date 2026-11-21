@@ -103,7 +103,7 @@ export function StatusGrid(props: StatusGridProps) {
         </For>
         <Show when={(props.more ?? 0) > 0}>
           <View class="flex-col items-center gap-y-[0.143rem] min-w-[2.571rem]">
-            <View class="relative size-8 overflow-hidden rounded-[0.286rem] bg-linear-to-b from-[#2a2c3a] to-[#191b28] shadow-[0px_0px_0px_1px_#00000073] border border-[#8892a8] flex-row items-center justify-center">
+            <View class="relative size-8 overflow-hidden rounded-[0.286rem] bg-linear-to-b from-[#2a2c3a] to-[#191b28] shadow-[0px_0px_0px_1px_#00000073] border border-rim-strong flex-row items-center justify-center">
               <Text class="text-[14.88px] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`+${formatNumber(props.more ?? 0)}`}</Text>
             </View>
           </View>

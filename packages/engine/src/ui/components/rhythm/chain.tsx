@@ -22,8 +22,8 @@ export function RhythmChain(props: RhythmChainProps) {
       <Show when={props.multiplier !== ""}>
         <Show when={`${props.multiplier}·${props.hit}`} keyed>
           {() => (
-          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-[#1e2637e5] nine-plate-cut animate-pop ${packClass("Plate", "frame")}`}>
-            <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7]`}>
+          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-plate-hi nine-plate-cut animate-pop ${packClass("Plate", "frame")}`}>
+            <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`}>
               {t("rhythm.chain.label")}
             </Text>
             <Text class={`text-[1.714rem] leading-[1.1] font-bold tabular-nums whitespace-nowrap text-[#38e8ff]`}>
@@ -44,7 +44,7 @@ export function RhythmChain(props: RhythmChainProps) {
           >
             <View class={`absolute inset-0 flex-row gap-[3px]`}>
               <For each={Array.from({ length: props.steps ?? 8 }, (_, i) => i)}>
-                {() => <View class={`w-[12px] shrink-0 bg-[#ffffff38]`} />}
+                {() => <View class={`w-[12px] shrink-0 bg-white/22`} />}
               </For>
             </View>
             <View

@@ -51,7 +51,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
         <Show when={props.status === "error"} fallback={
           <Show when={(props.songs ?? []).length} fallback={
             <View role="status" class={`flex-col items-center justify-center grow min-h-0`}>
-              <View class={`flex-col items-center gap-1 py-3 px-4 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
+              <View class={`flex-col items-center gap-1 py-3 px-4 bg-plate-hi nine-plate-cut ${packClass("Plate", "frame")}`}>
                 <Text class={`text-[1.143rem] text-fg text-center`}>{t("rhythm.songs.empty")}</Text>
               </View>
             </View>
@@ -77,7 +77,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                         class={`transition duration-317 w-full min-w-0 min-h-[3.143rem] py-1 pl-1 pr-3 compact:data-selected:pl-1 bg-[#0b0f1adb] nine-plate-cut hover:bg-[#141c2eea] disabled:opacity-62 disabled:bg-[#0b0f1adb] data-selected:ml-[24px] compact:data-selected:ml-0 data-selected:py-2 data-selected:bg-[#38e8ff3d]`}
                       >
                         <View class={`flex-row items-center gap-4 w-full min-w-0`}>
-                          <View class={`shrink size-[4.286rem] compact:size-[3.429rem] data-selected:size-[5.714rem] rounded-[0.8rem] bg-linear-to-b from-[#ffffffbf] via-[#ffffff38] to-[#ffffff24] p-[2px] data-selected:from-white data-selected:via-[#ffffff59] data-selected:to-[#38e8ff]`}>
+                          <View class={`shrink size-[4.286rem] compact:size-[3.429rem] data-selected:size-[5.714rem] rounded-[0.8rem] bg-linear-to-b from-white/75 via-white/22 to-white/14 p-[2px] data-selected:from-white data-selected:via-white/35 data-selected:to-[#38e8ff]`}>
                             <Show when={s().jacket} fallback={
                               <View class={`size-full rounded-[0.7rem] bg-[#12182a] flex-row items-center justify-center`}>
                                 <Icon class={`size-[44%] text-[#38e8ff]`} name="music" />
@@ -153,7 +153,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                       class={`group/detail flex-[4] min-w-0 min-h-0 p-1 compact:flex-none compact:w-full compact:p-0 ${packClass("Panel", "frame")}`}
                     >
                       <View class={`flex-row items-start gap-4 w-full min-w-0 compact:items-center`}>
-                        <View class={`shrink w-[42%] max-w-[21.429rem] compact:w-[6.571rem] compact:max-w-none aspect-square rounded-[1.2rem] bg-linear-to-b from-white to-[#38e8ff] shadow-[0px_0px_10px_#38e8ff] p-[3px] group-data-locked/detail:from-[#ffffffbf] group-data-locked/detail:via-[#ffffff38] group-data-locked/detail:to-[#ffffff24] group-data-locked/detail:shadow-none`}>
+                        <View class={`shrink w-[42%] max-w-[21.429rem] compact:w-[6.571rem] compact:max-w-none aspect-square rounded-[1.2rem] bg-linear-to-b from-white to-[#38e8ff] shadow-[0px_0px_10px_#38e8ff] p-[3px] group-data-locked/detail:from-white/75 group-data-locked/detail:via-white/22 group-data-locked/detail:to-white/14 group-data-locked/detail:shadow-none`}>
                           <View class={`relative size-full rounded-[1rem] bg-[#12182a]`}>
                             <Show when={s().jacket} fallback={
                               <View class={`absolute inset-0 flex-row items-center justify-center`}>
@@ -188,12 +188,12 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                             {s().artist}
                           </Text>
                           <View class={`flex flex-row flex-wrap gap-2 py-1 items-stretch max-w-full compact:flex-nowrap compact:items-center compact:py-0`}>
-                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
-                              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] compact:hidden`}>{t("rhythm.songs.bpmLabel")}</Text>
+                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut ${packClass("Plate", "frame")}`}>
+                              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 compact:hidden`}>{t("rhythm.songs.bpmLabel")}</Text>
                               <Text class={`text-[2.429rem] compact:text-[1.143rem] leading-[1.05] font-bold tabular-nums whitespace-nowrap text-fg`}>{s().bpm}</Text>
                             </View>
-                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
-                              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] compact:hidden`}>{t("rhythm.songs.lengthLabel")}</Text>
+                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut ${packClass("Plate", "frame")}`}>
+                              <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 compact:hidden`}>{t("rhythm.songs.lengthLabel")}</Text>
                               <Text class={`text-[2.429rem] compact:text-[1.143rem] leading-[1.05] font-bold tabular-nums whitespace-nowrap text-fg`}>{s().length}</Text>
                             </View>
                             <View
@@ -206,7 +206,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               data-selected={s().id === props.previewing}
                               class={`min-h-[3.143rem] compact:min-h-[2.514rem] min-w-[8.571rem] compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-[#141b2de6] nine-plate-cut hover:bg-[#1c2438ee] data-selected:bg-[#38e8ff] disabled:opacity-50 disabled:bg-[#141b2de6] ${packClass("Button", "plate")}`}
                             >
-                              <Text class={`shrink h-[1.75rem] min-w-[1.75rem] px-1 text-center rounded-[4.576px] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] text-[#0b0f18] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] pointer-coarse:hidden`} glyph="details" />
+                              <Text class={`shrink h-[1.75rem] min-w-[1.75rem] px-1 text-center rounded-[4.576px] bg-linear-to-b from-white to-[#c9d1e2] text-[#0b0f18] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] pointer-coarse:hidden`} glyph="details" />
                               <Show when={s().id === props.previewing}>
                                 <View class={`shrink flex-row items-end gap-0.5 h-[11px] compact:hidden`}>
                                   <View class={`w-[3px] h-[60%] bg-[#38e8ff] animate-pulse`} />
@@ -229,7 +229,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
           </Show>
           }>
             <View role="alert" data-status-error={true} class={`flex-col items-center justify-center grow min-h-0`}>
-              <View class={`flex-col items-center gap-1 py-3 px-4 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
+              <View class={`flex-col items-center gap-1 py-3 px-4 bg-plate-hi nine-plate-cut ${packClass("Plate", "frame")}`}>
                 <Text class={`text-[1.143rem] text-fg text-center`}>{t("rhythm.songs.error")}</Text>
                 <View
                   role="button"
@@ -244,7 +244,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
           </Show>
         }>
           <View role="status" class={`flex-col items-center justify-center grow min-h-0`}>
-            <View class={`flex-col items-center gap-1 py-3 px-4 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
+            <View class={`flex-col items-center gap-1 py-3 px-4 bg-plate-hi nine-plate-cut ${packClass("Plate", "frame")}`}>
               <Spinner name={t("rhythm.songs.loading")} />
               <Text class={`text-[1.143rem] text-fg text-center`}>{t("rhythm.songs.loading")}</Text>
             </View>

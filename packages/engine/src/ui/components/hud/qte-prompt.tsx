@@ -36,12 +36,12 @@ export function QtePrompt(props: QtePromptProps) {
   const state = props.state ?? "active";
   const hold = (props.mode ?? "press") === "hold";
   const active = () => state === "active" && !props.disabled;
-  const stateInk = () => state === "success" ? "text-[#45e08f]" : state === "failure" || state === "expired" ? "text-[#ff9599]" : "text-fg-muted";
+  const stateInk = () => state === "success" ? "text-success" : state === "failure" || state === "expired" ? "text-danger" : "text-fg-muted";
   const holdFill = createSignal(0);
   const held = () => holdFill() > 0;
   return (
     <View
-      class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2 ${packClass("Plate", "frame")}`}
+      class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2 ${packClass("Plate", "frame")}`}
       label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
       busy={state === "waiting"}
       data-state-success={state === "success"}
@@ -49,7 +49,7 @@ export function QtePrompt(props: QtePromptProps) {
     >
       <Text class="text-[0.929rem] font-semibold text-fg text-shadow-xs">{(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}</Text>
       <View
-        class={`relative flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed active:scale-96 disabled:opacity-50 disabled:scale-100`}
+        class={`relative flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed active:scale-96 disabled:opacity-50 disabled:scale-100`}
         role="button"
         label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
         {...(hold ? { hold: Math.max(props.holdMs ?? 600, 1) / 1000, onHold: (e: UiEvent) => holdFill.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1)) } : {})}

@@ -25,7 +25,7 @@ export interface ActionButtonProps {
 export function ActionButton(props: ActionButtonProps) {
   return (
     <View
-      class={`relative rounded-capsule border-2 border-[#8892a8] bg-[#444c5e] shadow-float active:scale-97 disabled:opacity-45 duration-160 data-primary:size-20 data-primary:border-transparent data-primary:bg-[#e8e8ed] size-16`}
+      class={`relative rounded-capsule border-2 border-rim-strong bg-[#444c5e] shadow-float active:scale-97 disabled:opacity-45 duration-160 data-primary:size-20 data-primary:border-transparent data-primary:bg-accent size-16`}
       touchButton={props.action}
       data-primary={props.primary}
       disabled={props.disabled}
@@ -37,9 +37,9 @@ export function ActionButton(props: ActionButtonProps) {
         <View class="absolute inset-0 nine-ring bg-gold/50" wipe={Math.min(Math.max(props.charge ?? 0, 0), 1)} data-charged={(props.charge ?? 0) >= 1} />
       </Show>
       <Show when={props.icon} fallback={
-        <Text class="text-sm whitespace-nowrap text-fg data-primary:text-[#1a1a1e]">{props.label}</Text>
+        <Text class="text-sm whitespace-nowrap text-fg data-primary:text-accent-fg">{props.label}</Text>
       }>
-        <Icon class="size-8 text-fg data-primary:text-[#1a1a1e]" name={props.icon} />
+        <Icon class="size-8 text-fg data-primary:text-accent-fg" name={props.icon} />
       </Show>
     </View>
   );

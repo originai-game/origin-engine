@@ -27,7 +27,7 @@ function clamp01(v: number): number {
 }
 
 function RadialMeterWheel(props: { size: string; inset: string; fill: number; exhausted: boolean }) {
-  const ink = () => (props.exhausted ? "bg-[#ff4d5e]" : "bg-[#45e08f]");
+  const ink = () => (props.exhausted ? "bg-[#ff4d5e]" : "bg-success");
   return (
     <View class={`absolute ${props.size}`}>
       <View class="absolute inset-0 rounded-full border border-rim shadow-[0px_0px_0px_1px_#00000073] bg-white/14" />

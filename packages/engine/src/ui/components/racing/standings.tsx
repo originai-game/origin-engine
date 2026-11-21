@@ -41,7 +41,7 @@ export function RacingStandings(props: RacingStandingsProps) {
       data-fallback={!props.hasPlayer}
     >
       <Show when={rows().length} fallback={
-        <Text class={`py-[0.286rem] px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] bg-linear-to-r from-[#0d1526db] to-[#0d152659]`} role="status">{t("racing.standings.empty")}</Text>
+        <Text class={`py-[0.286rem] px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 bg-linear-to-r from-[#0d1526db] to-[#0d152659]`} role="status">{t("racing.standings.empty")}</Text>
       }>
         <Scroll class="w-full min-h-0 flex-1">
           <View class="flex-col w-full gap-y-[0.286rem] compact:gap-y-[0.143rem]" role="list" label={name()}>
@@ -58,11 +58,11 @@ export function RacingStandings(props: RacingStandingsProps) {
                   data-player={r().player}
                   data-retired={r().state === "retired"}
                 >
-                  <Text class={`shrink-0 w-[2.143rem] leading-[1.857rem] text-center text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-[#ffffff24] group-data-player/srow:bg-[#00000033] compact:w-[1.714rem] compact:leading-[1.429rem] compact:text-[0.929rem]`}>
+                  <Text class={`shrink-0 w-[2.143rem] leading-[1.857rem] text-center text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-white/14 group-data-player/srow:bg-black/20 compact:w-[1.714rem] compact:leading-[1.429rem] compact:text-[0.929rem]`}>
                     {formatNumber(r().position)}
                   </Text>
                   <View
-                    class={`shrink-0 w-[0.357rem] h-[1.429rem] bg-[#ffffff8c] compact:h-[1rem]`}
+                    class={`shrink-0 w-[0.357rem] h-[1.429rem] bg-white/55 compact:h-[1rem]`}
                     style={{ backgroundColor: r().color || undefined }}
                   />
                   <Text class={`flex-1 min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-[0.929rem]`}>{r().name}</Text>

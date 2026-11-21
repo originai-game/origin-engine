@@ -72,7 +72,7 @@ export function StatBar(props: StatBarProps) {
       data-critical={critical()}
       data-bare={props.bare}
     >
-      <View class={`flex-row items-center gap-1 ${props.bare ? "" : "border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate"} py-1 px-2`}>
+      <View class={`flex-row items-center gap-1 ${props.bare ? "" : "border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate"} py-1 px-2`}>
         <Show when={props.icon}>
           <Icon class="size-4 shrink-0" name={props.icon} />
         </Show>

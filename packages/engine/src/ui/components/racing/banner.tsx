@@ -45,7 +45,7 @@ export function RacingBanner(props: RacingBannerProps) {
         </Show>
       </View>
       <Show when={props.detail !== ""}>
-        <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.detail}</Text>
+        <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.detail}</Text>
       </Show>
     </>
   );
@@ -58,7 +58,7 @@ export function RacingBanner(props: RacingBannerProps) {
               when={kind() === "countdown"}
               fallback={
                 <View
-                  class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-[#1e2637e5] nine-plate-cut transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 compact:py-[0.286rem] compact:px-[1rem] ${packClass("Plate", "frame")}`}
+                  class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-plate-hi nine-plate-cut transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 compact:py-[0.286rem] compact:px-[1rem] ${packClass("Plate", "frame")}`}
                   data-kind-countdown={false}
                 >
                   {plateInner()}
@@ -66,7 +66,7 @@ export function RacingBanner(props: RacingBannerProps) {
               }
             >
               <View
-                class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-[#1e2637e5] nine-plate-cut animate-stamp compact:py-[0.286rem] compact:px-[1rem] ${packClass("Plate", "frame")}`}
+                class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-plate-hi nine-plate-cut animate-stamp compact:py-[0.286rem] compact:px-[1rem] ${packClass("Plate", "frame")}`}
                 data-kind-countdown={true}
               >
                 {plateInner()}

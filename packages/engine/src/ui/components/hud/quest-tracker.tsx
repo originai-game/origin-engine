@@ -20,7 +20,7 @@ export interface RpgQuestTrackerProps {
  */
 export function RpgQuestTracker(props: RpgQuestTrackerProps) {
   return (
-    <View class={`gap-y-[0.357rem] gap-x-2 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate w-[17.857rem] max-w-full p-2 rounded-block border data-empty:hidden compact:w-full`} role="status" label={props.label !== '' ? props.label : t("rpg.quests.main")} data-empty={!props.name}>
+    <View class={`gap-y-[0.357rem] gap-x-2 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate w-[17.857rem] max-w-full p-2 rounded-block border data-empty:hidden compact:w-full`} role="status" label={props.label !== '' ? props.label : t("rpg.quests.main")} data-empty={!props.name}>
       <Show when={props.name}>
         <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-gold whitespace-nowrap text-shadow-xs text-shadow-bg/55 overflow-hidden compact:hidden`}>
           {props.label !== '' ? props.label : t("rpg.quests.main")}
