@@ -169,8 +169,6 @@ fn viewport_wire(v: &Viewport, hud_max_aspect: f32) -> crate::host::wire::Viewpo
         coarse_pointer: v.coarse_pointer,
         reduced_motion: Some(v.reduced_motion),
         high_contrast: Some(v.high_contrast),
-        reduced_transparency: Some(v.reduced_transparency),
-        mac_keys: Some(v.mac_keys),
         covered: Some(rect_wire(&v.covered)),
         breakpoint: match v.breakpoint() {
             og_ui::Breakpoint::PhonePortrait => wire::Breakpoint::PhonePortrait,
@@ -361,7 +359,6 @@ fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> crate::host::
                     cjk_tracking_em: s.cjk_tracking_em,
                     weight: s.weight.into(),
                     uppercase: s.uppercase,
-                    features: s.features.tags().map(str::to_string).collect(),
                 },
             );
         }
@@ -413,13 +410,11 @@ fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> crate::host::
             ("bounce", d.bounce),
         ]),
         style: style.to_string(),
-        style_version: if theme.art.legacy { 1 } else { 2 },
         contrast: match theme.contrast {
             og_ui::Contrast::Standard => wire::Contrast::Standard,
             og_ui::Contrast::High => wire::Contrast::High,
         },
         reduced_motion: theme.reduced_motion,
-        reduced_transparency: theme.reduced_transparency,
         glass_backdrop: match theme.glass_backdrop.unwrap_or(og_ui::GlassBackdrop::None) {
             og_ui::GlassBackdrop::None => wire::GlassBackdrop::None,
             og_ui::GlassBackdrop::Auto => wire::GlassBackdrop::Auto,
@@ -436,8 +431,6 @@ fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> crate::host::
         },
         color_vision_strength: theme.color_vision_strength,
         text_scale: theme.text_scale,
-        unit: theme.unit,
-        tokens: tokens_json(&theme.tokens),
     }
 }
 
@@ -445,144 +438,6 @@ fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> crate::host::
 fn hex(c: Srgba) -> String {
     let [r, g, b] = c.rgb;
     og_core::color::hex_string([r, g, b, (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8])
-}
-
-/// The style's tokens (docs/ui.md §3.1) as og.ui.theme answers them
-/// (`UiTheme.tokens`): type by role and breakpoint, the space, size,
-/// radius and stroke scales, elevation, the shape language per element
-/// class, the springs, the rarity, team and series colours, and each UI
-/// event's feedback set.
-fn tokens_json(t: &og_ui::StyleTokens) -> Value {
-    use og_ui::tokens::*;
-    // A token's type names a role, never a document's family.
-    let font = |f: og_ui::FontRole| match f.base() {
-        og_ui::FontRole::Display => "display",
-        og_ui::FontRole::Mono => "mono",
-        og_ui::FontRole::Rounded => "rounded",
-        _ => "body",
-    };
-    let mut typography = Map::new();
-    for &role in TypeRole::ALL {
-        let mut by = Map::new();
-        for bp in og_ui::Breakpoint::ALL {
-            let k = t.typography.get(role, bp);
-            by.insert(
-                bp.name().to_string(),
-                json!({ "size": k.size, "lineHeight": k.line_height, "trackingEm": k.tracking_em, "cjkTrackingEm": k.cjk_tracking_em, "weight": k.weight, "font": font(k.font), "uppercase": k.uppercase, "features": k.features.tags().collect::<Vec<_>>() }),
-            );
-        }
-        typography.insert(role.name().to_string(), Value::Object(by));
-    }
-    let scale = |names: &[&str], v: &[f32]| -> Value {
-        Value::Object(
-            names
-                .iter()
-                .zip(v)
-                .map(|(n, v)| (n.to_string(), json!(v)))
-                .collect(),
-        )
-    };
-    let names = |all: &[&'static str]| all.to_vec();
-    let space = scale(
-        &names(&SpaceStep::ALL.iter().map(|s| s.name()).collect::<Vec<_>>()),
-        &t.space,
-    );
-    let size = scale(
-        &names(&SizeStep::ALL.iter().map(|s| s.name()).collect::<Vec<_>>()),
-        &t.size,
-    );
-    let radius = scale(
-        &names(&RadiusStep::ALL.iter().map(|s| s.name()).collect::<Vec<_>>()),
-        &t.radius,
-    );
-    let stroke = scale(
-        &names(
-            &StrokeWidth::ALL
-                .iter()
-                .map(|s| s.name())
-                .collect::<Vec<_>>(),
-        ),
-        &t.stroke,
-    );
-    let elevation: Map<String, Value> = Level::ALL
-        .iter()
-        .map(|&l| {
-            let shadows: Vec<Value> = t
-                .elevation(l)
-                .shadows()
-                .iter()
-                .map(|s| json!({ "dx": s.dx, "dy": s.dy, "blur": s.blur, "spread": s.spread, "color": hex(s.color) }))
-                .collect();
-            (l.name().to_string(), json!(shadows))
-        })
-        .collect();
-    let shape: Map<String, Value> = ElementClass::ALL
-        .iter()
-        .map(|&c| {
-            let k = t.shape(c);
-            (
-                c.name().to_string(),
-                json!({ "corner": k.corner.name(), "radius": k.radius }),
-            )
-        })
-        .collect();
-    let springs: Map<String, Value> = SpringName::ALL
-        .iter()
-        .map(|&n| {
-            let k = t.spring(n);
-            (
-                n.name().to_string(),
-                json!({ "durationMs": k.duration_ms, "bounce": k.bounce }),
-            )
-        })
-        .collect();
-    let swatches = |v: &[Swatch]| -> Vec<Value> { v.iter().map(|s| json!(hex(s.color))).collect() };
-    let rarity: Map<String, Value> = Rarity::ALL
-        .iter()
-        .map(|&r| (r.name().to_string(), json!(hex(t.rarity(r).color))))
-        .collect();
-    // What carries each colour token's meaning besides its hue (docs/ui.md
-    // §3.2): an icon (its index in the style's icons), a pattern or pips.
-    let cues: Map<String, Value> = colour_token_names()
-        .into_iter()
-        .filter_map(|name| {
-            let v = match t.colors.cue(&name)? {
-                Cue::None => return None,
-                Cue::Icon(i) => json!({ "icon": i }),
-                Cue::Pattern(p) => json!({ "pattern": p.name() }),
-                Cue::Pips(n) => json!({ "pips": n }),
-            };
-            Some((name, v))
-        })
-        .collect();
-    let feedback: Map<String, Value> = SoundEvent::ALL
-        .iter()
-        .map(|&e| {
-            let f = t.feedback(e);
-            let pulses: Vec<[f32; 4]> = f.haptic.pulses().iter().map(|p| [p.start_ms, p.ms, p.low, p.high]).collect();
-            (
-                e.name().to_string(),
-                json!({ "sounds": f.count, "volume": f.volume, "playbackRate": f.pitch, "haptic": pulses }),
-            )
-        })
-        .collect();
-    json!({
-        "typography": typography,
-        "space": space,
-        "size": size,
-        "radius": radius,
-        "stroke": stroke,
-        "elevation": elevation,
-        "shape": shape,
-        "springs": springs,
-        "staggerMs": t.motion.stagger_ms,
-        "overshoot": t.motion.overshoot,
-        "rarity": rarity,
-        "cues": cues,
-        "team": swatches(&t.colors.team),
-        "series": t.colors.series.iter().map(|c| hex(*c)).collect::<Vec<_>>(),
-        "feedback": feedback,
-    })
 }
 
 /// A rectangle as the IDL's `UiRect`.

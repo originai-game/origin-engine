@@ -17,7 +17,6 @@ One step of the type ramp.
 | `cjkTrackingEm` | `number` | `0` | — | — | — | Tracking of text containing CJK characters, in em. |
 | `weight` | `number` | `0` | — | — | — | The face weight (100 to 900); zero takes the font role's own face. |
 | `uppercase` | `boolean` | `false` | — | — | — | Style-driven locale-sensitive uppercase, applied before measurement without rewriting source text or editable values. |
-| `features` | `readonly string[]` | `[]` | — | — | — | The OpenType features the step turns on, as tags: smcp (small caps), c2sc (capitals to small caps), tnum (tabular figures), lnum (lining figures), case (case-sensitive forms). A style sets them after a type role's font (`display 42 48 0.02 700 display smcp`); they apply where the role's font is imported with the same `features` line, and a font without one draws its defaults. |
 
 ```ogt
 struct TypeStep {
@@ -35,8 +34,7 @@ struct TypeStep {
   field cjkTrackingEm f32 "Tracking of text containing CJK characters, in em."
   field weight u32 "The face weight (100 to 900); zero takes the font role's own face."
   field uppercase bool "Style-driven locale-sensitive uppercase, applied before measurement without rewriting source text or editable values."
-  field features List.String "The OpenType features the step turns on, as tags: smcp (small caps), c2sc (capitals to small caps), tnum (tabular figures), lnum (lining figures), case (case-sensitive forms). A style sets them after a type role's font (`display 42 48 0.02 700 display smcp`); they apply where the role's font is imported with the same `features` line, and a font without one draws its defaults."
 }
 ```
 
-<sub>Module `ui` line 256</sub>
+<sub>Module `ui` line 243</sub>

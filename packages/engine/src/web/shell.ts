@@ -14,13 +14,8 @@
 //
 // Accessibility: the UI's accessibility tree is mirrored into the page over
 // the canvas (a11y.ts), and the page's `prefers-reduced-motion: reduce`,
-// `prefers-contrast: more` and `prefers-reduced-transparency: reduce` reach
-// the UI with the viewport (og-ui's theme takes them over the game's
-// settings; glass, scrims and translucent fills become opaque), followed as
-// they change. So does the platform's keyboard: on Apple platforms
-// `macKeys` gives og-ui's text controls macOS's editing keys (Command for
-// the shortcuts and the line's ends, Option by words, Control+A and E). A
-// Mac's browser sends no keyup for a key released while Command is held,
+// and `prefers-contrast: more` reach the UI with the viewport (they take
+// over the game's settings), followed as they change. A Mac's browser sends no keyup for a key released while Command is held,
 // so the shell releases those keys itself when Command goes up.
 //
 // Focus: a key held when the window loses focus (Alt+Tab, a click into
@@ -83,7 +78,7 @@ export { webGpuMissing } from "./webgpu.ts";
 export { FRAME_DEADLINE_MS } from "./shell/deadline.ts";
 export { releaseHeld } from "./shell/input.ts";
 export type { RoomHost } from "./shell/platform.ts";
-export { PAGE_PREFERENCES, macKeys, pagePreferences, pixelSize, storedLowPower, viewportExtremes, watchPixelRatio } from "./shell/viewport.ts";
+export { PAGE_PREFERENCES, pagePreferences, pixelSize, storedLowPower, viewportExtremes, watchPixelRatio } from "./shell/viewport.ts";
 export { LANES_MAX_THREADS, laneChoice } from "./lanes.ts";
 
 export interface ShellOptions {

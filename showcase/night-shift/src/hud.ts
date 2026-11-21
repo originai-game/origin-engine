@@ -13,14 +13,6 @@ const DROP = { x: 0, z: -24 };
 /** The map's extent (tools/draw-map.sh): x -25 to 25 across, z -40 to 10 down. */
 const onMap = (x: number, z: number): { x: number; y: number } => ({ x: (x + 25) / 50, y: (z + 40) / 50 });
 
-/** The engine's shared ink icons, eight a row, in the atlas's order. */
-const INK_ICONS = [
-  "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield",
-  "potion", "gem", "key", "map", "bolt", "clock", "trophy", "home",
-  "plus", "close", "check", "play", "back", "bag", "bomb", "crown",
-  "flag", "apple", "leaf", "fire", "drop", "skull", "music", "person",
-];
-
 interface Marker { readonly id: string; readonly x: number; readonly y: number; readonly tone: string; readonly player: boolean }
 const HINTS = [
   { action: "weather", hint: "Weather", hold: false },
@@ -58,7 +50,6 @@ export const HudAssets = defineResource("HudAssets", { map: f64() });
 export function loadHud(world: World): void {
   og.ui.configure(world, {
     font: must(og.load.font(world, "fonts/latin/NotoSans-Latin.ttf")),
-    fallbackIcons: { texture: must(og.load.texture(world, "ui/icons/ink-icons.png")), columns: 8, rows: 4, names: INK_ICONS },
   });
   must(world.resource(HudAssets)).map = must(og.load.texture(world, "textures/map.png")) as number;
 }

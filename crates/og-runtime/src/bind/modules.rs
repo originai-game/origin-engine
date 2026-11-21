@@ -444,12 +444,8 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         coarse_pointer: w.coarse_pointer,
         reduced_motion: w.reduced_motion.unwrap_or(false),
         high_contrast: w.high_contrast.unwrap_or(false),
-        reduced_transparency: w.reduced_transparency.unwrap_or(false),
-        // Absent, the platform's own keys (the web host always says; a
-        // native host's surface without a renderer, og-host-node's
-        // og_node_attach_offscreen, leaves it to the platform, as
-        // `native_keys` does for the rendered one).
-        mac_keys: w.mac_keys.unwrap_or(cfg!(target_os = "macos")),
+        reduced_transparency: false,
+        mac_keys: cfg!(target_os = "macos"),
         covered: og_ui::Rect::new(c.x, c.y, c.width, c.height),
         // The renderer's surface says (viewport_of).
         wide_gamut: false,

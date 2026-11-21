@@ -27,4 +27,4 @@ enum DensityMode {
 }
 ```
 
-<sub>Module `ui` line 25</sub>
+<sub>Module `ui` line 24</sub>
