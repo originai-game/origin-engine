@@ -35,10 +35,9 @@ export interface MinimapProps {
 
 /**
  * The map of the place, its markers on it and a zone name under: the
- * texture or a grid over the stage colour when there is none. The style
- * crops the texture to the region with object-view-box, which has no TSX
- * surface and clip-path is not available: a textured map shows its whole
- * texture for now. The grid's SVG is drawn as thin views on the tile.
+ * texture or a grid over the stage colour when there is none. The region
+ * crops by layout: the texture draws oversized and offset inside the
+ * overflowing well. The grid's SVG is drawn as thin views on the tile.
  */
 const TONES: Record<string, string> = {
   info: "#5cc8ff",
@@ -68,8 +67,14 @@ export function Minimap(props: MinimapProps) {
           </View>
         }>
           <Image
-            class="absolute inset-0 size-full"
+            class="absolute"
             src={props.texture ?? 0}
+            style={{
+              width: `${100 / (Math.max((props.u1 ?? 1) - (props.u0 ?? 0), 0.0001))}%`,
+              height: `${100 / (Math.max((props.v1 ?? 1) - (props.v0 ?? 0), 0.0001))}%`,
+              left: `${(-(props.u0 ?? 0) / Math.max((props.u1 ?? 1) - (props.u0 ?? 0), 0.0001)) * 100}%`,
+              top: `${(-(props.v0 ?? 0) / Math.max((props.v1 ?? 1) - (props.v0 ?? 0), 0.0001)) * 100}%`,
+            }}
           />
         </Show>
         <For each={props.markers ?? []} key={(m) => m.id}>

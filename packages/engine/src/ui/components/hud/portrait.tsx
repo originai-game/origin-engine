@@ -6,6 +6,8 @@ export interface HudPortraitProps {
   portrait?: Texture | 0;
   /** Out of the fight: the art greyed. */
   dimmed?: boolean;
+  /** Extra classes for the root, to size it (NSH style). */
+  class?: string;
 }
 
 /**
@@ -17,7 +19,7 @@ export interface HudPortraitProps {
  */
 export function HudPortrait(props: HudPortraitProps) {
   return (
-    <View class={`relative size-[2.714rem] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 data-dimmed:opacity-45`} data-dimmed={props.dimmed}>
+    <View class={`relative size-[2.714rem] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 data-dimmed:opacity-45 ${props.class ?? ""}`} data-dimmed={props.dimmed}>
       <Show when={props.portrait} fallback={
         <View class="absolute inset-[0.286rem] rounded-[0.714rem] bg-linear-to-b from-[#2a2c3a] to-[#191b28] flex-row items-center justify-center overflow-hidden">
           <Icon class="size-1/2 text-white/66" name="person" />

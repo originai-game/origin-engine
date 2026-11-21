@@ -63,6 +63,8 @@ export function ShooterRadar(props: ShooterRadarProps) {
           />
         </Show>
         <View class="absolute inset-0 bg-[conic-gradient(from_-32deg,rgb(255_255_255/0.28),rgb(255_255_255/0.04)_64deg,transparent_64deg)]" />
+        <View class="absolute left-1/2 top-1/2 size-[45%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/14" />
+        <View class="absolute left-1/2 top-1/2 size-[92%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/14" />
         <For each={props.blips ?? []} key={(b) => b.id}>
           {(b) => (
             <View

@@ -31,6 +31,8 @@ export interface HudSlotProps {
   chargesMax?: number;
   /** An ultimate's charge, 0 to 1: its ring's lit arc and, under 1, the percent on it. */
   charge?: number;
+  /** Extra classes for the root, to size it (NSH style). */
+  class?: string;
 }
 
 /**
@@ -58,7 +60,7 @@ export function HudSlot(props: HudSlotProps) {
   const unaffordable = () => props.unaffordable ?? false;
   return (
     <View
-      class="relative w-fit max-w-full flex-col items-center gap-y-[0.357rem]"
+      class={`relative w-fit max-w-full flex-col items-center gap-y-[0.357rem] ${props.class ?? ""}`}
       role="group"
       label={unaffordable() && (props.reason ?? "") !== "" ? t("hud.slot.state", { name: props.name, state: props.reason }) : props.name}
       data-ultimate={ultimate()}
