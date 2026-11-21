@@ -5,6 +5,8 @@
 pub mod codec;
 mod rect;
 mod transform;
+mod viewport;
 
 pub use rect::*;
 pub use transform::*;
+pub use viewport::*;

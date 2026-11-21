@@ -12,6 +12,7 @@ use crate::theme;
 pub use crate::theme::{
     Controls, Density, Durations, Palette, Radius, Space, Spring, Srgba, State, TypeRamp, TypeStep,
 };
+use og_ui_model::Breakpoint;
 
 /// The control sizes of each input (CSS `--density-compact-*`,
 /// `--density-pad-*`, `--density-touch-*`); [`Theme::sizes`] takes the
@@ -170,63 +171,6 @@ pub enum Contrast {
     High,
 }
 
-/// The play surface's size class, for layouts that change shape.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Breakpoint {
-    /// The shorter side under 600 CSS px, taller than wide.
-    PhonePortrait,
-    /// The shorter side under 600 CSS px, wider than tall.
-    PhoneLandscape,
-    /// The shorter side 600 or more, under 1024 wide.
-    Tablet,
-    /// 1024 wide or more (with the shorter side 600 or more).
-    #[default]
-    Desktop,
-}
-
-impl Breakpoint {
-    /// Every size class, in this order (the index of a per-breakpoint array).
-    pub const ALL: [Breakpoint; 4] = [
-        Breakpoint::PhonePortrait,
-        Breakpoint::PhoneLandscape,
-        Breakpoint::Tablet,
-        Breakpoint::Desktop,
-    ];
-
-    pub fn from_name(name: &str) -> Option<Breakpoint> {
-        Breakpoint::ALL.into_iter().find(|b| b.name() == name)
-    }
-
-    pub fn of(width: f32, height: f32) -> Breakpoint {
-        let short = width.min(height);
-        if short < 600.0 {
-            if height >= width {
-                Breakpoint::PhonePortrait
-            } else {
-                Breakpoint::PhoneLandscape
-            }
-        } else if width < 1024.0 {
-            Breakpoint::Tablet
-        } else {
-            Breakpoint::Desktop
-        }
-    }
-
-    pub fn name(self) -> &'static str {
-        match self {
-            Breakpoint::PhonePortrait => "phonePortrait",
-            Breakpoint::PhoneLandscape => "phoneLandscape",
-            Breakpoint::Tablet => "tablet",
-            Breakpoint::Desktop => "desktop",
-        }
-    }
-
-    /// A phone in either orientation.
-    pub fn is_phone(self) -> bool {
-        matches!(self, Breakpoint::PhonePortrait | Breakpoint::PhoneLandscape)
-    }
-}
-
 /// The largest player text scale (docs/ui.md §6.1): 150 %, the bar every
 /// screen is held to, until 200 % returns as its own batch (the owner,
 /// 2026-11-04). A larger UiDesc.textScale lays out at this.
@@ -333,7 +277,7 @@ pub struct Theme {
     #[doc(hidden)]
     pub ramp_scale: f32,
     /// The og-ui unit a game pins (IDL `UiDesc.unitScale`), 1 to 2; 0 (the
-    /// default) is auto: [`Theme::auto_unit`] of the play surface.
+    /// default) is auto: [`og_ui_model::auto_unit`] of the play surface.
     pub unit_pin: f32,
     /// The gamut the output presents (the viewport's, [`crate::Viewport::wide_gamut`]):
     /// CSS colours outside sRGB draw in Display P3 where it is P3.
@@ -533,23 +477,6 @@ impl Theme {
             self.color_vision_filter,
             self.color_vision_strength,
         )
-    }
-
-    /// The og-ui unit of a play surface (docs/ui.md §6.1): on a mouse or
-    /// pad surface its 1080p-equivalent height (the shorter of the height
-    /// and the width's 16:9 height, as `og ui check` reads its text sizes)
-    /// over 720, 1 to 2, so the smallest step that is 12 px at 720p is
-    /// 18 px at 1080p; a touch surface keeps CSS px (1).
-    pub fn auto_unit(viewport: &crate::Viewport) -> f32 {
-        if viewport.coarse_pointer || viewport.breakpoint().is_phone() {
-            return 1.0;
-        }
-        let h = viewport.height.min(viewport.width * 9.0 / 16.0);
-        if h.is_finite() {
-            (h / 720.0).clamp(1.0, 2.0)
-        } else {
-            1.0
-        }
     }
 
     /// This theme recording og-ui unit `unit` (1 to 2): what the frame

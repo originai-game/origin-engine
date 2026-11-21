@@ -26,8 +26,9 @@
 //! [`StyleTokens::entries`] writes one back as `.ogt` blocks.
 
 use crate::layout::FontRole;
-use crate::style::{Breakpoint, Durations, Srgba, Theme, TypeStep};
+use crate::style::{Durations, Srgba, Theme, TypeStep};
 use crate::style_file::{Shadow, StylePart, parse_color};
+use og_ui_model::Breakpoint;
 
 macro_rules! names {
     ($(#[doc = $doc:literal])* $ty:ident { $($(#[doc = $d:literal])* $v:ident $n:literal,)* }) => {

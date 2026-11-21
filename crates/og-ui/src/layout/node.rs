@@ -695,7 +695,7 @@ pub struct Placement {
 /// What a breakpoint or orientation variant's query reads of the viewport.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Media {
-    pub breakpoint: crate::style::Breakpoint,
+    pub breakpoint: og_ui_model::Breakpoint,
     pub portrait: bool,
     pub width: f32,
 }

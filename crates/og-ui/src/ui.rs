@@ -47,7 +47,7 @@ use crate::layout::{
 };
 use crate::motion::Fx;
 use crate::motion::{Timeline, UiEvent};
-use crate::style::{Breakpoint, Density, Srgba, Theme, TypeStep};
+use crate::style::{Density, Srgba, Theme, TypeStep};
 use crate::style_file::{Ink, Ornament, StylePart};
 use crate::text::{FontMetrics, UiFont};
 use og_core::IdMap;
@@ -55,6 +55,7 @@ use og_core::glam::Vec2;
 use og_draw::{Overlay, TextureHandle};
 use og_probe::UiElement;
 use og_probe::hooks::{find_by_id, find_by_text};
+use og_ui_model::{Breakpoint, HUD_MAX_ASPECT, Viewport};
 
 /// What happened to an element this tick. Edges (`clicked`, `changed`,
 /// `submitted`) are true for exactly one tick.
@@ -536,12 +537,12 @@ fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
 }
 
 /// The og-ui unit for a frame on the CSS `viewport`: the game's pin, else
-/// the surface's ([`Theme::auto_unit`]).
+/// the surface's ([`og_ui_model::auto_unit`]).
 pub(crate) fn surface_unit(theme: &Theme, viewport: &Viewport) -> f32 {
     let u = if theme.unit_pin > 0.0 {
         theme.unit_pin
     } else {
-        Theme::auto_unit(viewport)
+        og_ui_model::auto_unit(viewport)
     };
     if u.is_finite() {
         u.clamp(1.0, 2.0)

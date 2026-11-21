@@ -14,10 +14,11 @@ use crate::id::Id;
 use crate::layout::{Align, Cross, Direction, Element, FontRole, Insets, Rect, Size, TextAlign};
 use crate::motion::{Ease, MotionToken, StateGroup, StateTransition, Transition, VisualState};
 use crate::paint::{Cap, ColorRef, ElementDraw, Gradient, Join, Paint, ShapeKind, Stop};
-use crate::style::{Breakpoint, Srgba, TypeStep};
+use crate::style::{Srgba, TypeStep};
 use crate::tokens::{ElementClass, SoundEvent};
 use crate::ui::{ControlSize, LabelDesc, Response, Ui};
 use crate::widgets::IconDesc;
+use og_ui_model::Breakpoint;
 
 mod choices;
 mod details;

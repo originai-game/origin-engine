@@ -11,7 +11,7 @@
 
 use crate::layout::{Align, Anchor, Cross, Direction, Insets, Rect, Size};
 use crate::motion::{PresenceSpec, Reduced, StateGroup, Transition};
-use crate::style::Breakpoint;
+use og_ui_model::Breakpoint;
 
 mod frame;
 #[doc(hidden)]
