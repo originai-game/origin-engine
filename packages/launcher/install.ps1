@@ -3,7 +3,8 @@
 #
 #   irm https://origingame.ai/downloads/engine/install.ps1 | iex
 #
-# The launcher is one TypeScript file run by bun; it downloads each engine
+# The launcher is og.ts and the minisign verifier it shares with the
+# engine, run by bun; it downloads each engine
 # version a game pins, verified with the engine's signing key, into
 # ~\.cache\origin-engine. Running this again replaces the launcher and
 # leaves the installed engines alone.
@@ -12,17 +13,23 @@ $ErrorActionPreference = 'Stop'
 $dir = if ($env:ORIGIN_HOME) { $env:ORIGIN_HOME } else { Join-Path $HOME '.origin' }
 function Say($s) { Write-Host "origin: $s" }
 
-New-Item -ItemType Directory -Force -Path (Join-Path $dir 'bin'), (Join-Path $dir 'lib') | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $dir 'bin'), (Join-Path $dir 'lib\launcher'), (Join-Path $dir 'lib\engine\src\node') | Out-Null
+# lib mirrors the repository's packages: lib\launcher\og.ts imports
+# ..\engine\src\node\minisign.ts, the same path packages\launcher\og.ts runs.
 $launcher = @'
 __OG_LAUNCHER__
 '@
 $utf8 = New-Object System.Text.UTF8Encoding $false
-[IO.File]::WriteAllText((Join-Path $dir 'lib\og.ts'), $launcher.Replace("`r`n", "`n"), $utf8)
+[IO.File]::WriteAllText((Join-Path $dir 'lib\launcher\og.ts'), $launcher.Replace("`r`n", "`n"), $utf8)
+$minisign = @'
+__OG_MINISIGN__
+'@
+[IO.File]::WriteAllText((Join-Path $dir 'lib\engine\src\node\minisign.ts'), $minisign.Replace("`r`n", "`n"), $utf8)
 
 $shim = "@echo off`r`nsetlocal`r`n" +
   "set `"OG_BUN=bun`"`r`n" +
   "where bun >nul 2>nul || set `"OG_BUN=%USERPROFILE%\.bun\bin\bun.exe`"`r`n" +
-  "`"%OG_BUN%`" `"$dir\lib\og.ts`" %*`r`n"
+  "`"%OG_BUN%`" `"$dir\lib\launcher\og.ts`" %*`r`n"
 [IO.File]::WriteAllText((Join-Path $dir 'bin\og.cmd'), $shim, $utf8)
 Say "installed og in $(Join-Path $dir 'bin\og.cmd')"
 

@@ -1,6 +1,7 @@
 // Writes the launcher's installers, install.sh and install.ps1, each
-// carrying packages/launcher/og.ts whole (docs/release.md §3; release.sh
-// publish runs it into the version's directory).
+// carrying packages/launcher/og.ts and the minisign verifier it shares with
+// the engine (packages/engine/src/node/minisign.ts) whole (docs/release.md
+// §3; release.sh publish runs it into the version's directory).
 //
 //   bun packages/launcher/build.ts <out dir>
 //
@@ -9,7 +10,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { ENGINE_PUBKEY } from "./og.ts";
+import { ENGINE_PUBKEY } from "../engine/src/node/minisign.ts";
 
 const here = import.meta.dir;
 
@@ -23,12 +24,20 @@ export function pinnedKey(): string | undefined {
 
 export function installers(): { sh: string; ps1: string } {
   const launcher = readFileSync(join(here, "og.ts"), "utf8");
+  const minisign = readFileSync(join(here, "..", "engine", "src", "node", "minisign.ts"), "utf8");
   if (pinnedKey() !== ENGINE_PUBKEY) throw new Error(`og.ts pins ${ENGINE_PUBKEY}; docs/release.md states ${pinnedKey()}`);
-  const lines = launcher.split("\n");
-  if (lines.some((l) => l === "__OG_LAUNCHER_END__")) throw new Error("og.ts holds install.sh's here-document delimiter");
-  if (lines.some((l) => l.startsWith("'@"))) throw new Error("og.ts holds a line starting '@, which ends install.ps1's here-string");
-  const body = launcher.endsWith("\n") ? launcher : `${launcher}\n`;
-  const fill = (file: string) => readFileSync(join(here, file), "utf8").replace("__OG_LAUNCHER__\n", () => body);
+  const forBoth = (text: string, what: string) => {
+    const lines = text.split("\n");
+    if (lines.some((l) => l === `__OG_${what}_END__`)) throw new Error(`${what.toLowerCase()}.ts holds install.sh's here-document delimiter`);
+    if (lines.some((l) => l.startsWith("'@"))) throw new Error(`${what.toLowerCase()}.ts holds a line starting '@, which ends install.ps1's here-string`);
+    return text.endsWith("\n") ? text : `${text}\n`;
+  };
+  const launcherBody = forBoth(launcher, "LAUNCHER");
+  const minisignBody = forBoth(minisign, "MINISIGN");
+  const fill = (file: string) =>
+    readFileSync(join(here, file), "utf8")
+      .replace("__OG_LAUNCHER__\n", () => launcherBody)
+      .replace("__OG_MINISIGN__\n", () => minisignBody);
   return { sh: fill("install.sh"), ps1: fill("install.ps1") };
 }
 

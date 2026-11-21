@@ -44,19 +44,18 @@
 // from cache/tmp/; nothing reaches engines/ before its sha256 verifies.
 //
 // It needs bun (the engine runs on it) and tar (Windows 10 and later carry
-// tar.exe). One file with no dependencies: install.sh and install.ps1 carry
-// it whole (packages/launcher/build.ts).
+// tar.exe). Two files: og.ts and the minisign verifier it shares with the
+// engine (packages/engine/src/node/minisign.ts); install.sh and install.ps1
+// carry both (packages/launcher/build.ts).
 
 import { spawnSync } from "node:child_process";
-import { createHash, createPublicKey, verify } from "node:crypto";
+import { createHash } from "node:crypto";
 import { closeSync, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync, writeSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { DOWNLOADS, ENGINE_PUBKEY, MinisignError, verifyMinisign } from "../engine/src/node/minisign.ts";
 
 export const LAUNCHER_VERSION = "2";
-/** The engine's release key (docs/release.md §1; the owner, 2026-11-05). */
-export const ENGINE_PUBKEY = "RWSJfZkSrBHM9kOnWQNC0WoGXEFI+9NMCj8+Wy6WJDkYl9pgPGkoCoxt";
-export const DOWNLOADS = "https://origingame.ai/downloads/engine";
 /**
  * An engine version: a release `x.y.z`, a dev build `dev.<YYYYMMDD>.<n>`
  * (the n-th of that UTC day, its own number unrelated to the release it is
@@ -158,36 +157,6 @@ export function reporterFor(argv: string[], stderrIsTTY = Boolean(process.stderr
   return { report: jsonLines(2), stdout: false };
 }
 
-// ---------------------------------------------------------------- minisign
-
-const ED25519_SPKI = Buffer.from("302a300506032b6570032100", "hex");
-
-/**
- * Verifies a minisign signature (`minisign -S`'s .minisig: the prehashed
- * `ED` algorithm, BLAKE2b-512 of the file, or the legacy `Ed`) of `data`
- * with a public key line, including the trusted comment's global
- * signature. Returns the trusted comment; throws on any mismatch.
- */
-export function verifyMinisign(data: Uint8Array, signature: string, pubkey: string): string {
-  const pk = Buffer.from(pubkey.trim(), "base64");
-  if (pk.length !== 42 || pk.toString("latin1", 0, 2) !== "Ed") fail("the engine's public key is not a minisign Ed25519 key", "signature");
-  const lines = signature.split(/\r?\n/);
-  const sig = Buffer.from(lines[1] ?? "", "base64");
-  const trusted = lines[2] ?? "";
-  const global = Buffer.from(lines[3] ?? "", "base64");
-  if (sig.length !== 74 || !trusted.startsWith("trusted comment: ") || global.length !== 64) fail("SHA256SUMS.minisig is not a minisign signature", "signature");
-  const alg = sig.toString("latin1", 0, 2);
-  if (alg !== "ED" && alg !== "Ed") fail(`SHA256SUMS.minisig uses the unknown algorithm ${alg}`, "signature");
-  if (!sig.subarray(2, 10).equals(pk.subarray(2, 10))) fail(`SHA256SUMS.minisig is signed by key ${keyId(sig.subarray(2, 10))}, not the engine's ${keyId(pk.subarray(2, 10))}`, "signature");
-  const key = createPublicKey({ key: Buffer.concat([ED25519_SPKI, pk.subarray(10)]), format: "der", type: "spki" });
-  const message = alg === "ED" ? createHash("blake2b512").update(data).digest() : Buffer.from(data);
-  if (!verify(null, message, key, sig.subarray(10))) fail("SHA256SUMS.minisig does not verify: the file was changed or not signed by the engine's key", "signature");
-  const comment = trusted.slice("trusted comment: ".length);
-  if (!verify(null, Buffer.concat([sig.subarray(10), Buffer.from(comment, "utf8")]), key, global)) fail("SHA256SUMS.minisig's trusted comment does not verify", "signature");
-  return comment;
-}
-const keyId = (b: Uint8Array) => Buffer.from(b).reverse().toString("hex").toUpperCase();
-
 // ---------------------------------------------------------------- downloads
 
 const env = (name: string, fallback: number) => {
@@ -207,6 +176,7 @@ function httpError(url: string, r: Response): LauncherError {
 /** A thrown value as the launcher's error: a refused connection or a reset stream is a retryable network error, a full disk disk_full. */
 function asLauncherError(e: unknown): LauncherError {
   if (e instanceof LauncherError) return e;
+  if (e instanceof MinisignError) return new LauncherError(e.message, "signature");
   const err = e as { code?: string; name?: string; message?: string };
   if (err?.code === "ENOSPC" || err?.code === "EDQUOT") return new LauncherError(`no space left in the engine cache: ${err.message}`, "disk_full");
   if (err?.name === "AbortError" || err?.name === "TimeoutError" || err instanceof TypeError || /^(ECONN|ENOTFOUND|EAI_|ETIMEDOUT|EPIPE|ENETUNREACH|EHOSTUNREACH)/.test(err?.code ?? ""))

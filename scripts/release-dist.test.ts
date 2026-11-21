@@ -8,7 +8,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { ENGINE_PUBKEY, verifyMinisign } from "../packages/engine/src/node/vfx-pack.ts";
-import { ENGINE_PUBKEY as LAUNCHER_PUBKEY } from "../packages/launcher/og.ts";
 import { pinnedKey } from "../packages/launcher/build.ts";
 import { checkPacksOutside, deduplicateAssets, finish, writeCreation, writeLooks, writeVfxArchives, writeWasmModules, type Slot } from "./release-dist.ts";
 import { createHash } from "node:crypto";
@@ -253,7 +252,6 @@ describe("the look previews", () => {
 describe("og vfx add's signature check", () => {
   test("pins the key docs/release.md states, the launcher's, and accepts and refuses what minisign signed as the launcher does", () => {
     expect(ENGINE_PUBKEY).toBe(pinnedKey()!);
-    expect(ENGINE_PUBKEY).toBe(LAUNCHER_PUBKEY);
     // The launcher's fixtures: SHA256SUMS signed by minisign itself (prehashed and legacy) with test.pub's key.
     const fx = join(import.meta.dir, "../packages/launcher/tests/fixtures");
     const read = (f: string) => readFileSync(join(fx, f));

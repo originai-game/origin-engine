@@ -4,7 +4,8 @@
 #
 #   curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh
 #
-# The launcher is one TypeScript file run by bun; it downloads each engine
+# The launcher is og.ts and the minisign verifier it shares with the
+# engine, run by bun; it downloads each engine
 # version a game pins, verified with the engine's signing key, into
 # ~/.cache/origin-engine. Running this again replaces the launcher and
 # leaves the installed engines alone.
@@ -13,19 +14,26 @@ set -eu
 dir="${ORIGIN_HOME:-$HOME/.origin}"
 say() { printf 'origin: %s\n' "$*"; }
 
-mkdir -p "$dir/bin" "$dir/lib"
-cat > "$dir/lib/og.ts.new" <<'__OG_LAUNCHER_END__'
+mkdir -p "$dir/bin" "$dir/lib/launcher" "$dir/lib/engine/src/node"
+# lib mirrors the repository's packages: lib/launcher/og.ts imports
+# ../engine/src/node/minisign.ts, the same path packages/launcher/og.ts runs.
+cat > "$dir/lib/launcher/og.ts.new" <<'__OG_LAUNCHER_END__'
 __OG_LAUNCHER__
 __OG_LAUNCHER_END__
-mv "$dir/lib/og.ts.new" "$dir/lib/og.ts"
+mv "$dir/lib/launcher/og.ts.new" "$dir/lib/launcher/og.ts"
+
+cat > "$dir/lib/engine/src/node/minisign.ts.new" <<'__OG_MINISIGN_END__'
+__OG_MINISIGN__
+__OG_MINISIGN_END__
+mv "$dir/lib/engine/src/node/minisign.ts.new" "$dir/lib/engine/src/node/minisign.ts"
 
 cat > "$dir/bin/og.new" <<__OG_SHIM_END__
 #!/bin/sh
-# og, Origin Engine's launcher: $dir/lib/og.ts on bun.
+# og, Origin Engine's launcher: $dir/lib/launcher/og.ts on bun.
 bun=\$(command -v bun 2>/dev/null || true)
 [ -n "\$bun" ] || bun="\$HOME/.bun/bin/bun"
 [ -x "\$bun" ] || { echo "og: bun is not installed; the engine runs on it: curl -fsSL https://bun.sh/install | bash" >&2; exit 1; }
-exec "\$bun" "$dir/lib/og.ts" "\$@"
+exec "\$bun" "$dir/lib/launcher/og.ts" "\$@"
 __OG_SHIM_END__
 chmod 755 "$dir/bin/og.new"
 mv "$dir/bin/og.new" "$dir/bin/og"

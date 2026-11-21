@@ -7,8 +7,9 @@
 //   bun src/node/vfx-pack.ts fetch <name> <engine version> <into>
 //
 // It downloads <downloads>/<version>/SHA256SUMS and SHA256SUMS.minisig,
-// verifies the signature with the engine's public key (the launcher's key
-// and method, packages/launcher/og.ts), checks manifest.json and the archive
+// verifies the signature with the engine's public key (src/node/minisign.ts,
+// the one implementation the launcher shares), checks manifest.json and the
+// archive
 // against the signed sums, and unpacks the archive into <into>/<name>/:
 // regular files and directories only, every path under <name>/ with no `..`
 // and no absolute path, within a size cap. og then installs that directory
@@ -16,10 +17,13 @@
 // https://origingame.ai/downloads/engine; a URL, file:// or a directory) and
 // `$ORIGIN_ENGINE_PUBKEY` (a test key) are the launcher's.
 
-import { createHash, createPublicKey, verify } from "node:crypto";
+import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
+
+import { DOWNLOADS, ENGINE_PUBKEY, MinisignError, verifyMinisign } from "./minisign.ts";
+export { DOWNLOADS, ENGINE_PUBKEY, MinisignError, verifyMinisign };
 
 // The node members this file uses (the package type-checks without node's declarations: src/env.d.ts).
 declare module "node:fs" {
@@ -27,19 +31,11 @@ declare module "node:fs" {
   export function readdirSync(path: string, options: { withFileTypes: true }): Dirent[];
   export function writeFileSync(path: string, data: Uint8Array, options: { flag: string }): void;
 }
-declare module "node:crypto" {
-  interface KeyObject { readonly type: string }
-  export function createPublicKey(o: { key: Uint8Array; format: "der"; type: "spki" }): KeyObject;
-  export function verify(algorithm: null, data: Uint8Array, key: KeyObject, signature: Uint8Array): boolean;
-}
 declare module "node:zlib" {
   export function gzipSync(data: Uint8Array, options?: { level?: number }): Uint8Array;
   export function gunzipSync(data: Uint8Array, options?: { maxOutputLength?: number }): Uint8Array;
 }
 
-/** The engine's release key (docs/release.md §1), as the launcher pins it. */
-export const ENGINE_PUBKEY = "RWSJfZkSrBHM9kOnWQNC0WoGXEFI+9NMCj8+Wy6WJDkYl9pgPGkoCoxt";
-export const DOWNLOADS = "https://origingame.ai/downloads/engine";
 /** What one pack may weigh: the archive, and its files unpacked. */
 export const MAX_ARCHIVE = 64 << 20;
 export const MAX_UNPACKED = 256 << 20;
@@ -53,9 +49,6 @@ export const archivePath = (name: string) => `vfx/${name}.tar.gz`;
 const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
 const utf8 = new TextEncoder();
 const text8 = new TextDecoder();
-const hexBytes = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (h) => Number.parseInt(h, 16));
-const latin1 = (b: Uint8Array) => String.fromCharCode(...b);
-const same = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((v, i) => v === b[i]);
 function concat(parts: Uint8Array[]): Uint8Array {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let at = 0;
@@ -65,48 +58,11 @@ function concat(parts: Uint8Array[]): Uint8Array {
   }
   return out;
 }
-function base64(s: string): Uint8Array {
-  try {
-    return Uint8Array.from(atob(s.trim()), (c) => c.charCodeAt(0));
-  } catch {
-    return new Uint8Array(0);
-  }
-}
 
 export class PackError extends Error {}
 function fail(why: string): never {
   throw new PackError(why);
 }
-
-// ---------------------------------------------------------------- minisign (packages/launcher/og.ts)
-
-const ED25519_SPKI = hexBytes("302a300506032b6570032100");
-
-/**
- * Verifies a minisign signature (the prehashed `ED` algorithm, BLAKE2b-512
- * of the file, or the legacy `Ed`) of `data` with a public key line,
- * including the trusted comment's global signature: the launcher's
- * verifyMinisign. Returns the trusted comment; throws on any mismatch.
- */
-export function verifyMinisign(data: Uint8Array, signature: string, pubkey: string): string {
-  const pk = base64(pubkey);
-  if (pk.length !== 42 || latin1(pk.subarray(0, 2)) !== "Ed") fail("the engine's public key is not a minisign Ed25519 key");
-  const lines = signature.split(/\r?\n/);
-  const sig = base64(lines[1] ?? "");
-  const trusted = lines[2] ?? "";
-  const global = base64(lines[3] ?? "");
-  if (sig.length !== 74 || !trusted.startsWith("trusted comment: ") || global.length !== 64) fail("SHA256SUMS.minisig is not a minisign signature");
-  const alg = latin1(sig.subarray(0, 2));
-  if (alg !== "ED" && alg !== "Ed") fail(`SHA256SUMS.minisig uses the unknown algorithm ${alg}`);
-  if (!same(sig.subarray(2, 10), pk.subarray(2, 10))) fail(`SHA256SUMS.minisig is signed by key ${keyId(sig.subarray(2, 10))}, not the engine's ${keyId(pk.subarray(2, 10))}`);
-  const key = createPublicKey({ key: concat([ED25519_SPKI, pk.subarray(10)]), format: "der", type: "spki" });
-  const message = alg === "ED" ? hexBytes(createHash("blake2b512").update(data).digest("hex")) : data;
-  if (!verify(null, message, key, sig.subarray(10))) fail("SHA256SUMS.minisig does not verify: the file was changed or not signed by the engine's key");
-  const comment = trusted.slice("trusted comment: ".length);
-  if (!verify(null, concat([sig.subarray(10), utf8.encode(comment)]), key, global)) fail("SHA256SUMS.minisig's trusted comment does not verify");
-  return comment;
-}
-const keyId = (b: Uint8Array) => [...b].reverse().map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
 
 // ---------------------------------------------------------------- the archive
 
@@ -324,7 +280,7 @@ if (import.meta.main) {
     const entry = await fetchPack({ name, version, into });
     process.stderr.write(`downloaded ${name} ${entry.version} (${entry.size} bytes, sha256 ${entry.sha256.slice(0, 12)}…, signed SHA256SUMS of engine ${version})\n`);
   } catch (e) {
-    process.stderr.write(`${e instanceof PackError ? e.message : e instanceof Error ? e.stack : e}\n`);
+    process.stderr.write(`${e instanceof PackError || e instanceof MinisignError ? e.message : e instanceof Error ? e.stack : e}\n`);
     process.exit(1);
   }
 }

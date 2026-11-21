@@ -87,7 +87,7 @@ export type Target = keyof typeof TARGETS;
 /** A release `x.y.z`, a dev build `dev.<YYYYMMDD>.<n>` (docs/release.md §1a), or a dev build of the scheme before 0.9.0, `x.y.z-dev.n`. */
 export const VERSION_RE = /^(?:\d+\.\d+\.\d+(?:-dev\.\d+)?|dev\.\d{8}\.[1-9]\d*)$/;
 export const isDev = (v: string) => v.startsWith("dev.") || v.includes("-dev.");
-export const DOWNLOADS = "https://origingame.ai/downloads/engine";
+export { DOWNLOADS } from "../packages/engine/src/node/minisign.ts";
 const OVERLAY = "game-scaffold/origin-engine-ts";
 const ROOT = resolve(import.meta.dir, "..");
 const REGISTRY = "https://registry.npmjs.org";

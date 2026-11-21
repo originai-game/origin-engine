@@ -6,7 +6,8 @@ import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto"
 import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { compareVersions, config, ENGINE_PUBKEY, install, installed, pinOf, projectOf, verifyMinisign } from "../og.ts";
+import { compareVersions, config, install, installed, pinOf, projectOf } from "../og.ts";
+import { ENGINE_PUBKEY, verifyMinisign } from "../../engine/src/node/minisign.ts";
 import { installers, pinnedKey } from "../build.ts";
 
 const fixtures = join(import.meta.dir, "fixtures");
@@ -42,14 +43,19 @@ describe("minisign", () => {
   test("pins the key docs/release.md states, and the installers carry the launcher whole", () => {
     expect(ENGINE_PUBKEY).toBe(pinnedKey()!);
     const launcher = readFileSync(join(import.meta.dir, "../og.ts"), "utf8");
+    const minisign = readFileSync(join(import.meta.dir, "../../engine/src/node/minisign.ts"), "utf8");
     const { sh, ps1 } = installers();
     expect(sh).toContain(launcher);
+    expect(sh).toContain(minisign);
     expect(ps1).toContain(launcher);
-    // install.sh, run with sh, writes og.ts byte for byte and a shim that runs it.
+    expect(ps1).toContain(minisign);
+    // install.sh, run with sh, writes og.ts byte for byte, the shared
+    // minisign verifier beside it, and a shim that runs the launcher.
     const home = scratch("og-launcher-home-");
     const r = spawnSync("sh", ["-s"], { input: sh, env: { ...process.env, ORIGIN_HOME: home }, encoding: "utf8" });
     expect(r.status).toBe(0);
-    expect(readFileSync(join(home, "lib/og.ts"), "utf8")).toBe(launcher);
+    expect(readFileSync(join(home, "lib/launcher/og.ts"), "utf8")).toBe(launcher);
+    expect(readFileSync(join(home, "lib/engine/src/node/minisign.ts"), "utf8")).toBe(minisign);
     const v = spawnSync(join(home, "bin/og"), ["--launcher-version"], { encoding: "utf8" });
     expect(v.stdout.trim()).toBe("og launcher 2");
     rmSync(home, { recursive: true, force: true });
