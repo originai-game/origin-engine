@@ -525,12 +525,15 @@ pub(crate) struct ProjectGame {
     /// `frames "https://events.example.com"`: the origins remote
     /// `<iframe>`s may load from (og_ui::doc::frames); none by default.
     pub frames: Vec<String>,
+    /// `create { form "2d" }`: the 2D profile (og-bundle's
+    /// `look::project_2d`); any other form, or none, is 3D.
+    pub two_d: bool,
 }
 
-/// Reads `tick`, `seed`, `scenes`, `scene`, `look` and `saveVersion` from project.ogt's
-/// text; a value of the wrong kind is refused naming its line. Other keys
-/// are og's (`name`, `entry`, `profile`, `publish`, ...) and are not read
-/// here.
+/// Reads `tick`, `seed`, `scenes`, `scene`, `look`, `saveVersion` and the
+/// creation form from project.ogt's text; a value of the wrong kind is
+/// refused naming its line. Other keys are og's (`name`, `entry`,
+/// `publish`, ...) and are not read here.
 pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
     let doc = og_core::ogt::parse(text).map_err(|e| format!("project.ogt: {}", e.reason()))?;
     let b = &doc.body;
@@ -608,6 +611,7 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         .and_then(|v| v.as_word().or_else(|| v.as_str()))
         .map(str::to_string);
     let frames = og_ui::doc::frames::project_origins(b).map_err(|e| format!("project.ogt:{e}"))?;
+    let two_d = og_bundle::look::project_2d(b).map_err(|e| format!("project.ogt:{e}"))?;
     Ok(ProjectGame {
         tick,
         seed,
@@ -617,6 +621,7 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         save_version,
         loading,
         frames,
+        two_d,
     })
 }
 
@@ -973,7 +978,7 @@ mod tests {
         }
     }
 
-    const PROJECT: &str = "type project\nversion 1\n---\nname \"P\"\nentry \"src/main.ts\"\nprofile \"3d\"\ntick 30\nseed 7\nscenes {\n  main \"scenes/main.ogt\"\n  boss \"scenes/boss.ogt\"\n}\nscene boss\nsaveVersion 3\n";
+    const PROJECT: &str = "type project\nversion 1\n---\nname \"P\"\nentry \"src/main.ts\"\ntick 30\nseed 7\nscenes {\n  main \"scenes/main.ogt\"\n  boss \"scenes/boss.ogt\"\n}\nscene boss\nsaveVersion 3\n";
 
     fn game(desc: Value) -> GameDecl {
         let i = declare_game(&desc);

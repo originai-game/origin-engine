@@ -169,7 +169,7 @@ without the pass (`tests/conform_2d.rs`).
 cells are the frames or the tiles), those a 2D rig, a UI style (`atlas`,
 `icons`) or a map's own embedded tileset names (a layout the cook cannot
 move: palette and 1-bit alpha only, no resample, no line), and of the
-rest, `kind pixel` textures and, in a `profile "2d"` project, every PNG or
+rest, `kind pixel` textures and, in a 2D project (`create { form "2d" }`), every PNG or
 JPEG. An image's import settings say `conform sprite` or `conform ui` for
 one the cook would not find (a HUD image in a 3D game), and `conform off`
 to keep it as drawn. Normal and linear textures are data and never

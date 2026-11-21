@@ -8,7 +8,7 @@
 //! does not carry), and each number is compared with the contract of the
 //! look project.ogt names (`look "looks/<id>.ogt"`):
 //!
-//! - **sprites** (textures of a `profile "2d"` project, or cooked as pixel
+//! - **sprites** (textures of a 2D project, `create { form "2d" }`, or cooked as pixel
 //!   art): distinct colours against `ArtPalette.maxColors`, the palette hit
 //!   rate (the share of opaque texels within ΔE00 2 of a colour of
 //!   `ArtPalette.colors`; judged when `strict`), the pixel grid (texels per
@@ -221,14 +221,10 @@ pub fn measure(
     opt_outs: Vec<(String, String)>,
 ) -> Result<Measured, String> {
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
-    let profile_2d = project_body(root)
-        .ok()
-        .and_then(|b| {
-            b.get("profile")
-                .and_then(|e| e.string(0).ok().map(str::to_string))
-        })
-        .as_deref()
-        == Some("2d");
+    let profile_2d = match project_body(root) {
+        Ok(b) => og_cook::look::project_2d(&b).map_err(|e| format!("project.ogt:{e}"))?,
+        Err(_) => false,
+    };
     let roles = og_cook::cook::conform::texture_roles(root)?;
     let model_roles = og_cook::cook::conform::model_roles(root)?;
     let fixed = fixed_layouts(root, &bundle);

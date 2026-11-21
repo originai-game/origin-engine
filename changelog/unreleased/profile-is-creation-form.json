@@ -1,0 +1,35 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "project.ogt profile",
+      "change": "The top-level `profile` line is gone: the creation form, `create { form \"2d\" }`, is the one field the profile follows. Form 2d is the 2D profile (rapier2d, the art brief's sprites, the cook's 2D conformance and style check, the 2D publish module); 2.5d, 3d, film or no form is 3D. A project that still has a `profile` line is refused naming this fix. A game `og create --form 2d` made before this change had no `profile` line and ran, was briefed, conformed and published as 3D; it is now 2D.",
+      "fix": "`og upgrade` moves the line: `profile \"2d\"` becomes `create { form \"2d\" }` (a line of the create block when there is one), `profile \"3d\"` is deleted. It lists a `profile` line beside a create block whose form disagrees for you to settle by hand.",
+      "find": ["profile \"2d\"", "profile \"3d\""],
+      "codemod": { "kind": "profile-form" }
+    },
+    {
+      "member": "CreateOptions.profile",
+      "change": "With `project`, the engine takes the profile from project.ogt's creation form; `profile` is for an engine without a project, and one that disagrees with the project's form refuses the engine. The web shell's `profile` option is the same, and the play page's config no longer carries `profile`: the page passes project.ogt's text, which carries the form.",
+      "fix": "Leave `profile` out of createEngine and shell options when you pass `project`; pass `profile: \"2d\"` only to an engine with no project."
+    },
+    {
+      "member": "resolveCreationChoices",
+      "change": "`resolveCreationChoices(premise, input?, catalogue?)` takes no `profile` argument: the form chooses the profile the look is picked for (`profileOf(form)`, exported by the art brief and @origingame/create-game).",
+      "fix": "Drop the third argument; pass `{ form: \"2d\" }` in `input` for a 2D look. A call that passed a catalogue fourth passes it third.",
+      "find": ["resolveCreationChoices("]
+    }
+  ],
+  "added": [
+    {
+      "member": "profileOf",
+      "summary": "`profileOf(form)` in the art brief (packages/knowledge/scripts/brief.ts, re-exported by @origingame/create-game): the profile a creation form draws in, \"2d\" for form 2d, else \"3d\"."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "readLook",
+      "summary": "A 2D game's look reads as 2D: `readLook` takes the profile from the create block's form, so `artBrief` asks for a sprite, not a model, for a prop or character of a `--form 2d` game (it passed 3D for every game without a `profile` line, overriding even a 2D-only style)."
+    }
+  ]
+}

@@ -14,7 +14,7 @@ use og_ecs::World;
 use serde_json::Value;
 
 /// Why the terrain answers nothing here.
-pub(crate) const ABSENT: &str = "terrain is not built into this module: the 2D profile's publish and lanes modules leave the 3D world out (RenderCapabilities.world3d is false); a terrain needs a 3D project (project.ogt: profile \"3d\")";
+pub(crate) const ABSENT: &str = "terrain is not built into this module: the 2D profile's publish and lanes modules leave the 3D world out (RenderCapabilities.world3d is false); a terrain needs a 3D project (project.ogt: `create { form \"3d\" }`)";
 
 /// A loaded terrain: none is ever loaded here. What other modules read of
 /// one (the texture arrays its layers sample) is empty.

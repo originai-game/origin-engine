@@ -8,4 +8,3 @@ entry "src/main.ts"
 tick 60
 seed 1
 look "looks/main.ogt"
-profile "3d"

@@ -1,4 +1,4 @@
-//! Painted 2D (docs/art.md §2.3): in a `profile "2d"` project under the
+//! Painted 2D (docs/art.md §2.3): in a 2D project (`create { form "2d" }`) under the
 //! art contract, a look's paint and watercolour fields are the cook's,
 //! applied in each sprite's own texels, and the frame draws neither the
 //! paint nor the watercolour pass, so a sprite is painted and washed once
@@ -135,7 +135,7 @@ fn painted(report: &og_cook::Report) -> Option<String> {
 #[test]
 fn a_painted_2d_sprite_is_painted_by_the_cook_alone() {
     let art = "ArtPalette {\n  maxColors 8\n}\n";
-    let (root, text, report) = project("2d", "profile \"2d\"\n", art);
+    let (root, text, report) = project("2d", "create {\n  form \"2d\"\n}\n", art);
     assert!(painted(&report).is_some(), "{:?}", report.conform);
     let paint = frame_paint(&root, &text, "2d");
     assert_eq!(paint, None, "the frame paints the painted sprites again");
@@ -145,7 +145,7 @@ fn a_painted_2d_sprite_is_painted_by_the_cook_alone() {
 fn without_the_contracts_switch_a_2d_frame_paints_on_screen() {
     // The look sets paint fields but no art block: the cook leaves the
     // sprite as drawn, so the frame is the one place it is painted.
-    let (root, text, report) = project("2d-frame", "profile \"2d\"\n", "");
+    let (root, text, report) = project("2d-frame", "create {\n  form \"2d\"\n}\n", "");
     assert_eq!(painted(&report), None, "{:?}", report.conform);
     let paint = frame_paint(&root, &text, "2d").expect("the frame's paint");
     assert!(paint.paints() && paint.watercolor.active(), "{paint:?}");

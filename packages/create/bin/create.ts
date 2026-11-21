@@ -7,6 +7,7 @@ import type { View } from "./choices.ts";
 import { creationDocument } from "./creation.ts";
 import type { PreviewFile } from "./creation.ts";
 import type { CreationChoices, CreationInput } from "./choices.ts";
+import { profileOf } from "./brief.ts";
 import { fontPackFor } from "./languages.ts";
 import type { FontPackLanguages } from "./languages.ts";
 
@@ -17,7 +18,7 @@ export type { CreationCompat, CreationDocument, PreviewFile, PreviewSlot } from 
 export { canonicalTag, fontPackFor, isRtl, localeScript } from "./languages.ts";
 export type { FontPackLanguages, LocaleScript } from "./languages.ts";
 export { PSEUDO_LOCALE, pseudoMessage, pseudoTable } from "./pseudo-locale.ts";
-export { ART_KINDS, ART_RESOURCES, artBrief, authoredArt, colourName, MOODS, parseLook, parsePalette, presetLook, readLook, styleArtBriefs } from "./brief.ts";
+export { ART_KINDS, ART_RESOURCES, artBrief, authoredArt, colourName, MOODS, parseLook, parsePalette, presetLook, profileOf, readLook, styleArtBriefs } from "./brief.ts";
 export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, AuthoredArt, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, Mood, PaletteColour, ReadLookOptions, StyleArtBrief, StyleArtRequests } from "./brief.ts";
 export { audioBrief, MUSIC_STYLES, readAudioChoices, SFX_PRESETS } from "./brief.ts";
 export type { AudioBrief, AudioBriefInput, AudioFormat, MusicCueBrief, MusicRole, MusicStyle, SfxBrief, SfxPreset, SfxPresetBrief } from "./brief.ts";
@@ -169,7 +170,7 @@ export function filmDir(): string {
  * must draw the form (a 2D look for a 2D game, catalogue `views`), and the
  * variant must be one of the look's.
  */
-export function resolveCreationChoices(premise: string, input: CreationInput = {}, profile?: Profile, catalogue?: string): CreationChoices {
+export function resolveCreationChoices(premise: string, input: CreationInput = {}, catalogue?: string): CreationChoices {
   const styles = readCatalogue(catalogue);
   let asked = inferCreationChoices(premise, input);
   // A look chosen without a form or view gives the form, when the inferred one is not one it draws.
@@ -178,8 +179,7 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
     asked = inferCreationChoices(premise, { ...input, form: formOf(chosen.look.views[0] as View) });
   }
   const view = asked.view;
-  const effectiveProfile = profile ?? (asked.form === "2d" ? "2d" : "3d");
-  const slug = input.look ?? (asked.form === "film" ? "cinematic-realism" : pickStyle(premise, styles, effectiveProfile, view)?.style.slug ?? (asked.form === "2d" ? "pixel" : "faceted-low-poly"));
+  const slug = input.look ?? (asked.form === "film" ? "cinematic-realism" : pickStyle(premise, styles, profileOf(asked.form), view)?.style.slug ?? (asked.form === "2d" ? "pixel" : "faceted-low-poly"));
   const style = styles.find(s => s.slug === slug && s.look.presetReady);
   if (!style) throw new Error(`no look preset '${slug}'; pick one of ${creationLooks(styles).join(", ")}`);
   if (view !== undefined && !style.look.views.includes(view)) {

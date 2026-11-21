@@ -144,12 +144,10 @@ const projectText = root ? (() => {
     return undefined;
   }
 })() : undefined;
-const profile = projectText ? (/^\s*profile\s+"(2d|3d)"/m.exec(projectText)?.[1] as "2d" | "3d" | undefined) : undefined;
 const created = createEngine(mod.default!, {
   ...(seed === undefined ? {} : { seed }),
   ...(root ? { root } : {}),
   ...(projectText === undefined ? {} : { project: projectText }),
-  ...(profile ? { profile } : {}),
   ...(locale ? { locale } : {}),
   deferStart: true,
 });

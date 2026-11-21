@@ -15,8 +15,10 @@ platform, input, players, languages, and music. These choices are constraints an
 with the chosen preset, variant and UI pack, named by the manifest's top-level
 `look`. It generates no gameplay or art, and changes no publish settings.
 The agent builds the game with the engine API and skills after creation.
-`profile` remains an optional runtime/build setting, omitted here;
-`create.view` does not replace it. Each requested language installs its
+The block's `form` is also the game's profile, the one field it follows:
+`form "2d"` is a 2D game (rapier2d physics, sprites in the art brief, the
+cook's 2D conformance, the 2D publish module); `2.5d`, `3d` and `film` are
+3D (`profileOf(form)`). Each requested language installs its
 script's font pack under `assets/fonts/<pack>/` with its licence (docs/ui.md
 §3.4), which og.i18n chains with no generated code; the languages still need
 authored string tables. `og check` warns about a language with no font for
@@ -66,7 +68,7 @@ and `archetype` options and `Created.look`, `Created.profile`, and
 `CREATION_CHOICES`, `CreationChoices`, `CreationInput`,
 `creationSchema(lookSlugs)`, `creationLooks(styles?)`, `parseCreationInput(value)`,
 `inferCreationChoices(premise, input?, defaults?)`,
-`resolveCreationChoices(premise, input?, profile?, catalogue?)`, and
+`resolveCreationChoices(premise, input?, catalogue?)`, and
 `creationBlock(choices)` expose the selection contract.
 
 `creationSchema` returns JSON Schema 2020-12 with stable enum IDs. Its

@@ -90,7 +90,10 @@ pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, Strin
         Some(d) => ProjectConform::parse(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
         None => ProjectConform::default(),
     };
-    let two_d = texture2d::profile_2d(project.as_ref());
+    let two_d = match &project {
+        Some(d) => crate::look::project_2d(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
+        None => false,
+    };
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
     let sheets = texture2d::strip_sheets(&mut sources);
     let uses = texture2d::uses(&sources, &known, &sheets, &project_off);

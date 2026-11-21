@@ -57,7 +57,6 @@ export interface ShellConfig {
   readonly telemetry: "on" | "off";
   readonly build: "publish" | "dev";
   readonly name: string;
-  readonly profile: "2d" | "3d";
   /** project.ogt's text, for the engine's tick, seed, scenes and scene (CreateOptions.project). */
   readonly project?: string;
   readonly isolation: "required" | "preferred" | "off";
@@ -209,7 +208,6 @@ export function readConfig(doc: Document = document): ShellConfig {
     telemetry: c.telemetry === "off" ? "off" : "on",
     build: c.build === "publish" ? "publish" : "dev",
     name: c.name ?? "Origin Engine",
-    profile: c.profile === "2d" ? "2d" : "3d",
     ...(typeof c.project === "string" ? { project: c.project } : {}),
     isolation: c.isolation ?? "preferred",
     fit: c.fit === "fill" ? "fill" : "letterbox",
@@ -764,7 +762,6 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       ...(seed === undefined ? {} : { seed }),
       // `?trace`: the run's trace from the boot on (the probe's `trace()` and `saveTrace()` read it).
       ...(query.has(TRACE_PARAM) ? { trace: true } : {}),
-      profile: config.profile,
       ...(config.project === undefined ? {} : { project: config.project }),
       dprCap: config.dprCap,
       ...(config.pipelines ? { pipelines: config.pipelines } : {}),

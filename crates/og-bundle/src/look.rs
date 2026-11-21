@@ -494,6 +494,26 @@ pub fn project_look(body: &Block) -> Result<Option<String>, String> {
     }
 }
 
+/// Whether the project (project.ogt's `body`) is 2D: its creation form,
+/// `create { form "2d" }`, the one field the profile follows. Form `2d` is
+/// the 2D profile (rapier2d, the 2D publish module, sprites); `2.5d`,
+/// `3d`, `film` or no form the 3D one. A top-level `profile` line is
+/// refused with its fix.
+pub fn project_2d(body: &Block) -> Result<bool, String> {
+    if let Some(e) = body.get("profile") {
+        return Err(format!(
+            "{}: `profile` was removed; the creation form sets it: `create {{ form \"2d\" }}` for a 2D game, none (or form \"3d\") for a 3D one",
+            e.line
+        ));
+    }
+    Ok(body
+        .get("create")
+        .and_then(|c| c.block.as_ref())
+        .and_then(|b| b.get("form"))
+        .and_then(|f| f.string(0).ok())
+        == Some("2d"))
+}
+
 /// An sRGB `#rrggbb` (or `rrggbb`) colour as linear RGB, as three.js
 /// `Color.setHex` gives under its colour management.
 pub fn hex_to_linear(hex: &str) -> Option<[f64; 3]> {
@@ -663,6 +683,27 @@ mod tests {
         assert!(
             bad("mood \"gloomy\"\n")
                 .contains("one of bright, dark, warm, cold, soft, high-contrast")
+        );
+    }
+
+    #[test]
+    fn the_creation_form_is_the_profile() {
+        let two_d = |body: &str| {
+            let doc = Document::parse(&format!("type project\nversion 1\n---\n{body}")).unwrap();
+            project_2d(&doc.body)
+        };
+        assert_eq!(two_d("create {\n  form \"2d\"\n}\n"), Ok(true));
+        for three_d in [
+            "",
+            "create {\n  form \"2.5d\"\n}\n",
+            "create {\n  form \"film\"\n}\n",
+        ] {
+            assert_eq!(two_d(three_d), Ok(false), "{three_d}");
+        }
+        assert!(
+            two_d("profile \"2d\"\n")
+                .unwrap_err()
+                .contains("form \"2d\"")
         );
     }
 

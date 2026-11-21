@@ -7,6 +7,8 @@ name "A11y"
 id "a11y"
 engine "0.9.0"
 entry "src/main.ts"
-profile "2d"
+create {
+  form "2d"
+}
 tick 60
 seed 1

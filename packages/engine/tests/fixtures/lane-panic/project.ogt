@@ -5,6 +5,5 @@ name "Lane panic"
 id "lane-panic"
 engine "0.9.0"
 entry "src/main.ts"
-profile "3d"
 tick 60
 seed 1

@@ -232,7 +232,7 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   modules: "cdn",
 };
 
-/** The settings of a project read without og (tests): name, id, engine and profile; publish defaults. */
+/** The settings of a project read without og (tests): name, id, engine and profile (`create { form "2d" }` is 2D, as og-bundle's `look::project_2d` reads it); publish defaults. */
 export function settingsOf(project: string): ProjectSettings {
   const text = existsSync(join(project, "project.ogt")) ? readFileSync(join(project, "project.ogt"), "utf8") : "";
   const word = (key: string) => new RegExp(`^\\s*${key}\\s+"([^"]*)"`, "m").exec(text)?.[1];
@@ -240,7 +240,7 @@ export function settingsOf(project: string): ProjectSettings {
     name: word("name") ?? "Origin Engine game",
     id: word("id") ?? "game",
     engine: word("engine") ?? ENGINE_VERSION,
-    profile: word("profile") === "2d" ? "2d" : "3d",
+    profile: word("form") === "2d" ? "2d" : "3d",
     publish: DEFAULT_PUBLISH,
   };
 }
@@ -1147,7 +1147,6 @@ export async function webBuild(project: string, entry: string, out: string, publ
     telemetry: p.telemetry,
     build: publish ? "publish" : "dev",
     name: settings.name,
-    profile: settings.profile,
     // project.ogt's text: the engine takes its tick, seed, scenes and scene
     // for what GameDesc leaves unset (CreateOptions.project).
     ...(existsSync(join(project, "project.ogt")) ? { project: readFileSync(join(project, "project.ogt"), "utf8") } : {}),

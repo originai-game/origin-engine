@@ -2,7 +2,9 @@
 //! runs it, and the bun scripts of that package.
 //!
 //! `project.ogt` (type `project`) carries `name`, `id`, `engine` (the pinned
-//! engine version), `entry`, `profile` (`2d`/`3d`), `tick`, `seed`, a
+//! engine version), `entry`, `tick`, `seed`, `create { form }` (the
+//! creation form, which sets the 2D or 3D profile: og-bundle's
+//! `look::project_2d`), a
 //! `scenes { name "path" }` block, `scene`, `look "looks/<id>.ogt"` (the
 //! look whose art contract the cook reads, og-cook's `look::project_look`),
 //! `cook { color_textures uastc; clusters false }`

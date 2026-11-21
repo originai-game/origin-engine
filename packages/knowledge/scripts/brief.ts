@@ -229,7 +229,7 @@ export interface BriefLook {
   readonly art: ArtBlocks;
   /** The variant of the preset the look is drawn in (`variant "<name>"`); null or unset for the preset itself. */
   readonly variant?: string | null;
-  /** The project's profile (project.ogt's `profile`): a prop or character of a 2D game is a sprite, of a 3D game a model. Unset: the style's only profile, else 3D. */
+  /** The game's profile, its creation form's (`profileOf`): a prop or character of a 2D game is a sprite, of a 3D game a model. Unset (a preset with no game): the style's only profile, else 3D. */
   readonly profile?: "2d" | "3d";
   /** The palette `ArtPalette.colors` names (else `Stylise.palette`), read; null or unset when the look names none. */
   readonly palette?: BriefPalette | null;
@@ -867,6 +867,21 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 /** The package root: packages/knowledge (or the engine package's knowledge/), or @origingame/create-game. */
 const PKG = join(HERE, "..");
 
+/**
+ * The profile a creation form draws in (project.ogt's `create { form }`, the
+ * one field it follows, as og-bundle's `look::project_2d` reads it): `2d` is
+ * the 2D profile; `2.5d`, `3d`, `film` or no form the 3D one.
+ */
+export function profileOf(form: string | undefined): "2d" | "3d" {
+  return form === "2d" ? "2d" : "3d";
+}
+
+/** project.ogt's `create` block (its text `project`) as a reader of its quoted fields; undefined without one. */
+function createBlock(project: string): ((key: string) => string | undefined) | undefined {
+  const block = /^create[ \t]*\{([\s\S]*?)^\}/m.exec(project)?.[1];
+  return block === undefined ? undefined : (key) => new RegExp(`^\\s*${key}\\s+"([^"]*)"`, "m").exec(block)?.[1];
+}
+
 /** The first of `candidates` that exists. */
 function first(candidates: readonly string[]): string | undefined {
   return candidates.find((c) => existsSync(c));
@@ -1119,7 +1134,8 @@ export interface ReadLookOptions {
  * look whose art contract the cook reads), its `extends` chain through the
  * game's own looks down to the preset (templates/looks in the engine
  * repository, presets/ in the published package), the palette it names, the
- * catalogue entry and preview of its preset, and project.ogt's `profile`.
+ * catalogue entry and preview of its preset, and the profile of project.ogt's
+ * creation form (`profileOf`).
  * Throws with the fix when project.ogt names no look.
  */
 export function readLook(projectDir: string, options: ReadLookOptions = {}): BriefLook {
@@ -1129,14 +1145,14 @@ export function readLook(projectDir: string, options: ReadLookOptions = {}): Bri
   const project = readFileSync(manifest, "utf8");
   const look = /^look[ \t]+"([^"]+)"/m.exec(project)?.[1];
   if (!look) throw new Error(`${manifest}: no \`look "looks/<id>.ogt"\` line; name the game's look there, as create writes it`);
-  const profile = /^profile[ \t]+"(2d|3d)"/m.exec(project)?.[1] as "2d" | "3d" | undefined;
+  const form = createBlock(project)?.("form");
   const assets = join(dir, "assets");
   const id = assetId(look);
   const path = join(assets, id);
   if (!existsSync(path)) throw new Error(`${manifest}: look "${look}": there is no assets/${id}`);
   const presets = options.presets ?? presetsDir();
   const { blocks, preset, variant, mood } = flatten(id, readFileSync(path, "utf8"), assets, presets);
-  return briefLook(blocks, preset, variant, mood, assets, presets, options.catalogue ?? catalogueFile(), profile ?? "3d");
+  return briefLook(blocks, preset, variant, mood, assets, presets, options.catalogue ?? catalogueFile(), profileOf(form));
 }
 
 /** A preset's look alone (`presetLook("pixel")`), for a game not written yet, in its own mood or the one `options.mood` asks, as the preset or the variant `options.variant` asks; its profile is the style's only one, else unset. */
@@ -1881,10 +1897,8 @@ const ROLE_WORDS: Readonly<Record<MusicRole, string>> = {
 
 /** The audio choices of a project's create block (project.ogt): `music`, `mood` and `genre`, which a film (`form "film"`) has none of. */
 export function readAudioChoices(projectDir: string): AudioBriefInput {
-  const text = readFileSync(join(projectDir, "project.ogt"), "utf8");
-  const block = /^create[ \t]*\{([\s\S]*?)^\}/m.exec(text)?.[1];
-  if (!block) throw new Error(`${join(projectDir, "project.ogt")} has no create block: pass music, mood and genre (brief audio --music --mood --genre)`);
-  const field = (k: string) => new RegExp(`^\\s*${k}\\s+"([^"]*)"`, "m").exec(block)?.[1];
+  const field = createBlock(readFileSync(join(projectDir, "project.ogt"), "utf8"));
+  if (!field) throw new Error(`${join(projectDir, "project.ogt")} has no create block: pass music, mood and genre (brief audio --music --mood --genre)`);
   // The mood: a create block's from before 2026-11-20, else the game's look's own.
   const music = field("music"), mood = field("mood") ?? readLook(projectDir).mood ?? undefined, genre = field("genre");
   if (field("form") === "film") {

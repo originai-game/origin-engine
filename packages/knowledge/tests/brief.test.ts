@@ -152,7 +152,17 @@ function project(files: Record<string, string>): string {
   return dir;
 }
 
-const manifest = (look: string | null, profile = "2d") => `type project\nversion 1\n---\nname "T"\nid "t"\nprofile "${profile}"\n${look ? `look "${look}"\n` : ""}`;
+const manifest = (look: string | null, form: string | null = "2d") => `type project\nversion 1\n---\nname "T"\nid "t"\n${look ? `look "${look}"\n` : ""}${form ? `create {\n  genre "rpg"\n  form "${form}"\n}\n` : ""}`;
+
+test("readLook's profile is the creation form's: a 2D game's prop is a sprite, a 3D or form-less game's a model", () => {
+  const medium = (form: string | null) => {
+    const dir = project({ "project.ogt": manifest("looks/game.ogt", form), "assets/looks/game.ogt": 'type look\nversion 1\n---\nextends "minimal-geometric"\n' });
+    const look = readLook(dir);
+    return [look.profile, artBrief(look, "prop", "a crate").medium];
+  };
+  expect(medium("2d")).toEqual(["2d", "image"]);
+  for (const form of ["2.5d", "3d", "film", null]) expect(medium(form)).toEqual(["3d", "model"]);
+});
 
 test("readLook follows project.ogt's look through the game's own looks to the preset, field by field", () => {
   const dir = project({

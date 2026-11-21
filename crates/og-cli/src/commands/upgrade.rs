@@ -194,6 +194,8 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
     let (mut codemods, mut manual, mut review) = (Vec::new(), Vec::new(), Vec::new());
     // The new UI core has no `uiCore` switch: its line leaves project.ogt.
     let mut drop_ui_core = false;
+    // project.ogt's `profile` line becomes the creation form.
+    let mut profile_form: Option<(&str, &Value)> = None;
     for e in &crossed {
         let version = e["version"].as_str().unwrap_or("");
         for b in e["breaking"].as_array().into_iter().flatten() {
@@ -274,6 +276,10 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 }
                 continue;
             }
+            if b["codemod"]["kind"] == "profile-form" {
+                profile_form = Some((version, b));
+                continue;
+            }
             if b["codemod"]["kind"] == "ui-kits" {
                 review.push(json!({
                     "version": version, "member": member,
@@ -325,8 +331,24 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
         match std::fs::read_to_string(&manifest) {
             Ok(text) => match set_engine_line(&text, &to)
                 .map(|t| if drop_ui_core { without_ui_core(&t) } else { t })
-            {
-                Some(t) => writes.push((manifest, t)),
+                .map(|t| {
+                    if profile_form.is_some() {
+                        form_of_profile(&t)
+                    } else {
+                        t
+                    }
+                }) {
+                Some(t) => {
+                    if let Some((version, b)) = profile_form
+                        && let Some(line) = t.lines().position(|l| l.starts_with("profile "))
+                    {
+                        manual.push(json!({
+                            "version": version, "member": b["member"], "change": b["change"], "fix": b["fix"],
+                            "file": "project.ogt", "line": line + 1, "text": t.lines().nth(line).unwrap_or("").trim(),
+                        }));
+                    }
+                    writes.push((manifest, t))
+                }
                 None => {
                     return failed(
                         "project.ogt: the engine line could not be rewritten".into(),
@@ -808,6 +830,53 @@ fn without_ui_core(text: &str) -> String {
         .collect()
 }
 
+/// project.ogt with its top-level `profile` line moved to the creation
+/// form (`changelog/unreleased/profile-is-creation-form.json`): `profile
+/// "2d"` becomes `create { form "2d" }` (a line of the create block when
+/// the project has one without a form), `profile "3d"` goes (no form is
+/// 3D, and a create block's form other than 2d already is). A line that
+/// cannot move so (a 2d profile beside another form) is left for the
+/// author.
+fn form_of_profile(text: &str) -> String {
+    let lines: Vec<&str> = text.split_inclusive('\n').collect();
+    let Some(at) = lines.iter().position(|l| {
+        l.strip_prefix("profile")
+            .is_some_and(|r| r.starts_with(char::is_whitespace))
+    }) else {
+        return text.to_string();
+    };
+    let value = lines[at]["profile".len()..]
+        .trim()
+        .trim_matches('"')
+        .to_string();
+    let create = lines
+        .iter()
+        .position(|l| l.trim_end() == "create {" || l.trim_end() == "create{");
+    let form = create.and_then(|c| {
+        lines[c + 1..]
+            .iter()
+            .take_while(|l| !l.starts_with('}'))
+            .find_map(|l| {
+                l.trim()
+                    .strip_prefix("form")
+                    .map(|r| r.trim().trim_matches('"').to_string())
+            })
+    });
+    let mut out: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
+    match (value.as_str(), create, form.as_deref()) {
+        ("3d", _, None | Some("2.5d" | "3d" | "film")) | ("2d", _, Some("2d")) => {
+            out.remove(at);
+        }
+        ("2d", Some(c), None) => {
+            out.insert(c + 1, "  form \"2d\"\n".into());
+            out.remove(at);
+        }
+        ("2d", None, _) => out[at] = "create {\n  form \"2d\"\n}\n".into(),
+        _ => {}
+    }
+    out.concat()
+}
+
 /// project.ogt with its `engine "<v>"` line set to `to`.
 fn set_engine_line(text: &str, to: &str) -> Option<String> {
     let mut hit = false;
@@ -968,5 +1037,20 @@ mod tests {
             without_ui_core("name \"x\"\nuiCore next\nuiCores 1\n"),
             "name \"x\"\nuiCores 1\n"
         );
+    }
+
+    #[test]
+    fn the_profile_line_becomes_the_creation_form() {
+        assert_eq!(
+            form_of_profile("name \"x\"\nprofile \"2d\"\ntick 60\n"),
+            "name \"x\"\ncreate {\n  form \"2d\"\n}\ntick 60\n"
+        );
+        assert_eq!(
+            form_of_profile("profile \"2d\"\ncreate {\n  genre \"rpg\"\n}\n"),
+            "create {\n  form \"2d\"\n  genre \"rpg\"\n}\n"
+        );
+        assert_eq!(form_of_profile("profile \"3d\"\ntick 60\n"), "tick 60\n");
+        let clash = "profile \"3d\"\ncreate {\n  form \"2d\"\n}\n";
+        assert_eq!(form_of_profile(clash), clash, "left for the author");
     }
 }

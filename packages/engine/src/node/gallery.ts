@@ -94,7 +94,9 @@ name "UI gallery"
 id "ui-gallery"
 engine "0.9.0"
 entry "src/main.tsx"
-profile "2d"
+create {
+  form "2d"
+}
 tick 60
 seed 1
 `;

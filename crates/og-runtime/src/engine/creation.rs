@@ -75,12 +75,13 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     let options = parse(Some(options))?;
     let engine_id = ENGINES.with(|e| e.borrow().len() as u32);
     let seed = options["seed"].as_u64().map(|s| s as u32);
-    let profile = match options["profile"].as_str() {
-        None | Some("3d") => og_physics::PROFILE_3D,
-        Some("2d") => og_physics::PROFILE_2D,
+    let asked = match options["profile"].as_str() {
+        None => None,
+        Some("3d") => Some(og_physics::PROFILE_3D),
+        Some("2d") => Some(og_physics::PROFILE_2D),
         Some(other) => {
             return Err(format!(
-                "options.profile is '{other}'; a project's profile is \"2d\" or \"3d\""
+                "options.profile is '{other}'; a profile is \"2d\" or \"3d\""
             ));
         }
     };
@@ -88,6 +89,33 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     let project = match options["project"].as_str() {
         Some(text) => Some(project_game(text)?),
         None => None,
+    };
+    // The profile of an engine without a project is options.profile; a
+    // project's is its creation form's, which options.profile may repeat.
+    let own = project.as_ref().map(|p| {
+        if p.two_d {
+            og_physics::PROFILE_2D
+        } else {
+            og_physics::PROFILE_3D
+        }
+    });
+    let profile = match (asked, own) {
+        (Some(a), Some(o)) if a != o => {
+            return Err(format!(
+                "options.profile is '{}' and project.ogt's creation form makes the game {}; leave options.profile out",
+                if a == og_physics::PROFILE_2D {
+                    "2d"
+                } else {
+                    "3d"
+                },
+                if o == og_physics::PROFILE_2D {
+                    "2D"
+                } else {
+                    "3D"
+                }
+            ));
+        }
+        (a, o) => o.or(a).unwrap_or(og_physics::PROFILE_3D),
     };
     let modules = super::Modules::default();
     let mount = super::Mount {

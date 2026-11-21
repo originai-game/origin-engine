@@ -8,7 +8,6 @@ name "Reload Asset"
 id "reload-asset"
 engine "0.9.0"
 entry "src/main.ts"
-profile "3d"
 tick 60
 seed 1
 scenes {

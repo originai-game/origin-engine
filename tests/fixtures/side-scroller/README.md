@@ -27,7 +27,7 @@ front of it apart. It exercises the 2D stack together on the real engine:
   recipe once as a sprite and flipbook (`assets/fx/`): `hit` (a steel star,
   shards and a broken ring) where the blade bites, `dust` at the heel on
   each run step; `Drive` despawns each when its clip is finished.
-- **Sharp pixels.** No `render` option: a `profile "2d"` project's default
+- **Sharp pixels.** No `render` option: a 2D project's (`create { form "2d" }`) default
   antialias is 4x MSAA. TAA's jitter and history blend soften
   nearest-sampled pixel art: in this frame it cut the mean luma gradient
   to 0.52–0.66 of the untreated frame (the knight 0.66, the ground 0.52),

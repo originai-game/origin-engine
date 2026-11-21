@@ -270,12 +270,6 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       return readFileSync(join(dir, "project.ogt"), "utf8");
     }
 
-    /** project.ogt's `profile` ("2d" or "3d"), which chooses the physics profile. */
-    function projectProfile(text: string | undefined): "2d" | "3d" | undefined {
-      const m = text === undefined ? null : /^\s*profile\s+"(2d|3d)"/m.exec(text);
-      return m ? (m[1] as "2d" | "3d") : undefined;
-    }
-
     const importStart = unixMs();
     beginBundle();
     const game = await importGame(entry);
@@ -288,7 +282,6 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       cleanup.push(() => abi.og_engine_trace(BEFORE_ENGINE, false));
     }
     const project = projectText(control.inputRoot ?? root);
-    const profile = projectProfile(project);
     if (sharedTokenFile !== undefined && shared === undefined) fail("--shared-token-file goes with --shared <ws://host:port/>");
     // A traced run that renders takes its --ticks one frame each: a trace is of the frames, and ticks advanced at once
     // draw none.
@@ -302,7 +295,6 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       ...(root ? { root } : {}),
       ...(content ? { content } : {}),
       ...(project === undefined ? {} : { project }),
-      ...(profile ? { profile } : {}),
       ...(locale ? { locale } : {}),
       ...(deferStart ? { deferStart } : {}),
     });

@@ -1250,7 +1250,7 @@ fn a_texture_no_model_claims_is_a_mesh_texture_in_3d_unless_its_own_line_says_ot
     assert!(e.what.contains("off \"textures/\""), "{e:?}");
 
     // A 2D project: a sprite, the 2D pass's; the mesh pass leaves it.
-    let two_d = stone("stone-2d", "profile \"2d\"\n", None);
+    let two_d = stone("stone-2d", "create {\n  form \"2d\"\n}\n", None);
     let report = cook(&two_d);
     assert_eq!(role(&two_d), TextureRole::Sprite);
     for e in report

@@ -94,12 +94,11 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
     og_cook::cook::assets::publish_keep(&doc)?;
     let b = &doc.body;
     let s = |k: &str| b.get(k).and_then(|e| e.string(0).ok()).map(str::to_string);
-    let profile = s("profile").unwrap_or_else(|| "3d".into());
-    if profile != "2d" && profile != "3d" {
-        return Err(format!(
-            "{file}: profile is `{profile}`; use \"2d\" or \"3d\""
-        ));
-    }
+    let profile = if og_cook::look::project_2d(b).map_err(|e| format!("{file}:{e}"))? {
+        "2d"
+    } else {
+        "3d"
+    };
     let empty = Block::new();
     let p = b
         .get("publish")
@@ -312,7 +311,7 @@ pub fn refuse_3d_world(root: &Path, settings: &Value) -> Result<(), String> {
         return Ok(());
     }
     Err(format!(
-        "the 2D profile's publish module has no 3D world (RenderCapabilities.world3d is false: terrain, planar water, scattered copies and 3D fluids are left out of it), and these scenes hold it:\n{}\nremove them from the scenes, or make the project 3D (project.ogt: profile \"3d\")",
+        "the 2D profile's publish module has no 3D world (RenderCapabilities.world3d is false: terrain, planar water, scattered copies and 3D fluids are left out of it), and these scenes hold it:\n{}\nremove them from the scenes, or make the project 3D (project.ogt: `create {{ form \"3d\" }}`)",
         hits.join("\n")
     ))
 }

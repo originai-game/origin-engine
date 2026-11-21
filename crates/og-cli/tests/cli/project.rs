@@ -143,7 +143,7 @@ fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
         std::fs::write(
             game.join("project.ogt"),
             format!(
-                "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\nprofile \"{profile}\"\n"
+                "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\ncreate {{\n  form \"{profile}\"\n}}\n"
             ),
         )
         .unwrap();
@@ -195,7 +195,7 @@ fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
         assert!(t.contains(line), "{line}: {t}");
     }
     assert!(t.contains("RenderCapabilities.world3d is false"), "{t}");
-    assert!(t.contains("profile \"3d\""), "{t}");
+    assert!(t.contains("create { form \"3d\" }"), "{t}");
 
     // The dev build has every subsystem; a 3D project's publish keeps them,
     // in whatever UI style the game draws (the default one included).

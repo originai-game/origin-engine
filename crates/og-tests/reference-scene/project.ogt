@@ -8,7 +8,6 @@ name "Reference scene"
 id "reference-scene"
 engine "0.9.0"
 entry "src/main.ts"
-profile "3d"
 tick 60
 seed 1
 publish {

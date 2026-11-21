@@ -29,7 +29,7 @@ only (§Content-hashed names), listed in og-build.json.
 | `audio-decoder.js` | The audio decoder's Worker, started by the engine Worker once audio starts. |
 | `game.js.map`, `play.js.map`, `audio-worklet.js.map` | A dev build's source maps, beside their bundles and linked from them (§Source maps). |
 | `sourcemaps/` | A publish build's source maps of the same three bundles, unlinked and not to be served (§Source maps). |
-| `origin-engine.js`, `origin-engine_bg.wasm` | The web host from wasm-bindgen: `dist/web` in a dev build, the publish variant of the project's `profile` with `--publish` (§Variants). |
+| `origin-engine.js`, `origin-engine_bg.wasm` | The web host from wasm-bindgen: `dist/web` in a dev build, the publish variant of the project's profile (its creation form, `create { form "2d" }` for 2D) with `--publish` (§Variants). |
 | `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant of the same profile and wasm-bindgen-rayon's Worker script (§Lanes). |
 | `basis/` | Binomial's Basis transcoder and its licence. |
 | `av1/` | The AV1 fallback decoder (`og-av1.wasm`) and its Worker (`av1-worker.js`), fetched only by a browser without AV1 in WebCodecs. |
@@ -294,7 +294,7 @@ posts `{ type: "og-cache", files }`. Natively, `OG_LANES` sets the pool
 ## Variants
 
 One engine module per download. A publish build ships the variants of the
-game's physics profile (project.ogt `profile`), single-threaded and lanes:
+game's physics profile (project.ogt's `create { form }`), single-threaded and lanes:
 
 | Variant | Where | Built with (og-host-web) | Physics |
 |---|---|---|---|

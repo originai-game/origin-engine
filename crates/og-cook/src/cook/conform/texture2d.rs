@@ -11,7 +11,7 @@
 //! or tiles), those a 2D rig, a UI style or a map's own tileset names (a
 //! layout the cook cannot move: palette and alpha only), and the textures
 //! no such asset names that are 2D by themselves: `kind pixel` in their
-//! import settings, or any image in a `profile "2d"` project. An image's
+//! import settings, or any image in a 2D project (`create { form "2d" }`). An image's
 //! import settings may say `conform sprite` or `conform ui` for one the
 //! cook would not find (a HUD image of a 3D game), `conform off` to keep
 //! it as it is, and `conform { size 32 }` for the cell size it takes.
@@ -195,20 +195,6 @@ fn style_images(s: &Source, known: &BTreeSet<String>) -> Vec<String> {
 
 const IMAGE_ROLES: [&str; 2] = ["sprite", "ui"];
 
-/// Whether project.ogt's `profile` is `2d`.
-pub(super) fn profile_2d(project: Option<&Document>) -> bool {
-    project
-        .and_then(|d| {
-            d.body
-                .get("profile")?
-                .values
-                .first()?
-                .as_str()
-                .map(|p| p == "2d")
-        })
-        .unwrap_or(false)
-}
-
 /// Reads each sheet's own `conform` line and takes it out of its text
 /// (its importer does not know it), with or without a look.
 pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConform> {
@@ -360,7 +346,10 @@ pub(in crate::cook) fn conform(
         Some(d) => ProjectConform::parse(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
         None => ProjectConform::default(),
     };
-    let two_d = profile_2d(project.as_ref());
+    let two_d = match &project {
+        Some(d) => crate::look::project_2d(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
+        None => false,
+    };
     let sheet_conform = strip_sheets(sources);
     let mut entries = Vec::new();
 

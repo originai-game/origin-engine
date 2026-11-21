@@ -6,6 +6,5 @@ name "Look fixture"
 id "look-fixture"
 engine "0.9.0"
 entry "main.ts"
-profile "3d"
 tick 60
 seed 1

@@ -260,7 +260,7 @@ and the dither cells.
   as tall the strokes are half as large a part of the picture.
 - paintDetail keeps faces, hands and lettering drawn while grass and
   broad areas paint. It runs the prepass only where meshes are drawn.
-- In a profile 2d project under the art contract, the cook applies the
+- In a 2D project (`create { form "2d" }`) under the art contract, the cook applies the
   paint and watercolour fields once, in each texture's own texels.
 - The watercolour wash follows Bousseau et al. 2006 and Montesdeoca et
   al. 2018 and is drawn over the painted frame.

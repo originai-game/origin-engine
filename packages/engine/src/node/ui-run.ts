@@ -117,7 +117,6 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   const inputRoot = control.inputRoot ?? root!;
   const projectFile = join(inputRoot, "project.ogt");
   const project = existsSync(projectFile) ? readFileSync(projectFile, "utf8") : undefined;
-  const profile = project ? (/^\s*profile\s+"(2d|3d)"/m.exec(project)?.[1] as "2d" | "3d" | undefined) : undefined;
   const show = opt("--show") ?? "show:{screen}";
   /** A screen of the matrix: its name, the commands that reach it, and when it is captured (default the settle time). */
   const screens: Array<{ name: string; commands: string; at?: number }> = opts("--screen").map((s) => {
@@ -183,7 +182,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
     try {
       {
         const game = await freshGame();
-        const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}) });
+        const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(locale ? { locale } : {}) });
         if (!created.ok) fail(created.reason);
         engine = created.value;
         engine.attachPlatform(nativePlatform());
@@ -232,7 +231,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
 
   /** The probe's `help` text (every action with its usage), from a fresh engine. */
   const runHelp = (game: GameToken): string => {
-    const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}) });
+    const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }) });
     if (!created.ok) fail(created.reason);
     const engine = created.value;
     try {

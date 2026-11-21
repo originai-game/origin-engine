@@ -113,7 +113,7 @@ pub(crate) fn contract(eng: &Engine) -> bool {
         .is_some_and(|p| p.look.is_some())
 }
 
-/// Painted 2D (docs/art.md §2.3): in a `profile "2d"` project whose look
+/// Painted 2D (docs/art.md §2.3): in a 2D project (`create { form "2d" }`) whose look
 /// carries the art contract (`LookFile::constrains_art`, the switch the
 /// cook conforms by), the look's paint and watercolour fields are the
 /// cook's, applied in each texture's own texels, and the frame draws

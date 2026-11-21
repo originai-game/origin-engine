@@ -89,7 +89,8 @@ has the whole rule). Keep moving things
 between about 0.05 m and 100 m; scale the game, not gravity
 (`determinism §2`).
 
-The profile is project.ogt's `profile "2d"` or `"3d"`, and the same
+The profile follows project.ogt's creation form: `create { form "2d" }`
+is 2D, any other form (or none) 3D, and the same
 components serve both. In 2D (rapier2d) bodies move in the xy plane and turn
 about z; a transform keeps its z, vectors use x and y, rotations z, and the
 only lock bits that mean anything are 1, 2 and 32. The cylinder and

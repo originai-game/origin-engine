@@ -8716,7 +8716,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a profile 2d art contract the cook paints each texture and the frame draws neither pass. See `looks §10`."),
+                doc: doc!("Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a 2D project's art contract the cook paints each texture and the frame draws neither pass. See `looks §10`."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

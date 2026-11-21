@@ -102,7 +102,7 @@ break, with a `changelog.json` breaking entry):
   avoid, palette, references: BriefReference[], image?: ImageParams,
   model?: ModelParams, ui?: UiParams }`.
 - `readLook(projectDir, options?)`: a project's look from disk:
-  project.ogt's `look "looks/<id>.ogt"` and `profile`, the look's
+  project.ogt's `look "looks/<id>.ogt"` and creation form (`create { form }`, `profileOf`), the look's
   `extends` chain through the game's own looks (a slug names the game's
   `assets/looks/<slug>.ogt` first, a path another look under `assets/`) to
   the preset, merged field by field as the cook merges it, the palette
