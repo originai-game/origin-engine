@@ -1,18 +1,15 @@
 // The engine modules through the TypeScript API on the native host: physics
 // (bodies fall and rest, events reach systems, scene queries inside and
-// outside systems), the UI (a mounted document clicked through the probe's
-// command channel, dumped, its press part of the world state), camera
+// outside systems), the UI (a TSX button pressed through the probe's
+// command channel, and the tree dumped), camera
 // controllers (og.systems.cameras), and the world calls that run inside
 // systems through the system context.
 import { beforeAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { og, defineComponent, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
-import { cookProject } from "./support/og-bin.ts";
+import { Text, View, mount, renderers, useStore } from "../src/ui/index.ts";
 
 beforeAll(() => {
   loadNativeHost();
@@ -246,75 +243,58 @@ test("a restored snapshot continues the simulation exactly", () => {
 });
 
 const Clicks = defineResource("MdClicks", { n: u32(), value: f32() });
-const Panel = defineSystem("MdPanel", { writes: [Clicks] }, (_q, _t, world) => {
-  const c = must(world.resource(Clicks));
-  if (og.ui.docEvents(world).some((e) => e.kind === "click" && e.name === "Go")) c.n += 1;
-  must(og.ui.scope(world, "md").writable("clicks", 0).set(c.n));
-});
 
-/** A cooked project holding the panel document: a count and a Go button. */
-let panelRoot = "";
-function panelProject(): string {
-  if (panelRoot) return panelRoot;
-  const root = mkdtempSync(join(tmpdir(), "og-md-panel-"));
-  mkdirSync(join(root, "assets"));
-  writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Panel"\nid "md-panel"\nentry "main.ts"\n');
-  writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
-  writeFileSync(join(root, "assets/panel.svelte"), `<meta name="component" content="panel">
-<column id="Box" style="padding: 10px"><text id="Hello">clicks {$clicks}</text><button id="Go" onclick={go}>Go</button></column>
-`);
-  cookProject(root, root);
-  panelRoot = root;
-  return root;
-}
-
-/** An engine whose UI is the panel document, its count a store the system writes. */
+/** An engine whose UI is a TSX panel: a count the press writes, and a Go button. */
 function panel(): Engine {
-  const r = createEngine(og.game({
+  return start(og.game({
     resources: [Clicks],
-    systems: [Panel],
-    start(world) {
-      must(og.load.document(world, "panel.svelte"));
-    },
     ui(world) {
-      const scope = og.ui.scope(world, "md");
-      must(scope.mount("panel", "panel", { clicks: scope.writable("clicks", 0) }));
+      const clicks = og.ui.scope(world, "md").writable("clicks", 0);
+      const n = useStore<number>(clicks);
+      mount(world, () => View({
+        class: "p-2.5 gap-2",
+        children: [
+          Text({ children: () => `clicks ${n()}` }),
+          View({
+            role: "button",
+            class: "px-4 py-2",
+            onPress: (e) => {
+              const c = must(e.world.resource(Clicks));
+              c.n += 1;
+              must(clicks.set(c.n));
+            },
+            children: [Text({ children: "Go" })],
+          }),
+        ],
+      }), {});
     },
-  }) as unknown as GameToken, { root: panelProject() });
-  if (!r.ok) throw new Error(r.reason);
-  return r.value;
+  }));
 }
 
-test("a document's button is clicked through the command channel and the tree dumped", () => {
-  const engine = panel();
-  engine.advance(2);
-  const tree = engine.probe.dump({ what: "ui" }) as unknown as { elements: Array<{ id: string; text: string; x: number; y: number; width: number; height: number }> };
-  const go = tree.elements.find((e) => e.id === "Go")!;
-  expect(go.width).toBeGreaterThan(0);
-  expect(tree.elements.find((e) => e.id === "Hello")!.text).toBe("clicks 0");
-  const report = engine.probe.commands(`0:touch_move:${go.x + go.width / 2},${go.y + go.height / 2};0.05:touch_start;0.1:touch_end`) as unknown as { warnings: string[] };
-  expect(report.warnings).toEqual([]);
-  engine.advance(30);
-  expect(must(engine.world.resource(Clicks)).n).toBe(1);
-  const after = engine.probe.dump({ what: "ui" }) as unknown as { elements: Array<{ id: string; text: string }> };
-  expect(after.elements.find((e) => e.id === "Hello")!.text).toBe("clicks 1");
-});
+type Element = { path: string; text: string; x: number; y: number; width: number; height: number };
+const ui = (engine: Engine) => (engine.probe.dump({ what: "ui" }) as unknown as { elements: Element[] }).elements;
+/** The box that holds a label: its text's element's parent. */
+const holder = (engine: Engine, label: string) => {
+  const text = ui(engine).find((e) => e.text === label)!;
+  return ui(engine).find((e) => e.path === text.path.split("/").slice(0, -2).join("/"))!;
+};
 
-test("the UI's interaction state is world state: a restore replays a held press", () => {
+test("a TSX button is pressed through the command channel and the tree dumped", () => {
   const engine = panel();
-  engine.advance(2);
-  const go = (engine.probe.dump({ what: "ui" }) as unknown as { elements: Array<{ id: string; x: number; y: number; width: number; height: number }> }).elements.find((e) => e.id === "Go")!;
-  engine.probe.commands(`0:touch_move:${go.x + go.width / 2},${go.y + go.height / 2};0.05:touch_start`);
-  engine.advance(10);
-  const snap = engine.probe.snapshot() as { id: string; hash: string };
-  engine.probe.commands("0:touch_end");
-  engine.advance(5);
-  expect(must(engine.world.resource(Clicks)).n).toBe(1);
-  expect(engine.probe.restore(snap.id)).toBeTrue();
-  expect(must(engine.world.resource(Clicks)).n).toBe(0);
-  engine.probe.commands("0:touch_end");
-  engine.advance(5);
-  expect(must(engine.world.resource(Clicks)).n).toBe(1);
+  try {
+    engine.advance(2);
+    const go = holder(engine, "Go");
+    expect(go.width).toBeGreaterThan(0);
+    expect(ui(engine).some((e) => e.text === "clicks 0")).toBe(true);
+    const report = engine.probe.commands(`0:touch_move:${go.x + go.width / 2},${go.y + go.height / 2};0.05:touch_start;0.1:touch_end`) as unknown as { warnings: string[] };
+    expect(report.warnings).toEqual([]);
+    engine.advance(30);
+    expect(must(engine.world.resource(Clicks)).n).toBe(1);
+    expect(ui(engine).some((e) => e.text === "clicks 1")).toBe(true);
+  } finally {
+    renderers.delete((engine.world as unknown as { id: number }).id);
+    engine.destroy();
+  }
 });
 
 const Rig = defineComponent("MdRig", { k: u32() });

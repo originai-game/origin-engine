@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 import { og } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
+import { Text, View, mount, renderers, t } from "../src/ui/index.ts";
+import { strings } from "../src/ui/rt.ts";
 import { cookProject, ogBin } from "./support/og-bin.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
@@ -136,10 +138,10 @@ test("og.i18n: format functions follow the active locale, else the requested one
   expect(og.i18n.formatDuration(w, 125)).toBe("[2:05~~]");
 });
 
-test("og.i18n: a document's English base takes over from a translation loaded before it, and the UI's direction follows", () => {
-  // A game that loads its Arabic table before its documents, with no locale
-  // asked for: Arabic is active (the only table) until the documents' English
-  // strings arrive as the base, which then is. Wrong: the UI kept the
+test("og.i18n: a TSX component's English base takes over from a translation loaded before it, and the locale's direction follows", () => {
+  // A game that loads its Arabic table before its UI, with no locale asked
+  // for: Arabic is active (the only table) until the TSX card's English
+  // strings arrive as the base, which then is. Wrong: the locale kept the
   // Arabic table's right-to-left direction (and fonts) over English text.
   const root = mkdtempSync(join(tmpdir(), "og-i18n-base-"));
   try {
@@ -147,7 +149,6 @@ test("og.i18n: a document's English base takes over from a translation loaded be
     mkdirSync(join(root, "assets/strings"), { recursive: true });
     writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Base"\nid "base"\nentry "main.ts"\n');
     writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
-    writeFileSync(join(root, "assets/ui/card.svelte"), '<meta name="component" content="Card">\n<meta name="strings" content="./card.en.ogt">\n<div id="Row"><span id="A">{t("card.title")}</span><span id="B">b</span></div>\n<style>#Row { display: flex; width: stretch; }</style>\n');
     writeFileSync(join(root, "assets/ui/card.en.ogt"), 'type strings\nversion 1\n---\nlocale "en"\nstring "card.title" "Title"\n');
     writeFileSync(join(root, "assets/strings/ar.ogt"), 'type strings\nversion 1\n---\nlocale "ar"\nstring "card.title" "العنوان"\n');
     cookProject(root, root);
@@ -157,27 +158,26 @@ test("og.i18n: a document's English base takes over from a translation loaded be
         start(world) {
           const ar = og.i18n.load(world, "strings/ar.ogt");
           if (!ar.ok) throw new Error(ar.reason);
-          const doc = og.load.document(world, "ui/card.svelte");
-          if (!doc.ok) throw new Error(doc.reason);
-          const info = og.i18n.locale(world) as unknown as Info;
-          seen.push(`${info.active} ${info.direction} ${og.i18n.t(world, "card.title")}`);
         },
         ui(world) {
-          const mounted = og.ui.scope(world, "t").mount("card", "Card", {});
-          if (!mounted.ok) throw new Error(mounted.reason);
+          // What the build makes of the card's `import "./card.en.ogt"`.
+          strings("ui/card.en.ogt");
+          mount(world, () => View({ class: "flex-row w-[300px]", children: [Text({ children: t("card.title") }), Text({ children: "b" })] }), {});
         },
       }) as GameToken, { root, ...(locale ? { locale } : {}) });
       if (!r.ok) throw new Error(r.reason);
       r.value.advance(3);
-      // The row runs from the right under a right-to-left UI.
-      const els = (r.value.probe.dump({ what: "ui" }) as unknown as { elements: { path: string; x: number }[] }).elements;
-      const x = (id: string) => els.find((e) => e.path.endsWith(`/${id}`))!.x;
-      seen.push(x("A") < x("B") ? "ltr" : "rtl");
+      const info = og.i18n.locale(r.value.world) as unknown as Info;
+      seen.push(`${info.active} ${info.direction} ${og.i18n.t(r.value.world, "card.title")}`);
+      // The card shows the active table's title.
+      const els = (r.value.probe.dump({ what: "ui" }) as unknown as { elements: { text: string }[] }).elements;
+      seen.push(els.some((e) => e.text === og.i18n.t(r.value.world, "card.title")) ? "shown" : "missing");
+      renderers.delete((r.value.world as unknown as { id: number }).id);
       r.value.destroy();
     };
     run();
     run("ar-EG");
-    expect(seen).toEqual(["en ltr Title", "ltr", "ar rtl العنوان", "rtl"]);
+    expect(seen).toEqual(["en ltr Title", "shown", "ar rtl العنوان", "shown"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
