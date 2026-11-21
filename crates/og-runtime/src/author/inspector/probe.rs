@@ -35,7 +35,7 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
         "dump_inspector",
         og_probe::CommandDesc {
             usage: "dump_inspector[:path]".into(),
-            doc: "the inspector's panel as data: whether it is open, the selected entity, the unsaved fields, its status line and every element of its last frame with its rectangle in CSS px (what touch_move and type reach)".into(),
+            doc: "the inspector's panel as data: whether it is open, the selected entity, the unsaved fields, its status line and every element of its TSX panel in the game's UI with its rectangle in CSS px (what touch_move and type reach)".into(),
         },
         0,
         move |world, _args| {
@@ -48,22 +48,19 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
                 .selected
                 .filter(|e| world.is_alive(*e))
                 .map(|e| og_probe::Names.id_of(world, e));
-            let elements: Vec<serde_json::Value> = if ins.open {
-                ins.ui
-                    .as_ref()
-                    .map(|u| {
-                        u.probe_elements()
-                            .iter()
-                            .filter_map(|e| {
-                                let mut json = e.to_json();
-                                json["path"] = panel::local_path(&e.path)?.into();
-                                Some(json)
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default()
-            } else {
-                Vec::new()
+            // The TSX panel's elements in the game's UI tree: its node and
+            // what is under it, by their op paths.
+            let elements: Vec<serde_json::Value> = match (ins.open, ins.panel_node, &rs.ui_next) {
+                (true, Some(node), Some(next)) => {
+                    let node = node.to_string();
+                    next.op_dump()
+                        .0
+                        .iter()
+                        .filter(|e| e.path.split('/').any(|p| p == node))
+                        .map(|e| e.to_json())
+                        .collect()
+                }
+                _ => Vec::new(),
             };
             Ok(serde_json::json!({
                 "open": ins.open,
@@ -107,9 +104,8 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
                         .ok_or_else(|| format!("inspect:{id}: no live entity of that id"))?,
                 ),
             };
-            let rate = tick_rate(world);
             let mut rs = eng.render.borrow_mut();
-            let ins = of(&mut rs, rate);
+            let ins = of(&mut rs);
             match arg {
                 "on" => ins.open = true,
                 "off" => ins.open = false,

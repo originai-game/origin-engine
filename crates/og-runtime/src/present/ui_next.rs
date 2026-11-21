@@ -1213,6 +1213,13 @@ impl Next {
         (elements, order)
     }
 
+    /// A TSX node's box on the UI's surface, in CSS px, as last laid out
+    /// (the inspector's panel).
+    #[cfg(not(feature = "publish"))]
+    pub(crate) fn op_box(&self, id: u32) -> Option<[f32; 4]> {
+        self.tree.as_ref()?.op_box(id)
+    }
+
     /// The new core's op nodes as the probe lists them, and the focus
     /// order as their paths: for `og ui check`.
     pub(crate) fn op_dump(&self) -> (Vec<og_probe::UiElement>, Vec<String>) {

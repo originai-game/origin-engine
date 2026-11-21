@@ -35,9 +35,8 @@ pub(super) fn part_key(target: &str, part: usize) -> String {
     format!("{target}#{part}")
 }
 
-/// The panel's values this frame; `unit` is the panel's UI unit (the
-/// UI view's boxes are in device px).
-pub(super) fn of(ins: &Inspector, cx: &Ctx, unit: f32) -> (Value, Shown) {
+/// The panel's values this frame.
+pub(super) fn of(ins: &Inspector, cx: &Ctx) -> (Value, Shown) {
     let mut out = Out::default();
     let hint = match ins.tab {
         0 => {
@@ -50,7 +49,7 @@ pub(super) fn of(ins: &Inspector, cx: &Ctx, unit: f32) -> (Value, Shown) {
                 Some(lines) => out.lines = lines,
                 None => out.note = "Pick an element of the game's UI".into(),
             }
-            out.boxes = ui_debug::boxes(&ins.ui_view, unit);
+            out.boxes = ui_debug::boxes(&ins.ui_view);
             "Filter styles and bindings by name"
         }
         _ => {

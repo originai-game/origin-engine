@@ -11,6 +11,7 @@ import { rt } from "./state.ts";
 import { QueryImpl, learnBuild } from "./views.ts";
 import { rates, uiReactor, uiReactors, worldFor, worlds } from "./world.ts";
 import { renderers } from "../ui/index.ts";
+import { pumpInspector } from "../ui/inspector-host.ts";
 
 // ── the dispatcher ────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
   if (kind === DISPATCH_PLATFORM) {
     try {
       engines.get(engine)?.pumpPlatform();
+      pumpInspector(engine);
       // The TSX UI's ops since the last boundary, and its events back.
       const ui = renderers.get(engine);
       if (ui) {

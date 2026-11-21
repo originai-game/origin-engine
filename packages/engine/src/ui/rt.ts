@@ -462,3 +462,11 @@ export function ref(target: unknown, node: UiNode, name?: string): boolean {
 export function metaUrl(path: string): string { return path; }
 export function setup(): void {}
 export function list(): never { throw new Error("og.ui: <List> is not an engine primitive; use <For>"); }
+
+/**
+ * @internal The development inspector's panel component: src/ui/inspector.tsx
+ * sets it in a development bundle (the engine's pump mounts it,
+ * src/ui/inspector-host.ts). Here because this module is the one instance the
+ * game's bundle and the runtime share.
+ */
+export const inspector: { panel: ((props: never) => unknown) | null } = { panel: null };

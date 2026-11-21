@@ -102,6 +102,12 @@ macro_rules! __og_host_bindings_engine {
                     world, &bytes,
                 ))
             }
+            fn og_engine_inspector_panel(&self, engine: u32) -> String {
+                $crate::og_engine_inspector_panel(engine)
+            }
+            fn og_engine_inspector_event(&self, engine: u32, event: String) -> bool {
+                $crate::og_engine_inspector_event(engine, &event)
+            }
             fn og_host_begin_bundle(&self) {
                 $crate::og_host_begin_bundle()
             }

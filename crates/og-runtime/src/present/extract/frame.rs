@@ -480,7 +480,7 @@ fn finish(
     // Anchored UI moved with its entity's drawn place (`super::interpolate`).
     let shifts = super::interpolate::ui_shifts(rs, &mut h, camera.as_deref());
     super::modules::emit(rs, &shifts);
-    // The inspector's panel over everything (development builds).
+    // The inspector's gizmo (development builds).
     #[cfg(not(feature = "publish"))]
     crate::author::inspector::emit(rs);
     super::interpolate::end(rs, &mut h);

@@ -124,6 +124,16 @@ unsafe extern "C" fn og_engine_ui_patch(args: *const crate::OgValue, out: *mut c
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_engine_inspector_panel(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as Lifecycle>::og_engine_inspector_panel(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_engine_inspector_event(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as Lifecycle>::og_engine_inspector_event(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_platform_take(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as Lifecycle>::og_platform_take(&Host, unsafe { crate::arg(args, 0) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3602,6 +3612,8 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_engine_view_column", arity: 2, call: og_engine_view_column },
     crate::Symbol { name: c"og_engine_view_add_scaled", arity: 6, call: og_engine_view_add_scaled },
     crate::Symbol { name: c"og_engine_ui_patch", arity: 2, call: og_engine_ui_patch },
+    crate::Symbol { name: c"og_engine_inspector_panel", arity: 1, call: og_engine_inspector_panel },
+    crate::Symbol { name: c"og_engine_inspector_event", arity: 2, call: og_engine_inspector_event },
     crate::Symbol { name: c"og_platform_take", arity: 1, call: og_platform_take },
     crate::Symbol { name: c"og_platform_answer", arity: 3, call: og_platform_answer },
     crate::Symbol { name: c"og_platform_set_host", arity: 2, call: og_platform_set_host },

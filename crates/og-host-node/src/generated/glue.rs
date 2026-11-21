@@ -147,6 +147,18 @@ pub fn og_engine_ui_patch(env: Env, world: u32, bytes: crate::NodeBytes) -> crat
     <Host as Lifecycle>::og_engine_ui_patch(&Host, world, bytes)
 }
 
+#[napi(js_name = "og_engine_inspector_panel")]
+pub fn og_engine_inspector_panel(env: Env, engine: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_inspector_panel(&Host, engine)
+}
+
+#[napi(js_name = "og_engine_inspector_event")]
+pub fn og_engine_inspector_event(env: Env, engine: u32, event: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_inspector_event(&Host, engine, event)
+}
+
 #[napi(js_name = "og_platform_take")]
 pub fn og_platform_take(env: Env, engine: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

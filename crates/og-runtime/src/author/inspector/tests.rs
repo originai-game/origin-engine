@@ -11,7 +11,7 @@ fn file(source: &str, text: &str, lines: Vec<usize>) -> og_probe::SavedFile {
 
 #[test]
 fn a_save_that_wrote_no_file_hands_its_changed_texts_to_the_next_frame_once() {
-    let ins = &mut Inspector::new(60);
+    let ins = &mut Inspector::new();
     // An unchanged scene is not handed on; a second save of the same
     // source replaces the first's text.
     assert!(hand_over(

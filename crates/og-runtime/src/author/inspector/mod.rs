@@ -1,20 +1,21 @@
 //! The inspector for humans (docs/design.md §1, §3.6; roadmap G3-7): a
-//! panel drawn over a development build's frame, in the engine's own
-//! style, showing the world's entities by og.Parent and the selected
-//! one's components, every field edited through the reflected schema.
+//! panel drawn over a development build's frame showing the world's
+//! entities by og.Parent and the selected one's components, every field
+//! edited through the reflected schema.
 //!
-//! - **Its own UI.** An og-ui `Ui` of its own, in the default style at the
-//!   mouse density, its panel the built-in document `panel.svelte` given
-//!   the inspector's state as values each frame (`panel`), drawn above
-//!   every layer of the game's (`emit`), so the
-//!   same panel shows wherever a development run is seen: Origin Desktop
-//!   through shared frames, the web page, a capture.
-//! - **Its own input.** The probe's input filter ([`filter`]) hands it the
-//!   events over its panel (and a press that started there until it ends),
-//!   the keys while one of its fields is edited, and the toggle key; the
-//!   game sees every other event as before. The toggle is F1 (`inspect:
-//!   key:<code>` sets another); when the game's action map binds that key
-//!   the inspector takes it only with Ctrl.
+//! - **A TSX panel.** The panel is the engine's TSX component
+//!   (`packages/engine/src/ui/inspector.tsx`), mounted on the game's UI at
+//!   the `system` layer by the runtime while the inspector is open, as a
+//!   game mounts its own. Each frame builds its values here (`panel`);
+//!   the runtime reads them (`og_engine_inspector_panel`) and sends back
+//!   what the panel's controls did (`og_engine_inspector_event`), done at
+//!   the next frame. It shows wherever a development run is seen: Origin
+//!   Desktop through shared frames, the web page, a capture.
+//! - **Input.** The game's UI takes the events over the panel as over any
+//!   of its own. The probe's input filter ([`filter`]) takes the toggle
+//!   key, a gizmo drag, a pick, W, E and R and Ctrl+Z over the panel. The
+//!   toggle is F1 (`inspect:key:<code>` sets another); when the game's
+//!   action map binds that key the inspector takes it only with Ctrl.
 //! - **Edits are Tune writes.** An edit is the probe's `set` (`Probe::tune`):
 //!   checked against the schema, applied between ticks and remembered as
 //!   tuned, so Save is `save_scene` with no writer of its own. A value the
@@ -53,10 +54,6 @@ pub(crate) use pointer::*;
 pub(crate) use probe::*;
 pub(crate) use requests::*;
 pub(crate) use update::*;
-
-/// The overlay layer the inspector draws from: above the game's UI and
-/// every screen layer lifted past it (og_render::screen_layer).
-const LAYER: i32 = 1 << 30;
 
 /// Whether this host writes the scene files itself: natively it does; a
 /// web page answers the texts, which go out in the frame's `saved`.
@@ -182,18 +179,23 @@ pub(crate) struct Inspector {
     pub open: bool,
     /// The toggle key (`KeyboardEvent.code`).
     pub key: String,
-    /// Its UI (taken out while the panel is built).
-    ui: Option<og_ui::Ui>,
-    input: og_input::Input,
-    /// Text typed into it since its last frame.
-    typed: Vec<og_input::TextInput>,
-    /// The panel's rectangle in CSS pixels, as last laid out.
+    /// The TSX panel's node in the game's UI tree (its `panel` event),
+    /// and its rectangle in CSS pixels as last laid out.
+    panel_node: Option<u32>,
     panel: Option<[f32; 4]>,
-    /// A press began on the panel and has not ended.
-    captured: bool,
+    /// The pointer as the filter last saw it, in CSS pixels.
+    pointer: Vec2,
+    /// What the panel's controls did since the last frame.
+    events: Vec<panel::Event>,
+    /// What the last values showed where: the rows the events name.
+    shown: panel::Shown,
+    /// The values the runtime has not read yet, and the last it read
+    /// (empty: none, or the inspector closed since).
+    values: Option<String>,
+    last: String,
     /// The toggle key went down here: its key-up is the inspector's too.
     toggle_held: bool,
-    /// One of its fields has the keyboard.
+    /// One of its text boxes has the keyboard (its `focus` and `blur`).
     editing: bool,
     /// An entity a field's link asked to select, by its probe id.
     pending_select: Option<String>,
@@ -235,15 +237,17 @@ pub(crate) struct Inspector {
 }
 
 impl Inspector {
-    fn new(ticks_per_second: u32) -> Inspector {
+    fn new() -> Inspector {
         Inspector {
             open: false,
             key: DEFAULT_KEY.into(),
-            ui: Some(panel::ui(ticks_per_second)),
-            input: og_input::Input::default(),
-            typed: Vec::new(),
+            panel_node: None,
             panel: None,
-            captured: false,
+            pointer: Vec2::ZERO,
+            events: Vec::new(),
+            shown: panel::Shown::default(),
+            values: None,
+            last: String::new(),
             toggle_held: false,
             editing: false,
             pending_select: None,
@@ -289,14 +293,9 @@ impl Inspector {
 }
 
 /// The engine's inspector, made on first use.
-fn of(rs: &mut RenderState, tick_rate: u32) -> &mut Inspector {
+fn of(rs: &mut RenderState) -> &mut Inspector {
     rs.inspector
-        .get_or_insert_with(|| Box::new(Inspector::new(tick_rate)))
-}
-
-fn tick_rate(world: &World) -> u32 {
-    let hz = og_probe::time_json(world)["rate"].as_f64().unwrap_or(60.0);
-    (hz.round() as u32).max(1)
+        .get_or_insert_with(|| Box::new(Inspector::new()))
 }
 
 #[cfg(test)]

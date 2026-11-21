@@ -26,21 +26,17 @@ pub(crate) fn frame(eng: &Engine) {
         let Ok(mut rs) = eng.render.try_borrow_mut() else {
             return;
         };
-        let fonts = rs.ui.as_ref().map(|u| {
-            let u = u.lock();
-            (u.fonts().clone(), u.icons().clone())
-        });
         let game = rs.ui.clone();
+        // The TSX panel's box in the game's UI tree, as last laid out.
+        let panel = rs
+            .ui_next
+            .as_ref()
+            .zip(rs.inspector.as_ref().and_then(|i| i.panel_node));
+        let panel = panel.and_then(|(next, node)| next.op_box(node));
         let Some(ins) = rs.inspector.as_mut().filter(|i| i.open) else {
             return;
         };
-        if let Some((fonts, icons)) = fonts
-            && let Some(ui) = ins.ui.as_mut()
-            && *ui.fonts() != fonts
-        {
-            ui.set_fonts(fonts);
-            ui.set_icons(icons);
-        }
+        ins.panel = panel;
         ins.frames += 1;
         // The UI view reads the game's UI only while it is the tab shown.
         ins.ui_view = match game.filter(|_| ins.tab == ui_debug::TAB) {
@@ -81,7 +77,6 @@ pub(crate) fn frame(eng: &Engine) {
                 layouts: &layouts,
                 paused,
                 tick,
-                viewport,
                 sounds: &sounds,
                 assets: &assets,
                 prefab: prefab.as_ref().and_then(|(_, v)| v.as_ref()),
@@ -146,6 +141,10 @@ pub(super) fn parent_pose(world: &World, e: Entity) -> Option<Pose> {
 /// The selected entity's gizmo this frame (none without og.Transform or a
 /// camera).
 pub(super) fn place(ins: &mut Inspector, world: &World) {
+    // What the pointer rests on, as this frame's gizmo has it (the mode
+    // may have changed under a still pointer).
+    let at = ins.pointer;
+    let over = ins.over_panel(at.x, at.y);
     let tool = &mut ins.tool;
     tool.on = None;
     let (Some(e), Some(view)) = (ins.selected, tool.view) else {
@@ -166,12 +165,6 @@ pub(super) fn place(ins: &mut Inspector, world: &World) {
         None => local,
     };
     let g = gizmo::Gizmo::new(&view, tool.mode, tool.space, world_pose.0, world_pose.1);
-    // What the pointer rests on, as this frame's gizmo has it (the mode
-    // may have changed under a still pointer).
-    let at = ins.input.pointer;
-    let over = ins
-        .panel
-        .is_some_and(|[px, py, w, h]| at.x >= px && at.y >= py && at.x < px + w && at.y < py + h);
     tool.hover = match &tool.drag {
         Some(d) => Some(d.drag.handle),
         None if !over => g.hit(&view, Vec2::new(at.x, at.y)),
@@ -281,7 +274,7 @@ pub(super) fn watch(
 }
 
 /// Draws the gizmo and the selected meshes' box over the frame.
-pub(super) fn emit_gizmo(rs: &mut RenderState) {
+pub(crate) fn emit(rs: &mut RenderState) {
     let Some(ins) = rs.inspector.as_ref().filter(|i| i.open) else {
         return;
     };
@@ -289,14 +282,13 @@ pub(super) fn emit_gizmo(rs: &mut RenderState) {
     let (Some(view), Some(on)) = (tool.view, tool.on) else {
         return;
     };
-    let Some(p) = ins.ui.as_ref().map(|u| u.theme().palette) else {
-        return;
-    };
-    let colors = [p.danger, p.success, p.info, p.ink].map(|c| c.linear());
+    // The design's dark danger, success, info and ink for the x, y and z
+    // axes and the view's; the highlight for the handle lit.
+    let colors = [0xff9599, 0x45e08f, 0x5cc8ff, 0xedf6ff].map(rgb);
     let lit = tool.drag.as_ref().map(|d| d.drag.handle).or(tool.hover);
-    let strokes = on.gizmo.strokes(&view, colors, lit, p.highlight.linear());
+    let strokes = on.gizmo.strokes(&view, colors, lit, rgb(0xf5f5fa));
     let bits = on.entity.to_bits();
-    let boxed = p.focus.linear();
+    let boxed = rgb(0xf5f5fa);
     let instances: Vec<(og_render::MeshHandle, glam::Mat4)> = rs
         .ids
         .instances
@@ -325,34 +317,59 @@ pub(super) fn emit_gizmo(rs: &mut RenderState) {
     }
 }
 
-/// Draws the panel over the frame (the last UI frame it built).
-pub(crate) fn emit(rs: &mut RenderState) {
-    emit_gizmo(rs);
-    let Some(ui) = rs
-        .inspector
-        .as_ref()
-        .filter(|i| i.open)
-        .and_then(|i| i.ui.as_ref())
-    else {
-        return;
+/// A `0xrrggbb` sRGB colour, linear and opaque.
+fn rgb(hex: u32) -> [f32; 4] {
+    let c = |shift: u32| og_core::color::srgb_to_linear(((hex >> shift) & 0xff) as f32 / 255.0);
+    [c(16), c(8), c(0), 1.0]
+}
+
+/// The panel's values for the runtime since its last read: empty when
+/// they did not change, `null` once after the inspector closed.
+pub(crate) fn take_panel(engine_id: u32) -> String {
+    let Ok(eng) = crate::engine::engine(engine_id) else {
+        return String::new();
     };
-    let frame = ui.frame();
-    if frame.items.is_empty() {
-        return;
+    let Ok(mut rs) = eng.render.try_borrow_mut() else {
+        return String::new();
+    };
+    let Some(ins) = rs.inspector.as_mut() else {
+        return String::new();
+    };
+    if !ins.open {
+        ins.values = None;
+        ins.panel_node = None;
+        ins.panel = None;
+        return match std::mem::take(&mut ins.last).is_empty() {
+            true => String::new(),
+            false => "null".into(),
+        };
     }
-    let (w, h) = (
-        frame.viewport.width * frame.unit,
-        frame.viewport.height * frame.unit,
-    );
-    let time = ui.seconds() as f32;
-    let overlay = rs
-        .scene
-        .ui
-        .overlay
-        .get_or_insert_with(|| og_render::Overlay::new(w.max(1.0), h.max(1.0), 0.0));
-    let first = overlay.texts.len();
-    // Not the game's UI alone: nothing names what it is made from.
-    overlay.key = None;
-    frame.emit(&og_ui::EmitDesc { layer: LAYER, time }, overlay);
-    crate::present::extract::draw_other_pages(overlay, first, &rs.ui_pages);
+    match ins.values.take() {
+        Some(v) => {
+            ins.last.clone_from(&v);
+            v
+        }
+        None => String::new(),
+    }
+}
+
+/// Keeps one event of the TSX panel for the next frame; false when it is
+/// malformed or there is no inspector.
+pub(crate) fn panel_event(engine_id: u32, event: &str) -> bool {
+    let Ok(e) = serde_json::from_str::<panel::Event>(event) else {
+        return false;
+    };
+    let Ok(eng) = crate::engine::engine(engine_id) else {
+        return false;
+    };
+    let Ok(mut rs) = eng.render.try_borrow_mut() else {
+        return false;
+    };
+    match rs.inspector.as_mut() {
+        Some(ins) => {
+            ins.events.push(e);
+            true
+        }
+        None => false,
+    }
 }

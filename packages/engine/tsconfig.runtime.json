@@ -7,11 +7,13 @@
     "resolveJsonModule": true,
     "erasableSyntaxOnly": true,
     "paths": {
-      "bun:test": ["./vendor/bun-types/test.d.ts"]
+      "bun:test": ["./vendor/bun-types/test.d.ts"],
+      "@origingame/engine/ui": ["./src/ui/index.ts"]
     }
   },
   "include": [
     "src/**/*.ts",
+    "src/ui/inspector.tsx",
     "extensions/**/*.ts",
     "shell/**/*.ts",
     "tests/**/*.ts",

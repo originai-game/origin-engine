@@ -479,6 +479,18 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "Apply a binary UI source/computation patch batch. Replies are binary results in request order. Source values and the dependency graph belong to this engine; the TypeScript runtime executes requested computation IDs outside the engine lock.",
     ),
     (
+        "og_engine_inspector_panel",
+        &[("engine", "u32", "number")],
+        "String",
+        "The development inspector's panel since the last call, for the TSX panel the runtime mounts: its values as JSON while it is open and they changed, `null` once when it closed, empty when nothing changed (always empty in a publish build).",
+    ),
+    (
+        "og_engine_inspector_event",
+        &[("engine", "u32", "number"), ("event", "String", "string")],
+        "bool",
+        "One event of the inspector's TSX panel, JSON `{ kind, name, row, value }`, done at the next frame: `click` and `changed` (a control's prop) as the panel names them, `input` and `commit` of a field part's text, `cancel`, `focus` and `blur` of a text box, `panel` (the panel's node). False for a malformed event or a publish build.",
+    ),
+    (
         "og_platform_take",
         &[("engine", "u32", "number")],
         "String",

@@ -294,11 +294,14 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       // The bundle's entry: the game's own (og:game, native) or the worker that
       // starts it (og:worker, web), each giving its og.game() token the og.assert
       // sites of this bundle's files (ADOPT_SITES).
+      // A development bundle carries the inspector's TSX panel; a publish
+      // build (minified) has no inspector.
+      const inspector = minify ? "" : `import ${JSON.stringify(join(ENGINE_ROOT, "src/ui/inspector.tsx"))};\n`;
       build.onLoad({ filter: /.*/, namespace: "og" }, (a) => ({
         contents:
           a.path === "worker"
-            ? `import { startWorker } from "@origingame/engine/web/worker";\nimport * as entry from ${JSON.stringify(absEntry)};\nconst game = entry.default;\n${ADOPT_SITES}startWorker(game);\n`
-            : `export * from ${JSON.stringify(absEntry)};\nimport * as entry from ${JSON.stringify(absEntry)};\nconst game = entry.default;\n${ADOPT_SITES}export default game;\n`,
+            ? `import { startWorker } from "@origingame/engine/web/worker";\n${inspector}import * as entry from ${JSON.stringify(absEntry)};\nconst game = entry.default;\n${ADOPT_SITES}startWorker(game);\n`
+            : `export * from ${JSON.stringify(absEntry)};\n${inspector}import * as entry from ${JSON.stringify(absEntry)};\nconst game = entry.default;\n${ADOPT_SITES}export default game;\n`,
         loader: "ts",
       }));
     },

@@ -1,7 +1,7 @@
-//! The inspector's Save (G3-7): a field edited in its panel, by the
-//! pointer and the keyboard as a person edits it, is written back by
-//! `save_scene` as that one line of the scene's text, and the scene cooked
-//! again loads the world the edit made.
+//! The inspector's Save (G3-7): a field edited in its panel, by a gizmo
+//! drag or the panel's controls (the events its TSX component sends), is
+//! written back by `save_scene` as that one line of the scene's text, and
+//! the scene cooked again loads the world the edit made.
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_commands_schedule, og_engine_create, og_engine_frame,
@@ -143,26 +143,18 @@ fn commands(e: u32, script: &str, ticks: u32) {
     step(e, ticks);
 }
 
-/// The centre of a panel element by its path, in CSS pixels.
-fn centre(p: &Value, path: &str) -> String {
-    let e = p["elements"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|e| e["path"] == json!(path))
-        .unwrap_or_else(|| panic!("no element {path}"));
-    let at = |k: &str, d: &str| e[k].as_f64().unwrap() + e[d].as_f64().unwrap() / 2.0;
-    format!("{},{}", at("x", "width"), at("y", "height"))
+/// One event of the TSX panel, as its controls send it
+/// (`og_engine_inspector_event`), done at the next frame.
+fn send(e: u32, event: Value) {
+    assert!(
+        og_runtime::og_engine_inspector_event(e, &event.to_string()),
+        "{event}"
+    );
+    step(e, 3);
 }
 
-/// A click at a panel element.
-fn click(e: u32, p: &Value, path: &str) {
-    let at = centre(p, path);
-    commands(
-        e,
-        &format!("0:touch_move:{at};0.05:touch_start;0.1:touch_end"),
-        10,
-    );
+fn click(e: u32, name: &str, row: &str) {
+    send(e, json!({ "kind": "click", "name": name, "row": row }));
 }
 
 fn entity(e: u32, id: &str) -> Value {
@@ -256,10 +248,9 @@ fn a_gizmo_drag_moves_along_its_axis_as_one_undo_step_and_saves_one_line() {
     assert_eq!(p["dirty"], json!(["crate.og.Transform.position"]));
     assert_eq!(p["gizmo"]["dragging"], Value::Null);
     // Four moves, one undo step.
-    click(e, &p, "Inspector/Tools/Undo");
+    click(e, "Undo", "");
     assert_eq!(position(e), start, "one undo takes the whole drag back");
-    let p = panel(e);
-    click(e, &p, "Inspector/Tools/Redo");
+    click(e, "Redo", "");
     assert_eq!(position(e), moved);
     // With Ctrl held the move snaps to half units.
     let p = panel(e);
@@ -272,8 +263,7 @@ fn a_gizmo_drag_moves_along_its_axis_as_one_undo_step_and_saves_one_line() {
     let d = snapped[0] - moved[0];
     assert!(d > 0.1 && (d / 0.5 - (d / 0.5).round()).abs() < 1e-4, "{d}");
     // Save writes the position's one line.
-    let p = panel(e);
-    click(e, &p, "Inspector/Bar/Save");
+    click(e, "Save", "");
     let saved = std::fs::read_to_string(root.join("assets/scenes/yard.ogt")).unwrap();
     let line = saved
         .lines()
@@ -350,24 +340,23 @@ fn a_resource_edited_in_its_tab_saves_as_its_one_line() {
     )));
     step(e, 2);
     commands(e, "0:inspect:on", 3);
-    let p = panel(e);
-    click(e, &p, "Inspector/View/Strip/Track/Item#1");
-    let p = panel(e);
-    click(e, &p, "Inspector/Detail/Group#R:Score/Section");
-    let p = panel(e);
-    click(
+    send(
         e,
-        &p,
-        "Inspector/Detail/Group#R:Score/Field#Score.best/Row/Part#Score.best%230",
+        json!({ "kind": "changed", "name": "current", "value": "resources" }),
     );
-    commands(
+    click(e, "Section", "R:Score");
+    // Typed into the part, kept as typed until Enter commits it.
+    let part = "Score.best#0";
+    send(e, json!({ "kind": "focus" }));
+    send(
         e,
-        "0:key_down:End;0.02:key_up:End;0.04:key_down:Backspace;0.06:key_up:Backspace;0.15:type:9;0.3:key_down:Enter;0.33:key_up:Enter",
-        25,
+        json!({ "kind": "changed", "name": "input", "row": part, "value": "9" }),
     );
+    assert_eq!(panel(e)["dirty"], json!([]), "not before the commit");
+    send(e, json!({ "kind": "commit", "row": part }));
     let p = panel(e);
     assert_eq!(p["dirty"], json!(["Score.best"]), "{}", p["status"]);
-    click(e, &p, "Inspector/Bar/Save");
+    click(e, "Save", "");
     let p = panel(e);
     assert_eq!(p["dirty"], json!([]), "{}", p["status"]);
     let saved = std::fs::read_to_string(root.join("assets/scenes/board.ogt")).unwrap();

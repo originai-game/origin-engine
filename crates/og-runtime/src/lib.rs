@@ -369,6 +369,29 @@ pub fn ui_next_dump(engine: u32) -> (Vec<og_probe::UiElement>, Vec<String>) {
     rs.ui_next.as_ref().map(|n| n.op_dump()).unwrap_or_default()
 }
 
+/// The inspector's panel values since the last call (empty: unchanged;
+/// `null`: closed), for the runtime's TSX panel.
+pub fn og_engine_inspector_panel(engine: u32) -> String {
+    #[cfg(not(feature = "publish"))]
+    return author::inspector::take_panel(engine);
+    #[cfg(feature = "publish")]
+    {
+        let _ = engine;
+        String::new()
+    }
+}
+
+/// One event of the inspector's TSX panel, done at the next frame.
+pub fn og_engine_inspector_event(engine: u32, event: &str) -> bool {
+    #[cfg(not(feature = "publish"))]
+    return author::inspector::panel_event(engine, event);
+    #[cfg(feature = "publish")]
+    {
+        let _ = (engine, event);
+        false
+    }
+}
+
 /// The binary, host-neutral retained UI protocol.
 pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
     match shared_ui(world) {

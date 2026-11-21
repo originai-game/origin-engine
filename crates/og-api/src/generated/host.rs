@@ -73,6 +73,10 @@ pub trait Lifecycle: Wire {
     fn og_engine_view_add_scaled(&self, view: u32, target: u32, target_field: u32, source: u32, source_field: u32, scale: f64) -> String;
     /// Apply a binary UI source/computation patch batch. Replies are binary results in request order. Source values and the dependency graph belong to this engine; the TypeScript runtime executes requested computation IDs outside the engine lock.
     fn og_engine_ui_patch(&self, world: u32, bytes: Self::Bytes) -> Self::Bytes;
+    /// The development inspector's panel since the last call, for the TSX panel the runtime mounts: its values as JSON while it is open and they changed, `null` once when it closed, empty when nothing changed (always empty in a publish build).
+    fn og_engine_inspector_panel(&self, engine: u32) -> String;
+    /// One event of the inspector's TSX panel, JSON `{ kind, name, row, value }`, done at the next frame: `click` and `changed` (a control's prop) as the panel names them, `input` and `commit` of a field part's text, `cancel`, `focus` and `blur` of a text box, `panel` (the panel's node). False for a malformed event or a publish build.
+    fn og_engine_inspector_event(&self, engine: u32, event: String) -> bool;
     /// The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer.
     fn og_platform_take(&self, engine: u32) -> String;
     /// Answer one platform call: JSON `{ ok: true, data }` or `{ ok: false, error: { code, message, retryable } }`. It is applied at the start of the next tick (og.platform sends PlatformAnswered). False for an unknown, one-way or answered request, or a malformed answer.

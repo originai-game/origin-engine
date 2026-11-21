@@ -1,22 +1,39 @@
 //! The panel's events, as the inspector's requests and state: a click
-//! names the element clicked and the row it is in, a control's `changed`
+//! names the control clicked and the row it is in, a control's `changed`
 //! names the prop it changed (a text box's `input`, a slider's `value`, a
-//! checkbox's `checked`, tabs' and a select's `current`) and its row.
+//! checkbox's `checked`, tabs' and a select's `current`) and its row. A
+//! field part's text is its `input` until its `commit` (Enter, or the
+//! keyboard leaving it) or `cancel` (Escape).
 
 use super::super::gizmo::{Mode, Space};
 use super::values::{Field, Shown, TABS};
 use super::*;
-use og_ui::DocEvent;
+use serde::Deserialize;
 use serde_json::Value;
 
-/// Does what this frame's events ask; `paused` is the clock as shown.
-pub(super) fn apply(ins: &mut Inspector, shown: &Shown, paused: bool, events: &[DocEvent]) {
-    for e in events {
-        match e.kind.as_str() {
-            "click" => click(ins, shown, paused, &e.name, &e.row_key),
-            "changed" => changed(ins, shown, &e.name, &e.row_key, &e.value),
-            _ => {}
-        }
+/// One event of the TSX panel (`og_engine_inspector_event`).
+#[derive(Deserialize)]
+pub(in super::super) struct Event {
+    kind: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    row: String,
+    #[serde(default)]
+    value: Value,
+}
+
+/// Does what one event asks; `paused` is the clock as shown.
+pub(super) fn apply(ins: &mut Inspector, shown: &Shown, paused: bool, e: &Event) {
+    match e.kind.as_str() {
+        "click" => click(ins, shown, paused, &e.name, &e.row),
+        "changed" => changed(ins, shown, &e.name, &e.row, &e.value),
+        "commit" => commit(ins, shown, &e.row),
+        "cancel" => ins.draft = None,
+        "focus" => ins.editing = true,
+        "blur" => ins.editing = false,
+        "panel" => ins.panel_node = e.value.as_u64().map(|n| n as u32),
+        _ => {}
     }
 }
 
@@ -143,24 +160,10 @@ fn tune(ins: &mut Inspector, target: &str, f: &Field, after: String, merge: bool
     });
 }
 
-/// A part's element path ends in its key, escaped as og-ui keys a row.
-fn part_path(key: &str) -> String {
-    let escaped = key
-        .replace('%', "%25")
-        .replace('/', "%2F")
-        .replace('#', "%23");
-    format!("/Part#{escaped}")
-}
-
-/// Writes the text typed into a part once the part no longer has the
-/// keyboard (Enter, or a click elsewhere): the field's `set`, or why it
-/// was refused.
-pub(super) fn commit_draft(ins: &mut Inspector, shown: &Shown, focus: &str) {
-    let Some((key, _)) = &ins.draft else {
-        return;
-    };
-    let at = part_path(key);
-    if focus.ends_with(&at) || focus.contains(&format!("{at}/")) {
+/// Writes the text typed into a part when it is committed: the field's
+/// `set`, or why it was refused.
+fn commit(ins: &mut Inspector, shown: &Shown, key: &str) {
+    if ins.draft.as_ref().is_none_or(|(k, _)| k != key) {
         return;
     }
     let Some((key, text)) = ins.draft.take() else {

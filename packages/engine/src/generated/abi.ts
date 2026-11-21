@@ -73,6 +73,10 @@ export interface HostAbi<A, V> {
   og_engine_view_add_scaled(view: number, target: number, target_field: number, source: number, source_field: number, scale: number): string;
   /** Apply a binary UI source/computation patch batch. Replies are binary results in request order. Source values and the dependency graph belong to this engine; the TypeScript runtime executes requested computation IDs outside the engine lock. */
   og_engine_ui_patch(world: number, bytes: Uint8Array): Uint8Array;
+  /** The development inspector's panel since the last call, for the TSX panel the runtime mounts: its values as JSON while it is open and they changed, `null` once when it closed, empty when nothing changed (always empty in a publish build). */
+  og_engine_inspector_panel(engine: number): string;
+  /** One event of the inspector's TSX panel, JSON `{ kind, name, row, value }`, done at the next frame: `click` and `changed` (a control's prop) as the panel names them, `input` and `commit` of a field part's text, `cancel`, `focus` and `blur` of a text box, `panel` (the panel's node). False for a malformed event or a publish build. */
+  og_engine_inspector_event(engine: number, event: string): boolean;
   /** The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer. */
   og_platform_take(engine: number): string;
   /** Answer one platform call: JSON `{ ok: true, data }` or `{ ok: false, error: { code, message, retryable } }`. It is applied at the start of the next tick (og.platform sends PlatformAnswered). False for an unknown, one-way or answered request, or a malformed answer. */
@@ -2132,6 +2136,8 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_view_column",
   "og_engine_view_add_scaled",
   "og_engine_ui_patch",
+  "og_engine_inspector_panel",
+  "og_engine_inspector_event",
   "og_platform_take",
   "og_platform_answer",
   "og_platform_set_host",

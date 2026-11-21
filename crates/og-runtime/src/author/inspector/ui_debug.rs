@@ -43,7 +43,7 @@ pub(super) fn read(ins: &mut Inspector, game: &Ui) -> View {
         .and_then(|p| game.debug_element(p))
         .map(scaled);
     let hover = if ins.picking {
-        let p = ins.input.pointer;
+        let p = ins.pointer;
         at(p.x, p.y)
             .and_then(|p| game.debug_element(&p))
             .map(scaled)
@@ -156,24 +156,22 @@ pub(super) fn lines(view: &View, filter: &str) -> Option<Vec<Value>> {
     )
 }
 
-/// The boxes drawn over the game, in the panel's CSS px (`unit` is its
-/// UI's): every element's bounds while Layout bounds is on, then the
+/// The boxes drawn over the game, in CSS px: every element's bounds while Layout bounds is on, then the
 /// element under the pointer and the one picked, each as its margin,
 /// border and padding rings around its content, as Chrome draws them.
-pub(super) fn boxes(view: &View, unit: f32) -> Vec<Value> {
-    let u = unit.max(1.0);
+pub(super) fn boxes(view: &View) -> Vec<Value> {
     let mut out = Vec::new();
     let mut push = |kind: &str, r: Rect, ring: Option<Insets>| {
         let ring = ring.unwrap_or_default();
         out.push(json!({
             "id": out.len().to_string(),
             "kind": kind,
-            "x": r.x / u, "y": r.y / u, "w": r.width / u, "h": r.height / u,
-            "t": ring.top / u, "r": ring.right / u, "b": ring.bottom / u, "l": ring.left / u,
+            "x": r.x, "y": r.y, "w": r.width, "h": r.height,
+            "t": ring.top, "r": ring.right, "b": ring.bottom, "l": ring.left,
         }));
     };
     for r in &view.bounds {
-        push("bound", *r, Some(Insets::all(u)));
+        push("bound", *r, Some(Insets::all(1.0)));
     }
     for e in [&view.hover, &view.element].into_iter().flatten() {
         let b = e.border_box;

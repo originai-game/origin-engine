@@ -18,10 +18,8 @@ gate_excluded_note() {
 }
 
 # UI is TSX: no .svelte document is tracked but these, which old og-ui's own
-# tests and the inspector's panel read until their heads remove them. The
-# list only shrinks.
-SVELTE_ALLOWED='crates/og-runtime/src/author/inspector/panel.svelte
-crates/og-tests-ui/tests/fixtures/core-screens/creator-tools.svelte
+# tests read until their head removes them. The list only shrinks.
+SVELTE_ALLOWED='crates/og-tests-ui/tests/fixtures/core-screens/creator-tools.svelte
 crates/og-tests-ui/tests/fixtures/core-screens/hud-editor.svelte
 crates/og-tests-ui/tests/fixtures/core-screens/settings.svelte
 crates/og-ui-fuzz/regressions/document/stylesheet-multibyte-in-rule.svelte'

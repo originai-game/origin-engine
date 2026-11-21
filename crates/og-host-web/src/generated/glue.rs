@@ -124,6 +124,16 @@ pub fn og_engine_ui_patch(world: u32, bytes: Vec<u8>) -> Vec<u8> {
 }
 
 #[wasm_bindgen]
+pub fn og_engine_inspector_panel(engine: u32) -> String {
+    <Host as Lifecycle>::og_engine_inspector_panel(&Host, engine)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_inspector_event(engine: u32, event: String) -> bool {
+    <Host as Lifecycle>::og_engine_inspector_event(&Host, engine, event)
+}
+
+#[wasm_bindgen]
 pub fn og_platform_take(engine: u32) -> String {
     <Host as Lifecycle>::og_platform_take(&Host, engine)
 }
