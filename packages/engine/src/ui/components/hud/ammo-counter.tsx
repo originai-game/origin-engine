@@ -54,7 +54,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
             <Text class="shrink-0 text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs compact:text-[0.929rem]">{formatNumber(props.secondaryAmmo ?? 0)}</Text>
           </Show>
           <Show when={(props.secondaryKey ?? "") != ""}>
-            <Text class={`shrink max-w-1/2 min-w-[1.429rem] py-0 px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate text-shadow-none pointer-coarse:hidden`}>
+            <Text class={`shrink max-w-1/2 min-w-[1.429rem] py-0 px-1 text-[0.857rem] leading-[1.5] font-bold text-center text-[#262b38] bg-linear-to-b from-white to-[#d8dbe2] rounded-[0.286rem] shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] whitespace-nowrap truncate text-stroke-3 text-stroke-bg pointer-coarse:hidden`}>
               {props.secondaryKey}
             </Text>
           </Show>
