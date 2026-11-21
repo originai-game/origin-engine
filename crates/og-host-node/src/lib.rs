@@ -22,11 +22,11 @@
 //!   the `screenshot` command render offscreen at the asked size and read it
 //!   back blocking (`og_render::Renderer::read_offscreen`);
 //!   `og_node_wait_gpu` waits for its GPU work, for benches that time a frame.
-//! - `og_node_scripted_frames` marks an engine's frames as a script's (`og
-//!   run` without `--realtime`): drawn at the configured quality, never
-//!   sampled by automatic quality. `og_node_recorded_frames` marks them as
-//!   written out frame by frame (`og render`): each waits for og.motion's
-//!   due results and the textures being prepared.
+//! - `og_node_frame_kind` says what kind of frames the host steps: a
+//!   script's (`og run` without `--realtime`: drawn at the configured
+//!   quality, never sampled by automatic quality, never waiting) or
+//!   written out frame by frame (`og render`: each settles the work due by
+//!   its tick, as a capture does).
 //! - og-probe is mounted by the runtime (`og_runtime`); this host adds
 //!   its loopback WebSocket (`og_node_probe_listen`, `og_node_probe_serve`,
 //!   og-probe's `ProbeServer` at `127.0.0.1:<port>/probe`), cooked files read

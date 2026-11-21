@@ -51,10 +51,12 @@ export interface NativeExtras {
   og_node_attach_offscreen(engine: number, width: number, height: number): string;
   /** Waits for the offscreen renderer's GPU work (frame-time benches). */
   og_node_wait_gpu(engine: number): string;
-  /** `og run` without --realtime: every frame is the script's, drawn at the configured quality and no sample of automatic quality. */
-  og_node_scripted_frames(engine: number, on: boolean): void;
-  /** `og render`: every frame is written out, so each waits for og.motion's due results and the textures being prepared. */
-  og_node_recorded_frames(engine: number, on: boolean): void;
+  /**
+   * The kind of frame the host steps (og-runtime's FrameKind): "scripted" for `og run` without --realtime (drawn at the
+   * configured quality, no sample of automatic quality, never waiting), "recorded" for `og render` (every frame is
+   * written out, so each settles the work due by its tick, as a capture does), "display" otherwise.
+   */
+  og_node_frame_kind(engine: number, kind: "display" | "scripted" | "recorded"): void;
   og_node_capture_only(engine: number, on: boolean): void;
   og_node_probe_listen(engine: number, port: number): string;
   og_node_probe_serve(engine: number): number;

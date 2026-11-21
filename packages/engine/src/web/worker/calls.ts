@@ -48,11 +48,11 @@ export function callsOf(run: Run): Calls {
       // Its time is the harness's and the machine's, not the display's: automatic quality must not read it
       // (a loaded machine stepped the same script down a render-scale rung at a different tick each run).
       const answered = pipelines.drawnWhole(() => {
-        run.glue?.og_web_scripted_frame?.(e.id, true);
+        run.glue?.og_web_frame_kind?.(e.id, "scripted");
         try {
           return e.frame(Number(ms));
         } finally {
-          run.glue?.og_web_scripted_frame?.(e.id, false);
+          run.glue?.og_web_frame_kind?.(e.id, "display");
         }
       });
       run.relay(answered);

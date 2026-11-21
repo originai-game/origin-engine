@@ -369,23 +369,6 @@ fn text_entry(eng: &Engine) -> (Value, Option<String>) {
     (text, copy)
 }
 
-/// A recorded frame waits until the textures being prepared are, so it
-/// draws the models and maps the world holds instead of hiding a model or
-/// drawing the placeholder for as long as the worker happened to take: two
-/// recordings of one script then draw the same frames. Natively only; the
-/// web cannot wait for its Worker, and a display or scripted frame never
-/// waits. A model of a stream group still waits for its group's upgrade,
-/// as on display.
-fn settle_textures(eng: &Engine) {
-    #[cfg(not(target_arch = "wasm32"))]
-    while eng.render.borrow().decoded.preparing() {
-        std::thread::sleep(std::time::Duration::from_millis(1));
-        super::assets::retranscode(eng);
-    }
-    #[cfg(target_arch = "wasm32")]
-    let _ = eng;
-}
-
 /// Draws the frame, between the last two ticks at `alpha`
 /// (`super::interpolate`) or at the tick (`None`); `interval_ms` is the
 /// host's time since the last frame (the perf record's).
@@ -402,27 +385,9 @@ fn render(eng: &Engine, alpha: Option<f32>, interval_ms: f64) -> Result<bool, St
     super::assets::retranscode(eng);
     // The tick this frame shows: its notes (and a missing glyph) are this tick's.
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
-    // A recorded frame (`og render`, which writes every frame out) waits
-    // for the textures being prepared and for og.motion's results due by
-    // its tick, so the models and characters drawn are the world's and its
-    // frames reproduce run to run. A display frame, or a scripted one
-    // (`og run --commands`, whose captures settle og.motion themselves),
-    // never waits: the world goes on while results are late.
-    // og.motion only once the game named it (its og.MotionAgent registered,
-    // engine/lazy.rs): before that it has no agents and no goals, and a game
-    // that never does never reaches the motion module (docs/web-export.md
-    // §Modules).
-    let motion = eng
-        .world()
-        .is_ok_and(|w| w.id_by_name(crate::bind::motion::AGENT).is_ok());
-    if eng.render.borrow().display.recorded {
-        settle_textures(eng);
-        if motion {
-            crate::bind::motion::present::settle(eng);
-        }
-    } else if motion {
-        crate::bind::motion::present::step(eng);
-    }
+    // The async stages' work due by this tick, as the frame's kind asks:
+    // a recorded frame settles it, any other draws what is ready.
+    crate::present::barrier::frame(eng);
     let mut passes = Vec::new();
     let mut gpu = Vec::new();
     let mut frame = og_render::FrameStats::default();

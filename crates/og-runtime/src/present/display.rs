@@ -210,6 +210,53 @@ impl Settings {
     }
 }
 
+/// The kind of frame a host steps, the one frame policy: what each async
+/// presentation stage (textures being prepared, og.motion's GPU results,
+/// the pipelines a fade draws with, terrain tiles, glyphs) makes a frame
+/// wait for. `crate::present::barrier` applies it to every stage.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum FrameKind {
+    /// For the display: it shows the work that is ready and never waits.
+    /// A fade is held at nothing while the pipelines its model draws with
+    /// compile, and automatic quality samples it.
+    #[default]
+    Display,
+    /// Stepped for a script or a harness (`og run` without `--realtime`,
+    /// the web Worker's probe `frame`): it never waits, and reproduces run
+    /// to run, so it reads a fade by its ticks. Drawn at the configured
+    /// quality, no sample of automatic quality.
+    Scripted,
+    /// Written out frame by frame (`og render`): it settles every stage's
+    /// work due by its tick, as a probe capture does, so two runs draw the
+    /// same frames. A scripted frame otherwise.
+    Recorded,
+}
+
+impl FrameKind {
+    /// Drawn for the display: automatic quality samples it, and a fade
+    /// waits for its pipelines in it.
+    pub fn displayed(self) -> bool {
+        self == FrameKind::Display
+    }
+
+    /// It waits for the work due by its tick (`crate::present::barrier`).
+    pub fn settles(self) -> bool {
+        self == FrameKind::Recorded
+    }
+
+    /// `display`, `scripted` or `recorded`.
+    pub fn parse(text: &str) -> Result<FrameKind, String> {
+        match text {
+            "display" => Ok(FrameKind::Display),
+            "scripted" => Ok(FrameKind::Scripted),
+            "recorded" => Ok(FrameKind::Recorded),
+            _ => Err(format!(
+                "frame kind '{text}': give display, scripted or recorded"
+            )),
+        }
+    }
+}
+
 /// What the engine keeps of its display.
 #[derive(Default)]
 pub(crate) struct DisplayState {
@@ -217,17 +264,9 @@ pub(crate) struct DisplayState {
     /// The display's interval as the host measured it, ms (0: unknown).
     pub display_ms: f64,
     pub auto: Option<AutoQuality>,
-    /// The host steps this frame for a script or a harness (`og run
-    /// --commands`, the web Worker's probe `frame`), not for the display:
-    /// it draws at the configured quality and is no sample of automatic
-    /// quality, whose controller is kept for the next display frame.
-    pub scripted: bool,
-    /// Every frame the host draws is written out as a capture, frame by
-    /// frame (`og render`): it waits for og.motion's results due by its
-    /// tick and for the textures being prepared, as a probe capture waits
-    /// for og.motion ([`set_recorded_frames`]). A scripted frame that is
-    /// not recorded (`og run --commands`) never waits.
-    pub recorded: bool,
+    /// The kind of frame the host steps: what the presentation's async
+    /// stages make it wait for ([`FrameKind`], `crate::present::barrier`).
+    pub kind: FrameKind,
     /// Capture-only: the host's frames step the ticks and draw nothing;
     /// what is seen is a probe capture's ([`set_capture_only`]).
     pub capture_only: bool,
@@ -310,7 +349,7 @@ pub(crate) fn before_render(rs: &mut RenderState) {
     }
     let phone = phone(rs);
     let d = &mut rs.display;
-    let (scale, step) = if d.scripted {
+    let (scale, step) = if !d.kind.displayed() {
         (d.settings.max_scale(), 0)
     } else if d.settings.auto() {
         let bounds = d.bounds(phone);
@@ -352,7 +391,7 @@ pub(crate) fn after_frame(
     cpu_ms: f64,
     gpu_ms: Option<f64>,
 ) {
-    if rs.display.scripted || interval_ms <= 0.0 {
+    if !rs.display.kind.displayed() || interval_ms <= 0.0 {
         return;
     }
     if let Some(auto) = rs.display.auto.as_mut() {
@@ -370,26 +409,15 @@ pub(crate) fn max_fps(rs: &RenderState) -> u32 {
     rs.display.settings.max_fps(phone(rs))
 }
 
-/// Brackets the frames a host steps for a script or a harness, not for the
-/// display: a scripted run's frame time is its machine's load, so letting
-/// automatic quality read it made the same script draw at another render
-/// scale from run to run (the web tiers' looks and Meridian, 2026-11-06).
+/// The kind of frame the host steps from now on ([`FrameKind`]): a
+/// script's or a harness's (a scripted run's frame time is its machine's
+/// load, so letting automatic quality read it made the same script draw at
+/// another render scale from run to run: the web tiers' looks and
+/// Meridian, 2026-11-06), one written out (`og render`), or the display's.
 /// Host-only, beside [`set_display_interval`]; the game API is unchanged.
-pub fn set_scripted_frames(id: u32, on: bool) {
+pub fn set_frame_kind(id: u32, kind: FrameKind) {
     if let Ok(eng) = engine(id) {
-        eng.render.borrow_mut().display.scripted = on;
-    }
-}
-
-/// Recorded frames: every frame the host draws is written out (`og
-/// render`), so each waits, natively, for og.motion's results due by its
-/// tick and for the textures being prepared, and two runs draw the same
-/// frames. A display or a scripted frame never waits: the world goes on
-/// while results are late, and only a probe capture settles og.motion.
-/// Host-only.
-pub fn set_recorded_frames(id: u32, on: bool) {
-    if let Ok(eng) = engine(id) {
-        eng.render.borrow_mut().display.recorded = on;
+        eng.render.borrow_mut().display.kind = kind;
     }
 }
 

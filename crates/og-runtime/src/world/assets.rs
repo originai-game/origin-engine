@@ -20,6 +20,7 @@ use og_ecs::Entity;
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
+mod closure;
 mod models;
 mod recovery;
 mod release;
@@ -27,6 +28,7 @@ mod sound;
 mod spawn;
 mod textures;
 
+pub(crate) use closure::{Closure, presented, ready as closure_ready};
 pub(crate) use models::*;
 pub(crate) use recovery::release_uploaded_textures;
 pub(crate) use release::release_bundle;
@@ -118,6 +120,8 @@ pub(crate) struct Entry {
 pub(crate) struct LoadedScene {
     pub bundle: usize,
     pub desc: SceneDesc,
+    /// What its presentation depends on, read as it decoded.
+    pub closure: Closure,
 }
 
 impl std::ops::Deref for LoadedScene {
@@ -561,82 +565,6 @@ impl Assets {
         }
     }
 
-    /// Whether something a cell's sub-scene spawns with it still has a file
-    /// on its way: a model it or a scene it nests places (its model or
-    /// proxy blob, its textures), a nested sub-scene or a prefab not
-    /// decoded yet, each outside streaming groups (the web reads a runtime
-    /// bundle's on demand). Nested cells load on their own and are passed
-    /// over. Asking starts every such fetch at once, so a cell holds its
-    /// tick once for them all (stream::cells::waiting).
-    pub(crate) fn scene_fetching(&self, scene: &LoadedScene) -> bool {
-        let Some(h) = crate::engine::hooks() else {
-            return false;
-        };
-        let mut fetching = false;
-        let mut asked = std::collections::BTreeSet::new();
-        let mut scenes = vec![scene];
-        while let Some(scene) = scenes.pop() {
-            let owner = Some(scene.bundle);
-            // The files of an asset not loaded yet, outside streaming groups.
-            let mut ask = |id: &str, kind: &str| {
-                let Ok((bundle, dir)) = self.bundle_from(id, owner) else {
-                    return;
-                };
-                let Ok(asset) = bundle.asset(id) else {
-                    return;
-                };
-                for out in asset.outputs.iter().filter(|o| {
-                    o.group.is_none()
-                        && (o.ty == kind || (o.ty == "og.Texture" && !o.id.ends_with("#mips")))
-                }) {
-                    fetching |= h.fetching(&format!("{dir}/{}", out.file));
-                }
-            };
-            for id in scene.entities.iter().filter_map(|e| e.instance.as_deref()) {
-                if asked.insert(("gltf", scene.bundle, id))
-                    && !self
-                        .by_path
-                        .contains_key(&format!("gltf:{}:{id}", scene.bundle))
-                {
-                    ask(id, "og.Model");
-                }
-            }
-            let cells: Vec<usize> = scene
-                .components
-                .iter()
-                .filter(|t| t.name.strip_prefix("og.").unwrap_or(&t.name) == "StreamCell")
-                .flat_map(|t| t.rows.iter().map(|r| r.0))
-                .collect();
-            let nested = scene
-                .entities
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| !cells.contains(i))
-                .filter_map(|(_, e)| e.subscene.as_deref());
-            for id in nested.chain(scene.prefabs.iter().map(String::as_str)) {
-                if id == scene.id
-                    || !asked.insert(("scene", scene.bundle, id))
-                    || self.group_from(id, owner).is_some()
-                {
-                    continue;
-                }
-                let loaded = self
-                    .source(id, owner)
-                    .ok()
-                    .and_then(|b| self.by_path.get(&format!("scene:{b}:{id}")))
-                    .and_then(|&i| match &self.entries.get(i)?.payload {
-                        Payload::Scene(s) => Some(s.as_ref()),
-                        _ => None,
-                    });
-                match loaded {
-                    Some(s) => scenes.push(s),
-                    None => ask(id, "og.Scene"),
-                }
-            }
-        }
-        fetching
-    }
-
     /// The streaming group of a cooked output (`None`: loaded at boot).
     pub(crate) fn group_of(&self, id: &str) -> Option<String> {
         self.group_from(id, None)
@@ -850,6 +778,7 @@ pub(crate) fn decode_scene(
     let desc = bundle.scene(id, bytes.bytes()).map_err(|e| e.to_string())?;
     Ok(Some(LoadedScene {
         bundle: owner,
+        closure: Closure::of(&desc),
         desc,
     }))
 }

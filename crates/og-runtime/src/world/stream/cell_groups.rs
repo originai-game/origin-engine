@@ -34,72 +34,36 @@ pub(crate) const PREFETCH_SECONDS: f32 = 2.0;
 /// The holds `dump_stream` lists.
 const MAX_HOLDS: usize = 64;
 
-/// A cell's presentation includes models owned by other groups. Neither
-/// this query nor the hidden-model set changes the deterministic hold gate.
-/// `now`: the world's tick, for the models still fading in
-/// (`crate::present::reveal`).
+/// Whether group `g` is presented whole at tick `now`, its closure: every
+/// model its pack upgrades and every sub-scene it holds for its cells,
+/// each with the scenes, models (other groups' too) and proxies of its
+/// closure (`crate::world::assets::closure_ready`). Presentation only, as
+/// `StreamStatus.ready` is: neither this query nor the hidden-model set
+/// changes the deterministic hold gate. `now`: the world's tick, for the
+/// models still fading in (`crate::present::reveal`).
 pub(super) fn ready(
     a: &crate::world::assets::Assets,
     rs: &crate::present::extract::RenderState,
-    group: &str,
+    g: &super::Group,
     now: f64,
 ) -> bool {
-    fn scene_ready(
-        a: &crate::world::assets::Assets,
-        rs: &crate::present::extract::RenderState,
-        index: usize,
-        now: f64,
-    ) -> bool {
-        let Payload::Scene(scene) = &a.entries[index].payload else {
-            return false;
-        };
-        if !crate::present::hlod::scene_ready(rs, scene.bundle, &scene.id, now) {
-            return false;
-        }
-        scene.entities.iter().enumerate().all(|(row, entity)| {
-            let model_ready = entity.instance.as_ref().is_none_or(|id| {
-                if let Some(group) = a.group_from(id, Some(scene.bundle)) {
-                    let Some(i) = a.stream.find(&group) else {
-                        return false;
-                    };
-                    let g = &a.stream.groups[i];
-                    if g.state != super::State::Resident || !g.ready {
-                        return false;
-                    }
-                }
-                // Shown, and no longer fading in (`crate::present::reveal`).
-                a.by_path
-                    .get(&format!("gltf:{}:{id}", scene.bundle))
-                    .is_some_and(|&i| {
-                        let model = super::assets::handle(i);
-                        !rs.decoded.hidden_models.contains_key(&model)
-                            && !rs.reveal.pending(model, now)
-                    })
-            });
-            // Nested cells have their own readiness. Ordinary sub-scenes
-            // are part of this cell's presentation, including shared models.
-            let subscene_ready = entity.subscene.as_ref().is_none_or(|id| {
-                if scene
-                    .components
-                    .iter()
-                    .any(|c| c.name == "og.StreamCell" && c.rows.iter().any(|(i, _)| *i == row))
-                {
-                    return true;
-                }
-                let Some(&i) = a.by_path.get(&format!("scene:{}:{id}", scene.bundle)) else {
-                    return false;
-                };
-                scene_ready(a, rs, i, now)
-            });
-            model_ready && subscene_ready
+    let upgraded = a.stream.slots.get(&g.desc.name).into_iter().flatten();
+    let models = upgraded
+        .filter_map(|(slot, _)| match slot {
+            super::Slot::Model { id, .. } => a.by_path.get(&format!("gltf:{}:{id}", g.bundle)),
+            _ => None,
         })
-    }
-    a.stream
-        .scenes
-        .get(group)
-        .into_iter()
-        .flatten()
-        .all(|&i| scene_ready(a, rs, i, now))
+        .all(|&i| crate::world::assets::presented(rs, crate::world::assets::handle(i), now));
+    models
+        && a.stream
+            .scenes
+            .get(&g.desc.name)
+            .into_iter()
+            .flatten()
+            .all(|&i| match &a.entries[i].payload {
+                Payload::Scene(scene) => crate::world::assets::closure_ready(a, rs, scene, now),
+                _ => false,
+            })
 }
 
 /// A tick held for a cell group's pack.
@@ -141,6 +105,20 @@ impl Streams {
             .iter()
             .find(|(_, list)| list.contains(&index))
             .map(|(g, _)| g.clone())
+    }
+
+    /// Whether group `name` is resident with its assets in place of their
+    /// stand-ins.
+    pub(crate) fn upgraded(&self, name: &str) -> bool {
+        self.find(name).is_some_and(|i| {
+            let g = &self.groups[i];
+            g.state == super::State::Resident && g.ready
+        })
+    }
+
+    /// Whether a tick is held now for a cell's files.
+    pub(crate) fn holding(&self) -> bool {
+        self.holds.now.is_some()
     }
 
     /// The group a held tick waits for: wanted, and admitted first.

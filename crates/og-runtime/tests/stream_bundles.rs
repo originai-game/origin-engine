@@ -829,7 +829,7 @@ fn a_fade_waits_for_its_pipelines_on_display_frames_and_never_on_a_scripts() {
     let path = base.join("parcel");
     parcel(&path, "parcel", "parcel", 100, false);
     let mut runs = Vec::new();
-    for scripted in [false, true] {
+    for kind in [FrameKind::Display, FrameKind::Scripted] {
         set_hooks(Rc::new(Disk {
             delayed: false,
             reads: RefCell::default(),
@@ -848,7 +848,7 @@ fn a_fade_waits_for_its_pipelines_on_display_frames_and_never_on_a_scripts() {
                 compiling: false,
             })),
         ));
-        set_scripted_frames(engine, scripted);
+        set_frame_kind(engine, kind);
         let g = Game { engine, held };
         g.place("world.ogt");
         g.open(&path);
@@ -980,6 +980,62 @@ fn a_cell_group_is_not_ready_in_the_tick_its_cell_loads() {
         read.len() > waiting && read[waiting..].iter().all(|r| r.1),
         "ready did not stay: {read:?}"
     );
+    assert!(og_engine_destroy(engine));
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+/// A cell group's sub-scene nests a cell of its own, written `StreamCell`
+/// as a scene's text may give it: the nested cell loads on its own, so the
+/// outer group is ready once its own models are presented, whether or not
+/// the nested cell ever loads. Broken while readiness and the hold gate
+/// walked the scene by two rules: the gate passed the nested cell over,
+/// readiness matched only `og.StreamCell` and waited for the nested cell's
+/// scene, which never loads from here, so the group was never ready.
+#[test]
+fn a_cell_group_is_ready_without_the_cells_it_nests() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("nested-cell-ready-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let root = base.join("game");
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 0 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
+    let path = base.join("parcels");
+    parcel(&path, "inner", "inner", 500, true);
+    parcel(&path, "outer", "outer", 100, true);
+    // The outer cell's content nests the inner cell, 400 m on.
+    let content = "type scene\nversion 1\n---\nstream \"outer\" {\n  cell\n  asset \"outer/model.ogt\"\n}\nentity \"house-outer\" {\n  model \"outer/model.ogt\"\n}\nentity \"cell-inner\" {\n  scene \"inner/content.ogt\"\n  Transform {\n    position 400 0 0\n  }\n  Volume {\n    size 20 10 20\n  }\n  StreamCell {\n    load 10\n  }\n}\n";
+    cook(&path, &[("outer/content.ogt", content.as_bytes().to_vec())]);
+    set_hooks(Rc::new(Disk {
+        delayed: false,
+        reads: RefCell::default(),
+    }));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+        .as_u64()
+        .unwrap() as u32;
+    let held = Rc::new(Cell::new(Held::default()));
+    answer(set_render_backend(
+        engine,
+        Some(Box::new(Recorder(held.clone()))),
+    ));
+    let g = Game { engine, held };
+    g.place("world.ogt");
+    g.open(&path);
+    g.place("outer/place.ogt");
+    g.walk(100);
+    let ready =
+        || value(host_impl::answer(og_stream_status(engine, "outer".into())))["ready"] == true;
+    for _ in 0..240 {
+        g.frame();
+        if ready() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    assert!(g.loaded("outer"));
+    assert!(!g.loaded("inner"), "the nested cell loaded from 400 m");
+    assert!(ready(), "the outer group waited for the cell it nests");
     assert!(og_engine_destroy(engine));
     std::fs::remove_dir_all(base).unwrap();
 }
@@ -2470,7 +2526,7 @@ fn a_recorded_frame_waits_for_model_textures_and_a_display_frame_does_not() {
     cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 0 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
     let path = base.join("plain");
     parcel(&path, "parcel", "parcel", 100, false);
-    for (scripted, recorded) in [(true, true), (true, false), (false, false)] {
+    for kind in [FrameKind::Recorded, FrameKind::Scripted, FrameKind::Display] {
         set_hooks(Rc::new(Slow));
         og_host_begin_bundle();
         let game = og_game_game(Some(r#"{"seed":1}"#.into()));
@@ -2482,8 +2538,7 @@ fn a_recorded_frame_waits_for_model_textures_and_a_display_frame_does_not() {
             engine,
             Some(Box::new(Recorder(held.clone()))),
         ));
-        set_scripted_frames(engine, scripted);
-        set_recorded_frames(engine, recorded);
+        set_frame_kind(engine, kind);
         let g = Game { engine, held };
         g.place("world.ogt");
         g.open(&path);
@@ -2497,7 +2552,7 @@ fn a_recorded_frame_waits_for_model_textures_and_a_display_frame_does_not() {
         }
         // The frame after the cell loaded draws its model.
         g.frame();
-        if recorded {
+        if kind == FrameKind::Recorded {
             assert!(
                 g.held.get().instances > 0,
                 "a recorded frame waits for the maps"
@@ -2518,7 +2573,7 @@ fn a_recorded_frame_waits_for_model_textures_and_a_display_frame_does_not() {
             assert_eq!(
                 g.held.get().instances,
                 0,
-                "a display or scripted frame never waits (scripted {scripted})"
+                "a display or scripted frame never waits ({kind:?})"
             );
         }
         assert!(og_engine_destroy(engine));

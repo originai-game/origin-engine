@@ -747,10 +747,9 @@ pub(crate) fn scene_ready(rs: &RenderState, bundle: usize, scene: &str, now: f64
         .get(&(bundle, scene.to_string()))
         .is_none_or(|tree| {
             tree.as_ref().is_none_or(|t| {
-                // Shown, and no longer fading in (`crate::present::reveal`).
-                t.proxies.iter().all(|h| {
-                    !rs.decoded.hidden_models.contains_key(h) && !rs.reveal.pending(*h, now)
-                })
+                t.proxies
+                    .iter()
+                    .all(|&h| crate::world::assets::presented(rs, h, now))
             })
         })
 }

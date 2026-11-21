@@ -245,8 +245,8 @@ export interface WebExtras {
   og_web_warm_tick?(engine: number): void;
   /** The display's refresh interval the Worker measured, ms (automatic quality's budget at no frame cap). */
   og_web_display_interval?(engine: number, ms: number): void;
-  /** Brackets the probe's `frame`: a harness's frame draws at the configured quality and is no sample of automatic quality. */
-  og_web_scripted_frame?(engine: number, on: boolean): void;
+  /** Brackets the probe's `frame` with "scripted" and "display" (og-runtime's FrameKind): a harness's frame draws at the configured quality, never waits and is no sample of automatic quality. */
+  og_web_frame_kind?(engine: number, kind: "display" | "scripted" | "recorded"): void;
   /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */
   og_web_lose_device?(engine: number): boolean;
   /** Fork s60: `span(on)` around the renderer's frame pipelines (og-render set_frame_pipelines_hook), which pipelines.ts makes asynchronously. */

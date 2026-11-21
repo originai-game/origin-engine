@@ -40,16 +40,7 @@ fn screen(eng: &Engine) -> LoadingScreen {
 }
 
 fn idle(eng: &Engine) -> bool {
-    // A model still fading in is presentation work too.
-    let now = crate::present::reveal::tick(eng);
-    let drawing = {
-        let rs = eng.render.borrow();
-        rs.decoded.preparing() || rs.reveal.active(now) || rs.compile || compiling(&rs)
-    };
-    !drawing
-        && !eng.assets.borrow().stream.preparing()
-        && !crate::world::remote::pending(eng)
-        && hooks().is_none_or(|h| h.loading_idle(eng.id))
+    !crate::present::barrier::busy(eng)
 }
 
 /// The renderer's pipelines compiled off the frame, and how many are made
@@ -62,7 +53,7 @@ fn pipelines(rs: &crate::present::extract::RenderState) -> (u32, u32) {
     }
 }
 
-fn compiling(rs: &crate::present::extract::RenderState) -> bool {
+pub(crate) fn compiling(rs: &crate::present::extract::RenderState) -> bool {
     let (requested, ready) = pipelines(rs);
     ready < requested
 }

@@ -1,0 +1,14 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "StreamStatus.ready",
+      "summary": "A group's readiness and the hold gate now read one dependency closure per scene, recorded when it decodes: the models it places, the sub-scenes that spawn with it (not nested cells) and the prefabs its entities came from, each resolved from the bundle the spawn reads it from. A cell table named `StreamCell` counts as a cell for readiness as it already did for the gate, a model a parcel scene takes from another bundle is asked after where the spawn loaded it, and the gate no longer fetches the models of a prefab's own entities."
+    },
+    {
+      "member": "og.loading.idle",
+      "summary": "Also false while a tick is held for a cell's files (`dump_stream`'s `hold`)."
+    },
+    "`og render`'s frames and the probe's captures settle the same presentation work: textures being prepared, og.motion's results, every wanted terrain tile and every glyph asked for. A native capture now also waits for the textures being prepared, as a recorded frame did, and a recorded frame settles terrain tiles and glyphs, as a capture did."
+  ]
+}

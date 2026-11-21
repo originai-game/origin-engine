@@ -402,20 +402,16 @@ pub fn og_node_wait_gpu(engine: u32) -> String {
     }
 }
 
-/// `og run` without `--realtime` steps every frame for its script: those
-/// frames draw at the configured quality and are no sample of automatic
-/// quality (og-runtime's `set_scripted_frames`).
-#[napi(js_name = "og_node_scripted_frames")]
-pub fn og_node_scripted_frames(engine: u32, on: bool) {
-    og_runtime::set_scripted_frames(engine, on);
-}
-
-/// `og render` writes every frame it draws out: each waits for og.motion's
-/// due results and the textures being prepared (og-runtime's
-/// `set_recorded_frames`).
-#[napi(js_name = "og_node_recorded_frames")]
-pub fn og_node_recorded_frames(engine: u32, on: bool) {
-    og_runtime::set_recorded_frames(engine, on);
+/// The kind of frame the host steps from now on (og-runtime's
+/// `FrameKind`): `scripted` for `og run` without `--realtime` (drawn at the
+/// configured quality, no sample of automatic quality, never waiting),
+/// `recorded` for `og render` (each frame written out settles the work due
+/// by its tick), `display` otherwise. Throws on another name.
+#[napi(js_name = "og_node_frame_kind")]
+pub fn og_node_frame_kind(engine: u32, kind: String) -> napi::Result<()> {
+    let kind = og_runtime::FrameKind::parse(&kind).map_err(napi::Error::from_reason)?;
+    og_runtime::set_frame_kind(engine, kind);
+    Ok(())
 }
 
 /// `og run --capture-only`: frames step the ticks and draw nothing; the

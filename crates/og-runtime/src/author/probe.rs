@@ -142,12 +142,12 @@ impl Capture for RuntimeCapture {
         width: u32,
         height: u32,
     ) -> Option<Frame> {
-        if !engine(self.engine).is_ok_and(|eng| crate::bind::motion::present::settle(&eng)) {
+        // Every stage's work due by the captured tick (the presentation
+        // barrier), as a recorded frame settles it.
+        if !engine(self.engine).is_ok_and(|eng| crate::present::barrier::settle(&eng)) {
             return None;
         }
         let mut rs = self.render.try_borrow_mut().ok()?;
-        rs.terrain.settle = true;
-        rs.glyphs_settle = true;
         extract(world, &mut rs);
         crate::present::probes::apply_bakes(&mut rs);
         let rs = &mut *rs;
@@ -193,16 +193,14 @@ impl Capture for RuntimeCapture {
     }
 
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
-        // og.motion at the captured tick with every result due by it, so
-        // the frame reproduces run to run; no frame while one has not come
-        // back (the web, which cannot wait), so the probe asks again.
-        if !engine(self.engine).is_ok_and(|eng| crate::bind::motion::present::settle(&eng)) {
+        // Every stage's work due by the captured tick (the presentation
+        // barrier: textures, og.motion, terrain tiles, glyphs), so the
+        // frame reproduces run to run; no frame while og.motion has not
+        // come back (the web, which cannot wait), so the probe asks again.
+        if !engine(self.engine).is_ok_and(|eng| crate::present::barrier::settle(&eng)) {
             return None;
         }
         let mut rs = self.render.try_borrow_mut().ok()?;
-        // Captured frames show every wanted terrain tile, whatever the decode timing.
-        rs.terrain.settle = true;
-        rs.glyphs_settle = true;
         extract(world, &mut rs);
         // Baked probes sample the bakes the frames loaded.
         crate::present::probes::apply_bakes(&mut rs);

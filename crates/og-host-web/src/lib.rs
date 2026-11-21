@@ -303,11 +303,14 @@ pub fn og_web_display_interval(engine: u32, ms: f64) {
 }
 
 /// Brackets the probe's `frame` (a harness stepping one tick and one
-/// render): a scripted frame draws at the configured quality and is no
-/// sample of automatic quality (og-runtime's `set_scripted_frames`).
+/// render) with `scripted` and `display` (og-runtime's `FrameKind`): a
+/// scripted frame draws at the configured quality, never waits and is no
+/// sample of automatic quality.
 #[wasm_bindgen]
-pub fn og_web_scripted_frame(engine: u32, on: bool) {
-    og_runtime::set_scripted_frames(engine, on);
+pub fn og_web_frame_kind(engine: u32, kind: &str) -> Result<(), JsValue> {
+    let kind = og_runtime::FrameKind::parse(kind).map_err(|e| JsValue::from_str(&e))?;
+    og_runtime::set_frame_kind(engine, kind);
+    Ok(())
 }
 
 /// The page went fullscreen or left it (the shell's `fullscreenchange`):

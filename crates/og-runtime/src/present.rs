@@ -6,6 +6,7 @@
 pub(crate) mod art;
 pub(crate) mod atmosphere;
 pub(crate) mod baked;
+pub(crate) mod barrier;
 pub(crate) mod display;
 pub(crate) mod effect;
 pub(crate) mod environment;

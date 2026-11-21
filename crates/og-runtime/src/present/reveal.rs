@@ -30,7 +30,7 @@
 //! fade as many ticks late as it was held. Usually that is none. The hold
 //! is the display's alone: how long a first compile takes is the
 //! device's, so a capture and a script's frame
-//! (`DisplayState::scripted`), which wait for what they draw and
+//! (any but `FrameKind::Display`), which wait for what they draw and
 //! reproduce run to run, read the fade by its ticks, and neither the hold
 //! nor the delay is hashed.
 //!
@@ -272,10 +272,10 @@ pub(crate) fn step(rs: &mut RenderState, world: &World) {
         }
     }
     // Held until a frame has made its pipelines; with no renderer there
-    // is none to wait for. A script's frames hold none: they reproduce
-    // run to run, so they read a fade by its ticks, as a capture does,
-    // and wait for the pipelines they draw with.
-    let held = (rs.backend.is_some() && !rs.display.scripted).then_some(r.drawn);
+    // is none to wait for. Only display frames hold (`FrameKind`): any
+    // other reproduces run to run, so it reads a fade by its ticks, as a
+    // capture does, and waits for the pipelines it draws with.
+    let held = (rs.backend.is_some() && rs.display.kind.displayed()).then_some(r.drawn);
     let fade =
         |seconds: f32, model: u64| Fade::new(now as f64, f64::from(seconds) * rate, model, held);
     if !appeared.is_empty() {

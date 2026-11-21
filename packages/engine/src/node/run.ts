@@ -334,7 +334,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     };
     // Without --realtime every frame is the script's (elapsed is one tick): its time is the machine's load, not a
     // display's, so automatic quality must not read it, or the same script draws at another render scale per run.
-    if (!realtime) extras.og_node_scripted_frames(engine.id, true);
+    if (!realtime) extras.og_node_frame_kind(engine.id, "scripted");
     // --capture-only: the frames step the ticks and draw nothing; screenshots and frame checks are captures.
     if (captureOnly) extras.og_node_capture_only(engine.id, true);
     if (tracePath) {

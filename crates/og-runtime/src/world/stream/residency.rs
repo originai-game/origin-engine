@@ -14,29 +14,6 @@ enum Full {
     Sound(Box<CookedSound>),
 }
 
-/// Whether every model the group's pack upgrades is drawn whole at tick
-/// `now`: none hidden for its textures, none still fading in
-/// (`crate::present::reveal`). Whatever its trigger: a cell group's
-/// sub-scenes are asked after besides ([`super::cell_groups::ready`]).
-/// Presentation only, as `StreamStatus.ready` is.
-pub(super) fn shown(
-    a: &assets::Assets,
-    rs: &crate::present::extract::RenderState,
-    g: &Group,
-    now: f64,
-) -> bool {
-    let models = a.stream.slots.get(&g.desc.name).into_iter().flatten();
-    models
-        .filter_map(|(slot, _)| match slot {
-            Slot::Model { id, .. } => a.by_path.get(&format!("gltf:{}:{id}", g.bundle)),
-            _ => None,
-        })
-        .all(|&i| {
-            let model = assets::handle(i);
-            !rs.decoded.hidden_models.contains_key(&model) && !rs.reveal.pending(model, now)
-        })
-}
-
 /// A texture over its stand-in, in whichever form the host decoded it to.
 pub(crate) fn replace_texture(
     scene: &mut og_render::RenderScene,

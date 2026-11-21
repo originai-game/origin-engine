@@ -82,7 +82,7 @@ const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T =
 const text = existsSync(join(project, "project.ogt")) ? readFileSync(join(project, "project.ogt"), "utf8") : undefined;
 const profile = text === undefined ? undefined : /^\s*profile\s+"(2d|3d)"/m.exec(text)?.[1];
 const engine = must(createEngine(game, { root: project, ...(text ? { project: text } : {}), ...(profile ? { profile: profile as "2d" | "3d" } : {}), deferStart: true }));
-native().og_node_scripted_frames(engine.id, true);
+native().og_node_frame_kind(engine.id, "scripted");
 const attached = attachRenderer(engine.id, width, height);
 if (!attached.ok) throw new Error(attached.reason);
 if (attached.value === "none") throw new Error(`no renderer: ${attached.adapterError}`);

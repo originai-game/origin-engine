@@ -38,6 +38,13 @@ use std::collections::BTreeMap;
 
 /// The cell component.
 pub(crate) const CELL: &str = "og.StreamCell";
+
+/// Whether a scene's component table is og.StreamCell, by the name its
+/// text gave (`StreamCell` or `og.StreamCell`, as the cook reads it).
+pub(crate) fn is_cell(table: &str) -> bool {
+    table.strip_prefix("og.").unwrap_or(table) == &CELL["og.".len()..]
+}
+
 /// The shape of a cell, on its entity.
 const VOLUME: &str = "og.Volume";
 /// The anchor component.
@@ -407,13 +414,14 @@ pub(crate) fn waiting(eng: &Engine, world: &World) -> Option<(Entity, String)> {
         {
             return Some((c.cell, group.desc.name.clone()));
         }
-        // Its pack is in: the models it places may still have files on
-        // their way (a runtime bundle's proxies, read on demand on the web).
-        // Natively they read at once, so the tick waits for them too:
-        // otherwise the first one missing refuses the cell's spawn.
+        // Its pack is in: its closure (the models it places, the scenes
+        // and prefabs it spawns with) may still have files on their way (a
+        // runtime bundle's proxies, read on demand on the web). Natively
+        // they read at once, so the tick waits for them too: otherwise the
+        // first one missing refuses the cell's spawn.
         if let Some(i) = assets::index_of(c.v.scene as f64)
             && let Some(Payload::Scene(scene)) = a.entries.get(i).map(|e| &e.payload)
-            && a.scene_fetching(scene)
+            && a.closure_fetching(scene)
         {
             let name = a
                 .stream
