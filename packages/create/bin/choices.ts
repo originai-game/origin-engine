@@ -1,6 +1,9 @@
 import { CHOICE_LABELS, localized, LOOK_ZH } from "./choice-labels.ts";
 
-/** Creation vocabulary, defaults and inference rules. */
+import { MUSIC_STYLES } from "./brief.ts";
+
+/** Creation vocabulary, defaults and inference rules. The music styles are
+ * brief.ts's `MUSIC_STYLES`, the audio brief's own list. */
 export const CREATION_CHOICES = {
   form: ["2d", "2.5d", "3d", "film"],
   genre: ["interactive-film", "action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
@@ -9,7 +12,7 @@ export const CREATION_CHOICES = {
   platform: ["phone-portrait", "phone-landscape", "desktop", "multi"],
   input: ["touch", "keyboard-mouse", "gamepad"],
   players: ["single", "local-multiplayer", "online-lockstep"],
-  music: ["chiptune", "orchestral", "electronic", "ambient", "folk", "rock"],
+  music: MUSIC_STYLES,
 } as const;
 
 type ChoiceKey = keyof typeof CREATION_CHOICES;
