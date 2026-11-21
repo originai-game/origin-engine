@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Arena components",
+      "summary": "ArenaScoreboard, ArenaLobby, ArenaDraft, ArenaReady, ArenaRoster, ArenaRoundHud, ArenaSpectator, ArenaVersus and ArenaVote draw their rows and plates on opaque theme grounds and pack slots in those grounds' inks, so their text reads over a bright scene in every pack (the scoreboard's names, the lobby's Open slot and the draft's Lock in)."
+    }
+  ]
+}

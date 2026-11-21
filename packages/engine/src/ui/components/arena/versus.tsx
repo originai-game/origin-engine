@@ -48,10 +48,10 @@ export interface ArenaVersusProps {
  * the condensed stretch and the fit-down of a too-long team name are
  * dropped, and a phone stacks the sides with the seal between them.
  */
-const PORTRAIT = "shrink-0 size-[4.571rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 group-data-compact/versus:size-[2.857rem]";
+const PORTRAIT = "shrink-0 size-[4.571rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft group-data-compact/versus:size-[2.857rem]";
 const NAME = "min-w-0 text-start text-lg leading-[1.15] font-bold text-fg";
-const CAPTION = "min-w-0 text-start text-caption leading-[1.3] font-semibold text-fg/66";
-const YOU = `flex-none self-start py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-raised-pressed/88 whitespace-nowrap ${packClass("Chip", "frame")}`;
+const CAPTION = "min-w-0 text-start text-caption leading-[1.3] font-semibold text-fg-muted";
+const YOU = `flex-none self-start py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-raised-pressed whitespace-nowrap ${packClass("Chip", "frame")}`;
 
 function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<VersusFighter> }) {
   const heading = () => (props.name ?? "") != "" ? props.name : props.team == "a" ? t("arena.team.a") : t("arena.team.b");
@@ -59,19 +59,19 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
   const ink = () => props.team == "a" ? "text-team1" : "text-team2";
   const glow = () => props.team == "a" ? "shadow-[0px_0px_1rem_rgb(80_170_255/0.5),inset_0px_-2px_0px_0px_#50aaff]" : "shadow-[0px_0px_1rem_rgb(255_106_94/0.5),inset_0px_-2px_0px_0px_#ff6a5e]";
   const row = () => props.team == "a"
-    ? "bg-linear-to-r from-team1/16 to-entry-lo to-40% shadow-[inset_3px_0px_0px_0px_#50aaff]"
-    : "flex-row-reverse bg-linear-to-l from-team2/16 to-entry-lo to-40% shadow-[inset_-3px_0px_0px_0px_#ff6a5e]";
+    ? "border-l-3 border-team1"
+    : "flex-row-reverse border-r-3 border-team2";
   return (
     <View class="flex-1 min-w-0 flex-col gap-y-1 compact:flex-none compact:gap-y-1" role="group" label={heading()}>
       <Text class={`pb-1 max-w-full ${props.team == "b" ? "text-end " : "text-start "}${ink()} ${glow()} text-[3.286rem] leading-none font-bold uppercase tracking-[0.04em] group-data-compact/versus:text-display-sm whitespace-normal`}>{heading()}</Text>
       <Show when={fighters().length} fallback={
-        <Text class="p-4 text-center text-base text-fg/66 text-shadow-2xs" role="status">{t("arena.versus.waiting")}</Text>
+        <Text class="p-4 text-center text-base text-fg-muted text-shadow-2xs" role="status">{t("arena.versus.waiting")}</Text>
       }>
         <View class="flex-col gap-y-1" role="list" label={heading()}>
           <For each={fighters()} key={(f) => f.id}>
             {(f) => (
               <View
-                class={`group/fighter flex-row items-center justify-start gap-x-3 py-1 px-3 ${row()} data-local:bg-none data-local:bg-hud-accent/15 compact:gap-x-1 compact:py-0.5 compact:px-1`}
+                class={`group/fighter flex-row items-center justify-start gap-x-3 py-1 px-3 ${row()} compact:gap-x-1 compact:py-0.5 compact:px-1`}
                 role="listitem"
                 data-local={f().local === true}
               >

@@ -60,12 +60,13 @@ export interface ArenaLobbyProps {
  * dropped, and a long word wraps without breaking.
  */
 const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi compact:p-2 ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-glass-hi/95 hover:bg-raised-hi/95 disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
+const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
 const KEYCAP = "shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none";
-const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut ${packClass("Chip", "frame")}`;
-const PORTRAIT = "shrink-0 size-[3.714rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-white/75 via-white/22 via-45% to-white/14 compact:size-[2.857rem]";
-const PORTRAIT_OPEN = "data-open:p-px data-open:bg-none data-open:bg-white/28";
-const SEAT = "flex-row flex-wrap items-center gap-x-1 gap-y-0.5 min-h-11 py-1 px-2 nine-plate-cut bg-entry-hi compact:min-h-9 compact:py-0.5 compact:px-1 compact:gap-x-1";
+/** A tag in a state's own colour (an accent or gold fill and its ink): the pack's neutral chip does not dress it. */
+const ACCENT_TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase whitespace-nowrap nine-chip-cut`;
+const TAG = `${ACCENT_TAG} ${packClass("Chip", "frame")}`;
+const PORTRAIT = "shrink-0 size-[3.714rem] p-[3px] rounded-[0.857rem] bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft compact:size-[2.857rem]";
+const SEAT = "flex-row flex-wrap items-center gap-x-1 gap-y-0.5 min-h-11 py-1 px-2 nine-plate-cut compact:min-h-9 compact:py-0.5 compact:px-1 compact:gap-x-1";
 
 export function ArenaLobby(props: ArenaLobbyProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.lobby.title");
@@ -75,48 +76,48 @@ export function ArenaLobby(props: ArenaLobbyProps) {
       <View class="flex-row flex-wrap items-baseline gap-x-3 gap-y-1">
         <Text class="min-w-0 text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg">{heading()}</Text>
         <Show when={(props.detail ?? "") != ""}>
-          <Text class="min-w-0 text-caption font-semibold text-fg/66">{props.detail}</Text>
+          <Text class="min-w-0 text-caption font-semibold text-fg-muted">{props.detail}</Text>
         </Show>
       </View>
       <Show when={slots().length} fallback={
-        <Text class="p-4 text-center text-base text-fg/66" role="status">{t("arena.lobby.empty")}</Text>
+        <Text class="p-4 text-center text-base text-fg-muted" role="status">{t("arena.lobby.empty")}</Text>
       }>
         <Scroll class="min-h-0">
           <View class="flex-col gap-y-1" role="list" label={t("arena.lobby.players")}>
             <For each={slots()} key={(s) => s.id}>
               {(s) => (
                 <View
-                  class={`${SEAT} ${PORTRAIT_OPEN} data-local:shadow-[inset_0px_0px_0px_1px_rgb(56_232_255/0.45),inset_0px_2px_0px_0px_#38e8ff] data-open:bg-none data-open:bg-white/4`}
+                  class={`${SEAT} ${s().open ? packClass("Row", "frame", "muted") : s().local ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`}
                   role="listitem"
                   label={s().open ? t("arena.lobby.open") : s().name}
                   data-local={s().local === true}
                   data-open={s().open === true}
                 >
-                  <View class={`${PORTRAIT} ${s().open ? "p-px bg-none bg-white/28" : ""}`}>
+                  <View class={`${PORTRAIT} ${s().open ? "p-px bg-none bg-rim" : ""}`}>
                     <View class="size-full rounded-[0.714rem] bg-raised-pressed flex-row items-center justify-center overflow-hidden">
                       <Show when={(s().portrait ?? 0) != 0 && !s().open} fallback={
-                        <Icon class={s().open ? "size-6 text-fg/66" : "size-6 text-fg"} name={s().open ? "plus" : (s().icon ?? "")} />
+                        <Icon class={s().open ? "size-6 text-fg-muted" : "size-6 text-fg"} name={s().open ? "plus" : (s().icon ?? "")} />
                       }>
                         <Image class="size-full" src={s().portrait ?? 0} />
                       </Show>
                     </View>
                   </View>
                   <View class="flex-1 min-w-0 flex-col gap-y-0.5 compact:basis-[6.857rem]">
-                    <Text class={`text-start text-reading leading-[1.15] font-bold text-fg ${s().open ? "text-fg/66" : ""}`}>{s().open ? t("arena.lobby.open") : s().name}</Text>
+                    <Text class={`text-start text-reading leading-[1.15] font-bold text-fg ${s().open ? "text-fg-muted" : ""}`}>{s().open ? t("arena.lobby.open") : s().name}</Text>
                     <Show when={s().host || s().local}>
                       <View class="flex-row flex-wrap gap-x-0.5 gap-y-0.5">
                         <Show when={s().host}>
-                          <Text class={`${TAG} text-gold-fg bg-gold`}>{t("arena.lobby.host")}</Text>
+                          <Text class={`${ACCENT_TAG} text-gold-fg bg-gold`}>{t("arena.lobby.host")}</Text>
                         </Show>
                         <Show when={s().local}>
-                          <Text class={`${TAG} text-glass bg-hud-accent`}>{t("arena.you")}</Text>
+                          <Text class={`${ACCENT_TAG} text-hud-accent-fg bg-hud-accent`}>{t("arena.you")}</Text>
                         </Show>
                       </View>
                     </Show>
                   </View>
                   <Show when={!s().open}>
                     <View
-                      class={`flex-row items-center gap-x-1 whitespace-nowrap text-caption font-bold tracking-[0.14em] uppercase compact:ml-auto ${s().ready ? "text-success shadow-[0px_0px_0.571rem_rgb(85_227_154/0.7)]" : "text-fg/66"}`}
+                      class={`flex-row items-center gap-x-1 whitespace-nowrap text-caption font-bold tracking-[0.14em] uppercase compact:ml-auto ${s().ready ? "text-success shadow-[0px_0px_0.571rem_rgb(85_227_154/0.7)]" : "text-fg-muted"}`}
                     >
                       <Icon class="size-4" name={s().ready ? "check" : "clock"} />
                       <Text class="whitespace-nowrap">{s().ready ? t("arena.lobby.ready") : t("arena.lobby.notReady")}</Text>
@@ -153,7 +154,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
         </Show>
         <Show when={props.isHost}>
           <View
-            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-glass nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
+            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-[8.571rem] text-caption font-bold tracking-[0.14em] uppercase text-hud-accent-fg nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
             role="button"
             label={t("arena.lobby.start")}
             disabled={!(props.canStart ?? false)}

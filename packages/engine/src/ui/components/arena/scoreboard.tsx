@@ -56,17 +56,16 @@ export interface ArenaScoreboardProps {
  * opacity, the hover wash is dropped (the same fill), the scroll fade
  * at the list's foot is dropped, and a long word wraps without breaking.
  */
-const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-raised-pressed/88 whitespace-nowrap ${packClass("Chip", "frame")}`;
-const CAPTION = "text-end whitespace-nowrap text-xs font-semibold tracking-[0.14em] uppercase text-fg/78";
-const STAT = "text-end whitespace-nowrap text-base font-bold tabular-nums text-fg compact:flex-1 compact:min-w-0";
+const TAG = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-fg nine-chip-cut bg-raised-pressed whitespace-nowrap ${packClass("Chip", "frame")}`;
+const CAPTION = "text-end whitespace-nowrap text-xs font-semibold tracking-[0.14em] uppercase text-fg-muted";
+const STAT = "text-end whitespace-nowrap text-base font-bold tabular-nums compact:flex-1 compact:min-w-0";
 
 function TeamTable(props: { team: "a" | "b"; name: string; score: string; columns: string; rows: ReadonlyArray<ScoreboardRow> }) {
   const blue = props.team == "a";
   const ink = blue ? "text-team1" : "text-team2";
   const rule = blue ? "shadow-[inset_0px_-2px_0px_0px_#50aaff]" : "shadow-[inset_0px_-2px_0px_0px_#ff6a5e]";
   const glow = blue ? "shadow-[0px_0px_1rem_rgb(80_170_255/0.5)]" : "shadow-[0px_0px_1rem_rgb(255_106_94/0.5)]";
-  const wash = blue ? "bg-linear-to-r from-team1/16 to-entry-lo to-40%" : "bg-linear-to-r from-team2/16 to-entry-lo to-40%";
-  const edge = blue ? "shadow-[inset_3px_0px_0px_0px_#50aaff]" : "shadow-[inset_3px_0px_0px_0px_#ff6a5e]";
+    const edge = blue ? "border-l-3 border-team1" : "border-l-3 border-team2";
   const kda = () => props.columns == "kda";
   return (
     <View class="min-w-0 flex-col" role="table" label={props.name}>
@@ -88,7 +87,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
         <For each={props.rows ?? []} key={(r) => r.id}>
           {(r) => (
             <View
-              class={`flex-row items-center min-h-8 compact:flex-wrap ${wash} ${edge} data-local:bg-none data-local:bg-hud-accent/15 data-disconnected:opacity-45`}
+              class={`flex-row items-center min-h-8 compact:flex-wrap ${edge} ${r().disconnected ? packClass("Row", "frame", "muted") : r().local ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`}
               role="row"
               current={r().local === true}
               data-local={r().local === true}
@@ -100,7 +99,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
                   <Text class={TAG}>{t("arena.you")}</Text>
                 </Show>
                 <Show when={r().disconnected === true}>
-                  <Text class={`${TAG} text-fg/66`}>{t("arena.score.disconnected")}</Text>
+                  <Text class={TAG}>{t("arena.score.disconnected")}</Text>
                 </Show>
               </View>
               <Show when={kda()}>
@@ -108,7 +107,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
                 <Text class={`py-1 px-2 min-w-8 ${STAT}`} role="cell">{formatNumber(r().deaths ?? 0)}</Text>
                 <Text class={`py-1 px-2 min-w-8 ${STAT}`} role="cell">{formatNumber(r().assists ?? 0)}</Text>
               </Show>
-              <Text class="py-1 px-2 text-end whitespace-nowrap text-[1.714rem] font-bold tabular-nums text-fg compact:flex-[2_1_0] compact:min-w-0" role="cell">{formatNumber(r().score ?? 0)}</Text>
+              <Text class="py-1 px-2 text-end whitespace-nowrap text-[1.714rem] font-bold tabular-nums compact:flex-[2_1_0] compact:min-w-0" role="cell">{formatNumber(r().score ?? 0)}</Text>
             </View>
           )}
         </For>
@@ -125,12 +124,12 @@ export function ArenaScoreboard(props: ArenaScoreboardProps) {
   const nameA = () => props.nameA || t("arena.team.a");
   const nameB = () => props.nameB || t("arena.team.b");
   return (
-    <View class="w-full min-w-0 max-h-full flex-col gap-y-3 text-fg" label={heading()}>
+    <View class={`w-full min-w-0 max-h-full flex-col gap-y-3 p-4 text-fg bg-glass nine-panel-cut ${packClass("Panel", "frame")}`} label={heading()}>
       <View class="flex-none flex-row w-full min-h-0">
-        <Text class="flex-1 min-w-0 text-center text-base font-semibold tracking-[0.14em] uppercase text-fg/78">{heading()}</Text>
+        <Text class="flex-1 min-w-0 text-center text-base font-semibold tracking-[0.14em] uppercase text-fg-muted">{heading()}</Text>
       </View>
       <Show when={rows().length} fallback={
-        <Text class="p-4 text-center text-xs font-semibold tracking-[0.14em] uppercase text-fg/78" role="status">{t("arena.score.empty")}</Text>
+        <Text class="p-4 text-center text-xs font-semibold tracking-[0.14em] uppercase text-fg-muted" role="status">{t("arena.score.empty")}</Text>
       }>
         <Scroll class="min-h-0 flex-1">
           <View class="grid grid-cols-1 items-start gap-4 w-full data-split:grid-cols-2" data-split={props.split === true}>

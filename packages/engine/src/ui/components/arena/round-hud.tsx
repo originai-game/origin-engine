@@ -48,14 +48,14 @@ export interface ArenaRoundHudProps {
  * (team b's name keeps its place after the score: no order surface).
  */
 const PLATE_RIM = "shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.18),inset_0px_1px_0px_0px_rgb(255_255_255/0.55)]";
-const TEAM_PLATE = `bg-linear-to-b from-entry-hi to-entry-lo ${PLATE_RIM}`;
+const TEAM_PLATE = `bg-glass ${PLATE_RIM}`;
 const TEAM_A_PLATE = "shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.18),inset_0px_1px_0px_0px_rgb(255_255_255/0.55),inset_0px_-3px_0px_0px_#50aaff]";
 const TEAM_B_PLATE = "shadow-[inset_0px_0px_0px_1px_rgb(255_255_255/0.18),inset_0px_1px_0px_0px_rgb(255_255_255/0.55),inset_0px_-3px_0px_0px_#ff6a5e]";
 const NAME = "min-w-0 text-base leading-[1.15] font-bold uppercase tracking-[0.04em] text-fg";
 const SCORE_A = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team1 shadow-[0px_0px_1rem_rgb(80_170_255/0.5)] compact:text-3xl";
 const SCORE_B = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team2 shadow-[0px_0px_1rem_rgb(255_106_94/0.5)] compact:text-3xl";
-const YOU = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-glass nine-chip-cut bg-hud-accent whitespace-nowrap ${packClass("Chip", "frame")}`;
-const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 bg-raised-pressed/88 ${PLATE_RIM} ${packClass("Plate", "frame")}`;
+const YOU = `shrink-0 py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-hud-accent-fg nine-chip-cut bg-hud-accent whitespace-nowrap`;
+const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 bg-raised-pressed ${PLATE_RIM} ${packClass("Plate", "frame")}`;
 
 export function ArenaRoundHud(props: ArenaRoundHudProps) {
   const nameA = () => (props.nameA ?? "") != "" ? props.nameA : t("arena.team.a");
@@ -65,7 +65,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
     <View class="flex-col items-center gap-y-6 max-w-full min-w-0 pointer-events-none text-fg compact:gap-y-4" role="group" label={t("arena.round.name")}>
       <View class="flex-row items-stretch justify-center gap-x-0.5 max-w-full min-w-0 compact:w-full compact:flex-wrap">
         <View
-          class={`shrink basis-auto min-w-0 flex-row items-center justify-end gap-x-2 nine-panel-cut bg-entry-hi py-1 px-4 compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2 ${packClass("Plate", "frame")}`}
+          class={`shrink basis-auto min-w-0 flex-row items-center justify-end gap-x-2 nine-panel-cut bg-glass py-1 px-4 compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2 ${packClass("Plate", "frame")}`}
           role="group"
           label={nameA()}
           data-local={props.localTeam == "a"}
@@ -79,7 +79,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
           </Text>
         </View>
         <View class={`shrink-0 ${ROUND_PLATE} compact:basis-full compact:flex-row compact:flex-wrap compact:min-w-0 compact:gap-y-2 compact:py-0.5 compact:px-2`}>
-          <Text class="text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap compact:whitespace-normal compact:text-center">
+          <Text class="text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg-muted whitespace-nowrap compact:whitespace-normal compact:text-center">
             {(props.rounds ?? 0) > 0 ? t("arena.round.roundOf", { round: props.round ?? 0, rounds: props.rounds ?? 0 }) : t("arena.round.round", { round: props.round ?? 0 })}
           </Text>
           <Show when={(props.timeLeft ?? -1) >= 0}>
@@ -103,7 +103,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
       </View>
       <View class="w-full flex-row justify-center" role="status" live="assertive">
         <Show when={ended()}>
-          <View class="flex-col items-center gap-y-1 max-w-full">
+          <View class={`flex-col items-center gap-y-1 max-w-full py-3 px-8 bg-glass nine-panel-cut compact:py-2 compact:px-4 ${packClass("Panel", "frame")}`}>
             <Text
               class={`max-w-full text-center text-[6rem] leading-none font-bold uppercase tracking-[0.02em] text-gold-hi shadow-[0px_0px_1.571rem_rgb(255_207_90/0.55)] data-lost:text-danger data-lost:shadow-[0px_0px_1.571rem_rgb(222_38_52/0.6)]`}
               data-lost={props.outcome == "lost"}

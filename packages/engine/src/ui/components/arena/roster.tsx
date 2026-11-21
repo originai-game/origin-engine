@@ -60,9 +60,11 @@ export interface ArenaRosterProps {
  * is an opacity, and the scroll fade at the grid's foot is dropped.
  */
 const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi data-compact:p-2 ${packClass("Panel", "frame")}`;
-const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-xs leading-[1.5] font-bold text-key-fg bg-linear-to-b from-white to-key-hi shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] rounded-[0.286rem] data-ready:bg-none data-ready:bg-success data-ready:text-boon-fg";
-const TAG = `flex-none max-w-full self-center py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-center text-fg nine-chip-cut bg-raised-pressed/88 ${packClass("Chip", "frame")}`;
-const CELL = "flex-col gap-y-0.5 pb-2 nine-panel-cut bg-glass-hi/93 hover:bg-raised-hi/90 data-selected:bg-hud-accent/15 data-disabled:text-fg/66 data-disabled:bg-glass-hi/93";
+const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-xs leading-[1.5] font-bold text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] rounded-[0.286rem] data-ready:bg-none data-ready:bg-success data-ready:text-boon-fg";
+/** A tag in a state's own colour (an accent or gold fill and its ink): the pack's neutral chip does not dress it. */
+const ACCENT_TAG = `flex-none max-w-full self-center py-0 px-1 text-xs leading-[1.5] font-bold tracking-[0.14em] uppercase text-center text-fg nine-chip-cut bg-raised-pressed`;
+const TAG = `${ACCENT_TAG} ${packClass("Chip", "frame")}`;
+const CELL = "flex-col gap-y-0.5 pb-2 nine-panel-cut bg-glass-hi hover:bg-raised-hi data-selected:bg-surface-hover data-selected:border-l-3 data-selected:border-hud-accent data-disabled:text-fg-muted data-disabled:bg-glass-hi";
 
 export function ArenaRoster(props: ArenaRosterProps) {
   const heading = () => (props.title ?? "") != "" ? props.title : t("arena.roster.title");
@@ -73,7 +75,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
     <View class={`group/roster ${CARD}`} label={heading()} data-compact={props.compact === true}>
       <Text class="text-[1.714rem] leading-[1.1] font-bold uppercase tracking-[0.04em] text-fg">{heading()}</Text>
       <Show when={characters().length} fallback={
-        <Text class="p-4 text-center text-base text-fg/66" role="status">{t("arena.roster.empty")}</Text>
+        <Text class="p-4 text-center text-base text-fg-muted" role="status">{t("arena.roster.empty")}</Text>
       }>
         <Scroll class="min-h-0">
           <View class="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-1 p-0.5 pb-4 group-data-compact/roster:grid-cols-[repeat(auto-fill,minmax(100px,1fr))] group-data-compact/roster:gap-1" role="listbox" label={t("arena.roster.characters")}>
@@ -93,7 +95,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
                   <View class="relative w-full h-[2.714rem] overflow-hidden group-data-compact/roster:h-[2.286rem]">
                     <Show when={(c().portrait ?? 0) != 0} fallback={
                       <View class="size-full flex-row items-center justify-center">
-                        <Icon class={`size-12 text-fg data-disabled:text-fg/66 group-data-compact/roster:size-8`} name={c().icon ?? ""} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
+                        <Icon class={`size-12 text-fg data-disabled:text-fg-muted group-data-compact/roster:size-8`} name={c().icon ?? ""} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
                       </View>
                     }>
                       <Image class="size-full data-disabled:opacity-40" src={c().portrait ?? 0} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
@@ -119,7 +121,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
                   </View>
                   <Text class="px-1 text-center text-reading leading-[1.15] font-bold text-inherit">{c().name}</Text>
                   <Show when={c().locked || (c().takenBy ?? "") != ""}>
-                    <Text class={`${TAG} ${c().locked ? "text-fg/66" : "text-fg/66"}`}>{c().locked ? t("arena.roster.locked") : t("arena.roster.taken", { name: c().takenBy })}</Text>
+                    <Text class={`${TAG} ${c().locked ? "text-fg-muted" : "text-fg-muted"}`}>{c().locked ? t("arena.roster.locked") : t("arena.roster.taken", { name: c().takenBy })}</Text>
                   </Show>
                 </View>
               )}
@@ -127,10 +129,10 @@ export function ArenaRoster(props: ArenaRosterProps) {
           </View>
         </Scroll>
         <Show when={(props.selected ?? "") != "" && chosen()}>
-          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-entry-hi group-data-compact/roster:gap-y-1 group-data-compact/roster:py-1 px-2" role="status">
-            <Text class={`${TAG} bg-hud-accent text-glass shadow-none`}>{t("arena.roster.chosen")}</Text>
+          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-glass group-data-compact/roster:gap-y-1 group-data-compact/roster:py-1 px-2" role="status">
+            <Text class={`${ACCENT_TAG} bg-hud-accent text-hud-accent-fg shadow-none`}>{t("arena.roster.chosen")}</Text>
             <Text class="min-w-0 text-3xl leading-[1.1] font-bold uppercase text-fg group-data-compact/roster:text-xl">{chosen()?.name}</Text>
-            <Text class="shrink min-w-0 max-w-full text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78">{chosen()?.roleLabel}</Text>
+            <Text class="shrink min-w-0 max-w-full text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg-muted">{chosen()?.roleLabel}</Text>
           </View>
         </Show>
       </Show>
