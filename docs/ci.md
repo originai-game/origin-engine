@@ -402,8 +402,10 @@ that server without the jobserver of the cargo that happens to need it
 first, and on Unix stops a server that has stalled for `OG_SCCACHE_STALL`
 seconds (default 60, 0 turns the watch off). On Windows it runs rustc
 itself, uncached, for a compile whose `@argfile` would expand past the
-command line limit, which sccache 0.19.0 cannot spawn (os error 206);
-its source comments and
+command line limit, which sccache 0.19.0 cannot spawn (os error 206),
+and through a response file of its own when the release wasm's remaps
+take a command line cargo passed whole past the limit; its source
+comments and
 `tests/start.rs` hold the details. `RUSTC_WRAPPER=` (empty) bypasses the
 wrapper and sccache. To restart a server, run `sccache --stop-server`; a
 server started by hand must go without the jobserver: `env -u

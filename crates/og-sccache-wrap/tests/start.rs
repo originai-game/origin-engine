@@ -14,6 +14,9 @@
 //!   limit run through sccache (os error 206), or one that fits not →
 //!   `an_argfile_too_long_for_one_command_line_skips_sccache`,
 //!   `an_argfile_that_fits_goes_through_sccache`
+//! - on Windows, a command line cargo passed whole that the release
+//!   remaps take past the limit spawned as it is (os error 206) →
+//!   `a_command_line_too_long_with_the_remaps_goes_in_a_response_file`
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -172,6 +175,76 @@ fn an_argfile_too_long_for_one_command_line_skips_sccache() {
         "rustc gets cargo's argfile as it is: {log}"
     );
     assert_eq!(code, 5, "rustc's exit status");
+}
+
+/// A command line cargo passed whole that the wrapper's remaps take past
+/// the limit (os error 206, studio-win 2026-11-21: ui-rewrite's 3D lanes
+/// og-host-web) reaches rustc in a response file holding every argument,
+/// the remaps included. Ways it could fail: the spawn fails with 206,
+/// sccache runs it, an argument is lost or the file left behind, or
+/// rustc's exit status is lost.
+#[cfg(windows)]
+#[test]
+fn a_command_line_too_long_with_the_remaps_goes_in_a_response_file() {
+    let dir = scratch("response-file");
+    let log = dir.join("log");
+    let fake = fake_sccache(&dir, &log);
+    let rustc = dir.join("rustc.cmd");
+    // Logs its arguments, then the response file's lines.
+    std::fs::write(
+        &rustc,
+        format!(
+            "@echo off\r\necho rustc %*>> \"{log}\"\r\nset f=%1\r\ntype \"%f:~1%\">> \"{log}\"\r\nexit /b 5\r\n",
+            log = log.display()
+        ),
+    )
+    .unwrap();
+    // 314 arguments of 100 characters, 32,342 with quotes: this spawn of
+    // the wrapper fits in 32,767; the remaps below take rustc's past it.
+    let deps: Vec<String> = (0..314)
+        .map(|i| format!("-Ldependency={i:03}{}", "x".repeat(84)))
+        .collect();
+    let (p, _listener) = port(true);
+    let status = Command::new(WRAP)
+        .arg(&rustc)
+        .args(["--crate-name", "x", "--target", "wasm32-unknown-unknown"])
+        .args(&deps)
+        .env("OG_SCCACHE", &fake)
+        .env("OG_SCCACHE_STATE", dir.join("state"))
+        .env("SCCACHE_SERVER_PORT", p.to_string())
+        .env(
+            "OG_WASM_REPRODUCIBLE",
+            format!("/a/.cargo=/cargo\n/a/{}=/origin-engine", "r".repeat(500)),
+        )
+        .status()
+        .unwrap();
+    let out = std::fs::read_to_string(&log).unwrap_or_default();
+    let mut lines = out.lines();
+    let first = lines.next().unwrap_or_default();
+    assert!(!out.contains("run "), "sccache must not run it: {first}");
+    assert!(
+        first.starts_with("rustc @") && first.trim_end().ends_with(".args"),
+        "rustc gets one response file: {first}"
+    );
+    let file: Vec<&str> = lines.collect();
+    assert_eq!(
+        &file[..4],
+        ["--crate-name", "x", "--target", "wasm32-unknown-unknown"]
+    );
+    assert_eq!(
+        &file[4..318],
+        deps.iter().map(String::as_str).collect::<Vec<_>>()
+    );
+    assert_eq!(file.len(), 320, "{} lines", file.len());
+    assert_eq!(file[318], "--remap-path-prefix=/a/.cargo=/cargo");
+    assert!(
+        file[319].starts_with("--remap-path-prefix=/a/rrr"),
+        "{}",
+        file[319]
+    );
+    let left = first.trim_end().trim_start_matches("rustc @");
+    assert!(!Path::new(left).exists(), "the response file is removed");
+    assert_eq!(status.code(), Some(5), "rustc's exit status");
 }
 
 /// An argfile that fits still compiles through sccache. Way it could fail:

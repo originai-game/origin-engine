@@ -33,7 +33,9 @@
 //! build, whose `-L dependency=` list alone passes the limit). So on
 //! Windows, when the expanded command line would come near the limit, the
 //! wrapper runs rustc itself with cargo's arguments unchanged, the argfile
-//! included, and that one compile is not cached. sccache's main branch
+//! included, and that one compile is not cached; a command line cargo
+//! passed whole that is too long once the remaps below are added goes to
+//! rustc in a response file of the wrapper's. sccache's main branch
 //! spawns such a command through a response file (mozilla/sccache 91d34f1,
 //! 2026-11-14); once `SCCACHE_VERSION` has it, this bypass can go.
 //!
@@ -136,12 +138,35 @@ fn main() {
 
 /// Runs the compile without sccache: cargo's rustc with its arguments
 /// unchanged (an `@argfile` included), exiting with its status.
+///
+/// On Windows, arguments that do not fit one command line go to rustc in
+/// a response file of their own (`rustc @file`, one argument a line).
+/// Cargo passes a command line just under the limit as it is, and the
+/// remaps `reproducible` adds take it past (studio-win, 2026-11-21: the
+/// 3D lanes og-host-web of ui-rewrite's release wasm, os error 206).
 fn rustc_alone(args: &[OsString]) -> ! {
     let Some((rustc, rest)) = args.split_first() else {
         eprintln!("og-sccache-wrap: usage: og-sccache-wrap <rustc> <args...>");
         std::process::exit(2);
     };
-    match Command::new(rustc).args(rest).status() {
+    #[cfg(windows)]
+    let response = response_file(args);
+    #[cfg(windows)]
+    let status = match &response {
+        Some(file) => {
+            let mut at = OsString::from("@");
+            at.push(file);
+            Command::new(rustc).arg(at).status()
+        }
+        None => Command::new(rustc).args(rest).status(),
+    };
+    #[cfg(not(windows))]
+    let status = Command::new(rustc).args(rest).status();
+    #[cfg(windows)]
+    if let Some(file) = response {
+        let _ = std::fs::remove_file(file);
+    }
+    match status {
         Ok(s) => std::process::exit(s.code().unwrap_or(1)),
         Err(e) => {
             eprintln!(
@@ -180,13 +205,6 @@ const TOO_LONG_FOR_SCCACHE: usize = 30_000;
 /// space after it.
 #[cfg(windows)]
 fn expanded_command_line_len(args: &[OsString]) -> usize {
-    use std::os::windows::ffi::OsStrExt;
-    let quoted = |a: &std::ffi::OsStr| {
-        a.encode_wide()
-            .map(|c| if c == u16::from(b'"') { 2 } else { 1 })
-            .sum::<usize>()
-            + 3
-    };
     let mut len = 0;
     for arg in args {
         let file = arg.to_str().and_then(|a| a.strip_prefix('@'));
@@ -200,6 +218,40 @@ fn expanded_command_line_len(args: &[OsString]) -> usize {
         }
     }
     len
+}
+
+/// The length an argument takes on a command line: quoted, its quotes
+/// escaped, and a space after it.
+#[cfg(windows)]
+fn quoted(a: &std::ffi::OsStr) -> usize {
+    use std::os::windows::ffi::OsStrExt;
+    a.encode_wide()
+        .map(|c| if c == u16::from(b'"') { 2 } else { 1 })
+        .sum::<usize>()
+        + 3
+}
+
+/// For `args` (rustc first) too long for one command line as they are, a
+/// response file holding every argument but rustc, one a line; `None` when
+/// they fit, or when one argument holds a line break, which a response
+/// file cannot.
+#[cfg(windows)]
+fn response_file(args: &[OsString]) -> Option<PathBuf> {
+    if args.iter().map(|a| quoted(a)).sum::<usize>() <= TOO_LONG_FOR_SCCACHE {
+        return None;
+    }
+    let mut lines = String::new();
+    for a in &args[1..] {
+        let a = a.to_str()?;
+        if a.contains(['\n', '\r']) {
+            return None;
+        }
+        lines.push_str(a);
+        lines.push('\n');
+    }
+    let file = std::env::temp_dir().join(format!("og-sccache-wrap-{}.args", std::process::id()));
+    std::fs::write(&file, lines).ok()?;
+    Some(file)
 }
 
 /// The release wasm (`scripts/release-wasm.sh` sets `OG_WASM_REPRODUCIBLE`)
