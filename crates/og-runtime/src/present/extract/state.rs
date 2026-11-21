@@ -203,6 +203,9 @@ pub(crate) struct RenderState {
     /// the surface (`Viewport.covered`), over whatever the host reports,
     /// so a native run lays out as the published page with its Back does.
     pub cover: Option<og_ui::Rect>,
+    /// The player's colour vision filter (og.ui.configure's colorVision),
+    /// over the whole frame whether or not the UI draws anything.
+    pub color_filter: Option<og_render::ColorFilter>,
     /// The engine's UI, drawn over every frame.
     pub ui: Option<og_ui::SharedUi>,
     /// Emitted local shape ranges retained between presentation frames.
@@ -321,6 +324,7 @@ impl RenderState {
             viewport: None,
             preview: None,
             cover: None,
+            color_filter: None,
             ui: None,
             ui_emission: Default::default(),
             ui_next: None,

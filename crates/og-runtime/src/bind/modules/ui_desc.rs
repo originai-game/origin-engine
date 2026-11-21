@@ -3,69 +3,6 @@ use std::collections::BTreeMap;
 
 // ── ui: decoding descs ──────────────────────────────────────────────────────
 
-/// A colour role by its name: a ThemeColor, or one the style declares.
-fn token(theme: &Theme, name: &str) -> Option<Srgba> {
-    theme.color(name)
-}
-
-/// Every ThemeColor name, in the IDL's order.
-pub const THEME_COLORS: &[&str] = og_ui::Palette::NAMES;
-
-/// A type step by its TypeStepName.
-fn step(theme: &Theme, name: &str) -> Option<TypeStep> {
-    let r = &theme.type_ramp;
-    Some(match name {
-        "body" => r.body,
-        "xs" => r.xs,
-        "meta" => r.meta,
-        "caption" => r.caption,
-        "sm" => r.sm,
-        "reading" => r.reading,
-        "base" => r.base,
-        "lg" => r.lg,
-        "xl" => r.xl,
-        "xl2" => r.xl2,
-        "xl3" => r.xl3,
-        "xl4" => r.xl4,
-        "xl5" => r.xl5,
-        "xl6" => r.xl6,
-        "xl7" => r.xl7,
-        "xl8" => r.xl8,
-        "displaySm" => r.display_sm,
-        "displayMd" => r.display_md,
-        "displayLg" => r.display_lg,
-        "displayXl" => r.display_xl,
-        "displayXl2" | "hero" => r.display_xl2,
-        _ => return None,
-    })
-}
-
-/// Every TypeStepName, in the IDL's order.
-pub const TYPE_STEPS: &[&str] = &[
-    "body",
-    "xs",
-    "meta",
-    "caption",
-    "sm",
-    "reading",
-    "base",
-    "lg",
-    "xl",
-    "xl2",
-    "xl3",
-    "xl4",
-    "xl5",
-    "xl6",
-    "xl7",
-    "xl8",
-    "displaySm",
-    "displayMd",
-    "displayLg",
-    "displayXl",
-    "displayXl2",
-    "hero",
-];
-
 /// A linear component as the 8-bit sRGB channel og-ui draws, clamped to 0
 /// to 1: the API's `Color` is linear RGB (the `conventions` guide §6) and
 /// og-ui's [`Srgba`] is a colour as a style authors it. `color.fromHex` of
@@ -80,12 +17,13 @@ pub(super) fn srgb8(linear: f32) -> u8 {
     (s * 255.0).round() as u8
 }
 
-/// A Paint: a token, else a linear RGB `Color`, else white.
-pub(super) fn paint(theme: &Theme, p: &wire::Paint) -> Option<Srgba> {
+/// A Paint: a colour of the pack's theme (`colors`, as og.ui.theme
+/// answers it) by name, else a linear RGB `Color`, else white; `None` for
+/// a name the theme lacks.
+pub(super) fn paint(colors: &BTreeMap<String, String>, p: &wire::Paint) -> Option<Srgba> {
     let opacity = p.opacity.clamp(0.0, 1.0);
-    let name = p.token.map(|t| t.as_str()).or(p.role.as_deref());
-    let base = match name {
-        Some(t) => token(theme, t)?,
+    let base = match &p.role {
+        Some(name) => og_css::parse_color(colors.get(name)?)?,
         None => match &p.color {
             Some(c) => Srgba::rgb(srgb8(c.r), srgb8(c.g), srgb8(c.b)),
             None => Srgba::WHITE,
@@ -133,19 +71,14 @@ pub fn og_ui_viewport(world: u32) -> crate::host::wire::Viewport {
 }
 
 pub fn og_ui_theme(world: u32) -> crate::host::wire::UiTheme {
-    let (theme, sizes, style) = engine(world)
-        .ok()
-        .and_then(|e| e.state.borrow().ui.clone())
-        .map(|ui| {
-            let ui = ui.lock();
-            (*ui.theme(), ui.sizes(), ui.style_name().to_string())
-        })
-        .unwrap_or_else(|| {
-            let t = Theme::default();
-            let s = t.sizes(&Viewport::default());
-            (t, s, String::new())
-        });
-    theme_wire(theme, sizes, &style)
+    let settings = match engine(world) {
+        Ok(eng) => {
+            let v = viewport_of(world);
+            super::settings(&eng, &v, super::unit_of(&eng, &v))
+        }
+        Err(_) => super::UiSettings::of(&Value::Null, String::new(), (false, false)),
+    };
+    theme_wire(world, &settings)
 }
 
 /// A viewport as og.ui.viewport answers it, with the HUD band the UI's
@@ -210,7 +143,7 @@ pub fn og_ui_frame_viewport() -> String {
 #[derive(Default)]
 pub(crate) struct UiAnswers {
     viewport: Option<(Viewport, f32, String)>,
-    theme: Option<(Theme, og_ui::Density, String, String)>,
+    theme: Option<(super::UiSettings, String)>,
 }
 
 /// Runs `f` on the kept answers of the engine whose UI frame is open (else
@@ -316,128 +249,127 @@ pub fn og_ui_seconds() -> f64 {
 }
 
 pub fn og_ui_frame_theme() -> String {
-    let (theme, sizes, style) = with_ui("og.ui.frameTheme", |ui| {
-        (*ui.theme(), ui.sizes(), ui.style_name().to_string())
-    })
-    .unwrap_or_else(|| {
-        let t = Theme::default();
-        let s = t.sizes(&Viewport::default());
-        (t, s, String::new())
-    });
+    let id = ui_engine();
+    let settings = id.and_then(|id| engine(id).ok()).map_or_else(
+        || super::UiSettings::of(&Value::Null, String::new(), (false, false)),
+        |eng| {
+            let v = viewport_of(eng.id);
+            super::settings(&eng, &v, super::unit_of(&eng, &v))
+        },
+    );
     // The UI kit asks once a tick and the theme rarely changes: the last
-    // answer is kept with what it was made from.
+    // answer is kept with the settings (the style among them) it was made
+    // from.
     answered(|a| {
         let last = a.map(|a| &mut a.theme);
-        if let Some(Some((t, d, k, text))) = last.as_deref()
-            && *t == theme
-            && *d == sizes
-            && *k == style
+        if let Some(Some((s, text))) = last.as_deref()
+            && *s == settings
         {
             return text.clone();
         }
-        let text = wire::text_of(&theme_wire(theme, sizes, &style));
+        let text = wire::text_of(&theme_wire(id.unwrap_or(u32::MAX), &settings));
         if let Some(last) = last {
-            *last = Some((theme, sizes, style, text.clone()));
+            *last = Some((settings, text.clone()));
         }
         text
     })
 }
 
-fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> crate::host::wire::UiTheme {
-    let mut palette = BTreeMap::new();
-    for name in THEME_COLORS {
-        if let Some(c) = token(&theme, name) {
-            palette.insert(name.to_string(), hex(c));
-        }
-    }
-    for (name, c) in theme.roles.iter() {
-        palette.insert(name.to_string(), hex(c));
-    }
-    let mut type_ramp = BTreeMap::new();
-    for name in TYPE_STEPS {
-        if let Some(s) = step(&theme, name) {
-            type_ramp.insert(
-                name.to_string(),
-                wire::TypeStep {
-                    size: s.size,
-                    line_height: s.line_height,
-                    tracking_em: s.tracking_em,
-                    cjk_line_height: s.cjk_line_height,
-                    cjk_tracking_em: s.cjk_tracking_em,
-                    weight: s.weight.into(),
-                    uppercase: s.uppercase,
-                },
-            );
-        }
-    }
-    let named = |v: &[(&str, f32)]| -> BTreeMap<String, f32> {
-        v.iter().map(|&(k, x)| (k.to_string(), x)).collect()
+/// The colours of the theme of the UI whose frame is open, by name (what a
+/// Paint's role names).
+pub(super) fn frame_colors() -> BTreeMap<String, String> {
+    let Some(eng) = ui_engine().and_then(|id| engine(id).ok()) else {
+        return BTreeMap::new();
     };
-    let sp = theme.space;
-    let r = theme.radius;
-    let d = theme.durations_ms;
+    let v = viewport_of(eng.id);
+    // Under with_ui the UI is held, and colours need no unit.
+    theme_wire(eng.id, &super::settings(&eng, &v, 1.0)).colors
+}
+
+/// og.ui.theme's answer: the pack's theme in the settings' scheme and
+/// contrast, by its own names, with the settings.
+fn theme_wire(engine: u32, s: &super::UiSettings) -> crate::host::wire::UiTheme {
+    let theme = crate::present::ui_next::pack_theme(engine, s.dark, s.high_contrast);
+    let group = |key: &str| theme.get(key).and_then(Value::as_object);
+    // Colours by token name; a nested group (`brand: { 500 }`) as
+    // `brand-500`, normalised to hex.
+    let mut colors = BTreeMap::new();
+    fn flatten(prefix: &str, v: &Value, out: &mut BTreeMap<String, String>) {
+        match v {
+            Value::String(c) => {
+                let c = og_css::parse_color(c).map_or_else(|| c.clone(), hex);
+                out.insert(prefix.to_string(), c);
+            }
+            Value::Object(o) => {
+                for (k, v) in o {
+                    let name = if k == "DEFAULT" {
+                        prefix.to_string()
+                    } else {
+                        format!("{prefix}-{k}")
+                    };
+                    flatten(&name, v, out);
+                }
+            }
+            _ => {}
+        }
+    }
+    for (name, v) in group("colors").into_iter().flatten() {
+        flatten(name, v, &mut colors);
+    }
+    let numbers = |key: &str| -> BTreeMap<String, f32> {
+        group(key)
+            .into_iter()
+            .flatten()
+            .filter_map(|(k, v)| {
+                let n = v.as_f64().or_else(|| v.as_array()?.first()?.as_f64())?;
+                Some((k.clone(), n as f32))
+            })
+            .collect()
+    };
+    // A font size is `[size, lineHeight]` or `[size, { lineHeight }]`.
+    let line_height = group("fontSize")
+        .into_iter()
+        .flatten()
+        .filter_map(|(k, v)| {
+            let second = v.as_array()?.get(1)?;
+            let lh = second
+                .as_f64()
+                .or_else(|| second.get("lineHeight")?.as_f64())?;
+            Some((k.clone(), lh as f32))
+        })
+        .collect();
     wire::UiTheme {
-        scheme: match theme.scheme {
-            Scheme::Light => wire::Scheme::Light,
-            Scheme::Dark => wire::Scheme::Dark,
+        scheme: if s.dark {
+            wire::Scheme::Dark
+        } else {
+            wire::Scheme::Light
         },
-        palette,
-        space: named(&[
-            ("xxs", sp.xxs),
-            ("xs", sp.xs),
-            ("sm", sp.sm),
-            ("md", sp.md),
-            ("lg", sp.lg),
-            ("xl", sp.xl),
-            ("xxl", sp.xxl),
-            ("xl3", sp.xl3),
-        ]),
-        radius: named(&[
-            ("small", r.small),
-            ("control", r.control),
-            ("bar", r.bar),
-            ("panel", r.panel),
-        ]),
-        type_ramp,
-        sizes: wire::ControlSizes {
-            control_sm: sizes.control_sm,
-            control_md: sizes.control_md,
-            control_lg: sizes.control_lg,
-            gutter: sizes.gutter,
-            header: sizes.header,
-            row: sizes.row,
-            section: sizes.section,
+        colors,
+        radius: numbers("radius"),
+        font_size: numbers("fontSize"),
+        line_height,
+        tracking: numbers("tracking"),
+        font_weight: numbers("fontWeight"),
+        blur: numbers("blur"),
+        durations: (*crate::present::ui_next::durations(engine)).clone(),
+        style: s
+            .style
+            .trim_end_matches('/')
+            .rsplit('/')
+            .next()
+            .unwrap_or("")
+            .to_string(),
+        contrast: if s.high_contrast {
+            wire::Contrast::High
+        } else {
+            wire::Contrast::Standard
         },
-        durations_ms: named(&[
-            ("instant", d.instant),
-            ("fast", d.fast),
-            ("base", d.base),
-            ("slow", d.slow),
-            ("spring", d.spring),
-            ("bounce", d.bounce),
-        ]),
-        style: style.to_string(),
-        contrast: match theme.contrast {
-            og_ui::Contrast::Standard => wire::Contrast::Standard,
-            og_ui::Contrast::High => wire::Contrast::High,
-        },
-        reduced_motion: theme.reduced_motion,
-        glass_backdrop: match theme.glass_backdrop.unwrap_or(og_ui::GlassBackdrop::None) {
-            og_ui::GlassBackdrop::None => wire::GlassBackdrop::None,
-            og_ui::GlassBackdrop::Auto => wire::GlassBackdrop::Auto,
-        },
-        color_vision: match theme.color_vision {
-            og_render::ColorVision::Typical => wire::ColorVision::None,
-            og_render::ColorVision::Protanopia => wire::ColorVision::Protanopia,
-            og_render::ColorVision::Deuteranopia => wire::ColorVision::Deuteranopia,
-            og_render::ColorVision::Tritanopia => wire::ColorVision::Tritanopia,
-        },
-        color_vision_filter: match theme.color_vision_filter {
-            og_render::ColorVisionFilter::Correct => wire::ColorVisionFilter::Correct,
-            og_render::ColorVisionFilter::Simulate => wire::ColorVisionFilter::Simulate,
-        },
-        color_vision_strength: theme.color_vision_strength,
-        text_scale: theme.text_scale,
+        reduced_motion: s.reduced_motion,
+        text_scale: s.text_scale,
+        unit: s.unit,
+        color_vision: s.color_vision,
+        color_vision_filter: s.color_vision_filter,
+        color_vision_strength: s.color_vision_strength,
     }
 }
 

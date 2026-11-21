@@ -28,4 +28,4 @@ fn hudReset {
 }
 ```
 
-<sub>Module `ui` line 722</sub>
+<sub>Module `ui` line 596</sub>

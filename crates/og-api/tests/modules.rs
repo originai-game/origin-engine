@@ -1,12 +1,10 @@
 //! The engine modules' records are the IDL's: a world registers the IDL's
 //! layout first and og-physics and og-audio adopt it only when the name, the
 //! field order, the names, the storage types and an enum's variants agree
-//! (og-ecs refuses the engine otherwise). And the UI's ThemeColor enum names
-//! every colour role of og-ui's palette, in its order.
+//! (og-ecs refuses the engine otherwise).
 
 use og_api::host::{RECORDS, RecordDecl};
 use og_core::reflect::{FieldSchema, FieldType, Reflect, Schema};
-use std::path::Path;
 
 /// The IDL's layout of `decl` at `version`: the IDL declares the fields,
 /// [`VERSIONS`] the version they are at.
@@ -217,29 +215,4 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_input::PointerUp>(&mut failures);
     check::<og_input::PointerMove>(&mut failures);
     assert!(failures.is_empty(), "{}", failures.join("\n"));
-}
-
-#[test]
-fn theme_color_names_every_palette_role() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let api = og_idl::read(&root.join(og_idl::IDL_PATH)).unwrap();
-    let have: Vec<String> = api
-        .modules
-        .iter()
-        .flat_map(|m| m.items.iter())
-        .find_map(|i| match i {
-            og_idl::model::Item::Enum(e) if e.name == "ThemeColor" => Some(
-                e.variants
-                    .iter()
-                    .map(|v| v.name.clone())
-                    .collect::<Vec<_>>(),
-            ),
-            _ => None,
-        })
-        .expect("api/<module>.ogt declares ThemeColor");
-    assert_eq!(
-        have,
-        og_ui::Palette::NAMES,
-        "ThemeColor and og-ui's palette roles differ (names or order)"
-    );
 }

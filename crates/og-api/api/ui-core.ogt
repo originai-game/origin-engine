@@ -15,89 +15,6 @@ module ui {
     variant light "The light palette."
   }
 
-  enum GlassBackdrop {
-    doc "Whether glass surfaces may blur the frame behind them."
-    variant none "No backdrop blur."
-    variant auto "Enable backdrop blur where the style requests glass."
-  }
-
-  enum DensityMode {
-    doc "Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise."
-    variant auto "Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise."
-    variant mouse "A mouse and keyboard: the tightest controls."
-    variant pad "A gamepad across a room: larger controls, rows and gutters that read from a couch."
-    variant touch "A finger: every control at least 44 CSS px."
-  }
-
-  enum ThemeColor {
-    doc "A colour role of the UI style in effect (the game's style, or the default style before it picks one)."
-    variant backdrop "The screen behind the UI where nothing else is."
-    variant well "A recessed ground inside a panel: wells, map frames, empty slots."
-    variant panel "Panels and cards."
-    variant panelHover "A panel under the pointer."
-    variant panelRaised "Dialogs, menus and tooltips."
-    variant line "Hairlines and frames."
-    variant lineStrong "Stronger frames: high contrast, map borders, scrollbars."
-    variant ink "The main ink."
-    variant inkMuted "Secondary ink: captions, keys, inactive tabs."
-    variant inkFaint "The faintest ink that still reads: placeholders, hints."
-    variant inkInverse "Ink on a ground of ink (a selected chip)."
-    variant control "Neutral control fills: secondary buttons, tracks, fields."
-    variant controlStrong "A neutral control hovered or pressed; selection."
-    variant primary "The one directed action: primary buttons, a slider's fill, a switch that is on, the caret."
-    variant primaryHover "primary hovered."
-    variant primaryActive "primary pressed."
-    variant onPrimary "Ink on primary."
-    variant primarySoft "A translucent wash of primary."
-    variant highlight "Emphasised ink: a speaker's name, a price, a link, the player's map dot."
-    variant selection "The selected row, tab or card, independent of primary actions."
-    variant onSelection "Ink on the selection ground."
-    variant accent "Decorative emphasis, independent of primary and selection."
-    variant sceneInk "Scheme-aware text drawn over the scene."
-    variant scenePlate "Scheme-aware plate behind HUD content."
-    variant sceneShadow "Separation shadow under text over the scene."
-    variant focus "The focus ring of key and pad navigation."
-    variant knob "Slider and switch knobs."
-    variant hud "HUD capsules over the game (scores, timers, toasts)."
-    variant scrim "Behind a dialog."
-    variant shadow "Drop shadows."
-    variant sheen "A skeleton's passing sheen."
-    variant success "Success."
-    variant warn "Warnings."
-    variant danger "Danger and errors."
-    variant info "Information."
-    variant health "A health meter."
-    variant mana "A mana meter."
-    variant xp "An experience meter."
-    variant gold "Currency: coins, gold, prices that can be paid."
-  }
-
-  enum TypeStepName {
-    doc "A step of the style's type ramp."
-    variant body "The default step."
-    variant xs "A step of the ramp."
-    variant meta "A step of the ramp."
-    variant caption "A step of the ramp."
-    variant sm "A step of the ramp."
-    variant reading "A step of the ramp."
-    variant base "A step of the ramp."
-    variant lg "A step of the ramp."
-    variant xl "A step of the ramp."
-    variant xl2 "A step of the ramp."
-    variant xl3 "A step of the ramp."
-    variant xl4 "A step of the ramp."
-    variant xl5 "A step of the ramp."
-    variant xl6 "A step of the ramp."
-    variant xl7 "A step of the ramp."
-    variant xl8 "A step of the ramp."
-    variant displaySm "A step of the ramp."
-    variant displayMd "A step of the ramp."
-    variant displayLg "A step of the ramp."
-    variant displayXl "A step of the ramp."
-    variant displayXl2 "A step of the ramp."
-    variant hero "The largest typography role, above display; displayXl2 is its legacy alias."
-  }
-
   struct Insets {
     doc "Padding or margins on four sides."
     field left f32 "The left side." {
@@ -115,12 +32,11 @@ module ui {
   }
 
   struct Paint {
-    doc "A colour: a theme token, a role of the style, or a Color (linear RGB, as every Color of the API), with an opacity. None of them is white."
+    doc "A colour: one of the style pack's theme colours or a Color (linear RGB, as every Color of the API), with an opacity. Neither is white."
     desc true
-    field token Option.ThemeColor "A semantic colour of the theme."
-    field role Option.String "A colour role the style declares of its own (its `roles` block, docs/ui.md §3.1: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta."
-    field color Option.Color "A linear RGB colour, when no token or role is given: `color.fromHex(0xff8800)` for a hex or CSS colour. The UI draws 8-bit sRGB, so each component is clamped to 0 to 1 (no HDR)."
-    field opacity f32 "Its opacity, multiplied with the token's or the role's own." {
+    field role Option.String "A colour of the style pack's theme by its token name (fg, accent, danger, …: UiTheme.colors' keys); a name the pack lacks draws magenta."
+    field color Option.Color "A linear RGB colour, when no role is given: `color.fromHex(0xff8800)` for a hex or CSS colour. The UI draws 8-bit sRGB, so each component is clamped to 0 to 1 (no HDR)."
+    field opacity f32 "Its opacity, multiplied with the role's own." {
       default 1
       min 0
       max 1
@@ -175,11 +91,10 @@ module ui {
   }
 
   struct UiDesc {
-    doc "How the UI looks: the scheme, the density, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it."
+    doc "How the UI looks: the scheme, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it."
     aliases "UI scale, text scale, font size, accessibility, high contrast, reduced motion, UI settings"
     desc true
     field scheme Scheme "The palette."
-    field density DensityMode "The control sizes."
     field font Option.Font "The body font, from og.load.font; null measures text at half an em per character and draws none."
     field displayFont Option.Font "The display font; null uses the body font."
     field monoFont Option.Font "The monospaced font; null uses the body font."
@@ -200,7 +115,6 @@ module ui {
       max 2
       unit ratio
     }
-    field glassBackdrop Option.GlassBackdrop "Override the style's backdrop blur: auto enables it for glass surfaces, none disables it even when the style opts in. Omitted keeps the previous override; null clears it to inherit the style. Reduced transparency always disables backdrop blur."
     field colorVision ColorVision "The player's colour vision (a colour-blind mode): the whole frame, scene and UI, is recoloured for it after every other effect (colorVisionFilter); none (the default) draws it as it is. Viénot 1999 and Brettel 1997 simulate; Fidaner 2005's daltonisation corrects."
     field colorVisionFilter ColorVisionFilter "What colorVision does to the frame: correct (the default; the player's setting) or simulate (how a viewer with it sees the frame, for checking a screen)."
     field colorVisionStrength f32 "The deficiency's severity, 0 to 1: 1 (the default) a dichromat's; less blends towards the frame as it is, for the commoner anomalous trichromacy." {
@@ -240,69 +154,29 @@ module ui {
     field error Option.Sound "A refused press or a danger toast."
   }
 
-  struct TypeStep {
-    doc "One step of the type ramp."
-    field size f32 "The font size." {
-      unit cssPx
-    }
-    field lineHeight f32 "The leading of Latin text." {
-      unit cssPx
-    }
-    field trackingEm f32 "Latin tracking, in em."
-    field cjkLineHeight f32 "The leading text with Chinese, Japanese or Korean characters takes." {
-      unit cssPx
-    }
-    field cjkTrackingEm f32 "Tracking of text containing CJK characters, in em."
-    field weight u32 "The face weight (100 to 900); zero takes the font role's own face."
-    field uppercase bool "Style-driven locale-sensitive uppercase, applied before measurement without rewriting source text or editable values."
-  }
-
-  struct ControlSizes {
-    doc "The control, row and header heights and the gutter of the density in effect."
-    field controlSm f32 "A small control's height." {
-      unit cssPx
-    }
-    field controlMd f32 "A control's height." {
-      unit cssPx
-    }
-    field controlLg f32 "A large control's height." {
-      unit cssPx
-    }
-    field gutter f32 "The gutter." {
-      unit cssPx
-    }
-    field header f32 "The header height." {
-      unit cssPx
-    }
-    field row f32 "The row height." {
-      unit cssPx
-    }
-    field section f32 "The section spacing." {
-      unit cssPx
-    }
-  }
-
   struct UiTheme {
-    doc "The style values the UI draws with, read-only."
+    doc "What the UI draws with, read-only: the style pack's theme (the default pack with the game's over it) in the scheme and contrast in effect, in the design tokens' own names, and the player's settings in effect."
     field scheme Scheme "The palette in use."
-    field palette Map.String "Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §3.1), as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
-    field space Map.f32 "The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels."
-    field radius Map.f32 "The corner radii by name (small, control, bar, panel), in CSS pixels."
-    field typeRamp Map.TypeStep "Each TypeStepName's step."
-    field sizes ControlSizes "The control sizes of the density in effect."
-    field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
+    field colors Map.String "Each colour of the theme by its token name (`--color-fg` is fg), as `#rrggbb` or `#rrggbbaa`."
+    field radius Map.f32 "The corner radii by name (button, card, panel, …), in CSS pixels."
+    field fontSize Map.f32 "The font sizes by name (body, caption, display-lg, …), in CSS pixels."
+    field lineHeight Map.f32 "Each font size's line height, a ratio of it."
+    field tracking Map.f32 "The letter spacing by name, in em."
+    field fontWeight Map.f32 "The font weights by name (regular, medium, semibold, bold, body)."
+    field blur Map.f32 "The backdrop blurs by name (thin, regular, thick, lens), in CSS pixels."
+    field durations Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce, …: `--motion-duration-*`), in milliseconds."
     field style String "The configured style's name; empty for the default style."
     field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
-    field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
-    field textScale f32 "The player's text scale in effect (UiDesc.textScale, 1 to 1.5): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."
+    field reducedMotion bool "Transitions only fade: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
+    field textScale f32 "The player's text scale in effect (UiDesc.textScale, 1 to 1.5)."
+    field unit f32 "The UI unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what the tree lays out in. A game drawing its own screen sprites beside the UI multiplies by it."
     field colorVision ColorVision "The player's colour vision in effect (UiDesc.colorVision)."
     field colorVisionFilter ColorVisionFilter "Whether the frame is corrected or simulated for it."
     field colorVisionStrength f32 "Its severity, 0 to 1."
-    field glassBackdrop GlassBackdrop "The backdrop blur policy in effect, after the configured override and style; none when neither opts in."
   }
 
   fn configure {
-    doc "Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text."
+    doc "Set how the UI looks (the scheme, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text."
     param world World "The world whose UI is configured."
     param desc UiDesc "The fields to change; the others keep their values."
     returns Result.Void "Refused for a dead font or style, or a desc that is not an object."

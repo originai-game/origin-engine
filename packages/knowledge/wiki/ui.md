@@ -25,20 +25,14 @@ module ui {
 |---|---|---|---|
 | [`TextAlign`](ui/type-TextAlign.md) | enum |  | How the lines of a label align. |
 | [`Scheme`](ui/type-Scheme.md) | enum |  | The palette: games run on a stage, so dark is the default. |
-| [`GlassBackdrop`](ui/type-GlassBackdrop.md) | enum |  | Whether glass surfaces may blur the frame behind them. |
-| [`DensityMode`](ui/type-DensityMode.md) | enum |  | Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise. |
-| [`ThemeColor`](ui/type-ThemeColor.md) | enum |  | A colour role of the UI style in effect (the game's style, or the default style before it picks one). |
-| [`TypeStepName`](ui/type-TypeStepName.md) | enum |  | A step of the style's type ramp. |
 | [`Insets`](ui/type-Insets.md) | struct |  | Padding or margins on four sides. |
-| [`Paint`](ui/type-Paint.md) | desc struct |  | A colour: a theme token, a role of the style, or a Color (linear RGB, as every Color of the API), with an opacity. |
+| [`Paint`](ui/type-Paint.md) | desc struct |  | A colour: one of the style pack's theme colours or a Color (linear RGB, as every Color of the API), with an opacity. |
 | [`Viewport`](ui/type-Viewport.md) | struct |  | The play surface the UI lays out in, in CSS px and device pixels per CSS px. |
-| [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, the density, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. |
+| [`UiDesc`](ui/type-UiDesc.md) | desc struct |  | How the UI looks: the scheme, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. |
 | [`UiSeeds`](ui/type-UiSeeds.md) | desc struct |  | The colours a UI palette is derived from (packages/design/tokens/seed.css): every ground, ink, accent, state, status and team colour follows them, each scheme keeping its text and team inks at 4.5:1,… |
 | [`UiSounds`](ui/type-UiSounds.md) | desc struct |  | Sounds the UI plays through og-audio (the ui bus) on its events; null is silent. |
-| [`TypeStep`](ui/type-TypeStep.md) | struct |  | One step of the type ramp. |
-| [`ControlSizes`](ui/type-ControlSizes.md) | struct |  | The control, row and header heights and the gutter of the density in effect. |
-| [`UiTheme`](ui/type-UiTheme.md) | struct |  | The style values the UI draws with, read-only. |
-| [`og.ui.configure`](ui/fn-configure.md) | function | `(world: World, desc?: UiDesc): Result<void>` | Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. |
+| [`UiTheme`](ui/type-UiTheme.md) | struct |  | What the UI draws with, read-only: the style pack's theme (the default pack with the game's over it) in the scheme and contrast in effect, in the design tokens' own names, and the player's settings i… |
+| [`og.ui.configure`](ui/fn-configure.md) | function | `(world: World, desc?: UiDesc): Result<void>` | Set how the UI looks (the scheme, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. |
 | [`og.ui.viewport`](ui/fn-viewport.md) | function | `(world: World): Viewport` | This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in CSS px and device pixels per CSS px, from what the host reports. |
 | [`og.ui.theme`](ui/fn-theme.md) | function | `(world: World): UiTheme` | The style values the UI draws with. |
 | [`TextSpan`](ui/type-TextSpan.md) | struct |  | A named attribute range in plain text for a store and the Svelte text spans binding. |
@@ -223,7 +217,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1293</sub>
+<sub>Module `ui` line 1167</sub>
 
 ```ogt
 column UiMaterial {
@@ -234,4 +228,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1300</sub>
+<sub>Module `ui` line 1174</sub>

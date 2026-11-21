@@ -103,14 +103,18 @@ impl Feed {
 use crate::host::wire::{self, MassKind, MassTemplateDesc};
 use og_core::glam::Vec2;
 
-fn linear(theme: &Theme, p: &Option<wire::Paint>, d: [f32; 4]) -> [f32; 4] {
+fn linear(
+    theme: &std::collections::BTreeMap<String, String>,
+    p: &Option<wire::Paint>,
+    d: [f32; 4],
+) -> [f32; 4] {
     p.as_ref()
         .and_then(|p| paint(theme, p))
         .map_or(d, |c| c.linear())
 }
 
 fn template(
-    theme: &Theme,
+    theme: &std::collections::BTreeMap<String, String>,
     eng: Option<&Engine>,
     d: MassTemplateDesc,
 ) -> Result<(UiMassTemplate, UiMassSpace), String> {
@@ -199,7 +203,10 @@ fn template(
     Ok((t, space))
 }
 
-fn instances(theme: &Theme, text: &str) -> Vec<UiMassInstance> {
+fn instances(
+    theme: &std::collections::BTreeMap<String, String>,
+    text: &str,
+) -> Vec<UiMassInstance> {
     let list: Vec<wire::MassInstance> = wire::arg(Some(text), "instances").unwrap_or_default();
     list.iter()
         .map(|i| UiMassInstance {
@@ -221,7 +228,7 @@ pub fn og_ui_define_mass(name: String, desc: Option<String>) -> Result<u32, Stri
     let d: MassTemplateDesc = wire::arg(desc.as_deref(), "desc")?;
     let eng = ui_engine().and_then(|id| engine(id).ok());
     with_ui("og.ui.defineMass", |ui| {
-        let theme = *ui.theme();
+        let theme = super::ui_desc::frame_colors();
         let (t, space) = template(&theme, eng.as_deref(), d)?;
         Ok(ui.define_mass(&name, t, space).0)
     })
@@ -230,7 +237,7 @@ pub fn og_ui_define_mass(name: String, desc: Option<String>) -> Result<u32, Stri
 
 pub fn og_ui_spawn_mass(template: u32, list: String) {
     with_ui("og.ui.spawnMass", |ui| {
-        let theme = *ui.theme();
+        let theme = super::ui_desc::frame_colors();
         for i in instances(&theme, &list) {
             ui.spawn_mass(og_ui::MassHandle(template), i);
         }

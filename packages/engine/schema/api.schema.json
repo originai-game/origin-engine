@@ -12434,18 +12434,12 @@
       "types": [
         "TextAlign",
         "Scheme",
-        "GlassBackdrop",
-        "DensityMode",
-        "ThemeColor",
-        "TypeStepName",
         "Insets",
         "Paint",
         "Viewport",
         "UiDesc",
         "UiSeeds",
         "UiSounds",
-        "TypeStep",
-        "ControlSizes",
         "UiTheme",
         "TextSpan",
         "Anchor",
@@ -12535,7 +12529,7 @@
       "functions": [
         {
           "name": "configure",
-          "doc": "Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.",
+          "doc": "Set how the UI looks (the scheme, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.",
           "params": [
             {
               "name": "world",
@@ -46328,180 +46322,6 @@
         "light": "The light palette."
       }
     },
-    "GlassBackdrop": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "Whether glass surfaces may blur the frame behind them.",
-      "type": "string",
-      "enum": [
-        "none",
-        "auto"
-      ],
-      "x-og-variants": {
-        "none": "No backdrop blur.",
-        "auto": "Enable backdrop blur where the style requests glass."
-      }
-    },
-    "DensityMode": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise.",
-      "type": "string",
-      "enum": [
-        "auto",
-        "mouse",
-        "pad",
-        "touch"
-      ],
-      "x-og-variants": {
-        "auto": "Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise.",
-        "mouse": "A mouse and keyboard: the tightest controls.",
-        "pad": "A gamepad across a room: larger controls, rows and gutters that read from a couch.",
-        "touch": "A finger: every control at least 44 CSS px."
-      }
-    },
-    "ThemeColor": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "A colour role of the UI style in effect (the game's style, or the default style before it picks one).",
-      "type": "string",
-      "enum": [
-        "backdrop",
-        "well",
-        "panel",
-        "panelHover",
-        "panelRaised",
-        "line",
-        "lineStrong",
-        "ink",
-        "inkMuted",
-        "inkFaint",
-        "inkInverse",
-        "control",
-        "controlStrong",
-        "primary",
-        "primaryHover",
-        "primaryActive",
-        "onPrimary",
-        "primarySoft",
-        "highlight",
-        "selection",
-        "onSelection",
-        "accent",
-        "sceneInk",
-        "scenePlate",
-        "sceneShadow",
-        "focus",
-        "knob",
-        "hud",
-        "scrim",
-        "shadow",
-        "sheen",
-        "success",
-        "warn",
-        "danger",
-        "info",
-        "health",
-        "mana",
-        "xp",
-        "gold"
-      ],
-      "x-og-variants": {
-        "backdrop": "The screen behind the UI where nothing else is.",
-        "well": "A recessed ground inside a panel: wells, map frames, empty slots.",
-        "panel": "Panels and cards.",
-        "panelHover": "A panel under the pointer.",
-        "panelRaised": "Dialogs, menus and tooltips.",
-        "line": "Hairlines and frames.",
-        "lineStrong": "Stronger frames: high contrast, map borders, scrollbars.",
-        "ink": "The main ink.",
-        "inkMuted": "Secondary ink: captions, keys, inactive tabs.",
-        "inkFaint": "The faintest ink that still reads: placeholders, hints.",
-        "inkInverse": "Ink on a ground of ink (a selected chip).",
-        "control": "Neutral control fills: secondary buttons, tracks, fields.",
-        "controlStrong": "A neutral control hovered or pressed; selection.",
-        "primary": "The one directed action: primary buttons, a slider's fill, a switch that is on, the caret.",
-        "primaryHover": "primary hovered.",
-        "primaryActive": "primary pressed.",
-        "onPrimary": "Ink on primary.",
-        "primarySoft": "A translucent wash of primary.",
-        "highlight": "Emphasised ink: a speaker's name, a price, a link, the player's map dot.",
-        "selection": "The selected row, tab or card, independent of primary actions.",
-        "onSelection": "Ink on the selection ground.",
-        "accent": "Decorative emphasis, independent of primary and selection.",
-        "sceneInk": "Scheme-aware text drawn over the scene.",
-        "scenePlate": "Scheme-aware plate behind HUD content.",
-        "sceneShadow": "Separation shadow under text over the scene.",
-        "focus": "The focus ring of key and pad navigation.",
-        "knob": "Slider and switch knobs.",
-        "hud": "HUD capsules over the game (scores, timers, toasts).",
-        "scrim": "Behind a dialog.",
-        "shadow": "Drop shadows.",
-        "sheen": "A skeleton's passing sheen.",
-        "success": "Success.",
-        "warn": "Warnings.",
-        "danger": "Danger and errors.",
-        "info": "Information.",
-        "health": "A health meter.",
-        "mana": "A mana meter.",
-        "xp": "An experience meter.",
-        "gold": "Currency: coins, gold, prices that can be paid."
-      }
-    },
-    "TypeStepName": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "A step of the style's type ramp.",
-      "type": "string",
-      "enum": [
-        "body",
-        "xs",
-        "meta",
-        "caption",
-        "sm",
-        "reading",
-        "base",
-        "lg",
-        "xl",
-        "xl2",
-        "xl3",
-        "xl4",
-        "xl5",
-        "xl6",
-        "xl7",
-        "xl8",
-        "displaySm",
-        "displayMd",
-        "displayLg",
-        "displayXl",
-        "displayXl2",
-        "hero"
-      ],
-      "x-og-variants": {
-        "body": "The default step.",
-        "xs": "A step of the ramp.",
-        "meta": "A step of the ramp.",
-        "caption": "A step of the ramp.",
-        "sm": "A step of the ramp.",
-        "reading": "A step of the ramp.",
-        "base": "A step of the ramp.",
-        "lg": "A step of the ramp.",
-        "xl": "A step of the ramp.",
-        "xl2": "A step of the ramp.",
-        "xl3": "A step of the ramp.",
-        "xl4": "A step of the ramp.",
-        "xl5": "A step of the ramp.",
-        "xl6": "A step of the ramp.",
-        "xl7": "A step of the ramp.",
-        "xl8": "A step of the ramp.",
-        "displaySm": "A step of the ramp.",
-        "displayMd": "A step of the ramp.",
-        "displayLg": "A step of the ramp.",
-        "displayXl": "A step of the ramp.",
-        "displayXl2": "A step of the ramp.",
-        "hero": "The largest typography role, above display; displayXl2 is its legacy alias."
-      }
-    },
     "Insets": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
@@ -46540,21 +46360,9 @@
     "Paint": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "A colour: a theme token, a role of the style, or a Color (linear RGB, as every Color of the API), with an opacity. None of them is white.",
+      "description": "A colour: one of the style pack's theme colours or a Color (linear RGB, as every Color of the API), with an opacity. Neither is white.",
       "type": "object",
       "properties": {
-        "token": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ThemeColor"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A semantic colour of the theme.",
-          "default": null
-        },
         "role": {
           "anyOf": [
             {
@@ -46564,7 +46372,7 @@
               "type": "null"
             }
           ],
-          "description": "A colour role the style declares of its own (its `roles` block, docs/ui.md §3.1: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta.",
+          "description": "A colour of the style pack's theme by its token name (fg, accent, danger, …: UiTheme.colors' keys); a name the pack lacks draws magenta.",
           "default": null
         },
         "color": {
@@ -46576,12 +46384,12 @@
               "type": "null"
             }
           ],
-          "description": "A linear RGB colour, when no token or role is given: `color.fromHex(0xff8800)` for a hex or CSS colour. The UI draws 8-bit sRGB, so each component is clamped to 0 to 1 (no HDR).",
+          "description": "A linear RGB colour, when no role is given: `color.fromHex(0xff8800)` for a hex or CSS colour. The UI draws 8-bit sRGB, so each component is clamped to 0 to 1 (no HDR).",
           "default": null
         },
         "opacity": {
           "type": "number",
-          "description": "Its opacity, multiplied with the token's or the role's own.",
+          "description": "Its opacity, multiplied with the role's own.",
           "default": 1,
           "minimum": 0,
           "maximum": 1,
@@ -46675,18 +46483,13 @@
     "UiDesc": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
-      "description": "How the UI looks: the scheme, the density, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.",
+      "description": "How the UI looks: the scheme, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.",
       "type": "object",
       "properties": {
         "scheme": {
           "$ref": "#/$defs/Scheme",
           "description": "The palette.",
           "default": "dark"
-        },
-        "density": {
-          "$ref": "#/$defs/DensityMode",
-          "description": "The control sizes.",
-          "default": "auto"
         },
         "font": {
           "anyOf": [
@@ -46781,18 +46584,6 @@
           "minimum": 0,
           "maximum": 2,
           "x-og-unit": "ratio"
-        },
-        "glassBackdrop": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/GlassBackdrop"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Override the style's backdrop blur: auto enables it for glass surfaces, none disables it even when the style opts in. Omitted keeps the previous override; null clears it to inherit the style. Reduced transparency always disables backdrop blur.",
-          "default": null
         },
         "colorVision": {
           "$ref": "#/$defs/ColorVision",
@@ -47045,158 +46836,71 @@
       },
       "additionalProperties": false
     },
-    "TypeStep": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "One step of the type ramp.",
-      "type": "object",
-      "properties": {
-        "size": {
-          "type": "number",
-          "description": "The font size.",
-          "x-og-unit": "cssPx"
-        },
-        "lineHeight": {
-          "type": "number",
-          "description": "The leading of Latin text.",
-          "x-og-unit": "cssPx"
-        },
-        "trackingEm": {
-          "type": "number",
-          "description": "Latin tracking, in em."
-        },
-        "cjkLineHeight": {
-          "type": "number",
-          "description": "The leading text with Chinese, Japanese or Korean characters takes.",
-          "x-og-unit": "cssPx"
-        },
-        "cjkTrackingEm": {
-          "type": "number",
-          "description": "Tracking of text containing CJK characters, in em."
-        },
-        "weight": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "The face weight (100 to 900); zero takes the font role's own face."
-        },
-        "uppercase": {
-          "type": "boolean",
-          "description": "Style-driven locale-sensitive uppercase, applied before measurement without rewriting source text or editable values."
-        }
-      },
-      "required": [
-        "size",
-        "lineHeight",
-        "trackingEm",
-        "cjkLineHeight",
-        "cjkTrackingEm",
-        "weight",
-        "uppercase"
-      ],
-      "additionalProperties": false
-    },
-    "ControlSizes": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "The control, row and header heights and the gutter of the density in effect.",
-      "type": "object",
-      "properties": {
-        "controlSm": {
-          "type": "number",
-          "description": "A small control's height.",
-          "x-og-unit": "cssPx"
-        },
-        "controlMd": {
-          "type": "number",
-          "description": "A control's height.",
-          "x-og-unit": "cssPx"
-        },
-        "controlLg": {
-          "type": "number",
-          "description": "A large control's height.",
-          "x-og-unit": "cssPx"
-        },
-        "gutter": {
-          "type": "number",
-          "description": "The gutter.",
-          "x-og-unit": "cssPx"
-        },
-        "header": {
-          "type": "number",
-          "description": "The header height.",
-          "x-og-unit": "cssPx"
-        },
-        "row": {
-          "type": "number",
-          "description": "The row height.",
-          "x-og-unit": "cssPx"
-        },
-        "section": {
-          "type": "number",
-          "description": "The section spacing.",
-          "x-og-unit": "cssPx"
-        }
-      },
-      "required": [
-        "controlSm",
-        "controlMd",
-        "controlLg",
-        "gutter",
-        "header",
-        "row",
-        "section"
-      ],
-      "additionalProperties": false
-    },
     "UiTheme": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "The style values the UI draws with, read-only.",
+      "description": "What the UI draws with, read-only: the style pack's theme (the default pack with the game's over it) in the scheme and contrast in effect, in the design tokens' own names, and the player's settings in effect.",
       "type": "object",
       "properties": {
         "scheme": {
           "$ref": "#/$defs/Scheme",
           "description": "The palette in use."
         },
-        "palette": {
+        "colors": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §3.1), as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
-        },
-        "space": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "number"
-          },
-          "description": "The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels."
+          "description": "Each colour of the theme by its token name (`--color-fg` is fg), as `#rrggbb` or `#rrggbbaa`."
         },
         "radius": {
           "type": "object",
           "additionalProperties": {
             "type": "number"
           },
-          "description": "The corner radii by name (small, control, bar, panel), in CSS pixels."
+          "description": "The corner radii by name (button, card, panel, …), in CSS pixels."
         },
-        "typeRamp": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/TypeStep"
-          },
-          "description": "Each TypeStepName's step."
-        },
-        "sizes": {
-          "$ref": "#/$defs/ControlSizes",
-          "description": "The control sizes of the density in effect."
-        },
-        "durationsMs": {
+        "fontSize": {
           "type": "object",
           "additionalProperties": {
             "type": "number"
           },
-          "description": "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
+          "description": "The font sizes by name (body, caption, display-lg, …), in CSS pixels."
+        },
+        "lineHeight": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Each font size's line height, a ratio of it."
+        },
+        "tracking": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "The letter spacing by name, in em."
+        },
+        "fontWeight": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "The font weights by name (regular, medium, semibold, bold, body)."
+        },
+        "blur": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "The backdrop blurs by name (thin, regular, thick, lens), in CSS pixels."
+        },
+        "durations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "The motion durations by name (instant, fast, base, slow, spring, bounce, …: `--motion-duration-*`), in milliseconds."
         },
         "style": {
           "type": "string",
@@ -47208,11 +46912,15 @@
         },
         "reducedMotion": {
           "type": "boolean",
-          "description": "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
+          "description": "Transitions only fade: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
         },
         "textScale": {
           "type": "number",
-          "description": "The player's text scale in effect (UiDesc.textScale, 1 to 1.5): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."
+          "description": "The player's text scale in effect (UiDesc.textScale, 1 to 1.5)."
+        },
+        "unit": {
+          "type": "number",
+          "description": "The UI unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what the tree lays out in. A game drawing its own screen sprites beside the UI multiplies by it."
         },
         "colorVision": {
           "$ref": "#/$defs/ColorVision",
@@ -47225,28 +46933,26 @@
         "colorVisionStrength": {
           "type": "number",
           "description": "Its severity, 0 to 1."
-        },
-        "glassBackdrop": {
-          "$ref": "#/$defs/GlassBackdrop",
-          "description": "The backdrop blur policy in effect, after the configured override and style; none when neither opts in."
         }
       },
       "required": [
         "scheme",
-        "palette",
-        "space",
+        "colors",
         "radius",
-        "typeRamp",
-        "sizes",
-        "durationsMs",
+        "fontSize",
+        "lineHeight",
+        "tracking",
+        "fontWeight",
+        "blur",
+        "durations",
         "style",
         "contrast",
         "reducedMotion",
         "textScale",
+        "unit",
         "colorVision",
         "colorVisionFilter",
-        "colorVisionStrength",
-        "glassBackdrop"
+        "colorVisionStrength"
       ],
       "additionalProperties": false
     },
