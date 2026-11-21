@@ -222,6 +222,7 @@ impl Renderer {
                     Some(fx_group),
                     false,
                     false,
+                    None,
                     scatter::CardSource::Cpu,
                     ShadowTarget::Cascade,
                 );

@@ -49,7 +49,10 @@ impl ScatterRenderer {
     /// (any other draws the cull's second set, where a chunk has one);
     /// `prepass_depth`: the lit pass goes on in the prepass's own depth
     /// (`post::shares_prepass_depth`), whose copies it tests for equality
-    /// ([`EQUAL_KIND`]). Answers the draws and the copies in the chunks drawn.
+    /// ([`EQUAL_KIND`]); `card_depth`: then the scatter group over its view
+    /// depth ([`Self::card_depth_group`]), from which the cards take the
+    /// surface the prepass found. Answers the draws and the copies in the
+    /// chunks drawn.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw<'a>(
         &self,
@@ -63,6 +66,7 @@ impl ScatterRenderer {
         fx_group: Option<&wgpu::BindGroup>,
         camera: bool,
         prepass_depth: bool,
+        card_depth: Option<&wgpu::BindGroup>,
         cards: CardSource<'_>,
         // What a shadow pass draws into (shadow_target.rs).
         target: crate::ShadowTarget,
@@ -83,16 +87,33 @@ impl ScatterRenderer {
             self.cull.as_ref().filter(|_| at.has(set)).map(|c| (c, at))
         };
         let (mut draws, mut copies) = (0, 0);
-        let bind_rest = |pass: &mut wgpu::RenderPass, group, offset| {
+        let bind_with = |pass: &mut wgpu::RenderPass, scatter: &wgpu::BindGroup, group, offset| {
             pass.set_bind_group(1, group, &[]);
-            pass.set_bind_group(2, &self.group, &[offset]);
+            pass.set_bind_group(2, scatter, &[offset]);
             if kind != ScatterPass::Shadow
                 && let Some(fx) = fx_group
             {
                 pass.set_bind_group(3, fx, &[]);
             }
         };
-        let impostor_pipeline = pipeline(&(None, Side::Double, kind as u8 + IMPOSTOR_KIND));
+        let bind_rest = |pass: &mut wgpu::RenderPass, group, offset| {
+            bind_with(pass, &self.group, group, offset)
+        };
+        // The cards over the prepass's own depth take its surface, through
+        // their twin and the group with its view depth.
+        let impostor_key = (None, Side::Double, kind as u8 + IMPOSTOR_KIND);
+        let kept = (kind == ScatterPass::Lit && camera && prepass_depth)
+            .then_some(card_depth)
+            .flatten()
+            .zip(pipeline(&(
+                impostor_key.0,
+                impostor_key.1,
+                impostor_key.2 + EQUAL_KIND,
+            )));
+        let (impostor_pipeline, impostor_group) = match kept {
+            Some((g, p)) => (Some(p), g),
+            None => (pipeline(&impostor_key), &self.group),
+        };
         for b in &all.scatters {
             if kind == ScatterPass::Shadow && !b.cast_shadows {
                 continue;
@@ -202,7 +223,7 @@ impl ScatterRenderer {
                 }
                 if !bound {
                     pass.set_pipeline(ip);
-                    bind_rest(pass, group, b.offset);
+                    bind_with(pass, impostor_group, group, b.offset);
                     bound = true;
                 }
                 if let Some(b) = probes.as_deref_mut() {
@@ -239,7 +260,7 @@ impl ScatterRenderer {
                     continue;
                 }
                 pass.set_pipeline(ip);
-                bind_rest(pass, group, b.offset);
+                bind_with(pass, impostor_group, group, b.offset);
                 if let Some(p) = probes.as_deref_mut() {
                     p.at(pass, b.center, b.radius);
                 }

@@ -715,6 +715,10 @@ type LitVariants = Variants<Deferred<wgpu::RenderPipeline>>;
 pub(crate) struct ScatterRenderer {
     /// Shared by lit and prepass shading, including projected wet gloss.
     lit_fx_layout: wgpu::PipelineLayout,
+    /// The main camera's scatter group layout with the prepass's view
+    /// depth, and the cards' lit layout over it (renderer.rs); none under
+    /// MSAA or without compute.
+    card_depth: Option<(wgpu::BindGroupLayout, wgpu::PipelineLayout)>,
     shadow_layout: wgpu::PipelineLayout,
     lit_module: wgpu::ShaderModule,
     /// The features the lit module declares (pipeline_features.rs).

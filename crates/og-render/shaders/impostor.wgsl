@@ -42,6 +42,10 @@ struct ImpostorOut {
 
 @vertex
 fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> ImpostorOut {
+  return imp_vertex(vertex, i);
+}
+
+fn imp_vertex(vertex: u32, i: ScatterInstance) -> ImpostorOut {
   let size = imp_scale(i.m3);
   // Kept invertible when gone (the card is culled then).
   let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), max(size, 1e-4));
@@ -110,6 +114,13 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   let par01 = vec4<f32>(imp_frame_par(ray, in.frames.x), imp_frame_par(ray, in.frames.y));
   let uvs = imp_uvs(in.uv01, in.uv2, par01, imp_frame_par(ray, in.frames.z), in.frames, dd, in.weights, centre_eye.y < 0.0);
   let c = imp_coverage(uvs.uv01, uvs.uv2, in.frames, uvs.weights);
+  return imp_surface_of(in, c, in.world + along * imp_blended_step(c, dd) * in.extent);
+}
+
+// The surface the frames blend where coverage `c` samples them, lit at
+// `world`.
+fn imp_surface_of(in: ImpostorOut, c: ImpCoverage, world: vec3<f32>) -> ImpSurface {
+  let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
   let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
   let rgb = textureSampleLevel(base_color_tex, material_sampler, c.a0, imp_level).rgb * c.wa.x
     + textureSampleLevel(base_color_tex, material_sampler, c.a1, imp_level).rgb * c.wa.y
@@ -122,7 +133,7 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   s.albedo = material.base_color.rgb * rgb / total;
   s.normal = normalize(m3 * nd.xyz + vec3<f32>(0.0, 1e-6, 0.0));
   s.agree = clamp(length(nd.xyz) / total, 0.0, 1.0);
-  s.world = in.world + along * imp_blended_step(c, dd) * in.extent;
+  s.world = world;
   return s;
 }
 
@@ -256,22 +267,26 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   }
   var o: ImpostorLit;
   o.depth = imp_depth(surface.world);
+  o.color = imp_shade(in, surface, select(1.0, coverage, a2c));
+  return o;
+}
+
+// The lit colour of `surface`, which the card `in` stands for, with alpha
+// `alpha`.
+fn imp_shade(in: ImpostorOut, surface: ImpSurface, alpha: f32) -> vec4<f32> {
   // Debug views (DebugView::lit_code): 3 albedo here, 4 to 6 below, as a
   // copy's mesh shows them (scatter.wgsl).
   let dbg = u32(frame.light_color.w + 0.5);
   if (dbg == 3u) {
-    o.color = vec4<f32>(surface.albedo, 1.0);
-    return o;
+    return vec4<f32>(surface.albedo, 1.0);
   }
   if (dbg > 0u && (dbg < 4u || dbg > 6u)) {
-    o.color = debug_unsupported(in.clip.xy);
-    return o;
+    return debug_unsupported(in.clip.xy);
   }
   let mode = u32(material.flags.w);
   let emissive = material.emissive.rgb;
   if ((mode & 2u) != 0u) {
-    o.color = vec4<f32>(apply_fog(surface.albedo + emissive, surface.world), select(1.0, coverage, a2c));
-    return o;
+    return vec4<f32>(apply_fog(surface.albedo + emissive, surface.world), alpha);
   }
   let mat = imp_material(surface.coverage);
   var s: Surface;
@@ -331,11 +346,9 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let at = ShadeAt(surface.world, n, v, in.clip.xy, true, (mode & 4u) == 0u, styled);
   let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive + decaled.emissive, material.flags.z, 1.0);
   if (dbg > 0u) {
-    o.color = vec4<f32>(shaded_debug(lit, s.albedo, dbg), select(1.0, coverage, a2c));
-    return o;
+    return vec4<f32>(shaded_debug(lit, s.albedo, dbg), alpha);
   }
-  o.color = vec4<f32>(apply_fog(shaded_color(lit), surface.world), select(1.0, coverage, a2c));
-  return o;
+  return vec4<f32>(apply_fog(shaded_color(lit), surface.world), alpha);
 }
 
 struct ImpostorPrepass {
@@ -376,4 +389,58 @@ fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
   o.outline = outline_bytes(material.outline.rgb, width, in.object, true);
   o.frag_depth = imp_depth(surface.world);
   return o;
+}
+
+// The main camera's lit pass over the prepass's own depth (single-sampled,
+// scatter.rs EQUAL_KIND past IMPOSTOR_KIND): the prepass found each pixel's
+// surface (its view depth in `imp_view_depth`), so the lit stage takes it
+// instead of searching the frames again, and writes no depth.
+@group(2) @binding(5) var imp_view_depth: texture_storage_2d<rg32float, read>;
+
+// vs_impostor's card at its sphere's nearest depth: never behind the
+// surface it stands for, so a LessEqual test without a depth write rejects
+// before shading only the pixels something nearer than the whole model hides.
+@vertex
+fn vs_impostor_front(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> ImpostorOut {
+  var o = imp_vertex(vertex, i);
+  let ortho = frame.view_pos.w > 0.5;
+  let toward = select(normalize(frame.view_pos.xyz - o.centre), -frame.view_forward.xyz, ortho);
+  let front = mul_point(frame.view_proj, vec4<f32>(o.centre + toward * o.extent, 1.0));
+  let inside = !ortho && distance(frame.view_pos.xyz, o.centre) <= o.extent;
+  let z = select(clamp(front.z / max(front.w, 1e-6), 0.0, 1.0), 0.0, inside);
+  if (o.clip.w > 0.0 && o.clip.z <= o.clip.w) { o.clip.z = z * o.clip.w; }
+  return o;
+}
+
+// The card's colour where the prepass kept the surface it stands for: that
+// point rebuilt from the view depth along the pixel's ray, each frame read
+// where it sees the point, and the pixel kept only where the frames cover it
+// at that depth (another surface won the prepass there otherwise).
+@fragment
+fn fs_impostor_kept(in: ImpostorOut) -> @location(0) vec4<f32> {
+  imp_set_level(in.uv01.xy);
+  let t = textureLoad(imp_view_depth, vec2<i32>(in.clip.xy)).r;
+  let ortho = frame.view_pos.w > 0.5;
+  let dir = select(normalize(in.world - frame.view_pos.xyz), frame.view_forward.xyz, ortho);
+  let along = dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz);
+  let world = in.world + dir * (t - along) / max(dot(dir, frame.view_forward.xyz), 1e-4);
+  // In the model's space about its rest pose (the frames' depths are the
+  // unswayed model's), in radii.
+  let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
+  let x = transpose(m3) * (world - (in.world - in.rest) - in.centre) / in.extent;
+  let uv01 = vec4<f32>(imp_frame_uv(x, in.frames.x), imp_frame_uv(x, in.frames.y));
+  let uv2 = imp_frame_uv(x, in.frames.z);
+  let c = imp_coverage(uv01, uv2, in.frames, in.weights);
+  let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
+  let d = vec3<f32>(
+    textureSampleLevel(normal_tex, material_sampler, c.a0, imp_level).a,
+    textureSampleLevel(normal_tex, material_sampler, c.a1, imp_level).a,
+    textureSampleLevel(normal_tex, material_sampler, c.a2, imp_level).a,
+  ) * 2.0 - 1.0;
+  let pd = vec3<f32>(dot(x, imp_frame_dir(in.frames.x)), dot(x, imp_frame_dir(in.frames.y)), dot(x, imp_frame_dir(in.frames.z)));
+  let off = abs(dot(d - pd, c.wa)) / total;
+  if (is_sky_depth(t) || c.alpha < imp_cutoff() || off > IMP_AGREE || dot(x, x) > 1.21 || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
+    discard;
+  }
+  return imp_shade(in, imp_surface_of(in, c, world), 1.0);
 }

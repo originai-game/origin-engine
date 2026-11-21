@@ -884,7 +884,7 @@ impl ScatterRenderer {
                     buffers: CARD_BUFFERS,
                     cull: None,
                 };
-                let p = self.lit_variants(device, d, pass, false);
+                let p = self.lit_variants(device, d, pass, self.lit_fx_layout.clone(), None);
                 self.pipelines.insert((None, Side::Double, kind), p);
             }
         }

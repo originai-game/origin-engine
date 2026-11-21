@@ -143,7 +143,11 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
                     h,
                     LINDEPTH_FORMAT,
                     1,
-                    ATTACH_BIND | wgpu::TextureUsages::COPY_SRC,
+                    // STORAGE_BINDING: the main pass's cards read it
+                    // (impostor.wgsl `imp_view_depth`).
+                    ATTACH_BIND
+                        | wgpu::TextureUsages::COPY_SRC
+                        | wgpu::TextureUsages::STORAGE_BINDING,
                 ),
             )
             .transient("outline-id", desc(w, h, OUTLINE_FORMAT, 1, ATTACH_BIND));

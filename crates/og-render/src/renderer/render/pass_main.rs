@@ -284,6 +284,11 @@ impl Renderer {
             stats.triangles += tris;
         }
         part!("main: scatter");
+        // The cards take the surface the prepass found (scatter draw.rs).
+        let card_depth = shared_depth
+            .then(|| self.graph.try_view("lindepth"))
+            .flatten()
+            .and_then(|v| self.world.scatter.card_depth_group(&self.device, v));
         let (n, copies) = self.world.scatter.draw(
             &mut pass,
             scatter::ScatterPass::Lit,
@@ -295,6 +300,7 @@ impl Renderer {
             Some(fx_group),
             true,
             shared_depth,
+            card_depth.as_ref(),
             cards,
             ShadowTarget::Cascade,
         );

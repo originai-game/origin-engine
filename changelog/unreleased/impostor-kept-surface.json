@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "TerrainScatter",
+      "summary": "Over the prepass's own depth (single-sampled), the main camera's lit pass no longer searches an impostor card's frames for its surface again: it rebuilds the point the prepass found from its view depth and reads each frame there, and draws the card at its sphere's front without writing depth, so cards hidden behind nearer geometry are rejected before shading. First Light 2560x1440 (M4 Pro): main: scatter 23.0 -> 8.6 ms alone, GPU frame 81.2 -> 72.6 ms; the frame is the same to within 22/255 on the distant woods."
+    }
+  ]
+}

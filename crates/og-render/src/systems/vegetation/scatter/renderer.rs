@@ -52,64 +52,29 @@ impl ScatterRenderer {
     ) -> ScatterRenderer {
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("scatter"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: true,
-                        min_binding_size: wgpu::BufferSize::new(
-                            std::mem::size_of::<ScatterGpu>() as u64
-                        ),
-                    },
-                    count: None,
+            entries: &uniform_entries(),
+        });
+        // The main camera's scatter group where it goes on in the prepass's
+        // own depth (single-sampled, with compute): the uniform group's
+        // bindings and the prepass's view depth, which the cards' lit stage
+        // reads (impostor.wgsl `imp_view_depth`; a storage texture, as the
+        // fragment stage has no sampled texture left).
+        let card_depth_layout = (p.compute && p.samples == 1).then(|| {
+            let mut entries = uniform_entries().to_vec();
+            entries.push(wgpu::BindGroupLayoutEntry {
+                binding: 5,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::StorageTexture {
+                    access: wgpu::StorageTextureAccess::ReadOnly,
+                    format: crate::post::LINDEPTH_FORMAT,
+                    view_dimension: wgpu::TextureViewDimension::D2,
                 },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(
-                            crate::blue_noise::BLUE_NOISE.len() as u64,
-                        ),
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(std::mem::size_of::<
-                            crate::wind::WindFieldGpu,
-                        >() as u64),
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-            ],
+                count: None,
+            });
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("scatter (prepass depth)"),
+                entries: &entries,
+            })
         });
         let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
             let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
@@ -128,6 +93,13 @@ impl ScatterRenderer {
                 p.fx_layout,
             ],
         );
+        let card_depth = card_depth_layout.map(|g| {
+            let l = pl(
+                "scatter lit (prepass depth)",
+                &[p.frame_layout, p.material_layout, &g, p.fx_layout],
+            );
+            (g, l)
+        });
         let shadow_layout = pl(
             "scatter shadow",
             &[p.shadow_layout, p.material_layout, &uniform_layout],
@@ -169,6 +141,7 @@ impl ScatterRenderer {
         );
         ScatterRenderer {
             lit_fx_layout,
+            card_depth,
             shadow_layout,
             lit_module,
             declared,
@@ -230,4 +203,62 @@ pub(super) fn level0_under(layout: &TerrainLayout, a: Vec2, b: Vec2) -> Vec<u32>
         }
     }
     out
+}
+
+/// The scatter group's entries (scatter_common.wgsl group 2).
+fn uniform_entries() -> [wgpu::BindGroupLayoutEntry; 5] {
+    [
+        wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: true,
+                min_binding_size: wgpu::BufferSize::new(std::mem::size_of::<ScatterGpu>() as u64),
+            },
+            count: None,
+        },
+        wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: wgpu::BufferSize::new(crate::blue_noise::BLUE_NOISE.len() as u64),
+            },
+            count: None,
+        },
+        wgpu::BindGroupLayoutEntry {
+            binding: 2,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: wgpu::BufferSize::new(
+                    std::mem::size_of::<crate::wind::WindFieldGpu>() as u64,
+                ),
+            },
+            count: None,
+        },
+        wgpu::BindGroupLayoutEntry {
+            binding: 3,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        },
+        wgpu::BindGroupLayoutEntry {
+            binding: 4,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        },
+    ]
 }

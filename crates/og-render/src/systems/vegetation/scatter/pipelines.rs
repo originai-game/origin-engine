@@ -50,6 +50,50 @@ impl ScatterRenderer {
         (buffer, group)
     }
 
+    /// The main camera's scatter group over the prepass's view depth
+    /// `view` (renderer.rs `card_depth`), for [`Self::draw`]'s cards.
+    pub(crate) fn card_depth_group(
+        &self,
+        device: &wgpu::Device,
+        view: &wgpu::TextureView,
+    ) -> Option<wgpu::BindGroup> {
+        let (layout, _) = self.card_depth.as_ref()?;
+        Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("scatter (prepass depth)"),
+            layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.uniform,
+                        offset: 0,
+                        size: wgpu::BufferSize::new(std::mem::size_of::<ScatterGpu>() as u64),
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.blue_noise.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.wind_uniform.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&self.wind_field),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&self.trample),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::TextureView(view),
+                },
+            ],
+        }))
+    }
+
     pub(super) fn pipeline(
         &mut self,
         device: &wgpu::Device,
@@ -108,35 +152,59 @@ impl ScatterRenderer {
             cull,
         };
         // Over the prepass's own depth (single-sampled), the lit pass's
-        // twin that tests it for equality ([`EQUAL_KIND`]).
-        if pass == ScatterPass::Lit && !impostor && self.samples == 1 {
-            let equal = self.lit_variants(device, d.clone(), pass, true);
-            let twin = (key.0, key.1, key.2 + EQUAL_KIND);
-            self.pipelines.insert(twin, equal);
+        // twin ([`EQUAL_KIND`]): a copy tests it for equality; a card, drawn
+        // at its sphere's front, for LessEqual, and takes the surface the
+        // prepass found (impostor.wgsl `fs_impostor_kept`).
+        let twin = match (pass, impostor, &self.card_depth) {
+            _ if pass != ScatterPass::Lit || self.samples != 1 => None,
+            (_, false, _) => Some((
+                LitDesc {
+                    fs: "fs_equal",
+                    ..d.clone()
+                },
+                &self.lit_fx_layout,
+                wgpu::CompareFunction::Equal,
+            )),
+            (_, true, Some((_, layout))) => Some((
+                LitDesc {
+                    vs: "vs_impostor_front",
+                    fs: "fs_impostor_kept",
+                    ..d.clone()
+                },
+                layout,
+                wgpu::CompareFunction::LessEqual,
+            )),
+            (_, true, None) => None,
+        };
+        if let Some((d, layout, over)) = twin {
+            let equal = self.lit_variants(device, d, pass, layout.clone(), Some(over));
+            self.pipelines
+                .insert((key.0, key.1, key.2 + EQUAL_KIND), equal);
         }
-        let p = self.lit_variants(device, d, pass, false);
+        let p = self.lit_variants(device, d, pass, self.lit_fx_layout.clone(), None);
         self.pipelines.insert(key, p);
     }
 
     /// The lit or prepass `pass`'s pipeline of `d`, as the variant for the
     /// frame's features and the full one (pipeline_features.rs): the
     /// prepass's fragment entry is `d.fs` with `_prepass` (`fs_prepass` for
-    /// `fs`); with `equal`, the lit pass over the prepass's depth
-    /// ([`EQUAL_KIND`]).
+    /// `fs`); with `over`, the lit pass over the prepass's depth, tested
+    /// by it ([`EQUAL_KIND`]).
     pub(super) fn lit_variants(
         &self,
         device: &wgpu::Device,
         d: LitDesc,
         pass: ScatterPass,
-        equal: bool,
+        layout: wgpu::PipelineLayout,
+        over: Option<wgpu::CompareFunction>,
     ) -> LitVariants {
-        let (device, layout, samples) = (device.clone(), self.lit_fx_layout.clone(), self.samples);
+        let (device, samples) = (device.clone(), self.samples);
         let declared = d.declared;
         Variants::new(declared, move |features: Features| {
             let (device, layout, d) = (device.clone(), layout.clone(), d.clone());
             let constants = features.constants(declared);
             Deferred::anywhere(move || {
-                lit_pipeline(&device, &layout, &d, (pass, equal), samples, &constants)
+                lit_pipeline(&device, &layout, &d, (pass, over), samples, &constants)
             })
         })
     }
@@ -264,14 +332,14 @@ pub(super) struct LitDesc {
 }
 
 /// `d`'s `pass` pipeline with `constants` (the lit pass's into the HDR
-/// target at `samples`, the prepass's into the G-buffer); `equal`: the lit
-/// pass's over the prepass's depth, which it tests for equality and leaves
-/// as it is ([`EQUAL_KIND`]).
+/// target at `samples`, the prepass's into the G-buffer); `over`: the lit
+/// pass's over the prepass's depth, which it tests with that function and
+/// leaves as it is ([`EQUAL_KIND`]).
 fn lit_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
     d: &LitDesc,
-    (pass, equal): (ScatterPass, bool),
+    (pass, over): (ScatterPass, Option<wgpu::CompareFunction>),
     samples: u32,
     constants: &[(&str, f64)],
 ) -> wgpu::RenderPipeline {
@@ -281,20 +349,17 @@ fn lit_pipeline(
             constants,
             crate::HdrPipeline {
                 // opaque copies write alpha 1 (every sample); alpha-to-coverage materials their coverage;
-                // over the prepass's depth, alpha 1 where the prepass kept the copy (`fs_equal`)
-                alpha_to_coverage: !equal,
+                // over the prepass's depth, alpha 1 where the prepass kept the copy
+                alpha_to_coverage: over.is_none(),
                 label: d.label,
                 layout,
                 module: &d.module,
                 vs: d.vs,
-                fs: if equal { "fs_equal" } else { d.fs },
+                fs: d.fs,
                 buffers: d.buffers,
                 cull: d.cull,
-                depth_write: !equal,
-                depth_compare: match equal {
-                    true => wgpu::CompareFunction::Equal,
-                    false => crate::LIT_DEPTH_COMPARE,
-                },
+                depth_write: over.is_none(),
+                depth_compare: over.unwrap_or(crate::LIT_DEPTH_COMPARE),
                 blend: None,
                 samples,
             },

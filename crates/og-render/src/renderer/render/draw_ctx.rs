@@ -535,6 +535,7 @@ impl<'f> DrawCtx<'f> {
                     Some(groups.1),
                     false,
                     false,
+                    None,
                     self.card_source(None),
                     ShadowTarget::Cascade,
                 )
