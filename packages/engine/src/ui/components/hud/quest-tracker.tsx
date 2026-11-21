@@ -26,11 +26,11 @@ export function RpgQuestTracker(props: RpgQuestTrackerProps) {
           {props.label !== '' ? props.label : t("rpg.quests.main")}
         </Text>
         <View class="flex-row items-baseline gap-1 compact:hidden">
-          <Text class={`shrink text-[1.214rem] font-semibold whitespace-nowrap text-accent-hover text-shadow-xs text-shadow-bg/55 overflow-hidden`}>
+          <Text class={`shrink text-[1.214rem] font-semibold whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 overflow-hidden`}>
             {props.name}
           </Text>
           <Show when={props.distance}>
-            <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-accent-hover py-0 px-1 overflow-hidden`}>
+            <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-fg py-0 px-1 overflow-hidden`}>
               {props.distance}
             </Text>
           </Show>
@@ -40,11 +40,11 @@ export function RpgQuestTracker(props: RpgQuestTrackerProps) {
             {(s, i) => (
             <View class={`group/step flex-row items-center opacity-66 gap-1 compact:hidden data-current:opacity-100 data-done:opacity-55 compact:data-current:flex`} data-done={s().done} data-current={!s().done && (i() === 0 || props.steps[i() - 1]['done'])}>
               <View class={`rotate-45 shadow-[inset_0px_0px_0px_2.288px_#ffcf5a] mx-[0.143rem] size-2 group-data-done/step:bg-none group-data-done/step:bg-gold`} />
-              <Text class={`shrink text-[0.929rem] font-semibold whitespace-nowrap text-accent-hover text-shadow-xs text-shadow-bg/55 overflow-hidden group-data-done/step:line-through`}>
+              <Text class={`shrink text-[0.929rem] font-semibold whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 overflow-hidden group-data-done/step:line-through`}>
                 {s().text}
               </Text>
               <Show when={s().tag}>
-                <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-accent-hover py-0 px-1 overflow-hidden`}>
+                <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-fg py-0 px-1 overflow-hidden`}>
                   {s().tag}
                 </Text>
               </Show>

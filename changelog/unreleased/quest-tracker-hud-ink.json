@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "RpgQuestTracker",
+      "summary": "The quest name and steps are drawn in the theme's `fg` ink, not its `accent-hover`, so a pack with a coloured accent (fantasy's dark red) keeps them readable on the HUD plate."
+    }
+  ]
+}
