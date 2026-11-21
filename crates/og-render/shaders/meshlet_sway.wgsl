@@ -1,5 +1,5 @@
 // The meshlet path's foliage sway (meshlet.rs `MeshFoliage`), after
-// grass_common.wgsl and meshlet_foliage.wgsl (the vegetation's
+// grass_common.wgsl and foliage.wgsl (the vegetation's
 // deformation). No bindings: each pull (meshlet.wgsl, meshlet_depth.wgsl,
 // meshlet_shadow.wgsl, meshlet_raster.wgsl) reads the vertex pool's
 // foliage region itself and passes the rows here, so every pass moves a
@@ -16,7 +16,7 @@
 
 // The draw uniform (meshlet_gpu.rs `DrawParams`): x of flags 1 colours
 // each instance by its level; this frame's wind and the last drawn's;
-// the leaves' year (meshlet_foliage.wgsl `LeafYear`).
+// the leaves' year (foliage.wgsl `LeafYear`).
 struct MeshletDraw {
   flags: vec4<u32>,
   wind: array<FoliageWind, 2>,
@@ -26,7 +26,7 @@ struct MeshletDraw {
 // meshlet.rs FOLIAGE_HEADER_ROWS.
 const SWAY_HEADER_ROWS: u32 = 7u;
 
-// A vertex's leaf in its year (meshlet_foliage.wgsl `season_leaf`) and
+// A vertex's leaf in its year (foliage.wgsl `season_leaf`) and
 // its colour lot: `h1` the region's second row (its season and shift),
 // `f1` the vertex's anchor row, `model` its instance now and `origin`
 // the render origin, so every pass and both frames of a motion vector
@@ -66,7 +66,7 @@ fn meshlet_grown(p: vec3<f32>, f1: vec4<f32>, grow: f32) -> vec3<f32> {
   return f1.xyz + (p - f1.xyz) * grow;
 }
 
-// The vertex's turned colour (meshlet_foliage.wgsl `season_leaf_color`),
+// The vertex's turned colour (foliage.wgsl `season_leaf_color`),
 // from the region's third and fourth rows.
 fn meshlet_leaf_color(h2: vec4<f32>, h3: vec4<f32>, l: MeshletLeaf) -> vec4<f32> {
   return season_leaf_color(h2.xyz, h3.xyz, l.pick, l.leaf);

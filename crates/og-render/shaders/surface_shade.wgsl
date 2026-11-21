@@ -114,7 +114,7 @@ struct Ambient {
 
 // `facet`: the face that reflects, its normal for every surface but a
 // leaf's, whose light around it arrives along its canopy's normal
-// (meshlet_foliage.wgsl `foliage_normal`) while its own face mirrors the
+// (foliage.wgsl `foliage_normal`) while its own face mirrors the
 // sky.
 fn surface_ambient(s: Surface, at: ShadeAt, facet: vec3<f32>) -> Ambient {
   let g = surface_gather(at, facet, facet, s.roughness);

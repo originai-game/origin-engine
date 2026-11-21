@@ -89,7 +89,7 @@ struct VertexOut {
   // Order-independent transparency's key of the draw and primitive
   // (oit.wgsl `oit_key`; the linked lists' equal-depth order).
   @location(9) @interpolate(flat) oit_key: vec2<u32>,
-  // A seasonal leaf's autumn colour (meshlet_foliage.wgsl
+  // A seasonal leaf's autumn colour (foliage.wgsl
   // `season_leaf_color`: rgb, and a, how far it replaces the leaf's own;
   // zero: its own), set by the meshlet path's foliage.
   @location(10) season: vec4<f32>,

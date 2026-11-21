@@ -147,7 +147,7 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
   let center = (m * vec4<f32>(sphere.xyz, 1.0)).xyz;
   let radius = sphere.w * scale;
   // A swaying mesh's spheres widen by how far its vertices can move (the
-  // sway decoded as meshlet_foliage.wgsl `foliage_sway`): its
+  // sway decoded as foliage.wgsl `foliage_sway`): its
   // bound at sway 1 times the instance's sway (the bound grows less than
   // in proportion, so at least 1 is conservative), in the world.
   let sway = instances[instance * 4u + 3u].x;

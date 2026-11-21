@@ -13,7 +13,7 @@ pub use og_render_data::foliage::*;
 
 /// Binding-free deformation include for meshlet and conventional vertex paths.
 /// Prepend [`WIND_WGSL`] once: the gust sampler is shared with grass.
-pub const WGSL: &str = wgsl!("meshlet_foliage.wgsl");
+pub const WGSL: &str = wgsl!("foliage.wgsl");
 pub const WIND_WGSL: &str = wgsl!("wind_common.wgsl");
 /// The simulated wind field's lean the trunk bends by (after [`WIND_WGSL`]).
 pub const WIND_LEAN_WGSL: &str = wgsl!("wind_lean.wgsl");
@@ -45,7 +45,7 @@ pub(crate) fn foliage_winds(
     )
 }
 
-/// `meshlet_foliage.wgsl`'s explicit input; no bindings in that include.
+/// `foliage.wgsl`'s explicit input; no bindings in that include.
 /// Build the previous value from the last *drawn* wind, tick and rate, with the
 /// current render origin (previous transforms have already been rebased).
 #[repr(C)]

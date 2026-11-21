@@ -120,7 +120,7 @@ pub(crate) struct FrameUniform {
     /// not land far off (sky.wgsl `land_fog`); w: the frames drawn since
     /// the last capture, the dither's turn (common.wgsl `dither_cut`).
     pub drawn: [u32; 4],
-    /// The year the seasonal leaves are drawn in (meshlet_foliage.wgsl
+    /// The year the seasonal leaves are drawn in (foliage.wgsl
     /// `LeafYear`, `LeafCalendar::gpu`; zero: as modelled).
     pub leaf_year: [[f32; 4]; 2],
     /// The view ray through a pixel ([`view_rays`], frame.wgsl `pixel_ray`).

@@ -489,7 +489,7 @@ fn depth_contract(@builtin(local_invocation_index) lane: u32) {
     }
 }
 
-/// The leaves' year on the GPU is the CPU's: meshlet_foliage.wgsl's
+/// The leaves' year on the GPU is the CPU's: foliage.wgsl's
 /// `leaf_order_pick` draws each anchor the lot `og_render_data::foliage`'s
 /// does, to the bit (a cooked impostor's leaf atlas and the mesh it
 /// stands for drop the same leaves), and over a tree's leaves

@@ -98,7 +98,7 @@ impl Default for LeafSeason {
 /// climate's leaf year and the date as the place lives it
 /// (`og_env::season::local`). Each leaf of a species with
 /// [`LeafSeason::season`] above 0 then grows, turns and falls on its own
-/// day (meshlet_foliage.wgsl `season_leaf`); without a calendar every leaf
+/// day (foliage.wgsl `season_leaf`); without a calendar every leaf
 /// is drawn as modelled.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LeafCalendar {
@@ -107,7 +107,7 @@ pub struct LeafCalendar {
 }
 
 impl LeafCalendar {
-    /// meshlet_foliage.wgsl's `LeafYear`: (the bud's day, the days growing,
+    /// foliage.wgsl's `LeafYear`: (the bud's day, the days growing,
     /// opening and turning), (the days after the turn starts that the
     /// first and the last leaf fall, the day, the kind: 0 every leaf as
     /// modelled, 1 a seasonal year, 2 bare all year).

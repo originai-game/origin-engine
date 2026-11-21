@@ -26,7 +26,7 @@ struct RasterParams {
   stylise: vec4<f32>,
   // The foliage's wind this frame and the last drawn (meshlet_sway.wgsl).
   wind: array<FoliageWind, 2>,
-  // The leaves' year (meshlet_foliage.wgsl `LeafYear`).
+  // The leaves' year (foliage.wgsl `LeafYear`).
   leaf_year: LeafYear,
   // xyz: towards the sun (meshlet_sway.wgsl `meshlet_crown`).
   sun: vec4<f32>,
@@ -354,7 +354,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   var daff_x = vec2<f32>(0.0);
   var daff_y = vec2<f32>(0.0);
   var before = vec3<f32>(0.0);
-  // A foliage mesh's canopy dome (meshlet_foliage.wgsl `foliage_normal` at
+  // A foliage mesh's canopy dome (foliage.wgsl `foliage_normal` at
   // full strength), which the resolve blends in by its material's.
   var dome = vec3<f32>(0.0);
   // A seasonal leaf's autumn colour (meshlet_sway.wgsl

@@ -156,7 +156,7 @@ impl MeshClusters {
 /// ([`crate::foliage::FoliageVertex`]), in the mesh's vertex order, and
 /// what the whole model shares, so every primitive of one tree (bark and
 /// leaves) bends as one. On the meshlet path every pull of the mesh's
-/// vertices moves them by `foliage_offset` (meshlet_foliage.wgsl): the lit
+/// vertices moves them by `foliage_offset` (foliage.wgsl): the lit
 /// pass, the prepass (and its previous position, from the last drawn
 /// frame's wind), the occluders' depth, the shadow casters and the
 /// visibility buffer's rasteriser; the cull widens the mesh's and its

@@ -281,7 +281,7 @@ fn canopy_center(src: &GltfSource) -> Vec3 {
     (lo + hi) * 0.5
 }
 
-/// og-render's `foliage_normal` (meshlet_foliage.wgsl): a leaf's normal `n`
+/// og-render's `foliage_normal` (foliage.wgsl): a leaf's normal `n`
 /// turned by `strength` to its canopy's dome, out from `center` through
 /// its `anchor` and up.
 fn dome_normal(n: Vec3, anchor: Vec3, center: Vec3, strength: f32) -> Vec3 {

@@ -51,7 +51,7 @@ pub(crate) const MESHLET_RASTER_WGSL: &str = wgsl!("meshlet_raster.wgsl");
 pub(crate) const MESHLET_SWAY_WGSL: &str = wgsl!("meshlet_sway.wgsl");
 
 /// The foliage's deformation every pull reads (the vegetation's
-/// grass_common.wgsl and meshlet_foliage.wgsl, then meshlet_sway.wgsl).
+/// grass_common.wgsl and foliage.wgsl, then meshlet_sway.wgsl).
 fn sway_source() -> String {
     format!(
         "{}{}{}{MESHLET_SWAY_WGSL}",
