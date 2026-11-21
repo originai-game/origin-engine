@@ -356,7 +356,10 @@ back in flow), and `lift`, a world offset added before projecting.
   it. Nothing tests occlusion.
 - The host places it at each tick's end, after the game's systems, from the
   tick's camera and entities' world poses (`Tree::place_anchors`, which
-  allocates nothing); the simulation never reads it.
+  allocates nothing); the simulation never reads it. On a frame drawn
+  between ticks it moves with the drawn camera and its entity's drawn
+  (blended) place (`Tree::follow_anchors`), so it stays on what it names;
+  one the tick hid stays hidden.
 
 ## Classes and the Record (head 1)
 

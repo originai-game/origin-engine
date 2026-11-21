@@ -483,6 +483,7 @@ fn finish(
     // The UI, over everything else, in the overlay.
     // Anchored UI moved with its entity's drawn place (`super::interpolate`).
     let shifts = super::interpolate::ui_shifts(rs, &mut h, camera.as_deref());
+    super::interpolate::ui_anchors(rs, &mut h, camera.as_deref());
     super::modules::emit(rs, &shifts);
     // The inspector's gizmo (development builds).
     #[cfg(not(feature = "publish"))]

@@ -342,6 +342,51 @@ pub(crate) fn frame_alpha(before: f64, after: f64, tick_ms: f64, held: bool) -> 
     Some((after / tick_ms).clamp(0.0, 1.0) as f32)
 }
 
+/// The camera a frame between ticks draws with on a `w`×`h` surface:
+/// og.Camera (`camera`, its JSON) blended with the tick before; `None`
+/// without one.
+fn drawn_view(s: &InterpState, camera: Option<&Value>, w: f32, h: f32) -> Option<og_ui::WorldView> {
+    let c = camera?;
+    let row = crate::host::wire::record::Camera::from_json(c).ok()?;
+    let (p, q) = camera_pose(&row);
+    let (p, q, _) = self::camera(s, p, q);
+    let mut c = c.clone();
+    c["position"] = serde_json::json!({ "x": p.x, "y": p.y, "z": p.z });
+    c["quaternion"] = serde_json::json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w });
+    Some(crate::host::api::camera_view(&c, w, h))
+}
+
+/// The TSX tree's anchored nodes on a frame between ticks
+/// (`Next::follow_anchors`): where the drawn camera sees their entities'
+/// drawn places, so a nameplate stays on the entity it names. Nothing on a
+/// frame at the tick, which the tick's end placed.
+pub(crate) fn ui_anchors(rs: &mut RenderState, h: &mut Hierarchy, camera: Option<&Value>) {
+    if rs.interp.active.is_none() {
+        return;
+    }
+    let Some(ui) = rs.ui.clone() else {
+        return;
+    };
+    let Some((w, ht)) = rs.ui_next.as_ref().and_then(|n| n.surface()) else {
+        return;
+    };
+    let Some(view) = drawn_view(&rs.interp, camera, w, ht) else {
+        return;
+    };
+    let ui = ui.lock();
+    let Some(next) = rs.ui_next.as_mut() else {
+        return;
+    };
+    next.follow_anchors(&ui, |target, lift| {
+        let p = match target {
+            og_ui_next::tree::AnchorTarget::Entity(bits) => h.world_of(bits).w_axis.truncate(),
+            og_ui_next::tree::AnchorTarget::Point(p) => p.into(),
+        };
+        let (x, y, _) = view.project(p + Vec3::from(lift), w, ht)?;
+        Some([x, y])
+    });
+}
+
 /// How far each anchored UI element (a document's `<anchor>`) moves on a
 /// frame between ticks, CSS px: its point projected with the drawn camera
 /// at its entity's drawn place, less where the tick's camera put it at the
@@ -367,19 +412,7 @@ pub(crate) fn ui_shifts(
     };
     let vp = ui.viewport();
     let (w, ht) = (vp.width.max(1.0), vp.height.max(1.0));
-    let pose =
-        camera.and_then(|c| Some((c, crate::host::wire::record::Camera::from_json(c).ok()?)));
-    let drawn_view = match pose {
-        Some((c, row)) => {
-            let (p, q) = camera_pose(&row);
-            let (p, q, _) = self::camera(&rs.interp, p, q);
-            let mut c = c.clone();
-            c["position"] = serde_json::json!({ "x": p.x, "y": p.y, "z": p.z });
-            c["quaternion"] = serde_json::json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w });
-            crate::host::api::camera_view(&c, w, ht)
-        }
-        None => tick_view,
-    };
+    let drawn_view = drawn_view(&rs.interp, camera, w, ht).unwrap_or(tick_view);
     for a in points.iter().filter(|a| !a.clamped) {
         let (at_tick, drawn) = match a.target {
             og_ui::WorldTarget::Point(p) => (p, p),

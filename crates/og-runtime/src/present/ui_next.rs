@@ -1452,6 +1452,36 @@ impl Next {
         warnings
     }
 
+    /// On a frame drawn between ticks: the anchored nodes the tick showed
+    /// move to where `project` (the drawn camera, the targets' drawn
+    /// places) puts them, and the tree repaints when one moved
+    /// (CONVENTIONS.md §World). The next tick's end places them again.
+    pub(crate) fn follow_anchors(
+        &mut self,
+        ui: &og_ui::Ui,
+        project: impl FnMut(og_ui_next::tree::AnchorTarget, [f32; 3]) -> Option<[f32; 2]>,
+    ) {
+        let Some(tree) = self.tree.as_mut() else {
+            return;
+        };
+        if tree.anchor_targets().next().is_none() {
+            return;
+        }
+        tree.follow_anchors(project);
+        let (_, painted) = tree.present(ui.fonts(), ui.icons());
+        if painted {
+            self.generation += 1;
+            std::mem::swap(&mut self.paint, &mut tree.drawn);
+            self.paint.generation = self.generation;
+        }
+    }
+
+    /// The surface the tree lays out on, CSS px: what its anchors project
+    /// onto.
+    pub(crate) fn surface(&self) -> Option<(f32, f32)> {
+        self.tree.as_ref().map(|t| t.size())
+    }
+
     /// The accessibility tree's update for the web shell's mirror
     /// ([`og_ui_next::a11y::web`]), when what it shows changed since the
     /// last one; in CSS px, as the tree lays out.

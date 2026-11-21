@@ -349,29 +349,39 @@ const TAG: u32 = 2;
 /// to it.
 struct Tagger(Rc<std::cell::Cell<f64>>);
 
-/// A 40×20 red box anchored by its centre to `entity`, as a document
-/// mounted in engine `e`'s UI (its end builds it every tick).
+/// A 40×20 red View anchored by its top left to `entity` in engine `e`'s
+/// TSX tree, as the TS renderer's op batch (og-ui-next CONVENTIONS.md
+/// §Ops, §World) mounts it.
 fn mount_tag(e: u32, entity: u64) {
-    let text = format!(
-        r#"<meta name="component" content="tag">
-<div id="Root">
-  <anchor id="Tag" entity={{{entity}}}><div id="Block"></div></anchor>
-</div>
-<style>
-#Block {{ width: 40px; height: 20px; background: rgb(255 0 0); }}
-</style>"#
+    let mut ops = Vec::new();
+    let str = |ops: &mut Vec<u8>, s: &str| {
+        ops.extend_from_slice(&(s.len() as u32).to_le_bytes());
+        ops.extend_from_slice(s.as_bytes());
+    };
+    // create 1 (a View), its class, its anchor, then insert it at the root.
+    ops.push(1);
+    ops.extend_from_slice(&1u32.to_le_bytes());
+    ops.push(0);
+    ops.push(4);
+    ops.extend_from_slice(&1u32.to_le_bytes());
+    str(&mut ops, "w-[40px] h-[20px] bg-[#ff0000]");
+    ops.push(6);
+    ops.extend_from_slice(&1u32.to_le_bytes());
+    str(&mut ops, "anchor");
+    str(&mut ops, &entity.to_string());
+    ops.push(8);
+    for v in [0u32, 1, u32::MAX] {
+        ops.extend_from_slice(&v.to_le_bytes());
+    }
+    let mut batch = og_ui_next::tree::MAGIC.to_vec();
+    batch.extend_from_slice(&4u32.to_le_bytes());
+    batch.extend_from_slice(&ops);
+    let reply = og_runtime::og_engine_ui_patch(e, &batch);
+    assert!(
+        !reply.starts_with(og_ui_next::tree::REFUSED),
+        "the ops apply: {}",
+        String::from_utf8_lossy(&reply)
     );
-    let ui = og_runtime::shared_ui(e).expect("the engine's UI");
-    let mut ui = ui.lock();
-    ui.define_document(og_ui::UiDocument::parse("ui/tag.svelte", &text).expect("parses"));
-    ui.mount_document(
-        og_ui::reactive::SourceId::new("test", "tag"),
-        "tag",
-        Default::default(),
-        Default::default(),
-        &og_ui::bind::NoEnv,
-    )
-    .expect("mounts");
 }
 
 impl Hooks for Tagger {
@@ -395,7 +405,8 @@ impl Hooks for Tagger {
     }
 }
 
-/// The centre of the last frame's first overlay UI shape, CSS px.
+/// The centre of the last frame's anchored box (the TSX paint's 40 px wide
+/// quad), CSS px.
 struct Shapes(Rc<RefCell<Option<(f32, f32)>>>);
 
 impl RenderBackend for Shapes {
@@ -408,10 +419,11 @@ impl RenderBackend for Shapes {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         *self.0.borrow_mut() = scene
             .ui
-            .overlay
-            .as_ref()
-            .and_then(|o| o.ui.shapes.first())
-            .map(|s| (s.center.x, s.center.y));
+            .paint
+            .quads
+            .iter()
+            .find(|q| q.rect[2] == 40.0)
+            .map(|q| (q.rect[0] + q.rect[2] / 2.0, q.rect[1] + q.rect[3] / 2.0));
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
@@ -419,10 +431,11 @@ impl RenderBackend for Shapes {
     }
 }
 
-/// An element anchored to a moving entity is drawn on the entity's drawn
+/// A TSX node anchored to a moving entity is drawn on the entity's drawn
 /// place between ticks: its offset from the projection of the entity's
-/// blended position is the same on every frame (the old code drew it where
-/// the last tick placed it, up to a tick ahead of its entity).
+/// blended position is the same on every frame (placed only at the tick's
+/// end, it would sit where the last tick put it, up to a tick ahead of its
+/// entity).
 #[test]
 fn an_anchored_element_stays_on_its_entity_between_ticks() {
     let entity = Rc::new(std::cell::Cell::new(0.0));

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "View anchor",
+      "summary": "A node anchored to a moving entity (a nameplate, a damage number) stays on it on frames drawn between ticks, where the entity is drawn at its blended place, instead of sitting where the last tick put it, up to a tick ahead."
+    }
+  ]
+}

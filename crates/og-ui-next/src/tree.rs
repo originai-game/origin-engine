@@ -160,6 +160,8 @@ pub(crate) struct Anchor {
     pub(crate) lift: [f32; 3],
     pub(crate) at: [f32; 2],
     pub(crate) shown: bool,
+    /// Shown where the tick's end placed it ([`Tree::place_anchors`]).
+    pub(crate) ticked: bool,
 }
 
 /// A `<Line>`'s own props (CONVENTIONS.md §Ops).
@@ -1068,7 +1070,26 @@ impl Tree {
     /// Allocates nothing; a node that did not move repaints nothing.
     pub fn place_anchors(
         &mut self,
+        project: impl FnMut(AnchorTarget, [f32; 3]) -> Option<[f32; 2]>,
+    ) {
+        self.place(project, true);
+    }
+
+    /// [`Tree::place_anchors`] on a frame drawn between ticks, from the
+    /// drawn camera and the targets' drawn places, so an anchored node
+    /// stays on what it is anchored to as that moves. Only the nodes the
+    /// tick's end showed move: a dead entity's stays hidden.
+    pub fn follow_anchors(
+        &mut self,
+        project: impl FnMut(AnchorTarget, [f32; 3]) -> Option<[f32; 2]>,
+    ) {
+        self.place(project, false);
+    }
+
+    fn place(
+        &mut self,
         mut project: impl FnMut(AnchorTarget, [f32; 3]) -> Option<[f32; 2]>,
+        tick: bool,
     ) {
         let els = &self.els;
         self.anchored
@@ -1077,9 +1098,15 @@ impl Tree {
         for &e in &self.anchored {
             let el = &mut self.els[e as usize];
             let a = el.anchor.as_mut().expect("an anchored node");
+            if !tick && !a.ticked {
+                continue;
+            }
             let at = project(a.target, a.lift)
                 .filter(|p| p[0] >= 0.0 && p[1] >= 0.0 && p[0] <= w && p[1] <= h);
             let shown = at.is_some();
+            if tick {
+                a.ticked = shown;
+            }
             let at = at.unwrap_or(a.at);
             if shown != a.shown || at != a.at {
                 (a.shown, a.at) = (shown, at);

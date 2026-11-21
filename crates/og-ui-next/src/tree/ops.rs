@@ -768,6 +768,7 @@ impl Tree {
                                         lift: [0.0; 3],
                                         at: [0.0; 2],
                                         shown: false,
+                                        ticked: false,
                                     }));
                                     self.anchored.push(e);
                                     self.sem.place(node, None);
