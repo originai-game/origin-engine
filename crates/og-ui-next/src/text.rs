@@ -5,7 +5,7 @@
 
 use crate::arena::Run;
 use og_text::shape::Features;
-use og_text::text::{FontMetrics, break_lines, widest_line};
+use og_text::text::{FontMetrics, widest_line};
 
 /// The size of `text` run as `run`, given the width it may take.
 pub fn measure(m: &FontMetrics, text: &str, run: &Run, width: Option<f32>) -> (f32, f32) {

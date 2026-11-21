@@ -2263,7 +2263,7 @@ fn lay_out(
         };
     // Broken as the measure broke it (text.rs), by the same shaped layout
     // at the same width, so a text never breaks inside the box it sized.
-    let wrap = (!t.nowrap && size > 0.0).then(|| (width + 0.5) / size);
+    let wrap = (!t.nowrap && size > 0.0).then_some((width + 0.5) / size);
     if og_text::text::paragraph::lines_into(m, text, track, features, wrap, breaks) {
         for (k, (r, w)) in breaks.iter().enumerate() {
             let l = text[r.clone()].trim_end_matches(['\n', '\r']);
