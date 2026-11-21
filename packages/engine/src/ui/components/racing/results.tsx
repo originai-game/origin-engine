@@ -24,7 +24,7 @@ export interface RacingResultsProps {
 function ordinal(n: number): string {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
-  return `${n}${s[(v - 20) % 10] || s[0] || s[v]}`;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
 }
 
 const hudLabel = `text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`;
@@ -72,7 +72,7 @@ export function RacingResults(props: RacingResultsProps) {
               )}
             </Show>
           </View>
-          <View class="flex-col flex-1 min-w-0 min-h-0">
+          <View class="flex-col self-stretch min-w-0 min-h-0">
             <View class="flex-row items-center gap-4 py-[0.143rem] pr-3 shrink-0">
               <Text class={`shrink-0 w-[2.286rem] text-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`}>{t("racing.results.position")}</Text>
               <Text class={`flex-1 text-left text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`}>{t("racing.results.driver")}</Text>

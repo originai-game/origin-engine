@@ -64,9 +64,7 @@ export function DailyQuests(props: DailyQuestsProps) {
                         {q().name}
                       </Text>
                       <View class="group/progress flex-row items-center w-full gap-1" data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
-                        <View class="grow shrink basis-0 min-w-0">
-                          <ProgressBar value={q().progress} valueText={q().progressText} tone={q().state === 'claimed' ? 'success' : ''} />
-                        </View>
+                        <ProgressBar value={q().progress} valueText={q().progressText} tone={q().state === 'claimed' ? 'success' : ''} />
                         <Text class="shrink-0 whitespace-nowrap font-bold tabular-nums text-fg group-data-state-done/progress:text-gold">
                           {q().progressText}
                         </Text>

@@ -30,7 +30,7 @@ export function Table(props: TableProps) {
         <View class="grid grid-cols-[2fr_1fr_1fr] w-full px-2">
           <For each={props.cells}>
             {(c, i) => (
-            <View class={`w-full min-h-11 text-start border-b border-material-edge px-2 data-figure:justify-end data-figure:text-end data-figure:font-bold`} role="cell" onPress={(e) => props.onChoose?.(e, c().id)} data-figure={i() % 3 !== 0}>
+            <View class={`w-full min-h-11 justify-center text-start border-b border-material-edge px-2 data-figure:items-end data-figure:text-end data-figure:font-bold`} role="cell" onPress={(e) => props.onChoose?.(e, c().id)} data-figure={i() % 3 !== 0}>
               <Text class="whitespace-normal data-figure:tabular-nums">{c().text}</Text>
             </View>
             )}
