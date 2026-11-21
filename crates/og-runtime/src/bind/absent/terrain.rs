@@ -41,7 +41,7 @@ pub(crate) struct TerrainState {
 pub(crate) struct ModuleState;
 
 /// The id pass's heights: no terrain is drawn here.
-pub(crate) fn id_heights(_rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option<f32> {
+pub(crate) fn id_heights(_rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option<(f32, bool)> {
     |_, _, _| None
 }
 
