@@ -681,7 +681,14 @@ impl Next {
         if self.tree.is_some() || self.mounts.is_empty() {
             return;
         }
-        let warnings = self.end(engine, ui, textures, 0.0, &crate::author::probe::now_ms);
+        let warnings = self.end(
+            engine,
+            ui,
+            textures,
+            0.0,
+            &crate::author::probe::now_ms,
+            None,
+        );
         self.held.extend(warnings);
     }
 
@@ -692,6 +699,7 @@ impl Next {
         textures: &[og_render::TextureHandle],
         time: f64,
         now: &dyn Fn() -> f64,
+        world: Option<&dyn Fn(u64) -> Option<og_core::glam::Vec3>>,
     ) -> Vec<String> {
         let mut warnings = std::mem::take(&mut self.held);
         let scheme = ui.theme().scheme;
@@ -744,6 +752,19 @@ impl Next {
         tree.resize(v.width * unit, v.height * unit);
         tree.set_time(time, ui.theme().reduced_motion);
         let commit = tree.commit();
+        // Anchored nodes where the tick's camera sees their entity or point
+        // (CONVENTIONS.md §World); none without a camera or a world.
+        let view = ui.world_view();
+        let (w, h) = (v.width * unit, v.height * unit);
+        tree.place_anchors(|target, lift| {
+            let (view, world) = (view.as_ref()?, world?);
+            let p = match target {
+                og_ui_next::tree::AnchorTarget::Entity(bits) => world(bits)?,
+                og_ui_next::tree::AnchorTarget::Point(p) => p.into(),
+            };
+            let (x, y, _) = view.project(p + og_core::glam::Vec3::from(lift), w, h)?;
+            Some([x, y])
+        });
         // The pointer, in the units og-ui's input is in, on the tree's
         // surface: a press and a release over one element click it.
         let input = ui.input();

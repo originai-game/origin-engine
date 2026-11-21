@@ -4,7 +4,7 @@
 // the engine's source, which reads host APIs its lib does not declare.
 /// <reference path="./assets.d.ts" />
 
-import type { Texture, World } from "@origingame/engine";
+import type { Entity, Texture, World } from "@origingame/engine";
 
 declare global {
   namespace JSX {
@@ -119,6 +119,18 @@ export interface HostProps {
   wipe?: number | undefined;
   wipeStart?: number | undefined;
   wipeCcw?: boolean | undefined;
+  /**
+   * Sits on an entity or a world point `[x, y, z]` instead of in its
+   * parent's flow: its box's top left at that point as the tick's camera
+   * sees it, at its laid-out size (move it with `translate-*` classes, such
+   * as `-translate-x-1/2 -translate-y-full` to stand over it). Off the
+   * screen, behind the camera or on a dead entity it is hidden: it paints
+   * nothing, takes no press and leaves the accessibility tree. Never seen
+   * by the simulation.
+   */
+  anchor?: Entity | readonly [number, number, number] | null | undefined;
+  /** The anchor's offset in world units, such as `[0, 2, 0]` over a head. */
+  lift?: readonly [number, number, number] | undefined;
   /** `data-*` states class variants read (`data-ready:`). */
   [data: `data-${string}`]: string | number | boolean | undefined;
 }

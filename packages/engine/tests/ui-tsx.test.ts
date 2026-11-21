@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundleGame, compileJsx } from "../src/node/build.ts";
 import { cookProject } from "./support/og-bin.ts";
-import { loadNativeHost } from "../src/node/index.ts";
+import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type GameToken } from "../src/runtime.ts";
 import { Text, View, mount, renderers, t, useStore } from "../src/ui/index.ts";
 import { Renderer, strings } from "../src/ui/rt.ts";
@@ -309,5 +309,49 @@ test("a component's imported string table is registered before it is built", () 
     renderers.delete((engine.world as unknown as { id: number }).id);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// A node with `anchor` sits where the tick's camera sees its entity, lifted
+// by `lift`, and one whose entity is behind the camera is hidden: it leaves
+// the probe's elements, which autoplay presses from. Ways this could fail:
+// the lift applied after projecting (in px), the node left in flow at the
+// root's corner, or a target behind the eye mirrored onto the screen.
+test("an anchored node sits on its entity's projection and hides behind the camera", () => {
+  loadNativeHost();
+  const game = og.game({
+    start(world) {
+      world.spawn({ name: "front", position: { x: 0, y: 0, z: 0 } });
+      world.spawn({ name: "behind", position: { x: 0, y: 0, z: 20 } });
+      const cam = world.resource(og.Camera);
+      if (!cam.ok) throw new Error(cam.reason);
+      cam.value.position = { x: 0, y: 0, z: 10 };
+      cam.value.quaternion = og.transform.lookAt(cam.value.position, { x: 0, y: 0, z: 0 });
+    },
+    ui(world) {
+      const plate = (name: string) =>
+        View({ anchor: world.find(name)!, lift: [0, 1, 0], role: "button", label: name, onPress: () => {}, class: "w-[40px] h-[20px]" });
+      mount(world, () => View({ children: [plate("front"), plate("behind")] }), {});
+    },
+  });
+  const created = createEngine(game as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  const id = (engine.world as unknown as { id: number }).id;
+  try {
+    og.ui.previewViewport(engine.world, { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" } as never);
+    engine.advance(3);
+    const frame = JSON.parse(native().og_node_ui_frame(id)) as { elements: { name: string; role: string; x: number; y: number; width: number; height: number }[] };
+    const shown = frame.elements.filter((e) => e.role === "button");
+    expect(shown.map((e) => e.name)).toEqual(["front"]);
+    const [front] = shown;
+    // The centre column, above the middle by one world unit at distance 10.
+    expect(front!.x).toBeCloseTo(640, 0);
+    expect(front!.y).toBeLessThan(350);
+    expect(front!.y).toBeGreaterThan(200);
+    expect([front!.width, front!.height]).toEqual([40, 20]);
+  } finally {
+    renderers.delete(id);
+    engine.destroy();
   }
 });

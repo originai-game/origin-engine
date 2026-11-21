@@ -83,6 +83,10 @@ pub struct Sem {
     pub current: bool,
     /// On its way out (an exit animation plays): no longer in the tree.
     pub exiting: bool,
+    /// An anchored node's placed top left on the surface, and whether its
+    /// target is off the screen (`away`): then no longer in the tree.
+    pub at: Option<[f32; 2]>,
+    pub away: bool,
     pub disabled: bool,
     /// `tabIndex`.
     pub tab_index: Option<i32>,
@@ -153,6 +157,8 @@ static PLAIN: Sem = Sem {
     modal: false,
     current: false,
     exiting: false,
+    at: None,
+    away: false,
     disabled: false,
     tab_index: None,
     press: false,
@@ -214,6 +220,29 @@ impl Semantics {
             let s = self.at(id);
             s.exiting = on;
             s.reprint();
+            self.rev += 1;
+        }
+    }
+
+    /// Where an anchored node was placed (`Some`), off the screen (`None`
+    /// while anchored), or back in flow: [`Tree::place_anchors`].
+    pub fn place(&mut self, id: Id, at: Option<[f32; 2]>) {
+        let s = self.at(id);
+        let away = at.is_none();
+        if s.away != away || (at.is_some() && s.at != at) {
+            s.away = away;
+            if at.is_some() {
+                s.at = at;
+            }
+            self.rev += 1;
+        }
+    }
+
+    /// The node comes back into flow: no longer placed.
+    pub fn unplace(&mut self, id: Id) {
+        let s = self.at(id);
+        if s.at.is_some() || s.away {
+            (s.at, s.away) = (None, false);
             self.rev += 1;
         }
     }
@@ -642,7 +671,7 @@ impl Tree {
         }
         while let Some(w) = self.stack.pop() {
             let s = sem.get(w.id);
-            if s.hidden || s.exiting || !arena.shown(w.id) {
+            if s.hidden || s.exiting || s.away || !arena.shown(w.id) {
                 continue;
             }
             let in_modal = w.in_modal || modal == Some(w.id);
@@ -650,7 +679,10 @@ impl Tree {
                 continue;
             }
             let b = arena.box_of(w.id);
-            let rect = [w.origin[0] + b.x, w.origin[1] + b.y, b.w, b.h];
+            let rect = match s.at {
+                Some([x, y]) => [x, y, b.w, b.h],
+                None => [w.origin[0] + b.x, w.origin[1] + b.y, b.w, b.h],
+            };
             let run = arena.text_of(w.id);
             let up = self.slots[w.slot];
             let mut slot = w.slot;
@@ -735,7 +767,7 @@ fn topmost_modal(arena: &Arena, sem: &Semantics, stack: &mut Vec<Walk>) -> Optio
     });
     while let Some(w) = stack.pop() {
         let s = sem.get(w.id);
-        if s.hidden || s.exiting || !arena.shown(w.id) {
+        if s.hidden || s.exiting || s.away || !arena.shown(w.id) {
             continue;
         }
         if s.modal {

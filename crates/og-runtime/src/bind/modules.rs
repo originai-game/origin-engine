@@ -234,6 +234,7 @@ pub(crate) fn mount_back(
                             &rs.textures,
                             ui_time,
                             &crate::author::probe::now_ms,
+                            Some(&|bits| ui_world::Feed::world_pose(ctx, bits).map(|p| p.0)),
                         ));
                     }
                     // The on-screen controls documents laid out feed their

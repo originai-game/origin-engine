@@ -392,6 +392,7 @@ impl Tree {
             record,
             holds: Box::default(),
             line: None,
+            anchor: None,
             attrs: Vec::new(),
             data: 0,
             image: None,
@@ -457,6 +458,7 @@ impl Tree {
         self.motion.forget(node);
         self.sem.release(node);
         self.input.modal_els.retain(|&m| m != e);
+        self.anchored.retain(|&a| a != e);
         self.leaving.retain(|l| l.0 != e);
         if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
             *slot = NONE;
@@ -627,6 +629,68 @@ impl Tree {
                                 }
                             }
                             self.paint = true;
+                        }
+                        // `anchor` an entity's number or a world point
+                        // `x,y,z` (empty: back in flow), `lift` a world
+                        // offset: the host places the node (§World).
+                        "anchor" => {
+                            let n: Vec<f32> = value
+                                .split([',', ' '])
+                                .filter(|t| !t.is_empty())
+                                .map(|t| t.parse().unwrap_or(0.0))
+                                .collect();
+                            let target = match n[..] {
+                                [] => None,
+                                [x, y, z] => Some(super::AnchorTarget::Point([x, y, z])),
+                                _ => value
+                                    .trim()
+                                    .parse::<f64>()
+                                    .ok()
+                                    .map(|b| super::AnchorTarget::Entity(b as u64)),
+                            };
+                            let node = self.els[e as usize].node;
+                            let was = self.els[e as usize].anchor.is_some();
+                            match target {
+                                Some(t) if was => {
+                                    self.els[e as usize]
+                                        .anchor
+                                        .as_mut()
+                                        .expect("anchored")
+                                        .target = t
+                                }
+                                // Off the screen until the host places it.
+                                Some(target) => {
+                                    self.els[e as usize].anchor = Some(Box::new(super::Anchor {
+                                        target,
+                                        lift: [0.0; 3],
+                                        at: [0.0; 2],
+                                        shown: false,
+                                    }));
+                                    self.anchored.push(e);
+                                    self.sem.place(node, None);
+                                    self.reapply(e);
+                                }
+                                None if was => {
+                                    self.els[e as usize].anchor = None;
+                                    self.anchored.retain(|&a| a != e);
+                                    self.sem.unplace(node);
+                                    self.reapply(e);
+                                }
+                                None => {}
+                            }
+                            self.paint = true;
+                        }
+                        "lift" => {
+                            let mut lift = [0.0f32; 3];
+                            for (l, t) in lift
+                                .iter_mut()
+                                .zip(value.split([',', ' ']).filter(|t| !t.is_empty()))
+                            {
+                                *l = t.parse().unwrap_or(0.0);
+                            }
+                            if let Some(a) = &mut self.els[e as usize].anchor {
+                                a.lift = lift;
+                            }
                         }
                         // The box image's own props over its classes':
                         // `src` a texture handle, the wipe a number per tick.
@@ -1123,6 +1187,72 @@ mod tests {
         );
         let pts = &t.drawn.points[q.a as usize..(q.a + q.b) as usize];
         assert_eq!(pts, [[0.0, 10.0], [5.0, 0.0], [9.5, 10.0]]);
+    }
+
+    /// An anchored node leaves the flow and sits where the host places it:
+    /// it paints, takes presses and is in the accessibility tree there, and
+    /// a target off the screen hides it from all three.
+    #[test]
+    fn an_anchored_node_sits_where_the_host_places_it() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("row");
+        for id in [2, 3] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("b");
+            b.op(8).u32(1).u32(id).u32(u32::MAX);
+        }
+        b.op(6).u32(2).str("anchor").str("3,4,5");
+        b.op(6).u32(2).str("lift").str("0 2 0");
+        b.op(6).u32(2).str("role").str("button");
+        b.op(6).u32(2).str("label").str("\"Talk\"");
+        b.op(7).u32(2).u8(Event::Press as u8).u8(1);
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        let asked = std::cell::RefCell::new(Vec::new());
+        let place = |t: &mut Tree, at: Option<[f32; 2]>| {
+            t.place_anchors(|target, lift| {
+                asked.borrow_mut().push((target, lift));
+                at
+            });
+            frame(t);
+        };
+        place(&mut t, Some([120.0, 60.0]));
+        assert_eq!(
+            *asked.borrow(),
+            [(
+                super::super::AnchorTarget::Point([3.0, 4.0, 5.0]),
+                [0.0, 2.0, 0.0]
+            )]
+        );
+        let node = |t: &Tree, id: u32| {
+            let n = t.dump_ops().into_iter().find(|n| n.id == id).unwrap();
+            (n.rect, n.shown)
+        };
+        assert_eq!(node(&t, 2), ([120.0, 60.0, 50.0, 20.0], true));
+        assert_eq!(
+            node(&t, 3).0[0],
+            0.0,
+            "the anchored node takes no room in the row"
+        );
+        let two = t.els[t.op(2).unwrap() as usize].node;
+        let (facts, _) = t.a11y_snapshot();
+        assert_eq!(facts[&two].role, "button");
+        let mut out = Vec::new();
+        t.pointer(130.0, 65.0, true, false, &mut out);
+        t.pointer(130.0, 65.0, false, true, &mut out);
+        assert_eq!(t.events.len(), 1, "a press where it is placed reaches it");
+        t.take_events(&mut Vec::new());
+        // Behind the camera, and in front but off the surface: hidden.
+        for at in [None, Some([-10.0, 60.0])] {
+            place(&mut t, at);
+            assert!(!node(&t, 2).1, "{at:?}");
+            assert!(!t.a11y_snapshot().0.contains_key(&two), "{at:?}");
+            t.pointer(130.0, 65.0, true, false, &mut out);
+            t.pointer(130.0, 65.0, false, true, &mut out);
+            assert!(t.events.is_empty(), "{at:?}");
+        }
     }
 
     /// A `<Line>`'s `viewBox` maps its points onto the laid-out box as it

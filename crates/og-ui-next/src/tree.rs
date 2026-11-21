@@ -129,6 +129,9 @@ struct El {
     /// A `<Line>`'s points and how they map onto its box; `None` for any
     /// other node.
     line: Option<Box<Line>>,
+    /// Where an op node with `anchor` sits in the world, and where the host
+    /// last placed it; `None` for one in flow.
+    anchor: Option<Box<Anchor>>,
     /// An op node's own image props over its classes' box image; `None`
     /// for a node that sets none.
     image: Option<Box<ImageProps>>,
@@ -138,6 +141,25 @@ struct El {
     /// `group-data-*:` variants read; 0 none.
     attrs: Vec<Box<str>>,
     data: u32,
+}
+
+/// What an anchored node sits on (CONVENTIONS.md §World).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AnchorTarget {
+    /// An entity, by its bits.
+    Entity(u64),
+    Point([f32; 3]),
+}
+
+/// An anchored node: its target and world offset as its props set them,
+/// and its top left on the surface and whether it shows as
+/// [`Tree::place_anchors`] last placed it.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Anchor {
+    pub(crate) target: AnchorTarget,
+    pub(crate) lift: [f32; 3],
+    pub(crate) at: [f32; 2],
+    pub(crate) shown: bool,
 }
 
 /// A `<Line>`'s own props (CONVENTIONS.md §Ops).
@@ -277,6 +299,9 @@ pub struct Tree {
     /// Each element's place on screen, whether it shows, and the clip its
     /// children paint in (x0, y0, x1, y1).
     abs: Vec<(f32, f32, bool, [f32; 4])>,
+    /// The elements with an anchor, in no order (a dead or unanchored one
+    /// leaves at the next [`Tree::place_anchors`]).
+    anchored: Vec<u32>,
     /// Each element's text laid out as glyph quads from its leaf's top
     /// left, kept while its text, width and run stay.
     glyphs: Vec<Glyphs>,
@@ -511,6 +536,7 @@ impl Tree {
             drawn: Paint::default(),
             sem: crate::a11y::Semantics::default(),
             abs: Vec::new(),
+            anchored: Vec::new(),
             glyphs: Vec::new(),
             xfs: Vec::new(),
             textures: None,
@@ -891,6 +917,7 @@ impl Tree {
             record,
             holds: Box::default(),
             line: None,
+            anchor: None,
             attrs: Vec::new(),
             data: 0,
             image: None,
@@ -1002,6 +1029,41 @@ impl Tree {
         self.paint = true;
     }
 
+    /// Places each anchored node (CONVENTIONS.md §World): `project` gives
+    /// the surface point (CSS px) of its target lifted by its world offset,
+    /// `None` when that is off the screen, behind the camera or a dead
+    /// entity's, which hides it, its subtree and its accessibility nodes.
+    /// Allocates nothing; a node that did not move repaints nothing.
+    pub fn place_anchors(
+        &mut self,
+        mut project: impl FnMut(AnchorTarget, [f32; 3]) -> Option<[f32; 2]>,
+    ) {
+        let els = &self.els;
+        self.anchored
+            .retain(|&e| !els[e as usize].dead && els[e as usize].anchor.is_some());
+        let (w, h) = self.env.size.get();
+        for &e in &self.anchored {
+            let el = &mut self.els[e as usize];
+            let a = el.anchor.as_mut().expect("an anchored node");
+            let at = project(a.target, a.lift)
+                .filter(|p| p[0] >= 0.0 && p[1] >= 0.0 && p[0] <= w && p[1] <= h);
+            let shown = at.is_some();
+            let at = at.unwrap_or(a.at);
+            if shown != a.shown || at != a.at {
+                (a.shown, a.at) = (shown, at);
+                self.sem.place(el.node, shown.then_some(at));
+                self.paint = true;
+            }
+        }
+    }
+
+    /// The anchored nodes, for the host to ask which entities they need.
+    pub fn anchor_targets(&self) -> impl Iterator<Item = AnchorTarget> + '_ {
+        self.anchored
+            .iter()
+            .filter_map(|&e| self.els[e as usize].anchor.as_ref().map(|a| a.target))
+    }
+
     /// Applies `e`'s record over what it inherits, then its children's.
     fn inherit(&mut self, e: u32) {
         let parent = self.els[e as usize].parent;
@@ -1019,9 +1081,14 @@ impl Tree {
             opacity: from.opacity * r.skin.opacity,
         };
         let mut layout = r.layout_in([0.0; 4]);
-        if el.hidden > 0 {
+        // An anchored node is out of flow: the host places it.
+        if el.hidden > 0 || el.anchor.is_some() {
             let mut s = taffy::Style::from(&layout);
-            s.display = taffy::Display::None;
+            if el.hidden > 0 {
+                s.display = taffy::Display::None;
+            } else {
+                s.position = taffy::Position::Absolute;
+            }
             layout = rune_taffy::CompactStyle::from(&s);
         }
         let (node, leaf) = (el.node, el.leaf);
@@ -1350,7 +1417,12 @@ impl Tree {
                 .motion
                 .box_of(el.node)
                 .unwrap_or_else(|| self.arena.box_of(el.node));
-            let (px, py, pv, pclip) = if el.arena_parent == NONE {
+            let (px, py, pv, pclip) = if let Some(a) = &el.anchor {
+                // Its box's top left at its placed point, over the screen;
+                // it shows when its target is in view and its parent shows.
+                let pv = el.arena_parent == NONE || self.abs[el.arena_parent as usize].2;
+                (a.at[0] - b.x, a.at[1] - b.y, pv && a.shown, screen)
+            } else if el.arena_parent == NONE {
                 (0.0, 0.0, true, screen)
             } else {
                 // A scroller's children move by its scroll.
@@ -1761,6 +1833,7 @@ impl Tree {
             };
             let all = [f32::MIN, f32::MIN, f32::MAX, f32::MAX];
             let [cx0, cy0, cx1, cy1] = match el.arena_parent {
+                _ if el.anchor.is_some() => all,
                 NONE => all,
                 p => self.abs.get(p as usize).map_or(all, |a| a.3),
             };

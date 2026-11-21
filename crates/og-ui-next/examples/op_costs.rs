@@ -2,8 +2,9 @@
 //! builds it (applied and its first frame), an unchanged frame, one text
 //! changed (a clock), and the pointer coming over a panel whose `hover:`
 //! fill shows and leaving it, and a d-pad move of the focus down the
-//! panels, each the median of N runs with its
-//! allocations.
+//! panels, and 200 anchored nameplates placed again as the camera moves
+//! (their placing alone and with the frame), each the median of N runs
+//! with its allocations.
 //!
 //!     cargo run --release -p og-ui-next --example op_costs [N]
 
@@ -72,6 +73,22 @@ fn hud() -> Batch {
             b.op(8).u32(p).u32(c).u32(u32::MAX);
         }
         b.op(8).u32(1).u32(p).u32(u32::MAX);
+    }
+    b
+}
+
+/// 200 nameplates anchored to entities 1..=200, each a label.
+fn nameplates() -> Batch {
+    let mut b = Batch::default();
+    for k in 0..200u32 {
+        let (p, l) = (1000 + k * 2, 1001 + k * 2);
+        b.op(1).u32(p).u8(0);
+        b.op(4).u32(p).str("row rounded-lg bg-surface");
+        b.op(6).u32(p).str("anchor").str(&(k + 1).to_string());
+        b.op(6).u32(p).str("lift").str("0 2 0");
+        b.op(2).u32(l).str("Goblin");
+        b.op(8).u32(p).u32(l).u32(u32::MAX);
+        b.op(8).u32(0).u32(p).u32(u32::MAX);
     }
     b
 }
@@ -174,6 +191,36 @@ fn main() {
             }
         }
     }
+    let (mut placed, mut anchored) = (Vec::new(), Vec::new());
+    let plates = nameplates().bytes();
+    for _ in 0..n {
+        let mut t = tree();
+        t.apply(&build).unwrap();
+        t.apply(&plates).unwrap();
+        t.frame(&fonts, &icons);
+        // The camera pans a px a frame; every tenth plate is off screen.
+        for f in 0..6 {
+            let project = |target, _lift: [f32; 3]| {
+                let og_ui_next::tree::AnchorTarget::Entity(e) = target else {
+                    return None;
+                };
+                (e % 10 != 0).then_some([
+                    (e as f32 * 6.0 + f as f32) % 1200.0,
+                    (e as f32 * 3.0) % 700.0,
+                ])
+            };
+            let a = allocations();
+            let s = Instant::now();
+            t.place_anchors(project);
+            let p = (s.elapsed().as_secs_f64() * 1e3, allocations() - a);
+            t.frame(&fonts, &icons);
+            // The first frames meet the paint's capacity.
+            if f > 1 {
+                placed.push(p);
+                anchored.push((s.elapsed().as_secs_f64() * 1e3, allocations() - a));
+            }
+        }
+    }
     assert_eq!(&MAGIC[..], b"OGOP");
     for (what, v) in [
         ("build", builds),
@@ -181,6 +228,8 @@ fn main() {
         ("one text", changed),
         ("hover", hovered),
         ("d-pad", moved),
+        ("place 200", placed),
+        ("200 moved", anchored),
     ] {
         let (ms, allocs) = median(v);
         println!("{what:>10}: {ms:.4} ms, {allocs} allocations");

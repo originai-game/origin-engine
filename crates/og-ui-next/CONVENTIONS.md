@@ -267,6 +267,29 @@ text, the texts are its name, not nodes. A node whose record is
 `display: none` (`hidden`, the class) is absent, as is an empty text.
 Visual hiding is a class; `hidden` the prop hides from the tree alone.
 
+## World
+
+A nameplate, a damage number, an interaction prompt, a waypoint or a
+speech bubble is a node with `anchor`: an entity, or a world point
+`[x, y, z]` (setProp text: the entity's number, or `x,y,z`; empty puts it
+back in flow), and `lift`, a world offset added before projecting.
+
+```tsx
+<View anchor={enemy} lift={[0, 2.1, 0]} class="-translate-x-1/2 -translate-y-full">…</View>
+```
+
+- It is out of its parent's flow (absolute) and laid out at its own size;
+  its box's top left sits at the point the tick's camera (og.Camera) sees,
+  in the surface's CSS px. Offset and pivot are classes (`translate-*`).
+  No scaling with distance.
+- Its target off the surface, behind the camera, or a dead entity hides it
+  (and a hidden parent): it paints nothing, takes no press, and leaves the
+  accessibility tree and the probe's elements, so autoplay never presses
+  it. Nothing tests occlusion.
+- The host places it at each tick's end, after the game's systems, from the
+  tick's camera and entities' world poses (`Tree::place_anchors`, which
+  allocates nothing); the simulation never reads it.
+
 ## Classes and the Record (head 1)
 
 Classes are Tailwind v4.1's vocabulary as NSH resolves it
