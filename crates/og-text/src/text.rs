@@ -1360,7 +1360,7 @@ fn sticks(c: char) -> bool {
 }
 
 /// Characters no face need draw: joiners and variation selectors.
-fn invisible(c: char) -> bool {
+pub fn invisible(c: char) -> bool {
     matches!(c as u32, 0x200c..=0x200d | 0x2060 | 0xfe00..=0xfe0f | 0xe0100..=0xe01ef)
 }
 

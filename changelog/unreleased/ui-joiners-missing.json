@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "font packs",
+      "summary": "A TSX text with a joiner or a variation selector (a ZWJ emoji family, ❤️) no longer names them as missing glyphs, so they load no other script's font pack (an emoji line loaded the Arabic pack)."
+    }
+  ]
+}

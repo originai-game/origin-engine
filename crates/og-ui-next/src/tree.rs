@@ -1834,7 +1834,11 @@ fn lay_out(
             let mut prev: Option<char> = None;
             for ch in l.chars() {
                 if !m.has(ch) {
-                    if !ch.is_whitespace() && !ch.is_control() && !missing.contains(&ch) {
+                    if !ch.is_whitespace()
+                        && !ch.is_control()
+                        && !og_text::text::invisible(ch)
+                        && !missing.contains(&ch)
+                    {
                         missing.push(ch);
                     }
                     prev = None;
