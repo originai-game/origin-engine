@@ -196,13 +196,13 @@ module atmosphere {
     doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn."
     guide "render §7"
     field enabled bool "Run the cycle."
-    field start f32 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset)." {
+    field start f64 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset). An f64, as og.atmosphere.timeOfDay answers, so an hour written here reads back as written." {
       default 9
       min 0
       max 24
       tunable true
     }
-    field speed f32 "Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time)." {
+    field speed f64 "Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time)." {
       default 0.05
       min 0
       max 24
@@ -762,9 +762,9 @@ module atmosphere {
   }
 
   fn timeOfDay {
-    doc "The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads: undeclared, the read is refused, logged once, and answers NaN."
+    doc "The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): start plus og.Time.elapsed times speed, in f64, so it compares exactly with an hour a game keeps in a JavaScript number. For lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads: undeclared, the read is refused, logged once, and answers NaN."
     param world World "The world."
-    returns f32
+    returns f64
   }
 
   struct SeasonInfo {

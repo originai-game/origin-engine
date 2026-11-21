@@ -452,7 +452,7 @@ fn system(
     r: &Records,
 ) -> og_core::Result<()> {
     let time = ctx.time();
-    let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+    let rate = time.rate as f32;
     let tick = time.tick;
     let mut rows = Vec::new();
     for a in ctx.query(0)? {
@@ -488,7 +488,7 @@ fn system(
             continue;
         }
         // The frame fired last tick, when og.flipbook ran.
-        let at = (tick.saturating_sub(1).max(start) - start) as f64 / f64::from(rate);
+        let at = time.seconds(tick.saturating_sub(1).max(start) - start);
         let value = json!({ "entity": e.to_bits(), "asset": v.asset, "name": f.name, "time": at });
         let b = r.event.1.encode(None, Some(&value)).map_err(invalid)?;
         ctx.send_bytes(r.event.0, &b)?;

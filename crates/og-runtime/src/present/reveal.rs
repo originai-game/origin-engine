@@ -195,11 +195,7 @@ pub(crate) fn step(rs: &mut RenderState, world: &World) {
         rs.reveal = r;
         return;
     }
-    let rate = if time.dt > 0.0 {
-        1.0 / f64::from(time.dt)
-    } else {
-        60.0
-    };
+    let rate = f64::from(time.rate);
     let member = world.id_by_name(crate::world::stream::cells::MEMBER).ok();
     // The cell that spawned an entity (og.CellMember.cell, its only field).
     let cell_of = |e: u64| -> Option<u64> {

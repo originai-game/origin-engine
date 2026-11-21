@@ -435,13 +435,12 @@ mod tests {
         }
     }
 
-    /// A system's time numbers are those of `{}`'s text, so the game's
-    /// systems read the same scaled time as when the call carried that
-    /// text: an f32 field is its own shortest digits (not the f64 it
-    /// widens to), over the elapsed times of long runs, random bit
-    /// patterns and the odd values.
+    /// A system's time scale is what `Number` reads from `{}`'s text, so
+    /// the game's systems read the scale they set (an f32 field is its own
+    /// shortest digits, not the f64 it widens to), over random bit patterns
+    /// and the odd values; the scaled step and elapsed time pass as f64.
     #[test]
-    fn the_time_numbers_are_what_number_reads_from_the_formatted_text() {
+    fn the_time_scale_is_what_number_reads_from_the_formatted_text() {
         let mut seed = 0x2545_f491_4f6c_dd1d_u64;
         let mut next = || {
             seed ^= seed << 13;
@@ -449,24 +448,15 @@ mod tests {
             seed ^= seed << 17;
             seed
         };
-        let mut cases: Vec<(f32, u32, f32, f64)> = Vec::new();
-        // Elapsed as the engine sums it: f32 ticks added to an f64.
-        for (scale, dt) in [
-            (1.0f32, 1.0f32 / 60.0),
-            (0.5, 1.0 / 60.0),
-            (0.3, 1.0 / 30.0),
-            (1.7, 1.0 / 120.0),
-        ] {
-            let mut elapsed = 0.0f64;
-            for _ in 0..20_000 {
-                cases.push((scale, 0, dt * scale, elapsed));
-                elapsed += f64::from(dt * scale);
-            }
-        }
+        let mut cases: Vec<(f32, u32, f64, f64)> = Vec::new();
         for _ in 0..50_000 {
             let r = next();
-            let (a, b) = (f32::from_bits(r as u32), f32::from_bits((r >> 32) as u32));
-            cases.push((a, (r >> 40) as u32, b, f64::from_bits(next())));
+            cases.push((
+                f32::from_bits(r as u32),
+                (r >> 40) as u32,
+                f64::from_bits(next()),
+                f64::from_bits(next()),
+            ));
         }
         for x in [
             0.0,
@@ -478,17 +468,16 @@ mod tests {
             f32::NEG_INFINITY,
             1e-7,
         ] {
-            cases.push((x, u32::MAX, x, f64::from(x)));
+            cases.push((x, u32::MAX, f64::from(x), f64::from(x)));
         }
-        cases.push((1.0, 0, 0.0, f64::MIN_POSITIVE));
-        cases.push((1.0, 0, 0.0, f64::MAX));
         let read = super::TimeRead::default();
         for (scale, hit_stop, dt, elapsed) in cases {
             let ours = time_numbers(&read, scale, hit_stop, dt, elapsed).map(bits);
-            let display = format!("{scale},{hit_stop},{dt},{elapsed}");
+            let display = format!("{scale},{hit_stop}");
+            let clocks = [dt, elapsed].map(|x| bits(if x.is_finite() { x } else { f64::NAN }));
             assert_eq!(
                 ours.to_vec(),
-                numbers(&display),
+                [numbers(&display), clocks.to_vec()].concat(),
                 "{scale:?},{hit_stop},{dt:?},{elapsed:?} against {display}"
             );
         }

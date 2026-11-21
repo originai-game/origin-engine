@@ -791,7 +791,7 @@ fn system(ctx: &mut SystemContext<'_>, engine_id: u32) -> og_core::Result<()> {
     };
     let time = ctx.time();
     let tick = time.tick;
-    let dt = f64::from(time.dt).max(1e-6);
+    let dt = time.seconds(1);
     let recs = Recs {
         layouts: {
             let st = eng.state.borrow();
@@ -1155,7 +1155,7 @@ fn apply(
                     s.lost_at.get_or_insert(tick);
                     let wait = s.backoff_ms.max(BACKOFF_FIRST_MS);
                     s.backoff_ms = (wait * 2.0).min(BACKOFF_MAX_MS);
-                    let dt_ms = f64::from(ctx.time().dt).max(1e-6) * 1000.0;
+                    let dt_ms = ctx.time().seconds(1) * 1000.0;
                     s.retry_at = Some(tick + (wait / dt_ms).ceil() as u64);
                 }
             });

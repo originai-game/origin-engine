@@ -630,9 +630,10 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
 /// type table: og.ai no longer registers the audio records it used to
 /// read, the host that hands it sounds does; and with og.AiAgent and
 /// og.Perception at version 2 in it (`thinkEveryTicks`, `occluderMask`: a
-/// type's field names are in the hash). Its trajectory digest remains the
-/// one on main 67a07d57 (before G2-4).
-const YARD_HASH: &str = "dbf6ede186344cd4";
+/// type's field names are in the hash), and og.Time at version 2 (its tick
+/// and integer rate). Its trajectory digest remains the one on main
+/// 67a07d57 (before G2-4).
+const YARD_HASH: &str = "7936ba53286876ab";
 const YARD_TRAIL: &str = "944e29cc07af861e";
 
 fn files(map: &[(&str, &str)]) -> impl FnMut(&str) -> Result<String, String> + use<> {

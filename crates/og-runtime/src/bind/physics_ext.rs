@@ -497,9 +497,7 @@ fn body_height(
     else {
         return Ok(None);
     };
-    let time = r.time();
-    let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
-    let seconds = time.tick as f64 / f64::from(rate);
+    let seconds = r.time().elapsed();
     Ok(Some(water.height(x, z, seconds).unwrap_or(0.0)))
 }
 
@@ -561,9 +559,7 @@ pub fn og_physics_water(
             .into_iter()
             .filter_map(|e| Some((e, r.position(Entity::from_bits(e))?)))
             .collect();
-        let time = r.time();
-        let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
-        let seconds = time.tick as f64 / f64::from(rate);
+        let seconds = r.time().elapsed();
         Ok(p.water_at(&bodies, &places, point, seconds)
             .map(|w| crate::wire::WaterPoint {
                 water: w.water,

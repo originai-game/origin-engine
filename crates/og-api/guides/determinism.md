@@ -117,3 +117,27 @@ input delay, stalls, desyncs and testing a room are in `networking §1` to
   break at once.
 - Breaking is world state, so it replays and syncs over lockstep like
   any other change; dust and sparks are presentation and do not.
+
+## 5. Clocks
+
+Every time is counted from two integers, og.Time's `tick` and `rate`: a
+tick is exactly 1 / rate seconds and `elapsed` is tick / rate, an f64 as a
+JavaScript number holds it, never a sum of rounded steps. So a clock a
+game keeps in a number and one the engine computes agree to the last bit:
+an hour written to og.DayNight.start reads back from
+og.atmosphere.timeOfDay as written. The engine's own modules step their
+f32 arithmetic by the same tick rounded once, and read `rate` wherever
+they count ticks a second.
+
+Which clock each module follows:
+
+| Clock | Modules |
+| --- | --- |
+| `scaledDt` (the global scale and hit stop) | physics, og.motion, og.timeline's path followers, feel sprites and floating text |
+| `scaledDt` times the entity's time group scale | og.anim, flipbooks, 2D skeletons, scaled tweens, og.nav agents |
+| the group's scale alone (not the global scale, not hit stop) | og.ParticleSystem |
+| the tick (`elapsed`, unscaled) | og.DayNight, og.Season, og.timeline playback, og.video, music beats and audio events, effects (og.vfx), weather, unscaled tweens, camera shake, input, the UI, the probe |
+
+A game's own system picks its clock the same way: `scaledDt` (or
+og.time.groupDt) for what slow motion should slow, `dt` and `elapsed` for
+what keeps the player's pace.

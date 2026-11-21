@@ -211,8 +211,9 @@ fn lightning_and_surfaces(
     if strikes == 0 {
         return;
     }
-    let rate = f64::from(world.time().dt).recip();
-    let since = (tick.saturating_sub(u64::from(st.last_strike))) as f64 / rate;
+    let since = world
+        .time()
+        .seconds(tick.saturating_sub(u64::from(st.last_strike)));
     let at = st.strike_position;
     let base = scene.atmosphere.clouds.map_or(600.0, |c| c.base.max(50.0));
     og_render::add_lightning(scene, at, at.y + base, strikes, since as f32);

@@ -212,7 +212,7 @@ pub fn bundle(seed: u32, with_health: bool, declare: &mut dyn FnMut(&SystemDesc)
     declare(&movement);
     world
         .add_system(movement, move |ctx| {
-            let dt = ctx.time().dt;
+            let dt = ctx.time().dt();
             for a in ctx.query(0)? {
                 let v = a.read::<Vec3>(vel)?;
                 let s = a.read::<f32>(speed)?;

@@ -772,7 +772,7 @@ fn step_group(ctx: &SystemContext<'_>, g: &mut Group, dt: f32, alive: &mut bool)
 
 fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<State>) -> Result<()> {
     let scaled = ctx.scaled_dt();
-    let raw = ctx.time().dt;
+    let raw = ctx.time().dt();
     let groups = ctx.time_groups();
     let mut st = lock(shared);
     let mut ended: Vec<u64> = Vec::new();

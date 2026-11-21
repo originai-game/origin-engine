@@ -1,6 +1,8 @@
 module time {
   doc "Simulation time. Game code never reads the wall clock; it reads Time."
   doc "Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace."
+  doc "Every time is counted from the integer tick rate and the tick, exact to f64; which clock each module follows is determinism §5."
+  guide "determinism §5"
   core Time
 
   resource Time {
@@ -9,11 +11,11 @@ module time {
       readonly true
       unit ticks
     }
-    field dt f32 "The length of one tick: 1 / rate." {
+    field dt f64 "The length of one tick: exactly 1 / rate." {
       readonly true
       unit s
     }
-    field elapsed f64 "Simulation time since load: tick * dt." {
+    field elapsed f64 "Simulation time since load: tick / rate, exact to f64 (never a sum of steps)." {
       readonly true
       unit s
     }
@@ -31,7 +33,7 @@ module time {
       readonly true
       unit ticks
     }
-    field scaledDt f32 "This tick's scaled length: 0 during a hit stop, else dt * scale. Move gameplay by it so slow motion and hit stop reach game code too." {
+    field scaledDt f64 "This tick's scaled length: 0 during a hit stop, else scale / rate. Move gameplay by it so slow motion and hit stop reach game code too." {
       readonly true
       unit s
     }

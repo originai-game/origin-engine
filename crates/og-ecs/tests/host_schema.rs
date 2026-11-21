@@ -90,7 +90,7 @@ fn a_host_layout_is_registered_by_name_and_used_as_bytes() {
     );
     assert_eq!(types[3]["fields"][1]["tunable"], true);
     assert_eq!(types[3]["fields"][1]["default"][0], 0.1);
-    assert_eq!(types[0]["fields"][1]["unit"], "s");
+    assert_eq!(types[0]["fields"][1]["unit"], "hz");
 }
 
 /// The Rust twin of the host layout.

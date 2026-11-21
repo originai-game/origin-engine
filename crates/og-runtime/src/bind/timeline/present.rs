@@ -68,7 +68,7 @@ pub(crate) fn present(world: &World, rs: &mut crate::present::extract::RenderSta
     if runs.is_empty() && lock(&reg).material_base.is_empty() {
         return;
     }
-    let dt = world.time().dt;
+    let dt = world.time().dt();
     let rate = if dt > 0.0 {
         (1.0 / f64::from(dt)).round().max(1.0) as i64
     } else {

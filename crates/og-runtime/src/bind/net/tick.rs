@@ -22,7 +22,7 @@ pub(super) fn config(eng: &Engine, world: &World) -> Config {
         max_prediction_ticks: v.max_prediction_ticks.clamp(1, 30),
         stall_timeout_ms: v.stall_timeout_ms.min(600_000),
         rejoin: v.rejoin,
-        budget: with(eng.id, |n| n.cost.budget(f64::from(world.time().dt))),
+        budget: with(eng.id, |n| n.cost.budget(world.time().seconds(1))),
         state_bytes: with(eng.id, |n| n.shape.state_bytes as u32),
         shape: with(eng.id, |n| n.shape.fingerprint),
     }
@@ -106,7 +106,7 @@ pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
                     return true;
                 }
                 if let Some(link) = og_audio::link(engine) {
-                    let tick_ms = (f64::from(world.time().dt) * 1000.0).max(1.0);
+                    let tick_ms = (world.time().seconds(1) * 1000.0).max(1.0);
                     link.rewound(to, tick, (LATE_PLAY_MS as f64 / tick_ms).ceil() as u64);
                 }
                 let ms = crate::author::probe::now_ms() - t0;

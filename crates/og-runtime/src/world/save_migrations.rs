@@ -575,7 +575,116 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "one tiling for strips: tile (repeats per metre) is uvTile (metres per repeat, as og.Trail's), the saved value its reciprocal",
         run: Some(beam_2_to_3),
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Time",
+        from: 1,
+        to: 2,
+        note: "one time base: the clock is its tick and the integer tick rate (the saved dt's reciprocal, rounded); dt and elapsed are computed from them",
+        run: Some(time_1_to_2),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.DayNight",
+        from: 2,
+        to: 3,
+        note: "f64 clocks: start and speed are f64, each saved value widened as it was",
+        run: Some(|e| widened(e, "og.DayNight", 3)),
+    },
 ];
+
+/// og.Time 1 -> 2: `tick`, `dt` and `elapsed` become `tick` and `rate`,
+/// the rate the saved `dt` was the rounded reciprocal of (1/60 s is 60).
+fn time_1_to_2(edit: &mut SnapshotEdit) -> Result<(), String> {
+    use og_core::reflect::FieldType;
+    let name = "og.Time";
+    let Some(old) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    let at = |field: &str, ty: FieldType| -> Result<usize, String> {
+        let i = old
+            .fields
+            .iter()
+            .position(|f| f.name == field && f.ty == ty)
+            .ok_or_else(|| format!("the saved og.Time has no {} {field}", ty.name()))?;
+        Ok(old.fields[..i].iter().map(|f| f.ty.size()).sum())
+    };
+    let (tick, dt) = (at("tick", FieldType::U64)?, at("dt", FieldType::F32)?);
+    let schema = <og_core::Time as og_core::Reflect>::schema();
+    edit.map_type(name, schema, &mut |v| {
+        let dt = f32::from_le_bytes(v[dt..dt + 4].try_into().expect("an f32"));
+        let rate = if dt.is_finite() && dt > 0.0 {
+            (1.0 / f64::from(dt))
+                .round()
+                .clamp(1.0, f64::from(u32::MAX)) as u32
+        } else {
+            60
+        };
+        let mut out = v[tick..tick + 8].to_vec();
+        out.extend_from_slice(&rate.to_le_bytes());
+        Ok(out)
+    })
+    .map_err(|e| e.reason().to_string())
+}
+
+/// The f32 fields that became f64 with a record's version.
+const WIDENED: &[(&str, u32, &[&str])] = &[
+    ("og.VideoPlayer", 2, &["time"]),
+    ("og.DayNight", 3, &["start", "speed"]),
+];
+
+/// A record whose f32 fields became f64 with its version `to`
+/// ([`WIDENED`]): each saved value widened, every other field as it was.
+fn widened(edit: &mut SnapshotEdit, name: &str, to: u32) -> Result<(), String> {
+    use og_core::reflect::FieldType;
+    let (_, _, fields) = WIDENED
+        .iter()
+        .find(|r| r.0 == name && r.1 == to)
+        .ok_or_else(|| format!("{name} has no widened fields at version {to}"))?;
+    let Some(old) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    let wide: Vec<(bool, usize)> = old
+        .fields
+        .iter()
+        .map(|f| {
+            (
+                fields.contains(&f.name.as_str()) && f.ty == FieldType::F32,
+                f.ty.size(),
+            )
+        })
+        .collect();
+    if let Some(missing) = fields.iter().find(|n| {
+        !old.fields
+            .iter()
+            .any(|f| f.name == **n && f.ty == FieldType::F32)
+    }) {
+        return Err(format!("the saved {name} has no f32 {missing}"));
+    }
+    let mut schema = old;
+    schema.version = to;
+    for f in &mut schema.fields {
+        if fields.contains(&f.name.as_str()) {
+            f.ty = FieldType::F64;
+        }
+    }
+    edit.map_type(name, schema, &mut |v| {
+        let mut out = Vec::with_capacity(v.len() + 4 * fields.len());
+        let mut at = 0;
+        for &(wide, n) in &wide {
+            let b = &v[at..at + n];
+            if wide {
+                let x = f32::from_le_bytes(b.try_into().expect("an f32 is 4 bytes"));
+                out.extend_from_slice(&f64::from(x).to_le_bytes());
+            } else {
+                out.extend_from_slice(b);
+            }
+            at += n;
+        }
+        Ok(out)
+    })
+    .map_err(|e| e.reason().to_string())
+}
 
 /// The uvTile a saved og.Beam `tile` of 0 becomes: version 2 repeated the
 /// texture every 1e6 m (its first column along the whole beam), where a
@@ -858,17 +967,34 @@ fn enumerated(edit: &mut SnapshotEdit, name: &str, to: u32) -> Result<(), String
         .map_err(|e| e.reason().to_string())
 }
 
-/// The tick's length the save ran at (its og.Time's `dt`), 1/60 s where it
-/// holds none (a selection).
+/// The tick's length the save ran at, 1/60 s where it holds no og.Time (a
+/// selection): its og.Time's `rate` (version 2), or the `dt` version 1
+/// held, which a save from before one time base has until og.Time's own
+/// step, the table's last, runs.
 fn tick_dt(edit: &SnapshotEdit) -> f32 {
-    let saved = edit.schema("og.Time").zip(edit.resource("og.Time"));
-    saved
-        .and_then(|(schema, v)| {
-            let (_, dt) = f32s(schema, v).into_iter().find(|(n, _)| *n == "dt")?;
-            dt.first().copied()
-        })
-        .filter(|dt| dt.is_finite() && *dt > 0.0)
-        .unwrap_or(1.0 / 60.0)
+    use og_core::reflect::FieldType;
+    let Some((schema, v)) = edit.schema("og.Time").zip(edit.resource("og.Time")) else {
+        return 1.0 / 60.0;
+    };
+    let mut at = 0;
+    for f in &schema.fields {
+        let b = &v[at..at + f.ty.size()];
+        at += f.ty.size();
+        match (f.name.as_str(), f.ty) {
+            ("rate", FieldType::U32) => {
+                let rate = u32::from_le_bytes(b.try_into().expect("a u32"));
+                return og_core::Time::from_rate(rate).dt();
+            }
+            ("dt", FieldType::F32) => {
+                let dt = f32::from_le_bytes(b.try_into().expect("an f32"));
+                if dt.is_finite() && dt > 0.0 {
+                    return dt;
+                }
+            }
+            _ => {}
+        }
+    }
+    1.0 / 60.0
 }
 
 /// The most a converted `damping` is: a point that kept nothing.
@@ -1123,43 +1249,16 @@ fn wind_2_to_3(edit: &mut SnapshotEdit) -> Result<(), String> {
 /// was. A save that holds no player (every world's save before the type
 /// became lazy) drops it, so restoring it registers nothing.
 fn video_player_1_to_2(edit: &mut SnapshotEdit) -> Result<(), String> {
-    use og_core::reflect::FieldType;
     let name = crate::bind::video::PLAYER;
-    let Some(old) = edit.schema(name).cloned() else {
+    if edit.schema(name).is_none() {
         return Ok(());
-    };
-    let err = |e: og_core::Error| e.reason().to_string();
+    }
     if edit.components(name).is_empty() && edit.resource(name).is_none() && !edit.has_events(name) {
-        return edit.replace_types(&[name], Vec::new()).map_err(err);
+        return edit
+            .replace_types(&[name], Vec::new())
+            .map_err(|e| e.reason().to_string());
     }
-    let mut schema = old.clone();
-    schema.version = 2;
-    for f in &mut schema.fields {
-        if f.name == "time" {
-            f.ty = FieldType::F64;
-        }
-    }
-    let fields: Vec<(bool, usize)> = old
-        .fields
-        .iter()
-        .map(|f| (f.name == "time" && f.ty == FieldType::F32, f.ty.size()))
-        .collect();
-    edit.map_type(name, schema, &mut |v| {
-        let mut out = Vec::with_capacity(v.len() + 4);
-        let mut at = 0;
-        for &(time, n) in &fields {
-            let b = &v[at..at + n];
-            if time {
-                let t = f32::from_le_bytes(b.try_into().expect("an f32 is 4 bytes"));
-                out.extend_from_slice(&f64::from(t).to_le_bytes());
-            } else {
-                out.extend_from_slice(b);
-            }
-            at += n;
-        }
-        Ok(out)
-    })
-    .map_err(err)
+    widened(edit, name, 2)
 }
 
 fn ui_9_to_11(edit: &mut SnapshotEdit) -> Result<(), String> {
@@ -1467,6 +1566,16 @@ mod tests {
                     f.name = (*before).to_string();
                 }
             }
+            if let Some((_, _, fields)) = WIDENED.iter().find(|r| r.0 == name && r.1 == v) {
+                for field in *fields {
+                    let f = old
+                        .fields
+                        .iter_mut()
+                        .find(|f| f.name == *field)
+                        .unwrap_or_else(|| panic!("{name} has no field {field}"));
+                    f.ty = og_core::reflect::FieldType::F32;
+                }
+            }
             if let Some((_, _, fields)) = ENUMS.iter().find(|r| r.0 == name && r.1 == v) {
                 for (field, _) in *fields {
                     let f = old
@@ -1654,33 +1763,52 @@ mod tests {
         }
     }
 
-    /// A record as the build before its last step saved it (`fields`: a
+    /// A record as the build at version `before` saved it (`fields`: a
     /// field's name now, its name then, the value saved), upgraded: the
     /// values of those fields now, in order. Every other field holds its
-    /// default and must come through untouched.
-    fn upgraded(name: &str, fields: &[(&str, &str, f32)]) -> Vec<f32> {
+    /// default (rounded to f32 where it was one then) and must come through
+    /// untouched.
+    fn upgraded(name: &str, before: u32, fields: &[(&str, &str, f32)]) -> Vec<f32> {
         use crate::host::codec::RecordKind;
+        use og_core::reflect::{FieldType, Schema};
         let decl = og_api::host::RECORDS
             .iter()
             .find(|d| d.schema == name)
             .unwrap_or_else(|| panic!("{name} is not an engine record"));
         let layout = crate::host::codec::Layout::from_decl(decl).unwrap();
         let now = crate::engine::versioned(layout.schema());
-        let at = |field: &str| -> usize {
-            now.fields
+        let at = |s: &Schema, field: &str| -> usize {
+            s.fields
                 .iter()
                 .take_while(|f| f.name != field)
                 .map(|f| f.ty.size())
                 .sum()
         };
-        let mut old = now.clone();
-        old.version -= 1;
-        let mut bytes = layout.encode(None, None).unwrap();
-        let defaults = bytes.clone();
-        for &(field, before, saved) in fields {
-            let f = old.fields.iter_mut().find(|f| f.name == field).unwrap();
-            f.name = before.to_string();
-            bytes[at(field)..at(field) + 4].copy_from_slice(&saved.to_le_bytes());
+        let mut old = laid_out_at(&now, before);
+        // The defaults as the old layout packs them, and as they come back.
+        let defaults = layout.encode(None, None).unwrap();
+        let (mut bytes, mut expected) = (Vec::new(), Vec::new());
+        let mut i = 0;
+        for (f, o) in now.fields.iter().zip(&old.fields) {
+            let b = &defaults[i..i + f.ty.size()];
+            if f.ty == FieldType::F64 && o.ty == FieldType::F32 {
+                let x = f64::from_le_bytes(b.try_into().unwrap()) as f32;
+                bytes.extend_from_slice(&x.to_le_bytes());
+                expected.extend_from_slice(&f64::from(x).to_le_bytes());
+            } else {
+                bytes.extend_from_slice(b);
+                expected.extend_from_slice(b);
+            }
+            i += f.ty.size();
+        }
+        for &(field, then, saved) in fields {
+            let k = at(&old, field);
+            bytes[k..k + 4].copy_from_slice(&saved.to_le_bytes());
+            old.fields
+                .iter_mut()
+                .find(|f| f.name == field)
+                .unwrap()
+                .name = then.to_string();
         }
         let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
         let id = world.register_schema(old).unwrap();
@@ -1693,7 +1821,7 @@ mod tests {
         let (upgraded, steps) = upgrade(&world.snapshot())
             .unwrap()
             .unwrap_or_else(|| panic!("{name}: no step ran"));
-        assert_eq!(steps.len(), 1, "{name}: {steps:?}");
+        assert_eq!(steps.len(), steps_from(name, before), "{name}: {steps:?}");
         let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
         let saved = edit.schema(name).unwrap();
         assert_eq!(saved.layout_hash(), now.layout_hash(), "{name}: {saved:?}");
@@ -1705,13 +1833,48 @@ mod tests {
         let mut rest = row.clone();
         let mut values = Vec::new();
         for &(field, _, _) in fields {
-            let i = at(field);
+            let i = at(&now, field);
             values.push(f32::from_le_bytes(row[i..i + 4].try_into().unwrap()));
-            rest[i..i + 4].copy_from_slice(&defaults[i..i + 4]);
+            rest[i..i + 4].copy_from_slice(&expected[i..i + 4]);
         }
-        assert_eq!(rest, defaults, "{name}: another field moved");
+        assert_eq!(rest, expected, "{name}: another field moved");
         assert!(upgrade(&upgraded).unwrap().is_none(), "{name}: twice");
         values
+    }
+
+    /// A save from before the one time base restores at the tick rate it
+    /// ran at, on its tick; the dt it held was 1/30 s rounded to f32.
+    #[test]
+    fn a_saved_clock_keeps_its_tick_and_rate() {
+        use og_core::reflect::FieldType;
+        let mut old = <og_core::Time as og_core::Reflect>::schema();
+        old.version = 1;
+        let field = |name: &str, ty: FieldType| {
+            let mut f = old.fields[0].clone();
+            (f.name, f.ty) = (name.to_string(), ty);
+            f
+        };
+        old.fields = vec![
+            field("tick", FieldType::U64),
+            field("dt", FieldType::F32),
+            field("elapsed", FieldType::F64),
+        ];
+        let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+        let snapshot = {
+            let mut edit = SnapshotEdit::from_bytes(&world.snapshot()).unwrap();
+            let mut bytes = 4501u64.to_le_bytes().to_vec();
+            bytes.extend_from_slice(&(1.0f32 / 30.0).to_le_bytes());
+            bytes.extend_from_slice(&(4501.0f64 * f64::from(1.0f32 / 30.0)).to_le_bytes());
+            edit.map_type("og.Time", old, &mut |_| Ok(bytes.clone()))
+                .unwrap();
+            edit.to_bytes()
+        };
+        let (upgraded, steps) = upgrade(&snapshot).unwrap().unwrap();
+        assert_eq!(steps.len(), 1, "{steps:?}");
+        world.restore(&upgraded).unwrap();
+        let t = world.time();
+        assert_eq!((t.tick, t.rate), (4501, 30));
+        assert_eq!(t.elapsed(), 4501.0 / 30.0);
     }
 
     /// Saves from before the one angle rule mean what they did: a sound's
@@ -1723,6 +1886,7 @@ mod tests {
         use std::f32::consts::PI;
         let cone = upgraded(
             "og.AudioSource",
+            3,
             &[
                 ("innerAngle", "coneInnerAngle", 90.0),
                 ("outerAngle", "coneOuterAngle", 240.0),
@@ -1734,6 +1898,7 @@ mod tests {
         assert_eq!(cone[2], 0.25);
         let all_round = upgraded(
             "og.AudioSource",
+            3,
             &[
                 ("innerAngle", "coneInnerAngle", 360.0),
                 ("outerAngle", "coneOuterAngle", 360.0),
@@ -1745,15 +1910,15 @@ mod tests {
             [PI, PI, 0.0],
             "the default stays omnidirectional"
         );
-        let turn = upgraded("og.Environment", &[("rotation", "rotation", 90.0)]);
+        let turn = upgraded("og.Environment", 1, &[("rotation", "rotation", 90.0)]);
         assert!((turn[0] - PI / 2.0).abs() < 1e-6, "{turn:?}");
         // The old default rose in +x (0 from +x): the heading 90.
         assert_eq!(
-            upgraded("og.DayNight", &[("azimuth", "azimuth", 0.0)]),
+            upgraded("og.DayNight", 1, &[("azimuth", "azimuth", 0.0)]),
             [90.0]
         );
         assert_eq!(
-            upgraded("og.Aurora", &[("direction", "direction", 90.0)]),
+            upgraded("og.Aurora", 1, &[("direction", "direction", 90.0)]),
             [180.0]
         );
     }

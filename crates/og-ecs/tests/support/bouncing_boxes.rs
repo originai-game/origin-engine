@@ -141,7 +141,7 @@ pub fn build(seed: u32) -> World {
             .write::<Velocity>()
             .query(QueryDesc::new().write::<Velocity>()),
         move |ctx| {
-            let dv = ctx.resource::<Arena>()?.gravity * ctx.time().dt;
+            let dv = ctx.resource::<Arena>()?.gravity * ctx.time().dt();
             for a in ctx.query(0)? {
                 for v in a.write::<Vec3>(vel)?.iter_mut() {
                     v.y -= dv;
@@ -158,7 +158,7 @@ pub fn build(seed: u32) -> World {
             .write::<Position>()
             .query(QueryDesc::new().read::<Velocity>().write::<Position>()),
         move |ctx| {
-            let dt = ctx.time().dt;
+            let dt = ctx.time().dt();
             for a in ctx.query(0)? {
                 let v = a.read::<Vec3>(vel)?;
                 let mut p = a.write::<Vec3>(pos)?;
@@ -187,7 +187,7 @@ pub fn build(seed: u32) -> World {
             ),
         move |ctx| {
             let arena = *ctx.resource::<Arena>()?;
-            let wobble = sin(ctx.time().elapsed as f32 * 1.7) * 0.05;
+            let wobble = sin(ctx.time().elapsed() as f32 * 1.7) * 0.05;
             let mut rng = ctx.resource_mut::<Rng>()?;
             for a in ctx.query(0)? {
                 let mut p = a.write::<Vec3>(pos)?;

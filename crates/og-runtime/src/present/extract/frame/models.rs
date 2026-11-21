@@ -50,7 +50,7 @@ pub(super) fn models(
             Some(a) => t.tick as f64 - 1.0 + f64::from(a),
             None => t.tick as f64,
         };
-        ticks * f64::from(t.dt)
+        ticks / f64::from(t.rate)
     };
     // Each model's own tint and flash ride in its instances' records
     // (kestrel-stair #11: a glTF's materials are shared by every instance),

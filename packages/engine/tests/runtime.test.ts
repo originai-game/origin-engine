@@ -127,9 +127,9 @@ test("ArchetypeView.addScaled integrates in the engine to the bits the JavaScrip
   expect(engine.command("spawn", ["0", "4"]).ok).toBeTrue();
   expect(engine.advance(90)).toEqual({ ok: true, value: 90 });
   for (let i = 0; i < 4; i++) {
-    // What `p[k] += v[k] * time.dt` over Float32Arrays leaves (time.dt is the f32 tick).
+    // What `p[k] += v[k] * time.dt` over Float32Arrays leaves (time.dt is exactly 1 / 60).
     const v = drift(i);
-    const dt = Math.fround(1 / 60);
+    const dt = 1 / 60;
     const want = { x: Math.fround(i), y: 0.5, z: Math.fround(-i) };
     for (let t = 0; t < 90; t++) {
       want.x = Math.fround(want.x + Math.fround(v.x) * dt);

@@ -47,7 +47,7 @@ module atmosphere {
 | [`WindMotorKind`](atmosphere/type-WindMotorKind.md) | enum |  | How an og.WindMotor pushes the wind. |
 | [`WindMotorKind()`](#column-WindMotorKind) | column kind |  | A WindMotorKind field: the variant's index. |
 | [`og.WindMotor`](atmosphere/record-WindMotor.md) | component |  | A local push on the air at the entity's position, away from it (omni), along it (directional) or around it (vortex), fading to nothing at `radius`. |
-| [`og.atmosphere.timeOfDay`](atmosphere/fn-timeOfDay.md) | function | `(world: World): number` | The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. |
+| [`og.atmosphere.timeOfDay`](atmosphere/fn-timeOfDay.md) | function | `(world: World): number` | The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): start plus og.Time.elapsed times speed, in f64, so it compares exactly with an hour a game keeps in a … |
 | [`SeasonInfo`](atmosphere/type-SeasonInfo.md) | struct |  | The time of year now (og.atmosphere.season): the date, the sun's day and the climate's facts for it, each a function of og.Season's fields and the tick. |
 | [`og.atmosphere.season`](atmosphere/fn-season.md) | function | `(world: World): SeasonInfo` | The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. |
 | [`og.Water`](atmosphere/record-Water.md) | component |  | A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflectio… |

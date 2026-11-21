@@ -138,15 +138,15 @@ pub fn build(seed: u32) -> (World, PhysicsSystem) {
                     .write::<Velocity>(),
             ),
         move |ctx| {
-            let t = ctx.time().elapsed as f32;
+            let t = ctx.time().elapsed() as f32;
             let x = 3.5 * sin(t * 0.8);
-            let next = 3.5 * sin((t + ctx.time().dt) * 0.8);
+            let next = 3.5 * sin((t + ctx.time().dt()) * 0.8);
             for a in ctx.query(0)? {
                 for p in a.write::<Vec3>(position)?.iter_mut() {
                     p.x = x;
                 }
                 for v in a.write::<Vec3>(linear)?.iter_mut() {
-                    v.x = (next - x) / ctx.time().dt;
+                    v.x = (next - x) / ctx.time().dt();
                 }
             }
             Ok(())

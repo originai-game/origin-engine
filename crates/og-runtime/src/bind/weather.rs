@@ -132,7 +132,7 @@ fn run(
 ) -> og_core::Result<()> {
     let invalid = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
     let time = ctx.time();
-    let falling = draw(ctx, weather, time.dt).map_err(invalid)?;
+    let falling = draw(ctx, weather, time.dt()).map_err(invalid)?;
     let Ok(id) = ctx.id_by_name(STATE) else {
         return Ok(());
     };
@@ -148,7 +148,7 @@ fn run(
         },
         &rates(&row),
         &falling,
-        time.dt,
+        time.dt(),
     );
     s["wetness"] = json!(next.wetness);
     s["puddles"] = json!(next.puddles);
@@ -164,7 +164,7 @@ fn run(
             kept => rng.restore(kept),
         }
         // A strike this tick with probability rate per minute times dt.
-        if (rng.next_f64() as f32) < rate / 60.0 * time.dt {
+        if (rng.next_f64() as f32) < rate / 60.0 * time.dt() {
             let (x, z) = disc(&mut rng);
             let r = row.lightning_radius.max(0.0);
             let at = row.lightning_center + Vec3::new(x * r, 0.0, z * r);

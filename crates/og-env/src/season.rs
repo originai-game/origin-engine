@@ -51,16 +51,17 @@ pub fn wrap(day: f32) -> f32 {
     if d >= YEAR { 0.0 } else { d }
 }
 
-/// The calendar's date at `tick` (days, 0..365): `start` days plus `speed`
-/// days per second of ticks; a stopped calendar stays at `start`.
-pub fn calendar(start: f32, speed: f32, running: bool, tick: u64, dt: f32) -> f32 {
+/// The calendar's date `seconds` of simulation after tick 0 (days,
+/// 0..365): `start` days plus `speed` days per second; a stopped calendar
+/// stays at `start`.
+pub fn calendar(start: f32, speed: f32, running: bool, seconds: f64) -> f32 {
     let start = f64::from(start);
     let year = f64::from(YEAR);
     if !running {
         return wrap(start.rem_euclid(year) as f32);
     }
     let speed = f64::from(speed);
-    wrap((start + tick as f64 * f64::from(dt) * speed).rem_euclid(year) as f32)
+    wrap((start + seconds * speed).rem_euclid(year) as f32)
 }
 
 fn smooth(a: f32, b: f32, x: f32) -> f32 {
@@ -556,14 +557,13 @@ mod tests {
         assert!(spring > 0.3 && spring < 0.9, "{spring}");
     }
 
-    /// The calendar is a function of the tick, wrapped to the year.
+    /// The calendar is a function of the simulated time, wrapped to the year.
     #[test]
     fn the_calendar_follows_the_tick() {
-        let dt = 1.0 / 60.0;
-        assert_eq!(calendar(172.0, 0.0, true, 6000, dt), 172.0);
-        assert!((calendar(172.0, 0.5, true, 6000, dt) - 222.0).abs() < 1e-3);
-        assert!((calendar(360.0, 0.5, true, 6000, dt) - 45.0).abs() < 1e-3);
-        assert_eq!(calendar(400.0, 0.5, false, 6000, dt), 35.0);
+        assert_eq!(calendar(172.0, 0.0, true, 100.0), 172.0);
+        assert_eq!(calendar(172.0, 0.5, true, 100.0), 222.0);
+        assert_eq!(calendar(360.0, 0.5, true, 100.0), 45.0);
+        assert_eq!(calendar(400.0, 0.5, false, 100.0), 35.0);
     }
 
     fn run(mut day: f32, calendar: f32, change: f32, seconds: f32) -> f32 {
@@ -598,20 +598,20 @@ mod tests {
         assert_eq!(run(SUMMER, SUMMER - 10.0, 12.0, 1.5), SUMMER - 10.0);
         let mut day = SUMMER;
         for t in 1..=600u64 {
-            let c = calendar(SUMMER, 2.0, true, t, tick);
+            let c = calendar(SUMMER, 2.0, true, t as f64 / 60.0);
             day = follow(day, c, 2.0 * tick, 12.0, tick);
             assert_eq!(day, c, "tick {t}");
         }
         // A jump while the calendar runs closes at the change's pace too.
-        let mut day = calendar(SUMMER, 2.0, true, 600, tick);
+        let mut day = calendar(SUMMER, 2.0, true, 10.0);
         for t in 601..=1380u64 {
-            let c = calendar(AUTUMN, 2.0, true, t, tick);
+            let c = calendar(AUTUMN, 2.0, true, t as f64 / 60.0);
             day = follow(day, c, 2.0 * tick, 12.0, tick);
             if t == 960 {
                 let behind = wrap(c - day);
                 assert!((behind - 47.4).abs() < 1.5, "{behind}");
             }
         }
-        assert_eq!(day, calendar(AUTUMN, 2.0, true, 1380, tick));
+        assert_eq!(day, calendar(AUTUMN, 2.0, true, 23.0));
     }
 }

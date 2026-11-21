@@ -2647,6 +2647,8 @@ export interface OriginShifted {
 // ── time ────────────────────────────────────────────────────────
 // Simulation time. Game code never reads the wall clock; it reads Time.
 // Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.
+// Every time is counted from the integer tick rate and the tick, exact to f64; which clock each module follows is determinism §5.
+// See `determinism §5`.
 
 /**
  * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
@@ -2662,14 +2664,14 @@ export interface Time {
    */
   readonly tick: number;
   /**
-   * The length of one tick: 1 / rate.
+   * The length of one tick: exactly 1 / rate.
    *
    * @unit s (seconds of simulation time)
    * @readonly written by the engine
    */
   readonly dt: number;
   /**
-   * Simulation time since load: tick * dt.
+   * Simulation time since load: tick / rate, exact to f64 (never a sum of steps).
    *
    * @unit s (seconds of simulation time)
    * @readonly written by the engine
@@ -2698,7 +2700,7 @@ export interface Time {
    */
   readonly hitStopTicks: number;
   /**
-   * This tick's scaled length: 0 during a hit stop, else dt * scale. Move gameplay by it so slow motion and hit stop reach game code too.
+   * This tick's scaled length: 0 during a hit stop, else scale / rate. Move gameplay by it so slow motion and hit stop reach game code too.
    *
    * @unit s (seconds of simulation time)
    * @readonly written by the engine
@@ -17574,7 +17576,7 @@ export interface DayNight {
   /** Run the cycle. */
   enabled: boolean;
   /**
-   * The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset).
+   * The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset). An f64, as og.atmosphere.timeOfDay answers, so an hour written here reads back as written.
    *
    * @default 9
    * @range 0..24
@@ -35130,7 +35132,7 @@ export declare namespace og {
   /**
    * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
    */
-  const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStopTicks: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f32">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
+  const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f64">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStopTicks: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f64">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
   /**
    * Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group, and its og.ParticleSystem's particles spawn, age and move at the group's scale alone (they follow neither the global scale nor hit stop). Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.
    */
@@ -35142,6 +35144,8 @@ export declare namespace og {
   /**
    * Simulation time. Game code never reads the wall clock; it reads Time.
    * Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.
+   * Every time is counted from the integer tick rate and the tick, exact to f64; which clock each module follows is determinism §5.
+   * See `determinism §5`.
    */
   namespace time {
     /**
@@ -37023,7 +37027,7 @@ export declare namespace og {
    * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn.
    * See `render §7`.
    */
-  const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
+  const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f64">; readonly speed: FieldSpec<"f64">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
   /**
    * The time of year: a calendar date, a latitude and a climate. With og.DayNight it sets where the sun rises, how high it climbs and how long the day is; og.atmosphere.season gives the date, the season, the temperature and how far the leaves and the grass are through their year. The date is start plus the simulated seconds times speed, wrapped to 365 days, the same on every run and after a restore. Registered the first time a game names it: a world that never does keeps its type table and hash.
    * See `seasons §1`.
@@ -37082,7 +37086,7 @@ export declare namespace og {
    */
   namespace atmosphere {
     /**
-     * The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads: undeclared, the read is refused, logged once, and answers NaN.
+     * The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): start plus og.Time.elapsed times speed, in f64, so it compares exactly with an hour a game keeps in a JavaScript number. For lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads: undeclared, the read is refused, logged once, and answers NaN.
      *
      * @param world The world.
      */

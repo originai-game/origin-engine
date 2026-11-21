@@ -280,8 +280,7 @@ pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
     crate::present::vfx::extract(world, rs, &mut h, tick, false);
     rs.hierarchy = h;
     // The rate a frame's extraction gives the scene (`extract/frame.rs`).
-    let dt = world.time().dt;
-    let rate = if dt > 0.0 { 1.0 / dt } else { 60.0 };
+    let rate = world.time().rate as f32;
     let RenderState {
         scene,
         particle_history,

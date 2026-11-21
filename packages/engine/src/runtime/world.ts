@@ -354,4 +354,15 @@ export function worldFor(id: number): WorldImpl {
   return w;
 }
 
-export const rates = new Map<number, number>();
+const rates = new Map<number, number>();
+
+/** An engine's tick rate, og.Time's `rate` (GameDesc.tick, else project.ogt's, else 60), read once: the one source every time here counts from. */
+export function rateOf(engine: number): number {
+  let rate = rates.get(engine);
+  if (rate === undefined) {
+    const time = parse<Result<{ rate: number }>>(abi().og_world_resource(engine, "og.Time"));
+    if (!time.ok) throw new Error(`engine ${engine} has no clock: ${time.reason}`);
+    rates.set(engine, (rate = time.value.rate));
+  }
+  return rate;
+}

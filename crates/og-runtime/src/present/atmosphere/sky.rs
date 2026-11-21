@@ -19,9 +19,9 @@ use serde_json::{Value, json};
 #[cfg(not(feature = "publish"))]
 use std::collections::BTreeMap;
 
-/// The DayNight clock at `tick` (hours, 0..24), from its row.
-fn hours(d: &record::DayNight, tick: u64, dt: f32) -> f32 {
-    og_env::day::hours(d.start, d.speed, d.enabled, tick, dt)
+/// The DayNight clock at `time`'s tick (hours, 0..24), from its row.
+fn hours(d: &record::DayNight, time: &og_core::Time) -> f64 {
+    og_env::day::hours(d.start, d.speed, d.enabled, time.elapsed())
 }
 
 /// An enabled og.DayNight at the world's tick: its row, the clock, the
@@ -31,7 +31,7 @@ struct DayNightNow {
     d: record::DayNight,
     /// The og.Season that sets the sun's path, if one does.
     season: Option<SeasonNow>,
-    hours: f32,
+    hours: f64,
     look: og_render::DayNightLook,
     intensity: f32,
 }
@@ -51,7 +51,7 @@ fn day_night_now(
         return None;
     }
     let time = world.time();
-    let now = hours(&d, time.tick, time.dt);
+    let now = hours(&d, &time);
     let air = physical_air(world, physical);
     let season = season_sun(world, season);
     let look = look_at(&d, season.as_ref(), now);
@@ -74,7 +74,7 @@ fn day_night_now(
 fn season_sun(world: &World, layout: Option<&Layout>) -> Option<SeasonNow> {
     let s = record::Season::from_json(&*resource(world, layout)?).ok()?;
     let time = world.time();
-    Some(SeasonNow::of(&s, time.tick, time.dt)).filter(|s| s.sun)
+    Some(SeasonNow::of(&s, time.elapsed())).filter(|s| s.sun)
 }
 
 /// The year an enabled og.Season draws the seasonal leaves in, at the
@@ -88,7 +88,7 @@ fn leaf_calendar(
         return None;
     }
     let time = world.time();
-    let now = SeasonNow::of(&s, time.tick, time.dt);
+    let now = SeasonNow::of(&s, time.elapsed());
     Some(og_render::foliage::LeafCalendar {
         year: og_env::season::leaf_year(&now.climate),
         day: og_env::season::local(now.day, now.latitude),
@@ -103,8 +103,10 @@ fn leaf_calendar(
 fn look_at(
     d: &record::DayNight,
     season: Option<&SeasonNow>,
-    hours: f32,
+    hours: f64,
 ) -> og_render::DayNightLook {
+    // The sun's geometry is f32 arithmetic: the clock is rounded once here.
+    let hours = hours as f32;
     let look = match season {
         Some(s) => {
             let [east, up, south] = s.sun(hours);
@@ -233,7 +235,7 @@ pub(super) fn extract(
         layouts.season.as_ref(),
     ) {
         // The image-based light steps every `step` game minutes.
-        let step = d.step.clamp(1.0, 120.0) / 60.0;
+        let step = f64::from(d.step.clamp(1.0, 120.0)) / 60.0;
         let mut stepped = look_at(&d, season.as_ref(), (now / step).floor() * step);
         if let Some(a) = &air {
             stepped = stepped.with_atmosphere(a);
@@ -445,7 +447,7 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
             }
             Err(_) => None,
         };
-        return d.map_or(9.0, |d| f64::from(hours(&d, time.tick, time.dt)));
+        return d.map_or(9.0, |d| hours(&d, &time));
     }
     let Ok(w) = eng.world() else {
         return 0.0;
@@ -453,5 +455,5 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
     let time = w.time();
     resource(w, Some(&layout))
         .and_then(|d| record::DayNight::from_json(&d).ok())
-        .map_or(9.0, |d| f64::from(hours(&d, time.tick, time.dt)))
+        .map_or(9.0, |d| hours(&d, &time))
 }

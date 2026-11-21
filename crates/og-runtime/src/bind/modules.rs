@@ -212,7 +212,7 @@ pub(crate) fn mount_back(
                 // Motion's clock: the tick's end, unscaled (a paused game's
                 // menus still move), never the wall clock.
                 let t = ctx.time();
-                let ui_time = t.elapsed + f64::from(t.dt);
+                let ui_time = t.seconds(t.tick + 1);
                 let (warnings, missing) = {
                     let mut ui = shared.lock();
                     docs::end_of_frame(engine_id, &mut ui, ctx)?;

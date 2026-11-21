@@ -121,8 +121,7 @@ fn pick(ev: &mut AudioEvent, rng: &mut Rng) -> Option<usize> {
 
 fn run(ctx: &mut SystemContext<'_>) -> Result<()> {
     let time = ctx.time();
-    let rate = f64::from((1.0 / time.dt).round().max(1.0));
-    let now = time.tick as f64 / rate;
+    let now = time.elapsed();
     let mut mix = *ctx.resource::<AudioMix>()?;
     let mut rng = Rng::default();
     rng.restore(mix.rng);

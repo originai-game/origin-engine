@@ -223,7 +223,7 @@ fn system(
     r: &Records,
 ) -> og_core::Result<()> {
     let time = ctx.time();
-    let tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+    let tick_rate = time.rate as f32;
     // The tick this one completes: what a frame drawn after it shows.
     let tick = time.tick + 1;
     let groups = ctx.time_groups();

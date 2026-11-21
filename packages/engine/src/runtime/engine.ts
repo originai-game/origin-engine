@@ -9,7 +9,7 @@ import { dirtyRecords, flushRecords, forgetRecords } from "./resources.ts";
 import { type CursorImage, type Result, json, parse, refused } from "./result.ts";
 import { rt } from "./state.ts";
 import { QueryImpl, learnBuild } from "./views.ts";
-import { rates, uiReactor, uiReactors, worldFor, worlds } from "./world.ts";
+import { rateOf, uiReactor, uiReactors, worldFor, worlds } from "./world.ts";
 import { renderers } from "../ui/index.ts";
 import { pumpInspector } from "../ui/inspector-host.ts";
 
@@ -69,7 +69,7 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
       // The shared buffer opens with the time scale: scale, hitStopTicks, scaledDt, scaledElapsed.
       words();
       const time = Object.freeze({
-        tick, dt, elapsed, rate: rates.get(engine) ?? Math.round(1 / dt),
+        tick, dt, elapsed, rate: rateOf(engine),
         scale: rt.sharedFloats[0]!, hitStopTicks: rt.sharedFloats[1]!, scaledDt: rt.sharedFloats[2]!, scaledElapsed: rt.sharedFloats[3]!,
       });
       fn(new QueryImpl(query, system, engine, described), time, world);
@@ -191,7 +191,7 @@ export const systemClock = (kind = "system"): HostClock => ({ kind, now: () => D
 
 /** A clock that starts at `startMs` on tick 0 and moves with the engine's ticks (`og run --clock`, playtests): reproducible. */
 export function fixedClock(engine: Engine, startMs: number): HostClock {
-  return { kind: "fixed", now: () => startMs + (engine.world.tick * 1000) / (rates.get(engine.id) ?? 60) };
+  return { kind: "fixed", now: () => startMs + (engine.world.tick * 1000) / rateOf(engine.id) };
 }
 
 /** A running engine: one world, its probe, and the host's lifecycle calls. */
@@ -211,9 +211,6 @@ export class Engine {
     this.game = game;
     this.world = worldFor(id) as unknown as Api.World;
     this.probe = makeProbe(id) as unknown as Api.EngineProbe;
-    // The rate the engine runs at: GameDesc.tick, else project.ogt's, else 60.
-    const time = parse<Result<{ rate?: number }>>(abi().og_world_resource(id, "og.Time"));
-    rates.set(id, (time.ok ? time.value.rate : undefined) ?? game.tick);
     learnBuild(id);
     this.attachPlatform(noPlatform);
     engines.set(id, this);
@@ -221,7 +218,7 @@ export class Engine {
 
   /** The fixed tick rate the engine runs at, in hertz (GameDesc.tick, else project.ogt's `tick`, else 60). */
   get rate(): number {
-    return rates.get(this.id) ?? this.game.tick;
+    return rateOf(this.id);
   }
 
   /** Attach what answers og.platform's calls: the native host's local store, the web shell's Player bridge. */

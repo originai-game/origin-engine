@@ -833,7 +833,7 @@ fn tick(
         );
         return Ok(None);
     };
-    let dt = ctx.time().dt;
+    let dt = ctx.time().dt();
     let half = dt * 0.5;
     let current = |film: &record::Film| Entity::from_bits(film.current);
     // og.timeline runs after this system and shows a playing timeline's

@@ -377,9 +377,9 @@ pub fn time_json(world: &World) -> Map<String, Value> {
     let s = world.time_scale();
     let Value::Object(fields) = json!({
         "tick": t.tick,
-        "dt": f64::from(t.dt),
-        "elapsed": t.elapsed,
-        "rate": tick_rate(world),
+        "dt": t.seconds(1),
+        "elapsed": t.elapsed(),
+        "rate": t.rate,
         "scale": s.scale,
         "hitStopTicks": s.hit_stop,
         "scaledDt": s.dt(&t),
@@ -388,10 +388,6 @@ pub fn time_json(world: &World) -> Map<String, Value> {
         unreachable!("an object")
     };
     fields
-}
-
-fn tick_rate(world: &World) -> u32 {
-    (1.0 / f64::from(world.time().dt)).round().max(1.0) as u32
 }
 
 /// An engine-owned type by its dotted name (`og.Transform`), or by its bare
@@ -797,7 +793,7 @@ impl Probe {
         self.checks.watch_events(watched.iter().map(String::as_str));
         // A script's outputs are its own: one names each file once.
         self.out.written.clear();
-        let rate = f64::from(tick_rate(world));
+        let rate = f64::from(world.time().rate);
         let mut report = CommandsReport {
             scheduled: 0,
             until_tick: now,

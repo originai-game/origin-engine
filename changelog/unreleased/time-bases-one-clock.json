@@ -1,0 +1,13 @@
+{
+  "simulation": "changed",
+  "fixed": [
+    {
+      "member": "og.Time",
+      "summary": "og.Time keeps the tick and the integer tick rate, and every time is counted from them: `dt` is exactly 1 / rate (0.016666666666666666 at 60 Hz, no longer the f32 0.016666668), `elapsed` is tick / rate, and `scaledDt` and `scaledElapsed` are f64 sums of exact steps. Effects, particles, physics water, AI, music beats, audio events, timelines, video, lightning and the probe now read the declared rate instead of rebuilding it from a rounded `dt` (which gave 59.999996 Hz in some and 60 in others). A save from an older engine restores at the rate it ran at, on its tick."
+    },
+    {
+      "member": "og.DayNight",
+      "summary": "og.DayNight's `start` and `speed` and og.atmosphere.timeOfDay are f64, so an hour a game writes reads back as written and compares exactly with a JavaScript number: 6.9 no longer reads 6.9000001, which put a game's clock run to dawn a whole day ahead. Saves keep their values, widened."
+    }
+  ]
+}

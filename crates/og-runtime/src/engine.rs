@@ -94,8 +94,8 @@ impl Dispatch {
             id: 0,
             query: 0,
             tick: time.tick as f64,
-            dt: f64::from(time.dt),
-            elapsed: time.elapsed,
+            dt: time.seconds(1),
+            elapsed: time.elapsed(),
             payload: String::new(),
         }
     }

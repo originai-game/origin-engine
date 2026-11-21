@@ -2,9 +2,9 @@
 
 use super::*;
 
-pub(super) fn time_json(t: Time, scale: og_core::TimeScale, rate: u32) -> Value {
+pub(super) fn time_json(t: Time, scale: og_core::TimeScale) -> Value {
     let mut v =
-        json!({ "tick": t.tick, "dt": f64::from(t.dt), "elapsed": t.elapsed, "rate": rate });
+        json!({ "tick": t.tick, "dt": t.seconds(1), "elapsed": t.elapsed(), "rate": t.rate });
     if let (Value::Object(o), Value::Object(s)) =
         (&mut v, crate::present::feel::time_scale_json(scale, t))
     {
@@ -19,7 +19,6 @@ pub(super) fn rng_json(r: &Rng) -> Value {
 
 /// A resource's current value as JSON, outside or inside a system.
 pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> {
-    let rate = eng.state.borrow().rate;
     if let Some(f) = running(eng.id) {
         // SAFETY: the frame is published while its system runs.
         let ctx = unsafe { f.ctx() };
@@ -27,7 +26,7 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
         let s = &st.systems[f.system];
         let declared = s.reads.iter().chain(&s.writes).any(|r| r == name);
         if name == Time::NAME {
-            return Ok(time_json(ctx.time(), ctx.time_scale(), rate));
+            return Ok(time_json(ctx.time(), ctx.time_scale()));
         }
         if !declared {
             let system = f.system;
@@ -44,7 +43,7 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
     }
     let w = eng.world()?;
     if name == Time::NAME {
-        return Ok(time_json(w.time(), w.time_scale(), rate));
+        return Ok(time_json(w.time(), w.time_scale()));
     }
     if name == Rng::NAME {
         return w.resource::<Rng>().map(|r| rng_json(&r)).map_err(err);

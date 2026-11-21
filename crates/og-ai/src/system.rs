@@ -376,7 +376,7 @@ fn run(
     // behaviour with a game action registered them.
     let actions = ctx.id_by_name(AiActionStarted::NAME).is_ok()
         && ctx.id_by_name(AiActionStopped::NAME).is_ok();
-    let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+    let rate = time.rate as f32;
     let mut agents: Vec<Entity> = Vec::new();
     for a in ctx.query(0)? {
         agents.extend_from_slice(a.entities());

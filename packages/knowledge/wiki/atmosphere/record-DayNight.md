@@ -15,7 +15,7 @@ Token `og.DayNight`, registered under the schema name `og.DayNight`; its value t
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `enabled` | `boolean` | `false` | — | — | — | Run the cycle. |
-| `start` | `number` | `9` | 0 … 24 | — | tunable | The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset). |
+| `start` | `number` | `9` | 0 … 24 | — | tunable | The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset). An f64, as og.atmosphere.timeOfDay answers, so an hour written here reads back as written. |
 | `speed` | `number` | `0.05` | 0 … 24 | — | tunable | Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time). |
 | `tilt` | `number` | `25` | 0 … 89 | `deg` | tunable | How far the sun's path leans from overhead. Not used while an enabled og.Season sets the sun's path. |
 | `azimuth` | `number` | `90` | — | `deg` | tunable | The heading the sun rises at: about +Y from +Z towards +X, so 0 rises in +Z and 90 in +X. Its path leans by tilt towards the heading azimuth + 90. |
@@ -30,13 +30,13 @@ resource DayNight {
   doc "A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the DirectionalLight drawn (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the sky's colours step every `step` minutes while the sun moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given; the probe's `get` answers what is drawn."
   guide "render §7"
   field enabled bool "Run the cycle."
-  field start f32 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset)." {
+  field start f64 "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset). An f64, as og.atmosphere.timeOfDay answers, so an hour written here reads back as written." {
     default 9
     min 0
     max 24
     tunable true
   }
-  field speed f32 "Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time)." {
+  field speed f64 "Game hours per simulated second (0.05: a day in 8 minutes; 0 holds the time)." {
     default 0.05
     min 0
     max 24

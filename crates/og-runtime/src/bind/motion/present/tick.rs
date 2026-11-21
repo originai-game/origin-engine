@@ -28,7 +28,7 @@ pub(crate) fn settle(eng: &Engine) -> bool {
 /// Takes the world's tick and steps the ticks behind in order, each until
 /// it needs what has not come (with `wait`, natively, waited for).
 pub(crate) fn catch_up(eng: &Engine, wait: bool) -> bool {
-    let Ok((tick, dt)) = eng.world().map(|w| (w.time().tick, w.time().dt)) else {
+    let Ok((tick, dt)) = eng.world().map(|w| (w.time().tick, w.time().dt())) else {
         return true;
     };
     if eng.render.borrow().backend.is_none() {

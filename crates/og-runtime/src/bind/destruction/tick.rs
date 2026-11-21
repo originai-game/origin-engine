@@ -92,7 +92,7 @@ impl Clock {
         let physics: record::Physics = row(&l.physics.1, &ctx.resource_bytes(l.physics.0)?)?;
         Ok(Clock {
             tick: time.tick,
-            dt: time.dt.max(1e-6),
+            dt: time.dt().max(1e-6),
             debris_volume: res.debris_volume,
             gravity: physics.gravity,
             res,

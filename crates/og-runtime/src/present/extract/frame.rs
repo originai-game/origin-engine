@@ -132,7 +132,7 @@ fn begin(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Begun {
     scene.effects.particle_layers.clear();
     let time = world.time();
     scene.frame.tick = time.tick;
-    scene.frame.tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+    scene.frame.tick_rate = time.rate as f32;
     // The sea's clock between ticks (og_render's `RenderScene::interpolation`).
     scene.frame.interpolation = blended;
     // og.render.sprite and og.render.text are immediate mode: what the last

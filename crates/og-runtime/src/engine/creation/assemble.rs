@@ -151,7 +151,9 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         // One angle rule: og.Environment.rotation in radians, and
         // og.DayNight.azimuth and og.Aurora.direction as headings
         // (og.AudioSource's cone is og-audio's version above).
-        "og.Environment" | "og.DayNight" | "og.Aurora" => 2,
+        // og.DayNight's start and speed as f64 clocks (3).
+        "og.Environment" | "og.Aurora" => 2,
+        "og.DayNight" => 3,
         // One Blend for effects: a trail's and a beam's stored codes are
         // a sprite's, alpha 0 and additive 1 (2); a beam's tile is uvTile,
         // metres per repeat as a trail's (3).

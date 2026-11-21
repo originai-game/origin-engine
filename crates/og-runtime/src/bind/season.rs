@@ -56,13 +56,13 @@ fn run(ctx: &mut SystemContext<'_>, state: &Layout) -> og_core::Result<()> {
     // A year that is off keeps no date: enabled again, it starts on the
     // calendar's.
     let day = if row.enabled {
-        let calendar = season::calendar(row.start, row.speed, true, time.tick, time.dt);
+        let calendar = season::calendar(row.start, row.speed, true, time.elapsed());
         season::follow(
             row.day,
             calendar,
-            row.speed.max(0.0) * time.dt,
+            row.speed.max(0.0) * time.dt(),
             row.change,
-            time.dt,
+            time.dt(),
         )
     } else {
         -1.0
@@ -87,14 +87,15 @@ pub(crate) struct Now {
 }
 
 impl Now {
-    /// `s` at `tick`: the date og.season last wrote while a change plays
-    /// (Season.change above 0), else the calendar's, which it then is: the
-    /// calendar's before the first tick, `start` while the year is off.
-    pub(crate) fn of(s: &record::Season, tick: u64, dt: f32) -> Now {
+    /// `s` `seconds` of simulation after tick 0: the date og.season last
+    /// wrote while a change plays (Season.change above 0), else the
+    /// calendar's, which it then is: the calendar's before the first tick,
+    /// `start` while the year is off.
+    pub(crate) fn of(s: &record::Season, seconds: f64) -> Now {
         let day = if s.enabled && s.change > 0.0 && s.day >= 0.0 {
             season::wrap(s.day)
         } else {
-            season::calendar(s.start, s.speed, s.enabled, tick, dt)
+            season::calendar(s.start, s.speed, s.enabled, seconds)
         };
         Now {
             day,
@@ -139,10 +140,11 @@ impl Now {
     }
 }
 
-/// og.DayNight's clock when its cycle runs.
-fn day_hours(d: &record::DayNight, tick: u64, dt: f32) -> Option<f32> {
+/// og.DayNight's clock when its cycle runs, rounded once for the
+/// climate's f32 arithmetic.
+fn day_hours(d: &record::DayNight, time: &og_core::Time) -> Option<f32> {
     d.enabled
-        .then(|| og_env::day::hours(d.start, d.speed, true, tick, dt))
+        .then(|| og_env::day::hours(d.start, d.speed, true, time.elapsed()) as f32)
 }
 
 /// og.Season and og.DayNight's hour in `world`, read between ticks: `None`
@@ -153,14 +155,14 @@ pub(crate) fn of_world(world: &World, layouts: &BTreeMap<String, Layout>) -> Opt
     let s = record::Season::from_json(&s).ok()?;
     let hours = crate::present::fx::resource(world, layouts.get(DAY_NIGHT))
         .and_then(|d| record::DayNight::from_json(&d).ok())
-        .and_then(|d| day_hours(&d, time.tick, time.dt));
-    Some(Now::of(&s, time.tick, time.dt).info(hours))
+        .and_then(|d| day_hours(&d, &time));
+    Some(Now::of(&s, time.elapsed()).info(hours))
 }
 
 // ── og.atmosphere.season ────────────────────────────────────────────────
 
 pub fn og_atmosphere_season(world: u32) -> SeasonInfo {
-    let defaults = || Now::of(&record::Season::default(), 0, 0.0).info(None);
+    let defaults = || Now::of(&record::Season::default(), 0.0).info(None);
     let Ok(eng) = engine(world) else {
         return defaults();
     };
@@ -191,8 +193,8 @@ pub fn og_atmosphere_season(world: u32) -> SeasonInfo {
         };
         let hours = read(DAY_NIGHT)
             .and_then(|(l, b)| l.read::<record::DayNight>(&b).ok())
-            .and_then(|d| day_hours(&d, time.tick, time.dt));
-        return Now::of(&s, time.tick, time.dt).info(hours);
+            .and_then(|d| day_hours(&d, &time));
+        return Now::of(&s, time.elapsed()).info(hours);
     }
     let Ok(w) = eng.world() else {
         return defaults();

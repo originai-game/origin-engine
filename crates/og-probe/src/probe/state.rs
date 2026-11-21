@@ -462,7 +462,7 @@ impl Host {
             "wire": PROBE_WIRE_VERSION,
             "substrate": "origin-engine",
             "engine": self.engine,
-            "ticksPerSecond": tick_rate(world),
+            "ticksPerSecond": world.time().rate,
             "tier": self.capture.as_ref().map_or("none", |c| c.tier()),
             "build": BUILD,
             "members": served_members(),

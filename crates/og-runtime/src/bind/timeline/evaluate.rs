@@ -104,7 +104,7 @@ pub(super) fn evaluate(
             Track::Camera(c) => camera(ctx, engine_id, r, lt, run, c, t)?,
             Track::Shot(keys) => shot(ctx, engine_id, r, lt, run, keys, t)?,
             Track::Vfx(keys) if playing => {
-                effects(ctx, engine_id, r, lt, run, (ti32, keys), t, spans, dt)?;
+                effects(ctx, engine_id, r, lt, run, (ti32, keys), t, spans)?;
             }
             Track::Video(v) => video(ctx, engine_id, r, lt, v, step)?,
             Track::Fields(f) if f.kind != og_timeline::FieldsKind::Material => {
@@ -412,7 +412,6 @@ fn effects(
     (track, keys): (u32, &[og_timeline::VfxKey]),
     t: f32,
     spans: &[(f64, f64)],
-    dt: f32,
 ) -> og_core::Result<()> {
     let (Some(vfx), Some(parent)) = (&r.vfx, &r.parent) else {
         return Ok(());
@@ -422,7 +421,7 @@ fn effects(
         return Ok(());
     };
     let tick = ctx.time().tick;
-    let rate = if dt > 0.0 { 1.0 / dt } else { 60.0 };
+    let rate = ctx.time().rate as f32;
     // No span while playing: this tick seeked.
     let seeked = spans.is_empty();
     for (ki, k) in keys.iter().enumerate() {

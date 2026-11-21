@@ -44,8 +44,11 @@ use support::beyond::*;
 /// those four under their old names reproduced both previous pins.
 /// `damping` as a decay rate moved the 3D pin (its rope, cloths and water
 /// surface: the new defaults keep 0.03% to 0.05% more or less a tick than
-/// the shares they replace) and left the 2D one.
-const PINNED: [(u32, u64); 2] = [(3, 0x7f8d4c4a27693755), (2, 0x9d87a6f8cce70810)];
+/// the shares they replace) and left the 2D one. One time base moved both:
+/// og.Time names its tick and rate (no dt, no elapsed), and og.TimeScale's
+/// elapsed sums exact steps; hashing without those two types reproduced
+/// both previous pins' simulation bit for bit.
+const PINNED: [(u32, u64); 2] = [(3, 0xd82cadcb72d63822), (2, 0xf738bf36a1ee1c3b)];
 
 /// What G2-3 added to the types the world registers: left out of the
 /// table, as an older engine's trace leaves them.
@@ -121,8 +124,8 @@ fn a_world_using_no_g2_3_feature_hashes_as_before() {
 /// The portable hash after 400 ticks of [`resting`], as 583b9cd5 (the
 /// commit before sleep) left it, except the 3D character's fall onto the
 /// floor, which no longer snaps, the bool packing change and the renamed
-/// fields (see [`PINNED`]).
-const RESTING: [(u32, u64); 2] = [(3, 0x7d3648ff60d67f13), (2, 0x76a2c2fb2955f36b)];
+/// fields and og.Time's and og.TimeScale's (see [`PINNED`]).
+const RESTING: [(u32, u64); 2] = [(3, 0x3b2b6cb9937d42ff), (2, 0xe65a64d31a7eeef1)];
 
 /// Bodies at rest for hundreds of ticks with sleep off: a dynamic box on
 /// the floor, a kinematic platform standing still, and an idle character

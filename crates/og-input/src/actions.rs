@@ -1555,7 +1555,7 @@ pub fn install(
             if let Some(s) = surface() {
                 map.set_surface(s);
             }
-            map.sample(&input, &pointers, &pads, time.tick, time.dt);
+            map.sample(&input, &pointers, &pads, time.tick, time.dt());
             Ok(())
         },
     )?;

@@ -507,7 +507,7 @@ fn timeline_system(
     ui: &og_ui::SharedUi,
 ) -> og_core::Result<()> {
     let time = ctx.time();
-    let rate = (1.0 / f64::from(time.dt)).round().max(1.0) as i64;
+    let rate = i64::from(time.rate);
     let den = rate * STEPS;
     let mut rows = Vec::new();
     for a in ctx.query(0)? {
@@ -701,7 +701,7 @@ fn timeline_system(
                     playing,
                     spans: &spans,
                     retro,
-                    dt: time.dt,
+                    dt: time.dt(),
                     speed: row.speed,
                     base: 0,
                     depth: 0,

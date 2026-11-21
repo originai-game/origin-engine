@@ -47,7 +47,7 @@ pub(super) fn camera_system(
 ) -> og_core::Result<()> {
     let (cid, layout) = &r.camera;
     let ops = std::mem::take(&mut lock(shared).camera_ops);
-    let dt = ctx.time().dt;
+    let dt = ctx.time().dt();
     let bytes = ctx.resource_bytes(*cid)?;
     let mut cam = layout.decode(&bytes);
     // The camera as the tick found it: what follows writes only trauma,

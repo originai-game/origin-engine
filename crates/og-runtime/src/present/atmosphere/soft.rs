@@ -45,7 +45,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
     let Some(physics) = layouts.physics.as_ref() else {
         return keys;
     };
-    let dt = world.time().dt;
+    let dt = world.time().dt();
     let orthographic = matches!(
         scene.frame.camera.projection,
         Projection::Orthographic { .. }

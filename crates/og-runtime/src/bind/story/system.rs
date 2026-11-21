@@ -27,8 +27,8 @@ pub(crate) fn mount(world: &mut World, mount: crate::engine::Mount<'_>) -> Resul
                     if let Some(f) = path.strip_prefix("og.Time.") {
                         return match f {
                             "tick" => Some(Val::Num(time.tick as f64)),
-                            "dt" => Some(Val::Num(f64::from(time.dt))),
-                            "elapsed" => Some(Val::Num(time.elapsed)),
+                            "dt" => Some(Val::Num(time.seconds(1))),
+                            "elapsed" => Some(Val::Num(time.elapsed())),
                             _ => None,
                         };
                     }

@@ -658,9 +658,9 @@ fn run(
         return Ok(());
     };
     let player = &(id, layouts.player.clone());
-    // The tick's length as og.audio counts it (a whole number of ticks a
-    // second), so a player's time and its sound's playhead move together.
-    let dt = 1.0 / (1.0 / f64::from(ctx.time().dt)).round().max(1.0);
+    // The tick's length in f64, as og.audio counts it, so a player's time
+    // and its sound's playhead move together.
+    let dt = ctx.time().seconds(1);
     let mut entities: Vec<Entity> = Vec::new();
     let players = QueryDesc {
         write: vec![PLAYER.into()],

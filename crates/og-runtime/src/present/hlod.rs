@@ -770,7 +770,7 @@ pub(crate) fn draw(
     // A cross-fade's length in ticks, and how far one started at `at` is
     // at this frame's time.
     let now = rs.reveal.now();
-    let dt = world.time().dt;
+    let dt = world.time().dt();
     let ticks = f64::from(crate::present::reveal::SECONDS) / f64::from(dt.max(1e-6));
     let progress = |at: f64| ((now - at) / ticks).clamp(0.0, 1.0) as f32;
     let mut places = std::mem::take(&mut rs.hlod.places);

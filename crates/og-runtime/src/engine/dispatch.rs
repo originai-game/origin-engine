@@ -423,7 +423,7 @@ pub(super) fn run_system(
             &eng.time_read,
             scale.scale,
             scale.hit_stop,
-            scale.dt(&time),
+            scale.seconds(&time),
             scale.elapsed,
         );
     });
@@ -452,8 +452,8 @@ pub(super) fn run_system(
             id: callback,
             query,
             tick: tick as f64,
-            dt: f64::from(time.dt),
-            elapsed: time.elapsed,
+            dt: time.seconds(1),
+            elapsed: time.elapsed(),
             payload: String::new(),
         }),
         None => Err("no dispatcher is installed (og_host_set_dispatcher)".into()),
@@ -508,8 +508,8 @@ fn run_frame(
             id: callback,
             query: 0,
             tick: time.tick as f64,
-            dt: f64::from(time.dt),
-            elapsed: time.elapsed,
+            dt: time.seconds(1),
+            elapsed: time.elapsed(),
             payload,
         }),
         None => Err("no dispatcher is installed (og_host_set_dispatcher)".into()),
@@ -558,8 +558,8 @@ pub(crate) fn call(eng: &Engine, kind: u32, id: u32, payload: String) -> Result<
         id,
         query: 0,
         tick: time.tick as f64,
-        dt: f64::from(time.dt),
-        elapsed: time.elapsed,
+        dt: time.seconds(1),
+        elapsed: time.elapsed(),
         payload,
     });
     invalidate(false);

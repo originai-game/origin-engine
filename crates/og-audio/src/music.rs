@@ -43,9 +43,8 @@ pub(crate) fn install(world: &mut World) -> Result<()> {
             .query(QueryDesc::new().write::<Music>()),
         |ctx| {
             let time = ctx.time();
-            let rate = f64::from((1.0 / time.dt).round().max(1.0));
-            let (t0, t1) = (time.tick as f64 / rate, (time.tick + 1) as f64 / rate);
-            let _ = t0;
+            let rate = f64::from(time.rate);
+            let (t0, t1) = (time.elapsed(), time.seconds(time.tick + 1));
             let clocks: Vec<Entity> = ctx.query(0)?.flat_map(|a| a.entities().to_vec()).collect();
             for e in clocks {
                 let mut m = ctx.get::<Music>(e)?;

@@ -3449,7 +3449,7 @@
     },
     {
       "name": "time",
-      "doc": "Simulation time. Game code never reads the wall clock; it reads Time.\nTime groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.",
+      "doc": "Simulation time. Game code never reads the wall clock; it reads Time.\nTime groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.\nEvery time is counted from the integer tick rate and the tick, exact to f64; which clock each module follows is determinism §5.\nSee `determinism §5`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -8495,7 +8495,7 @@
       "functions": [
         {
           "name": "timeOfDay",
-          "doc": "The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads: undeclared, the read is refused, logged once, and answers NaN.",
+          "doc": "The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): start plus og.Time.elapsed times speed, in f64, so it compares exactly with an hour a game keeps in a JavaScript number. For lamps that light at dusk and shops that close at night. Inside a system, declare og.DayNight among its reads: undeclared, the read is refused, logged once, and answers NaN.",
           "params": [
             {
               "name": "world",
@@ -8504,7 +8504,7 @@
               "doc": "The world."
             }
           ],
-          "returns": "f32",
+          "returns": "f64",
           "publish": true
         },
         {
@@ -19208,14 +19208,14 @@
         },
         "dt": {
           "type": "number",
-          "description": "The length of one tick: 1 / rate.",
+          "description": "The length of one tick: exactly 1 / rate.",
           "default": 0,
           "x-og-unit": "s",
           "readOnly": true
         },
         "elapsed": {
           "type": "number",
-          "description": "Simulation time since load: tick * dt.",
+          "description": "Simulation time since load: tick / rate, exact to f64 (never a sum of steps).",
           "default": 0,
           "x-og-unit": "s",
           "readOnly": true
@@ -19248,7 +19248,7 @@
         },
         "scaledDt": {
           "type": "number",
-          "description": "This tick's scaled length: 0 during a hit stop, else dt * scale. Move gameplay by it so slow motion and hit stop reach game code too.",
+          "description": "This tick's scaled length: 0 during a hit stop, else scale / rate. Move gameplay by it so slow motion and hit stop reach game code too.",
           "default": 0,
           "x-og-unit": "s",
           "readOnly": true
@@ -36462,7 +36462,7 @@
         },
         "start": {
           "type": "number",
-          "description": "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset).",
+          "description": "The time of day at tick 0, in hours (6 sunrise, 12 noon, 18 sunset). An f64, as og.atmosphere.timeOfDay answers, so an hour written here reads back as written.",
           "default": 9,
           "minimum": 0,
           "maximum": 24,

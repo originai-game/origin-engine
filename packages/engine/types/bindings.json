@@ -8672,7 +8672,7 @@
         },
         {
           "name": "dt",
-          "column": "f32",
+          "column": "f64",
           "default": 0,
           "readonly": true
         },
@@ -8702,7 +8702,7 @@
         },
         {
           "name": "scaledDt",
-          "column": "f32",
+          "column": "f64",
           "default": 0,
           "readonly": true
         },
@@ -11573,13 +11573,13 @@
         },
         {
           "name": "start",
-          "column": "f32",
+          "column": "f64",
           "default": 9,
           "tunable": true
         },
         {
           "name": "speed",
-          "column": "f32",
+          "column": "f64",
           "default": 0.05,
           "tunable": true
         },
@@ -20768,7 +20768,7 @@
           "optional": false
         }
       ],
-      "returns": "f32",
+      "returns": "f64",
       "publish": true
     },
     {

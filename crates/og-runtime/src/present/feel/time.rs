@@ -7,7 +7,7 @@ pub(crate) fn time_scale_json(scale: og_core::TimeScale, time: og_core::Time) ->
     json!({
         "scale": scale.scale,
         "hitStopTicks": scale.hit_stop,
-        "scaledDt": scale.dt(&time),
+        "scaledDt": scale.seconds(&time),
         "scaledElapsed": scale.elapsed,
     })
 }
@@ -20,7 +20,7 @@ pub(crate) fn put_time(
     read: &TimeRead,
     scale: f32,
     hit_stop: u32,
-    dt: f32,
+    dt: f64,
     elapsed: f64,
 ) {
     for (i, v) in time_numbers(read, scale, hit_stop, dt, elapsed)
@@ -31,41 +31,38 @@ pub(crate) fn put_time(
     }
 }
 
-/// [`put_time`]'s numbers: what JavaScript's `Number` reads from `{}`'s
-/// text of each, which is what a system's `time` has always held (the
-/// call once carried that text). An f32 is therefore the double nearest
-/// its own shortest digits (0.016666668, not the 0.01666666753590107 it
-/// widens to), and what `Number` does not read (`inf`) is NaN.
+/// [`put_time`]'s numbers. The scale, an f32 field, is what JavaScript's
+/// `Number` reads from its `{}` text: the double nearest its own shortest
+/// digits (0.3, not the 0.30000001192092896 it widens to). The scaled step
+/// and elapsed time are f64 clocks (`og_core::TimeScale::seconds`), passed
+/// as they are; what is not finite is NaN.
 pub(super) fn time_numbers(
     read: &TimeRead,
     scale: f32,
     hit_stop: u32,
-    dt: f32,
+    dt: f64,
     elapsed: f64,
 ) -> [f64; 4] {
+    let finite = |x: f64| if x.is_finite() { x } else { f64::NAN };
     [
-        read.f32_as_read(scale, 0),
+        read.f32_as_read(scale),
         f64::from(hit_stop),
-        read.f32_as_read(dt, 1),
-        if elapsed.is_finite() {
-            elapsed
-        } else {
-            f64::NAN
-        },
+        finite(dt),
+        finite(elapsed),
     ]
 }
 
-/// An engine's last time scale and scaled step as `Number` reads them
-/// ([`TimeRead::f32_as_read`]): they rarely change, so each is kept.
+/// An engine's last time scale as `Number` reads it
+/// ([`TimeRead::f32_as_read`]): it rarely changes, so it is kept.
 #[derive(Default)]
-pub(crate) struct TimeRead(std::cell::Cell<[(u32, f64); 2]>);
+pub(crate) struct TimeRead(std::cell::Cell<(u32, f64)>);
 
 impl TimeRead {
     /// The double `Number` reads from an f32's `{}` text, the last answer
-    /// of each `slot` kept.
-    pub(super) fn f32_as_read(&self, x: f32, slot: usize) -> f64 {
+    /// kept.
+    pub(super) fn f32_as_read(&self, x: f32) -> f64 {
         let mut last = self.0.get();
-        if last[slot].0 != x.to_bits() {
+        if last.0 != x.to_bits() {
             // Core's `{}` rather than zmij: on an exact tie between two
             // shortest candidates zmij rounds to even and core up.
             let read = if x.is_finite() {
@@ -73,10 +70,10 @@ impl TimeRead {
             } else {
                 f64::NAN
             };
-            last[slot] = (x.to_bits(), read);
+            last = (x.to_bits(), read);
             self.0.set(last);
         }
-        last[slot].1
+        last.1
     }
 }
 

@@ -28957,12 +28957,12 @@ pub mod record {
     #[derive(Clone, Debug, PartialEq)]
     pub struct Time {
         pub tick: u32,
-        pub dt: f32,
+        pub dt: f64,
         pub elapsed: f64,
         pub rate: u32,
         pub scale: f32,
         pub hit_stop_ticks: u32,
-        pub scaled_dt: f32,
+        pub scaled_dt: f64,
         pub scaled_elapsed: f64,
     }
 
@@ -34510,8 +34510,8 @@ pub mod record {
     #[derive(Clone, Debug, PartialEq)]
     pub struct DayNight {
         pub enabled: bool,
-        pub start: f32,
-        pub speed: f32,
+        pub start: f64,
+        pub speed: f64,
         pub tilt: f32,
         pub azimuth: f32,
         pub light_intensity: f32,
@@ -34525,8 +34525,8 @@ pub mod record {
         fn default() -> Self {
             Self {
                 enabled: Default::default(),
-                start: 9.0_f32,
-                speed: 0.05_f32,
+                start: 9.0_f64,
+                speed: 0.05_f64,
                 tilt: 25.0_f32,
                 azimuth: 90.0_f32,
                 light_intensity: 1.0_f32,
