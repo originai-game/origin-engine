@@ -14,6 +14,12 @@ function Slider(props: {
   const clamped = () => Math.min(props.max, Math.max(props.min, props.value));
   const percent = () => ((clamped() - props.min) / (props.max - props.min || 1)) * 100;
   const stepped = (e: UiEvent, up: boolean) => props.onChange?.(e, Math.min(props.max, Math.max(props.min, clamped() + (up ? props.step : -props.step))));
+  /** The pointer's drag: the track's box rides in e.value ("x y width height"), pointerdown captures the moves. */
+  const dragged = (e: UiEvent) => {
+    const [bx, , bw] = e.value.split(" ").map(Number);
+    const raw = props.min + Math.min(1, Math.max(0, (e.x - bx) / (bw || 1))) * (props.max - props.min);
+    props.onChange?.(e, Math.min(props.max, Math.max(props.min, props.min + Math.round((raw - props.min) / props.step) * props.step)));
+  };
   return (
     <View
       class="grow shrink basis-[200px] min-w-0 flex-row items-center h-9"
@@ -28,7 +34,7 @@ function Slider(props: {
         else if (e.key === "ArrowLeft" || e.key === "ArrowDown") stepped(e, false);
       }}
     >
-      <View class="relative grow shrink basis-0 h-1 rounded-capsule bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]">
+      <View class="relative grow shrink basis-0 h-1 rounded-capsule bg-tile shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]" onPointerDown={dragged} onPointerMove={dragged}>
         <View class="absolute left-0 top-0 h-full rounded-capsule bg-accent" style={{ width: `${percent()}%` }} />
         <View class="absolute top-0 size-2.5 -translate-y-1 rounded-capsule bg-accent shadow-panel" style={{ left: `calc(${percent()}% - 5px)` }} />
       </View>

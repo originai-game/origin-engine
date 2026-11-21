@@ -69,7 +69,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
         </Show>
         <View class="gap-y-0.5 w-[31.429rem] max-w-full mt-auto -ml-4 short:gap-y-0 compact:w-auto compact:max-w-none compact:-mx-4 compact:data-after-news:mt-0" data-after-news={props.news !== ""}>
           <Show when={props.canContinue}>
-            <View class={`group/continue w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onContinue?.(e)}>
+            <View class={`group/continue w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onContinue?.(e)} autofocus>
               <View class="items-center gap-x-3 w-full">
                 <View class="grow shrink">
                   <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
@@ -83,7 +83,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               </View>
             </View>
           </Show>
-          <View class={`group/newgame w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onNewGame?.(e)}>
+          <View class={`group/newgame w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onNewGame?.(e)} autofocus={!props.canContinue}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.newGame")}

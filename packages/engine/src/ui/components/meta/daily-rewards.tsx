@@ -32,7 +32,7 @@ export interface DailyRewardsProps {
  */
 export function DailyRewards(props: DailyRewardsProps) {
   return (
-    <View class={`group/dailyrewards grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.rewards.name")} data-narrow={props.compact}>
+    <View class={`group/dailyrewards grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.rewards.name")} data-narrow={props.compact === true}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.rewards.name")}

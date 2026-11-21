@@ -38,7 +38,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
           <View class="flex-row items-center bg-[#04060c8c] shadow-[inset_0px_0px_0px_1px_#4e586c] p-0.5 gap-0.5 rounded-control compact:grow compact:shrink-0 compact:basis-full" role="radiogroup" label={t("idle.purchases.amount")}>
             <For each={props.amounts}>
               {(a) => (
-              <View class={`min-h-11 min-w-11 text-fg-muted py-0 px-2 rounded-control compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-checked:bg-white/8 data-checked:bg-none data-checked:shadow-[inset_0px_1px_0px_#ffffff33] data-checked:text-fg`} role="radio" data-amount={a().id} onPress={(e) => props.onChooseamount?.(e, a().id)} data-checked={a().id === props.amount}>
+              <View class={`min-h-11 min-w-11 text-fg-muted py-0 px-2 rounded-control compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-checked:bg-white/8 data-checked:bg-none data-checked:shadow-[inset_0px_1px_0px_#ffffff33] data-checked:text-fg`} role="radio" onPress={(e) => props.onChooseamount?.(e, a().id)} data-checked={a().id === props.amount}>
                 <Text>{a().label ? a().label : a().id === 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a().id })}</Text>
               </View>
               )}

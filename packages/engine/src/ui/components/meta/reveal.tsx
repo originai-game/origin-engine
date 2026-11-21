@@ -47,7 +47,7 @@ export interface RevealProps {
  */
 export function Reveal(props: RevealProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle`} data-state={(props.state ?? "sealed")} label={props.title || t("meta.reveal.title")} busy={(props.state ?? "sealed") === 'loading' || (props.state ?? "sealed") === 'revealing'}>
+    <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle`} label={props.title || t("meta.reveal.title")} busy={(props.state ?? "sealed") === 'loading' || (props.state ?? "sealed") === 'revealing'}>
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-center text-center py-1 px-4 gap-0.5`}>
         <Show when={props.kicker}>

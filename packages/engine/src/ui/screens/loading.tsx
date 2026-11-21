@@ -74,7 +74,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
           </View>
         </View>
         <View class="items-center gap-[1.286rem] compact:items-stretch compact:flex-col-reverse compact:gap-[0.857rem]">
-          <View class={`group/bar grow shrink h-[0.857rem] bg-tile shadow-sunk gap-2 overflow-hidden compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-full`} role="progressbar" label={props.place} valueMin={0} valueMax={1} valueNow={props.progress} data-ready={props.ready}>
+          <View class={`group/bar grow shrink h-[0.857rem] bg-tile shadow-sunk gap-2 overflow-hidden compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-full`} role="progressbar" label={props.place} valueMin={0} valueMax={1} valueNow={props.progress} data-ready={props.ready === true}>
             <View class={`absolute top-0 left-0 bg-linear-to-r from-[#38e8ff8c] to-[#38e8ff] h-full shadow-[0px_0px_16px_#38e8ff99,inset_-3.424px_0px_0px_#ffffff] duration-400 group-data-ready/bar:shadow-[0px_0px_16px_#38e8ff99]`} style={{ width: `${(100 * (props.progress <= 0 ? 0 : props.progress >= 1 ? 1 : props.progress))}%` }} />
           </View>
           <View class="flex-row items-center gap-y-2 gap-x-[0.857rem] compact:flex-wrap">
@@ -87,12 +87,12 @@ export function LoadingScreen(props: LoadingScreenProps) {
               </Text>
             </Show>
             <Show when={!(props.ready && props.waits)}>
-              <Text class={`tabular-nums text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 min-w-[5.143rem] text-[2.857rem] leading-flat text-end font-bold whitespace-nowrap m-0 data-ready:text-[#38e8ff] compact:ml-auto compact:min-w-0 compact:text-[2rem] short:text-[1.714rem] shrink`} data-ready={props.ready}>
+              <Text class={`tabular-nums text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 min-w-[5.143rem] text-[2.857rem] leading-flat text-end font-bold whitespace-nowrap m-0 data-ready:text-[#38e8ff] compact:ml-auto compact:min-w-0 compact:text-[2rem] short:text-[1.714rem] shrink`} data-ready={props.ready === true}>
                 {t("screen.loading.Percent", { progress: `${formatNumber((props.progress) * 100, { decimals: 0 })}%` })}
               </Text>
             </Show>
             <Show when={props.ready && props.waits}>
-              <Button class="text-accent gap-x-2 min-h-11 font-bold px-[1.571rem] compact:grow compact:shrink compact:basis-auto animate-pop" onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }}>
+              <Button class="text-accent gap-x-2 min-h-11 font-bold px-[1.571rem] compact:grow compact:shrink compact:basis-auto animate-pop" onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
                 <Text class="min-w-[1.571rem] text-[0.857rem] leading-[1.6] font-bold text-center text-fg bg-[#0b0f18] uppercase tracking-[0.14em] whitespace-normal py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
                   {t("screen.loading.continueKey")}
                 </Text>
