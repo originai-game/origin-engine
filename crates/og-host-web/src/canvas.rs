@@ -28,7 +28,17 @@ struct CanvasBackend {
     /// A new renderer is being made (the device was lost): frames
     /// draw nothing until it lands in [`RECOVERED`].
     recovering: bool,
+    /// While the device is lost: when the loss was found and when the
+    /// next attempt at a new renderer may start (ms, `Date.now`).
+    lost_at: Option<(f64, f64)>,
 }
+
+/// How long a lost device is asked again for, and how often: right after
+/// a loss the browser can answer no adapter for a while (Chrome's
+/// SwiftShader and a restarting GPU process answer null, then one 250 ms
+/// later), so one refusal is not the end.
+const RECOVERY_MS: f64 = 10_000.0;
+const RETRY_MS: f64 = 250.0;
 
 thread_local! {
     /// Renderers made on a new device after a loss, by engine, taken by
@@ -45,18 +55,32 @@ impl CanvasBackend {
     /// (asynchronously: the browser's adapter and device are promises);
     /// the frames until it lands draw nothing while the simulation goes
     /// on, and the first frame after it draws the world as it is then,
-    /// every mesh and texture uploaded again from the scene.
+    /// every mesh and texture uploaded again from the scene. An attempt
+    /// that fails is made again every [`RETRY_MS`] for [`RECOVERY_MS`]
+    /// from the loss; after that every frame is refused.
     fn recover_device(&mut self) -> Result<bool, String> {
+        let now = js_sys::Date::now();
         if let Some(made) = RECOVERED.with(|m| m.borrow_mut().remove(&self.engine)) {
             self.recovering = false;
-            let renderer = made.map_err(|e| {
-                format!("the GPU device was lost and a new one could not be made: {e}")
-            })?;
+            let renderer = match made {
+                Ok(r) => r,
+                Err(e) => {
+                    let (since, _) = self.lost_at.get_or_insert((now, now));
+                    if now - *since > RECOVERY_MS {
+                        return Err(format!(
+                            "the GPU device was lost and a new one could not be made: {e}"
+                        ));
+                    }
+                    self.lost_at = Some((*since, now + RETRY_MS));
+                    return Ok(true);
+                }
+            };
             super::FORMATS.with(|f| {
                 f.borrow_mut()
                     .insert(self.engine, renderer.info().texture_formats.clone())
             });
             self.renderer = renderer;
+            self.lost_at = None;
             self.losses += 1;
             self.pending.clear();
             self.kept = None;
@@ -64,11 +88,20 @@ impl CanvasBackend {
         let Some(why) = self.renderer.lost() else {
             return Ok(false);
         };
-        if !self.recovering {
-            self.recovering = true;
-            super::console_warn(&format!(
-                "origin-engine: the GPU device was {why}; making the renderer again"
+        let (since, next) = *self.lost_at.get_or_insert((now, now));
+        if now - since > RECOVERY_MS {
+            return Err(format!(
+                "the GPU device was {why} and no new one was made in {} s",
+                RECOVERY_MS / 1000.0
             ));
+        }
+        if !self.recovering && now >= next {
+            self.recovering = true;
+            if since == next {
+                super::console_warn(&format!(
+                    "origin-engine: the GPU device was {why}; making the renderer again"
+                ));
+            }
             let successor = self.renderer.successor();
             let canvas = self.canvas.clone();
             let engine = self.engine;
@@ -390,6 +423,7 @@ pub async fn og_web_attach_canvas(
             canvas: canvas_kept,
             losses: 0,
             recovering: false,
+            lost_at: None,
         })),
     )
     .map_err(|e| JsValue::from_str(&e))?;
