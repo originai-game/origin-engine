@@ -72,10 +72,9 @@ struct Compiled {
     more: Vec<(u32, u32)>,
 }
 
-/// One instance of a document: the conditions its elements hold.
+/// One instance of a document.
 struct Inst {
     doc: u32,
-    holds: Vec<u64>,
     /// Its scrollers (document nodes) whose content runs past their end.
     more: Vec<u32>,
 }
@@ -105,6 +104,9 @@ struct El {
     dead: bool,
     queued: bool,
     record: Record,
+    /// The store conditions it holds, bits by condition index: its own, as
+    /// each row of an `{#each}` sets its own of the same rule.
+    holds: Box<[u64]>,
     eff: Inherit,
 }
 
@@ -381,10 +383,8 @@ impl Tree {
     ) -> Option<()> {
         let d = self.compiled(name)?;
         let inst = self.insts.len() as u32;
-        let conds = self.docs[d as usize].style.conditions.len();
         self.insts.push(Inst {
             doc: d,
-            holds: vec![0; conds.div_ceil(64)],
             more: Vec::new(),
         });
         // The document's own derived values, in order.
@@ -583,7 +583,7 @@ impl Tree {
     ) {
         let style = self.docs[d as usize].style_of[i];
         let e = self.els.len() as u32;
-        let record = self.fold(inst, style);
+        let record = self.fold(inst, style, &[]);
         let (arena_at, arena_parent_el) = if record.fixed {
             (0, NONE)
         } else {
@@ -617,6 +617,7 @@ impl Tree {
             dead: false,
             queued: false,
             record,
+            holds: Box::default(),
             eff: self.root,
         });
         for &b in chain.iter() {
@@ -645,6 +646,10 @@ impl Tree {
                     )
                 })
                 .collect();
+            if !conds.is_empty() {
+                let words = c.style.conditions.len().div_ceil(64);
+                self.els[e as usize].holds = vec![0; words].into_boxed_slice();
+            }
             for (cond, x) in conds {
                 let r = reads(&x, scope, self.screen);
                 queue::bind(
@@ -664,7 +669,9 @@ impl Tree {
         }
     }
 
-    fn fold(&self, inst: u32, style: u32) -> Record {
+    /// The record of an element of `inst` with `style`, under the store
+    /// conditions `holds` says it holds (bits by condition index).
+    fn fold(&self, inst: u32, style: u32, holds: &[u64]) -> Record {
         if style == NONE {
             return Record::default();
         }
@@ -678,7 +685,7 @@ impl Tree {
             if c.fixed[cond as usize] {
                 eval_static(&c.style.conditions[cond as usize], &env)
             } else {
-                ins.holds[(cond / 64) as usize] & (1 << (cond % 64)) != 0
+                holds.get((cond / 64) as usize).copied().unwrap_or(0) & (1 << (cond % 64)) != 0
             }
         })
     }
@@ -803,8 +810,7 @@ impl Tree {
             match op {
                 Op::Text { node, text, .. } => self.set_text(node, &text),
                 Op::Holds { node, cond, on, .. } => {
-                    let inst = self.els[node as usize].inst as usize;
-                    let w = &mut self.insts[inst].holds[(cond / 64) as usize];
+                    let w = &mut self.els[node as usize].holds[(cond / 64) as usize];
                     let bit = 1u64 << (cond % 64);
                     let was = *w & bit != 0;
                     if was != on {
@@ -841,7 +847,7 @@ impl Tree {
                 if el.dead {
                     continue;
                 }
-                let r = self.fold(el.inst, el.style);
+                let r = self.fold(el.inst, el.style, &el.holds);
                 self.els[e as usize].record = r;
                 self.els[e as usize].queued = false;
             }
@@ -1253,6 +1259,49 @@ mod tests {
                 .unwrap()
         };
         assert!(level(true) > level(false), "the text over its panel");
+    }
+
+    /// Each row of an `{#each}` holds its own state: one row's `state:done`
+    /// is not another's.
+    #[test]
+    fn each_row_holds_its_own_state() {
+        let doc = UiDocument::parse(
+            "r.svelte",
+            "<meta name=\"component\" content=\"r\">\n\
+             <ul>{#each rows as r (r.id)}<li class=\"row\" state:done={r.done}>x</li>{/each}</ul>\n\
+             <style>\n.row { opacity: 0.25; }\n.row:state(done) { opacity: 1; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: &crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [doc]);
+        tree.resize(400.0, 400.0);
+        let rows = serde_json::json!([
+            {"id": "a", "done": true},
+            {"id": "b", "done": false},
+            {"id": "c", "done": true},
+        ]);
+        tree.mount("r", &[("rows", queue::signal(rows))]).unwrap();
+        tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
+        let opacities: Vec<f32> = tree
+            .els
+            .iter()
+            .filter(|el| {
+                let c = &tree.docs[tree.insts[el.inst as usize].doc as usize];
+                el.style != NONE
+                    && c.doc.nodes[c.style.nodes[el.style as usize].node as usize]
+                        .selector_attrs
+                        .iter()
+                        .any(|(k, _)| k == "state:done")
+            })
+            .map(|el| el.record.opacity)
+            .collect();
+        assert_eq!(opacities, [1.0, 0.25, 1.0]);
     }
 
     /// A condition that reads both a store and the size class holds again
