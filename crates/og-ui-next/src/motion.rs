@@ -320,6 +320,8 @@ struct Live {
     /// Its keyframes hold a pose away from `base` (a running loop, or a
     /// finished one that stays where it ended).
     posed: bool,
+    /// Its keyframes played at the last sample.
+    playing: bool,
     exiting: bool,
 }
 
@@ -357,14 +359,17 @@ impl Motion {
     }
 
     /// Advances to the UI tick's time `t` (seconds) and samples what moves.
-    /// Call it first in the frame. True while anything moves: paint again
-    /// next frame even with nothing dirty.
+    /// Call it first in the frame. True when anything moved since the last
+    /// tick, the tick it lands included: paint again even with nothing
+    /// dirty.
     pub fn tick_at(&mut self, t: f64) -> bool {
         self.store.tick_at(t);
         let mut moving = false;
         let mut i = 0;
         while i < self.live.len() {
             let l = &mut self.live[i];
+            // What moved since the last tick moves this one, landing.
+            let was = l.tracks != 0 || l.playing;
             let n = node(l.id);
             let mut bits = l.tracks & !FRAME_BIT;
             while bits != 0 {
@@ -386,7 +391,7 @@ impl Motion {
             }
             let playing = self.present(i);
             let l = &self.live[i];
-            moving |= l.tracks != 0 || playing;
+            moving |= was || l.tracks != 0 || playing;
             if l.exiting && l.tracks == 0 {
                 self.exited.push(l.id);
                 self.drop_live(i);
@@ -539,6 +544,7 @@ impl Motion {
             frame: BoxLayout::ZERO,
             since: f64::NAN,
             posed: false,
+            playing: false,
             exiting: false,
         });
         self.live.len() - 1
@@ -629,6 +635,7 @@ impl Motion {
             l.posed = posed;
         }
         l.shown = s;
+        l.playing = playing;
         playing
     }
 }

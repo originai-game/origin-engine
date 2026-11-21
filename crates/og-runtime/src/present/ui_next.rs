@@ -446,10 +446,13 @@ impl Next {
 
     /// The UI's tick is ending: the tree is made again if a mount changed
     /// or the scheme did, then commits, lays out and paints.
+    /// `time` is the UI tick's end in seconds, unscaled, which motion
+    /// samples at; `now` times the spans only.
     pub(crate) fn end(
         &mut self,
         engine: u32,
         ui: &og_ui::Ui,
+        time: f64,
         now: &dyn Fn() -> f64,
     ) -> Vec<String> {
         let mut warnings = std::mem::take(&mut self.held);
@@ -493,6 +496,7 @@ impl Next {
         let v = ui.frame().viewport;
         let unit = ui.frame().unit.max(1.0);
         tree.resize(v.width * unit, v.height * unit);
+        tree.set_time(time, ui.theme().reduced_motion);
         let commit = tree.commit();
         // The pointer, in the units og-ui's input is in, on the tree's
         // surface: a press and a release over one element click it.

@@ -75,21 +75,44 @@ impl Fired {
     }
 }
 
-/// A class string and inline style to their record.
-pub type Resolve = Box<dyn Fn(&str, &str) -> Record>;
+/// A class string and inline style to their record under the given
+/// [`crate::classes::state`] bits: 0, or `STARTING` and `EXIT` for the
+/// records motion enters from and leaves to.
+pub type Resolve = Box<dyn Fn(&str, &str, u16) -> Record>;
+
+use crate::classes::state::{EXIT, STARTING};
 
 /// The records of the class and style pairs the op nodes use, each
-/// resolved once; an entry's key is `class\0style`.
+/// resolved once; an entry's key is `class\0style`. `presence` holds an
+/// entry's `starting:` and `exit:` records where they differ from its own.
 #[derive(Default)]
 pub struct Classes {
     index: FxHashMap<Box<str>, u32>,
     keys: Vec<Box<str>>,
     records: Vec<Record>,
+    presence: Vec<[Option<Box<Record>>; 2]>,
     buf: String,
     resolve: Option<Resolve>,
 }
 
+/// An entry's record, and its `starting:` and `exit:` ones where they
+/// differ from it.
+fn resolved(resolve: Option<&Resolve>, c: &str, s: &str) -> (Record, [Option<Box<Record>>; 2]) {
+    let Some(f) = resolve else {
+        return (Record::default(), [None, None]);
+    };
+    let base = f(c, s, 0);
+    let other = |state| Some(Box::new(f(c, s, state))).filter(|r| **r != base);
+    let presence = [other(STARTING), other(EXIT)];
+    (base, presence)
+}
+
 impl Classes {
+    /// Entry `i`'s `starting:` (0) or `exit:` (1) record.
+    pub(super) fn presence(&self, i: u32, k: usize) -> Option<&Record> {
+        self.presence[i as usize][k].as_deref()
+    }
+
     fn split(key: &str) -> (&str, &str) {
         key.split_once('\0').unwrap_or((key, ""))
     }
@@ -121,24 +144,19 @@ impl Classes {
             return i;
         }
         let (c, s) = Self::split(&self.buf);
-        let record = self
-            .resolve
-            .as_ref()
-            .map_or_else(Record::default, |f| f(c, s));
+        let (record, presence) = resolved(self.resolve.as_ref(), c, s);
         let i = self.keys.len() as u32;
         self.records.push(record);
+        self.presence.push(presence);
         self.keys.push(self.buf.as_str().into());
         self.index.insert(self.buf.as_str().into(), i);
         i
     }
 
     fn reresolve(&mut self) {
-        for (k, r) in self.keys.iter().zip(&mut self.records) {
+        for (i, k) in self.keys.iter().enumerate() {
             let (c, s) = Self::split(k);
-            *r = self
-                .resolve
-                .as_ref()
-                .map_or_else(Record::default, |f| f(c, s));
+            (self.records[i], self.presence[i]) = resolved(self.resolve.as_ref(), c, s);
         }
     }
 }
@@ -222,7 +240,10 @@ impl Tree {
         let class = self.els[e as usize].class;
         let record = &self.classes.records[class as usize];
         if self.els[e as usize].record != *record {
-            self.els[e as usize].record = record.clone();
+            // The new record's transition runs the change.
+            let old = std::mem::replace(&mut self.els[e as usize].record, record.clone());
+            let el = &self.els[e as usize];
+            self.motion.restyle(el.node, &old, &el.record);
             self.reapply(e);
             self.paint = true;
         }
@@ -276,19 +297,99 @@ impl Tree {
         Ok(e)
     }
 
-    /// Frees element `e` and every element under it.
+    /// Frees element `e` and every element under it. Inside an element on
+    /// its way out, it is freed when that exit settles; its id is free now.
     fn release(&mut self, e: u32) {
-        let el = &mut self.els[e as usize];
-        el.dead = true;
-        let (node, js) = (el.node, el.js);
-        self.arena.detach(node);
-        if let Some(slot) = self.by_js.get_mut(js as usize) {
+        if self.leaving_in(e) {
+            self.unbind(e);
+            match self.leaving.iter_mut().find(|l| l.0 == e) {
+                Some(l) => l.1 = true,
+                None => self.leaving.push((e, true)),
+            }
+            return;
+        }
+        self.free(e);
+    }
+
+    /// Whether `e` or an element it is in is on its way out.
+    fn leaving_in(&self, mut e: u32) -> bool {
+        while e != NONE {
+            if self.motion.exiting(self.els[e as usize].node) {
+                return true;
+            }
+            e = self.els[e as usize].parent;
+        }
+        false
+    }
+
+    /// The ids of `e` and what is under it go back to the renderer.
+    fn unbind(&mut self, e: u32) {
+        let js = self.els[e as usize].js;
+        if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
             *slot = NONE;
         }
         for c in 0..self.els.len() as u32 {
             let el = &self.els[c as usize];
             if el.parent == e && !el.dead {
-                self.release(c);
+                self.unbind(c);
+            }
+        }
+    }
+
+    /// Frees `e` and what is under it now.
+    fn free(&mut self, e: u32) {
+        let el = &mut self.els[e as usize];
+        el.dead = true;
+        let (node, js) = (el.node, el.js);
+        self.arena.detach(node);
+        self.motion.forget(node);
+        self.leaving.retain(|l| l.0 != e);
+        if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
+            *slot = NONE;
+        }
+        for c in 0..self.els.len() as u32 {
+            let el = &self.els[c as usize];
+            if el.parent == e && !el.dead {
+                self.free(c);
+            }
+        }
+    }
+
+    /// The exits that settled in this frame's motion tick: a removed
+    /// element leaves its parent, a released one is freed, and what was
+    /// released inside it goes with it.
+    pub(super) fn settle_exits(&mut self) {
+        let mut gone = std::mem::take(&mut self.gone);
+        gone.extend(self.motion.take_exited());
+        for &node in &gone {
+            let Some(k) = self
+                .leaving
+                .iter()
+                .position(|l| self.els[l.0 as usize].node == node)
+            else {
+                continue;
+            };
+            let (e, release) = self.leaving.swap_remove(k);
+            if release {
+                self.free(e);
+            } else {
+                self.arena.detach(node);
+                let el = &mut self.els[e as usize];
+                (el.parent, el.arena_parent) = (NONE, NONE);
+            }
+            self.ordered = false;
+            self.paint = true;
+        }
+        gone.clear();
+        self.gone = gone;
+        // What the renderer released inside an exit that ended.
+        let mut k = 0;
+        while k < self.leaving.len() {
+            let (e, release) = self.leaving[k];
+            if release && !self.motion.exiting(self.els[e as usize].node) && !self.leaving_in(e) {
+                self.free(e);
+            } else {
+                k += 1;
             }
         }
     }
@@ -388,14 +489,33 @@ impl Tree {
                         .attach(self.els[child as usize].node, pnode, before);
                     let el = &mut self.els[child as usize];
                     (el.parent, el.arena_parent) = (p, p);
+                    self.leaving.retain(|l| l.0 != child);
                     self.ordered = false;
                     self.paint = true;
                     self.reapply(child);
+                    // Into a parent already on screen it enters from its
+                    // `starting:` record; the first build appears as it is.
+                    let shown = match p {
+                        NONE => !self.abs.is_empty(),
+                        p => self.abs.get(p as usize).is_some_and(|a| a.2),
+                    };
+                    let el = &self.els[child as usize];
+                    let from = self.classes.presence(el.class, 0).filter(|_| shown);
+                    self.motion.enter(el.node, &el.record, from);
                 }
                 // remove
                 9 => {
                     let _parent = r.u32()?;
                     let child = self.op(r.u32()?)?;
+                    let el = &self.els[child as usize];
+                    // With an `exit:` record it stays drawn, not hit,
+                    // until its exit settles.
+                    let to = self.classes.presence(el.class, 1);
+                    if self.motion.exit(el.node, &el.record, to) {
+                        self.leaving.push((child, false));
+                        self.paint = true;
+                        continue;
+                    }
                     self.arena.detach(self.els[child as usize].node);
                     let el = &mut self.els[child as usize];
                     (el.parent, el.arena_parent) = (NONE, NONE);
@@ -500,7 +620,7 @@ mod tests {
         let mut t = Tree::new(look, []);
         t.resize(400.0, 300.0);
         // `row` lays its children in a row; `b` is 50 by 20.
-        t.set_resolver(Box::new(|class, _| {
+        t.set_resolver(Box::new(|class, _, _| {
             let mut s = taffy::Style::default();
             for c in class.split_whitespace() {
                 match c {
@@ -601,5 +721,107 @@ mod tests {
         b.op(1).u32(0).u8(0);
         assert!(t.apply(&b.bytes()).is_err(), "0 is the root's");
         assert!(t.apply(&[1, 0, 0, 0, 2, 7]).is_err(), "cut short");
+    }
+
+    /// A tree whose class `fade` is a red 50 by 20 box that fades over
+    /// 0.2 s, linearly, in from and out to transparent.
+    fn fading() -> Tree {
+        let mut t = tree();
+        t.set_resolver(Box::new(|class, _, state| {
+            let mut s = taffy::Style::default();
+            if class != "row" {
+                s.size = taffy::Size::from_lengths(50.0, 20.0);
+            }
+            let mut r = Record {
+                layout: rune_taffy::CompactStyle::from(&s),
+                ..Record::default()
+            };
+            r.skin.fill = [1.0, 0.0, 0.0, 1.0];
+            if class.contains("fade") {
+                r.motion = crate::motion::Spec {
+                    props: crate::motion::OPACITY,
+                    duration: 0.2,
+                    ease: crate::motion::Ease::Bezier([0.0, 0.0, 1.0, 1.0]),
+                    ..Default::default()
+                };
+                if state & (STARTING | EXIT) != 0 {
+                    r.skin.opacity = 0.0;
+                }
+            }
+            r
+        }));
+        t
+    }
+
+    /// The alpha of the solid quad at `x`, if one is drawn there.
+    fn alpha_at(t: &Tree, x: f32) -> Option<f32> {
+        t.drawn
+            .quads
+            .iter()
+            .find(|q| q.kind == PaintKind::Solid as u32 && q.rect[0] == x)
+            .map(|q| q.color[3])
+    }
+
+    /// The first build appears as it is; a node inserted later fades in
+    /// from its `starting:` record on the tick's time; a removed one stays
+    /// drawn and unhit while it fades to its `exit:` record, then leaves;
+    /// what was released inside it goes when it does.
+    #[test]
+    fn an_op_node_enters_from_starting_and_stays_drawn_until_its_exit_settles() {
+        let mut t = fading();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("row");
+        b.op(1).u32(2).u8(0);
+        b.op(4).u32(2).str("fade");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        t.set_time(1.0, false);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(
+            alpha_at(&t, 0.0),
+            Some(1.0),
+            "the first build does not fade in"
+        );
+        // A second node, inserted into a row on screen, fades in.
+        let mut b = Batch::default();
+        b.op(1).u32(3).u8(0);
+        b.op(4).u32(3).str("fade");
+        b.op(7).u32(3).u8(Event::Press as u8).u8(1);
+        b.op(1).u32(4).u8(0); // a child of 3
+        b.op(8).u32(3).u32(4).u32(u32::MAX);
+        b.op(8).u32(1).u32(3).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.05, false);
+        frame(&mut t);
+        let a = alpha_at(&t, 50.0).unwrap();
+        assert!((a - 0.25).abs() < 0.01, "a quarter in after 0.05 s: {a}");
+        t.set_time(1.3, false);
+        frame(&mut t);
+        assert_eq!(alpha_at(&t, 50.0), Some(1.0));
+        // Removed: it fades out where it was and takes no press.
+        let mut b = Batch::default();
+        b.op(9).u32(1).u32(3);
+        b.op(10).u32(4); // released inside it: kept until it goes
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.4, false);
+        frame(&mut t);
+        let a = alpha_at(&t, 50.0).unwrap();
+        assert!((a - 0.5).abs() < 0.01, "half out after 0.1 s: {a}");
+        assert!(t.op(4).is_err(), "a released id is free at once");
+        let mut out = Vec::new();
+        t.pointer(75.0, 10.0, true, false, &mut out);
+        t.pointer(75.0, 10.0, false, true, &mut out);
+        assert!(t.events.is_empty(), "an exiting node answers nothing");
+        t.set_time(1.7, false);
+        frame(&mut t);
+        assert_eq!(alpha_at(&t, 50.0), None, "out once its exit settled");
+        assert_eq!(t.op_box(3), None);
+        assert!(t.leaving.is_empty() && t.els.iter().filter(|e| e.js == 4).all(|e| e.dead));
+        // Nothing moves: the next frame paints nothing.
+        t.set_time(1.8, false);
+        let (_, painted) = t.present(&og_ui::Fonts::default(), &IconAtlas::default());
+        assert!(!painted);
     }
 }

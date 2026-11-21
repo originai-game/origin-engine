@@ -220,6 +220,26 @@ pub struct Tree {
     by_js: Vec<u32>,
     classes: ops::Classes,
     pub events: Vec<ops::Fired>,
+    /// What moves, keyed by arena node ([`crate::motion`]), at the UI
+    /// tick's `time`; `shown` is what each element passes down this frame
+    /// as motion shows it ([`Shown`]).
+    motion: crate::motion::Motion,
+    time: f64,
+    shown: Vec<Shown>,
+    /// Op nodes kept drawn while their exit runs: removed (false) or
+    /// released too (true); `gone` is the settled exits' scratch list.
+    leaving: Vec<(u32, bool)>,
+    gone: Vec<Id>,
+}
+
+/// What an element passes down in a frame, as motion shows it: its
+/// opacity times its parent's, its ink (its own, else its parent's), and
+/// whether it is in an exit, which nothing hits.
+#[derive(Clone, Copy)]
+struct Shown {
+    alpha: f32,
+    ink: Rgba,
+    out: bool,
 }
 
 /// An element's text as glyph quads (from its leaf's top left; colour and
@@ -388,6 +408,11 @@ impl Tree {
             by_js: Vec::new(),
             classes: ops::Classes::default(),
             events: Vec::new(),
+            motion: crate::motion::Motion::new(),
+            time: 0.0,
+            shown: Vec::new(),
+            leaving: Vec::new(),
+            gone: Vec::new(),
         }
     }
 
@@ -994,9 +1019,20 @@ impl Tree {
         out
     }
 
-    /// Lays out what is dirty and paints again when anything changed:
-    /// whether it laid out, and whether it painted.
+    /// The UI tick's time in seconds (unscaled: a paused game's menus
+    /// still move) and the player's reduced-motion setting, which the next
+    /// [`Tree::present`] samples motion at. Never a wall clock.
+    pub fn set_time(&mut self, t: f64, reduced_motion: bool) {
+        self.time = t;
+        self.motion.set_reduced_motion(reduced_motion);
+    }
+
+    /// Samples motion at the tick's time, lays out what is dirty and paints
+    /// again when anything changed or moves: whether it laid out, and
+    /// whether it painted.
     pub fn present(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) -> (bool, bool) {
+        let moving = self.motion.tick_at(self.time);
+        self.settle_exits();
         let (w, h) = self.env.size.get();
         let m = &fonts.body.metrics;
         let laid_out = self.arena.layout(w, h, &mut |t, run, width| {
@@ -1010,7 +1046,10 @@ impl Tree {
                 crate::text::measure(m, t, run, width)
             });
         }
-        let painted = laid_out || self.paint;
+        // A box that moved slides there when it transitions its layout.
+        let arena = &self.arena;
+        self.motion.relayout(|n| arena.box_of(n));
+        let painted = laid_out || self.paint || moving;
         if painted {
             self.repaint(fonts, icons);
             self.paint = false;
@@ -1132,25 +1171,65 @@ impl Tree {
         self.order();
         self.abs.clear();
         self.abs.resize(self.els.len(), (0.0, 0.0, false, [0.0; 4]));
+        self.shown.clear();
+        let top = Shown {
+            alpha: 1.0,
+            ink: self.root.ink,
+            out: false,
+        };
+        // NaN: not reached yet this frame.
+        let unseen = Shown {
+            alpha: f32::NAN,
+            ..top
+        };
+        self.shown.resize(self.els.len(), unseen);
         self.glyphs.resize_with(self.els.len(), Glyphs::default);
         self.xfs.resize(self.els.len(), 0);
         let m = &fonts.body.metrics;
         for k in 0..self.order.len() {
             let e = self.order[k] as usize;
             let el = &self.els[e];
-            let b = self.arena.box_of(el.node);
+            // What motion shows: the box a layout transition slides, the
+            // skin a transition or keyframes move.
+            let b = self
+                .motion
+                .box_of(el.node)
+                .unwrap_or_else(|| self.arena.box_of(el.node));
             let (px, py, pv, pclip) = if el.arena_parent == NONE {
                 (0.0, 0.0, true, screen)
             } else {
                 self.abs[el.arena_parent as usize]
             };
+            // What it inherits comes from the element it inherits from,
+            // which a fixed one is not the arena child of: one not reached
+            // yet gives what its record folds to.
+            let from = match el.parent {
+                NONE => top,
+                p if !self.shown[p as usize].alpha.is_nan() => self.shown[p as usize],
+                p => {
+                    let eff = &self.els[p as usize].eff;
+                    Shown {
+                        alpha: eff.opacity,
+                        ink: eff.ink,
+                        out: false,
+                    }
+                }
+            };
             // `display: none` leaves a zero box at its parent's corner:
             // nothing of it or under it paints.
             let r = &el.record;
+            let s = self.motion.skin(el.node, &r.skin);
+            let alpha = from.alpha * s.opacity;
+            let own_ink = if r.inked { s.ink } else { from.ink };
+            self.shown[e] = Shown {
+                alpha,
+                ink: own_ink,
+                out: from.out || self.motion.exiting(el.node),
+            };
             let visible = pv
                 && !el.dead
                 && el.hidden == 0
-                && el.eff.opacity > 0.0
+                && alpha > 0.0
                 && r.layout.display() != taffy::Display::None;
             let (x, y) = (px + b.x, py + b.y);
             let clip = pclip;
@@ -1178,11 +1257,9 @@ impl Tree {
             }
             let p = &mut self.drawn;
             let start = p.quads.len();
-            let xf = transformed(p, pxf, &r.skin.transform, [x, y, b.w, b.h]);
+            let xf = transformed(p, pxf, &s.transform, [x, y, b.w, b.h]);
             self.xfs[e] = xf;
-            let alpha = el.eff.opacity;
             let rect = [x, y, b.w, b.h];
-            let s = &r.skin;
             let radius = radii(s.radius, b.w, b.h);
             let faded = |mut c: Rgba| {
                 c[3] *= alpha;
@@ -1285,7 +1362,7 @@ impl Tree {
                     0,
                 ));
             }
-            let mut ink = el.eff.ink;
+            let mut ink = own_ink;
             ink[3] *= alpha;
             if el.kind == Kind::Icon && !el.text.is_empty() {
                 let size = b.w.min(b.h).max(1.0);
@@ -1338,7 +1415,7 @@ impl Tree {
                 let g = &mut self.glyphs[e];
                 lay_out(g, &el.text, &el.eff, lb.w, m);
                 let (lx, ly) = (x + lb.x, y + lb.y);
-                let sh = r.skin.text_shadow;
+                let sh = s.text_shadow;
                 if sh.color[3] > 0.0 {
                     let mut c = sh.color;
                     c[3] *= alpha;
@@ -1362,13 +1439,9 @@ impl Tree {
                     color: ink,
                     ..*q
                 }));
-                let d = r.skin.decoration;
+                let d = s.decoration;
                 if d.line != 0 {
-                    let mut c = if d.color[3] > 0.0 {
-                        d.color
-                    } else {
-                        el.eff.ink
-                    };
+                    let mut c = if d.color[3] > 0.0 { d.color } else { own_ink };
                     c[3] *= alpha;
                     let size = el.eff.size;
                     let th = if d.thickness > 0.0 {
@@ -1429,7 +1502,8 @@ impl Tree {
     fn hit(&self, x: f32, y: f32) -> u32 {
         for &e in self.order.iter().rev() {
             let (e, el) = (e as usize, &self.els[e as usize]);
-            if el.dead || !el.clickable {
+            // An element on its way out, or in one, answers nothing.
+            if el.dead || !el.clickable || self.shown.get(e).is_some_and(|s| s.out) {
                 continue;
             }
             let Some(&(bx, by, shown, _)) = self.abs.get(e) else {
@@ -1440,7 +1514,10 @@ impl Tree {
                 NONE => all,
                 p => self.abs.get(p as usize).map_or(all, |a| a.3),
             };
-            let b = self.arena.box_of(el.node);
+            let b = self
+                .motion
+                .box_of(el.node)
+                .unwrap_or_else(|| self.arena.box_of(el.node));
             let inside = x >= bx.max(cx0)
                 && x < (bx + b.w).min(cx1)
                 && y >= by.max(cy0)

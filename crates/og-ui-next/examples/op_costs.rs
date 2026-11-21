@@ -81,7 +81,7 @@ fn tree() -> Tree {
     ));
     let mut t = Tree::new(look, []);
     t.resize(1280.0, 720.0);
-    t.set_resolver(Box::new(|class, _| {
+    t.set_resolver(Box::new(|class, _, _| {
         let mut s = taffy::Style::default();
         for c in class.split_whitespace() {
             if c == "row" {
