@@ -173,8 +173,6 @@ mod tilemap_runtime;
 mod time_groups;
 #[path = "../timeline.rs"]
 mod timeline;
-#[path = "../timeline_captions.rs"]
-mod timeline_captions;
 #[path = "../timeline_sound.rs"]
 mod timeline_sound;
 #[path = "../timeline_tracks.rs"]

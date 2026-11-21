@@ -29,9 +29,7 @@ use og_core::glam::Vec3;
 use og_draw::{Overlay, UiMassInstance, UiMassKind, UiMassSpace, UiMassTemplate};
 use og_ui::*;
 use serde_json::{Value, json};
-use std::path::PathBuf;
 
-const BUDGET_MS: f64 = 0.5;
 const WARM: u32 = 30;
 const TICKS: u32 = 240;
 
@@ -191,19 +189,6 @@ fn perf_dense_menu_300_elements_40_animating() {
     );
 }
 
-/// The dense menu with its 49 stock bars drawn by the progress control
-/// document (docs/ui.md §2.4) instead of og-ui's fallback: what a control
-/// document costs on the budget's own screen. It reports and holds no
-/// budget until the controls have all moved.
-#[test]
-#[ignore = "perf lane: run in release with --ignored"]
-fn perf_dense_menu_with_control_documents() {
-    release_only();
-    let (m, animating) = dense_menu(&["progress"]);
-    assert!(animating >= 40, "{animating} animating");
-    assert!(m.elements >= 300 + 2 * 49, "{} elements", m.elements);
-}
-
 /// The dense menu's measurement and how many of its elements are in
 /// motion, with the control documents `controls` defined.
 fn dense_menu(controls: &[&str]) -> (Measured, usize) {
@@ -260,73 +245,6 @@ fn dense_menu(controls: &[&str]) -> (Measured, usize) {
         m.commands
     );
     (m, animating)
-}
-
-/// Every core screen document, as `(asset id, text)`.
-fn screens() -> Vec<(String, String)> {
-    let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut out = Vec::new();
-    for f in std::fs::read_dir(repo.join("packages/engine/src/ui/screens")).unwrap() {
-        let p = f.unwrap().path();
-        if p.extension().is_some_and(|e| e == "svelte") {
-            let text = std::fs::read_to_string(&p).unwrap();
-            let stem = p.file_stem().unwrap().to_str().unwrap();
-            out.push((format!("ui/{stem}.svelte"), text));
-        }
-    }
-    out.sort();
-    out
-}
-
-#[test]
-#[ignore = "perf: run on the reference machines in release"]
-fn perf_every_library_and_kit_screen() {
-    release_only();
-    let mut rows = Vec::new();
-    // The built-in components, for a screen that mounts one (a film's
-    // flowchart its NodeGraph).
-    let (components, _) = engine_documents(&["src/ui/components"]);
-    for (id, text) in screens() {
-        let doc = UiDocument::parse(&id, &text).unwrap_or_else(|e| panic!("{}", e.join("\n")));
-        // A component is measured where a screen mounts it; only a screen
-        // is pushed.
-        if doc.kind != og_ui::doc::DocKind::Screen {
-            continue;
-        }
-        let name = doc.name.clone();
-        let vm = doc
-            .fixtures
-            .iter()
-            .find(|(n, _)| n == "default")
-            .map(|(_, v)| v.clone())
-            .unwrap_or_default();
-        let mut ui = ui_with_font(test_font_metrics());
-        for component in &components {
-            ui.define_document(component.doc.clone());
-        }
-        ui.define_document(doc);
-        ui.push_screen(&name, vm).unwrap();
-        let m = measure(&mut ui, |_, _| {});
-        rows.push((id, m));
-    }
-    rows.sort_by(|a, b| b.1.median.total_cmp(&a.1.median));
-    for (id, m) in &rows {
-        println!(
-            "perf ui screen {id}: median {:.3} ms, p95 {:.3} ms a tick (build {:.3}, end {:.3}, record {:.3}); {} elements, {} commands",
-            m.median, m.p95, m.parts[0], m.parts[1], m.parts[2], m.elements, m.commands
-        );
-    }
-    let fullest = rows.iter().max_by_key(|(_, m)| m.elements).unwrap();
-    println!(
-        "perf ui fullest screen: {} ({} elements, median {:.3} ms)",
-        fullest.0, fullest.1.elements, fullest.1.median
-    );
-    let over: Vec<String> = rows
-        .iter()
-        .filter(|(_, m)| m.median > BUDGET_MS)
-        .map(|(id, m)| format!("{id} {:.3} ms", m.median))
-        .collect();
-    assert!(over.is_empty(), "over {BUDGET_MS} ms a tick: {over:?}");
 }
 
 /// An inventory table in a scroller (every row built, as a table of plain

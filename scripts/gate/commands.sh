@@ -17,8 +17,24 @@ gate_excluded_note() {
   [ -z "$ex" ] || og_say "excluded (scripts/gate-exclude.txt): $ex"
 }
 
+# UI is TSX: no .svelte document is tracked but these, which old og-ui's own
+# tests and the inspector's panel read until their heads remove them. The
+# list only shrinks.
+SVELTE_ALLOWED='crates/og-runtime/src/author/inspector/panel.svelte
+crates/og-tests-ui/tests/fixtures/core-screens/creator-tools.svelte
+crates/og-tests-ui/tests/fixtures/core-screens/hud-editor.svelte
+crates/og-tests-ui/tests/fixtures/core-screens/settings.svelte
+crates/og-ui-fuzz/regressions/document/stylesheet-multibyte-in-rule.svelte'
+
+check_no_svelte() {
+  local found
+  found="$(git ls-files '*.svelte' | grep -vxF "$SVELTE_ALLOWED" || true)"
+  [ -z "$found" ] || { og_err "tracked .svelte documents (UI is TSX):"$'\n'"$found"; return 1; }
+}
+
 step_fmt() {
   local pk
+  check_no_svelte || return 1
   pk="$(gate_packages)" || return 1
   gate_excluded_note
   # shellcheck disable=SC2086

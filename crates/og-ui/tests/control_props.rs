@@ -2879,59 +2879,6 @@ fn typewriter_reveals_under_a_text_transform() {
     );
 }
 
-/// The settings screen's tree from data: pages as tabs, each entry's
-/// control writing its row's value back, Apply and Revert only while
-/// changes are pending.
-///
-/// Ways it could fail: every page's entries shown at once, a tab that does
-/// not switch the page, a control writing to the wrong row, or Apply taking
-/// a press with nothing pending.
-#[test]
-fn the_settings_tree_is_data() {
-    let text = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../packages/engine/src/ui/screens/settings.svelte"),
-    )
-    .unwrap()
-    .replace("<meta name=\"strings\" content=\"./settings.en.ogt\">", "");
-    let stores = [
-        ("note", json!("")),
-        (
-            "pages",
-            json!([{"id":"audio","name":"Audio"},{"id":"video","name":"Video"}]),
-        ),
-        (
-            "entries",
-            json!([
-                {"id":"music","page":"audio","name":"Music","kind":"range","value":0.5,"min":0,"max":1,"step":0.1},
-                {"id":"subs","page":"audio","name":"Subtitles","kind":"toggle","value":false},
-                {"id":"quality","page":"video","name":"Quality","kind":"select","value":"Low","options":["Low","High"]}
-            ]),
-        ),
-        ("page", json!("audio")),
-        ("pending", json!(false)),
-    ];
-    let d = &mut Doc::new(&text, &stores);
-    for _ in 0..5 {
-        d.step(InputFrame::default());
-    }
-    assert!(
-        d.el("Toggle").is_some() && d.el("Choice").is_none(),
-        "one page shown"
-    );
-    d.click("Toggle/Track");
-    let row = |d: &mut Doc, k: usize| d.read("entries")[k]["value"].clone();
-    assert_eq!(row(d, 1), json!(true));
-    assert_eq!(row(d, 0), json!(0.5), "its own row");
-    let events = d.click("Apply");
-    assert!(!events.iter().any(|e| e.name == "apply"), "nothing pending");
-    d.set("page", json!("video"));
-    assert_eq!(d.read("page"), json!("video"));
-    assert!(d.el("Choice").is_some() && d.el("Toggle").is_none());
-    d.click("Choice/Next");
-    assert_eq!(row(d, 2), json!("High"));
-}
-
 /// Rows a store hides and shows inside an unmarked list: the rows'
 /// `{#if}` content changes in the same refresh that removes their `<li>`.
 ///
@@ -2962,63 +2909,6 @@ fn rows_leaving_with_their_changed_children_restyle_cleanly() {
             .map(|e| e.text)
             .collect();
     assert_eq!(shown, ["B"]);
-}
-
-/// Every component document the engine ships in place of a TS builder
-/// (B-port) builds from its default fixture, mounted with the fixture's
-/// values as its stores, and its keyed lists show their rows.
-///
-/// Ways it could fail: a document that no longer parses after a tag or CSS
-/// change, a fixture list that builds no rows (a nested `{#each}` a retained
-/// build cannot read).
-#[test]
-fn shipped_component_documents_build_from_their_fixtures() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../packages/engine/src/ui/screens");
-    // Each document, and a text from its fixture's list it must show.
-    for (name, row) in [
-        ("card", "Ember Blade"),
-        ("confirm", "Keep playing"),
-        ("pagination", "9"),
-        ("data-list", "Silk"),
-        ("key-values", "Defence"),
-        ("calendar", "2"),
-        ("tree", "Camera"),
-        ("table", "Gulls"),
-        ("objective-tracker", "Light the lamps 2/5"),
-        ("star-rating", ""),
-        ("banner", "Level up!"),
-        ("subtitles", "Keeper"),
-        ("notifications", "First blood"),
-    ] {
-        let text = std::fs::read_to_string(root.join(format!("{name}.svelte"))).unwrap();
-        let doc = UiDocument::parse(name, &text).unwrap_or_else(|e| panic!("{name}: {e:?}"));
-        let fixture = doc
-            .fixtures
-            .iter()
-            .find(|(n, _)| n == "default")
-            .map(|(_, v)| v.clone())
-            .unwrap_or_else(|| panic!("{name}: no default fixture"));
-        let stores: Vec<(String, Value)> = fixture
-            .as_object()
-            .unwrap()
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
-        let stores: Vec<(&str, Value)> = stores
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.clone()))
-            .collect();
-        with_doc(&text, &stores, |d| {
-            let elements = d.ui.probe_elements();
-            let shown = if row.is_empty() {
-                elements.iter().filter(|e| e.kind == "icon").count() == 3
-            } else {
-                elements.iter().any(|e| e.text.contains(row))
-            };
-            assert!(shown, "{name}: no {row}");
-        });
-    }
 }
 
 /// A search box draws HTML's clear button while it has text, and a press on

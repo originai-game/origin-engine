@@ -883,7 +883,7 @@ fn collect_files(dir: &Path, extension: &str, out: &mut Vec<std::path::PathBuf>)
 
 #[cfg(test)]
 mod tests {
-    use super::{LIBRARY_DIRS, declared_screens, eject_from, lib_screens};
+    use super::{LIBRARY_DIRS, declared_screens, eject_from};
     use std::path::{Path, PathBuf};
 
     /// The checkout's library (what the engine package ships).
@@ -906,104 +906,6 @@ mod tests {
         )
         .unwrap();
         dir
-    }
-
-    #[test]
-    fn eject_copies_the_library_document_into_assets_ui() {
-        let dir = game("copies");
-        let got = eject_from(&library(), "pause", &dir, false).unwrap();
-        assert_eq!(got, dir.join("assets/ui/pause.svelte"));
-        assert_eq!(
-            std::fs::read(&got).unwrap(),
-            std::fs::read(library()[0].join("pause.svelte")).unwrap()
-        );
-        assert_eq!(
-            std::fs::read(dir.join("assets/ui/pause.en.ogt")).unwrap(),
-            std::fs::read(library()[0].join("pause.en.ogt")).unwrap()
-        );
-        // A component keeps its folder, beside its own strings.
-        let got = eject_from(&library(), "hud/ability-bar", &dir, false).unwrap();
-        assert_eq!(got, dir.join("assets/ui/hud/ability-bar.svelte"));
-        assert_eq!(
-            std::fs::read(&got).unwrap(),
-            std::fs::read(library()[1].join("hud/ability-bar.svelte")).unwrap()
-        );
-        assert!(dir.join("assets/ui/hud/ability-bar.en.ogt").is_file());
-        // A genre kit's document sits beside its kit's strings.
-        let got = eject_from(&library(), "rpg/character", &dir, false).unwrap();
-        assert_eq!(got, dir.join("assets/ui/rpg/character.svelte"));
-        assert!(dir.join("assets/ui/rpg/rpg.en.ogt").is_file());
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-
-    #[test]
-    fn eject_refuses_to_overwrite_without_force() {
-        let dir = game("refuses");
-        let target = dir.join("assets/ui/pause.svelte");
-        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
-        std::fs::write(&target, "the game's own").unwrap();
-        let e = eject_from(&library(), "pause", &dir, false).unwrap_err();
-        assert!(e.contains("already exists") && e.contains("--force"), "{e}");
-        assert_eq!(std::fs::read_to_string(&target).unwrap(), "the game's own");
-        eject_from(&library(), "pause", &dir, true).unwrap();
-        assert_eq!(
-            std::fs::read(&target).unwrap(),
-            std::fs::read(library()[0].join("pause.svelte")).unwrap()
-        );
-        std::fs::remove_file(&target).unwrap();
-        std::fs::write(dir.join("assets/ui/pause.en.ogt"), "edited messages").unwrap();
-        assert!(eject_from(&library(), "pause", &dir, false).is_err());
-        assert!(
-            !target.exists(),
-            "a companion collision must not partially eject a screen"
-        );
-        assert_eq!(
-            std::fs::read_to_string(dir.join("assets/ui/pause.en.ogt")).unwrap(),
-            "edited messages"
-        );
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-
-    #[test]
-    fn eject_list_names_every_document_with_its_appendix_b_row() {
-        let screens = lib_screens(&library()).unwrap();
-        // A group's documents (`rpg/backpack`) are named by their path.
-        let mut files: Vec<String> = Vec::new();
-        for dir in library() {
-            let mut found = Vec::new();
-            super::collect_files(&dir, "svelte", &mut found);
-            // `src/ui` names what no directory inside it does: the controls.
-            found.retain(|f| {
-                !library()
-                    .iter()
-                    .any(|d| *d != dir && d.starts_with(&dir) && f.starts_with(d))
-            });
-            files.extend(found.iter().map(|f| {
-                f.strip_prefix(&dir)
-                    .unwrap()
-                    .with_extension("")
-                    .to_string_lossy()
-                    .replace('\\', "/")
-            }));
-        }
-        files.sort();
-        let mut names: Vec<String> = screens.iter().map(|s| s.name.clone()).collect();
-        names.sort();
-        assert_eq!(names, files);
-        let pause = screens.iter().find(|s| s.name == "pause").unwrap();
-        assert_eq!(pause.row, "Pause and system menu");
-        let rows = |row: &str| -> Vec<&str> {
-            screens
-                .iter()
-                .filter(|s| s.row == row)
-                .map(|s| s.name.as_str())
-                .collect()
-        };
-        assert_eq!(rows("Save and load with thumbnails"), ["save-load"]);
-        assert_eq!(
-            rows("Boot, splash, title, main menu, mode select"),
-            ["splash", "title", "main-menu", "mode-select"]
-        );
     }
 
     #[test]

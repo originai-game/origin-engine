@@ -121,17 +121,12 @@ string "icu.quoted" "'{value}' {value}"
             );
             write(&format!("ui/{}.svelte", name.to_lowercase()), text.as_bytes());
         }
-        // The game's code names a built-in screen by its id, which bundles it.
         std::fs::write(
             root.join("project.ogt"),
             "type project\nversion 1\n---\nname \"ui configure\"\nid \"ui-configure\"\nentry \"main.ts\"\n",
         )
         .unwrap();
-        std::fs::write(
-            root.join("main.ts"),
-            "export const PAUSE = \"@ui/screens/pause.svelte\";\n",
-        )
-        .unwrap();
+        std::fs::write(root.join("main.ts"), "export {};\n").unwrap();
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -413,82 +408,6 @@ fn shape_outside_images_take_their_contour_from_cooked_alpha() {
     // float's 80px width, not after its box.
     assert_eq!(x("A") - x("Root"), 40.0);
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-}
-
-/// A screen that uses a built-in component mounts it with only its own
-/// load: the game never loads `@ui/components/hud/stat-bar.svelte`. Ways it could fail:
-/// the component undefined (the frame warns "no component 'StatBar'" and
-/// draws nothing in its place).
-#[test]
-fn a_screen_mounts_the_built_in_components_it_uses() {
-    let e = engine();
-    value(og_runtime::host_impl::answer(og_runtime::og_load_document(
-        e,
-        "ui/vitals.svelte".into(),
-    )));
-    value(og_runtime::host_impl::answer(og_runtime::og_ui_push(
-        e,
-        "Vitals".into(),
-        None,
-    )));
-    og_runtime::og_engine_frame(e, 1000.0 / 60.0);
-    let ui = og_runtime::shared_ui(e).unwrap();
-    let ui = ui.lock();
-    let elements = ui.probe_elements();
-    assert!(
-        elements.iter().any(|el| el.id == "Track"),
-        "{:?}",
-        elements.iter().map(|el| &el.id).collect::<Vec<_>>()
-    );
-    assert!(
-        ui.frame()
-            .warnings
-            .iter()
-            .all(|w| !w.contains("no component")),
-        "{:?}",
-        ui.frame().warnings
-    );
-    drop(ui);
-    assert!(og_runtime::og_engine_destroy(e));
-}
-
-/// A built-in screen mounts by its id without a copy: the game's code
-/// names `@ui/screens/pause.svelte`, so the cook bundles it with its
-/// strings, and the game loads and pushes it as it does its own. Ways it
-/// could fail: the screen not bundled (the load fails), or its strings
-/// not (its buttons show their keys).
-#[test]
-fn a_built_in_screen_mounts_without_a_copy() {
-    let e = engine();
-    value(og_runtime::host_impl::answer(og_runtime::og_load_document(
-        e,
-        "@ui/screens/pause.svelte".into(),
-    )));
-    value(og_runtime::host_impl::answer(og_runtime::og_ui_push(
-        e,
-        "pause".into(),
-        None,
-    )));
-    og_runtime::og_engine_frame(e, 1000.0 / 60.0);
-    let ui = og_runtime::shared_ui(e).unwrap();
-    let ui = ui.lock();
-    let elements = ui.probe_elements();
-    let resume = elements
-        .iter()
-        .find(|el| el.id == "Resume")
-        .unwrap_or_else(|| panic!("{:?}", elements.iter().map(|el| &el.id).collect::<Vec<_>>()));
-    // The entry's words are a label inside the button, which the player
-    // reads; a missing string would show its key there.
-    let inside = format!("{}/", resume.path);
-    let words: Vec<_> = elements
-        .iter()
-        .filter(|el| el.path.starts_with(&inside) && !el.text.is_empty())
-        .map(|el| el.text.as_str())
-        .collect();
-    assert!(words.contains(&"Resume"), "{words:?}");
-    assert!(words.iter().all(|w| !w.starts_with("screen.")), "{words:?}");
-    drop(ui);
-    assert!(og_runtime::og_engine_destroy(e));
 }
 
 #[test]

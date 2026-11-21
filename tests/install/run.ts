@@ -369,13 +369,12 @@ function host(): void {
       writeFileSync(
         join(styledGame, "src", "main.ts"),
         `import { og } from "@origingame/engine";
+import { mount } from "@origingame/engine/ui";
+import { PauseScreen, fixtures } from "@origingame/engine/ui/screens/pause.tsx";
 
 export default og.game({
-  start(world) {
-    const doc = og.load.document(world, "@ui/screens/pause.svelte");
-    if (!doc.ok) throw new Error(doc.reason);
-    const shown = og.ui.push(world, "pause");
-    if (!shown.ok) throw new Error(shown.reason);
+  ui(world) {
+    mount(world, () => PauseScreen({ ...fixtures.default }), {}, { layer: "menu" });
   },
 });
 `,

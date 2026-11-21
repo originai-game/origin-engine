@@ -1,8 +1,6 @@
 //! CSS directories are the authoring format; no manifest or generated atlas.
 use std::process::ExitCode;
 
-#[cfg(test)]
-mod builtin;
 mod generate;
 #[cfg(test)]
 mod literals;
