@@ -17,6 +17,7 @@
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { testTempDir } from "../support/temp";
+import { webGpuSwitches } from "../../src/node/device.ts";
 
 declare module "node:fs" {
   export function mkdtempSync(prefix: string): string;
@@ -148,7 +149,7 @@ export class Browser {
           "--lang=en-US", "--accept-lang=en-US",
           `--window-size=${o.width ?? 1280},${o.height ?? 720}`, "--hide-scrollbars",
           ...(process.platform === "darwin" ? ["--use-angle=metal"] : []),
-          ...(o.webgpu === false ? [] : ["--enable-unsafe-webgpu", "--enable-features=WebGPU"]),
+          ...(o.webgpu === false ? [] : ["--enable-unsafe-webgpu", ...webGpuSwitches()]),
           "--ignore-gpu-blocklist", "--disable-gpu-vsync",
           "--autoplay-policy=user-gesture-required", "--remote-debugging-port=0",
           ...(o.flags ?? []),
@@ -173,12 +174,7 @@ export class Browser {
         ws.addEventListener("open", () => resolve());
         ws.addEventListener("error", () => reject(new Error("cannot connect to Chrome's DevTools socket")));
       });
-      const browser = new Browser(ws, proc, profile);
-      // Linux Chrome can expose DevTools before its GPU initialization finishes:
-      // an immediate requestAdapter then loses its native instance. Ask Chrome
-      // to finish collecting GPU info before any test opens a WebGPU page.
-      if (process.platform === "linux" && o.webgpu !== false) await browser.send("SystemInfo.getInfo");
-      return browser;
+      return new Browser(ws, proc, profile);
     } catch (error) {
       if (proc) { proc.kill(); await proc.exited; }
       rmSync(profile, { recursive: true, force: true });

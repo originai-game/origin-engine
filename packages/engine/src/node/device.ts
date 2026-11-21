@@ -431,6 +431,25 @@ function findChrome(): string {
   return refuse("no Chrome found: install Google Chrome, or pass --chrome <path> (or set CHROME)");
 }
 
+/**
+ * The switches that turn WebGPU on in a launched Chrome (this run's, and the
+ * engine's web test harness, tests/web/cdp.ts). A Linux host without a GPU
+ * (no /dev/dri, no /dev/nvidia0) runs WebGPU on SwiftShader's Vulkan while
+ * Chrome composites with ANGLE on GL, and no shared image serves both for a
+ * WebGPU canvas: the first present fails in the GPU process ("Could not find
+ * SharedImageBackingFactory ... WebgpuSwapChainTexture"), Chrome destroys
+ * the device and drops the page's WebGPU instance, so the next device is lost
+ * at once ("A valid external Instance reference no longer exists") and
+ * requestAdapter answers null. There ANGLE and the compositor run on
+ * SwiftShader's Vulkan too, sharing its images with WebGPU (the system
+ * Vulkan driver, such as lavapipe, would be another device). Chrome reads one
+ * --enable-features, so the features are joined.
+ */
+export function webGpuSwitches(platform = process.platform, gpu = existsSync("/dev/dri") || existsSync("/dev/nvidia0")): string[] {
+  if (platform === "linux" && !gpu) return ["--use-angle=vulkan", "--use-vulkan=swiftshader", "--enable-features=WebGPU,Vulkan"];
+  return ["--enable-features=WebGPU"];
+}
+
 async function launchChrome(width: number, height: number): Promise<Driver> {
   const chrome = findChrome();
   const profile = mkdtempSync(join(tmpdir(), "og-device-"));
@@ -454,7 +473,7 @@ async function launchChrome(width: number, height: number): Promise<Driver> {
       "--hide-scrollbars",
       ...(process.platform === "darwin" ? ["--use-angle=metal"] : []),
       "--enable-unsafe-webgpu",
-      "--enable-features=WebGPU",
+      ...webGpuSwitches(),
       "--ignore-gpu-blocklist",
       "--enable-unsafe-swiftshader",
       "--autoplay-policy=user-gesture-required",

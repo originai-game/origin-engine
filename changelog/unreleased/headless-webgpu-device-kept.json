@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og run --device chrome",
+      "summary": "On a Linux host without a GPU, the headless Chrome it starts keeps its WebGPU device. Chrome composited the canvas with ANGLE on GL while WebGPU ran on SwiftShader's Vulkan, could not share the canvas's swap-chain image between them at the first present, destroyed the device and then refused the page any adapter (\"A valid external Instance reference no longer exists\"), so every frame after the first drew nothing. It now starts Chrome with ANGLE on Vulkan over SwiftShader (`--use-angle=vulkan --use-vulkan=swiftshader --enable-features=WebGPU,Vulkan`); a host with a GPU keeps `--enable-features=WebGPU`."
+    }
+  ]
+}
