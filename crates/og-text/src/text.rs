@@ -562,10 +562,19 @@ impl FontMetrics {
     /// choice is per grapheme cluster ([`og_i18n::graphemes`]), so a base
     /// letter and its marks stay in one run.
     pub fn font_runs(&self, text: &str) -> Vec<(Range<usize>, usize)> {
+        let mut out = Vec::new();
+        self.font_runs_into(text, &mut out);
+        out
+    }
+
+    /// [`Self::font_runs`] written into `out`, its capacity kept: a
+    /// single font's text allocates nothing.
+    pub fn font_runs_into(&self, text: &str, out: &mut Vec<(Range<usize>, usize)>) {
+        out.clear();
         if self.runs.is_none() {
-            return vec![(0..text.len(), 0)];
+            out.push((0..text.len(), 0));
+            return;
         }
-        let mut out: Vec<(Range<usize>, usize)> = Vec::new();
         // Neutral characters before the first letter go with its font.
         let mut prev = text
             .chars()
@@ -586,7 +595,6 @@ impl FontMetrics {
             }
             prev = Some(k);
         }
-        out
     }
 
     /// The ascender and descender (em) a line of `text` is placed by: this

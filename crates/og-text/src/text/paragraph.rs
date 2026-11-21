@@ -25,6 +25,16 @@ pub struct Context {
     /// The layout-only faces registered, by a hash of their bytes: their
     /// family's number.
     built: HashMap<u64, usize>,
+    /// Each of `files`' family name and `font-variation-settings`, made
+    /// once when it is registered.
+    names: Vec<(String, String)>,
+    /// Each feature set's CSS, made once.
+    settings: HashMap<Features, String>,
+    /// What [`measure`] builds into, its buffers kept between calls: the
+    /// runs of a text, the face of each, and the layout.
+    runs: Vec<(Range<usize>, usize)>,
+    faces: Vec<usize>,
+    scratch: Layout<Brush>,
 }
 
 impl Default for Context {
@@ -42,6 +52,11 @@ impl Default for Context {
             layout: LayoutContext::new(),
             files: Vec::new(),
             built: HashMap::new(),
+            names: Vec::new(),
+            settings: HashMap::new(),
+            runs: Vec::new(),
+            faces: Vec::new(),
+            scratch: Layout::new(),
         }
     }
 }
@@ -52,23 +67,28 @@ thread_local! {
 
 impl Context {
     pub fn family(&mut self, file: Arc<FontFile>) -> String {
-        let index = match self.files.iter().position(|f| Arc::ptr_eq(f, &file)) {
-            Some(index) => index,
-            None => {
-                let index = self.files.len();
-                let name = format!("og-{index}");
-                self.fonts.collection.register_fonts(
-                    parley::fontique::Blob::new(file.bytes().clone()),
-                    Some(parley::fontique::FontInfoOverride {
-                        family_name: Some(&name),
-                        ..Default::default()
-                    }),
-                );
-                self.files.push(file);
-                index
-            }
-        };
-        format!("og-{index}")
+        let index = self.face(&file);
+        self.names[index].0.clone()
+    }
+
+    /// `file`'s place in `files`, registered the first time it is seen.
+    fn face(&mut self, file: &Arc<FontFile>) -> usize {
+        if let Some(index) = self.files.iter().position(|f| Arc::ptr_eq(f, file)) {
+            return index;
+        }
+        let index = self.files.len();
+        let name = format!("og-{index}");
+        self.fonts.collection.register_fonts(
+            parley::fontique::Blob::new(file.bytes().clone()),
+            Some(parley::fontique::FontInfoOverride {
+                family_name: Some(&name),
+                ..Default::default()
+            }),
+        );
+        self.files.push(file.clone());
+        let variations = self.variations(&name);
+        self.names.push((name, variations));
+        index
     }
 
     /// The CSS `font-variation-settings` of `family`'s file: an instance's
@@ -119,21 +139,24 @@ impl Context {
 /// A paragraph's styles: its size, tracking (none on a shaped script's
 /// run, whose letters join), features, and each font run's family and
 /// brush, as both layouts below set them.
+/// `names` holds the family and variations of each run's face, run `i`'s
+/// at `faces[i]`; `settings` is `features`' CSS.
 #[allow(clippy::too_many_arguments)]
 fn styled<'a>(
-    cx: &'a mut Context,
+    layout: &'a mut LayoutContext<Brush>,
+    fonts: &'a mut FontContext,
     text: &'a str,
     size: f32,
     tracking: f32,
     features: Features,
+    settings: &str,
     direction: Direction,
     runs: &[(Range<usize>, usize)],
-    families: &[String],
+    names: &[(String, String)],
+    faces: &[usize],
     metrics: &FontMetrics,
 ) -> parley::RangedBuilder<'a, Brush> {
-    // A variable font's instance is laid out at its location.
-    let variations: Vec<String> = families.iter().map(|f| cx.variations(f)).collect();
-    let mut builder = cx.layout.ranged_builder(&mut cx.fonts, text, 1.0, false);
+    let mut builder = layout.ranged_builder(fonts, text, 1.0, false);
     builder.set_line_break_override(Some(&super::keep_katakana));
     builder.set_base_direction(match direction {
         Direction::Ltr => parley::BaseDirection::Ltr,
@@ -141,13 +164,14 @@ fn styled<'a>(
     });
     builder.push_default(StyleProperty::FontSize(size));
     builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Anywhere));
-    let settings = features.css();
-    builder.push_default(StyleProperty::FontFeatures(settings.as_str().into()));
+    builder.push_default(StyleProperty::FontFeatures(settings.into()));
     // Shaped in its language, so a face's `locl` forms for it apply.
     if let Some(l) = features.language().and_then(|l| l.parse().ok()) {
         builder.push_default(StyleProperty::Locale(Some(l)));
     }
-    for (((range, k), family), variations) in runs.iter().zip(families).zip(&variations) {
+    for ((range, k), &face) in runs.iter().zip(faces) {
+        // A variable font's instance is laid out at its location.
+        let (family, variations) = &names[face];
         builder.push(
             StyleProperty::FontFamily(family.as_str().into()),
             range.clone(),
@@ -220,15 +244,26 @@ pub fn editable(
             };
             families.push(family);
         }
+        let names: Vec<(String, String)> = families
+            .into_iter()
+            .map(|f| {
+                let v = cx.variations(&f);
+                (f, v)
+            })
+            .collect();
+        let faces: Vec<usize> = (0..names.len()).collect();
         let mut builder = styled(
-            cx,
+            &mut cx.layout,
+            &mut cx.fonts,
             text,
             size,
             tracking,
             Features::NONE,
+            "",
             direction,
             &runs,
-            &families,
+            &names,
+            &faces,
             metrics,
         );
         builder.push_default(StyleProperty::LineHeight(parley::LineHeight::Absolute(
@@ -415,12 +450,21 @@ pub fn layout_with_overflow(
     CONTEXT.with_borrow_mut(|cx| {
         // Bound ownership of font bytes across game reloads.
         cx.bound();
-        let mut families = Vec::with_capacity(files.len());
-        for file in files {
-            families.push(cx.family(file));
-        }
+        let faces: Vec<usize> = files.iter().map(|f| cx.face(f)).collect();
+        let settings = features.css();
         let mut builder = styled(
-            cx, text, size, tracking, features, direction, &runs, &families, metrics,
+            &mut cx.layout,
+            &mut cx.fonts,
+            text,
+            size,
+            tracking,
+            features,
+            &settings,
+            direction,
+            &runs,
+            &cx.names,
+            &faces,
+            metrics,
         );
         if !emergency {
             builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Normal));
@@ -464,4 +508,93 @@ pub fn visual(metrics: &FontMetrics, text: &str, layout: &Layout<Brush>) -> Vec<
         }
     }
     out
+}
+
+/// The widest line of `text` (em, at size 1) and its number of lines,
+/// broken at `width` (em; none: only at `\n`), as [`layout`] would lay it
+/// out, without making a layout: the contexts, face names, runs and the
+/// layout's buffers are kept between calls, so measuring a text of a face
+/// already seen allocates nothing. `None` where [`layout`] declines (no
+/// font file, a tabulated face) or a soft hyphen needs its own breaking.
+pub fn measure(
+    metrics: &FontMetrics,
+    text: &str,
+    tracking: f32,
+    features: Features,
+    width: Option<f32>,
+) -> Option<(f32, usize)> {
+    if text.contains('\u{ad}') {
+        return None;
+    }
+    CONTEXT.with_borrow_mut(|cx| {
+        cx.bound();
+        let mut runs = std::mem::take(&mut cx.runs);
+        metrics.font_runs_into(text, &mut runs);
+        let usable = runs.iter().all(|(_, k)| {
+            metrics.part(*k).is_some_and(|m| {
+                !m.tabulates(text, features)
+                    && m.fixed.is_none()
+                    && m.pixel == 0
+                    && m.file.is_some()
+            })
+        });
+        let out = usable.then(|| {
+            cx.faces.clear();
+            for (_, k) in &runs {
+                let file = metrics
+                    .part(*k)
+                    .and_then(|m| m.file.as_ref())
+                    .expect("checked above");
+                let face = cx.face(file);
+                cx.faces.push(face);
+            }
+            cx.settings
+                .entry(features)
+                .or_insert_with(|| features.css());
+            let Context {
+                layout,
+                fonts,
+                names,
+                settings,
+                faces,
+                scratch,
+                ..
+            } = cx;
+            let direction = match width {
+                Some(_) => og_i18n::paragraph_direction(text, Direction::Ltr),
+                None => Direction::Ltr,
+            };
+            let builder = styled(
+                layout,
+                fonts,
+                text,
+                1.0,
+                tracking,
+                features,
+                &settings[&features],
+                direction,
+                &runs,
+                names,
+                faces,
+                metrics,
+            );
+            builder.build_into(scratch, text);
+            scratch.break_all_lines(width);
+            let wrapped = width.is_some();
+            let widest = scratch
+                .lines()
+                .map(|l| {
+                    let m = l.metrics();
+                    if wrapped {
+                        m.advance - m.hanging_advance
+                    } else {
+                        m.advance
+                    }
+                })
+                .fold(0.0, f32::max);
+            (widest, scratch.len())
+        });
+        cx.runs = runs;
+        out
+    })
 }

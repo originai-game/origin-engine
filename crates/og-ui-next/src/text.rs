@@ -19,6 +19,18 @@ pub fn measure(m: &FontMetrics, text: &str, run: &Run, width: Option<f32>) -> (f
     {
         m.advance(c);
     }
+    // Shaped as drawn, into og-text's kept layout: no allocation.
+    let wrap = width.filter(|_| !run.nowrap);
+    let size = run.size.max(f32::MIN_POSITIVE);
+    if let Some((w, lines)) = og_text::text::paragraph::measure(
+        m,
+        text,
+        run.tracking,
+        Features::NONE,
+        wrap.map(|w| w / size),
+    ) {
+        return (w * run.size, lines.max(1) as f32 * run.line);
+    }
     if run.nowrap || width.is_none() {
         let lines = text.split('\n').count().max(1);
         let w = widest_line(text, m, run.size, run.tracking, Features::NONE);
@@ -37,6 +49,42 @@ mod tests {
 
     /// A run-time font draws only the glyphs its file was asked for: a
     /// measured text asks for each character its atlas lacks.
+    /// The kept-layout measure gives what break_lines and widest_line
+    /// give, wrapped and not, and a repeat of it allocates nothing.
+    #[test]
+    fn the_kept_layout_measures_as_the_line_breaker() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../templates/fonts/latin/NotoSans-Latin.ttf"
+        );
+        let file = FontFile::new(Arc::new(std::fs::read(path).unwrap())).unwrap();
+        let atlas = og_draw::MsdfFont {
+            atlas: og_draw::TextureHandle::from_slot(1).unwrap(),
+            distance_range: 4.0,
+            foreground: false,
+            silhouette: false,
+            line_height: 1.2,
+            glyphs: Vec::new(),
+            kerning: Vec::new(),
+        };
+        let m = FontMetrics::from_msdf(&atlas).with_file(Some(file));
+        let run = Run::sized(14.0);
+        let text = "Follow the oak through a season\nStay";
+        for width in [None, Some(120.0), Some(1000.0)] {
+            let (w, h) = measure(&m, text, &run, width);
+            let lines = match width {
+                Some(_) => break_lines(text, &m, 14.0, 0.0, Features::NONE, width),
+                None => break_lines(text, &m, 14.0, 0.0, Features::NONE, None),
+            };
+            let expect_w = match width {
+                Some(_) => lines.iter().map(|l| l.width).fold(0.0, f32::max),
+                None => widest_line(text, &m, 14.0, 0.0, Features::NONE),
+            };
+            assert!((w - expect_w).abs() < 0.01, "{width:?}: {w} vs {expect_w}");
+            assert_eq!(h, lines.len() as f32 * run.line, "{width:?}");
+        }
+    }
+
     #[test]
     fn a_measured_text_asks_its_font_for_the_glyphs_its_atlas_lacks() {
         let path = concat!(
