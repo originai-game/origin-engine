@@ -45,7 +45,9 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
       <View class="absolute inset-0">{props.background?.()}</View>
-      <View class={`absolute inset-0 compact:bg-transparent`} />
+      <View class="absolute inset-0 bg-linear-to-r from-bg/92 via-bg/72 via-26% to-transparent to-70% compact:hidden" />
+      <View class="absolute inset-0 bg-linear-to-b from-transparent from-60% to-bg/96 compact:hidden" />
+      <View class="absolute inset-0 hidden compact:flex bg-linear-to-b from-bg/50 via-bg/55 via-48% to-bg/94 to-70%" />
       <Scroll class={`pt-12 pr-8 pb-8 pl-12 text-fg size-full compact:pt-8 compact:pb-6 compact:w-auto compact:px-4 short:py-3 short:px-4 disabled:text-fg-subtle`}>
         <Show when={props.logo === 0 && props.name !== ""} fallback={
             <Art class={`self-start aspect-[12/5] h-auto object-contain compact:self-center compact:w-[78%] short:hidden`} kind="logo" src={props.logo} />
@@ -75,7 +77,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
                   <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                     {t("screen.main-menu.continue")}
                   </Text>
-                  <Text class="text-start text-base font-medium text-fg/56 whitespace-nowrap overflow-hidden group-hover/continue:text-fg/74">
+                  <Text class="text-start text-base font-medium text-fg-muted whitespace-nowrap overflow-hidden group-hover/continue:text-fg/74">
                     {props.saveLine}
                   </Text>
                 </View>
@@ -108,14 +110,14 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
             </View>
           </View>
           <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-white/28 to-transparent to-80% compact:ml-6" />
-          <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onCredits?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onCredits?.(e)}>
             <View class="flex-row items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.credits")}
               </Text>
             </View>
           </View>
-          <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
+          <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-transparent hover:bg-hud-accent/24 active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
             <View class="flex-row items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.quit")}
@@ -125,7 +127,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
           <View>{props.extra?.()}</View>
         </View>
       </Scroll>
-      <Text class={`absolute right-4 bottom-3 text-[0.857rem] tabular-nums text-fg/56 m-0 compact:right-3 compact:bottom-1`}>
+      <Text class={`absolute right-4 bottom-3 text-[0.857rem] tabular-nums text-fg-muted m-0 compact:right-3 compact:bottom-1`}>
         {props.version}
       </Text>
     </View>

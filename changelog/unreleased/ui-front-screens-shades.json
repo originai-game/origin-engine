@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "MainMenuScreen, TitleScreen, LoadingScreen",
+      "summary": "Their shades over the key art are back (the TSX port left them as empty layers): the main menu darkens its left side and foot, the title its top and foot, and the loading screen's foot shade rises above the place name. Their text reads over any key art. The title's game name is set at display size again, the loading screen's place name at its heading size with its Now entering line in a row, and the legal, version and save lines use the fg-muted role, so a pack sets them."
+    }
+  ]
+}

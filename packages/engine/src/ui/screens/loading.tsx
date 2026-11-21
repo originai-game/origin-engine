@@ -46,14 +46,14 @@ export function LoadingScreen(props: LoadingScreenProps) {
       </Show>
       <View class={`absolute bg-linear-to-r from-black/45 to-transparent to-55% inset-0`} />
       <View class="absolute top-auto bottom-0 pt-16 inset-x-0 gap-[1.429rem] compact:pt-[1.429rem] compact:gap-4 short:pt-[1.143rem] short:gap-[0.714rem]">
-        <View class="absolute -z-1 top-auto bottom-0 bg-linear-to-b from-transparent to-black/92 inset-x-0" />
+        <View class="absolute -top-30 bottom-0 inset-x-0 bg-linear-to-b from-transparent via-black/62 via-30% to-black/92" />
         <View class="gap-[1.429rem] short:flex-row short:items-end short:gap-[1.143rem] compact:gap-4">
           <View class="max-w-3/5 gap-0.5 compact:max-w-full short:max-w-[45%] short:grow short:shrink short:basis-0 short:min-w-0">
-            <View class={`items-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-hud-accent gap-[0.714rem] transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
+            <View class={`flex-row items-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-hud-accent gap-[0.714rem] transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
               <View class="w-8 h-[0.143rem] bg-hud-accent shadow-[0px_0px_6.864px_#38e8ff]" />
               <Text class="shrink">{t("screen.loading.entering")}</Text>
             </View>
-            <Text class={`font-display font-bold leading-[1.04] tracking-[-0.01em] text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 m-0 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
+            <Text class={`font-display text-[3.857rem] compact:text-[2.286rem] short:text-[1.857rem] font-bold leading-[1.04] tracking-[-0.01em] text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 m-0 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
               {props.place}
             </Text>
           </View>
