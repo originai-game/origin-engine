@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "Seven panel components as TSX, beside their .svelte: Backpack, Breadcrumbs, Carousel, Conversation, ConversationBacklog, Crafting and DataGrid. Styles are Tailwind classes with pack slots and cut shapes; the backpack's drag-onto-another-tile move, the conversation's typewriter reveal, the carousel's scroll-snap and the pips' lean, and cut elements' gradients, glows and rolled rims are dropped."
+    }
+  ]
+}
