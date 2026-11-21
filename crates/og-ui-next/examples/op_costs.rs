@@ -3,8 +3,10 @@
 //! changed (a clock), and the pointer coming over a panel whose `hover:`
 //! fill shows and leaving it, and a d-pad move of the focus down the
 //! panels, and 200 anchored nameplates placed again as the camera moves
-//! (their placing alone and with the frame), each the median of N runs
-//! with its allocations.
+//! (their placing alone and with the frame), and 1000 DamageNumbers as the
+//! component makes them (the default pack's classes, a real face) rising
+//! as hits spawn and expire, each the median of N runs with its
+//! allocations.
 //!
 //!     cargo run --release -p og-ui-next --example op_costs [N]
 
@@ -124,6 +126,84 @@ fn tree() -> Tree {
     t
 }
 
+/// The default pack's class resolver, dark, at 1280x720.
+fn pack_tree() -> Tree {
+    let mut t = tree();
+    let pack = og_ui_next::pack::Pack::new(&[og_ui_next::pack::Layer::default_pack()]);
+    let theme = pack.theme_json(og_ui_next::pack::Scheme::Dark);
+    let classes =
+        std::cell::RefCell::new(og_ui_next::classes::Classes::new(Some(&theme)).unwrap().0);
+    let env = og_ui_next::classes::Env {
+        window: [1280.0, 720.0],
+        dark: true,
+        ..Default::default()
+    };
+    t.set_resolver(Box::new(move |class, style, states, data| {
+        classes.borrow_mut().record_data(
+            class,
+            style,
+            &og_ui_next::classes::Env { states, ..env },
+            data,
+        )
+    }));
+    t
+}
+
+/// DamageNumbers' class, as hud/damage-numbers.tsx gives each number.
+const DAMAGE: &str = "-translate-x-1/2 animate-float text-[1.286rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-2xs";
+
+/// Hit `k` spawned: a text node anchored to entity `k`, its number, in
+/// the root.
+fn spawn(b: &mut Batch, k: u32) {
+    let (p, l) = (100_000 + k * 2, 100_001 + k * 2);
+    b.op(1).u32(p).u8(1);
+    b.op(4).u32(p).str(DAMAGE);
+    b.op(6)
+        .u32(p)
+        .str("anchor")
+        .str(&(k % 5000 + 1).to_string());
+    if k % 3 == 0 {
+        b.op(5).u32(p).str("color: #ffc93c");
+    }
+    b.op(2).u32(l).str(&format!("{}", 100 + k % 9000));
+    b.op(8).u32(p).u32(l).u32(u32::MAX);
+    b.op(8).u32(0).u32(p).u32(u32::MAX);
+}
+
+/// Hit `k` expired: out of the root and released.
+fn expire(b: &mut Batch, k: u32) {
+    let (p, l) = (100_000 + k * 2, 100_001 + k * 2);
+    b.op(9).u32(0).u32(p);
+    b.op(10).u32(l);
+    b.op(10).u32(p);
+}
+
+/// A face with its file: every glyph laid out and painted.
+fn face() -> og_ui::Fonts {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../templates/fonts/latin/NotoSans-Latin.ttf"
+    );
+    let file =
+        og_text::shape::FontFile::new(std::sync::Arc::new(std::fs::read(path).unwrap())).unwrap();
+    let atlas = og_draw::MsdfFont {
+        atlas: og_draw::TextureHandle::from_slot(1).unwrap(),
+        distance_range: 4.0,
+        foreground: false,
+        silhouette: false,
+        line_height: 1.2,
+        glyphs: Vec::new(),
+        kerning: Vec::new(),
+    };
+    og_ui::Fonts {
+        body: og_ui::UiFont {
+            handle: Some(og_draw::FontHandle::from_index(0)),
+            metrics: og_text::text::FontMetrics::from_msdf(&atlas).with_file(Some(file)),
+        },
+        ..Default::default()
+    }
+}
+
 fn median(mut v: Vec<(f64, usize)>) -> (f64, usize) {
     v.sort_by(|a, b| a.0.total_cmp(&b.0));
     v[v.len() / 2]
@@ -221,6 +301,63 @@ fn main() {
             }
         }
     }
+    // 1000 DamageNumbers live at 60 Hz: each floats 0.8 s, so 21 spawn
+    // and 21 expire a frame, and every unit moves a px a frame. A frame
+    // is the batch, the placing and the frame; the moving-only frame has
+    // no batch. The first 120 frames reach the steady state.
+    let (mut damage, mut drift) = (Vec::new(), Vec::new());
+    let mut paint_quads = 0;
+    let face = face();
+    for _ in 0..n {
+        let mut t = pack_tree();
+        let mut b = Batch::default();
+        for k in 0..1000 {
+            spawn(&mut b, k);
+        }
+        t.apply(&b.bytes()).unwrap();
+        t.frame(&face, &icons);
+        let mut next = 1000u32;
+        for f in 0..180u32 {
+            let project = |target, _lift: [f32; 3]| {
+                let og_ui_next::tree::AnchorTarget::Entity(e) = target else {
+                    return None;
+                };
+                Some([
+                    (e as f32 * 7.0 + f as f32) % 1240.0 + 20.0,
+                    (e as f32 * 3.0) % 680.0 + 20.0,
+                ])
+            };
+            t.set_time(f64::from(f) / 60.0, false);
+            let moving_only = f % 4 == 3;
+            let mut b = Batch::default();
+            if !moving_only {
+                // Four frames' hits in three, so 1000 stay live.
+                for _ in 0..28 {
+                    spawn(&mut b, next);
+                    expire(&mut b, next - 1000);
+                    next += 1;
+                }
+            }
+            let bytes = b.bytes();
+            let a = allocations();
+            let s = Instant::now();
+            if !moving_only {
+                t.apply(&bytes).unwrap();
+            }
+            t.place_anchors(project);
+            t.frame(&face, &icons);
+            let m = (s.elapsed().as_secs_f64() * 1e3, allocations() - a);
+            if f >= 120 {
+                if moving_only {
+                    drift.push(m);
+                } else {
+                    damage.push(m);
+                }
+                paint_quads = t.drawn.quads.len();
+            }
+        }
+    }
+    println!("1000 damage numbers: {paint_quads} quads painted a frame");
     assert_eq!(&MAGIC[..], b"OGOP");
     for (what, v) in [
         ("build", builds),
@@ -230,6 +367,8 @@ fn main() {
         ("d-pad", moved),
         ("place 200", placed),
         ("200 moved", anchored),
+        ("1000 dmg", damage),
+        ("1000 drift", drift),
     ] {
         let (ms, allocs) = median(v);
         println!("{what:>10}: {ms:.4} ms, {allocs} allocations");
