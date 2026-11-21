@@ -83,6 +83,14 @@
       "panel": 0.0
     }
   },
+  "variants": {
+    "Button.plate": "nine-cut-button",
+    "Panel.frame": "nine-cut-frame",
+    "Plate.frame": "nine-cut-plate",
+    "Slot.frame": "nine-cut-cell",
+    "Chip.frame": "nine-cut-chip",
+    "Field.frame": "nine-cut-field"
+  },
   "images": {
     "frame-brackets": {
       "light": {

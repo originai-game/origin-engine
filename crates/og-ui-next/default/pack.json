@@ -1,5 +1,41 @@
 {
   "about": "The engine's default pack, generated from packages/design/tokens/*.css by crates/og-ui-next/scripts/gen-pack.sh; never edit it by hand. Theme names are the tokens' without their prefix: --color-fg-muted is the colour fg-muted, --radius-card the radius card, --font-scale-body-size the font size body.",
+  "images": {
+    "chip-cut": {
+      "slice": 24,
+      "src": "@styles/shared/shapes/chip-cut.svg",
+      "tint": true,
+      "width": 6
+    },
+    "disc": {
+      "slice": 0,
+      "src": "@styles/shared/shapes/disc.svg",
+      "tint": true
+    },
+    "panel-cut": {
+      "slice": 48,
+      "src": "@styles/shared/shapes/panel-cut.svg",
+      "tint": true,
+      "width": 12
+    },
+    "plate-cut": {
+      "slice": 24,
+      "src": "@styles/shared/shapes/plate-cut.svg",
+      "tint": true,
+      "width": 6
+    },
+    "ring": {
+      "slice": 0,
+      "src": "@styles/shared/shapes/ring.svg",
+      "tint": true
+    },
+    "tile": {
+      "slice": 24,
+      "src": "@styles/shared/shapes/tile.svg",
+      "tint": true,
+      "width": 6
+    }
+  },
   "theme": {
     "blur": {
       "lens": 8.0,
@@ -568,5 +604,13 @@
       "xl": 0.1,
       "xs": 0.02
     }
+  },
+  "variants": {
+    "Button.plate": "",
+    "Chip.frame": "",
+    "Field.frame": "",
+    "Panel.frame": "",
+    "Plate.frame": "",
+    "Slot.frame": ""
   }
 }

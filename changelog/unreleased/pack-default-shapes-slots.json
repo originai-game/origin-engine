@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "Style pack images",
+      "summary": "Every look has six shape images coloured by the element's fill (`bg-*`): `nine-disc` and `nine-ring` for radial cooldown and progress wipes, `nine-tile` for a square slot, and `nine-plate-cut`, `nine-panel-cut` and `nine-chip-cut` for cut-corner HUD plates, panels and badges. A game with a TSX UI or a document carries them."
+    },
+    {
+      "member": "Style pack variants",
+      "summary": "The default pack declares the slots a pack dresses: `Button.plate` (and `.primary`), `Panel.frame`, `Plate.frame`, `Slot.frame`, `Chip.frame` and `Field.frame`, so `packClass(\"Panel\", \"frame\")` resolves under every pack. A variant may be an empty string, which declares a slot and adds nothing. The fantasy pack dresses buttons in its iron and red plates and panels in its filigree frame; scifi dresses all six in its cut shapes."
+    }
+  ]
+}

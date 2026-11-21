@@ -236,6 +236,23 @@ pub(crate) fn scan_with(
             builtins.insert(f.id().to_string(), f.bytes());
         }
     }
+    // The default pack's images (its shapes, `nine-disc` …) are every UI's:
+    // they join a project with a document or a TSX UI, with their import
+    // settings, read from the built-in styles.
+    if code.tsx
+        || files.iter().any(|(id, _)| ext(id) == "svelte")
+        || builtins.keys().any(|id| ext(id) == "svelte")
+    {
+        let pack = og_ui_next::pack::Layer::default_pack();
+        let srcs: BTreeSet<String> = pack
+            .assets()
+            .into_iter()
+            .flat_map(|src| [src.to_owned(), format!("{src}.ogt")])
+            .collect();
+        for f in look::styles().iter().filter(|f| srcs.contains(f.id())) {
+            builtins.insert(f.id().to_string(), f.bytes());
+        }
+    }
     // A development cook from a checkout: the default style as the source
     // tree has it, when that is not the compiled one (a token or
     // default.css edit not yet built into the engine).

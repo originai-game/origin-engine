@@ -319,10 +319,12 @@ fn a_built_in_screen_newly_named_in_code_cooks_in() {
 }
 
 /// A game whose code draws a TSX UI (imports `@origingame/engine/ui`)
-/// carries the default face, as a game with a `.svelte` document does, and
-/// gains it when its code starts to. Ways it could fail: a TSX-only game
-/// cooks without the face, so its tree has no body font and draws no text;
-/// the cook after a change to code alone keeps the old bundle.
+/// carries the default face and the default pack's shapes (`nine-disc` …),
+/// as a game with a `.svelte` document does, and gains them when its code
+/// starts to. Ways it could fail: a TSX-only game cooks without the face, so
+/// its tree has no body font and draws no text, or without the shapes, so
+/// every `nine-<name>` of the default pack draws nothing; the cook after a
+/// change to code alone keeps the old bundle.
 #[test]
 fn code_drawing_a_tsx_ui_carries_the_default_face() {
     let root = project("code-tsx-face", &[]);
@@ -341,16 +343,21 @@ fn code_drawing_a_tsx_ui_carries_the_default_face() {
         Bundle::open(&root.join("cooked")).unwrap()
     };
     std::fs::write(root.join("src/main.ts"), "export default 1;\n").unwrap();
-    assert!(
-        cook().output(og_ui::DEFAULT_FONT_ASSET).is_err(),
-        "no UI, no face"
-    );
+    let shapes = ["disc", "ring", "tile", "plate-cut", "panel-cut", "chip-cut"]
+        .map(|s| format!("@styles/shared/shapes/{s}.svg"));
+    let bundle = cook();
+    assert!(bundle.output(og_ui::DEFAULT_FONT_ASSET).is_err(), "no UI, no face");
+    assert!(shapes.iter().all(|id| bundle.output(id).is_err()), "no UI, no shapes");
     std::fs::write(
         root.join("src/main.ts"),
         "import { mount } from \"@origingame/engine/ui\";\nexport default mount;\n",
     )
     .unwrap();
-    assert!(cook().output(og_ui::DEFAULT_FONT_ASSET).is_ok());
+    let bundle = cook();
+    assert!(bundle.output(og_ui::DEFAULT_FONT_ASSET).is_ok());
+    for id in &shapes {
+        assert!(bundle.output(id).is_ok(), "{id}");
+    }
 }
 
 #[test]

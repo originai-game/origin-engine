@@ -195,8 +195,9 @@ impl Layer {
                         if !variant_key(k) {
                             return Err(format!("variants.{k}: a key is Component.slot or Component.slot.variant (PascalCase, then lower-case names)"));
                         }
-                        let class = v.as_str().filter(|c| !c.trim().is_empty());
-                        let class = class.ok_or_else(|| format!("variants.{k}: a class string"))?;
+                        // An empty string declares the slot and adds nothing:
+                        // the default pack's slots are the vocabulary.
+                        let class = v.as_str().ok_or_else(|| format!("variants.{k}: a class string"))?;
                         layer.variants.insert(k.clone(), class.trim().to_owned());
                     }
                 }

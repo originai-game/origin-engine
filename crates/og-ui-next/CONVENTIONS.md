@@ -370,6 +370,26 @@ relative colours evaluated) to `#rrggbb[aa]` and points.
 | `container` | `xs` `sm` `md` `lg` `xl` `xxl` `3xl` | `--measure-<name>` |
 | `blur` | `thin` `regular` `thick` `lens` | `--vars-material-blur[-<name>]` |
 
+Every look has these images, white masks coloured by the element's fill
+(`tint`), so `bg-*` colours them (`templates/styles/shared/shapes/`):
+
+| Image | Shape | For |
+|---|---|---|
+| `disc` | a filled circle, stretched whole | a round slot's cooldown sweep (`wipe`) |
+| `ring` | a thin circle outline, stretched whole | progress, ultimate and timer rings (`wipe`) |
+| `tile` | a square at `--radius-field` | a square slot's sweep |
+| `plate-cut` | leading top and trailing bottom corners cut 6 | a HUD plate |
+| `panel-cut` | the same corners cut 12 | a HUD panel |
+| `chip-cut` | the trailing top corner cut 6 | a tag, badge or chip |
+
+The slots a pack dresses, each declared empty in the default pack so a
+component's `packClass` on it resolves under every pack:
+`Button.plate` (a button's body; `primary` its main action), `Panel.frame`
+(a window or panel), `Plate.frame` (a HUD plate over the scene),
+`Slot.frame` (an ability or item slot), `Chip.frame` (a tag or badge) and
+`Field.frame` (a text field's box). A new slot is added here and to
+`design::SLOTS` before a component writes it.
+
 `spacing` stays Tailwind's 4 pt step. The cook compiles the merged theme
 into the theme the runtime loads and every variant string into records,
 like any literal class string.

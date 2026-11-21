@@ -187,6 +187,45 @@ pub(crate) fn join(light: &Value, dark: &Value) -> Value {
     }
 }
 
+/// The slots a pack dresses (`variants` keys), each with what it is. The
+/// default pack declares each with an empty string, so a component's
+/// `packClass` on one resolves under every pack, and adds nothing until a
+/// pack dresses it; a slot no layer names stays an unknown class.
+pub const SLOTS: [(&str, &str); 6] = [
+    ("Button.plate", "a button's body"),
+    ("Panel.frame", "a window or panel's frame"),
+    ("Plate.frame", "a HUD plate over the scene"),
+    ("Slot.frame", "an ability or item slot"),
+    ("Chip.frame", "a tag, badge or chip"),
+    ("Field.frame", "a text field or input's box"),
+];
+
+/// The shapes every look has (`templates/styles/shared/shapes/`, white
+/// masks drawn 4x, coloured by the element's fill): a round slot's
+/// cooldown `disc` and progress `ring` (stretched whole, for a radial
+/// wipe), a square slot's `tile` at the slot radius (`--radius-field`),
+/// and the HUD's bevels: `plate-cut` (`--hud-plate-cut`, 6) and
+/// `panel-cut` (`--hud-panel-cut`, 12) cut the leading top and trailing
+/// bottom corners, `chip-cut` the trailing top one.
+fn shapes() -> Value {
+    let mut out = Map::new();
+    for (name, slice, width) in [
+        ("disc", 0, None),
+        ("ring", 0, None),
+        ("tile", 24, Some(6)),
+        ("plate-cut", 24, Some(6)),
+        ("panel-cut", 48, Some(12)),
+        ("chip-cut", 24, Some(6)),
+    ] {
+        let mut image = json!({ "src": format!("@styles/shared/shapes/{name}.svg"), "slice": slice, "tint": true });
+        if let Some(w) = width {
+            image["width"] = json!(w);
+        }
+        out.insert(name.to_owned(), image);
+    }
+    Value::Object(out)
+}
+
 /// `default/pack.json`: the design tokens as a pack.
 pub fn default_pack_json() -> String {
     let names = names();
@@ -194,6 +233,8 @@ pub fn default_pack_json() -> String {
     let pack = json!({
         "about": "The engine's default pack, generated from packages/design/tokens/*.css by crates/og-ui-next/scripts/gen-pack.sh; never edit it by hand. Theme names are the tokens' without their prefix: --color-fg-muted is the colour fg-muted, --radius-card the radius card, --font-scale-body-size the font size body.",
         "theme": join(&light, &dark),
+        "variants": SLOTS.iter().map(|(slot, _)| (slot.to_string(), json!(""))).collect::<Map<_, _>>(),
+        "images": shapes(),
     });
     let mut out = serde_json::to_string_pretty(&pack).unwrap();
     out.push('\n');
