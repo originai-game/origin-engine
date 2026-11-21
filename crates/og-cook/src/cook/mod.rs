@@ -304,7 +304,7 @@ pub fn cook_project_with_texture_cache(
     // Code alone changed: the assets are as cooked, and only what reads
     // code is done again.
     if let Some((mut report, before_code)) = cook_index.only_code_changed()
-        && cook_code(root, &before_code)?
+        && cook_code(root, &before_code, &options.code)?
     {
         laps.lap("code");
         cook_index.save(&report, Some(before_code));

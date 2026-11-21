@@ -646,25 +646,32 @@ pub(crate) fn build(
 }
 
 /// Adds what the project's code loads to an index built without it: each
-/// file's references, the roots they make and its computed loads. Code is
-/// the one input read here and nowhere else in the cook, so a change to
-/// code alone redoes only this.
+/// file's references, the roots they make and its computed loads. The
+/// files are the game's code its bundle holds (`files`, the bundler's
+/// graph: [`super::graph::CodeGraph::files`]), not every source under the
+/// project. Code is the one input read here and nowhere else in the cook,
+/// so a change to code alone redoes only this.
 pub(crate) fn add_code(
     root: &Path,
     manifest: &Manifest,
     index: &mut Index,
+    files: &[PathBuf],
 ) -> Result<(), CookError> {
     let known = known(manifest);
-    for path in game_typescript(root).map_err(CookError)? {
+    let canonical = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    for path in files {
+        // By its path under the project; a reached module outside it (a
+        // shared directory beside the game) by its own.
         let source = path
-            .strip_prefix(root)
-            .expect("game source")
+            .strip_prefix(&canonical)
+            .or_else(|_| path.strip_prefix(root))
+            .unwrap_or(path)
             .to_string_lossy()
             .replace('\\', "/");
-        let text = std::fs::read_to_string(&path)
+        let text = std::fs::read_to_string(path)
             .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
         let mut refs = BTreeSet::new();
-        match super::ts_refs::parse(&path, &text) {
+        match super::ts_refs::parse(path, &text) {
             Ok(parsed) => {
                 for literal in parsed.literals {
                     refs.extend(resolve(&literal.value, "", &known));

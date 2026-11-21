@@ -442,7 +442,7 @@ pub(crate) fn finish(
         users: index.users.clone(),
         computed: index.computed.clone(),
     };
-    assets::add_code(root, &manifest, &mut index)?;
+    assets::add_code(root, &manifest, &mut index, &cx.options.code.files)?;
     index.write(cooked_dir)?;
     index.write_publish_plan(root, &manifest)?;
     // Each asset's cook time: this run's (its outputs' summed) when it
@@ -507,7 +507,11 @@ pub(crate) struct BeforeCode {
 /// read back. Code that reaches other built-in UI is another
 /// [`CookOptions::code`], which the index never takes for a change to code
 /// alone.
-pub(crate) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookError> {
+pub(crate) fn cook_code(
+    root: &Path,
+    before: &BeforeCode,
+    code: &CodeGraph,
+) -> Result<bool, CookError> {
     let cooked_dir = root.join("cooked");
     let (Some(manifest), Ok(last)) = (
         std::fs::read_to_string(cooked_dir.join(MANIFEST))
@@ -526,7 +530,7 @@ pub(crate) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookEr
         users: before.users.clone(),
         computed: before.computed.clone(),
     };
-    assets::add_code(root, &manifest, &mut index)?;
+    assets::add_code(root, &manifest, &mut index, &code.files)?;
     index.write(&cooked_dir)?;
     index.write_publish_plan(root, &manifest)?;
     Ok(true)

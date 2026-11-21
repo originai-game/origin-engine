@@ -28,6 +28,10 @@ pub struct CodeGraph {
     /// The code reads `raycast` (og.render.raycast): its models carry a
     /// cooked raycast BVH.
     pub raycast: bool,
+    /// The game's own code the bundle holds (its modules outside the
+    /// engine), by absolute path: what the asset index reads for the
+    /// assets the code loads ([`super::assets::add_code`]).
+    pub files: Vec<PathBuf>,
 }
 
 /// The id a bundled engine string table registers under: its path under
@@ -76,6 +80,7 @@ impl CodeGraph {
                     .map(|l| l.value)
                     .filter(|v| v.starts_with(TABLE_PREFIX)),
             );
+            graph.files.push(file);
         }
         Ok(graph)
     }
@@ -116,7 +121,13 @@ mod tests {
             CodeGraph::read(&graph).unwrap()
         };
         let none = write(&[&engine.join("src/index.ts"), &main]);
-        assert_eq!(none, CodeGraph::default());
+        assert_eq!(
+            none,
+            CodeGraph {
+                files: vec![main.clone()],
+                ..CodeGraph::default()
+            }
+        );
         let all = write(&[
             &engine.join("src/index.ts"),
             &engine.join("src/ui/index.ts"),
@@ -125,6 +136,7 @@ mod tests {
             &aim,
         ]);
         assert!(all.tsx && all.raycast);
+        assert_eq!(all.files, [main.clone(), aim.clone()]);
         assert_eq!(
             all.tables.into_iter().collect::<Vec<_>>(),
             vec![("@ui/components/hud/bar.en.ogt".to_string(), table)]

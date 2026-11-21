@@ -139,6 +139,8 @@ pub(crate) struct Index {
     /// A racy output's hash is taken as the index is saved.
     racy: BTreeMap<PathBuf, String>,
     options: String,
+    /// The game's code the bundle holds ([`super::graph::CodeGraph::files`]).
+    code: Vec<PathBuf>,
     /// The files outside the project this cook read ([`Index::note_external`]).
     external: Mutex<External>,
 }
@@ -169,15 +171,18 @@ fn tree(dir: &Path, out: &mut BTreeMap<PathBuf, Stat>) -> std::io::Result<()> {
     Ok(())
 }
 
-fn inputs(root: &Path) -> std::io::Result<BTreeMap<PathBuf, Stat>> {
+/// The cook's inputs: the project's assets and project.ogt, the game's
+/// code its bundle holds (`code`, the graph's files), and what is read
+/// from outside the project.
+fn inputs(root: &Path, code: &[PathBuf]) -> std::io::Result<BTreeMap<PathBuf, Stat>> {
     let mut files = BTreeMap::new();
     tree(&root.join("assets"), &mut files)?;
     let project = root.join("project.ogt");
     if project.exists() {
         files.insert(project.clone(), stat(&project)?);
     }
-    for path in super::assets::game_typescript(root).map_err(std::io::Error::other)? {
-        files.insert(path.clone(), stat(&path)?);
+    for path in code {
+        files.insert(path.clone(), stat(path)?);
     }
     // The manifest selects the built-in documents and their transitive
     // dependencies even when none of those documents' bytes changed.
@@ -218,8 +223,12 @@ impl Index {
             .ok()
             .and_then(|b| serde_json::from_slice(&b).ok())
             .unwrap_or_default();
+        let code = options.code.files.clone();
         let mut options = options.clone();
         options.threads = 0;
+        // The code's files are inputs, stamped below: which ones the bundle
+        // holds changing is a change to code alone.
+        options.code.files.clear();
         let options = cache::key(
             "index-v2",
             &[format!(
@@ -235,7 +244,7 @@ impl Index {
         // The stats, then the clock, then the racy inputs' content: every read
         // of the cook comes after the clock, so a change the clock cannot
         // order against a stat is one the hash or the cook has already seen.
-        let opened = inputs(root).ok().and_then(|inputs| {
+        let opened = inputs(root, &code).ok().and_then(|inputs| {
             let clock = clock(root)?;
             let racy = racy(&inputs, clock).ok()?;
             Some((clock, inputs, racy))
@@ -253,6 +262,7 @@ impl Index {
             inputs,
             racy,
             options,
+            code,
             external: Mutex::new(External::Kept),
         }
     }
@@ -452,7 +462,7 @@ impl Index {
         if report.ok()
             && let Some(before_code) = before_code
             && let Some(before) = &self.inputs
-            && inputs(&self.root).ok().as_ref() == Some(before)
+            && inputs(&self.root, &self.code).ok().as_ref() == Some(before)
             && let Some(clock) = clock(&self.root)
             && let Ok(outputs) = outputs(&self.root)
             && let Ok(mut racy) = racy(&outputs, clock)

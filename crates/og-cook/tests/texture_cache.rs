@@ -195,7 +195,14 @@ const fields = { sound: 'coin.ogt', texture: 'z-used.png' };
 "#,
     )
     .unwrap();
-    let options = CookOptions::default();
+    // The code its bundle holds (the bundler's graph).
+    let options = CookOptions {
+        code: og_cook::cook::CodeGraph {
+            files: vec![root.join("src/game.ts")],
+            ..Default::default()
+        },
+        ..CookOptions::default()
+    };
     cook(&root, None, &options);
     let index = Index::read(&root).unwrap();
     let reachable = index.reachable();

@@ -250,10 +250,17 @@ fn a_change_to_code_alone_redoes_only_what_reads_code() {
     let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/sprite-2d");
     support::copy_dir(&fixture.join("assets"), &root.join("assets"));
     std::fs::create_dir_all(root.join("src")).unwrap();
+    // The code the bundle holds, as its graph names it.
+    let reached = std::cell::RefCell::new(vec![root.join("src/game.ts")]);
     let cook = || {
-        let r =
-            og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
-                .unwrap();
+        let options = CookOptions {
+            code: og_cook::cook::CodeGraph {
+                files: reached.borrow().clone(),
+                ..Default::default()
+            },
+            ..CookOptions::default()
+        };
+        let r = og_cook::cook::cook_project_with_texture_cache(&root, &options, None).unwrap();
         assert!(r.ok(), "{:?}", r.errors());
         r.stages.into_iter().map(|s| s.name).collect::<Vec<_>>()
     };
@@ -295,12 +302,16 @@ fn a_change_to_code_alone_redoes_only_what_reads_code() {
     );
     assert_eq!(written(), fast);
 
-    // A new file is code too, and og.motion is the whole cook's.
+    // A file the bundle does not hold loads nothing; once it does, it is
+    // code too. og.motion is the whole cook's.
     std::fs::write(
         root.join("src/more.ts"),
         format!("og.load.texture(w, \"{texture}\");"),
     )
     .unwrap();
+    assert_eq!(cook(), ["index"], "a file the entry never imports");
+    assert!(!index().roots.contains(&texture));
+    reached.borrow_mut().push(root.join("src/more.ts"));
     assert_eq!(cook(), ["index", "code", "save"]);
     assert!(index().roots.contains(&texture));
     std::fs::write(root.join("src/more.ts"), "og.motion.capabilities();").unwrap();
