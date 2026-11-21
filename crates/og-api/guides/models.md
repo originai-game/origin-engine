@@ -168,6 +168,11 @@ takes a lower `count` with a larger `size` first, then fewer `children`.
 The cook refuses a plant past 20 000 branches or 120 000 leaves and
 petals.
 
+A placed model (og.Model) turning to another level, or to or from its
+impostor, cross-fades over 0.4 s: both are drawn, dithered against each
+other, as a streamed model fades in. A posed model, a crowd member and
+a scattered copy's mesh levels switch at once.
+
 A wood is plants scattered whole (og.TerrainScatter's `model`,
 `og api show "world §3"`). Far copies draw as one card when the plant is cooked
 with an impostor: import settings beside the model text, named after it

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Model",
+      "summary": "A placed model no longer pops when its level of detail turns, to a coarser mesh or to and from its impostor: the two levels cross-fade over 0.4 s, dithered against each other as a streamed model fades in and an HLOD proxy cross-fades with its models. Every level's pipelines start when the model loads, so a turn waits for none. A posed model, a crowd member and a scattered copy's mesh levels still switch at once."
+    }
+  ]
+}

@@ -224,6 +224,8 @@ pub fn card_scene(name: &str) -> Result<RenderScene, String> {
         cast_shadows: false,
         sway: 0.0,
         top: 0.0,
+        reveal: 1.0,
+        fade_out: false,
     });
     Ok(scene)
 }

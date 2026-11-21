@@ -244,6 +244,8 @@ pub fn impostors_scene_with(card: bool) -> RenderScene {
             cast_shadows: true,
             sway: 0.0,
             top: 0.0,
+            reveal: 1.0,
+            fade_out: false,
         });
     } else {
         scene.add_instance(ball, white, at(BALL_CARD_AT));
@@ -303,6 +305,8 @@ pub fn impostor_backlit_scene(translucency: Option<f32>) -> RenderScene {
         cast_shadows: true,
         sway: 0.0,
         top: 0.0,
+        reveal: 1.0,
+        fade_out: false,
     });
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.6, 5.0),
@@ -501,6 +505,8 @@ pub fn impostors_scene() -> RenderScene {
                     cast_shadows: true,
                     sway: 0.0,
                     top: 0.0,
+                    reveal: 1.0,
+                    fade_out: false,
                 });
             }
         }

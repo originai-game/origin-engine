@@ -147,6 +147,10 @@ pub(crate) struct RenderState {
     /// The level each og.Model entity drew last (by entity bits): the
     /// hysteresis of the next choice, and what dump_entity reports.
     pub lod_drawn: IdMap<u64, u8>,
+    /// The models cross-fading between two levels (`frame/models.rs`): the
+    /// level each fades out from and the frame time in ticks its fade
+    /// started (`crate::present::reveal::Reveal::now`).
+    pub lod_fades: IdMap<u64, (u8, f64)>,
     /// The last frame's models, copied by a frame where they hold (`kept.rs`).
     pub kept_models: KeptModels,
     /// The models and proxies fading in (`crate::present::reveal`).
@@ -301,6 +305,7 @@ impl RenderState {
             model_lods: IdMap::new(),
             shared: Default::default(),
             lod_drawn: IdMap::new(),
+            lod_fades: IdMap::new(),
             kept_models: KeptModels::default(),
             reveal: Default::default(),
             compile: false,

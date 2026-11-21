@@ -135,6 +135,13 @@ pub struct ImpostorDraw {
     /// vegetation tier reads.
     pub sway: f32,
     pub top: f32,
+    /// How much of the card is drawn, 0 to 1 (1: whole), and whether it
+    /// fades out against what fades in in its place, as an instance's
+    /// (`InstanceFx::reveal`, `fade_out`): its model cross-fading between
+    /// its impostor and a mesh level by the one dither (common.wgsl
+    /// `dither_cut`), or fading in.
+    pub reveal: f32,
+    pub fade_out: bool,
 }
 
 /// The hemi-octahedral map of a unit direction to `[-1, 1]²`: +y at the

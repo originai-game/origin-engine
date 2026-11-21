@@ -621,6 +621,22 @@ pub(crate) fn insert_model(
                 .map(|&(mesh, material, _)| (mesh, material)),
         );
     }
+    // A model with levels cross-fades between them, each level drawn
+    // partly hidden for the fade (`present::extract::frame::models`): the
+    // pipelines of every level start now, so no turn of its level waits.
+    if let Some(l) = &lods {
+        for (k, &(mesh, material, _)) in parts.parts.iter().enumerate() {
+            if group.is_none() {
+                rs.scene.objects.prepare.push((mesh, material));
+            }
+            for (j, &(level, _)) in l.parts.get(k).into_iter().flatten().enumerate() {
+                rs.scene
+                    .objects
+                    .prepare
+                    .push((level, l.material(k, j + 1, material)));
+            }
+        }
+    }
     rs.models.insert(handle(index), parts.parts);
     // The models drawn from the parts it replaces are built again.
     rs.kept_models.forget();

@@ -166,6 +166,14 @@ pub(super) fn models(
     };
     let model_lods = std::mem::take(&mut rs.model_lods);
     let last_drawn = std::mem::take(&mut rs.lod_drawn);
+    // A level cross-fade's length in ticks, and how far one started at a
+    // frame time is at this frame's (as an HLOD node's, `hlod.rs`).
+    let mut lod_fades = std::mem::take(&mut rs.lod_fades);
+    lod_fades.retain(|e, _| last_drawn.contains_key(e));
+    let now = rs.reveal.now();
+    let lod_ticks =
+        f64::from(crate::present::reveal::SECONDS) / f64::from(world.time().dt().max(1e-6));
+    let lod_progress = |at: f64| ((now - at) / lod_ticks).clamp(0.0, 1.0) as f32;
     let mut drawn = IdMap::new();
     // The meshlet path draws the level picked here too (one per model, with
     // hysteresis), so both paths draw the same picture.
@@ -390,31 +398,61 @@ pub(super) fn models(
             }
             None => (0, true),
         };
+        // Where its level turns, the level it leaves and the one it takes
+        // are both drawn for a fade's length, dithered against each other
+        // (common.wgsl `dither_cut`): the new one draws a share of the
+        // pixels, the old one exactly the others, as an HLOD proxy and
+        // its models do. A turn back during the fade reverses it from
+        // where it is. A model fading in, cross-fading with a proxy,
+        // posed or in a crowd switches at once.
+        let fading = (look.fx.reveal >= 1.0
+            && crossed.is_none()
+            && !posed.contains(&e)
+            && !r.crowd
+            && !debug_lod)
+            .then(|| {
+                let turned = last_drawn
+                    .get(&e)
+                    .copied()
+                    .filter(|&p| p as usize != level);
+                let fade = match (turned, lod_fades.get(&e).copied()) {
+                    (Some(p), Some((from, start))) if from as usize == level => {
+                        // Back towards the level it was leaving.
+                        let shown = lod_progress(start);
+                        (p, now - f64::from(1.0 - shown) * lod_ticks)
+                    }
+                    (Some(p), _) => (p, now),
+                    (None, Some(f)) => f,
+                    (None, None) => return None,
+                };
+                let t = lod_progress(fade.1);
+                (t < 1.0).then(|| {
+                    lod_fades.insert(e, fade);
+                    (fade.0 as usize, t)
+                })
+            })
+            .flatten();
+        if fading.is_none() {
+            lod_fades.remove(&e);
+        }
         // Copied by the next frame when its level held here (the
-        // hysteresis then keeps it) and nothing animates it.
-        let copyable = settled && !r.posed && !r.crowd && crossed.is_none();
+        // hysteresis then keeps it), nothing animates it and it is not
+        // cross-fading.
+        let copyable = settled && !r.posed && !r.crowd && crossed.is_none() && fading.is_none();
         build.built(false, level as u8, copyable);
         drawn.insert(e, level as u8);
         if debug_lod {
             look.fx.flash = 0.8;
             look.fx.flash_color = og_render::lod::debug_color(level);
         }
-        // At its impostor's level a model at rest is one card (og-render's
-        // `impostor`), drawn with the scattered copies' passes.
-        if og_render::WORLD_3D
-            && let Some(l) = model_lods.get(&asset)
-            && let Some((impostor, _)) = l.impostor
-            && l.impostor_level() == Some(level)
-            && !posed.contains(&e)
-        {
-            rs.scene.objects.impostors.push(og_render::ImpostorDraw {
-                impostor,
-                transform: m,
-                cast_shadows: look.cast,
-                sway,
-                top: rs.wind.tops.get(&asset).copied().unwrap_or(0.0),
-            });
-            continue;
+        // The levels drawn: its own, and the one it fades out from.
+        let mut levels = vec![(level, look)];
+        if let Some((from, t)) = fading {
+            levels[0].1.fx.reveal = t;
+            let mut out = look;
+            out.fx.reveal = 1.0 - t;
+            out.fx.fade_out = true;
+            levels.push((from, out));
         }
         // A swaying model's parts draw with their materials' wind copies.
         if sway > 0.0
@@ -424,86 +462,112 @@ pub(super) fn models(
                 p.1 = rs.wind.material(&mut rs.scene, p.1, sway, top);
             }
         }
-        if posed.contains(&e)
-            && super::fx::posed_model(rs, e, asset, m, h.blend_alpha(e), &parts, look, keys)
-        {
-            continue;
-        }
-        if let Some(crowd) = crowds.get(&e) {
-            let seconds = crowd_time(h.blend_alpha(e));
-            let lods = model_lods.get(&asset);
-            // A crowd draws whole: its cards read the look's flash word as is.
-            let mut look = look;
-            look.fx.reveal = 1.0;
-            if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, lods, look, keys) {
-                continue;
-            }
-        }
-        let levels = model_lods.get(&asset).map(|l| &l.parts);
-        // Its meshes never draw past their coarsest: a posed model (or one
-        // in the 2D profile) at its impostor's level draws that.
-        let level = match model_lods.get(&asset).and_then(|l| l.impostor_level()) {
-            Some(i) => level.min(i - 1),
-            None => level,
-        };
-        // Drawn without a pose: a part whose node the glTF hides at rest
-        // (KHR_node_visibility, a `.vox` frame after 0) is not drawn, when
-        // the parts are the model's own (not a bake's).
-        let shown = rs
-            .fx
-            .models
-            .get(&asset)
-            .map(|i| &i.part_shown)
-            .filter(|s| s.len() == parts.len());
-        for (k, &(mesh, material, local)) in parts.iter().enumerate() {
-            if shown.is_some_and(|s| !s[k]) {
-                continue;
-            }
-            let mut selected_material = model_lods
-                .get(&asset)
-                .map_or(material, |l| l.material(k, level, material));
-            if selected_material != material
-                && sway > 0.0
-                && let Some(&top) = rs.wind.tops.get(&asset)
+        for (level, look) in levels {
+            // At its impostor's level a model at rest is one card
+            // (og-render's `impostor`), drawn with the scattered copies'
+            // passes.
+            if og_render::WORLD_3D
+                && let Some(l) = model_lods.get(&asset)
+                && let Some((impostor, _)) = l.impostor
+                && l.impostor_level() == Some(level)
+                && !posed.contains(&e)
             {
-                selected_material = rs
-                    .wind
-                    .material(&mut rs.scene, selected_material, sway, top);
+                rs.scene.objects.impostors.push(og_render::ImpostorDraw {
+                    impostor,
+                    transform: m,
+                    cast_shadows: look.cast,
+                    sway,
+                    top: rs.wind.tops.get(&asset).copied().unwrap_or(0.0),
+                    reveal: look.fx.reveal,
+                    fade_out: look.fx.fade_out,
+                });
+                continue;
             }
-            let material = selected_material;
-            // A part with fewer levels than the model draws its coarsest.
-            // One the meshlet path draws keeps level 0's mesh and is told
-            // the level (`RenderScene::instance_levels`): its clusters
-            // hold every level, the same as the part's meshes.
-            let meshlet = rs.scene.meshlet_drawable(mesh, material);
-            if meshlet {
-                let at = rs.scene.objects.instances.len();
-                rs.scene.objects.instance_levels.resize(at + 1, u8::MAX);
-                rs.scene.objects.instance_levels[at] = level as u8;
+            if posed.contains(&e)
+                && super::fx::posed_model(rs, e, asset, m, h.blend_alpha(e), &parts, look, keys)
+            {
+                continue;
             }
-            let mesh = match (level, levels.and_then(|l| l.get(k))) {
-                (0, _) | (_, None) => mesh,
-                _ if meshlet => mesh,
-                (_, Some(p)) if p.is_empty() => mesh,
-                (l, Some(p)) => p[(l - 1).min(p.len() - 1)].0,
+            if let Some(crowd) = crowds.get(&e) {
+                let seconds = crowd_time(h.blend_alpha(e));
+                let lods = model_lods.get(&asset);
+                // A crowd draws whole: its cards read the look's flash word as is.
+                let mut look = look;
+                look.fx.reveal = 1.0;
+                if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, lods, look, keys) {
+                    continue;
+                }
+            }
+            let part_levels = model_lods.get(&asset).map(|l| &l.parts);
+            // Its meshes never draw past their coarsest: a posed model (or
+            // one in the 2D profile) at its impostor's level draws that.
+            let level = match model_lods.get(&asset).and_then(|l| l.impostor_level()) {
+                Some(i) => level.min(i - 1),
+                None => level,
             };
-            rs.scene.objects.instances.push(og_render::Instance {
-                mesh,
-                material,
-                transform: m * local,
-                material_layer: None,
-                fx: look.fx,
-                cast_shadows: look.cast,
-                receive_shadows: look.receive,
-                sway: 0.0,
-            });
-            keys.push((e, k as u32));
+            // Drawn without a pose: a part whose node the glTF hides at
+            // rest (KHR_node_visibility, a `.vox` frame after 0) is not
+            // drawn, when the parts are the model's own (not a bake's).
+            let shown = rs
+                .fx
+                .models
+                .get(&asset)
+                .map(|i| &i.part_shown)
+                .filter(|s| s.len() == parts.len());
+            for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+                if shown.is_some_and(|s| !s[k]) {
+                    continue;
+                }
+                let mut selected_material = model_lods
+                    .get(&asset)
+                    .map_or(material, |l| l.material(k, level, material));
+                if selected_material != material
+                    && sway > 0.0
+                    && let Some(&top) = rs.wind.tops.get(&asset)
+                {
+                    selected_material = rs
+                        .wind
+                        .material(&mut rs.scene, selected_material, sway, top);
+                }
+                let material = selected_material;
+                // A part with fewer levels than the model draws its
+                // coarsest. One the meshlet path draws keeps level 0's mesh
+                // and is told the level (`RenderScene::instance_levels`):
+                // its clusters hold every level, the same as the part's
+                // meshes. One partly hidden is drawn off that path
+                // (og-render's `batches.rs`), as its level's mesh.
+                let meshlet =
+                    look.fx.reveal >= 1.0 && rs.scene.meshlet_drawable(mesh, material);
+                if meshlet {
+                    let at = rs.scene.objects.instances.len();
+                    rs.scene.objects.instance_levels.resize(at + 1, u8::MAX);
+                    rs.scene.objects.instance_levels[at] = level as u8;
+                }
+                let mesh = match (level, part_levels.and_then(|l| l.get(k))) {
+                    (0, _) | (_, None) => mesh,
+                    _ if meshlet => mesh,
+                    (_, Some(p)) if p.is_empty() => mesh,
+                    (l, Some(p)) => p[(l - 1).min(p.len() - 1)].0,
+                };
+                rs.scene.objects.instances.push(og_render::Instance {
+                    mesh,
+                    material,
+                    transform: m * local,
+                    material_layer: None,
+                    fx: look.fx,
+                    cast_shadows: look.cast,
+                    receive_shadows: look.receive,
+                    sway: 0.0,
+                });
+                keys.push((e, k as u32));
+            }
         }
     }
     rs.kept_models = build.finish(&rs.scene, keys, !fractured.is_empty());
     rs.hlod.replaced = replaced;
     rs.model_lods = model_lods;
     rs.lod_drawn = drawn;
+    rs.lod_fades = lod_fades;
     rs.models = models;
     rs.baked.overrides = lightmapped_parts;
 }

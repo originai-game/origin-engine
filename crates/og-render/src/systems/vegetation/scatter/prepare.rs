@@ -72,7 +72,17 @@ impl ScatterRenderer {
                 // Its sphere, and how far the wind moves its top at most.
                 grow = grow.max((imp.radius + lean_cap * sway * top) * s);
                 cast |= d.cast_shadows;
-                transforms.push(crate::instances::gpu_transform(&d.transform));
+                // Its share drawn rides in its look's flash word, as an
+                // instance's (instance.wgsl `look_hidden`).
+                let fx = crate::InstanceFx {
+                    reveal: d.reveal,
+                    fade_out: d.fade_out,
+                    ..crate::InstanceFx::NONE
+                };
+                transforms.push(crate::instances::GpuTransform {
+                    fx: crate::instances::fx_bits(&fx),
+                    ..crate::instances::gpu_transform(&d.transform)
+                });
             }
             let slot = first_slot + k;
             let mut gpu = base;
