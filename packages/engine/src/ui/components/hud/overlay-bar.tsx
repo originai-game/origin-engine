@@ -1,4 +1,4 @@
-import { For, Icon, Image, Show, Text, View, type UiEvent, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Scroll, Show, Text, View, type UiEvent, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./overlay-bar.en.ogt";
 
@@ -32,9 +32,10 @@ export interface OverlayBarProps {
 /**
  * A map's overlays over the scene: a legend for the selected overlay (its
  * name, its ramp low to high and the words at its ends) over a bar of
- * buttons, one per overlay, its picture or icon beside its name. Read
- * only; the buttons report their choice. The buttons' pressed state is
- * worded, as the style words it; a pack's picture fills the button's face.
+ * buttons, one per overlay, its picture or icon beside its name; the bar
+ * scrolls along when the buttons run over. Read only; the buttons report
+ * their choice. The buttons' pressed state is worded, as the style words
+ * it; a pack's picture fills the button's face.
  */
 export function OverlayBar(props: OverlayBarProps) {
   return (
@@ -57,30 +58,32 @@ export function OverlayBar(props: OverlayBarProps) {
           </Show>
         )}
       </For>
-      <View class={`flex-row max-w-full gap-2 p-2 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border`} role="toolbar" label={(props.label ?? "") !== "" ? props.label : t("component.overlay-bar.name")}>
-        <For each={props.overlays ?? []} key={(o) => o.id}>
-          {(o) => (
-            <View
-              class={`shrink-0 flex-row items-center h-14 py-1 pr-3 pl-1 gap-x-2 border-rim-strong bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] rounded-button border active:bg-none active:bg-tile-pressed active:scale-96`}
-              role="button"
-              label={o().name}
-              pressed={o().id === (props.selected ?? "")}
-              onPress={(e) => props.onChoose?.(e, o().id)}
-            >
-              <Show when={o().image} fallback={
-                <View class="size-12 flex-col items-center justify-center rounded-[0.286rem] bg-tile border border-rim-soft">
-                  <Show when={o().icon}>
-                    <Icon class="size-6 text-fg" name={o().icon} />
-                  </Show>
-                </View>
-              }>
-                <Image class="size-12 rounded-[0.286rem]" src={o().image} />
-              </Show>
-              <Text class="text-[0.929rem] font-semibold whitespace-nowrap text-fg text-shadow-xs">{o().name}</Text>
-            </View>
-          )}
-        </For>
-      </View>
+      <Scroll class="max-w-full" role="toolbar" label={(props.label ?? "") !== "" ? props.label : t("component.overlay-bar.name")}>
+        <View class="flex-row gap-2 p-2 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border w-fit">
+          <For each={props.overlays ?? []} key={(o) => o.id}>
+            {(o) => (
+              <View
+                class={`shrink-0 flex-row items-center h-14 py-1 pr-3 pl-1 gap-x-2 border-rim-strong bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[0px_0px_0px_1px_#00000073,inset_0px_1px_0px_0px_#ffffff14,0px_6px_18px_-6px_#00000099] rounded-button border active:bg-none active:bg-tile-pressed active:scale-96`}
+                role="button"
+                label={o().name}
+                pressed={o().id === (props.selected ?? "")}
+                onPress={(e) => props.onChoose?.(e, o().id)}
+              >
+                <Show when={o().image} fallback={
+                  <View class="size-12 flex-col items-center justify-center rounded-[0.286rem] bg-tile border border-rim-soft">
+                    <Show when={o().icon}>
+                      <Icon class="size-6 text-fg" name={o().icon} />
+                    </Show>
+                  </View>
+                }>
+                  <Image class="size-12 rounded-[0.286rem]" src={o().image} />
+                </Show>
+                <Text class="text-[0.929rem] font-semibold whitespace-nowrap text-fg text-shadow-xs">{o().name}</Text>
+              </View>
+            )}
+          </For>
+        </View>
+      </Scroll>
     </View>
   );
 }

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "The touch controls as TSX, beside their .svelte: TouchControls, its stick, d-pad and action buttons built from Views. The buttons feed their og-input actions through the engine's touch wiring; the stick and the d-pad report their axis to a new onMove prop each move, dead-zoned and re-centred on release (the document widgets' stick zones have no TSX surface), and the d-pad's eight ways need two fingers on two arms. The overlay bar's buttons row scrolls along when it runs over. The hold controls hold again: HoldButton, the action hints' hold hint and the QTE prompt's hold run holdMs with their progress fill and confirm on completion."
+    }
+  ]
+}
