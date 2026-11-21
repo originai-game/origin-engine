@@ -83,8 +83,8 @@ export function CardCollection(props: CardCollectionProps) {
               <View class="items-center gap-0.5">
                 <Show when={c().canAdd} fallback={
                     <View class={`text-fg transition duration-317 w-full aspect-[7/10] justify-stretch p-0 data-selected:border-accent data-done:border-success data-active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().reason || (c().locked ? t("card.collection.locked") : t("card.collection.refused"))} onPress={(e) => props.onInspect?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
-                      <View class="w-full">
-                        <View class="w-full">
+                      <View class="size-full">
+                        <View class="size-full">
                           <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={c().locked} />
                         </View>
                         <Show when={c().locked}>
@@ -102,8 +102,8 @@ export function CardCollection(props: CardCollectionProps) {
                     </View>
                 }>
                   <View class={`text-fg transition duration-317 w-full aspect-[7/10] justify-stretch p-0 data-selected:border-accent data-done:border-success data-active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onAdd?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
-                    <View class="w-full">
-                      <View class="w-full">
+                    <View class="size-full">
+                      <View class="size-full">
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={false} />
                       </View>
                       <Show when={c().owned > 0}>
