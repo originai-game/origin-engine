@@ -605,6 +605,10 @@ fn shape(
                 faces,
                 metrics,
             );
+            // CSS's `overflow-wrap: normal`: a word wider than the line
+            // overflows whole instead of breaking between its letters.
+            let mut builder = builder;
+            builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Normal));
             builder.build_into(scratch, text);
             scratch.break_all_lines(width);
             let wrapped = width.is_some();

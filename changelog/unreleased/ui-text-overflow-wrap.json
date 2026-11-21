@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui text",
+      "summary": "A word wider than its text box now stays whole and overflows, as CSS's default `overflow-wrap: normal` does, instead of breaking between its letters (\"P|r|e|s|s\"). A text's smallest width is now its widest word, so a box sized to its content is no longer squeezed to a letter."
+    }
+  ]
+}

@@ -2275,7 +2275,15 @@ fn lay_out(
         }
         return;
     }
-    let lines = og_text::text::break_lines(text, m, size, track, features, Some(width + 0.5));
+    let lines = og_text::text::break_lines_with_overflow(
+        text,
+        m,
+        size,
+        track,
+        features,
+        Some(width + 0.5),
+        false,
+    );
     for (k, l) in lines.iter().enumerate() {
         place(k, &l.text, l.width, &mut g.quads, &mut g.lines);
     }

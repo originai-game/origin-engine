@@ -34,7 +34,15 @@ pub fn measure(m: &FontMetrics, text: &str, run: &Run, width: Option<f32>) -> (f
         let w = widest_line(text, m, run.size, track, Features::NONE);
         return (w, lines as f32 * run.line);
     }
-    let lines = break_lines(text, m, run.size, track, Features::NONE, width);
+    let lines = og_text::text::break_lines_with_overflow(
+        text,
+        m,
+        run.size,
+        track,
+        Features::NONE,
+        width,
+        false,
+    );
     let w = lines.iter().map(|l| l.width).fold(0.0, f32::max);
     (w, lines.len().max(1) as f32 * run.line)
 }
@@ -81,6 +89,12 @@ mod tests {
             assert!((w - expect_w).abs() < 0.01, "{width:?}: {w} vs {expect_w}");
             assert_eq!(h, lines.len() as f32 * run.line, "{width:?}");
         }
+        // A box narrower than a word: the word overflows it whole, as CSS's
+        // `overflow-wrap: normal`, never broken between its letters.
+        let (w, h) = measure(&m, "Press any button", &run, Some(4.0));
+        assert_eq!(h, 3.0 * run.line, "one line a word");
+        let button = widest_line("button", &m, 14.0, 0.0, Features::NONE);
+        assert!((w - button).abs() < 0.01, "{w} vs {button}");
     }
 
     #[test]
