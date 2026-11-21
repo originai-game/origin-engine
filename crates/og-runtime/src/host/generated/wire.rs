@@ -16321,159 +16321,6 @@ impl ToJson for Scheme {
     }
 }
 
-/// `GlassBackdrop`: packages/knowledge/wiki/ui.md.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum GlassBackdrop {
-    #[default]
-    None,
-    Auto,
-}
-
-impl GlassBackdrop {
-    /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["none", "auto"];
-    /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::None, Self::Auto];
-    /// The IDL name.
-    pub fn as_str(self) -> &'static str {
-        Self::NAMES[self as usize]
-    }
-    /// The variant named `s`, or a refusal naming them all.
-    pub fn parse(s: &str) -> Result<Self, String> {
-        match Self::NAMES.iter().position(|n| *n == s) {
-            Some(i) => Ok(Self::ALL[i]),
-            None => Err(unknown_variant("GlassBackdrop", s, Self::NAMES)),
-        }
-    }
-}
-
-impl FromJson for GlassBackdrop {
-    fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(variant(v, "GlassBackdrop", Self::NAMES)?)
-    }
-}
-
-impl ToJson for GlassBackdrop {
-    fn to_json(&self) -> Value {
-        Value::String(self.as_str().into())
-    }
-}
-
-/// `DensityMode`: packages/knowledge/wiki/ui.md.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum DensityMode {
-    #[default]
-    Auto,
-    Mouse,
-    Pad,
-    Touch,
-}
-
-impl DensityMode {
-    /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["auto", "mouse", "pad", "touch"];
-    /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Auto, Self::Mouse, Self::Pad, Self::Touch];
-    /// The IDL name.
-    pub fn as_str(self) -> &'static str {
-        Self::NAMES[self as usize]
-    }
-    /// The variant named `s`, or a refusal naming them all.
-    pub fn parse(s: &str) -> Result<Self, String> {
-        match Self::NAMES.iter().position(|n| *n == s) {
-            Some(i) => Ok(Self::ALL[i]),
-            None => Err(unknown_variant("DensityMode", s, Self::NAMES)),
-        }
-    }
-}
-
-impl FromJson for DensityMode {
-    fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(variant(v, "DensityMode", Self::NAMES)?)
-    }
-}
-
-impl ToJson for DensityMode {
-    fn to_json(&self) -> Value {
-        Value::String(self.as_str().into())
-    }
-}
-
-/// `ThemeColor`: packages/knowledge/wiki/ui.md.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum ThemeColor {
-    #[default]
-    Backdrop,
-    Well,
-    Panel,
-    PanelHover,
-    PanelRaised,
-    Line,
-    LineStrong,
-    Ink,
-    InkMuted,
-    InkFaint,
-    InkInverse,
-    Control,
-    ControlStrong,
-    Primary,
-    PrimaryHover,
-    PrimaryActive,
-    OnPrimary,
-    PrimarySoft,
-    Highlight,
-    Selection,
-    OnSelection,
-    Accent,
-    SceneInk,
-    ScenePlate,
-    SceneShadow,
-    Focus,
-    Knob,
-    Hud,
-    Scrim,
-    Shadow,
-    Sheen,
-    Success,
-    Warn,
-    Danger,
-    Info,
-    Health,
-    Mana,
-    Xp,
-    Gold,
-}
-
-impl ThemeColor {
-    /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["backdrop", "well", "panel", "panelHover", "panelRaised", "line", "lineStrong", "ink", "inkMuted", "inkFaint", "inkInverse", "control", "controlStrong", "primary", "primaryHover", "primaryActive", "onPrimary", "primarySoft", "highlight", "selection", "onSelection", "accent", "sceneInk", "scenePlate", "sceneShadow", "focus", "knob", "hud", "scrim", "shadow", "sheen", "success", "warn", "danger", "info", "health", "mana", "xp", "gold"];
-    /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Backdrop, Self::Well, Self::Panel, Self::PanelHover, Self::PanelRaised, Self::Line, Self::LineStrong, Self::Ink, Self::InkMuted, Self::InkFaint, Self::InkInverse, Self::Control, Self::ControlStrong, Self::Primary, Self::PrimaryHover, Self::PrimaryActive, Self::OnPrimary, Self::PrimarySoft, Self::Highlight, Self::Selection, Self::OnSelection, Self::Accent, Self::SceneInk, Self::ScenePlate, Self::SceneShadow, Self::Focus, Self::Knob, Self::Hud, Self::Scrim, Self::Shadow, Self::Sheen, Self::Success, Self::Warn, Self::Danger, Self::Info, Self::Health, Self::Mana, Self::Xp, Self::Gold];
-    /// The IDL name.
-    pub fn as_str(self) -> &'static str {
-        Self::NAMES[self as usize]
-    }
-    /// The variant named `s`, or a refusal naming them all.
-    pub fn parse(s: &str) -> Result<Self, String> {
-        match Self::NAMES.iter().position(|n| *n == s) {
-            Some(i) => Ok(Self::ALL[i]),
-            None => Err(unknown_variant("ThemeColor", s, Self::NAMES)),
-        }
-    }
-}
-
-impl FromJson for ThemeColor {
-    fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(variant(v, "ThemeColor", Self::NAMES)?)
-    }
-}
-
-impl ToJson for ThemeColor {
-    fn to_json(&self) -> Value {
-        Value::String(self.as_str().into())
-    }
-}
-
 /// `Insets`: packages/knowledge/wiki/ui.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Insets {
@@ -16523,7 +16370,6 @@ impl ToJson for Insets {
 /// `Paint`: packages/knowledge/wiki/ui.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Paint {
-    pub token: Option<ThemeColor>,
     pub role: Option<String>,
     pub color: Option<Color>,
     pub opacity: f32,
@@ -16532,7 +16378,6 @@ pub struct Paint {
 impl Default for Paint {
     fn default() -> Self {
         Self {
-            token: Default::default(),
             role: Default::default(),
             color: Default::default(),
             opacity: 1.0_f32,
@@ -16547,7 +16392,6 @@ impl FromJson for Paint {
     fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
         let o = object(v)?;
         Ok(Self {
-            token: field(o, "token", d.token)?,
             role: field(o, "role", d.role)?,
             color: field(o, "color", d.color)?,
             opacity: field(o, "opacity", d.opacity)?,
@@ -16558,7 +16402,6 @@ impl FromJson for Paint {
 impl ToJson for Paint {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
-        o.insert("token".into(), self.token.to_json());
         o.insert("role".into(), self.role.to_json());
         o.insert("color".into(), self.color.to_json());
         o.insert("opacity".into(), self.opacity.to_json());
@@ -16672,7 +16515,6 @@ impl ToJson for Viewport {
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiDesc {
     pub scheme: Scheme,
-    pub density: DensityMode,
     pub font: Option<u64>,
     pub display_font: Option<u64>,
     pub mono_font: Option<u64>,
@@ -16696,7 +16538,6 @@ impl Default for UiDesc {
     fn default() -> Self {
         Self {
             scheme: Default::default(),
-            density: Default::default(),
             font: Default::default(),
             display_font: Default::default(),
             mono_font: Default::default(),
@@ -16726,7 +16567,6 @@ impl FromJson for UiDesc {
         let o = object(v)?;
         Ok(Self {
             scheme: field(o, "scheme", d.scheme)?,
-            density: field(o, "density", d.density)?,
             font: field(o, "font", d.font)?,
             display_font: field(o, "displayFont", d.display_font)?,
             mono_font: field(o, "monoFont", d.mono_font)?,
@@ -16752,7 +16592,6 @@ impl ToJson for UiDesc {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("scheme".into(), self.scheme.to_json());
-        o.insert("density".into(), self.density.to_json());
         o.insert("font".into(), self.font.to_json());
         o.insert("displayFont".into(), self.display_font.to_json());
         o.insert("monoFont".into(), self.mono_font.to_json());
@@ -16890,160 +16729,48 @@ impl ToJson for UiSounds {
     }
 }
 
-/// `TypeStep`: packages/knowledge/wiki/ui.md.
-#[derive(Clone, Debug, PartialEq)]
-pub struct TypeStep {
-    pub size: f32,
-    pub line_height: f32,
-    pub tracking_em: f32,
-    pub cjk_line_height: f32,
-    pub cjk_tracking_em: f32,
-    pub weight: u32,
-    pub uppercase: bool,
-}
-
-impl Default for TypeStep {
-    fn default() -> Self {
-        Self {
-            size: Default::default(),
-            line_height: Default::default(),
-            tracking_em: Default::default(),
-            cjk_line_height: Default::default(),
-            cjk_tracking_em: Default::default(),
-            weight: Default::default(),
-            uppercase: Default::default(),
-        }
-    }
-}
-
-impl FromJson for TypeStep {
-    fn from_json(v: &Value) -> Result<Self, String> {
-        Self::from_json_over(v, Self::default())
-    }
-    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
-        let o = object(v)?;
-        Ok(Self {
-            size: field(o, "size", d.size)?,
-            line_height: field(o, "lineHeight", d.line_height)?,
-            tracking_em: field(o, "trackingEm", d.tracking_em)?,
-            cjk_line_height: field(o, "cjkLineHeight", d.cjk_line_height)?,
-            cjk_tracking_em: field(o, "cjkTrackingEm", d.cjk_tracking_em)?,
-            weight: field(o, "weight", d.weight)?,
-            uppercase: field(o, "uppercase", d.uppercase)?,
-        })
-    }
-}
-
-impl ToJson for TypeStep {
-    fn to_json(&self) -> Value {
-        let mut o = Map::new();
-        o.insert("size".into(), self.size.to_json());
-        o.insert("lineHeight".into(), self.line_height.to_json());
-        o.insert("trackingEm".into(), self.tracking_em.to_json());
-        o.insert("cjkLineHeight".into(), self.cjk_line_height.to_json());
-        o.insert("cjkTrackingEm".into(), self.cjk_tracking_em.to_json());
-        o.insert("weight".into(), self.weight.to_json());
-        o.insert("uppercase".into(), self.uppercase.to_json());
-        Value::Object(o)
-    }
-}
-
-/// `ControlSizes`: packages/knowledge/wiki/ui.md.
-#[derive(Clone, Debug, PartialEq)]
-pub struct ControlSizes {
-    pub control_sm: f32,
-    pub control_md: f32,
-    pub control_lg: f32,
-    pub gutter: f32,
-    pub header: f32,
-    pub row: f32,
-    pub section: f32,
-}
-
-impl Default for ControlSizes {
-    fn default() -> Self {
-        Self {
-            control_sm: Default::default(),
-            control_md: Default::default(),
-            control_lg: Default::default(),
-            gutter: Default::default(),
-            header: Default::default(),
-            row: Default::default(),
-            section: Default::default(),
-        }
-    }
-}
-
-impl FromJson for ControlSizes {
-    fn from_json(v: &Value) -> Result<Self, String> {
-        Self::from_json_over(v, Self::default())
-    }
-    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
-        let o = object(v)?;
-        Ok(Self {
-            control_sm: field(o, "controlSm", d.control_sm)?,
-            control_md: field(o, "controlMd", d.control_md)?,
-            control_lg: field(o, "controlLg", d.control_lg)?,
-            gutter: field(o, "gutter", d.gutter)?,
-            header: field(o, "header", d.header)?,
-            row: field(o, "row", d.row)?,
-            section: field(o, "section", d.section)?,
-        })
-    }
-}
-
-impl ToJson for ControlSizes {
-    fn to_json(&self) -> Value {
-        let mut o = Map::new();
-        o.insert("controlSm".into(), self.control_sm.to_json());
-        o.insert("controlMd".into(), self.control_md.to_json());
-        o.insert("controlLg".into(), self.control_lg.to_json());
-        o.insert("gutter".into(), self.gutter.to_json());
-        o.insert("header".into(), self.header.to_json());
-        o.insert("row".into(), self.row.to_json());
-        o.insert("section".into(), self.section.to_json());
-        Value::Object(o)
-    }
-}
-
 /// `UiTheme`: packages/knowledge/wiki/ui.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiTheme {
     pub scheme: Scheme,
-    pub palette: BTreeMap<String, String>,
-    pub space: BTreeMap<String, f32>,
+    pub colors: BTreeMap<String, String>,
     pub radius: BTreeMap<String, f32>,
-    pub type_ramp: BTreeMap<String, TypeStep>,
-    pub sizes: ControlSizes,
-    pub durations_ms: BTreeMap<String, f32>,
+    pub font_size: BTreeMap<String, f32>,
+    pub line_height: BTreeMap<String, f32>,
+    pub tracking: BTreeMap<String, f32>,
+    pub font_weight: BTreeMap<String, f32>,
+    pub blur: BTreeMap<String, f32>,
+    pub durations: BTreeMap<String, f32>,
     pub style: String,
     pub contrast: Contrast,
     pub reduced_motion: bool,
     pub text_scale: f32,
+    pub unit: f32,
     pub color_vision: ColorVision,
     pub color_vision_filter: ColorVisionFilter,
     pub color_vision_strength: f32,
-    pub glass_backdrop: GlassBackdrop,
 }
 
 impl Default for UiTheme {
     fn default() -> Self {
         Self {
             scheme: Default::default(),
-            palette: Default::default(),
-            space: Default::default(),
+            colors: Default::default(),
             radius: Default::default(),
-            type_ramp: Default::default(),
-            sizes: Default::default(),
-            durations_ms: Default::default(),
+            font_size: Default::default(),
+            line_height: Default::default(),
+            tracking: Default::default(),
+            font_weight: Default::default(),
+            blur: Default::default(),
+            durations: Default::default(),
             style: Default::default(),
             contrast: Default::default(),
             reduced_motion: Default::default(),
             text_scale: Default::default(),
+            unit: Default::default(),
             color_vision: Default::default(),
             color_vision_filter: Default::default(),
             color_vision_strength: Default::default(),
-            glass_backdrop: Default::default(),
         }
     }
 }
@@ -17056,20 +16783,22 @@ impl FromJson for UiTheme {
         let o = object(v)?;
         Ok(Self {
             scheme: field(o, "scheme", d.scheme)?,
-            palette: field(o, "palette", d.palette)?,
-            space: field(o, "space", d.space)?,
+            colors: field(o, "colors", d.colors)?,
             radius: field(o, "radius", d.radius)?,
-            type_ramp: field(o, "typeRamp", d.type_ramp)?,
-            sizes: field(o, "sizes", d.sizes)?,
-            durations_ms: field(o, "durationsMs", d.durations_ms)?,
+            font_size: field(o, "fontSize", d.font_size)?,
+            line_height: field(o, "lineHeight", d.line_height)?,
+            tracking: field(o, "tracking", d.tracking)?,
+            font_weight: field(o, "fontWeight", d.font_weight)?,
+            blur: field(o, "blur", d.blur)?,
+            durations: field(o, "durations", d.durations)?,
             style: field(o, "style", d.style)?,
             contrast: field(o, "contrast", d.contrast)?,
             reduced_motion: field(o, "reducedMotion", d.reduced_motion)?,
             text_scale: field(o, "textScale", d.text_scale)?,
+            unit: field(o, "unit", d.unit)?,
             color_vision: field(o, "colorVision", d.color_vision)?,
             color_vision_filter: field(o, "colorVisionFilter", d.color_vision_filter)?,
             color_vision_strength: field(o, "colorVisionStrength", d.color_vision_strength)?,
-            glass_backdrop: field(o, "glassBackdrop", d.glass_backdrop)?,
         })
     }
 }
@@ -17078,20 +16807,22 @@ impl ToJson for UiTheme {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("scheme".into(), self.scheme.to_json());
-        o.insert("palette".into(), self.palette.to_json());
-        o.insert("space".into(), self.space.to_json());
+        o.insert("colors".into(), self.colors.to_json());
         o.insert("radius".into(), self.radius.to_json());
-        o.insert("typeRamp".into(), self.type_ramp.to_json());
-        o.insert("sizes".into(), self.sizes.to_json());
-        o.insert("durationsMs".into(), self.durations_ms.to_json());
+        o.insert("fontSize".into(), self.font_size.to_json());
+        o.insert("lineHeight".into(), self.line_height.to_json());
+        o.insert("tracking".into(), self.tracking.to_json());
+        o.insert("fontWeight".into(), self.font_weight.to_json());
+        o.insert("blur".into(), self.blur.to_json());
+        o.insert("durations".into(), self.durations.to_json());
         o.insert("style".into(), self.style.to_json());
         o.insert("contrast".into(), self.contrast.to_json());
         o.insert("reducedMotion".into(), self.reduced_motion.to_json());
         o.insert("textScale".into(), self.text_scale.to_json());
+        o.insert("unit".into(), self.unit.to_json());
         o.insert("colorVision".into(), self.color_vision.to_json());
         o.insert("colorVisionFilter".into(), self.color_vision_filter.to_json());
         o.insert("colorVisionStrength".into(), self.color_vision_strength.to_json());
-        o.insert("glassBackdrop".into(), self.glass_backdrop.to_json());
         Value::Object(o)
     }
 }

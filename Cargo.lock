@@ -3190,7 +3190,6 @@ dependencies = [
  "og-physics",
  "og-records",
  "og-tween",
- "og-ui",
  "serde_json",
 ]
 
@@ -3665,6 +3664,7 @@ dependencies = [
  "og-bundle",
  "og-cook",
  "og-core",
+ "og-css",
  "og-ecs",
  "og-env",
  "og-geom",

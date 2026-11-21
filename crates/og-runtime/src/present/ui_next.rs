@@ -60,7 +60,8 @@ pub(crate) struct Spans {
 type Mount = (String, Vec<(String, u32)>, Vec<Value>);
 
 pub(crate) struct Next {
-    scheme: og_ui::Scheme,
+    /// The UI's scheme is dark (og.ui.configure's, dark by default).
+    dark: bool,
     /// The style pack the look lays over the defaults (its id), if any.
     pack: Option<String>,
     look: Option<Rc<Look>>,
@@ -172,7 +173,7 @@ fn active_pack(engine: u32) -> Option<(String, Vec<(String, String)>)> {
 }
 
 /// The id of the style `og.ui.configure` set, none for the default.
-fn style_id(engine: u32) -> Option<String> {
+pub(crate) fn style_id(engine: u32) -> Option<String> {
     let eng = crate::engine::engine(engine).ok()?;
     let handle = eng.state.borrow().ui_desc.get("style")?.as_f64()?;
     let i = crate::world::assets::index_of(handle)?;
@@ -328,6 +329,76 @@ fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {
     og_ui_next::pack::Layer::parse(&text).ok()
 }
 
+/// The style pack's theme (the default pack with the game's over it) in
+/// the scheme and contrast given, as og.ui.theme reads it: the theme the
+/// class resolver styles with.
+pub(crate) fn pack_theme(
+    engine: u32,
+    dark: bool,
+    high_contrast: bool,
+) -> serde_json::Map<String, Value> {
+    let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
+    layers.extend(style_id(engine).and_then(|id| pack_layer(engine, &id)));
+    let pack = Pack::new(&layers);
+    let scheme = if dark { Scheme::Dark } else { Scheme::Light };
+    let text = if high_contrast {
+        pack.theme_json_high_contrast(scheme)
+    } else {
+        pack.theme_json(scheme)
+    };
+    serde_json::from_str(&text).unwrap_or_default()
+}
+
+/// The motion durations of the style in effect (`--motion-duration-*`, the
+/// default tokens with the pack's over them) by name, in milliseconds:
+/// read once per style.
+pub(crate) fn durations(engine: u32) -> Rc<BTreeMap<String, f32>> {
+    /// The style's id and the durations read for it.
+    type Read = Option<(Option<String>, Rc<BTreeMap<String, f32>>)>;
+    thread_local! {
+        static READ: RefCell<Read> = const { RefCell::new(None) };
+    }
+    let style = style_id(engine);
+    READ.with(|r| {
+        if let Some((s, d)) = &*r.borrow()
+            && *s == style
+        {
+            return d.clone();
+        }
+        let defaults = og_ui_next::look::default_tokens();
+        let mut tokens = og_ui_next::tokens::Tokens::parse(defaults);
+        if let Some((_, files)) = active_pack(engine)
+            && let Some(layer) = og_ui_next::look::pack_layer(&files)
+        {
+            tokens.over(layer.tokens);
+        }
+        const PREFIX: &str = "--motion-duration-";
+        let mut out = BTreeMap::new();
+        for line in defaults.split(PREFIX).skip(1) {
+            let Some((name, _)) = line.split_once(':') else {
+                continue;
+            };
+            let Some(value) = tokens.get(&format!("{PREFIX}{name}")) else {
+                continue;
+            };
+            let value = value.trim();
+            let ms = match value.strip_suffix("ms") {
+                Some(n) => n.trim().parse::<f32>().ok(),
+                None => value
+                    .strip_suffix('s')
+                    .and_then(|n| n.trim().parse::<f32>().ok())
+                    .map(|s| s * 1000.0),
+            };
+            if let Some(ms) = ms {
+                out.insert(name.trim().to_string(), ms);
+            }
+        }
+        let out = Rc::new(out);
+        *r.borrow_mut() = Some((style, out.clone()));
+        out
+    })
+}
+
 /// Where a UI box falls among what classes read of it: how many of the
 /// theme's widths it reaches, and whether it is under 500 px tall and
 /// wider than tall. A box that stays in one resolves every class alike
@@ -421,7 +492,7 @@ impl Next {
         let Some(tree) = &mut self.tree else { return };
         let v = ui.frame().viewport;
         let window = [v.width, v.height];
-        let dark = self.scheme == og_ui::Scheme::Dark;
+        let dark = self.dark;
         // The page's `prefers-contrast: more`, as the host reports it.
         let high = v.high_contrast;
         let at = size_class(&self.widths, window);
@@ -454,6 +525,16 @@ impl Next {
     }
 }
 
+/// Engine `engine`'s UI settings under the frame's viewport; the default
+/// desc's when the engine is gone.
+fn settings_of(engine: u32, ui: &og_ui::Ui) -> crate::bind::modules::UiSettings {
+    let v = ui.frame().viewport;
+    match crate::engine::engine(engine) {
+        Ok(eng) => crate::bind::modules::settings(&eng, &v, ui.unit_for(&v)),
+        Err(_) => crate::bind::modules::UiSettings::of(&Value::Null, String::new(), (false, false)),
+    }
+}
+
 fn allocations() -> usize {
     og_core::alloc::thread_allocations()
 }
@@ -461,7 +542,7 @@ fn allocations() -> usize {
 impl Next {
     pub(crate) fn new() -> Next {
         Next {
-            scheme: og_ui::Scheme::Dark,
+            dark: true,
             pack: None,
             look: None,
             section: String::new(),
@@ -709,11 +790,7 @@ impl Next {
             return false;
         }
         let t = now();
-        let scheme_name = if self.scheme == og_ui::Scheme::Light {
-            "light"
-        } else {
-            "dark"
-        };
+        let scheme_name = if self.dark { "dark" } else { "light" };
         let mut layers = vec![Layer {
             tokens: og_ui_next::look::default_tokens(),
             surfaces: og_ui_next::look::DEFAULT_SURFACES,
@@ -802,7 +879,7 @@ impl Next {
     /// paints. The reply is the events since the last batch, or the
     /// refusal of an op.
     pub(crate) fn ops(&mut self, engine: u32, ui: &og_ui::Ui, bytes: &[u8]) -> Vec<u8> {
-        self.scheme = ui.theme().scheme;
+        self.dark = settings_of(engine, ui).dark;
         self.build(engine, ui, &crate::author::probe::now_ms);
         let tree = self.tree.as_mut().expect("built above");
         let mut out = Vec::new();
@@ -920,7 +997,7 @@ impl Next {
         world: Option<&dyn Fn(u64) -> Option<og_core::glam::Vec3>>,
     ) -> Vec<String> {
         let mut warnings = std::mem::take(&mut self.held);
-        let scheme = ui.theme().scheme;
+        let settings = settings_of(engine, ui);
         // A tree of op nodes stays: its texts are the renderer's, and a new
         // look restyles it in place.
         let ops = self.tree.as_ref().is_some_and(|t| t.has_ops());
@@ -934,8 +1011,8 @@ impl Next {
         }
         // The game's pack over the defaults; a switch is another look.
         let pack_id = active_pack(engine).map(|(id, _)| id);
-        if scheme != self.scheme || pack_id != self.pack {
-            self.scheme = scheme;
+        if settings.dark != self.dark || pack_id != self.pack {
+            self.dark = settings.dark;
             self.pack = pack_id;
             self.look = None;
             if !ops {
@@ -973,8 +1050,8 @@ impl Next {
         }
         let v = ui.frame().viewport;
         tree.resize(v.width, v.height);
-        tree.set_time(time, ui.theme().reduced_motion);
-        tree.set_cover(cover, ui.theme().reduced_motion);
+        tree.set_time(time, settings.reduced_motion);
+        tree.set_cover(cover, settings.reduced_motion);
         let commit = tree.commit();
         // Anchored nodes where the tick's camera sees their entity or point
         // (CONVENTIONS.md §World); none without a camera or a world.
@@ -1076,20 +1153,22 @@ impl Next {
             } else {
                 Some(if sy > 0.0 { Nav::Down } else { Nav::Up })
             };
-            let d = ui.theme().durations_ms;
+            let d = durations(engine);
+            let ms = |name: &str, or: f32| d.get(name).copied().unwrap_or(or);
+            let (fast, slow) = (ms("fast", 180.0), ms("slow", 400.0));
             self.stick = match (dir, self.stick) {
                 (None, _) => None,
                 (Some(dir), Some((held, next))) if held == dir => {
                     if time >= next {
                         tree.nav(dir);
-                        Some((dir, next + f64::from(d.fast) / 1000.0))
+                        Some((dir, next + f64::from(fast) / 1000.0))
                     } else {
                         Some((dir, next))
                     }
                 }
                 (Some(dir), _) => {
                     tree.nav(dir);
-                    Some((dir, time + f64::from(d.slow) / 1000.0))
+                    Some((dir, time + f64::from(slow) / 1000.0))
                 }
             };
             tree.input_done(ui.action_down("confirm") && !a_taken);

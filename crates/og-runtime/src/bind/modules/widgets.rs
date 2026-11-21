@@ -6,13 +6,13 @@
 /// `shifts`: how far each anchored element moves on a frame drawn between
 /// ticks, by key (`crate::present::interpolate::ui_shifts`).
 pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap<u64, glam::Vec2>) {
+    // The player's colour vision filter over the whole frame (docs/ui.md
+    // §3.2), whether or not the UI draws anything this frame.
+    rs.scene.look.color_filter = rs.color_filter;
     let Some(ui) = rs.ui.clone() else {
         return;
     };
     let ui = ui.lock();
-    // The player's colour vision filter over the whole frame (docs/ui.md
-    // §3.2), whether or not the UI draws anything this frame.
-    rs.scene.look.color_filter = ui.theme().color_filter();
     // How far over SDR white the frame goes: the documents' CSS
     // dynamic-range-limit, which the display pass ends it at.
     rs.scene.look.range_limit = ui.range_limit();

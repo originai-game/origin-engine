@@ -29,6 +29,7 @@ og-ui = { path = "../og-ui", default-features = false }
 og-reactive = { path = "../og-reactive" }
 # og-ui's new core: every document runs on it.
 og-ui-next = { path = "../og-ui-next" }
+og-css = { path = "../og-css" }
 og-input = { path = "../og-input" }
 # og.motion's model runs on wgpu (og-anim's `motion`).
 og-anim = { path = "../og-anim", features = ["motion"] }

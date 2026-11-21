@@ -5,7 +5,7 @@ use super::{paint, with_ui};
 use crate::host::wire;
 use og_ui::{
     Choreo, Ease, EventKind, Key, KeyEase, MotionToken, PlayDesc, Prop, Repeat, SpringSpec,
-    StaggerFrom, Theme, Timeline, TimelineEvent, TimelineTrack, Transition,
+    StaggerFrom, Timeline, TimelineEvent, TimelineTrack, Transition,
 };
 
 fn spring(s: &wire::SpringSpec) -> SpringSpec {
@@ -55,7 +55,7 @@ fn key_ease(e: &Option<wire::KeyEase>) -> Option<KeyEase> {
     })
 }
 
-fn event_kind(theme: &Theme, a: &wire::TimelineAction) -> EventKind {
+fn event_kind(a: &wire::TimelineAction) -> EventKind {
     match a {
         wire::TimelineAction::Sound(e) => EventKind::Sound {
             name: e.name.clone(),
@@ -66,7 +66,7 @@ fn event_kind(theme: &Theme, a: &wire::TimelineAction) -> EventKind {
             count: e.count,
             radius: e.radius,
             color: paint(
-                theme,
+                &std::collections::BTreeMap::new(),
                 &wire::Paint {
                     color: e.color.clone(),
                     ..Default::default()
@@ -83,7 +83,7 @@ fn event_kind(theme: &Theme, a: &wire::TimelineAction) -> EventKind {
 }
 
 /// A `UiTimeline` desc.
-pub(crate) fn timeline(theme: &Theme, d: &wire::UiTimeline) -> Timeline {
+pub(crate) fn timeline(d: &wire::UiTimeline) -> Timeline {
     Timeline {
         tracks: d
             .tracks
@@ -112,7 +112,7 @@ pub(crate) fn timeline(theme: &Theme, d: &wire::UiTimeline) -> Timeline {
             .map(|e| TimelineEvent {
                 at_ms: e.at_ms,
                 target: e.target.clone(),
-                kind: event_kind(theme, &e.action),
+                kind: event_kind(&e.action),
             })
             .collect(),
         labels: d.labels.iter().map(|l| (l.name.clone(), l.at_ms)).collect(),
@@ -183,7 +183,7 @@ fn play_arg(desc: Option<String>) -> PlayDesc {
 pub fn og_ui_define_timeline(name: String, timeline_desc: Option<String>) {
     let d: wire::UiTimeline = wire::arg(timeline_desc.as_deref(), "timeline").unwrap_or_default();
     with_ui("og.ui.defineTimeline", |ui| {
-        let t = timeline(ui.theme(), &d);
+        let t = timeline(&d);
         ui.define_timeline(&name, t)
     });
 }

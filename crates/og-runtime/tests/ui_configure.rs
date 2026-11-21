@@ -53,8 +53,12 @@ fn project() -> &'static Path {
                 .once { width: 61px; }"#,
         );
         write(
-            "styles/backdrop/main.css",
-            br#":root { --glass-backdrop: auto; }"#,
+            "styles/tinted/main.css",
+            br#".tinted { width: 1px; }"#,
+        );
+        write(
+            "styles/tinted/pack.json",
+            br##"{ "theme": { "colors": { "fg": { "light": "#123456", "dark": "#654321" } }, "radius": { "button": 13 } } }"##,
         );
         let font = repo().join("templates/styles/shared/Cinzel-Bold.ttf");
         write("styles/copied/Body.ttf", &std::fs::read(font).unwrap());
@@ -299,49 +303,71 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
     assert_eq!(r["ok"], json!(false), "{r}");
 }
 
+/// og.ui.theme answers the style pack's theme by the design tokens' names:
+/// the default pack's in the configured scheme, the game's pack over it,
+/// and the motion tokens' durations. Ways this could fail: the colours
+/// come from one scheme whatever is configured; the game's pack is not
+/// laid over the default; a name is og-ui's old role (`ink`, `control`).
 #[test]
-fn configure_retains_and_clears_the_glass_backdrop_override() {
+fn the_theme_is_the_packs_by_its_token_names() {
     let e = engine();
+    let default = og_ui_next::pack::Pack::new(&[og_ui_next::pack::Layer::default_pack()]);
+    let fg = |s| {
+        let hex = default.theme(s)["colors"]["fg"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let c = og_css::parse_color(&hex).unwrap();
+        og_core::color::hex_string([
+            c.rgb[0],
+            c.rgb[1],
+            c.rgb[2],
+            (c.alpha * 255.0).round() as u8,
+        ])
+    };
+    let t = theme(e);
+    assert_eq!(t["scheme"], json!("dark"));
+    assert_eq!(
+        t["colors"]["fg"].as_str(),
+        Some(fg(og_ui_next::pack::Scheme::Dark).as_str())
+    );
+    assert!(
+        t["colors"].get("ink").is_none(),
+        "no og-ui role names: {}",
+        t["colors"]
+    );
+    assert_eq!(t["durations"]["fast"], json!(180.0));
+    // A pinned unit is the one in effect.
+    configure(e, json!({ "unitScale": 2 }));
+    assert_eq!(theme(e)["unit"], json!(2.0));
+    configure(e, json!({ "unitScale": null }));
+    assert!(
+        t["fontSize"]["body"].as_f64().is_some_and(|s| s > 0.0),
+        "{}",
+        t["fontSize"]
+    );
+    configure(e, json!({ "scheme": "light" }));
+    let t = theme(e);
+    assert_eq!(
+        t["colors"]["fg"].as_str(),
+        Some(fg(og_ui_next::pack::Scheme::Light).as_str())
+    );
     let style = value(og_runtime::host_impl::answer(og_load_style(
         e,
-        "styles/backdrop".into(),
+        "styles/tinted".into(),
     )));
     configure(e, json!({ "style": style }));
-    assert_eq!(theme(e)["glassBackdrop"], json!("auto"), "style opt-in");
-
-    configure(e, json!({ "glassBackdrop": "none" }));
+    let t = theme(e);
+    assert_eq!(t["style"], json!("tinted"));
     assert_eq!(
-        theme(e)["glassBackdrop"],
-        json!("none"),
-        "explicit off beats style"
+        t["colors"]["fg"],
+        json!("#123456"),
+        "the game's pack over the default"
     );
-    configure(e, json!({ "reducedMotion": true }));
-    value(og_runtime::host_impl::answer(og_ui_configure(e, None)));
-    assert_eq!(
-        theme(e)["glassBackdrop"],
-        json!("none"),
-        "omission retains off"
-    );
-
-    configure(e, json!({ "glassBackdrop": null }));
-    assert_eq!(
-        theme(e)["glassBackdrop"],
-        json!("auto"),
-        "null inherits style"
-    );
-    configure(e, json!({ "glassBackdrop": "auto", "style": null }));
-    assert_eq!(theme(e)["glassBackdrop"], json!("auto"), "explicit opt-in");
-    configure(e, json!({ "reducedMotion": false }));
-    assert_eq!(
-        theme(e)["glassBackdrop"],
-        json!("auto"),
-        "omission retains auto"
-    );
-    configure(e, json!({ "glassBackdrop": null }));
-    assert_eq!(
-        theme(e)["glassBackdrop"],
-        json!("none"),
-        "no remaining opt-in"
+    assert_eq!(t["radius"]["button"], json!(13.0));
+    assert!(
+        t["colors"]["bg"].is_string(),
+        "the default's colours under it"
     );
     assert!(og_runtime::og_engine_destroy(e));
 }

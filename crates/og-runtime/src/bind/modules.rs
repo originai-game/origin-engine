@@ -20,16 +20,16 @@
 //! audio stream (its resources).
 
 mod ui_config;
-pub(crate) use ui_config::{LoadedStyle, load_style, new_ui, ui_font};
+pub(crate) use ui_config::{LoadedStyle, UiSettings, load_style, new_ui, settings, ui_font, unit_of};
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
 use ui_desc::paint;
-pub use ui_desc::{
-    THEME_COLORS, TYPE_STEPS, og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer,
-    og_ui_frame_theme, og_ui_frame_viewport, og_ui_has_icon, og_ui_scroll_into_view, og_ui_seconds,
-    og_ui_set_focus, og_ui_set_highlight, og_ui_start_view_transition, og_ui_theme, og_ui_viewport,
-};
 pub(crate) use ui_desc::{UiAnswers, texture_of, ui_engine, with_ui};
+pub use ui_desc::{
+    og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer, og_ui_frame_theme,
+    og_ui_frame_viewport, og_ui_has_icon, og_ui_scroll_into_view, og_ui_seconds, og_ui_set_focus,
+    og_ui_set_highlight, og_ui_start_view_transition, og_ui_theme, og_ui_viewport,
+};
 mod widgets;
 pub(crate) use widgets::emit;
 mod game_widgets;
@@ -69,8 +69,8 @@ use og_physics::{
     ShapeCastDesc, ShapeDesc,
 };
 use og_ui::{
-    DensityMode, Fonts, IconAtlas, InputFrame, Insets, Nav, Scheme, SharedUi, Srgba, Theme,
-    ToastDesc, Tone, TypeStep, Ui, UiDesc, UiFont, Viewport,
+    Fonts, IconAtlas, InputFrame, Insets, Nav, Scheme, SharedUi, Srgba, Theme, ToastDesc, Tone, Ui,
+    UiDesc, UiFont, Viewport,
 };
 use serde_json::{Map, Value, json};
 use std::cell::Cell;
@@ -840,7 +840,7 @@ mod tests {
     /// opacity fades it, and components past 0 to 1 clamp.
     #[test]
     fn a_paints_linear_colour_draws_the_srgb_it_was_converted_from() {
-        let theme = Theme::new(Scheme::Dark);
+        let theme = std::collections::BTreeMap::from([("fg".to_string(), "#336699".to_string())]);
         let drawn = |paint_json: Value| {
             let p: wire::Paint =
                 wire::arg(Some(&paint_json.to_string()), "paint").expect("a paint");
@@ -858,6 +858,9 @@ mod tests {
         }
         let c = drawn(json!({ "color": { "r": 4, "g": -1, "b": 0.5 } }));
         assert_eq!((c.rgb, c.alpha), ([255, 0, 188], 1.0));
+        // A role is the theme's colour by its token name, over any colour.
+        let c = drawn(json!({ "role": "fg", "color": { "r": 1, "g": 1, "b": 1 }, "opacity": 0.5 }));
+        assert_eq!((c.rgb, c.alpha), ([0x33, 0x66, 0x99], 0.5));
     }
 
     /// A native host sets no viewport: on macOS its text controls take the

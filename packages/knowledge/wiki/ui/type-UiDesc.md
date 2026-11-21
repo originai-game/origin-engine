@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiDesc` (desc struct)
 
-How the UI looks: the scheme, the density, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.
+How the UI looks: the scheme, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.
 
 Also known as: UI scale, text scale, font size, accessibility, high contrast, reduced motion, UI settings
 
@@ -15,7 +15,6 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `scheme` | `Scheme` | `"dark"` | — | — | — | The palette. |
-| `density` | `DensityMode` | `"auto"` | — | — | — | The control sizes. |
 | `font` | `Font \| null` | `null` | — | — | — | The body font, from og.load.font; null measures text at half an em per character and draws none. |
 | `displayFont` | `Font \| null` | `null` | — | — | — | The display font; null uses the body font. |
 | `monoFont` | `Font \| null` | `null` | — | — | — | The monospaced font; null uses the body font. |
@@ -36,11 +35,10 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct UiDesc {
-  doc "How the UI looks: the scheme, the density, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it."
+  doc "How the UI looks: the scheme, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it."
   aliases "UI scale, text scale, font size, accessibility, high contrast, reduced motion, UI settings"
   desc true
   field scheme Scheme "The palette."
-  field density DensityMode "The control sizes."
   field font Option.Font "The body font, from og.load.font; null measures text at half an em per character and draws none."
   field displayFont Option.Font "The display font; null uses the body font."
   field monoFont Option.Font "The monospaced font; null uses the body font."
@@ -76,4 +74,4 @@ struct UiDesc {
 }
 ```
 
-<sub>Module `ui` line 177</sub>
+<sub>Module `ui` line 93</sub>

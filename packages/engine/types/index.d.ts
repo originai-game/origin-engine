@@ -25415,93 +25415,6 @@ export type TextAlign = "start" | "center" | "end";
  */
 export type Scheme = "dark" | "light";
 
-/**
- * Whether glass surfaces may blur the frame behind them.
- * - `"none"`: No backdrop blur.
- * - `"auto"`: Enable backdrop blur where the style requests glass.
- */
-export type GlassBackdrop = "none" | "auto";
-
-/**
- * Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise.
- * - `"auto"`: Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise.
- * - `"mouse"`: A mouse and keyboard: the tightest controls.
- * - `"pad"`: A gamepad across a room: larger controls, rows and gutters that read from a couch.
- * - `"touch"`: A finger: every control at least 44 CSS px.
- */
-export type DensityMode = "auto" | "mouse" | "pad" | "touch";
-
-/**
- * A colour role of the UI style in effect (the game's style, or the default style before it picks one).
- * - `"backdrop"`: The screen behind the UI where nothing else is.
- * - `"well"`: A recessed ground inside a panel: wells, map frames, empty slots.
- * - `"panel"`: Panels and cards.
- * - `"panelHover"`: A panel under the pointer.
- * - `"panelRaised"`: Dialogs, menus and tooltips.
- * - `"line"`: Hairlines and frames.
- * - `"lineStrong"`: Stronger frames: high contrast, map borders, scrollbars.
- * - `"ink"`: The main ink.
- * - `"inkMuted"`: Secondary ink: captions, keys, inactive tabs.
- * - `"inkFaint"`: The faintest ink that still reads: placeholders, hints.
- * - `"inkInverse"`: Ink on a ground of ink (a selected chip).
- * - `"control"`: Neutral control fills: secondary buttons, tracks, fields.
- * - `"controlStrong"`: A neutral control hovered or pressed; selection.
- * - `"primary"`: The one directed action: primary buttons, a slider's fill, a switch that is on, the caret.
- * - `"primaryHover"`: primary hovered.
- * - `"primaryActive"`: primary pressed.
- * - `"onPrimary"`: Ink on primary.
- * - `"primarySoft"`: A translucent wash of primary.
- * - `"highlight"`: Emphasised ink: a speaker's name, a price, a link, the player's map dot.
- * - `"selection"`: The selected row, tab or card, independent of primary actions.
- * - `"onSelection"`: Ink on the selection ground.
- * - `"accent"`: Decorative emphasis, independent of primary and selection.
- * - `"sceneInk"`: Scheme-aware text drawn over the scene.
- * - `"scenePlate"`: Scheme-aware plate behind HUD content.
- * - `"sceneShadow"`: Separation shadow under text over the scene.
- * - `"focus"`: The focus ring of key and pad navigation.
- * - `"knob"`: Slider and switch knobs.
- * - `"hud"`: HUD capsules over the game (scores, timers, toasts).
- * - `"scrim"`: Behind a dialog.
- * - `"shadow"`: Drop shadows.
- * - `"sheen"`: A skeleton's passing sheen.
- * - `"success"`: Success.
- * - `"warn"`: Warnings.
- * - `"danger"`: Danger and errors.
- * - `"info"`: Information.
- * - `"health"`: A health meter.
- * - `"mana"`: A mana meter.
- * - `"xp"`: An experience meter.
- * - `"gold"`: Currency: coins, gold, prices that can be paid.
- */
-export type ThemeColor = "backdrop" | "well" | "panel" | "panelHover" | "panelRaised" | "line" | "lineStrong" | "ink" | "inkMuted" | "inkFaint" | "inkInverse" | "control" | "controlStrong" | "primary" | "primaryHover" | "primaryActive" | "onPrimary" | "primarySoft" | "highlight" | "selection" | "onSelection" | "accent" | "sceneInk" | "scenePlate" | "sceneShadow" | "focus" | "knob" | "hud" | "scrim" | "shadow" | "sheen" | "success" | "warn" | "danger" | "info" | "health" | "mana" | "xp" | "gold";
-
-/**
- * A step of the style's type ramp.
- * - `"body"`: The default step.
- * - `"xs"`: A step of the ramp.
- * - `"meta"`: A step of the ramp.
- * - `"caption"`: A step of the ramp.
- * - `"sm"`: A step of the ramp.
- * - `"reading"`: A step of the ramp.
- * - `"base"`: A step of the ramp.
- * - `"lg"`: A step of the ramp.
- * - `"xl"`: A step of the ramp.
- * - `"xl2"`: A step of the ramp.
- * - `"xl3"`: A step of the ramp.
- * - `"xl4"`: A step of the ramp.
- * - `"xl5"`: A step of the ramp.
- * - `"xl6"`: A step of the ramp.
- * - `"xl7"`: A step of the ramp.
- * - `"xl8"`: A step of the ramp.
- * - `"displaySm"`: A step of the ramp.
- * - `"displayMd"`: A step of the ramp.
- * - `"displayLg"`: A step of the ramp.
- * - `"displayXl"`: A step of the ramp.
- * - `"displayXl2"`: A step of the ramp.
- * - `"hero"`: The largest typography role, above display; displayXl2 is its legacy alias.
- */
-export type TypeStepName = "body" | "xs" | "meta" | "caption" | "sm" | "reading" | "base" | "lg" | "xl" | "xl2" | "xl3" | "xl4" | "xl5" | "xl6" | "xl7" | "xl8" | "displaySm" | "displayMd" | "displayLg" | "displayXl" | "displayXl2" | "hero";
-
 /** Padding or margins on four sides. */
 export interface Insets {
   /**
@@ -25531,31 +25444,25 @@ export interface Insets {
 }
 
 /**
- * A colour: a theme token, a role of the style, or a Color (linear RGB, as every Color of the API), with an opacity. None of them is white.
+ * A colour: one of the style pack's theme colours or a Color (linear RGB, as every Color of the API), with an opacity. Neither is white.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface Paint {
   /**
-   * A semantic colour of the theme.
-   *
-   * @default null
-   */
-  readonly token?: ThemeColor | null;
-  /**
-   * A colour role the style declares of its own (its `roles` block, docs/ui.md §3.1: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta.
+   * A colour of the style pack's theme by its token name (fg, accent, danger, …: UiTheme.colors' keys); a name the pack lacks draws magenta.
    *
    * @default null
    */
   readonly role?: string | null;
   /**
-   * A linear RGB colour, when no token or role is given: `color.fromHex(0xff8800)` for a hex or CSS colour. The UI draws 8-bit sRGB, so each component is clamped to 0 to 1 (no HDR).
+   * A linear RGB colour, when no role is given: `color.fromHex(0xff8800)` for a hex or CSS colour. The UI draws 8-bit sRGB, so each component is clamped to 0 to 1 (no HDR).
    *
    * @default null
    */
   readonly color?: Color | null;
   /**
-   * Its opacity, multiplied with the token's or the role's own.
+   * Its opacity, multiplied with the role's own.
    *
    * @default 1
    * @range 0..1
@@ -25637,7 +25544,7 @@ export interface Viewport {
 }
 
 /**
- * How the UI looks: the scheme, the density, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.
+ * How the UI looks: the scheme, its fonts, the contrast, the seed colours its palette is derived from, motion, transparency, the icon atlas, the style and the sounds. og.ui.configure takes it in part: a field left out keeps the value the last call (or a look's style) gave it, null clears it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -25648,12 +25555,6 @@ export interface UiDesc {
    * @default "dark"
    */
   readonly scheme?: Scheme;
-  /**
-   * The control sizes.
-   *
-   * @default "auto"
-   */
-  readonly density?: DensityMode;
   /**
    * The body font, from og.load.font; null measures text at half an em per character and draws none.
    *
@@ -25864,104 +25765,32 @@ export interface UiSounds {
   readonly error?: Sound | null;
 }
 
-/** One step of the type ramp. */
-export interface TypeStep {
-  /**
-   * The font size.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly size: number;
-  /**
-   * The leading of Latin text.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly lineHeight: number;
-  /** Latin tracking, in em. */
-  readonly trackingEm: number;
-  /**
-   * The leading text with Chinese, Japanese or Korean characters takes.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly cjkLineHeight: number;
-  /** Tracking of text containing CJK characters, in em. */
-  readonly cjkTrackingEm: number;
-  /** The face weight (100 to 900); zero takes the font role's own face. */
-  readonly weight: number;
-  /**
-   * Style-driven locale-sensitive uppercase, applied before measurement without rewriting source text or editable values.
-   */
-  readonly uppercase: boolean;
-}
-
-/** The control, row and header heights and the gutter of the density in effect. */
-export interface ControlSizes {
-  /**
-   * A small control's height.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly controlSm: number;
-  /**
-   * A control's height.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly controlMd: number;
-  /**
-   * A large control's height.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly controlLg: number;
-  /**
-   * The gutter.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly gutter: number;
-  /**
-   * The header height.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly header: number;
-  /**
-   * The row height.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly row: number;
-  /**
-   * The section spacing.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly section: number;
-}
-
-/** The style values the UI draws with, read-only. */
+/**
+ * What the UI draws with, read-only: the style pack's theme (the default pack with the game's over it) in the scheme and contrast in effect, in the design tokens' own names, and the player's settings in effect.
+ */
 export interface UiTheme {
   /** The palette in use. */
   readonly scheme: Scheme;
   /**
-   * Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §3.1), as `#rrggbb` or `#rrggbbaa` (sRGB as authored).
+   * Each colour of the theme by its token name (`--color-fg` is fg), as `#rrggbb` or `#rrggbbaa`.
    */
-  readonly palette: Readonly<Record<string, string>>;
-  /** The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels. */
-  readonly space: Readonly<Record<string, number>>;
-  /** The corner radii by name (small, control, bar, panel), in CSS pixels. */
+  readonly colors: Readonly<Record<string, string>>;
+  /** The corner radii by name (button, card, panel, …), in CSS pixels. */
   readonly radius: Readonly<Record<string, number>>;
-  /** Each TypeStepName's step. */
-  readonly typeRamp: Readonly<Record<string, TypeStep>>;
-  /** The control sizes of the density in effect. */
-  readonly sizes: ControlSizes;
+  /** The font sizes by name (body, caption, display-lg, …), in CSS pixels. */
+  readonly fontSize: Readonly<Record<string, number>>;
+  /** Each font size's line height, a ratio of it. */
+  readonly lineHeight: Readonly<Record<string, number>>;
+  /** The letter spacing by name, in em. */
+  readonly tracking: Readonly<Record<string, number>>;
+  /** The font weights by name (regular, medium, semibold, bold, body). */
+  readonly fontWeight: Readonly<Record<string, number>>;
+  /** The backdrop blurs by name (thin, regular, thick, lens), in CSS pixels. */
+  readonly blur: Readonly<Record<string, number>>;
   /**
-   * The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds.
+   * The motion durations by name (instant, fast, base, slow, spring, bounce, …: `--motion-duration-*`), in milliseconds.
    */
-  readonly durationsMs: Readonly<Record<string, number>>;
+  readonly durations: Readonly<Record<string, number>>;
   /** The configured style's name; empty for the default style. */
   readonly style: string;
   /**
@@ -25969,23 +25798,21 @@ export interface UiTheme {
    */
   readonly contrast: Contrast;
   /**
-   * Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement.
+   * Transitions only fade: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement.
    */
   readonly reducedMotion: boolean;
-  /**
-   * The player's text scale in effect (UiDesc.textScale, 1 to 1.5): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this.
-   */
+  /** The player's text scale in effect (UiDesc.textScale, 1 to 1.5). */
   readonly textScale: number;
+  /**
+   * The UI unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what the tree lays out in. A game drawing its own screen sprites beside the UI multiplies by it.
+   */
+  readonly unit: number;
   /** The player's colour vision in effect (UiDesc.colorVision). */
   readonly colorVision: ColorVision;
   /** Whether the frame is corrected or simulated for it. */
   readonly colorVisionFilter: ColorVisionFilter;
   /** Its severity, 0 to 1. */
   readonly colorVisionStrength: number;
-  /**
-   * The backdrop blur policy in effect, after the configured override and style; none when neither opts in.
-   */
-  readonly glassBackdrop: GlassBackdrop;
 }
 
 
@@ -38480,7 +38307,7 @@ export declare namespace og {
    */
   namespace ui {
     /**
-     * Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.
+     * Set how the UI looks (the scheme, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.
      *
      * @param world The world whose UI is configured.
      * @param desc The fields to change; the others keep their values.

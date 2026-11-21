@@ -39,6 +39,77 @@ fn merged_ui_desc(last: &Value, given: Value) -> Result<Value, String> {
     Ok(Value::Object(d))
 }
 
+/// The UI settings in effect, as og.ui.theme answers them: the configured
+/// UiDesc's (og.ui.configure), with the page's reduced-motion and contrast
+/// preferences (the host's viewport) over them. Made from the desc each
+/// time it is asked: nothing but the desc holds them.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct UiSettings {
+    pub dark: bool,
+    pub high_contrast: bool,
+    pub reduced_motion: bool,
+    pub text_scale: f32,
+    /// The UI unit in CSS px (UiDesc.unitScale, else auto by the surface).
+    pub unit: f32,
+    pub color_vision: wire::ColorVision,
+    pub color_vision_filter: wire::ColorVisionFilter,
+    pub color_vision_strength: f32,
+    /// The configured style's id; empty for the default style.
+    pub style: String,
+}
+
+impl UiSettings {
+    /// `desc` (a UiDesc, null for none) under a page that prefers reduced
+    /// motion or more contrast when `page` says so.
+    pub(crate) fn of(desc: &Value, style: String, page: (bool, bool)) -> UiSettings {
+        let u: wire::UiDesc = wire::value(desc, "desc").unwrap_or_default();
+        UiSettings {
+            dark: u.scheme == wire::Scheme::Dark,
+            high_contrast: u.contrast == wire::Contrast::High || page.1,
+            reduced_motion: u.reduced_motion || page.0,
+            text_scale: u.text_scale.clamp(1.0, 1.5),
+            unit: 1.0,
+            color_vision: u.color_vision,
+            color_vision_filter: u.color_vision_filter,
+            color_vision_strength: u.color_vision_strength.clamp(0.0, 1.0),
+            style,
+        }
+    }
+
+    /// The colour vision filter over the frame; none for typical vision.
+    pub(crate) fn color_filter(&self) -> Option<og_render::ColorFilter> {
+        og_render::ColorFilter::new(
+            og_render::ColorVision::from_name(self.color_vision.as_str()).unwrap_or_default(),
+            match self.color_vision_filter {
+                wire::ColorVisionFilter::Simulate => og_render::ColorVisionFilter::Simulate,
+                wire::ColorVisionFilter::Correct => og_render::ColorVisionFilter::Correct,
+            },
+            self.color_vision_strength,
+        )
+    }
+}
+
+/// Engine `eng`'s UI settings in effect, under the page preferences of
+/// viewport `v`, with the UI unit `unit` laid out in.
+pub(crate) fn settings(eng: &Engine, v: &Viewport, unit: f32) -> UiSettings {
+    let style = crate::present::ui_next::style_id(eng.id).unwrap_or_default();
+    UiSettings {
+        unit,
+        ..UiSettings::of(
+            &eng.state.borrow().ui_desc,
+            style,
+            (v.reduced_motion, v.high_contrast),
+        )
+    }
+}
+
+/// The unit engine `eng`'s UI lays out in on viewport `v`; 1 without a UI.
+/// Locks the UI: never called while it is held.
+pub(crate) fn unit_of(eng: &Engine, v: &Viewport) -> f32 {
+    let ui = eng.state.borrow().ui.clone();
+    ui.map_or(1.0, |ui| ui.lock().unit_for(v))
+}
+
 pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
@@ -86,10 +157,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             theme.seeds = og_ui::Seeds(given.map(|c| c.as_ref().map(|c| [c.r, c.g, c.b])));
         }
         theme.reduced_motion = u.reduced_motion;
-        theme.glass_backdrop = u.glass_backdrop.map(|backdrop| match backdrop {
-            wire::GlassBackdrop::None => og_ui::GlassBackdrop::None,
-            wire::GlassBackdrop::Auto => og_ui::GlassBackdrop::Auto,
-        });
         theme.color_vision =
             og_render::ColorVision::from_name(u.color_vision.as_str()).unwrap_or_default();
         theme.color_vision_filter = match u.color_vision_filter {
@@ -303,6 +370,8 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         if let Some((pack, ..)) = &style {
             crate::world::remote::request(&eng, &pack.sheet.remote);
         }
+        eng.render.borrow_mut().color_filter =
+            UiSettings::of(&d, String::new(), (false, false)).color_filter();
         let mut st = eng.state.borrow_mut();
         st.ui_desc = d;
         let default_available = style.is_none()
