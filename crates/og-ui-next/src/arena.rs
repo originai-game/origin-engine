@@ -19,7 +19,7 @@ struct Node {
     key: u64,
     style: CompactStyle,
     /// A text leaf's text and how it runs.
-    text: Option<(Box<str>, Run)>,
+    text: Option<(String, Run)>,
     /// A text leaf's last two measures, by the width given (`u32::MAX`:
     /// none, `EMPTY`: unused): layout asks the same sizes many times, and
     /// a measure shapes. Cleared when its text or run changes.
@@ -202,7 +202,8 @@ impl Arena {
         if let Some((t, _)) = &mut n.text
             && &**t != text
         {
-            *t = text.into();
+            t.clear();
+            t.push_str(text);
             self.dirty = true;
             self.rev += 1;
             if !self.retexted.contains(&id) {
@@ -258,6 +259,20 @@ impl Arena {
             self.dirty = true;
             self.structure = true;
         }
+    }
+
+    /// Puts `id` under `parent`, before its child `before` (or last when
+    /// `before` is none or not its child); a node elsewhere moves.
+    pub fn attach(&mut self, id: Id, parent: Id, before: Option<Id>) {
+        self.detach(id);
+        let kids = &mut self.nodes[parent as usize].children;
+        let at = before
+            .and_then(|b| kids.iter().position(|&c| c == b))
+            .unwrap_or(kids.len());
+        kids.insert(at, id);
+        self.nodes[id as usize].parent = parent;
+        self.dirty = true;
+        self.structure = true;
     }
 
     pub fn is_dirty(&self) -> bool {

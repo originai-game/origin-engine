@@ -102,6 +102,11 @@ struct El {
     disabled: u32,
     /// It answers a press: a button, or an element with a click handler.
     clickable: bool,
+    /// The renderer's id of an op node ([`ops`]); NONE for a document's.
+    js: u32,
+    /// An op node's events (bits by [`ops::Event`]) and its class entry.
+    listens: u16,
+    class: u32,
     /// The element its arena node is a child of (a fixed one: none).
     arena_parent: u32,
     /// The element it inherits from.
@@ -110,8 +115,9 @@ struct El {
     style: u32,
     kind: Kind,
     leaf: Option<Id>,
-    /// Its text, a text leaf's or an icon's name.
-    text: Box<str>,
+    /// Its text, a text leaf's or an icon's name: rewritten in place, so a
+    /// new text no longer than its capacity allocates nothing.
+    text: String,
     hidden: u16,
     dead: bool,
     queued: bool,
@@ -198,16 +204,32 @@ pub struct Tree {
     row: Rc<str>,
     /// The element the pointer went down on, while it is held.
     pressed: u32,
+    /// The live elements depth first, a parent before its children (in
+    /// paint order), made again when the structure changes; `el_of` maps
+    /// an arena node to its element, `walk` is its stack.
+    order: Vec<u32>,
+    ordered: bool,
+    el_of: Vec<u32>,
+    walk: Vec<Id>,
+    /// The op nodes: renderer id to element (NONE: free), their classes'
+    /// records once per distinct class and style, and the events since the
+    /// renderer last took them ([`ops`]).
+    by_js: Vec<u32>,
+    classes: ops::Classes,
+    pub events: Vec<ops::Fired>,
 }
 
 /// An element's text as glyph quads (from its leaf's top left; colour and
 /// clip set as they are copied), and what they were laid out from.
 #[derive(Default)]
 struct Glyphs {
-    text: Box<str>,
+    text: String,
     key: [u32; 5],
     quads: Vec<PaintQuad>,
 }
+
+mod ops;
+pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
 
 static NEXT_TREE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
@@ -353,6 +375,13 @@ impl Tree {
             mounting: 0,
             row: "".into(),
             pressed: NONE,
+            order: Vec::new(),
+            ordered: false,
+            el_of: Vec::new(),
+            walk: Vec::new(),
+            by_js: Vec::new(),
+            classes: ops::Classes::default(),
+            events: Vec::new(),
         }
     }
 
@@ -691,13 +720,16 @@ impl Tree {
             row: self.row.clone(),
             disabled,
             clickable,
+            js: NONE,
+            listens: 0,
+            class: NONE,
             arena_parent: arena_parent_el,
             parent,
             inst,
             style,
             kind,
             leaf,
-            text: "".into(),
+            text: String::new(),
             hidden: 0,
             dead: false,
             queued: false,
@@ -705,6 +737,7 @@ impl Tree {
             holds: Box::default(),
             eff: self.root,
         });
+        self.ordered = false;
         for &b in chain.iter() {
             self.ifs[b as usize].tops.push(e);
         }
@@ -786,7 +819,8 @@ impl Tree {
         if &*el.text == text {
             return;
         }
-        el.text = text.into();
+        el.text.clear();
+        el.text.push_str(text);
         if let Some(leaf) = el.leaf {
             self.arena.set_text(leaf, text);
         }
@@ -839,7 +873,7 @@ impl Tree {
         if self.els[e as usize].eff == before {
             return;
         }
-        for c in e + 1..self.els.len() as u32 {
+        for c in 0..self.els.len() as u32 {
             if self.els[c as usize].parent == e && !self.els[c as usize].dead {
                 self.reapply(c);
             }
@@ -935,7 +969,7 @@ impl Tree {
             out.refolded = dirty.len();
             for &e in &dirty {
                 let el = &self.els[e as usize];
-                if el.dead {
+                if el.dead || el.js != NONE {
                     continue;
                 }
                 let r = self.fold(el.inst, el.style, &el.holds);
@@ -1034,6 +1068,7 @@ impl Tree {
             for e in tops {
                 self.arena.detach(self.els[e as usize].node);
             }
+            self.ordered = false;
         }
         // Everything the rows made is gone.
         let NodeKind::For {
@@ -1046,6 +1081,32 @@ impl Tree {
         };
         self.rows(b, &var, index.as_deref(), &key);
         self.paint = true;
+    }
+
+    /// Makes `order` again when the structure changed: the elements under
+    /// the arena's root depth first, in their arena order.
+    fn order(&mut self) {
+        if self.ordered {
+            return;
+        }
+        self.ordered = true;
+        self.el_of.clear();
+        self.el_of.resize(self.arena.len(), NONE);
+        for (e, el) in self.els.iter().enumerate() {
+            if !el.dead {
+                self.el_of[el.node as usize] = e as u32;
+            }
+        }
+        self.order.clear();
+        self.walk.clear();
+        self.walk.extend(self.arena.children(0).iter().rev());
+        while let Some(n) = self.walk.pop() {
+            let e = self.el_of.get(n as usize).copied().unwrap_or(NONE);
+            if e != NONE {
+                self.order.push(e);
+            }
+            self.walk.extend(self.arena.children(n).iter().rev());
+        }
     }
 
     fn repaint(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) {
@@ -1062,10 +1123,13 @@ impl Tree {
         if p.fonts.len() != 2 || (0..2).any(|k| p.fonts[k].first().copied() != firsts[k]) {
             p.fonts = firsts.iter().map(|h| h.iter().copied().collect()).collect();
         }
+        self.order();
         self.abs.clear();
+        self.abs.resize(self.els.len(), (0.0, 0.0, false, [0.0; 4]));
         self.glyphs.resize_with(self.els.len(), Glyphs::default);
         let m = &fonts.body.metrics;
-        for e in 0..self.els.len() {
+        for k in 0..self.order.len() {
+            let e = self.order[k] as usize;
             let el = &self.els[e];
             let b = self.arena.box_of(el.node);
             let (px, py, pv, pclip) = if el.arena_parent == NONE {
@@ -1095,7 +1159,7 @@ impl Tree {
             } else {
                 clip
             };
-            self.abs.push((x, y, visible, inner));
+            self.abs[e] = (x, y, visible, inner);
             if !visible {
                 continue;
             }
@@ -1286,7 +1350,8 @@ impl Tree {
     /// parent paints them in, holds the point, the last made (a descendant
     /// comes after its ancestors and paints over them); NONE for none.
     fn hit(&self, x: f32, y: f32) -> u32 {
-        for (e, el) in self.els.iter().enumerate().rev() {
+        for &e in self.order.iter().rev() {
+            let (e, el) = (e as usize, &self.els[e as usize]);
             if el.dead || !el.clickable {
                 continue;
             }
@@ -1330,6 +1395,14 @@ impl Tree {
             return;
         }
         let el = &self.els[held as usize];
+        if el.js != NONE {
+            for ev in [OpEvent::Press, OpEvent::Tap] {
+                if el.listens & ev.bit() != 0 {
+                    self.events.push(Fired::at(el.js, ev, x, y));
+                }
+            }
+            return;
+        }
         let inst = &self.insts[el.inst as usize];
         let n = &self.docs[inst.doc as usize].doc.nodes[el.at as usize];
         let event = |kind, name: &str| Event {
@@ -1441,7 +1514,8 @@ fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::t
     }
     g.key = key;
     if *g.text != *text {
-        g.text = text.into();
+        g.text.clear();
+        g.text.push_str(text);
     }
     g.quads.clear();
     let glyph = (m.ascender - m.descender) * size;
@@ -1627,7 +1701,10 @@ mod tests {
         );
         // To the top right of a 2:1 box: perpendicular to the other diagonal.
         let angle = tree.drawn.gradients[0].angle;
-        assert!((angle - og_core::math::atan2(1.0, 2.0)).abs() < 1e-3, "{angle}");
+        assert!(
+            (angle - og_core::math::atan2(1.0, 2.0)).abs() < 1e-3,
+            "{angle}"
+        );
     }
 
     /// A `display: none` element paints nothing, nor does what is under

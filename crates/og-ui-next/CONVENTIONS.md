@@ -65,73 +65,43 @@ of time; only bound class strings go through the runtime cache.
 
 ## Ops (TS renderer → Rust)
 
-One batch per tick, sent through `og_engine_ui_patch` (the same call and
-wire codec as the store commands: an array of maps tagged by `op`),
-applied in order before the UI's commit. NSH's `ops.rs` subset:
+One binary batch per tick, which the renderer writes into one reused
+`ArrayBuffer` and sends through `og_engine_ui_patch` (the call the store
+commands use; a batch starts with the four bytes `OGOP`, which no store
+command batch does). The runtime applies it to the tree at once, in order:
+the first batch makes the tree, so a mount's build happens while the game
+loads and the first frame after Play only commits and paints. Nothing in it
+is copied: strings are read in place, and a node's class and style resolve
+to a record once per distinct pair (`Tree::set_resolver`).
 
-| `op` | Fields | Effect |
-|---|---|---|
-| `create` | `id`, `tag` (`view` `text` `image` `icon` `scroll` `input` `svg`…) | a node, detached |
-| `createText` | `id`, `text` | a text run |
-| `placeholder` | `id` | an empty anchor (`Show`/`For` insert before it) |
-| `setText` | `id`, `text` | |
-| `setClass` | `id`, `class` | the class string; resolved once per distinct string |
-| `setStyle` | `id`, `style` | inline declarations as text, over the class record |
-| `setProp` | `id`, `name`, `value` (JSON scalar) | `src`, `name` (icon), `disabled`, `tabIndex`, `value`, `role`, `label`, `data-*`, and the a11y props (§Accessibility) |
-| `listen` | `id`, `event`, `enabled` | which events the node wants |
-| `insert` | `parent`, `child`, `before` (id or null) | |
-| `remove` | `parent`, `child` | detaches |
-| `release` | `id` | frees it and its subtree |
+After `OGOP`: a u32 op count, then each op as a u8 code and its fields. Ids
+are u32 the renderer allocates (0 is the root: inserting into 0 mounts a
+node); strings are a u32 byte length and UTF-8; numbers are little-endian.
 
-Ids are u32 the renderer allocates; a mount's root is the id `mount`
-answers. `data-*` props are the states a class variant reads
-(`data-ready:` …). The reply to a batch carries the events since the last
-one: `[{ id, event, payload }]`, which the renderer dispatches to handlers
-by id.
+| code | op | fields | effect |
+|---|---|---|---|
+| 1 | `create` | id, tag u8 | a node, detached |
+| 2 | `createText` | id, text | a text run |
+| 3 | `setText` | id, text | |
+| 4 | `setClass` | id, class | the class string |
+| 5 | `setStyle` | id, style | inline declarations as text, over the class |
+| 6 | `setProp` | id, name, value (text) | `src`, `name` (icon), `disabled`, `tabIndex`, `value`, `role`, `label`, `data-*` |
+| 7 | `listen` | id, event u8, enabled u8 | which events the node wants |
+| 8 | `insert` | parent, child, before (u32, `0xFFFFFFFF`: last) | puts or moves the child |
+| 9 | `remove` | parent, child | detaches it |
+| 10 | `release` | id | frees it and its subtree |
+| 11 | `placeholder` | id | an empty anchor that takes no room (`Show`/`For` insert before it) |
 
-## Accessibility
+Tags: 0 `View`, 1 `Text`, 2 `Image`, 3 `Scroll`, 4 `Input`, 5 `Icon`, 6
+`Svg` (its shapes 7 and up). Events: 0 press, 1 tap, 2 pointerdown,
+3 pointermove, 4 pointerup, 5 wheel, 6 focus, 7 blur, 8 key, 9 change.
 
-What a node is for a screen reader comes from its tag, these props and
-its listeners; `og-ui-next/src/a11y.rs` builds the AccessKit tree from
-them and the arena's boxes and texts. All are `setProp` names; the value is
-a JSON scalar, and `null` unsets it.
-
-| Prop | Value | Means |
-|---|---|---|
-| `role` | an ARIA role name (below) | what it is, over its tag's role |
-| `label` | string | its name; without one a control is named by the text inside it |
-| `description` | string | read after the name |
-| `value` | string | an input's text |
-| `valueText` | string | a range's value as words |
-| `valueMin`, `valueMax`, `valueNow` | number | a range's bounds and value |
-| `checked` | `true`, `false` or `"mixed"` | a checkbox's, radio's or switch's state |
-| `pressed` | `true`, `false` or `"mixed"` | a toggle button's state |
-| `selected`, `expanded` | bool | an option's or tab's, a disclosure's |
-| `busy`, `current` | bool | loading; the current item of a set |
-| `disabled` | bool | unavailable: no actions |
-| `tabIndex` | number | `>= 0` the keyboard reaches it, `-1` it does not |
-| `level` | 1–6 | a heading's level |
-| `live` | `"polite"`, `"assertive"`, `"off"` | how its changes are announced (`status` and `log` are polite, `alert` assertive) |
-| `modal` | bool | a dialog: while one is shown the tree holds only the topmost and what contains it |
-| `hidden` | bool | left out of the tree with its subtree; it still draws |
-
-Roles: `button` `link` `heading` `image` `text` `checkbox` `radio`
-`switch` `slider` `spinbutton` `textbox` `combobox` `listbox` `option`
-`tab` `tablist` `tabpanel` `radiogroup` `progressbar` `meter` `timer`
-`status` `alert` `log` `dialog` `alertdialog` `tooltip` `separator` `list`
-`listitem` `menu` `menubar` `menuitem` `toolbar` `grid` `row` `gridcell`
-`region` `navigation` `main` `group`, and `none` (left out, its children
-join its parent). Another name is a group.
-
-Without `role`: a `text` node is static text, an `input` a text box, a
-`scroll` a scroll view, an `image`/`icon`/`svg` an image when labelled. A
-`view` listening to `press` or `tap` is a button, a modal one a dialog,
-one the keyboard reaches or that is labelled a group; any other view is a
-plain container, left out with its children joining its parent. Inside a
-button, link, checkbox, radio, switch, tab, option, menu item, heading or
-text, the texts are its name, not nodes. A node whose record is
-`display: none` (`hidden`, the class) is absent, as is an empty text.
-Visual hiding is a class; `hidden` the prop hides from the tree alone.
+The reply is `OGEV`, a u32 count and the events since the last batch, each
+an id (u32), event (u8), x and y on the UI's surface (f32), then key and
+value (strings; empty unless `key` or `change`), which the renderer
+dispatches to handlers by id. A refused op stops the batch (the ops before
+it stay applied) and the reply is `OGER` and the reason. `data-*` props are
+the states a class variant reads (`data-ready:` …).
 
 ## Classes and the Record (head 1)
 
