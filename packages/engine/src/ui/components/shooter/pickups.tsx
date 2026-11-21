@@ -41,7 +41,9 @@ export function ShooterPickups(props: ShooterPickupsProps) {
           <View
             class={`group/pickup relative flex-row items-center min-w-0 max-w-full pl-2 bg-linear-to-l from-black/86 to-black/35 compact:data-later:hidden transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0`}
             label={t("shooter.pickups.row", { name: p().name, quantity: p().quantity ?? 0 })}
-            data-rarity={p().rarity}
+            data-rarity-rare={p().rarity === "rare"}
+            data-rarity-epic={p().rarity === "epic"}
+            data-rarity-legendary={p().rarity === "legendary"}
             data-later={i() >= 1}
           >
             <View class="shrink-0 my-[0.143rem] size-[1.571rem] compact:size-[1.286rem] nine-chip-cut overflow-hidden bg-plate-hi">
