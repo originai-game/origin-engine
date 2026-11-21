@@ -35,15 +35,15 @@ export function StrategyMinimap(props: StrategyMinimapProps) {
         </Show>
         <For each={props.dots ?? []} key={(d) => d.id}>
           {(d) => (
-          <View class={`absolute size-1.25 -translate-x-1/2 -translate-y-1/2 bg-fg shadow-[0_0_0_2.288px_#060910d9] data-base:size-2.25 data-own:bg-hud-accent data-ally:bg-info data-foe:bg-danger data-neutral:rotate-45 data-neutral:bg-gold compact:size-1 compact:data-base:size-2`} style={{ left: `${d().x * 100}%`, top: `${d().y * 100}%` }} role="image" label={d().label} data-base={d().base} data-own={d().kind === "own"} data-ally={d().kind === "ally"} data-foe={d().kind === "foe"} data-neutral={d().kind === "neutral"} />
+          <View class={`absolute size-1.25 -translate-x-1/2 -translate-y-1/2 bg-fg ring-2 ring-shade-deep data-base:size-2.25 data-own:bg-hud-accent data-ally:bg-info data-foe:bg-danger data-neutral:rotate-45 data-neutral:bg-gold compact:size-1 compact:data-base:size-2`} style={{ left: `${d().x * 100}%`, top: `${d().y * 100}%` }} role="image" label={d().label} data-base={d().base} data-own={d().kind === "own"} data-ally={d().kind === "ally"} data-foe={d().kind === "foe"} data-neutral={d().kind === "neutral"} />
           )}
         </For>
         <Show when={props.viewWidth > 0}>
-          <View class="absolute shadow-[inset_0_0_0_2px_#ffffff,0_0_0_1px_#00000099]" style={{ left: `${props.viewX * 100}%`, top: `${props.viewY * 100}%`, width: `${props.viewWidth * 100}%`, height: `${props.viewHeight * 100}%` }} />
+          <View class="absolute ring ring-shade-deep inset-ring-2 inset-ring-knob" style={{ left: `${props.viewX * 100}%`, top: `${props.viewY * 100}%`, width: `${props.viewWidth * 100}%`, height: `${props.viewHeight * 100}%` }} />
         </Show>
         <For each={props.pings ?? []} key={(p) => p.id}>
           {(p) => (
-          <View class="absolute size-4.5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[inset_0_0_0_2px_#ff4d5e,0_0_8px_#ff4d5ee6] compact:size-3.25" style={{ left: `${p().x * 100}%`, top: `${p().y * 100}%` }} role="image" label={p().label} />
+          <View class="absolute size-4.5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-glow-sm shadow-foe inset-ring-2 inset-ring-foe compact:size-3.25" style={{ left: `${p().x * 100}%`, top: `${p().y * 100}%` }} role="image" label={p().label} />
           )}
         </For>
       </View>

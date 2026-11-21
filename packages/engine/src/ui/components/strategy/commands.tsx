@@ -34,13 +34,13 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                 {c().name}
               </Text>
               <Show when={c().key}>
-                <Text class={`shrink min-w-5 max-w-2/5 py-0 px-1.25 leading-[1.5] text-xs font-bold text-center text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
+                <Text class={`shrink min-w-5 max-w-2/5 py-0 px-1.25 leading-normal text-xs font-bold text-center text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
                   {c().key}
                 </Text>
               </Show>
             </View>
             <Show when={c().detail}>
-              <Text class={`text-caption leading-[1.35] text-fg-muted whitespace-normal`}>
+              <Text class={`text-caption leading-snug text-fg-muted whitespace-normal`}>
                 {c().detail}
               </Text>
             </Show>
@@ -57,19 +57,19 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                   </View>
                 </Show>
                 <Show when={c().cooldownText}>
-                  <Text class={`shrink min-w-0 py-0 px-1.5 leading-[1.5] text-xs font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+                  <Text class={`shrink min-w-0 py-0 px-1.5 leading-normal text-xs font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                     {c().cooldownText}
                   </Text>
                 </Show>
                 <Show when={c().readyText}>
-                  <Text class={`shrink min-w-0 py-0 px-1.5 leading-[1.5] text-xs font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+                  <Text class={`shrink min-w-0 py-0 px-1.5 leading-normal text-xs font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                     {c().readyText}
                   </Text>
                 </Show>
               </View>
             </Show>
             <Show when={c().reason}>
-              <View class={`text-caption leading-[1.35] font-semibold text-danger whitespace-normal`} role="status">
+              <View class={`text-caption leading-snug font-semibold text-danger whitespace-normal`} role="status">
                 <Text>{c().reason}</Text>
               </View>
             </Show>
@@ -107,12 +107,12 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                   </View>
                 </Show>
                 <Show when={c().action || c().key}>
-                  <Text class={`absolute left-1 top-0.5 max-w-47/50 py-0 px-0 leading-[1.2] text-xs font-bold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg pointer-coarse:hidden`} glyph={c().key ? undefined : c().action}>
+                  <Text class={`absolute left-1 top-0.5 max-w-47/50 py-0 px-0 leading-tight text-xs font-bold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg pointer-coarse:hidden`} glyph={c().key ? undefined : c().action}>
                     {c().key}
                   </Text>
                 </Show>
                 <Show when={!c().affordable && c().cost}>
-                  <Text class={`absolute right-0.75 bottom-0.75 max-w-97/100 py-0 px-1 leading-[1.35] text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+                  <Text class={`absolute right-0.75 bottom-0.75 max-w-97/100 py-0 px-1 leading-snug text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
                     {c().cost}
                   </Text>
                 </Show>

@@ -44,7 +44,7 @@ export function StrategyTower(props: StrategyTowerProps) {
             <Image class="size-full" src={props.portrait} />
           </Show>
         </View>
-        <Text class={`flex-1 min-w-0 text-xl leading-[1.15] font-bold text-fg whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg`} role="heading" level={2}>
+        <Text class={`flex-1 min-w-0 text-xl leading-tight font-bold text-fg whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg`} role="heading" level={2}>
           {props.name !== "" ? props.name : t("strategy.tower.name")}
         </Text>
         <Show when={props.level > 0}>
@@ -54,7 +54,7 @@ export function StrategyTower(props: StrategyTowerProps) {
         </Show>
       </View>
       <Show when={(props.stats ?? []).length}>
-        <View class={`flex-col gap-y-1 p-2 bg-well shadow-[inset_0px_1px_0px_#ffffff38]`} role="list" label={t("strategy.tower.stats")}>
+        <View class={`flex-col gap-y-1 p-2 bg-well inset-shadow-lit`} role="list" label={t("strategy.tower.stats")}>
           <For each={props.stats ?? []} key={(s) => s.id}>
             {(s) => (
             <View class="flex-row items-baseline w-full" role="listitem" data-next={!!s().next}>
@@ -97,7 +97,7 @@ export function StrategyTower(props: StrategyTowerProps) {
                   <Text class={`shrink text-xs font-bold tabular-nums whitespace-nowrap text-fg-muted`}>
                     {t("strategy.tower.tier", { tier: p().tier, tiers: p().tiers })}
                   </Text>
-                  <View class="relative flex-1 min-w-0 h-1 overflow-hidden bg-track shadow-[0_0_0_1px_#ffffff38,inset_0_1px_0_#ffffff24,0_2px_4px_#00000073]">
+                  <View class="relative flex-1 min-w-0 h-1 overflow-hidden bg-track shadow-raise ring ring-rim">
                     <View class={`absolute inset-y-0 left-0 bg-hud-accent bg-linear-to-b from-sheen to-transparent to-42% group-data-maxed/path:from-sheen group-data-maxed/path:to-gold`} style={{ width: `${(p().tiers > 0 ? p().tier / p().tiers : 0) * 100}%` }} />
                   </View>
                 </View>

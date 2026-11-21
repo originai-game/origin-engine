@@ -31,17 +31,17 @@ export function StrategyClock(props: StrategyClockProps) {
           {props.label}
         </Text>
       </Show>
-      <Text class={`shrink text-lg leading-[1.1] font-bold tabular-nums whitespace-nowrap text-stroke-3 text-stroke-bg compact:text-reading`}>
+      <Text class={`shrink text-lg leading-tight font-bold tabular-nums whitespace-nowrap text-stroke-3 text-stroke-bg compact:text-reading`}>
         {props.time}
       </Text>
       <Show when={props.paused} fallback={
           <Show when={props.speed !== ""}>
-            <Text class={`shrink min-w-5.5 py-0 px-1.5 leading-[1.5] text-xs font-bold tabular-nums text-center whitespace-nowrap nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+            <Text class={`shrink min-w-5.5 py-0 px-1.5 leading-normal text-xs font-bold tabular-nums text-center whitespace-nowrap nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
               {props.speed}
             </Text>
           </Show>
       }>
-        <Text class={`shrink min-w-5.5 py-0 px-1.5 leading-[1.5] text-xs font-bold tabular-nums text-center whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`} role="status">
+        <Text class={`shrink min-w-5.5 py-0 px-1.5 leading-normal text-xs font-bold tabular-nums text-center whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`} role="status">
           {t("strategy.clock.paused")}
         </Text>
       </Show>

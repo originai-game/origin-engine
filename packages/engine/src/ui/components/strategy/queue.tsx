@@ -71,7 +71,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
                 </View>
               </Show>
               <Show when={q().count > 1}>
-                <Text class={`absolute right-0 top-0 py-0 px-0.5 leading-[1.2] text-xs font-bold whitespace-nowrap bg-well ${packClass("Chip", "frame")}`}>
+                <Text class={`absolute right-0 top-0 py-0 px-0.5 leading-tight text-xs font-bold whitespace-nowrap bg-well ${packClass("Chip", "frame")}`}>
                   {t("strategy.queue.stack", { count: q().count })}
                 </Text>
               </Show>

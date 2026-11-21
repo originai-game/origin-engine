@@ -25,27 +25,27 @@ export function StrategyResources(props: StrategyResourcesProps) {
           <Show when={r().icon} fallback={
               <Icon class={`shrink size-6 compact:size-4`} name={r().glyph} />
           }>
-            <Image class={`shrink size-6 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none compact:size-4`} src={r().icon} />
+            <Image class={`shrink size-6 rounded-tl-control rounded-tr-none rounded-br-control rounded-bl-none compact:size-4`} src={r().icon} />
           </Show>
           <View class="flex-col min-w-0">
             <View class="flex-row items-baseline gap-x-0.75 min-w-0">
-              <Text class={`min-w-0 text-lg leading-[1.1] font-bold tabular-nums whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg group-data-warn/res:text-gold compact:text-reading`}>
+              <Text class={`min-w-0 text-lg leading-tight font-bold tabular-nums whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg group-data-warn/res:text-gold compact:text-reading`}>
                 {r().amount}
               </Text>
               <Show when={r().cap}>
-                <Text class={`shrink text-caption leading-[1.1] font-bold tabular-nums whitespace-nowrap opacity-80 compact:text-xs`}>
+                <Text class={`shrink text-caption leading-tight font-bold tabular-nums whitespace-nowrap opacity-80 compact:text-xs`}>
                   {t("strategy.resources.cap", { cap: r().cap })}
                 </Text>
               </Show>
             </View>
             <Show when={r().note} fallback={
                 <Show when={r().rate}>
-                  <Text class={`min-w-0 leading-[1.2] text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden opacity-80 data-gain:text-success data-loss:text-danger data-note:text-gold compact:text-xs`} data-gain={r().trend === "gain"} data-loss={r().trend === "loss"} data-note={r().trend === "note"}>
+                  <Text class={`min-w-0 leading-tight text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden opacity-80 data-gain:text-success data-loss:text-danger data-note:text-gold compact:text-xs`} data-gain={r().trend === "gain"} data-loss={r().trend === "loss"} data-note={r().trend === "note"}>
                     {r().rate}
                   </Text>
                 </Show>
             }>
-              <Text class={`min-w-0 leading-[1.2] text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden text-gold compact:text-xs`}>
+              <Text class={`min-w-0 leading-tight text-xs font-semibold tabular-nums whitespace-nowrap overflow-hidden text-gold compact:text-xs`}>
                 {r().note}
               </Text>
             </Show>
