@@ -280,13 +280,14 @@ fn lit_pipeline(
             device,
             constants,
             crate::HdrPipeline {
-                // opaque copies write alpha 1 (every sample); alpha-to-coverage materials their coverage
-                alpha_to_coverage: true,
+                // opaque copies write alpha 1 (every sample); alpha-to-coverage materials their coverage;
+                // over the prepass's depth, alpha 1 where the prepass kept the copy (`fs_equal`)
+                alpha_to_coverage: !equal,
                 label: d.label,
                 layout,
                 module: &d.module,
                 vs: d.vs,
-                fs: d.fs,
+                fs: if equal { "fs_equal" } else { d.fs },
                 buffers: d.buffers,
                 cull: d.cull,
                 depth_write: !equal,

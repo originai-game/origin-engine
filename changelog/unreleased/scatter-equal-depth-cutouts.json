@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "TerrainScatter",
+      "summary": "Cut-out and alpha-to-coverage copies (leaves, cards, flowers) also take the main camera's equal depth test over the prepass's depth, with a lit stage that discards nothing, so the GPU rejects their hidden fragments before shading them. Single-sampled the prepass already keeps exactly their covered pixels, so the frame is the same. First Light 2560x1440 (M4 Pro): the main pass's scatter 24.9 -> 23.0 ms alone."
+    }
+  ]
+}

@@ -98,7 +98,7 @@ impl ScatterRenderer {
                 continue;
             }
             let shader = b.shader.filter(|_| kind != ScatterPass::Shadow);
-            let equal = kind == ScatterPass::Lit && camera && prepass_depth && b.equal_depth;
+            let equal = kind == ScatterPass::Lit && camera && prepass_depth;
             let lit = (shader, b.side, kind as u8);
             let p = match equal {
                 true => pipeline(&(lit.0, lit.1, lit.2 + EQUAL_KIND)).or_else(|| pipeline(&lit)),

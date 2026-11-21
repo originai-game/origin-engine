@@ -104,6 +104,8 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let base = surface_color(h, shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
   let dpx = dpdxFine(in.world);
   let dpy = dpdyFine(in.world);
+  let dlx = dpdxFine(in.local);
+  let dly = dpdyFine(in.local);
   // Alpha to coverage (mode 16, an alpha-tested material, as pbr_fs.wgsl): alpha past the cut-off over one pixel's change
   // of it is the share of the MSAA samples covered (three.js' alphaToCoverage on grass and foliage cards).
   let mode = u32(material.flags.w);
@@ -113,7 +115,24 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || scatter_dropped(in.clip.xy, in.fade)) {
     discard;
   }
-  let out_a = select(1.0, coverage, a2c);
+  return scatter_lit(in, h, base, select(1.0, coverage, a2c), dpx, dpy, dlx, dly);
+}
+
+// The lit pass over the prepass's own depth, tested for equality
+// (pipelines.rs EQUAL_KIND): the prepass kept only the fragments past the
+// cut-off and the fade, so this one discards nothing and writes alpha 1,
+// and the GPU rejects every hidden fragment before shading it.
+@fragment
+fn fs_equal(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+  let h = scatter_hook(in, front);
+  let base = surface_color(h, shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
+  return scatter_lit(in, h, base, 1.0, dpdxFine(in.world), dpdyFine(in.world), dpdxFine(in.local), dpdyFine(in.local));
+}
+
+// A kept fragment's colour with alpha `out_a`; `dpx`..`dly` its world and
+// local positions' derivatives, taken where control flow was uniform.
+fn scatter_lit(in: ScatterOut, h: Hook, base: vec4<f32>, out_a: f32, dpx: vec3<f32>, dpy: vec3<f32>, dlx: vec3<f32>, dly: vec3<f32>) -> vec4<f32> {
+  let mode = u32(material.flags.w);
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
     let ao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
     return vec4<f32>(vec3<f32>(select(1.0, ao, fx.ao.x > 0.5)), out_a);
@@ -148,7 +167,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let styled = (mode & 8u) == 0u;
   var made = StyledSurface(s, n, 0.0, vec3<f32>(1.0));
   if (styled) {
-    made = styled_surface(s, n, in.local, dpx, dpy, dpdxFine(in.local), dpdyFine(in.local));
+    made = styled_surface(s, n, in.local, dpx, dpy, dlx, dly);
     s = made.s;
     n = made.n;
   }

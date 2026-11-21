@@ -772,13 +772,6 @@ impl ScatterRenderer {
                 shader,
                 cast_shadows: d.cast_shadows,
                 side,
-                equal_depth: std::iter::once(d.material)
-                    .chain(d.lod_materials.into_iter().flatten())
-                    .all(|m| {
-                        scene
-                            .standard_material(m)
-                            .is_some_and(|m| m.alphaToCoverage == 0 || m.alphaTest <= 0.0)
-                    }),
                 offset: (si as u64 * SLOT) as u32,
                 chunks: keys,
                 sway,

@@ -589,10 +589,6 @@ pub(crate) struct ScatterBatch {
     pub shader: Option<usize>,
     pub cast_shadows: bool,
     pub side: Side,
-    /// Whether its lit pass may test the prepass's depth for equality
-    /// ([`EQUAL_KIND`]): its materials cut where the prepass's do (none
-    /// with alpha to coverage, which keeps the edge the prepass cuts).
-    equal_depth: bool,
     offset: u32,
     chunks: Vec<ChunkKey>,
     /// The mesh's coarser levels (`ScatterDraw::lods`): the scene's meshes.
