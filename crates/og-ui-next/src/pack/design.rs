@@ -127,6 +127,36 @@ fn bezier(text: &str) -> Option<Value> {
     (n.len() == 4).then(|| json!(n))
 }
 
+/// A box shadow with each layer's colour evaluated (a token's relative
+/// colour or `var()` as `#rrggbbaa`), which NSH's theme reads.
+fn shadow(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut depth = 0;
+    let mut word = String::new();
+    let flush = |word: &mut String, out: &mut String| {
+        match hex(word).filter(|_| word.contains('(')) {
+            Some(c) => out.push_str(&c),
+            None => out.push_str(word),
+        }
+        word.clear();
+    };
+    for c in text.chars() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ' ' | ',' if depth == 0 => {
+                flush(&mut word, &mut out);
+                out.push(c);
+                continue;
+            }
+            _ => {}
+        }
+        word.push(c);
+    }
+    flush(&mut word, &mut out);
+    out
+}
+
 /// The theme in one scheme's table.
 fn theme(t: &Tokens, names: &[String]) -> Map<String, Value> {
     let mut sections: Map<String, Value> = Map::new();
@@ -178,8 +208,10 @@ fn theme(t: &Tokens, names: &[String]) -> Map<String, Value> {
             .find(|f| n == &format!("--font-{f}"))
         {
             put("fontFamily", name, Value::String(v.to_owned()));
+        } else if let Some(name) = after("--inset-shadow-") {
+            put("insetShadow", name, Value::String(shadow(v)));
         } else if let Some(name) = after("--shadow-") {
-            put("shadow", name, Value::String(v.to_owned()));
+            put("shadow", name, Value::String(shadow(v)));
         } else if let Some(name) = after("--motion-easing-") {
             // The springs are `linear()` curves: the motion system's, not a
             // Tailwind ease.

@@ -81,18 +81,19 @@
   --color-hud-accent-fg: #0b0f18;
   --color-hud-accent-hi: #d6fdff;
   --color-foe: rgb(255 77 94);
-  --color-foe-fg: #801823;
+  --color-foe-fg: contrast-color(var(--color-foe));
   --color-ally: rgb(79 216 255);
   --color-boon: rgb(85 227 154);
   --color-boon-fg: #011e0f;
   --color-critical: rgb(222 38 52);
   --color-fever: rgb(255 61 138);
+  --color-fever-fg: contrast-color(var(--color-fever));
   --color-late: rgb(255 140 70);
   --color-well: #060910e0;
   --color-key-hi: #d8dbe2;
   --color-key-lo: #c9d1e2;
   --color-key-fg: #262b38;
-  --color-gold-fg: #241a04;
+  --color-gold-fg: contrast-color(var(--color-gold));
   --color-gold-hi: #fff2c4;
   --color-epic-hi: #d9c6fe;
   --color-chart-easy: rgb(52 199 120);
@@ -100,6 +101,11 @@
   --color-chart-hard: rgb(255 165 40);
   --color-chart-expert: rgb(255 61 138);
   --color-chart-master: rgb(160 90 255);
+  --color-chart-easy-fg: contrast-color(var(--color-chart-easy));
+  --color-chart-normal-fg: contrast-color(var(--color-chart-normal));
+  --color-chart-hard-fg: contrast-color(var(--color-chart-hard));
+  --color-chart-expert-fg: contrast-color(var(--color-chart-expert));
+  --color-chart-master-fg: contrast-color(var(--color-chart-master));
   /* The game components' materials (role.css and the controls dress with
      them): `glass` a frame's body from its lit top (`-hi`) to its foot
      (`-lo`), all but opaque (no blur: a backdrop pass per frame costs a
@@ -211,9 +217,10 @@
   --material-scope-color-fill-strong: material-control;
   --material-scope-color-thumb: material-control;
   --material-scope-shadow-rim: lens;
-  /* The six rarity colours, common to mythic: each a status colour, so
-     they keep its contrast in both schemes; a pack names its own. */
-  --color-common: var(--color-border-strong);
+  /* The six rarity colours, common to mythic: each an ink (a status
+     colour; `common` the muted ink), so a name written in one keeps 4.5:1
+     in both schemes; a pack names its own. */
+  --color-common: var(--color-fg-muted);
   --color-uncommon: var(--color-success);
   --color-rare: var(--color-info);
   --color-epic: var(--color-xp);

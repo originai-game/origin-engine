@@ -547,12 +547,13 @@ relative colours evaluated) to `#rrggbb[aa]` and points.
 |---|---|---|
 | `colors` | every `--color-*`: `bg`, `bg-subtle`, `surface`, `surface-raised`, `surface-hover`, `card`, `fg`, `fg-muted`, `fg-subtle`, `fg-inverse`, `border`, `border-strong`, `well-rim`, `fill`, `fill-strong`, `accent`, `accent-hover`, `accent-active`, `accent-fg`, `accent-soft`, `accent-ink`, `focus`, `danger`, `warn`, `success`, `info`, `gold`, `health`, `mana`, `xp`, `hud`, `scrim`, `glass`, `glass-hi`, `glass-lo`, `plate-hi`, `plate-lo`, `rim`, `rim-soft`, `rim-strong`, `lit`, `lit-soft`, `shade`, `shade-deep`, `tile`, `tile-pressed`, `raised-*`, `glow`, `glow-soft`, `select-hi`, `select-lo`, `entry-*`, `stage*`, `material-*`, `team1`…`team8`, `common`…`mythic`, the HUD's `hud-accent`, `hud-accent-fg`, `hud-accent-hi`, `foe`, `foe-fg`, `ally`, `boon`, `boon-fg`, `critical`, `fever`, `late`, `well`, `key-hi`, `key-lo`, `key-fg`, `gold-fg`, `gold-hi`, `epic-hi` and `chart-easy`…`chart-master` | `--color-<name>` (color.css) |
 | `radius` | `control` `field` `block` `card` `panel` `sheet` `button` `capsule` | `--radius-<name>` (space.css) |
-| `fontSize` | `xs` `sm` `base` `lg` `xl`…`8xl` (over Tailwind's), `meta` `caption` `body` `reading` `display-sm`…`display-2xl`; `[size, line height ÷ size]` | `--font-scale-<name>-size` and `-line-height` |
-| `tracking` | `xs`…`xl` `wide` (`--font-tracking-*`), and the letter spacing of the scale steps `2xl`…`8xl` and `display-*` (`xl` is `--font-tracking-xl`) | type.css, in em |
-| `leading` | `flat` `tight` `snug` `normal` | `--font-leading-<name>` |
+| `fontSize` | `xs` `sm` `base` `lg` `xl`…`8xl` (over Tailwind's), `2xs` `meta` `caption` `body` `reading` `title` `display-sm`…`display-2xl`; `[size, line height ÷ size]` | `--font-scale-<name>-size` and `-line-height` |
+| `tracking` | `tight` `xs`…`xl` `wide` `label` `kicker` (`--font-tracking-*`), and the letter spacing of the scale steps `2xl`…`8xl` and `display-*` (`xl` is `--font-tracking-xl`) | type.css, in em |
+| `leading` | `flat` `tight` `snug` `normal` `loose` | `--font-leading-<name>` |
 | `fontWeight` | `regular` `medium` `semibold` `bold` `body` | `--font-weight-<name>` |
 | `fontFamily` | `sans` `display` `mono` `rounded` | `--font-<name>` |
-| `shadow` | every `--shadow-*`: `edge` `raised` `float` `overlay` `lift` `rim` `panel` `plate` `raise` `raise-hover` `sunk` `held` `focus-tile` `minimap` `slot-selected` `tab-selected` `lens` | `--shadow-<name>` (effect.css), per scheme |
+| `shadow` | every `--shadow-*`: `edge` `raised` `float` `overlay` `lift` `rim` `panel` `plate` `raise` `raise-hover` `sunk` `held` `focus-tile` `minimap` `slot-selected` `tab-selected` `lens` `glow-sm` `glow` `glow-lg` `key` | `--shadow-<name>` (effect.css), per scheme, each layer's colour evaluated |
+| `insetShadow` | `lit` `lip` `sunk` `glow` `underline` `overline` `bar` | `--inset-shadow-<name>` (effect.css), per scheme |
 | `ease` | `out` `exit` `in-out` (the `linear()` springs stay with motion) | `--motion-easing-<name>` |
 | `container` | `xs` `sm` `md` `lg` `xl` `xxl` `3xl` | `--measure-<name>` |
 | `blur` | `thin` `regular` `thick` `lens` | `--vars-material-blur[-<name>]` |

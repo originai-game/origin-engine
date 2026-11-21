@@ -4,6 +4,10 @@
   --font-display: "Instrument Sans", "Inter Variable", "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --font-rounded: ui-rounded, "SF Pro Rounded", "Nunito Variable", "Nunito", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  /* `2xs` is the smallest label that still reads: a world nameplate's
+     level, a card face's cost. */
+  --font-scale-2xs-size: 11px;
+  --font-scale-2xs-line-height: 14px;
   --font-scale-xs-size: 12px;
   --font-scale-xs-line-height: 16px;
   --font-scale-meta-size: 13px;
@@ -30,6 +34,9 @@
   --font-scale-2xl-size: 22px;
   --font-scale-2xl-line-height: 28px;
   --font-scale-2xl-letter-spacing: -0.015em;
+  /* `title` is a menu row, a results figure or a HUD's leading number. */
+  --font-scale-title-size: 24px;
+  --font-scale-title-line-height: 28px;
   --font-scale-3xl-size: 26px;
   --font-scale-3xl-line-height: 32px;
   --font-scale-3xl-letter-spacing: -0.02em;
@@ -83,11 +90,13 @@
   --font-cjk-line-height-display-2xl: 68px;
   /* Leading as a ratio of the size, for text a component sizes itself:
      `flat` a figure or a one-line plate, `tight` a display line, `snug` a
-     wrapped label, `normal` running text. */
+     wrapped label, `normal` running text, `loose` a key cap's or a chip's
+     one line, which its leading makes the box's height. */
   --font-leading-flat: 1;
   --font-leading-tight: 1.12;
   --font-leading-snug: 1.3;
   --font-leading-normal: 1.45;
+  --font-leading-loose: 1.6;
   /* Steps in em of the text a part stands in, so a part sized with one
      follows the player's text scale (the scale's own sizes are px). `md` is
      the surrounding size. `px` is one CSS px at 100 % text grown by the
@@ -105,13 +114,18 @@
   --font-step-5xl: 3em;
   --font-step-6xl: 4.29em;
   --font-step-px: calc(1rem / 14);
-  /* Tracking a style opens its capitals and small labels with. */
+  /* Tracking a style opens its capitals and small labels with: `label` a
+     HUD label's capitals, `kicker` the small line over a title; `tight`
+     closes a large figure. */
+  --font-tracking-tight: -0.01em;
   --font-tracking-xs: 0.02em;
   --font-tracking-sm: 0.04em;
   --font-tracking-md: 0.06em;
   --font-tracking-lg: 0.08em;
   --font-tracking-xl: 0.1em;
   --font-tracking-wide: 0.12em;
+  --font-tracking-label: 0.14em;
+  --font-tracking-kicker: 0.18em;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;

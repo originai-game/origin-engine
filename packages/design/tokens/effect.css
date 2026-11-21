@@ -22,6 +22,28 @@
   --shadow-raise-hover: inset 0 1px 0 0 rgb(255 255 255 / 0.95), 0 4px 12px -4px rgb(10 16 32 / 0.28);
   --shadow-sunk: inset 0 1px 2px 0 rgb(10 16 32 / 0.16), 0 1px 0 0 rgb(255 255 255 / 0.8);
   --shadow-held: inset 0 2px 4px 0 rgb(10 16 32 / 0.22);
+  /* Light a thing gives off (`glow-sm`, `glow`, `glow-lg`: a pip, a
+     chosen tile, a banner), the HUD accent's unless a colour class names
+     another (`shadow-glow shadow-gold`); `key` a key cap's hard foot and
+     the lip inside it. */
+  --shadow-glow-sm: 0 0 8px 0 var(--color-hud-accent);
+  --shadow-glow: 0 0 12px 0 var(--color-hud-accent);
+  --shadow-glow-lg: 0 0 16px 0 var(--color-hud-accent);
+  --shadow-key: 0 2px 0 0 var(--color-shade-deep), inset 0 -2px 0 0 var(--color-shade);
+  /* What a face carries inside its edge (`--inset-shadow-*`, one to an
+     element beside its `shadow-*`): `lit` the light along its top, `lip`
+     the shade under its foot, `sunk` a recess, `glow` light held inside
+     it; `underline`, `overline` and `bar` the mark of what is chosen or
+     live along its foot, its top or its leading edge, in the HUD accent
+     unless a colour class names another (`inset-shadow-bar
+     inset-shadow-danger`). */
+  --inset-shadow-lit: inset 0 1px 0 0 var(--color-lit);
+  --inset-shadow-lip: inset 0 -2px 0 0 var(--color-shade-deep);
+  --inset-shadow-sunk: inset 0 1px 3px 0 var(--color-shade-deep);
+  --inset-shadow-glow: inset 0 0 12px 0 var(--color-hud-accent);
+  --inset-shadow-underline: inset 0 -3px 0 0 var(--color-hud-accent);
+  --inset-shadow-overline: inset 0 2px 0 0 var(--color-hud-accent);
+  --inset-shadow-bar: inset 3px 0 0 0 var(--color-hud-accent);
   /* The engine's two drop shadows under content that lifts
      (`--elevation-raised`: radio cards; `--elevation-floating`: open lists and
      slider bubbles): offset, blur and the `shadow` colour's alpha, emitted as `0

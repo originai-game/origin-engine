@@ -72,7 +72,18 @@
     team8 bg-subtle,
     team8 surface,
     team8 surface-raised,
-    fg hud #808080;
+    fg hud #808080,
+    hud-accent-fg hud-accent,
+    foe-fg foe,
+    boon-fg boon,
+    fever-fg fever,
+    gold-fg gold,
+    key-fg key-lo,
+    chart-easy-fg chart-easy,
+    chart-normal-fg chart-normal,
+    chart-hard-fg chart-hard,
+    chart-expert-fg chart-expert,
+    chart-master-fg chart-master;
   --non-text:
     focus bg,
     focus surface-raised,
