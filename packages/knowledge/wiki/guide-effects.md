@@ -19,6 +19,8 @@ The API: `og api show vfx`, `og api show og.ParticleSystem`, `og api show og.Dec
 | a line between two points (a laser, a tether, lightning) | og.Beam, or a `beam` element; og.render.ribbon through your own points | scrolls and jitters on the tick |
 | a shaped glow that lasts (a shield dome, a portal's swirl, a slash arc held on a weapon) | og.EffectMesh with an effect material (og.load.effect), or a `mesh` element | a mesh the game owns, its scrolling, eroding and fresnel look run on `life` |
 | a mark on the ground or a wall (a scorch, a footprint, a bullet hole) | og.Decal, or a `decal` element | projected on whatever is there, lasting |
+| a marker on the ground the game moves (a selection ring, an attack telegraph, a placement ghost) | og.Decal on its own entity | follows the ground under it; colour, opacity and scale are fields a system writes |
+| a route drawn over the ground (a move order, a path preview) | og.render.lines each tick through the route's points, lifted a few cm | the points change with the route |
 | a sprite's hit flash, a dissolve | og.tween.flash, an effect material's `erosion` on a mesh | changes the thing hit, not a new object |
 | the whole screen (a white flash, a blur, a vignette) | og.PostEffects | after the scene; one frame or a tween |
 | weight on an impact | og.time.hitStop and og.camera.shake (a `shake` element) | the frame holds, the view kicks |
@@ -54,6 +56,21 @@ whole fight), the element for a part of one effect (a dash's trail for its
   too, so `collision` off the drawn depth misses it and sparks fall
   through: give them `collision colliders` or `die`. A pixel game's
   effects are `pixel-vfx`.
+- Ground markers are world drawing, not UI: the UI draws over the frame
+  and never on the ground.
+  - A selection ring is a decal whose atlas region is a ring, on an
+    entity parented to the unit (or moved to it each tick), scaled to the
+    unit's footprint and tinted by its team; hide it with `visible`.
+  - An attack telegraph is a decal over the area to be hit whose opacity
+    (or the scale of a second, filling decal) a system grows over the
+    wind-up, with `emissive` for the last moments; remove it when the
+    attack lands.
+  - A placement ghost is a decal (and, for height, a translucent mesh)
+    moved each tick to where the pointer's ray meets the ground, tinted
+    by whether the spot is free.
+  - A path line is og.render.lines through the route's points, each
+    lifted a few cm above the ground; og.Lines keeps a route that does not
+    change.
 - Some particles are their system's own and stay so: the ocean's foam
   comes from its waves (`render`), destruction's debris are rigid
   bodies (`physics`), `<og-emitter>` is the UI's (`components`) and a
