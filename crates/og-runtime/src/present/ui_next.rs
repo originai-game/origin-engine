@@ -356,8 +356,9 @@ impl Next {
         let (_, painted) = tree.present(ui.fonts(), ui.icons());
         let t2 = now();
         if painted {
-            self.frame.items.clear();
-            self.frame.items.extend_from_slice(&tree.items);
+            // The tree paints its items afresh each time: the overlay takes
+            // them, and the tree reuses the old ones' capacity.
+            std::mem::swap(&mut self.frame.items, &mut tree.items);
             self.frame.viewport = og_ui::Viewport::new(v.width * unit, v.height * unit);
             self.frame.unit = 1.0;
             self.frame.generation = tree.generation;
