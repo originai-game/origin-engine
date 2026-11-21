@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import { CardFace } from "./face";
 import "./card.en.ogt";
@@ -62,7 +62,7 @@ export function CardReward(props: CardRewardProps) {
             }>
               <View class={`group/relic shrink min-w-[105.6px] aspect-[7/10] justify-stretch p-0 compact:grow-0 compact:shrink-0 compact:min-w-0`} role="option" disabled={!c().enabled} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onPick?.(e, c().id)}>
                 <View class="w-full">
-                  <View class="w-full items-center justify-center text-center shadow-[inset_0px_0px_0px_1.5px_#ffcf5ab2] rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none p-2 gap-1 overflow-hidden">
+                  <View class={`w-full items-center justify-center text-center border-[1.5px] border-[#ffcf5ab2] nine-plate-cut p-2 gap-1 overflow-hidden ${packClass("Plate", "frame")}`}>
                     <View class={`flex-row items-center w-[42%] aspect-square justify-center bg-[#03050a99] gap-0`}>
                       <Icon class="text-gold size-[58%] shrink" name={c().icon} />
                     </View>
@@ -88,7 +88,7 @@ export function CardReward(props: CardRewardProps) {
       </Scroll>
       <Show when={props.skipLabel}>
         <View class="flex-row items-center justify-center gap-2">
-          <Button class="min-w-48 min-h-11 shrink" onPress={(e) => props.onSkip?.(e)}>
+          <Button class={`min-w-48 min-h-11 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onSkip?.(e)}>
             <Text>{props.skipLabel}</Text>
           </Button>
         </View>

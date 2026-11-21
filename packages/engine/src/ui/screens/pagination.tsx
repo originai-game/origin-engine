@@ -1,4 +1,4 @@
-import { For, Icon, Show, Text, type UiEvent, View } from "@origingame/engine/ui";
+import {For, Icon, Show, Text, packClass, type UiEvent, View} from "@origingame/engine/ui";
 import { Button } from "../controls/button";
 
 export interface PaginationProps {
@@ -24,7 +24,7 @@ export interface PaginationProps {
 export function Pagination(props: PaginationProps) {
   return (
     <View class={`flex-row items-center text-fg max-w-full p-0 gap-1 disabled:text-fg-subtle`} label={props.label}>
-      <Button class="min-w-11 min-h-11 p-0 rounded-[4.576px]" disabled={props.atStart} onPress={(e) => props.onPrevious?.(e)} label={props.label}>
+      <Button class={`min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} disabled={props.atStart} onPress={(e) => props.onPrevious?.(e)} label={props.label}>
         <Icon name="chevronLeft" />
       </Button>
       <View class="flex-row flex-wrap items-center shrink justify-center p-0 m-0 gap-1">
@@ -37,7 +37,7 @@ export function Pagination(props: PaginationProps) {
               </Text>
             </Show>
             <Show when={!p().gap}>
-              <Button class="bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 font-bold rounded-[4.576px] data-variant-primary:text-accent data-current:text-[#0b0f18]" onPress={(e) => props.onPage?.(e, p().id)} data-current={p().current} data-variant-primary={(p().current ? "primary" : "quiet") === "primary"} data-variant-quiet={(p().current ? "primary" : "quiet") === "quiet"}>
+              <Button class={`bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 font-bold rounded-[4.576px] data-variant-primary:text-accent data-current:text-[#0b0f18] ${packClass("Button", "plate")}`} onPress={(e) => props.onPage?.(e, p().id)} data-current={p().current} data-variant-primary={(p().current ? "primary" : "quiet") === "primary"} data-variant-quiet={(p().current ? "primary" : "quiet") === "quiet"}>
                 <Text class="tabular-nums">{p().label}</Text>
               </Button>
             </Show>
@@ -45,7 +45,7 @@ export function Pagination(props: PaginationProps) {
           )}
         </For>
       </View>
-      <Button class="min-w-11 min-h-11 p-0 rounded-[4.576px]" disabled={props.atEnd} onPress={(e) => props.onNext?.(e)} label={props.label}>
+      <Button class={`min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} disabled={props.atEnd} onPress={(e) => props.onNext?.(e)} label={props.label}>
         <Icon name="chevronRight" />
       </Button>
     </View>

@@ -22,15 +22,15 @@ export interface CalendarProps {
  */
 export function Calendar(props: CalendarProps) {
   return (
-    <View class={`rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg w-full max-w-90 p-3 gap-2`} label={props.month}>
+    <View class={`nine-panel-cut bg-[#171f30d6] border border-[#ffffff2e] text-fg w-full max-w-90 p-3 gap-2 ${packClass("Panel", "frame")}`} label={props.month}>
       <View class={`min-h-12 border-b border-rim-soft items-center py-1 px-4 gap-1`}>
-        <Button class="bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px]" onPress={(e) => props.onPrevious?.(e)} label={props.month}>
+        <Button class={`bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} onPress={(e) => props.onPrevious?.(e)} label={props.month}>
           <Icon name="chevronLeft" />
         </Button>
         <Text class={`font-display text-[1.143rem] font-bold leading-tight tracking-[-0.01em] text-fg grow shrink basis-0 text-center m-0`}>
           {props.month}
         </Text>
-        <Button class="bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px]" onPress={(e) => props.onNext?.(e)} label={props.month}>
+        <Button class={`bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} onPress={(e) => props.onNext?.(e)} label={props.month}>
           <Icon name="chevronRight" />
         </Button>
       </View>

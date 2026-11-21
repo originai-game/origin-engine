@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { EmptyState } from "../base/empty-state";
 import { ErrorState } from "../base/error-state";
 import { Spinner } from "../base/spinner";
@@ -47,7 +47,7 @@ export interface RevealProps {
  */
 export function Reveal(props: RevealProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle`} label={props.title || t("meta.reveal.title")} busy={(props.state ?? "sealed") === 'loading' || (props.state ?? "sealed") === 'revealing'}>
+    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.reveal.title")} busy={(props.state ?? "sealed") === 'loading' || (props.state ?? "sealed") === 'revealing'}>
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-center text-center py-1 px-4 gap-0.5`}>
         <Show when={props.kicker}>
@@ -80,11 +80,11 @@ export function Reveal(props: RevealProps) {
                       <View class="shrink basis-[8.571rem]">
                         <View class={`group/reward w-full p-0 hover:bg-transparent hover:bg-none hover:shadow-none`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.reward", { name: reward().name, rarity: reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onPress={(e) => props.onInspect?.(e, reward().id)} data-tier-common={(reward().rarity || 'common') === "common"}>
                           <View class="w-full items-center text-center gap-1">
-                            <View class={`grow shrink basis-0 justify-center items-center w-[8.571rem] max-w-full aspect-square bg-linear-to-b from-shade to-transparent to-55% bg-tile shadow-[inset_0px_0px_0px_1.5px_#4b5568,inset_0px_1px_3px_0px_#00000099,0px_1px_0px_0px_#ffffff0a] rounded-tl-[9.136px] rounded-tr-none rounded-br-[9.136px] rounded-bl-none gap-2 compact:w-[6.857rem]`}>
+                            <View class={`grow shrink basis-0 justify-center items-center w-[8.571rem] max-w-full aspect-square bg-tile border-[1.5px] border-[#4b5568] nine-plate-cut gap-2 compact:w-[6.857rem] ${packClass("Slot", "frame")}`}>
                               <Icon class="size-[70%]" name={reward().icon} />
                               <View class="absolute bottom-0 h-0.75 text-border-strong bg-current inset-x-[0.571rem]" />
                               <Show when={reward().amount}>
-                                <Text class={`absolute right-1 bottom-2 text-[0.857rem] font-bold leading-[1.35] whitespace-nowrap text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff33] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0 px-0.5`}>
+                                <Text class={`absolute right-1 bottom-2 text-[0.857rem] font-bold leading-[1.35] whitespace-nowrap text-fg bg-[#060910e0] nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                                   {reward().amount}
                                 </Text>
                               </Show>

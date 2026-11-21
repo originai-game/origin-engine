@@ -55,7 +55,7 @@ export interface ShopProps {
  */
 export function Shop(props: ShopProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
+    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg p-4 gap-2 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <View class="grow shrink basis-[8.571rem] gap-0.5 compact:basis-full">
@@ -117,14 +117,14 @@ export function Shop(props: ShopProps) {
                     <For each={props.offers}>
                       {(o) => (
                       <Show when={!o().soldOut && !o().owned && o().affordable} fallback={
-                          <View class={`group/offer w-full pt-1 pb-2 bg-[#090e1a99] shadow-[inset_0px_0px_0px_1px_#ffffff14] rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none px-1 hover:bg-none hover:bg-[#090e1a99] hover:shadow-[inset_0px_0px_0px_1px_#ffffff4d] data-selected:shadow-[inset_0px_0px_0px_1.5px_#edf6ff] data-featured:col-span-2`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
+                          <View class={`group/offer w-full pt-1 pb-2 bg-[#090e1a99] nine-plate-cut px-1 hover:bg-none hover:bg-[#090e1a99] data-featured:col-span-2`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                             <View class="w-full gap-1">
-                              <View class={`justify-center items-center w-full text-border-strong bg-[#04060c80] rounded-tl-[9.136px] rounded-tr-none rounded-br-[9.136px] rounded-bl-none gap-2`}>
+                              <View class={`justify-center items-center w-full text-border-strong bg-[#04060c80] nine-plate-cut gap-2`}>
                                 <View class="absolute opacity-26 inset-0" />
                                 <Icon name={o().icon} />
                               </View>
                               <Show when={o().featured}>
-                                <Text class={`absolute top-2 text-[0.857rem] font-bold tracking-[0.14em] uppercase leading-[1.2] whitespace-nowrap text-ellipsis rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 overflow-hidden`}>
+                                <Text class={`absolute top-2 text-[0.857rem] font-bold tracking-[0.14em] uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
                                   {t("general.shop.featured")}
                                 </Text>
                               </Show>
@@ -162,18 +162,18 @@ export function Shop(props: ShopProps) {
                                   )}
                                 </For>
                                 <Show when={o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5`}>
+                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-plate-cut py-0.5 px-1 gap-0.5`}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.soldOut")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={o().owned && !o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-owned:text-success data-kind-owned:bg-none data-kind-owned:bg-success/12`} data-kind-owned={true}>
+                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-owned:text-success data-kind-owned:bg-none data-kind-owned:bg-success/12`} data-kind-owned={true}>
                                     <Icon class="size-[0.857rem]" name="check" />
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.owned")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={!o().affordable && !o().soldOut && !o().owned}>
-                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 gap-0.5 data-kind-short:text-danger data-kind-short:bg-none data-kind-short:bg-danger/12`} data-kind-short={true}>
+                                  <View class={`flex-row items-center ml-auto text-[0.857rem] font-bold tracking-[0.14em] uppercase text-fg-muted bg-white/8 nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-short:text-danger data-kind-short:bg-none data-kind-short:bg-danger/12`} data-kind-short={true}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.short")}</Text>
                                   </View>
                                 </Show>
@@ -184,14 +184,14 @@ export function Shop(props: ShopProps) {
                             </Show>
                           </View>
                       }>
-                        <View class={`group/offer w-full pt-1 pb-2 bg-[#090e1a99] shadow-[inset_0px_0px_0px_1px_#ffffff14] rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none px-1 hover:bg-none hover:bg-[#090e1a99] hover:shadow-[inset_0px_0px_0px_1px_#ffffff4d] data-selected:shadow-[inset_0px_0px_0px_1.5px_#edf6ff] data-featured:col-span-2`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
+                        <View class={`group/offer w-full pt-1 pb-2 bg-[#090e1a99] nine-plate-cut px-1 hover:bg-none hover:bg-[#090e1a99] data-featured:col-span-2`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                           <View class="w-full gap-1">
-                            <View class={`justify-center items-center w-full text-border-strong bg-[#04060c80] rounded-tl-[9.136px] rounded-tr-none rounded-br-[9.136px] rounded-bl-none gap-2`}>
+                            <View class={`justify-center items-center w-full text-border-strong bg-[#04060c80] nine-plate-cut gap-2`}>
                               <View class="absolute opacity-26 inset-0" />
                               <Icon name={o().icon} />
                             </View>
                             <Show when={o().featured}>
-                              <Text class={`absolute top-2 text-[0.857rem] font-bold tracking-[0.14em] uppercase leading-[1.2] whitespace-nowrap text-ellipsis rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0.5 px-1 overflow-hidden`}>
+                              <Text class={`absolute top-2 text-[0.857rem] font-bold tracking-[0.14em] uppercase leading-[1.2] whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
                                 {t("general.shop.featured")}
                               </Text>
                             </Show>

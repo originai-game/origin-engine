@@ -1,4 +1,4 @@
-import { Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../controls/button";
 import "./calibration.en.ogt";
 
@@ -77,7 +77,7 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
   return (
     <View class="grow shrink basis-0 justify-center items-center text-fg w-full p-8 gap-2 compact:p-3">
       <View class="absolute inset-0" />
-      <View class={`rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg gap-y-4 w-full max-w-[54.286rem] py-6 px-8 compact:gap-y-3 compact:p-4 disabled:text-fg-subtle`}>
+      <View class={`nine-panel-cut bg-[#171f30d6] border border-[#ffffff2e] text-fg gap-y-4 w-full max-w-[54.286rem] py-6 px-8 compact:gap-y-3 compact:p-4 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}>
         <View class="items-center gap-x-2 p-0 m-0 compact:gap-x-1">
           <View class={`group/brightness items-center gap-x-2 text-[0.929rem] font-semibold tracking-[0.14em] uppercase text-fg/56 compact:gap-x-1 compact:tracking-md data-done:text-fg/74 data-on:text-fg compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "brightness"} data-done={props.step !== "brightness"}>
             <View class="grid items-center justify-items-center shadow-[inset_0px_0px_0px_1px_#ffffff4d] text-[0.929rem] size-[1.857rem] rounded-full group-data-on/brightness:shadow-[0px_0px_11.424px_#38e8ff] group-data-on/brightness:bg-none group-data-on/brightness:bg-[#38e8ff] group-data-on/brightness:text-[#0a0f19] group-data-done/brightness:bg-none group-data-done/brightness:bg-[#465064] shrink">
@@ -130,10 +130,10 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
                   {t("screen.calibration.offsetHint")}
                 </Text>
                 <View class="flex-row flex-wrap items-center gap-y-2 gap-x-3">
-                  <Button class="text-fg bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-full data-pressed:hover:border-transparent" onPress={(e) => props.onMeasure?.(e)}>
+                  <Button class={`text-fg bg-[#171f30d6] nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-[#171f30d6] hover:bg-transparent hover:border-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-full data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onMeasure?.(e)}>
                     <Text>{t("screen.calibration.start")}</Text>
                   </Button>
-                  <Button class="text-accent rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onTap?.(e)}>
+                  <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate")}`} onPress={(e) => props.onTap?.(e)}>
                     <Text>{t("screen.calibration.tap")}</Text>
                   </Button>
                   <Text class="text-base leading-normal text-fg/74 line-clamp-3 tabular-nums m-0 compact:text-base shrink">
@@ -157,15 +157,15 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
           </View>
         </Show>
         <View class="flex-row flex-wrap items-center justify-between gap-2">
-          <Button class="text-fg bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent hover:shadow-[inset_0px_2px_0px_#38e8ff] compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-pressed:hover:border-transparent" onPress={(e) => props.onBack?.(e)}>
+          <Button class={`text-fg bg-[#171f30d6] nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-[#171f30d6] hover:bg-transparent hover:border-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
             <Text>{t("screen.common.back")}</Text>
           </Button>
           <Show when={props.step === "controller"} fallback={
-              <Button class="text-accent rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onNext?.(e)}>
+              <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onNext?.(e)}>
                 <Text>{t("screen.calibration.next")}</Text>
               </Button>
           }>
-            <Button class="text-accent rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onDone?.(e)}>
+            <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onDone?.(e)}>
               <Text>{t("screen.calibration.done")}</Text>
             </Button>
           </Show>

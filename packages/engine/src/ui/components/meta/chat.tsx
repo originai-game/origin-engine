@@ -1,4 +1,4 @@
-import { For, Icon, Input, Scroll, Show, Text, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
+import {For, Icon, Input, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import "./general.en.ogt";
 
@@ -37,20 +37,20 @@ export interface ChatProps {
  */
 export function Chat(props: ChatProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle`} label={t("general.chat.name")}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={t("general.chat.name")}>
       <Show when={props.channels.length}>
         <View class="w-full pb-0.5" role="tablist" label={t("general.chat.channels")}>
           <Scroll class="w-full">
             <View class="flex-row items-center gap-0.5">
               <For each={props.channels}>
                 {(c) => (
-                <View class={`text-fg-muted transition duration-317 min-h-11 rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none py-0 px-3 data-selected:text-fg data-selected:bg-linear-to-t data-selected:from-[#38e8ff33] data-selected:to-transparent data-selected:bg-transparent data-selected:shadow-[inset_0px_-2.288px_0px_#38e8ff] hover:bg-none hover:bg-[#7379851d]`} role="tab" selected={c().id === props.channel} label={c().unread > 0 ? t("general.chat.unread", { channel: c().label, count: c().unread }) : c().label} onPress={(e) => props.onChooseTab?.(e, c().id)} data-selected={c().id === props.channel}>
+                <View class={`text-fg-muted transition duration-317 min-h-11 nine-plate-cut py-0 px-3 data-selected:text-fg data-selected:bg-[#38e8ff33] data-selected:bg-transparent hover:bg-none hover:bg-[#7379851d]`} role="tab" selected={c().id === props.channel} label={c().unread > 0 ? t("general.chat.unread", { channel: c().label, count: c().unread }) : c().label} onPress={(e) => props.onChooseTab?.(e, c().id)} data-selected={c().id === props.channel}>
                   <View class="flex-row items-center gap-1">
                     <Text class="whitespace-nowrap max-w-60 text-ellipsis font-bold overflow-hidden shrink">
                       {c().label}
                     </Text>
                     <Show when={c().unread > 0}>
-                      <Text class={`font-bold text-caption tabular-nums rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none bg-gold shadow-[inset_0px_0px_0px_1px_#4e586c] text-[#241a04] transition duration-317 min-w-4 text-center py-0 px-0.5 m-0 shrink`}>
+                      <Text class={`font-bold text-caption tabular-nums nine-chip-cut bg-gold border border-[#4e586c] text-[#241a04] transition duration-317 min-w-4 text-center py-0 px-0.5 m-0 shrink ${packClass("Chip", "frame")}`}>
                         {formatNumber(c().unread)}
                       </Text>
                     </Show>
@@ -62,7 +62,7 @@ export function Chat(props: ChatProps) {
           </Scroll>
         </View>
       </Show>
-      <View class={`grow shrink basis-0 rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none bg-[#060910b8] shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] w-full py-1 px-[1.5px] gap-0`}>
+      <View class={`grow shrink basis-0 nine-plate-cut bg-[#060910b8] border border-[#ffffff14] w-full py-1 px-[1.5px] gap-0 ${packClass("Field", "frame")}`}>
         <Scroll class={`flex-col-reverse grow shrink basis-0 w-full gap-0`} role="log" label={t("general.chat.messages")} live="polite">
           <Show when={props.messages.length} fallback={
               <Text class="text-center text-fg-muted p-4 m-0" role="status">{t("general.chat.empty")}</Text>
@@ -91,7 +91,7 @@ export function Chat(props: ChatProps) {
                       </Text>
                     </View>
                   </Show>
-                  <Text class={`text-start text-fg m-0 group-data-kind-own/message:text-end group-data-kind-own/message:bg-linear-to-r group-data-kind-own/message:from-[#38e8ff3d] group-data-kind-own/message:via-[#38e8ff14] group-data-kind-own/message:via-55% group-data-kind-own/message:to-[#38e8ff08] group-data-kind-own/message:bg-transparent group-data-kind-own/message:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] group-data-kind-system/message:text-fg-muted group-data-kind-system/message:max-w-full group-data-kind-system/message:p-0 data-bubble:max-w-[88%] data-bubble:bg-linear-to-r data-bubble:from-entry-hi data-bubble:to-entry-lo data-bubble:bg-transparent data-bubble:rounded-tl-[6.864px] data-bubble:rounded-tr-none data-bubble:rounded-br-[6.864px] data-bubble:rounded-bl-none data-bubble:py-1 data-bubble:px-2`} data-bubble={m().kind !== 'system'} data-kind-own={(m().kind) === 'own'} data-kind-system={(m().kind) === 'system'}>
+                  <Text class={`text-start text-fg m-0 group-data-kind-own/message:text-end group-data-kind-own/message:bg-[#38e8ff3d] group-data-kind-system/message:text-fg-muted group-data-kind-system/message:max-w-full group-data-kind-system/message:p-0 data-bubble:max-w-[88%] data-bubble:bg-entry-hi data-bubble:bg-transparent data-bubble:nine-plate-cut data-bubble:py-1 data-bubble:px-2`} data-bubble={m().kind !== 'system'} data-kind-own={(m().kind) === 'own'} data-kind-system={(m().kind) === 'system'}>
                     {m().text}
                   </Text>
                 </View>
@@ -108,7 +108,7 @@ export function Chat(props: ChatProps) {
       </Show>
       <View class={`flex-row w-full gap-1`} onAction={{ submit: (e) => props.onSend?.(e) }}>
         <Input class="grow shrink basis-0 min-h-11" label={t("general.chat.placeholder")} placeholder={t("general.chat.placeholder")} disabled={!props.canSend} value={props.draft} onChange={(e) => props.onDraft?.(e, e.value.slice(0, props.maxLength))} />
-        <Button class="text-accent min-h-11 min-w-11" label={t("general.chat.send")} disabled={!props.canSend}>
+        <Button class={`text-accent min-h-11 min-w-11 ${packClass("Button", "plate", "primary")}`} label={t("general.chat.send")} disabled={!props.canSend}>
           <View class="flex-row items-center gap-1">
             <Icon class="size-4 shrink" name="play" />
             <Text class="compact:hidden shrink">{t("general.chat.send")}</Text>

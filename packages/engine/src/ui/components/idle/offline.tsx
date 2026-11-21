@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, formatDuration, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import "./idle.en.ogt";
 
@@ -32,7 +32,7 @@ export interface IdleOfflineProps {
  */
 export function IdleOffline(props: IdleOfflineProps) {
   return (
-    <View class={`border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full max-w-105 max-h-full p-4 gap-3 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("idle.offline.name")}>
+    <View class={`border-rim nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.offline.name")}>
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start py-1 px-4 gap-0`}>
         <Text class={`whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg/78 overflow-hidden`}>
@@ -59,7 +59,7 @@ export function IdleOffline(props: IdleOfflineProps) {
           <View class="flex-row flex-wrap items-center w-full p-0 m-0 gap-1" label={t("idle.offline.earned")}>
             <For each={props.earned}>
               {(e) => (
-              <View class={`w-full grow shrink basis-0 items-center min-w-[108.8px] max-w-48 bg-[#0b101ce5] shadow-[inset_0px_0px_0px_1px_#343d4f] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none p-1 m-0 gap-0 compact:min-w-[89.6px]`} label={t("idle.offline.row", { name: e().name, amount: e().amount })}>
+              <View class={`w-full grow shrink basis-0 items-center min-w-[108.8px] max-w-48 bg-[#0b101ce5] border border-[#343d4f] nine-plate-cut p-1 m-0 gap-0 compact:min-w-[89.6px]`} label={t("idle.offline.row", { name: e().name, amount: e().amount })}>
                 <View class={`grow shrink basis-0 justify-center items-center gap-2 size-12`}>
                   <Icon class="size-full" name={e().icon} />
                 </View>
@@ -77,7 +77,7 @@ export function IdleOffline(props: IdleOfflineProps) {
       </Show>
       <View class="flex-row flex-wrap items-center w-full justify-end gap-2">
         <Show when={props.canDouble}>
-          <Button class="text-[#2a1400] bg-linear-to-b from-[#fff1c2] to-gold min-h-11 min-w-30 max-w-full gap-1 active:bg-linear-to-b active:from-[#fff1c2] active:to-gold active:bg-transparent hover:bg-linear-to-b hover:from-[#fff1c2] hover:to-gold hover:bg-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0" onPress={(e) => props.onDouble?.(e)}>
+          <Button class={`text-[#2a1400] bg-linear-to-b from-[#fff1c2] to-gold min-h-11 min-w-30 max-w-full gap-1 active:bg-linear-to-b active:from-[#fff1c2] active:to-gold active:bg-transparent hover:bg-linear-to-b hover:from-[#fff1c2] hover:to-gold hover:bg-transparent compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0 ${packClass("Button", "plate")}`} onPress={(e) => props.onDouble?.(e)}>
             <View class="items-center max-w-full gap-0">
               <Text>{t("idle.offline.double")}</Text>
               <Show when={props.doubleText !== ''}>
@@ -88,7 +88,7 @@ export function IdleOffline(props: IdleOfflineProps) {
             </View>
           </Button>
         </Show>
-        <Button class="text-accent min-h-11 min-w-30 max-w-full gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0" onPress={(e) => props.onCollect?.(e)}>
+        <Button class={`text-accent min-h-11 min-w-30 max-w-full gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onCollect?.(e)}>
           <Text>{t("idle.offline.collect")}</Text>
         </Button>
       </View>

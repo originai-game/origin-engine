@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import {Scroll,  Icon, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {Scroll, Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import "./main-menu.en.ogt";
 
@@ -55,7 +55,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
           </Text>
         </Show>
         <Show when={props.news !== ""}>
-          <View class={`absolute right-12 bottom-12 items-center gap-x-3 w-[25.714rem] bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none py-3 px-4 compact:static compact:w-auto compact:max-w-none compact:mt-auto compact:mb-3 compact:py-2 compact:px-3 short:hidden hover:shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] hover:translate-x-0 hover:-translate-y-0.25 active:translate-x-0 active:translate-y-0`} onPress={(e) => props.onNews?.(e)} tabIndex={0}>
+          <View class={`absolute right-12 bottom-12 items-center gap-x-3 w-[25.714rem] bg-[#171f30d6] border border-[#ffffff2e] nine-panel-cut py-3 px-4 compact:static compact:w-auto compact:max-w-none compact:mt-auto compact:mb-3 compact:py-2 compact:px-3 short:hidden hover:translate-x-0 hover:-translate-y-0.25 active:translate-x-0 active:translate-y-0 ${packClass("Panel", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={0}>
             <View class="gap-y-0.5 grow shrink">
               <Text class="text-[0.857rem] font-bold tracking-[0.28em] uppercase text-[#38e8ff] m-0">
                 {t("screen.main-menu.newsEyebrow")}
@@ -69,7 +69,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
         </Show>
         <View class="gap-y-0.5 w-[31.429rem] max-w-full mt-auto -ml-4 short:gap-y-0 compact:w-auto compact:max-w-none compact:-mx-4 compact:data-after-news:mt-0" data-after-news={props.news !== ""}>
           <Show when={props.canContinue}>
-            <View class={`group/continue w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onContinue?.(e)} autofocus>
+            <View class={`group/continue w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onContinue?.(e)} autofocus>
               <View class="items-center gap-x-3 w-full">
                 <View class="grow shrink">
                   <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
@@ -83,7 +83,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               </View>
             </View>
           </Show>
-          <View class={`group/newgame w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onNewGame?.(e)} autofocus={!props.canContinue}>
+          <View class={`group/newgame w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onNewGame?.(e)} autofocus={!props.canContinue}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.newGame")}
@@ -91,7 +91,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               <Icon class="text-[#38e8ff] opacity-0 size-4 group-hover/newgame:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/modes w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onModes?.(e)}>
+          <View class={`group/modes w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onModes?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.modes")}
@@ -99,7 +99,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               <Icon class="text-[#38e8ff] opacity-0 size-4 group-hover/modes:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/settings w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
+          <View class={`group/settings w-full min-h-11 text-fg/74 py-2 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.settings")}
@@ -108,14 +108,14 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
             </View>
           </View>
           <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-white/28 to-transparent to-80% compact:ml-6" />
-          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onCredits?.(e)}>
+          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onCredits?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.credits")}
               </Text>
             </View>
           </View>
-          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
+          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.857rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60">
                 {t("screen.main-menu.quit")}

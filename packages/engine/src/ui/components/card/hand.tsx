@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import { CardFace } from "./face";
 import "./card.en.ogt";
@@ -48,7 +48,7 @@ export function CardHand(props: CardHandProps) {
                       <View class="w-full">
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={true} />
                       </View>
-                      <View class={`flex-row items-center absolute left-[36.286px] right-1 top-2 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-[#28080ef0] shadow-[inset_0px_0px_0px_1px_#ff959999] text-[#ffd0d4] text-[0.786rem] font-bold tracking-xs py-0.5 px-1 gap-0.5 data-not-cost:left-1`} data-not-cost={!(!!c().cost)}>
+                      <View class={`flex-row items-center absolute left-[36.286px] right-1 top-2 nine-plate-cut bg-[#28080ef0] border border-[#ff959999] text-[#ffd0d4] text-[0.786rem] font-bold tracking-xs py-0.5 px-1 gap-0.5 data-not-cost:left-1`} data-not-cost={!(!!c().cost)}>
                         <Icon class="size-[0.786rem]" name="lock" />
                         <Text class="text-start line-clamp-2 leading-[1.15] m-0 overflow-hidden shrink">
                           {c().reason || t("card.hand.unplayable")}
@@ -63,7 +63,7 @@ export function CardHand(props: CardHandProps) {
                   </View>
                 </Show>
                 <Show when={c().id === props.selected && c().playable}>
-                  <Button class="text-accent absolute left-[10%] w-4/5 min-h-11" onPress={(e) => props.onPlay?.(e, c().id)}>
+                  <Button class={`text-accent absolute left-[10%] w-4/5 min-h-11 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onPlay?.(e, c().id)}>
                     <Text>{t("card.hand.play")}</Text>
                   </Button>
                 </Show>

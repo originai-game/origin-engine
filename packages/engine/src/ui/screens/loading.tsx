@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { Show, Text, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
+import {Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import { Spinner } from "../components/base/spinner";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
@@ -57,9 +57,9 @@ export function LoadingScreen(props: LoadingScreenProps) {
               {props.place}
             </Text>
           </View>
-          <View class={`pt-[1.143rem] pb-[1.286rem] rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg max-w-[54.286rem] px-[1.571rem] gap-1 compact:py-[0.857rem] compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-[0.714rem] short:px-4 disabled:text-fg-subtle transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
+          <View class={`pt-[1.143rem] pb-[1.286rem] nine-panel-cut bg-[#171f30d6] text-fg max-w-[54.286rem] px-[1.571rem] gap-1 compact:py-[0.857rem] compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-[0.714rem] short:px-4 disabled:text-fg-subtle transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 ${packClass("Panel", "frame")}`}>
             <View class="flex-row items-center gap-2">
-              <Text class={`tracking-[0.14em] uppercase text-[#38e8ff] text-[0.857rem] font-bold bg-[#060910e0] shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-[0.143rem] px-[0.571rem] m-0`}>
+              <Text class={`tracking-[0.14em] uppercase text-[#38e8ff] text-[0.857rem] font-bold bg-[#060910e0] nine-plate-cut py-[0.143rem] px-[0.571rem] m-0 ${packClass("Chip", "frame")}`}>
                 {t("screen.loading.tip")}
               </Text>
               <View class={`shrink ml-auto gap-x-1 text-[0.857rem] font-semibold tracking-[0.14em] px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
@@ -92,7 +92,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
               </Text>
             </Show>
             <Show when={props.ready && props.waits}>
-              <Button class="text-accent gap-x-2 min-h-11 font-bold px-[1.571rem] compact:grow compact:shrink compact:basis-auto animate-pop" onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
+              <Button class={`text-accent gap-x-2 min-h-11 font-bold px-[1.571rem] compact:grow compact:shrink compact:basis-auto animate-pop ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
                 <Text class="min-w-[1.571rem] text-[0.857rem] leading-[1.6] font-bold text-center text-fg bg-[#0b0f18] uppercase tracking-[0.14em] whitespace-normal py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
                   {t("screen.loading.continueKey")}
                 </Text>

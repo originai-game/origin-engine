@@ -1,4 +1,4 @@
-import { For, Scroll, Text, type UiEvent, View } from "@origingame/engine/ui";
+import {For, Scroll, Text, packClass, type UiEvent, View} from "@origingame/engine/ui";
 
 export interface TableProps {
   /** The headings, a keyed collection of { id, label }. */
@@ -16,7 +16,7 @@ export interface TableProps {
  */
 export function Table(props: TableProps) {
   return (
-    <View class={`rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg w-full p-0`} role="table" label={props.label}>
+    <View class={`nine-panel-cut bg-[#171f30d6] border border-[#ffffff2e] text-fg w-full p-0 ${packClass("Panel", "frame")}`} role="table" label={props.label}>
       <View class={`min-h-12 border-b border-material-edge grid grid-cols-[2fr_1fr_1fr] w-full p-2`} role="row">
         <For each={props.columns}>
           {(c, i) => (

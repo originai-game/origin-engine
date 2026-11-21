@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { Image, Text, type UiEvent, View } from "@origingame/engine/ui";
+import {Image, Text, packClass, type UiEvent, View} from "@origingame/engine/ui";
 import { Button } from "../controls/button";
 
 export interface CardProps {
@@ -19,10 +19,10 @@ export interface CardProps {
 
 export function Card(props: CardProps) {
   return (
-    <View class={`text-fg w-70 max-w-full p-0 gap-2 disabled:text-fg-subtle`}>
-      <Button class="text-fg bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none w-full text-start p-3" onPress={(e) => props.onOpen?.(e)} label={props.title}>
+    <View class={`text-fg w-70 max-w-full p-0 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}>
+      <Button class={`text-fg bg-[#171f30d6] border border-[#ffffff2e] nine-plate-cut w-full text-start p-3 ${packClass("Button", "plate")}`} onPress={(e) => props.onOpen?.(e)} label={props.title}>
         <View class="w-full gap-2">
-          <Image class={`w-full aspect-[16/9] rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none data-hidden:hidden`} src={props.image} data-hidden={props.image === 0} />
+          <Image class={`w-full aspect-[16/9] nine-plate-cut data-hidden:hidden`} src={props.image} data-hidden={props.image === 0} />
           <View class="flex-wrap items-start gap-y-1 gap-x-2">
             <Text class={`font-display text-[1.143rem] font-bold leading-tight tracking-[-0.01em] text-fg grow shrink basis-30 text-start whitespace-normal m-0`}>
               {props.title}

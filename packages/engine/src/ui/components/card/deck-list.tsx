@@ -1,4 +1,4 @@
-import { For, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import "./card.en.ogt";
 
@@ -40,7 +40,7 @@ export interface CardDeckListProps {
  */
 export function CardDeckList(props: CardDeckListProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 border disabled:text-fg-subtle`} label={props.title}>
+    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg p-4 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title}>
       <View class={`flex-row items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-2`}>
         <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden shrink`}>
           {props.title}
@@ -68,8 +68,8 @@ export function CardDeckList(props: CardDeckListProps) {
           <View class="w-full gap-0.5" role="list" label={props.title}>
             <For each={props.entries}>
               {(e) => (
-              <View class={`flex-row items-center bg-linear-to-r from-entry-hi to-entry-lo text-rim-strong transition duration-317 w-full pr-0.5 gap-0.5 rounded-control data-selected:bg-transparent data-selected:bg-linear-to-r data-selected:from-[#38e8ff3d] data-selected:via-[#38e8ff14] data-selected:via-55% data-selected:to-[#38e8ff08] data-type-attack:text-[#ff6a4d] data-type-skill:text-[#4fa8ff] data-type-power:text-[#c670f6] data-type-curse:text-[#8392b1] data-down:opacity-45`} role="listitem" current={e().id === props.selected} data-type-attack={(e().type) === 'attack'} data-type-curse={(e().type) === 'curse'} data-type-power={(e().type) === 'power'} data-type-skill={(e().type) === 'skill'} data-type-status={(e().type) === 'status'} data-selected={e().id === props.selected}>
-                <Button class="grow shrink basis-0 min-h-11 px-2" label={e().name} onPress={(ev) => props.onChoose?.(ev, e().id)}>
+              <View class={`flex-row items-center bg-linear-to-r from-entry-hi to-entry-lo text-rim-strong transition duration-317 w-full pr-0.5 gap-0.5 rounded-control data-selected:bg-transparent data-selected:bg-[#38e8ff3d] data-type-attack:text-[#ff6a4d] data-type-skill:text-[#4fa8ff] data-type-power:text-[#c670f6] data-type-curse:text-[#8392b1] data-down:opacity-45`} role="listitem" current={e().id === props.selected} data-type-attack={(e().type) === 'attack'} data-type-curse={(e().type) === 'curse'} data-type-power={(e().type) === 'power'} data-type-skill={(e().type) === 'skill'} data-type-status={(e().type) === 'status'} data-selected={e().id === props.selected}>
+                <Button class={`grow shrink basis-0 min-h-11 px-2 ${packClass("Button", "plate")}`} label={e().name} onPress={(ev) => props.onChoose?.(ev, e().id)}>
                   <View class="flex-row items-center w-full gap-2">
                     <View class={`flex-row items-center w-[1.821rem] h-[2.036rem] justify-center bg-linear-to-b from-[#d6fdff] to-[#38e8ff] text-[#041016] font-bold gap-0`} label={t("card.face.cost", { cost: e().cost })}>
                       <Text class="shrink">{e().cost}</Text>
@@ -96,7 +96,7 @@ export function CardDeckList(props: CardDeckListProps) {
       </Show>
       <Show when={props.confirmLabel}>
         <View class="flex-row items-center w-full gap-2">
-          <Button class="text-accent w-full min-h-11 shrink" disabled={!props.canConfirm} onPress={(e) => props.onConfirm?.(e)}>
+          <Button class={`text-accent w-full min-h-11 shrink ${packClass("Button", "plate", "primary")}`} disabled={!props.canConfirm} onPress={(e) => props.onConfirm?.(e)}>
             <Text>{props.confirmLabel}</Text>
           </Button>
         </View>

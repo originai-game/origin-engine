@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { EmptyState } from "../base/empty-state";
 import { ErrorState } from "../base/error-state";
 import { Spinner } from "../base/spinner";
@@ -31,13 +31,13 @@ export interface InboxProps {
 
 export function Inbox(props: InboxProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg h-auto p-4 gap-3 rounded-panel border disabled:text-fg-subtle`} label={props.title || t("meta.inbox.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg h-auto p-4 gap-3 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.inbox.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft py-1 px-4 gap-2`}>
         <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
           {props.title || t("meta.inbox.title")}
         </Text>
         <Show when={props.summary}>
-          <Text class={`text-caption text-fg bg-[#060910b8] shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none py-0.5 px-2 shrink`}>
+          <Text class={`text-caption text-fg bg-[#060910b8] border border-[#ffffff14] nine-chip-cut py-0.5 px-2 shrink ${packClass("Chip", "frame")}`}>
             {props.summary}
           </Text>
         </Show>
@@ -50,7 +50,7 @@ export function Inbox(props: InboxProps) {
                       <For each={(props.messages ?? [])}>
                         {(message) => (
                         <View>
-                          <View class={`group/row rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none text-fg transition duration-317 shadow-[inset_0px_0px_0px_1px_#4e586c,inset_0px_1px_0px_#ffffff09] w-full text-start py-2 px-3 data-selected:bg-transparent data-selected:text-fg data-selected:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:text-fg-subtle data-done:text-fg-subtle data-unread:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] data-down:opacity-45`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
+                          <View class={`group/row nine-plate-cut text-fg transition duration-317 border border-[#4e586c] w-full text-start py-2 px-3 data-selected:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
                             <View class="items-start w-full gap-2">
                               <Text class={`text-caption text-fg-muted`}>
                                 {message().sender}
@@ -111,7 +111,7 @@ export function Inbox(props: InboxProps) {
                                   <For each={(props.attachments ?? [])}>
                                     {(attachment) => (
                                     <Show when={attachment().message === message().id}>
-                                      <View class={`flex-row items-center pr-3 pl-2 bg-[#060910b8] shadow-[inset_0px_0px_0px_1px_#ffcf5a99] rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none py-1 gap-2 shrink`}>
+                                      <View class={`flex-row items-center pr-3 pl-2 bg-[#060910b8] border border-[#ffcf5a99] nine-chip-cut py-1 gap-2 shrink ${packClass("Chip", "frame")}`}>
                                         <Icon class={`text-gold size-4`} name={attachment().icon} />
                                         <View class={`shrink`}>
                                           <Text>{attachment().name}</Text>

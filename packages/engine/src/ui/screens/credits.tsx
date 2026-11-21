@@ -1,4 +1,4 @@
-import { For, Icon, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
@@ -31,7 +31,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
       </Show>
       <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-[#03060edb] compact:via-[#03060eb2] compact:via-40% compact:to-[#03060eeb] compact:bg-transparent`} />
       <View class="flex-row items-center py-4 px-8 gap-2 compact:py-2 compact:px-3">
-        <Button class="shrink" onPress={(e) => props.onBack?.(e)}>
+        <Button class={`shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>

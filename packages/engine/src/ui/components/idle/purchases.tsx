@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import "./idle.en.ogt";
 
@@ -28,7 +28,7 @@ export interface IdlePurchasesProps {
  */
 export function IdlePurchases(props: IdlePurchasesProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("idle.purchases.name")}>
+    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.purchases.name")}>
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
@@ -56,8 +56,8 @@ export function IdlePurchases(props: IdlePurchasesProps) {
             <View class="w-full pt-0 pb-4 px-0 m-0 gap-1" label={props.title !== '' ? props.title : t("idle.purchases.name")}>
               <For each={props.upgrades}>
                 {(u) => (
-                <View class={`group/row flex-row items-center rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-[#090e1a8c] text-fg transition duration-317 shadow-[inset_0px_0px_0px_1px_#343d4f] border-l-3 border-[#38e8ff] py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
-                  <View class={`justify-center items-center bg-linear-to-b from-shade to-transparent to-55% bg-tile shadow-[inset_0px_0px_0px_1.5px_#4b5568,inset_0px_1px_3px_0px_#00000099,0px_1px_0px_0px_#ffffff0a] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none gap-2 size-[3.429rem] group-data-locked/row:opacity-45 compact:size-[2.857rem]`}>
+                <View class={`group/row flex-row items-center nine-plate-cut bg-[#090e1a8c] text-fg transition duration-317 border border-[#343d4f] border-l-3 border-[#38e8ff] py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
+                  <View class={`justify-center items-center bg-tile border-[1.5px] border-[#4b5568] nine-plate-cut gap-2 size-[3.429rem] group-data-locked/row:opacity-45 compact:size-[2.857rem] ${packClass("Slot", "frame")}`}>
                     <Icon class="size-[64%]" name={u().locked ? 'lock' : u().icon} />
                   </View>
                   <View class="grow shrink basis-0 gap-0.5 compact:grow compact:shrink compact:basis-0 group-data-locked/row:opacity-45">
@@ -77,22 +77,22 @@ export function IdlePurchases(props: IdlePurchasesProps) {
                   </View>
                   <View class="items-end max-w-1/2 gap-1 compact:flex-row compact:grow compact:shrink-0 compact:basis-full compact:items-center compact:max-w-full compact:justify-end">
                     <Show when={u().maxed}>
-                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1`}>
+                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums nine-chip-cut bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
                         {t("idle.purchases.maxed")}
                       </Text>
                     </Show>
                     <Show when={!u().maxed && u().locked}>
-                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1`}>
+                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums nine-chip-cut bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
                         {t("idle.purchases.locked")}
                       </Text>
                     </Show>
                     <Show when={!u().maxed && !u().locked && !u().affordable}>
-                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger/12 data-tag-short:text-danger`} data-tag-short={true}>
+                      <Text class={`font-bold text-[0.857rem] leading-4.5 tabular-nums nine-chip-cut bg-white/8 text-fg-muted transition duration-317 whitespace-nowrap tracking-[0.14em] uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger/12 data-tag-short:text-danger ${packClass("Chip", "frame")}`} data-tag-short={true}>
                         {t("idle.purchases.short")}
                       </Text>
                     </Show>
                     <Show when={!u().maxed}>
-                      <Button class="text-accent min-h-11 min-w-32 max-w-full py-0.5 px-2 data-not-affordable:text-danger" disabled={!u().affordable || u().maxed || u().locked} label={u().cost ? t("idle.purchases.buyFor", { name: u().name, cost: u().cost }) : t("idle.purchases.buyNamed", { name: u().name })} onPress={(e) => props.onBuy?.(e, u().id)} data-not-affordable={!(u().affordable)}>
+                      <Button class={`text-accent min-h-11 min-w-32 max-w-full py-0.5 px-2 data-not-affordable:text-danger ${packClass("Button", "plate", "primary")}`} disabled={!u().affordable || u().maxed || u().locked} label={u().cost ? t("idle.purchases.buyFor", { name: u().name, cost: u().cost }) : t("idle.purchases.buyNamed", { name: u().name })} onPress={(e) => props.onBuy?.(e, u().id)} data-not-affordable={!(u().affordable)}>
                         <View class="items-center max-w-full gap-0">
                           <Show when={u().count}>
                             <Text class={`tabular-nums text-current whitespace-nowrap text-[0.857rem] font-bold opacity-80`}>

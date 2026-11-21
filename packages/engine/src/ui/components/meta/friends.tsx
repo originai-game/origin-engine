@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import "./general.en.ogt";
 
@@ -34,12 +34,12 @@ export interface FriendsProps {
  */
 export function Friends(props: FriendsProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.friends.name")}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.friends.name")}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.friends.name")}
         </Text>
-        <Button class="min-h-11" onPress={(e) => props.onAdd?.(e)}>
+        <Button class={`min-h-11 ${packClass("Button", "plate")}`} onPress={(e) => props.onAdd?.(e)}>
           <Icon class="size-4" name="plus" />
           <Text>{t("general.friends.add")}</Text>
         </Button>
@@ -53,7 +53,7 @@ export function Friends(props: FriendsProps) {
             <View class="w-full p-0 m-0 gap-0.5">
               <For each={props.requests}>
                 {(r) => (
-                <View class={`flex-row flex-wrap items-center rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none text-fg transition duration-317 shadow-[inset_0px_0px_0px_1px_#ffcf5a73,inset_3.424px_0px_0px_#ffcf5a] w-full py-1 px-2 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={r().name}>
+                <View class={`flex-row flex-wrap items-center nine-plate-cut text-fg transition duration-317 border border-[#ffcf5a73] w-full py-1 px-2 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={r().name}>
                   <View class={`flex-row items-center shadow-[inset_0px_0px_0px_1px_#ffcf5a99] justify-center text-gold gap-0 size-12 rounded-capsule`}>
                     <Icon class="size-6 shrink" name={r().avatar} />
                   </View>
@@ -68,11 +68,11 @@ export function Friends(props: FriendsProps) {
                     </Show>
                   </View>
                   <View class="flex-row items-center ml-auto gap-1">
-                    <Button class="text-accent min-h-11 min-w-11" label={t("general.friends.acceptName", { name: r().name })} onPress={(e) => props.onAccept?.(e, r().id)}>
+                    <Button class={`text-accent min-h-11 min-w-11 ${packClass("Button", "plate", "primary")}`} label={t("general.friends.acceptName", { name: r().name })} onPress={(e) => props.onAccept?.(e, r().id)}>
                       <Icon class="size-4" name="check" />
                       <Text class="compact:hidden">{t("general.friends.accept")}</Text>
                     </Button>
-                    <Button class="min-h-11 min-w-11" label={t("general.friends.declineName", { name: r().name })} onPress={(e) => props.onDecline?.(e, r().id)}>
+                    <Button class={`min-h-11 min-w-11 ${packClass("Button", "plate")}`} label={t("general.friends.declineName", { name: r().name })} onPress={(e) => props.onDecline?.(e, r().id)}>
                       <Icon class="size-4" name="close" />
                       <Text class="compact:hidden">{t("general.friends.decline")}</Text>
                     </Button>
@@ -99,7 +99,7 @@ export function Friends(props: FriendsProps) {
               <For each={props.friends}>
                 {(f) => (
                 <View class="flex-row items-center w-full gap-2">
-                  <View class={`grow shrink basis-0 min-h-11 rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none text-fg transition duration-317 py-1 px-2 hover:bg-transparent data-selected:bg-transparent data-selected:bg-linear-to-r data-selected:from-[#38e8ff3d] data-selected:via-[#38e8ff14] data-selected:via-55% data-selected:to-[#38e8ff08] data-selected:text-fg data-selected:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" current={f().id === props.selected} label={f().name} onPress={(e) => props.onChoose?.(e, f().id)} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'} data-selected={f().id === props.selected}>
+                  <View class={`grow shrink basis-0 min-h-11 nine-plate-cut text-fg transition duration-317 py-1 px-2 hover:bg-transparent data-selected:bg-transparent data-selected:bg-[#38e8ff3d] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" current={f().id === props.selected} label={f().name} onPress={(e) => props.onChoose?.(e, f().id)} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'} data-selected={f().id === props.selected}>
                     <View class="flex-row items-center w-full gap-2">
                       <View class="group/avatar-wrap" data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'}>
                         <View class={`flex-row items-center shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] justify-center text-fg gap-0 size-12 rounded-capsule group-data-status-away/avatar-wrap:opacity-45`} data-status-away={(f().status) === 'away'} data-status-ingame={(f().status) === 'ingame'} data-status-offline={(f().status) === 'offline'} data-status-online={(f().status) === 'online'}>
@@ -125,7 +125,7 @@ export function Friends(props: FriendsProps) {
                     </View>
                   </View>
                   <Show when={f().canInvite || f().invited}>
-                    <Button class="min-h-11 min-w-11" data-invited={f().invited} disabled={f().invited} label={f().invited ? t("general.friends.invitedName", { name: f().name }) : t("general.friends.inviteName", { name: f().name })} onPress={(e) => props.onInvite?.(e, f().id)}>
+                    <Button class={`min-h-11 min-w-11 ${packClass("Button", "plate")}`} data-invited={f().invited} disabled={f().invited} label={f().invited ? t("general.friends.invitedName", { name: f().name }) : t("general.friends.inviteName", { name: f().name })} onPress={(e) => props.onInvite?.(e, f().id)}>
                       <Icon class="size-4" name={f().invited ? 'clock' : 'plus'} />
                       <Text class="compact:hidden">
                         {f().invited ? t("general.friends.invited") : t("general.friends.invite")}

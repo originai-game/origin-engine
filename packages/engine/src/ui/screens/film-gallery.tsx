@@ -1,4 +1,4 @@
-import { Scroll, For, Icon, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {Scroll, For, Icon, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
@@ -20,7 +20,7 @@ export function FilmGalleryScreen(props: FilmGalleryScreenProps) {
     <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>
       <View class={`absolute bg-linear-to-b from-[#03060ee5] via-[#03060ed1] via-40% to-[#03060ef0] inset-0`} />
       <View class={`items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1`}>
-        <Button class="text-fg/74 compact:-ml-2" onPress={(e) => props.onBack?.(e)}>
+        <Button class={`text-fg/74 compact:-ml-2 ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
@@ -35,7 +35,7 @@ export function FilmGalleryScreen(props: FilmGalleryScreenProps) {
           <For each={props.endings}>
             {(c) => (
             <View class={`group/card transition duration-317 gap-y-2 p-0 data-selected:border-accent data-down:opacity-45`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>
-              <View class={`aspect-[16/9] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none overflow-hidden`}>
+              <View class={`aspect-[16/9] nine-plate-cut overflow-hidden`}>
                 <Show when={c().locked} fallback={
                     <Art class={`absolute object-cover inset-0 size-full`} kind="keyArt" src={c().thumb} />
                 }>

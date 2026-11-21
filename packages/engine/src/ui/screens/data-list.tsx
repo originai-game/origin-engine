@@ -1,4 +1,4 @@
-import { For, Scroll, Show, Text, type UiEvent, View } from "@origingame/engine/ui";
+import {For, Scroll, Show, Text, packClass, type UiEvent, View} from "@origingame/engine/ui";
 import { Button } from "../controls/button";
 
 export interface DataListProps {
@@ -19,14 +19,14 @@ export interface DataListProps {
  */
 export function DataList(props: DataListProps) {
   return (
-    <View class={`rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg w-full p-0`} busy={props.loading}>
+    <View class={`nine-panel-cut bg-[#171f30d6] border border-[#ffffff2e] text-fg w-full p-0 ${packClass("Panel", "frame")}`} busy={props.loading}>
       <Scroll class="grow shrink basis-0 w-full">
         <Show when={(props.rows ?? []).length} fallback={
             <Text class={`text-center text-fg/56 m-6`}>{props.loading ? props.busy : props.empty}</Text>
         }>
           <For each={props.rows ?? []}>
             {(r) => (
-              <Button class={`w-full min-w-0 justify-stretch flex-row items-center gap-3 py-2 px-4 border-b border-rim-soft`} onPress={(e) => props.onChoose?.(e, r().id)}>
+              <Button class={`w-full min-w-0 justify-stretch flex-row items-center gap-3 py-2 px-4 border-b border-rim-soft ${packClass("Button", "plate")}`} onPress={(e) => props.onChoose?.(e, r().id)}>
                 <View class="flex-col items-start gap-0.5 grow shrink basis-0 min-w-0 text-start">
                   <Text class={`text-fg font-semibold text-start m-0`}>{r().title}</Text>
                   <Text class={`text-fg/60 text-start m-0 shrink`}>{r().detail}</Text>

@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import "./tutorial.en.ogt";
@@ -43,7 +43,7 @@ export interface TutorialScreenProps {
  */
 function StepCard(props: TutorialScreenProps) {
   return (
-    <View class={`bg-linear-to-b from-[#171f30f5] to-[#080c16f7] shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff,0px_20.576px_45.712px_#00000099] text-fg w-full max-w-[28.571rem] transition duration-240 ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60`} style={{ left: `${props.x}px`, top: `${props.y}px` }}>
+    <View class={`bg-linear-to-b from-[#171f30f5] to-[#080c16f7] shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff,0px_20.576px_45.712px_#00000099] text-fg w-full max-w-[28.571rem] transition duration-240 ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60 ${packClass("Panel", "frame")}`} style={{ left: `${props.x}px`, top: `${props.y}px` }}>
       <View class="flex-row items-center gap-x-3">
         <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase tabular-nums text-fg m-0 shrink`}>
           {t("screen.tutorial.Step", { step: props.step, steps: props.steps })}
@@ -63,11 +63,11 @@ function StepCard(props: TutorialScreenProps) {
       </Text>
       {props.hint?.()}
       <View class="flex-wrap items-center justify-between gap-y-2 gap-x-2 mt-1">
-        <Button class="text-fg-muted compact:-ml-2 shrink" onPress={(e) => props.onSkip?.(e)}>
+        <Button class={`text-fg-muted compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onSkip?.(e)}>
           <Text>{t("screen.tutorial.skip")}</Text>
         </Button>
         <Show when={!props.waits}>
-          <Button class="text-accent rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none ml-auto min-w-[8.571rem] h-9 shrink" onPress={(e) => props.onNext?.(e)}>
+          <Button class={`text-accent nine-plate-cut ml-auto min-w-[8.571rem] h-9 shrink ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onNext?.(e)}>
             <Text>{t("screen.tutorial.next")}</Text>
           </Button>
         </Show>

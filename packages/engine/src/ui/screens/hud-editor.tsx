@@ -1,4 +1,4 @@
-import { Show, Text, View, t } from "@origingame/engine/ui";
+import {Show, Text, View, t, packClass} from "@origingame/engine/ui";
 import "./hud-editor.en.ogt";
 
 export interface HudEditorScreenProps {
@@ -12,7 +12,7 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
   return (
     <View>
       <Show when={props.showHint}>
-        <View class="absolute w-max top-6 bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] backdrop-blur-[22px] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none py-3 px-6 mx-auto inset-x-0 compact:top-12">
+        <View class={`absolute w-max top-6 bg-[#171f30d6] border border-[#ffffff2e] backdrop-blur-[22px] nine-panel-cut py-3 px-6 mx-auto inset-x-0 compact:top-12 ${packClass("Panel", "frame")}`}>
           <Text class={`text-center line-clamp-2 text-[1.071rem] font-semibold text-fg m-0`}>
             {t("screen.hud-editor.hint")}
           </Text>

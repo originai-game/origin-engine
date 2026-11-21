@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import { ProgressBar } from "../hud/progress-bar";
 import { Spinner } from "../base/spinner";
@@ -29,13 +29,13 @@ export interface DailyQuestsProps {
  */
 export function DailyQuests(props: DailyQuestsProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.quests.name")} busy={props.loading}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.quests.name")} busy={props.loading}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.quests.name")}
         </Text>
         <Show when={props.refresh}>
-          <View class={`flex-row items-center tracking-xs text-fg-muted max-w-full bg-[#060910b8] shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none py-0.5 px-2 gap-1 shrink`} role="timer" label={props.refresh}>
+          <View class={`flex-row items-center tracking-xs text-fg-muted max-w-full bg-[#060910b8] border border-[#ffffff14] nine-plate-cut py-0.5 px-2 gap-1 shrink`} role="timer" label={props.refresh}>
             <Icon class="size-4" name="clock" />
             <Text class="text-end text-fg shrink">{props.refresh}</Text>
           </View>
@@ -52,7 +52,7 @@ export function DailyQuests(props: DailyQuestsProps) {
               <View class="w-full pt-0 pb-1 px-0 m-0 gap-1" label={props.title !== '' ? props.title : t("general.quests.name")}>
                 <For each={props.quests}>
                   {(q) => (
-                  <View class={`group/row flex-row items-center rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none text-fg transition duration-317 shadow-[inset_0px_0px_0px_1px_#4e586c,inset_0px_1px_0px_#ffffff09] w-full pr-3 pl-2 py-2 gap-3 compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-transparent data-state-done:bg-transparent data-state-done:shadow-[inset_0px_0px_0px_1px_#ffcf5a73,inset_3.424px_0px_0px_#ffcf5a] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={q().name} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
+                  <View class={`group/row flex-row items-center nine-plate-cut text-fg transition duration-317 border border-[#4e586c] w-full pr-3 pl-2 py-2 gap-3 compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-transparent data-state-done:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={q().name} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
                     <View class={`group/well bg-linear-to-b from-white/50 via-white/12 via-50% to-white/6 gap-2 size-16 compact:hidden data-state-done:bg-linear-to-b data-state-done:from-[#fff3c4] data-state-done:via-gold data-state-done:via-45% data-state-done:to-gold/40 data-state-done:bg-transparent data-state-claimed:bg-linear-to-b data-state-claimed:from-white/22 data-state-claimed:to-white/6 data-state-claimed:bg-transparent group-data-state-claimed/row:opacity-66`} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
                       <View class="absolute justify-center items-center text-fg inset-0 gap-2 group-data-state-done/well:bg-transparent group-data-state-done/well:text-gold">
                         <Icon class="size-6" name={q().state === 'claimed' ? 'check' : q().icon} />
@@ -70,12 +70,12 @@ export function DailyQuests(props: DailyQuestsProps) {
                       </View>
                     </View>
                     <View class="flex-row items-center max-w-[45%] gap-1 compact:max-w-full compact:w-full compact:justify-between">
-                      <View class={`text-fg min-w-[89.6px] max-w-full min-h-16 items-center justify-center bg-[#060910b8] shadow-[inset_0px_0px_0px_1px_#ffffff14,inset_0px_1px_0px_#ffffff1f] rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none py-0.5 px-2 gap-0 compact:flex-row compact:gap-x-1 compact:min-h-0 compact:py-0.5 compact:px-3 data-state-done:text-gold data-state-done:bg-transparent data-state-done:shadow-[inset_0px_0px_0px_1px_#ffcf5a99] group-data-state-claimed/row:opacity-66`} label={t("general.quests.reward", { reward: q().reward })} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
+                      <View class={`text-fg min-w-[89.6px] max-w-full min-h-16 items-center justify-center bg-[#060910b8] border border-[#ffffff14] nine-plate-cut py-0.5 px-2 gap-0 compact:flex-row compact:gap-x-1 compact:min-h-0 compact:py-0.5 compact:px-3 data-state-done:text-gold data-state-done:bg-transparent group-data-state-claimed/row:opacity-66`} label={t("general.quests.reward", { reward: q().reward })} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
                         <Icon class="size-6" name={q().rewardIcon} />
                         <Text class="text-center text-[1.429rem] font-bold tabular-nums">{q().reward}</Text>
                       </View>
                       <Show when={q().state === 'done'}>
-                        <Button class="text-accent min-h-11 animate-pop" onPress={(e) => props.onClaim?.(e, q().id)}>
+                        <Button class={`text-accent min-h-11 animate-pop ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onClaim?.(e, q().id)}>
                           <Text>{t("general.quests.claim")}</Text>
                         </Button>
                       </Show>

@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, formatDuration, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import "./save-load.en.ogt";
@@ -32,7 +32,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
     <View class={`pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
       <View class={`absolute bg-linear-to-b from-[#03060ee5] via-[#03060ed1] via-40% to-[#03060ef0] inset-0`} />
       <View class={`min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
-        <Button class="text-fg/74 narrow:-ml-2 shrink" onPress={(e) => props.onBack?.(e)}>
+        <Button class={`text-fg/74 narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
@@ -54,7 +54,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           <View class="gap-y-2" focus-group="stop">
             <For each={props.slots}>
               {(s) => (
-              <View class={`group/slot rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none bg-linear-to-r from-[#151d2eb8] to-[#0b101c80] text-fg transition duration-317 shadow-[inset_0px_0px_0px_1px_#ffffff12] items-center gap-x-4 p-2 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] data-selection-on:bg-transparent data-selection-on:bg-linear-to-r data-selection-on:from-[#38e8ff3d] data-selection-on:via-[#38e8ff14] data-selection-on:via-55% data-selection-on:to-[#38e8ff08] data-selection-on:shadow-[inset_0px_0px_0px_2.288px_#38e8ff,inset_0px_3.424px_0px_#ffffff80] data-empty-slot:bg-transparent data-empty-slot:bg-none data-empty-slot:shadow-[inset_0px_0px_0px_1px_#ffffff1f] data-empty-slot:justify-center data-empty-slot:min-h-[7.429rem] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
+              <View class={`group/slot nine-plate-cut bg-[#151d2eb8] text-fg transition duration-317 border border-[#ffffff12] items-center gap-x-4 p-2 hover:bg-transparent hover:bg-[#38e8ff3d] data-selection-on:bg-transparent data-selection-on:bg-[#38e8ff3d] data-empty-slot:bg-transparent data-empty-slot:bg-none data-empty-slot:justify-center data-empty-slot:min-h-[7.429rem] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
                 <Art class={`w-[10.714rem] aspect-[89/50] h-auto object-cover compact:w-[6.857rem] group-data-empty-slot/slot:hidden`} kind="saveThumb" src={s().thumb} />
                 <View class="grow shrink basis-0 gap-y-0.5 pr-12 group-data-empty-slot/slot:pr-0 compact:pr-0">
                   <Show when={s().empty} fallback={
@@ -88,7 +88,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
             </For>
           </View>
         </Scroll>
-        <Scroll class={`gap-y-2 bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none p-4 narrow:bg-none narrow:bg-transparent narrow:shadow-none narrow:p-0 data-blank:bg-none data-blank:bg-transparent data-blank:shadow-none`} data-blank={props.selected === ""}>
+        <Scroll class={`gap-y-2 bg-[#171f30d6] border border-[#ffffff2e] nine-panel-cut p-4 narrow:bg-none narrow:bg-transparent narrow:p-0 data-blank:bg-none data-blank:bg-transparent data-blank:shadow-none ${packClass("Panel", "frame")}`} data-blank={props.selected === ""}>
           <For each={props.slots}>
             {(s) => (
             <Show when={s().id === props.selected}>
@@ -118,20 +118,20 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           </For>
           <View class={`shrink narrow:hidden`}>{props.preview?.()}</View>
           <View class={`flex-wrap justify-end mt-auto pt-3 gap-2 narrow:pt-0`}>
-            <Button class="text-danger rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none grow shrink basis-[8.571rem] h-9 narrow:basis-[7.143rem]" onPress={(e) => props.onDelete?.(e)} onAction={{ details: (e) => props.onDelete?.(e) }}>
+            <Button class={`text-danger nine-plate-cut grow shrink basis-[8.571rem] h-9 narrow:basis-[7.143rem] ${packClass("Button", "plate")}`} onPress={(e) => props.onDelete?.(e)} onAction={{ details: (e) => props.onDelete?.(e) }}>
               <Text>{t("screen.save-load.delete")}</Text>
             </Button>
             <Show when={props.mode === "save"} fallback={
                 <Show when={props.slots.length > 0}>
-                  <Button class="text-accent rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none grow shrink basis-[8.571rem] h-9 narrow:basis-[7.143rem]" onPress={(e) => props.onLoad?.(e)}>
+                  <Button class={`text-accent nine-plate-cut grow shrink basis-[8.571rem] h-9 narrow:basis-[7.143rem] ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onLoad?.(e)}>
                     <Text>{t("screen.save-load.load")}</Text>
                   </Button>
                 </Show>
             }>
-              <Button class="text-fg bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none grow shrink basis-[8.571rem] h-9 disabled:border-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent hover:shadow-[inset_0px_2px_0px_#38e8ff] narrow:basis-[7.143rem] data-pressed:hover:border-transparent" onPress={(e) => props.onNewSlot?.(e)}>
+              <Button class={`text-fg bg-[#171f30d6] nine-plate-cut grow shrink basis-[8.571rem] h-9 disabled:border-transparent active:border-transparent hover:bg-[#171f30d6] hover:bg-transparent hover:border-transparent narrow:basis-[7.143rem] data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onNewSlot?.(e)}>
                 <Text>{t("screen.save-load.new")}</Text>
               </Button>
-              <Button class="text-accent rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none grow shrink basis-[8.571rem] h-9 narrow:basis-[7.143rem]" onPress={(e) => props.onSave?.(e)}>
+              <Button class={`text-accent nine-plate-cut grow shrink basis-[8.571rem] h-9 narrow:basis-[7.143rem] ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onSave?.(e)}>
                 <Text>{t("screen.save-load.save")}</Text>
               </Button>
             </Show>

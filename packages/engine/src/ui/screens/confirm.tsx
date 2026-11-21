@@ -1,4 +1,4 @@
-import { Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../controls/button";
 import "./confirm.en.ogt";
 
@@ -40,10 +40,10 @@ export function Confirm(props: ConfirmProps) {
         </Text>
       </Scroll>
       <View class={`flex-row flex-wrap-reverse items-center mt-3 gap-2`}>
-        <Button class="text-fg bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none grow shrink max-w-full min-h-11 py-2 disabled:border-transparent active:bg-linear-to-b active:from-[#171f30d6] active:to-[#080c16e0] active:bg-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent hover:shadow-[inset_0px_2px_0px_#38e8ff] data-pressed:hover:border-transparent" onPress={(e) => props.onCancel?.(e)} autofocus>
+        <Button class={`text-fg nine-plate-cut grow shrink max-w-full min-h-11 py-2 disabled:border-transparent active:bg-transparent active:border-transparent hover:bg-transparent hover:border-transparent data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onCancel?.(e)} autofocus>
           <Text class="whitespace-normal">{props.cancel}</Text>
         </Button>
-        <Button class="rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none grow shrink max-w-full min-h-11 py-2 text-accent data-danger:text-danger" onPress={(e) => props.onConfirm?.(e)}>
+        <Button class={`nine-plate-cut grow shrink max-w-full min-h-11 py-2 text-accent data-danger:text-danger ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onConfirm?.(e)}>
           <Text class="whitespace-normal">{props.confirm}</Text>
         </Button>
       </View>

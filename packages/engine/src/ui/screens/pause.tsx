@@ -1,4 +1,4 @@
-import {Scroll,  Icon, Show, Text, type UiEvent, View, formatDuration, t } from "@origingame/engine/ui";
+import {Scroll, Icon, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
 import "./pause.en.ogt";
 
 export interface PauseScreenProps {
@@ -34,7 +34,7 @@ export function PauseScreen(props: PauseScreenProps) {
         <Text class={`font-display text-8xl font-bold leading-tight tracking-xs uppercase text-fg text-shadow-xs text-shadow-bg/60 m-0 compact:text-[2.857rem]`}>
           {t("screen.pause.title")}
         </Text>
-        <View class={`gap-y-0.5 self-start w-[27.143rem] max-w-full mt-4 bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none py-3 px-4 short:hidden compact:self-stretch compact:w-auto compact:mt-3 compact:py-2 compact:px-3`}>
+        <View class={`gap-y-0.5 self-start w-[27.143rem] max-w-full mt-4 bg-[#171f30d6] border border-[#ffffff2e] nine-panel-cut py-3 px-4 short:hidden compact:self-stretch compact:w-auto compact:mt-3 compact:py-2 compact:px-3 ${packClass("Panel", "frame")}`}>
           <Show when={props.objective !== ""}>
             <Text class="text-[0.786rem] font-bold tracking-[0.24em] uppercase text-fg/56 m-0">
               {t("screen.pause.objectiveLabel")}
@@ -51,7 +51,7 @@ export function PauseScreen(props: PauseScreenProps) {
           </Text>
         </View>
         <View class="gap-y-0.5 mt-auto -ml-4 pt-6 short:grid short:pt-2 short:grid-cols-[1fr_1fr] short:gap-x-3 compact:-mx-4" focus-group="wrap">
-          <View class={`group/resume w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onResume?.(e)}>
+          <View class={`group/resume w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onResume?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.resume")}
@@ -59,7 +59,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Icon class="text-[#38e8ff] opacity-0 size-4 group-hover/resume:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/settings w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
+          <View class={`group/settings w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.settings")}
@@ -67,7 +67,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Icon class="text-[#38e8ff] opacity-0 size-4 group-hover/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/controls w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onControls?.(e)}>
+          <View class={`group/controls w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onControls?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.controls")}
@@ -75,7 +75,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Icon class="text-[#38e8ff] opacity-0 size-4 group-hover/controls:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/save w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" disabled={!props.canSave} onPress={(e) => props.onSave?.(e)}>
+          <View class={`group/save w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" disabled={!props.canSave} onPress={(e) => props.onSave?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.save")}
@@ -83,7 +83,7 @@ export function PauseScreen(props: PauseScreenProps) {
               <Icon class="text-[#38e8ff] opacity-0 size-4 group-hover/save:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
             </View>
           </View>
-          <View class={`group/load w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:text-fg disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onLoad?.(e)}>
+          <View class={`group/load w-full min-h-11 text-fg/74 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-fg active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:text-fg disabled:bg-transparent disabled:bg-none disabled:text-fg/32 compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onLoad?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.load")}
@@ -92,14 +92,14 @@ export function PauseScreen(props: PauseScreenProps) {
             </View>
           </View>
           <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-white/28 to-transparent to-80% compact:ml-6 short:hidden" />
-          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:shadow-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuitToMenu?.(e)}>
+          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent disabled:bg-transparent disabled:bg-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuitToMenu?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.quitToMenu")}
               </Text>
             </View>
           </View>
-          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] hover:text-[#ff8076] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:shadow-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
+          <View class={`w-full min-h-11 text-fg/56 py-1 px-4 hover:bg-transparent hover:bg-[#38e8ff3d] hover:text-[#ff8076] active:bg-transparent active:bg-linear-to-r active:from-[#38e8ff57] active:via-[#38e8ff1f] active:via-55% active:to-transparent disabled:bg-transparent disabled:bg-none compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
             <View class="items-center gap-x-3 w-full">
               <Text class="grow shrink text-start text-[1.714rem] leading-tight font-semibold text-shadow-xs text-shadow-bg/60 compact:text-[1.429rem]">
                 {t("screen.pause.quit")}

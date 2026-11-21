@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Avatar } from "../base/avatar";
 import { Spinner } from "../base/spinner";
 import "./profile.en.ogt";
@@ -39,7 +39,7 @@ export interface ProfileProps {
 
 export function Profile(props: ProfileProps) {
   return (
-    <View class={`rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none bg-linear-to-b from-[#0f1522ed] to-[#080c16f2] shadow-[inset_0px_0px_0px_1px_#ffffff24,inset_0px_1px_0px_#ffffff80] text-fg w-full p-4 gap-3 compact:p-2`} label={t("profile.title")} busy={props.loading}>
+    <View class={`nine-panel-cut bg-[#0f1522ed] border border-[#ffffff24] text-fg w-full p-4 gap-3 compact:p-2`} label={t("profile.title")} busy={props.loading}>
       <Show when={props.loading} fallback={
           <Show when={props.error} fallback={
               <Show when={props.empty} fallback={
@@ -60,7 +60,7 @@ export function Profile(props: ProfileProps) {
                             </View>
                           </Show>
                           <Show when={props.rank}>
-                            <View class={`font-bold text-[0.857rem] leading-[1.5] text-[#1e1604] max-w-full tracking-[0.14em] uppercase bg-linear-to-b from-[#fff2c4] to-gold rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-0 px-1`}>
+                            <View class={`font-bold text-[0.857rem] leading-[1.5] text-[#1e1604] max-w-full tracking-[0.14em] uppercase bg-[#fff2c4] nine-chip-cut py-0 px-1 ${packClass("Chip", "frame")}`}>
                               <Text>{props.rank}</Text>
                             </View>
                           </Show>
@@ -80,7 +80,7 @@ export function Profile(props: ProfileProps) {
                             <View class={`grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] compact:grid-cols-[minmax(0,1fr)]`} role="list" label={t("profile.stats")}>
                               <For each={props.stats}>
                                 {(s) => (
-                                <View class={`rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg transition duration-317 py-2 px-3 gap-1 data-selected:border-accent data-done:border-success data-active:border-accent active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45 compact:py-1 compact:px-3`} role="listitem">
+                                <View class={`nine-plate-cut bg-[#171f30d6] border border-[#ffffff2e] text-fg transition duration-317 py-2 px-3 gap-1 data-selected:border-accent data-done:border-success data-active:border-accent active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45 compact:py-1 compact:px-3`} role="listitem">
                                   <View class={`font-semibold text-[0.857rem] leading-snug text-fg/78 tracking-[0.14em] uppercase`}>
                                     <Text>{s().label}</Text>
                                   </View>
@@ -110,7 +110,7 @@ export function Profile(props: ProfileProps) {
                       <For each={props.actions}>
                         {(a) => (
                         <View class="grow shrink basis-0 gap-1">
-                          <View class={`min-h-11 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-[#212b40eb] to-[#0b101cf2] shadow-[inset_0px_0px_0px_1px_#ffffff3d,inset_0px_1px_0px_#ffffff99] rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none text-center py-1 px-4 gap-1 hover:bg-linear-to-b hover:from-[#2f3c58f2] hover:to-[#111828f5] hover:bg-transparent focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_0px_2.288px_#060910e5] disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
+                          <View class={`min-h-11 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#212b40eb] border border-[#ffffff3d] nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-[#2f3c58f2] hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
                             <Text class="whitespace-normal">{a().pending ? t("profile.sending") : a().label}</Text>
                           </View>
                           <Show when={a().reason}>
@@ -133,7 +133,7 @@ export function Profile(props: ProfileProps) {
             <Text class={`text-center text-[1.143rem] text-fg/66 m-0`} role="status">
               {props.error}
             </Text>
-            <View class={`min-h-11 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-linear-to-b from-[#212b40eb] to-[#0b101cf2] shadow-[inset_0px_0px_0px_1px_#ffffff3d,inset_0px_1px_0px_#ffffff99] rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none text-center py-1 px-4 gap-1 hover:bg-linear-to-b hover:from-[#2f3c58f2] hover:to-[#111828f5] hover:bg-transparent focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_0px_2.288px_#060910e5]`} role="button" onPress={(e) => props.onRetry?.(e)}>
+            <View class={`min-h-11 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#212b40eb] border border-[#ffffff3d] nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-[#2f3c58f2] hover:bg-transparent`} role="button" onPress={(e) => props.onRetry?.(e)}>
               <Text class="whitespace-normal">{t("profile.retry")}</Text>
             </View>
           </Show>

@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
 import { Button } from "../../controls/button";
 import "./general.en.ogt";
 
@@ -49,7 +49,7 @@ export interface ShopConfirmProps {
  */
 export function ShopConfirm(props: ShopConfirmProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full max-w-105 max-h-full p-4 gap-2 border compact:rounded-tl-sheet compact:rounded-tr-none compact:rounded-b-none disabled:text-fg-subtle`} label={props.title !== '' ? props.title : t("general.confirm.name")} busy={props.busy} onAction={{ back: (e) => props.onCancel?.(e) }} data-tier-common={(props.rarity || 'common') === "common"}>
+    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-2 border compact:nine-panel-cut disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.confirm.name")} busy={props.busy} onAction={{ back: (e) => props.onCancel?.(e) }} data-tier-common={(props.rarity || 'common') === "common"}>
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start text-start py-1 px-4 gap-0.5`}>
         <Text class={`font-display text-[0.857rem] font-semibold leading-tight tracking-[0.18em] uppercase text-fg-subtle m-0`}>
@@ -61,7 +61,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
       </View>
       <Scroll class="shrink w-full gap-3">
         <View class="flex-row items-center w-full gap-3">
-          <View class={`justify-center items-center bg-linear-to-b from-shade to-transparent to-55% bg-tile shadow-[inset_0px_0px_0px_1.5px_#4b5568,inset_0px_1px_3px_0px_#00000099,0px_1px_0px_0px_#ffffff0a] rounded-tl-[9.136px] rounded-tr-none rounded-br-[9.136px] rounded-bl-none gap-2 size-24 compact:size-[4.571rem]`}>
+          <View class={`justify-center items-center bg-tile border-[1.5px] border-[#4b5568] nine-plate-cut gap-2 size-24 compact:size-[4.571rem] ${packClass("Slot", "frame")}`}>
             <Icon class="size-[74%]" name={props.icon} />
           </View>
           <Show when={props.detail}>
@@ -126,10 +126,10 @@ export function ShopConfirm(props: ShopConfirmProps) {
           <Text class={`text-danger m-0`} role="status">{props.reason}</Text>
         </Show>
         <View class="flex-row items-center w-full gap-1">
-          <Button class="grow shrink basis-0 min-h-[50.6px] gap-1" label={t("general.confirm.cancel")} onPress={(e) => props.onCancel?.(e)}>
+          <Button class={`grow shrink basis-0 min-h-[50.6px] gap-1 ${packClass("Button", "plate")}`} label={t("general.confirm.cancel")} onPress={(e) => props.onCancel?.(e)}>
             <Text>{t("general.confirm.cancel")}</Text>
           </Button>
-          <Button class="text-accent grow shrink basis-0 min-h-[50.6px] gap-1 compact:grow" disabled={!props.canBuy || props.busy} label={props.busy ? t("general.confirm.busy") : t("general.confirm.buy")} onPress={(e) => props.onConfirm?.(e)}>
+          <Button class={`text-accent grow shrink basis-0 min-h-[50.6px] gap-1 compact:grow ${packClass("Button", "plate", "primary")}`} disabled={!props.canBuy || props.busy} label={props.busy ? t("general.confirm.busy") : t("general.confirm.buy")} onPress={(e) => props.onConfirm?.(e)}>
             <Text>{props.busy ? t("general.confirm.busy") : t("general.confirm.buy")}</Text>
           </Button>
         </View>

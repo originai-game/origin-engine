@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import "./puzzle.en.ogt";
 
 export interface PuzzleBoostersProps {
@@ -22,7 +22,7 @@ export interface PuzzleBoostersProps {
  */
 export function PuzzleBoosters(props: PuzzleBoostersProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate text-fg p-1 gap-2 rounded-block border disabled:text-fg-subtle`} label={t("puzzle.boosters.name")}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo text-fg p-1 gap-2 rounded-block border disabled:text-fg-subtle`} label={t("puzzle.boosters.name")}>
       <Show when={(props.boosters ?? []).length} fallback={
           <Text class={`grow shrink basis-0 text-center text-shadow-2xs p-4 m-0`} role="status">
             {t("puzzle.boosters.empty")}
@@ -45,7 +45,7 @@ export function PuzzleBoosters(props: PuzzleBoostersProps) {
                     <View class={`grow shrink basis-0 justify-center items-center absolute shadow-[inset_0px_0px_0px_1.5px_#ffffff47,0px_4.576px_11.424px_#00000080] inset-0 gap-2 rounded-full group-data-armed/booster:shadow-[inset_0px_0px_0px_2.5px_#38e8ff,0px_0px_20.576px_#38e8ff99] group-data-armed/booster:translate-x-0 group-data-armed/booster:translate-y-[-0.429rem]`}>
                       <Icon class="text-shadow-2xs size-[70%]" name={b().icon} />
                     </View>
-                    <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap text-[0.857rem] font-bold text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-shadow-2xs py-0 px-0.5 data-out:text-[#2a1400] data-out:bg-none data-out:bg-gold`} data-out={b().count === 0}>
+                    <Text class={`absolute -right-1 -bottom-0.5 min-w-4 text-center whitespace-nowrap text-[0.857rem] font-bold text-fg bg-[#060910e0] nine-chip-cut text-shadow-2xs py-0 px-0.5 data-out:text-[#2a1400] data-out:bg-none data-out:bg-gold ${packClass("Chip", "frame")}`} data-out={b().count === 0}>
                       {b().count === 0 ? '+' : t("puzzle.boosters.times", { count: formatNumber(b().count) })}
                     </Text>
                   </View>

@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Scroll, Show, Text, type UiEvent, View, formatCompact, t } from "@origingame/engine/ui";
+import {For, Scroll, Show, Text, packClass, type UiEvent, View, formatCompact, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import { Counter } from "../controls/counter";
@@ -52,7 +52,7 @@ export interface ResultsScreenProps {
 export function ResultsScreen(props: ResultsScreenProps) {
   return (
     <View class="bg-linear-to-r from-[#04060ce5] via-[#04060c9e] via-55% to-[#04060ccc] py-8 px-16 compact:p-3 short:py-3 short:px-4">
-      <View class={`text-fg max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 shrink`}>
+      <View class={`text-fg max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 shrink ${packClass("Panel", "frame")}`}>
         <Scroll class="grow shrink basis-0 gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
           <View class="items-end gap-6 compact:items-start compact:gap-3">
             <View class="grow shrink basis-0 gap-3 compact:gap-2">
@@ -115,13 +115,13 @@ export function ResultsScreen(props: ResultsScreenProps) {
               <View class="grid grid-cols-[repeat(auto-fit,minmax(194.3px,1fr))] gap-3 compact:grid-cols-[minmax(0,1fr)] compact:gap-1 short:grid-cols-[minmax(0,1fr)] short:gap-1">
                 <For each={props.stats}>
                   {(s) => (
-                  <View class={`rounded-tl-[6.864px] rounded-tr-none rounded-br-[6.864px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] text-fg transition duration-317 shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-best:shadow-[inset_0px_0px_0px_1px_#ffcf5a80,inset_0px_2px_0px_#ffcf5a] data-down:opacity-45 compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3`} data-best={s().best}>
+                  <View class={`nine-plate-cut bg-[#171f30d6] text-fg transition duration-317 border border-[#ffffff2e] justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3`} data-best={s().best}>
                     <View class="flex-wrap items-center justify-between gap-1 compact:justify-start compact:grow compact:shrink compact:basis-0 short:justify-start short:grow short:shrink short:basis-0">
                       <Text class={`tracking-[0.14em] uppercase text-fg/78 text-[0.857rem] font-semibold m-0 shrink`}>
                         {s().name}
                       </Text>
                       <Show when={s().best}>
-                        <Text class="text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#141a02] bg-linear-to-b from-[#fff2c4] to-gold rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none whitespace-nowrap py-0 px-1">
+                        <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase text-[#141a02] bg-[#fff2c4] nine-chip-cut whitespace-nowrap py-0 px-1 ${packClass("Chip", "frame")}`}>
                           {t("screen.results.best")}
                         </Text>
                       </Show>
@@ -165,13 +165,13 @@ export function ResultsScreen(props: ResultsScreenProps) {
           </Show>
         </Scroll>
         <View class="flex-wrap justify-end gap-2 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] short:flex-nowrap short:justify-end short:flex-col">
-          <Button class="min-h-11 min-w-36 compact:min-w-0 compact:col-span-full compact:row-[2] shrink" onPress={(e) => props.onReplay?.(e)}>
+          <Button class={`min-h-11 min-w-36 compact:min-w-0 compact:col-span-full compact:row-[2] shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onReplay?.(e)}>
             <Text>{t("screen.results.replay")}</Text>
           </Button>
-          <Button class="min-h-11 min-w-36 compact:min-w-0 shrink" onPress={(e) => props.onAgain?.(e)}>
+          <Button class={`min-h-11 min-w-36 compact:min-w-0 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onAgain?.(e)}>
             <Text>{t("screen.results.again")}</Text>
           </Button>
-          <Button class="text-accent min-h-11 min-w-36 compact:min-w-0 shrink" onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }}>
+          <Button class={`text-accent min-h-11 min-w-36 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }}>
             <Text>{t("screen.results.continue")}</Text>
           </Button>
         </View>

@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Scroll, Show, Text, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
+import {For, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import { CardFace } from "./face";
 import "./card.en.ogt";
 
@@ -42,7 +42,7 @@ export interface CardCollectionProps {
  */
 export function CardCollection(props: CardCollectionProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim rounded-tl-sheet rounded-tr-none rounded-br-sheet rounded-bl-none bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 border disabled:text-fg-subtle`} label={props.title || t("card.collection.cards")}>
+    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg p-4 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("card.collection.cards")}>
       <Show when={props.title}>
         <View class={`flex-row items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-2`}>
           <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0 shrink`}>
@@ -91,7 +91,7 @@ export function CardCollection(props: CardCollectionProps) {
                           <View class="absolute pointer-events-none inset-0" />
                         </Show>
                         <Show when={c().owned > 0}>
-                          <Text class={`absolute right-0.5 top-0.5 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff33] text-fg text-[0.857rem] font-bold py-0 px-0.5`}>
+                          <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-[#060910e0] text-fg text-[0.857rem] font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                             {t("card.collection.owned", { count: c().owned })}
                           </Text>
                         </Show>
@@ -107,7 +107,7 @@ export function CardCollection(props: CardCollectionProps) {
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={false} />
                       </View>
                       <Show when={c().owned > 0}>
-                        <Text class={`absolute right-0.5 top-0.5 rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff33] text-fg text-[0.857rem] font-bold py-0 px-0.5`}>
+                        <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-[#060910e0] text-fg text-[0.857rem] font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                           {t("card.collection.owned", { count: c().owned })}
                         </Text>
                       </Show>

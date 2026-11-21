@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, type UiEvent, View, formatNumber, t } from "@origingame/engine/ui";
+import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
 import "./puzzle.en.ogt";
 
 export interface PuzzleLevelPathProps {
@@ -31,7 +31,7 @@ export interface PuzzleLevelPathProps {
  */
 export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate text-fg w-full p-2 gap-2 rounded-block border`} label={t("puzzle.path.name")}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo text-fg w-full p-2 gap-2 rounded-block border`} label={t("puzzle.path.name")}>
       <Show when={(props.levels ?? []).length && (props.chapters ?? []).length} fallback={
           <View class={`grow shrink basis-0 justify-center items-center p-6 gap-2`} role="status">
             <Text class={`text-[1.143rem] leading-4.5 text-fg text-center bg-[#060910e0] py-2 px-3 m-0`}>
@@ -43,7 +43,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
           <For each={props.chapters}>
             {(c) => (
             <View class="mb-4 gap-0" label={c().label}>
-              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[11.424px] rounded-tr-none rounded-br-[11.424px] rounded-bl-none px-3 gap-1`}>
+              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-[#171f30d6] border border-[#ffffff2e] nine-plate-cut px-3 gap-1 ${packClass("Plate", "frame")}`}>
                 <View class="flex-row items-center w-full gap-1">
                   <Text class={`grow shrink basis-0 font-display text-[1.857rem] font-bold leading-[1.15] tracking-[-0.01em] text-fg text-start whitespace-nowrap m-0 overflow-hidden compact:text-[1.429rem]`}>
                     {c().label}
@@ -108,7 +108,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                               </Text>
                             </Show>
                         }>
-                          <Text class={`absolute left-1/2 translate-x-[-50%] whitespace-nowrap font-bold tracking-[0.14em] uppercase text-[0.929rem] text-[#070c16] bg-linear-to-b from-[#a0f8ff] to-[#38e8ff] shadow-[0px_0px_20.576px_#38e8ff8c] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none py-[0.214rem] px-3`}>
+                          <Text class={`absolute left-1/2 translate-x-[-50%] whitespace-nowrap font-bold tracking-[0.14em] uppercase text-[0.929rem] text-[#070c16] bg-[#a0f8ff] nine-chip-cut py-[0.214rem] px-3 ${packClass("Chip", "frame")}`}>
                             {t("puzzle.path.play")}
                           </Text>
                         </Show>

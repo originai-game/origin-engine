@@ -1,4 +1,4 @@
-import { For, Icon, Show, Text, View, formatDuration, formatNumber, t } from "@origingame/engine/ui";
+import {For, Icon, Show, Text, View, formatDuration, formatNumber, t, packClass} from "@origingame/engine/ui";
 import "./puzzle.en.ogt";
 
 export interface PuzzleGoalsProps {
@@ -31,9 +31,9 @@ export interface PuzzleGoalsProps {
  */
 export function PuzzleGoals(props: PuzzleGoalsProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate text-fg h-auto p-2 gap-2 rounded-block border disabled:text-fg-subtle`} label={t("puzzle.goals.name")} data-low={props.low === true}>
+    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo text-fg h-auto p-2 gap-2 rounded-block border disabled:text-fg-subtle`} label={t("puzzle.goals.name")} data-low={props.low === true}>
       <View class="flex-row flex-wrap p-1 gap-3 compact:gap-1">
-        <View class={`items-center justify-center min-w-[102.4px] bg-[#04060c8c] shadow-[inset_0px_0px_0px_1px_#ffffff24] rounded-br-[6.864px] rounded-bl-none py-1 px-2 gap-0 rounded-t-none compact:min-w-[83.2px] data-low:shadow-[inset_0px_0px_0px_1.5px_#ffb547,0px_0px_20.576px_#ffb54780]`} role={props.counter === 'time' ? 'timer' : 'status'} label={props.counter === 'time' ? t("puzzle.goals.timeLeft", { time: formatDuration(props.seconds) }) : t("puzzle.goals.movesLeft", { moves: props.moves })} data-low={props.low === true}>
+        <View class={`items-center justify-center min-w-[102.4px] bg-[#04060c8c] border border-[#ffffff24] py-1 px-2 gap-0 compact:min-w-[83.2px] data-low:border-[1.5px] data-low:border-[#ffb547] ${packClass("Plate", "frame")}`} role={props.counter === 'time' ? 'timer' : 'status'} label={props.counter === 'time' ? t("puzzle.goals.timeLeft", { time: formatDuration(props.seconds) }) : t("puzzle.goals.movesLeft", { moves: props.moves })} data-low={props.low === true}>
           <Text class={`tabular-nums text-fg whitespace-nowrap text-[2.857rem] font-bold data-low:text-[#ffb547] compact:text-[2.143rem]`} data-low={props.low === true}>
             {props.counter === 'time' ? formatDuration(props.seconds) : formatNumber(props.moves)}
           </Text>
@@ -41,7 +41,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
             {props.counter === 'time' ? t("puzzle.goals.time") : t("puzzle.goals.moves")}
           </Text>
           <Show when={props.low}>
-            <Text class={`mt-0.5 whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#2a1400] bg-[#ffb547] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-shadow-2xs py-0 px-1`}>
+            <Text class={`mt-0.5 whitespace-nowrap text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#2a1400] bg-[#ffb547] nine-chip-cut text-shadow-2xs py-0 px-1 ${packClass("Chip", "frame")}`}>
               {t("puzzle.goals.low")}
             </Text>
           </Show>
