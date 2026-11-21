@@ -746,14 +746,20 @@ mod tests {
 
     /// The slots the engine's TSX components declare (`packClass("C",
     /// "slot"[, variant])` with literal names; a variant written as an
-    /// expression declares each string literal in it).
-    fn declared_slots(dir: &std::path::Path, out: &mut std::collections::BTreeSet<String>) {
+    /// expression declares each string literal in it). A declaration that
+    /// is no `Component.slot[.variant]` key (a lowercase component) goes
+    /// to `bad` with its file: no pack could key it.
+    fn declared_slots(
+        dir: &std::path::Path,
+        out: &mut std::collections::BTreeSet<String>,
+        bad: &mut Vec<String>,
+    ) {
         for entry in std::fs::read_dir(dir).unwrap() {
             let entry = entry.unwrap();
             let path = entry.path();
             let kind = entry.file_type().unwrap();
             if kind.is_dir() {
-                declared_slots(&path, out);
+                declared_slots(&path, out, bad);
                 continue;
             }
             if !kind.is_file() || !path.extension().is_some_and(|e| e == "tsx" || e == "ts") {
@@ -784,22 +790,31 @@ mod tests {
                     continue;
                 };
                 let base = format!("{component}.{slot}");
-                for variant in parts.next().unwrap_or("").split('"').skip(1).step_by(2) {
-                    out.insert(format!("{base}.{variant}"));
+                let variants = parts.next().unwrap_or("").split('"').skip(1).step_by(2);
+                for key in std::iter::once(base.clone()).chain(variants.map(|v| format!("{base}.{v}"))) {
+                    if !variant_key(&key) {
+                        bad.push(format!("{}: packClass {key}", path.display()));
+                    }
+                    out.insert(key);
                 }
-                out.insert(base);
             }
         }
     }
 
-    /// Every slot a shipped pack gives sounds or classes names a slot an
+    /// Every slot an engine component declares is a valid pack key, and
+    /// every slot a shipped pack gives sounds or classes names a slot an
     /// engine component declares: a key for another name (an og-ui part
     /// such as `Button.base`) never matches and its sounds never play.
     #[test]
     fn shipped_packs_key_only_the_slots_components_declare() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let mut declared = std::collections::BTreeSet::new();
-        declared_slots(&root.join("packages/engine/src"), &mut declared);
+        let (mut declared, mut bad) = (std::collections::BTreeSet::new(), Vec::new());
+        declared_slots(&root.join("packages/engine/src"), &mut declared, &mut bad);
+        assert!(
+            bad.is_empty(),
+            "slots that are no Component.slot[.variant] key (a PascalCase component, lowercase slot and variant):\n{}",
+            bad.join("\n")
+        );
         assert!(declared.contains("Button.plate.primary"), "{declared:?}");
         let mut stray = Vec::new();
         for entry in std::fs::read_dir(root.join("templates/styles")).unwrap() {
