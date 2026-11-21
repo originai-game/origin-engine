@@ -303,10 +303,14 @@ impl PaintRenderer {
                 ..Default::default()
             };
             if q.kind == PaintKind::Glyph as u32 {
+                // Every page of a run-time font knows each glyph's advance;
+                // only the page that holds it has its bounds.
                 let found = char::from_u32(q.a).and_then(|ch| {
                     paint.fonts.get(q.b as usize)?.iter().find_map(|&h| {
                         let l = font(h)?;
-                        Some((h, l, l.glyphs.get(&GlyphKey::Char(ch))?))
+                        let g = l.glyphs.get(&GlyphKey::Char(ch))?;
+                        let [pl, pb, pr, pt] = g.plane_bounds;
+                        (pr > pl && pt > pb).then_some((h, l, g))
                     })
                 });
                 let Some((h, l, glyph)) = found else {
