@@ -4,7 +4,7 @@ import { og } from "../../src/index.ts";
 import { createEngine, loadNativeHost, native } from "../../src/node/index.ts";
 
 declare const Bun: {
-  spawnSync(cmd: string[], options: { stdout: "pipe"; stderr: "pipe" }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawnSync(cmd: string[], options: { stdout: "pipe"; stderr: "pipe"; env?: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
 };
 
 // Probe in a child: loading a host and registering a game must not change
@@ -20,9 +20,14 @@ if (import.meta.main) {
   }
 }
 
+// The probe takes what `og test` takes (docs/ci.md): hardware unless
+// OG_RENDERER says otherwise, so a host with only a software adapter
+// (lavapipe, llvmpipe) leaves its GPU tests skipped, not drawn on the CPU
+// past their limits; OG_RENDERER=software opts in.
 function unavailable(): string | null {
   if (import.meta.main) return null;
-  const probe = Bun.spawnSync(["bun", fileURLToPath(import.meta.url)], { stdout: "pipe", stderr: "pipe" });
+  const env = { ...process.env, OG_RENDERER: process.env.OG_RENDERER ?? "hardware" };
+  const probe = Bun.spawnSync(["bun", fileURLToPath(import.meta.url)], { stdout: "pipe", stderr: "pipe", env });
   if (probe.exitCode !== 0) throw new Error(new TextDecoder().decode(probe.stderr));
   const result: { ok: boolean; reason?: string } = JSON.parse(new TextDecoder().decode(probe.stdout));
   if (result.ok) return null;

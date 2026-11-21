@@ -17,8 +17,9 @@ const repo = join(pkg, "..", "..");
 const evidence = join(repo, "target", "evidence", "no-renderer");
 const game = join(evidence, "game");
 
+// A drawn run takes the switch gpuTest's probe took (support/gpu.ts).
 const run = (cmd: string[], renderer: boolean) => {
-  const env = { ...process.env, OG_ENGINE_PACKAGE: pkg, OG_RENDERER: renderer ? undefined : "none" };
+  const env = { ...process.env, OG_ENGINE_PACKAGE: pkg, OG_RENDERER: renderer ? process.env.OG_RENDERER : "none" };
   const r = Bun.spawnSync(cmd, { cwd: repo, env });
   const stdout = new TextDecoder().decode(r.stdout);
   return { code: r.exitCode, stdout, out: stdout + new TextDecoder().decode(r.stderr) };
