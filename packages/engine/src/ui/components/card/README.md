@@ -1,85 +1,28 @@
 # card: built-in components
 
-The hand and its piles, the collection and deck builder, the reward choice
-and the run map of a deck-building or card-battle game, as documents over
-core controls (docs/ui.md §4). They draw what the game tells them and
-return intents with stable row keys. They never compute costs, damage,
-legality, targets, rewards, deck rules or the map's routes.
+The hand and its piles, the collection and deck builder and the reward
+choice of a deck-building or card-battle game. They draw what the game
+tells them and report intents with stable row keys. They never compute
+costs, damage, legality, targets, rewards or deck rules. The hand, the
+collection and the reward wrap `CardFace`; a run map is a `NodeGraph`
+(`panels/node-graph`).
 
-They are built into the engine: a game's page uses one by name
-(`<CardHand .../>`) and loading the page loads it, with the `CardFace` and
-`NodeGraph` it uses. `og ui eject card/hand` copies one into
-`assets/ui/card/` to change it; the game's copy of the same name wins.
-
-## Structure and appearance
-
-Each member uses HTML with CSS: `:host` owns its root, optional content
-uses `{#if}`, and scroll containers use `overflow`. Its default appearance
-comes from shared role parts and tokens; its own CSS supplies only layout.
-`data-layout` and `data-gap` select the shared layout primitives and spacing,
-and `data-motion` selects shared motion. Role aliases follow the existing
-public part names, so the original hooks remain available. CardHand sets
-`--card-fill` to keep overlapping cards opaque. A style pack can dress the named parts
-(docs/ui.md §3.2), qualified by their states and `data-*` attributes, for
-example `CardFace.frame[data-rarity=legendary]` or
-`button[aria-selected=true]::part(CardHand\.card)`. Each member lists its
-parts in its `<meta name="parts">`. The fantasy pack dresses them
-through its tokens alone (`templates/styles/fantasy/base.css`).
-
-Hooks for a pack: `data-type` (attack, skill, power, status, curse, relic,
-or the game's word) and `data-rarity` (common, uncommon, rare, epic,
-legendary, mythic) on a card's face and on the buttons that wrap it;
-`data-playable` on hand slots and cards; `data-selected` on hand slots and
-deck rows; `data-kind` (draw, discard, exhaust) and `data-empty` on piles;
-`data-can-add`, `data-locked` and `data-in-deck` on collection cells;
-`data-over` and `data-under` on the deck size; `aria-current` on the deck
-row shown in detail. A state is never only a colour: an unplayable card
-carries a lock badge, a collection card the game will not add a lock when
-it is not owned and a cross when it is, with the reason in its
-description, an empty pile its 0, an over-full deck its figures.
+A game imports one by name from `@origingame/engine/ui/components`, with
+its props as typed in its `.tsx` (`<Name>Props`, each prop documented
+there); `fixtures` in the same file are its cases. How components are built
+and dressed is `../README.md`.
 
 ## Members
 
-| Document | Inputs (props) | Intents |
+| Component | File | What it is |
 | --- | --- | --- |
-| `CardFace` | `name`, `cost` (text; empty hides the gem), `icon`, `art` (texture; 0 shows the icon), `type`, `typeLabel`, `rarity`, `text`, `dim` (dims the art and frame, never the words) | none |
-| `CardHand` | `cards` keyed `{ id, name, cost, icon, art, type, typeLabel, rarity, text, playable, reason, at }` (`reason` the game's words for an unplayable card, empty Cannot be played) (`at` the card's place across the fan, -1 to 1), `selected`, `fan` (degrees at the ends, 0 a flat row), `label` | `select` (card), `play` (the Play plate on the selected playable card, or X / pad Y on a focused playable card; an unplayable card never sends it) |
-| `CardPiles` | `piles` keyed `{ id, kind, label, icon, count, enabled }`, `label` | `open` (pile; a disabled pile sends nothing) |
-| `CardCollection` | `title`, `filters` keyed `{ id, label, count }` (`count` above 0 shows beside the label), `filter`, `cards` keyed `{ id, name, cost, icon, art, type, typeLabel, rarity, text, owned, inDeck, canAdd, locked, reason }` (`reason` the game's words for a card it will not add), `selected`, `empty` | `add` (card; one the game will not add never sends it), `inspect` (X / pad Y on the focused card, and a tap on one the game will not add), `choosefilter` (filter), `tabNext`/`tabPrev` (E/Q, bumpers) |
-| `CardDeckList` | `title`, `entries` keyed `{ id, name, cost, type, rarity, copies, canAdd, canRemove }`, `total`, `limit` (0 hides the size), `selected`, `confirmLabel`, `canConfirm` | `choose` (row), `add` and `remove` (a row's plus and minus; X / pad Y in the focused row is its minus; a refused step is disabled and sends nothing), `confirm` |
-| `CardReward` | `title`, `kicker`, `choices` keyed `{ id, relic, name, cost, icon, art, type, typeLabel, rarity, text, enabled }`, `selected`, `skipLabel` | `pick` (offer; a refused one is disabled), `skip` (the button, Escape, pad B) |
-| `CardRunMap` | `title`, `floor`, `nodes` and `links` (NodeGraph's: a room's `state` is done, current, available or locked, its kind its `icon` and `shape`), `view`, `zoom`, `panX`, `panY`, `selected`, `legend` keyed `{ id, icon, label, shape }` (shape circle, or diamond for an elite or the boss, as its rooms) | NodeGraph's `pick` (room), `zoom`, `pinch`, `pan` |
+| `CardCollection` | `card/collection` | The card library of a deck builder. |
+| `CardDeckList` | `card/deck-list` | The deck being built. |
+| `CardFace` | `card/face` | One card's face. |
+| `CardHand` | `card/hand` | The player's hand. |
+| `CardPiles` | `card/piles` | The draw, discard and exhaust piles as buttons. |
+| `CardReward` | `card/reward` | Pick one of the game's offers. |
 
-| Document | Parts |
-| --- | --- |
-| `CardFace` | `frame`, `cost`, `art`, `name`, `type`, `text` |
-| `CardHand` | `frame`, `slot`, `card`, `reason` (Play is a core primary button) |
-| `CardPiles` | `frame`, `pile`, `stack`, `count`, `label` |
-| `CardCollection` | `frame`, `band`, `title`, `filter`, `count`, `cell`, `owned`, `deck`, `reason` |
-| `CardDeckList` | `frame`, `band`, `title`, `size`, `row`, `cost`, `name`, `copies`, `step` (Confirm is a core primary button) |
-| `CardReward` | `frame`, `band`, `kicker`, `title`, `choice`, `relic`, `mark`, `kind`, `name`, `text`, `bracket` (Skip is a core button) |
-| `CardRunMap` | `frame`, `band`, `title`, `floor`, `board`, `legend`, `row` |
+## Gallery
 
-Every member carries a `fixture:default` and the state fixtures that apply
-to it (`empty`, `single`, `disabled`, `overflow`, `full`, `relics`); the
-sheet and the tests mount them. The hand overlaps its cards as it grows,
-each slot shrinking while the last keeps the whole card, so eleven cards
-fit a phone; the collection's grid goes from five columns to four and two
-with its container; the reward's offers share a row no taller than the
-room left under the title, and in a narrow panel scroll in a single row, and with no
-offers the reward says so. The core `DataGrid` is a table of text rows, so
-the collection draws its own grid of faces. Card names have two lines,
-rules are start-aligned, and collection counts have a footer of their own
-rather than covering the art. Deck size has a track-relative meter and an
-over-limit danger fill.
-
-## Gallery and tests
-
-`bun packages/engine/src/node/gallery.ts --only card/` renders every member's fixtures under every pack (docs/ui.md §6.5).
-
-`bun test tests/card.test.ts` (from `packages/engine`) mounts every member
-by name from a game page from each of its fixtures at desktop and phone,
-checks the intents and their keys, that what the game refuses (an
-unplayable card, a card it will not add, a removal, an offer, a locked
-room) sends nothing, keyed selection through a reorder, keyboard and pad
-focus, and that each member's named parts are drawn.
+`bun packages/engine/src/node/gallery.ts --only card/` draws every member's fixtures under every pack.
