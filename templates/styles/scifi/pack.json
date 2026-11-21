@@ -1,0 +1,233 @@
+{
+  "about": "The scifi pack, ported from its CSS tokens; its components' variants follow with the TSX components.",
+  "fonts": [
+    {
+      "family": "Scifi Display",
+      "src": "@styles/shared/ChakraPetch-SemiBold.ttf",
+      "weight": 600
+    },
+    {
+      "family": "Scifi Label",
+      "src": "@styles/shared/BarlowCondensed-SemiBold.ttf",
+      "weight": 600
+    },
+    {
+      "family": "Scifi Text",
+      "src": "@styles/shared/BarlowSemiCondensed-SemiBold.ttf",
+      "weight": 600
+    },
+    {
+      "family": "Scifi Figure",
+      "src": "@styles/shared/Rajdhani-Bold.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Scifi Text",
+      "src": "@styles/shared/ChakraPetch-SemiBold.ttf",
+      "unicodeRange": "U+2190-21FF",
+      "weight": 600
+    },
+    {
+      "family": "Scifi Label",
+      "src": "@styles/shared/ChakraPetch-SemiBold.ttf",
+      "unicodeRange": "U+2190-21FF",
+      "weight": 600
+    },
+    {
+      "family": "Scifi Figure",
+      "src": "@styles/shared/ChakraPetch-SemiBold.ttf",
+      "unicodeRange": "U+2190-21FF",
+      "weight": 700
+    }
+  ],
+  "icons": {
+    "check": "art/check.svg",
+    "close": "art/close.svg"
+  },
+  "scheme": "dark",
+  "seeds": {
+    "accent": "#ffb52e",
+    "danger": "#ff6b6f",
+    "info": "#6cc7ff",
+    "neutral": "#0a1622",
+    "primary": {
+      "dark": "#22c7f5",
+      "light": "#006f93"
+    },
+    "success": "#45e3a0",
+    "team": "#4fb3ff",
+    "warn": "#ffe04a"
+  },
+  "sounds": {
+    "Button.base": {
+      "hover": {
+        "clips": [
+          "@styles/shared/sfx-tap2.ogt"
+        ],
+        "volume": 0.1
+      },
+      "press": {
+        "clips": [
+          "@styles/shared/sfx-tap.ogt"
+        ],
+        "pitch": [
+          1.12,
+          1.18
+        ],
+        "volume": [
+          0.22,
+          0.28
+        ]
+      }
+    },
+    "Button.base.primary": {
+      "hover": {
+        "clips": [
+          "@styles/shared/sfx-tap2.ogt"
+        ],
+        "volume": 0.1
+      },
+      "press": {
+        "clips": [
+          "@styles/shared/sfx-confirm.ogt"
+        ],
+        "pitch": [
+          1.08,
+          1.12
+        ],
+        "volume": 0.3
+      }
+    },
+    "back": {
+      "clips": [
+        "@styles/shared/sfx-back.ogt"
+      ],
+      "volume": 0.24
+    },
+    "cancel": {
+      "clips": [
+        "@styles/shared/sfx-back.ogt"
+      ],
+      "volume": 0.24
+    },
+    "close": {
+      "clips": [
+        "@styles/shared/sfx-back.ogt"
+      ],
+      "volume": 0.2
+    },
+    "confirm": {
+      "clips": [
+        "@styles/shared/sfx-confirm.ogt"
+      ],
+      "volume": 0.3
+    },
+    "error": {
+      "clips": [
+        "@styles/shared/sfx-error.ogt"
+      ],
+      "volume": 0.3
+    },
+    "open": {
+      "clips": [
+        "@styles/shared/sfx-open.ogt"
+      ],
+      "volume": 0.22
+    },
+    "press": {
+      "clips": [
+        "@styles/shared/sfx-tap.ogt",
+        "@styles/shared/sfx-tap2.ogt"
+      ],
+      "pitch": [
+        1.12,
+        1.18
+      ],
+      "volume": [
+        0.22,
+        0.28
+      ]
+    },
+    "reward": {
+      "clips": [
+        "@styles/shared/sfx-reward.ogt"
+      ],
+      "volume": 0.32
+    },
+    "select": {
+      "clips": [
+        "@styles/shared/sfx-confirm.ogt"
+      ],
+      "volume": 0.28
+    }
+  },
+  "theme": {
+    "colors": {
+      "accent-ink": {
+        "dark": "#8eeaff",
+        "light": "#005f80"
+      },
+      "border-strong": {
+        "dark": "#2ea6cf",
+        "light": "#0b7fa6"
+      },
+      "gold": {
+        "dark": "#ffc861",
+        "light": "#a35400"
+      },
+      "health": {
+        "dark": "#c8324a",
+        "light": "#c22a3a"
+      },
+      "mana": {
+        "dark": "#3f8cff",
+        "light": "#1f5fc4"
+      },
+      "raised-pressed": {
+        "dark": "#071019",
+        "light": "#cddde7"
+      },
+      "rim": {
+        "dark": "#2ea6cf",
+        "light": "#0b7fa6"
+      },
+      "rim-soft": {
+        "dark": "#2a3b47",
+        "light": "#a9b8c2"
+      },
+      "rim-strong": {
+        "dark": "#8eeaff",
+        "light": "#005f80"
+      },
+      "shadow": "#000000",
+      "sheen": {
+        "dark": "#bfeeff30",
+        "light": "#ffffff80"
+      },
+      "tile": {
+        "dark": "#07121e",
+        "light": "#dbecfd"
+      },
+      "track": {
+        "dark": "#07121e",
+        "light": "#dbecfd"
+      },
+      "xp": {
+        "dark": "#d9c2ff",
+        "light": "#6a3fc0"
+      }
+    },
+    "fontFamily": {
+      "display": "\"Scifi Display\", sans-serif",
+      "mono": "\"Scifi Figure\", monospace",
+      "sans": "\"Scifi Text\", sans-serif"
+    },
+    "radius": {
+      "button": 0.0,
+      "card": 0.0,
+      "control": 0.0,
+      "field": 0.0,
+      "panel": 0.0
+    }
+  }
+}

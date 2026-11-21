@@ -282,6 +282,7 @@ pub(crate) fn scan_with(
         let kind = match (kind_by_extension(&extension), extension.as_str()) {
             (Some(kind), _) => kind,
             (None, "json") if font_pack::is_pack(rel, &read(rel, path)?) => &font_pack::FONT_PACK,
+            (None, "json") if ui_documents::is_pack(rel) => &ui_documents::PACK,
             (None, "ogt") => {
                 let text = String::from_utf8(read(rel, path)?)
                     .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;

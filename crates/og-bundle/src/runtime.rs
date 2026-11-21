@@ -897,6 +897,18 @@ impl Bundle {
             .map_err(|_| invalid(&blob, "the style text is not UTF-8"))
     }
 
+    /// A style pack blob's `pack.json` (read it with og-ui-next's
+    /// `pack::Layer::parse`; its asset paths are ids of this bundle).
+    pub fn pack_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+        let blob = self.blob::<format::Pack>(id, bytes)?;
+        let meta = one::<format::PackMeta>(&blob)?;
+        let text = blob.raw("text")?;
+        let text = text
+            .get(..meta.text_bytes as usize)
+            .ok_or_else(|| invalid(&blob, "the pack is cut short"))?;
+        String::from_utf8(text.to_vec()).map_err(|_| invalid(&blob, "the pack is not UTF-8"))
+    }
+
     /// The validated text of a UI document blob (parse it with og-ui's
     /// `UiDocument::parse`).
     pub fn document_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {

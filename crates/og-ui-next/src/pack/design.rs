@@ -165,7 +165,7 @@ fn theme(t: &Tokens, names: &[String]) -> Map<String, Value> {
 }
 
 /// Two schemes' values as one: the value where they agree, else a pair.
-fn join(light: &Value, dark: &Value) -> Value {
+pub(crate) fn join(light: &Value, dark: &Value) -> Value {
     match (light, dark) {
         (Value::Object(l), Value::Object(d)) => {
             let mut out = Map::new();

@@ -581,3 +581,43 @@ fn imported_stylesheets_ride_in_the_document_blob() {
     let imports = cooked(&root);
     assert!(imports[1].1.contains("--tone: 2"), "{imports:?}");
 }
+
+/// The built-in packs cook as `og.UiPack` blobs: every face, icon and sound
+/// they name is an asset of the bundle, and their themes read whole.
+#[test]
+fn the_built_in_style_packs_cook_to_pack_blobs() {
+    let looks: Vec<(String, String)> = ["cartoon", "fantasy", "scifi"]
+        .map(|p| (format!("looks/{p}.ogt"), format!("type look\nversion 1\n---\nui \"@styles/{p}\"\n")))
+        .into();
+    let files: Vec<(&str, &str)> = looks.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+    let root = project("built-in-packs", &files);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    for p in ["cartoon", "fantasy", "scifi"] {
+        let id = format!("@styles/{p}/pack.json");
+        assert_eq!(bundle.output(&id).unwrap().ty, "og.UiPack", "{p}");
+        let text = bundle.pack_text(&id, &bundle.read(&id).unwrap()).unwrap();
+        let layer = og_ui_next::pack::Layer::parse(&text).unwrap();
+        assert!(!layer.fonts.is_empty() || p != "cartoon");
+        for a in layer.assets() {
+            assert!(bundle.output(a).is_ok(), "{p}: {a} is not in the bundle");
+        }
+    }
+}
+
+/// A pack naming a class its theme has no utility for, or an asset that
+/// is not there, is refused with what and where.
+#[test]
+fn a_pack_with_an_unknown_class_or_a_missing_asset_is_refused() {
+    for (name, pack, wants) in [
+        ("pack-class", r#"{ "variants": { "Panel.frame": "rounded-card bg-surfcae" } }"#, "variants.Panel.frame: `bg-surfcae`"),
+        ("pack-asset", r#"{ "icons": { "star": "art/star.svg" } }"#, "styles/mine/art/star.svg"),
+        ("pack-form", r#"{ "theme": { "colours": {} } }"#, "theme.colours"),
+    ] {
+        let root = project(name, &[("styles/mine/pack.json", pack)]);
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        let errors = format!("{:?}", report.errors());
+        assert!(!report.ok() && errors.contains(wants), "{name}: {errors}");
+    }
+}

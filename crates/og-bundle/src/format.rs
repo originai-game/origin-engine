@@ -32,6 +32,7 @@
 //! | effect material (`og.EffectMaterial`, an `.ogt` of `type effect`) | [`EffectMeta`] | `text` (the validated effect file) |
 //! | composed effect (`og.Vfx`, an `.ogt` of `type vfx`) | [`VfxMeta`] | `text` (the validated vfx file) |
 //! | UI style (`og.UiStyle`, an `.ogt` of `type style`) | [`StyleMeta`] | `text` (the validated style file) |
+//! | UI style pack (`og.UiPack`, a pack's `pack.json`) | [`PackMeta`] | `text` (the checked pack, its asset paths resolved to ids) |
 //! | UI document (`og.UiDocument`, an `.ogt` of `type screen` or `type component`) | [`DocumentMeta`] | `text` (the validated document); `next-<look key>` (its style compiled for og-ui's new core, per look and scheme) |
 //! | material shader (`og.MaterialShader`, an `.ogt` of `type shader`) | [`ShaderMeta`] | `text` (the canonical shader file, code inlined) |
 //! | custom post pass (`og.PostPass`, an `.ogt` of `type post`) | [`PostMeta`] | `text` (the canonical post file, code inlined) |
@@ -121,6 +122,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Animation,
         Lut,
         Style,
+        Pack,
         Document,
         Shader,
         Post,

@@ -1,0 +1,543 @@
+{
+  "about": "The cartoon pack, ported from its CSS tokens; its components' variants follow with the TSX components.",
+  "fonts": [
+    {
+      "family": "Cartoon Display",
+      "src": "LilitaOne-Regular.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Cartoon Display",
+      "src": "LilitaOne-Regular.ttf",
+      "weight": 500
+    },
+    {
+      "family": "Cartoon Display",
+      "src": "LilitaOne-Regular.ttf",
+      "weight": 600
+    },
+    {
+      "family": "Cartoon Display",
+      "src": "LilitaOne-Regular.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Cartoon Text",
+      "src": "Fredoka-Medium.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Cartoon Text",
+      "src": "Fredoka-Medium.ttf",
+      "weight": 500
+    },
+    {
+      "family": "Cartoon Text",
+      "src": "Fredoka-SemiBold.ttf",
+      "weight": 600
+    },
+    {
+      "family": "Cartoon Text",
+      "src": "Fredoka-SemiBold.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Cartoon Label",
+      "src": "Fredoka-SemiBold.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Cartoon Label",
+      "src": "Fredoka-SemiBold.ttf",
+      "weight": 500
+    },
+    {
+      "family": "Cartoon Label",
+      "src": "Fredoka-SemiBold.ttf",
+      "weight": 600
+    },
+    {
+      "family": "Cartoon Label",
+      "src": "Fredoka-SemiBold.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Cartoon Fallback",
+      "src": "@styles/shared/InstrumentSans-Regular.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Cartoon Fallback",
+      "src": "@styles/shared/InstrumentSans-Regular.ttf",
+      "weight": 500
+    },
+    {
+      "family": "Cartoon Fallback",
+      "src": "@styles/shared/InstrumentSans-Regular.ttf",
+      "weight": 600
+    },
+    {
+      "family": "Cartoon Fallback",
+      "src": "@styles/shared/InstrumentSans-Regular.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Cartoon Display",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 400
+    },
+    {
+      "family": "Cartoon Display",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 500
+    },
+    {
+      "family": "Cartoon Display",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 600
+    },
+    {
+      "family": "Cartoon Display",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 700
+    },
+    {
+      "family": "Cartoon Text",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 400
+    },
+    {
+      "family": "Cartoon Text",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 500
+    },
+    {
+      "family": "Cartoon Text",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 600
+    },
+    {
+      "family": "Cartoon Text",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 700
+    },
+    {
+      "family": "Cartoon Label",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 400
+    },
+    {
+      "family": "Cartoon Label",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 500
+    },
+    {
+      "family": "Cartoon Label",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 600
+    },
+    {
+      "family": "Cartoon Label",
+      "src": "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "unicodeRange": "U+2E80-2FDF, U+3000-303F, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF",
+      "weight": 700
+    }
+  ],
+  "icons": {
+    "check": "art/check.svg",
+    "close": "art/close.svg",
+    "gem": "art/gem.svg",
+    "skull": "art/skull.svg",
+    "star": "art/star.svg"
+  },
+  "scheme": "dark",
+  "seeds": {
+    "accent": "#ffd23f",
+    "danger": "#ff7272",
+    "info": "#5cd0ff",
+    "neutral": "#232a73",
+    "primary": "#ffc71f",
+    "success": "#62e24f",
+    "team": "#45b3ff",
+    "warn": "#ffb629"
+  },
+  "sounds": {
+    "Button.base": {
+      "hover": {
+        "clips": [
+          "@styles/shared/sfx-tap2.ogt"
+        ],
+        "pitch": [
+          1.2,
+          1.3
+        ],
+        "volume": 0.08
+      },
+      "press": {
+        "clips": [
+          "@styles/shared/sfx-tap.ogt",
+          "@styles/shared/sfx-tap2.ogt"
+        ],
+        "pitch": [
+          1.04,
+          1.16
+        ],
+        "volume": [
+          0.24,
+          0.3
+        ]
+      }
+    },
+    "Button.base.danger": {
+      "hover": {
+        "clips": [
+          "@styles/shared/sfx-tap2.ogt"
+        ],
+        "pitch": [
+          1.2,
+          1.3
+        ],
+        "volume": 0.08
+      },
+      "press": {
+        "clips": [
+          "@styles/shared/sfx-back.ogt"
+        ],
+        "pitch": [
+          0.94,
+          1.0
+        ],
+        "volume": 0.28
+      }
+    },
+    "Button.base.primary": {
+      "hover": {
+        "clips": [
+          "@styles/shared/sfx-tap2.ogt"
+        ],
+        "pitch": [
+          1.2,
+          1.3
+        ],
+        "volume": 0.1
+      },
+      "press": {
+        "clips": [
+          "@styles/shared/sfx-confirm.ogt"
+        ],
+        "pitch": [
+          1.08,
+          1.14
+        ],
+        "volume": 0.32
+      }
+    },
+    "Radio.card": {
+      "hover": {
+        "clips": [
+          "@styles/shared/sfx-tap.ogt"
+        ],
+        "pitch": [
+          1.24,
+          1.34
+        ],
+        "volume": 0.07
+      },
+      "press": {
+        "clips": [
+          "@styles/shared/sfx-tap2.ogt"
+        ],
+        "pitch": [
+          1.1,
+          1.24
+        ],
+        "volume": [
+          0.22,
+          0.28
+        ]
+      }
+    },
+    "Slot.frame": {
+      "hover": {
+        "clips": [
+          "@styles/shared/sfx-tap.ogt"
+        ],
+        "pitch": [
+          1.24,
+          1.34
+        ],
+        "volume": 0.07
+      },
+      "press": {
+        "clips": [
+          "@styles/shared/sfx-tap2.ogt"
+        ],
+        "pitch": [
+          1.1,
+          1.24
+        ],
+        "volume": [
+          0.22,
+          0.28
+        ]
+      }
+    },
+    "Tabs.tab": {
+      "hover": {
+        "clips": [
+          "@styles/shared/sfx-tap.ogt"
+        ],
+        "pitch": [
+          1.24,
+          1.34
+        ],
+        "volume": 0.07
+      },
+      "press": {
+        "clips": [
+          "@styles/shared/sfx-tap2.ogt"
+        ],
+        "pitch": [
+          1.1,
+          1.24
+        ],
+        "volume": [
+          0.22,
+          0.28
+        ]
+      }
+    },
+    "back": {
+      "clips": [
+        "@styles/shared/sfx-back.ogt"
+      ],
+      "pitch": [
+        1.02,
+        1.08
+      ],
+      "volume": 0.24
+    },
+    "cancel": {
+      "clips": [
+        "@styles/shared/sfx-back.ogt"
+      ],
+      "pitch": [
+        1.02,
+        1.08
+      ],
+      "volume": 0.24
+    },
+    "close": {
+      "clips": [
+        "@styles/shared/sfx-back.ogt"
+      ],
+      "pitch": [
+        1.08,
+        1.14
+      ],
+      "volume": 0.2
+    },
+    "confirm": {
+      "clips": [
+        "@styles/shared/sfx-confirm.ogt"
+      ],
+      "pitch": [
+        1.08,
+        1.14
+      ],
+      "volume": 0.32
+    },
+    "error": {
+      "clips": [
+        "@styles/shared/sfx-error.ogt"
+      ],
+      "volume": 0.3
+    },
+    "open": {
+      "clips": [
+        "@styles/shared/sfx-open.ogt"
+      ],
+      "pitch": [
+        1.06,
+        1.12
+      ],
+      "volume": 0.24
+    },
+    "press": {
+      "clips": [
+        "@styles/shared/sfx-tap.ogt",
+        "@styles/shared/sfx-tap2.ogt"
+      ],
+      "pitch": [
+        1.04,
+        1.16
+      ],
+      "volume": [
+        0.24,
+        0.3
+      ]
+    },
+    "reward": {
+      "clips": [
+        "@styles/shared/sfx-reward.ogt"
+      ],
+      "pitch": [
+        1.04,
+        1.1
+      ],
+      "volume": 0.34
+    },
+    "select": {
+      "clips": [
+        "@styles/shared/sfx-confirm.ogt"
+      ],
+      "pitch": [
+        1.06,
+        1.12
+      ],
+      "volume": 0.28
+    }
+  },
+  "theme": {
+    "colors": {
+      "accent-ink": {
+        "dark": "#ffdf50",
+        "light": "#5b4500"
+      },
+      "bg": {
+        "dark": "#1d4ac4",
+        "light": "#7fd3ff"
+      },
+      "bg-subtle": {
+        "dark": "#171c54",
+        "light": "#e3eafb"
+      },
+      "border": {
+        "dark": "#4654b8",
+        "light": "#cfd8f2"
+      },
+      "border-strong": {
+        "dark": "#0b0e33",
+        "light": "#211d52"
+      },
+      "fg": {
+        "dark": "#ffffff",
+        "light": "#211d52"
+      },
+      "fg-inverse": {
+        "dark": "#151a4a",
+        "light": "#ffffff"
+      },
+      "fg-muted": {
+        "dark": "#cfd8ff",
+        "light": "#4a4680"
+      },
+      "fg-subtle": {
+        "dark": "#a3afef",
+        "light": "#666296"
+      },
+      "gold": {
+        "dark": "#ffd23f",
+        "light": "#9a5600"
+      },
+      "health": {
+        "dark": "#ff4f64",
+        "light": "#e8384f"
+      },
+      "hud": {
+        "dark": "#171c54f2",
+        "light": "#fffaf0eb"
+      },
+      "mana": {
+        "dark": "#39a8ff",
+        "light": "#1f8bf0"
+      },
+      "minimap": {
+        "dark": "#171c54cc",
+        "light": "#fffaf0d9"
+      },
+      "minimap-edge": {
+        "dark": "#0b0e33",
+        "light": "#211d52"
+      },
+      "rim": {
+        "dark": "#0b0e33",
+        "light": "#211d52"
+      },
+      "rim-soft": {
+        "dark": "#0b0e33",
+        "light": "#211d52"
+      },
+      "rim-strong": {
+        "dark": "#0b0e33",
+        "light": "#211d52"
+      },
+      "shadow": {
+        "dark": "#070a2e",
+        "light": "#211d52"
+      },
+      "sheen": {
+        "dark": "#ffffff66",
+        "light": "#ffffffb3"
+      },
+      "slot-selected-edge": {
+        "dark": "#2f6df2",
+        "light": "#6ad3ff"
+      },
+      "surface": {
+        "dark": "#232a73",
+        "light": "#fffaf0"
+      },
+      "surface-hover": {
+        "dark": "#3642a6",
+        "light": "#ffefc4"
+      },
+      "surface-raised": {
+        "dark": "#2c358c",
+        "light": "#ffffff"
+      },
+      "tile": {
+        "dark": "#171c54",
+        "light": "#e3eafb"
+      },
+      "track": {
+        "dark": "#171c54",
+        "light": "#e3eafb"
+      },
+      "well-rim": {
+        "dark": "#0b0e33",
+        "light": "#211d52"
+      },
+      "xp": {
+        "dark": "#cb7cff",
+        "light": "#8f35d6"
+      }
+    },
+    "fontFamily": {
+      "display": "\"Cartoon Display\", \"Cartoon Fallback\", ui-rounded, sans-serif",
+      "mono": "\"Cartoon Text\", \"Cartoon Fallback\", ui-rounded, sans-serif",
+      "rounded": "\"Cartoon Text\", \"Cartoon Fallback\", ui-rounded, sans-serif",
+      "sans": "\"Cartoon Text\", \"Cartoon Fallback\", ui-rounded, sans-serif"
+    },
+    "radius": {
+      "block": 14.0,
+      "button": 14.0,
+      "card": 18.0,
+      "control": 10.0,
+      "field": 12.0,
+      "panel": 22.0,
+      "sheet": 28.0
+    }
+  }
+}

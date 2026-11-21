@@ -220,6 +220,98 @@ impl Layer {
     }
 }
 
+impl Layer {
+    /// Every asset the layer names: its faces, icons and sound clips.
+    pub fn assets(&self) -> Vec<&str> {
+        let mut out: Vec<&str> = self.fonts.iter().map(|f| f.src.as_str()).collect();
+        out.extend(self.icons.values().map(String::as_str));
+        for sounds in self.sounds.values() {
+            out.extend(sounds.values().flat_map(|s| s.clips.iter().map(String::as_str)));
+        }
+        out.sort_unstable();
+        out.dedup();
+        out
+    }
+
+    /// Resolves every asset path against the pack's directory `dir` (its
+    /// asset id, `styles/cartoon`): a path starting with `@` or `/` names
+    /// an asset by id and stays (`/` dropped).
+    pub fn resolve(&mut self, dir: &str) {
+        let at = |p: &mut String| {
+            if let Some(id) = p.strip_prefix('/') {
+                *p = id.to_owned();
+            } else if !p.starts_with('@') {
+                *p = format!("{}/{p}", dir.trim_end_matches('/'));
+            }
+        };
+        self.fonts.iter_mut().for_each(|f| at(&mut f.src));
+        self.icons.values_mut().for_each(at);
+        for sounds in self.sounds.values_mut() {
+            sounds.values_mut().flat_map(|s| s.clips.iter_mut()).for_each(at);
+        }
+    }
+
+    /// The layer as `pack.json` again ([`Layer::parse`] reads it back to
+    /// the same layer): a cooked pack's blob.
+    pub fn to_json(&self) -> String {
+        use serde_json::json;
+        let mut root = Map::new();
+        if let Some(s) = self.scheme {
+            root.insert("scheme".into(), json!(s.name()));
+        }
+        if !self.seeds.is_empty() {
+            let seeds: Map<String, Value> = self
+                .seeds
+                .iter()
+                .map(|(n, [l, d])| (n.clone(), design::join(&json!(l), &json!(d))))
+                .collect();
+            root.insert("seeds".into(), Value::Object(seeds));
+        }
+        let [light, dark] = &self.theme;
+        if !light.is_empty() || !dark.is_empty() {
+            let theme = design::join(&Value::Object(light.clone()), &Value::Object(dark.clone()));
+            root.insert("theme".into(), theme);
+        }
+        if !self.variants.is_empty() {
+            root.insert("variants".into(), json!(self.variants));
+        }
+        if !self.fonts.is_empty() {
+            let faces: Vec<Value> = self
+                .fonts
+                .iter()
+                .map(|f| {
+                    let mut m = json!({ "family": f.family, "src": f.src, "weight": f.weight });
+                    if f.italic {
+                        m["style"] = json!("italic");
+                    }
+                    if let Some(r) = &f.unicode_range {
+                        m["unicodeRange"] = json!(r);
+                    }
+                    m
+                })
+                .collect();
+            root.insert("fonts".into(), Value::Array(faces));
+        }
+        if !self.icons.is_empty() {
+            root.insert("icons".into(), json!(self.icons));
+        }
+        if !self.sounds.is_empty() {
+            let sound = |s: &Sound| json!({ "clips": s.clips, "volume": s.volume, "pitch": s.pitch });
+            let mut m = Map::new();
+            for (scope, sounds) in &self.sounds {
+                let events: Map<String, Value> = sounds.iter().map(|(e, s)| (e.clone(), sound(s))).collect();
+                if scope.is_empty() {
+                    m.extend(events);
+                } else {
+                    m.insert(scope.clone(), Value::Object(events));
+                }
+            }
+            root.insert("sounds".into(), Value::Object(m));
+        }
+        Value::Object(root).to_string()
+    }
+}
+
 impl Pack {
     /// `layers` merged in order, the default pack first: a later layer
     /// replaces an earlier one's entry of the same name (a theme entry, a
@@ -468,6 +560,25 @@ mod tests {
             let e = Layer::parse(text).unwrap_err();
             assert!(e.starts_with(wants), "{text}: {e}");
         }
+    }
+
+    #[test]
+    fn a_resolved_layer_writes_back_to_itself() {
+        let mut l = Layer::parse(r##"{ "scheme": "light", "seeds": { "primary": { "light": "#111111", "dark": "#eeeeee" } },
+            "theme": { "colors": { "gold": "#ffd23f", "surface": { "light": "#ffffff", "dark": "#000000" } } },
+            "variants": { "Panel.frame": "p-2" },
+            "fonts": [{ "family": "A", "src": "a.ttf", "weight": 700, "unicodeRange": "U+4E00-9FFF" }, { "family": "B", "src": "@styles/shared/b.ttf" }],
+            "icons": { "star": "art/star.svg" },
+            "sounds": { "press": { "clips": ["/sfx/tap.ogt"], "volume": [0.2, 0.3] }, "Button.base": { "hover": { "clips": ["t.ogt"] } } } }"##).unwrap();
+        l.resolve("styles/cartoon");
+        assert_eq!(l.assets(), ["@styles/shared/b.ttf", "sfx/tap.ogt", "styles/cartoon/a.ttf", "styles/cartoon/art/star.svg", "styles/cartoon/t.ogt"]);
+        let again = Layer::parse(&l.to_json()).unwrap();
+        assert_eq!(again.to_json(), l.to_json());
+        assert_eq!(again.theme, l.theme);
+        assert_eq!(again.seeds, l.seeds);
+        assert_eq!(again.fonts, l.fonts);
+        assert_eq!(again.sounds, l.sounds);
+        assert_eq!(again.scheme, Some(Scheme::Light));
     }
 
     #[test]

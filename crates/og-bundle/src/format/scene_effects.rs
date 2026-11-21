@@ -341,6 +341,25 @@ impl BlobKind for Style {
 }
 
 row!(
+    /// The root of a style pack blob (a pack's `pack.json`,
+    /// og-ui-next's CONVENTIONS.md §Theme and packs).
+    PackMeta, "og.UiPack", 1 {
+        /// Bytes of the pack's JSON in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The style pack blob: `text` is the pack as og_ui_next::pack writes it
+/// (`Layer::to_json`): checked, its asset paths resolved to asset ids.
+pub struct Pack;
+impl BlobKind for Pack {
+    const NAME: &'static str = "og.UiPack";
+    fn schemas() -> Vec<Schema> {
+        vec![PackMeta::schema()]
+    }
+}
+
+row!(
     /// The root of a scriptless Svelte UI document blob (`.svelte`).
     /// Version 4: the new core's compiled styles, a section per look
     /// (`next-<look key>`).
