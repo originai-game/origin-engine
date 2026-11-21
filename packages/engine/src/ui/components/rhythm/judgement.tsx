@@ -42,9 +42,11 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
         <View class={`flex-col items-center max-w-full`} data-broken={props.broken}>
           <Show when={!props.broken}>
             <Show when={Math.max(props.hit, 1)} keyed>
-              <Text class={`text-[10.714rem] compact:text-[3.714rem] leading-[0.85] font-bold tabular-nums italic whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55`}>
+              {() => (
+              <Text class={`text-[10.714rem] compact:text-[3.714rem] leading-[0.85] font-bold tabular-nums italic whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 animate-beat`}>
                 {formatNumber(props.combo)}
               </Text>
+              )}
             </Show>
           </Show>
           <View class={`flex-col items-center gap-0.5 compact:flex-row compact:items-baseline compact:gap-2`}>
@@ -66,8 +68,9 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
         </View>
       </Show>
       <Show when={judgement !== "none" ? Math.max(props.hit, 1) : 0} keyed>
+        {() => (
         <View
-          class={`flex-col items-center max-w-full mt-6 compact:mt-3`}
+          class={`flex-col items-center max-w-full mt-6 compact:mt-3 animate-stamp`}
           data-judgement={judgement}
           data-judgement-perfect={judgement === "perfect"}
           data-judgement-great={judgement === "great"}
@@ -108,6 +111,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
             </View>
           </Show>
         </View>
+        )}
       </Show>
     </View>
   );

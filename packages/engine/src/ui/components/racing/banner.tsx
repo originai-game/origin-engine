@@ -32,27 +32,46 @@ function ordinal(n: number): string {
  */
 export function RacingBanner(props: RacingBannerProps) {
   const kind = () => props.kind ?? "none";
+  // The plate's content, shared by the two entrances: the stamp for a
+  // countdown, the rise for every other call.
+  const plateInner = () => (
+    <>
+      <View class="flex-row items-baseline justify-center gap-x-2 max-w-full min-w-0">
+        <Text class={`min-w-0 text-[1.714rem] leading-[1.1] font-bold tabular-nums tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-fg text-shadow-xs text-shadow-bg/55 compact:text-[1.143rem] group-data-kind-countdown/plate:text-[2.429rem] group-data-kind-countdown/plate:tracking-normal`}>
+          {kind() === "countdown" ? formatNumber(props.figure) : kind() === "go" ? t("racing.banner.go") : kind() === "finalLap" ? t("racing.banner.finalLap") : kind() === "finish" ? t("racing.banner.finish") : props.text}
+        </Text>
+        <Show when={kind() === "finish" && props.place > 0}>
+          <Text class={`shrink-0 text-[1.714rem] font-bold tabular-nums whitespace-nowrap text-[#38e8ff] compact:text-[1.143rem]`}>{ordinal(props.place)}</Text>
+        </Show>
+      </View>
+      <Show when={props.detail !== ""}>
+        <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] text-shadow-xs text-shadow-bg/55 compact:tracking-normal`}>{props.detail}</Text>
+      </Show>
+    </>
+  );
   return (
     <View class={`pointer-events-none w-full max-w-full text-fg`} role="status" label={t("racing.banner.name")} data-kind-countdown={kind() === "countdown"}>
       <Show when={kind() === "countdown" || kind() === "go" || kind() === "finalLap" || kind() === "finish" || (kind() === "call" && props.text !== "")}>
-        <Show when={props.at} keyed>
+        <Show when={props.at + 1} keyed>
           {() => (
-            <View
-              class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2.288px_0px_#38e8ff] compact:py-[0.286rem] compact:px-[1rem]`}
-              data-kind-countdown={kind() === "countdown"}
+            <Show
+              when={kind() === "countdown"}
+              fallback={
+                <View
+                  class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2.288px_0px_#38e8ff] transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 compact:py-[0.286rem] compact:px-[1rem]`}
+                  data-kind-countdown={false}
+                >
+                  {plateInner()}
+                </View>
+              }
             >
-              <View class="flex-row items-baseline justify-center gap-x-2 max-w-full min-w-0">
-                <Text class={`min-w-0 text-[1.714rem] leading-[1.1] font-bold tabular-nums tracking-[0.22em] uppercase whitespace-nowrap overflow-hidden text-fg text-shadow-xs text-shadow-bg/55 compact:text-[1.143rem] group-data-kind-countdown/plate:text-[2.429rem] group-data-kind-countdown/plate:tracking-normal`}>
-                  {kind() === "countdown" ? formatNumber(props.figure) : kind() === "go" ? t("racing.banner.go") : kind() === "finalLap" ? t("racing.banner.finalLap") : kind() === "finish" ? t("racing.banner.finish") : props.text}
-                </Text>
-                <Show when={kind() === "finish" && props.place > 0}>
-                  <Text class={`shrink-0 text-[1.714rem] font-bold tabular-nums whitespace-nowrap text-[#38e8ff] compact:text-[1.143rem]`}>{ordinal(props.place)}</Text>
-                </Show>
+              <View
+                class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2.288px_0px_#38e8ff] animate-stamp compact:py-[0.286rem] compact:px-[1rem]`}
+                data-kind-countdown={true}
+              >
+                {plateInner()}
               </View>
-              <Show when={props.detail !== ""}>
-                <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] text-shadow-xs text-shadow-bg/55 compact:tracking-normal`}>{props.detail}</Text>
-              </Show>
-            </View>
+            </Show>
           )}
         </Show>
       </Show>

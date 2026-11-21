@@ -33,9 +33,9 @@ export function RacingBonus(props: RacingBonusProps) {
         </View>
       </Show>
       <Show when={props.points !== ""}>
-        <Show when={props.at} keyed>
+        <Show when={props.at + 1} keyed>
           {() => (
-            <View class={`flex-col items-center gap-y-[0.143rem] max-w-full min-w-0 compact:items-start compact:flex-[0_1_auto]`} role="status">
+            <View class={`flex-col items-center gap-y-[0.143rem] max-w-full min-w-0 compact:items-start compact:flex-[0_1_auto] animate-stamp`} role="status">
               <Text class={`pl-[0.286rem] pr-[0.571rem] text-[2.429rem] leading-none italic font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 compact:pl-0 compact:pr-[0.429rem] compact:text-[1.143rem]`}>{props.points}</Text>
               <Show when={props.detail !== ""}>
                 <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-gold text-shadow-xs text-shadow-bg/55 compact:tracking-normal`}>{props.detail}</Text>

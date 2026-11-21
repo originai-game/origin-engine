@@ -21,7 +21,8 @@ export function RhythmChain(props: RhythmChainProps) {
     <View class={`flex-row items-center gap-1 max-w-full`} role="group" label={t("rhythm.chain.name", { multiplier: props.multiplier })}>
       <Show when={props.multiplier !== ""}>
         <Show when={`${props.multiplier}·${props.hit}`} keyed>
-          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}>
+          {() => (
+          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none animate-pop`}>
             <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7]`}>
               {t("rhythm.chain.label")}
             </Text>
@@ -29,6 +30,7 @@ export function RhythmChain(props: RhythmChainProps) {
               {props.multiplier}
             </Text>
           </View>
+          )}
         </Show>
         <Show when={(props.steps ?? 8) > 0}>
           <View
