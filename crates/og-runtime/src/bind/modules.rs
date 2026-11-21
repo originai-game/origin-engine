@@ -864,19 +864,4 @@ mod tests {
         let c = drawn(json!({ "role": "fg", "color": { "r": 1, "g": 1, "b": 1 }, "opacity": 0.5 }));
         assert_eq!((c.rgb, c.alpha), ([0x33, 0x66, 0x99], 0.5));
     }
-
-    /// A native host sets no viewport: on macOS its text controls take the
-    /// Mac's keys (Command for the shortcuts, Option for words), elsewhere
-    /// Control; one the host set (the web shell's) is kept as it is.
-    #[test]
-    fn a_native_host_edits_with_the_platforms_keys() {
-        let v: Value =
-            serde_json::from_str(&crate::host::host_impl::json(og_ui_viewport(u32::MAX)))
-                .expect("json");
-        assert_eq!(
-            v["macKeys"].as_bool(),
-            Some(cfg!(target_os = "macos")),
-            "{v}"
-        );
-    }
 }

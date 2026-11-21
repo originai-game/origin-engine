@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "tests/fixtures/ring.bin",
-      "sha256": "e90518ce6236cee952131df161babea52945953c2ec840f2d1b2a366699c3283",
+      "sha256": "8b0113a08a7a20f6d6b3cce2100b6f4968989896baa6180d81d824a3b1bf6161",
       "size": 16392,
       "visibility": "public"
     }
