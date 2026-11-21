@@ -85,7 +85,7 @@ node); strings are a u32 byte length and UTF-8; numbers are little-endian.
 | 3 | `setText` | id, text | |
 | 4 | `setClass` | id, class | the class string |
 | 5 | `setStyle` | id, style | inline declarations as text, over the class |
-| 6 | `setProp` | id, name, value (text) | `src`, `name` (icon), `disabled`, `tabIndex`, `value`, `role`, `label`, `data-*` |
+| 6 | `setProp` | id, name, value (text) | `src`, `name` (icon), `disabled`, `tabIndex`, `value`, `role`, `label`, `data-*`, and the a11y props (§Accessibility) |
 | 7 | `listen` | id, event u8, enabled u8 | which events the node wants |
 | 8 | `insert` | parent, child, before (u32, `0xFFFFFFFF`: last) | puts or moves the child |
 | 9 | `remove` | parent, child | detaches it |
@@ -102,6 +102,51 @@ value (strings; empty unless `key` or `change`), which the renderer
 dispatches to handlers by id. A refused op stops the batch (the ops before
 it stay applied) and the reply is `OGER` and the reason. `data-*` props are
 the states a class variant reads (`data-ready:` …).
+
+## Accessibility
+
+What a node is for a screen reader comes from its tag, these props and
+its listeners; `og-ui-next/src/a11y.rs` builds the AccessKit tree from
+them and the arena's boxes and texts. All are `setProp` names; the value is
+its JSON text (unquoted text reads as a string), and `null` or empty
+unsets it.
+
+| Prop | Value | Means |
+|---|---|---|
+| `role` | an ARIA role name (below) | what it is, over its tag's role |
+| `label` | string | its name; without one a control is named by the text inside it |
+| `description` | string | read after the name |
+| `value` | string | an input's text |
+| `valueText` | string | a range's value as words |
+| `valueMin`, `valueMax`, `valueNow` | number | a range's bounds and value |
+| `checked` | `true`, `false` or `"mixed"` | a checkbox's, radio's or switch's state |
+| `pressed` | `true`, `false` or `"mixed"` | a toggle button's state |
+| `selected`, `expanded` | bool | an option's or tab's, a disclosure's |
+| `busy`, `current` | bool | loading; the current item of a set |
+| `disabled` | bool | unavailable: no actions |
+| `tabIndex` | number | `>= 0` the keyboard reaches it, `-1` it does not |
+| `level` | 1–6 | a heading's level |
+| `live` | `"polite"`, `"assertive"`, `"off"` | how its changes are announced (`status` and `log` are polite, `alert` assertive) |
+| `modal` | bool | a dialog: while one is shown the tree holds only the topmost and what contains it |
+| `hidden` | bool | left out of the tree with its subtree; it still draws |
+
+Roles: `button` `link` `heading` `image` `text` `checkbox` `radio`
+`switch` `slider` `spinbutton` `textbox` `combobox` `listbox` `option`
+`tab` `tablist` `tabpanel` `radiogroup` `progressbar` `meter` `timer`
+`status` `alert` `log` `dialog` `alertdialog` `tooltip` `separator` `list`
+`listitem` `menu` `menubar` `menuitem` `toolbar` `grid` `row` `gridcell`
+`region` `navigation` `main` `group`, and `none` (left out, its children
+join its parent). Another name is a group.
+
+Without `role`: a `text` node is static text, an `input` a text box, a
+`scroll` a scroll view, an `image`/`icon`/`svg` an image when labelled. A
+`view` listening to `press` or `tap` is a button, a modal one a dialog,
+one the keyboard reaches or that is labelled a group; any other view is a
+plain container, left out with its children joining its parent. Inside a
+button, link, checkbox, radio, switch, tab, option, menu item, heading or
+text, the texts are its name, not nodes. A node whose record is
+`display: none` (`hidden`, the class) is absent, as is an empty text.
+Visual hiding is a class; `hidden` the prop hides from the tree alone.
 
 ## Classes and the Record (head 1)
 

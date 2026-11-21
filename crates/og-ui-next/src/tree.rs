@@ -193,6 +193,9 @@ pub struct Tree {
     /// What it paints (og-draw's arena, drawn by og-render's paint
     /// pass), refilled in place: its generation moves each repaint.
     pub drawn: Paint,
+    /// Each arena node's semantics for the accessibility tree, written by
+    /// the op applier ([`crate::a11y`]).
+    pub sem: crate::a11y::Semantics,
     /// Each element's place on screen, whether it shows, and the clip its
     /// children paint in (x0, y0, x1, y1).
     abs: Vec<(f32, f32, bool, [f32; 4])>,
@@ -395,6 +398,7 @@ impl Tree {
             dirty: Vec::new(),
             paint: true,
             drawn: Paint::default(),
+            sem: crate::a11y::Semantics::default(),
             abs: Vec::new(),
             glyphs: Vec::new(),
             xfs: Vec::new(),

@@ -5,6 +5,7 @@
 //! style through the resolver, once per distinct pair.
 
 use super::*;
+use crate::a11y;
 
 /// The first bytes of an op batch, which no store command batch starts
 /// with (the wire codec's first byte is a value tag, 0 to 6).
@@ -325,6 +326,8 @@ impl Tree {
     /// The ids of `e` and what is under it go back to the renderer.
     fn unbind(&mut self, e: u32) {
         let js = self.els[e as usize].js;
+        // What is on its way out is no longer in the accessibility tree.
+        self.sem.exiting(self.els[e as usize].node, true);
         if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
             *slot = NONE;
         }
@@ -343,6 +346,7 @@ impl Tree {
         let (node, js) = (el.node, el.js);
         self.arena.detach(node);
         self.motion.forget(node);
+        self.sem.release(node);
         self.leaving.retain(|l| l.0 != e);
         if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
             *slot = NONE;
@@ -405,12 +409,15 @@ impl Tree {
                 // create
                 1 => {
                     let id = r.u32()?;
-                    let kind = match r.u8()? {
+                    let tag = r.u8()?;
+                    let kind = match tag {
                         5 => Kind::Icon,
                         0..=6 => Kind::Box,
                         t => return Err(format!("og.ui ops: unknown tag {t}")),
                     };
-                    self.create(id, kind, false)?;
+                    let e = self.create(id, kind, false)?;
+                    self.sem
+                        .create(self.els[e as usize].node, a11y::Kind::of(tag));
                 }
                 // createText
                 2 => {
@@ -418,6 +425,7 @@ impl Tree {
                     let text = r.str()?;
                     let e = self.create(id, Kind::Label, true)?;
                     self.set_text(e, text);
+                    self.sem.create(self.els[e as usize].node, a11y::Kind::Text);
                 }
                 // setText
                 3 => {
@@ -437,6 +445,7 @@ impl Tree {
                 6 => {
                     let e = self.op(r.u32()?)?;
                     let (name, value) = (r.str()?, r.str()?);
+                    self.sem.prop(self.els[e as usize].node, name, value);
                     match name {
                         "disabled" => {
                             let on = !matches!(value, "" | "false" | "0");
@@ -468,6 +477,8 @@ impl Tree {
                         el.listens & !ev.bit()
                     };
                     el.clickable = el.listens & (Event::Press.bit() | Event::Tap.bit()) != 0;
+                    let (node, pressable) = (el.node, el.clickable);
+                    self.sem.pressable(node, pressable);
                 }
                 // insert
                 8 => {
@@ -490,6 +501,7 @@ impl Tree {
                     let el = &mut self.els[child as usize];
                     (el.parent, el.arena_parent) = (p, p);
                     self.leaving.retain(|l| l.0 != child);
+                    self.sem.exiting(el.node, false);
                     self.ordered = false;
                     self.paint = true;
                     self.reapply(child);
@@ -512,6 +524,7 @@ impl Tree {
                     // until its exit settles.
                     let to = self.classes.presence(el.class, 1);
                     if self.motion.exit(el.node, &el.record, to) {
+                        self.sem.exiting(el.node, true);
                         self.leaving.push((child, false));
                         self.paint = true;
                         continue;
@@ -532,6 +545,8 @@ impl Tree {
                 // placeholder: an anchor that takes no room
                 11 => {
                     let e = self.create(r.u32()?, Kind::Box, false)?;
+                    self.sem
+                        .create(self.els[e as usize].node, a11y::Kind::Placeholder);
                     self.els[e as usize].hidden = 1;
                     self.inherit(e);
                 }
@@ -564,6 +579,25 @@ impl Tree {
 }
 
 impl Tree {
+    /// The accessibility update to send `client` after this frame, when
+    /// what it shows changed: the arena's nodes with their semantics, at
+    /// the viewport's size and `scale` (physical px per CSS px). `focus`:
+    /// the arena node the keyboard's focus is on.
+    pub fn a11y(
+        &self,
+        client: &mut a11y::Tree,
+        focus: Option<Id>,
+        scale: f32,
+    ) -> Option<accesskit::TreeUpdate> {
+        let (width, height) = self.env.size.get();
+        let viewport = a11y::Viewport {
+            width,
+            height,
+            scale,
+        };
+        client.update(&self.arena, &self.sem, focus, viewport)
+    }
+
     /// Op node `id`'s box on screen (x, y, width, height) as last painted,
     /// when it shows.
     pub fn op_box(&self, id: u32) -> Option<[f32; 4]> {
@@ -800,6 +834,13 @@ mod tests {
         t.set_time(1.3, false);
         frame(&mut t);
         assert_eq!(alpha_at(&t, 50.0), Some(1.0));
+        let three = t.els[t.op(3).unwrap() as usize].node as u64;
+        let mut client = a11y::Tree::new();
+        let kids = |u: &accesskit::TreeUpdate| {
+            let root = &u.nodes.iter().find(|n| n.0.0 == 0).unwrap().1;
+            root.children().iter().map(|c| c.0).collect::<Vec<_>>()
+        };
+        assert_eq!(kids(&t.a11y(&mut client, None, 1.0).unwrap()), [three]);
         // Removed: it fades out where it was and takes no press.
         let mut b = Batch::default();
         b.op(9).u32(1).u32(3);
@@ -807,6 +848,11 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
         t.set_time(1.4, false);
         frame(&mut t);
+        let u = t.a11y(&mut client, None, 1.0).unwrap();
+        assert!(
+            kids(&u).is_empty(),
+            "a reader no longer finds what is on its way out"
+        );
         let a = alpha_at(&t, 50.0).unwrap();
         assert!((a - 0.5).abs() < 0.01, "half out after 0.1 s: {a}");
         assert!(t.op(4).is_err(), "a released id is free at once");
@@ -823,5 +869,67 @@ mod tests {
         t.set_time(1.8, false);
         let (_, painted) = t.present(&og_ui::Fonts::default(), &IconAtlas::default());
         assert!(!painted);
+    }
+
+    /// The ops' tags, a11y props and listeners reach the accessibility
+    /// tree: a pressed view is a button named by its text, at its box; a
+    /// prop's text sets a role; a release takes the node out.
+    #[test]
+    fn ops_reach_the_accessibility_tree() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0); // view 1, a row
+        b.op(4).u32(1).str("row");
+        b.op(1).u32(2).u8(0); // view 2, pressed
+        b.op(4).u32(2).str("b");
+        b.op(7).u32(2).u8(Event::Press as u8).u8(1);
+        b.op(2).u32(3).str("Play");
+        b.op(1).u32(4).u8(0); // view 4, a status
+        b.op(6).u32(4).str("role").str("status");
+        b.op(6).u32(4).str("label").str("\"Wave 3\"");
+        b.op(11).u32(5);
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        b.op(8).u32(2).u32(3).u32(u32::MAX);
+        b.op(8).u32(1).u32(4).u32(u32::MAX);
+        b.op(8).u32(1).u32(5).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let node = |e: u32| t.els[t.op(e).unwrap() as usize].node as u64;
+        let (two, four) = (node(2), node(4));
+        let mut client = a11y::Tree::new();
+        let u = t.a11y(&mut client, None, 1.0).unwrap();
+        let get = |u: &accesskit::TreeUpdate, id: u64| {
+            u.nodes.iter().find(|n| n.0.0 == id).map(|n| n.1.clone())
+        };
+        let root = get(&u, 0).unwrap();
+        assert_eq!(
+            root.children().iter().map(|c| c.0).collect::<Vec<_>>(),
+            [two, four],
+            "the row and the placeholder are no nodes, the text is the button's"
+        );
+        let button = get(&u, two).unwrap();
+        assert_eq!(
+            (button.role(), button.label()),
+            (accesskit::Role::Button, Some("Play"))
+        );
+        let r = button.bounds().unwrap();
+        assert_eq!((r.x0, r.y0, r.x1, r.y1), (0.0, 0.0, 50.0, 20.0));
+        let status = get(&u, four).unwrap();
+        assert_eq!(
+            (status.role(), status.label()),
+            (accesskit::Role::Status, Some("Wave 3"))
+        );
+        assert!(t.a11y(&mut client, None, 1.0).is_none(), "nothing changed");
+        let mut b = Batch::default();
+        b.op(10).u32(2);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let u = t.a11y(&mut client, None, 1.0).unwrap();
+        let root = get(&u, 0).unwrap();
+        assert_eq!(
+            root.children().iter().map(|c| c.0).collect::<Vec<_>>(),
+            [four]
+        );
     }
 }

@@ -43,16 +43,17 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub fn of(tag: &str) -> Kind {
+    /// A `create` op's tag code (CONVENTIONS.md §Ops: 0 View, 1 Text,
+    /// 2 Image, 3 Scroll, 4 Input, 5 Icon, 6 Svg and its shapes 7 up).
+    pub fn of(tag: u8) -> Kind {
         match tag {
-            "text" => Kind::Text,
-            "image" => Kind::Image,
-            "icon" => Kind::Icon,
-            "scroll" => Kind::Scroll,
-            "input" => Kind::Input,
-            "svg" => Kind::Svg,
-            "placeholder" => Kind::Placeholder,
-            _ => Kind::View,
+            1 => Kind::Text,
+            2 => Kind::Image,
+            3 => Kind::Scroll,
+            4 => Kind::Input,
+            5 => Kind::Icon,
+            6.. => Kind::Svg,
+            0 => Kind::View,
         }
     }
 }
@@ -78,6 +79,8 @@ pub struct Sem {
     pub hidden: bool,
     pub modal: bool,
     pub current: bool,
+    /// On its way out (an exit animation plays): no longer in the tree.
+    pub exiting: bool,
     pub disabled: bool,
     /// `tabIndex`.
     pub tab_index: Option<i32>,
@@ -119,6 +122,7 @@ impl Sem {
         (
             s.busy,
             s.hidden,
+            s.exiting,
             s.modal,
             s.current,
             s.disabled,
@@ -146,6 +150,7 @@ static PLAIN: Sem = Sem {
     hidden: false,
     modal: false,
     current: false,
+    exiting: false,
     disabled: false,
     tab_index: None,
     press: false,
@@ -179,14 +184,14 @@ impl Semantics {
         &mut self.nodes[i]
     }
 
-    /// `create`/`createText`: the element's tag (`createText` is `text`).
-    pub fn create(&mut self, id: Id, tag: &str) {
+    /// `create`, `createText` (a [`Kind::Text`]) and `placeholder`.
+    pub fn create(&mut self, id: Id, kind: Kind) {
         if self.get(id).modal {
             self.modals -= 1;
         }
         let s = self.at(id);
         *s = Sem {
-            kind: Kind::of(tag),
+            kind,
             ..Sem::default()
         };
         s.reprint();
@@ -196,13 +201,24 @@ impl Semantics {
     /// `release`: the element is gone.
     pub fn release(&mut self, id: Id) {
         if (id as usize) < self.nodes.len() {
-            self.create(id, "view");
+            self.create(id, Kind::View);
         }
     }
 
-    /// `listen`: `press` and `tap` make it pressable.
-    pub fn listen(&mut self, id: Id, event: &str, on: bool) {
-        if matches!(event, "press" | "tap") && self.get(id).press != on {
+    /// Whether it is on its way out (removed or released while its exit
+    /// plays): the tree leaves it out at once.
+    pub fn exiting(&mut self, id: Id, on: bool) {
+        if self.get(id).exiting != on {
+            let s = self.at(id);
+            s.exiting = on;
+            s.reprint();
+            self.rev += 1;
+        }
+    }
+
+    /// Whether it listens to `press` or `tap`.
+    pub fn pressable(&mut self, id: Id, on: bool) {
+        if self.get(id).press != on {
             let s = self.at(id);
             s.press = on;
             s.reprint();
@@ -210,7 +226,8 @@ impl Semantics {
         }
     }
 
-    /// `setProp` with its value as JSON text (`null` unsets it). Answers
+    /// `setProp` with its value as JSON text (`null` or empty unsets it;
+    /// unquoted text is a string). Answers
     /// whether the name is one of §Accessibility's; others are left to
     /// their owners.
     pub fn prop(&mut self, id: Id, name: &str, value: &str) -> bool {
@@ -285,7 +302,7 @@ impl<'a> Scalar<'a> {
                 Ok(s) => Scalar::Text(s),
                 Err(_) => Scalar::Null,
             },
-            _ => t.parse().map_or(Scalar::Null, Scalar::Number),
+            _ => t.parse().map_or(Scalar::Text(t.into()), Scalar::Number),
         }
     }
 
@@ -603,7 +620,7 @@ impl Tree {
         }
         while let Some(w) = self.stack.pop() {
             let s = sem.get(w.id);
-            if s.hidden || !arena.shown(w.id) {
+            if s.hidden || s.exiting || !arena.shown(w.id) {
                 continue;
             }
             let in_modal = w.in_modal || modal == Some(w.id);
@@ -696,7 +713,7 @@ fn topmost_modal(arena: &Arena, sem: &Semantics, stack: &mut Vec<Walk>) -> Optio
     });
     while let Some(w) = stack.pop() {
         let s = sem.get(w.id);
-        if s.hidden || !arena.shown(w.id) {
+        if s.hidden || s.exiting || !arena.shown(w.id) {
             continue;
         }
         if s.modal {
@@ -906,7 +923,7 @@ mod tests {
     impl Ui {
         fn new() -> Ui {
             let mut sem = Semantics::default();
-            sem.create(0, "view");
+            sem.create(0, Kind::View);
             Ui {
                 arena: Arena::new(),
                 sem,
@@ -915,13 +932,13 @@ mod tests {
 
         fn view(&mut self, parent: Id) -> Id {
             let id = self.arena.element(parent, CompactStyle::default());
-            self.sem.create(id, "view");
+            self.sem.create(id, Kind::View);
             id
         }
 
         fn text(&mut self, parent: Id, text: &str) -> Id {
             let id = self.arena.text(parent, text, 20.0);
-            self.sem.create(id, "text");
+            self.sem.create(id, Kind::Text);
             id
         }
 
@@ -974,7 +991,7 @@ mod tests {
         let mut ui = Ui::new();
         let bar = ui.view(0);
         let play = ui.view(bar);
-        ui.sem.listen(play, "press", true);
+        ui.sem.pressable(play, true);
         ui.text(play, "Play");
         ui.text(play, "now");
         let title = ui.text(bar, "Clear");
@@ -984,11 +1001,11 @@ mod tests {
         assert!(ui.sem.prop(hp, "role", "\"progressbar\""));
         ui.sem.prop(hp, "valueNow", "40");
         ui.sem.prop(hp, "valueMax", "100");
-        ui.sem.prop(hp, "label", "\"Health\"");
+        ui.sem.prop(hp, "label", "Health"); // unquoted text is a string
         assert!(!ui.sem.prop(hp, "src", "\"x.png\""), "not an a11y prop");
         let gone = ui.view(bar);
         ui.sem.prop(gone, "hidden", "true");
-        ui.sem.listen(gone, "press", true);
+        ui.sem.pressable(gone, true);
         let none = ui.arena.element(
             bar,
             CompactStyle::from(taffy::Style {
@@ -996,8 +1013,8 @@ mod tests {
                 ..taffy::Style::DEFAULT
             }),
         );
-        ui.sem.create(none, "view");
-        ui.sem.listen(none, "press", true);
+        ui.sem.create(none, Kind::View);
+        ui.sem.pressable(none, true);
         let blank = ui.text(bar, "  ");
         ui.lay_out();
         let t = ui.whole(Some(play));
@@ -1111,14 +1128,14 @@ mod tests {
         let mut ui = Ui::new();
         let hud = ui.view(0);
         let go = ui.view(hud);
-        ui.sem.listen(go, "press", true);
+        ui.sem.pressable(go, true);
         ui.text(go, "Go");
         let layer = ui.view(0);
         let dialog = ui.view(layer);
         ui.sem.prop(dialog, "modal", "true");
         ui.sem.prop(dialog, "label", "\"Quit?\"");
         let yes = ui.view(dialog);
-        ui.sem.listen(yes, "press", true);
+        ui.sem.pressable(yes, true);
         ui.text(yes, "Yes");
         ui.lay_out();
         let t = ui.whole(None);
