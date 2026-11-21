@@ -130,8 +130,9 @@ pub(crate) struct Next {
     /// and a large surface enlarge it. What leaves the tree for the
     /// surface (zones, the probe's and the mirror's boxes) is scaled by it.
     unit: f32,
-    /// The device whose bindings the `<Glyph>` nodes show.
-    device: Option<og_ui::Device>,
+    /// The device whose bindings the `<Glyph>` nodes show, and the
+    /// bindings' revision they show ([`og_ui::Ui::bindings_rev`]).
+    device: Option<(og_ui::Device, u64)>,
     /// The left stick's held direction and when it moves the focus again.
     stick: Option<(og_ui::Nav, f64)>,
 }
@@ -1026,8 +1027,10 @@ impl Next {
                 }
             };
             tree.input_done(ui.action_down("confirm"));
-            if tree.glyphs_wanted() || self.device != Some(device) {
-                self.device = Some(device);
+            // A rebind shows on the next frame, as a device change does.
+            let shown = (device, ui.bindings_rev());
+            if tree.glyphs_wanted() || self.device != Some(shown) {
+                self.device = Some(shown);
                 let icons = &self.icons;
                 tree.set_glyphs(&|action| {
                     ui.glyph(action)

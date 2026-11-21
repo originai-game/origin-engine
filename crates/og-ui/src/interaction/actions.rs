@@ -111,6 +111,10 @@ pub struct Actions {
     /// og-input's actions this tick, as the input frame carried them (what
     /// [`ActionDesc::action`] follows).
     pub(crate) feed: Vec<og_input::ActionFeed>,
+    /// Moves whenever what a glyph shows could change but for the device:
+    /// an action defined again, or og-input's bindings (a rebind, a
+    /// reset, an action added). [`crate::Ui::bindings_rev`].
+    pub(crate) rev: u64,
 }
 
 /// One entry of the action bar.
@@ -152,6 +156,7 @@ impl Ui {
             Some(d) => *d = desc,
             None => self.interaction.actions.defs.push(desc),
         }
+        self.interaction.actions.rev += 1;
         self.interaction.ensure_actions();
     }
 
@@ -203,6 +208,14 @@ impl Ui {
     /// The device the player used last (its glyphs are shown).
     pub fn device(&self) -> Device {
         self.interaction.actions.device
+    }
+
+    /// A count that moves when a binding's glyph could show something else
+    /// with the device unchanged: an action (re)defined, or og-input's
+    /// bindings changed (a rebind). What shows [`Ui::glyph`]s asks for
+    /// them again when it moves.
+    pub fn bindings_rev(&self) -> u64 {
+        self.interaction.actions.rev
     }
 
     /// Sets the device (the host's when it knows; a test's).
@@ -386,6 +399,17 @@ impl crate::ui::Interaction {
     pub(crate) fn actions_begin(&mut self, input: &InputFrame, env: &crate::ui::Env) {
         self.ensure_actions();
         self.actions.fired = std::mem::take(&mut self.actions.pending);
+        // Names and bindings only: the states change every tick.
+        let same = self.actions.feed.len() == input.actions.len()
+            && self
+                .actions
+                .feed
+                .iter()
+                .zip(&input.actions)
+                .all(|(a, b)| a.name == b.name && a.bindings == b.bindings);
+        if !same {
+            self.actions.rev += 1;
+        }
         self.actions.feed.clone_from(&input.actions);
         // The last device: a key or the mouse, a pad, a touch.
         let pad_used = input.gamepad.pressed != 0 || input.gamepad.stick.length() > 0.5;

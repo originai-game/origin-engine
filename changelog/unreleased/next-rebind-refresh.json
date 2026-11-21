@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui glyph (TSX)",
+      "summary": "A `glyph` prompt now shows the player's rebinding on the next frame: og.input.rebind, a reset, loaded bindings or an action defined again. Before, it changed only when the device did."
+    }
+  ]
+}

@@ -428,3 +428,37 @@ test("og.ui's unitScale lays the tree out in its units, and the probe reads its 
     engine.destroy();
   }
 });
+
+test("a glyph prompt shows the player's rebinding on the next frame", () => {
+  loadNativeHost();
+  const game = og.game({
+    start(world) {
+      og.input.defineAction(world, { name: "use", bindings: [{ control: "KeyE" }] });
+    },
+    ui(world) {
+      mount(world, () => Text({ glyph: "use" }), {});
+    },
+  });
+  const created = createEngine(game as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  const id = (engine.world as unknown as { id: number }).id;
+  try {
+    og.ui.previewViewport(engine.world, { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" } as never);
+    const shown = () => {
+      // The one element with text: the glyph.
+      const frame = JSON.parse(native().og_node_ui_frame(id)) as { elements: { text: string }[] };
+      return frame.elements.filter((e) => e.text).map((e) => e.text);
+    };
+    engine.advance(3);
+    // No pack art in this project: the binding's label in its place.
+    expect(shown()).toEqual(["E"]);
+    const r = og.input.rebind(engine.world, { action: "use", slot: 0, binding: { control: "KeyQ" } } as never);
+    expect(r.ok).toBe(true);
+    engine.advance(2);
+    expect(shown()).toEqual(["Q"]);
+  } finally {
+    renderers.delete(id);
+    engine.destroy();
+  }
+});
