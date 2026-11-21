@@ -12,6 +12,7 @@ export const CHOICE_LABELS = {
     film: ["Interactive film", "互动影游", "Footage that branches on the player's choices.", "随玩家选择分支的影像剧情。"],
   },
   genre: {
+    "interactive-film": ["Interactive film", "互动影游", "Footage that branches on the player's choices (form film).", "随玩家选择分支的影像剧情（形式为互动影游）。"],
     "action-platformer": ["Action platformer", "动作平台", "Run, jump and fight through obstacles.", "奔跑、跳跃并战胜沿途的障碍。"],
     shooter: ["Shooter", "射击", "Aim and shoot while managing movement and cover.", "瞄准射击，配合移动与掩护。"],
     rpg: ["Role-playing", "角色扮演", "Develop characters through quests and combat.", "通过任务与战斗培养角色。"],

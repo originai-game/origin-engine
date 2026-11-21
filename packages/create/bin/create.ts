@@ -10,7 +10,7 @@ import type { CreationChoices, CreationInput } from "./choices.ts";
 import { fontPackFor } from "./languages.ts";
 import type { FontPackLanguages } from "./languages.ts";
 
-export { CREATION_CHOICES, creationBlock, creationSchema, defaultView, FORM_VIEWS, formFields, formOf, GAME_ONLY, GENRE_VIEWS, inferCreationChoices, parseCreationInput } from "./choices.ts";
+export { CREATION_CHOICES, creationBlock, creationSchema, defaultView, FILM_GENRE, FORM_VIEWS, formFields, formOf, GAME_ONLY, GENRE_VIEWS, inferCreationChoices, parseCreationInput } from "./choices.ts";
 export type { CreationChoices, CreationInput, Form, Genre, View } from "./choices.ts";
 export { creationCompat, creationDocument, lookForms, previewSlots } from "./creation.ts";
 export type { CreationCompat, CreationDocument, PreviewFile, PreviewSlot } from "./creation.ts";
@@ -272,8 +272,9 @@ Choices are constraints and hints in project.ogt's create block.
 The look, variant and UI also configure its look file, which draws in the
 look's own mood; no gameplay is generated.
   --form      2d, 2.5d or 3d (a game, its view one of the form's), or film: an
-              interactive film (og.film), which adds a Yarn story, two segments and a
-              placeholder clip; genre, view and players do not apply to a film
+              interactive film (og.film), which adds a Yarn story, two segments, a
+              placeholder clip, the picture and the film-choices and subtitles screens;
+              --genre interactive-film is the same; view and players do not apply to a film
   --genre --view --look --variant --ui --platform --input --players --lang --music
               creation choices; --lang en,zh accepts comma-separated tags. A look must
               draw the form; a variant must be one of the look's. --mood is refused:
@@ -322,7 +323,7 @@ function main(argv: string[]): number {
     for (const key of FIELDS) {
       if (choices[key] !== undefined) continue;
       const now = resolveCreationChoices(premise, parseCreationInput(choices));
-      if (now.form === "film" && (GAME_ONLY as readonly string[]).includes(key)) continue;
+      if (now.form === "film" && ((GAME_ONLY as readonly string[]).includes(key) || key === "genre")) continue;
       const styles = readCatalogue();
       const variants = (styles.find(s => s.slug === now.look)?.variants ?? []).map(v => v.name);
       if (key === "variant" && !variants.length) continue;

@@ -3,7 +3,7 @@ import { CHOICE_LABELS, localized, LOOK_ZH } from "./choice-labels.ts";
 /** Creation vocabulary, defaults and inference rules. */
 export const CREATION_CHOICES = {
   form: ["2d", "2.5d", "3d", "film"],
-  genre: ["action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
+  genre: ["interactive-film", "action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
   view: ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"],
   ui: ["default", "cartoon", "fantasy", "scifi"],
   platform: ["phone-portrait", "phone-landscape", "desktop", "multi"],
@@ -19,7 +19,9 @@ export type View = Choice<"view">;
 export type Genre = Choice<"genre">;
 
 /** The fields a film leaves out: a film is footage paced by a Yarn story, not a game with a camera. */
-export const GAME_ONLY = ["genre", "view", "players"] as const;
+export const GAME_ONLY = ["view", "players"] as const;
+/** A film's genre, and only a film's: `--genre interactive-film` makes the form film. */
+export const FILM_GENRE = "interactive-film";
 type GameOnly = (typeof GAME_ONLY)[number];
 
 /** Each form's views; a game's view is one of its form's, and a film has none. */
@@ -32,6 +34,7 @@ export const FORM_VIEWS: { readonly [F in Form]: readonly View[] } = {
 
 /** Each genre's views, preferred first: a game's default view is the first of its form's. */
 export const GENRE_VIEWS: { readonly [G in Genre]: readonly View[] } = {
+  "interactive-film": [],
   "action-platformer": ["side-2d", "third-person-3d", "isometric-2.5d", "top-down-2d", "first-person-3d"],
   shooter: ["third-person-3d", "first-person-3d", "top-down-2d", "side-2d", "isometric-2.5d"],
   rpg: ["isometric-2.5d", "top-down-2d", "third-person-3d", "side-2d", "first-person-3d"],
@@ -72,7 +75,7 @@ export type CreationInput = { -readonly [K in keyof CreationChoices]?: CreationC
 
 const RULES: Partial<Record<ChoiceKey, readonly (readonly [string, RegExp])[]>> = {
   form: [["film", /interactive.(film|movie)|\bfmv\b|互动影游|互动电影|影游/i]],
-  genre: [["arena", /arena|竞技|对战/i], ["shooter", /shoot|\bfps\b|射击/i], ["rpg", /\brpg\b|role.play|角色扮演/i], ["puzzle-match", /puzzle|match.?3|解谜|消除/i], ["strategy-tower-defense", /strategy|tower.defen|策略|塔防/i], ["racing", /rac(e|ing)|赛车/i], ["runner", /runner|跑酷/i], ["roguelike-card", /rogue|deck|card|卡牌/i], ["idle", /idle|incremental|放置/i], ["rhythm", /rhythm|节奏/i], ["open-world", /open.world|探索/i], ["action-platformer", /platform|action|动作|跳跃/i]],
+  genre: [["interactive-film", /interactive.(film|movie)|\bfmv\b|互动影游|互动电影|影游/i], ["arena", /arena|竞技|对战/i], ["shooter", /shoot|\bfps\b|射击/i], ["rpg", /\brpg\b|role.play|角色扮演/i], ["puzzle-match", /puzzle|match.?3|解谜|消除/i], ["strategy-tower-defense", /strategy|tower.defen|策略|塔防/i], ["racing", /rac(e|ing)|赛车/i], ["runner", /runner|跑酷/i], ["roguelike-card", /rogue|deck|card|卡牌/i], ["idle", /idle|incremental|放置/i], ["rhythm", /rhythm|节奏/i], ["open-world", /open.world|探索/i], ["action-platformer", /platform|action|动作|跳跃/i]],
   view: [["isometric-2.5d", /isometric|2\.5d|等距/i], ["first-person-3d", /first.person|\bfps\b|第一人称/i], ["third-person-3d", /third.person|\b3d\b|第三人称/i], ["top-down-2d", /top.down|俯视/i], ["side-2d", /side.scroll|platform|\b2d\b|横版|跳跃/i]],
   platform: [["phone-landscape", /phone.landscape|手机横屏/i], ["phone-portrait", /portrait|mobile|phone|手机|竖屏/i], ["multi", /multi.platform|cross.platform|多端/i]],
   input: [["gamepad", /gamepad|controller|手柄/i], ["touch", /touch|触屏/i]],
@@ -101,9 +104,9 @@ export function creationSchema(looks: readonly string[]) {
       variant: { type: "string", pattern: SLUG, description: "One of the look's variants (the document's compat.looks[look].variants)." },
       lang: { type: "array", minItems: 1, uniqueItems: true, items: { type: "string", pattern: "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$" } },
     },
-    // A film has no genre, view or players; a game has all three, its view one of its form's.
+    // A film's genre is interactive-film and it has no view or players; a game has all three, its genre another, its view one of its form's.
     allOf: [
-      { if: { properties: { form: { const: "film" } } }, then: { not: { anyOf: GAME_ONLY.map(k => ({ required: [k] })) } }, else: { required: [...GAME_ONLY] } },
+      { if: { properties: { form: { const: "film" } } }, then: { properties: { genre: { const: FILM_GENRE } }, not: { anyOf: GAME_ONLY.map(k => ({ required: [k] })) } }, else: { required: [...GAME_ONLY], properties: { genre: { not: { const: FILM_GENRE } } } } },
       ...(["2d", "2.5d", "3d"] as const).map(form => ({ if: { properties: { form: { const: form } } }, then: { properties: { view: { enum: [...FORM_VIEWS[form]] } } } })),
     ],
   };
@@ -133,7 +136,7 @@ export function parseCreationInput(value: unknown): CreationInput {
 /**
  * Deterministic suggestions, not an LLM: the caller confirms them and supplies the chosen look's UI.
  * The form comes from an explicit form or view, then the premise, then `defaults`; a game's view is
- * one of its form's (its genre's first when nothing names one). A film has no genre, view or players.
+ * one of its form's (its genre's first when nothing names one). A film's genre is interactive-film; it has no view or players.
  */
 export function inferCreationChoices(premise: string, input: CreationInput = {}, defaults: CreationInput = {}): CreationChoices {
   const inferred: Record<string, string> = {};
@@ -146,11 +149,14 @@ export function inferCreationChoices(premise: string, input: CreationInput = {},
   const platform = validated.platform ?? suggestions.platform ?? fallback.platform ?? "desktop";
   const players = validated.players ?? suggestions.players ?? fallback.players ?? "single";
   const viewForm = (v?: View) => v && formOf(v);
-  const form: Form = validated.form ?? viewForm(validated.view) ?? suggestions.form ?? viewForm(suggestions.view) ?? fallback.form ?? viewForm(fallback.view) ?? (players === "single" ? "3d" : "2d");
+  if (validated.genre === FILM_GENRE && validated.form !== undefined && validated.form !== "film") throw new Error(`genre ${FILM_GENRE} is form film, not ${validated.form}`);
+  const form: Form = validated.form ?? (validated.genre === FILM_GENRE ? "film" : undefined) ?? viewForm(validated.view) ?? suggestions.form ?? viewForm(suggestions.view) ?? fallback.form ?? viewForm(fallback.view) ?? (players === "single" ? "3d" : "2d");
   if (form === "film") for (const k of GAME_ONLY) if (validated[k] !== undefined) throw new Error(`${k} does not apply to a film (form film): leave it out`);
+  if (form === "film" && validated.genre !== undefined && validated.genre !== FILM_GENRE) throw new Error(`a film's genre is ${FILM_GENRE}, not ${validated.genre}`);
+  if (form !== "film" && validated.genre === FILM_GENRE) throw new Error(`genre ${FILM_GENRE} is form film, not ${form}`);
   const lang = validated.lang ?? suggestions.lang ?? fallback.lang ?? (/[\u3040-\u30ff]/u.test(premise) ? ["ja"] : /[\u4e00-\u9fff]/u.test(premise) ? ["zh"] : ["en"]);
-  const genre = validated.genre ?? suggestions.genre ?? fallback.genre ?? "action-platformer";
-  const game = form === "film" ? {} : {
+  const genre = [validated.genre, suggestions.genre, fallback.genre].find(g => g !== undefined && g !== FILM_GENRE) ?? "action-platformer";
+  const game = form === "film" ? { genre: FILM_GENRE } : {
     genre,
     view: validated.view ?? [suggestions.view, fallback.view].find(v => v && formOf(v) === form) ?? defaultView(genre, form)!,
   };

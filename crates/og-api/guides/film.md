@@ -216,4 +216,24 @@ The world is deterministic, so a test walks `og.story.graph` from the
 start, chooses each choice of each film node in turn with `film:choose:<i>`
 and asserts every ending is reached and every segment played. Check also
 that a snapshot taken inside a window and restored reaches the same world
-hash as the run that was never interrupted.
+hash as the run that was never interrupted. A command runs between ticks
+and its restore applies before the next tick moves anything, so one
+command that snapshots and restores leaves the run on the same ticks:
+
+```ts
+// GameDesc.commands
+qa_roundtrip: (world) => {
+  const save = world.snapshot();
+  if (!save.ok) throw new Error(save.reason);
+  const r = world.restore(save.value);
+  if (!r.ok) throw new Error(r.reason);
+},
+```
+
+```ts
+const choose = "10.6:film:choose:0";
+const plain = await runPlaytest({ commands: `${choose};19.6:quit` });
+const restored = await runPlaytest({ commands: `${choose};11.1:qa_roundtrip;19.6:quit` });
+expect(restored.tick).toBe(plain.tick);
+expect(restored.hash).toBe(plain.hash);
+```

@@ -1803,12 +1803,13 @@ function known<T extends string>(what: string, value: string, keys: readonly T[]
 export function audioBrief(input: AudioBriefInput): AudioBrief {
   const music = known("music", input.music, MUSIC_STYLES);
   const mood = known("mood", input.mood, Object.keys(AUDIO_MOODS));
-  const genre = input.genre === undefined ? "film" : known("genre", input.genre, Object.keys(GENRES));
+  const film = input.genre === undefined || input.genre === "interactive-film";
+  const genre = film ? "film" : known("genre", input.genre!, Object.keys(GENRES));
   const premise = (input.premise ?? "").trim();
   const s = STYLES[music];
   const m = AUDIO_MOODS[mood]!;
-  const g = input.genre === undefined ? FILM : GENRES[genre]!;
-  const what = input.genre === undefined ? "an interactive film" : `a ${genre.replace(/-/g, " ")} game`;
+  const g = film ? FILM : GENRES[genre]!;
+  const what = film ? "an interactive film" : `a ${genre.replace(/-/g, " ")} game`;
   const about = premise ? `for ${what}: ${premise}` : `for ${what}`;
   const direction = [
     `Music style: ${music}. ${s.instruments[0]!.toUpperCase()}${s.instruments.slice(1)}.`,

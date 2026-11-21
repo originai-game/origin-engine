@@ -253,7 +253,7 @@ test("a look that does not draw the form or view is refused, naming the looks th
   expect(() => resolveCreationChoices("", { look: "cinematic-realism", view: "side-2d" })).toThrow(/For side-2d pick one of pixel, minimal-geometric, neon-vector, cartoon-2d$/);
   expect(() => resolveCreationChoices("", { form: "2d", view: "third-person-3d" })).toThrow("view third-person-3d is 3d, not form 2d");
   expect(() => resolveCreationChoices("", { look: "pixel", variant: "voxel" })).toThrow("look pixel has no variant 'voxel'");
-  for (const args of [["--form", "3d", "--look", "pixel"], ["--form", "film", "--genre", "rpg"], ["--look", "toy-3d", "--variant", "8bit"]]) {
+  for (const args of [["--form", "3d", "--look", "pixel"], ["--form", "film", "--genre", "rpg"], ["--form", "3d", "--genre", "interactive-film"], ["--look", "toy-3d", "--variant", "8bit"]]) {
     const r = cli("refused-pair", ...args);
     expect(r.code, r.err).toBe(1);
     expect(existsSync(join(scratch, "refused-pair"))).toBeFalse();
@@ -261,7 +261,7 @@ test("a look that does not draw the form or view is refused, naming the looks th
   // Each form's default view is one its default look draws.
   for (const form of CREATION_CHOICES.form) {
     const c = resolveCreationChoices("", { form });
-    if (form === "film") expect([c.genre, c.view, c.players]).toEqual([undefined, undefined, undefined]);
+    if (form === "film") expect([c.genre, c.view, c.players]).toEqual(["interactive-film", undefined, undefined]);
     else expect(FORM_VIEWS[form]).toContain(c.view!);
   }
   expect(resolveCreationChoices("", { form: "2d", genre: "rpg" }).view).toBe("top-down-2d");
@@ -269,15 +269,25 @@ test("a look that does not draw the form or view is refused, naming the looks th
   expect(resolveCreationChoices("", { look: "toy-3d", variant: "clay" })).toMatchObject({ variant: "clay" });
 });
 
-test("form film writes the film skeleton over the one skeleton, without the game-only fields", () => {
+test("form film (or genre interactive-film) writes the film skeleton over the one skeleton, without the game-only fields", () => {
+  // 底牌's playtest: --genre interactive-film was refused and the block read action-platformer.
+  const g = cli("film-genre", "--genre", "interactive-film", "--lang", "zh,en", "--no-prompt");
+  expect(g.code, g.err).toBe(0);
+  const genreBlock = read("film-genre/project.ogt").split("create {")[1]!;
+  for (const line of ['form "film"', 'genre "interactive-film"', 'look "cinematic-realism"']) expect(genreBlock).toContain(line);
+  expect(genreBlock).not.toMatch(/action-platformer|^\s*(view|players) /m);
+  expect(files(join(scratch, "film-genre"))).toContain("assets/story/film.yarn");
   const r = cli("film", "--form", "film", "--look", "painterly-3d", "--variant", "lush");
   expect(r.code, r.err).toBe(0);
   const made = files(join(scratch, "film"));
-  for (const f of ["assets/story/film.yarn", "assets/segments/opening.ogt", "assets/segments/ending.ogt", "assets/clips/opening.ogt", "assets/clips/opening.mp4", "tests/smoke.og.ts", "tsconfig.json"]) expect(made).toContain(f);
-  expect(read("film/src/main.ts")).toContain('og.film.start(world, { dialogue: "film", paused: true })');
+  for (const f of ["assets/story/film.yarn", "assets/segments/opening.ogt", "assets/segments/ending.ogt", "assets/clips/opening.ogt", "assets/clips/opening.mp4", "assets/ui/film-view.svelte", "tests/smoke.og.ts", "tsconfig.json"]) expect(made).toContain(f);
+  const main = read("film/src/main.ts");
+  expect(main).toContain('og.film.start(world, { dialogue: "film", paused: true })');
+  for (const screen of ["@ui/screens/film-choices.svelte", "@ui/screens/subtitles.svelte"]) expect(main).toContain(screen);
   const block = read("film/project.ogt").split("create {")[1]!;
   expect(block).toContain('form "film"');
-  expect(block).not.toMatch(/^\s*(genre|view|players) /m);
+  expect(block).toContain('genre "interactive-film"');
+  expect(block).not.toMatch(/^\s*(view|players) /m);
   expect(read("film/assets/looks/film.ogt")).toBe('type look\nversion 1\n---\nextends "painterly-3d"\nvariant "lush"\nui "fantasy"\n');
 });
 
@@ -308,9 +318,10 @@ test("the creation document matches the options, and a release cannot ship an un
   }
   expect(doc.compat.looks.pixel!.forms).toEqual(["2d", "film"]);
   expect(doc.compat.looks["minimal-geometric"]!.forms).toEqual(["2d", "2.5d", "3d", "film"]);
-  expect(doc.compat.formFields.film).not.toContain("genre");
+  expect(doc.compat.formFields.film).not.toContain("view");
   expect(doc.compat.genreDefaultView.rpg).toEqual({ "2d": "top-down-2d", "2.5d": "isometric-2.5d", "3d": "third-person-3d" });
-  expect(doc.defaults.byForm.film).not.toHaveProperty("genre");
+  expect(doc.defaults.byForm.film).toMatchObject({ genre: "interactive-film" });
+  expect(doc.defaults.byForm.film).not.toHaveProperty("view");
   // Filled: each slot carries its file; a missing or unknown slot throws.
   const filled = Object.fromEntries(slots.map((s, i) => [s.path, { url: `https://cdn/${s.path}`, sha256: String(i).padStart(64, "0"), size: i + 1, engine: "0.9.9" }]));
   const full = creationDocument(filled);

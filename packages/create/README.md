@@ -35,11 +35,14 @@ that form; a form and view that disagree are refused. `film` is an
 interactive film (`og api show film`): creation writes the same skeleton
 plus `assets/story/film.yarn` (three film nodes, two endings),
 `assets/segments/opening.ogt` and `ending.ogt`, a placeholder
-`assets/clips/opening.ogt` stream and an entry that loads and starts the
-film paused (from `templates/film`, packed as `film/`; the clip is pinned in
-`templates/og-assets.json`, so a checkout runs `bun scripts/assets.ts ensure
-templates` first). A film has no `genre`, `view` or `players`; giving one is
-refused. The look must draw the form (its catalogue `views`; every look
+`assets/clips/opening.ogt` stream, the picture's `assets/ui/film-view.svelte`
+and an entry that loads and starts the film paused and shows it with the
+built-in subtitles and film-choices screens (from `templates/film`, packed
+as `film/`; the clip is pinned in `templates/og-assets.json`, so a checkout
+runs `bun scripts/assets.ts ensure templates` first). `--genre
+interactive-film` chooses form film too. A film's genre is
+`interactive-film` and it has no `view` or `players`; another genre, a view
+or players is refused. The look must draw the form (its catalogue `views`; every look
 styles a film), and `--variant` must be one of the look's. Mood is not a
 creation choice: the look draws in its preset's or variant's own mood, and
 `--mood` is refused (write `mood "<word>"` in the look file to change it).
@@ -94,7 +97,7 @@ without a breaking changelog entry.
 |---|---|
 | `schemaVersion` | 1 |
 | `order`, `more` | the home page's questions in order (`form`, `genre`, `look`, `variant`, `ui`), and those behind "more settings" |
-| `schema` | `creationSchema(looks)`: JSON Schema 2020-12 of a selection, with `form`, `variant`, and `allOf` rules (a film has no genre, view or players; a game's view is its form's) |
+| `schema` | `creationSchema(looks)`: JSON Schema 2020-12 of a selection, with `form`, `variant`, and `allOf` rules (a film's genre is interactive-film and it has no view or players; a game's view is its form's) |
 | `options.<field>` | each option's `id`, `label` and `description` (`en`, `zh-CN`); views carry their `form`; looks carry `variants`; looks, variants and `ui` options carry `preview` |
 | `compat` | `formViews`, `genreViews` (preferred first), `genreDefaultView[genre][form]`, `formFields[form]` (the fields that apply), and `looks[slug]`: `forms`, `views`, recommended `ui`, `variants` |
 | `defaults` | the default `form` and `byForm[form]`: what creation picks with no premise |

@@ -57,7 +57,7 @@ export interface CreationCompat {
   /** Each genre's views, preferred first: its default view in a form is the first of that form's. */
   readonly genreViews: typeof GENRE_VIEWS;
   readonly genreDefaultView: Record<string, Partial<Record<Form, View>>>;
-  /** The fields each form asks for (a film has no genre, view or players). */
+  /** The fields each form asks for (a film has no view or players). */
   readonly formFields: Record<Form, string[]>;
   readonly looks: Record<string, { forms: Form[]; views: readonly string[]; ui: string; variants: string[] }>;
 }

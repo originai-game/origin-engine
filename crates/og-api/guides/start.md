@@ -21,7 +21,7 @@ having written project.ogt with `engine "<this version>"`, `look
 extending the chosen look.
 
 The first choice is `--form`: `2d`, `2.5d` or `3d` for a game, `film` for
-an interactive film.
+an interactive film (`--genre interactive-film` is the same choice).
 
 - A game's `view` is one of its form's: `side-2d` or `top-down-2d` for
   2d, `isometric-2.5d` for 2.5d, `third-person-3d` or `first-person-3d`
@@ -30,9 +30,13 @@ an interactive film.
   1 naming the looks that do.
 - `film` writes the same skeleton plus a film to replace: the story in
   `assets/story/film.yarn`, a segment per film node in `assets/segments/`,
-  a placeholder stream in `assets/clips/`, and a `src/main.ts` that loads
-  the story and the film and starts it paused (film §1 to §4). A film has
-  no `genre`, `view` or `players`; passing one exits 1.
+  a placeholder stream in `assets/clips/`, the picture's screen in
+  `assets/ui/film-view.svelte`, and a `src/main.ts` that loads the story
+  and the film, starts it paused and shows it with the built-in
+  `subtitles` and `film-choices` screens. Read the film guide next (`og api
+  show film`): it covers the story, segments, choices, saves and route
+  tests. A film's genre is `interactive-film`, and it has no `view` or
+  `players`; passing another genre, a view or players exits 1.
 - `--variant <name>` picks one of the look's variants (looks), written into
   the look file. The look draws in its own mood, the preset's or the
   variant's; `--mood` is refused (to change it, write `mood "<word>"` in
@@ -43,7 +47,8 @@ them as JSON, and writes nothing.
 
 The choices made at creation sit in project.ogt's `create` block: `form`,
 `genre`, `view`, `look`, `variant`, `ui`, `platform`, `input`,
-`players`, `lang`, `music` (a film's has no `genre`, `view` or `players`).
+`players`, `lang`, `music` (a film's genre is `interactive-film`, and it
+has no `view` or `players`).
 They are constraints and hints, not settings:
 
 - Nothing reads them at run time. `view side-2d` does not make the game 2D,

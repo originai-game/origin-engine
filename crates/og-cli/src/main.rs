@@ -39,11 +39,13 @@ usage: og <command> [options]
 
 commands:
   create [dir] [--name \"Name\"] [--id slug] [--premise \"one line\"] [--force] [--no-prompt]
-      [--genre G] [--view V] [--look L] [--variant V] [--ui U] [--platform P]
+      [--form F] [--genre G] [--view V] [--look L] [--variant V] [--ui U] [--platform P]
       [--input I] [--players P] [--lang en,zh] [--music M]
                       write one empty game project and its creation choices; `og new` is an alias;
                       never prompts with --no-prompt or without a terminal; --look is a catalogue
-                      style with a preset (an unknown one exits 1, listing them); the start guide §1
+                      style with a preset (an unknown one exits 1, listing them); --form film or
+                      --genre interactive-film writes an interactive film (og api show film);
+                      the start guide §1
   new [dir] [options]  alias for og create
   session [project]   keep a worktree's native host warm until idle or interrupted
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
