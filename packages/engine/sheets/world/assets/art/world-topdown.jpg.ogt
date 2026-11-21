@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Sample scene art for the world sheet's pages only (generated for the HUD
-# art direction; never part of an install). Colour art: sRGB.
-texture {
-}

@@ -172,7 +172,7 @@ for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], 
 // inside the screen, and a scoreboard row's figures never run into each
 // other. The drawn text's bounds (the dump's texts), not the layout boxes: a
 // box keeps its width while the words spill past it. They are read from the
-// native host's UI frame, as og ui sheet reads them.
+// native host's UI frame.
 type Drawn = { bounds: [number, number, number, number]; clip: [number, number, number, number]; text: string };
 const drawn = (e: Engine): Drawn[] => (JSON.parse(native().og_node_ui_frame((e as unknown as { id: number }).id)) as { texts?: Drawn[] }).texts ?? [];
 for (const pack of PACKS) test(`every member's stress fixture is drawn inside a phone at 150 % text in ${pack}, and the scoreboard's figures keep apart`, () => {

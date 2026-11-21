@@ -25,9 +25,8 @@
 // previews records). --slots FILE draws the creation document's preview slots
 // instead of names (create-game's previewSlots(), as JSON): a look or variant
 // slot as above, a
-// ui slot as the components sheet's hud page dressed in that pack (og ui
-// preview at the desktop breakpoint, 1280x720; the hud sheet's own style
-// command keeps the default style), each to --previews/<slot path>. Two ui
+// ui slot as the UI gallery's item card dressed in that pack (src/node/gallery.ts,
+// 1280x720), each to --previews/<slot path>. Two ui
 // slots drawn the same fail the run: a pack must change the frame.
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
@@ -118,18 +117,14 @@ function toWebp(frame: string, preview: string): boolean {
   return true;
 }
 const env = gpu ? { ...process.env, OG_RENDERER: "hardware" } : process.env;
-/** Draws a ui slot: the components sheet's hud page in the slot's pack, at 1280x720. */
+/** Draws a ui slot: the UI gallery's item card (src/node/gallery.ts) in the slot's pack, at 1280x720. */
 function drawUi(slot: Slot, file: string): string | null {
-  const dir = join(repo, "target/look-previews", `ui@${slot.pack}`);
-  rmSync(dir, { recursive: true, force: true });
-  cpSync(join(engine, "sheets/components"), dir, { recursive: true, filter: (from) => !/\/(og-out|\.og)(\/|$)/.test(from) });
-  mkdirSync(join(dir, "node_modules/@origingame"), { recursive: true });
-  symlinkSync(engine, join(dir, "node_modules/@origingame/engine"));
-  const at = join(dir, "og-out/ui-preview");
-  const run = spawnSync(og, ["ui", "preview", dir, "--screen", "hud=page:hud", "--styles", slot.pack!, "--breakpoints", "desktop", "--locales", "game", "--scales", "100", "--out", at, ...(gpu ? ["--require-checked"] : [])], { encoding: "utf8", timeout: 300_000, env });
-  const frame = join(at, "cells/0.png");
+  const at = join(repo, "target/look-previews", `ui@${slot.pack}`);
+  rmSync(at, { recursive: true, force: true });
+  const run = spawnSync("bun", [join(engine, "src/node/gallery.ts"), "--only", "panels/item-card · default", "--packs", slot.pack!, "--out", at, "--og", og], { encoding: "utf8", timeout: 600_000, env: { ...env, OG_ENGINE_PACKAGE: engine } });
+  const frame = join(at, slot.pack!, "0000.png");
   if (run.status !== 0 || !existsSync(frame)) {
-    console.log(`${slot.path}: og ui preview failed (${run.status}): ${(run.stderr || run.stdout).trim().split("\n").slice(-4).join(" | ")}`);
+    console.log(`${slot.path}: the gallery failed (${run.status}): ${(run.stderr || run.stdout).trim().split("\n").slice(-4).join(" | ")}`);
     return null;
   }
   cpSync(frame, join(out, file));

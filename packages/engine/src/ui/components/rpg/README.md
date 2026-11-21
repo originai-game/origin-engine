@@ -153,7 +153,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgExperience` (`experience.svelte`) | `frame`, `reading`, `line`, `lit` |
 | `RpgWorldMap` (`world-map.svelte`) | `frame`, `marker` (a button: `[aria-selected]` `[data-kind]` `:disabled`), `row` (`[data-kind]`), `plate` (a marker's name), `caption` |
 
-Every member carries a `fixture:default` the sheet and the tests mount it
+Every member carries a `fixture:default` the gallery and the tests mount it
 from. Phone layouts come from the members' own media and container queries:
 the backpack's and menu bar's tabs scroll, the item card
 shrinks its hero so two stat rows show, the commands take two rows of three
@@ -163,49 +163,11 @@ phone the companions stand side by side, the quest tracker shows the step
 in play, the skills drop their consumables and the loot feed its older
 rows, and under a touch screen the key caps and hints are hidden.
 
-## Review sheet and tests
+## Gallery and tests
 
-`og ui sheet rpg` renders the five review pages (inventory, journal,
-equipment, explore, combat) from `packages/engine/sheets/rpg/`, in the
-default style (the fantasy pack is also available), with
-ja, zh-CN and ar string tables for the locale cells. The sheet's painted
-art (portraits, figure, item and skill icons, scene, map) was generated for
-it with gpt-image-2.6 through the OriginGame gateway and is sheet fixture
-data, not part of the components. The explore page lays out the action HUD as its approved
-mockup does, over the HUD art direction's sample stage, map, portraits and
-icons (`assets/art/hud-*.jpg`, sheet only). The blocks page lays out
-another HUD over the same stage from the blocks alone, as a game that
-wants its own layout does: the page owns every place and size.
-`og ui review rpg --style scifi` (or `--style cartoon`) renders the same
-pages in that pack, dressed by its tokens
-(`templates/styles/<pack>/base.css`).
+`bun packages/engine/src/node/gallery.ts --only rpg/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 `bun test tests/rpg.test.ts` (from `packages/engine`) mounts every member
 by name from a game page at desktop and phone, checks the intents, disabled
 states, keyed selection, keyboard and pad focus, and that a pack rule beats
 a component rule of equal specificity.
-
-The sheet's fixture text goes through `assets/strings/` (en, ja,
-zh-CN, ar) as a game's data would, so pseudo brackets every label. Pack type
-is in `em` of the body step so the player's text scale applies.
-
-### References
-
-`references/vulkan/` holds the 15 art-approved cells, recorded on the
-GPU host: the five
-pages at desktopHd, phonePortrait and phoneLandscape, 100 %, game locale.
-Capture the same cells and compare, from the repository root:
-
-```sh
-P=.amp/in/rpg-sheet; K=packages/engine/sheets/rpg
-rsync -a --delete --exclude references $K/ $P/
-source scripts/lock.sh; og_gpu_acquire rpg-sheet
-S=""; for p in inventory journal equipment combat explore; do S="$S --screen $p=style:fantasy;page:$p"; done
-OG_ENGINE_PACKAGE="$PWD/packages/engine" OG_STYLES_DIR="$PWD/templates/styles" \
-  og ui preview $P $S --breakpoints desktopHd,phonePortrait,phoneLandscape \
-  --scales 100 --locales game --settle 2 --out "$PWD/.amp/in/rpg-capture"
-bun $K/verify.ts .amp/in/rpg-capture
-```
-
-`verify.ts` rejects a missing cell or any changed pixel. Recording is
-manual: review each changed cell before replacing it.

@@ -42,37 +42,11 @@ divider's pointer events, a ground mark's world centre.
 `og ui eject --list` prints these with the screens. The component document
 test cooks every one from its fixture at desktop and phone sizes.
 
-## Review pages
+## Catalogue
 
-Every named page below has a `<page>-default` screen with
-`style:default;page:<page>`; render desktop and `phonePortrait`. The
-components sheet also accepts `sample:<member>:<fixture>` to inspect one
-panel or feedback component at full viewport size, for example
-`style:default;sample:tooltipCard:overflow`. Its all-fixtures `states` page
-is a catalogue, not a substitute for an isolated state check.
-
-The HUD sheet mounts `HudSheet`; its review command is
-`style:default;page:<page>`, with the HUD pages listed below.
-
-| Review area | Sheet and pages |
-| --- | --- |
-| HUD instruments (contained bars, centered rings/orbs, ordinary/warning/critical timers) | `sheets/hud`: `meters`, `objectives` |
-| Abilities and touch/button states (cooldown, charges, locked/unaffordable, held/disabled, overflow) | `sheets/hud`: `actions`, `buttons`, `touch` |
-| Compass and maps | `sheets/hud`: `navigation` |
-| Radial commands (chosen, disabled, unaffordable) and map-layer legend (selected, unselected) | `sheets/hud`: `tactics` |
-| Resource pips, boss/combo HUD, pickups, diagnostics and timed input | `sheets/hud-builtins`: `resources`, `resource-states`, `activity`, `activity-states`, `prompts`, `outcomes`, `waiting` |
-| Panels and data (breadcrumbs, grid, tooltip comparison, menu, chart, graph, carousel) | `sheets/components`: `panels`, isolated `sample` fixtures |
-| Feedback and loading (celebration, ribbon, skeletons, spinner, split panes, score thresholds, effects, action hints) | `sheets/components`: isolated `sample` fixtures |
-| Cards and run maps | `sheets/card`: `table`, `builder`, `run` |
-| Store, progression and social panels | `sheets/meta`: `store`, `progress`, `social`, `states` |
-| Base states, selectable rows and progress steps | `sheets/components`: `sample:emptyState`, `sample:errorState`, `sample:listItem`, `sample:steps` with named fixtures (`base/README.md`) |
-| Item slots and identity | `sheets/rpg`: `primitives` (`base/README.md`) |
-| Pass rewards, reveals, inbox and news | `sheets/components`: `sample:passTrack`, `sample:reveal`, `sample:inbox`, `sample:news` with named fixtures (`meta/README.md`) |
-| Tooltip comparison presence and long names | `sheets/components`: `sample:tooltipCard:comparison`, desktop side-by-side and phone stacked; signed deltas, added/removed stats |
-
-Shooter, racing, strategy and world keep their own group READMEs and
-sheets. World components keep anchor, ground and mass primitives; the world
-sheet's `scene`, `topdown` and `states` pages review them.
+`bun packages/engine/src/node/gallery.ts` renders every fixture of every
+component below under every pack (docs/ui.md §6.5); `--only hud/` keeps
+one directory.
 
 | Purpose | Documents |
 |---|---|

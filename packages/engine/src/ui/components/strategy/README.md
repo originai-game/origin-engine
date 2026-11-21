@@ -86,15 +86,9 @@ full, paused, overflow; commands: unaffordable, cooling, empty, overflow;
 tower: maxed, disabled, empty, overflow). Loading and error do not apply:
 the members draw data the game already has.
 
-## Review sheet and tests
+## Gallery and tests
 
-`og ui sheet strategy` renders `packages/engine/sheets/strategy/`, dressed
-by the fantasy pack: `field` (the normal page: the RTS HUD as its approved
-mockup over a battlefield, with sample art), `defence` (the stress page: an
-endless wave with five-digit counts, nine-digit stockpiles, an overflowing
-queue and a tier-ten tower with long names) and `states` (every member in
-every fixture state). Each page also has a `-default` screen with its
-explicit `style:default;page:<page>` commands.
+`bun packages/engine/src/node/gallery.ts --only strategy/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 `bun test tests/strategy.test.ts` (from `packages/engine`) mounts every
 member by name from a game page in every fixture at desktop and phone, in

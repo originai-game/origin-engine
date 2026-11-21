@@ -64,7 +64,7 @@ else
   # project; here, as og check does, through paths to packages/engine.
   configs=(packages/engine/tsconfig.json packages/engine/tsconfig.runtime.json
     packages/engine/tsconfig.templates.json)
-  for t in packages/create/template/ packages/engine/sheets/*/ tests/fixtures/*/; do
+  for t in packages/create/template/ tests/fixtures/*/; do
     [ -f "$t/project.ogt" ] || continue
     t="${t%/}"; w="$tmp/wrap/$t"
     mkdir -p "$w"

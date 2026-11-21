@@ -1535,7 +1535,11 @@ pub fn run(args: &[&str]) -> ExitCode {
     } else {
         // A configuration (packages/engine): every source under it, so an
         // engine component's bad import fails the engine's own typecheck.
-        missing_tables(&target.root, std::slice::from_ref(&target.root), &mut report);
+        missing_tables(
+            &target.root,
+            std::slice::from_ref(&target.root),
+            &mut report,
+        );
     }
     if json {
         println!("{}", report.json());

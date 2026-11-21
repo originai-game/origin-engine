@@ -31,9 +31,8 @@ import { collectPlaytests } from "./playtest-files.ts";
 import { beginBundle, createEngine, type Engine, type GameToken } from "../runtime.ts";
 import type { RunControl, RunOutput } from "./run.ts";
 import { og } from "../index.ts";
-import { cellName, checkFrame, formatText, measureFrame, measureLayout, measureScale, mergeFindings, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
+import { cellName, checkFrame, formatText, measureFrame, measureScale, mergeFindings, RULES, screensFromHelp, screensFromPlaytest, type UiCell, type UiFinding, type UiFrameSnapshot, type UiMeasure } from "./ui-check.ts";
 import { sheet, type SheetCell } from "./ui-sheet.ts";
-import { BASELINE } from "./ui-baseline.ts";
 
 /**
  * The surfaces of the matrix: CSS size, device pixels per CSS pixel, safe area, pointer. Phone and tablet as the
@@ -110,8 +109,7 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   }
   const cancelled = () => { if (control.signal?.aborted) throw new UiExit(130); };
   cancelled();
-  if (mode !== "check" && mode !== "preview" && mode !== "sheet" && mode !== "review") fail("usage: bun src/node/ui-run.ts check|preview|sheet|review --entry <bundle> --root <project> --out <dir> [...]");
-  const review = mode === "review";
+  if (mode !== "check" && mode !== "preview") fail("usage: bun src/node/ui-run.ts check|preview --entry <bundle> --root <project> --out <dir> [...]");
   const entry = opt("--entry"), root = opt("--root"), out = opt("--out");
   if (!entry || !root || !out) fail("--entry, --root and --out are required");
   const outDir = resolve(out!);
@@ -126,26 +124,21 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
     const eq = s.indexOf("=");
     return eq < 0 ? { name: s, commands: show.replaceAll("{screen}", s) } : { name: s.slice(0, eq), commands: s.slice(eq + 1) };
   });
-  if ((mode === "sheet" || review) && argv.includes("--baseline")) screens.push(...BASELINE);
   const styles = list("--styles", "");
   const styleCmd = opt("--style-cmd") ?? "style:{style}";
-  // A review is §12's matrix: every state of every screen, at 1920×1080 and on a phone both ways, 100 % and 150 %, in four locales.
-  const states = review ? list("--states", "") : [];
-  const stateCmd = opt("--state-cmd") ?? "state:{state}";
-  const grid = Number(opt("--grid") ?? 4);
-  const bps = list("--breakpoints", review ? "desktopHd,phonePortrait,phoneLandscape" : "desktop,phonePortrait,phoneLandscape,tablet");
+  const bps = list("--breakpoints", "desktop,phonePortrait,phoneLandscape,tablet");
   for (const b of bps) if (!BREAKPOINTS[b]) fail(`--breakpoints: '${b}' is not one of ${Object.keys(BREAKPOINTS).join(", ")}`);
   // The locales: the game's own, pseudo, then a CJK and a right-to-left one the game has strings for.
   const have = existsSync(join(inputRoot, "assets", "strings")) ? readdirSync(join(inputRoot, "assets", "strings")).map((f) => f.replace(/\.ogt$/, "")) : [];
-  const cjk = (review ? have.find((l) => /^zh/.test(l)) ?? "zh" : undefined) ?? have.find((l) => /^(ja|zh|ko)/.test(l)) ?? "ja";
+  const cjk = have.find((l) => /^(ja|zh|ko)/.test(l)) ?? "ja";
   const rtl = have.find((l) => /^(ar|he|fa|ur)/.test(l)) ?? "ar";
-  const locales = list("--locales", review ? `game,${cjk},${rtl},pseudo` : `game,pseudo,${cjk},${rtl}`).map((l) => (l === "game" ? "" : l));
+  const locales = list("--locales", `game,pseudo,${cjk},${rtl}`).map((l) => (l === "game" ? "" : l));
   // The check holds every screen to 200 % text (§15.2) in the game's
   // locale and the pseudo-locale (the longest text: CJK and right to left
   // add no length) unless --scales asks for every cell; a preview draws
   // 100 % unless asked.
-  const scalesGiven = review || opt("--scales") !== undefined;
-  const scales = list("--scales", mode === "check" || review ? "100,150" : "100").map(Number);
+  const scalesGiven = opt("--scales") !== undefined;
+  const scales = list("--scales", mode === "check" ? "100,150" : "100").map(Number);
   const settle = Number(opt("--settle") ?? 0.8);
   const highContrast = argv.includes("--high-contrast");
 
@@ -181,21 +174,14 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
     return g!;
   };
 
-  // Only the engine-owned style sheet promises stateless page commands.
-  // Checks and arbitrary game previews still need fresh module state per cell.
-  const sheetEngines = new Map<string, { engine: Engine; initial: string }>();
-  cleanup.push(() => {
-    for (const { engine } of sheetEngines.values()) engine.destroy();
-  });
   /** Run a cell's script, then read its UI frame and captures. */
-  const runCell = async (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100, sheetKey?: string): Promise<{ frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[]; pages: Array<{ frame: UiFrameSnapshot; image: Image }> }> => {
+  const runCell = async (bp: string, locale: string, steps: string[], shots: Array<{ at: number; name: string }>, scale = 100): Promise<{ frame: UiFrameSnapshot | null; images: Map<string, Image>; warnings: string[] }> => {
     const vp = BREAKPOINTS[bp]!;
-    const reused = sheetKey === undefined ? undefined : sheetEngines.get(sheetKey);
-    let engine = reused?.engine;
+    let engine: Engine | undefined;
     const warnings: string[] = [];
     const images = new Map<string, Image>();
     try {
-      if (!engine) {
+      {
         const game = await freshGame();
         const created = createEngine(game, { root: resolve(root!), deferStart: true, ...(project === undefined ? {} : { project }), ...(profile ? { profile } : {}), ...(locale ? { locale } : {}) });
         if (!created.ok) fail(created.reason);
@@ -203,22 +189,11 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
         engine.attachPlatform(nativePlatform());
         const attached = attachRenderer(engine.id, vp.width * vp.dpr, vp.height * vp.dpr);
         if (!attached.ok) fail(attached.reason);
-        if (sheetKey !== undefined) native().og_node_capture_only(engine.id, true);
         const started = engine.advance(0);
         if (!started.ok) fail(started.reason);
-        if (sheetKey !== undefined) {
-          const initial = engine.probe.snapshot();
-          if (!initial) fail("cannot snapshot the sheet's initial state");
-          sheetEngines.set(sheetKey, { engine, initial: initial.id });
-        }
-      } else if (reused && !engine.probe.restore(reused.initial)) {
-        // Scroll paging and hover input from the previous cell must not
-        // leak into the next. Definitions and the renderer stay resident.
-        fail("cannot restore the sheet's initial state");
       }
-      // The player's text size: configure keeps it through the game's own
-      // configure calls. A reused engine also needs the reset to 100 %.
-      if (scale !== 100 || sheetKey !== undefined) og.ui.configure(engine.world, { textScale: scale / 100 });
+      // The player's text size: configure keeps it through the game's own configure calls.
+      if (scale !== 100) og.ui.configure(engine.world, { textScale: scale / 100 });
       og.ui.previewViewport(engine.world, { width: vp.width, height: vp.height, dpr: vp.dpr, safeArea: vp.safeArea, coarsePointer: vp.coarsePointer, highContrast, breakpoint: bp } as never);
       // The probe takes a script in time order: a capture before a later step goes before it.
       const script = [...steps, ...shots.map((s) => `${s.at}:screenshot:${s.name}.png`)].sort((a, b) => parseFloat(a) - parseFloat(b));
@@ -249,36 +224,9 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
       if (!f.error) for (const warning of f.warnings) {
         if (overflow.test(warning)) warnings.push(`og.ui: ${warning}`);
       }
-      const pages: Array<{ frame: UiFrameSnapshot; image: Image }> = [];
-      if (!f.error && argv.includes("--baseline")) {
-        // Keep the real viewport, breakpoint and text scale. Overlapping scroll
-        // pages prove the controls below the fold instead of changing their layout.
-        let current: UiFrameSnapshot = f;
-        for (const initial of f.scrolls ?? []) {
-          let scroll = initial;
-          for (let page = 0; scroll.offsetY + scroll.viewHeight < scroll.contentHeight - 1; page++) {
-            cancelled();
-            if (page >= 100) fail(`scroll sheet exceeded 100 pages: ${scroll.path}`);
-            const [x, y, w, h] = scroll.rect;
-            const deltaY = Math.max(1, scroll.viewHeight * 0.8);
-            if (!engine.probe.input({ kind: "wheel", x: x + Math.min(4, w / 2), y: y + h / 2, deltaX: 0, deltaY })) fail(`scroll input refused: ${scroll.path}`);
-            for (let tick = 0; tick < 12; tick++) {
-              const advanced = engine.frame(1000 / engine.rate);
-              if (!advanced.ok) fail(advanced.reason ?? "scroll frame failed");
-            }
-            current = JSON.parse(extras.og_node_ui_frame(engine.id)) as UiFrameSnapshot;
-            const next = current.scrolls?.find((s) => s.path === scroll.path);
-            if (!next || next.offsetY <= scroll.offsetY + 0.5) fail(`scroll did not advance: ${scroll.path}`);
-            const capture = engine.probe.capture(vp.width * vp.dpr, vp.height * vp.dpr, 0);
-            if (!capture?.png) fail(`missing scroll capture: ${scroll.path}`);
-            pages.push({ frame: current, image: decodePng(Uint8Array.from(atob(capture.png), (c) => c.charCodeAt(0))) });
-            scroll = next;
-          }
-        }
-      }
-      return { frame: f.error ? null : f, images, warnings, pages };
+      return { frame: f.error ? null : f, images, warnings };
     } finally {
-      if (sheetKey === undefined || !sheetEngines.has(sheetKey)) engine?.destroy();
+      engine?.destroy();
     }
   };
 
@@ -344,26 +292,19 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   const measures: UiMeasure[] = [];
   const images: Image[] = [];
   const t0 = performance.now();
-  for (const screen of screens) for (const state of states.length ? states : [""]) for (const style of styles.length ? styles : [""]) for (const bp of bps) {
+  for (const screen of screens) for (const style of styles.length ? styles : [""]) for (const bp of bps) {
     for (const locale of locales) {
-      const unscaledPages = new Map<number, UiFrameSnapshot>();
+      let unscaled: UiFrameSnapshot | undefined;
       for (const scale of scales) {
         if (scale !== 100 && !scalesGiven && locale !== "" && locale !== "pseudo") continue;
-        const sheetKey = mode === "sheet" && argv.includes("--baseline") ? JSON.stringify([bp, locale, style]) : undefined;
-        const steps = [...(style && (sheetKey === undefined || !sheetEngines.has(sheetKey)) ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands), ...(state ? timed(stateCmd.replaceAll("{state}", state)) : [])];
-        const run = await runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale, sheetKey);
-        for (const [page, r] of [{ frame: run.frame, image: run.images.get("cell") ?? null }, ...run.pages].entries()) {
-          const cell: UiCell = { screen: page === 0 ? screen.name : `${screen.name}/scroll-${page + 1}`, breakpoint: bp, locale, style, scale, highContrast, ...(state ? { state } : {}) };
+        const steps = [...(style ? timed(styleCmd.replaceAll("{style}", style)) : []), ...timed(screen.commands)];
+        const run = await runCell(bp, locale, steps, [{ at: screen.at ?? settle, name: "cell" }], scale);
+        {
+          const r = { frame: run.frame, image: run.images.get("cell") ?? null };
+          const cell: UiCell = { screen: screen.name, breakpoint: bp, locale, style, scale, highContrast };
           const index = cells.length;
           const uiFrame = join("cells", `${index}.uiframe.json`);
           const img = r.image;
-          if (mode === "sheet" || argv.includes("--baseline")) {
-            if (!img || !r.frame?.elements.length) fail(`${cellName(cell)}: missing capture or empty page`);
-            const expected = argv.includes("--baseline") ? BASELINE.find((p) => p.name === screen.name)?.root : undefined;
-            if (expected && !r.frame!.elements.some((e) => e.id === expected || e.id.startsWith(`${expected}/`) || e.id.endsWith(`/${expected}`))) {
-              fail(`${cellName(cell)}: baseline root '${expected}' was not built`);
-            }
-          }
           let frame: string | null = null;
           if (img) {
             frame = join("cells", `${index}.png`);
@@ -372,23 +313,15 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
           let found: UiFinding[] = [];
           if (r.frame) {
             writeFileSync(join(outDir, uiFrame), JSON.stringify(r.frame));
-            if (review) measures.push(...measureFrame(r.frame, cell, { image: img }), ...measureLayout(r.frame, cell, grid));
-            else if (mode !== "sheet") {
-              found = checkFrame(r.frame, cell);
-              measures.push(...measureFrame(r.frame, cell, { image: img }));
-            }
-            const unscaled = unscaledPages.get(page);
-            if (review) {
-              if (scale === 100) unscaledPages.set(page, r.frame);
-              else if (unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
-            } else if (mode !== "sheet" && scale === 100) {
-              unscaledPages.set(page, r.frame);
-            } else if (mode !== "sheet" && unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
+            found = checkFrame(r.frame, cell);
+            measures.push(...measureFrame(r.frame, cell, { image: img }));
+            if (scale === 100) unscaled = r.frame;
+            else if (unscaled) measures.push(...measureScale(unscaled, r.frame, cell));
           }
           // Each finding's place carries the cell's frame, so a reviewer opens the frame the box is on.
           const size = BREAKPOINTS[bp]!;
           for (const x of found) x.at = (x.at ?? [{ cell: cellName(cell), viewport: [size.width, size.height], rect: null }]).map((a) => ({ ...a, frame: frame ? join(outDir, frame) : null }));
-          if (page === 0) for (const w of run.warnings) process.stderr.write(`og ui ${mode}: ${cellName(cell)}: ${w}\n`);
+          for (const w of run.warnings) process.stderr.write(`og ui ${mode}: ${cellName(cell)}: ${w}\n`);
           all.push(...found);
           cells.push({ ...cell, index, dpr: BREAKPOINTS[bp]!.dpr, commands: steps.join(";"), frame, uiFrame: r.frame ? uiFrame : "", findings: found.length });
           images.push(img as Image);
@@ -399,20 +332,6 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   const uncheckedCount = cells.filter((c) => c.frame === null).length;
   if (uncheckedCount > 0) process.stderr.write(`og ui ${mode}: ${uncheckedCount} GPU captures unchecked\n`);
   const exitCode = argv.includes("--require-checked") && uncheckedCount > 0 ? 1 : 0;
-  if (mode === "sheet") {
-    const sheets: string[] = [];
-    for (const bp of bps) for (const scale of scales) for (const style of styles.length ? styles : [""]) {
-      const mine = cells.filter((c) => c.breakpoint === bp && c.scale === scale && c.style === style);
-      const page = sheet(mine.map((c) => ({ image: images[c.index] ?? null, flagged: false, lines: [c.screen, `${bp} ${scale}%`] })), 4, 360, `${style || basename(root!)} ${bp} ${scale}%`);
-      const file = `sheet-${style || "kit"}-${bp}-${scale}.png`;
-      writeFileSync(join(outDir, file), encodePng(page));
-      sheets.push(file);
-    }
-    writeFileSync(join(outDir, "index.json"), JSON.stringify({ sheets, cells, pages: screens, breakpoints: bps, scales }, null, 2) + "\n");
-    process.stdout.write(argv.includes("--json") ? JSON.stringify({ sheets, cells: cells.length, index: join(outDir, "index.json"), uncheckedCount }) + "\n" : `og ui sheet: ${cells.length} captures; ${join(outDir, "index.json")}\n`);
-    return exitCode;
-  }
-  if (review) return writeReview();
   const findings = mergeFindings(all);
   const project_ = basename(resolve(root!));
   const rules = RULES.map((r) => (r.kind === "finding" ? { ...r, findings: findings.filter((f) => f.rule === r.id).length } : { ...r, measures: measures.filter((m) => m.measure === r.id).length }));
@@ -440,49 +359,6 @@ async function main(argv: string[], process: RunOutput, control: UiRunControl, c
   else process.stdout.write(formatText(findings, `og ui check: ${project_}, ${cells.length} cell(s) in ${((performance.now() - t0) / 1000).toFixed(1)} s (${join(outDir, "check.json")})`, measures));
   return exitCode;
 
-  /**
-   * The review's pages and report: a contact sheet per screen, state and
-   * style (a row per device and text scale, a column per locale, each
-   * picture labelled), and every measure as read (review.json), summed up
-   * per measure in review.txt. No verdicts.
-   */
-  function writeReview(): number {
-    const sheets: string[] = [];
-    const device = (bp: string) => `${bp} ${BREAKPOINTS[bp]!.width}×${BREAKPOINTS[bp]!.height}`;
-    for (const screen of new Set(cells.map((c) => c.screen))) for (const state of states.length ? states : [""]) for (const style of styles.length ? styles : [""]) {
-      // A row per device and scale, a column per locale.
-      const order = (c: Cell) => (bps.indexOf(c.breakpoint) * scales.length + scales.indexOf(c.scale)) * locales.length + locales.indexOf(c.locale);
-      const mine = cells.filter((c) => c.screen === screen && (c.state ?? "") === state && c.style === style).sort((a, b) => order(a) - order(b));
-      const page = sheet(
-        mine.map((c) => ({ image: images[c.index] ?? null, lines: [`${device(c.breakpoint)} ${c.scale}%`, `${c.locale || "game"} #${c.index}`] })),
-        locales.length,
-        300,
-        `${screen} / ${state || "as opened"} / ${style || "default style"}`.slice(0, 120),
-      );
-      const file = `review-${[screen, state, style].filter(Boolean).join("-").replace(/[^\w.-]+/g, "_")}.png`;
-      writeFileSync(join(outDir, file), encodePng(page));
-      sheets.push(file);
-    }
-    const summary = new Map<string, number[]>();
-    for (const m of measures) summary.set(m.measure, [...(summary.get(m.measure) ?? []), m.value]);
-    const stats = [...summary].map(([measure, values]) => {
-      const v = [...values].sort((a, b) => a - b);
-      const unit = measures.find((m) => m.measure === measure)!.unit;
-      return { measure, unit, count: v.length, min: v[0]!, median: v[Math.floor(v.length / 2)]!, max: v[v.length - 1]! };
-    });
-    const axes = { screens: screens.map((s) => s.name), states: states.length ? states : ["as opened"], styles, devices: bps.map(device), locales: locales.map((l) => l || "game"), scales, grid };
-    writeFileSync(join(outDir, "review.json"), JSON.stringify({ project: basename(resolve(root!)), axes, sheets, stats, cells: cells.map((c) => ({ index: c.index, cell: cellName(c), screen: c.screen, state: c.state ?? "", style: c.style, breakpoint: c.breakpoint, locale: c.locale || "game", scale: c.scale, viewport: [BREAKPOINTS[c.breakpoint]!.width, BREAKPOINTS[c.breakpoint]!.height], dpr: c.dpr, frame: c.frame, uiFrame: c.uiFrame })), measures }, null, 1) + "\n");
-    const text = [
-      `og ui review: ${cells.length} cell(s) (${axes.screens.length} screen(s) × ${axes.states.length} state(s) × ${Math.max(1, styles.length)} style(s) × ${bps.length} device(s) × ${scales.length} scale(s) × ${locales.length} locale(s)) in ${((performance.now() - t0) / 1000).toFixed(1)} s`,
-      "measure        unit             count       min    median       max",
-      ...stats.map((s) => `${s.measure.padEnd(14)} ${s.unit.padEnd(14)} ${String(s.count).padStart(7)} ${String(s.min).padStart(9)} ${String(s.median).padStart(9)} ${String(s.max).padStart(9)}`),
-      `sheets: ${sheets.join(", ")}`,
-      `every measure: ${join(outDir, "review.json")}`,
-    ].join("\n") + "\n";
-    writeFileSync(join(outDir, "review.txt"), text);
-    process.stdout.write(argv.includes("--json") ? JSON.stringify({ sheets: sheets.map((s) => join(outDir, s)), report: join(outDir, "review.json"), cells: cells.length, measures: measures.length, uncheckedCount }) + "\n" : text);
-    return exitCode;
-  }
 }
 
 /**

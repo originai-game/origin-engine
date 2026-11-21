@@ -68,21 +68,9 @@ so a narrow panel on a wide screen gets them too); the booster tray
 scrolls and the summary's breakdown scrolls under a fixed band, stars and
 actions. Only the summary's padding follows the screen's width.
 
-## Review sheet and tests
+## Gallery and tests
 
-`og ui sheet puzzle` renders the review pages from
-`packages/engine/sheets/puzzle/`, in the default style (the fantasy pack is
-also available): play (goals and moves over the board, the booster tray
-with one armed and one unavailable), map (a two-chapter level path beside a
-won level's summary) and states (every member in every fixture). The sheet's
-fixtures in `src/fixtures.ts` are the documents' own fixture metas; the icons
-are the shared ink icon sheet, and `assets/strings/` carries ja and ar
-string tables for the locale cells.
-On the states page, `member:boosters` (or `goals`, `level-path`, `summary`)
-isolates that component's fixtures for a closer review.
-`og ui review puzzle --style scifi` (or `--style cartoon`) renders the same
-pages in that pack, dressed by its tokens
-(`templates/styles/<pack>/base.css`).
+`bun packages/engine/src/node/gallery.ts --only puzzle/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 `bun test tests/puzzle.test.ts` (from `packages/engine`) mounts every member
 by name from a game page from every fixture at desktop and phone, and checks

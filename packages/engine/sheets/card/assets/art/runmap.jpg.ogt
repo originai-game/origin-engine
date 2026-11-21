@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Sample run map art for the review sheet only (generated for the run map art
-# direction; never part of an install). Colour art: sRGB.
-texture {
-}

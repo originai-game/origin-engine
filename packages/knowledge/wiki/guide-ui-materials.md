@@ -90,8 +90,7 @@ through one the same way.
 `ui:material:<path>.<param>=<value>` on the command channel sets a default
 live without a cook; write the value kept into the `param` line. Judge a
 material on a plain ground by the card it finishes (screens §5), not over
-a busy backdrop. `og ui sheet materials` shows each preset on a card in
-the core default's light and dark schemes.
+a busy backdrop.
 
 <a id="guide-ui-materials-5"></a>
 ### `ui-materials §5` A new material

@@ -1,9 +1,0 @@
-type import
-version 1
----
-# Sample film stills for the screens sheet's art pages only (generated
-# for the family 23 mockup; never part of an install). Colour art: sRGB,
-# kept as drawn (the sheet's 2D profile would conform it to sprite art).
-texture {
-  conform off
-}

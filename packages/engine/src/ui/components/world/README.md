@@ -87,11 +87,6 @@ point lies near the screen's edge can run past it; a prompt keeps off a
 plate by priority but not off a telegraph; loot folds into a `+n` chip
 the game counts; overhead bars draw no shield track and can cross a label.
 
-## Review sheet and tests
+## Gallery
 
-`og ui sheet world` renders `packages/engine/sheets/world/`: `scene` (the
-third-person mockup scene), `topdown` (the strategy scene), `states`
-(the labels in every fixture state) and `marks` (the ground marks,
-bubbles and bars in every state); on a phone `states` and `marks` show a
-choice of states that fits the screen.
-`bun test tests/ui-world.test.ts` mounts every member from every fixture.
+`bun packages/engine/src/node/gallery.ts --only world/` renders every member's fixtures under every pack (docs/ui.md §6.5).

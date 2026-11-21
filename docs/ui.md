@@ -2396,13 +2396,8 @@ root palette; `data-scheme` still selects at run time.
 
 `og style check-project` is the game's art-contract checker.
 
-`og ui sheet <pack>` renders a pack's core-control pages at desktopHd and
-phonePortrait at 100 % and 150 % text, scroll pages captured to the
-bottom; `og ui review <pack> --locales game,pseudo,zh,ar` adds locales. A
-pack is named as a game names it: `fantasy`, or `@styles/fantasy` as
-`og.load.style` loads it (a bundled pack, or the project's
-`assets/styles/<name>`). Both take `--out DIR` and `--json` and a group's
-sheet (§6).
+The UI gallery (§6.5) renders every built-in component's fixtures under
+every pack, the way to see what a pack changes.
 Review frames before recording references. The
 [screens guide](../crates/og-api/guides/screens.md#3-style-packs) shows
 loading, selectors, tokens and asset URLs.
@@ -2647,7 +2642,7 @@ the usual edge fade; the subtitle and cast row share the plate's width limit.
 | `general` | Shop, achievements, daily quests and rewards, chat, friends |
 
 Every group is built token- and part-only (§3.1, §3.2), with state
-fixtures (§6.1) and a review sheet (§6.2), and every built pack dresses it.
+fixtures (§6.1), the gallery renders them (§6.5), and every built pack dresses it.
 Member inputs, intents and parts are documented in each group's README
 (`packages/engine/src/ui/components/<group>/README.md`) and each
 document's `<meta>` header; the `base/`, `hud/`, `world/` and `panels/`
@@ -2811,23 +2806,11 @@ for each applicable case; an inapplicable case needs a reason.
 | Accessibility and localization | 100% and 150% text; pseudo-locale +40%, CJK, RTL; semantic names, roles, states, focus order, and safe areas |
 | Motion | Start, midpoint, completion, interruption, and reduced motion; a short clip as well as stills |
 
-A group's review sheet is a project in `packages/engine/sheets/<group>/`;
-the engine package ships each one in its `sheets/` (without `references/`
-or `verify.ts`), so `og ui sheet <group>` runs on an installed engine. No
-game's cook bundles a sheet: it is data `og ui sheet` and `og ui review`
-read when asked. Besides the groups, three sheets cover what no group
-owns: `components` (the `base/`, `hud/` and `panels/` components: a HUD page over a bright sky and a dark
-floor, a panels page, a states page), `screens` (each built-in screen of
-`src/ui/screens/` on a page of its own, in its document's fixture and the
-sheet's own states, `--states` taking any of them) and `world` (the world
-tags, ground marks and mass elements anchored over a 3D scene). A sheet's
-pages use the group's built-in components by name, with fixtures from its
-`src/fixtures.ts`, sample art under `assets/` and strings for the
-review's CJK and right-to-left locales in `assets/strings/`;
-`og ui review` installs those locales' font packs into its copy (without
-them those cells repeat the game locale).
-The group's behaviour tests (`packages/engine/tests/<group>.test.ts`)
-mount its members the same way.
+A component's fixtures are its `fixtures` export, beside it in its
+`.tsx`: one named prop set per state it has (empty, filled, selected,
+disabled, overflow, as the component does). The gallery (§6.5) renders
+every one of them; the group's behaviour tests
+(`packages/engine/tests/<group>.test.ts`) mount the same components.
 
 Core tests use small self-contained styles for core behaviour
 (specificity, font pixel snapping, probe paths); pack tests check pack art
@@ -2835,47 +2818,14 @@ and resources. Removing a pack cannot remove core coverage.
 
 ### 6.2 Frame matrix
 
-Each group's sheet has a normal page, a stress page (long names, dense or
-overflowing content, 150 % text) and, for most groups, a `states` page
-with every member in every fixture state it declares; behaviour tests
-cover every member. A further page needs a named visual behaviour the
-others cannot cover. The sheet's `project.ogt` declares its pages, and its
-`STYLES` (`src/main.ts`) the styles it renders them in: each built pack
-joins a sheet with a look naming it under `assets/looks/` (which makes the
-cook bundle it) and its name in `STYLES`.
-
-| Group | Normal page | Stress page | Other pages | Styles |
-| --- | --- | --- | --- | --- |
-| rpg | `inventory` | `journal` | `equipment`, `explore`, `combat` | fantasy, scifi, cartoon |
-| shooter | `combat` | `loadout` | | fantasy, scifi, cartoon, default |
-| strategy | `field` | `defence` | `states` | fantasy, scifi, cartoon, default |
-| racing | `race` | `garage` | `states` | fantasy, scifi, cartoon, default |
-| card | `table` | `builder` | `run` | fantasy, scifi, cartoon |
-| puzzle | `play` | `map` | `states` | fantasy, scifi, cartoon, default |
-| idle | `play` | `reset` | `states` | fantasy, scifi, cartoon, default |
-| rhythm | `songs` | `play` | `states` | fantasy, scifi, cartoon, default |
-| arena | `select` | `match` | `states` | fantasy, scifi, cartoon, default |
-| general | `store` | `social` | `progress`, `states` | fantasy, scifi, cartoon |
-| components | `hud` | `panels` | `states` | fantasy, scifi, cartoon, default |
-| screens | each screen's default state | its `overflow` (or first other) state | every state through `--states` | fantasy, scifi, cartoon, default |
-| world | `field` | `crowd` | | fantasy, scifi, cartoon, default |
-
-`og ui sheet <group>` renders the screens `project.ogt` declares at
-desktop (1920×1080) and phone portrait (390×844), at 100 % and 150 %
-text; `og ui review <group> --style <pack>` renders every page in each
-named style across `--locales`, as labelled contact sheets. A pack's own
-core-control sheet is `og ui sheet <pack>` (`fantasy` or
-`@styles/fantasy`). Landscape-heavy content also has a genuine
-landscape fixture. Sheet captures are review
-material: locale, right-to-left, landscape and further states get
-risk-based review captures, and any permanent reference names the
-regression it guards. The rpg sheet alone keeps approved cells
-(`sheets/rpg/references/vulkan/`: its five pages at desktop, phone
-portrait and phone landscape in fantasy), which its `verify.ts` compares
-on demand, never as a gate step. A group's behaviour tests mount its
-members from every fixture under the fantasy and scifi packs, on a desktop
-and a phone; neither the tests nor a sheet is visual coverage of every
-combination, and a game's actual combination needs review.
+Every fixture of every built-in component is a page of the gallery
+(§6.5), under the default style and every pack in `templates/styles`; a
+stress fixture (long names, dense or overflowing content) is a fixture
+like any other. Gallery frames are review material: locale, right to left,
+landscape and further states get risk-based review captures, and any
+permanent reference names the regression it guards. Neither the tests nor
+the gallery is visual coverage of every combination, and a game's actual
+combination needs review.
 
 The references the engine keeps are og-tests-ui's
 `references/vulkan/doc-components-<group>-<document>.png` (each document's
@@ -2981,57 +2931,29 @@ states, what moves, what plays and whether it is leaving.
 
 ### 6.5 UI gallery
 
-`bun packages/engine/src/node/ui-gallery.ts [--port P] [--host H] [--og
-<og>]` serves, in a checkout, one development page with every built-in
-component and HUD element: the review sheets (`packages/engine/sheets/`,
-all but `style`) as categories, their pages, the style packs of
-`templates/styles` (a sheet takes those its `STYLES` names), the light
-and dark schemes and five viewports. Each sheet is copied to
-`target/ui-gallery/<sheet>` and exported with `og build` (development)
-when first opened; the engine runs in the viewer's browser, so the
-serving machine needs no GPU.
-
-While the page is open, one `og cook --watch` per sheet cooks an edit
-under the sheet, `packages/engine/src/ui`, `templates/styles`,
-`packages/design/tokens` or `crates/og-ui/default.css` (incremental; a
-parsed document or pack is kept by content, so an edit parses only the
-changed file and what imports it). The changed cooked files go to the
-page, and the dev page's `__runtime_probe__.devFiles` applies them in
-place: no hot reload, the world and the bundle stay; only the changed
-documents, the styles and the default style are read again. One swap runs
-at a time and edits that land meanwhile go in the next one; a newer
-switch of style, scheme or page supersedes one still waiting. The page's
-log shows each step's time. A sheet's TypeScript rebuilds it. Only Rust
-needs og and the wasm rebuilt (`packages/engine/scripts/build.sh`).
-
-A development cook from a checkout carries the default style as the
-source tree has it when that is not the compiled one: `default.css`, or,
-when a token file is newer than it and the checkout's generator
-(`crates/og-ui/scripts/theme_*.rs`) is the one og was built with, what
-`gen-theme.sh` would write from the tokens (a hand edit to `default.css`
-is then dropped, as `gen-theme.sh` would drop it: port it to
-`scripts/theme_css.rs`). With another generator the cook reads
-`default.css`: og's would drop the rules added since. The gallery runs the
-generator (`gen-theme.sh`, seconds) on a generator edit, and on a token
-edit while the generator is newer than og, so `default.css` follows the
-checkout's rules without rebuilding og. A
-development runtime puts it in the compiled one's place
-(`og_ui::set_base_css`), reads its packs again and the documents the
-change reaches (§5, `Ui::restyled_documents`). A
-publish cook and a publish build never carry or read it: they draw the
-compiled `DEFAULT_CSS`, and `theme.rs` stays generated and drift-checked.
+`bun packages/engine/src/node/gallery.ts [--out DIR] [--packs a,b] [--only
+TEXT] [--size WxH] [--og <og>]` renders, in a checkout, every fixture of
+every built-in component (`src/ui/components`, `controls`, `screens`)
+under every pack: it reads each `.tsx`'s component and `fixtures`, writes
+one project (`target/ui-gallery/project`) that mounts one fixture per page
+on a two-tone stage (a bright sky over a dark floor, captioned with the
+component and fixture), cooks it once, and runs it headless once per pack,
+switching the pack with `og.ui.configure` and capturing every page. The
+frames land in `<out>/<pack>/` (default `target/ui-gallery/out`) with
+`index.html`, a row per fixture and a column per pack. `--only` keeps the
+fixtures whose `<dir>/<file> · <fixture>` contains the text. A component
+without fixtures has no page. The run draws on the GPU og finds; a frame
+is judged for what it shows, as any other.
 
 ## 7. Maintenance boundaries
 
 The integration owner owns shared schema, labels, looks, creation,
 packaging, this contract and the guides. Component group and pack authors
-own their group or package directories, review sheets and acceptance
-fixtures. Shared API changes go through the integration owner before
+own their group or package directories and their components' fixtures. Shared API changes go through the integration owner before
 consumers adopt them.
 
 A group's documents, string tables and README live in
-`packages/engine/src/ui/components/<group>/`, its review sheet in
-`packages/engine/sheets/<group>/`, its behaviour tests in
+`packages/engine/src/ui/components/<group>/`, its behaviour tests in
 `packages/engine/tests/<group>.test.ts`, and each document's cooked
 frames in og-tests-ui's
 `references/vulkan/doc-components-<group>-<document>.png`. A pack's files

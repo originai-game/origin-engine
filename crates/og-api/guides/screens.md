@@ -106,14 +106,10 @@ names the built-in and installed packs.
    accepts flat, gradient, glass, hologram, neon, paper, bevel, or brush.
    `--scheme` selects the fallback palette; the UI's explicit `data-scheme`
    selects its dark or light palette at runtime.
-3. Run `og ui sheet my-style` to inspect every core-control page at
-   desktopHd and phonePortrait, at 100% and 150% text scale (a pack by its
-   name: the project's `assets/styles/<name>`, or a bundled one as
-   `fantasy` or `@styles/fantasy`). Use
-   `og ui review my-style --locales game,pseudo,zh,ar` for locale
-   coverage. Scrollable pages produce overlapping captures down
-   to the bottom without changing the viewport. Review frames before
-   recording references.
+3. Name it in the game's look (`ui "my-style"`) and capture the game's
+   screens with `og ui preview` (desktop and phone, 100% and 150% text;
+   `--locales game,pseudo,zh,ar` for locale coverage). Review frames
+   before recording references.
 
 Load and select the directory in your game's startup function:
 

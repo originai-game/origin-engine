@@ -42,9 +42,8 @@ the title role a step down.
 
 Avatar's `showName` defaults to true; set it to false beside a player heading to hide only the caption while preserving the figure's accessible name, level and status.
 
-Review: the RPG sheet's `primitives` page in the default style shows ready,
-selected/cooling, locked, unavailable, loading and empty slots; portrait and
-fallback avatars, level, four presence states and loading.
+Review: `bun packages/engine/src/node/gallery.ts --only base/` shows every
+slot and avatar fixture under every pack.
 
 The components sheet also reviews the four state/navigation documents with
 `style:default;sample:<member>:<fixture>` at desktop and `phonePortrait`:

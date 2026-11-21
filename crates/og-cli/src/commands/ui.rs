@@ -47,17 +47,8 @@ use std::process::{Command, ExitCode};
 
 pub mod extensions;
 mod literals;
-mod review;
-mod sheet;
 
-/// A style pack's name from the way an author names it: `fantasy`, or
-/// `@styles/fantasy` as `og.load.style` loads a built-in one.
-fn pack_name(arg: &str) -> &str {
-    arg.strip_prefix("@styles/")
-        .map_or(arg, |name| name.trim_end_matches('/'))
-}
-
-const USAGE: &str = "usage: og ui add <materials|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui types [project]\n       og ui literals [path...] [--json]\n       og ui eject <screen|component> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui review <group|pack|sheet-directory> [project] [--style <pack>]... [--states a,b] [--grid N] [--out DIR] [--json]\n       og ui sheet <pack|group|sheet-directory> [project] [--out DIR] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui add <materials|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui types [project]\n       og ui literals [path...] [--json]\n       og ui eject <screen|component> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
 /// Options forwarded to ui-run.ts with their value.
 const VALUED: [&str; 10] = [
@@ -74,12 +65,6 @@ const VALUED: [&str; 10] = [
 ];
 
 pub fn run(args: &[&str]) -> ExitCode {
-    if let ["sheet", rest @ ..] = args {
-        return sheet::run(rest);
-    }
-    if let ["review", rest @ ..] = args {
-        return review::run(rest);
-    }
     if let ["add", rest @ ..] = args {
         return extensions::add(rest, "materials");
     }
@@ -232,7 +217,7 @@ pub fn spawn(
     out: &Path,
     forward: &[&str],
 ) -> Result<ExitCode, String> {
-    let given = forward.contains(&"--screen") || forward.contains(&"--baseline");
+    let given = forward.contains(&"--screen");
     let declared = if given {
         Vec::new()
     } else {

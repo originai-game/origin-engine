@@ -69,7 +69,7 @@ chosen friend's row and `data-invited` on its Invite button.
 
 Parts are named `<Component>.<part>` (`Shop.offer`). Every member carries a
 `fixture:default` and the fixtures of its states (empty, loading, error,
-disabled, overflow; Friends also `requests`) that the sheet and the tests mount. Phone layouts come
+disabled, overflow; Friends also `requests`) that the gallery and the tests mount. Phone layouts come
 from the members' container queries: the shop's grid drops to two columns,
 the calendar to four, the achievement rows wrap their Claim under the text,
 the quest rows drop their medals, and Chat and Friends drop their button
@@ -86,20 +86,9 @@ also reach the page's E/Q actions. Enter in the field sends as Send does
 (the form's implicit submission), and not while Send is disabled. Its log scrolls with the newest
 message at the foot.
 
-## Review sheet and tests
+## Gallery and tests
 
-`og ui sheet meta` renders the four review pages from
-`packages/engine/sheets/meta/`, in the default style and fantasy pack: `store`
-(shop, purchase confirmation, login calendar), `progress` (achievements,
-daily quests, calendar), `social` (chat, friends) and `states` (the shop
-failed, a purchase that failed, no achievements, quests
-loading and empty, today's reward already taken, a muted chat, no friends).
-Icons come from the shared ink icon sheet; the default style uses the
-sheet's licensed Instrument Sans font. There is no painted art. Visible
-words use the members' companion string tables.
-`og ui review meta --style scifi` (or `--style cartoon`) renders the same
-pages in that pack, dressed by its tokens
-(`templates/styles/<pack>/base.css`).
+`bun packages/engine/src/node/gallery.ts --only meta/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 `bun test tests/meta.test.ts` (from `packages/engine`) mounts every
 member by name from a game page, from every fixture it declares, at desktop

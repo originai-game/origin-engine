@@ -97,22 +97,9 @@ meter, points, empty, overflow; garage: selected, buy, short, locked,
 empty, overflow; results: empty, disabled, overflow). Loading and error do
 not apply: the members draw data the game already has.
 
-## Review sheet and tests
+## Gallery and tests
 
-`og ui sheet racing` renders `packages/engine/sheets/racing/`: `race`
-(the normal page, the HUD laid out as its approved mockup over sample
-stage art: the place, the lap and the times over the position tower top
-left, the call and the slipstream with the points earned top centre, the
-track map top right over the tachometer bottom right, the pedals, the
-tyres and the nitro meter along the foot, and the road ahead left clear;
-on a phone every readout but the foot's stands in rows at the top), `garage`
-(the stress page: a ten-car garage and a fourteen-row classification) and
-`states` (every member in every fixture state), dressed by the fantasy pack
-or, with `style:default`, the default style. `call:<kind>:<n>` steps the
-banner for motion clips.
-`og ui review racing --style scifi` (or `--style cartoon`) renders the same
-pages in that pack, dressed by its tokens
-(`templates/styles/<pack>/base.css`).
+`bun packages/engine/src/node/gallery.ts --only racing/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 `bun test tests/racing.test.ts` (from `packages/engine`) mounts every member
 by name from a game page in every fixture at desktop and phone, checks the

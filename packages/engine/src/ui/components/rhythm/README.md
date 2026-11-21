@@ -80,19 +80,9 @@ overflow; score HUD: danger, failed, nolife, overflow; results: failed,
 fullCombo, allPerfect, disabled, empty, overflow). Loading and error apply
 only to the song select: the others draw data the game already has.
 
-## Review sheet and tests
+## Gallery and tests
 
-`og ui sheet rhythm` renders `packages/engine/sheets/rhythm/`, dressed by
-the fantasy pack: `songs` (the normal page: the song list with the selected
-song's details and its charts), `play` (the stress page: the judgement and
-the score HUD in danger over a bright sky and dark lanes, beside the
-overflow results) and `states` (every member in every fixture state).
-Each page also has a `-default` screen with its explicit
-`style:default;page:<page>` commands. `hit:<judgement>:<early|late|->` is
-the sheet command for motion clips.
-`og ui review rhythm --style scifi` (or `--style cartoon`) renders the same
-pages in that pack, dressed by its tokens
-(`templates/styles/<pack>/base.css`).
+`bun packages/engine/src/node/gallery.ts --only rhythm/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 `bun test tests/rhythm.test.ts` (from `packages/engine`) mounts every member
 by name from a game page in every fixture at desktop and phone, checks the

@@ -28,7 +28,6 @@
     "../../showcase/*/assets/ui/*.tsx",
     "../create/template/src/**/*.ts",
     "../../tests/fixtures/*/src/**/*.ts",
-    "tests/fixtures/*/src/**/*.ts",
-    "sheets/*/src/**/*.ts"
+    "tests/fixtures/*/src/**/*.ts"
   ]
 }

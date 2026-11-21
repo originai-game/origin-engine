@@ -110,34 +110,9 @@ every pack must show. A `Killfeed.row` plate stays at
 about 97 % opacity or more: rows sit over open sky, and the compositor
 blends in linear light, so a lighter plate drops a team name under 4.5:1.
 
-## Pages and frames (§6.2)
+## Gallery
 
-`og ui sheet shooter` renders `packages/engine/sheets/shooter/`. Its pages
-use the components by name, as a game does.
-
-- Normal: `combat` is the combat HUD over a bright sky and a dark ground,
-  with a headshot mark and two incoming hits.
-- Stress: `loadout` is a loadout with a long name, locked and equipped
-  slots and more slots than a phone shows, beside a six-row killfeed with
-  long names. The player is Kestrel: the newest row (Kestrel's kill) and the
-  oldest (Kestrel's death) are self rows, framed; a phone shows only the
-  newest of them.
-- Motion: the sheet's commands `hit:<kind>`, `damage:<id>:<angle>:<strength>:<kind>`,
-  `heal:<id>` and `reduced:<on|off>` drive the hit mark and the arcs for
-  `og render --keyframes`. The mark pops in (opacity, and scale from 1.5)
-  and holds while the game holds `hit`; an arc fades in and out over
-  300 ms. Under reduced motion both only fade, and both settle: the frame's
-  `dump_ui:motion` lists nothing moving once they have.
-- Locales: the sheet loads the components' strings in Japanese, Simplified
-  Chinese and Arabic (`assets/strings/`), so `og ui review shooter
-  --locales game,pseudo,ja,ar` shows CJK and right to left. Right to left
-  the HUD's corners mirror (the feed and ammunition on the left, the vitals
-  on the right); the crosshair and the damage arcs keep their screen
-  directions. The slot list's scrollbar stays on the right, with its room.
-- Styles: the sheet's screens wear the `fantasy` pack and the default
-  style (`combat-default`, `loadout-default`). A pack joins with a look
-  naming it under `assets/looks/` (which makes the cook bundle it) and its
-  name in the sheet's `STYLES`.
+`bun packages/engine/src/node/gallery.ts --only shooter/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 ## Tests
 

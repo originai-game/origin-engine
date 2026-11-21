@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Sample icon art for the review sheet's explore page only (generated for
-# the HUD art direction; never part of an install). Colour art: sRGB.
-texture {
-}

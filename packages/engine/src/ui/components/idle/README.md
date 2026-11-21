@@ -70,25 +70,9 @@ disabled, selected, overflow; purchases: max, disabled, maxed, empty,
 overflow; prestige: disabled, confirming, empty, overflow; offline:
 disabled, empty, overflow).
 
-## Review sheet and tests
+## Gallery and tests
 
-`og ui sheet idle` renders the three review pages from
-`packages/engine/sheets/idle/`, dressed by the fantasy pack: play (the
-resource bar over generators and the upgrade shop), reset (prestige asking
-to confirm and the welcome-back panel, then their long forms) and states
-(every member in every fixture state, a scrolling page). Each page also
-has a `-default` screen with its explicit `style:default;page:<page>`
-commands. `page:offline` (`offline-default`) isolates Welcome back in a
-viewport-bounded slot, so both claim actions can be reviewed on a phone
-without the preceding prestige panel. The generator and purchase lists
-have stationary bottom fade cues when their phone slots scroll. The commands
-`page:states-resources`, `-generators`, `-purchases`, `-prestige` and
-`-offline` show one member's states on one desktop screen for `og ui
-preview --screen "x=style:fantasy;page:states-purchases"`.
-`src/fixtures.ts` repeats the documents' fixtures for the sheet's stores.
-`og ui review idle --style scifi` (or `--style cartoon`) renders the same
-pages in that pack, dressed by its tokens
-(`templates/styles/<pack>/base.css`).
+`bun packages/engine/src/node/gallery.ts --only idle/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 `bun test tests/idle.test.ts` (from `packages/engine`) mounts every member
 by name from a game page in every fixture at desktop and phone, checks that

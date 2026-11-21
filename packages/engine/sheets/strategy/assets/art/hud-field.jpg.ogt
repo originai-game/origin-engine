@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Sample battlefield scene art for the review sheet's field page only (generated for
-# the HUD art direction; never part of an install). Colour art: sRGB.
-texture {
-}

@@ -12,5 +12,5 @@ new colours, and fantasy's art still resolves against fantasy's `art/`
 because a `url()` held in a token resolves against the file that declares it (`crates/og-ui/tests/style_pack.rs`).
 
 To render it, copy `templates/styles/fantasy` to a pack directory, add
-`frost.css`, and run `og ui sheet` (or any group's
-review sheet) on it. It is not shipped: `tests/` is skipped by the cook.
+`frost.css`, and render it with the UI gallery
+(`bun packages/engine/src/node/gallery.ts --packs <pack>`). It is not shipped: `tests/` is skipped by the cook.

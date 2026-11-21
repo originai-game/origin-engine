@@ -224,7 +224,7 @@ export function deduplicateAssets(root: string): number {
       }
     }
   };
-  for (const directory of ["engine/fonts", "engine/styles", "engine/sheets", "engine/ui-sheet", "engine/extensions/materials/sheet", "create/fonts", "create/styles"]) walk(join(root, directory));
+  for (const directory of ["engine/fonts", "engine/styles", "create/fonts", "create/styles"]) walk(join(root, directory));
   return saved;
 }
 

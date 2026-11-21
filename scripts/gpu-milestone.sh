@@ -57,17 +57,7 @@ cd "$gate"
 record 'full gate' "$logs/full.log" env OG_WASM_VARIANTS=all scripts/check.sh full --all || true
 printf 'reference mismatches: %s\n' "$(grep -c 'REFERENCE MISMATCH' "$logs/full.log" || true)" >> "$summary"
 
-# 2. Four-style screens on the same pinned head.
-# The session controller loads the package's native addon as well as og.
-if record 'screen native build' "$logs/screen-native-build.log" env OG_RELEASE=1 OG_GATE=0 sh packages/engine/scripts/build.sh --native; then
-  og_gpu_acquire 'milestone screens'
-  for style in default fantasy scifi cartoon; do
-    record "screens $style" "$logs/screens-$style.log" target/release/og ui review screens --style "$style" --locales game --out "$art/screens4/$style" || true
-  done
-  og_lock_release
-fi
-
-# 3. Dense-menu perf, final main against the last measured main.
+# 2. Dense-menu perf, final main against the last measured main.
 clean uiperf
 cd "$perf"
 og_gpu_acquire_all 'milestone UI perf'

@@ -111,30 +111,12 @@ lobby: full, guest, empty, disabled, overflow). Loading and error do not
 apply to these six displays: they draw data the game already has (a game
 shows a waiting lobby or roster through `detail` and the empty states).
 
-## Review sheet and tests
+## Gallery and tests
 
-`og ui sheet arena` renders `packages/engine/sheets/arena/`: `select` (the
-normal page: roster, draft and lobby), `match` (the stress page: the round
-HUD with its won banner over a bright sky and a dark floor, the ten-player
-scoreboard and the five-a-side versus with long names) and `states` (every
-member in every fixture state), in the fantasy pack. Each page also has a
-`-default` screen with its explicit `style:default;page:<page>` commands.
-`og ui review arena --style scifi` (or `--style cartoon`) renders the same
-pages in that pack, dressed by its tokens
-(`templates/styles/<pack>/base.css`).
+`bun packages/engine/src/node/gallery.ts --only arena/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 `bun test tests/arena.test.ts` (from `packages/engine`) mounts every member
 by name from a game page in every fixture at desktop and phone, and under
 the default style; checks the declared parts, the intents and their keys,
 the disabled states, keyed selection through a reorder, keyboard and pad
 focus, the team placement and order, and that each state is a word.
-
-`packages/engine/sheets/arena-social/` reviews ready checks, voting and
-spectating in the default style. For example, `og ui preview
-packages/engine/sheets/arena-social --screen 'vote-closed=page:vote;state:closed'
---breakpoints desktop,phonePortrait` captures the ended vote at both sizes;
-the component metadata names the other fixture states. From `packages/engine`,
-`bun test tests/arena-social.test.ts` checks every fixture, authoritative
-state updates, keyed intents after reordering, disabled silence, keyboard
-activation and last-row scrolling in short phone slots without losing
-response or exit controls.

@@ -28,7 +28,7 @@ delete process.env.OG_ENGINE_MINISIGN_KEY;
 
 test("shared assets survive tar installation at every original path, with one stored copy and modes preserved", () => {
   const root = scratch("og-assets-");
-  const copies = ["engine/styles/shared/font.ttf", "create/styles/shared/font.ttf", "engine/sheets/hud/assets/font.ttf"];
+  const copies = ["engine/styles/shared/font.ttf", "create/styles/shared/font.ttf", "engine/fonts/shared/font.ttf"];
   for (const path of copies) {
     mkdirSync(join(root, path, ".."), { recursive: true });
     writeFileSync(join(root, path), "shared font", { mode: 0o644 });

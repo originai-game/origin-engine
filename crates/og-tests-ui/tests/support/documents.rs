@@ -62,14 +62,13 @@ pub fn populated_preview(
     height: f32,
 ) -> Option<og_draw::TextureHandle> {
     let core = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/core-screens");
-    let rpg = engine_dir("sheets/rpg/assets/art");
     let paths = [
         core.join("coast.png"),
         core.join("logo.png"),
         core.join("thumbnail.png"),
-        rpg.join("brenna.png"),
-        rpg.join("brenna-full.png"),
-        rpg.join("map.png"),
+        core.join("rpg-brenna.png"),
+        core.join("rpg-brenna-full.png"),
+        core.join("rpg-map.png"),
     ];
     let textures = paths
         .iter()
@@ -85,9 +84,11 @@ pub fn populated_preview(
         })
         .collect();
     let env = Assets { messages, textures };
-    let atlas = image::open(engine_dir("sheets/rpg/assets/icons/ink-icons.png"))
-        .unwrap()
-        .to_rgba8();
+    let atlas = image::open(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles/shared/ink-icons.png"),
+    )
+    .unwrap()
+    .to_rgba8();
     let texture = scene.add_texture(og_render::TextureData {
         width: atlas.width(),
         height: atlas.height(),

@@ -1,7 +1,0 @@
-type import
-version 1
----
-# Sample level map art for the review sheet only (generated for the level select art
-# direction; never part of an install). Colour art: sRGB.
-texture {
-}

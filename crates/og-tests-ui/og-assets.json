@@ -14,6 +14,24 @@
       "visibility": "public"
     },
     {
+      "path": "tests/fixtures/core-screens/rpg-brenna-full.png",
+      "sha256": "e8508ef25284b6409d87575bb1e858ce7fb1dbdcef56e8ffab481bee01f8a8ba",
+      "size": 489482,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/core-screens/rpg-brenna.png",
+      "sha256": "6f3911e5640225faecba1e7699987688ecf48b01ea97866a2261a27a8984f2e6",
+      "size": 98789,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/core-screens/rpg-map.png",
+      "sha256": "1259fedcc2199741f9eabf4e62f1da802a6cc2d312a015b026557aeadfe82a26",
+      "size": 1626104,
+      "visibility": "public"
+    },
+    {
       "path": "tests/fixtures/core-screens/thumbnail.png",
       "sha256": "e1c4353679d5003a4b4969553590a3393bea435ffb2704aa7669a9cec96c77c2",
       "size": 79509,

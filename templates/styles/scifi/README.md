@@ -14,8 +14,7 @@ the built-in components' structure (`og-components`) and below a game's own
 styles (`og-game`, unlayered), and it selects no component part: every
 built-in component and screen wears the default style's control and role
 rules, which read these tokens. Review them under the pack with
-`og ui review <group> --style scifi`, and likewise `components`, `screens`
-and `world`.
+`bun packages/engine/src/node/gallery.ts --packs scifi`.
 
 | File | What it holds |
 | --- | --- |

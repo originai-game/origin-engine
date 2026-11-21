@@ -73,19 +73,9 @@ rules are start-aligned, and collection counts have a footer of their own
 rather than covering the art. Deck size has a track-relative meter and an
 over-limit danger fill.
 
-## Review sheet and tests
+## Gallery and tests
 
-`og ui sheet card` renders the three review pages (table: hand and piles;
-builder: collection and deck list; run: run map and reward) from
-`packages/engine/sheets/card/`, dressed by the fantasy pack, with ja and ar
-string tables for the locale cells.
-`og ui review card --style scifi` (or `--style cartoon`) renders the same
-pages in that pack, dressed by its tokens
-(`templates/styles/<pack>/base.css`).
-Pass `--screen 'builder-default=style:default;page:builder'` to
-`og ui preview packages/engine/sheets/card` for the default-style builder;
-`table` and `run` use the corresponding page command. The sheet supplies
-its own font and fallback icons when no pack is selected.
+`bun packages/engine/src/node/gallery.ts --only card/` renders every member's fixtures under every pack (docs/ui.md §6.5).
 
 `bun test tests/card.test.ts` (from `packages/engine`) mounts every member
 by name from a game page from each of its fixtures at desktop and phone,

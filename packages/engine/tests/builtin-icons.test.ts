@@ -50,8 +50,5 @@ test("every icon a built-in component names is in the default icon set", () => {
     const text = readFileSync(file, "utf8");
     for (const name of [...named(text), ...fixtureIcons(text)]) if (!DEFAULT.has(name)) missing.push(`${relative(ENGINE, file)}: ${name}`);
   }
-  // The screens sheet's own fixtures (sheets/screens/src/fixtures.ts).
-  const sheet = readFileSync(join(ENGINE, "sheets/screens/src/fixtures.ts"), "utf8");
-  for (const q of sheet.matchAll(/["'](?:icon|[a-z]\w*Icon)["']\s*:\s*["']([A-Za-z][\w-]*)["']/g)) if (!DEFAULT.has(q[1]!)) missing.push(`sheets/screens/src/fixtures.ts: ${q[1]}`);
   expect(missing).toEqual([]);
 });

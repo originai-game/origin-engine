@@ -37,7 +37,7 @@ if [ "$(cat "$here/native/build-profile" 2>/dev/null)" != release ]; then
 fi
 rm -rf "$out"
 mkdir -p "$out/stage"
-# The pinned files the package ships or copies in (extensions, sheets, vendor, the templates'
+# The pinned files the package ships or copies in (extensions, vendor, the templates'
 # fonts and styles; docs/ci.md §The asset store), each checked against its pin.
 bun "$root/scripts/assets.ts" ensure "$here" "$root/templates"
 [ "$native_only" = 1 ] || for f in dist/web/origin-engine_bg.wasm dist/web-publish/origin-engine_bg.wasm dist/web-publish-2d/origin-engine_bg.wasm dist/web-publish-2d/origin-engine.js \
@@ -136,12 +136,6 @@ for pack in "$here"/../../templates/fonts/*/; do
   cp -R "$pack" "$here/fonts/$(basename "$pack")"
 done
 cp "$here/../../templates/fonts/LICENSES.md" "$here/fonts/LICENSES.md"
-# The on-demand sheet project is data, not a gate or a hard-coded runtime template.
-rm -rf "$here/ui-sheet"
-mkdir -p "$here/ui-sheet"
-for part in assets src project.ogt; do
-  cp -R "$here/sheets/style/$part" "$here/ui-sheet/$part"
-done
 # Keep named bindgen modules for offline symbolication outside the install.
 # Do this before build-facts: their hashes and sizes describe the shipped bytes.
 symbols="$out/stage/wasm-symbols"

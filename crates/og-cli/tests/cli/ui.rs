@@ -1,78 +1,6 @@
 use super::*;
 
 #[test]
-fn sheet_keeps_its_cook_cache_but_removes_deleted_sources() {
-    let dir = scratch_root();
-    let engine = dir.join("engine");
-    std::fs::create_dir_all(engine.join("src/node")).unwrap();
-    std::fs::write(engine.join("src/node/build.ts"),
-        "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], 'export default 0;');").unwrap();
-    // Only the renderer is a stand-in; preparation uses the real cook.
-    std::fs::write(
-        engine.join("src/node/ui-run.ts"),
-        "console.log(JSON.stringify({root: process.argv[process.argv.indexOf('--root') + 1]}));",
-    )
-    .unwrap();
-    let source = dir.join("group");
-    std::fs::create_dir_all(source.join("assets/ui")).unwrap();
-    std::fs::create_dir_all(source.join("src")).unwrap();
-    std::fs::write(source.join("src/main.ts"), "export default 0;").unwrap();
-    std::fs::write(source.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"Cache\"\nentry \"src/main.ts\"\nui {\n  screen \"kept\" \"show:kept\"\n}\n").unwrap();
-    for name in ["kept", "gone"] {
-        std::fs::write(
-            source.join(format!("assets/ui/{name}.svelte")),
-            format!("<meta name='screen' content='{name}'><div></div>"),
-        )
-        .unwrap();
-    }
-    let run = || {
-        let out = og()
-            .args(["ui", "sheet"])
-            .arg(&source)
-            .arg(&dir)
-            .env("OG_ENGINE_PACKAGE", &engine)
-            .env("OG_SESSION", "0")
-            .output()
-            .unwrap();
-        assert!(out.status.success(), "{}", text(&out));
-        let value: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
-        PathBuf::from(value["root"].as_str().unwrap())
-    };
-    let first = run();
-    let bundle = og_cook::runtime::Bundle::open(&first.join("cooked")).unwrap();
-    let output = first
-        .join("cooked")
-        .join(&bundle.output("ui/kept.svelte").unwrap().file);
-    let modified = std::fs::metadata(&output).unwrap().modified().unwrap();
-    assert!(bundle.output("ui/gone.svelte").is_ok());
-    std::fs::remove_file(source.join("assets/ui/gone.svelte")).unwrap();
-    let second = run();
-    assert_eq!(
-        first, second,
-        "sheet preparation must use a stable project directory"
-    );
-    assert_eq!(
-        std::fs::metadata(output).unwrap().modified().unwrap(),
-        modified,
-        "an unchanged document must stay cached across invocations"
-    );
-    assert!(!second.join("assets/ui/gone.svelte").exists());
-    let bundle = og_cook::runtime::Bundle::open(&second.join("cooked")).unwrap();
-    assert!(bundle.output("ui/gone.svelte").is_err());
-}
-
-/// `og ui add materials` installs the material presets (each a `type
-/// ui-material` naming its WGSL beside it), and the game cooks every one:
-/// the source is read relative to the material file, as a pack's relative
-/// references are promised to survive installation (docs/ui.md §5). Each
-/// cooked material carries its code and its parameters in `param` order.
-///
-/// Ways it could fail: `source` read only from `assets/` (every preset
-/// missing its WGSL once installed), a preset whose WGSL does not compile,
-/// a preset past the four parameters a layer carries, or the pack's review
-/// sheet installed (the game cooks its sample art and a nested project).
-#[test]
 fn the_material_presets_install_and_cook_with_their_wgsl_beside_them() {
     let dir = scratch_root();
     std::fs::create_dir_all(dir.join("src")).unwrap();
@@ -88,10 +16,6 @@ fn the_material_presets_install_and_cook_with_their_wgsl_beside_them() {
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
-    assert!(
-        !dir.join("assets/materials/materials/sheet").exists(),
-        "the review sheet was installed into the game"
-    );
     let out = og().arg("cook").arg(&dir).output().unwrap();
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
