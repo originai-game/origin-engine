@@ -47,13 +47,8 @@ pub(crate) const PLAYER: &str = "og.VideoPlayer";
 /// gained `wait` (a restore takes it off).
 pub(crate) const PLAYER_VERSION: u32 = 3;
 const AUDIO: &str = "og.AudioSource";
-/// A document's `<video>` or `<audio>` asking its player (IDL og.MediaIntent).
+/// A request to change a player at the tick boundary (IDL og.MediaIntent).
 pub(crate) const MEDIA_INTENT: &str = "og.MediaIntent";
-
-/// A player's state as the last tick left it, by engine and entity, for a
-/// document's `<video>` and `<audio>` (presentation: never read by the
-/// simulation) with its texture's handle.
-type Media = IdMap<u64, (og_ui::bind::MediaState, f64)>;
 
 /// What the system needs of a loaded video.
 #[derive(Clone, Copy, Debug)]
@@ -67,50 +62,10 @@ struct Clip {
 type Clips = Arc<Mutex<IdMap<u64, Clip>>>;
 
 /// og.video on one engine: its loaded videos, by Video handle (kept across
-/// a reload), and the state of the players and sounds its documents name,
-/// as the last tick left them (presentation: documents read it).
+/// a reload).
 #[derive(Default)]
 pub(crate) struct ModuleState {
     clips: Clips,
-    media: Arc<Mutex<Media>>,
-}
-
-/// The state of `player` for a document ([`og_ui::bind::Env::media`]).
-pub(crate) fn media_state(engine: u32, player: u64) -> Option<(og_ui::bind::MediaState, f64)> {
-    let eng = crate::engine::engine(engine).ok()?;
-    let media = eng
-        .modules
-        .video
-        .media
-        .lock()
-        .unwrap_or_else(|e| e.into_inner());
-    media.get(&player).copied()
-}
-
-/// Sends a frame's `<video>` and `<audio>` requests as og.MediaIntent.
-pub(crate) fn send_media(
-    eng: &crate::engine::Engine,
-    ctx: &SystemContext<'_>,
-    ops: &[og_ui::bind::MediaOp],
-) -> Result<(), String> {
-    let Ok((layout, _)) =
-        crate::host::api::running_record(eng, MEDIA_INTENT, crate::host::codec::RecordKind::Event)
-    else {
-        return Ok(()); // no document with one loaded
-    };
-    let tri = |b: Option<bool>| b.map_or(-1, i32::from);
-    for op in ops {
-        let v = json!({
-            "player": op.player,
-            "playing": tri(op.playing),
-            "seek": op.seek.unwrap_or(-1.0),
-            "gain": op.gain.unwrap_or(-1.0),
-            "repeat": tri(op.repeat),
-        });
-        let bytes = layout.encode(None, Some(&v))?;
-        crate::host::api::send_intent(eng, Some(ctx), MEDIA_INTENT, &bytes)?;
-    }
-    Ok(())
 }
 
 /// Applies last tick's og.MediaIntent to the players they name: a
@@ -602,7 +557,6 @@ pub(crate) fn install(
         .ok_or_else(|| format!("{PLAYER} has no layout"))?;
     let audio = record(world, layouts, AUDIO)?;
     let shared = mount.modules.video.clips.clone();
-    let media = mount.modules.video.media.clone();
     let player = MediaLayouts {
         player,
         intent: layouts.get(MEDIA_INTENT).cloned(),
@@ -614,7 +568,7 @@ pub(crate) fn install(
                 writes: vec![AUDIO.into()],
                 ..Default::default()
             },
-            move |ctx| run(ctx, engine_id, &shared, &media, &player, &audio),
+            move |ctx| run(ctx, engine_id, &shared, &player, &audio),
         )
         .map_err(|e| e.reason().to_string())
 }
@@ -629,32 +583,12 @@ fn run(
     ctx: &mut SystemContext<'_>,
     engine_id: u32,
     shared: &Mutex<IdMap<u64, Clip>>,
-    media_out: &Mutex<Media>,
     layouts: &MediaLayouts,
     audio: &(SchemaId, Layout),
 ) -> og_core::Result<()> {
     let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
-    let named = apply_media(ctx, layouts, audio)?;
-    let mut media = Media::new();
-    // A sound a document names: whether it plays.
-    for e in named {
-        if let Ok(ab) = ctx.get_bytes(e, audio.0) {
-            let s: record::AudioSource = audio.1.read(&ab).map_err(bad)?;
-            let state = og_ui::bind::MediaState {
-                playing: s.playing,
-                ..Default::default()
-            };
-            media.insert(e.to_bits(), (state, 0.0));
-        }
-    }
-    let publish = |media: Media| {
-        let mut all = media_out.lock().unwrap_or_else(|e| e.into_inner());
-        // A sound keeps its last state between the ticks it is named.
-        all.retain(|_, (s, _)| s.duration == 0.0);
-        all.extend(media);
-    };
+    apply_media(ctx, layouts, audio)?;
     let Ok(id) = ctx.id_by_name(PLAYER) else {
-        publish(media);
         return Ok(());
     };
     let player = &(id, layouts.player.clone());
@@ -711,19 +645,6 @@ fn run(
         v["frame"] = json!(frame_at(time, &c));
         v["finished"] = json!(finished);
         v["texture"] = json!(texture as f64);
-        media.insert(
-            e.to_bits(),
-            (
-                og_ui::bind::MediaState {
-                    playing: playing && !finished,
-                    time,
-                    duration: c.seconds,
-                    ended: finished,
-                    texture: None,
-                },
-                texture as f64,
-            ),
-        );
         let out = player.1.encode(Some(&bytes), Some(&v)).map_err(bad)?;
         ctx.set_bytes(e, player.0, &out)?;
         // The sound: started at the video's time, stopped for a tick on a
@@ -747,7 +668,6 @@ fn run(
         let out = audio.1.encode(Some(&ab), Some(&s)).map_err(bad)?;
         ctx.set_bytes(e, audio.0, &out)?;
     }
-    publish(media);
     Ok(())
 }
 

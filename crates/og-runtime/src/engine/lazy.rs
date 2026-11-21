@@ -321,8 +321,8 @@ pub(crate) const LAZY: &[Lazy] = &[
             )
         },
     },
-    // A document's <video> or <audio> asks its player through it, once a
-    // document with one loads (crate::bind::modules::docs::load_document).
+    // og.MediaIntent asks a player to change at the tick boundary, once a
+    // game names it.
     Lazy {
         name: crate::bind::video::MEDIA_INTENT,
         enable: |w, _| {

@@ -25,12 +25,10 @@ pub(crate) use ui_config::{
 };
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
-use ui_desc::paint;
-pub(crate) use ui_desc::{UiAnswers, srgb8, texture_of, ui_engine, with_ui};
+pub(crate) use ui_desc::{UiAnswers, srgb8, with_ui};
 pub use ui_desc::{
     og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer, og_ui_frame_theme,
-    og_ui_frame_viewport, og_ui_has_icon, og_ui_scroll_into_view, og_ui_seconds, og_ui_set_focus,
-    og_ui_set_highlight, og_ui_start_view_transition, og_ui_theme, og_ui_viewport,
+    og_ui_frame_viewport, og_ui_has_icon, og_ui_seconds, og_ui_theme, og_ui_viewport,
 };
 mod widgets;
 pub(crate) use widgets::emit;
@@ -38,29 +36,17 @@ mod game_widgets;
 use crate::{present::art, present::extract, world::assets};
 use game_widgets::ui_of;
 pub use game_widgets::{
-    og_ui_back, og_ui_bounds, og_ui_dismiss_toast, og_ui_feedback, og_ui_focus, og_ui_hud_edit,
-    og_ui_hud_layout, og_ui_hud_reset, og_ui_hud_select, og_ui_hud_step, og_ui_navigate,
-    og_ui_preview_viewport, og_ui_scroll_state, og_ui_set_haptics, og_ui_set_hud_edit,
-    og_ui_set_hud_layout, og_ui_set_hud_player, og_ui_set_navigation, og_ui_set_players,
-    og_ui_set_virtual_cursor, og_ui_tick, og_ui_toast, og_ui_virtual_cursor,
+    og_ui_feedback, og_ui_preview_viewport, og_ui_set_haptics, og_ui_set_virtual_cursor,
+    og_ui_tick, og_ui_virtual_cursor,
 };
 
 pub(crate) mod docs;
 pub use docs::{
-    og_load_document, og_ui_action_bar, og_ui_action_fired, og_ui_action_held, og_ui_clear,
-    og_ui_define_action, og_ui_device, og_ui_doc_events, og_ui_document_schema, og_ui_file_picker,
-    og_ui_frame_glyph, og_ui_frame_messages, og_ui_game_input, og_ui_glyph, og_ui_layers,
-    og_ui_paused, og_ui_pop, og_ui_push, og_ui_remote_frames, og_ui_replace, og_ui_save_edits,
-    og_ui_screen_vm, og_ui_set_device, og_ui_set_prop,
+    og_ui_action_fired, og_ui_action_held, og_ui_define_action, og_ui_device, og_ui_frame_glyph,
+    og_ui_glyph, og_ui_set_device,
 };
-mod motion;
-/// og.ui's world-space members (docs/ui.md §1).
+/// The tick's camera and anchored entities the UI reads (docs/ui.md §1).
 pub(crate) mod ui_world;
-pub use motion::{
-    og_ui_animate, og_ui_define_timeline, og_ui_force_state, og_ui_gesture, og_ui_layout_stats,
-    og_ui_motion_events, og_ui_overlaps, og_ui_pause, og_ui_play, og_ui_play_info,
-    og_ui_play_timeline, og_ui_resume, og_ui_reverse, og_ui_seek, og_ui_stop, og_ui_visual_state,
-};
 
 use crate::engine::{Engine, engine, running};
 use crate::{host::wire, parse, refuse};
@@ -71,8 +57,8 @@ use og_physics::{
     ShapeCastDesc, ShapeDesc,
 };
 use og_ui::{
-    Fonts, IconAtlas, InputFrame, Insets, Nav, Scheme, SharedUi, Srgba, Theme, ToastDesc, Tone, Ui,
-    UiDesc, UiFont, Viewport,
+    Fonts, IconAtlas, InputFrame, Insets, Scheme, SharedUi, Srgba, Theme, Ui, UiDesc, UiFont,
+    Viewport,
 };
 use serde_json::{Map, Value, json};
 use std::cell::Cell;
@@ -217,7 +203,6 @@ pub(crate) fn mount_back(
                 let ui_time = t.seconds(t.tick + 1);
                 let (warnings, missing) = {
                     let mut ui = shared.lock();
-                    docs::end_of_frame(engine_id, &mut ui, ctx)?;
                     // The tick's camera and anchored entities (docs/ui.md §1).
                     feed.before_end(ctx, &mut ui);
                     BUILDING.with(|b| b.set(None));
@@ -833,35 +818,5 @@ mod tests {
             ok_text(&all),
             crate::ok(Value::Array(hits.iter().map(object).collect()))
         );
-    }
-
-    /// A Paint's colour is a linear `Color` (the `conventions` guide §6):
-    /// every 8-bit sRGB channel, converted to linear as `color.fromHex` does
-    /// and sent as an f32, is the channel og-ui draws. Read as authored
-    /// sRGB (what it was before) every mid-tone would draw darker; its
-    /// opacity fades it, and components past 0 to 1 clamp.
-    #[test]
-    fn a_paints_linear_colour_draws_the_srgb_it_was_converted_from() {
-        let theme = std::collections::BTreeMap::from([("fg".to_string(), "#336699".to_string())]);
-        let drawn = |paint_json: Value| {
-            let p: wire::Paint =
-                wire::arg(Some(&paint_json.to_string()), "paint").expect("a paint");
-            paint(&theme, &p).expect("a colour")
-        };
-        for byte in 0..=255u8 {
-            let s = f64::from(byte) / 255.0;
-            let linear = if s <= 0.04045 {
-                s / 12.92
-            } else {
-                ((s + 0.055) / 1.055).powf(2.4)
-            };
-            let c = drawn(json!({ "color": { "r": linear, "g": 0, "b": 1 }, "opacity": 0.5 }));
-            assert_eq!((c.rgb, c.alpha), ([byte, 0, 255], 0.5), "sRGB {byte}");
-        }
-        let c = drawn(json!({ "color": { "r": 4, "g": -1, "b": 0.5 } }));
-        assert_eq!((c.rgb, c.alpha), ([255, 0, 188], 1.0));
-        // A role is the theme's colour by its token name, over any colour.
-        let c = drawn(json!({ "role": "fg", "color": { "r": 1, "g": 1, "b": 1 }, "opacity": 0.5 }));
-        assert_eq!((c.rgb, c.alpha), ([0x33, 0x66, 0x99], 0.5));
     }
 }

@@ -1,45 +1,5 @@
   # ── documents, layers and actions (docs/ui.md §2.1, §6) ─────────
 
-  struct UiDocEvent {
-    doc "Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back is `emit`."
-    field mount String "The document's mount: the screen's name, or a component instance's path."
-    field path String "The element's path."
-    field rowKey String "Stable collection key of the innermost each row; empty outside a row. Never an index."
-    field kind String "click, changed, select, emit, action, set, back, or activate and deactivate (a layer became or stopped being the active one)."
-    field name String "The element's id (click), the prop (changed), the list (select), the event or action's name, or the viewmodel path a `set` wrote."
-    field value Json "The new value (changed, set), the row's index (select); null otherwise."
-  }
-
-  struct UiFrameMessage {
-    doc "Something the document of a remote `<iframe>` did (docs/ui.md §2.1 Frames, HTML's `postMessage` as a frame's events): it never reaches docEvents, so the game reads it here and decides what it does. A gameplay effect then goes through og.input.intent, so replays carry it."
-    field mount String "The embedding document's mount."
-    field frame String "The `<iframe>`'s path."
-    field origin String "The origin its document was loaded from, such as `https://events.example.com`: check it before acting."
-    field kind String "click, changed, select, emit, action or set, as a document event's kind."
-    field name String "The element's id (click), the prop (changed), the event or action's name."
-    field path String "The element's path inside the frame, after the iframe's."
-    field value Json "The new value (changed, set), the row's index (select); null otherwise."
-  }
-
-  struct UiLayer {
-    doc "A layer of the stack (docs/ui.md §2.1), as its screen declares it."
-    field serial u32 "Its number, unique for the UI's life: what push answered."
-    field screen String "The screen's name; also its layer's id, the first segment of its elements' paths."
-    field mount String "The store-driven mount that shows it, `scope:id` (a `type screen` document mounted with scope.mount is a layer while it is mounted); empty for a pushed screen."
-    field kind String "hud, menu, modal, popover, toast, tooltip or system."
-    field input String "game (input reaches gameplay), menu (input stays in the UI) or all."
-    field capture bool "It takes the pointer on its gaps too."
-    field pause bool "The game pauses while it is on the stack."
-    field under String "What happens to the layers under it: none, dim, blur or hide."
-    field back String "What Back does: pop, none or `emit <event>`."
-    field focus String "Where focus starts, a path below its root (empty: its first control)."
-    field remember bool "Focus returns where it was when it is the active layer again."
-    field top bool "It is the topmost layer."
-    field active bool "It is the active layer: the top one whose input is menu or all (the topmost with none). It takes Back, pop and focus."
-    field hidden bool "A layer above hides it: it is not built."
-    field inert bool "A menu layer above takes its input."
-  }
-
   enum UiActionTrigger {
     doc "When a UI action fires."
     variant press "When a binding goes down."
@@ -81,93 +41,6 @@
     field device UiDevice "The device it is for."
   }
 
-  struct UiActionHint {
-    doc "One entry of the action bar: an action the top layer accepts, its hint and glyph."
-    field action String "The action."
-    field hint String "What it does here (the document's `actions` line, else its label)."
-    field icon String "Its glyph's icon."
-    field text String "Its glyph's text."
-    field hold bool "It is a hold."
-  }
-
-  fn push {
-    doc "Push a screen onto the layer stack (docs/ui.md §2.1), over the layers of its kind and under those of a later kind (hud, menu, modal, popover, toast, tooltip, system); the active layer remembers its focus. Callable anywhere (systems, commands, start); the stack is world state, so snapshots carry it."
-    generic S ScreenName
-    param world World "The world."
-    param screen S "The screen's name."
-    param vm Option.ScreenProps.S "Its viewmodel (null: its document's first fixture, else an empty object)." {
-      optional true
-    }
-    returns Result.u32 "The layer's serial. Refused for a name no screen document has."
-  }
-
-  fn pop {
-    doc "Pop the active layer; the next active one takes its remembered focus. Answers the popped screen's name (empty: the stack was empty)."
-    param world World "The world."
-    returns String
-  }
-
-  fn replace {
-    doc "Replace the active layer with a screen."
-    generic S ScreenName
-    param world World "The world."
-    param screen S "The screen's name."
-    param vm Option.ScreenProps.S "Its viewmodel." {
-      optional true
-    }
-    returns Result.u32 "The new layer's serial."
-  }
-
-  fn clear {
-    doc "Empty the layer stack."
-    param world World "The world."
-    returns Void
-  }
-
-  fn layers {
-    doc "The layer stack, bottom first."
-    param world World "The world."
-    returns List.UiLayer
-  }
-
-  fn screenVm {
-    doc "A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack."
-    generic S ScreenName
-    param world World "The world."
-    param screen S "The screen's name."
-    returns Option.ScreenValues.S
-  }
-
-  fn docEvents {
-    doc "Take the events of the documents built this frame: pushed layers and store-driven mounts."
-    param world World "The world."
-    returns List.UiDocEvent
-  }
-
-  fn frameMessages {
-    doc "Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from. Always empty where og.ui.remoteFrames answers false."
-    param world World "The world."
-    returns List.UiFrameMessage
-  }
-
-  fn remoteFrames {
-    doc "Whether this engine shows remote `<iframe>`s (a capability query, the same on every host): true only for a game whose project.ogt lists `frames`, which og build ships the engine with remote frames to. Where false, a remote src is refused, no remote document is fetched and og.ui.frameMessages stays empty; local `<iframe src=\"x.svelte\">` frames work everywhere."
-    param world World "The world."
-    returns bool
-  }
-
-  fn gameInput {
-    doc "Gameplay takes input this tick: no layer whose input is `menu` is on the stack. Input goes to the top layer that takes it, once per tick."
-    param world World "The world."
-    returns bool
-  }
-
-  fn paused {
-    doc "A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had."
-    param world World "The world."
-    returns bool
-  }
-
   fn defineAction {
     doc "Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB), details (X, Y) and rotate (R, X) are defined by default."
     param world World "The world."
@@ -206,43 +79,11 @@
     returns UiDevice
   }
 
-  fn filePicker {
-    doc "Whether this host opens a file picker for a document's `<input type=\"file\">` (a capability query, the same on every host that has one): false on the web and natively today, where such an input is refused at build with a warning. Where true, a press sends the host a `filepick` event (its `accept` and `multiple`) and the host writes the chosen names to the input's bound value."
-    param world World "The world."
-    returns bool
-  }
-
   fn setDevice {
     doc "Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on."
     param world World "The world."
     param device UiDevice "The device."
     returns Void
-  }
-
-  fn actionBar {
-    doc "What an action bar component reads: the actions the top layer's document lists (`actions { confirm \"Buy\" }`), each with its hint and its glyph on the device used last."
-    param world World "The world."
-    returns List.UiActionHint
-  }
-
-  fn documentSchema {
-    doc "Reflected document kinds, attributes and writeback. Anchors expose scaling, containment, LOD, text floors, obstacle avoidance, bounded placement and keyed stacks. placement-box selects descendant collision bounds; max-shift caps travel independently of text scale. Mass bars expose shield, segments, resources and timed ghost trails. See guide components for attribute types, placement feedback and fallback behavior."
-    returns Json
-  }
-
-  fn setProp {
-    doc "Set a prop of a document element live (Tune, the probe's ui:set): presentation only, over the document's own line until og.ui.saveEdits writes it into the file. The value is written as the document's line would be (`token primary`, `grow`, `bind gold compact`)."
-    param world World "The world."
-    param path String "The element's full path."
-    param prop String "The prop (og.ui.documentSchema)."
-    param value String "Its value as a document line writes it."
-    returns Result.Void "Refused for an unknown prop or a value it does not take."
-  }
-
-  fn saveEdits {
-    doc "Write the live edits into their documents' `.ogt` files under the project's assets (each edited element's line of that prop replaced, or one added; every other line kept), as save_scene writes scenes; the documents take the new text at once. Answers the files written."
-    param world World "The world."
-    returns Result.List.String "Refused on a host with no project directory, or a write that fails."
   }
 }
 

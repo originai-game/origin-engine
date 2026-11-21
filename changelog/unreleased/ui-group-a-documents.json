@@ -1,0 +1,89 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og.load.document, og.ui.push, og.ui.pop, og.ui.replace, og.ui.clear, og.ui.layers, og.ui.screenVm, og.ui.docEvents",
+      "change": "Removed with the .svelte documents they loaded and stacked: a game's UI is TSX components, mounted with og.ui.mount on a layer.",
+      "fix": "Mount the screen's component with og.ui.mount(world, Screen, props, { layer }) and keep the function it answers to unmount it; read its events in its on* props. No codemod: a document's markup has no mechanical TSX translation.",
+      "find": ["og.load.document", "og.ui.push", "og.ui.pop", "og.ui.replace", "og.ui.clear", "og.ui.layers", "og.ui.screenVm", "og.ui.docEvents"]
+    },
+    {
+      "member": "og.ui.gameInput, og.ui.paused",
+      "change": "Removed: they answered a document layer's input mode and pause. A layer's pause and input gating come back in og-input's action map (the ui map).",
+      "fix": "Until then, a game pauses and gates its own input where it mounts a menu (og.time.setScale, its own systems' checks).",
+      "find": ["og.ui.gameInput", "og.ui.paused"]
+    },
+    {
+      "member": "og.ui.documentSchema, og.ui.setProp, og.ui.saveEdits, the probe's ui:set, ui:state, ui:play, ui:seek, ui:push, ui:pop, ui:save and ui:clear",
+      "change": "Removed with the documents they edited live. ui:material and ui:action stay.",
+      "fix": "Edit the TSX source; og dev reloads it.",
+      "find": ["og.ui.documentSchema", "og.ui.setProp", "og.ui.saveEdits", "ui:set:", "ui:state:", "ui:play:", "ui:seek:", "ui:push:", "ui:pop", "ui:save", "ui:clear"]
+    },
+    {
+      "member": "og.ui.defineTimeline, play, playTimeline, seek, pause, resume, reverse, stop, playInfo, forceState, visualState, motionEvents, overlaps, layoutStats, and the types UiTimeline, Choreo, PlayDesc, PlayInfo, UiMotionEvent, UiOverlap, UiLayoutStats",
+      "change": "Removed with the document animations, state groups and motion events they drove.",
+      "fix": "Animate TSX nodes with `transition-*` and `animate-*` classes and their state variants (`data-*:`, `hover:`); a sequence is a class change per step from the game's state.",
+      "find": ["og.ui.defineTimeline", "og.ui.play", "og.ui.playTimeline", "og.ui.seek", "og.ui.forceState", "og.ui.visualState", "og.ui.motionEvents", "og.ui.overlaps", "og.ui.layoutStats"]
+    },
+    {
+      "member": "og.ui.animate",
+      "change": "Removed: it tweened a number under the open document element, and a TSX tree has no open element.",
+      "fix": "Animate TSX nodes with `transition-*` and `animate-*` classes. Lost: a JS spring for an arbitrary number, which no replacement covers yet.",
+      "find": ["og.ui.animate"]
+    },
+    {
+      "member": "og.ui.gesture",
+      "change": "Removed: it read a document element's drag or pinch by its path.",
+      "fix": "A drag is the element's onPointerDown, onPointerMove and onPointerUp. Pinch, rotate and swipe come back as element events (onPinch, onRotate, onSwipe) on og-ui-next's multi-pointer input.",
+      "find": ["og.ui.gesture"]
+    },
+    {
+      "member": "og.ui.setFocus, og.ui.focus, og.ui.bounds, og.ui.scrollState, og.ui.scrollIntoView",
+      "change": "Removed: they named a document element by its path. Element queries come back on og-ui-next's geometry record.",
+      "fix": "Focus a TSX control with its `autofocus` prop. Reading an element's box or scroll position, and scrolling one into view, have no replacement until the element queries land.",
+      "find": ["og.ui.setFocus", "og.ui.focus(", "og.ui.bounds", "og.ui.scrollState", "og.ui.scrollIntoView"]
+    },
+    {
+      "member": "og.ui.startViewTransition, og.ui.setHighlight",
+      "change": "Removed: document view transitions and text highlights. Lost, with no replacement.",
+      "fix": "Delete the calls.",
+      "find": ["og.ui.startViewTransition", "og.ui.setHighlight"]
+    },
+    {
+      "member": "og.ui.toast, og.ui.dismissToast",
+      "change": "Removed: the timed toast queue the document notifications screen drew. Lost: the engine no longer times toasts out.",
+      "fix": "Keep the toasts in a store the game owns, pass them to the notifications screen's `toasts` prop, and remove a row on its onDismissToast or when the game's own timer runs out.",
+      "find": ["og.ui.toast", "og.ui.dismissToast"]
+    },
+    {
+      "member": "og.ui.actionBar, og.ui.filePicker",
+      "change": "Removed: the hints a document layer's `actions` line declared, and the document file input.",
+      "fix": "Pass the hints to the action-hints component's `hints` prop. Lost: the file picker.",
+      "find": ["og.ui.actionBar", "og.ui.filePicker"]
+    },
+    {
+      "member": "og.ui.setHudEdit, setHudPlayer, hudEdit, hudLayout, setHudLayout, hudSelect, hudStep, hudReset",
+      "change": "Removed: HUD layout editing of document elements with `customize`. Lost, with no replacement yet.",
+      "fix": "Delete the calls.",
+      "find": ["og.ui.setHudEdit", "og.ui.hudEdit", "og.ui.hudLayout", "og.ui.setHudLayout", "og.ui.hudSelect", "og.ui.hudStep", "og.ui.hudReset", "og.ui.setHudPlayer"]
+    },
+    {
+      "member": "og.ui.setPlayers, og.ui.setNavigation, og.ui.navigate, og.ui.back",
+      "change": "Removed: document focus navigation. The TSX tree moves the focus itself from the d-pad, the stick and the arrows. Lost: a focus per local-multiplayer player.",
+      "fix": "Delete the calls; a screen's Back is its own onPress or the `back` action.",
+      "find": ["og.ui.setPlayers", "og.ui.setNavigation", "og.ui.navigate", "og.ui.back"]
+    },
+    {
+      "member": "og.ui.defineMass, og.ui.spawnMass, og.ui.massCount",
+      "change": "Removed: the document core's mass world elements.",
+      "fix": "Mount anchored TSX components (an `anchor` prop on the entity or point); 1000 anchored DamageNumbers fit the frame budget.",
+      "find": ["og.ui.defineMass", "og.ui.spawnMass", "og.ui.massCount"]
+    },
+    {
+      "member": "og.ui.remoteFrames, og.ui.frameMessages",
+      "change": "Removed with remote frames: a document's `<iframe>` of another origin's document. Lost, with no replacement.",
+      "fix": "Delete the calls.",
+      "find": ["og.ui.remoteFrames", "og.ui.frameMessages"]
+    }
+  ]
+}

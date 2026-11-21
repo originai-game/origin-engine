@@ -573,8 +573,6 @@ export interface HostAbi<A, V> {
   og_load_texture_array(world: number, path: string): string;
   /** `og.load.style` */
   og_load_style(world: number, path: string): string;
-  /** `og.load.document` */
-  og_load_document(world: number, path: string): string;
   /** `og.load.look` */
   og_load_look(world: number, path: string): string;
   /** `og.load.lookInfo` */
@@ -1013,124 +1011,22 @@ export interface HostAbi<A, V> {
   og_ui_has_icon(name: string): boolean;
   /** `og.ui.seconds` */
   og_ui_seconds(): number;
-  /** `og.ui.setFocus` */
-  og_ui_set_focus(path: string): void;
-  /** `og.ui.scrollIntoView` */
-  og_ui_scroll_into_view(path: string, center: boolean): void;
-  /** `og.ui.startViewTransition` */
-  og_ui_start_view_transition(path: string): boolean;
-  /** `og.ui.setHighlight` */
-  og_ui_set_highlight(name: string, highlight: string): void;
   /** `og.ui.frameDirection` */
   og_ui_frame_direction(): string;
   /** `og.ui.frameTheme` */
   og_ui_frame_theme(): string;
-  /** `og.ui.bounds` */
-  og_ui_bounds(path: string): string;
-  /** `og.ui.scrollState` */
-  og_ui_scroll_state(path: string): string;
-  /** `og.ui.toast` */
-  og_ui_toast(world: number, text: string, desc: string | undefined): number;
-  /** `og.ui.dismissToast` */
-  og_ui_dismiss_toast(world: number, toast_id: number): void;
-  /** `og.ui.navigate` */
-  og_ui_navigate(world: number, intent: string): void;
-  /** `og.ui.back` */
-  og_ui_back(): boolean;
-  /** `og.ui.setPlayers` */
-  og_ui_set_players(count: number): void;
   /** `og.ui.setVirtualCursor` */
   og_ui_set_virtual_cursor(desc: string): void;
   /** `og.ui.virtualCursor` */
   og_ui_virtual_cursor(): string;
-  /** `og.ui.setHudEdit` */
-  og_ui_set_hud_edit(on: boolean): void;
-  /** `og.ui.setHudPlayer` */
-  og_ui_set_hud_player(player: number): void;
-  /** `og.ui.hudEdit` */
-  og_ui_hud_edit(): string;
-  /** `og.ui.hudLayout` */
-  og_ui_hud_layout(player: number): string;
-  /** `og.ui.setHudLayout` */
-  og_ui_set_hud_layout(player: number, layout: string): boolean;
-  /** `og.ui.hudSelect` */
-  og_ui_hud_select(key: string): void;
-  /** `og.ui.hudStep` */
-  og_ui_hud_step(scale: number, opacity: number): void;
-  /** `og.ui.hudReset` */
-  og_ui_hud_reset(key: string): void;
-  /** `og.ui.focus` */
-  og_ui_focus(pad: number): string;
   /** `og.ui.feedback` */
   og_ui_feedback(event: string, rise: number): void;
   /** `og.ui.setHaptics` */
   og_ui_set_haptics(intensity: number): void;
-  /** `og.ui.setNavigation` */
-  og_ui_set_navigation(on: boolean): void;
   /** `og.ui.tick` */
   og_ui_tick(): number;
   /** `og.ui.previewViewport` */
   og_ui_preview_viewport(world: number, viewport: string): void;
-  /** `og.ui.defineTimeline` */
-  og_ui_define_timeline(name: string, timeline: string | undefined): void;
-  /** `og.ui.play` */
-  og_ui_play(path: string, choreo: string, desc: string | undefined): number;
-  /** `og.ui.playTimeline` */
-  og_ui_play_timeline(path: string, timeline: string, desc: string | undefined): number;
-  /** `og.ui.seek` */
-  og_ui_seek(play: number, ms: number): boolean;
-  /** `og.ui.pause` */
-  og_ui_pause(play: number): boolean;
-  /** `og.ui.resume` */
-  og_ui_resume(play: number): boolean;
-  /** `og.ui.reverse` */
-  og_ui_reverse(play: number): boolean;
-  /** `og.ui.stop` */
-  og_ui_stop(play: number): boolean;
-  /** `og.ui.playInfo` */
-  og_ui_play_info(play: number): string;
-  /** `og.ui.forceState` */
-  og_ui_force_state(path: string, group: string, state: string): void;
-  /** `og.ui.visualState` */
-  og_ui_visual_state(path: string, group: string): string;
-  /** `og.ui.animate` */
-  og_ui_animate(id: string, target: number, transition: string): number;
-  /** `og.ui.gesture` */
-  og_ui_gesture(path: string): string;
-  /** `og.ui.motionEvents` */
-  og_ui_motion_events(): string;
-  /** `og.ui.overlaps` */
-  og_ui_overlaps(): string;
-  /** `og.ui.layoutStats` */
-  og_ui_layout_stats(): string;
-  /** `og.ui.defineMass` */
-  og_ui_define_mass(name: string, desc: string | undefined): string;
-  /** `og.ui.spawnMass` */
-  og_ui_spawn_mass(template: number, instances: string): void;
-  /** `og.ui.massCount` */
-  og_ui_mass_count(template: number): number;
-  /** `og.ui.push` */
-  og_ui_push(world: number, screen: string, vm: string | undefined): string;
-  /** `og.ui.pop` */
-  og_ui_pop(world: number): string;
-  /** `og.ui.replace` */
-  og_ui_replace(world: number, screen: string, vm: string | undefined): string;
-  /** `og.ui.clear` */
-  og_ui_clear(world: number): void;
-  /** `og.ui.layers` */
-  og_ui_layers(world: number): string;
-  /** `og.ui.screenVm` */
-  og_ui_screen_vm(world: number, screen: string): string;
-  /** `og.ui.docEvents` */
-  og_ui_doc_events(world: number): string;
-  /** `og.ui.frameMessages` */
-  og_ui_frame_messages(world: number): string;
-  /** `og.ui.remoteFrames` */
-  og_ui_remote_frames(world: number): boolean;
-  /** `og.ui.gameInput` */
-  og_ui_game_input(world: number): boolean;
-  /** `og.ui.paused` */
-  og_ui_paused(world: number): boolean;
   /** `og.ui.defineAction` */
   og_ui_define_action(world: number, desc: string | undefined): string;
   /** `og.ui.actionFired` */
@@ -1143,18 +1039,8 @@ export interface HostAbi<A, V> {
   og_ui_frame_glyph(action: string): string;
   /** `og.ui.device` */
   og_ui_device(world: number): string;
-  /** `og.ui.filePicker` */
-  og_ui_file_picker(world: number): boolean;
   /** `og.ui.setDevice` */
   og_ui_set_device(world: number, device: string): void;
-  /** `og.ui.actionBar` */
-  og_ui_action_bar(world: number): string;
-  /** `og.ui.documentSchema` */
-  og_ui_document_schema(): string;
-  /** `og.ui.setProp` */
-  og_ui_set_prop(world: number, path: string, prop: string, value: string): string;
-  /** `og.ui.saveEdits` */
-  og_ui_save_edits(world: number): string;
   /** `og.commands.register` */
   og_commands_register(name: string, handler: number, desc: string | undefined): string;
   /** `og.commands.parse` */
@@ -1681,7 +1567,6 @@ export const SYMBOLS: readonly string[] = [
   "og_load_texture",
   "og_load_texture_array",
   "og_load_style",
-  "og_load_document",
   "og_load_look",
   "og_load_look_info",
   "og_load_palette",
@@ -1901,77 +1786,21 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_frame_viewport",
   "og_ui_has_icon",
   "og_ui_seconds",
-  "og_ui_set_focus",
-  "og_ui_scroll_into_view",
-  "og_ui_start_view_transition",
-  "og_ui_set_highlight",
   "og_ui_frame_direction",
   "og_ui_frame_theme",
-  "og_ui_bounds",
-  "og_ui_scroll_state",
-  "og_ui_toast",
-  "og_ui_dismiss_toast",
-  "og_ui_navigate",
-  "og_ui_back",
-  "og_ui_set_players",
   "og_ui_set_virtual_cursor",
   "og_ui_virtual_cursor",
-  "og_ui_set_hud_edit",
-  "og_ui_set_hud_player",
-  "og_ui_hud_edit",
-  "og_ui_hud_layout",
-  "og_ui_set_hud_layout",
-  "og_ui_hud_select",
-  "og_ui_hud_step",
-  "og_ui_hud_reset",
-  "og_ui_focus",
   "og_ui_feedback",
   "og_ui_set_haptics",
-  "og_ui_set_navigation",
   "og_ui_tick",
   "og_ui_preview_viewport",
-  "og_ui_define_timeline",
-  "og_ui_play",
-  "og_ui_play_timeline",
-  "og_ui_seek",
-  "og_ui_pause",
-  "og_ui_resume",
-  "og_ui_reverse",
-  "og_ui_stop",
-  "og_ui_play_info",
-  "og_ui_force_state",
-  "og_ui_visual_state",
-  "og_ui_animate",
-  "og_ui_gesture",
-  "og_ui_motion_events",
-  "og_ui_overlaps",
-  "og_ui_layout_stats",
-  "og_ui_define_mass",
-  "og_ui_spawn_mass",
-  "og_ui_mass_count",
-  "og_ui_push",
-  "og_ui_pop",
-  "og_ui_replace",
-  "og_ui_clear",
-  "og_ui_layers",
-  "og_ui_screen_vm",
-  "og_ui_doc_events",
-  "og_ui_frame_messages",
-  "og_ui_remote_frames",
-  "og_ui_game_input",
-  "og_ui_paused",
   "og_ui_define_action",
   "og_ui_action_fired",
   "og_ui_action_held",
   "og_ui_glyph",
   "og_ui_frame_glyph",
   "og_ui_device",
-  "og_ui_file_picker",
   "og_ui_set_device",
-  "og_ui_action_bar",
-  "og_ui_document_schema",
-  "og_ui_set_prop",
-  "og_ui_save_edits",
   "og_commands_register",
   "og_commands_parse",
   "og_commands_help",

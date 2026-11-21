@@ -1374,11 +1374,6 @@ pub fn og_load_style(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_load_document(world: u32, path: String) -> String {
-    <Host as LoadApi>::og_load_document(&Host, world, path)
-}
-
-#[wasm_bindgen]
 pub fn og_load_look(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_look(&Host, world, path)
 }
@@ -2474,26 +2469,6 @@ pub fn og_ui_seconds() -> f64 {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_set_focus(path: String) {
-    <Host as UiApi>::og_ui_set_focus(&Host, path)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_scroll_into_view(path: String, center: bool) {
-    <Host as UiApi>::og_ui_scroll_into_view(&Host, path, center)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_start_view_transition(path: String) -> bool {
-    <Host as UiApi>::og_ui_start_view_transition(&Host, path)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_set_highlight(name: String, highlight: String) {
-    <Host as UiApi>::og_ui_set_highlight(&Host, name, highlight)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_frame_direction() -> String {
     <Host as UiApi>::og_ui_frame_direction(&Host)
 }
@@ -2501,41 +2476,6 @@ pub fn og_ui_frame_direction() -> String {
 #[wasm_bindgen]
 pub fn og_ui_frame_theme() -> String {
     <Host as UiApi>::og_ui_frame_theme(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_bounds(path: String) -> String {
-    <Host as UiApi>::og_ui_bounds(&Host, path)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_scroll_state(path: String) -> String {
-    <Host as UiApi>::og_ui_scroll_state(&Host, path)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_toast(world: u32, text: String, desc: Option<String>) -> u32 {
-    <Host as UiApi>::og_ui_toast(&Host, world, text, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_dismiss_toast(world: u32, toast_id: u32) {
-    <Host as UiApi>::og_ui_dismiss_toast(&Host, world, toast_id)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_navigate(world: u32, intent: String) {
-    <Host as UiApi>::og_ui_navigate(&Host, world, intent)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_back() -> bool {
-    <Host as UiApi>::og_ui_back(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_set_players(count: u32) {
-    <Host as UiApi>::og_ui_set_players(&Host, count)
 }
 
 #[wasm_bindgen]
@@ -2549,51 +2489,6 @@ pub fn og_ui_virtual_cursor() -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_set_hud_edit(on: bool) {
-    <Host as UiApi>::og_ui_set_hud_edit(&Host, on)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_set_hud_player(player: u32) {
-    <Host as UiApi>::og_ui_set_hud_player(&Host, player)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_hud_edit() -> String {
-    <Host as UiApi>::og_ui_hud_edit(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_hud_layout(player: u32) -> String {
-    <Host as UiApi>::og_ui_hud_layout(&Host, player)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_set_hud_layout(player: u32, layout: String) -> bool {
-    <Host as UiApi>::og_ui_set_hud_layout(&Host, player, layout)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_hud_select(key: String) {
-    <Host as UiApi>::og_ui_hud_select(&Host, key)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_hud_step(scale: i32, opacity: i32) {
-    <Host as UiApi>::og_ui_hud_step(&Host, scale, opacity)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_hud_reset(key: String) {
-    <Host as UiApi>::og_ui_hud_reset(&Host, key)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_focus(pad: u32) -> String {
-    <Host as UiApi>::og_ui_focus(&Host, pad)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_feedback(event: String, rise: f64) {
     <Host as UiApi>::og_ui_feedback(&Host, event, rise)
 }
@@ -2604,11 +2499,6 @@ pub fn og_ui_set_haptics(intensity: f64) {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_set_navigation(on: bool) {
-    <Host as UiApi>::og_ui_set_navigation(&Host, on)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_tick() -> u32 {
     <Host as UiApi>::og_ui_tick(&Host)
 }
@@ -2616,156 +2506,6 @@ pub fn og_ui_tick() -> u32 {
 #[wasm_bindgen]
 pub fn og_ui_preview_viewport(world: u32, viewport: String) {
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_define_timeline(name: String, timeline: Option<String>) {
-    <Host as UiApi>::og_ui_define_timeline(&Host, name, timeline)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_play(path: String, choreo: String, desc: Option<String>) -> u32 {
-    <Host as UiApi>::og_ui_play(&Host, path, choreo, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_play_timeline(path: String, timeline: String, desc: Option<String>) -> u32 {
-    <Host as UiApi>::og_ui_play_timeline(&Host, path, timeline, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_seek(play: u32, ms: f64) -> bool {
-    <Host as UiApi>::og_ui_seek(&Host, play, ms)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_pause(play: u32) -> bool {
-    <Host as UiApi>::og_ui_pause(&Host, play)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_resume(play: u32) -> bool {
-    <Host as UiApi>::og_ui_resume(&Host, play)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_reverse(play: u32) -> bool {
-    <Host as UiApi>::og_ui_reverse(&Host, play)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_stop(play: u32) -> bool {
-    <Host as UiApi>::og_ui_stop(&Host, play)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_play_info(play: u32) -> String {
-    <Host as UiApi>::og_ui_play_info(&Host, play)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_force_state(path: String, group: String, state: String) {
-    <Host as UiApi>::og_ui_force_state(&Host, path, group, state)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_visual_state(path: String, group: String) -> String {
-    <Host as UiApi>::og_ui_visual_state(&Host, path, group)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_animate(id: String, target: f64, transition: String) -> f64 {
-    <Host as UiApi>::og_ui_animate(&Host, id, target, transition)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_gesture(path: String) -> String {
-    <Host as UiApi>::og_ui_gesture(&Host, path)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_motion_events() -> String {
-    <Host as UiApi>::og_ui_motion_events(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_overlaps() -> String {
-    <Host as UiApi>::og_ui_overlaps(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_layout_stats() -> String {
-    <Host as UiApi>::og_ui_layout_stats(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_define_mass(&Host, name, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_spawn_mass(template: u32, instances: String) {
-    <Host as UiApi>::og_ui_spawn_mass(&Host, template, instances)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_mass_count(template: u32) -> u32 {
-    <Host as UiApi>::og_ui_mass_count(&Host, template)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_push(world: u32, screen: String, vm: Option<String>) -> String {
-    <Host as UiApi>::og_ui_push(&Host, world, screen, vm)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_pop(world: u32) -> String {
-    <Host as UiApi>::og_ui_pop(&Host, world)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_replace(world: u32, screen: String, vm: Option<String>) -> String {
-    <Host as UiApi>::og_ui_replace(&Host, world, screen, vm)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_clear(world: u32) {
-    <Host as UiApi>::og_ui_clear(&Host, world)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_layers(world: u32) -> String {
-    <Host as UiApi>::og_ui_layers(&Host, world)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_screen_vm(world: u32, screen: String) -> String {
-    <Host as UiApi>::og_ui_screen_vm(&Host, world, screen)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_doc_events(world: u32) -> String {
-    <Host as UiApi>::og_ui_doc_events(&Host, world)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_frame_messages(world: u32) -> String {
-    <Host as UiApi>::og_ui_frame_messages(&Host, world)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_remote_frames(world: u32) -> bool {
-    <Host as UiApi>::og_ui_remote_frames(&Host, world)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_game_input(world: u32) -> bool {
-    <Host as UiApi>::og_ui_game_input(&Host, world)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_paused(world: u32) -> bool {
-    <Host as UiApi>::og_ui_paused(&Host, world)
 }
 
 #[wasm_bindgen]
@@ -2799,33 +2539,8 @@ pub fn og_ui_device(world: u32) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_ui_file_picker(world: u32) -> bool {
-    <Host as UiApi>::og_ui_file_picker(&Host, world)
-}
-
-#[wasm_bindgen]
 pub fn og_ui_set_device(world: u32, device: String) {
     <Host as UiApi>::og_ui_set_device(&Host, world, device)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_action_bar(world: u32) -> String {
-    <Host as UiApi>::og_ui_action_bar(&Host, world)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_document_schema() -> String {
-    <Host as UiApi>::og_ui_document_schema(&Host)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_set_prop(world: u32, path: String, prop: String, value: String) -> String {
-    <Host as UiApi>::og_ui_set_prop(&Host, world, path, prop, value)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_save_edits(world: u32) -> String {
-    <Host as UiApi>::og_ui_save_edits(&Host, world)
 }
 
 #[cfg(not(feature = "publish"))]

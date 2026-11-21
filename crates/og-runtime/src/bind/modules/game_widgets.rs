@@ -1,70 +1,9 @@
 use super::*;
 use crate::host::wire;
 
-pub fn og_ui_bounds(path: String) -> Option<crate::host::wire::UiRect> {
-    let b = with_ui("og.ui.bounds", |ui| {
-        ui.element(&path)
-            .map(|e| og_ui::Rect::new(e.x, e.y, e.width, e.height))
-    })
-    .flatten();
-    b.map(|r| super::ui_desc::rect_wire(&r))
-}
-
-pub fn og_ui_scroll_state(path: String) -> Option<crate::host::wire::ScrollState> {
-    let s = with_ui("og.ui.scrollState", |ui| ui.scroll_state(&path)).flatten();
-    s.map(|s| wire::ScrollState {
-        offset_x: s.offset_x,
-        offset_y: s.offset_y,
-        view_width: s.view_width,
-        view_height: s.view_height,
-        content_width: s.content_width,
-        content_height: s.content_height,
-    })
-}
-
 /// The UI of an engine, for calls that work between ticks too.
 pub(super) fn ui_of(world: u32) -> Option<SharedUi> {
     engine(world).ok()?.state.borrow().ui.clone()
-}
-
-pub fn og_ui_toast(world: u32, text: String, desc: Option<String>) -> u32 {
-    let d: wire::ToastDesc = wire::arg(desc.as_deref(), "desc").unwrap_or_default();
-    let Some(ui) = ui_of(world) else { return 0 };
-    let mut ui = ui.lock();
-    ui.toast(
-        &text,
-        ToastDesc {
-            tone: Tone::from_index(d.tone as u8),
-            duration_ms: d.duration_ms,
-        },
-    )
-}
-
-pub fn og_ui_dismiss_toast(world: u32, toast_id: u32) {
-    if let Some(ui) = ui_of(world) {
-        ui.lock().dismiss_toast(toast_id);
-    }
-}
-
-pub fn og_ui_navigate(world: u32, intent: String) {
-    let nav = match intent.as_str() {
-        "up" => Nav::Up,
-        "down" => Nav::Down,
-        "left" => Nav::Left,
-        "right" => Nav::Right,
-        "next" => Nav::Next,
-        "prev" => Nav::Prev,
-        "activate" => Nav::Activate,
-        "back" => Nav::Back,
-        _ => return,
-    };
-    if let Some(ui) = ui_of(world) {
-        ui.lock().navigate(nav);
-    }
-}
-
-pub fn og_ui_back() -> bool {
-    with_ui("og.ui.back", |ui| ui.back()).unwrap_or(false)
 }
 
 pub fn og_ui_feedback(event: String, rise: f64) {
@@ -82,14 +21,6 @@ pub fn og_ui_feedback(event: String, rise: f64) {
 
 pub fn og_ui_set_haptics(intensity: f64) {
     with_ui("og.ui.setHaptics", |ui| ui.set_haptics(intensity as f32));
-}
-
-pub fn og_ui_set_navigation(on: bool) {
-    with_ui("og.ui.setNavigation", |ui| ui.set_navigation(on));
-}
-
-pub fn og_ui_set_players(count: u32) {
-    with_ui("og.ui.setPlayers", |ui| ui.set_players(count));
 }
 
 pub fn og_ui_set_virtual_cursor(desc: String) {
@@ -112,65 +43,6 @@ pub fn og_ui_virtual_cursor() -> Option<crate::host::wire::VirtualCursor> {
         y: p[1],
         shown,
     })
-}
-
-pub fn og_ui_set_hud_edit(on: bool) {
-    with_ui("og.ui.setHudEdit", |ui| ui.set_hud_edit(on));
-}
-
-pub fn og_ui_set_hud_player(player: u32) {
-    with_ui("og.ui.setHudPlayer", |ui| ui.set_hud_player(player));
-}
-
-pub fn og_ui_hud_edit() -> crate::host::wire::HudEdit {
-    let e = with_ui("og.ui.hudEdit", |ui| ui.hud_edit()).unwrap_or_default();
-    let p = e.placement;
-    wire::HudEdit {
-        on: e.on,
-        player: e.player,
-        selected: e.selected,
-        placement: wire::HudPlacement {
-            x: p.x,
-            y: p.y,
-            scale: p.scale,
-            opacity: p.opacity,
-        },
-        keys: e.keys,
-        changed: e.changed,
-    }
-}
-
-pub fn og_ui_hud_layout(player: u32) -> String {
-    with_ui("og.ui.hudLayout", |ui| ui.hud_layout(player)).unwrap_or_else(|| "{}".into())
-}
-
-pub fn og_ui_set_hud_layout(player: u32, layout: String) -> bool {
-    with_ui("og.ui.setHudLayout", |ui| {
-        match ui.set_hud_layout(player, &layout) {
-            Ok(()) => true,
-            Err(e) => {
-                ui.warn(e);
-                false
-            }
-        }
-    })
-    .unwrap_or(false)
-}
-
-pub fn og_ui_hud_select(key: String) {
-    with_ui("og.ui.hudSelect", |ui| ui.hud_select(&key));
-}
-
-pub fn og_ui_hud_step(scale: i32, opacity: i32) {
-    with_ui("og.ui.hudStep", |ui| ui.hud_step(scale, opacity));
-}
-
-pub fn og_ui_hud_reset(key: String) {
-    with_ui("og.ui.hudReset", |ui| ui.hud_reset(&key));
-}
-
-pub fn og_ui_focus(pad: u32) -> String {
-    with_ui("og.ui.focus", |ui| ui.focus_path(pad).to_string()).unwrap_or_default()
 }
 
 pub fn og_ui_tick() -> u32 {

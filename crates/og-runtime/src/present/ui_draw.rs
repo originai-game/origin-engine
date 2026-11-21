@@ -150,21 +150,6 @@ pub fn og_load_ui_material(world: u32, path: String) -> Result<serde_json::Value
     })()
 }
 
-/// A UI material by its asset path, loaded once: its handle and defaults.
-pub(crate) fn ui_material(
-    eng: &crate::engine::Engine,
-    path: &str,
-) -> Result<
-    (
-        og_render::UiMaterialHandle,
-        [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
-    ),
-    String,
-> {
-    let i = load_material(eng, path)?;
-    Ok(eng.render.borrow().ui_draw.materials[i])
-}
-
 fn load_material(eng: &crate::engine::Engine, path: &str) -> Result<usize, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(&(i, _)) = eng.render.borrow().ui_draw.material_paths.get(&id) {

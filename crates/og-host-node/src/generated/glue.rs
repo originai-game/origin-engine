@@ -1647,12 +1647,6 @@ pub fn og_load_style(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_style(&Host, world, path)
 }
 
-#[napi(js_name = "og_load_document")]
-pub fn og_load_document(env: Env, world: u32, path: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as LoadApi>::og_load_document(&Host, world, path)
-}
-
 #[napi(js_name = "og_load_look")]
 pub fn og_load_look(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2967,30 +2961,6 @@ pub fn og_ui_seconds(env: Env) -> f64 {
     <Host as UiApi>::og_ui_seconds(&Host)
 }
 
-#[napi(js_name = "og_ui_set_focus")]
-pub fn og_ui_set_focus(env: Env, path: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_focus(&Host, path)
-}
-
-#[napi(js_name = "og_ui_scroll_into_view")]
-pub fn og_ui_scroll_into_view(env: Env, path: String, center: bool) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_scroll_into_view(&Host, path, center)
-}
-
-#[napi(js_name = "og_ui_start_view_transition")]
-pub fn og_ui_start_view_transition(env: Env, path: String) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_start_view_transition(&Host, path)
-}
-
-#[napi(js_name = "og_ui_set_highlight")]
-pub fn og_ui_set_highlight(env: Env, name: String, highlight: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_highlight(&Host, name, highlight)
-}
-
 #[napi(js_name = "og_ui_frame_direction")]
 pub fn og_ui_frame_direction(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -3001,48 +2971,6 @@ pub fn og_ui_frame_direction(env: Env) -> String {
 pub fn og_ui_frame_theme(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_frame_theme(&Host)
-}
-
-#[napi(js_name = "og_ui_bounds")]
-pub fn og_ui_bounds(env: Env, path: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_bounds(&Host, path)
-}
-
-#[napi(js_name = "og_ui_scroll_state")]
-pub fn og_ui_scroll_state(env: Env, path: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_scroll_state(&Host, path)
-}
-
-#[napi(js_name = "og_ui_toast")]
-pub fn og_ui_toast(env: Env, world: u32, text: String, desc: Option<String>) -> u32 {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_toast(&Host, world, text, desc)
-}
-
-#[napi(js_name = "og_ui_dismiss_toast")]
-pub fn og_ui_dismiss_toast(env: Env, world: u32, toast_id: u32) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_dismiss_toast(&Host, world, toast_id)
-}
-
-#[napi(js_name = "og_ui_navigate")]
-pub fn og_ui_navigate(env: Env, world: u32, intent: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_navigate(&Host, world, intent)
-}
-
-#[napi(js_name = "og_ui_back")]
-pub fn og_ui_back(env: Env) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_back(&Host)
-}
-
-#[napi(js_name = "og_ui_set_players")]
-pub fn og_ui_set_players(env: Env, count: u32) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_players(&Host, count)
 }
 
 #[napi(js_name = "og_ui_set_virtual_cursor")]
@@ -3057,60 +2985,6 @@ pub fn og_ui_virtual_cursor(env: Env) -> String {
     <Host as UiApi>::og_ui_virtual_cursor(&Host)
 }
 
-#[napi(js_name = "og_ui_set_hud_edit")]
-pub fn og_ui_set_hud_edit(env: Env, on: bool) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_hud_edit(&Host, on)
-}
-
-#[napi(js_name = "og_ui_set_hud_player")]
-pub fn og_ui_set_hud_player(env: Env, player: u32) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_hud_player(&Host, player)
-}
-
-#[napi(js_name = "og_ui_hud_edit")]
-pub fn og_ui_hud_edit(env: Env) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_hud_edit(&Host)
-}
-
-#[napi(js_name = "og_ui_hud_layout")]
-pub fn og_ui_hud_layout(env: Env, player: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_hud_layout(&Host, player)
-}
-
-#[napi(js_name = "og_ui_set_hud_layout")]
-pub fn og_ui_set_hud_layout(env: Env, player: u32, layout: String) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_hud_layout(&Host, player, layout)
-}
-
-#[napi(js_name = "og_ui_hud_select")]
-pub fn og_ui_hud_select(env: Env, key: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_hud_select(&Host, key)
-}
-
-#[napi(js_name = "og_ui_hud_step")]
-pub fn og_ui_hud_step(env: Env, scale: i32, opacity: i32) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_hud_step(&Host, scale, opacity)
-}
-
-#[napi(js_name = "og_ui_hud_reset")]
-pub fn og_ui_hud_reset(env: Env, key: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_hud_reset(&Host, key)
-}
-
-#[napi(js_name = "og_ui_focus")]
-pub fn og_ui_focus(env: Env, pad: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_focus(&Host, pad)
-}
-
 #[napi(js_name = "og_ui_feedback")]
 pub fn og_ui_feedback(env: Env, event: String, rise: f64) {
     let _env = crate::EnvScope::enter(&env);
@@ -3123,12 +2997,6 @@ pub fn og_ui_set_haptics(env: Env, intensity: f64) {
     <Host as UiApi>::og_ui_set_haptics(&Host, intensity)
 }
 
-#[napi(js_name = "og_ui_set_navigation")]
-pub fn og_ui_set_navigation(env: Env, on: bool) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_navigation(&Host, on)
-}
-
 #[napi(js_name = "og_ui_tick")]
 pub fn og_ui_tick(env: Env) -> u32 {
     let _env = crate::EnvScope::enter(&env);
@@ -3139,186 +3007,6 @@ pub fn og_ui_tick(env: Env) -> u32 {
 pub fn og_ui_preview_viewport(env: Env, world: u32, viewport: String) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
-}
-
-#[napi(js_name = "og_ui_define_timeline")]
-pub fn og_ui_define_timeline(env: Env, name: String, timeline: Option<String>) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_define_timeline(&Host, name, timeline)
-}
-
-#[napi(js_name = "og_ui_play")]
-pub fn og_ui_play(env: Env, path: String, choreo: String, desc: Option<String>) -> u32 {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_play(&Host, path, choreo, desc)
-}
-
-#[napi(js_name = "og_ui_play_timeline")]
-pub fn og_ui_play_timeline(env: Env, path: String, timeline: String, desc: Option<String>) -> u32 {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_play_timeline(&Host, path, timeline, desc)
-}
-
-#[napi(js_name = "og_ui_seek")]
-pub fn og_ui_seek(env: Env, play: u32, ms: f64) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_seek(&Host, play, ms)
-}
-
-#[napi(js_name = "og_ui_pause")]
-pub fn og_ui_pause(env: Env, play: u32) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_pause(&Host, play)
-}
-
-#[napi(js_name = "og_ui_resume")]
-pub fn og_ui_resume(env: Env, play: u32) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_resume(&Host, play)
-}
-
-#[napi(js_name = "og_ui_reverse")]
-pub fn og_ui_reverse(env: Env, play: u32) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_reverse(&Host, play)
-}
-
-#[napi(js_name = "og_ui_stop")]
-pub fn og_ui_stop(env: Env, play: u32) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_stop(&Host, play)
-}
-
-#[napi(js_name = "og_ui_play_info")]
-pub fn og_ui_play_info(env: Env, play: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_play_info(&Host, play)
-}
-
-#[napi(js_name = "og_ui_force_state")]
-pub fn og_ui_force_state(env: Env, path: String, group: String, state: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_force_state(&Host, path, group, state)
-}
-
-#[napi(js_name = "og_ui_visual_state")]
-pub fn og_ui_visual_state(env: Env, path: String, group: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_visual_state(&Host, path, group)
-}
-
-#[napi(js_name = "og_ui_animate")]
-pub fn og_ui_animate(env: Env, id: String, target: f64, transition: String) -> f64 {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_animate(&Host, id, target, transition)
-}
-
-#[napi(js_name = "og_ui_gesture")]
-pub fn og_ui_gesture(env: Env, path: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_gesture(&Host, path)
-}
-
-#[napi(js_name = "og_ui_motion_events")]
-pub fn og_ui_motion_events(env: Env) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_motion_events(&Host)
-}
-
-#[napi(js_name = "og_ui_overlaps")]
-pub fn og_ui_overlaps(env: Env) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_overlaps(&Host)
-}
-
-#[napi(js_name = "og_ui_layout_stats")]
-pub fn og_ui_layout_stats(env: Env) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_layout_stats(&Host)
-}
-
-#[napi(js_name = "og_ui_define_mass")]
-pub fn og_ui_define_mass(env: Env, name: String, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_define_mass(&Host, name, desc)
-}
-
-#[napi(js_name = "og_ui_spawn_mass")]
-pub fn og_ui_spawn_mass(env: Env, template: u32, instances: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_spawn_mass(&Host, template, instances)
-}
-
-#[napi(js_name = "og_ui_mass_count")]
-pub fn og_ui_mass_count(env: Env, template: u32) -> u32 {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_mass_count(&Host, template)
-}
-
-#[napi(js_name = "og_ui_push")]
-pub fn og_ui_push(env: Env, world: u32, screen: String, vm: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_push(&Host, world, screen, vm)
-}
-
-#[napi(js_name = "og_ui_pop")]
-pub fn og_ui_pop(env: Env, world: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_pop(&Host, world)
-}
-
-#[napi(js_name = "og_ui_replace")]
-pub fn og_ui_replace(env: Env, world: u32, screen: String, vm: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_replace(&Host, world, screen, vm)
-}
-
-#[napi(js_name = "og_ui_clear")]
-pub fn og_ui_clear(env: Env, world: u32) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_clear(&Host, world)
-}
-
-#[napi(js_name = "og_ui_layers")]
-pub fn og_ui_layers(env: Env, world: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_layers(&Host, world)
-}
-
-#[napi(js_name = "og_ui_screen_vm")]
-pub fn og_ui_screen_vm(env: Env, world: u32, screen: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_screen_vm(&Host, world, screen)
-}
-
-#[napi(js_name = "og_ui_doc_events")]
-pub fn og_ui_doc_events(env: Env, world: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_doc_events(&Host, world)
-}
-
-#[napi(js_name = "og_ui_frame_messages")]
-pub fn og_ui_frame_messages(env: Env, world: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_frame_messages(&Host, world)
-}
-
-#[napi(js_name = "og_ui_remote_frames")]
-pub fn og_ui_remote_frames(env: Env, world: u32) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_remote_frames(&Host, world)
-}
-
-#[napi(js_name = "og_ui_game_input")]
-pub fn og_ui_game_input(env: Env, world: u32) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_game_input(&Host, world)
-}
-
-#[napi(js_name = "og_ui_paused")]
-pub fn og_ui_paused(env: Env, world: u32) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_paused(&Host, world)
 }
 
 #[napi(js_name = "og_ui_define_action")]
@@ -3357,40 +3045,10 @@ pub fn og_ui_device(env: Env, world: u32) -> String {
     <Host as UiApi>::og_ui_device(&Host, world)
 }
 
-#[napi(js_name = "og_ui_file_picker")]
-pub fn og_ui_file_picker(env: Env, world: u32) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_file_picker(&Host, world)
-}
-
 #[napi(js_name = "og_ui_set_device")]
 pub fn og_ui_set_device(env: Env, world: u32, device: String) {
     let _env = crate::EnvScope::enter(&env);
     <Host as UiApi>::og_ui_set_device(&Host, world, device)
-}
-
-#[napi(js_name = "og_ui_action_bar")]
-pub fn og_ui_action_bar(env: Env, world: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_action_bar(&Host, world)
-}
-
-#[napi(js_name = "og_ui_document_schema")]
-pub fn og_ui_document_schema(env: Env) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_document_schema(&Host)
-}
-
-#[napi(js_name = "og_ui_set_prop")]
-pub fn og_ui_set_prop(env: Env, world: u32, path: String, prop: String, value: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_prop(&Host, world, path, prop, value)
-}
-
-#[napi(js_name = "og_ui_save_edits")]
-pub fn og_ui_save_edits(env: Env, world: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_save_edits(&Host, world)
 }
 
 #[cfg(not(feature = "publish"))]

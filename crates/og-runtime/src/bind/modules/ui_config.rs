@@ -390,9 +390,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         }
         drop(st);
         crate::bind::i18n::apply(&eng)?;
-        if restyle {
-            docs::restyle_loaded(&eng)?;
-        }
         Ok(())
     })();
     match answer {

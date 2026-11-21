@@ -1374,11 +1374,6 @@ unsafe extern "C" fn og_load_style(args: *const crate::OgValue, out: *mut crate:
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_load_document(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as LoadApi>::og_load_document(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
 unsafe extern "C" fn og_load_look(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as LoadApi>::og_load_look(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -2474,26 +2469,6 @@ unsafe extern "C" fn og_ui_seconds(args: *const crate::OgValue, out: *mut crate:
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_ui_set_focus(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_set_focus(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_scroll_into_view(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_scroll_into_view(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_start_view_transition(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_start_view_transition(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_set_highlight(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_set_highlight(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
 unsafe extern "C" fn og_ui_frame_direction(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as UiApi>::og_ui_frame_direction(&Host);
     unsafe { crate::IntoC::into_c(r, out) }
@@ -2501,41 +2476,6 @@ unsafe extern "C" fn og_ui_frame_direction(args: *const crate::OgValue, out: *mu
 
 unsafe extern "C" fn og_ui_frame_theme(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as UiApi>::og_ui_frame_theme(&Host);
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_bounds(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_bounds(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_scroll_state(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_scroll_state(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_toast(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_toast(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_dismiss_toast(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_dismiss_toast(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_navigate(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_navigate(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_back(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_back(&Host);
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_set_players(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_set_players(&Host, unsafe { crate::arg(args, 0) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -2549,51 +2489,6 @@ unsafe extern "C" fn og_ui_virtual_cursor(args: *const crate::OgValue, out: *mut
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_ui_set_hud_edit(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_set_hud_edit(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_set_hud_player(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_set_hud_player(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_hud_edit(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_hud_edit(&Host);
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_hud_layout(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_hud_layout(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_set_hud_layout(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_set_hud_layout(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_hud_select(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_hud_select(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_hud_step(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_hud_step(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_hud_reset(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_hud_reset(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_focus(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_focus(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
 unsafe extern "C" fn og_ui_feedback(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as UiApi>::og_ui_feedback(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -2604,11 +2499,6 @@ unsafe extern "C" fn og_ui_set_haptics(args: *const crate::OgValue, out: *mut cr
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_ui_set_navigation(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_set_navigation(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
 unsafe extern "C" fn og_ui_tick(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as UiApi>::og_ui_tick(&Host);
     unsafe { crate::IntoC::into_c(r, out) }
@@ -2616,156 +2506,6 @@ unsafe extern "C" fn og_ui_tick(args: *const crate::OgValue, out: *mut crate::Og
 
 unsafe extern "C" fn og_ui_preview_viewport(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as UiApi>::og_ui_preview_viewport(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_define_timeline(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_define_timeline(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_play(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_play(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_play_timeline(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_play_timeline(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_seek(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_seek(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_pause(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_pause(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_resume(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_resume(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_reverse(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_reverse(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_stop(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_stop(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_play_info(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_play_info(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_force_state(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_force_state(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_visual_state(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_visual_state(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_animate(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_animate(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_gesture(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_gesture(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_motion_events(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_motion_events(&Host);
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_overlaps(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_overlaps(&Host);
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_layout_stats(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_layout_stats(&Host);
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_define_mass(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_define_mass(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_spawn_mass(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_spawn_mass(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_mass_count(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_mass_count(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_push(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_push(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_pop(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_pop(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_replace(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_replace(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_clear(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_clear(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_layers(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_layers(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_screen_vm(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_screen_vm(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_doc_events(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_doc_events(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_frame_messages(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_frame_messages(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_remote_frames(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_remote_frames(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_game_input(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_game_input(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_paused(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_paused(&Host, unsafe { crate::arg(args, 0) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -2799,33 +2539,8 @@ unsafe extern "C" fn og_ui_device(args: *const crate::OgValue, out: *mut crate::
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_ui_file_picker(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_file_picker(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
 unsafe extern "C" fn og_ui_set_device(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as UiApi>::og_ui_set_device(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_action_bar(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_action_bar(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_document_schema(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_document_schema(&Host);
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_set_prop(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_set_prop(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_save_edits(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_save_edits(&Host, unsafe { crate::arg(args, 0) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3867,7 +3582,6 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_load_texture", arity: 2, call: og_load_texture },
     crate::Symbol { name: c"og_load_texture_array", arity: 2, call: og_load_texture_array },
     crate::Symbol { name: c"og_load_style", arity: 2, call: og_load_style },
-    crate::Symbol { name: c"og_load_document", arity: 2, call: og_load_document },
     crate::Symbol { name: c"og_load_look", arity: 2, call: og_load_look },
     crate::Symbol { name: c"og_load_look_info", arity: 2, call: og_load_look_info },
     crate::Symbol { name: c"og_load_palette", arity: 2, call: og_load_palette },
@@ -4087,77 +3801,21 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_ui_frame_viewport", arity: 0, call: og_ui_frame_viewport },
     crate::Symbol { name: c"og_ui_has_icon", arity: 1, call: og_ui_has_icon },
     crate::Symbol { name: c"og_ui_seconds", arity: 0, call: og_ui_seconds },
-    crate::Symbol { name: c"og_ui_set_focus", arity: 1, call: og_ui_set_focus },
-    crate::Symbol { name: c"og_ui_scroll_into_view", arity: 2, call: og_ui_scroll_into_view },
-    crate::Symbol { name: c"og_ui_start_view_transition", arity: 1, call: og_ui_start_view_transition },
-    crate::Symbol { name: c"og_ui_set_highlight", arity: 2, call: og_ui_set_highlight },
     crate::Symbol { name: c"og_ui_frame_direction", arity: 0, call: og_ui_frame_direction },
     crate::Symbol { name: c"og_ui_frame_theme", arity: 0, call: og_ui_frame_theme },
-    crate::Symbol { name: c"og_ui_bounds", arity: 1, call: og_ui_bounds },
-    crate::Symbol { name: c"og_ui_scroll_state", arity: 1, call: og_ui_scroll_state },
-    crate::Symbol { name: c"og_ui_toast", arity: 3, call: og_ui_toast },
-    crate::Symbol { name: c"og_ui_dismiss_toast", arity: 2, call: og_ui_dismiss_toast },
-    crate::Symbol { name: c"og_ui_navigate", arity: 2, call: og_ui_navigate },
-    crate::Symbol { name: c"og_ui_back", arity: 0, call: og_ui_back },
-    crate::Symbol { name: c"og_ui_set_players", arity: 1, call: og_ui_set_players },
     crate::Symbol { name: c"og_ui_set_virtual_cursor", arity: 1, call: og_ui_set_virtual_cursor },
     crate::Symbol { name: c"og_ui_virtual_cursor", arity: 0, call: og_ui_virtual_cursor },
-    crate::Symbol { name: c"og_ui_set_hud_edit", arity: 1, call: og_ui_set_hud_edit },
-    crate::Symbol { name: c"og_ui_set_hud_player", arity: 1, call: og_ui_set_hud_player },
-    crate::Symbol { name: c"og_ui_hud_edit", arity: 0, call: og_ui_hud_edit },
-    crate::Symbol { name: c"og_ui_hud_layout", arity: 1, call: og_ui_hud_layout },
-    crate::Symbol { name: c"og_ui_set_hud_layout", arity: 2, call: og_ui_set_hud_layout },
-    crate::Symbol { name: c"og_ui_hud_select", arity: 1, call: og_ui_hud_select },
-    crate::Symbol { name: c"og_ui_hud_step", arity: 2, call: og_ui_hud_step },
-    crate::Symbol { name: c"og_ui_hud_reset", arity: 1, call: og_ui_hud_reset },
-    crate::Symbol { name: c"og_ui_focus", arity: 1, call: og_ui_focus },
     crate::Symbol { name: c"og_ui_feedback", arity: 2, call: og_ui_feedback },
     crate::Symbol { name: c"og_ui_set_haptics", arity: 1, call: og_ui_set_haptics },
-    crate::Symbol { name: c"og_ui_set_navigation", arity: 1, call: og_ui_set_navigation },
     crate::Symbol { name: c"og_ui_tick", arity: 0, call: og_ui_tick },
     crate::Symbol { name: c"og_ui_preview_viewport", arity: 2, call: og_ui_preview_viewport },
-    crate::Symbol { name: c"og_ui_define_timeline", arity: 2, call: og_ui_define_timeline },
-    crate::Symbol { name: c"og_ui_play", arity: 3, call: og_ui_play },
-    crate::Symbol { name: c"og_ui_play_timeline", arity: 3, call: og_ui_play_timeline },
-    crate::Symbol { name: c"og_ui_seek", arity: 2, call: og_ui_seek },
-    crate::Symbol { name: c"og_ui_pause", arity: 1, call: og_ui_pause },
-    crate::Symbol { name: c"og_ui_resume", arity: 1, call: og_ui_resume },
-    crate::Symbol { name: c"og_ui_reverse", arity: 1, call: og_ui_reverse },
-    crate::Symbol { name: c"og_ui_stop", arity: 1, call: og_ui_stop },
-    crate::Symbol { name: c"og_ui_play_info", arity: 1, call: og_ui_play_info },
-    crate::Symbol { name: c"og_ui_force_state", arity: 3, call: og_ui_force_state },
-    crate::Symbol { name: c"og_ui_visual_state", arity: 2, call: og_ui_visual_state },
-    crate::Symbol { name: c"og_ui_animate", arity: 3, call: og_ui_animate },
-    crate::Symbol { name: c"og_ui_gesture", arity: 1, call: og_ui_gesture },
-    crate::Symbol { name: c"og_ui_motion_events", arity: 0, call: og_ui_motion_events },
-    crate::Symbol { name: c"og_ui_overlaps", arity: 0, call: og_ui_overlaps },
-    crate::Symbol { name: c"og_ui_layout_stats", arity: 0, call: og_ui_layout_stats },
-    crate::Symbol { name: c"og_ui_define_mass", arity: 2, call: og_ui_define_mass },
-    crate::Symbol { name: c"og_ui_spawn_mass", arity: 2, call: og_ui_spawn_mass },
-    crate::Symbol { name: c"og_ui_mass_count", arity: 1, call: og_ui_mass_count },
-    crate::Symbol { name: c"og_ui_push", arity: 3, call: og_ui_push },
-    crate::Symbol { name: c"og_ui_pop", arity: 1, call: og_ui_pop },
-    crate::Symbol { name: c"og_ui_replace", arity: 3, call: og_ui_replace },
-    crate::Symbol { name: c"og_ui_clear", arity: 1, call: og_ui_clear },
-    crate::Symbol { name: c"og_ui_layers", arity: 1, call: og_ui_layers },
-    crate::Symbol { name: c"og_ui_screen_vm", arity: 2, call: og_ui_screen_vm },
-    crate::Symbol { name: c"og_ui_doc_events", arity: 1, call: og_ui_doc_events },
-    crate::Symbol { name: c"og_ui_frame_messages", arity: 1, call: og_ui_frame_messages },
-    crate::Symbol { name: c"og_ui_remote_frames", arity: 1, call: og_ui_remote_frames },
-    crate::Symbol { name: c"og_ui_game_input", arity: 1, call: og_ui_game_input },
-    crate::Symbol { name: c"og_ui_paused", arity: 1, call: og_ui_paused },
     crate::Symbol { name: c"og_ui_define_action", arity: 2, call: og_ui_define_action },
     crate::Symbol { name: c"og_ui_action_fired", arity: 1, call: og_ui_action_fired },
     crate::Symbol { name: c"og_ui_action_held", arity: 1, call: og_ui_action_held },
     crate::Symbol { name: c"og_ui_glyph", arity: 2, call: og_ui_glyph },
     crate::Symbol { name: c"og_ui_frame_glyph", arity: 1, call: og_ui_frame_glyph },
     crate::Symbol { name: c"og_ui_device", arity: 1, call: og_ui_device },
-    crate::Symbol { name: c"og_ui_file_picker", arity: 1, call: og_ui_file_picker },
     crate::Symbol { name: c"og_ui_set_device", arity: 2, call: og_ui_set_device },
-    crate::Symbol { name: c"og_ui_action_bar", arity: 1, call: og_ui_action_bar },
-    crate::Symbol { name: c"og_ui_document_schema", arity: 0, call: og_ui_document_schema },
-    crate::Symbol { name: c"og_ui_set_prop", arity: 4, call: og_ui_set_prop },
-    crate::Symbol { name: c"og_ui_save_edits", arity: 1, call: og_ui_save_edits },
     #[cfg(not(feature = "publish"))]
     crate::Symbol { name: c"og_commands_register", arity: 3, call: og_commands_register },
     #[cfg(not(feature = "publish"))]

@@ -110,8 +110,6 @@ mod publish;
 mod raycast_record_cost;
 #[path = "../region_volume.rs"]
 mod region_volume;
-#[path = "../remote_images.rs"]
-mod remote_images;
 #[path = "../render_compile.rs"]
 mod render_compile;
 #[path = "../render_interpolation.rs"]
@@ -178,10 +176,6 @@ mod timeline_tracks;
 mod tube_path;
 #[path = "../ui_configure.rs"]
 mod ui_configure;
-#[path = "../ui_material_reload.rs"]
-mod ui_material_reload;
-#[path = "../ui_zero_values.rs"]
-mod ui_zero_values;
 #[path = "../vfx.rs"]
 mod vfx;
 #[path = "../video_rendition.rs"]
@@ -202,8 +196,6 @@ mod world_despawn;
 mod world_names;
 #[path = "../world_origin.rs"]
 mod world_origin;
-#[path = "../world_ui.rs"]
-mod world_ui;
 #[path = "../world_wind.rs"]
 mod world_wind;
 #[path = "../yarn.rs"]

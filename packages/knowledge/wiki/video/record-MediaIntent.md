@@ -6,7 +6,7 @@ Module [`video`](../video.md) · [index](../index.md)
 
 ### `og.MediaIntent` (event)
 
-A document's `<video>` or `<audio>` asking its player to change at the next tick boundary (docs/ui.md §2), sent through the recorded intent path as UI pause is, so playback stays world state. The og.video system applies it to the entity's og.VideoPlayer and og.AudioSource.
+A request for a player to change at the next tick boundary, sent through the recorded intent path, so playback stays world state. The og.video system applies it to the entity's og.VideoPlayer and og.AudioSource.
 
 Token `og.MediaIntent`, registered under the schema name `og.MediaIntent`; its value type is `MediaIntent`.
 
@@ -20,7 +20,7 @@ Token `og.MediaIntent`, registered under the schema name `og.MediaIntent`; its v
 
 ```ogt
 event MediaIntent {
-  doc "A document's `<video>` or `<audio>` asking its player to change at the next tick boundary (docs/ui.md §2), sent through the recorded intent path as UI pause is, so playback stays world state. The og.video system applies it to the entity's og.VideoPlayer and og.AudioSource."
+  doc "A request for a player to change at the next tick boundary, sent through the recorded intent path, so playback stays world state. The og.video system applies it to the entity's og.VideoPlayer and og.AudioSource."
   field player Entity "The entity whose player it asks."
   field playing i32 "1 play, 0 pause, -1 as it is." {
     default -1

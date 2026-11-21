@@ -39,7 +39,6 @@ export function start(world: World): void {
   world.insert(floor.value, og.Collider, { size: { x: 40, y: 0.2, z: 4 } });
   const child = world.spawn({ name: "badge", parent: world.find("coin-3")!, position: { x: 0, y: 0.5, z: 0 } });
   if (!child.ok) throw new Error(child.reason);
-  og.ui.toast(world, "Welcome back", {});
 }
 
 export default og.game({ tick: 60, seed: 7, systems: [Earn], resources: [Run], start });

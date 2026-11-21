@@ -97,7 +97,7 @@ frames = ["og-ui/frames"]
 # tests/stream_release.rs cooks a small project with streaming groups.
 og-cook = { path = "../og-cook" }
 ttf-parser = "=0.25.1"
-# tests/remote_images.rs writes integrity metadata (SHA-384).
+# tests/load_data.rs writes integrity metadata (SHA-384).
 ring = "0.17"
 # tests/font_packs.rs compares its frames under og-tests' tolerance.
 og-tests = { path = "../og-tests" }

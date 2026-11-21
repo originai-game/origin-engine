@@ -120,7 +120,6 @@ pub fn warm_tick(id: u32) {
         let viewport = crate::bind::modules::viewport_of(id);
         let mut copy = ui.lock().clone();
         copy.begin(og_ui::InputFrame::default(), viewport);
-        copy.build_layers(&crate::bind::modules::docs::env(id));
         copy.end();
         // The new core's documents: the real tree, built once (its build
         // is a cache of the mounts; no game code runs).

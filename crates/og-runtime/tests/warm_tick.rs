@@ -1,10 +1,10 @@
 //! The play gate's warm-up (og_runtime::warm_tick, also run by
-//! og.render.compile): outside a tick it builds the game's UI documents on
-//! a copy of the UI and has physics build its height fields' chunk shapes,
-//! so the first played frame does not pay for them.
+//! og.render.compile): outside a tick it builds the game's UI on a copy of
+//! the UI and has physics build its height fields' chunk shapes, so the
+//! first played frame does not pay for them.
 //!
-//! Two engines run the same world: a screen document, a collision terrain of
-//! two chunks and boxes dropped onto it. One is warmed before its first
+//! Two engines run the same world: a collision terrain of two chunks and
+//! boxes dropped onto it. One is warmed before its first
 //! tick, and again between ticks; the other never is.
 //!
 //! Ways this could fail: the warm-up builds the real UI instead of a copy
@@ -56,17 +56,6 @@ fn project() -> &'static Path {
         write(
             "assets/terrain/hill.ogt",
             b"type terrain\nversion 1\n---\nheightmap \"hill.png\"\nheight 0 8\nsize 64 16\n",
-        );
-        write(
-            "assets/ui/hud.svelte",
-            br#"<meta name="screen" content="Hud" />
-<div id="Hud"><p id="Clock">06:54</p><p>Summer - Dawn</p>
-<button id="Use">Use</button></div>
-<style>
-#Hud { display: flex; flex-direction: column; gap: 4px; padding: 12px; }
-#Use { border-radius: 6px; background-color: #335; color: white; }
-</style>
-"#,
         );
         let project = "type project\nversion 1\n---\nname \"warm tick\"\nid \"warm-tick\"\nentry \"main.ts\"\n";
         write("project.ogt", project.as_bytes());
@@ -164,15 +153,6 @@ fn run(warm: bool) -> Run {
             ],
         );
     }
-    value(og_runtime::host_impl::answer(og_runtime::og_load_document(
-        e,
-        "ui/hud.svelte".into(),
-    )));
-    value(og_runtime::host_impl::answer(og_runtime::og_ui_push(
-        e,
-        "Hud".into(),
-        None,
-    )));
     if warm {
         warm_tick(e);
     }

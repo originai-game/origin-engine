@@ -2,7 +2,7 @@ import { For, Show, Text, View, createSignal, t, type UiEvent } from "@origingam
 import "./action-hints.en.ogt";
 
 export interface ActionHintsProps {
-  /** The hints, a keyed collection of { action, hint, hold } as og.ui.actionBar answers them: action the og-input action whose glyph its cap shows on the device used last, hint what it does (Buy), hold true when it fires on a hold (its fill grows while the action or a press holds it). */
+  /** The hints, a keyed collection of { action, hint, hold }: action the og-input action whose glyph its cap shows on the device used last, hint what it does (Buy), hold true when it fires on a hold (its fill grows while the action or a press holds it). */
   hints?: ReadonlyArray<{ action: string; hint: string; hold?: boolean }>;
   /** What a screen reader calls the bar; empty is Actions. */
   label?: string;

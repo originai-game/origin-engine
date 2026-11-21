@@ -621,8 +621,6 @@ pub trait LoadApi: Wire {
     fn og_load_texture_array(&self, world: u32, path: String) -> String;
     /// `og.load.style`
     fn og_load_style(&self, world: u32, path: String) -> String;
-    /// `og.load.document`
-    fn og_load_document(&self, world: u32, path: String) -> String;
     /// `og.load.look`
     fn og_load_look(&self, world: u32, path: String) -> String;
     /// `og.load.lookInfo`
@@ -1109,124 +1107,22 @@ pub trait UiApi: Wire {
     fn og_ui_has_icon(&self, name: String) -> bool;
     /// `og.ui.seconds`
     fn og_ui_seconds(&self) -> f64;
-    /// `og.ui.setFocus`
-    fn og_ui_set_focus(&self, path: String);
-    /// `og.ui.scrollIntoView`
-    fn og_ui_scroll_into_view(&self, path: String, center: bool);
-    /// `og.ui.startViewTransition`
-    fn og_ui_start_view_transition(&self, path: String) -> bool;
-    /// `og.ui.setHighlight`
-    fn og_ui_set_highlight(&self, name: String, highlight: String);
     /// `og.ui.frameDirection`
     fn og_ui_frame_direction(&self) -> String;
     /// `og.ui.frameTheme`
     fn og_ui_frame_theme(&self) -> String;
-    /// `og.ui.bounds`
-    fn og_ui_bounds(&self, path: String) -> String;
-    /// `og.ui.scrollState`
-    fn og_ui_scroll_state(&self, path: String) -> String;
-    /// `og.ui.toast`
-    fn og_ui_toast(&self, world: u32, text: String, desc: Option<String>) -> u32;
-    /// `og.ui.dismissToast`
-    fn og_ui_dismiss_toast(&self, world: u32, toast_id: u32);
-    /// `og.ui.navigate`
-    fn og_ui_navigate(&self, world: u32, intent: String);
-    /// `og.ui.back`
-    fn og_ui_back(&self) -> bool;
-    /// `og.ui.setPlayers`
-    fn og_ui_set_players(&self, count: u32);
     /// `og.ui.setVirtualCursor`
     fn og_ui_set_virtual_cursor(&self, desc: String);
     /// `og.ui.virtualCursor`
     fn og_ui_virtual_cursor(&self) -> String;
-    /// `og.ui.setHudEdit`
-    fn og_ui_set_hud_edit(&self, on: bool);
-    /// `og.ui.setHudPlayer`
-    fn og_ui_set_hud_player(&self, player: u32);
-    /// `og.ui.hudEdit`
-    fn og_ui_hud_edit(&self) -> String;
-    /// `og.ui.hudLayout`
-    fn og_ui_hud_layout(&self, player: u32) -> String;
-    /// `og.ui.setHudLayout`
-    fn og_ui_set_hud_layout(&self, player: u32, layout: String) -> bool;
-    /// `og.ui.hudSelect`
-    fn og_ui_hud_select(&self, key: String);
-    /// `og.ui.hudStep`
-    fn og_ui_hud_step(&self, scale: i32, opacity: i32);
-    /// `og.ui.hudReset`
-    fn og_ui_hud_reset(&self, key: String);
-    /// `og.ui.focus`
-    fn og_ui_focus(&self, pad: u32) -> String;
     /// `og.ui.feedback`
     fn og_ui_feedback(&self, event: String, rise: f64);
     /// `og.ui.setHaptics`
     fn og_ui_set_haptics(&self, intensity: f64);
-    /// `og.ui.setNavigation`
-    fn og_ui_set_navigation(&self, on: bool);
     /// `og.ui.tick`
     fn og_ui_tick(&self) -> u32;
     /// `og.ui.previewViewport`
     fn og_ui_preview_viewport(&self, world: u32, viewport: String);
-    /// `og.ui.defineTimeline`
-    fn og_ui_define_timeline(&self, name: String, timeline: Option<String>);
-    /// `og.ui.play`
-    fn og_ui_play(&self, path: String, choreo: String, desc: Option<String>) -> u32;
-    /// `og.ui.playTimeline`
-    fn og_ui_play_timeline(&self, path: String, timeline: String, desc: Option<String>) -> u32;
-    /// `og.ui.seek`
-    fn og_ui_seek(&self, play: u32, ms: f64) -> bool;
-    /// `og.ui.pause`
-    fn og_ui_pause(&self, play: u32) -> bool;
-    /// `og.ui.resume`
-    fn og_ui_resume(&self, play: u32) -> bool;
-    /// `og.ui.reverse`
-    fn og_ui_reverse(&self, play: u32) -> bool;
-    /// `og.ui.stop`
-    fn og_ui_stop(&self, play: u32) -> bool;
-    /// `og.ui.playInfo`
-    fn og_ui_play_info(&self, play: u32) -> String;
-    /// `og.ui.forceState`
-    fn og_ui_force_state(&self, path: String, group: String, state: String);
-    /// `og.ui.visualState`
-    fn og_ui_visual_state(&self, path: String, group: String) -> String;
-    /// `og.ui.animate`
-    fn og_ui_animate(&self, id: String, target: f64, transition: String) -> f64;
-    /// `og.ui.gesture`
-    fn og_ui_gesture(&self, path: String) -> String;
-    /// `og.ui.motionEvents`
-    fn og_ui_motion_events(&self) -> String;
-    /// `og.ui.overlaps`
-    fn og_ui_overlaps(&self) -> String;
-    /// `og.ui.layoutStats`
-    fn og_ui_layout_stats(&self) -> String;
-    /// `og.ui.defineMass`
-    fn og_ui_define_mass(&self, name: String, desc: Option<String>) -> String;
-    /// `og.ui.spawnMass`
-    fn og_ui_spawn_mass(&self, template: u32, instances: String);
-    /// `og.ui.massCount`
-    fn og_ui_mass_count(&self, template: u32) -> u32;
-    /// `og.ui.push`
-    fn og_ui_push(&self, world: u32, screen: String, vm: Option<String>) -> String;
-    /// `og.ui.pop`
-    fn og_ui_pop(&self, world: u32) -> String;
-    /// `og.ui.replace`
-    fn og_ui_replace(&self, world: u32, screen: String, vm: Option<String>) -> String;
-    /// `og.ui.clear`
-    fn og_ui_clear(&self, world: u32);
-    /// `og.ui.layers`
-    fn og_ui_layers(&self, world: u32) -> String;
-    /// `og.ui.screenVm`
-    fn og_ui_screen_vm(&self, world: u32, screen: String) -> String;
-    /// `og.ui.docEvents`
-    fn og_ui_doc_events(&self, world: u32) -> String;
-    /// `og.ui.frameMessages`
-    fn og_ui_frame_messages(&self, world: u32) -> String;
-    /// `og.ui.remoteFrames`
-    fn og_ui_remote_frames(&self, world: u32) -> bool;
-    /// `og.ui.gameInput`
-    fn og_ui_game_input(&self, world: u32) -> bool;
-    /// `og.ui.paused`
-    fn og_ui_paused(&self, world: u32) -> bool;
     /// `og.ui.defineAction`
     fn og_ui_define_action(&self, world: u32, desc: Option<String>) -> String;
     /// `og.ui.actionFired`
@@ -1239,18 +1135,8 @@ pub trait UiApi: Wire {
     fn og_ui_frame_glyph(&self, action: String) -> String;
     /// `og.ui.device`
     fn og_ui_device(&self, world: u32) -> String;
-    /// `og.ui.filePicker`
-    fn og_ui_file_picker(&self, world: u32) -> bool;
     /// `og.ui.setDevice`
     fn og_ui_set_device(&self, world: u32, device: String);
-    /// `og.ui.actionBar`
-    fn og_ui_action_bar(&self, world: u32) -> String;
-    /// `og.ui.documentSchema`
-    fn og_ui_document_schema(&self) -> String;
-    /// `og.ui.setProp`
-    fn og_ui_set_prop(&self, world: u32, path: String, prop: String, value: String) -> String;
-    /// `og.ui.saveEdits`
-    fn og_ui_save_edits(&self, world: u32) -> String;
 }
 
 /// `commands`: packages/knowledge/wiki/commands.md.
@@ -1854,7 +1740,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_texture",
     "og_load_texture_array",
     "og_load_style",
-    "og_load_document",
     "og_load_look",
     "og_load_look_info",
     "og_load_palette",
@@ -2074,77 +1959,21 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_frame_viewport",
     "og_ui_has_icon",
     "og_ui_seconds",
-    "og_ui_set_focus",
-    "og_ui_scroll_into_view",
-    "og_ui_start_view_transition",
-    "og_ui_set_highlight",
     "og_ui_frame_direction",
     "og_ui_frame_theme",
-    "og_ui_bounds",
-    "og_ui_scroll_state",
-    "og_ui_toast",
-    "og_ui_dismiss_toast",
-    "og_ui_navigate",
-    "og_ui_back",
-    "og_ui_set_players",
     "og_ui_set_virtual_cursor",
     "og_ui_virtual_cursor",
-    "og_ui_set_hud_edit",
-    "og_ui_set_hud_player",
-    "og_ui_hud_edit",
-    "og_ui_hud_layout",
-    "og_ui_set_hud_layout",
-    "og_ui_hud_select",
-    "og_ui_hud_step",
-    "og_ui_hud_reset",
-    "og_ui_focus",
     "og_ui_feedback",
     "og_ui_set_haptics",
-    "og_ui_set_navigation",
     "og_ui_tick",
     "og_ui_preview_viewport",
-    "og_ui_define_timeline",
-    "og_ui_play",
-    "og_ui_play_timeline",
-    "og_ui_seek",
-    "og_ui_pause",
-    "og_ui_resume",
-    "og_ui_reverse",
-    "og_ui_stop",
-    "og_ui_play_info",
-    "og_ui_force_state",
-    "og_ui_visual_state",
-    "og_ui_animate",
-    "og_ui_gesture",
-    "og_ui_motion_events",
-    "og_ui_overlaps",
-    "og_ui_layout_stats",
-    "og_ui_define_mass",
-    "og_ui_spawn_mass",
-    "og_ui_mass_count",
-    "og_ui_push",
-    "og_ui_pop",
-    "og_ui_replace",
-    "og_ui_clear",
-    "og_ui_layers",
-    "og_ui_screen_vm",
-    "og_ui_doc_events",
-    "og_ui_frame_messages",
-    "og_ui_remote_frames",
-    "og_ui_game_input",
-    "og_ui_paused",
     "og_ui_define_action",
     "og_ui_action_fired",
     "og_ui_action_held",
     "og_ui_glyph",
     "og_ui_frame_glyph",
     "og_ui_device",
-    "og_ui_file_picker",
     "og_ui_set_device",
-    "og_ui_action_bar",
-    "og_ui_document_schema",
-    "og_ui_set_prop",
-    "og_ui_save_edits",
     "og_commands_register",
     "og_commands_parse",
     "og_commands_help",

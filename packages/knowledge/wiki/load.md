@@ -12,7 +12,7 @@ See `loading §1`.
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 76 more are advanced (`og api show load --all`).
+- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 76 more are advanced (`og api show load --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -73,7 +73,6 @@ module load {
 | [`og.load.texture`](load/fn-texture.md) | function | `(world: World, path: string): Result<Texture>` | Load a cooked texture for og.render.sprite and a document's `<img>`, as three.js TextureLoader.load. |
 | [`og.load.textureArray`](load/fn-textureArray.md) | function | `(world: World, path: string): Result<TextureArrayInfo>` | Load a cooked texture array (an `.ogt` of `type texture-array`: a `kind` and 1 to 256 `layer` images of one size) and upload it as one 2D-array texture, its layers in file order, each in the encoding… |
 | [`og.load.style`](load/fn-style.md) | function | `(world: World, path: string): Result<Style>` | Load a cooked UI style (an `.ogt` of `type style`: the palette roles, radii, type ramp, durations and its art; the grammar is og-ui's `parse_style`) for UiDesc.style. |
-| [`og.load.document`](load/fn-document.md) | function | `(world: World, path: string): Result<void>` | Load a cooked UI document (an `.ogt` of `type screen` or `type component`, validated by og cook against og-ui's reflected props) into the world's UI, where og.ui.push and og.ui.replace name a screen … |
 | [`og.load.look`](load/fn-look.md) | function | `(world: World, path: string): Result<Look>` | Load a look: an `.ogt` of `type look` binding a frame's art direction as data, with `name`, `extends` (a preset slug or another look), `ui` and `antialias` lines and one block per resource it sets (L… |
 | [`og.load.lookInfo`](load/fn-lookInfo.md) | function | `(world: World, look: Look): Result<LookInfo>` | What a loaded look holds and sets. |
 | [`og.load.palette`](load/fn-palette.md) | function | `(world: World, path: string): Result<Palette>` | A colour palette for Stylise.palette, from a cooked `.hex` (one RRGGBB per line, as palette sites publish them) or GIMP `.gpl` file: up to 256 sRGB colours, in file order. |

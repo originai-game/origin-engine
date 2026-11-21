@@ -2,9 +2,9 @@ import {For, Icon, Text, packClass, type UiEvent, View} from "@origingame/engine
 import { Button } from "../controls/button";
 
 export interface NotificationsScreenProps {
-  /** The game's own notifications, newest last, a keyed collection of { id, title, body, tone (info, success, warn, danger) }; the game removes one when it is read or times out. The toasts og.ui.toast queued ($toasts) follow them, with nothing to pass: each leaves on its own and a press dismisses it. */
+  /** The game's own notifications, newest last, a keyed collection of { id, title, body, tone (info, success, warn, danger) }; the game removes one when it is read or times out. The toasts follow them. */
   items: ReadonlyArray<{ id: string; title: string; body: string; tone: string }>;
-  /** The toasts og.ui.toast queued, as the game's own keyed rows of { id, tone (info, success, warn, danger), text, leaving (its leave is playing): the game removes one when it leaves and a press dismisses it. */
+  /** The game's toasts, as its own keyed rows of { id, tone (info, success, warn, danger), text, leaving (its leave is playing): the game removes one when it leaves and a press dismisses it. */
   toasts?: ReadonlyArray<{ id: string; tone: string; text: string; leaving?: boolean }>;
   /** The dismiss event, with the row's key where it comes from a row. */
   onDismiss?: (e: UiEvent, key?: string) => void;

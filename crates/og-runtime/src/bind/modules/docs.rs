@@ -1,49 +1,21 @@
-//! `og.ui`'s documents, layer stack and actions (docs/ui.md §2.1, §2.1, §2.1,
-//! §16): `og.load.document` reads a cooked `og.UiDocument` into the world's
-//! UI; `push`, `pop`, `replace` and `clear` manage the layer stack from
-//! anywhere; the UI actions, glyphs and the action bar; the probe's `ui:`
-//! commands (set, state, play, seek, push, pop, save, clear, action); and
-//! the hot reload of an edited document or style in place.
-//!
-//! A viewmodel's Capitalised root (`Wallet.gold`) reads that resource as
-//! of the end of the last tick ([`snapshot`]): the UI is built inside the
-//! tick, where the world is the scheduler's.
+//! `og.ui`'s actions and glyphs, the probe's `ui:` commands (material,
+//! action), and the hot reload of an edited style in place.
 
 use super::{BUILDING, ui_of, with_ui};
 use crate::engine::{Engine, engine};
 use crate::host::wire::{self, ToJson};
-use crate::parse;
-use og_ui::doc::schema::Kind;
-use og_ui::{ActionDesc, ActionTrigger, Device, SharedUi, Ui, UiDocument};
-use serde_json::{Map, Value, json};
+use og_ui::{ActionDesc, ActionTrigger, Device, SharedUi, Ui};
+use serde_json::Value;
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
-/// A document an engine loaded: its asset id and its cooked output's hash,
-/// and the Rive artboards it plays with theirs.
-#[derive(Clone, Debug)]
-pub(crate) struct Loaded {
-    id: String,
-    hash: u64,
-    name: String,
-    rive: Vec<(String, u64)>,
-}
-
+/// The styles one engine loaded: their cooked hashes, by load index (a
+/// hot reload re-applies an edited one).
 #[derive(Default)]
 pub(crate) struct Docs {
-    loaded: Vec<Loaded>,
-    /// The resources the documents read (their Capitalised roots).
-    roots: BTreeSet<String>,
-    /// Those resources as of the last tick's end.
-    resources: Map<String, Value>,
-    /// Last mutable access reflected for each resource (not simulation ticks).
-    written: BTreeMap<String, (u64, Option<u64>)>,
-    /// Styles' cooked hashes, by load index (a hot reload re-applies an edited one).
     styles: BTreeMap<usize, u64>,
 }
 
-/// The documents on one engine: what it loaded, and the resources they
-/// read as of the last tick's end.
 pub(crate) type ModuleState = RefCell<Docs>;
 
 fn with<T>(engine: u32, f: impl FnOnce(&mut Docs) -> T) -> T {
@@ -54,407 +26,12 @@ fn with<T>(engine: u32, f: impl FnOnce(&mut Docs) -> T) -> T {
     }
 }
 
-/// The host side of a binding: the resources, the language, string
-/// tables and textures of one engine.
-pub(crate) struct RtEnv {
-    engine: u32,
-    resources: Map<String, Value>,
-    language: String,
-}
-
-impl og_ui::bind::Env for RtEnv {
-    fn lookup(&self, root: &str) -> Option<Value> {
-        self.resources.get(root).cloned()
-    }
-    fn language(&self) -> &str {
-        &self.language
-    }
-    fn translate(&self, key: &str) -> Option<String> {
-        crate::bind::i18n::message(self.engine, key)
-    }
-    fn texture(&self, handle: f64) -> Option<og_render::TextureHandle> {
-        let eng = engine(self.engine).ok()?;
-        let rs = eng.render.try_borrow().ok()?;
-        crate::world::assets::index_of(handle).and_then(|i| rs.textures.get(i).copied())
-    }
-    fn media(&self, player: f64) -> Option<og_ui::bind::MediaState> {
-        let (mut state, texture) = crate::bind::video::media_state(self.engine, player as u64)?;
-        state.texture = (texture != 0.0).then(|| self.texture(texture)).flatten();
-        Some(state)
-    }
-}
-
-pub(crate) fn env(engine: u32) -> RtEnv {
-    RtEnv {
-        engine,
-        resources: with(engine, |d| d.resources.clone()),
-        language: crate::bind::i18n::language(engine),
-    }
-}
-
-/// Reads the resources the documents name, after a tick (the world is
-/// free here).
-pub(crate) fn snapshot(engine: u32, world: &og_ecs::World) {
-    with(engine, |d| d.snapshot(world));
-}
-
-impl Docs {
-    fn snapshot(&mut self, world: &og_ecs::World) {
-        for r in &self.roots {
-            let stamp = world
-                .id_by_name(r)
-                .ok()
-                .and_then(|id| world.resource_written(id));
-            // Time's public JSON also reads TimeScale. Keep its presence
-            // as well as its clock: removal restores the default scale.
-            let stamp = stamp.map(|s| {
-                let scale = if r == "og.Time" {
-                    world
-                        .id::<og_core::TimeScale>()
-                        .ok()
-                        .and_then(|id| world.resource_written(id))
-                } else {
-                    None
-                };
-                (s, scale)
-            });
-            let Some(stamp) = stamp else {
-                self.resources.remove(r);
-                self.written.remove(r);
-                continue;
-            };
-            if self.written.get(r) == Some(&stamp) {
-                continue;
-            }
-            if let Some(v) = og_probe::resource_json(world, r) {
-                self.resources.insert(r.clone(), v);
-                self.written.insert(r.clone(), stamp);
-            }
-        }
-    }
-}
-
-/// The layers code did not build this tick, built with the engine's
-/// bindings (before the frame ends). Pausing sends recorded input for the
-/// next tick; it does not change simulation time from presentation code.
-pub(crate) fn end_of_frame(
-    engine: u32,
-    ui: &mut Ui,
-    ctx: &og_ecs::SystemContext<'_>,
-) -> og_core::Result<()> {
-    ui.build_layers(&env(engine));
-    if let Some(scale) = ui.pause_time_scale(ctx.time_scale().scale) {
-        let eng = crate::engine::engine(engine)
-            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
-        let bytes = og_core::reflect::to_bytes(&og_input::PauseIntent { scale })?;
-        crate::host::api::send_intent(&eng, Some(ctx), "og.PauseIntent", &bytes)
-            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
-    }
-    let ops = ui.take_media_ops();
-    if !ops.is_empty() {
-        let eng = crate::engine::engine(engine)
-            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
-        crate::bind::video::send_media(&eng, ctx, &ops)
-            .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
-    }
-    Ok(())
-}
-
 fn hash_of(eng: &Engine, id: &str) -> u64 {
     let a = eng.assets.borrow();
     a.bundle_for(id)
         .ok()
         .and_then(|(b, _)| b.manifest().outputs().find(|o| o.id == id).map(|o| o.hash))
         .unwrap_or(0)
-}
-
-/// Reads, parses and registers a document; answers it.
-fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
-    let (text, imports) = {
-        let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(id)?;
-        (
-            bundle
-                .document_text(id, bytes.bytes())
-                .map_err(|e| e.to_string())?,
-            bundle
-                .document_imports(id, bytes.bytes())
-                .map_err(|e| e.to_string())?,
-        )
-    };
-    // Its one parse, against the style the UI is configured with.
-    let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
-    let doc = ui
-        .lock()
-        .parse_document(id, &text, imports)
-        .map_err(|e| e.join("\n"))?;
-    let tables = doc
-        .strings
-        .iter()
-        .map(|id| crate::bind::i18n::read_table(eng, id))
-        .collect::<Result<Vec<_>, String>>()?;
-    for table in tables {
-        crate::bind::i18n::add_base(eng, table)?;
-    }
-    Ok(doc)
-}
-
-/// Load CSS textures by their authored asset paths, including transition covers.
-fn read_textures(
-    eng: &Engine,
-    doc: &UiDocument,
-) -> Result<Vec<(String, og_render::TextureHandle)>, String> {
-    let mut paths = doc.sheet.assets.clone();
-    paths.extend(doc.cover_image().map(str::to_owned));
-    let mut textures = Vec::new();
-    for path in paths {
-        let ty = {
-            let assets = eng.assets.borrow();
-            // Missing URLs remain unresolved so cursor candidates can fall
-            // through and image paint can report its missing asset.
-            let Ok((_, bundle)) = assets.blob(&path) else {
-                continue;
-            };
-            bundle.output(&path).map_err(|e| e.to_string())?.ty.clone()
-        };
-        if ty != "og.Texture" {
-            continue;
-        }
-        let i = crate::world::assets::load_texture(eng, &path)
-            .map_err(|e| format!("{}: CSS texture {path}: {e}", doc.source))?;
-        textures.push((path, eng.render.borrow().textures[i]));
-    }
-    Ok(textures)
-}
-
-/// The alpha channels of the textures its floats' `shape-outside: url()`
-/// names, read on the CPU as a cursor image is: an RGBA texture, or a
-/// cooked one decoded again from the bundle (any natively; on the web a
-/// lossless one, `kind pixel`). One that cannot be read is noted and its
-/// float keeps its box.
-fn read_shape_alphas(
-    eng: &Engine,
-    doc: &UiDocument,
-    textures: &[(String, og_render::TextureHandle)],
-) -> Vec<(String, og_ui::ImageAlpha)> {
-    let mut out = Vec::new();
-    for path in doc.shape_images() {
-        let Some((_, texture)) = textures.iter().find(|(p, _)| *p == path) else {
-            continue;
-        };
-        match crate::host::ui_cursor::read(eng, *texture, [0.0, 0.0, 1.0, 1.0]) {
-            Ok((width, height, rgba)) => out.push((
-                path,
-                og_ui::ImageAlpha {
-                    width,
-                    height,
-                    alpha: rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect(),
-                },
-            )),
-            Err(why) => eng.render.borrow_mut().notes.push(format!(
-                "{}: shape-outside: url({path}) {}; the float's box is its shape",
-                doc.source,
-                why.unwrap_or_else(|| "is not readable on the CPU".into())
-            )),
-        }
-    }
-    out
-}
-
-/// The UI materials a document's `-og-material` names, loaded by path.
-#[allow(clippy::type_complexity)]
-fn read_materials(
-    eng: &Engine,
-    doc: &UiDocument,
-) -> Result<
-    Vec<(
-        String,
-        (
-            og_render::UiMaterialHandle,
-            [[f32; 4]; og_render::UI_MATERIAL_PARAMS],
-        ),
-    )>,
-    String,
-> {
-    doc.material_assets()
-        .into_iter()
-        .map(|path| {
-            let m = crate::present::ui_draw::ui_material(eng, &path)
-                .map_err(|e| format!("{}: -og-material: \"{path}\": {e}", doc.source))?;
-            Ok((path, m))
-        })
-        .collect()
-}
-
-fn read_rive(
-    eng: &Engine,
-    doc: &UiDocument,
-) -> Result<Vec<(String, u64, std::sync::Arc<og_ui::rive::Artboard>)>, String> {
-    doc.rive_ids()
-        .into_iter()
-        .map(|id| {
-            let raw = {
-                let assets = eng.assets.borrow();
-                let (bytes, bundle) = assets
-                    .blob(&id)
-                    .map_err(|e| format!("{}: og-rive src=\"{id}\": {e}", doc.source))?;
-                bundle
-                    .rive_artboard(&id, bytes.bytes())
-                    .map_err(|e| e.to_string())?
-            };
-            let mut artboard = og_ui::rive::decode(&raw).map_err(|e| format!("{id}: {e}"))?;
-            // Its images are textures the cook made beside it.
-            let mut missing = None;
-            artboard.bind_images(
-                &mut |image| match crate::world::assets::load_texture(eng, image) {
-                    Ok(i) => eng.render.borrow().textures.get(i).copied(),
-                    Err(e) => {
-                        missing.get_or_insert(format!("{id}: {image}: {e}"));
-                        None
-                    }
-                },
-            );
-            // Its text's fonts too, each as the UI draws with it.
-            artboard.bind_fonts(&mut |font| {
-                let loaded = crate::world::assets::load_font(eng, font).and_then(|i| {
-                    super::ui_config::ui_font(eng, crate::world::assets::handle(i) as f64)
-                });
-                match loaded {
-                    Ok(f) => Some(f),
-                    Err(e) => {
-                        missing.get_or_insert(format!("{id}: {font}: {e}"));
-                        None
-                    }
-                }
-            });
-            if let Some(e) = missing {
-                return Err(e);
-            }
-            Ok((id.clone(), hash_of(eng, &id), std::sync::Arc::new(artboard)))
-        })
-        .collect()
-}
-
-fn roots_of(doc: &UiDocument) -> Vec<String> {
-    let mut paths = Vec::new();
-    for n in &doc.nodes {
-        doc.node_paths(n, &mut paths);
-    }
-    paths
-        .into_iter()
-        .filter_map(|p| {
-            let r = p.split('.').next().unwrap_or("").to_string();
-            r.starts_with(|c: char| c.is_ascii_uppercase()).then_some(r)
-        })
-        .collect()
-}
-
-pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> {
-    let mut id = og_bundle::runtime::asset_id(path).to_string();
-    // A built-in document the game replaced is not bundled: its copy where
-    // `og ui eject` writes it (`@ui/screens/pause.svelte`: ui/pause.svelte)
-    // loads in its place.
-    if let Some(rest) = id
-        .strip_prefix("@ui/components/")
-        .or_else(|| id.strip_prefix("@ui/screens/"))
-        .or_else(|| id.strip_prefix("@ui/controls/"))
-        && eng.assets.borrow().bundle_for(&id).is_err()
-    {
-        id = format!("ui/{rest}");
-    }
-    let hash = hash_of(eng, &id);
-    if let Some(name) = with(eng.id, |d| {
-        d.loaded
-            .iter()
-            .find(|l| l.id == id && l.hash == hash)
-            .map(|l| l.name.clone())
-    }) {
-        // Retry any dependency that failed after its parent was defined.
-        load_uses(eng, &id)?;
-        return Ok(name);
-    }
-    let doc = read_document(eng, &id)?;
-    let rive = read_rive(eng, &doc)?;
-    let materials = read_materials(eng, &doc)?;
-    let textures = read_textures(eng, &doc)?;
-    let alphas = read_shape_alphas(eng, &doc, &textures);
-    let name = doc.name.clone();
-    let hashes: Vec<(String, u64)> = rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
-    let roots = roots_of(&doc);
-    // A <video> or <audio> asks its player through og.MediaIntent.
-    if doc.nodes.iter().any(|n| {
-        matches!(
-            n.kind,
-            og_ui::doc::NodeKind::Element(Kind::Video | Kind::Audio)
-        )
-    }) {
-        crate::engine::lazy::ensure(eng, eng.world()?, crate::bind::video::MEDIA_INTENT)?;
-    }
-    let faces = family_faces(eng, &doc)?;
-    crate::world::remote::request(eng, &doc.sheet.remote);
-    #[cfg(feature = "frames")]
-    crate::world::remote::request_frames(eng, &doc.remote_frames(), 1);
-    {
-        let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
-        let mut ui = ui.lock();
-        for (r, _, artboard) in rive {
-            ui.define_rive(&r, artboard);
-        }
-        for (path, (handle, defaults)) in materials {
-            ui.define_material(&path, handle, defaults);
-        }
-        for (path, texture) in textures {
-            ui.define_texture(&path, texture);
-        }
-        for (path, alpha) in alphas {
-            ui.define_texture_alpha(&path, alpha);
-        }
-        define(&mut ui, doc, faces);
-    }
-    with(eng.id, |d| {
-        d.roots.extend(roots);
-        let loaded = Loaded {
-            id: id.clone(),
-            hash,
-            name: name.clone(),
-            rive: hashes,
-        };
-        match d.loaded.iter_mut().find(|l| l.id == id) {
-            Some(l) => *l = loaded,
-            None => d.loaded.push(loaded),
-        }
-    });
-    load_uses(eng, &id)?;
-    Ok(name)
-}
-
-/// Loads the components document `id` uses that are not loaded yet: the
-/// cook named their documents (the game's own, else the engine's built-in
-/// `@ui/` ones), so a screen needs only its own load.
-fn load_uses(eng: &Engine, id: &str) -> Result<(), String> {
-    let uses = {
-        let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(id)?;
-        bundle
-            .document_uses(id, bytes.bytes())
-            .map_err(|e| e.to_string())?
-    };
-    for used in uses {
-        if !with(eng.id, |d| d.loaded.iter().any(|l| l.id == used)) {
-            load_document(eng, &used).map_err(|e| format!("{id}: {used}: {e}"))?;
-        }
-    }
-    Ok(())
-}
-
-/// The faces a document's `@font-face` rules declare, each from its first
-/// `url()` source the bundle has (the cook bundled it as a font; a
-/// `local()` source names no font the engine has), limited to its
-/// `unicode-range`.
-fn family_faces(eng: &Engine, doc: &UiDocument) -> Result<Vec<og_ui::FamilyFace>, String> {
-    // Its own faces: a pack's have the pack for owner, so replacing the
-    // pack also removes its fonts.
-    sheet_faces(eng, doc.font_faces(), &doc.source, &doc.name)
 }
 
 pub(super) fn sheet_faces(
@@ -513,47 +90,6 @@ pub(super) fn sheet_faces(
     Ok(out)
 }
 
-/// Defines `doc` in the UI with its named families' faces in place of the
-/// ones it declared before.
-fn define(ui: &mut og_ui::Ui, doc: UiDocument, faces: Vec<og_ui::FamilyFace>) {
-    let had = ui.fonts().families.iter().any(|f| f.document == doc.name);
-    if had || !faces.is_empty() {
-        let mut fonts = ui.fonts().clone();
-        fonts.families.retain(|f| f.document != doc.name);
-        fonts.families.extend(faces);
-        ui.set_fonts(fonts);
-    }
-    ui.define_document(doc);
-}
-
-/// After `og.ui.configure` changed the style: every loaded document the
-/// change reaches (og-ui's `Ui::restyled_documents`: all of them for
-/// another pack, those a changed rule reaches for an edited one, none for
-/// a changed token) is read again, parsed once against the new style, and
-/// replaces its definition in place (the UI's state is kept, as for an
-/// edited document).
-pub(crate) fn restyle_loaded(eng: &Engine) -> Result<(), String> {
-    let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
-    let restyled: BTreeSet<String> = ui.lock().restyled_documents().into_iter().collect();
-    for l in with(eng.id, |d| d.loaded.clone()) {
-        if !restyled.contains(&l.name) {
-            continue;
-        }
-        let doc = read_document(eng, &l.id)?;
-        let faces = family_faces(eng, &doc)?;
-        define(&mut ui.lock(), doc, faces);
-    }
-    Ok(())
-}
-
-/// `og.load.document`.
-pub fn og_load_document(world: u32, path: String) -> Result<(), String> {
-    match engine(world).and_then(|eng| load_document(&eng, &path)) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e),
-    }
-}
-
 /// A development build: puts the default style a development cook from a
 /// checkout carries (`@ui/base`, the source tree's when it is not the
 /// compiled one; og-cook's `ui_components::base_css`) in effect for the
@@ -589,14 +125,11 @@ pub(crate) fn apply_base(eng: &Engine) -> Result<bool, String> {
     Ok(changed)
 }
 
-/// After a hot reload (`og dev`): every document whose cooked output
-/// changed is read again and replaces its definition in place, and every
-/// style the UI is configured with that changed is applied again; the
-/// UI's state (the layer stack, focus, motion) is kept. In a development
-/// build an edited default style ([`apply_base`]) reads every style and
-/// document again. `fresh_ui`: the UI is a new one (a hot reload's
-/// rebuilt world), so the configured style is applied to it whatever
-/// changed; otherwise only what changed is read again. Each step's time
+/// After a hot reload (`og dev`): every style the UI is configured with
+/// that changed is applied again, the UI's state kept. In a development
+/// build an edited default style ([`apply_base`]) reads every style again.
+/// `fresh_ui`: the UI is a new one (a hot reload's rebuilt world), so the
+/// configured style is applied to it whatever changed. Each step's time
 /// goes to `laps`.
 pub(crate) fn refresh(
     eng: &Engine,
@@ -604,9 +137,9 @@ pub(crate) fn refresh(
     laps: &mut Vec<(&'static str, f64)>,
 ) -> Vec<String> {
     let mut failed = Vec::new();
-    let loaded = with(eng.id, |d| d.loaded.clone());
-    let ui = eng.state.borrow().ui.clone();
-    let Some(ui) = ui else { return failed };
+    if eng.state.borrow().ui.is_none() {
+        return failed;
+    }
     let mut lap = {
         let mut t = crate::author::probe::now_ms();
         move |laps: &mut Vec<(&'static str, f64)>, name| {
@@ -623,59 +156,6 @@ pub(crate) fn refresh(
     #[cfg(feature = "publish")]
     let rebased = false;
     lap(laps, "base");
-    for l in loaded {
-        let now = hash_of(eng, &l.id);
-        // An edited .riv reloads its document's artboards too.
-        if now == l.hash && l.rive.iter().all(|(r, h)| hash_of(eng, r) == *h) {
-            continue;
-        }
-        match read_document(eng, &l.id).and_then(|doc| {
-            Ok((
-                read_rive(eng, &doc)?,
-                read_materials(eng, &doc)?,
-                read_textures(eng, &doc)?,
-                family_faces(eng, &doc)?,
-                doc,
-            ))
-        }) {
-            Ok((rive, materials, textures, faces, doc)) => {
-                let alphas = read_shape_alphas(eng, &doc, &textures);
-                crate::world::remote::request(eng, &doc.sheet.remote);
-                #[cfg(feature = "frames")]
-                crate::world::remote::request_frames(eng, &doc.remote_frames(), 1);
-                let hashes: Vec<(String, u64)> =
-                    rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
-                with(eng.id, |d| {
-                    d.roots.extend(roots_of(&doc));
-                    if let Some(x) = d.loaded.iter_mut().find(|x| x.id == l.id) {
-                        (x.hash, x.rive) = (now, hashes);
-                        x.name = doc.name.clone();
-                    }
-                });
-                let mut ui = ui.lock();
-                for (r, _, artboard) in rive {
-                    ui.define_rive(&r, artboard);
-                }
-                for (path, (handle, defaults)) in materials {
-                    ui.define_material(&path, handle, defaults);
-                }
-                for (path, texture) in textures {
-                    ui.define_texture(&path, texture);
-                }
-                for (path, alpha) in alphas {
-                    ui.define_texture_alpha(&path, alpha);
-                }
-                define(&mut ui, doc, faces);
-                drop(ui);
-                // A component the edit started using comes with it.
-                if let Err(e) = load_uses(eng, &l.id) {
-                    failed.push(format!("og dev: {e}"));
-                }
-            }
-            Err(e) => failed.push(format!("og dev: {e} (the old document stays)")),
-        }
-    }
-    lap(laps, "documents");
     // Styles: an edited one is parsed again and the UI configured again.
     let styles: Vec<(usize, String)> = eng
         .assets
@@ -707,15 +187,6 @@ pub(crate) fn refresh(
     {
         failed.push(format!("og dev: the style did not apply: {reason}"));
     }
-    // Without a pack nothing above read the documents against the new
-    // default style's role rules.
-    if rebased
-        && configured_style(eng).is_none()
-        && let Err(reason) = restyle_loaded(eng)
-    {
-        failed.push(format!("og dev: the default style did not apply: {reason}"));
-    }
-    lap(laps, "restyle");
     failed
 }
 
@@ -746,140 +217,10 @@ pub(crate) fn note_styles(eng: &Engine) {
 
 // ── og.ui: the layer stack, from anywhere ───────────────────────────────────
 
-fn vm_of(v: Option<String>) -> Value {
-    parse(v.as_deref()).unwrap_or(Value::Null)
-}
-
 fn on_ui<T>(world: u32, f: impl FnOnce(&mut Ui) -> T) -> Result<T, String> {
     let ui: SharedUi = ui_of(world).ok_or("the world has no UI")?;
     let mut g = ui.lock();
     Ok(f(&mut g))
-}
-
-pub fn og_ui_push(
-    world: u32,
-    screen: String,
-    vm: Option<String>,
-) -> Result<serde_json::Value, String> {
-    match on_ui(world, |ui| ui.push_screen(&screen, vm_of(vm))).and_then(|r| r) {
-        Ok(serial) => Ok(json!(serial)),
-        Err(e) => Err(e),
-    }
-}
-
-pub fn og_ui_pop(world: u32) -> String {
-    on_ui(world, |ui| ui.pop_screen())
-        .ok()
-        .flatten()
-        .unwrap_or_default()
-}
-
-pub fn og_ui_replace(
-    world: u32,
-    screen: String,
-    vm: Option<String>,
-) -> Result<serde_json::Value, String> {
-    match on_ui(world, |ui| ui.replace_screen(&screen, vm_of(vm))).and_then(|r| r) {
-        Ok(serial) => Ok(json!(serial)),
-        Err(e) => Err(e),
-    }
-}
-
-pub fn og_ui_clear(world: u32) {
-    let _ = on_ui(world, |ui| ui.clear_screens());
-}
-
-/// A layer as og.ui.layers answers it (IDL `ui.UiLayer`).
-fn layer_wire(l: &og_ui::LayerInfo) -> crate::host::wire::UiLayer {
-    let s = &l.spec;
-    wire::UiLayer {
-        serial: l.serial,
-        screen: l.screen.clone(),
-        mount: l
-            .mount
-            .as_ref()
-            .map_or(String::new(), |m| format!("{}:{}", m.scope, m.id)),
-        kind: s.kind.name().to_string(),
-        input: s.input.name().to_string(),
-        capture: s.capture,
-        pause: s.pause,
-        under: s.under.name().to_string(),
-        back: match &s.back {
-            og_ui::doc::Back::Pop => "pop".to_string(),
-            og_ui::doc::Back::None => "none".into(),
-            og_ui::doc::Back::Emit(n) => format!("emit {n}"),
-        },
-        focus: s.focus.clone(),
-        remember: s.remember,
-        top: l.top,
-        active: l.active,
-        hidden: l.hidden,
-        inert: l.inert,
-    }
-}
-
-pub fn og_ui_layers(world: u32) -> Vec<wire::UiLayer> {
-    on_ui(world, |ui| {
-        ui.layer_stack().iter().map(layer_wire).collect()
-    })
-    .unwrap_or_default()
-}
-
-pub fn og_ui_screen_vm(world: u32, screen: String) -> Option<Value> {
-    on_ui(world, |ui| ui.screen_vm(&screen)).ok().flatten()
-}
-
-pub fn og_ui_doc_events(world: u32) -> Vec<wire::UiDocEvent> {
-    // The new core's documents' events after og-ui's own.
-    let next = crate::engine::engine(world)
-        .ok()
-        .and_then(|e| {
-            let mut rs = e.render.borrow_mut();
-            rs.ui_next.as_mut().map(|n| std::mem::take(&mut n.events))
-        })
-        .unwrap_or_default();
-    on_ui(world, |ui| {
-        let mut events = ui.take_doc_events();
-        events.extend(next);
-        events
-            .into_iter()
-            .map(|e| wire::UiDocEvent {
-                mount: e.mount,
-                path: e.path,
-                row_key: e.row_key,
-                kind: e.kind,
-                name: e.name,
-                value: e.value,
-            })
-            .collect()
-    })
-    .unwrap_or_default()
-}
-
-pub fn og_ui_frame_messages(world: u32) -> Vec<wire::UiFrameMessage> {
-    on_ui(world, |ui| {
-        ui.take_frame_messages()
-            .into_iter()
-            .map(|m| wire::UiFrameMessage {
-                mount: m.mount,
-                frame: m.frame,
-                origin: m.origin,
-                kind: m.kind,
-                name: m.name,
-                path: m.path,
-                value: m.value,
-            })
-            .collect()
-    })
-    .unwrap_or_default()
-}
-
-pub fn og_ui_game_input(world: u32) -> bool {
-    on_ui(world, |ui| ui.game_input()).unwrap_or(true)
-}
-
-pub fn og_ui_paused(world: u32) -> bool {
-    on_ui(world, |ui| ui.paused()).unwrap_or(false)
 }
 
 // ── og.ui: actions and glyphs ───────────────────────────────────────────────
@@ -951,25 +292,6 @@ pub fn og_ui_device(world: u32) -> String {
     on_ui(world, |ui| ui.device().name().to_string()).unwrap_or_else(|_| "keyboardMouse".into())
 }
 
-/// No host opens a file picker yet: false on the web and natively.
-/// og.ui.remoteFrames: built in (the `frames` feature) and listed by the
-/// game's project.ogt, as on the web, where a game without `frames` ships
-/// the engine without them.
-pub fn og_ui_remote_frames(world: u32) -> bool {
-    cfg!(feature = "frames")
-        && engine(world).is_ok_and(|eng| {
-            eng.state
-                .borrow()
-                .project
-                .as_ref()
-                .is_some_and(|p| !p.frames.is_empty())
-        })
-}
-
-pub fn og_ui_file_picker(world: u32) -> bool {
-    on_ui(world, |ui| ui.file_picker()).unwrap_or(false)
-}
-
 pub fn og_ui_set_device(world: u32, device: String) {
     if let Some(d) = Device::from_name(&device) {
         let _ = on_ui(world, |ui| {
@@ -984,321 +306,43 @@ pub fn og_ui_set_device(world: u32, device: String) {
     }
 }
 
-pub fn og_ui_action_bar(world: u32) -> Vec<wire::UiActionHint> {
-    on_ui(world, |ui| {
-        ui.action_bar()
-            .into_iter()
-            .map(|h| wire::UiActionHint {
-                action: h.action,
-                hint: h.hint,
-                icon: h.glyph.icon,
-                text: h.glyph.text,
-                hold: h.hold,
-            })
-            .collect()
-    })
-    .unwrap_or_default()
-}
-
-pub fn og_ui_document_schema() -> Value {
-    og_ui::doc::schema::to_json()
-}
-
 // ── live edits (Tune and the probe) ─────────────────────────────────────────
-
-pub fn og_ui_set_prop(world: u32, path: String, prop: String, value: String) -> Result<(), String> {
-    match on_ui(world, |ui| ui.set_doc_prop(&path, &prop, &value)).and_then(|r| r) {
-        Ok(()) => Ok(()),
-        Err(e) => Err(e),
-    }
-}
-
-/// Writes the probe's edits into their documents' `.ogt` sources under
-/// the project's assets (as `save_scene` writes scenes); answers the files.
-pub(crate) fn save_edits(eng: &Engine) -> Result<Vec<String>, String> {
-    let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
-    let saved = ui.lock().save_doc_edits()?;
-    let root = eng.assets.borrow().root.clone();
-    let mut files = Vec::new();
-    for (_, source, text) in saved {
-        let file = format!("assets/{source}");
-        if root.is_empty() {
-            return Err(format!(
-                "{file}: this host has no project directory to write the document into (og run <project>, og dev)"
-            ));
-        }
-        let path = std::path::Path::new(&root).join(&file);
-        std::fs::write(&path, &text).map_err(|e| format!("{}: {e}", path.display()))?;
-        files.push(file);
-    }
-    Ok(files)
-}
-
-pub fn og_ui_save_edits(world: u32) -> Result<serde_json::Value, String> {
-    match engine(world).and_then(|eng| save_edits(&eng)) {
-        Ok(files) => Ok(json!(files)),
-        Err(e) => Err(e),
-    }
-}
 
 // ── the probe's ui: commands ────────────────────────────────────────────────
 
-const USAGE: &str = "ui:set:<path>.<prop>=<value> | ui:material:<asset>.<parameter>=<numbers> | ui:state:<path>.<group>=<state> | ui:play:<path>.<timeline> | ui:seek:<path>.<timeline>=<ms> | ui:push:<screen>[:<fixture>] | ui:pop | ui:save | ui:clear[:<path>] | ui:action:<name>";
+const USAGE: &str = "ui:material:<asset>.<parameter>=<numbers> | ui:action:<name>";
 
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_command(
         "ui",
         og_probe::CommandDesc {
             usage: USAGE.into(),
-            doc: "adjust the UI live (docs/ui.md §6): set any prop of a document element (presentation only, marked in dump_ui as an edit; ui:save writes the edits into the documents' .ogt), force a state group's state (an empty state lets it go), play or seek a document timeline on an element (seek holds it there), push a screen with a fixture of its document (its first by default), pop the top layer, drop edits, fire a UI action".into(),
+            doc: "adjust the UI live (docs/ui.md §6): set a UI material's parameter, fire a UI action".into(),
         },
         move |_world, args| command(engine_id, args),
     );
-}
-
-/// `<path>.<name>`: the last `.` splits them (paths hold no dot).
-fn split_target(t: &str) -> Result<(&str, &str), String> {
-    t.rsplit_once('.')
-        .filter(|(p, n)| !p.is_empty() && !n.is_empty())
-        .ok_or_else(|| format!("'{t}': write <path>.<name>; {USAGE}"))
 }
 
 fn command(engine_id: u32, args: &[String]) -> Result<(), String> {
     let verb = args.first().map(String::as_str).unwrap_or("");
     let rest = args.get(1..).map(|a| a.join(":")).unwrap_or_default();
     let eng = engine(engine_id)?;
-    let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
     match verb {
         "material" => {
             let (target, value) = rest.split_once('=').ok_or_else(|| {
                 format!("write ui:material:<asset>.<parameter>=<numbers>; {USAGE}")
             })?;
-            let (path, parameter) = split_target(target)?;
+            let (path, parameter) = target
+                .rsplit_once('.')
+                .filter(|(p, n)| !p.is_empty() && !n.is_empty())
+                .ok_or_else(|| format!("'{target}': write <asset>.<parameter>; {USAGE}"))?;
             crate::present::ui_draw::tune_material(&eng, path, parameter, value)
         }
-        "set" => {
-            let (target, value) = rest
-                .split_once('=')
-                .ok_or_else(|| format!("write ui:set:<path>.<prop>=<value>; {USAGE}"))?;
-            let (path, prop) = split_target(target)?;
-            ui.lock().set_doc_prop(path, prop, value)
-        }
-        "state" => {
-            let (target, state) = rest
-                .split_once('=')
-                .ok_or_else(|| format!("write ui:state:<path>.<group>=<state>; {USAGE}"))?;
-            let (path, group) = split_target(target)?;
-            let state = (!state.is_empty()).then_some(state);
-            ui.lock().force_state(path, group, state);
-            Ok(())
-        }
-        "play" => {
-            let (path, tl) = split_target(&rest)?;
-            ui.lock()
-                .play_doc_timeline(path, tl, 0.0, false)
-                .map(|_| ())
-        }
-        "seek" => {
-            let (target, ms) = rest
-                .split_once('=')
-                .ok_or_else(|| format!("write ui:seek:<path>.<timeline>=<ms>; {USAGE}"))?;
-            let (path, tl) = split_target(target)?;
-            let ms: f32 = ms
-                .trim()
-                .parse()
-                .map_err(|_| format!("'{ms}' is not a time in ms"))?;
-            ui.lock().seek_doc_timeline(path, tl, ms).map(|_| ())
-        }
-        "push" => {
-            let (screen, fixture) = match rest.split_once(':') {
-                Some((s, f)) => (s.to_string(), f.to_string()),
-                None => (rest.clone(), "default".to_string()),
-            };
-            let mut u = ui.lock();
-            let vm = u
-                .document(&screen)
-                .and_then(|d| d.fixture(&fixture).cloned())
-                .unwrap_or(Value::Null);
-            if vm.is_null() && fixture != "default" {
-                return Err(format!(
-                    "the document '{screen}' has no fixture '{fixture}'"
-                ));
-            }
-            u.push_screen(&screen, vm).map(|_| ())
-        }
-        "pop" => ui
-            .lock()
-            .pop_screen()
-            .map(|_| ())
-            .ok_or_else(|| "the layer stack is empty".to_string()),
-        "save" => {
-            drop(ui);
-            save_edits(&eng).map(|_| ())
-        }
-        "clear" => {
-            ui.lock().clear_doc_edits(&rest);
-            Ok(())
-        }
         "action" => {
+            let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
             ui.lock().fire_action(&rest);
             Ok(())
         }
         _ => Err(format!("'{verb}' is not a ui command; {USAGE}")),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use og_core::Reflect;
-
-    thread_local! {
-        static READS: Cell<usize> = const { Cell::new(0) };
-    }
-
-    #[derive(Reflect)]
-    #[reflect(name = "Wallet")]
-    struct WalletFields {
-        gold: u32,
-    }
-
-    struct Wallet(WalletFields);
-
-    impl Reflect for Wallet {
-        const NAME: &'static str = WalletFields::NAME;
-        fn schema() -> og_core::reflect::Schema {
-            WalletFields::schema()
-        }
-        fn write_fields(&self, out: &mut dyn FnMut(usize, &[u8])) {
-            READS.set(READS.get() + 1);
-            self.0.write_fields(out);
-        }
-        fn read_fields(input: &mut dyn FnMut(usize, &mut [u8])) -> Self {
-            Self(WalletFields::read_fields(input))
-        }
-    }
-
-    #[test]
-    fn snapshots_reuse_unwritten_resources_and_follow_writes_removal_and_restore() {
-        let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
-        world.register::<Wallet>().unwrap();
-        world
-            .insert_resource(Wallet(WalletFields { gold: 17 }))
-            .unwrap();
-        let mut docs = Docs::default();
-        docs.roots.insert("Wallet".into());
-        READS.set(0);
-        docs.snapshot(&world);
-        assert_eq!(docs.resources["Wallet"]["gold"], 17);
-        assert_eq!(READS.get(), 1);
-        docs.snapshot(&world);
-        assert_eq!(
-            READS.get(),
-            1,
-            "an unchanged resource is not reflected again"
-        );
-        world.resource_mut::<og_core::TimeScale>().unwrap().scale = 0.5;
-        docs.snapshot(&world);
-        assert_eq!(
-            READS.get(),
-            1,
-            "another resource's write does not reflect Wallet"
-        );
-        let saved = world.snapshot();
-        world.resource_mut::<Wallet>().unwrap().0.gold = 29;
-        docs.snapshot(&world);
-        assert_eq!(docs.resources["Wallet"]["gold"], 29);
-        world.restore(&saved).unwrap();
-        docs.snapshot(&world);
-        assert_eq!(docs.resources["Wallet"]["gold"], 17);
-        world.remove_resource::<Wallet>().unwrap();
-        docs.snapshot(&world);
-        assert!(!docs.resources.contains_key("Wallet"));
-        world
-            .insert_resource(Wallet(WalletFields { gold: 41 }))
-            .unwrap();
-        docs.snapshot(&world);
-        assert_eq!(docs.resources["Wallet"]["gold"], 41);
-    }
-
-    #[test]
-    fn time_snapshot_includes_time_scale_writes() {
-        let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
-        let mut docs = Docs::default();
-        docs.roots.insert("og.Time".into());
-        docs.snapshot(&world);
-        assert_eq!(docs.resources["og.Time"]["scale"], 1.0);
-        world.resource_mut::<og_core::TimeScale>().unwrap().scale = 0.25;
-        docs.snapshot(&world);
-        assert_eq!(docs.resources["og.Time"]["scale"], 0.25);
-        // A newer Time write must not hide the removal of TimeScale.
-        world.resource_mut::<og_core::Time>().unwrap().tick += 1;
-        docs.snapshot(&world);
-        world.remove_resource::<og_core::TimeScale>().unwrap();
-        docs.snapshot(&world);
-        assert_eq!(docs.resources["og.Time"]["scale"], 1.0);
-    }
-
-    #[test]
-    fn loading_a_changed_document_reads_and_replaces_its_definition() {
-        struct Disk;
-        impl crate::Hooks for Disk {
-            fn dispatch(&self, _: &crate::Dispatch) -> Result<String, String> {
-                Ok(String::new())
-            }
-            fn read_asset(&self, path: &str) -> crate::Fetch<Vec<u8>> {
-                match std::fs::read(path) {
-                    Ok(bytes) => crate::Fetch::Ready(bytes),
-                    Err(e) => crate::Fetch::Failed(e.to_string()),
-                }
-            }
-        }
-        let root = std::env::temp_dir().join(format!("og-docload-{}", std::process::id()));
-        std::fs::create_dir_all(root.join("assets")).unwrap();
-        std::fs::write(
-            root.join("project.ogt"),
-            "type project\nversion 1\n---\nname \"doc load\"\nid \"doc-load\"\nentry \"main.ts\"\n",
-        )
-        .unwrap();
-        std::fs::write(root.join("main.ts"), "").unwrap();
-        let cook = |name: &str| {
-            std::fs::write(
-                root.join("assets/screen.svelte"),
-                format!("<meta name=\"screen\" content=\"{name}\" /><div></div>"),
-            )
-            .unwrap();
-            let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
-            assert!(report.ok(), "{:?}", report.errors());
-        };
-        cook("Before");
-        crate::set_hooks(std::rc::Rc::new(Disk));
-        crate::og_host_begin_bundle();
-        let game = crate::og_game_game(Some(r#"{"seed":1}"#.into()));
-        let created: Value = serde_json::from_str(&crate::og_engine_create(
-            game,
-            json!({ "root": root }).to_string(),
-        ))
-        .unwrap();
-        assert_eq!(created["ok"], true, "{created}");
-        let id = created["value"].as_u64().unwrap() as u32;
-        let eng = engine(id).unwrap();
-        let before = UiDocument::parses();
-        assert_eq!(load_document(&eng, "screen.svelte").unwrap(), "Before");
-        assert_eq!(UiDocument::parses() - before, 1);
-        cook("After");
-        let (_, failed) = crate::world::assets::refresh(&eng);
-        assert!(failed.is_empty(), "{failed:?}");
-        let before = UiDocument::parses();
-        assert_eq!(load_document(&eng, "screen.svelte").unwrap(), "After");
-        assert_eq!(UiDocument::parses() - before, 1);
-        assert!(ui_of(id).unwrap().lock().document("After").is_some());
-        assert_eq!(load_document(&eng, "screen.svelte").unwrap(), "After");
-        assert_eq!(
-            UiDocument::parses() - before,
-            1,
-            "the replacement is cached too"
-        );
-        assert!(crate::og_engine_destroy(id));
-        std::fs::remove_dir_all(root).unwrap();
     }
 }

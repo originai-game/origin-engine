@@ -595,7 +595,7 @@ const Arrive = defineSystem("Arrive", { reads: [og.SceneChanged], writes: [Trave
 });
 
 // og.game({ resources: [Travel], systems: [Arrive],
-//   start(world) { og.load.document(world, "@ui/screens/loading.svelte"); }, … })
+//   ui(world) { mount(world, () => LoadingScreen({ … }), {}); }, … })
 ```
 
 - Waiting on `ready` branches a tick on progress. That is fine alone;

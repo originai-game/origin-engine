@@ -17,21 +17,6 @@ pub(crate) fn srgb8(linear: f32) -> u8 {
     (s * 255.0).round() as u8
 }
 
-/// A Paint: a colour of the pack's theme (`colors`, as og.ui.theme
-/// answers it) by name, else a linear RGB `Color`, else white; `None` for
-/// a name the theme lacks.
-pub(super) fn paint(colors: &BTreeMap<String, String>, p: &wire::Paint) -> Option<Srgba> {
-    let opacity = p.opacity.clamp(0.0, 1.0);
-    let base = match &p.role {
-        Some(name) => og_css::parse_color(colors.get(name)?)?,
-        None => match &p.color {
-            Some(c) => Srgba::rgb(srgb8(c.r), srgb8(c.g), srgb8(c.b)),
-            None => Srgba::WHITE,
-        },
-    };
-    Some(base.fade(opacity))
-}
-
 // ── ui: the calls ───────────────────────────────────────────────────────────
 
 /// Runs `f` on the UI whose frame is open; outside a frame, logs a warning
@@ -201,45 +186,6 @@ pub fn og_ui_frame_direction() -> String {
     if rtl { "rtl" } else { "ltr" }.to_owned()
 }
 
-pub fn og_ui_set_focus(path: String) {
-    with_ui("og.ui.setFocus", |ui| ui.set_focus(&path));
-}
-
-pub fn og_ui_scroll_into_view(path: String, center: bool) {
-    with_ui("og.ui.scrollIntoView", |ui| {
-        ui.scroll_into_view_path(&path, center)
-    });
-}
-
-pub fn og_ui_start_view_transition(path: String) -> bool {
-    with_ui("og.ui.startViewTransition", |ui| {
-        ui.start_element_view_transition(&path)
-    })
-    .unwrap_or(false)
-}
-
-pub fn og_ui_set_highlight(name: String, highlight: String) {
-    let h = crate::host::wire::arg::<Option<crate::host::wire::UiHighlight>>(
-        Some(&highlight),
-        "highlight",
-    )
-    .unwrap_or_default();
-    let h = h.map(|h| og_ui::Highlight {
-        ranges: h
-            .ranges
-            .into_iter()
-            .map(|r| og_ui::HighlightRange {
-                start: r.start,
-                start_offset: r.start_offset,
-                end: r.end,
-                end_offset: r.end_offset,
-            })
-            .collect(),
-        priority: h.priority,
-    });
-    with_ui("og.ui.setHighlight", |ui| ui.set_highlight(&name, h));
-}
-
 pub fn og_ui_has_icon(name: String) -> bool {
     with_ui("og.ui.hasIcon", |ui| ui.has_icon(&name)).unwrap_or(false)
 }
@@ -275,17 +221,6 @@ pub fn og_ui_frame_theme() -> String {
         }
         text
     })
-}
-
-/// The colours of the theme of the UI whose frame is open, by name (what a
-/// Paint's role names).
-pub(super) fn frame_colors() -> BTreeMap<String, String> {
-    let Some(eng) = ui_engine().and_then(|id| engine(id).ok()) else {
-        return BTreeMap::new();
-    };
-    let v = viewport_of(eng.id);
-    // Under with_ui the UI is held, and colours need no unit.
-    theme_wire(eng.id, &super::settings(&eng, &v, 1.0)).colors
 }
 
 /// og.ui.theme's answer: the pack's theme in the settings' scheme and
@@ -394,11 +329,4 @@ pub(super) fn rect_wire(r: &og_ui::Rect) -> crate::host::wire::UiRect {
 /// The engine whose UI frame is open, else the one opened last.
 pub(crate) fn ui_engine() -> Option<u32> {
     BUILDING.with(Cell::get).or_else(|| LAST.with(Cell::get))
-}
-
-pub(crate) fn texture_of(t: Option<u64>) -> Option<og_render::TextureHandle> {
-    let t = t? as f64;
-    let eng = engine(ui_engine()?).ok()?;
-    let rs = eng.render.borrow();
-    super::assets::index_of(t).and_then(|i| rs.textures.get(i).copied())
 }

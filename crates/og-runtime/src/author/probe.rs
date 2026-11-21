@@ -608,8 +608,6 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         }
         // og.net's lockstep: this peer's input and the world's hash.
         crate::bind::net::after_tick(id, world);
-        // The resources UI documents read, for the next tick's bindings.
-        crate::bind::modules::docs::snapshot(id, world);
         // The default invariants from reflection, last: they read the tick's end.
         #[cfg(not(feature = "publish"))]
         if let Ok(eng) = engine(id) {

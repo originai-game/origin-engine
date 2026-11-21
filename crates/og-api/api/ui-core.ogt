@@ -31,19 +31,6 @@ module ui {
     }
   }
 
-  struct Paint {
-    doc "A colour: one of the style pack's theme colours or a Color (linear RGB, as every Color of the API), with an opacity. Neither is white."
-    desc true
-    field role Option.String "A colour of the style pack's theme by its token name (fg, accent, danger, …: UiTheme.colors' keys); a name the pack lacks draws magenta."
-    field color Option.Color "A linear RGB colour, when no role is given: `color.fromHex(0xff8800)` for a hex or CSS colour. The UI draws 8-bit sRGB, so each component is clamped to 0 to 1 (no HDR)."
-    field opacity f32 "Its opacity, multiplied with the role's own." {
-      default 1
-      min 0
-      max 1
-      unit ratio
-    }
-  }
-
   struct Viewport {
     doc "The play surface the UI lays out in, in CSS px and device pixels per CSS px."
     field width f32 "Its width; omitted is 1280." {
@@ -204,30 +191,6 @@ module ui {
 
   # ── the game widget set ─────────────────────────────────────────────────
 
-  enum Anchor {
-    doc "A point of the safe area an anchored group sits at."
-    variant topLeft "The top left corner."
-    variant top "The middle of the top edge."
-    variant topRight "The top right corner."
-    variant left "The middle of the left edge."
-    variant center "The centre."
-    variant right "The middle of the right edge."
-    variant bottomLeft "The bottom left corner."
-    variant bottom "The middle of the bottom edge."
-    variant bottomRight "The bottom right corner."
-  }
-
-  enum Tone {
-    doc "A status tone of badges, toasts and map markers."
-    variant neutral "Neutral: control fill and muted ink."
-    variant success "Success."
-    variant warn "Warning (orange)."
-    variant danger "Danger."
-    variant info "Information."
-    variant primary "The game's identity: the primary's soft wash and highlight ink."
-    variant inverse "Neutral emphasis: ink fill, inverse ink."
-  }
-
   enum Breakpoint {
     doc "The play surface's size class."
     variant desktop "1024 CSS px wide or more, the shorter side 600 or more."
@@ -254,18 +217,6 @@ module ui {
     doc "The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour)."
     variant standard "The style's palette as it is."
     variant high "Stronger inks, fills and edges."
-  }
-
-  enum NavIntent {
-    doc "A focus-navigation intent, as the arrow keys, Tab, Enter, Space, Escape and a gamepad's d-pad, stick, A and B give."
-    variant up "Up."
-    variant down "Down."
-    variant left "Left."
-    variant right "Right."
-    variant next "The next control in reading order (Tab)."
-    variant prev "The previous one (Shift+Tab)."
-    variant activate "Press the focused control (Enter, Space, A)."
-    variant back "Leave: the topmost dialog or menu closes, else og.ui.back() answers true (Escape, B)."
   }
 
   struct UiRect {
@@ -308,16 +259,6 @@ module ui {
     field texture Option.Texture "The texture, from og.load.texture; null leaves the name unregistered."
     field uv Option.Array.f32.4 "The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture."
     field aspect f32 "Width over height of the region as drawn; 0 is square." {
-      min 0
-    }
-  }
-
-  struct ToastDesc {
-    doc "A toast's tone and time."
-    desc true
-    field tone Tone "Its tone: a dot of the tone's colour before the text."
-    field durationMs f32 "How long it stays; 0 is 3200 ms (6000 for danger)." {
-      unit ms
       min 0
     }
   }
@@ -365,47 +306,6 @@ module ui {
     returns f64
   }
 
-  fn setFocus {
-    doc "Move the focus (the pointer's, the keys' and pad 0's) to the element at a full path when this frame ends, if a focusable control is there then: a component moving the focus with its choice (a radio group's arrow keys, a list opening at its chosen option, a keyboard's first key). The ring shows as navigation's does. The last call in a frame wins; a path with no focusable control leaves the focus where it is."
-    param path String "The element's full path (og.ui.focus, the probe's dump)."
-    returns Void
-  }
-
-  fn scrollIntoView {
-    doc "Scroll the scroll container around a control (an interactive or focusable element, by its full path) so the control is in its view, by where both were in the last frame: by the least that shows it whole, or centred in the view (a saga map opening on the current level, a list on its chosen row). The offset stays in the container's range and stops a fling. Nothing for a path the last frame had no control at or that is in no scroll container."
-    param path String "The control's full path (og.ui.focus, the probe's dump)."
-    param center bool "Centre it in the view, as far as the range allows; false scrolls by the least that shows it."
-    returns Void
-  }
-  fn startViewTransition {
-    doc "Start an element-scoped view transition from its last rendered subtree to its state from this tick onward; change that state in the same tick. Replaces a transition already running on this element. Returns false without starting when the last frame drew nothing at the path or reduced motion is enabled."
-    guide "screens §8"
-    param path String "The element's full path (og.ui.focus, the probe's dump)."
-    returns bool
-  }
-
-  struct UiHighlightRange {
-    doc "A range of laid-out text for og.ui.setHighlight, from a character of one text element to a character of the same element or a later one in document order."
-    field start String "The full path of the element it starts in (og.ui.focus, the probe's dump)."
-    field startOffset u32 "The character it starts at, counting the element's characters over its lines joined by one break each."
-    field end String "The full path of the element it ends in."
-    field endOffset u32 "The character after its last, counted as startOffset is."
-  }
-
-  struct UiHighlight {
-    doc "A custom highlight (CSS Custom Highlight API) for og.ui.setHighlight: ranges of text that `::highlight(<name>)` rules style. The zero value covers nothing, at priority 0."
-    desc true
-    field ranges List.UiHighlightRange "Its ranges. Overlapping ranges paint once, as their union, and a collapsed range paints nothing."
-    field priority i32 "Where its overlay stacks: higher priorities paint above, and of equal ones the highlight registered later is above. Every custom highlight paints under the selection."
-  }
-
-  fn setHighlight {
-    doc "Register a named custom highlight, like CSS.highlights.set: from the next frame, its ranges paint with `::highlight(<name>)` rules. Each property comes from the nearest element or ancestor declaring it; `:root::highlight(found) { … }` styles every element. No rule means no paint. Setting a name again replaces its highlight without changing its registration order. It lasts until replaced or removed and is presentation only: snapshots do not carry it. Use it for search hits, tutorial words or spell-check marks."
-    param name String "Its name, as `::highlight(<name>)` writes it (case matters)."
-    param highlight Option.UiHighlight "Its ranges and priority; null removes it."
-    returns Void
-  }
-
   fn frameDirection {
     doc "The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself."
     returns String
@@ -414,74 +314,6 @@ module ui {
   fn frameTheme {
     doc "The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the components and patterns)."
     returns UiTheme
-  }
-
-  fn bounds {
-    doc "Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it."
-    param path String "The id or path."
-    returns Option.UiRect
-  }
-
-  struct ScrollState {
-    doc "A scroll container as the last frame laid it out (og.ui.scrollState)."
-    field offsetX f32 "How far its content is scrolled right." {
-      unit cssPx
-    }
-    field offsetY f32 "How far its content is scrolled down." {
-      unit cssPx
-    }
-    field viewWidth f32 "Its view's width, inside its padding." {
-      unit cssPx
-    }
-    field viewHeight f32 "Its view's height, inside its padding." {
-      unit cssPx
-    }
-    field contentWidth f32 "Its whole content's width, unclipped (the view's on an axis it does not scroll)." {
-      unit cssPx
-    }
-    field contentHeight f32 "Its whole content's height, unclipped." {
-      unit cssPx
-    }
-  }
-
-  fn scrollState {
-    doc "A scroll container's offset, view and whole content, by its full path (as the probe's dump names it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolled away has none. The offset is this tick's; the sizes are the last frame's. Null for a path that was no scroll container."
-    param path String "Its full path."
-    returns Option.ScrollState
-  }
-
-  fn toast {
-    doc "Queue a toast: a row of the UI's $toasts store ({ id, text, tone, leaving }) for its time, then leaving for a fast duration; at most three are up (older ones leave first). It draws nothing itself: the built-in notifications screen shows $toasts after its own items, so load and push it once (og.load.document(world, \"@ui/screens/notifications.svelte\"), then og.ui.push(world, \"notifications\", { items: [] })), and a press on one dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it."
-    aliases "snackbar, transient notification, popup message, auto-dismissing message"
-    param world World "The world whose UI shows it."
-    param text String "The message: a few words."
-    param desc ToastDesc "Tone and time."
-    returns u32 "Its id, for dismissToast."
-  }
-
-  fn dismissToast {
-    doc "Start a toast's exit."
-    param world World "The world."
-    param toastId u32 "The id toast() answered."
-    returns Void
-  }
-
-  fn navigate {
-    doc "Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command. A move queued while the focus is on nothing puts the focus on the first control, whatever its direction, and no further: moves asked again before the focus lands (each tick until og.ui.focus answers a path) land on that same first control."
-    param world World "The world."
-    param intent NavIntent "The intent."
-    returns Void
-  }
-
-  fn back {
-    doc "Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. A pause screen closes on it. While a dialog or menu that Back closes is open (the topmost of the last frame) it answers false and leaves Back to it, even when asked before the dialog is built this tick: a HUD drawn under pause never takes the Back that closes pause. A locked dialog lets Back through."
-    returns bool
-  }
-
-  fn setPlayers {
-    doc "Local multiplayer: how many players this screen takes (1 to 4; 1 by default). Pads 1 to count - 1 each move a focus of their own among the same controls, shown as a ring in the player's colour (info, success, warn), and their A presses the control under it (Response.pad says which pad); pad 0 shares the one focus with the keyboard and the pointer, and Back and adjusting a slider stay pad 0's. Declare it every tick the screen shows; it takes effect from the next tick, and a dialog's focus scope holds every pad's focus inside it."
-    param count u32 "Players, 1 to 4 (clamped)."
-    returns Void
   }
 
   struct VirtualCursorDesc {
@@ -524,87 +356,6 @@ module ui {
     returns Option.VirtualCursor
   }
 
-  struct HudPlacement {
-    doc "Where the player put a customisable element: moved from its laid-out place, scaled about its centre and faded."
-    field x f32 "Moved right." {
-      unit cssPx
-    }
-    field y f32 "Moved down." {
-      unit cssPx
-    }
-    field scale f32 "Its scale (1: as laid out)." {
-      unit ratio
-    }
-    field opacity f32 "Its opacity (1: opaque)." {
-      unit ratio
-    }
-  }
-
-  struct HudEdit {
-    doc "The HUD edit mode as the last frame left it."
-    field on bool "The edit mode is on."
-    field player u32 "The player whose layout the screen shows and edits."
-    field selected String "The key of the element being edited; empty for none."
-    field placement HudPlacement "Its placement."
-    field keys List.String "The customisable elements on screen, in drawing order."
-    field changed bool "The player changed the layout this tick (a move ended, a step, a reset): the time to save og.ui.hudLayout in the game's settings."
-  }
-
-  fn setHudEdit {
-    doc "Turns the HUD edit mode on or off (docs/ui.md §2.1; kept until changed). While it is on, elements with the `customize` attribute stop answering their own presses and show their outlines: a press selects one and a drag moves it, two touches or the wheel scale it, and with no virtual cursor pad 0's left stick moves the selected one. The hud-editor screen document (og ui eject hud-editor) gives the steps, Next, Reset and Done."
-    param on bool "On or off."
-    returns Void
-  }
-
-  fn setHudPlayer {
-    doc "Whose layout this screen shows and edits, 0 to 3 (0 by default; kept until changed): each player of a shared screen keeps a layout of their own."
-    param player u32 "The player (clamped to 3)."
-    returns Void
-  }
-
-  fn hudEdit {
-    doc "The HUD edit mode as the last frame left it."
-    returns HudEdit
-  }
-
-  fn hudLayout {
-    doc "A player's HUD layout as JSON, for the game's settings: each moved, scaled or faded element's key with its x, y, scale and opacity. Save it when HudEdit.changed says so; give it back with og.ui.setHudLayout on the next run."
-    param player u32 "The player, 0 to 3."
-    returns String
-  }
-
-  fn setHudLayout {
-    doc "Gives a player's HUD layout back (og.ui.hudLayout's JSON; `{}` resets it). Answers false and leaves the layout as it was when it does not read (the reason is in the frame's warnings)."
-    param player u32 "The player, 0 to 3."
-    param layout String "The layout's JSON."
-    returns bool
-  }
-
-  fn hudSelect {
-    doc "Selects an element to edit by its key (empty: none)."
-    param key String "Its key."
-    returns Void
-  }
-
-  fn hudStep {
-    doc "Steps the selected element's size and opacity: each -1, 0 or +1 step (a tenth larger or smaller, a tenth more or less opaque), within its limits."
-    param scale i32 "The size step."
-    param opacity i32 "The opacity step."
-    returns Void
-  }
-
-  fn hudReset {
-    doc "Puts an element back where it was laid out: its key, empty for the selected one, `*` for every one."
-    param key String "Its key, empty or `*`."
-    returns Void
-  }
-
-  fn focus {
-    doc "The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none."
-    param pad u32 "The pad, 0 to 3; past 3 answers empty."
-    returns String
-  }
-
   fn feedback {
     doc "Play a UI event's style feedback (docs/ui.md §3.1): a random sound from its set, never repeating the last, with volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff and sliderTick; game code plays scrollTick, typewriter, counterTick, notification, warning, error, success, reward and revealCommon to revealMythic. Choices use UI state and replay deterministically. An unknown event or one the style leaves silent plays nothing."
     param event String "The event's name."
@@ -615,12 +366,6 @@ module ui {
   fn setHaptics {
     doc "The player's haptic strength (a settings screen's vibration slider or switch): 0 turns the UI's haptics off, 1 (the default) plays the style's patterns as set; between scales them. The web shell rumbles the gamepad and vibrates a phone; the native host rumbles its pad."
     param intensity f32 "0 to 1 (clamped)."
-    returns Void
-  }
-
-  fn setNavigation {
-    doc "Whether keyboard and gamepad navigation moves focus on this screen (on by default). A gameplay HUD whose keys move the player turns it off; an open dialog or menu turns it back on while it is open. Takes effect from the next tick."
-    param on bool "On or off."
     returns Void
   }
 
