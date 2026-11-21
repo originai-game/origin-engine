@@ -15,7 +15,44 @@
 
 use super::{Binding, GENERATED_BY, bindings, default_json, schema_name, snake};
 use crate::index::{Index, TypeDecl};
+use crate::json::Json;
 use crate::model::*;
+use std::fmt::Write;
+
+/// `crates/og-api/src/generated/consts.rs`: the IDL's module constants as
+/// Rust items (`og_api::consts`). Generated, so a constant the IDL gains is
+/// published without a hand edit, and a crate that wants only the values
+/// depends on og-api instead of restating them (`og-probe`, whose constants
+/// the probe, the runtime and the hosts read).
+pub fn consts_rs(ix: &Index<'_>) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("// {GENERATED_BY}\n"));
+    out.push_str(
+        "//! The IDL's module constants, generated from the IDL; `og_api::consts`\n\
+         //! is them. The TypeScript side's is packages/engine/src/generated/consts.ts.\n",
+    );
+    for m in &ix.api.modules {
+        for item in &m.items {
+            let Item::Const(c) = item else { continue };
+            let _ = writeln!(out);
+            for line in &c.doc {
+                let _ = writeln!(out, "/// {line}");
+            }
+            let (ty, value) = match &c.value {
+                og_core::ogt::Value::String(s) => ("&str", Json::str(s.clone()).render().trim_end().to_string()),
+                v => {
+                    let ty = match c.ty {
+                        TypeRef::Named { ref name, args: _ } if name == "u32" || name == "i32" => name.as_str(),
+                        _ => panic!("const `{}`: the Rust constants hold u32, i32 and String", c.name),
+                    };
+                    (ty, crate::values::show(v))
+                }
+            };
+            let _ = writeln!(out, "pub const {}: {ty} = {value};", c.name);
+        }
+    }
+    out
+}
 
 /// How one IDL type crosses the host boundary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

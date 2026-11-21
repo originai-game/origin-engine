@@ -35,14 +35,17 @@ use std::rc::Rc;
 
 mod record;
 
-/// The RuntimeProbe contract revision (`origin/packages/contracts/src/probe.ts`).
-pub const PROBE_VERSION: u32 = 5;
-/// The wire revision `hello` reports (`engine/docs/probe-wire.md`).
-pub const PROBE_WIRE_VERSION: u32 = 1;
-/// The longest playtest one request may advance, in fixed steps.
-pub const PLAYTEST_MAX_TICKS: u64 = 3600;
-/// The most operations one probe program may carry.
-pub const PROBE_PROGRAM_MAX_OPERATIONS: usize = 256;
+/// The RuntimeProbe contract revision and the wire revision `hello` reports,
+/// the IDL's (`probe.ogt` constants, `og_api::consts`).
+pub use og_api::consts::{PROBE_VERSION, PROBE_WIRE_VERSION};
+/// The longest playtest one request may advance, in fixed steps: the IDL's
+/// [`og_api::consts::PLAYTEST_MAX_TICKS`], as the u64 the tick loop counts in.
+pub const PLAYTEST_MAX_TICKS: u64 = og_api::consts::PLAYTEST_MAX_TICKS as u64;
+/// The most operations one probe program may carry: the IDL's
+/// [`og_api::consts::PROBE_PROGRAM_MAX_OPERATIONS`], as the usize the program
+/// vector bounds.
+pub const PROBE_PROGRAM_MAX_OPERATIONS: usize =
+    og_api::consts::PROBE_PROGRAM_MAX_OPERATIONS as usize;
 /// The most values one sweep may try.
 pub const MAX_SWEEP_VALUES: usize = 64;
 /// The most viewpoints one `capture_views` takes.

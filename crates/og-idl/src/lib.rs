@@ -247,8 +247,16 @@ pub fn generate(api: &Api) -> Vec<Generated> {
             contents: r#gen::ts::vocabulary_ts(&ix),
         },
         Generated {
+            path: "packages/engine/src/generated/consts.ts".to_string(),
+            contents: r#gen::ts::consts_ts(&ix),
+        },
+        Generated {
             path: "crates/og-api/src/generated/host.rs".to_string(),
             contents: r#gen::host::host_rs(&ix),
+        },
+        Generated {
+            path: "crates/og-api/src/generated/consts.rs".to_string(),
+            contents: r#gen::host::consts_rs(&ix),
         },
         Generated {
             path: "crates/og-records/src/generated/records.rs".to_string(),

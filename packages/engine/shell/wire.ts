@@ -18,15 +18,15 @@
 // entity, input, capture): `pause`, `resume`, `advance`, `bounds` and
 // `patch` answer `unsupported` there; a dev (Stage) build serves them all.
 
+// The generated constants (src/generated/consts.ts): the IDL's, so the shell
+// and the engine's probe (`og-probe`) state the same numbers once.
+import { PLAYTEST_MAX_TICKS, PROBE_VERSION, PROBE_WIRE_VERSION } from "../src/generated/consts.ts";
+
 export const PROBE_WIRE = "probe";
-export const PROBE_WIRE_VERSION = 1;
-export const PROBE_WIRE_PROTOCOL = 5;
 export const STAGE_HOST_GLOBAL = "__OG_STAGE_HOST__";
 export const PROBE_WIRE_RECORD_MAX_SECONDS = 15;
 export const PROBE_WIRE_SLOW_MS = 100;
 export const PROBE_WIRE_METHODS = ["hello", "tick", "state", "pause", "resume", "advance", "entities", "bounds", "entity", "patch", "capture", "record"] as const;
-/** The probe's `advance` takes at most this many steps. */
-const MAX_STEPS = 3600;
 /** JSON-RPC: a member the build does not serve. */
 const METHOD_NOT_FOUND = -32601;
 
@@ -151,7 +151,7 @@ export function createWire(options: WireOptions) {
   const state = async () => wireState(await member("state"));
 
   function hello(): { protocol: 5 | null; substrate: "origin-engine" | null } {
-    return options.probe() ? { protocol: PROBE_WIRE_PROTOCOL, substrate: "origin-engine" } : { protocol: null, substrate: null };
+    return options.probe() ? { protocol: PROBE_VERSION, substrate: "origin-engine" } : { protocol: null, substrate: null };
   }
 
   async function answer(method: string, params: Record<string, unknown>, received: number): Promise<unknown> {
@@ -172,7 +172,7 @@ export function createWire(options: WireOptions) {
       }
       case "advance": {
         const steps = params["steps"];
-        if (typeof steps !== "number" || !Number.isInteger(steps) || steps < 0 || steps > MAX_STEPS) throw new WireError("refused", `steps must be a whole number from 0 to ${MAX_STEPS}`);
+        if (typeof steps !== "number" || !Number.isInteger(steps) || steps < 0 || steps > PLAYTEST_MAX_TICKS) throw new WireError("refused", `steps must be a whole number from 0 to ${PLAYTEST_MAX_TICKS}`);
         await member("advance", { steps });
         return state();
       }

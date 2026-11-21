@@ -788,12 +788,56 @@ pub fn exports_ts(ix: &Index<'_>) -> String {
                 n = c.name
             );
         }
+        // The constants are src/generated/consts.ts's: the runtime values the
+        // hosts that import this file alone (the shell) read without the rest.
+        if !consts.is_empty() {
+            let _ = writeln!(
+                out,
+                "export {{ {} }} from \"./consts.ts\";",
+                consts
+                    .iter()
+                    .map(|c| c.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
+    }
+    out
+}
+
+/// `packages/engine/src/generated/consts.ts`: the IDL's module constants as
+/// runtime values (`exports.ts` re-exports them beside the column
+/// factories). Generated, so a constant the IDL gains is exported without a
+/// hand edit, and a host that wants only the values imports this file
+/// without the runtime (`packages/engine/shell/wire.ts`).
+pub fn consts_ts(ix: &Index<'_>) -> String {
+    let mut out = format!(
+        "// {GENERATED_BY}\n\
+         // The IDL's module constants, as runtime values.\n\
+         // src/generated/exports.ts re-exports these beside the column factories.\n\n\
+         import type * as Api from \"@origingame/engine\";\n"
+    );
+    for m in &ix.api.modules {
+        let consts: Vec<&Const> = m
+            .items
+            .iter()
+            .filter_map(|i| match i {
+                // A list constant's members are written to vocabulary.ts instead,
+                // which the provider and host modules read without the runtime.
+                Item::Const(c) if !c.ty.is_string_list() => Some(c),
+                _ => None,
+            })
+            .collect();
+        if consts.is_empty() {
+            continue;
+        }
+        let _ = writeln!(out, "\n// {}", m.name);
         for c in consts {
             let _ = writeln!(
                 out,
-                "export const {n}: typeof Api.{n} = {};",
-                const_literal(c),
-                n = c.name
+                "export const {n}: typeof Api.{n} = {v};",
+                n = c.name,
+                v = const_literal(c)
             );
         }
     }

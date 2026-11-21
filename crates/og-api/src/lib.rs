@@ -14,3 +14,10 @@
 #[rustfmt::skip]
 #[path = "generated/host.rs"]
 pub mod host;
+
+/// The IDL's module constants, generated from `api/<module>.ogt`
+/// (`og api gen` writes `src/generated/consts.rs`; the TypeScript side's is
+/// `packages/engine/src/generated/consts.ts`).
+#[rustfmt::skip]
+#[path = "generated/consts.rs"]
+pub mod consts;

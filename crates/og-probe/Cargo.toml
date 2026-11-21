@@ -16,6 +16,7 @@ ws = ["dep:tungstenite"]
 publish = []
 
 [dependencies]
+og-api = { path = "../og-api" }
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
 og-input = { path = "../og-input" }

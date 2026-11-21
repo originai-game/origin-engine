@@ -3568,6 +3568,7 @@ name = "og-probe"
 version = "0.9.0"
 dependencies = [
  "miniz_oxide 0.8.9",
+ "og-api",
  "og-core",
  "og-ecs",
  "og-input",

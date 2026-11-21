@@ -44,6 +44,7 @@ import { localPlatform, memoryPersistence, type PlatformHost, type PlatformNotic
 import type { HostError } from "../src/web/shell.ts";
 import type { FrameStats } from "../src/web/frames.ts";
 import { mapStack } from "../src/sourcemap.ts";
+import { PROBE_GLOBAL, REPLAY_SEED_PARAM } from "../src/generated/consts.ts";
 import { browserOf, crashFields, deviceOf, gpuOf, memoryOf, playFields, type Context, type MemoryInfo } from "./telemetry.ts";
 import type { EngineModules } from "../src/web/split.ts";
 
@@ -139,9 +140,7 @@ export function fileUrl(config: Pick<ShellConfig, "files">, name: string, base: 
   return new URL(`./${typeof served === "string" ? served : name}`, base).href;
 }
 
-const PROBE_GLOBAL = "__runtime_probe__";
 const TIMINGS_GLOBAL = "__og_timings__";
-const REPLAY_SEED_PARAM = "replay-seed";
 const TRACE_PARAM = "trace";
 const LOG_LINES = 200;
 /** Field telemetry's throttle (docs/web-export.md §Telemetry): a play sample at most this often, on a hidden page after at least the second, at most this many a session. */
