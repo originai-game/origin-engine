@@ -102,11 +102,13 @@ impl Raster {
         let devx = p0.x - 2.0 * p1.x + p2.x;
         let devy = p0.y - 2.0 * p1.y + p2.y;
         let devsq = devx * devx + devy * devy;
-        if devsq < 0.333 {
+        // og (PATCHED.md): chords within 0.05 px of the curve, not 0.144.
+        // A chord strays dev / (4 n²); a lone chord dev / 4.
+        if devsq < 0.04 {
             self.draw_line(p0, p2);
             return;
         }
-        let tol = 3.0;
+        let tol = 25.0;
         let n = 1 + (tol * (devx * devx + devy * devy)).sqrt().sqrt().floor() as usize;
         //println!("n = {}", n);
         let mut p = *p0;
