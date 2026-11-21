@@ -1186,10 +1186,13 @@ mod tests {
         b.op(8).u32(1).u32(4).u32(u32::MAX);
         b.op(8).u32(1).u32(5).u32(u32::MAX);
         t.apply(&b.bytes()).unwrap();
+        let mut client = a11y::Tree::new();
+        // Before the layout gives the nodes their boxes (a page's first
+        // frame answer), nothing is sent; the frame after it sends it all.
+        assert!(t.a11y(&mut client, None, 1.0).is_none());
         frame(&mut t);
         let node = |e: u32| t.els[t.op(e).unwrap() as usize].node as u64;
         let (two, four) = (node(2), node(4));
-        let mut client = a11y::Tree::new();
         let u = t.a11y(&mut client, None, 1.0).unwrap();
         let get = |u: &accesskit::TreeUpdate, id: u64| {
             u.nodes.iter().find(|n| n.0.0 == id).map(|n| n.1.clone())

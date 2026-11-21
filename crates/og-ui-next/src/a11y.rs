@@ -546,6 +546,10 @@ impl Tree {
         focus: Option<Id>,
         viewport: Viewport,
     ) -> Option<TreeUpdate> {
+        // Boxes come from the layout: the frame after it sends the update.
+        if !arena.settled() {
+            return None;
+        }
         let stamp = Stamp {
             arena: arena.rev(),
             sem: sem.rev,
@@ -624,6 +628,10 @@ impl Tree {
         });
         let mut focused = ROOT;
         self.stack.clear();
+        // Before the layout gives the elements their boxes, the root alone.
+        if !arena.settled() {
+            return focused;
+        }
         for &c in arena.children(0).iter().rev() {
             self.stack.push(Walk {
                 id: c,

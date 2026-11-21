@@ -279,6 +279,12 @@ impl Arena {
         self.dirty
     }
 
+    /// Whether every element has its box: none came or went since the
+    /// last layout, so each one's slot in the store is its own.
+    pub fn settled(&self) -> bool {
+        !self.structure
+    }
+
     /// Lays out what changed, in a `width` by `height` viewport. Answers
     /// whether anything was laid out; a clean arena returns at once.
     pub fn layout(&mut self, width: f32, height: f32, measure: &mut Measure<'_>) -> bool {
