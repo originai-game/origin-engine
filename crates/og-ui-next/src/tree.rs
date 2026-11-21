@@ -218,18 +218,7 @@ fn reads(e: &Expr, scope: &[(Box<str>, u32)], screen: u32) -> Reads {
 
 /// `e` over `reads`, as a derived signal.
 fn derive(e: Expr, reads: Reads, env: Rc<Surface>) -> u32 {
-    queue::derive(move || {
-        let mut vm = serde_json::Map::new();
-        for (n, s) in &reads {
-            vm.insert(n.to_string(), queue::read(*s));
-        }
-        let vm = Value::Object(vm);
-        e.eval(&Scope {
-            vm: &vm,
-            locals: Vec::new(),
-            env: &*env,
-        })
-    })
+    queue::derive(move || queue::eval(&e, &reads, &*env))
 }
 
 /// What a fixed condition reads: the surface, and the instance's
@@ -557,20 +546,24 @@ impl Tree {
             let mut row_scope = scope.clone();
             let root = queue::owned(|| {
                 let (var2, key2, env) = (var.to_string(), key.clone(), self.env.clone());
+                // Its item found in the list in place; only it is copied.
                 let row = queue::derive(move || {
-                    let Value::Array(items) = queue::read(list) else {
-                        return Value::Null;
-                    };
-                    items
-                        .into_iter()
-                        .find(|item| {
-                            key2.eval(&Scope {
-                                vm: &Value::Null,
-                                locals: vec![(var2.as_str(), item.clone())],
-                                env: &*env,
-                            }) == k
-                        })
-                        .unwrap_or(Value::Null)
+                    queue::read_with(list, |items| {
+                        let Value::Array(items) = items else {
+                            return Value::Null;
+                        };
+                        items
+                            .iter()
+                            .find(|item| {
+                                key2.eval(&Scope {
+                                    vm: &Value::Null,
+                                    locals: vec![(var2.as_str(), (*item).clone())],
+                                    env: &*env,
+                                }) == k
+                            })
+                            .cloned()
+                            .unwrap_or(Value::Null)
+                    })
                 });
                 row_scope.push((var.into(), row));
                 if let Some(ix) = index {

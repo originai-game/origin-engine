@@ -160,17 +160,7 @@ pub fn bind(tree: u32, target: Target, expr: Rc<Expr>, reads: Reads, env: Rc<dyn
     // Its last value: an effect is not handed back what it returned.
     let last: std::cell::RefCell<Option<Value>> = Default::default();
     let func: Func = Rc::new(move |_| {
-        let mut vm = serde_json::Map::new();
-        for (name, s) in &reads {
-            vm.insert(name.to_string(), nsh_reactive::read(Ui, *s));
-        }
-        let vm = Value::Object(vm);
-        let scope = Scope {
-            vm: &vm,
-            locals: Vec::new(),
-            env: &*env,
-        };
-        let next = expr.eval(&scope);
+        let next = eval(&expr, &reads, &*env);
         let changed = match (&*last.borrow(), target) {
             (None, _) => true,
             (Some(prev), Target::Holds { .. } | Target::Shown { .. }) => {
@@ -215,6 +205,74 @@ pub fn derive(f: impl Fn() -> Value + 'static) -> u32 {
     nsh_reactive::run_updates(Ui, false, || {
         nsh_reactive::memo(Ui, func, Value::Null, Equals::Default, false)
     })
+}
+
+/// `expr` over the signals `reads` names, each path borrowed from its
+/// signal so only what the expression reads is copied; the signals it
+/// reads are tracked, and so are the ones named only to be tracked (a
+/// name starting with NUL: the size class).
+pub fn eval(expr: &Expr, reads: &[(Box<str>, u32)], env: &dyn Env) -> Value {
+    for (name, s) in reads {
+        if name.starts_with('\0') {
+            nsh_reactive::read_with(Ui, *s, |_| ());
+        }
+    }
+    expr.eval(&Scope {
+        vm: &Value::Null,
+        locals: Vec::new(),
+        env: &Stores { reads, env },
+    })
+}
+
+/// What a binding's scope reads: its signals by root name, over the
+/// tree's environment.
+struct Stores<'a> {
+    reads: &'a [(Box<str>, u32)],
+    env: &'a dyn Env,
+}
+
+impl Env for Stores<'_> {
+    fn interaction(&self, state: og_ui::bind::InteractionState) -> bool {
+        self.env.interaction(state)
+    }
+    fn interaction_at(&self, node: usize, state: og_ui::bind::InteractionState) -> bool {
+        self.env.interaction_at(node, state)
+    }
+    fn lookup(&self, root: &str) -> Option<Value> {
+        self.lookup_path(root)
+    }
+    fn lookup_path(&self, path: &str) -> Option<Value> {
+        let (root, rest) = path.split_once('.').unwrap_or((path, ""));
+        match self.reads.iter().find(|(n, _)| &**n == root) {
+            Some((_, s)) => Some(nsh_reactive::read_with(Ui, *s, |v| {
+                og_ui::bind::get_path(v, rest).map_or(Value::Null, |c| c.into_owned())
+            })),
+            None => self.env.lookup_path(path),
+        }
+    }
+    fn screen(&self, class: og_ui::bind::Screen) -> bool {
+        self.env.screen(class)
+    }
+    fn language(&self) -> &str {
+        self.env.language()
+    }
+    fn translate(&self, key: &str) -> Option<String> {
+        self.env.translate(key)
+    }
+    fn shown(&self, text: String) -> String {
+        self.env.shown(text)
+    }
+    fn texture(&self, handle: f64) -> Option<og_draw::TextureHandle> {
+        self.env.texture(handle)
+    }
+    fn media(&self, player: f64) -> Option<og_ui::bind::MediaState> {
+        self.env.media(player)
+    }
+}
+
+/// A signal's value, lent to `f` and tracked by the computation running it.
+pub fn read_with<R>(signal: u32, f: impl FnOnce(&Value) -> R) -> R {
+    nsh_reactive::read_with(Ui, signal, f)
 }
 
 /// A signal's value, tracked by the computation running it.

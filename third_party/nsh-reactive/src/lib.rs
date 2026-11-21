@@ -1139,6 +1139,36 @@ pub fn read<H: Host>(h: H, id: u32) -> H::Value {
     h.dup(&graph.nodes[id as usize].value)
 }
 
+/// [`read`] that lends the value to `f` instead of answering another
+/// reference to it (a host whose values are costly to duplicate reads one
+/// field of a store). `f` must not call into the graph.
+pub fn read_with<H: Host, R>(h: H, id: u32, f: impl FnOnce(&H::Value) -> R) -> R {
+    let n = &g(h).nodes[id as usize];
+    if n.kind == Kind::Memo && !n.disposed && n.state != CLEAN {
+        // As in `read`, only on this path: a memo that lets itself go
+        // while it is brought up to date lends its last value, untracked.
+        let (generation, last) = (n.generation, h.dup(&n.value));
+        if n.state == STALE {
+            update_computation(h, id);
+        } else {
+            let updates = g(h).updates.take();
+            run_updates(h, false, || look_upstream(h, id, NONE));
+            g(h).updates = updates;
+        }
+        if g(h).left(id, generation) {
+            let r = f(&last);
+            h.free(last);
+            return r;
+        }
+        h.free(last);
+    }
+    let graph = g(h);
+    if !graph.nodes[id as usize].disposed {
+        graph.track(id);
+    }
+    f(&graph.nodes[id as usize].value)
+}
+
 /// Solid's `cleanNode`: unlinks the node's sources, disposes what it owns
 /// and runs its cleanups.
 fn clean_node<H: Host>(h: H, id: u32) {
