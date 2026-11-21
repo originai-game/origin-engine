@@ -312,6 +312,8 @@ pub struct Tree {
     /// until [`Tree::take_missing`]: the host loads a font pack that
     /// covers them (docs/ui.md §3.4), and the text draws in it once linked.
     missing: Vec<char>,
+    /// The lines [`lay_out`] breaks a text into, kept between texts.
+    breaks: Vec<(std::ops::Range<usize>, f32)>,
     /// Each element's transform in `drawn.transforms` (its own composed
     /// with its ancestors'; 0 none), what its children compose onto.
     xfs: Vec<u32>,
@@ -570,6 +572,7 @@ impl Tree {
             paints: 0,
             faces: Vec::new(),
             missing: Vec::new(),
+            breaks: Vec::new(),
         }
     }
 
@@ -1812,7 +1815,15 @@ impl Tree {
             {
                 let lb = self.arena.box_of(leaf);
                 let g = &mut self.glyphs[e];
-                lay_out(g, &el.text, &el.eff, lb.w, m, &mut self.missing);
+                lay_out(
+                    g,
+                    &el.text,
+                    &el.eff,
+                    lb.w,
+                    m,
+                    &mut self.missing,
+                    &mut self.breaks,
+                );
                 let (lx, ly) = (x + lb.x, y + lb.y);
                 let sh = s.text_shadow;
                 if sh.color[3] > 0.0 {
@@ -1901,7 +1912,8 @@ impl Tree {
                     ""
                 };
                 let features = og_text::shape::Features::NONE;
-                let pen = og_text::text::widest_line(before, m, size, t.tracking(size), features);
+                let track = t.tracking(size) / size.max(f32::MIN_POSITIVE);
+                let pen = og_text::text::widest_line(before, m, size, track, features);
                 let dx = if typed {
                     self.glyphs[e].lines.first().map_or(0.0, |l| l[0])
                 } else {
@@ -2175,6 +2187,7 @@ fn lay_out(
     width: f32,
     m: &og_text::text::FontMetrics,
     missing: &mut Vec<char>,
+    breaks: &mut Vec<(std::ops::Range<usize>, f32)>,
 ) {
     let t = &eff.text;
     let size = eff.size;
@@ -2244,15 +2257,25 @@ fn lay_out(
                 prev = Some(ch);
             }
         };
-    let one = og_text::text::widest_line(text, m, size, tracking, features);
+    // Broken as the measure broke it (text.rs), by the same shaped layout
+    // at the same width, so a text never breaks inside the box it sized.
+    let wrap = (!t.nowrap && size > 0.0).then(|| (width + 0.5) / size);
+    if og_text::text::paragraph::lines_into(m, text, track, features, wrap, breaks) {
+        for (k, (r, w)) in breaks.iter().enumerate() {
+            let l = text[r.clone()].trim_end_matches(['\n', '\r']);
+            place(k, l, w * size, &mut g.quads, &mut g.lines);
+        }
+        return;
+    }
+    let one = og_text::text::widest_line(text, m, size, track, features);
     if t.nowrap || (one <= width + 0.5 && !text.contains('\n')) {
         for (k, l) in text.split('\n').enumerate() {
-            let w = og_text::text::widest_line(l, m, size, tracking, features);
+            let w = og_text::text::widest_line(l, m, size, track, features);
             place(k, l, w, &mut g.quads, &mut g.lines);
         }
         return;
     }
-    let lines = og_text::text::break_lines(text, m, size, tracking, features, Some(width + 0.5));
+    let lines = og_text::text::break_lines(text, m, size, track, features, Some(width + 0.5));
     for (k, l) in lines.iter().enumerate() {
         place(k, &l.text, l.width, &mut g.quads, &mut g.lines);
     }
@@ -2328,6 +2351,73 @@ mod tests {
                 .unwrap()
         };
         assert!(at(true) > at(false), "the text over its panel");
+    }
+
+    /// A tracked word in a box its measure sized paints on one line: the
+    /// measure takes tracking in em as og-text does, and paint breaks
+    /// lines from the same shaped layout ("Leaderb/oard" before).
+    #[test]
+    fn a_tracked_word_paints_on_the_one_line_its_box_was_sized_for() {
+        let doc = UiDocument::parse(
+            "w.svelte",
+            "<meta name=\"component\" content=\"w\">\n\
+             <div id=\"R\"><span id=\"T\">Leaderboard</span><span id=\"U\">Achievement</span></div>\n\
+             <style>\n#R { display: flex; flex-wrap: wrap; width: 400px; }\n\
+             #T, #U { font-size: 13px; letter-spacing: 0.14em; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
+        tree.resize(800.0, 200.0);
+        tree.mount("w", &[]).unwrap();
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../templates/fonts/latin/NotoSans-Latin.ttf"
+        );
+        let file = og_text::shape::FontFile::new(Arc::new(std::fs::read(path).unwrap())).unwrap();
+        let atlas = og_draw::MsdfFont {
+            atlas: og_draw::TextureHandle::from_slot(1).unwrap(),
+            distance_range: 4.0,
+            foreground: false,
+            silhouette: false,
+            line_height: 1.2,
+            glyphs: Vec::new(),
+            kerning: Vec::new(),
+        };
+        let fonts = og_ui::Fonts {
+            body: og_ui::UiFont {
+                handle: Some(og_draw::FontHandle::from_index(0)),
+                metrics: og_text::text::FontMetrics::from_msdf(&atlas).with_file(Some(file)),
+            },
+            ..Default::default()
+        };
+        tree.frame(&fonts, &IconAtlas::default());
+        let (_, ty, tw, th) = tree.find("T").unwrap();
+        let (_, uy, uw, _) = tree.find("U").unwrap();
+        // Untracked, a 13px word is about 6.5px a letter: 0.14em adds
+        // 1.82px a letter, not the 23.7px a px-as-em measure gave.
+        assert!(tw < 13.0 * 11.0 * (0.62 + 0.14), "measured {tw}");
+        assert!(tw + uw < 400.0 && ty == uy, "both words share the row");
+        let baselines: Vec<f32> = tree
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Glyph as u32)
+            .map(|q| q.rect[1])
+            .collect();
+        assert_eq!(baselines.len(), 22, "every letter drawn");
+        assert!(
+            baselines
+                .iter()
+                .all(|&b| (b - baselines[0]).abs() < 0.01 && b < th + ty),
+            "one line: {baselines:?}"
+        );
     }
 
     /// A box paints its outer shadows under it, then its fill and gradient,

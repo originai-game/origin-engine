@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui text",
+      "summary": "Text with letter-spacing no longer breaks inside words (\"Leaderb/oard\"). Its box was measured with the spacing read as em instead of px, so it came out far too wide, and the glyphs were then broken onto lines by a different, unshaped measure. A text now draws on the lines its measure laid out, at the same widths."
+    }
+  ]
+}

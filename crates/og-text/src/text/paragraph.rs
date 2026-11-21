@@ -523,6 +523,33 @@ pub fn measure(
     features: Features,
     width: Option<f32>,
 ) -> Option<(f32, usize)> {
+    shape(metrics, text, tracking, features, width, None)
+}
+
+/// [`measure`]'s lines: `out` gets each line's byte range in `text` and
+/// its width (em, at size 1, without the whitespace hanging at a wrap),
+/// broken exactly as [`measure`] breaks them, so a text drawn from them
+/// fits the box its measure gave. `false` where [`measure`] declines.
+pub fn lines_into(
+    metrics: &FontMetrics,
+    text: &str,
+    tracking: f32,
+    features: Features,
+    width: Option<f32>,
+    out: &mut Vec<(Range<usize>, f32)>,
+) -> bool {
+    out.clear();
+    shape(metrics, text, tracking, features, width, Some(out)).is_some()
+}
+
+fn shape(
+    metrics: &FontMetrics,
+    text: &str,
+    tracking: f32,
+    features: Features,
+    width: Option<f32>,
+    mut out: Option<&mut Vec<(Range<usize>, f32)>>,
+) -> Option<(f32, usize)> {
     if text.contains('\u{ad}') {
         return None;
     }
@@ -585,11 +612,15 @@ pub fn measure(
                 .lines()
                 .map(|l| {
                     let m = l.metrics();
-                    if wrapped {
+                    let w = if wrapped {
                         m.advance - m.hanging_advance
                     } else {
                         m.advance
+                    };
+                    if let Some(out) = out.as_deref_mut() {
+                        out.push((l.text_range(), w));
                     }
+                    w
                 })
                 .fold(0.0, f32::max);
             (widest, scratch.len())

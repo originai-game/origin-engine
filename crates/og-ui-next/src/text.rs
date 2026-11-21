@@ -22,21 +22,19 @@ pub fn measure(m: &FontMetrics, text: &str, run: &Run, width: Option<f32>) -> (f
     // Shaped as drawn, into og-text's kept layout: no allocation.
     let wrap = width.filter(|_| !run.nowrap);
     let size = run.size.max(f32::MIN_POSITIVE);
-    if let Some((w, lines)) = og_text::text::paragraph::measure(
-        m,
-        text,
-        run.tracking,
-        Features::NONE,
-        wrap.map(|w| w / size),
-    ) {
+    // og-text takes tracking in em; the run holds it in CSS px.
+    let track = run.tracking / size;
+    if let Some((w, lines)) =
+        og_text::text::paragraph::measure(m, text, track, Features::NONE, wrap.map(|w| w / size))
+    {
         return (w * run.size, lines.max(1) as f32 * run.line);
     }
     if run.nowrap || width.is_none() {
         let lines = text.split('\n').count().max(1);
-        let w = widest_line(text, m, run.size, run.tracking, Features::NONE);
+        let w = widest_line(text, m, run.size, track, Features::NONE);
         return (w, lines as f32 * run.line);
     }
-    let lines = break_lines(text, m, run.size, run.tracking, Features::NONE, width);
+    let lines = break_lines(text, m, run.size, track, Features::NONE, width);
     let w = lines.iter().map(|l| l.width).fold(0.0, f32::max);
     (w, lines.len().max(1) as f32 * run.line)
 }
