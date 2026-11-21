@@ -163,14 +163,21 @@ impl og_ecs::StateBlock for ActionsBlock {
         let mut map = lock(&self.0);
         let next = match decoded.and_then(|d| d.downcast::<ActionMap>().ok()) {
             Some(m) => *m,
-            None => ActionMap {
-                rumble: map.rumble.clone(),
-                surface: map.surface,
-                zones: map.zones.clone(),
-                ..ActionMap::default()
-            },
+            None => {
+                let mut fresh = ActionMap {
+                    rumble: map.rumble.clone(),
+                    surface: map.surface,
+                    zones: map.zones.clone(),
+                    ..ActionMap::default()
+                };
+                fresh.define_ui();
+                fresh
+            }
         };
+        // A restore may bring other bindings: their glyphs are asked again.
+        let rev = map.rev + 1;
         *map = next;
+        map.rev = rev;
     }
 
     /// Bindings and their state: nothing in the world.

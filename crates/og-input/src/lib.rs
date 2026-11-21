@@ -31,8 +31,8 @@ pub mod sink;
 pub use actions::{
     ACTIONS_BLOCK, ACTIONS_SYSTEM, ActionDesc, ActionFeed, ActionInfo, ActionKind, ActionMap,
     ActionState, ActionsBlock, Binding, CaptureAccept, CaptureDesc, CaptureState, Conflict,
-    ConflictPolicy, RebindAnswer, RebindDesc, Rumble, Sensitivity, SharedActions, binding_glyphs,
-    combined_glyph, install, overlaps,
+    ConflictPolicy, RebindAnswer, RebindDesc, Rumble, Sensitivity, SharedActions, UI_CONTEXT,
+    binding_glyphs, combined_glyph, install, overlaps, ui_actions,
 };
 pub use control::{Control, ControlZone, PadDeadzone, Surface, ZoneKind, ZoneState};
 pub use event::{

@@ -44,6 +44,48 @@ pub const ACTIONS_BLOCK: &str = "og.input.actions";
 pub const ACTIONS_SYSTEM: &str = "og.input.actions";
 /// The context an action is in when its desc names none.
 pub const DEFAULT_CONTEXT: &str = "gameplay";
+/// The context of the UI's built-in actions ([`ui_actions`]): live behind
+/// the ones [`ActionMap::set_contexts`] names, unless it names it.
+pub const UI_CONTEXT: &str = "ui";
+
+/// The UI's built-in actions, in [`UI_CONTEXT`]: what the UI's focus,
+/// tabs, dialogs and prompts answer (docs/ui.md §2.1). Every map
+/// [`install`] makes has them; a game redefines one with its own desc
+/// (og.input.defineAction), and the player rebinds them as any action.
+pub fn ui_actions() -> Vec<ActionDesc> {
+    let a = |name: &str, controls: &[&str], label: &str| ActionDesc {
+        name: name.into(),
+        context: UI_CONTEXT.into(),
+        label: label.into(),
+        bindings: controls
+            .iter()
+            .map(|c| Binding {
+                control: c.to_string(),
+                ..Binding::default()
+            })
+            .collect(),
+        ..ActionDesc::default()
+    };
+    vec![
+        a("confirm", &["Enter", "Space", "pad.a"], "Confirm"),
+        a("back", &["Escape", "pad.b"], "Back"),
+        a(
+            "tabNext",
+            &["KeyE", "BracketRight", "pad.rightBumper"],
+            "Next tab",
+        ),
+        a(
+            "tabPrev",
+            &["KeyQ", "BracketLeft", "pad.leftBumper"],
+            "Previous tab",
+        ),
+        a("details", &["KeyX", "pad.y"], "Details"),
+        // A held piece turns a quarter (an inventory's item, a placed
+        // building): R, as in the games that carry items in grids, and the
+        // pad's free face button.
+        a("rotate", &["KeyR", "pad.x"], "Rotate"),
+    ]
+}
 /// The version of the text [`ActionMap::save_bindings`] writes.
 pub const BINDINGS_VERSION: u64 = 1;
 
@@ -444,6 +486,10 @@ pub struct ActionMap {
     /// and what each showed at the last sample.
     zones: Vec<ControlZone>,
     zone_states: Vec<(Reading, ZoneState)>,
+    /// Moves whenever an action's bindings may have changed: a define, a
+    /// rebind, a reset, loaded bindings, a restore ([`ActionMap::bindings_rev`]).
+    /// Session state: never saved.
+    rev: u64,
 }
 
 /// An [`ActionMap`] shared between its system, its state block and the API.
@@ -488,11 +534,13 @@ impl ActionMap {
                     a.current = None;
                 }
                 a.desc = desc;
+                self.rev += 1;
                 if a.current.as_deref() == Some(a.desc.bindings.as_slice()) {
                     a.current = None;
                 }
             }
             None => {
+                self.rev += 1;
                 let current = self
                     .pending
                     .remove(&desc.name)
@@ -510,6 +558,24 @@ impl ActionMap {
             }
         }
         Ok(())
+    }
+
+    /// A count that moves whenever an action's bindings may have changed
+    /// (a define, a rebind, a reset, loaded bindings, a restore): what
+    /// shows an action's glyph asks for it again when it moves.
+    pub fn bindings_rev(&self) -> u64 {
+        self.rev
+    }
+
+    /// Defines the UI's built-in actions ([`ui_actions`]) that are not
+    /// defined yet.
+    pub fn define_ui(&mut self) {
+        for d in ui_actions() {
+            if self.find(&d.name).is_none() {
+                self.define(d)
+                    .expect("the built-in UI actions are well formed");
+            }
+        }
     }
 
     /// Every action, in definition order.
@@ -697,6 +763,7 @@ impl ActionMap {
         }
         self.deadzones = from.deadzones;
         self.senses = from.senses.clone();
+        self.rev = self.rev.max(from.rev) + 1;
     }
 
     /// Queues a rumble for the host.
@@ -770,7 +837,10 @@ impl ActionMap {
             let rank = if contexts.is_empty() {
                 Some(usize::MAX)
             } else {
-                contexts.iter().position(|c| *c == a.desc.context)
+                contexts
+                    .iter()
+                    .position(|c| *c == a.desc.context)
+                    .or((a.desc.context == UI_CONTEXT).then_some(contexts.len()))
             };
             let muted = |c: Control| {
                 rank.is_some_and(|r| claims.iter().any(|(cc, ci)| *ci < r && overlaps(*cc, c)))
@@ -1110,6 +1180,7 @@ impl ActionMap {
             }
             a.current = (list != a.desc.bindings).then_some(list);
         }
+        self.rev += 1;
         Ok(RebindAnswer {
             applied: true,
             conflicts,
@@ -1119,6 +1190,7 @@ impl ActionMap {
     /// Back to the defaults: one action's bindings and toggle, or every
     /// action's.
     pub fn reset(&mut self, action: Option<&str>) -> Result<(), String> {
+        self.rev += 1;
         match action {
             Some(name) => {
                 let i = self.known(name)?;
@@ -1199,6 +1271,7 @@ impl ActionMap {
             ));
         }
         let mut warnings = Vec::new();
+        self.rev += 1;
         for a in &mut self.actions {
             a.current = None;
             a.toggle = None;
@@ -1567,5 +1640,6 @@ pub fn install(
             Ok(())
         },
     )?;
+    lock(&shared).define_ui();
     world.add_state_block(ACTIONS_BLOCK, Box::new(ActionsBlock(shared)))
 }
