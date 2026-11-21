@@ -11,7 +11,7 @@
 // draws on the GPU og finds; without one, run it on a GPU host. `--only` keeps the fixtures
 // whose `<dir>/<file> · <fixture>` contains TEXT (or any of TEXT,TEXT,…).
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { inflateSync } from "node:zlib";
 
@@ -110,6 +110,25 @@ ui "${pack}"
 `;
 
 /**
+ * The art the gallery lays into a fixture (templates/gallery-art, pinned in the template store), by
+ * `name · fixture`, then by prop key: each texture prop of that key still 0 takes the next image,
+ * in the props' order; once the list runs out the rest keep 0 and show their fallback (an icon).
+ * Every other fixture keeps its 0s.
+ */
+const PORTRAITS = ["portrait-warrior.png", "portrait-cultist.png", "portrait-ranger.png", "portrait-mage.png"];
+const CARDS = ["card-ember-strike.png", "card-iron-guard.png"];
+export const ART: Record<string, Record<string, string[]>> = {
+  "arena/versus · default": { portrait: PORTRAITS },
+  "arena/versus · teams": { portrait: PORTRAITS },
+  "card/face · default": { art: CARDS },
+  "card/hand · default": { art: CARDS },
+  "card/hand · overflow": { art: CARDS },
+  "screens/title · default": { keyArt: ["banner-coast.png"] },
+  "screens/main-menu · default": { keyArt: ["banner-coast.png"] },
+  "screens/loading · default": { keyArt: ["banner-coast.png"] },
+};
+
+/**
  * The gallery's game: page:<n> mounts fixture n on the stage with its caption, pack:<name>
  * dresses everything in that pack (default: the engine's own), scheme:<light|dark> picks the
  * scheme.
@@ -121,12 +140,29 @@ ${[...new Set(list.map((p) => p.module))].map((m, i) => `import { ${list.find((p
 
 type Any = (props: any) => UiChild;
 const MODULES: [Any, Record<string, object>][] = [${[...new Set(list.map((p) => p.module))].map((_, i) => `[C${i}, F${i}]`).join(", ")}];
-const PAGES: [number, string, string, boolean][] = ${JSON.stringify(list.map((p) => [[...new Set(list.map((q) => q.module))].indexOf(p.module), p.name, p.fixture, p.module.startsWith("ui/screens/")]))};
+const PAGES: [number, string, string, boolean, Record<string, string[]>][] = ${JSON.stringify(list.map((p) => [[...new Set(list.map((q) => q.module))].indexOf(p.module), p.name, p.fixture, p.module.startsWith("ui/screens/"), ART[`${p.name} · ${p.fixture}`] ?? {}]))};
+
+/** \`props\` with each 0 under a key of \`art\` replaced by the next texture of that key's list. */
+function withArt(world: World, props: unknown, art: Record<string, string[]>): unknown {
+  const next = Object.fromEntries(Object.entries(art).map(([k, files]) => [k, [...files]]));
+  const fill = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(fill);
+    if (!v || typeof v !== "object") return v;
+    return Object.fromEntries(Object.entries(v).map(([k, x]) => {
+      const file = x === 0 ? next[k]?.shift() : undefined;
+      if (file === undefined) return [k, fill(x)];
+      const texture = og.load.texture(world, \`gallery-art/\${file}\`);
+      if (!texture.ok) throw new Error(\`gallery-art/\${file}: \${texture.reason}\`);
+      return [k, texture.value];
+    }));
+  };
+  return fill(props);
+}
 
 let shown: (() => void) | null = null;
 function page(world: World, n: number): void {
   shown?.();
-  const [m, name, fixture, screen] = PAGES[n] ?? PAGES[0]!;
+  const [m, name, fixture, screen, art] = PAGES[n] ?? PAGES[0]!;
   const [Component, fixtures] = MODULES[m]!;
   // The marker names the page, so the gallery lists the fixture that threw.
   try {
@@ -134,7 +170,7 @@ function page(world: World, n: number): void {
       <View class="absolute inset-0">
         <View class="absolute inset-x-0 top-0 h-1/2 bg-[#9fb4c8]" />
         <View class="absolute inset-x-0 bottom-0 h-1/2 bg-[#141a22]" />
-        <View class={screen ? "absolute inset-0 p-6 grid" : "absolute inset-0 p-6"}>{Component({ ...fixtures.default, ...fixtures[fixture] })}</View>
+        <View class={screen ? "absolute inset-0 p-6 grid" : "absolute inset-0 p-6"}>{Component(withArt(world, { ...fixtures.default, ...fixtures[fixture] }, art))}</View>
         <Text class="absolute left-2 bottom-1 text-xs text-white/70 font-mono">{\`\${name} · \${fixture}\`}</Text>
       </View>
     ), {}, { layer: "hud" });
@@ -177,6 +213,9 @@ export function generate(dir: string, list: Page[], packNames: string[]): void {
   writeFileSync(join(dir, "project.ogt"), PROJECT);
   for (const p of packNames.filter((p) => p !== "default")) writeFileSync(join(dir, "assets", "looks", `${p}.ogt`), LOOK(p));
   writeFileSync(join(dir, "src", "main.tsx"), MAIN(list));
+  // The fixtures' art, from the template store (bun scripts/assets.ts ensure templates).
+  rmSync(join(dir, "assets", "gallery-art"), { recursive: true, force: true });
+  cpSync(join(repo, "templates", "gallery-art"), join(dir, "assets", "gallery-art"), { recursive: true });
   writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ extends: "@origingame/engine/tsconfig.json", include: ["src"] }, null, 2) + "\n");
 }
 

@@ -278,6 +278,48 @@
       "visibility": "public"
     },
     {
+      "path": "gallery-art/banner-coast.png",
+      "sha256": "7897cfcdb3482596fa0c87306f73b2f641b8456f5616582cdcc8844c56453b2b",
+      "size": 1644919,
+      "visibility": "public"
+    },
+    {
+      "path": "gallery-art/card-ember-strike.png",
+      "sha256": "565a52ce7371115db00636217f747930d0f7cd12a33ae49d0c7ad05b7a9763ac",
+      "size": 748118,
+      "visibility": "public"
+    },
+    {
+      "path": "gallery-art/card-iron-guard.png",
+      "sha256": "82140d36f1fe9f23348208a5e38f68a9eb86eabe5e8ddf1df3cfe56eed7fac70",
+      "size": 816429,
+      "visibility": "public"
+    },
+    {
+      "path": "gallery-art/portrait-cultist.png",
+      "sha256": "6118f6a19bfb2b6713eb39447d887c19a5299b8c62c7c42778806dd099a640ff",
+      "size": 390919,
+      "visibility": "public"
+    },
+    {
+      "path": "gallery-art/portrait-mage.png",
+      "sha256": "4edfc495ff5fc0029de81454ab2d5c9cac3faa556d69eb19d2fe6a5bdd4733cf",
+      "size": 479144,
+      "visibility": "public"
+    },
+    {
+      "path": "gallery-art/portrait-ranger.png",
+      "sha256": "3a69633176e4a1c9a0c4f65aa4cf444688923e209176acaeb37b0c7184027354",
+      "size": 423540,
+      "visibility": "public"
+    },
+    {
+      "path": "gallery-art/portrait-warrior.png",
+      "sha256": "78bdd4dcc2394c0e2db56d2a545550b20c0a30a31f224e3e98ca6be8fa256b28",
+      "size": 444237,
+      "visibility": "public"
+    },
+    {
       "path": "looks/cartoon-2d/art/backdrop.jpg",
       "sha256": "21d024cf4b78f3143fd0bb692dc0ff4244253ad78b1f315c7307afdf0508c967",
       "size": 162295,
