@@ -117,6 +117,11 @@ mod op {
     /// pause, ms).
     pub const TEXT_OVERFLOW: u8 = 45;
     pub const TRANSFORM: u8 = 46;
+    /// A linear gradient over the fill: `v[0]` its angle (radians, CSS: 0
+    /// up, clockwise); its stops are the [`STOP`] steps after it.
+    pub const GRADIENT: u8 = 47;
+    /// A gradient's stop: `v` its colour, its offset (0..1) in the pad.
+    pub const STOP: u8 = 48;
 }
 
 /// A length's kind in a step's code.
@@ -235,11 +240,32 @@ impl Default for Text {
     }
 }
 
+/// The most stops a background gradient keeps.
+pub const GRADIENT_STOPS: usize = 8;
+
+/// A linear gradient background, over the fill colour.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Gradient {
+    /// Radians, CSS's: 0 up, clockwise.
+    pub angle: f32,
+    pub count: u8,
+    /// (offset 0..1, linear RGBA), `count` of them.
+    pub stops: [(f32, Rgba); GRADIENT_STOPS],
+}
+
+impl Gradient {
+    pub fn stops(&self) -> &[(f32, Rgba)] {
+        &self.stops[..usize::from(self.count)]
+    }
+}
+
 /// An element's computed look: what its rules set, folded in order.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Record {
     pub layout: CompactStyle,
     pub fill: Rgba,
+    /// A gradient over `fill` (`background: linear-gradient(…), <colour>`).
+    pub gradient: Option<Gradient>,
     pub ink: Rgba,
     pub radius: f32,
     pub opacity: f32,
@@ -301,6 +327,7 @@ impl Default for Record {
         Record {
             layout: CompactStyle::from(&base),
             fill: [0.0; 4],
+            gradient: None,
             ink: [0.0, 0.0, 0.0, 1.0],
             radius: 0.0,
             opacity: 1.0,
@@ -697,7 +724,26 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
         op::GROW => l.set_flex_grow(a),
         op::SHRINK => l.set_flex_shrink(a),
         op::BASIS => l.set_flex_basis(dim(s)),
-        op::FILL => r.fill = s.v,
+        op::FILL => {
+            r.fill = s.v;
+            r.gradient = None;
+        }
+        op::GRADIENT => {
+            r.gradient = Some(Gradient {
+                angle: a,
+                count: 0,
+                stops: [(0.0, [0.0; 4]); GRADIENT_STOPS],
+            })
+        }
+        op::STOP => {
+            if let Some(g) = &mut r.gradient
+                && usize::from(g.count) < GRADIENT_STOPS
+            {
+                let offset = f32::from(u16::from_le_bytes(s._pad)) / f32::from(u16::MAX);
+                g.stops[usize::from(g.count)] = (offset, s.v);
+                g.count += 1;
+            }
+        }
         op::INK => {
             r.ink = s.v;
             r.inked = true;
@@ -845,6 +891,152 @@ fn color(v: &str) -> Option<Rgba> {
         .ok()?
         .literal()
         .map(|c| c.linear())
+}
+
+/// `v` split at its commas outside parentheses.
+fn top_level(v: &str, at: char) -> impl Iterator<Item = &str> {
+    let mut depth = 0i32;
+    let mut start = 0;
+    let mut out = Vec::new();
+    for (i, ch) in v.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            c if c == at && depth == 0 => {
+                out.push(v[start..i].trim());
+                start = i + c.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    out.push(v[start..].trim());
+    out.into_iter().filter(|s| !s.is_empty())
+}
+
+/// `background`: a colour, `none`, or layers whose last is a colour and
+/// whose one other is a `linear-gradient()`. Another image or a second
+/// gradient is not taken.
+fn background(steps: &mut Vec<Step>, v: &str) -> bool {
+    if v == "none" {
+        steps.push(step(op::FILL, 0, [0.0; 4]));
+        return true;
+    }
+    let layers: Vec<&str> = top_level(v, ',').collect();
+    let (base, images) = match layers.split_last() {
+        Some((last, rest)) if !last.contains("gradient(") => (color(last), rest),
+        _ => (Some([0.0; 4]), &layers[..]),
+    };
+    let Some(base) = base else { return false };
+    let gradient = match images {
+        [] => None,
+        [g] => match linear_gradient(g) {
+            Some(g) => Some(g),
+            None => return false,
+        },
+        _ => return false,
+    };
+    steps.push(step(op::FILL, 0, base));
+    if let Some((angle, stops)) = gradient {
+        steps.push(step(op::GRADIENT, 0, [angle, 0.0, 0.0, 0.0]));
+        for (offset, c) in stops {
+            let mut s = step(op::STOP, 0, c);
+            s._pad = ((offset.clamp(0.0, 1.0) * f32::from(u16::MAX)).round() as u16).to_le_bytes();
+            steps.push(s);
+        }
+    }
+    true
+}
+
+/// A `linear-gradient(…)`: its angle (radians) and stops (offset 0..1,
+/// linear RGBA), unplaced stops spread evenly between their neighbours.
+fn linear_gradient(v: &str) -> Option<(f32, Vec<(f32, Rgba)>)> {
+    let body = v.strip_prefix("linear-gradient(")?.strip_suffix(')')?;
+    let mut args: Vec<&str> = top_level(body, ',').collect();
+    let first = *args.first()?;
+    let angle = if let Some(to) = first.strip_prefix("to ") {
+        let (mut x, mut y) = (0.0f32, 0.0f32);
+        for w in to.split_whitespace() {
+            match w {
+                "top" => y = -1.0,
+                "bottom" => y = 1.0,
+                "left" => x = -1.0,
+                "right" => x = 1.0,
+                _ => return None,
+            }
+        }
+        // A corner is taken at 45° (CSS aims it at the box's corner).
+        use std::f32::consts::{FRAC_PI_2 as Q, FRAC_PI_4 as E, PI};
+        match (x as i8, y as i8) {
+            (0, -1) => Some(0.0),
+            (1, -1) => Some(E),
+            (1, 0) => Some(Q),
+            (1, 1) => Some(Q + E),
+            (0, 1) => Some(PI),
+            (-1, 1) => Some(PI + E),
+            (-1, 0) => Some(PI + Q),
+            (-1, -1) => Some(PI + Q + E),
+            _ => return None,
+        }
+    } else {
+        [
+            ("deg", 1.0f32.to_radians()),
+            ("grad", 0.9f32.to_radians()),
+            ("rad", 1.0),
+            ("turn", std::f32::consts::TAU),
+        ]
+        .iter()
+        .find_map(|(unit, k)| {
+            first
+                .strip_suffix(unit)
+                .and_then(|n| n.trim().parse::<f32>().ok())
+                .map(|n| n * k)
+        })
+    };
+    if angle.is_some() {
+        args.remove(0);
+    }
+    let angle = angle.unwrap_or(std::f32::consts::PI);
+    if args.is_empty() || args.len() > GRADIENT_STOPS {
+        return None;
+    }
+    let mut stops: Vec<(Option<f32>, Rgba)> = Vec::with_capacity(args.len());
+    for a in args {
+        // `<colour> [<percentage>]`: the colour may hold spaces.
+        let (c, at) = match a.rsplit_once(' ') {
+            Some((c, p)) if p.ends_with('%') => (
+                c,
+                Some(p.trim_end_matches('%').parse::<f32>().ok()? / 100.0),
+            ),
+            _ => (a, None),
+        };
+        stops.push((at, color(c.trim())?));
+    }
+    let n = stops.len();
+    if stops[0].0.is_none() {
+        stops[0].0 = Some(0.0);
+    }
+    if stops[n - 1].0.is_none() {
+        stops[n - 1].0 = Some(1.0);
+    }
+    let mut out = Vec::with_capacity(n);
+    let mut last = 0.0f32;
+    let mut k = 0;
+    while k < n {
+        if let Some(at) = stops[k].0 {
+            last = at.max(last);
+            out.push((last, stops[k].1));
+            k += 1;
+            continue;
+        }
+        let end = (k..n).find(|&j| stops[j].0.is_some()).unwrap_or(n - 1);
+        let to = stops[end].0.unwrap_or(1.0).max(last);
+        let gap = (end - k + 1) as f32;
+        for (i, j) in (k..end).enumerate() {
+            out.push((last + (to - last) * (i + 1) as f32 / gap, stops[j].1));
+        }
+        k = end;
+    }
+    Some((angle, out))
 }
 
 fn index<T: Copy>(table: &[(&str, T)], v: &str) -> Option<u8> {
@@ -1094,7 +1286,8 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
             push(op::SHRINK, 0, [sh, 0.0, 0.0, 0.0]);
             push(op::BASIS, k, [x, 0.0, 0.0, 0.0])
         }
-        "background" | "background-color" => color(v).is_some_and(|c| push(op::FILL, 0, c)),
+        "background-color" => color(v).is_some_and(|c| push(op::FILL, 0, c)),
+        "background" => background(steps, v),
         "color" => color(v).is_some_and(|c| push(op::INK, 0, c)),
         "border-radius" => px(v).is_some_and(|x| push(op::RADIUS, 0, [x, 0.0, 0.0, 0.0])),
         "opacity" => v

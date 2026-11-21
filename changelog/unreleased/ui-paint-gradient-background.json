@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "background",
+      "summary": "On og-ui's new core, background takes a linear-gradient() over a base colour (an angle or to-sides, stops with or without percentages); First Light's quest tracker plate (--plate-fill) draws. Other images and a second gradient are listed in the sheet's skipped."
+    }
+  ]
+}

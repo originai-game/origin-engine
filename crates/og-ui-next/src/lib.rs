@@ -417,6 +417,48 @@ mod tests {
     }
 
     #[test]
+    fn a_gradient_background_compiles_over_its_base_colour() {
+        let tokens =
+            Tokens::parse(":root { --plate-fill: linear-gradient(180deg, #ff0000, #0000ff 80%); }");
+        let sheet = style::Sheet::compile(
+            ".a { background: var(--plate-fill); } \
+             .b { background: linear-gradient(to right, #ff0000, #00ff00, #0000ff), #ffffff; } \
+             .c { background: #00ff00; } .d { background: radial-gradient(#fff, #000); }",
+            &tokens,
+        );
+        assert_eq!(sheet.skipped, ["background: radial-gradient(#fff, #000)"]);
+        let rec = |n: &[&str]| {
+            let names: Vec<u32> = n.iter().map(|n| sheet.name(n).unwrap()).collect();
+            sheet.record(&names, style::State::Base)
+        };
+        let g = rec(&[".a"]).gradient.unwrap();
+        assert!(
+            (g.angle - std::f32::consts::PI).abs() < 1e-5,
+            "180deg points down"
+        );
+        let offsets: Vec<f32> = g.stops().iter().map(|s| (s.0 * 100.0).round()).collect();
+        assert_eq!(offsets, [0.0, 80.0]);
+        assert!(
+            g.stops()[0].1[0] > 0.9 && g.stops()[1].1[2] > 0.9,
+            "red to blue"
+        );
+        let b = rec(&[".b"]);
+        let g = b.gradient.unwrap();
+        assert!(
+            (g.angle - std::f32::consts::FRAC_PI_2).abs() < 1e-5,
+            "to right"
+        );
+        let offsets: Vec<f32> = g.stops().iter().map(|s| (s.0 * 100.0).round()).collect();
+        assert_eq!(offsets, [0.0, 50.0, 100.0], "an unplaced stop halfway");
+        assert_eq!(b.fill, [1.0; 4], "the base colour under it");
+        assert_eq!(
+            rec(&[".b", ".c"]).gradient,
+            None,
+            "a later colour replaces the gradient"
+        );
+    }
+
+    #[test]
     fn tokens_resolve_through_var_chains_and_fallbacks() {
         let t = Tokens::parse(
             ":root { --a: 4px; --b: calc(var(--a) * 2); --c: var(--missing, var(--b)); }\n\
