@@ -241,6 +241,16 @@ impl Arena {
     /// Lays out what changed, in a `width` by `height` viewport. Answers
     /// whether anything was laid out; a clean arena returns at once.
     pub fn layout(&mut self, width: f32, height: f32, measure: &mut Measure<'_>) -> bool {
+        // A new viewport is a change of the root's style, whatever else
+        // changed or did not.
+        let size = Size {
+            width: taffy::Dimension::length(width),
+            height: taffy::Dimension::length(height),
+        };
+        if taffy::CoreStyle::size(&self.nodes[0].style) != size {
+            self.nodes[0].style.set_size(size);
+            self.touch(0, true);
+        }
         if !self.dirty {
             return false;
         }
@@ -249,14 +259,6 @@ impl Arena {
             // Only texts that kept their size changed: nothing moves.
             self.dirty = false;
             return false;
-        }
-        let size = Size {
-            width: taffy::Dimension::length(width),
-            height: taffy::Dimension::length(height),
-        };
-        if taffy::CoreStyle::size(&self.nodes[0].style) != size {
-            self.nodes[0].style.set_size(size);
-            self.touch(0, true);
         }
         if self.structure {
             self.reconcile();

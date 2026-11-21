@@ -54,6 +54,10 @@ mod tests {
             "a text of the same size moves nothing"
         );
         assert_eq!(a.box_of(second).x, 10.0 + 50.0 + 4.0);
+        // A new viewport alone lays out again.
+        assert!(a.layout(640.0, 360.0, &mut measure), "a new viewport");
+        assert_eq!(a.box_of(0).w, 640.0);
+        assert!(!a.layout(640.0, 360.0, &mut measure), "the same viewport");
         a.set_text(first, "106:54");
         assert!(a.layout(1280.0, 720.0, &mut measure));
         assert_eq!(a.box_of(second).x, 10.0 + 60.0 + 4.0);
