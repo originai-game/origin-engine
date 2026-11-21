@@ -7,7 +7,7 @@
 import { boundHost, createEngine, isPublishBuild, systemClock, type GameToken } from "../../runtime.ts";
 import { SourceMap } from "../../sourcemap.ts";
 import { useSourceMap } from "../../spawn-site.ts";
-import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installRemoteFetcher, installVideo, onBar, pageSvg, preloadBundle, transcodeBundle } from "../boot.ts";
+import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installRemoteFetcher, installTranscoder, installVideo, onBar, pageSvg, preloadBundle, prepareTextures } from "../boot.ts";
 import { FrameCounter } from "../frames.ts";
 import { fetchModuleHost, loadEngineModules, loadWebHost } from "../host.ts";
 import type { EngineModules } from "../split.ts";
@@ -138,13 +138,15 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     run.audioDecoder = data.decoders?.audio;
     // Uncooked images (og.load.imageData) are decoded by the browser, never in the wasm.
     installImageDecoder(glue);
+    // Every Basis texture the engine asks for, from any bundle or pack, is transcoded by the Workers' pool.
+    installTranscoder(glue, data.basis);
     // A document's http(s) images are fetched here and decoded by the browser (an SVG by the page).
     installRemoteFetcher(glue, (bytes) => pageSvg.ask(bytes));
     progress(data.expect ? received.value : 0.1, "bundle");
     let fetched: Fetched | null = null;
     if (data.root !== undefined) {
       fetched = await preloadBundle(glue, data.root, progress, data.expect ? received : undefined, data.rootIntegrity);
-      installFetcher(glue, data.basis, () => (run.rendering && run.engine ? run.engine.id : null), fetched.integrity);
+      installFetcher(glue, fetched.integrity);
     }
     run.boot.phase("bundle");
     // A trace from the boot on records the boot scene's loads too.
@@ -195,8 +197,8 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     const gpu = data.telemetry && run.rendering ? deviceReport(glue, engine.id, run.canvas) : null;
     run.lastTier = tier;
     run.lanes = lanes;
-    // The textures go to the renderer's encodings, so after it is attached (the game starts later).
-    const loaded = fetched ? await transcodeBundle(glue, run.rendering ? engine.id : null, fetched, data.basis, progress, data.expect ? received : undefined) : null;
+    // The boot's textures prepared to the renderer's encodings, so after it is attached (the game starts later).
+    const loaded = fetched ? await prepareTextures(glue, engine.id, fetched, progress) : null;
     run.boot.phase("transcode");
     await sourceMap;
     progress(1, "ready");

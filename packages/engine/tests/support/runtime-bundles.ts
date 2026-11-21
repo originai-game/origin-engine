@@ -2,9 +2,10 @@
 // per parcel with og.load.bundle and walks an anchor from cell to cell, on
 // the host named by --host. On web (the wasm module, run here outside a
 // browser) every cooked file reaches the engine as it does in a page: the
-// Worker's boot preloads the game's bundle (boot.ts preloadBundle,
-// transcodeBundle) and its fetcher (installFetcher) fetches the rest,
-// transcoding the Basis textures of a streaming group's pack on the way.
+// Worker's boot preloads the game's bundle (boot.ts preloadBundle), its
+// fetcher (installFetcher) fetches the rest, and its transcoder
+// (installTranscoder) transcodes each Basis texture the engine asks for,
+// whichever bundle or pack it is in.
 // Prints JSON for runtime-bundles.test.ts: at each stop, the cell's group
 // (its state and reason) and the budget's `used`. With --sign it walks
 // nowhere: it loads a-v1's sign, a model in no group of its bundle, and
@@ -67,8 +68,8 @@ if (which === "node") {
   const boot = await import("../../src/web/boot.ts");
   const fetched = await boot.preloadBundle(glue, root, () => {});
   if (fetched.failed > 0) throw new Error(`the boot preload failed ${fetched.failed} file(s)`);
-  boot.installFetcher(glue, undefined, () => null, fetched.integrity);
-  await boot.transcodeBundle(glue, null, fetched, undefined, () => {});
+  boot.installFetcher(glue, fetched.integrity);
+  boot.installTranscoder(glue, undefined);
 }
 
 const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T => {

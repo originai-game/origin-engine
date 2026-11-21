@@ -246,7 +246,7 @@ pub use present::ui_draw::{og_load_ui_material, og_load_vector};
 pub use present::views::{
     og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,
 };
-pub use world::assets::Fetch;
+pub use world::assets::{Fetch, prepare_textures};
 pub use world::remote::exif_orientation;
 pub use world::save::{
     og_save_edit_close, og_save_edit_drop_type, og_save_edit_get_version, og_save_edit_records,

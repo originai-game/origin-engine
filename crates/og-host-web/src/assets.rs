@@ -1,23 +1,13 @@
-//! What the Worker hands the engine: cooked files, textures, inflated
-//! and decoded bytes, video frames, and the bundle the texture calls read.
+//! What the Worker hands the engine: cooked files, the textures its
+//! transcoders prepared, inflated and decoded bytes, video frames, and the
+//! bundle the integrity call reads.
 
 use crate::{
-    BUNDLE, DECODED_IMAGES, FETCHER, FILES, FORMATS, IMAGE_DECODER, INFLATED, INFLATER,
-    NORMAL_XYRA, ORPHANED, REQUESTED, TEXTURES, TRANSCODER, TRANSCODING, UNTRANSCODED, VIDEO,
+    BUNDLE, DECODED_IMAGES, FETCHER, FILES, IMAGE_DECODER, INFLATED, INFLATER, NORMAL_XYRA,
+    ORPHANED, REQUESTED, TEXTURES, TRANSCODER, TRANSCODING, UNTRANSCODED, VIDEO,
 };
 use og_runtime::Fetch;
 use wasm_bindgen::prelude::*;
-
-fn normal_layout(texture: &og_bundle::runtime::CookedTexture) {
-    NORMAL_XYRA.with(|set| {
-        let mut set = set.borrow_mut();
-        if texture.normal_xyra() {
-            set.insert(texture.id.clone());
-        } else {
-            set.remove(&texture.id);
-        }
-    });
-}
 
 /// `cooked/stream/<name>.ogb`, as the Worker's fetcher tells a pack
 /// (`/\/stream\/[^/]+\.ogb$/`).
@@ -41,67 +31,102 @@ pub(crate) fn is_model(path: &str) -> bool {
     path.ends_with(".gltf.ogb") || path.ends_with(".glb.ogb")
 }
 
-/// Hands a Basis texture to the Worker's transcoder for `formats` (one
-/// neither the boot nor a pack transcoded, such as an ungrouped texture of
-/// a bundle og.load.bundle opened, or a device made again after a loss
-/// that does not take the encoding it was transcoded to): `Pending` until
-/// the Worker answers. `None` without a transcoder or for a texture that
-/// is not Basis-coded.
-pub(crate) fn retranscode(
+/// A prepared texture's key: its id and og-bundle's
+/// `CookedTexture::prepared_key` for the encodings asked for, the key the
+/// native cache keeps it under too.
+pub(crate) type TextureKey = (String, u64);
+
+/// The key as the Worker's transcoder carries it: `<hash, 16 hex>:<id>`.
+fn job_name(key: &TextureKey) -> String {
+    format!("{:016x}:{}", key.1, key.0)
+}
+
+fn job_key(name: &str) -> Option<TextureKey> {
+    let (hash, id) = name.split_once(':')?;
+    Some((id.to_string(), u64::from_str_radix(hash, 16).ok()?))
+}
+
+/// The texture hook (`Hooks::texture`): the one way a cooked texture is
+/// prepared on the web, as the native cache prepares one. An RGBA8-coded
+/// texture is decoded at once. A Basis one is answered from what the
+/// Worker's transcoders prepared for its key, or handed to them
+/// (`og_web_set_transcoder`, a pool of Workers) and `Pending` until they
+/// answer. Whichever bundle the runtime read it from, the key is its own.
+pub(crate) fn texture(
     texture: &og_bundle::runtime::CookedTexture,
     formats: Option<&og_render::TextureFormats>,
-) -> Option<Fetch<og_render::TextureSource>> {
+) -> Fetch<og_render::TextureSource> {
     if texture.meta.codec == og_bundle::format::codec::RGBA8 || texture.ktx2.is_empty() {
-        return None;
+        return match texture.to_texture_data() {
+            Ok(t) => Fetch::Ready(og_render::TextureSource::Rgba(t)),
+            Err(e) => Fetch::Failed(format!("{}: {e}", texture.id)),
+        };
+    }
+    let key = (texture.id.clone(), texture.prepared_key(formats));
+    if TRANSCODING.with(|t| t.borrow().contains(&key)) {
+        return Fetch::Pending;
+    }
+    // A failure is kept, as natively: asking again does not transcode again.
+    if let Some(e) = UNTRANSCODED.with(|u| u.borrow().get(&key).cloned()) {
+        return Fetch::Failed(e);
+    }
+    if let Some(t) = TEXTURES.with(|t| t.borrow().get(&key).cloned()) {
+        return Fetch::Ready(t);
     }
     TRANSCODER.with(|f| {
-        let transcode = f.borrow();
-        let transcode = transcode.as_ref()?;
-        let target = texture.target_format(formats).name();
-        normal_layout(texture);
+        let Some(transcode) = f.borrow().clone() else {
+            return Fetch::Failed(format!(
+                "{}: no Basis transcoder; the Worker installs one before the engine starts (src/web/boot.ts installTranscoder)",
+                texture.id
+            ));
+        };
+        NORMAL_XYRA.with(|set| {
+            let mut set = set.borrow_mut();
+            if texture.normal_xyra() {
+                set.insert(key.clone());
+            } else {
+                set.remove(&key);
+            }
+        });
         let called = transcode.call3(
             &JsValue::NULL,
-            &JsValue::from_str(&texture.id),
+            &JsValue::from_str(&job_name(&key)),
             &js_sys::Uint8Array::from(texture.ktx2.as_slice()),
-            &JsValue::from_str(target),
+            &JsValue::from_str(texture.target_format(formats).name()),
         );
-        Some(match called {
+        match called {
             Ok(_) => {
-                TEXTURES.with(|t| t.borrow_mut().remove(&texture.id));
-                TRANSCODING.with(|t| t.borrow_mut().insert(texture.id.clone()));
+                TRANSCODING.with(|t| t.borrow_mut().insert(key));
                 Fetch::Pending
             }
             Err(e) => Fetch::Failed(format!("{}: the transcoder threw {e:?}", texture.id)),
-        })
+        }
     })
 }
 
-/// The Worker's `transcode(id, ktx2, target)` (see [`TRANSCODER`]).
+/// The Worker's `transcode(key, ktx2, target)` (see [`TRANSCODER`]).
 #[wasm_bindgen]
 pub fn og_web_set_transcoder(transcode: js_sys::Function) {
     TRANSCODER.with(|f| *f.borrow_mut() = Some(transcode));
 }
 
-/// A texture the transcoder could not transcode again, with the reason.
+/// A texture the transcoder could not transcode, with the reason (`key` as
+/// the transcoder was given it).
 #[wasm_bindgen]
-pub fn og_web_fail_texture(id: String, reason: String) {
-    TRANSCODING.with(|t| t.borrow_mut().remove(&id));
-    UNTRANSCODED.with(|u| u.borrow_mut().insert(id, reason));
+pub fn og_web_fail_texture(key: String, reason: String) {
+    let Some(key) = job_key(&key) else { return };
+    if TRANSCODING.with(|t| t.borrow_mut().remove(&key)) {
+        UNTRANSCODED.with(|u| u.borrow_mut().insert(key, reason));
+    }
 }
 
+/// Every prepared copy of the textures `ids`, and any still being prepared
+/// (its answer is then dropped).
 pub(crate) fn drop_textures(ids: &[String]) {
-    NORMAL_XYRA.with(|t| {
-        let mut t = t.borrow_mut();
-        for id in ids {
-            t.remove(id);
-        }
-    });
-    TEXTURES.with(|t| {
-        let mut t = t.borrow_mut();
-        for id in ids {
-            t.remove(id);
-        }
-    });
+    NORMAL_XYRA.with(|t| t.borrow_mut().retain(|(id, _)| !ids.contains(id)));
+    TEXTURES.with(|t| t.borrow_mut().retain(|(id, _), _| !ids.contains(id)));
+    TRANSCODING.with(|t| t.borrow_mut().retain(|(id, _)| !ids.contains(id)));
+    UNTRANSCODED.with(|t| t.borrow_mut().retain(|(id, _), _| !ids.contains(id)));
 }
 
 /// A fetch landed: kept for the engine, or dropped with its textures when
@@ -148,10 +173,25 @@ pub fn og_web_fail_file(path: String, reason: String) {
     land(path, Err(reason));
 }
 
-/// A texture the Worker transcoded to RGBA8 (level 0, rows top to bottom).
+/// A texture the Worker transcoded to RGBA8 (level 0, rows top to bottom),
+/// for `key` as the transcoder was given it. Answers `""`, or why it was
+/// refused. One nobody waits for any more (its pack was let go of) is
+/// dropped.
 #[wasm_bindgen]
-pub fn og_web_put_texture(id: String, width: u32, height: u32, mut rgba: Vec<u8>, srgb: bool) {
-    if NORMAL_XYRA.with(|t| t.borrow().contains(&id)) {
+pub fn og_web_put_texture(
+    key: String,
+    width: u32,
+    height: u32,
+    mut rgba: Vec<u8>,
+    srgb: bool,
+) -> String {
+    let Some(key) = job_key(&key) else {
+        return format!("{key}: not a transcoder job's key");
+    };
+    if !TRANSCODING.with(|t| t.borrow_mut().remove(&key)) {
+        return String::new();
+    }
+    if NORMAL_XYRA.with(|t| t.borrow().contains(&key)) {
         og_bundle::runtime::decode_normal_xyra(&mut rgba);
     }
     let data = og_render::TextureData {
@@ -165,28 +205,39 @@ pub fn og_web_put_texture(id: String, width: u32, height: u32, mut rgba: Vec<u8>
         },
         mips: og_render::Mips::Generate,
     };
-    TRANSCODING.with(|t| t.borrow_mut().remove(&id));
     TEXTURES.with(|t| {
         t.borrow_mut()
-            .insert(id, og_render::TextureSource::Rgba(data))
+            .insert(key, og_render::TextureSource::Rgba(data))
     });
+    String::new()
 }
 
-/// A texture the Worker transcoded to the block format `format`
-/// ([`og_web_texture_target`]'s answer): every mip level, level 0 first,
-/// back to back in `levels`. Two-channel formats are linear whatever
-/// `srgb` says. Answers `""`, or the reason the levels were refused.
+/// A texture the Worker transcoded to the block format `format` (the
+/// target the transcoder was given with `key`): every mip level, level 0
+/// first, back to back in `levels`. Two-channel formats are linear
+/// whatever `srgb` says. Answers `""`, or the reason the levels were
+/// refused (the texture then fails). One nobody waits for any more is
+/// dropped.
 #[wasm_bindgen]
 pub fn og_web_put_texture_encoded(
-    id: String,
+    key: String,
     format: String,
     width: u32,
     height: u32,
     srgb: bool,
     levels: Vec<u8>,
 ) -> String {
+    let Some(key) = job_key(&key) else {
+        return format!("{key}: not a transcoder job's key");
+    };
+    if !TRANSCODING.with(|t| t.borrow_mut().remove(&key)) {
+        return String::new();
+    }
+    let id = key.0.clone();
     let Some(format) = og_render::TextureFormat::from_name(&format) else {
-        return format!("{id}: {format} is not a texture format");
+        let reason = format!("{id}: {format} is not a texture format");
+        UNTRANSCODED.with(|u| u.borrow_mut().insert(key, reason.clone()));
+        return reason;
     };
     let mut split = Vec::new();
     let mut at = 0;
@@ -198,7 +249,8 @@ pub fn og_web_put_texture_encoded(
         at = end;
         level += 1;
     }
-    if format == og_render::TextureFormat::Rgba8 && NORMAL_XYRA.with(|t| t.borrow().contains(&id)) {
+    if format == og_render::TextureFormat::Rgba8 && NORMAL_XYRA.with(|t| t.borrow().contains(&key))
+    {
         for mip in &mut split {
             og_bundle::runtime::decode_normal_xyra(mip);
         }
@@ -218,42 +270,16 @@ pub fn og_web_put_texture_encoded(
         },
         levels: split,
     };
-    let again = TRANSCODING.with(|t| t.borrow_mut().remove(&id));
     if let Err(e) = upload.desc.validate(&upload.levels) {
         let reason = format!("{id}: {e}");
-        if again {
-            UNTRANSCODED.with(|u| u.borrow_mut().insert(id, reason.clone()));
-        }
+        UNTRANSCODED.with(|u| u.borrow_mut().insert(key, reason.clone()));
         return reason;
     }
     TEXTURES.with(|t| {
         t.borrow_mut()
-            .insert(id, og_render::TextureSource::Encoded(upload))
+            .insert(key, og_render::TextureSource::Encoded(upload))
     });
     String::new()
-}
-
-/// The encoding a cooked texture should reach `engine`'s renderer in
-/// (og-bundle's `CookedTexture::target_format` over the renderer's
-/// `texture_formats`): `rgba8`, `bc7`, `bc5`, `astc4x4`, `etc2` or
-/// `eacrg11`; `rgba8` before a renderer is attached or for a texture that
-/// does not parse.
-#[wasm_bindgen]
-pub fn og_web_texture_target(engine: u32, manifest: String, id: String, bytes: Vec<u8>) -> String {
-    let Some(bundle) = bundle_of(&manifest) else {
-        return "rgba8".into();
-    };
-    let words = aligned(&bytes);
-    // SAFETY: the words hold `bytes.len()` initialised bytes.
-    let view = unsafe { std::slice::from_raw_parts(words.as_ptr().cast::<u8>(), bytes.len()) };
-    let formats = FORMATS.with(|f| f.borrow().get(&engine).cloned());
-    match bundle.texture(&id, view) {
-        Ok(t) => {
-            normal_layout(&t);
-            t.target_format(formats.as_ref()).name().into()
-        }
-        Err(_) => "rgba8".into(),
-    }
 }
 
 /// The Worker's `inflate(key, zlibBytes)`, called to inflate a terrain
@@ -496,132 +522,49 @@ fn bundle_of(manifest: &str) -> Option<std::rc::Rc<og_bundle::runtime::Bundle>> 
     })
 }
 
-/// `bytes` copied into 16-aligned memory, as blob views require.
-fn aligned(bytes: &[u8]) -> Vec<u128> {
-    let mut words = vec![0u128; bytes.len().div_ceil(16)];
-    // SAFETY: `words` holds at least `bytes.len()` bytes; u8 has no alignment.
-    let dst =
-        unsafe { std::slice::from_raw_parts_mut(words.as_mut_ptr().cast::<u8>(), bytes.len()) };
-    dst.copy_from_slice(bytes);
-    words
-}
-
-/// The KTX2 file of a Basis-coded texture blob, checked against the
-/// manifest's type, schema version and cook stamp, for the Worker's Basis
-/// transcoder. Empty for an RGBA8-coded texture (the runtime decodes those
-/// itself) and for a blob that does not check (the runtime then refuses it
-/// with the reason when it loads).
+/// The boot's cache fill (og-runtime's `prepare_textures`): the game's
+/// bundle's Basis textures asked for through the texture hook, as the
+/// engine asks for them later. JSON `{ total, pending, formats }`; the
+/// Worker asks again until none is pending.
 #[wasm_bindgen]
-pub fn og_web_texture_ktx2(manifest: String, id: String, bytes: Vec<u8>) -> Vec<u8> {
-    let Some(bundle) = bundle_of(&manifest) else {
-        return Vec::new();
-    };
-    let words = aligned(&bytes);
-    // SAFETY: the words hold `bytes.len()` initialised bytes.
-    let view = unsafe { std::slice::from_raw_parts(words.as_ptr().cast::<u8>(), bytes.len()) };
-    match bundle.texture(&id, view) {
-        Ok(t) if t.meta.codec != og_bundle::format::codec::RGBA8 => {
-            normal_layout(&t);
-            t.ktx2
-        }
-        _ => Vec::new(),
-    }
-}
-
-/// The Basis-coded textures of the streaming group's pack at `path`
-/// (`<bundle>/stream/<group>.ogb`), for the Worker's transcoder before it
-/// hands the pack to the engine: `[id, ktx2, target, ...]` (triples;
-/// `target` is [`og_web_texture_target`]'s answer for `engine`'s renderer,
-/// `rgba8` without one). The textures are those its own bundle's manifest
-/// lists (`<bundle>/.cook.ogt`, which the engine read when the bundle
-/// opened: the game's, or one og.load.bundle opened). Empty for a pack or
-/// manifest that does not read (the runtime then fails the group with the
-/// reason) and for RGBA8-coded textures.
-#[wasm_bindgen]
-pub fn og_web_pack_ktx2(engine: Option<u32>, path: String, pack: Vec<u8>) -> js_sys::Array {
-    let out = js_sys::Array::new();
-    let formats = engine.and_then(|e| FORMATS.with(|f| f.borrow().get(&e).cloned()));
-    let manifest = path
-        .rsplit_once('/')
-        .and_then(|(dir, _)| dir.strip_suffix("/stream"))
-        .and_then(|dir| {
-            FILES.with(|f| match f.borrow().get(&format!("{dir}/.cook.ogt")) {
-                Some(Ok(bytes)) => String::from_utf8(bytes.clone()).ok(),
-                _ => None,
-            })
-        });
-    let (Some(bundle), Ok(files)) = (
-        manifest.as_deref().and_then(bundle_of),
-        og_bundle::runtime::unpack(&pack),
-    ) else {
-        return out;
-    };
-    for (file, bytes) in files {
-        let Some(o) = bundle
-            .manifest()
-            .outputs()
-            .find(|o| o.file == file && o.ty == "og.Texture")
-        else {
-            continue;
-        };
-        let words = aligned(&bytes);
-        // SAFETY: the words hold `bytes.len()` initialised bytes.
-        let view = unsafe { std::slice::from_raw_parts(words.as_ptr().cast::<u8>(), bytes.len()) };
-        if let Ok(t) = bundle.texture(&o.id, view)
-            && t.meta.codec != og_bundle::format::codec::RGBA8
-        {
-            normal_layout(&t);
-            out.push(&JsValue::from_str(&o.id));
-            out.push(&js_sys::Uint8Array::from(t.ktx2.as_slice()));
-            out.push(&JsValue::from_str(t.target_format(formats.as_ref()).name()));
-        }
-    }
-    out
+pub fn og_web_prepare_textures(engine: u32) -> String {
+    og_runtime::prepare_textures(engine)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// A job handed to the transcoder: waited for, a normal map or not.
+    fn asked(key: &TextureKey, normal: bool) {
+        TRANSCODING.with(|t| t.borrow_mut().insert(key.clone()));
+        NORMAL_XYRA.with(|t| {
+            let mut t = t.borrow_mut();
+            if normal {
+                t.insert(key.clone());
+            } else {
+                t.remove(key);
+            }
+        });
+    }
+
     #[test]
     fn rgba_normal_fallback_restores_xy_and_z() {
-        let texture = og_bundle::runtime::CookedTexture {
-            id: "normal-fallback-test".into(),
-            meta: og_bundle::format::TextureMeta {
-                width: 1,
-                height: 1,
-                levels: 1,
-                kind: og_bundle::format::kind::NORMAL,
-                codec: og_bundle::format::codec::ETC1S,
-                color_space: 1,
-                has_alpha: 1,
-                supercompression: 1,
-            },
-            ktx2: Vec::new(),
-            mips: None,
-            orientation: 1,
-        };
-        normal_layout(&texture);
+        let key: TextureKey = ("normal-fallback-test".into(), 7);
         for encoded in [false, true] {
+            asked(&key, true);
             let rgba = vec![179, 179, 179, 64];
             if encoded {
                 assert_eq!(
-                    og_web_put_texture_encoded(
-                        texture.id.clone(),
-                        "rgba8".into(),
-                        1,
-                        1,
-                        false,
-                        rgba
-                    ),
+                    og_web_put_texture_encoded(job_name(&key), "rgba8".into(), 1, 1, false, rgba),
                     ""
                 );
             } else {
-                og_web_put_texture(texture.id.clone(), 1, 1, rgba, false);
+                assert_eq!(og_web_put_texture(job_name(&key), 1, 1, rgba, false), "");
             }
             TEXTURES.with(|t| {
                 let t = t.borrow();
-                let data = match &t[&texture.id] {
+                let data = match &t[&key] {
                     og_render::TextureSource::Rgba(t) => &t.rgba,
                     og_render::TextureSource::Encoded(t) => &t.levels[0],
                     _ => panic!("fallback was not uploaded"),
@@ -630,11 +573,12 @@ mod tests {
                 assert!((224..=228).contains(&data[2]));
             });
         }
-        drop_textures(std::slice::from_ref(&texture.id));
-        og_web_put_texture(texture.id.clone(), 1, 1, vec![179, 179, 179, 64], false);
+        drop_textures(std::slice::from_ref(&key.0));
+        asked(&key, false);
+        og_web_put_texture(job_name(&key), 1, 1, vec![179, 179, 179, 64], false);
         TEXTURES.with(|t| {
             let t = t.borrow();
-            let og_render::TextureSource::Rgba(data) = &t[&texture.id] else {
+            let og_render::TextureSource::Rgba(data) = &t[&key] else {
                 panic!("RGBA upload");
             };
             assert_eq!(
@@ -643,6 +587,20 @@ mod tests {
                 "reused id is no longer a normal"
             );
         });
-        drop_textures(&[texture.id]);
+        drop_textures(std::slice::from_ref(&key.0));
+    }
+
+    /// An answer for a texture nobody waits for any more (its pack was let
+    /// go of while it was transcoded) is dropped, not kept for good.
+    #[test]
+    fn an_answer_nobody_waits_for_is_dropped() {
+        let key: TextureKey = ("dropped-test".into(), 9);
+        asked(&key, false);
+        drop_textures(std::slice::from_ref(&key.0));
+        assert_eq!(
+            og_web_put_texture(job_name(&key), 1, 1, vec![1, 2, 3, 4], false),
+            ""
+        );
+        assert!(TEXTURES.with(|t| !t.borrow().contains_key(&key)));
     }
 }

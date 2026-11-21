@@ -1,10 +1,10 @@
 //! The runtime's hooks on the web host: the JavaScript dispatcher, what
 //! the Worker fetched or decoded for the engine, and this thread's clocks.
 
-use crate::assets::{drop_textures, is_model, is_sound_chunk, is_stream_pack, retranscode};
+use crate::assets::{drop_textures, is_model, is_sound_chunk, is_stream_pack};
 use crate::{
     DECODED_IMAGES, FETCHER, FILES, IMAGE_DECODER, INFLATED, INFLATER, ORPHANED, PERFORMANCE,
-    REQUESTED, TEXTURES, TRANSCODING, UNTRANSCODED, VIDEO,
+    REQUESTED, VIDEO,
 };
 use og_runtime::{Dispatch, Fetch, Hooks};
 use wasm_bindgen::prelude::*;
@@ -129,40 +129,7 @@ impl Hooks for WebHooks {
         texture: &og_bundle::runtime::CookedTexture,
         formats: Option<&og_render::TextureFormats>,
     ) -> Fetch<og_render::TextureSource> {
-        if TRANSCODING.with(|t| t.borrow().contains(&texture.id)) {
-            return Fetch::Pending;
-        }
-        if let Some(e) = UNTRANSCODED.with(|u| u.borrow_mut().remove(&texture.id)) {
-            return Fetch::Failed(e);
-        }
-        if let Some(t) = TEXTURES.with(|t| t.borrow().get(&texture.id).cloned()) {
-            if let og_render::TextureSource::Encoded(u) = &t {
-                let format = u.desc.format;
-                if !formats.is_some_and(|f| f.supported.contains(&format)) {
-                    // Transcoded for a device lost since: again, for this one.
-                    return retranscode(texture, formats).unwrap_or_else(|| {
-                        Fetch::Failed(format!(
-                            "{}: transcoded to {} for another renderer than this engine's",
-                            texture.id,
-                            format.name()
-                        ))
-                    });
-                }
-            }
-            return Fetch::Ready(t);
-        }
-        match texture.to_texture_data() {
-            Ok(t) => Fetch::Ready(og_render::TextureSource::Rgba(t)),
-            // One the boot and the packs did not transcode (an ungrouped
-            // texture of a bundle og.load.bundle opened): the Worker's
-            // transcoder, as after a device loss; pending until it answers.
-            Err(_) => retranscode(texture, formats).unwrap_or_else(|| {
-                Fetch::Failed(format!(
-                    "{}: not transcoded; the Worker transcodes a bundle's Basis textures (src/web/basis.ts) before the engine starts",
-                    texture.id
-                ))
-            }),
-        }
+        crate::assets::texture(texture, formats)
     }
 
     fn release_stream(&self, pack: &str, textures: &[String]) {

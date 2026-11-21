@@ -233,9 +233,6 @@ export async function installVideo(glue: WebExtras, av1: string | undefined, wor
 export interface Fetched {
   readonly files: number;
   readonly failed: number;
-  readonly manifest: string | null;
-  /** Texture blobs by asset id. */
-  readonly textures: ReadonlyArray<{ readonly id: string; readonly bytes: Uint8Array }>;
   /** Outputs of streaming groups, left for their packs (fetched when a group loads). */
   readonly streamed: number;
   /**
@@ -249,8 +246,8 @@ export interface Fetched {
 /**
  * Fetch the bundle under `root` into the wasm: the manifest and every blob
  * of the first group (everything no streaming group holds, the proxies
- * included). Its textures are transcoded by `transcodeBundle` once the
- * renderer is attached, to the encoding the renderer takes. A streaming
+ * included). Its textures are prepared by `prepareTextures` once the
+ * renderer is attached, as the engine asks for them. A streaming
  * group's outputs are not fetched: the engine reads its pack
  * (`cooked/stream/<name>.ogb`) through the fetcher when the group loads;
  * nor are the chunks of a sound cooked in chunks, which the engine reads
@@ -280,7 +277,7 @@ export async function preloadBundle(
     tellLoadFailure(manifestPath, e);
     const hint = manifestIntegrity ? "the asset base must serve this build's cooked/ (og-build.json `assets`)" : "run og cook and serve cooked/ next to the page";
     glue.og_web_fail_file(manifestPath, `cannot fetch ${manifestPath} (${e instanceof Error ? e.message : String(e)}); ${hint}`);
-    return { files: 0, failed: 1, manifest: null, textures: [], streamed: 0, integrity: null };
+    return { files: 0, failed: 1, streamed: 0, integrity: null };
   }
   glue.og_web_put_file(manifestPath, new TextEncoder().encode(manifest));
   // A package from an asset base: every file against the manifest's integrity.
@@ -300,7 +297,6 @@ export async function preloadBundle(
   const files = [...new Set(listed.map((o) => o.file))];
   let fetched = 0;
   let failed = 0;
-  const blobs = new Map<string, Uint8Array>();
   // At most FETCH_CONCURRENCY in flight: a bundle of thousands of files
   // fetched all at once fails some with "Failed to fetch" (Chrome runs out
   // of sockets and buffers).
@@ -310,7 +306,6 @@ export async function preloadBundle(
     try {
       const bytes = await bytesOf(path, received, received ? () => progress(received.value, "fetch") : undefined, integrity?.[file]);
       glue.og_web_put_file(path, bytes);
-      blobs.set(file, bytes);
     } catch (e) {
       failed++;
       tellLoadFailure(path, e);
@@ -324,74 +319,31 @@ export async function preloadBundle(
       while (next < files.length) await one(files[next++]!);
     }),
   );
-  const textures = listed.filter((o) => o.type === "og.Texture" && blobs.has(o.file)).map((o) => ({ id: o.id, bytes: blobs.get(o.file)! }));
-  return { files: files.length - failed, failed, manifest, textures, streamed: all.length - listed.length, integrity };
+  return { files: files.length - failed, failed, streamed: all.length - listed.length, integrity };
 }
 
 /**
- * Transcode a fetched bundle's Basis textures for `engine`'s renderer
- * (`null`: none attached, RGBA8): each to the encoding the wasm names for
- * its kind on this device (`og_web_texture_target`: BC7 and BC5 on desktop
- * GPUs, ASTC 4x4 on Apple and most Android, ETC2 and EAC RG11 elsewhere,
- * RGBA8 last), every mip level handed over; RGBA8 hands level 0 and the GPU
- * builds the mips.
+ * The boot's cache fill, once the renderer is attached: the engine asks for
+ * every Basis texture of the game's bundle through its texture hook
+ * (og_web_prepare_textures), as a model or og.load.texture asks for one
+ * later, and this waits until the transcoders (`installTranscoder`) have
+ * answered them all, so the first frame finds them prepared. Each reaches
+ * the encoding the engine names for its kind on this device (BC7 and BC5 on
+ * desktop GPUs, ASTC 4x4 on Apple and most Android, ETC2 and EAC RG11
+ * elsewhere, RGBA8 last or without a renderer).
  */
-export async function transcodeBundle(
-  glue: WebExtras,
-  engine: number | null,
-  fetched: Fetched,
-  basis: { js: string; wasm: string } | undefined,
-  progress: (value: number, stage: string) => void,
-  received?: Received,
-): Promise<Preloaded> {
-  void received;
-  const used: string[] = [];
-  let transcoder: BasisTranscoder | null = null;
-  let transcoded = 0;
-  const total = fetched.textures.length;
-  const put = (id: string, out: { format: string; width: number; height: number; srgb: boolean; levels: Uint8Array }) => {
-    if (out.format === "rgba8") {
-      glue.og_web_put_texture(id, out.width, out.height, out.levels, out.srgb);
-    } else {
-      const refused = glue.og_web_put_texture_encoded(id, out.format, out.width, out.height, out.srgb, out.levels);
-      if (refused) throw new Error(refused);
-    }
-    if (!used.includes(out.format)) used.push(out.format);
-    transcoded++;
-    // Fork s61: by texture, as a fraction of the stage (the Worker places it on the bar).
-    if (transcoded % 8 === 0 || transcoded === total) progress(transcoded / Math.max(1, total), "transcode");
-  };
-  // The wasm keeps the bundle it parsed last (og-host-web `bundle_of`, s58): the manifest's text
-  // crosses once, and "" names it in every later call.
-  let manifest = fetched.manifest;
-  const jobs: BasisJob[] = [];
-  for (const t of fetched.textures) {
-    const ktx2 = manifest === null ? new Uint8Array() : glue.og_web_texture_ktx2(manifest, t.id, t.bytes);
-    if (manifest !== null) manifest = "";
-    if (ktx2.length > 0) jobs.push({ id: t.id, ktx2, target: engine === null ? "rgba8" : glue.og_web_texture_target(engine, "", t.id, t.bytes) });
+export async function prepareTextures(glue: Pick<WebExtras, "og_web_prepare_textures">, engine: number, fetched: Fetched, progress: (value: number, stage: string) => void): Promise<Preloaded> {
+  for (;;) {
+    const s = JSON.parse(glue.og_web_prepare_textures(engine)) as { total: number; pending: number; formats: string };
+    progress((s.total - s.pending) / Math.max(1, s.total), "transcode");
+    if (s.pending === 0) return { files: fetched.files, failed: fetched.failed, textures: s.total, textureFormat: s.formats || "rgba8" };
+    await new Promise((ok) => setTimeout(ok, 4));
   }
-  // Fork s62: a bundle of many textures is transcoded by a pool of Workers (copies of this one)
-  // in parallel; a pool that does not start leaves the rest to this Worker.
-  const left = jobs.length >= POOL_MIN_JOBS ? await transcodeInPool(jobs, basis, put) : jobs;
-  for (const job of left) {
-    transcoder ??= basis ? await loadBasisTranscoder(basis.js, basis.wasm) : await loadBasisTranscoder();
-    const out = transcodeKtx2(transcoder, job.ktx2, isTextureFormat(job.target) ? job.target : "rgba8");
-    put(job.id, { ...out, levels: out.format === "rgba8" ? out.levels[0]! : concat(out.levels) });
-  }
-  return { files: fetched.files, failed: fetched.failed, textures: transcoded, textureFormat: used.length ? used.join("+") : "rgba8" };
 }
 
-interface BasisJob {
-  readonly id: string;
-  readonly ktx2: Uint8Array;
-  readonly target: string;
-}
 type BasisAnswer = { type: "og-basis"; id: number; error?: string; format: string; width: number; height: number; srgb: boolean; levels: Uint8Array };
 
-/** Fork s62: below this many Basis textures the boot transcodes them itself. */
-const POOL_MIN_JOBS = 24;
-
-/** Fork s62: the transcoding Workers: up to 4, leaving two cores to the page and this Worker. */
+/** The transcoding Workers: up to 4, leaving two cores to the page and this Worker. */
 function poolSize(): number {
   const cores = (globalThis as { navigator?: { hardwareConcurrency?: number } }).navigator?.hardwareConcurrency ?? 1;
   return Math.max(0, Math.min(4, cores - 2));
@@ -402,7 +354,7 @@ function poolSize(): number {
  * Worker is a copy of the engine's, which also posts its console's lines (`log`) and what stops it
  * outside a job (`error`, `crash`): only the answer to this job is one.
  */
-function askWorker(w: Worker, id: number, job: Pick<BasisJob, "ktx2" | "target">, basis: { js: string; wasm: string } | undefined): Promise<BasisAnswer | null> {
+function askWorker(w: Worker, id: number, job: { readonly ktx2: Uint8Array; readonly target: string }, basis: { js: string; wasm: string } | undefined): Promise<BasisAnswer | null> {
   return new Promise((resolve) => {
     w.onmessage = (e: MessageEvent) => {
       const m = e.data as BasisAnswer | { type: "error" | "crash" | "log" };
@@ -415,56 +367,7 @@ function askWorker(w: Worker, id: number, job: Pick<BasisJob, "ktx2" | "target">
   });
 }
 
-/**
- * Fork s62: transcode `jobs` on a pool of Workers running this module (its `og-basis` message,
- * `basisJob`), each answer handed to `put` as it lands. Answers the jobs no Worker did (all of
- * them when the pool cannot start), for this Worker to do.
- */
-async function transcodeInPool(
-  jobs: readonly BasisJob[],
-  basis: { js: string; wasm: string } | undefined,
-  put: (id: string, out: { format: string; width: number; height: number; srgb: boolean; levels: Uint8Array }) => void,
-): Promise<BasisJob[]> {
-  const n = poolSize();
-  const url = (globalThis as { location?: { href: string } }).location?.href;
-  if (n < 2 || !url || typeof Worker !== "function") return [...jobs];
-  const pool: Worker[] = [];
-  const left: BasisJob[] = [];
-  let next = 0;
-  let failure: unknown = null;
-  try {
-    await Promise.all(
-      Array.from({ length: n }, async () => {
-        const w = new Worker(url, { type: "module" });
-        pool.push(w);
-        // Each Worker takes the next job when it answered the last; one that fails gives its job back.
-        for (;;) {
-          if (failure !== null || next >= jobs.length) return;
-          const k = next++;
-          const job = jobs[k]!;
-          const answer = await askWorker(w, k, job, basis);
-          if (!answer || answer.error) {
-            left.push(job);
-            if (!answer) return; // this Worker did not load: the others go on
-            continue;
-          }
-          try {
-            put(job.id, answer);
-          } catch (e) {
-            failure = e;
-          }
-        }
-      }),
-    );
-  } finally {
-    for (const w of pool) w.terminate();
-  }
-  if (failure !== null) throw failure;
-  // The jobs no Worker reached (every one failed to load) are this Worker's.
-  return [...left, ...jobs.slice(next)];
-}
-
-/** Fork s62: this Worker as one of the pool: a Basis transcode, answered with its levels (transferred). */
+/** This Worker as one of the transcoders' pool: a Basis transcode, answered with its levels (transferred). */
 let poolTranscoder: Promise<BasisTranscoder> | null = null;
 export async function basisJob(data: { id: number; ktx2: Uint8Array; target: string; basis?: { js: string; wasm: string } }): Promise<void> {
   try {
@@ -478,12 +381,12 @@ export async function basisJob(data: { id: number; ktx2: Uint8Array; target: str
 }
 
 /**
- * The Workers that transcode what the engine fetches after the boot: copies of this one, as the
- * boot's pool, started when the first Basis texture arrives (another while every one is busy, up
- * to the pool's size and at least one) and kept, since a streaming game goes on fetching. Done on
- * this Worker a texture holds the engine's frames for as long as it takes, a pack's textures all
- * in the one frame, and the first of them the transcoder's own start besides. Answers null for a
- * job no Worker did, for this Worker to do: where none starts, and after one broke.
+ * The Workers that transcode what the engine asks for: copies of this one, started when the first
+ * Basis texture is asked for (another while every one is busy, up to the pool's size and at least
+ * one) and kept, since a streaming game goes on asking. Done on this Worker a texture holds the
+ * engine's frames for as long as it takes, and the first of them the transcoder's own start
+ * besides. Answers null for a job no Worker did, for this Worker to do: where none starts, and
+ * after one broke.
  */
 function transcodeHelpers(basis: { js: string; wasm: string } | undefined): (ktx2: Uint8Array, target: string) => Promise<BasisAnswer | null> {
   const url = (globalThis as { location?: { href: string } }).location?.href;
@@ -532,22 +435,23 @@ function concat(parts: readonly Uint8Array[]): Uint8Array {
 }
 
 /**
- * What the engine's fetcher does with a file it asks for after the boot: a
- * streaming group's pack has its Basis textures transcoded, to the encoding
- * `engine()`'s renderer takes for each (RGBA8 without one), and handed over
- * first, so that every texture in it is ready when the engine reads the
- * pack; any other file is handed over as fetched. The transcoding is other
- * Workers' (`transcodeHelpers`), so no frame waits on it; this Worker's own
- * transcoder is only for a job none of them did.
+ * The engine's Basis transcoder (og_web_set_transcoder): the one way a Basis
+ * texture reaches the engine on the web, whichever bundle or pack it came
+ * from, at the boot (`prepareTextures`), as a streaming group loads, for a
+ * runtime bundle and after a device loss. The engine's texture hook hands
+ * it a job (its key, the KTX2 bytes and the encoding the engine chose for
+ * this device) and answers Pending until the job's levels come back. The
+ * transcoding is other Workers' (`transcodeHelpers`), so no frame waits on
+ * it; this Worker's own transcoder is only for a job none of them did.
  */
-export function installFetcher(glue: WebExtras, basis: { js: string; wasm: string } | undefined, engine: () => number | null, integrity: Readonly<Record<string, string>> | null = null): void {
+export function installTranscoder(glue: Pick<WebExtras, "og_web_set_transcoder" | "og_web_put_texture" | "og_web_put_texture_encoded" | "og_web_fail_texture">, basis: { js: string; wasm: string } | undefined): void {
   let transcoder: Promise<BasisTranscoder> | null = null;
   const loaded = (): Promise<BasisTranscoder> => {
     let loading = transcoder;
     if (!loading) {
       const started = basis ? loadBasisTranscoder(basis.js, basis.wasm) : loadBasisTranscoder();
       transcoder = loading = started;
-      // A load that failed is not kept: the next pack tries again.
+      // A load that failed is not kept: the next texture tries again.
       started.catch(() => {
         if (transcoder === started) transcoder = null;
       });
@@ -555,33 +459,26 @@ export function installFetcher(glue: WebExtras, basis: { js: string; wasm: strin
     return loading;
   };
   const helped = transcodeHelpers(basis);
-  const transcode = async (id: string, ktx2: Uint8Array, target: string) => {
+  const transcode = async (key: string, ktx2: Uint8Array, target: string) => {
     let out: Pick<BasisAnswer, "format" | "width" | "height" | "srgb" | "levels"> | null = await helped(ktx2, target);
     if (!out) {
       const own = transcodeKtx2(await loaded(), ktx2, isTextureFormat(target) ? target : "rgba8");
       out = { ...own, levels: own.format === "rgba8" ? own.levels[0]! : concat(own.levels) };
     }
-    if (out.format === "rgba8") {
-      glue.og_web_put_texture(id, out.width, out.height, out.levels, out.srgb);
-    } else {
-      const refused = glue.og_web_put_texture_encoded(id, out.format, out.width, out.height, out.srgb, out.levels);
-      if (refused) throw new Error(refused);
-    }
+    const refused = out.format === "rgba8" ? glue.og_web_put_texture(key, out.width, out.height, out.levels, out.srgb) : glue.og_web_put_texture_encoded(key, out.format, out.width, out.height, out.srgb, out.levels);
+    if (refused) throw new Error(refused);
   };
-  const put = async (path: string, bytes: Uint8Array) => {
-    const triples = /\/stream\/[^/]+\.ogb$/.test(path) && glue.og_web_pack_ktx2 ? glue.og_web_pack_ktx2(engine() ?? undefined, path, bytes) : [];
-    const textures: Promise<void>[] = [];
-    for (let i = 0; i + 2 < triples.length; i += 3) {
-      textures.push(transcode(triples[i] as string, triples[i + 1] as Uint8Array, triples[i + 2] as string));
-    }
-    await Promise.all(textures);
-    glue.og_web_put_file(path, bytes);
-  };
-  // A device made again after a loss may take other encodings (og-host-web's
-  // texture hook): the engine hands back each texture transcoded for the old one.
-  glue.og_web_set_transcoder?.((id, ktx2, target) => {
-    transcode(id, ktx2, target).catch((e: unknown) => glue.og_web_fail_texture?.(id, e instanceof Error ? e.message : String(e)));
+  glue.og_web_set_transcoder((key, ktx2, target) => {
+    transcode(key, ktx2, target).catch((e: unknown) => glue.og_web_fail_texture(key, e instanceof Error ? e.message : String(e)));
   });
+}
+
+/**
+ * What the engine's fetcher does with a file it asks for after the boot: it
+ * is handed over as fetched, against its bundle's integrity when it has one.
+ */
+export function installFetcher(glue: WebExtras, integrity: Readonly<Record<string, string>> | null = null): void {
+  const put = (path: string, bytes: Uint8Array) => glue.og_web_put_file(path, bytes);
   // Each bundle og.load.bundle opened, by its directory: its files'
   // integrity, from its manifest as the engine fetches it (before any of
   // its files).

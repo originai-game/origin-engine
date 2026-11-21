@@ -95,6 +95,52 @@ pub(crate) fn take_textures(
     answer
 }
 
+/// The boot's cache fill (the web Worker, before the game starts): every
+/// Basis texture of the game's bundle that no streaming group holds is
+/// asked for through the host's texture hook, as a model or og.load.texture
+/// asks for it later, so the first frame finds it prepared. Asking again
+/// asks after the same ones. Answers JSON `{ total, pending, formats }`:
+/// how many there are, how many are still being prepared, and the
+/// encodings they are prepared to joined by `+` in the order first met
+/// (`bc7+bc5`, `astc4x4`, `etc2+eacrg11`, `rgba8`). Host-only.
+pub fn prepare_textures(id: u32) -> String {
+    let Ok(eng) = crate::engine::engine(id) else {
+        return json!({ "total": 0, "pending": 0, "formats": "" }).to_string();
+    };
+    let formats = texture_formats(&eng);
+    let textures: Vec<og_bundle::runtime::CookedTexture> = {
+        let a = eng.assets.borrow();
+        let bundle = a.default_bundle.and_then(|b| match &a.entries[b].payload {
+            Payload::Bundle { bundle, .. } => Some((b, bundle)),
+            _ => None,
+        });
+        bundle.map_or_else(Vec::new, |(b, bundle)| {
+            bundle
+                .manifest()
+                .outputs()
+                .filter(|o| o.group.is_none() && o.ty == "og.Texture" && !o.id.ends_with("#mips"))
+                .filter_map(|o| {
+                    let (bytes, bundle) = a.blob_from(&o.id, Some(b)).ok()?;
+                    bundle.texture(&o.id, bytes.bytes()).ok()
+                })
+                .filter(|t| t.meta.codec != og_bundle::format::codec::RGBA8)
+                .collect()
+        })
+    };
+    let mut used: Vec<&str> = Vec::new();
+    let mut pending = 0;
+    for t in &textures {
+        if texture_pending(&eng, t, formats.as_ref()) {
+            pending += 1;
+        }
+        let name = t.target_format(formats.as_ref()).name();
+        if !used.contains(&name) {
+            used.push(name);
+        }
+    }
+    json!({ "total": textures.len(), "pending": pending, "formats": used.join("+") }).to_string()
+}
+
 pub(crate) fn forget_prepared(eng: &Engine, ids: &[String]) {
     eng.render.borrow_mut().decoded.forget_prepared(ids);
 }

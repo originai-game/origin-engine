@@ -23,13 +23,16 @@
 //!   copy has landed (requested on tick N, answered on N + 1), so the ring's
 //!   `capture` is retried by the Worker until it answers.
 //! - Cooked files reach the runtime through `og_web_put_file` (the Worker
-//!   fetches the game's bundle before creating the engine); once the
-//!   renderer is attached, the Worker asks `og_web_texture_target` which
-//!   encoding each Basis texture should reach this device in (the
-//!   renderer's `texture_formats`, og-bundle's choice by kind), transcodes it
-//!   with Binomial's Basis transcoder (`src/web/basis.ts`) and hands it over
+//!   fetches the game's bundle before creating the engine). Textures are
+//!   pulled, as natively: the texture hook hands each Basis texture the
+//!   runtime asks for, from whichever bundle or pack it read it, to the
+//!   Worker's transcoder (`og_web_set_transcoder`, a pool of Workers running
+//!   Binomial's Basis transcoder, `src/web/basis.ts`) with the encoding the
+//!   renderer takes for its kind, and answers Pending until it comes back
 //!   with `og_web_put_texture` (RGBA8 level 0) or
-//!   `og_web_put_texture_encoded` (every level of a block format).
+//!   `og_web_put_texture_encoded` (every level of a block format). The
+//!   boot's cache fill (`og_web_prepare_textures`) asks for the game's
+//!   bundle's textures the same way before the game starts.
 
 /// The exports, one per binding symbol (`og api gen`).
 #[doc(hidden)]
@@ -61,10 +64,11 @@ thread_local! {
     /// Cooked files the Worker fetched, by path. A streaming group's pack
     /// stays only until the engine reads it (or lets go of it).
     static FILES: RefCell<BTreeMap<String, Result<Vec<u8>, String>>> = const { RefCell::new(BTreeMap::new()) };
-    /// Transcoded textures the Worker handed over, by asset id.
-    static TEXTURES: RefCell<BTreeMap<String, og_render::TextureSource>> = const { RefCell::new(BTreeMap::new()) };
+    /// Textures the Worker's transcoders prepared, by [`assets::TextureKey`]
+    /// (the native cache's key: og-bundle's `CookedTexture::prepared_key`).
+    static TEXTURES: RefCell<BTreeMap<assets::TextureKey, og_render::TextureSource>> = const { RefCell::new(BTreeMap::new()) };
     /// ETC1S normal-mode textures whose RGBA fallback needs XYZ restored.
-    static NORMAL_XYRA: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
+    static NORMAL_XYRA: RefCell<std::collections::BTreeSet<assets::TextureKey>> = const { RefCell::new(std::collections::BTreeSet::new()) };
     /// The encodings each engine's attached renderer takes.
     static FORMATS: RefCell<IdMap<u32, og_render::TextureFormats>> = const { RefCell::new(IdMap::new()) };
     /// The device each engine's attached renderer runs on, as `og_web_gpu` answers it.
@@ -93,15 +97,15 @@ thread_local! {
     static MAKE_HOOKS: RefCell<Option<[js_sys::Function; 4]>> = const { RefCell::new(None) };
     /// The Worker's `fetch(path)` for files nobody fetched yet.
     static FETCHER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
-    /// The Worker's `transcode(id, ktx2, target)`, which transcodes a Basis
-    /// texture again for a device that came back with other encodings
-    /// after a loss and answers with `og_web_put_texture*` or
-    /// `og_web_fail_texture`.
+    /// The Worker's `transcode(key, ktx2, target)`, the only way a Basis
+    /// texture reaches the engine on the web: the texture hook asks it for
+    /// each texture the runtime asks for and has not had prepared, and it
+    /// answers with `og_web_put_texture*` or `og_web_fail_texture`.
     static TRANSCODER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     /// Textures handed to the transcoder and not answered yet, and those
     /// it failed, with the reason.
-    static TRANSCODING: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
-    static UNTRANSCODED: RefCell<BTreeMap<String, String>> = const { RefCell::new(BTreeMap::new()) };
+    static TRANSCODING: RefCell<std::collections::BTreeSet<assets::TextureKey>> = const { RefCell::new(std::collections::BTreeSet::new()) };
+    static UNTRANSCODED: RefCell<BTreeMap<assets::TextureKey, String>> = const { RefCell::new(BTreeMap::new()) };
     /// The Worker's streamed-video decoders (`og_web_install_video`): its
     /// `stream(key, width, height, codec, config, table, chunkFrames)`,
     /// `frame(stream, player, frame, looped)` and `chunk(stream, n, data)`,

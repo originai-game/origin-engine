@@ -107,7 +107,8 @@ for (const game of ["runner", "match3"]) {
 }
 
 // A 3D game of cooked Basis textures (cook-assets' stone, ETC1S colour and UASTC normal): 24
-// colour copies, so the boot transcodes them on its pool of Workers (boot.ts POOL_MIN_JOBS).
+// colour copies, which the boot's cache fill has the transcoders' pool of Workers prepare
+// (boot.ts prepareTextures, installTranscoder).
 // Kept out of the size table: brotli at quality 11 over the 3D engine takes minutes.
 const TEXTURES = 25;
 const texturesDist = join(work, "textures");
@@ -345,8 +346,8 @@ try {
     try {
       await page.send("Page.addScriptToEvaluateOnNewDocument", { source: VIOLATIONS });
       await page.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/game/index.html` });
-      // The boot transcodes the bundle's textures before the game starts: a transcoder that
-      // cannot load fails the boot ("The game could not start"), so the first frame is the test.
+      // The boot prepares the bundle's textures before the game starts (its cache fill): a
+      // transcoder that cannot load leaves them failed, so the GPU's bytes below are the test.
       const t = await load(page);
       check(t.firstFrame > 0, `strict csp: a 3D page of ${TEXTURES} Basis textures boots to its first frame`, t);
       // Each 512×512 texture with its mips takes at least 4/3 of a byte a pixel in any format it

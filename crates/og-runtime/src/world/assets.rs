@@ -38,6 +38,7 @@ pub(crate) use release::naming;
 pub(crate) use release::resolve_releases;
 pub(crate) use sound::*;
 pub(crate) use spawn::*;
+pub use textures::prepare_textures;
 pub(crate) use textures::*;
 
 /// What a host answers for a read or a decode.

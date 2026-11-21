@@ -6,7 +6,7 @@
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { installFetcher, preloadBundle } from "../src/web/boot.ts";
+import { installFetcher, installTranscoder, preloadBundle } from "../src/web/boot.ts";
 import { downloadsOf, serviceWorkerLists, streamGroupsOf } from "../src/node/web-build.ts";
 
 declare const Bun: { build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; outputs: Array<{ text(): Promise<string> }> }> };
@@ -53,8 +53,6 @@ test("bundle preload fetches a shared file once but retains every texture id, an
     expect(result.files).toBe(2);
     expect(result.failed).toBe(0);
     expect(result.streamed).toBe(6);
-    expect(result.textures.map((t) => t.id)).toEqual(["z.png", "a.png"]);
-    expect(result.textures[0]!.bytes).toBe(result.textures[1]!.bytes);
   } finally {
     globalThis.fetch = fetchBefore;
   }
@@ -99,7 +97,7 @@ test("a package from an asset base is fetched file by file against its integrity
     expect(result.integrity).toEqual(sri);
     // A pack the engine asks for later: against its integrity too.
     let fetcher: ((path: string) => void) | undefined;
-    installFetcher({ ...glue, og_web_set_fetcher: (f: (path: string) => void) => void (fetcher = f) } as never, undefined, () => null, result.integrity);
+    installFetcher({ ...glue, og_web_set_fetcher: (f: (path: string) => void) => void (fetcher = f) } as never, result.integrity);
     asked.length = 0;
     fetcher!(`${base}/cooked/stream/vale.ogb`);
     await new Promise((ok) => setTimeout(ok, 0));
@@ -109,7 +107,7 @@ test("a package from an asset base is fetched file by file against its integrity
   }
 });
 
-test("a streamed pack's Basis textures are transcoded by other Workers, and by this one when they break", async () => {
+test("every Basis texture the engine asks for is transcoded by other Workers, and by this one when they break", async () => {
   const g = globalThis as { fetch: typeof fetch; Worker?: unknown; location?: unknown };
   const before = { fetch: g.fetch, Worker: g.Worker, location: g.location };
   const made: FakeWorker[] = [];
@@ -142,50 +140,47 @@ test("a streamed pack's Basis textures are transcoded by other Workers, and by t
     }
   }
   try {
-    g.fetch = (async () => new Response("pack")) as unknown as typeof fetch;
     g.Worker = FakeWorker;
     g.location = { href: "https://game.test/worker.js" };
     const events: string[] = [];
-    let fetcher: ((path: string) => void) | undefined;
+    let transcode: ((key: string, ktx2: Uint8Array, target: string) => void) | undefined;
     let settle = (): void => {};
     const glue = {
-      og_web_set_fetcher: (f: (path: string) => void) => void (fetcher = f),
-      og_web_pack_ktx2: () => ["a", Uint8Array.of(1), "bc7", "b", Uint8Array.of(2), "bc7", "c", Uint8Array.of(3), "bc7"],
-      og_web_put_texture: () => {},
-      og_web_put_texture_encoded: (id: string, format: string, _w: number, _h: number, _srgb: boolean, levels: Uint8Array) => (events.push(`texture ${id} ${format} ${[...levels]}`), ""),
-      og_web_put_file: (path: string) => (events.push(`file ${path}`), settle()),
-      og_web_fail_file: (path: string, reason: string) => (events.push(`failed ${path}: ${reason}`), settle()),
-      og_web_bundle_integrity: () => "{}",
+      og_web_set_transcoder: (f: typeof transcode) => void (transcode = f),
+      og_web_put_texture: () => "",
+      og_web_put_texture_encoded: (key: string, format: string, _w: number, _h: number, _srgb: boolean, levels: Uint8Array) => (events.push(`texture ${key} ${format} ${[...levels]}`), settle(), ""),
+      og_web_fail_texture: (key: string, reason: string) => (events.push(`failed ${key}: ${reason}`), settle()),
     };
-    installFetcher(glue as never, undefined, () => null);
-    const fetched = (path: string) =>
+    installTranscoder(glue as never, undefined);
+    // The engine's texture hook asks for jobs; resolves once `n` answers came back.
+    const asked = (jobs: Array<[string, number]>, n = jobs.length) =>
       new Promise<void>((ok) => {
-        settle = ok;
-        fetcher!(path);
+        const start = events.length;
+        settle = () => void (events.length - start >= n && ok());
+        for (const [key, byte] of jobs) transcode!(key, Uint8Array.of(byte), "bc7");
       });
 
-    await fetched("https://game.test/cooked/stream/vale.ogb");
+    await asked([["1:a", 1], ["2:b", 2], ["3:c", 3]]);
     expect(made.length).toBeGreaterThan(0);
     expect(made.every((w) => w.url === "https://game.test/worker.js")).toBe(true);
-    // Every texture is the Workers' answer, and the pack comes after the last of them.
-    expect(events.slice(0, 3).sort()).toEqual(["texture a bc7 165,1", "texture b bc7 165,2", "texture c bc7 165,3"]);
-    expect(events.slice(3)).toEqual(["file https://game.test/cooked/stream/vale.ogb"]);
+    // Every texture is the Workers' answer, under the key the engine gave it.
+    expect(events.sort()).toEqual(["texture 1:a bc7 165,1", "texture 2:b bc7 165,2", "texture 3:c bc7 165,3"]);
 
     // A Worker that breaks hands its job to this Worker's own transcoder, which refuses these bytes
-    // (they are no KTX2): the pack fails with the transcoder's reason, and it does not wait for ever.
+    // (they are no KTX2): the texture fails with the transcoder's reason, and nothing waits for ever.
     events.length = 0;
     broken = true;
     for (const w of made) w.fails = true;
-    await fetched("https://game.test/cooked/stream/moor.ogb");
+    await asked([["4:d", 4]]);
     expect(events).toHaveLength(1);
-    expect(events[0]).toContain("failed https://game.test/cooked/stream/moor.ogb");
+    expect(events[0]).toContain("failed 4:d");
     expect(events[0]).toContain("KTX2");
-    // And no Worker is started or asked for the packs after it.
-    const [workers, asked] = [made.length, asks];
+    // And no Worker is started or asked for the textures after it.
+    const [workers, jobs] = [made.length, asks];
     events.length = 0;
-    await fetched("https://game.test/cooked/stream/fen.ogb");
+    await asked([["5:e", 5]]);
     expect(events[0]).toContain("KTX2");
-    expect([made.length, asks]).toEqual([workers, asked]);
+    expect([made.length, asks]).toEqual([workers, jobs]);
   } finally {
     Object.assign(g, before);
   }

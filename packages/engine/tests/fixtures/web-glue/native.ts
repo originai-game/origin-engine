@@ -28,3 +28,17 @@ export function og_web_set_fetcher(_fetch: (path: string) => void): void {}
 export function og_web_gpu(_engine: number): string {
   return JSON.stringify({ fallback: false, limits: { maxTextureDimension2D: 16384, maxBufferSize: 4294967296 }, features: ["texture-compression-bc", "timestamp-query"] });
 }
+// The texture path (src/web/boot.ts installTranscoder, prepareTextures): the
+// native host prepares its textures itself, so nothing is ever asked of the
+// Worker's transcoders and the bundle has none to prepare.
+export function og_web_set_transcoder(_transcode: (key: string, ktx2: Uint8Array, target: string) => void): void {}
+export function og_web_put_texture(key: string): string {
+  return `${key}: the native host prepares its own textures`;
+}
+export function og_web_put_texture_encoded(key: string): string {
+  return `${key}: the native host prepares its own textures`;
+}
+export function og_web_fail_texture(_key: string, _reason: string): void {}
+export function og_web_prepare_textures(_engine: number): string {
+  return JSON.stringify({ total: 0, pending: 0, formats: "" });
+}

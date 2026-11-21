@@ -5,7 +5,6 @@ use crate::{Hooks, TextureWork};
 use og_bundle::runtime::CookedTexture;
 use og_render::{TextureFormats, TextureSource};
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{
     Arc,
@@ -255,22 +254,7 @@ impl Textures {
 }
 
 fn key(texture: &CookedTexture, formats: Option<&TextureFormats>) -> (String, u64) {
-    let mut hash = std::collections::hash_map::DefaultHasher::new();
-    texture.ktx2.hash(&mut hash);
-    texture.target_format(formats).hash(&mut hash);
-    let m = &texture.meta;
-    [
-        m.width,
-        m.height,
-        m.levels,
-        m.kind,
-        m.codec,
-        m.color_space,
-        m.has_alpha,
-        m.supercompression,
-    ]
-    .hash(&mut hash);
-    (texture.id.clone(), hash.finish())
+    (texture.id.clone(), texture.prepared_key(formats))
 }
 
 #[cfg(test)]

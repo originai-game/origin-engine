@@ -224,6 +224,31 @@ impl CookedTexture {
     /// in: its kind's (normal maps `normal`, or `color` for a map cooked
     /// without y in alpha, linear data `data`, colour `color`), or RGBA8 for pixel art, distance fields, lossless cooks, a
     /// size not in whole 4x4 blocks, or no renderer yet (`None`).
+    /// The key its prepared copy is kept under, on every host (og-runtime's
+    /// native cache, og-host-web's): a hash of its bytes, its metadata and
+    /// the encoding it is prepared to ([`Self::target_format`]), beside its
+    /// id. Two bundles' textures of one id never share an entry, and a
+    /// device that takes other encodings asks for its own.
+    pub fn prepared_key(&self, formats: Option<&TextureFormats>) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut hash = std::collections::hash_map::DefaultHasher::new();
+        self.ktx2.hash(&mut hash);
+        self.target_format(formats).hash(&mut hash);
+        let m = &self.meta;
+        [
+            m.width,
+            m.height,
+            m.levels,
+            m.kind,
+            m.codec,
+            m.color_space,
+            m.has_alpha,
+            m.supercompression,
+        ]
+        .hash(&mut hash);
+        hash.finish()
+    }
+
     pub fn target_format(&self, formats: Option<&TextureFormats>) -> TextureFormat {
         let Some(f) = formats else {
             return TextureFormat::Rgba8;

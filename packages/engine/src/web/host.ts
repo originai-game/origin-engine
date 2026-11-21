@@ -182,9 +182,11 @@ export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: numbe
 export interface WebExtras {
   og_web_put_file(path: string, bytes: Uint8Array): void;
   og_web_fail_file(path: string, reason: string): void;
-  og_web_put_texture(id: string, width: number, height: number, rgba: Uint8Array, srgb: boolean): void;
-  og_web_put_texture_encoded(id: string, format: string, width: number, height: number, srgb: boolean, levels: Uint8Array): string;
-  og_web_texture_target(engine: number, manifest: string, id: string, bytes: Uint8Array): string;
+  /** A transcoder job's answer, by the key the engine gave it (og_web_set_transcoder): `""`, or why it was refused. */
+  og_web_put_texture(key: string, width: number, height: number, rgba: Uint8Array, srgb: boolean): string;
+  og_web_put_texture_encoded(key: string, format: string, width: number, height: number, srgb: boolean, levels: Uint8Array): string;
+  /** The boot's cache fill: the game's bundle's Basis textures asked for through the texture hook; JSON `{ total, pending, formats }`. */
+  og_web_prepare_textures(engine: number): string;
   og_web_set_fetcher(fetch: (path: string, integrity?: string) => void): void;
   /** Bytes received of a file the fetcher is fetching, for og.stream's and og.load's progress; absent in an older engine module. */
   og_web_file_progress?(path: string, received: number, total: number): void;
@@ -201,8 +203,9 @@ export interface WebExtras {
     maxHeight: number,
     codecs: string[],
   ): void;
-  og_web_set_transcoder?(transcode: (id: string, ktx2: Uint8Array, target: string) => void): void;
-  og_web_fail_texture?(id: string, reason: string): void;
+  /** The engine's Basis transcoder: the only way a Basis texture reaches it (boot.ts installTranscoder). */
+  og_web_set_transcoder(transcode: (key: string, ktx2: Uint8Array, target: string) => void): void;
+  og_web_fail_texture(key: string, reason: string): void;
   og_web_set_inflater?(inflate: (key: number, bytes: Uint8Array) => void): void;
   og_web_put_inflated?(key: number, bytes: Uint8Array): void;
   og_web_fail_inflated?(key: number, reason: string): void;
@@ -221,9 +224,6 @@ export interface WebExtras {
   og_web_bundle_files(manifest: string): string;
   /** Each cooked file's integrity, `{ "<file>": "sha384-…" }` (or `{ error }`), for a package from an asset base. */
   og_web_bundle_integrity(manifest: string): string;
-  og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
-  /** A streaming group's pack (`<bundle>/stream/<group>.ogb`): its Basis textures as `[id, ktx2, target, ...]`, listed by its own bundle's manifest. */
-  og_web_pack_ktx2?(engine: number | undefined, path: string, pack: Uint8Array): Array<string | Uint8Array>;
   /** `highDynamicRange`: the page's `(dynamic-range: high)`, which the Worker cannot ask (undefined: unknown). */
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean, highDynamicRange?: boolean, cpuPassTimingOnly?: boolean): Promise<string>;
   /** The page went fullscreen or left it (og.render.display's `fullscreen`; the setting follows). */
