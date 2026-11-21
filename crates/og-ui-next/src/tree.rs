@@ -982,7 +982,13 @@ impl Tree {
             // own fill (og-render draws a level's text before its shapes).
             let depth = pd + 1;
             let (under, over) = (2 * depth, 2 * depth + 1);
-            let visible = pv && !el.dead && el.hidden == 0 && el.eff.opacity > 0.0;
+            // `display: none` leaves a zero box at its parent's corner:
+            // nothing of it or under it paints.
+            let visible = pv
+                && !el.dead
+                && el.hidden == 0
+                && el.eff.opacity > 0.0
+                && el.record.layout.display() != taffy::Display::None;
             let (x, y) = (px + b.x, py + b.y);
             self.abs.push((x, y, visible, depth));
             if !visible {
@@ -1281,6 +1287,44 @@ mod tests {
                 .unwrap()
         };
         assert!(level(true) > level(false), "the text over its panel");
+    }
+
+    /// A `display: none` element paints nothing, nor does what is under
+    /// it: its zero box sits at its parent's corner, where its text would
+    /// pile on its siblings' (the quest steps a compact HUD hides).
+    #[test]
+    fn a_hidden_element_paints_nothing() {
+        let doc = UiDocument::parse(
+            "h.svelte",
+            "<meta name=\"component\" content=\"h\">\n\
+             <section id=\"P\"><span id=\"A\">shown</span><div id=\"G\"><span id=\"B\">gone</span></div></section>\n\
+             <style>\n#G { display: none; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: &crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
+        tree.resize(200.0, 200.0);
+        tree.mount("h", &[]).unwrap();
+        let fonts = og_ui::Fonts {
+            body: og_ui::UiFont {
+                handle: Some(og_draw::FontHandle::from_index(0)),
+                metrics: og_text::text::FontMetrics::fixed(0.5),
+            },
+            ..Default::default()
+        };
+        tree.frame(&fonts, &IconAtlas::default());
+        let texts = tree
+            .items
+            .iter()
+            .filter(|i| matches!(i.cmd, DrawCmd::Text { .. }))
+            .count();
+        assert_eq!(texts, 1, "only the shown text");
     }
 
     /// An `auto` margin takes the free space, as flex places it: a row's
