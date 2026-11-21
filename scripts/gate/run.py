@@ -13,7 +13,8 @@ import time
 NEEDS = {
     'preflight': (), 'fmt': (), 'clippy': ('fmt',), 'rust-build': ('clippy', 'preflight'),
     'native-ready': ('rust-build',), 'drift': ('rust-build',), 'api-surface': ('native-ready',),
-    'rust-cpu': ('rust-build',), 'rust-gpu': ('rust-build',),
+    # og-cli's style check bundles a game with the package's own addon.
+    'rust-cpu': ('rust-build', 'native-ready'), 'rust-gpu': ('rust-build',),
     'bun-quick': ('preflight',), 'engine-typecheck': ('rust-build',),
     'wasm-check': ('preflight',),
     'wasm-build': ('preflight',), 'wasm-bindgen': ('wasm-build',),

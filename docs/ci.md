@@ -273,7 +273,7 @@ split, and the lowest such crate is its cause.
 | `fmt` | `cargo fmt --all --check` | quick, full |
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | quick, full |
 | `rust-build` | nextest builds and lists native test binaries; quick excludes og-tests. Then `cargo build -p og-host-node -p og-cli`, the dev addon and `og` every later step uses; `packages/engine/scripts/build.sh` under the gate copies them and runs no cargo. | quick, full |
-| `rust-cpu`, `rust-gpu` | nextest executes the discovered tests with separate reports and bounded workers. | quick, full |
+| `rust-cpu`, `rust-gpu` | nextest executes the discovered tests with separate reports and bounded workers. rust-cpu waits for native-ready: og-cli's style check bundles a game with the package's addon. | quick, full |
 | `doc-tests` | `cargo test --workspace --doc` | full |
 | `drift` | The dev `og api check` checks generated declarations, wiki, schema and Rust glue against the IDL. | quick, full |
 | `native-ready` | Prepares the engine package's native addon, CLI and assets once for the selected consumers. | quick, full or a scoped prerequisite |
