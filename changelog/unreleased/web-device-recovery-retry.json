@@ -3,7 +3,7 @@
   "fixed": [
     {
       "member": "Web device recovery",
-      "summary": "A web game whose GPU device is lost keeps asking for a new one, every 250 ms for up to 10 s, instead of stopping at the first attempt. Right after a loss a browser can answer no adapter for a moment (Chrome's SwiftShader WebGPU does, on its first device), and that one answer used to refuse every later frame with \"the GPU device was lost and a new one could not be made\"."
+      "summary": "A web game whose GPU device is lost keeps asking for a new one, every 250 ms for up to 10 s, instead of stopping at the first attempt. Right after a loss a browser can answer no adapter for a moment (Chrome's SwiftShader WebGPU does, on its first device), and that one answer used to refuse every later frame with \"the GPU device was lost and a new one could not be made\". A capture (`probe(\"capture\")`) also works after a loss: it makes the new device itself instead of waiting for a display frame, and a readback started on a device lost since is started again on the new one, where it used to answer null until the probe gave up."
     }
   ]
 }

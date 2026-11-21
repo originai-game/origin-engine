@@ -278,15 +278,18 @@ impl RenderBackend for CanvasBackend {
             let mut p = self.pending.remove(i);
             match p.req.try_finish(&self.renderer) {
                 Ok(Some(image)) => return Some(image),
-                Ok(None) => {
+                Ok(None) if self.renderer.lost().is_none() => {
                     self.pending.push(p);
                     return None;
                 }
-                // A failed readback is asked again.
-                Err(_) => {}
+                // A failed readback, or one on a lost device (it never
+                // lands), is asked again, on the new device once made.
+                _ => {}
             }
         }
-        if self.recovering || self.renderer.lost().is_some() {
+        // A lost device is made again here too: a capture waiting for its
+        // readback draws no display frame, which would.
+        if self.recover_device().unwrap_or(true) {
             return None;
         }
         if size != target {
