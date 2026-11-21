@@ -119,7 +119,7 @@ export function RpgConversation(props: RpgConversationProps) {
               <View class={`flex-row items-center justify-start gap-1 group/row relative nine-plate-cut border border-rim text-fg transition duration-317 w-full min-h-9 pointer-coarse:min-h-11 py-1 px-3 ${r().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} hover:bg-surface-hover disabled:text-fg-subtle data-used:text-fg-subtle data-down:opacity-45`} role="option" selected={r().id === props.selected} onPress={(e) => props.onReply?.(e, r().id)} data-used={r().used} data-selected={r().id === props.selected}>
                 <View class="absolute left-0 inset-y-0 w-[3.424px] bg-hud-accent hidden group-data-selected/row:block" />
                 <View class="flex-row items-center w-full gap-3">
-                  <Text class={`tabular-nums text-gold min-w-6 text-center font-bold bg-well py-0 px-0.5 nine-chip-cut group-data-selected/row:text-gold-fg group-data-selected/row:bg-none group-data-selected/row:bg-gold group-data-used/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
+                  <Text class={`tabular-nums min-w-6 text-center font-bold py-0 px-0.5 nine-chip-cut ${r().id === props.selected ? "bg-gold text-gold-fg shadow-none" : `text-gold bg-well group-data-used/row:text-fg-subtle ${packClass("Chip", "frame")}`}`}>
                     {t("rpg.talk.number", { number: r().number })}
                   </Text>
                   <Text class="grow shrink basis-0 text-start">{r().text}</Text>

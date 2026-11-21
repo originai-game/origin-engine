@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "TooltipCard, RpgMenuBar, RpgPrompt, Backpack, Conversation, Crafting",
+      "summary": "Text that had no ground of its own in some packs has one. A TooltipCard's card and an RpgMenuBar's unchosen tabs are opaque grounds in the default pack, where they let the scene through; an RpgPrompt sits on a HUD plate (`Plate.frame`). A Backpack's chosen tab count and a Conversation's chosen reply number draw their accent fill with its own ink in every pack, where a pack's chip art covered the fill and left dark ink on dark art. The Backpack's and Crafting's kickers are the muted ink (4.5:1)."
+    }
+  ]
+}

@@ -62,7 +62,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3 compact:py-1`}>
         <View class="grow shrink basis-[8.571rem] gap-0.5">
           <Show when={props.kicker}>
-            <Text class={`text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap text-ellipsis overflow-hidden`}>
+            <Text class={`text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-muted whitespace-nowrap text-ellipsis overflow-hidden`}>
               {props.kicker}
             </Text>
           </Show>
@@ -89,7 +89,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
                 <View class={`flex-row items-center justify-center group/tab text-fg-muted transition duration-317 min-h-11 py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={c().id === props.tab} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.tab}>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
-                    <Text class={`text-[0.857rem] font-bold text-fg-subtle py-0 px-1 nine-chip-cut group-data-selected/tab:bg-none group-data-selected/tab:bg-hud-accent group-data-selected/tab:text-hud-accent-fg ${packClass("Chip", "frame")}`}>
+                    <Text class={`text-[0.857rem] font-bold py-0 px-1 nine-chip-cut ${c().id === props.tab ? "bg-hud-accent text-hud-accent-fg shadow-none" : `text-fg-muted ${packClass("Chip", "frame")}`}`}>
                       {formatNumber(c().count)}
                     </Text>
                   </Show>

@@ -58,7 +58,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
     <View class={`grow shrink basis-0 border-rim rounded-panel bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("rpg.craft.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
       <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-0.5`}>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap`}>
+        <Text class={`text-[0.857rem] font-semibold tracking-[0.18em] uppercase text-fg-muted whitespace-nowrap`}>
           {t("rpg.craft.title")}
         </Text>
         <Text class={`font-display text-base font-bold leading-tight tracking-[-0.01em] text-fg m-0`}>

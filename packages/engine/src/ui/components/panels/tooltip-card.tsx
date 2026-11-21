@@ -77,7 +77,7 @@ export function TooltipCard(props: TooltipCardProps) {
         </View>
       </Show>
       <View
-        class={`group/card relative text-fg data-common:text-common data-uncommon:text-uncommon data-rare:text-rare data-epic:text-epic data-legendary:text-legendary data-mythic:text-mythic w-[21.429rem] max-w-full py-3 px-4 gap-2 compact:w-auto shrink overflow-hidden ${packClass("Panel", "frame")}`}
+        class={`group/card relative bg-linear-to-b from-raised-pressed to-plate-lo text-fg data-common:text-common data-uncommon:text-uncommon data-rare:text-rare data-epic:text-epic data-legendary:text-legendary data-mythic:text-mythic w-[21.429rem] max-w-full py-3 px-4 gap-2 compact:w-auto shrink overflow-hidden ${packClass("Panel", "frame")}`}
         data-common={tier() === "common"}
         data-uncommon={tier() === "uncommon"}
         data-rare={tier() === "rare"}
