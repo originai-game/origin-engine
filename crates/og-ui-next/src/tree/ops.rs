@@ -2529,7 +2529,12 @@ mod tests {
             b.op(4).u32(id).str("b");
             // Nothing takes presses yet: a `draggable` drags without
             // one, and the targets are focus stops only while it is carried.
-            for ev in [Event::DragStart, Event::DragMove, Event::DragEnd, Event::Drop] {
+            for ev in [
+                Event::DragStart,
+                Event::DragMove,
+                Event::DragEnd,
+                Event::Drop,
+            ] {
                 b.op(7).u32(id).u8(ev as u8).u8(1);
             }
             b.op(8).u32(100).u32(id).u32(u32::MAX);
