@@ -391,6 +391,8 @@ basis-universal = { path = "third_party/basis-universal" }
 glamx = { path = "third_party/glamx" }
 # Distance fields with libm's maths, the same on every host (third_party/fdsm/PATCHED.md).
 fdsm = { path = "third_party/fdsm" }
+# Exact reciprocals on every target, so colour glyphs paint alike on native and wasm (third_party/tiny-skia/PATCHED.md).
+tiny-skia = { path = "third_party/tiny-skia" }
 # Glyph coverage, its quadratics flattened to 0.05 px (third_party/font-rs/PATCHED.md).
 font-rs = { path = "third_party/font-rs" }
 # Segmenters from the host, so ICU's dictionaries load with a locale (third_party/parley_engine/PATCHED.md).
