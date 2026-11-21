@@ -58,14 +58,14 @@ export function IdlePrestige(props: IdlePrestigeProps) {
       <Scroll class="shrink gap-0 ">
         <View class="w-full gap-3">
           <View class="flex-row items-center w-full gap-3">
-            <View class={`justify-center items-center bg-tile shadow-[inset_0px_0px_0px_1.5px_#ffffff47,0px_4.576px_11.424px_#00000080] gap-2 size-16 rounded-full`}>
+            <View class={`justify-center items-center bg-tile shadow-plate inset-ring-2 inset-ring-rim gap-2 size-16 rounded-full`}>
               <Icon class="size-7/10" name={props.icon} />
             </View>
             <View class="grow shrink basis-0 gap-0">
               <Text class={`tracking-xs text-fg-muted max-w-full text-xs font-semibold`}>
                 {t("idle.prestige.held", { currency: props.currency })}
               </Text>
-              <Text class={`tabular-nums text-fg max-w-full text-[2.286rem] font-bold`}>
+              <Text class={`tabular-nums text-fg max-w-full text-display-md font-bold`}>
                 {props.held}
               </Text>
             </View>
@@ -73,7 +73,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
               <Text class={`tracking-xs text-fg-muted max-w-full text-xs font-semibold`}>
                 {t("idle.prestige.gain")}
               </Text>
-              <Text class={`tabular-nums text-fg max-w-full text-[2.286rem] font-bold data-tag-gain:text-xp data-tag-gain:text-end`} data-tag-gain={true}>
+              <Text class={`tabular-nums text-fg max-w-full text-display-md font-bold data-tag-gain:text-xp data-tag-gain:text-end`} data-tag-gain={true}>
                 {props.gain}
               </Text>
             </View>
@@ -102,7 +102,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             </View>
           </Show>
           <Show when={props.requirement !== ''}>
-            <View class={`bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff24] p-2 gap-1`} data-met={props.met === true}>
+            <View class={`bg-tile inset-ring-1 inset-ring-rim p-2 gap-1`} data-met={props.met === true}>
               <View class="flex-row items-center w-full gap-1">
                 <Text class="grow shrink basis-0 text-start text-fg">{props.requirement}</Text>
                 <View class={`flex-row items-center bg-tile nine-chip-cut text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:text-bg ${packClass("Chip", "frame")}`} data-met={props.met === true}>
@@ -134,7 +134,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             </Button>
           </View>
       }>
-        <View class={`bg-tile shadow-[inset_0px_0px_0px_1.5px_#ffb547,0px_0px_20.576px_#ffb54780] p-3 gap-3`} role="alertdialog" label={t("idle.prestige.ask", { gain: props.gain, currency: props.currency })} onAction={{ back: (e) => props.onCancel?.(e) }}>
+        <View class={`bg-tile shadow-glow-lg shadow-warn inset-ring-2 inset-ring-warn p-3 gap-3`} role="alertdialog" label={t("idle.prestige.ask", { gain: props.gain, currency: props.currency })} onAction={{ back: (e) => props.onCancel?.(e) }}>
           <Text class="text-fg m-0">{t("idle.prestige.ask", { gain: props.gain, currency: props.currency })}</Text>
           <View class="flex-row flex-wrap items-center w-full justify-end gap-2">
             <Button class={`min-h-11 min-w-30 gap-1 compact:min-w-0 compact:grow compact:shrink compact:basis-0 pointer-coarse:grow pointer-coarse:shrink pointer-coarse:basis-0 ${packClass("Button", "plate")}`} onPress={(e) => props.onCancel?.(e)}>

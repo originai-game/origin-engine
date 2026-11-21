@@ -47,7 +47,7 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
                 <View class={`flex-row items-center justify-center gap-1 nine-plate-cut text-fg transition duration-317 border border-rim-soft w-full min-h-11 py-1 px-2 data-locked:text-fg data-down:opacity-45 compact:p-1 ${g().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} role="option" selected={g().id === props.selected} label={g().locked ? t("idle.generators.lockedName", { name: g().name, what: g().rate }) : g().level > 0 ? t("idle.generators.levelName", { name: g().name, level: formatNumber(g().level) }) : g().name} disabled={g().locked} data-auto={g().auto} data-boosted={!!g().boost} onPress={(e) => props.onChoose?.(e, g().id)} data-selected={g().id === props.selected} data-locked={g().locked}>
                   <View class="group/face flex-row items-center w-full gap-3 compact:gap-1">
                     <View class="size-12 group-data-locked/face:opacity-45 compact:size-8">
-                      <View class={`group/socket grow shrink basis-0 justify-center items-center absolute bg-tile border-[1.5px] border-border-strong nine-plate-cut inset-0 gap-2 ${packClass("Slot", "frame")}`}>
+                      <View class={`group/socket grow shrink basis-0 justify-center items-center absolute bg-tile border-2 border-border-strong nine-plate-cut inset-0 gap-2 ${packClass("Slot", "frame")}`}>
                         <Icon class="size-19/25" name={g().icon} />
                       </View>
                       <Show when={!g().locked && g().level > 0}>

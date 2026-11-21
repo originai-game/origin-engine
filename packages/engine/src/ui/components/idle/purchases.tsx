@@ -35,10 +35,10 @@ export function IdlePurchases(props: IdlePurchasesProps) {
           {props.title !== '' ? props.title : t("idle.purchases.name")}
         </Text>
         <Show when={(props.amounts ?? []).length}>
-          <View class="flex-row items-center bg-tile shadow-[inset_0px_0px_0px_1px_#4e586c] p-0.5 gap-0.5 rounded-control compact:grow compact:shrink-0 compact:basis-full" role="radiogroup" label={t("idle.purchases.amount")}>
+          <View class="flex-row items-center bg-tile inset-ring-1 inset-ring-rim p-0.5 gap-0.5 rounded-control compact:grow compact:shrink-0 compact:basis-full" role="radiogroup" label={t("idle.purchases.amount")}>
             <For each={props.amounts}>
               {(a) => (
-              <View class={`flex-row items-center justify-center gap-1 min-h-11 min-w-11 text-fg-muted py-0 px-2 rounded-control compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-checked:bg-surface-hover data-checked:text-fg data-checked:shadow-[inset_0px_1px_0px_#ffffff33]`} role="radio" onPress={(e) => props.onChooseamount?.(e, a().id)} data-checked={a().id === props.amount}>
+              <View class={`flex-row items-center justify-center gap-1 min-h-11 min-w-11 text-fg-muted py-0 px-2 rounded-control compact:min-w-0 compact:grow compact:shrink compact:basis-0 data-checked:bg-surface-hover data-checked:text-fg data-checked:inset-shadow-lit`} role="radio" onPress={(e) => props.onChooseamount?.(e, a().id)} data-checked={a().id === props.amount}>
                 <Text>{a().label ? a().label : a().id === 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a().id })}</Text>
               </View>
               )}
@@ -57,12 +57,12 @@ export function IdlePurchases(props: IdlePurchasesProps) {
               <For each={props.upgrades}>
                 {(u) => (
                 <View class={`group/row flex-row items-center nine-plate-cut text-fg transition duration-317 border border-rim-soft border-l-3 border-hud-accent py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap ${packClass("Row", "frame")}`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
-                  <View class={`justify-center items-center bg-tile border-[1.5px] border-border-strong nine-plate-cut gap-2 size-12 group-data-locked/row:opacity-45 compact:size-10 ${packClass("Slot", "frame")}`}>
+                  <View class={`justify-center items-center bg-tile border-2 border-border-strong nine-plate-cut gap-2 size-12 group-data-locked/row:opacity-45 compact:size-10 ${packClass("Slot", "frame")}`}>
                     <Icon class="size-16/25" name={u().locked ? 'lock' : u().icon} />
                   </View>
                   <View class="grow shrink basis-0 gap-0.5 compact:grow compact:shrink compact:basis-0 group-data-locked/row:opacity-45">
                     <View class="flex-row items-center w-full gap-2">
-                      <Text class={`text-fg shrink text-start whitespace-nowrap text-ellipsis text-[1.214rem] font-semibold overflow-hidden`}>
+                      <Text class={`text-fg shrink text-start whitespace-nowrap text-ellipsis text-base font-semibold overflow-hidden`}>
                         {u().name}
                       </Text>
                       <Show when={u().level > 0}>

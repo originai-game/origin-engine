@@ -43,7 +43,7 @@ export function IdleOffline(props: IdleOfflineProps) {
         </Text>
       </View>
       <View class={`flex-row flex-wrap items-baseline gap-1`} role="status" label={t("idle.offline.away", { time: props.away !== '' ? props.away : formatDuration(props.seconds) })}>
-        <Text class={`tabular-nums text-fg text-[2.286rem] font-bold shrink`}>
+        <Text class={`tabular-nums text-fg text-display-md font-bold shrink`}>
           {props.away !== '' ? props.away : formatDuration(props.seconds)}
         </Text>
         <Text class={`tracking-xs text-fg-muted text-xs font-semibold shrink`}>
