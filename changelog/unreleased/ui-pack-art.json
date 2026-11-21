@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "nine-socket, nine-socket-rim, nine-glow, nine-sheen, nine-card-frame",
+      "summary": "Every look has five generated pictures as nine-slice classes: an octagon item or ability `nine-socket`, its `nine-socket-rim` (a white mask the element's bg colours, such as a rarity), a radial `nine-glow` (a mask the bg colours), a `nine-sheen` and an ornate gold `nine-card-frame` with an open centre."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "@ui/screens/notifications, @ui/components/meta/daily-quests, @ui/components/rpg/quest-detail, @ui/components/arena/versus",
+      "summary": "The notification's mark, a daily quest's well and a quest reward sit in an octagon socket whose rim takes the tone (gold when done or unique), and the versus badge glows from its top, instead of gradient squares."
+    }
+  ]
+}

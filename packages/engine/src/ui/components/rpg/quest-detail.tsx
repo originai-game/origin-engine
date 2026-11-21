@@ -100,9 +100,10 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                   <For each={props.rewards ?? []} key={(r) => r.id}>
                     {(r) => (
                       <View class={`group/reward flex-row items-center gap-3 grow min-w-[17.829rem] compact:min-w-0 compact:w-full py-1 pl-1 pr-3 nine-chip-cut bg-glass/88 ${packClass("Chip", "frame")}`} role="listitem" data-unique={r().detail !== ""}>
-                        <View class={`shrink-0 size-12 rounded-[6.858px] p-[1.5px] bg-linear-to-b from-white/50 via-white/12 via-50% to-white/6 data-unique:from-gold-hi data-unique:via-gold data-unique:via-45% data-unique:to-gold/40`}>
-                          <View class={`size-full rounded-[5.143px] flex-row items-center justify-center bg-raised-pressed data-unique:bg-gold-fg`}>
-                            <Icon class={`size-6 text-fg data-unique:text-gold`} name={r().icon} />
+                        <View class={`relative shrink-0 size-12 nine-socket`}>
+                          <View class={`absolute inset-0 nine-socket-rim bg-white/40 group-data-unique/reward:bg-gold`} />
+                          <View class={`size-full flex-row items-center justify-center`}>
+                            <Icon class={`size-6 text-fg group-data-unique/reward:text-gold`} name={r().icon} />
                           </View>
                         </View>
                         <View class={`flex-col min-w-0`}>

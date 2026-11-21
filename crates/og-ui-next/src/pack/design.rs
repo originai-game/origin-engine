@@ -223,7 +223,7 @@ pub const SLOTS: [(&str, &str); 6] = [
 /// wipe), a square slot's `tile` at the slot radius (`--radius-field`),
 /// and the HUD's bevels: `plate-cut` (`--hud-plate-cut`, 6) and
 /// `panel-cut` (`--hud-panel-cut`, 12) cut the leading top and trailing
-/// bottom corners, `chip-cut` the trailing top one.
+/// bottom corners, `chip-cut` the trailing top one; then the art.
 fn shapes() -> Value {
     let mut out = Map::new();
     for (name, slice, width) in [
@@ -240,7 +240,27 @@ fn shapes() -> Value {
         }
         out.insert(name.to_owned(), image);
     }
+    out.extend(art());
     Value::Object(out)
+}
+
+/// The art every look has (`templates/styles/shared/art/`, generated
+/// pictures drawn 4x): an item or ability's octagon `socket` and its
+/// `socket-rim` (a white mask the element's fill colours: a rarity rim),
+/// a radial `glow` (a white mask the fill colours) and a coin or plate's
+/// `sheen` stretched over the box, and a card's ornate `card-frame` (its
+/// centre left open for the card's art).
+fn art() -> Vec<(String, Value)> {
+    [
+        ("socket", json!({ "src": "@styles/shared/art/socket.png", "slice": 76, "width": 19 })),
+        ("socket-rim", json!({ "src": "@styles/shared/art/socket-rim.png", "slice": 76, "width": 19, "fill": false, "tint": true })),
+        ("glow", json!({ "src": "@styles/shared/art/glow.png", "slice": 0, "tint": true })),
+        ("sheen", json!({ "src": "@styles/shared/art/sheen.png", "slice": 0 })),
+        ("card-frame", json!({ "src": "@styles/shared/art/card-frame.png", "slice": 60, "width": 15, "fill": false })),
+    ]
+    .into_iter()
+    .map(|(name, image)| (name.to_owned(), image))
+    .collect()
 }
 
 /// The input prompt glyphs every look has (`templates/styles/shared/glyphs/`,
