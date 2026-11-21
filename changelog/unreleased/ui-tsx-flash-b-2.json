@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "The card set (CardCollection, CardDeckList, CardFace, CardHand, CardReward) and the meta set (Achievements, Chat, DailyQuests) as TSX beside their Svelte sources, same props, states, interaction and accessibility. The Svelte sources stay until the port's deletion head."
+    }
+  ]
+}
