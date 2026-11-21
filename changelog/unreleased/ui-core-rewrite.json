@@ -1,0 +1,59 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "UI documents",
+      "change": "Every screen and component document runs on the new UI core: styles compile at cook time to typed records, elements live in a flat arena and only what a binding changed is updated. There is no `uiCore` key in project.ogt and no way back to the old core; the old forms below are refused, not translated.",
+      "fix": "Remove a `uiCore` line from project.ogt, run `og upgrade`, then fix what it lists as manual with the replacements below.",
+      "find": ["uiCore"]
+    },
+    {
+      "member": "Layout attributes",
+      "change": "Layout is a typed element field, not a data attribute: `data-layout`, `data-gap`, `data-anchor`, `data-fill` and `data-from` are no longer read.",
+      "fix": "Write `layout=\"row|stack|wrap|overlay|scroll|center\"`, `gap=\"…\"`, `anchor=\"…\"`, `fill` and `reverse`. `cluster` and `switcher` become `layout=\"wrap\"`, `shell` becomes `layout=\"stack\" fill`, `cover` becomes `layout=\"stack\" fill` with centring on a class, and `ratio`, `grid`, `sidebar` and `strip` become a class with `aspect-ratio` or `display: grid`. An `anchor` of `top`, `bottom` or `center` becomes a class.",
+      "find": ["data-layout", "data-gap", "data-anchor", "data-fill", "data-from"]
+    },
+    {
+      "member": "Parts and surface variants",
+      "change": "`part` names an unqualified surface (`part=\"frame\"`, not `part=\"AbilitySlot.frame\"`) and documents have no `parts` meta line. A surface's variants are attributes in one namespace of names: `variant`, `tier`, `tone`, `shape`, `team` and `trend`, each literal or bound. A class on a part, `data-rarity`, `data-tone`, `data-shape`, `data-team` and `data-trend` no longer dress it.",
+      "fix": "Drop the component prefix from `part`, delete the `parts` meta line, and write `variant=\"hud|bare|lead|small\"`, `tier=\"rare\"`, `tone=\"danger\"`, `shape=\"round\"`, `team=…` and `trend=…`.",
+      "find": ["parts", "data-rarity", "data-tone", "data-shape", "data-team", "data-trend"]
+    },
+    {
+      "member": "Motion attribute",
+      "change": "`data-motion` is no longer read; the named motion an element plays is its `play` field.",
+      "fix": "Write `play=\"enter|exit|pop|stamp|beat|pulse|spin|ping|shimmer|float|change\"`.",
+      "find": ["data-motion"]
+    },
+    {
+      "member": "Element states in style sheets",
+      "change": "A state a binding decides is a custom state: attribute selectors (`[aria-selected=true]`, `[data-done]`, `[data-current]` and the like) no longer match, and accessibility attributes are never read for styling.",
+      "fix": "Write `state:selected={…}` on the element and match `:state(selected)` in the sheet.",
+      "find": ["aria-selected", "aria-current", "aria-pressed", "data-selected", "data-done", "data-current", "data-locked", "data-empty", "data-active"]
+    },
+    {
+      "member": "Media and container queries",
+      "change": "`@media` and `@container` are no longer read in documents, surfaces or packs. The UI's box and input are size classes: `:size(narrow)` (under 600 px wide), `:size(short)` (under 500 px tall), `:size(compact)` (either) and `:touch`. Rules for reduced motion are gone: the motion system honours the setting itself.",
+      "fix": "Put `:size(compact)` on each rule of a `@media (width < 600px)` or `@container` block, `:size(short)` for `(height < 500px)`, `:touch` for `(pointer: coarse)`, and delete `prefers-reduced-motion` blocks.",
+      "find": ["@media", "@container", "prefers-reduced-motion"]
+    },
+    {
+      "member": "Document selectors",
+      "change": "A document's `<style>` takes classes, ids, tags, their compounds, the descendant combinator, `:hover`, `:active`, `:focus`, `:focus-visible`, `:disabled`, `:state()`, `:size()`, `:touch`, `:dir()` and `:lang()`. `:where`, `:is`, `:has`, `:not` (except around `:size()`), `:host`, `::part`, `:global`, sibling combinators and structural pseudo-classes are refused. Every `var()` resolves at cook time.",
+      "fix": "Rewrite such rules as classes on the elements they meant; set a value a binding changes with `style:--x={…}`.",
+      "find": [":where", ":is", ":has", ":host", "::part", ":global"]
+    },
+    {
+      "member": "Style packs",
+      "change": "A pack is `tokens.css` (`:root { … }`, and `:root.light { … }` for the light scheme) and `surfaces.css` (compound class selectors over part, variant and tier names, over the default surfaces). `::part` rules and global rules in a pack are no longer read.",
+      "fix": "Move a pack's `::part(…)` rules into its `surfaces.css` as `.frame.hud { … }`-style rules, and its custom properties into `tokens.css`.",
+      "find": ["::part"]
+    },
+    {
+      "member": "Built-in component props",
+      "change": "Built-in components took new prop names on the new core: RacingStandings and RacingResults `hasPlayer`; ArenaRoster, ArenaVersus, DailyRewards and RpgCharacter `compact`; RpgCharacter and RpgParty `dense`; ArenaScoreboard `split`; CardFace `size`; RacingStandings `room`; AbilitySlot `fit`. HeroButton's key has its own part.",
+      "fix": "Pass those props by their new names (`og api show <Component>` lists each component's props).",
+      "find": ["RacingStandings", "RacingResults", "ArenaRoster", "ArenaVersus", "DailyRewards", "RpgCharacter", "RpgParty", "ArenaScoreboard", "CardFace", "AbilitySlot", "HeroButton"]
+    }
+  ]
+}

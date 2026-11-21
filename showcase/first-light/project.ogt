@@ -14,9 +14,6 @@ publish {
 
 look "looks/first-light.ogt"
 
-# The HUD runs on og-ui's new core (the ui-rewrite branch).
-uiCore next
-
 create {
   genre "open-world"
   view "third-person-3d"

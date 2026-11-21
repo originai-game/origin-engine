@@ -209,7 +209,7 @@ pub(crate) struct RenderState {
     pub ui: Option<og_ui::SharedUi>,
     /// Emitted local shape ranges retained between presentation frames.
     pub ui_emission: og_ui::RetainedEmission,
-    /// The documents on og-ui's new core (project.ogt `uiCore next`).
+    /// The documents, on og-ui's new core.
     pub ui_next: Option<Box<crate::present::ui_next::Next>>,
     /// A UI font's first atlas page → every page, so text is drawn per page.
     pub ui_pages: BTreeMap<FontHandle, Vec<FontHandle>>,

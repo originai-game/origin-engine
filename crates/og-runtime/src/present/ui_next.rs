@@ -1,6 +1,6 @@
-//! og-ui's new core behind the runtime's UI entry points, for a game whose
-//! project.ogt says `uiCore next` (the ui-rewrite branch; this module goes
-//! when the new core replaces og-ui). The game's store operations
+//! og-ui's new core behind the runtime's UI entry points: every game's
+//! documents run on it (this module goes when the new core replaces
+//! og-ui). The game's store operations
 //! (`og.ui.scope`) go to the store here, a reactive session that keeps
 //! the values, answers the reads and goes into checkpoints; each is also
 //! mirrored into an og-ui-next signal. Its mounts go to the new core
@@ -81,13 +81,6 @@ pub(crate) struct Next {
     language: String,
     /// The overlay texts and sprites its last emit added.
     pub emitted: std::cell::Cell<(usize, usize, usize)>,
-}
-
-/// Whether engine `world`'s project runs its documents on the new core.
-pub(crate) fn wanted(world: u32) -> bool {
-    crate::engine::engine(world)
-        .ok()
-        .is_some_and(|e| e.state.borrow().project.as_ref().is_some_and(|p| p.ui_next))
 }
 
 fn source(v: &Value) -> Option<(String, String)> {
