@@ -45,12 +45,18 @@ export interface UiEvent {
   /** The world the UI belongs to, for writing intents and commands. */
   readonly world: World;
   readonly type: string;
-  /** The pointer on the UI's surface. */
+  /** The pointer on the UI's surface (`onWheel`: the wheel's deltas). */
   readonly x: number;
   readonly y: number;
   /** A key's name (`onKey`) or the input action (`onAction`). */
   readonly key: string;
-  /** A control's new value (`onChange`); a hold's progress, 0 to 1, "0" when let go early (`onHold`). */
+  /**
+   * A control's new value (`onChange`); a hold's progress, 0 to 1, "0" when
+   * let go early (`onHold`); the box of the node that hears a pointer event
+   * on the surface, `"x y width height"` (`onPointerDown`/`Move`/`Up`,
+   * `onLongPress`), so a slider maps `(x - box.x) / box.width`; `"2"` on a
+   * double press's second `onPress`.
+   */
   readonly value: string;
 }
 
@@ -73,7 +79,7 @@ export interface HostProps {
   onBlur?: Handler;
   onKey?: Handler;
   onChange?: Handler;
-  /** A finger held still on it for 0.5 s. */
+  /** A finger held still on it for 0.5 s; its release then presses nothing. `value` is its box. */
   onLongPress?: Handler;
   /** A held press, with `hold` set: its progress each frame in `value`, 0 to 1 when it completes; "0" when it lets go early. */
   onHold?: Handler;
