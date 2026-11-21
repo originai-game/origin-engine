@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "RpgItemCard, RpgLoot, RpgMenu, RpgQuestLog, SplitView, TooltipCard, RpgTrade",
+      "summary": "The item card, loot, menu, quest log, split view, tooltip card and trade panels ship as TSX beside their component documents: same props, states, strings and accessibility, styled with Tailwind classes and the new UI's primitives. Cut shapes, glows and gradients the classes cannot express are approximated or dropped, each noted in the component's docstring."
+    }
+  ]
+}
