@@ -14,8 +14,12 @@ clean() {
   }
 }
 
-# Conservative shared inputs, including all generated/drift-checked outputs.
-# NUL delimiters in the comparison preserve spaces and unusual filenames.
+# Shared inputs: everything a gate step reads. Only prose (docs, tasks,
+# changelog fragments, README, AGENTS) reads nothing the quick steps read, so
+# only prose-only deltas reuse a passing gate without a recheck; a code delta
+# on either side rechecks the affected steps (2026-11-21: five red steps a
+# cold run fails landed through the old wider exception). NUL delimiters in
+# the comparison preserve spaces and unusual filenames.
 disjoint() {
   python3 - "$1" "$2" "$3" <<'PY'
 import subprocess
@@ -27,20 +31,16 @@ def paths(end):
         'git', 'diff', '--no-renames', '--name-only', '-z', base, end
     ]).split(b'\0')) - {b''}
 
+def prose(p):
+    if p in (b'AGENTS.md', b'README.md'):
+        return True
+    parts = p.split(b'/')
+    if parts[0] in (b'docs', b'tasks'):
+        return p.endswith(b'.md')
+    return parts[:2] == [b'changelog', b'unreleased']
+
 ours, theirs = paths(head), paths(main)
-common = (
-    b'Cargo.toml', b'Cargo.lock', b'rust-toolchain.toml', b'.cargo',
-    b'.config', b'scripts', b'tests/gpu.rs', b'packages/design',
-    b'packages/engine/types', b'packages/engine/schema',
-    b'packages/knowledge/wiki', b'crates/og-api', b'crates/og-idl',
-    b'crates/og-ui/src/theme.rs',
-)
-shared = any(
-    b'/generated/' in p or p.endswith(b'.d.ts') or
-    any(p == root or p.startswith(root + b'/') for root in common)
-    for p in ours | theirs
-)
-sys.exit(0 if not shared and ours.isdisjoint(theirs) else 1)
+sys.exit(0 if all(prose(p) for p in ours | theirs) and ours.isdisjoint(theirs) else 1)
 PY
 }
 
@@ -50,7 +50,7 @@ PY
 # rebase changed since this checkout's last pass, in its own target.
 recheck() {
   git checkout -q --detach "$1"
-  OG_LANDING_RECHECK=1 scripts/check.sh quick && clean &&
+  OG_GATE_LANDING=1 OG_LANDING_RECHECK=1 scripts/check.sh quick && clean &&
     { [ "$(git rev-parse HEAD)" = "$1" ] || { echo 'land: HEAD changed during gate' >&2; false; }; }
 }
 
@@ -252,7 +252,7 @@ if [ "$head" = "$base" ]; then echo "land: already on origin/main ($head)"; exit
 if [ "$(cat "${CARGO_TARGET_DIR:-target}/og-gate/green/lane.full" 2>/dev/null)" = "$(git rev-parse "HEAD^{tree}")" ]; then
   echo "land: $head passed full --all on this tree; skipping the opening quick"
 else
-  scripts/check.sh quick
+  OG_GATE_LANDING=1 scripts/check.sh quick
 fi
 clean
 [ "$(git rev-parse HEAD)" = "$head" ] || { echo 'land: HEAD changed during gate' >&2; exit 1; }

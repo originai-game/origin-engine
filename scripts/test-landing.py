@@ -109,8 +109,13 @@ while [ -f "$CONTROL/$name.allow" ] && [ "$(wc -l < "$CONTROL/$name.allow")" -lt
             p = self.b / 'shared'
             p.write_text(p.read_text().replace('end', 'second'))
         else:
-            (self.a / ('Cargo.toml' if common else 'first')).write_text('first\n')
-            (self.b / 'second').write_text('second\n')
+            # Prose-only deltas: the one reuse case that still lands without a
+            # recheck when main moves (scripts/land.sh disjoint()).
+            for repo, path, text in ((self.a, 'docs/first.md', 'first\n'),
+                                     (self.b, 'docs/second.md', 'second\n')):
+                path = repo / path
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text)
         self.commit(self.a, 'first')
         self.commit(self.b, 'second')
         a, b = self.start(self.a), self.start(self.b)
@@ -270,7 +275,10 @@ git add -A && git commit -qm "outside $n" && git push -q origin HEAD:refs/heads/
         return output, self.run_git(self.remote, 'log', '--format=%s', 'main').splitlines()
 
     def test_outside_writer_disjoint_lands_without_a_recheck(self):
-        output, log = self.outside_race([('outside', 'o'), ('outside', 'o2')])
+        # Prose-only deltas on both sides: the queue reuses the passing gate.
+        output, log = self.outside_race(
+            [('docs/outside.md', 'o'), ('docs/outside2.md', 'o2')],
+            change=('docs/first.md', 'first\n'))
         self.assertEqual(output.count('pushing without a recheck'), 2, output)
         self.assertEqual(self.calls('a'), 1)
         self.assertEqual(log[:3], ['first', 'outside 1', 'outside 0'])

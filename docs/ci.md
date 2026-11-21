@@ -36,9 +36,10 @@ pushed tree, never with a force push. A head whose tree passed the whole
 which `scripts/gate/run.py` writes only when every step ran and passed)
 skips the opening quick; the recheck still runs what a rebase changed.
 The queue does not span orbs: when a lander elsewhere pushes first, the
-push is retried on the new main, without a gate when what landed is
-disjoint from the head's inputs and after a recheck otherwise, until it
-lands or the recheck fails. Conflicts confined to generated
+push is retried on the new main, without a gate when what landed and the
+head's changes are both prose only (docs, tasks, changelog fragments,
+README, AGENTS — nothing a quick step reads) and after a recheck otherwise,
+until it lands or the recheck fails. Conflicts confined to generated
 files (`og_idl::OUTPUT_DIRS`, the UI theme) are regenerated, and so are
 conflicts in the wholly generated CSS checklist, docs/css-coverage.md,
 once `scripts/css-coverage.py` is merged, both sides kept where both added
@@ -215,7 +216,9 @@ that does not change rendering (AGENTS.md §Streams and landing). It is never
 a default and is read only from the environment; an unknown name fails the
 run. A skipped step prints `SKIPPED <step> (OG_GATE_SKIP)` and the final
 line says `NOT RUN (OG_GATE_SKIP)`, so a skip never reads as a pass; steps
-that depend on it still run.
+that depend on it still run. A landing's quick (`OG_GATE_LANDING=1`, set by
+`scripts/land.sh`) refuses any skip but `rust-gpu`: a landing must run every
+step it would push, so a tree a cold run fails cannot land on main.
 
 `scripts/check.sh` owns admission, `scripts/gate/run.py` schedules the
 dependency DAG, and `step.sh` takes GPU slots only for rendering steps.

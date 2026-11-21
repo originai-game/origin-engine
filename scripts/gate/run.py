@@ -127,10 +127,18 @@ def main():
         NEEDS[step] += tuple(s for s in ('drift', 'api-surface', 'engine-typecheck') if s in wanted)
     # OG_GATE_SKIP: steps the coordinator named for an exception (docs/ci.md
     # §Lanes). A dependent still runs; the skip is printed, never a pass.
+    # A landing's quick refuses every skip but rust-gpu: the standing
+    # exception (docs/ci.md §Lanes); a skipped fmt, drift, wasm or test step
+    # is how a tree a cold run fails lands on main.
     skip = [s.strip() for s in os.environ.get('OG_GATE_SKIP', '').split(',') if s.strip()]
     unknown = set(skip) - NEEDS.keys()
     if unknown:
         raise ValueError('OG_GATE_SKIP names unknown steps: ' + ', '.join(sorted(unknown)))
+    unlandable = sorted(s for s in skip if s != 'rust-gpu')
+    if os.environ.get('OG_GATE_LANDING') and unlandable:
+        raise ValueError('landing: OG_GATE_SKIP dropped steps a landing runs ('
+                         + ', '.join(unlandable)
+                         + '); only rust-gpu may be skipped for a landing')
     skipped = [s for s in NEEDS if s in wanted and s in skip]
     if {'browser', 'wasm-build', 'wasm-lanes-check'} <= wanted:
         NEEDS['wasm-lanes-check'] += ('wasm-build',)
