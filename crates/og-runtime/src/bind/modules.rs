@@ -237,6 +237,7 @@ pub(crate) fn mount_back(
                             &ui,
                             &rs.textures,
                             ui_time,
+                            t.rate.max(1),
                             &crate::author::probe::now_ms,
                             Some(&|bits| ui_world::Feed::world_pose(ctx, bits).map(|p| p.0)),
                         ));

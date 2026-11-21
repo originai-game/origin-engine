@@ -312,6 +312,10 @@ impl Tree {
     /// Tailwind), and resolves the ones in use again: a scheme or pack
     /// change calls it too.
     pub fn set_resolver(&mut self, resolve: Resolve) {
+        let mut shadow = resolve("bg-bg", "", 0, "").skin.fill;
+        shadow[3] *= 0.45;
+        let fg = resolve("text-fg bg-focus", "", 0, "");
+        self.cursor_colors = [shadow, fg.skin.ink, fg.skin.fill];
         self.classes.resolve = Some(resolve);
         self.restyle_all();
     }
@@ -1901,6 +1905,72 @@ mod tests {
             .collect();
         assert_eq!(presses, [&Fired::at(2, Event::Press, 60.0, 25.0)]);
         assert_eq!(t.op_box(2).unwrap()[2], 50.0, "released");
+    }
+
+    /// A pad's virtual cursor: the stick moves it from the real pointer's
+    /// place onto a button and takes the stick from the focus; A presses
+    /// the button through the pointer's path; the real pointer moving
+    /// hides it again.
+    #[test]
+    fn the_virtual_cursor_moves_with_the_stick_and_presses_with_a() {
+        use crate::tree::{CursorPad, CursorPointer, VirtualCursorDesc};
+        let mut t = stated();
+        buttons(&mut t, &["b", "b"]);
+        let desc = Some(VirtualCursorDesc::default());
+        let tick = |t: &mut Tree, stick: [f32; 2], a: (bool, bool), real: [f32; 2]| {
+            let mut pad = CursorPad {
+                stick,
+                a_pressed: a.0,
+                a_held: a.1,
+                ..Default::default()
+            };
+            let mut ptr = CursorPointer {
+                x: real[0],
+                y: real[1],
+                inside: true,
+                ..Default::default()
+            };
+            t.virtual_cursor(desc, &mut pad, &mut ptr, 60);
+            t.pointer(ptr.x, ptr.y, ptr.pressed, ptr.released, &mut Vec::new());
+            frame(t);
+            pad
+        };
+        let real = [75.0, 200.0];
+        tick(&mut t, [0.0; 2], (false, false), real);
+        assert_eq!(
+            t.virtual_cursor_at(),
+            Some(([75.0, 200.0], false)),
+            "at the pointer, hidden"
+        );
+        for _ in 0..60 {
+            let pad = tick(&mut t, [0.0, -1.0], (false, false), real);
+            assert_eq!(pad.stick, [0.0; 2], "the stick is the cursor's");
+            if t.virtual_cursor_at().unwrap().0[1] < 15.0 {
+                break;
+            }
+        }
+        let ([x, y], shown) = t.virtual_cursor_at().unwrap();
+        assert!(
+            shown && (50.0..100.0).contains(&x) && y < 20.0,
+            "on button 2: {x} {y}"
+        );
+        t.events.clear();
+        let pad = tick(&mut t, [0.0; 2], (true, true), real);
+        assert!(!pad.a_pressed, "A is the cursor's");
+        tick(&mut t, [0.0; 2], (false, false), real);
+        let presses: Vec<u32> = t
+            .events
+            .iter()
+            .filter(|f| f.event == Event::Press)
+            .map(|f| f.id)
+            .collect();
+        assert_eq!(presses, [2], "A clicks where it points");
+        tick(&mut t, [0.0; 2], (false, false), [10.0, 10.0]);
+        assert_eq!(
+            t.virtual_cursor_at().map(|c| c.1),
+            Some(false),
+            "the mouse hides it"
+        );
     }
 
     /// Tab goes to positive `tabIndex` first, then tree order, skipping a

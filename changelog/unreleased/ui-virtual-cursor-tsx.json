@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui.setVirtualCursor",
+      "summary": "The pad's virtual cursor works on TSX screens: it slows over and settles on a TSX control (the magnet found none before), its A presses the control under it through the pointer's path without confirming the focused one, and the style pack's focus, foreground and background colours draw it. og.ui.virtualCursor answers CSS px."
+    }
+  ]
+}

@@ -86,6 +86,9 @@ pub(crate) struct Next {
     /// The screen transition cover a timeline set this tick, taken at its
     /// end ([`cover`]).
     cover: Option<og_ui_next::cover::Cover>,
+    /// The virtual cursor og.ui.setVirtualCursor declared this tick,
+    /// taken at its end.
+    vcursor: Option<og_ui_next::tree::VirtualCursorDesc>,
     /// The pack's sounds with their clips loaded, by scope and event,
     /// loaded with its images ([`pack_images`]).
     sounds: Rc<og_ui_next::tree::SoundTable>,
@@ -294,6 +297,26 @@ pub(crate) fn cover(engine: u32, cover: og_ui_next::cover::Cover) {
         .cover = Some(cover);
 }
 
+/// og.ui.setVirtualCursor this tick: the cursor the UI's tick end moves.
+pub(crate) fn set_virtual_cursor(engine: u32, desc: Option<og_ui_next::tree::VirtualCursorDesc>) {
+    let Ok(eng) = crate::engine::engine(engine) else {
+        return;
+    };
+    eng.render
+        .borrow_mut()
+        .ui_next
+        .get_or_insert_with(|| Box::new(Next::new()))
+        .vcursor = desc;
+}
+
+/// The virtual cursor as the last tick left it: where (CSS px) and
+/// whether it shows; `None` when none is declared.
+pub(crate) fn virtual_cursor(engine: u32) -> Option<([f32; 2], bool)> {
+    let eng = crate::engine::engine(engine).ok()?;
+    let rs = eng.render.borrow();
+    rs.ui_next.as_ref()?.tree.as_ref()?.virtual_cursor_at()
+}
+
 /// Style `id`'s pack (its `pack.json`, cooked as an `og.UiPack`), if it
 /// has one.
 fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {
@@ -450,6 +473,7 @@ impl Next {
             images_for: None,
             icons: BTreeMap::new(),
             cover: None,
+            vcursor: None,
             sounds: Rc::default(),
             signals: BTreeMap::new(),
             rows: BTreeMap::new(),
@@ -877,18 +901,21 @@ impl Next {
             ui,
             textures,
             0.0,
+            60,
             &crate::author::probe::now_ms,
             None,
         );
         self.held.extend(warnings);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn end(
         &mut self,
         engine: u32,
         ui: &og_ui::Ui,
         textures: &[og_render::TextureHandle],
         time: f64,
+        tps: u32,
         now: &dyn Fn() -> f64,
         world: Option<&dyn Fn(u64) -> Option<og_core::glam::Vec3>>,
     ) -> Vec<String> {
@@ -969,19 +996,34 @@ impl Next {
         // A finger pans what scrolls and long-presses.
         let device = ui.device();
         tree.set_device(device == og_ui::Device::Touch, device.is_pad());
-        tree.pointer(
-            input.pointer.x,
-            input.pointer.y,
-            input.pressed,
-            input.released,
-            &mut done,
-        );
+        // A pad's virtual cursor turns pad 0 into this pointer while it
+        // shows (its A the button, its right stick the wheel).
+        let g = &input.gamepad;
+        let a = og_ui::GamepadFrame::A;
+        let mut pad = og_ui_next::tree::CursorPad {
+            stick: [g.stick.x, g.stick.y],
+            stick_r: [g.stick_r.x, g.stick_r.y],
+            a_pressed: g.pressed & a != 0,
+            a_held: g.held & a != 0,
+        };
+        let mut ptr = og_ui_next::tree::CursorPointer {
+            x: input.pointer.x,
+            y: input.pointer.y,
+            inside: input.pointer_inside,
+            pressed: input.pressed,
+            released: input.released,
+            wheel: [input.wheel.x, input.wheel.y],
+        };
+        let a_was = pad.a_pressed || pad.a_held;
+        tree.virtual_cursor(self.vcursor.take(), &mut pad, &mut ptr, tps);
+        // A press the cursor took confirms nothing at the focus.
+        let a_taken = a_was && !(pad.a_pressed || pad.a_held);
+        tree.pointer(ptr.x, ptr.y, ptr.pressed, ptr.released, &mut done);
         // Op nodes take the wheel, the keys, the UI's input actions and an
         // assistive technology's requests; the `<Glyph>` nodes follow the
         // device.
         if tree.has_ops() {
-            let (x, y) = (input.pointer.x, input.pointer.y);
-            tree.wheel(x, y, input.wheel.x, input.wheel.y);
+            tree.wheel(ptr.x, ptr.y, ptr.wheel[0], ptr.wheel[1]);
             // Typed text goes into the focused `Input` before its keys
             // edit it, as they arrived.
             if !input.text.is_empty() {
@@ -991,7 +1033,9 @@ impl Next {
                 tree.key(code, input.shift, input.ctrl, input.alt, input.meta);
             }
             for name in ui.fired_actions() {
-                tree.action(name);
+                if !(a_taken && name == "confirm") {
+                    tree.action(name);
+                }
             }
             for (act, path) in &input.a11y {
                 let Some(node) = og_ui_next::a11y::target(path) else {
@@ -1024,13 +1068,13 @@ impl Next {
                     tree.nav(nav);
                 }
             }
-            let s = g.stick;
-            let dir = if s.x.abs().max(s.y.abs()) < 0.5 {
+            let [sx, sy] = pad.stick;
+            let dir = if sx.abs().max(sy.abs()) < 0.5 {
                 None
-            } else if s.x.abs() > s.y.abs() {
-                Some(if s.x > 0.0 { Nav::Right } else { Nav::Left })
+            } else if sx.abs() > sy.abs() {
+                Some(if sx > 0.0 { Nav::Right } else { Nav::Left })
             } else {
-                Some(if s.y > 0.0 { Nav::Down } else { Nav::Up })
+                Some(if sy > 0.0 { Nav::Down } else { Nav::Up })
             };
             let d = ui.theme().durations_ms;
             self.stick = match (dir, self.stick) {
@@ -1048,7 +1092,7 @@ impl Next {
                     Some((dir, time + f64::from(d.slow) / 1000.0))
                 }
             };
-            tree.input_done(ui.action_down("confirm"));
+            tree.input_done(ui.action_down("confirm") && !a_taken);
             if tree.glyphs_wanted() || self.device != Some(device) {
                 self.device = Some(device);
                 let icons = &self.icons;
