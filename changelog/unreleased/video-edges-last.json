@@ -1,0 +1,3 @@
+{
+  "fixed": [{ "member": "og video edges", "summary": "Write the actual final decoded frame, including a type video asset's maxSeconds cutoff, instead of the first frame in its final second." }]
+}

@@ -333,6 +333,30 @@ commands:
   bake probes [project] [--commands \"t:action[:args];...\"] [--at S] [--size WxH]
                       render the baked og.ReflectionProbe captures on the native host into
                       cooked/probes/ (loaded instead of drawn on first use)
+  video edges <clip> [--out DIR]
+                      write <stem>.first.png and <stem>.last.png; clip is .mp4, .webm, .mov or
+                      a type video .ogt (source and maxSeconds); requires ffmpeg (OG_FFMPEG)
+  video study <clip> [--out DIR] [--interval S] [--at 2,5,8] [--window S] [--cut-change F]
+                      study AI footage or a recording with ffmpeg (OG_FFMPEG); clip as for edges;
+                      output defaults to <clip-stem>.study/ beside the clip: study.json,
+                      frames/<time>s-pts<PTS>-f<index>.png (native size), contact-sheet.png
+                      all selected PNGs are streamed; the sheet shows at most 24 evenly spaced
+                      frames including first and last; JSON sheet_frames lists their source indices
+                      --interval S (default 0.25): fixed samples from 0, strictly before the end;
+                      --at adds exact requested seconds without changing interval statistics;
+                      both select the displayed frame (greatest PTS <= time), not a future frame
+                      times are relative to the first decoded PTS; JSON also keeps integer source
+                      PTS, time_base, every decoded frame, packet-end duration and nominal fps;
+                      timestamps describe the file, not rendering throughput before encoding
+                      --cut-change F (0..1, default 0.35): candidates where adjacent decoded
+                      frames' FFmpeg scene score > F; JSON keeps all scores, no quality verdict
+                      palettes: up to 8 Oklab colors with opaque pixel fractions, whole clip and per cut
+                      segment; interval thumbnails plus segment starts, long side <=192,
+                      equal-weight pixels (not duration weighted); extra --at frames do not bias it
+                      changes: mean FLIP of adjacent interval samples fitted to 192 (scaled PPD)
+                      --window S (default 3): every full window at interval steps, mean and median
+                      of changes ending in (start,end]; even median averages the middle two;
+                      empty statistics are null; windows stay chronological, never ranked
 
 options:
   --version           print the og version

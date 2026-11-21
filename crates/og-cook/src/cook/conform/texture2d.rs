@@ -27,7 +27,7 @@ mod cleanedge;
 pub(in crate::cook) mod colour;
 mod outline;
 pub(in crate::cook) mod paint;
-pub(in crate::cook) mod palette;
+pub mod palette;
 mod resample;
 
 mod process;

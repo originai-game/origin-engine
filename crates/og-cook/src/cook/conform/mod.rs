@@ -17,6 +17,9 @@
 pub mod mesh;
 pub(super) mod texture2d;
 
+/// Oklab palette extraction and pixel usage, shared with footage study.
+pub use texture2d::palette;
+
 use og_core::ogt::{Block, Document, Entry};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;

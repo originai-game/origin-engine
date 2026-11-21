@@ -8,6 +8,8 @@
 //!   file (`.mp4`, `.webm`, `.mov`) or a `type video` `.ogt`, whose
 //!   `source`, `maxSeconds` and `fps` it reads.
 
+mod study;
+
 use og_cook::cook::video::ffmpeg_bin;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -16,6 +18,13 @@ const USAGE: &str = "usage: og video edges <path> [--out <dir>]";
 
 pub fn run(args: &[&str]) -> ExitCode {
     match args {
+        ["study", rest @ ..] => match study::run(rest) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("og video study: {e}");
+                ExitCode::FAILURE
+            }
+        },
         ["edges", rest @ ..] => match edges(rest) {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {
@@ -24,7 +33,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
         },
         _ => {
-            eprintln!("{USAGE}");
+            eprintln!("expected og video edges or og video study; see og video --help");
             ExitCode::from(2)
         }
     }
@@ -128,29 +137,23 @@ fn write_frame(
     out: &Path,
 ) -> Result<(), String> {
     let mut cmd = Command::new(ffmpeg_bin());
-    cmd.args(["-v", "error", "-nostdin", "-y"]);
+    cmd.args(["-v", "error", "-nostdin", "-y", "-i"]).arg(media);
+    cmd.args(["-map", "0:v:0", "-an", "-fps_mode", "passthrough"]);
     match edge {
         Edge::First => {
-            cmd.arg("-i").arg(media);
+            cmd.args(["-frames:v", "1"]);
         }
-        // Keep the last of the frames in a one-second window at the end
-        // (`-update 1`): the final frame the film shows. With maxSeconds
-        // that end is the cooked length; otherwise the source's (`-sseof`).
-        Edge::Last => match max_seconds {
-            Some(s) if s > 1.0 => {
-                cmd.args(["-ss", &(s - 1.0).to_string(), "-t", "1"])
-                    .arg("-i")
-                    .arg(media);
+        // Decode through the kept range and overwrite the same PNG. No
+        // frame limit: that would keep its first frame, not its last.
+        // Starting at zero also works for short clips and sparse VFR tails
+        // where a one-second seek window can contain no frame at all.
+        Edge::Last => {
+            if let Some(s) = max_seconds.filter(|s| s.is_finite() && *s > 0.0) {
+                cmd.args(["-t", &s.to_string()]);
             }
-            Some(s) if s > 0.0 => {
-                cmd.args(["-t", &s.to_string()]).arg("-i").arg(media);
-            }
-            _ => {
-                cmd.args(["-sseof", "-1"]).arg("-i").arg(media);
-            }
-        },
+        }
     }
-    cmd.args(["-update", "1", "-frames:v", "1"]).arg(out);
+    cmd.args(["-update", "1"]).arg(out);
     let r = cmd
         .output()
         .map_err(|e| format!("cannot run ffmpeg ({}): {e}", ffmpeg_bin().display()))?;
