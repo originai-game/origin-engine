@@ -1,12 +1,9 @@
-//! `og.ui`'s actions and glyphs, the probe's `ui:` commands (material,
-//! action), and the hot reload of an edited style in place.
+//! The probe's `ui:` commands (material, action), and the hot reload of
+//! an edited style in place.
 
-use super::{BUILDING, ui_of, with_ui};
 use crate::engine::{Engine, engine};
-use crate::host::wire::{self, ToJson};
-use og_ui::{ActionDesc, ActionTrigger, Device, SharedUi, Ui};
-use serde_json::Value;
-use std::cell::{Cell, RefCell};
+use crate::host::wire;
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 /// The styles one engine loaded: their cooked hashes, by load index (a
@@ -215,97 +212,6 @@ pub(crate) fn note_styles(eng: &Engine) {
     }
 }
 
-// ── og.ui: the layer stack, from anywhere ───────────────────────────────────
-
-fn on_ui<T>(world: u32, f: impl FnOnce(&mut Ui) -> T) -> Result<T, String> {
-    let ui: SharedUi = ui_of(world).ok_or("the world has no UI")?;
-    let mut g = ui.lock();
-    Ok(f(&mut g))
-}
-
-// ── og.ui: actions and glyphs ───────────────────────────────────────────────
-
-pub fn og_ui_define_action(world: u32, desc: Option<String>) -> Result<(), String> {
-    let d: crate::host::wire::UiActionDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
-    if d.name.is_empty() {
-        return Err("an action has a name".into());
-    }
-    let trigger = match d.trigger {
-        crate::host::wire::UiActionTrigger::Release => ActionTrigger::Release,
-        // A holdMs of 0 never holds (as ActionDesc.holdMs): og-ui counts the
-        // hold in ticks, and no press reaches an endless one.
-        crate::host::wire::UiActionTrigger::Hold => ActionTrigger::Hold(if d.hold_ms > 0.0 {
-            d.hold_ms
-        } else {
-            f32::INFINITY
-        }),
-        crate::host::wire::UiActionTrigger::Press => ActionTrigger::Press,
-    };
-    let desc = ActionDesc {
-        name: d.name,
-        keys: d.keys,
-        buttons: d.buttons,
-        trigger,
-        toggle: d.toggle,
-        label: d.label,
-        action: d.action,
-    };
-    match on_ui(world, |ui| ui.define_action(desc)) {
-        Ok(()) => Ok(()),
-        Err(e) => Err(e),
-    }
-}
-
-pub fn og_ui_action_fired(name: String) -> bool {
-    with_ui("og.ui.actionFired", |ui| ui.action(&name)).unwrap_or(false)
-}
-
-pub fn og_ui_action_held(name: String) -> bool {
-    with_ui("og.ui.actionHeld", |ui| ui.action_held(&name)).unwrap_or(false)
-}
-
-/// A UI action's glyph on the UI's device (IDL `ui.UiGlyph`).
-fn glyph_wire(ui: &Ui, action: &str) -> Option<crate::host::wire::UiGlyph> {
-    let g = ui.glyph(action)?;
-    Some(wire::UiGlyph {
-        icon: g.icon,
-        text: g.text,
-        device: wire::UiDevice::parse(ui.device().name()).unwrap_or_default(),
-    })
-}
-
-pub fn og_ui_glyph(world: u32, action: String) -> Option<crate::host::wire::UiGlyph> {
-    on_ui(world, |ui| glyph_wire(ui, &action)).ok().flatten()
-}
-
-pub fn og_ui_frame_glyph(action: String) -> Value {
-    let g = with_ui("og.ui.frameGlyph", |ui| glyph_wire(ui, &action)).flatten();
-    // Not a UI action: a gameplay action of og.input, on the device used
-    // last in the world whose frame is being built (an ability slot's key).
-    match (g, BUILDING.with(Cell::get)) {
-        (None, Some(world)) => crate::og_input_glyph(world, action, None).to_json(),
-        (g, _) => g.to_json(),
-    }
-}
-
-pub fn og_ui_device(world: u32) -> String {
-    on_ui(world, |ui| ui.device().name().to_string()).unwrap_or_else(|_| "keyboardMouse".into())
-}
-
-pub fn og_ui_set_device(world: u32, device: String) {
-    if let Some(d) = Device::from_name(&device) {
-        let _ = on_ui(world, |ui| {
-            if matches!(
-                d,
-                Device::Xbox | Device::PlayStation | Device::Switch | Device::Gamepad
-            ) {
-                ui.set_pad_family(d);
-            }
-            ui.set_device(d);
-        });
-    }
-}
-
 // ── live edits (Tune and the probe) ─────────────────────────────────────────
 
 // ── the probe's ui: commands ────────────────────────────────────────────────
@@ -339,8 +245,13 @@ fn command(engine_id: u32, args: &[String]) -> Result<(), String> {
             crate::present::ui_draw::tune_material(&eng, path, parameter, value)
         }
         "action" => {
-            let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
-            ui.lock().fire_action(&rest);
+            // The tree takes it at the next tick's end, as a fired action.
+            eng.render
+                .borrow_mut()
+                .ui_next
+                .get_or_insert_with(|| Box::new(crate::present::ui_next::Next::new()))
+                .fired
+                .push(rest);
             Ok(())
         }
         _ => Err(format!("'{verb}' is not a ui command; {USAGE}")),

@@ -1037,20 +1037,6 @@ export interface HostAbi<A, V> {
   og_ui_tick(): number;
   /** `og.ui.previewViewport` */
   og_ui_preview_viewport(world: number, viewport: string): void;
-  /** `og.ui.defineAction` */
-  og_ui_define_action(world: number, desc: string | undefined): string;
-  /** `og.ui.actionFired` */
-  og_ui_action_fired(name: string): boolean;
-  /** `og.ui.actionHeld` */
-  og_ui_action_held(name: string): boolean;
-  /** `og.ui.glyph` */
-  og_ui_glyph(world: number, action: string): string;
-  /** `og.ui.frameGlyph` */
-  og_ui_frame_glyph(action: string): string;
-  /** `og.ui.device` */
-  og_ui_device(world: number): string;
-  /** `og.ui.setDevice` */
-  og_ui_set_device(world: number, device: string): void;
   /** `og.commands.register` */
   og_commands_register(name: string, handler: number, desc: string | undefined): string;
   /** `og.commands.parse` */
@@ -1804,13 +1790,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_set_haptics",
   "og_ui_tick",
   "og_ui_preview_viewport",
-  "og_ui_define_action",
-  "og_ui_action_fired",
-  "og_ui_action_held",
-  "og_ui_glyph",
-  "og_ui_frame_glyph",
-  "og_ui_device",
-  "og_ui_set_device",
   "og_commands_register",
   "og_commands_parse",
   "og_commands_help",

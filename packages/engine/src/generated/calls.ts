@@ -854,13 +854,6 @@ export const og = Object.freeze({
     setHaptics: (intensity: number): void => abi().og_ui_set_haptics(intensity),
     tick: (): number => abi().og_ui_tick(),
     previewViewport: (world: { readonly id: number }, viewport: unknown): void => abi().og_ui_preview_viewport(world.id, JSON.stringify(viewport ?? null)),
-    defineAction: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_ui_define_action(world.id, json(desc))) as unknown,
-    actionFired: (name: string): boolean => abi().og_ui_action_fired(name),
-    actionHeld: (name: string): boolean => abi().og_ui_action_held(name),
-    glyph: (world: { readonly id: number }, action: string): unknown => JSON.parse(abi().og_ui_glyph(world.id, action)) as unknown,
-    frameGlyph: (action: string): unknown => JSON.parse(abi().og_ui_frame_glyph(action)) as unknown,
-    device: (world: { readonly id: number }): string => abi().og_ui_device(world.id),
-    setDevice: (world: { readonly id: number }, device: string): void => abi().og_ui_set_device(world.id, device),
   }),
   commands: Object.freeze({
     register: (name: string, handler: Function, desc?: unknown): unknown => custom.commands.register(name, handler, desc),

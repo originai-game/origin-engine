@@ -2377,9 +2377,11 @@ selects maps; `isActionDown` reads the down state, `isActionJustPressed`
 and `isActionJustReleased` tick edges; `isActionHeld` keeps its `holdMs`
 threshold; physical controls keep their W3C codes. The UI's pointer,
 gestures and actions use the same words (`down`, `justPressed`,
-`justReleased`, `held` after `holdMs`; the conventions guide §3):
-`og.ui.actionFired` is the tick a UI action fires, `og.ui.actionHeld` its
-hold.
+`justReleased`, `held` after `holdMs`; the conventions guide §3). The
+UI's own actions (confirm, back, tabNext, tabPrev, details, rotate) are
+og-input actions in the `ui` action map, live behind the maps
+`setActionMaps` names: the player rebinds them as any action, and a
+`<Glyph>` shows a rebinding on the next frame.
 
 ### 3.3 Assets and generation
 

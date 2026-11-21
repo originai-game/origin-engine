@@ -70,17 +70,6 @@ module ui {
 | [`UiCollectionDesc`](ui/type-UiCollectionDesc.md) | struct |  | A keyed collection's identity rule. |
 | [`UiScope`](ui/type-UiScope.md) | interface |  | Named presentation stores for one world, following the svelte/store contract. |
 | [`og.ui.scope`](ui/fn-scope.md) | function | `(world: World, id: string): UiScope` | The entry to named svelte/store-compatible presentation data and retained document mounts. |
-| [`UiActionTrigger`](ui/type-UiActionTrigger.md) | enum |  | When a UI action fires. |
-| [`UiActionDesc`](ui/type-UiActionDesc.md) | desc struct |  | A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key. |
-| [`UiDevice`](ui/type-UiDevice.md) | enum |  | The device a glyph set is for: the one the player used last. |
-| [`UiGlyph`](ui/type-UiGlyph.md) | struct |  | An action's control on the device used last. |
-| [`og.ui.defineAction`](ui/fn-defineAction.md) | function | `(world: World, desc?: UiActionDesc): Result<void>` | Define (or redefine) a UI action. |
-| [`og.ui.actionFired`](ui/fn-actionFired.md) | function | `(name: string): boolean` | The action fired this tick: on its press, its release or once its hold is reached, as its trigger says (a document's `on action` fires on the top layer that takes input). |
-| [`og.ui.actionHeld`](ui/fn-actionHeld.md) | function | `(name: string): boolean` | A hold action is held: down for its holdMs, or its toggle is on. |
-| [`og.ui.glyph`](ui/fn-glyph.md) | function | `(world: World, action: string): UiGlyph \| null` | An action's glyph on the device used last: its first binding there. |
-| [`og.ui.frameGlyph`](ui/fn-frameGlyph.md) | function | `(action: string): UiGlyph \| null` | An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. |
-| [`og.ui.device`](ui/fn-device.md) | function | `(world: World): UiDevice` | The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer. |
-| [`og.ui.setDevice`](ui/fn-setDevice.md) | function | `(world: World, device: UiDevice): void` | Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on. |
 
 ## Column kinds
 

@@ -6,7 +6,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `og.input.defineAction`
 
-Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it.
+Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it. The UI's actions (confirm, back, tabNext, tabPrev, details, rotate) are defined already, in the `ui` action map, which stays live behind the maps setActionMaps names; redefine one to change its defaults.
 
 Also known as: input action, InputAction, Godot InputMap action, key binding
 
@@ -25,7 +25,7 @@ Binding symbol `og_input_define_action` · publish builds: kept
 
 ```ogt
 fn defineAction {
-  doc "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it."
+  doc "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it. The UI's actions (confirm, back, tabNext, tabPrev, details, rotate) are defined already, in the `ui` action map, which stays live behind the maps setActionMaps names; redefine one to change its defaults."
   aliases "input action, InputAction, Godot InputMap action, key binding"
   param world World "The world."
   param desc ActionDesc "The action."

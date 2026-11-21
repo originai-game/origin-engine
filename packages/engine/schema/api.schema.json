@@ -3936,7 +3936,7 @@
         },
         {
           "name": "defineAction",
-          "doc": "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it.",
+          "doc": "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it. The UI's actions (confirm, back, tabNext, tabPrev, details, rotate) are defined already, in the `ui` action map, which stays live behind the maps setActionMaps names; redefine one to change its defaults.",
           "params": [
             {
               "name": "world",
@@ -12463,11 +12463,7 @@
         "UiMaterial",
         "VectorArt",
         "UiMaterial",
-        "UiCollectionDesc",
-        "UiActionTrigger",
-        "UiActionDesc",
-        "UiDevice",
-        "UiGlyph"
+        "UiCollectionDesc"
       ],
       "consts": [],
       "functions": [
@@ -12699,122 +12695,6 @@
           "returns": "UiScope",
           "publish": true,
           "host": false
-        },
-        {
-          "name": "defineAction",
-          "doc": "Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB), details (X, Y) and rotate (R, X) are defined by default.",
-          "params": [
-            {
-              "name": "world",
-              "type": "World",
-              "optional": false,
-              "doc": "The world."
-            },
-            {
-              "name": "desc",
-              "type": "UiActionDesc",
-              "optional": true,
-              "doc": "The action."
-            }
-          ],
-          "returns": "Result<Void>",
-          "publish": true
-        },
-        {
-          "name": "actionFired",
-          "doc": "The action fired this tick: on its press, its release or once its hold is reached, as its trigger says (a document's `on action` fires on the top layer that takes input). A bool, where og.input.action answers an action's whole state.",
-          "params": [
-            {
-              "name": "name",
-              "type": "String",
-              "optional": false,
-              "doc": "The action."
-            }
-          ],
-          "returns": "bool",
-          "publish": true
-        },
-        {
-          "name": "actionHeld",
-          "doc": "A hold action is held: down for its holdMs, or its toggle is on.",
-          "params": [
-            {
-              "name": "name",
-              "type": "String",
-              "optional": false,
-              "doc": "The action."
-            }
-          ],
-          "returns": "bool",
-          "publish": true
-        },
-        {
-          "name": "glyph",
-          "doc": "An action's glyph on the device used last: its first binding there. Null for an unknown action or one with no binding on that device.",
-          "params": [
-            {
-              "name": "world",
-              "type": "World",
-              "optional": false,
-              "doc": "The world."
-            },
-            {
-              "name": "action",
-              "type": "String",
-              "optional": false,
-              "doc": "The action."
-            }
-          ],
-          "returns": "Option<UiGlyph>",
-          "publish": true
-        },
-        {
-          "name": "frameGlyph",
-          "doc": "An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. A name that is no UI action answers as og.input.glyph does for the world whose frame is being built (a gameplay action an ability slot names). Null for an unknown action, one with no binding on that device, or outside a frame being built.",
-          "params": [
-            {
-              "name": "action",
-              "type": "String",
-              "optional": false,
-              "doc": "The action."
-            }
-          ],
-          "returns": "Option<UiGlyph>",
-          "publish": true
-        },
-        {
-          "name": "device",
-          "doc": "The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer.",
-          "params": [
-            {
-              "name": "world",
-              "type": "World",
-              "optional": false,
-              "doc": "The world."
-            }
-          ],
-          "returns": "UiDevice",
-          "publish": true
-        },
-        {
-          "name": "setDevice",
-          "doc": "Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on.",
-          "params": [
-            {
-              "name": "world",
-              "type": "World",
-              "optional": false,
-              "doc": "The world."
-            },
-            {
-              "name": "device",
-              "type": "UiDevice",
-              "optional": false,
-              "doc": "The device."
-            }
-          ],
-          "returns": "Void",
-          "publish": true
         }
       ],
       "interfaces": [
@@ -18897,7 +18777,7 @@
     "InputDevice": {
       "x-og-kind": "enum",
       "x-og-module": "input",
-      "description": "A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. og.ui's UiDevice has the same values.",
+      "description": "A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is.",
       "type": "string",
       "enum": [
         "keyboardMouse",
@@ -46470,127 +46350,6 @@
           "description": "The row field containing a nonempty string key; empty means id."
         }
       },
-      "additionalProperties": false
-    },
-    "UiActionTrigger": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "When a UI action fires.",
-      "type": "string",
-      "enum": [
-        "press",
-        "release",
-        "hold"
-      ],
-      "x-og-variants": {
-        "press": "When a binding goes down.",
-        "release": "When it comes up.",
-        "hold": "When it has been held holdMs."
-      }
-    },
-    "UiActionDesc": {
-      "x-og-kind": "desc",
-      "x-og-module": "ui",
-      "description": "A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key. A field left out takes its default: an action with only a name and its keys or buttons fires on their press.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Its name: confirm, back, tabNext, tabPrev, details, or the game's own.",
-          "default": ""
-        },
-        "keys": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Key codes (KeyboardEvent.code: `Enter`, `KeyE`).",
-          "default": []
-        },
-        "buttons": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`).",
-          "default": []
-        },
-        "trigger": {
-          "$ref": "#/$defs/UiActionTrigger",
-          "description": "When it fires.",
-          "default": "press"
-        },
-        "holdMs": {
-          "type": "number",
-          "description": "How long it is down before a hold fires and og.ui.actionHeld answers true (0: never, as ActionDesc.holdMs; a toggle's taps still turn it on and off).",
-          "default": 500,
-          "minimum": 0,
-          "x-og-unit": "ms"
-        },
-        "toggle": {
-          "type": "boolean",
-          "description": "A hold's toggle alternative (XAG 107): a tap turns it on, the next tap off; og.ui.actionHeld answers true between.",
-          "default": false
-        },
-        "label": {
-          "type": "string",
-          "description": "What it says when no document gives it a hint.",
-          "default": ""
-        },
-        "action": {
-          "type": "string",
-          "description": "A gameplay action (og.input.defineAction) it follows instead of keys and buttons: it is down when that action is, and its glyph is that action's binding on the device used last, so the player's rebinding moves the prompt too. Empty: keys and buttons.",
-          "default": ""
-        }
-      },
-      "additionalProperties": false
-    },
-    "UiDevice": {
-      "x-og-kind": "enum",
-      "x-og-module": "ui",
-      "description": "The device a glyph set is for: the one the player used last.",
-      "type": "string",
-      "enum": [
-        "keyboardMouse",
-        "xbox",
-        "playstation",
-        "switch",
-        "gamepad",
-        "touch"
-      ],
-      "x-og-variants": {
-        "keyboardMouse": "Keyboard and mouse.",
-        "xbox": "An Xbox pad.",
-        "playstation": "A PlayStation pad.",
-        "switch": "A Nintendo Switch pad (south is B).",
-        "gamepad": "A generic standard-mapping pad.",
-        "touch": "A touch screen."
-      }
-    },
-    "UiGlyph": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "An action's control on the device used last.",
-      "type": "object",
-      "properties": {
-        "icon": {
-          "type": "string",
-          "description": "The icon a style's set draws: `key.enter`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `touch.<action>`."
-        },
-        "text": {
-          "type": "string",
-          "description": "The text that names it: `Enter`, `A`, `×`."
-        },
-        "device": {
-          "$ref": "#/$defs/UiDevice",
-          "description": "The device it is for."
-        }
-      },
-      "required": [
-        "icon",
-        "text",
-        "device"
-      ],
       "additionalProperties": false
     },
     "CoreAction": {

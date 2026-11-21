@@ -34,17 +34,12 @@ mod widgets;
 pub(crate) use widgets::emit;
 mod game_widgets;
 use crate::{present::art, present::extract, world::assets};
-use game_widgets::ui_of;
 pub use game_widgets::{
     og_ui_feedback, og_ui_preview_viewport, og_ui_set_haptics, og_ui_set_virtual_cursor,
     og_ui_tick, og_ui_virtual_cursor,
 };
 
 pub(crate) mod docs;
-pub use docs::{
-    og_ui_action_fired, og_ui_action_held, og_ui_define_action, og_ui_device, og_ui_frame_glyph,
-    og_ui_glyph, og_ui_set_device,
-};
 /// The tick's camera and anchored entities the UI reads (docs/ui.md §1).
 pub(crate) mod ui_world;
 

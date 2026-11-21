@@ -473,6 +473,10 @@ test("og.ui's frame answers are the tick's surface in units and its clock, resto
   }
 });
 
+// The UI's own actions are og-input's (the `ui` action map): a rebind of
+// confirm moves its prompt as a game action's does. Ways it could fail:
+// the glyph re-asked on another revision than og-input's bindings (the
+// rebind shows a frame late or never), or confirm not in og-input at all.
 test("a glyph prompt shows the player's rebinding on the next frame", () => {
   loadNativeHost();
   const game = og.game({
@@ -480,7 +484,7 @@ test("a glyph prompt shows the player's rebinding on the next frame", () => {
       og.input.defineAction(world, { name: "use", bindings: [{ control: "KeyE" }] });
     },
     ui(world) {
-      mount(world, () => Text({ glyph: "use" }), {});
+      mount(world, () => View({ children: [Text({ glyph: "use" }), Text({ glyph: "confirm" })] }), {});
     },
   });
   const created = createEngine(game as unknown as GameToken);
@@ -496,11 +500,13 @@ test("a glyph prompt shows the player's rebinding on the next frame", () => {
     };
     engine.advance(3);
     // No pack art in this project: the binding's label in its place.
-    expect(shown()).toEqual(["E"]);
+    expect(shown()).toEqual(["E", "Enter"]);
     const r = og.input.rebind(engine.world, { action: "use", slot: 0, binding: { control: "KeyQ" } } as never);
     expect(r.ok).toBe(true);
-    engine.advance(2);
-    expect(shown()).toEqual(["Q"]);
+    const c = og.input.rebind(engine.world, { action: "confirm", slot: 0, binding: { control: "KeyF" } } as never);
+    expect(c.ok).toBe(true);
+    engine.advance(1);
+    expect(shown()).toEqual(["Q", "F"]);
   } finally {
     renderers.delete(id);
     engine.destroy();

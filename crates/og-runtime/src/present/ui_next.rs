@@ -146,8 +146,11 @@ pub(crate) struct Next {
     /// surface (zones, the probe's and the mirror's boxes) is scaled by it.
     unit: f32,
     /// The device whose bindings the `<Glyph>` nodes show, and the
-    /// bindings' revision they show ([`og_ui::Ui::bindings_rev`]).
-    device: Option<(og_ui::Device, u64)>,
+    /// bindings' revision they show ([`og_input::ActionMap::bindings_rev`]).
+    device: Option<(og_input::Device, u64)>,
+    /// UI actions the probe fired between ticks (`ui:action`): the tree
+    /// takes them at the next tick's end.
+    pub(crate) fired: Vec<String>,
     /// The left stick's held direction and when it moves the focus again.
     stick: Option<(og_input::frame::Nav, f64)>,
 }
@@ -633,6 +636,28 @@ impl Next {
     }
 }
 
+/// Action `name`'s glyph on `device`: its first binding there; on touch,
+/// where it has none, its label under the `touch.<name>` icon.
+pub(crate) fn glyph_of(
+    map: &og_input::ActionMap,
+    name: &str,
+    device: og_input::Device,
+) -> Option<og_input::Glyph> {
+    let parts = map.glyphs(name, Some(device)).unwrap_or_default();
+    og_input::combined_glyph(&parts, device).or_else(|| {
+        let label = map
+            .infos()
+            .into_iter()
+            .find(|a| a.desc.name == name)?
+            .desc
+            .label;
+        (device == og_input::Device::Touch).then(|| og_input::Glyph {
+            icon: format!("touch.{name}"),
+            text: label,
+        })
+    })
+}
+
 /// Engine `engine`'s UI frame, as og.ui.begin recorded it last; the
 /// default without the engine.
 fn frame_of(engine: u32) -> crate::bind::modules::UiFrame {
@@ -687,6 +712,7 @@ impl Next {
             font: false,
             device: None,
             stick: None,
+            fired: Vec::new(),
             language: String::new(),
             a11y: og_ui_next::a11y::Tree::new(),
             fresh: false,
@@ -1207,9 +1233,26 @@ impl Next {
         // surface: a press and a release over one element click it.
         let input = &frame.input;
         let mut done = Vec::new();
+        // og-input's actions this tick: the UI's built-in ones (`ui`
+        // context) and the game's, the device used last and the bindings'
+        // revision.
+        let map = crate::engine::engine(engine)
+            .ok()
+            .and_then(|eng| eng.state.borrow().actions.clone());
+        let map = map.as_ref().map(og_input::actions::lock);
+        let device = map
+            .as_ref()
+            .map_or(og_input::Device::KeyboardMouse, |m| m.device());
+        let rev = map.as_ref().map_or(0, |m| m.bindings_rev());
+        let state = |name: &str| map.as_ref().and_then(|m| m.state(name)).unwrap_or_default();
+        let mut fired: Vec<String> = std::mem::take(&mut self.fired);
+        for a in og_input::ui_actions() {
+            if state(&a.name).pressed && !fired.contains(&a.name) {
+                fired.push(a.name);
+            }
+        }
         // A finger pans what scrolls and long-presses.
-        let device = ui.device();
-        tree.set_device(device == og_ui::Device::Touch, device.is_pad());
+        tree.set_device(device == og_input::Device::Touch, device.is_pad());
         // A pad's virtual cursor turns pad 0 into this pointer while it
         // shows (its A the button, its right stick the wheel).
         let g = &input.gamepad;
@@ -1251,7 +1294,7 @@ impl Next {
             for code in &input.keys_pressed {
                 tree.key(code, input.shift, input.ctrl, input.alt, input.meta);
             }
-            for name in ui.fired_actions() {
+            for name in &fired {
                 if !(a_taken && name == "confirm") {
                     tree.action(name);
                 }
@@ -1313,15 +1356,16 @@ impl Next {
                     Some((dir, time + f64::from(slow) / 1000.0))
                 }
             };
-            tree.input_done(ui.action_down("confirm") && !a_taken);
-            // A rebind shows on the next frame, as a device change does.
-            let shown = (device, ui.bindings_rev());
+            tree.input_done(state("confirm").down && !a_taken);
+            // A rebind shows on the next frame, as a device change does:
+            // og-input's bindings revision moves with every rebind.
+            let shown = (device, rev);
             if tree.glyphs_wanted() || self.device != Some(shown) {
                 self.device = Some(shown);
                 let icons = &self.icons;
                 tree.set_glyphs(&|action| {
-                    ui.glyph(action)
-                        .map(|g| (g.text, icons.get(&g.icon).copied().unwrap_or(0)))
+                    let g = map.as_ref().and_then(|m| glyph_of(m, action, device))?;
+                    Some((g.text, icons.get(&g.icon).copied().unwrap_or(0)))
                 });
             }
         }

@@ -2533,41 +2533,6 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
 }
 
-#[wasm_bindgen]
-pub fn og_ui_define_action(world: u32, desc: Option<String>) -> String {
-    <Host as UiApi>::og_ui_define_action(&Host, world, desc)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_action_fired(name: String) -> bool {
-    <Host as UiApi>::og_ui_action_fired(&Host, name)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_action_held(name: String) -> bool {
-    <Host as UiApi>::og_ui_action_held(&Host, name)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_glyph(world: u32, action: String) -> String {
-    <Host as UiApi>::og_ui_glyph(&Host, world, action)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_frame_glyph(action: String) -> String {
-    <Host as UiApi>::og_ui_frame_glyph(&Host, action)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_device(world: u32) -> String {
-    <Host as UiApi>::og_ui_device(&Host, world)
-}
-
-#[wasm_bindgen]
-pub fn og_ui_set_device(world: u32, device: String) {
-    <Host as UiApi>::og_ui_set_device(&Host, world, device)
-}
-
 #[cfg(not(feature = "publish"))]
 #[wasm_bindgen]
 pub fn og_commands_register(name: String, handler: u32, desc: Option<String>) -> String {

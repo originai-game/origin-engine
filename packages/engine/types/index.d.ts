@@ -3265,7 +3265,7 @@ export interface PauseIntent {
 }
 
 /**
- * A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. og.ui's UiDevice has the same values.
+ * A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is.
  * - `"keyboardMouse"`: Keyboard and mouse.
  * - `"xbox"`: An Xbox pad (and the family a pad whose kind the host could not tell is drawn as).
  * - `"playstation"`: A PlayStation pad.
@@ -26243,102 +26243,6 @@ export interface UiScope {
 }
 
 
-/**
- * When a UI action fires.
- * - `"press"`: When a binding goes down.
- * - `"release"`: When it comes up.
- * - `"hold"`: When it has been held holdMs.
- */
-export type UiActionTrigger = "press" | "release" | "hold";
-
-/**
- * A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key. A field left out takes its default: an action with only a name and its keys or buttons fires on their press.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface UiActionDesc {
-  /**
-   * Its name: confirm, back, tabNext, tabPrev, details, or the game's own.
-   *
-   * @default ""
-   */
-  readonly name?: string;
-  /**
-   * Key codes (KeyboardEvent.code: `Enter`, `KeyE`).
-   *
-   * @default []
-   */
-  readonly keys?: readonly string[];
-  /**
-   * Standard-mapping pad buttons (GamepadButton's names: `a`, `rightBumper`).
-   *
-   * @default []
-   */
-  readonly buttons?: readonly string[];
-  /**
-   * When it fires.
-   *
-   * @default "press"
-   */
-  readonly trigger?: UiActionTrigger;
-  /**
-   * How long it is down before a hold fires and og.ui.actionHeld answers true (0: never, as ActionDesc.holdMs; a toggle's taps still turn it on and off).
-   *
-   * @default 500
-   * @range 0..
-   * @unit ms (milliseconds)
-   */
-  readonly holdMs?: number;
-  /**
-   * A hold's toggle alternative (XAG 107): a tap turns it on, the next tap off; og.ui.actionHeld answers true between.
-   *
-   * @default false
-   */
-  readonly toggle?: boolean;
-  /**
-   * What it says when no document gives it a hint.
-   *
-   * @default ""
-   */
-  readonly label?: string;
-  /**
-   * A gameplay action (og.input.defineAction) it follows instead of keys and buttons: it is down when that action is, and its glyph is that action's binding on the device used last, so the player's rebinding moves the prompt too. Empty: keys and buttons.
-   *
-   * @default ""
-   */
-  readonly action?: string;
-}
-
-/**
- * The device a glyph set is for: the one the player used last.
- * - `"keyboardMouse"`: Keyboard and mouse.
- * - `"xbox"`: An Xbox pad.
- * - `"playstation"`: A PlayStation pad.
- * - `"switch"`: A Nintendo Switch pad (south is B).
- * - `"gamepad"`: A generic standard-mapping pad.
- * - `"touch"`: A touch screen.
- */
-export type UiDevice = "keyboardMouse" | "xbox" | "playstation" | "switch" | "gamepad" | "touch";
-
-/** An action's control on the device used last. */
-export interface UiGlyph {
-  /**
-   * The icon a style's set draws: `key.enter`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `touch.<action>`.
-   */
-  readonly icon: string;
-  /** The text that names it: `Enter`, `A`, `×`. */
-  readonly text: string;
-  /** The device it is for. */
-  readonly device: UiDevice;
-}
-
-
-
-
-
-
-
-
 // ── systems ─────────────────────────────────────────────────────
 // Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.
 
@@ -33717,7 +33621,7 @@ export declare namespace og {
      */
     function replayIntent(world: World, intent: RecordedIntent): Result<void>;
     /**
-     * Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it.
+     * Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it. The UI's actions (confirm, back, tabNext, tabPrev, details, rotate) are defined already, in the `ui` action map, which stays live behind the maps setActionMaps names; redefine one to change its defaults.
      *
      * @param world The world.
      * @param desc The action.
@@ -37045,51 +36949,6 @@ export declare namespace og {
      * @param id An explicit, nonempty stable scope name.
      */
     function scope(world: World, id: string): UiScope;
-    /**
-     * Define (or redefine) a UI action. confirm (Enter, Space, A), back (Escape, B), tabNext (E, ], RB), tabPrev (Q, [, LB), details (X, Y) and rotate (R, X) are defined by default.
-     *
-     * @param world The world.
-     * @param desc The action.
-     */
-    function defineAction(world: World, desc?: UiActionDesc): Result<void>;
-    /**
-     * The action fired this tick: on its press, its release or once its hold is reached, as its trigger says (a document's `on action` fires on the top layer that takes input). A bool, where og.input.action answers an action's whole state.
-     *
-     * @param name The action.
-     */
-    function actionFired(name: string): boolean;
-    /**
-     * A hold action is held: down for its holdMs, or its toggle is on.
-     *
-     * @param name The action.
-     */
-    function actionHeld(name: string): boolean;
-    /**
-     * An action's glyph on the device used last: its first binding there. Null for an unknown action or one with no binding on that device.
-     *
-     * @param world The world.
-     * @param action The action.
-     */
-    function glyph(world: World, action: string): UiGlyph | null;
-    /**
-     * An action's glyph on the device used last, as og.ui.glyph answers it, without the world: for a component that shows a prompt (a tab row's bumpers, the action bar) and only builds UI. It follows the device live (keyboard, Xbox, PlayStation, Switch, a generic pad, touch) and the player's rebinding. A name that is no UI action answers as og.input.glyph does for the world whose frame is being built (a gameplay action an ability slot names). Null for an unknown action, one with no binding on that device, or outside a frame being built.
-     *
-     * @param action The action.
-     */
-    function frameGlyph(action: string): UiGlyph | null;
-    /**
-     * The device the player used last (glyphs follow it live): a key or the mouse, a pad of the family set with og.ui.setDevice (Xbox by default), or a touch on a coarse pointer.
-     *
-     * @param world The world.
-     */
-    function device(world: World): UiDevice;
-    /**
-     * Set the device (the host's when it knows: a pad's family from its id); a pad family also becomes what pad input shows from then on.
-     *
-     * @param world The world.
-     * @param device The device.
-     */
-    function setDevice(world: World, device: UiDevice): void;
   }
   /**
    * Systems the engine ships as TypeScript: game-level code, listed explicitly in GameDesc.systems like the game's own, so the schedule (and dump_world) shows them and nothing runs that the game did not ask for.

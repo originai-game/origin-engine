@@ -1,11 +1,6 @@
 use super::*;
 use crate::host::wire;
 
-/// The UI of an engine, for calls that work between ticks too.
-pub(super) fn ui_of(world: u32) -> Option<SharedUi> {
-    engine(world).ok()?.state.borrow().ui.clone()
-}
-
 pub fn og_ui_feedback(event: String, rise: f64) {
     let Some(e) = og_ui::tokens::SoundEvent::from_name(&event) else {
         return;

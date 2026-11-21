@@ -3039,48 +3039,6 @@ pub fn og_ui_preview_viewport(env: Env, world: u32, viewport: String) {
     <Host as UiApi>::og_ui_preview_viewport(&Host, world, viewport)
 }
 
-#[napi(js_name = "og_ui_define_action")]
-pub fn og_ui_define_action(env: Env, world: u32, desc: Option<String>) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_define_action(&Host, world, desc)
-}
-
-#[napi(js_name = "og_ui_action_fired")]
-pub fn og_ui_action_fired(env: Env, name: String) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_action_fired(&Host, name)
-}
-
-#[napi(js_name = "og_ui_action_held")]
-pub fn og_ui_action_held(env: Env, name: String) -> bool {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_action_held(&Host, name)
-}
-
-#[napi(js_name = "og_ui_glyph")]
-pub fn og_ui_glyph(env: Env, world: u32, action: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_glyph(&Host, world, action)
-}
-
-#[napi(js_name = "og_ui_frame_glyph")]
-pub fn og_ui_frame_glyph(env: Env, action: String) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_frame_glyph(&Host, action)
-}
-
-#[napi(js_name = "og_ui_device")]
-pub fn og_ui_device(env: Env, world: u32) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_device(&Host, world)
-}
-
-#[napi(js_name = "og_ui_set_device")]
-pub fn og_ui_set_device(env: Env, world: u32, device: String) {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as UiApi>::og_ui_set_device(&Host, world, device)
-}
-
 #[cfg(not(feature = "publish"))]
 #[napi(js_name = "og_commands_register")]
 pub fn og_commands_register(env: Env, name: String, handler: u32, desc: Option<String>) -> String {

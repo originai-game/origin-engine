@@ -49,7 +49,7 @@ module input {
   # ── actions (docs/design.md §3; og-input's actions.rs) ──────────────────
 
   enum InputDevice {
-    doc "A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. og.ui's UiDevice has the same values."
+    doc "A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is."
     variant keyboardMouse "Keyboard and mouse."
     variant xbox "An Xbox pad (and the family a pad whose kind the host could not tell is drawn as)."
     variant playstation "A PlayStation pad."
@@ -297,7 +297,7 @@ module input {
   }
 
   fn defineAction {
-    doc "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it."
+    doc "Define (or redefine) a gameplay action. A redefinition keeps the player's bindings while they fit it, and its state while its kind stays. Callable anywhere (GameDesc.start, a system); the map is world state, so snapshots carry it. The UI's actions (confirm, back, tabNext, tabPrev, details, rotate) are defined already, in the `ui` action map, which stays live behind the maps setActionMaps names; redefine one to change its defaults."
     aliases "input action, InputAction, Godot InputMap action, key binding"
     param world World "The world."
     param desc ActionDesc "The action."

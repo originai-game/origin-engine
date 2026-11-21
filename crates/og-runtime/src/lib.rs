@@ -97,12 +97,11 @@ pub use bind::i18n::{
 };
 pub use bind::modules::{
     og_load_style, og_physics_overlap, og_physics_project_point, og_physics_raycast,
-    og_physics_raycast_all, og_physics_set_mesh, og_physics_shape_cast, og_ui_action_fired,
-    og_ui_action_held, og_ui_configure, og_ui_define_action, og_ui_device, og_ui_feedback,
-    og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_glyph, og_ui_frame_pointer,
-    og_ui_frame_theme, og_ui_frame_viewport, og_ui_glyph, og_ui_has_icon, og_ui_preview_viewport,
-    og_ui_seconds, og_ui_set_device, og_ui_set_haptics, og_ui_set_virtual_cursor, og_ui_theme,
-    og_ui_tick, og_ui_viewport, og_ui_virtual_cursor, set_viewport,
+    og_physics_raycast_all, og_physics_set_mesh, og_physics_shape_cast, og_ui_configure,
+    og_ui_feedback, og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer,
+    og_ui_frame_theme, og_ui_frame_viewport, og_ui_has_icon, og_ui_preview_viewport, og_ui_seconds,
+    og_ui_set_haptics, og_ui_set_virtual_cursor, og_ui_theme, og_ui_tick, og_ui_viewport,
+    og_ui_virtual_cursor, set_viewport,
 };
 pub use bind::motion::{
     og_motion_capabilities, og_motion_clear, og_motion_face, og_motion_jump, og_motion_look_at,

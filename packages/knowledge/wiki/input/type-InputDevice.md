@@ -6,7 +6,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `InputDevice` (enum)
 
-A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. og.ui's UiDevice has the same values.
+A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is.
 
 A string: one of the variants below. The zero value is `"keyboardMouse"`.
 
@@ -21,7 +21,7 @@ A string: one of the variants below. The zero value is `"keyboardMouse"`.
 
 ```ogt
 enum InputDevice {
-  doc "A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. og.ui's UiDevice has the same values."
+  doc "A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is."
   variant keyboardMouse "Keyboard and mouse."
   variant xbox "An Xbox pad (and the family a pad whose kind the host could not tell is drawn as)."
   variant playstation "A PlayStation pad."

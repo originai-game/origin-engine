@@ -106,3 +106,4 @@
     param id String "An explicit, nonempty stable scope name."
     returns UiScope
   }
+}

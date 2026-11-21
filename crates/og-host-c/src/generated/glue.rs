@@ -2534,41 +2534,6 @@ unsafe extern "C" fn og_ui_preview_viewport(args: *const crate::OgValue, out: *m
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_ui_define_action(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_define_action(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_action_fired(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_action_fired(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_action_held(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_action_held(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_glyph(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_glyph(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_frame_glyph(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_frame_glyph(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_device(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_device(&Host, unsafe { crate::arg(args, 0) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
-unsafe extern "C" fn og_ui_set_device(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_set_device(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
 #[cfg(not(feature = "publish"))]
 unsafe extern "C" fn og_commands_register(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as CommandsApi>::og_commands_register(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
@@ -3839,13 +3804,6 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_ui_set_haptics", arity: 1, call: og_ui_set_haptics },
     crate::Symbol { name: c"og_ui_tick", arity: 0, call: og_ui_tick },
     crate::Symbol { name: c"og_ui_preview_viewport", arity: 2, call: og_ui_preview_viewport },
-    crate::Symbol { name: c"og_ui_define_action", arity: 2, call: og_ui_define_action },
-    crate::Symbol { name: c"og_ui_action_fired", arity: 1, call: og_ui_action_fired },
-    crate::Symbol { name: c"og_ui_action_held", arity: 1, call: og_ui_action_held },
-    crate::Symbol { name: c"og_ui_glyph", arity: 2, call: og_ui_glyph },
-    crate::Symbol { name: c"og_ui_frame_glyph", arity: 1, call: og_ui_frame_glyph },
-    crate::Symbol { name: c"og_ui_device", arity: 1, call: og_ui_device },
-    crate::Symbol { name: c"og_ui_set_device", arity: 2, call: og_ui_set_device },
     #[cfg(not(feature = "publish"))]
     crate::Symbol { name: c"og_commands_register", arity: 3, call: og_commands_register },
     #[cfg(not(feature = "publish"))]

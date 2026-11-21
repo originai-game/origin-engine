@@ -1137,20 +1137,6 @@ pub trait UiApi: Wire {
     fn og_ui_tick(&self) -> u32;
     /// `og.ui.previewViewport`
     fn og_ui_preview_viewport(&self, world: u32, viewport: String);
-    /// `og.ui.defineAction`
-    fn og_ui_define_action(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.ui.actionFired`
-    fn og_ui_action_fired(&self, name: String) -> bool;
-    /// `og.ui.actionHeld`
-    fn og_ui_action_held(&self, name: String) -> bool;
-    /// `og.ui.glyph`
-    fn og_ui_glyph(&self, world: u32, action: String) -> String;
-    /// `og.ui.frameGlyph`
-    fn og_ui_frame_glyph(&self, action: String) -> String;
-    /// `og.ui.device`
-    fn og_ui_device(&self, world: u32) -> String;
-    /// `og.ui.setDevice`
-    fn og_ui_set_device(&self, world: u32, device: String);
 }
 
 /// `commands`: packages/knowledge/wiki/commands.md.
@@ -1981,13 +1967,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_set_haptics",
     "og_ui_tick",
     "og_ui_preview_viewport",
-    "og_ui_define_action",
-    "og_ui_action_fired",
-    "og_ui_action_held",
-    "og_ui_glyph",
-    "og_ui_frame_glyph",
-    "og_ui_device",
-    "og_ui_set_device",
     "og_commands_register",
     "og_commands_parse",
     "og_commands_help",

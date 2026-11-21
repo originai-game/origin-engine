@@ -56,28 +56,6 @@ macro_rules! __og_host_bindings_ui {
             fn og_ui_preview_viewport(&self, world: u32, viewport: String) {
                 $crate::og_ui_preview_viewport(world, viewport)
             }
-
-            fn og_ui_define_action(&self, world: u32, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_ui_define_action(world, desc))
-            }
-            fn og_ui_action_fired(&self, name: String) -> bool {
-                $crate::og_ui_action_fired(name)
-            }
-            fn og_ui_action_held(&self, name: String) -> bool {
-                $crate::og_ui_action_held(name)
-            }
-            fn og_ui_glyph(&self, world: u32, action: String) -> String {
-                $crate::host_impl::json($crate::og_ui_glyph(world, action))
-            }
-            fn og_ui_frame_glyph(&self, action: String) -> String {
-                $crate::host_impl::json($crate::og_ui_frame_glyph(action))
-            }
-            fn og_ui_device(&self, world: u32) -> String {
-                $crate::og_ui_device(world)
-            }
-            fn og_ui_set_device(&self, world: u32, device: String) {
-                $crate::og_ui_set_device(world, device)
-            }
         }
 
         impl $crate::host_impl::api::I18nApi for $host {

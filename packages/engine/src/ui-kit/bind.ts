@@ -35,7 +35,6 @@ export const widgets = {
   frameViewport: (): Api.Viewport => parsedOnce("viewport", abi().og_ui_frame_viewport()),
   frameTheme: (): Api.UiTheme => parsedOnce("theme", abi().og_ui_frame_theme()),
   framePointer: (): Api.UiPointer => parse(abi().og_ui_frame_pointer()),
-  frameGlyph: (action: string): Api.UiGlyph | null => parse(abi().og_ui_frame_glyph(action)),
   hasIcon: (name: string): boolean => abi().og_ui_has_icon(name),
   seconds: (): number => abi().og_ui_seconds(),
   // A pad's virtual cursor.
@@ -45,12 +44,4 @@ export const widgets = {
   tick: (): number => abi().og_ui_tick(),
   previewViewport: (world: Api.World, viewport: Api.Viewport | null): void =>
     abi().og_ui_preview_viewport(worldId(world), JSON.stringify(viewport ?? null)),
-  // The UI's actions and glyphs.
-  defineAction: (world: Api.World, desc?: Api.UiActionDesc): Api.Result<void> =>
-    parse(abi().og_ui_define_action(worldId(world), json(desc))),
-  actionFired: (name: string): boolean => abi().og_ui_action_fired(name),
-  actionHeld: (name: string): boolean => abi().og_ui_action_held(name),
-  glyph: (world: Api.World, action: string): Api.UiGlyph | null => parse(abi().og_ui_glyph(worldId(world), action)),
-  device: (world: Api.World): Api.UiDevice => abi().og_ui_device(worldId(world)) as Api.UiDevice,
-  setDevice: (world: Api.World, device: Api.UiDevice): void => abi().og_ui_set_device(worldId(world), device),
 };
