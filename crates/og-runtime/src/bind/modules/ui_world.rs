@@ -44,6 +44,34 @@ impl Feed {
         d
     }
 
+    /// An entity's world pose by its bits, its parents' transforms applied;
+    /// `None` for a dead one or one without a transform.
+    pub(crate) fn world_pose(
+        ctx: &og_ecs::SystemContext<'_>,
+        bits: u64,
+    ) -> Option<og_core::math::Pose> {
+        let e = Entity::from_bits(bits);
+        if !ctx.is_alive(e) {
+            return None;
+        }
+        let pose = |e: Entity| {
+            ctx.get::<Transform>(e)
+                .ok()
+                .map(|t| (t.position, t.quaternion, t.scale))
+        };
+        let local = pose(e)?;
+        Some(og_core::math::world_pose(
+            e,
+            local,
+            |c| {
+                ctx.get::<Parent>(c)
+                    .ok()
+                    .map(|p| Entity::from_bits(p.entity))
+            },
+            pose,
+        ))
+    }
+
     /// The tick's camera and the poses of the entities this frame's anchors
     /// and panels sit on, handed to the UI before it ends.
     pub(crate) fn before_end(&self, ctx: &og_ecs::SystemContext<'_>, ui: &mut Ui) {
@@ -62,31 +90,9 @@ impl Feed {
         if wanted.is_empty() {
             return;
         }
-        let pose = |e: Entity| {
-            ctx.get::<Transform>(e)
-                .ok()
-                .map(|t| (t.position, t.quaternion, t.scale))
-        };
         let poses: Vec<(u64, og_core::math::Pose)> = wanted
             .into_iter()
-            .filter_map(|bits| {
-                let e = Entity::from_bits(bits);
-                if !ctx.is_alive(e) {
-                    return None;
-                }
-                let local = pose(e)?;
-                let p = og_core::math::world_pose(
-                    e,
-                    local,
-                    |c| {
-                        ctx.get::<Parent>(c)
-                            .ok()
-                            .map(|p| Entity::from_bits(p.entity))
-                    },
-                    pose,
-                );
-                Some((bits, p))
-            })
+            .filter_map(|bits| Some((bits, Self::world_pose(ctx, bits)?)))
             .collect();
         ui.set_world_poses(&poses);
     }
