@@ -33,6 +33,8 @@ export interface RpgBackpackProps {
   onTabNext?: (e: UiEvent, key?: string) => void;
   /** The tabPrev event, with the row's key where it comes from a row. */
   onTabPrev?: (e: UiEvent, key?: string) => void;
+  /** A tile dropped on another: the dragged item's key and the target's. A locked tile is not picked up; the dragged tile goes home, and the game reorders, swaps or stacks as it sees fit. */
+  onMove?: (e: UiEvent, move: { dragged: string; target: string }) => void;
 }
 
 /**
@@ -41,15 +43,15 @@ export interface RpgBackpackProps {
  * tiles and a footer with the carried weight. The game owns what a
  * category holds, the order and every number; the bag reports choose (an
  * item's key), choosetab (a category's key), tabNext and tabPrev. A tile
+ * drags onto another (a locked one stays put) and the bag reports move
+ * with { dragged, target }, the two items' keys. A tile
  * shows its rarity as its bar along the foot and its tags; its stack,
  * Equipped, New, Locked and Broken sit in its corners, each named in
  * words for a screen reader, Broken also on the tile. The selected tile
  * wears corner brackets. The grid fills the height it is given and
  * scrolls inside it.
  *
- * Dropped from the .svelte: the tiles' drag onto another (the move report
- * with { dragged, target }; drag-and-drop needs a primitive the TSX port
- * has not got yet), the load bar's lean (skew is not a class the record
+ * Dropped from the .svelte: the load bar's lean (skew is not a class the record
  * draws), and the tile's light rising from its foot (a cut shape takes
  * one bg colour).
  */
@@ -117,7 +119,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
           <View class="grid grid-cols-[repeat(auto-fill,minmax(5.143rem,1fr))] w-full p-1 gap-0.5 compact:grid-cols-5" role="grid" label={props.title}>
             <For each={props.items} key={(i) => i.id}>
               {(i) => (
-              <View class={`group/cell text-fg transition duration-317 w-full aspect-square min-w-11 p-0.5 data-active:scale-96 data-down:opacity-45`} role="gridcell" selected={i().id === props.selected} label={i().name} onPress={(e) => props.onChoose?.(e, i().id)} data-selected={i().id === props.selected} data-tier-uncommon={(i().rarity || 'common') === "uncommon"} data-tier-rare={(i().rarity || 'common') === "rare"} data-tier-epic={(i().rarity || 'common') === "epic"} data-tier-legendary={(i().rarity || 'common') === "legendary"} data-tier-mythic={(i().rarity || 'common') === "mythic"}>
+              <View class={`group/cell text-fg transition duration-317 w-full aspect-square min-w-11 p-0.5 data-active:scale-96 data-down:opacity-45`} role="gridcell" selected={i().id === props.selected} label={i().name} onPress={(e) => props.onChoose?.(e, i().id)} draggable={i().locked ? undefined : i().id} dropTarget={i().id} onDrop={(e) => { if (e.key !== i().id) props.onMove?.(e, { dragged: e.key, target: i().id }); }} data-selected={i().id === props.selected} data-tier-uncommon={(i().rarity || 'common') === "uncommon"} data-tier-rare={(i().rarity || 'common') === "rare"} data-tier-epic={(i().rarity || 'common') === "epic"} data-tier-legendary={(i().rarity || 'common') === "legendary"} data-tier-mythic={(i().rarity || 'common') === "mythic"}>
                 <View class={`grow shrink basis-0 justify-center items-center w-full bg-tile border-[1.5px] border-common nine-plate-cut gap-0 hover:border-rim-strong group-data-selected/cell:border-[#38e8ff] data-tier-uncommon:border-uncommon data-tier-rare:border-rare data-tier-epic:border-epic data-tier-legendary:border-legendary data-tier-mythic:border-mythic ${packClass("Slot", "frame")}`}>
                   <Icon class="size-[68%]" name={i().icon} />
                   <View class="absolute bottom-0 h-0.75 bg-current inset-x-[0.571rem] text-common data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic" />
