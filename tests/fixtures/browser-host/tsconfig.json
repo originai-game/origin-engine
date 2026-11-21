@@ -15,7 +15,7 @@
     "jsx": "preserve",
     "paths": {
       "@origingame/engine": ["./.og/engine/types/index.d.ts"],
-      "@origingame/engine/ui": ["./.og/engine/src/ui/index.ts"],
+      "@origingame/engine/ui": ["./.og/engine/types/ui.d.ts"],
       "@origingame/engine/ui/components": ["./.og/engine/src/ui/components/index.tsx"],
       "@origingame/engine/playtest": ["./.og/engine/src/playtest.ts"],
       "bun:test": ["./.og/engine/vendor/bun-types/test.d.ts"],
