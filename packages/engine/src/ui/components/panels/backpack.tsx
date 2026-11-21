@@ -71,7 +71,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
           </Text>
         </View>
         <Show when={props.gold}>
-          <View class={`flex-row items-center pr-2 pl-0.5 bg-well/62 py-0.5 gap-1 nine-chip-cut text-fg ${packClass("Chip", "frame")}`} label={t("rpg.backpack.gold", { gold: props.gold })}>
+          <View class={`flex-row items-center pr-2 pl-0.5 bg-well py-0.5 gap-1 nine-chip-cut text-fg ${packClass("Chip", "frame")}`} label={t("rpg.backpack.gold", { gold: props.gold })}>
             <Icon class="size-[1.571rem] text-gold" name="coin" />
             <Text class={`tabular-nums whitespace-nowrap font-bold shrink`}>
               {props.gold}
@@ -89,7 +89,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
                 <View class={`flex-row items-center justify-center group/tab text-fg-muted transition duration-317 min-h-11 py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={c().id === props.tab} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.tab}>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
-                    <Text class={`text-[0.857rem] font-bold bg-material-edge text-fg-subtle py-0 px-1 nine-chip-cut group-data-selected/tab:bg-none group-data-selected/tab:bg-hud-accent group-data-selected/tab:text-hud-accent-fg ${packClass("Chip", "frame")}`}>
+                    <Text class={`text-[0.857rem] font-bold text-fg-subtle py-0 px-1 nine-chip-cut group-data-selected/tab:bg-none group-data-selected/tab:bg-hud-accent group-data-selected/tab:text-hud-accent-fg ${packClass("Chip", "frame")}`}>
                       {formatNumber(c().count)}
                     </Text>
                   </Show>

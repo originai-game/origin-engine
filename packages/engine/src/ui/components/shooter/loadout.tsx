@@ -71,7 +71,7 @@ export function Loadout(props: LoadoutProps) {
                   <For each={(props.slots ?? []).filter((s) => s.category == c().id)} key={(s) => s.id}>
                     {(s) => (
                       <View
-                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut bg-entry-lo hover:bg-entry-hi data-selected:bg-select-hi data-selected:inset-ring-2 data-selected:inset-ring-hud-accent disabled:opacity-100 disabled:text-fg-muted transition duration-317`}
+                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut hover:bg-surface-hover ${s().id == props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} data-selected:inset-ring-2 data-selected:inset-ring-hud-accent disabled:opacity-100 disabled:text-fg-muted transition duration-317`}
                         role="button"
                         label={s().name}
                         pressed={s().id == props.selected}
@@ -110,7 +110,7 @@ export function Loadout(props: LoadoutProps) {
             )}
           </For>
           <Show when={(props.slots ?? []).length == 0}>
-            <Text class="text-[1.143rem] text-fg/66">{t("shooter.loadout.empty")}</Text>
+            <Text class="text-[1.143rem] text-fg-muted">{t("shooter.loadout.empty")}</Text>
           </Show>
           </View>
         </Scroll>

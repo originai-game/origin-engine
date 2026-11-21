@@ -55,7 +55,7 @@ export function TooltipCard(props: TooltipCardProps) {
   return (
     <View class="flex-row flex-wrap items-start max-w-full text-fg gap-2 compact:flex-col-reverse compact:flex-nowrap compact:items-stretch" role="tooltip" label={props.title} description={props.body}>
       <Show when={props.compareTitle !== ""}>
-        <View class={`bg-linear-to-b from-raised-pressed/84 to-plate-lo/95 shadow-[inset_0px_0px_0px_1px_#ffffff1f,inset_0px_1px_0px_#ffffff66] text-fg w-[21.429rem] max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
+        <View class={`bg-linear-to-b from-raised-pressed to-plate-lo shadow-[inset_0px_0px_0px_1px_#ffffff1f,inset_0px_1px_0px_#ffffff66] text-fg w-[21.429rem] max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
           <Text class="font-semibold text-xs leading-snug text-fg-subtle tracking-[0.14em] uppercase">
             {props.compareTitle}
           </Text>

@@ -8,7 +8,7 @@ const keyCap = `shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none`;
 
 /** A change chip: the delta in the trend's colour with its triangle; plain (no trend) it is muted type with no ground. */
 const deltaChip =
-  "group/delta flex-row items-center font-bold text-fg-muted py-0 px-1 gap-0.5 data-trend-up:text-success data-trend-up:bg-success/14 data-trend-down:text-danger data-trend-down:bg-danger/14";
+  "group/delta flex-row items-center font-bold text-fg-muted py-0 px-1 gap-0.5 data-trend-up:text-boon-fg data-trend-up:bg-success data-trend-down:text-foe-fg data-trend-down:bg-danger";
 
 export interface RpgItemCardProps {
   /** The item's name. */
@@ -77,7 +77,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
       data-tier-legendary={tier() === "legendary"}
       data-tier-mythic={tier() === "mythic"}
     >
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class="shrink w-full gap-1 overflow-auto">
         <View class="w-full gap-0 compact:flex-row compact:items-center compact:gap-2">
           <View class={`group/hero justify-center items-center w-full text-common group-data-tier-uncommon/card:text-uncommon group-data-tier-rare/card:text-rare group-data-tier-epic/card:text-epic group-data-tier-legendary/card:text-legendary group-data-tier-mythic/card:text-mythic border-b border-rim-soft gap-2 compact:relative compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-auto compact:border-0 compact:text-fg`}>
@@ -106,7 +106,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
         </View>
         <For each={props.lead}>
           {(s) => (
-            <View class="flex-row flex-wrap items-end nine-plate-cut bg-entry-lo py-2 px-3 gap-x-3 gap-y-0.5" label={s().label}>
+            <View class="flex-row flex-wrap items-end nine-plate-cut bg-glass py-2 px-3 gap-x-3 gap-y-0.5" label={s().label}>
               <View class="grow gap-0.5">
                 <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle">{s().label}</Text>
                 <View class="flex-row items-center flex-wrap gap-1">
@@ -150,7 +150,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
             </View>
             <For each={props.stats}>
               {(s) => (
-                <View class="flex-row items-center gap-y-0.5 gap-x-1 text-fg transition duration-317 flex-wrap min-h-[2.857rem] border-t border-rim-soft py-0.5 hover:bg-white/6" role="row">
+                <View class="flex-row items-center gap-y-0.5 gap-x-1 text-fg transition duration-317 flex-wrap min-h-[2.857rem] border-t border-rim-soft py-0.5 hover:bg-surface-hover" role="row">
                   <View class="flex-row items-center grow shrink basis-[5.714rem] text-fg-muted gap-1">
                     <Icon class="size-6" name={s().icon} />
                     <Text class="shrink" role="rowheader">{s().label}</Text>

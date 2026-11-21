@@ -38,7 +38,7 @@ export interface RpgCharacterProps {
 export function RpgCharacter(props: RpgCharacterProps) {
   return (
     <View
-      class={`group/sheet flex-col text-fg p-4 nine-panel-cut bg-glass/96 compact:p-2 ${packClass("Panel", "frame")}`}
+      class={`group/sheet flex-col text-fg p-4 nine-panel-cut bg-glass compact:p-2 ${packClass("Panel", "frame")}`}
       label={props.title !== "" ? props.title : props.name}
       data-narrow={props.compact}
       data-dense={props.dense}
@@ -59,11 +59,11 @@ export function RpgCharacter(props: RpgCharacterProps) {
                 {props.name}
               </Text>
               <Text
-                class={`max-w-full text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg/78`}
+                class={`max-w-full text-xs leading-[1.3] font-semibold tracking-[0.14em] uppercase text-fg-muted`}
               >
                 {props.line}
               </Text>
-              <View class={`w-full h-px bg-white/14`} role="separator" />
+              <View class={`w-full h-px bg-lit`} role="separator" />
             </View>
           </View>
       }>
@@ -157,8 +157,8 @@ export function RpgCharacter(props: RpgCharacterProps) {
               {(a) => (
               <Show when={a().group === "a"}>
                 <View class={`flex-row items-center gap-2 py-1 shadow-[inset_0px_-1px_0px_#ffffff24]`} role="row">
-                  <Icon class={`text-fg/78 size-[1.143rem] shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
-                  <Text class={`min-w-0 grow text-caption font-semibold text-fg/78`} role="rowheader">
+                  <Icon class={`text-fg-muted size-[1.143rem] shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
+                  <Text class={`min-w-0 grow text-caption font-semibold text-fg-muted`} role="rowheader">
                     {a().label}
                   </Text>
                   <Text class={`shrink-0 whitespace-nowrap text-lg font-bold tabular-nums`} role="cell">
@@ -175,8 +175,8 @@ export function RpgCharacter(props: RpgCharacterProps) {
               {(a) => (
               <Show when={a().group === "b"}>
                 <View class={`flex-row items-center gap-2 py-1 shadow-[inset_0px_-1px_0px_#ffffff24]`} role="row">
-                  <Icon class={`text-fg/78 size-[1.143rem] shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
-                  <Text class={`min-w-0 grow text-caption font-semibold text-fg/78`} role="rowheader">
+                  <Icon class={`text-fg-muted size-[1.143rem] shrink-0 group-data-dense/sheet:hidden`} name={a().icon} />
+                  <Text class={`min-w-0 grow text-caption font-semibold text-fg-muted`} role="rowheader">
                     {a().label}
                   </Text>
                   <Text class={`shrink-0 whitespace-nowrap text-lg font-bold tabular-nums`} role="cell">

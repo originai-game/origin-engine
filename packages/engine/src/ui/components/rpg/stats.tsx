@@ -23,8 +23,8 @@ export function RpgStats(props: RpgStatsProps) {
             <For each={props.rows ?? []} key={(r) => r.id}>
               {(r) => r().group === g().id ? (
                 <View class={`flex-row items-center min-h-8 py-1 w-full shadow-[inset_0px_-1px_0px_0px_#ffffff24]`} role="row">
-                  <Icon class={`shrink size-4 text-fg/78`} name={r().icon} />
-                  <Text class={`grow min-w-0 text-caption font-semibold text-fg/78`} role="rowheader">{r().label}</Text>
+                  <Icon class={`shrink size-4 text-fg-muted`} name={r().icon} />
+                  <Text class={`grow min-w-0 text-caption font-semibold text-fg-muted`} role="rowheader">{r().label}</Text>
                   <Text class={`shrink whitespace-nowrap text-lg font-bold tabular-nums text-fg`} role="cell">{r().value}</Text>
                 </View>
               ) : null}
@@ -35,7 +35,7 @@ export function RpgStats(props: RpgStatsProps) {
     </View>
   );
   return (
-    <View class={`flex-col size-full p-4 compact:p-2 nine-panel-cut bg-raised-pressed/93 text-fg ${packClass("Panel", "frame")}`} label={props.title}>
+    <View class={`flex-col size-full p-4 compact:p-2 nine-panel-cut bg-raised-pressed text-fg ${packClass("Panel", "frame")}`} label={props.title}>
       <View class={`shrink flex-row items-center justify-center gap-3 w-full`}>
         <View class="shrink-0 w-12 h-4" />
         <Text class={`min-w-0 text-[1.714rem] leading-[1.1] font-bold tracking-[0.04em] uppercase text-fg text-center whitespace-normal`} role="heading" level={2}>
@@ -46,7 +46,7 @@ export function RpgStats(props: RpgStatsProps) {
       <Scroll class={`grow min-h-0 w-full`}>
         <View class={`flex-row flex-wrap items-stretch gap-3 w-full px-1`}>
           {column("a")}
-          <View class={`shrink-0 w-px self-stretch bg-white/14 compact:hidden`} />
+          <View class={`shrink-0 w-px self-stretch bg-lit compact:hidden`} />
           {column("b")}
         </View>
       </Scroll>

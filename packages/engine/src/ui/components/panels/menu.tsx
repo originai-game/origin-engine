@@ -1,9 +1,9 @@
 import { For, Icon, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import "./menu.en.ogt";
 
-/** One entry row: dim type washed in the HUD accent from its lit leading edge under the pointer, the keys or the focus; a disabled row faint and shadowless. */
+/** One entry row: dim type on the pack's row, lit by the hover ground and its leading edge under the pointer, the keys or the focus; a disabled row faint and shadowless. */
 const row =
-  "group/row transition duration-317 w-full h-auto min-h-[2.714rem] p-0 pointer-coarse:min-h-11 text-fg-muted hover:bg-transparent hover:bg-linear-to-r hover:from-hud-accent/24 hover:via-hud-accent/8 hover:via-55% hover:to-hud-accent/3 hover:text-fg hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] focus-visible:bg-transparent focus-visible:bg-linear-to-r focus-visible:from-hud-accent/24 focus-visible:via-hud-accent/8 focus-visible:via-55% focus-visible:to-hud-accent/3 focus-visible:text-fg focus-visible:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-transparent active:bg-linear-to-r active:from-hud-accent/34 active:via-hud-accent/12 active:via-55% active:to-transparent active:text-fg active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-danger:text-danger data-danger:hover:text-danger data-danger:focus-visible:text-danger disabled:data-danger:text-fg-subtle data-down:opacity-45";
+  `group/row transition duration-317 w-full h-auto min-h-[2.714rem] p-0 pointer-coarse:min-h-11 text-fg-muted hover:bg-surface-hover hover:text-fg hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] focus-visible:bg-surface-hover focus-visible:text-fg focus-visible:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] active:bg-surface-hover active:text-fg active:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-danger:text-danger data-danger:hover:text-danger data-danger:focus-visible:text-danger disabled:data-danger:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`;
 
 export interface MenuProps {
   /** Its entries, submenus' too, a keyed collection of { id, label, kind, icon, shortcut, checked, danger, disabled, parent, more }: kind item, check, radio, separator or header; icon an icon name before the label (empty: none); shortcut shown at the end (Ctrl+S); checked a check or radio entry is on; danger a destructive command in the danger ink; disabled shown but inert; parent the id of the entry whose submenu it is in (empty: the top level); more it opens a submenu (a chevron at its end). */
@@ -32,7 +32,7 @@ export interface MenuProps {
  */
 export function Menu(props: MenuProps) {
   return (
-    <View class={`pt-1 pb-2 bg-linear-to-b from-raised-pressed/96 to-glass-lo shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c,0px_20.576px_45.712px_#00000099] text-fg min-w-[17.143rem] max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
+    <View class={`pt-1 pb-2 bg-linear-to-b from-raised-pressed to-glass-lo shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c,0px_20.576px_45.712px_#00000099] text-fg min-w-[17.143rem] max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
       <Show when={props.submenu !== ""}>
         <View class={row} role="menuitem" label={t("component.menu.back")} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center w-full gap-2">

@@ -10,9 +10,10 @@ const keyCap = `shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none`;
 const socket =
   "relative flex-row items-center justify-center nine-plate-cut bg-tile group-data-tier-uncommon/row:text-uncommon group-data-tier-rare/row:text-rare group-data-tier-epic/row:text-epic group-data-tier-legendary/row:text-legendary group-data-tier-mythic/row:text-mythic";
 
-/** One good's row: its rarity on the leading edge, washed flat in the HUD accent when chosen. */
+/** One good's row: its rarity on the leading edge, lit by the hover ground and the pack's selected row when chosen. */
 const goodRow =
-  "group/row w-full min-h-11 pr-2 pl-3 py-1 nine-plate-cut bg-entry-lo border-l-3 border-transparent transition duration-317 hover:bg-entry-hi focus-visible:bg-hud-accent/24 focus-visible:border-hud-accent data-selected:bg-hud-accent/24 data-selected:border-hud-accent group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-down:opacity-45";
+  (selected: boolean) =>
+  `group/row w-full min-h-11 pr-2 pl-3 py-1 nine-plate-cut border-l-3 border-transparent transition duration-317 hover:bg-surface-hover focus-visible:border-hud-accent ${selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-down:opacity-45`;
 
 export interface RpgTradeProps {
   /** The merchant or trade title; empty uses Trade. */
@@ -67,7 +68,7 @@ export function RpgTrade(props: RpgTradeProps) {
       label={props.title || t("rpg.trade.title")}
       busy={locked()}
     >
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class="shrink flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3">
         <View class="grow shrink basis-0 gap-0.5 compact:basis-full">
           <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap">
@@ -85,10 +86,10 @@ export function RpgTrade(props: RpgTradeProps) {
           disabled={locked()}
           onPress={(e) => props.onSwitchMode?.(e)}
         >
-          <Text class="text-fg-muted py-1 px-2 rounded-control data-on:text-fg data-on:bg-white/8 data-on:shadow-[inset_0px_1px_0px_#ffffff33]" data-on={!selling()}>
+          <Text class="text-fg-muted py-1 px-2 rounded-control data-on:text-fg data-on:bg-raised-hi data-on:shadow-[inset_0px_1px_0px_#ffffff33]" data-on={!selling()}>
             {t("rpg.trade.buy")}
           </Text>
-          <Text class="text-fg-muted py-1 px-2 rounded-control data-on:text-fg data-on:bg-white/8 data-on:shadow-[inset_0px_1px_0px_#ffffff33]" data-on={selling()}>
+          <Text class="text-fg-muted py-1 px-2 rounded-control data-on:text-fg data-on:bg-raised-hi data-on:shadow-[inset_0px_1px_0px_#ffffff33]" data-on={selling()}>
             {t("rpg.trade.sell")}
           </Text>
         </View>
@@ -100,7 +101,7 @@ export function RpgTrade(props: RpgTradeProps) {
         </Show>
       </View>
       <Show when={props.error}>
-        <Text class="text-danger bg-danger/12 shadow-[inset_3px_0px_0px_#ff9599] py-1 px-2 m-0" role="alert">
+        <Text class="text-danger shadow-[inset_3px_0px_0px_#ff9599] py-1 px-2 m-0" role="alert">
           {props.error}
         </Text>
       </Show>
@@ -121,7 +122,7 @@ export function RpgTrade(props: RpgTradeProps) {
           <For each={goods()}>
             {(good) => (
               <View
-                class={goodRow}
+                class={goodRow(good().id === props.selected)}
                 role="option"
                 selected={good().id === props.selected}
                 disabled={locked()}

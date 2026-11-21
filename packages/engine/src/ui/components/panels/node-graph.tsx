@@ -38,7 +38,7 @@ export function NodeGraph(props: NodeGraphProps) {
   let last: [number, number] | null = null;
   return (
     <View
-      class="relative grow self-stretch min-h-[13.714rem] min-w-0 overflow-hidden bg-glass/88 border border-white/12"
+      class="relative grow self-stretch min-h-[13.714rem] min-w-0 overflow-hidden bg-glass border border-white/12"
       role="group"
       label={props.name || t("component.node-graph.name")}
       valueText={t("component.node-graph.zoom", { zoom: props.zoom ?? 1 })}

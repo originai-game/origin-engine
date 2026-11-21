@@ -51,7 +51,7 @@ export function ShooterEffects(props: ShooterEffectsProps) {
                 <Image class="absolute inset-[0.143rem] rounded-tl-[0.357rem]" src={e().icon ?? 0} />
               </Show>
               <Show when={(e().remaining ?? -1) >= 0}>
-                <View class="absolute inset-0 nine-tile bg-black/55" wipe={1 - Math.min(Math.max(e().remaining ?? 0, 0), 1)} wipeCcw />
+                <View class="absolute inset-0 nine-tile bg-scrim" wipe={1 - Math.min(Math.max(e().remaining ?? 0, 0), 1)} wipeCcw />
               </Show>
             </View>
             <Show when={e().label}>

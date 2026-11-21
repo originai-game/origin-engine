@@ -57,7 +57,7 @@ export function RpgLoot(props: RpgLootProps) {
       busy={loading() || busy()}
       onAction={{ back: (e) => props.onClose?.(e) }}
     >
-      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-white/55 to-transparent to-70% pointer-events-none" />
+      <View class="absolute left-4 right-[30%] top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class="shrink border-b border-rim-soft w-full py-1 px-4 gap-0.5">
         <Text class="text-xs font-semibold tracking-[0.18em] uppercase text-fg-subtle whitespace-nowrap">
           {items().length ? t("rpg.loot.kicker", { count: formatNumber(items().length) }) : t("rpg.loot.title")}
@@ -67,7 +67,7 @@ export function RpgLoot(props: RpgLootProps) {
         </Text>
       </View>
       <Show when={props.error}>
-        <Text class="text-danger bg-danger/12 shadow-[inset_3px_0px_0px_#ff9599] py-1 px-2 m-0" role="alert">
+        <Text class="text-danger shadow-[inset_3px_0px_0px_#ff9599] py-1 px-2 m-0" role="alert">
           {props.error}
         </Text>
       </Show>
@@ -88,7 +88,7 @@ export function RpgLoot(props: RpgLootProps) {
           <For each={items()}>
             {(item) => (
               <View
-                class={`group/row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut bg-entry-lo border-l-3 border-transparent hover:bg-entry-hi focus-within:bg-hud-accent/14 focus-within:border-hud-accent transition duration-317 group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic`}
+                class={`group/row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut border-l-3 border-transparent hover:bg-surface-hover focus-within:border-hud-accent transition duration-317 ${packClass("Row", "frame")} group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic`}
                 data-not-available={!item().available}
                 data-tier-common={(item().rarity || "common") === "common"}
                 data-tier-uncommon={(item().rarity || "common") === "uncommon"}
