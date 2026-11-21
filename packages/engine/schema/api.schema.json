@@ -19976,7 +19976,7 @@
     "InputBinding": {
       "x-og-kind": "desc",
       "x-og-module": "input",
-      "description": "One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot.\nControls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch` and `touch.xy`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive.\nSee `input §1`.",
+      "description": "One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot.\nControls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive.\nSee `input §1`.",
       "type": "object",
       "properties": {
         "control": {
@@ -20033,15 +20033,8 @@
         },
         "zone": {
           "$ref": "#/$defs/TouchZone",
-          "description": "`touch`, `touch.xy`: where a touch must start to count (empty: anywhere).",
+          "description": "`touch`: where a touch must start to count (empty: anywhere).",
           "default": {}
-        },
-        "radius": {
-          "type": "number",
-          "description": "`touch.xy`: how far a touch drags for a full deflection (0: 64).",
-          "default": 0,
-          "minimum": 0,
-          "x-og-unit": "cssPx"
         }
       },
       "additionalProperties": false
@@ -20464,7 +20457,7 @@
       "properties": {
         "icon": {
           "type": "string",
-          "description": "The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.stick`."
+          "description": "The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.tap`."
         },
         "text": {
           "type": "string",

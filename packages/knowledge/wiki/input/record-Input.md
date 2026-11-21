@@ -188,7 +188,7 @@ resource Input {
 }
 ```
 
-<sub>Module `input` line 773</sub>
+<sub>Module `input` line 769</sub>
 
 <a id="member-Input-down"></a>
 
@@ -216,7 +216,7 @@ fn down {
 }
 ```
 
-<sub>Module `input` line 853</sub>
+<sub>Module `input` line 849</sub>
 
 <a id="member-Input-justPressed"></a>
 
@@ -244,7 +244,7 @@ fn justPressed {
 }
 ```
 
-<sub>Module `input` line 858</sub>
+<sub>Module `input` line 854</sub>
 
 <a id="member-Input-justReleased"></a>
 
@@ -272,7 +272,7 @@ fn justReleased {
 }
 ```
 
-<sub>Module `input` line 863</sub>
+<sub>Module `input` line 859</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -302,7 +302,7 @@ fn axis {
 }
 ```
 
-<sub>Module `input` line 868</sub>
+<sub>Module `input` line 864</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -336,7 +336,7 @@ fn axis2 {
 }
 ```
 
-<sub>Module `input` line 874</sub>
+<sub>Module `input` line 870</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -364,7 +364,7 @@ fn buttonDown {
 }
 ```
 
-<sub>Module `input` line 882</sub>
+<sub>Module `input` line 878</sub>
 
 <a id="member-Input-buttonJustPressed"></a>
 
@@ -392,7 +392,7 @@ fn buttonJustPressed {
 }
 ```
 
-<sub>Module `input` line 887</sub>
+<sub>Module `input` line 883</sub>
 
 <a id="member-Input-buttonJustReleased"></a>
 
@@ -420,4 +420,4 @@ fn buttonJustReleased {
 }
 ```
 
-<sub>Module `input` line 892</sub>
+<sub>Module `input` line 888</sub>

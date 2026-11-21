@@ -92,7 +92,7 @@ module input {
 
   struct InputBinding {
     doc "One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot."
-    doc "Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch` and `touch.xy`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive."
+    doc "Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive."
     guide "input §1"
     desc true
     field control String "The control; empty for a composite or an unbound slot."
@@ -110,11 +110,7 @@ module input {
       min 0
       max 0.95
     }
-    field zone TouchZone "`touch`, `touch.xy`: where a touch must start to count (empty: anywhere)."
-    field radius f32 "`touch.xy`: how far a touch drags for a full deflection (0: 64)." {
-      min 0
-      unit cssPx
-    }
+    field zone TouchZone "`touch`: where a touch must start to count (empty: anywhere)."
   }
 
   struct ActionDesc {
@@ -237,7 +233,7 @@ module input {
 
   struct InputGlyph {
     doc "A control's glyph, for prompts and a controls screen."
-    field icon String "The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.stick`."
+    field icon String "The icon a style's set draws: `key.space`, `mouse.left`, `xbox.a`, `ps.cross`, `switch.b`, `pad.south`, `xbox.stickL`, `key.wasd`, `touch.tap`."
     field text String "The text that names it: `Space`, `LMB`, `A`, `×`, `L Stick`, `W A S D`."
     field device InputDevice "The device it is drawn for."
     field control String "The control it names (a composite's: its parts', space-separated)."

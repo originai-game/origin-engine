@@ -42,4 +42,4 @@ struct GamepadInput {
 }
 ```
 
-<sub>Module `input` line 700</sub>
+<sub>Module `input` line 696</sub>

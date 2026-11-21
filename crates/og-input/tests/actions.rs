@@ -402,13 +402,18 @@ fn finger(action: og_input::PointerAction, id: u32, x: f32, y: f32) -> InjectedI
 /// would: a stick from the zone's centre (not where the finger landed),
 /// a d-pad's eight ways, a button with its edges, each keeping the finger
 /// that started on it, none taking one that started elsewhere; and the
-/// zones, session state like the surface, survive a restore.
+/// zones, session state like the surface, survive a restore. What each
+/// shows reads back for the UI: the knob where the finger is, held inside
+/// the ring, and each control's own pointer while two are held at once. A
+/// floating stick centres where its finger landed.
 ///
 /// Ways it could fail: the stick read from the touch's start (a floating
 /// stick: zero on a press off-centre); y left screen-down; no rescale past
 /// the dead zone (a jump at its edge); a finger that slides off dropping
 /// the stick; a touch that starts elsewhere and slides over a button
-/// firing it; zones lost by a restore, or saved into the world hash.
+/// firing it; zones lost by a restore, or saved into the world hash; a
+/// knob that stays put or leaves the ring; a second finger's press shown on
+/// the first's control; a floating stick reading its landing as a push.
 #[test]
 fn on_screen_controls_feed_their_actions() {
     use og_input::PointerAction::{Down, Move, Up};
@@ -417,6 +422,7 @@ fn on_screen_controls_feed_their_actions() {
         action("move", ActionKind::Axis2, vec![]),
         action("dir", ActionKind::Axis2, vec![]),
         action("jump", ActionKind::Button, vec![Binding::control("Space")]),
+        action("aim", ActionKind::Axis2, vec![]),
     ];
     let mut rig = Rig::new(&defs);
     let zone = |action: &str, kind, x, y, size| ControlZone {
@@ -427,7 +433,12 @@ fn on_screen_controls_feed_their_actions() {
         width: size,
         height: size,
         dead_zone: 0.0,
+        floating: false,
     };
+    let shown = |rig: &Rig| -> Vec<og_input::ZoneState> {
+        rig.map.lock().unwrap().zone_states().copied().collect()
+    };
+    let v = og_core::glam::Vec2::new;
     let zones = vec![
         zone("move", ZoneKind::Stick, 0.0, 500.0, 200.0),
         zone("dir", ZoneKind::Pad, 300.0, 500.0, 150.0),
@@ -442,6 +453,13 @@ fn on_screen_controls_feed_their_actions() {
     let k = (2f32.sqrt() / 2.0 - 0.15) / 0.85 / 2f32.sqrt();
     assert!(close(m.vector.x, k) && close(m.vector.y, k), "{m:?}");
     assert_eq!(m.device, Device::Touch);
+    let s = shown(&rig);
+    assert_eq!(
+        (s[0].pointer, s[0].knob),
+        (Some(1), v(50.0, -50.0)),
+        "{s:?}"
+    );
+    assert_eq!((s[1].pointer, s[2].pointer), (None, None), "{s:?}");
     // A touch that started elsewhere slides over the button: nothing.
     rig.tick(&[
         finger(Down, 2, 700.0, 100.0),
@@ -458,6 +476,9 @@ fn on_screen_controls_feed_their_actions() {
     assert!(close(m.vector.x, 1.0) && close(m.vector.y, 0.0), "{m:?}");
     let j = rig.state("jump");
     assert!(j.down && j.pressed, "{j:?}");
+    let s = shown(&rig);
+    assert_eq!((s[0].pointer, s[0].knob), (Some(1), v(100.0, 0.0)), "{s:?}");
+    assert_eq!((s[2].pointer, s[2].value), (Some(3), v(1.0, 0.0)), "{s:?}");
     // Restored from a snapshot, the map keeps its zones.
     let snap = rig.world.snapshot();
     rig.world.restore(&snap).unwrap();
@@ -469,6 +490,22 @@ fn on_screen_controls_feed_their_actions() {
     // In the pad's middle: no direction.
     rig.tick(&[finger(Move, 4, 380.0, 570.0)]);
     assert_eq!(rig.state("dir").vector, og_core::glam::Vec2::ZERO);
+    let s = shown(&rig);
+    assert_eq!((s[1].pointer, s[1].value), (Some(4), v(0.0, 0.0)), "{s:?}");
+    // A floating stick: the finger's landing is its centre, then a drag.
+    rig.map.lock().unwrap().set_zones(vec![ControlZone {
+        floating: true,
+        ..zone("aim", ZoneKind::Stick, 600.0, 200.0, 200.0)
+    }]);
+    rig.tick(&[finger(Up, 4, 380.0, 570.0), finger(Down, 2, 650.0, 250.0)]);
+    assert_eq!(rig.state("aim").vector, og_core::glam::Vec2::ZERO);
+    assert_eq!(shown(&rig)[0].centre, v(650.0, 250.0));
+    rig.tick(&[finger(Move, 2, 700.0, 250.0)]);
+    let a = rig.state("aim");
+    assert!(
+        close(a.vector.x, 0.35 / 0.85) && close(a.vector.y, 0.0),
+        "{a:?}"
+    );
     // The UI's zones gone, nothing reads.
     rig.map.lock().unwrap().set_zones(Vec::new());
     rig.tick(&[]);

@@ -1,0 +1,16 @@
+{
+  "breaking": [
+    {
+      "member": "og.input InputBinding",
+      "change": "The `touch.xy` control and InputBinding's `radius` are gone: touch sticks have one model, the on-screen stick the UI lays out (TouchControls, or a View with `touchStick`).",
+      "fix": "Drop a `touch.xy` binding and its `radius`, and put TouchControls (or a View with `touchStick` and the action) on the HUD instead.",
+      "find": ["touch.xy", "radius"]
+    }
+  ],
+  "fixed": [
+    {
+      "member": "TouchControls",
+      "summary": "The d-pad's dead middle is now the circle in its hub (0.4 of its radius), not the old document pad's 0.23, so a press on the hub reads no direction. A View's `deadZone` sets it on a `touchPad` as on a `touchStick`."
+    }
+  ]
+}
