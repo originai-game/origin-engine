@@ -313,11 +313,9 @@ wasm_product() {
 
 # Bind once per variant; the same bytes go to tests, packaging and size checks.
 wasm_bindgen_one() {
-  local raw="$1" name="$2" out=origin-engine lock have
+  local raw="$1" name="$2" out=origin-engine dir
   case "$name" in *-lanes*) out=origin-engine-lanes ;; esac
-  lock="$(og_lock_version wasm-bindgen)"
-  have="$(wasm-bindgen --version | awk '{print $2}')"
-  [ "$lock" = "$have" ] || { og_err "wasm-bindgen $have does not match Cargo.lock $lock"; return 1; }
+  check_bindgen_lock || return 1
   local dir="$OG_WASM_OUT/bindgen/$name"
   rm -rf "$dir"
   wasm_product bindgen "$name" "$raw" "$dir" \
@@ -446,24 +444,36 @@ step_engine_typecheck() {
   (cd packages/engine && "$OG_TARGET_DIR/debug/og" check tsconfig.runtime.json)
 }
 
+# The tools' pins, checked once: wasm-bindgen must equal Cargo.lock (the
+# same check `og doctor` reports and install-tools.sh installs; the shell
+# needs it before og is built, so preflight and the bind step share it).
+check_bindgen_lock() {
+  local lock have
+  lock="$(og_lock_version wasm-bindgen)" || return 1
+  have="$(wasm-bindgen --version | awk '{print $2}')"
+  [ "$lock" = "$have" ] || { og_err "wasm-bindgen $have does not match Cargo.lock $lock; run scripts/install-tools.sh"; return 1; }
+}
+
+# The Binaryen version install-tools.sh pins, for wasm-split and wasm-opt.
+check_binaryen() {
+  local version="${BINARYEN_VERSION:-$(sed -n 's/^BINARYEN_VERSION="${BINARYEN_VERSION:-\([0-9]*\)}"$/\1/p' scripts/install-tools.sh)}"
+  local tool
+  for tool in "$@"; do
+    [ "$("$tool" --version | awk '{print $3}')" = "$version" ] || {
+      og_err "$tool must match Binaryen $version; run scripts/install-tools.sh"
+      return 1
+    }
+  done
+}
+
 step_preflight() {
   case " ${OG_GATE_STEPS:-} " in
     *' wasm-bindgen '*)
       og_need wasm-bindgen || return 1
-      local lock
-      lock="$(og_lock_version wasm-bindgen)" || return 1
-      [ "$(wasm-bindgen --version | awk '{print $2}')" = "$lock" ] || {
-        og_err "wasm-bindgen must match Cargo.lock ($lock); run scripts/install-tools.sh"
-        return 1
-      }
+      check_bindgen_lock || return 1
       if [ "${OG_WASM_VARIANTS:-dev}" != dev ]; then
         og_need wasm-split || return 1
-        local split_version
-        split_version="${BINARYEN_VERSION:-$(sed -n 's/^BINARYEN_VERSION="${BINARYEN_VERSION:-\([0-9]*\)}"$/\1/p' scripts/install-tools.sh)}"
-        [ "$(wasm-split --version | awk '{print $3}')" = "$split_version" ] || {
-          og_err "wasm-split must match Binaryen $split_version; run scripts/install-tools.sh"
-          return 1
-        }
+        check_binaryen wasm-split || return 1
       fi ;;
   esac
   case " ${OG_GATE_STEPS:-} " in
