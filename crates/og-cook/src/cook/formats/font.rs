@@ -18,6 +18,7 @@ use crate::ktx2;
 use og_blob::BlobWriter;
 
 mod overlap;
+pub(crate) mod subset;
 
 /// Where a glyph by id (a shaped form) is keyed in the blob: 0x110000 + id,
 /// past every Unicode code point (og_bundle::format::GLYPH_ID_KEYS).
@@ -1346,10 +1347,30 @@ fn plan_font<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Cx { options, .. } = *cx;
+    let Cx {
+        options,
+        shown,
+        pack_faces,
+        ..
+    } = *cx;
     let PlanState { early_errors, .. } = state;
     match font_settings(s, &options.font) {
         Ok(f) => {
+            // A file that ships keeps only the ideographs, kana and hangul
+            // the game shows or its `chars` line names; the cut is part of
+            // the output's stamp, so new text re-cooks it. A font pack's
+            // face, loaded on demand to cover a language, ships whole.
+            let keep = (f.runtime && !pack_faces.contains(&s.rel))
+                .then(|| ttf_parser::Face::parse(&s.bytes, 0).ok())
+                .flatten()
+                .map(|face| subset::mapped_cut(&face))
+                .filter(|m| !m.is_empty())
+                .map(|m| {
+                    m.into_iter()
+                        .filter(|c| shown.contains(c) || f.chars.contains(*c))
+                        .collect::<std::collections::BTreeSet<char>>()
+                });
+            let cut: String = keep.iter().flatten().collect();
             // "font 2": the Unicode spaces a font lacks are cooked as empty
             // glyphs; "font 3": the field is of each glyph's outline
             // union; "font 4": negative-bearing fill and post-sign error
@@ -1367,35 +1388,58 @@ fn plan_font<'a>(
                 && f.chars.chars().all(char::is_whitespace)
                 && ttf_parser::Face::parse(&s.bytes, 0).is_ok_and(|face| face.is_variable());
             let version: &[u8] = if outline_only { b"font 10" } else { b"font 9" };
-            let st = stamp(&[version, f.describe().as_bytes(), &hash]);
+            let st = stamp(&[version, f.describe().as_bytes(), &hash, cut.as_bytes()]);
             outs.push((
                 s.rel.clone(),
                 format::Font::NAME,
                 st,
-                Box::new(FontJob(s, f)),
+                Box::new(FontJob(s, f, keep)),
             ));
         }
         Err(e) => early_errors.push((s.rel.clone(), "font", e)),
     }
 }
 
-/// A font's one output: its atlas and metrics.
-struct FontJob<'a>(&'a Source, FontSettings);
+/// A font's one output: its atlas and metrics, and the characters of
+/// `subset::cut`'s blocks its shipped file keeps (`None`: the file ships
+/// whole, or not at all).
+struct FontJob<'a>(
+    &'a Source,
+    FontSettings,
+    Option<std::collections::BTreeSet<char>>,
+);
 
 impl Job for FontJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let FontJob(s, f) = self;
+        let FontJob(s, f, keep) = self;
         let Exec { threads, .. } = ex;
         let threads = *threads;
-        cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
+        let cut = keep.as_ref().and_then(|k| subset::subset(&s.bytes, k));
+        let bytes = cut
+            .as_ref()
+            .map_or(s.bytes.as_slice(), |c| c.bytes.as_slice());
+        cook(bytes, f, threads, p.stamp).map(|(b, n)| {
+            let mut note = n.note;
+            if let Some(c) = &cut {
+                note.push_str(&format!(
+                    "; {} of its {} ideographs, kana and hangul kept: those the game's text shows ({} bytes of {})",
+                    c.kept,
+                    c.of,
+                    c.bytes.len(),
+                    s.bytes.len()
+                ));
+            }
+            (b, vec![note])
+        })
     }
 
     /// The atlas is the font file's and its settings' alone: one cooked
     /// face serves every project that imports it the same way (a built-in
     /// style pack's fonts, first cooked when a look switches to the pack).
     fn action(&self) -> Action<'_> {
-        let FontJob(s, f) = self;
-        Action::Input(s.bytes.as_slice(), format!("font {f:?}"), false)
+        let FontJob(s, f, keep) = self;
+        let cut: String = keep.iter().flatten().collect();
+        Action::Input(s.bytes.as_slice(), format!("font {f:?} cut {cut}"), false)
     }
 }
 
