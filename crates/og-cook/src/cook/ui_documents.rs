@@ -386,9 +386,9 @@ fn with_look<R>(
 ) -> R {
     use std::collections::HashMap;
     use std::rc::Rc;
+    type Looks = HashMap<(u64, &'static str), Option<Rc<og_ui_next::look::Look>>>;
     thread_local! {
-        static LOOKS: std::cell::RefCell<HashMap<(u64, &'static str), Option<Rc<og_ui_next::look::Look>>>> =
-            Default::default();
+        static LOOKS: std::cell::RefCell<Looks> = Default::default();
     }
     let found = LOOKS.with(|l| l.borrow().get(&(id, scheme)).cloned());
     let look = found.unwrap_or_else(|| {
