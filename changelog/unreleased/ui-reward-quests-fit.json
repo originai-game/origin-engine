@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "@ui/components/card/reward",
+      "summary": "A card or relic offer is a 7:10 card again (aspect-[7/10] now gives a flex item its height) and its face fills it, instead of a card at its content's height."
+    },
+    {
+      "member": "@ui/components/meta/daily-quests",
+      "summary": "A quest's count (20 / 20) sits beside its bar instead of running under the reward."
+    }
+  ]
+}
