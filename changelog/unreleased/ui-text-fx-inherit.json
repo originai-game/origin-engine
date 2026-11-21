@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Text",
+      "summary": "text-stroke-* and text-shadow-* on a <Text> (or any element) reach the text inside it, as CSS inherits -webkit-text-stroke and text-shadow: HUD labels draw their outline and shadow again instead of bare glyphs. A child's own text-stroke or text-shadow still wins."
+    }
+  ]
+}

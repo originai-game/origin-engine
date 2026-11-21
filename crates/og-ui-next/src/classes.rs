@@ -479,6 +479,7 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
             color: linear(c),
             inset: false,
         };
+        r.shadowed = true;
     }
     if let Some(d) = text.decoration {
         skin.decoration.line = u8::from(d.underline) | (u8::from(d.line_through) << 2);
@@ -489,6 +490,7 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     if let Some(w) = text.stroke_width {
         skin.text_stroke.width = w.0;
         skin.text_stroke.color = text.stroke_color.map_or(skin.ink, linear);
+        r.stroked = true;
     }
     let t = &mut r.text;
     if let Some(s) = text.font_size {

@@ -615,7 +615,8 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
                 offset: [a, b],
                 blur: cc,
                 ..Shadow::default()
-            }
+            };
+            r.shadowed = true;
         }
         op::TEXT_SHADOW_COLOR => r.skin.text_shadow.color = s.v,
         op::DECORATION => {
@@ -623,7 +624,10 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
             r.skin.decoration.thickness = a;
         }
         op::DECORATION_COLOR => r.skin.decoration.color = s.v,
-        op::TEXT_STROKE => r.skin.text_stroke.width = a,
+        op::TEXT_STROKE => {
+            r.skin.text_stroke.width = a;
+            r.stroked = true;
+        }
         op::TEXT_STROKE_COLOR => r.skin.text_stroke.color = s.v,
         op::OPACITY => r.skin.opacity = a,
         op::FONT_SIZE => {

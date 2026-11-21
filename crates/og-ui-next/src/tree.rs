@@ -6,7 +6,7 @@
 //! and allocates nothing.
 
 use crate::arena::{Arena, Id, Run};
-use crate::record::{Record, Rgba, Text};
+use crate::record::{Record, Rgba, Shadow, Text, TextStroke};
 use og_draw::paint::{Paint, PaintKind, PaintQuad};
 use og_ui::{IconAtlas, IconCell};
 
@@ -29,6 +29,8 @@ struct Inherit {
     ink: Rgba,
     text: Text,
     opacity: f32,
+    text_shadow: Shadow,
+    text_stroke: TextStroke,
 }
 
 struct El {
@@ -373,12 +375,15 @@ pub struct Tree {
 }
 
 /// What an element passes down in a frame, as motion shows it: its
-/// opacity times its parent's, its ink (its own, else its parent's), and
-/// whether it is in an exit, which nothing hits.
+/// opacity times its parent's, its ink, text shadow and text outline (each
+/// its own, else its parent's), and whether it is in an exit, which
+/// nothing hits.
 #[derive(Clone, Copy)]
 struct Shown {
     alpha: f32,
     ink: Rgba,
+    text_shadow: Shadow,
+    text_stroke: TextStroke,
     out: bool,
 }
 
@@ -438,6 +443,8 @@ impl Tree {
                 ink: [1.0; 4],
                 text: root.text,
                 opacity: 1.0,
+                text_shadow: Shadow::default(),
+                text_stroke: TextStroke::default(),
             },
             els: Vec::new(),
             arena: Arena::new(),
@@ -720,6 +727,16 @@ impl Tree {
             ink: if r.inked { r.skin.ink } else { from.ink },
             text: r.text.over(&from.text),
             opacity: from.opacity * r.skin.opacity,
+            text_shadow: if r.shadowed {
+                r.skin.text_shadow
+            } else {
+                from.text_shadow
+            },
+            text_stroke: if r.stroked {
+                r.skin.text_stroke
+            } else {
+                from.text_stroke
+            },
         };
         let mut layout = r.layout_in(self.insets);
         // A `Scroll` is a scroll container on both axes, as `overflow:
@@ -978,6 +995,8 @@ impl Tree {
         let top = Shown {
             alpha: 1.0,
             ink: self.root.ink,
+            text_shadow: self.root.text_shadow,
+            text_stroke: self.root.text_stroke,
             out: false,
         };
         // NaN: not reached yet this frame.
@@ -1022,6 +1041,8 @@ impl Tree {
                     Shown {
                         alpha: eff.opacity,
                         ink: eff.ink,
+                        text_shadow: eff.text_shadow,
+                        text_stroke: eff.text_stroke,
                         out: false,
                     }
                 }
@@ -1032,9 +1053,21 @@ impl Tree {
             let s = self.motion.skin(el.node, &r.skin);
             let alpha = from.alpha * s.opacity * el.anchored().map_or(1.0, Anchor::alpha);
             let own_ink = if r.inked { s.ink } else { from.ink };
+            let text_shadow = if r.shadowed {
+                s.text_shadow
+            } else {
+                from.text_shadow
+            };
+            let text_stroke = if r.stroked {
+                s.text_stroke
+            } else {
+                from.text_stroke
+            };
             self.shown[e] = Shown {
                 alpha,
                 ink: own_ink,
+                text_shadow,
+                text_stroke,
                 out: from.out || self.motion.exiting(el.node),
             };
             let visible = pv
@@ -1380,7 +1413,7 @@ impl Tree {
                     &mut self.breaks,
                 );
                 let (lx, ly) = (x + lb.x, y + lb.y);
-                let sh = s.text_shadow;
+                let sh = text_shadow;
                 if sh.color[3] > 0.0 {
                     let mut c = sh.color;
                     c[3] *= alpha;
@@ -1400,7 +1433,7 @@ impl Tree {
                 }
                 // The outline under the fill: each glyph thickened by half
                 // the stroke (its field's reach bounds it, in the shader).
-                let st = s.text_stroke;
+                let st = text_stroke;
                 if st.width > 0.0 && st.color[3] > 0.0 {
                     let mut c = st.color;
                     c[3] *= alpha;

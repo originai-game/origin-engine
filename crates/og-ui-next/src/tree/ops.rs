@@ -340,6 +340,7 @@ impl Tree {
             ink: root.skin.ink,
             text: root.text,
             opacity: 1.0,
+            ..self.root
         };
         self.classes.resolve = Some(resolve);
         self.restyle_all();
@@ -3845,6 +3846,50 @@ mod tests {
             },
             ..Default::default()
         }
+    }
+
+    /// A text shadow and outline inherit, as CSS's do: a `<Text>`'s classes
+    /// sit on the element and its glyphs on its text child. A child's own
+    /// outline (here none) wins over its parent's.
+    #[test]
+    fn text_shadow_and_outline_reach_the_text_inside_the_element() {
+        let mut t = real();
+        nodes(
+            &mut t,
+            &[(1, 0, "text-shadow-md text-stroke-2 text-stroke-black", 0)],
+        );
+        let mut b = Batch::default();
+        b.op(2).u32(2).str("ab");
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        b.op(2).u32(3).str("c");
+        b.op(4).u32(3).str("text-stroke-0");
+        b.op(8).u32(1).u32(3).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        t.frame(&fixed_fonts(), &IconAtlas::default());
+        let black = [0.0, 0.0, 0.0, 1.0];
+        let glyphs: Vec<(char, f32, bool)> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Glyph as u32)
+            .map(|q| (char::from_u32(q.a).unwrap(), q.p[0], q.color == black))
+            .collect();
+        // Each glyph: its shadow, its outline thickened by half the
+        // stroke, then its fill; "c" has the shadow and no outline.
+        assert_eq!(
+            glyphs.iter().map(|g| (g.0, g.1)).collect::<Vec<_>>(),
+            [
+                ('a', 0.0),
+                ('b', 0.0),
+                ('a', 1.0),
+                ('b', 1.0),
+                ('a', 0.0),
+                ('b', 0.0),
+                ('c', 0.0),
+                ('c', 0.0),
+            ]
+        );
+        assert!(glyphs[2].2 && glyphs[3].2, "the outline is black");
     }
 
     /// A box paints its outer shadows under it, then its fill and

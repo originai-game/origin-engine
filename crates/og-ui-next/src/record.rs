@@ -347,6 +347,10 @@ pub struct Record {
     pub text: Text,
     /// Its ink was set by its own rules; else it inherits its parent's.
     pub inked: bool,
+    /// Its text shadow and its text outline were set by its own rules;
+    /// else each inherits its parent's, as CSS's do.
+    pub shadowed: bool,
+    pub stroked: bool,
     /// `position: fixed`: placed against the viewport.
     pub fixed: bool,
     /// Its `transition-*`, `duration-*`, `ease-*`, `delay-*` and
@@ -406,6 +410,8 @@ impl Default for Record {
             safe: [0; 2],
             text: Text::default(),
             inked: false,
+            shadowed: false,
+            stroked: false,
             fixed: false,
             motion: crate::motion::Spec::default(),
             stroke: None,
