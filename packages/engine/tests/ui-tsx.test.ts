@@ -473,6 +473,35 @@ test("og.ui's frame answers are the tick's surface in units and its clock, resto
   }
 });
 
+// og.ui.feedback plays its event's haptic pattern into the frame answer,
+// at the player's strength. Ways it could fail: feedback reaching only
+// og-ui's queue, which a TSX game's frame never drains (no `haptics`);
+// setHaptics not scaling it; a pattern answered twice.
+test("og.ui.feedback's haptic reaches the frame answer at setHaptics' strength", () => {
+  loadNativeHost();
+  let tick = 0;
+  const Buzz = defineSystem("UiFeedbackBuzz", { reads: [] }, () => {
+    tick += 1;
+    if (tick === 2) og.ui.setHaptics(0.5);
+    if (tick === 3) og.ui.feedback("confirm", -1);
+  });
+  const created = createEngine(og.game({ systems: [Buzz] }) as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  try {
+    engine.advance(3);
+    // confirm is a tap: 18 ms at 0.2 low and 0.6 high, here at half.
+    const [[pulse]] = engine.frame(0).haptics as number[][][];
+    expect(pulse![0]).toBe(0);
+    expect(pulse![1]).toBe(18);
+    expect(pulse![2]).toBeCloseTo(0.1, 5);
+    expect(pulse![3]).toBeCloseTo(0.3, 5);
+    expect(engine.frame(0).haptics).toBe(undefined);
+  } finally {
+    engine.destroy();
+  }
+});
+
 // The UI's own actions are og-input's (the `ui` action map): a rebind of
 // confirm moves its prompt as a game action's does. Ways it could fail:
 // the glyph re-asked on another revision than og-input's bindings (the

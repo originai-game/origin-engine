@@ -354,11 +354,13 @@ fn a11y_changed(eng: &Engine) -> Option<Value> {
 
 /// The haptic patterns the UI played since the last frame answer.
 fn haptics_played(eng: &Engine) -> Vec<Vec<[f32; 4]>> {
-    let Some(ui) = eng.state.borrow().ui.clone() else {
+    let Ok(mut rs) = eng.render.try_borrow_mut() else {
         return Vec::new();
     };
-    let mut ui = ui.lock();
-    ui.take_haptics()
+    let Some(next) = rs.ui_next.as_mut() else {
+        return Vec::new();
+    };
+    next.take_haptics()
         .iter()
         .map(|h| {
             h.pulses()

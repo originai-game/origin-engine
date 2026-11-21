@@ -1,0 +1,16 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.feedback",
+      "change": "Plays the style pack's pack-wide sound for the event (pack.json `sounds`, or og.ui.configure's `sounds`), no longer a feedback set from a CSS style's tokens. Two losses: a pack gives sounds only for its events (press, hover, select, confirm, cancel, back, open, close, error, reward, plus og.ui.configure's success), so scrollTick, typewriter, counterTick, notification, warning, the reveals and the other CSS-only events play their haptic but no sound; and a set no longer avoids repeating its last clip.",
+      "fix": "Give the event's sound in the pack's pack.json under `sounds` (`\"sounds\": { \"reward\": { \"clips\": [\"audio/reward.wav\"] } }`), or pass it to og.ui.configure's `sounds`. For an event a pack cannot name, play the clip yourself with og.audio.",
+      "find": ["og.ui.feedback", "-og-sound", "--feedback-"]
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UiDesc.sounds",
+      "summary": "Its `success` sound plays (og.ui.feedback(\"success\")): it was read but never reached the TSX UI's sounds."
+    }
+  ]
+}

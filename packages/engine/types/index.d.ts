@@ -36914,7 +36914,7 @@ export declare namespace og {
     /** The virtual cursor as the last frame left it; null when none is declared. */
     function virtualCursor(): VirtualCursor | null;
     /**
-     * Play a UI event's style feedback (docs/ui.md §3.1): a random sound from its set, never repeating the last, with volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff and sliderTick; game code plays scrollTick, typewriter, counterTick, notification, warning, error, success, reward and revealCommon to revealMythic. Choices use UI state and replay deterministically. An unknown event or one the style leaves silent plays nothing.
+     * Play a UI event's feedback (docs/ui.md §3.1): the style pack's pack-wide sound for it (pack.json `sounds`, or og.ui.configure's; confirm and back fall back to press), one of its clips at random with volume and pitch from its ranges, and the event's haptic pattern at the player's strength (setHaptics). Events with a haptic: press, select, cancel, back, tab, toggleOn, toggleOff, sliderTick, confirm, notification, warning, error, success, reward and revealUncommon to revealMythic. Choices use UI state and replay deterministically. An event the pack gives no sound and no haptic plays nothing.
      *
      * @param event The event's name.
      * @param rise A rising cascade's step, 0 to 1, walking the set's pitch range up (a counter's ticks); below 0 picks the pitch at random.

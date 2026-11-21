@@ -143,6 +143,41 @@ pub struct Cue {
     pub pitch: [f32; 2],
 }
 
+impl Cue {
+    /// One play of it: a clip at random, its volume and pitch from their
+    /// ranges (a pitch at `rise`, 0 to 1, of its range when given), drawn
+    /// from `rng` (xorshift64*, as og-ui's feedback). None without a clip.
+    pub fn pick(&self, rng: &mut u64, rise: Option<f32>) -> Option<Play> {
+        if self.clips.is_empty() {
+            return None;
+        }
+        let mut next = || {
+            let mut x = *rng;
+            if x == 0 {
+                x = 0x9e37_79b9_7f4a_7c15;
+            }
+            x ^= x >> 12;
+            x ^= x << 25;
+            x ^= x >> 27;
+            *rng = x;
+            (x.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 40) as f32 / (1u64 << 24) as f32
+        };
+        let n = self.clips.len();
+        let sound = self.clips[((next() * n as f32) as usize).min(n - 1)];
+        let range = |r: [f32; 2], t: f32| r[0] + (r[1] - r[0]) * t;
+        let volume = range(self.volume, next());
+        let pitch = range(
+            self.pitch,
+            rise.map_or_else(&mut next, |r| r.clamp(0.0, 1.0)),
+        );
+        (sound != 0).then_some(Play {
+            sound,
+            volume,
+            pitch,
+        })
+    }
+}
+
 /// The pack's sounds with their clips loaded: by scope (`""` the pack's
 /// generic ones, else `Component.slot[.variant]`), then by event.
 pub type SoundTable = std::collections::BTreeMap<String, std::collections::BTreeMap<String, Cue>>;
@@ -544,34 +579,9 @@ impl Tree {
         let cue = [Some(event), fallback]
             .into_iter()
             .flatten()
-            .find_map(|ev| scopes.iter().flatten().find_map(|s| table.get(*s)?.get(ev)))
-            .filter(|c| !c.clips.is_empty());
-        let Some(cue) = cue else {
-            return;
-        };
-        let mut next = || {
-            // xorshift64*, as og-ui's feedback.
-            let mut x = self.input.sound_rng;
-            if x == 0 {
-                x = 0x9e37_79b9_7f4a_7c15;
-            }
-            x ^= x >> 12;
-            x ^= x << 25;
-            x ^= x >> 27;
-            self.input.sound_rng = x;
-            (x.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 40) as f32 / (1u64 << 24) as f32
-        };
-        let n = cue.clips.len();
-        let sound = cue.clips[((next() * n as f32) as usize).min(n - 1)];
-        let range = |r: [f32; 2], t: f32| r[0] + (r[1] - r[0]) * t;
-        let volume = range(cue.volume, next());
-        let pitch = range(cue.pitch, next());
-        if sound != 0 {
-            self.input.plays.push(Play {
-                sound,
-                volume,
-                pitch,
-            });
+            .find_map(|ev| scopes.iter().flatten().find_map(|s| table.get(*s)?.get(ev)));
+        if let Some(play) = cue.and_then(|c| c.pick(&mut self.input.sound_rng, None)) {
+            self.input.plays.push(play);
         }
     }
 

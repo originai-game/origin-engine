@@ -24,7 +24,7 @@ pub(crate) use ui_config::{LoadedStyle, UiSettings, load_style, new_ui, settings
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
 mod ui_frame;
-pub(crate) use ui_desc::{UiAnswers, srgb8, with_ui};
+pub(crate) use ui_desc::{UiAnswers, srgb8};
 pub use ui_desc::{
     og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer, og_ui_frame_theme,
     og_ui_frame_viewport, og_ui_has_icon, og_ui_seconds, og_ui_theme, og_ui_viewport,
@@ -256,11 +256,9 @@ pub(crate) fn mount_back(
     physics.schedule(world).map_err(err)?;
     // Queue feedback before og.audio publishes this tick's packet. The
     // mixer receives it after hashing the simulation stream, with no ECS voice.
-    let shared = ui.clone();
     world
         .add_system(SystemDesc::new(UI_SOUND), move |ctx| {
-            let plays = shared.lock().take_feedback();
-            // The new core's controls play their pack slot's sounds.
+            // The TSX UI's controls and og.ui.feedback play the pack's sounds.
             let next = engine(engine_id)
                 .ok()
                 .and_then(|eng| {
@@ -274,11 +272,12 @@ pub(crate) fn mount_back(
             let Some(link) = og_audio::link(engine_id) else {
                 return Ok(());
             };
-            let plays = plays
-                .iter()
-                .map(|p| (p.sound, p.volume, p.pitch))
-                .chain(next.iter().map(|p| (p.sound, p.volume, p.pitch)));
-            for (sound, volume, pitch) in plays {
+            for og_ui_next::tree::Play {
+                sound,
+                volume,
+                pitch,
+            } in next
+            {
                 if sound == 0 {
                     continue;
                 }

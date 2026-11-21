@@ -153,6 +153,13 @@ pub(crate) struct Next {
     pub(crate) fired: Vec<String>,
     /// The left stick's held direction and when it moves the focus again.
     stick: Option<(og_input::frame::Nav, f64)>,
+    /// og.ui.feedback's plays and haptic patterns since they were taken,
+    /// its picks' generator, and the player's haptic strength
+    /// (og.ui.setHaptics, 0 to 1).
+    plays: Vec<og_ui_next::tree::Play>,
+    haptics: Vec<og_ui_model::Haptic>,
+    feedback_rng: u64,
+    pub(crate) haptic_strength: f32,
 }
 
 fn source(v: &Value) -> Option<(String, String)> {
@@ -302,6 +309,7 @@ pub(crate) fn pack_images(engine: u32) {
         ("press", configured.press),
         ("open", configured.open),
         ("close", configured.close),
+        ("success", configured.success),
         ("error", configured.error),
     ] {
         if let Some(h) = handle.filter(|&h| h != 0) {
@@ -713,6 +721,10 @@ impl Next {
             device: None,
             stick: None,
             fired: Vec::new(),
+            plays: Vec::new(),
+            haptics: Vec::new(),
+            feedback_rng: 0,
+            haptic_strength: 1.0,
             language: String::new(),
             a11y: og_ui_next::a11y::Tree::new(),
             fresh: false,
@@ -1109,12 +1121,43 @@ impl Next {
         }
     }
 
-    /// The sounds the tree's controls played this frame (the pack's).
+    /// The sounds the tree's controls and og.ui.feedback played this
+    /// frame (the pack's).
     pub(crate) fn take_sounds(&mut self) -> Vec<og_ui_next::tree::Play> {
-        self.tree
-            .as_mut()
-            .map(|t| t.take_sounds())
-            .unwrap_or_default()
+        let mut out = std::mem::take(&mut self.plays);
+        if let Some(t) = self.tree.as_mut() {
+            out.extend(t.take_sounds());
+        }
+        out
+    }
+
+    /// og.ui.feedback: UI event `event`'s pack sound (the pack-wide one;
+    /// confirm and back fall back to press), its pitch at `rise` of its
+    /// range when given, and its haptic pattern at the player's strength.
+    pub(crate) fn feedback(&mut self, event: &str, rise: Option<f32>) {
+        let table = self.sounds.get("");
+        let fallback = matches!(event, "confirm" | "back").then_some("press");
+        let cue = [Some(event), fallback]
+            .into_iter()
+            .flatten()
+            .find_map(|ev| table?.get(ev));
+        if let Some(play) = cue.and_then(|c| c.pick(&mut self.feedback_rng, rise)) {
+            self.plays.push(play);
+        }
+        let mut h = og_ui_model::event_haptic(event);
+        let k = self.haptic_strength;
+        if h.count > 0 && k > 0.0 && self.haptics.len() < 16 {
+            for p in &mut h.pulses {
+                p.low *= k;
+                p.high *= k;
+            }
+            self.haptics.push(h);
+        }
+    }
+
+    /// The haptic patterns og.ui.feedback played since the last take.
+    pub(crate) fn take_haptics(&mut self) -> Vec<og_ui_model::Haptic> {
+        std::mem::take(&mut self.haptics)
     }
 
     pub(crate) fn take_strings(&mut self) -> Vec<String> {

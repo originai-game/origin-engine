@@ -1,21 +1,31 @@
 use super::*;
 use crate::host::wire;
 
-pub fn og_ui_feedback(event: String, rise: f64) {
-    let Some(e) = og_ui::tokens::SoundEvent::from_name(&event) else {
+/// Runs `f` on the TSX UI of the engine whose frame is open, made when it
+/// has none yet; outside a frame, warns as any og.ui frame call does.
+fn on_next(call: &str, f: impl FnOnce(&mut crate::present::ui_next::Next)) {
+    let Some(eng) = super::ui_desc::building(call) else {
         return;
     };
-    with_ui("og.ui.feedback", |ui| {
-        if rise >= 0.0 {
-            ui.feedback_rising(e, rise as f32)
-        } else {
-            ui.feedback(e)
-        }
+    let mut rs = eng.render.borrow_mut();
+    f(rs.ui_next
+        .get_or_insert_with(|| Box::new(crate::present::ui_next::Next::new())));
+}
+
+pub fn og_ui_feedback(event: String, rise: f64) {
+    on_next("og.ui.feedback", |n| {
+        n.feedback(&event, (rise >= 0.0).then_some(rise as f32))
     });
 }
 
 pub fn og_ui_set_haptics(intensity: f64) {
-    with_ui("og.ui.setHaptics", |ui| ui.set_haptics(intensity as f32));
+    on_next("og.ui.setHaptics", |n| {
+        n.haptic_strength = if intensity.is_finite() {
+            intensity.clamp(0.0, 1.0) as f32
+        } else {
+            1.0
+        }
+    });
 }
 
 pub fn og_ui_set_virtual_cursor(desc: String) {
