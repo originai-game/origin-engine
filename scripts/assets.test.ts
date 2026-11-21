@@ -171,9 +171,16 @@ const IN_GIT = new Set([
   "tests/install/fixtures/tone.mp3",
 ]);
 test("Git holds no binary outside its list: every other one is pinned in the asset store", () => {
-  const listed = Bun.spawnSync(["git", "ls-files", "--eol", "-z"], { cwd: join(import.meta.dir, "..") }).stdout.toString().split("\0");
-  // `i/-text`: Git's own reading of the committed bytes as binary, whatever the file's name.
-  const binary = listed.filter((line) => line.startsWith("i/-text")).map((line) => line.slice(line.indexOf("\t") + 1));
+  const git = (...args: string[]) => Bun.spawnSync(["git", ...args], { cwd: join(import.meta.dir, "..") }).stdout.toString().split("\0").filter(Boolean);
+  // Git's own reading of the committed bytes as binary, whatever the file's
+  // name: every non-empty file in the index that `git grep -I` (threaded,
+  // unlike `ls-files --eol`, which reads each blob in turn) does not list as text.
+  const EMPTY = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
+  const text = new Set(git("grep", "--cached", "-I", "-l", "-z", "-e", ""));
+  const binary = git("ls-files", "-s", "-z")
+    .filter((line) => line.split(" ")[1] !== EMPTY)
+    .map((line) => line.slice(line.indexOf("\t") + 1))
+    .filter((path) => !text.has(path));
   const stray = binary.filter((path) => !IN_GIT.has(path) && !/^packages\/knowledge\/previews\/[^/]+\.webp$/.test(path) && !path.startsWith("third_party/"));
   expect(stray).toEqual([]);
 });
