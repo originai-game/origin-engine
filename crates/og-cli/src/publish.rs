@@ -94,11 +94,6 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
     og_cook::cook::assets::publish_keep(&doc)?;
     let b = &doc.body;
     let s = |k: &str| b.get(k).and_then(|e| e.string(0).ok()).map(str::to_string);
-    let profile = if og_cook::look::project_2d(b).map_err(|e| format!("{file}:{e}"))? {
-        "2d"
-    } else {
-        "3d"
-    };
     let empty = Block::new();
     let p = b
         .get("publish")
@@ -233,7 +228,6 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
         "name": s("name").unwrap_or_else(|| "Origin Engine game".into()),
         "id": s("id").unwrap_or_else(|| "game".into()),
         "engine": s("engine").unwrap_or_else(|| crate::project::own_version().into()),
-        "profile": profile,
         "publish": publish,
     }))
 }
@@ -253,9 +247,19 @@ const WORLD_3D: [(&str, &str); 5] = [
 /// --device`) refuses a project whose scenes hold the 3D world: its module
 /// has none of it, so it would neither draw nor load there. `Err` names
 /// every such component by scene file and line. A 3D project, and a 2D
-/// one without them, passes.
-pub fn refuse_3d_world(root: &Path, settings: &Value) -> Result<(), String> {
-    if settings["profile"] != "2d" {
+/// one without them, passes. The profile is the cooked manifest's
+/// (`cooked/.cook.ogt`), so this runs after the cook.
+pub fn refuse_3d_world(root: &Path) -> Result<(), String> {
+    let manifest = root.join("cooked").join(og_cook::runtime::MANIFEST);
+    let text = std::fs::read_to_string(&manifest).map_err(|e| {
+        format!(
+            "cannot read {}: {e}; cook the project first",
+            manifest.display()
+        )
+    })?;
+    let cooked = og_cook::runtime::Manifest::parse(&text)
+        .map_err(|e| format!("{}: {e}", manifest.display()))?;
+    if cooked.profile != og_cook::look::Profile::TwoD {
         return Ok(());
     }
     fn files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {

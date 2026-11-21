@@ -26,7 +26,7 @@ test.skipIf(NO_SPLIT)("a publish build references the modules its game names and
     writeFileSync(join(project, "src", "uses.ts"), "import { og } from \"@origingame/engine\";\nexport const used = [og.RigidBody, og.story.start];\n");
     cookProject(project, repo);
     const out = join(work, "dist");
-    const b = await webBuild(project, join(project, "src", "main.ts"), out, true, { ...settingsOf(project), profile: "3d", publish: { ...settingsOf(project).publish, modules: "local" } });
+    const b = await webBuild(project, join(project, "src", "main.ts"), out, true, { ...settingsOf(project), publish: { ...settingsOf(project).publish, modules: "local" } });
     if (!b.ok) throw new Error(b.reason);
     const m = b.manifest!.modules!;
     expect(m.referenced).toEqual(["physics", "story"]);

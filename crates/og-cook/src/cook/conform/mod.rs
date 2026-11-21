@@ -91,7 +91,10 @@ pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, Strin
         None => ProjectConform::default(),
     };
     let two_d = match &project {
-        Some(d) => crate::look::project_2d(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
+        Some(d) => {
+            crate::look::project_profile(&d.body).map_err(|e| format!("project.ogt:{e}"))?
+                == crate::look::Profile::TwoD
+        }
         None => false,
     };
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();

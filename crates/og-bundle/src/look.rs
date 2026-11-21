@@ -494,24 +494,56 @@ pub fn project_look(body: &Block) -> Result<Option<String>, String> {
     }
 }
 
-/// Whether the project (project.ogt's `body`) is 2D: its creation form,
-/// `create { form "2d" }`, the one field the profile follows. Form `2d` is
-/// the 2D profile (rapier2d, the 2D publish module, sprites); `2.5d`,
-/// `3d`, `film` or no form the 3D one. A top-level `profile` line is
-/// refused with its fix.
-pub fn project_2d(body: &Block) -> Result<bool, String> {
+/// The profile a project draws and simulates in: its creation form's
+/// (`project_profile`). The cook records it in its manifest, which the
+/// build, publish and the play page read; a new profile is a value here.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Profile {
+    /// Form `2.5d`, `3d`, `film` or none: rapier3d, the 3D publish module,
+    /// models.
+    #[default]
+    ThreeD,
+    /// Form `2d`: rapier2d, the 2D publish module, sprites.
+    TwoD,
+}
+
+impl Profile {
+    pub const ALL: [Profile; 2] = [Profile::ThreeD, Profile::TwoD];
+
+    /// Its name in the cooked manifest and the build: `3d` or `2d`.
+    pub fn name(self) -> &'static str {
+        match self {
+            Profile::ThreeD => "3d",
+            Profile::TwoD => "2d",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Profile> {
+        Profile::ALL.into_iter().find(|p| p.name() == name)
+    }
+}
+
+/// The project's profile (project.ogt's `body`): its creation form,
+/// `create { form "..." }`, the one field the profile follows. A top-level
+/// `profile` line is refused with its fix.
+pub fn project_profile(body: &Block) -> Result<Profile, String> {
     if let Some(e) = body.get("profile") {
         return Err(format!(
             "{}: `profile` was removed; the creation form sets it: `create {{ form \"2d\" }}` for a 2D game, none (or form \"3d\") for a 3D one",
             e.line
         ));
     }
-    Ok(body
-        .get("create")
-        .and_then(|c| c.block.as_ref())
-        .and_then(|b| b.get("form"))
-        .and_then(|f| f.string(0).ok())
-        == Some("2d"))
+    Ok(
+        match body
+            .get("create")
+            .and_then(|c| c.block.as_ref())
+            .and_then(|b| b.get("form"))
+            .and_then(|f| f.string(0).ok())
+        {
+            Some("2d") => Profile::TwoD,
+            _ => Profile::ThreeD,
+        },
+    )
 }
 
 /// An sRGB `#rrggbb` (or `rrggbb`) colour as linear RGB, as three.js
@@ -688,20 +720,18 @@ mod tests {
 
     #[test]
     fn the_creation_form_is_the_profile() {
-        let two_d = |body: &str| {
+        let profile = |body: &str| {
             let doc = Document::parse(&format!("type project\nversion 1\n---\n{body}")).unwrap();
-            project_2d(&doc.body)
+            project_profile(&doc.body)
         };
-        assert_eq!(two_d("create {\n  form \"2d\"\n}\n"), Ok(true));
-        for three_d in [
-            "",
-            "create {\n  form \"2.5d\"\n}\n",
-            "create {\n  form \"film\"\n}\n",
-        ] {
-            assert_eq!(two_d(three_d), Ok(false), "{three_d}");
-        }
+        let form = |f: &str| profile(&format!("create {{\n  form \"{f}\"\n}}\n"));
+        assert_eq!(form("2d"), Ok(Profile::TwoD));
+        assert_eq!(form("film"), Ok(Profile::ThreeD));
+        assert_eq!(form("2.5d"), Ok(Profile::ThreeD));
+        assert_eq!(form("3d"), Ok(Profile::ThreeD));
+        assert_eq!(profile(""), Ok(Profile::ThreeD));
         assert!(
-            two_d("profile \"2d\"\n")
+            profile("profile \"2d\"\n")
                 .unwrap_err()
                 .contains("form \"2d\"")
         );

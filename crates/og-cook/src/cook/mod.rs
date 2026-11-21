@@ -415,6 +415,7 @@ pub fn cook_project_with_texture_cache(
         document_themes: &document_themes,
         components: &components,
         frames: &project.frames,
+        profile: project.profile,
         provided: &project.provided,
         texture_cache,
         project_key: project_key.as_deref(),

@@ -257,10 +257,12 @@ pub(crate) fn write(
         font_desc,
         mesh_desc,
         tex_desc,
+        profile,
         ..
     } = *cx;
     let mut manifest = Manifest {
         cooker: COOKER_VERSION.to_string(),
+        profile,
         options: BTreeMap::from([
             ("font".to_string(), font_desc.to_string()),
             ("mesh".to_string(), mesh_desc.to_string()),

@@ -187,6 +187,11 @@ pub struct ManifestAsset {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Manifest {
     pub cooker: String,
+    /// The project's profile: project.ogt's creation form as
+    /// `look::project_profile` reads it (`profile "3d"` or `"2d"` in the
+    /// text). What the build, publish and the play page take the
+    /// profile from.
+    pub profile: crate::look::Profile,
     /// Per asset kind, the option text its stamps cover.
     pub options: BTreeMap<String, String>,
     /// Sorted by source path.
@@ -239,6 +244,22 @@ impl Manifest {
                 .and_then(|e| e.string(0).ok())
                 .unwrap_or_default()
                 .to_string(),
+            profile: match doc.body.get("profile") {
+                Some(e) => e
+                    .string(0)
+                    .ok()
+                    .and_then(crate::look::Profile::from_name)
+                    .ok_or_else(|| {
+                        bad(format!(
+                            "line {}: profile is one of {}",
+                            e.line,
+                            crate::look::Profile::ALL
+                                .map(|p| format!("\"{}\"", p.name()))
+                                .join(", ")
+                        ))
+                    })?,
+                None => return Err(bad("no profile line: cook the project again".into())),
+            },
             ..Default::default()
         };
         if let Some(block) = doc.body.get("options").and_then(|e| e.block.as_ref()) {
@@ -411,6 +432,8 @@ impl Manifest {
         let n = |v: u64| Value::Number(Number::from(v));
         let mut doc = Document::new("cook", 1);
         doc.body.push(Entry::new("cooker").with(s(&self.cooker)));
+        doc.body
+            .push(Entry::new("profile").with(s(self.profile.name())));
         let mut options = Block::new();
         for (k, v) in &self.options {
             options.push(Entry::new(k.clone()).with(s(v)));

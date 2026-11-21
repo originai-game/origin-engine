@@ -184,14 +184,10 @@ fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
     let (code, t, exported) = build(&["build", "--publish"]);
     assert_eq!(code, Some(1), "{t}");
     assert!(!exported, "the exporter ran past the refusal: {t}");
-    // Nothing was cooked or exported: the project holds what it was given.
-    let mut made: Vec<String> = std::fs::read_dir(&game)
-        .unwrap()
-        .flatten()
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .collect();
-    made.sort();
-    assert_eq!(made, ["assets", "project.ogt", "src"], "{t}");
+    // The refusal reads the cooked profile, so the cook ran; nothing was
+    // exported.
+    assert!(game.join("cooked").join(".cook.ogt").exists(), "{t}");
+    assert!(!game.join("dist").exists(), "{t}");
     let assets: Vec<_> = std::fs::read_dir(game.join("assets")).unwrap().collect();
     assert_eq!(assets.len(), 1, "{t}");
     for line in [

@@ -222,7 +222,10 @@ pub fn measure(
 ) -> Result<Measured, String> {
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
     let profile_2d = match project_body(root) {
-        Ok(b) => og_cook::look::project_2d(&b).map_err(|e| format!("project.ogt:{e}"))?,
+        Ok(b) => {
+            og_cook::look::project_profile(&b).map_err(|e| format!("project.ogt:{e}"))?
+                == og_cook::look::Profile::TwoD
+        }
         Err(_) => false,
     };
     let roles = og_cook::cook::conform::texture_roles(root)?;

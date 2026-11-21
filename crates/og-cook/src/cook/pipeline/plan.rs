@@ -31,6 +31,8 @@ pub(crate) struct Cx<'a> {
     pub(crate) components: &'a BTreeMap<String, String>,
     /// project.ogt's `frames`: the origins remote `<iframe>`s may load from.
     pub(crate) frames: &'a [String],
+    /// The project's profile (its creation form's): the manifest's.
+    pub(crate) profile: crate::look::Profile,
     /// The shared action cache and the project's key in it
     /// (`action_cache`), which a plan may read before anything cooks.
     pub(crate) texture_cache: Option<&'a Path>,

@@ -139,10 +139,6 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(m) = modules {
         settings["publish"]["modules"] = serde_json::json!(m);
     }
-    if publish && let Err(e) = crate::publish::refuse_3d_world(&p.root, &settings) {
-        eprintln!("og build --publish: {e}");
-        return ExitCode::FAILURE;
-    }
     let Some(package) = project::engine_package(Some(&p.root)) else {
         eprintln!("og build: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
@@ -171,6 +167,10 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
         }
         build_trace("cook-complete");
+    }
+    if publish && let Err(e) = crate::publish::refuse_3d_world(&p.root) {
+        eprintln!("og build --publish: {e}");
+        return ExitCode::FAILURE;
     }
     if check {
         build_trace("check-start");

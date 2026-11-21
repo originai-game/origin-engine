@@ -14,6 +14,9 @@ pub(crate) struct Project {
     pub(crate) story_functions_stamp: Vec<u8>,
     /// `frames`: the origins remote `<iframe>`s may load from.
     pub(crate) frames: Vec<String>,
+    /// The creation form's profile (`look::project_profile`): the
+    /// manifest's.
+    pub(crate) profile: crate::look::Profile,
     /// `cook { uses }`: the assets other cooked bundles provide.
     pub(crate) provided: provided::Provided,
 }
@@ -38,6 +41,12 @@ impl Project {
             .transpose()
             .map_err(|e| CookError(format!("project.ogt:{e}")))?
             .unwrap_or_default();
+        let profile = doc
+            .as_ref()
+            .map(|d| crate::look::project_profile(&d.body))
+            .transpose()
+            .map_err(|e| CookError(format!("project.ogt:{e}")))?
+            .unwrap_or_default();
         let provided =
             provided::Provided::read(root, doc.as_ref().map(|d| &d.body)).map_err(CookError)?;
         let budget_desc = format!(
@@ -54,6 +63,7 @@ impl Project {
             story_functions,
             story_functions_stamp,
             frames,
+            profile,
             provided,
         })
     }

@@ -526,7 +526,7 @@ pub(crate) struct ProjectGame {
     /// `<iframe>`s may load from (og_ui::doc::frames); none by default.
     pub frames: Vec<String>,
     /// `create { form "2d" }`: the 2D profile (og-bundle's
-    /// `look::project_2d`); any other form, or none, is 3D.
+    /// `look::project_profile`); any other form, or none, is 3D.
     pub two_d: bool,
 }
 
@@ -611,7 +611,8 @@ pub(crate) fn project_game(text: &str) -> Result<ProjectGame, String> {
         .and_then(|v| v.as_word().or_else(|| v.as_str()))
         .map(str::to_string);
     let frames = og_ui::doc::frames::project_origins(b).map_err(|e| format!("project.ogt:{e}"))?;
-    let two_d = og_bundle::look::project_2d(b).map_err(|e| format!("project.ogt:{e}"))?;
+    let two_d = og_bundle::look::project_profile(b).map_err(|e| format!("project.ogt:{e}"))?
+        == og_bundle::look::Profile::TwoD;
     Ok(ProjectGame {
         tick,
         seed,

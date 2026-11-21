@@ -4,8 +4,9 @@
 //   bun src/node/web-build.ts --project <dir> --entry <src/main.ts> --out <dist>
 //       [--publish] [--json] [--settings <json>]
 //
-// `--settings` is project.ogt as og read and checked it (name, id, engine,
-// profile and the `publish` block); without it the defaults apply. Writes
+// `--settings` is project.ogt as og read and checked it (name, id, engine
+// and the `publish` block); without it the defaults apply. The profile is
+// the cooked manifest's (`profile` in cooked/.cook.ogt). Writes
 // into <dist>:
 //
 //   index.html                 the player shell (shell/page.ts): boot splash, gate, error card, badge;
@@ -198,12 +199,14 @@ export interface PublishSettings {
   readonly modules: "cdn" | "local";
 }
 
+/** A game's profile, its creation form's as the cook records it (`profile` in cooked/.cook.ogt, og-bundle's look::Profile). */
+export type GameProfile = "2d" | "3d";
+
 export interface ProjectSettings {
   readonly name: string;
   readonly id: string;
   /** The engine version project.ogt pins. */
   readonly engine: string;
-  readonly profile: "2d" | "3d";
   /** project.ogt's `frames`: the origins remote `<iframe>`s load from. */
   readonly frames?: readonly string[];
   readonly publish: PublishSettings;
@@ -232,7 +235,7 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   modules: "cdn",
 };
 
-/** The settings of a project read without og (tests): name, id, engine and profile (`create { form "2d" }` is 2D, as og-bundle's `look::project_2d` reads it); publish defaults. */
+/** The settings of a project read without og (tests): name, id and engine; publish defaults. */
 export function settingsOf(project: string): ProjectSettings {
   const text = existsSync(join(project, "project.ogt")) ? readFileSync(join(project, "project.ogt"), "utf8") : "";
   const word = (key: string) => new RegExp(`^\\s*${key}\\s+"([^"]*)"`, "m").exec(text)?.[1];
@@ -240,7 +243,6 @@ export function settingsOf(project: string): ProjectSettings {
     name: word("name") ?? "Origin Engine game",
     id: word("id") ?? "game",
     engine: word("engine") ?? ENGINE_VERSION,
-    profile: word("form") === "2d" ? "2d" : "3d",
     publish: DEFAULT_PUBLISH,
   };
 }
@@ -280,7 +282,7 @@ export interface BuildManifest {
   readonly build: "publish" | "dev";
   /** Unreachable outputs omitted from this export, and conservative computed-load retention. */
   readonly pruning: Pick<PublishAssets, "omitted" | "computed" | "removed_files"> | null;
-  readonly game: { readonly name: string; readonly id: string; readonly profile: "2d" | "3d" };
+  readonly game: { readonly name: string; readonly id: string; readonly profile: GameProfile };
   readonly entry: "index.html";
   /** The engine Worker's bundle as served: `game.js`, or in a publish build `game.<hash>.js`. */
   readonly worker: string;
@@ -795,7 +797,7 @@ export const INSTALL_SCRIPT = 'addEventListener("beforeinstallprompt",function(e
  * serves it (docs/web-export.md §Hosting): its CSS is `css` (shell.css) and, with a manifest,
  * `install` (install.js) runs in the head. `play`, `css` and `install` are the served names.
  */
-export function pageHtml(o: { settings: ProjectSettings; publish: boolean; config: Record<string, unknown>; icon: string; pwa: boolean; play?: string; css?: string; install?: string }): string {
+export function pageHtml(o: { settings: ProjectSettings; profile: GameProfile; publish: boolean; config: Record<string, unknown>; icon: string; pwa: boolean; play?: string; css?: string; install?: string }): string {
   const play = o.play ?? "play.js";
   // `<` cannot appear in the JSON's strings unescaped, so the script element cannot be closed early.
   const config = JSON.stringify(o.config).replace(/</g, "\\u003c");
@@ -807,7 +809,7 @@ export function pageHtml(o: { settings: ProjectSettings; publish: boolean; confi
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="og-engine" content="${escapeHtml(ENGINE_VERSION)}">
 <meta name="og-build" content="${o.publish ? "publish" : "dev"}">
-<meta name="og-profile" content="${o.settings.profile}">
+<meta name="og-profile" content="${o.profile}">
 <meta name="og-player" content="${PLAYER_TRANSPORTS.join(" ")}">
 <meta name="theme-color" content="#14161b">
 <meta name="color-scheme" content="dark">
@@ -987,6 +989,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const cooked = join(project, "cooked");
   if (!existsSync(join(cooked, ".cook.ogt"))) return fail(`${cooked} has no cooked bundle; run \`og cook ${project}\` first`);
   const cookedManifest = readFileSync(join(cooked, ".cook.ogt"), "utf8");
+  // The game's profile: the cook's, from project.ogt's creation form (og-bundle's look::project_profile).
+  const profile = /^profile "(2d|3d)"$/m.exec(cookedManifest)?.[1] as GameProfile | undefined;
+  if (!profile) return fail(`${cooked}/.cook.ogt has no profile; run \`og cook ${project}\` again`);
   let assets: PublishAssets | null = null;
   if (publish) {
     try {
@@ -1003,7 +1008,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   // rapier3d, nor a 3D game's rapier2d).
   // Remote <iframe>s only for a game that lists `frames`: their twin
   // directory, so a game without them downloads none of their code.
-  const variant: BuildManifest["variant"] = publish ? settings.profile : "full";
+  const variant: BuildManifest["variant"] = publish ? profile : "full";
   const frames = (settings.frames ?? []).length > 0 ? "-frames" : "";
   let engineDir = join(ENGINE_ROOT, "dist", variant === "2d" ? `web-publish-2d${frames}` : publish ? `web-publish${frames}` : "web");
   if (publish && frames) {
@@ -1173,7 +1178,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     // The page resolves a module base given as "" against itself (shell/page.ts).
     ...(single ? { modules: { single, ...(laneModules ? { lanes: laneModules } : {}) } } : {}),
   };
-  writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish, play: served("play.js"), css: served("shell.css"), install: served("install.js") }));
+  writeFileSync(join(out, "index.html"), pageHtml({ settings, profile, publish, config, icon, pwa: publish, play: served("play.js"), css: served("shell.css"), install: served("install.js") }));
   writeFileSync(join(out, "_headers"), headersFile(p.isolation, Object.values(names)));
   if (p.isolation !== "off") writeFileSync(join(out, "origingame.runtime.json"), JSON.stringify({ version: 1, crossOriginIsolated: true }) + "\n");
   if (publish) {
@@ -1216,14 +1221,14 @@ export async function webBuild(project: string, entry: string, out: string, publ
     version = identity(fileRows());
   }
 
-  const probe = await probeOf(join(out, served("origin-engine.js")), join(out, served("origin-engine_bg.wasm")), settings.profile);
+  const probe = await probeOf(join(out, served("origin-engine.js")), join(out, served("origin-engine_bg.wasm")), profile);
   const rows = fileRows();
   const manifest: BuildManifest = {
     format: 1,
     engine: { name: "origin-engine", version: ENGINE_VERSION, pinned: settings.engine },
     build: publish ? "publish" : "dev",
     pruning: assets ? { omitted: assets.omitted, computed: assets.computed, removed_files: assets.removed_files } : null,
-    game: { name: settings.name, id: settings.id, profile: settings.profile },
+    game: { name: settings.name, id: settings.id, profile },
     entry: "index.html",
     worker: served("game.js"),
     wasm: served("origin-engine_bg.wasm"),

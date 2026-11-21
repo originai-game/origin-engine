@@ -347,7 +347,10 @@ pub(in crate::cook) fn conform(
         None => ProjectConform::default(),
     };
     let two_d = match &project {
-        Some(d) => crate::look::project_2d(&d.body).map_err(|e| format!("project.ogt:{e}"))?,
+        Some(d) => {
+            crate::look::project_profile(&d.body).map_err(|e| format!("project.ogt:{e}"))?
+                == crate::look::Profile::TwoD
+        }
         None => false,
     };
     let sheet_conform = strip_sheets(sources);
