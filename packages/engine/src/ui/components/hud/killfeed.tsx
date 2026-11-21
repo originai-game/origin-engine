@@ -38,14 +38,14 @@ export function Killfeed(props: KillfeedProps) {
       <For each={props.rows ?? []} key={(r) => r.id}>
         {(r) => (
           <View
-            class={`group/row relative flex-row items-center min-w-0 max-w-full pl-3 bg-linear-to-l from-surface/86 to-surface/35 compact:pl-2 transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0`}
+            class={`group/row relative flex-row items-center min-w-0 max-w-full pl-3 bg-glass compact:pl-2 transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0 ${packClass("Plate", "frame")}`}
             label={t("shooter.killfeed.row", { killer: r().killer, victim: r().victim, weapon: r().weapon ?? "" })}
             data-self={r().self}
           >
             <Text class={`shrink min-w-0 py-[0.214rem] text-[1rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-ally data-enemy:text-foe data-self-ally:text-hud-accent`} data-enemy={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") === "ally" && r().self}>
               {r().killer}
             </Text>
-            <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg/78 text-shadow-2xs`}>{r().weapon ?? ""}</Text>
+            <Text class={`shrink-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap truncate text-fg-muted text-shadow-2xs`}>{r().weapon ?? ""}</Text>
             <Text class={`shrink min-w-0 py-[0.214rem] text-[1rem] font-semibold whitespace-nowrap truncate text-shadow-2xs text-foe data-ally:text-ally data-self-ally:text-hud-accent`} data-ally={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") !== "ally" && r().self}>
               {r().victim}
             </Text>
@@ -54,7 +54,7 @@ export function Killfeed(props: KillfeedProps) {
                 {t("shooter.killfeed.hs")}
               </Text>
             </Show>
-            <View class={`shrink-0 self-stretch w-[0.214rem] ml-1 bg-white/60 group-data-self/row:bg-hud-accent`} />
+            <View class={`shrink-0 self-stretch w-[0.214rem] ml-1 bg-sheen group-data-self/row:bg-hud-accent`} />
           </View>
         )}
       </For>

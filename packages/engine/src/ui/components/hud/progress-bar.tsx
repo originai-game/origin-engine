@@ -63,7 +63,7 @@ export function ProgressBar(props: ProgressBarProps) {
           />
         </Show>
         <View
-          class={`absolute left-0 top-0 h-full bg-linear-to-b from-white/55 to-transparent to-42% bg-accent group-data-tone-success/progress:bg-none group-data-tone-success/progress:bg-success group-data-tone-warn/progress:bg-none group-data-tone-warn/progress:bg-warn group-data-tone-danger/progress:bg-none group-data-tone-danger/progress:bg-danger group-data-tone-info/progress:bg-none group-data-tone-info/progress:bg-info group-data-indeterminate/progress:animate-shimmer`}
+          class={`absolute left-0 top-0 h-full bg-linear-to-b from-sheen to-transparent to-42% bg-accent group-data-tone-success/progress:bg-none group-data-tone-success/progress:bg-success group-data-tone-warn/progress:bg-none group-data-tone-warn/progress:bg-warn group-data-tone-danger/progress:bg-none group-data-tone-danger/progress:bg-danger group-data-tone-info/progress:bg-none group-data-tone-info/progress:bg-info group-data-indeterminate/progress:animate-shimmer`}
           style={{ width: `${(props.indeterminate ? 0.36 : Math.min(Math.max(props.value, 0), 1)) * 100}%` }}
         />
       </View>

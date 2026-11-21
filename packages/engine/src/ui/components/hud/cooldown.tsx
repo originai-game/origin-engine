@@ -36,7 +36,7 @@ export function Cooldown(props: CooldownProps) {
           <Icon class="size-8 text-fg" name={props.icon} />
         </View>
         <Show when={cooling()}>
-          <View class="absolute inset-0 nine-disc bg-black/70" wipe={Math.min(props.remaining / (props.total ?? 1), 1)} wipeCcw />
+          <View class="absolute inset-0 nine-disc bg-shade-deep" wipe={Math.min(props.remaining / (props.total ?? 1), 1)} wipeCcw />
           <View class="absolute inset-0 flex-row items-center justify-center">
             <Text class="text-[20.64px] tabular-nums text-center text-fg text-shadow-xs">
               {props.remaining < 10 ? formatNumber(props.remaining) : formatDuration(props.remaining)}

@@ -61,7 +61,7 @@ export function StarBar(props: StarBarProps) {
               data-lit={lit(star().at)}
               style={{ left: `calc(${star().at} * (100% - ${props.compact ? "1.5rem" : "2rem"}))` }}
             >
-              <Icon class={`size-[74%] ${lit(star().at) ? "text-gold" : "text-white/42"}`} name="star" />
+              <Icon class={`size-[74%] ${lit(star().at) ? "text-gold" : "text-fg-muted"}`} name="star" />
             </View>
           )}
         </For>

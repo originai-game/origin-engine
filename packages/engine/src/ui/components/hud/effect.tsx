@@ -45,7 +45,7 @@ export function HudEffect(props: HudEffectProps) {
           <Image class="absolute inset-[0.143rem] rounded-tl-[0.357rem]" src={props.icon} />
         </Show>
         <Show when={timed()}>
-          <View class="absolute inset-0 nine-tile bg-black/55" wipe={1 - Math.min(Math.max(props.remaining ?? 0, 0), 1)} wipeCcw />
+          <View class="absolute inset-0 nine-tile bg-shade-deep" wipe={1 - Math.min(Math.max(props.remaining ?? 0, 0), 1)} wipeCcw />
         </Show>
       </View>
       <Show when={props.label}>

@@ -71,7 +71,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       >
         <Icon class="size-6 text-fg text-shadow-2xs group-data-expiring/statusgrid:animate-pulse" name={props.effect.icon} />
         <Show when={duration() > 0 && remaining() < duration()}>
-          <View class="absolute inset-0 nine-tile bg-black/55" wipe={1 - remaining() / duration()} />
+          <View class="absolute inset-0 nine-tile bg-shade-deep" wipe={1 - remaining() / duration()} />
         </Show>
       </View>
       <Show when={stacks() > 1 || remaining() > 0}>
