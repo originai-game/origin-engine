@@ -106,6 +106,9 @@ pub struct NineSlice {
     pub fill: bool,
     /// Whether the edges tile (`true`) or stretch along their side.
     pub tile: bool,
+    /// Whether the image is a shape the element's fill colours (its alpha
+    /// kept, its colour the fill's), rather than a picture drawn as it is.
+    pub tint: bool,
 }
 
 /// The sounds of one scope, by event.
@@ -335,7 +338,7 @@ impl Layer {
         let [light, dark] = &self.images;
         if !light.is_empty() || !dark.is_empty() {
             let one = |n: &NineSlice| {
-                let mut m = json!({ "src": n.src, "slice": n.slice, "fill": n.fill, "repeat": if n.tile { "tile" } else { "stretch" } });
+                let mut m = json!({ "src": n.src, "slice": n.slice, "fill": n.fill, "repeat": if n.tile { "tile" } else { "stretch" }, "tint": n.tint });
                 if let Some(w) = n.width {
                     m["width"] = json!(w);
                 }
@@ -525,8 +528,8 @@ fn insets(v: &Value, what: &str) -> Result<[f32; 4], String> {
 fn nine(v: &Value) -> Result<NineSlice, String> {
     let m = object(v, "nine-slice art")?;
     for k in m.keys() {
-        if !["src", "slice", "width", "fill", "repeat"].contains(&k.as_str()) {
-            return Err(format!("{k}: one of src, slice, width, fill, repeat"));
+        if !["src", "slice", "width", "fill", "repeat", "tint"].contains(&k.as_str()) {
+            return Err(format!("{k}: one of src, slice, width, fill, repeat, tint"));
         }
     }
     let src = m.get("src").and_then(Value::as_str).ok_or("src: an image")?.to_owned();
@@ -542,7 +545,12 @@ fn nine(v: &Value) -> Result<NineSlice, String> {
         Some(Some("tile")) => true,
         _ => return Err("repeat: \"stretch\" or \"tile\"".into()),
     };
-    Ok(NineSlice { src, slice, width, fill, tile })
+    let tint = match m.get("tint") {
+        None => false,
+        Some(Value::Bool(b)) => *b,
+        Some(_) => return Err("tint: true or false".into()),
+    };
+    Ok(NineSlice { src, slice, width, fill, tile, tint })
 }
 
 fn face(v: &Value) -> Result<Face, String> {
@@ -699,13 +707,14 @@ mod tests {
     #[test]
     fn nine_slice_art_reads_per_scheme_and_a_class_names_it() {
         let mut l = Layer::parse(r##"{ "images": {
-            "plate": { "src": "art/plate.png", "slice": [12, 16, 12, 16], "width": 8, "repeat": "tile" },
+            "plate": { "src": "art/plate.png", "slice": [12, 16, 12, 16], "width": 8, "repeat": "tile", "tint": true },
             "frame": { "light": { "src": "art/frame-light.png", "slice": 20 }, "dark": { "src": "art/frame.png", "slice": 20, "fill": false } } },
             "variants": { "Panel.frame": "p-4 nine-frame hover:nine-plate" } }"##).unwrap();
         l.resolve("styles/x");
         let p = Pack::new(&[Layer::default_pack(), l.clone()]);
         let plate = &p.images(Scheme::Dark)["plate"];
-        assert_eq!((plate.slice, plate.width, plate.tile, plate.fill), ([12.0, 16.0, 12.0, 16.0], Some([8.0; 4]), true, true));
+        assert_eq!((plate.slice, plate.width, plate.tile, plate.fill, plate.tint), ([12.0, 16.0, 12.0, 16.0], Some([8.0; 4]), true, true, true));
+        assert!(!p.images(Scheme::Dark)["frame"].tint);
         assert_eq!(p.images(Scheme::Light)["frame"].src, "styles/x/art/frame-light.png");
         assert!(!p.images(Scheme::Dark)["frame"].fill);
         assert!(l.assets().contains(&"styles/x/art/frame.png"));

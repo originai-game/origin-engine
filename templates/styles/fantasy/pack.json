@@ -1,5 +1,147 @@
 {
   "about": "The fantasy pack, ported from its CSS tokens; its components' variants follow with the TSX components.",
+  "scheme": "dark",
+  "seeds": {
+    "accent": "#e9c46f",
+    "danger": "#e0786a",
+    "info": "#86aee0",
+    "neutral": "#3a2a1a",
+    "primary": "#8f2a1b",
+    "success": "#86c98f",
+    "team": "#6fa8f0",
+    "warn": "#e6b04f"
+  },
+  "theme": {
+    "colors": {
+      "accent-ink": {
+        "dark": "#f6d17c",
+        "light": "#5e4a1b"
+      },
+      "gold": {
+        "dark": "#e2b84f",
+        "light": "#8a5a12"
+      },
+      "health": "#b8322a",
+      "mana": "#3a68c8",
+      "raised-pressed": {
+        "dark": "#1c0e01",
+        "light": "#fbe5d1"
+      },
+      "rim": {
+        "dark": "#625140",
+        "light": "#d5c1ad"
+      },
+      "rim-soft": {
+        "dark": "#453524",
+        "light": "#eed9c5"
+      },
+      "rim-strong": {
+        "dark": "#f6d17c",
+        "light": "#5e4a1b"
+      },
+      "shadow": "#000000",
+      "sheen": "#fff1d040",
+      "tile": {
+        "dark": "#1c0e01",
+        "light": "#fbe5d1"
+      },
+      "tile-pressed": {
+        "dark": "#1c0e01",
+        "light": "#fbe5d1"
+      },
+      "track": {
+        "dark": "#1c0e01",
+        "light": "#fbe5d1"
+      },
+      "xp": {
+        "dark": "#b48be0",
+        "light": "#6a3ea8"
+      }
+    },
+    "fontFamily": {
+      "display": "\"Fantasy Display\", serif",
+      "mono": "\"Fantasy Serif\", serif",
+      "sans": "\"Fantasy Text\", \"Fantasy Serif\", serif"
+    },
+    "radius": {
+      "button": 4.0,
+      "card": 4.0,
+      "control": 3.0,
+      "field": 3.0,
+      "panel": 4.0
+    }
+  },
+  "images": {
+    "frame-filigree": {
+      "src": "art/frame-filigree.png",
+      "slice": 160,
+      "width": 58,
+      "fill": false
+    },
+    "button-iron": {
+      "src": "art/button-iron.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-iron-hover": {
+      "src": "art/button-iron-hover.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-iron-pressed": {
+      "src": "art/button-iron-pressed.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-red": {
+      "src": "art/button-red.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-red-hover": {
+      "src": "art/button-red-hover.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-red-pressed": {
+      "src": "art/button-red-pressed.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-disabled": {
+      "src": "art/button-disabled.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    }
+  },
   "fonts": [
     {
       "family": "Fantasy Display",
@@ -32,17 +174,6 @@
     "check": "art/check.svg",
     "close": "art/close.svg",
     "skull": "art/skull.svg"
-  },
-  "scheme": "dark",
-  "seeds": {
-    "accent": "#e9c46f",
-    "danger": "#e0786a",
-    "info": "#86aee0",
-    "neutral": "#3a2a1a",
-    "primary": "#8f2a1b",
-    "success": "#86c98f",
-    "team": "#6fa8f0",
-    "warn": "#e6b04f"
   },
   "sounds": {
     "Button.base": {
@@ -145,66 +276,6 @@
         "@styles/shared/sfx-confirm.ogt"
       ],
       "volume": 0.28
-    }
-  },
-  "theme": {
-    "colors": {
-      "accent-ink": {
-        "dark": "#f6d17c",
-        "light": "#5e4a1b"
-      },
-      "gold": {
-        "dark": "#e2b84f",
-        "light": "#8a5a12"
-      },
-      "health": "#b8322a",
-      "mana": "#3a68c8",
-      "raised-pressed": {
-        "dark": "#1c0e01",
-        "light": "#fbe5d1"
-      },
-      "rim": {
-        "dark": "#625140",
-        "light": "#d5c1ad"
-      },
-      "rim-soft": {
-        "dark": "#453524",
-        "light": "#eed9c5"
-      },
-      "rim-strong": {
-        "dark": "#f6d17c",
-        "light": "#5e4a1b"
-      },
-      "shadow": "#000000",
-      "sheen": "#fff1d040",
-      "tile": {
-        "dark": "#1c0e01",
-        "light": "#fbe5d1"
-      },
-      "tile-pressed": {
-        "dark": "#1c0e01",
-        "light": "#fbe5d1"
-      },
-      "track": {
-        "dark": "#1c0e01",
-        "light": "#fbe5d1"
-      },
-      "xp": {
-        "dark": "#b48be0",
-        "light": "#6a3ea8"
-      }
-    },
-    "fontFamily": {
-      "display": "\"Fantasy Display\", serif",
-      "mono": "\"Fantasy Serif\", serif",
-      "sans": "\"Fantasy Text\", \"Fantasy Serif\", serif"
-    },
-    "radius": {
-      "button": 4.0,
-      "card": 4.0,
-      "control": 3.0,
-      "field": 3.0,
-      "panel": 4.0
     }
   }
 }

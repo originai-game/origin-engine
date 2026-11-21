@@ -269,7 +269,9 @@ is an error naming where it is, never ignored):
   image in its pixels (one number, or `[top, right, bottom, left]`);
   `width` the insets as drawn, in points (the slice's when unset); `fill`
   whether the centre is drawn (default true); `repeat` `stretch` (default)
-  or `tile` for the edges. An entry may be a scheme pair. The class
+  or `tile` for the edges; `tint` true for a shape the element's fill
+  colours (a chamfered plate that follows the theme), false (default) for
+  a picture drawn as it is. An entry may be a scheme pair. The class
   `nine-<name>` gives an element that art, under any variant
   (`hover:nine-plate-lit`), in `variants` or in a component's own class.
   A look's distinctive shapes (cut corners, ornate frames, slot rims) are
