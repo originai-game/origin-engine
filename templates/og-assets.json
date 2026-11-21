@@ -1604,6 +1604,36 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/art/card-frame.png",
+      "sha256": "a4bb6e79eb8f098ba681ce6ff003457f8668e12a956d3ae154be75f523e04e21",
+      "size": 135164,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/glow.png",
+      "sha256": "820b911058be701c04f6feda48dd94065a3a5636581127735598b5ea552d521e",
+      "size": 80405,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/sheen.png",
+      "sha256": "dcb6c9835b13a6f26d89008ea9c7768ae4e37837726ca3e325f2e74d38f4a560",
+      "size": 22877,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/socket-rim.png",
+      "sha256": "acec89b0936007830d6502435824146a9a4ec31411be18c8efdfb146d3f841bd",
+      "size": 14032,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/art/socket.png",
+      "sha256": "f08d4ecad9bd66b3b872dddaf5eff9943845b943476c26102c0cb95163ab8abe",
+      "size": 66879,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/glow-icons.png",
       "sha256": "f021a5dc502c24f6df3af298090db7a7af7c7b9174cae87cb81c8dd7bc476bd8",
       "size": 47497,

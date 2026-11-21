@@ -227,6 +227,12 @@
     "xbox.y": "@styles/shared/glyphs/face-y.svg"
   },
   "images": {
+    "card-frame": {
+      "fill": false,
+      "slice": 60,
+      "src": "@styles/shared/art/card-frame.png",
+      "width": 15
+    },
     "chip-cut": {
       "slice": 24,
       "src": "@styles/shared/shapes/chip-cut.svg",
@@ -236,6 +242,11 @@
     "disc": {
       "slice": 0,
       "src": "@styles/shared/shapes/disc.svg",
+      "tint": true
+    },
+    "glow": {
+      "slice": 0,
+      "src": "@styles/shared/art/glow.png",
       "tint": true
     },
     "panel-cut": {
@@ -254,6 +265,22 @@
       "slice": 0,
       "src": "@styles/shared/shapes/ring.svg",
       "tint": true
+    },
+    "sheen": {
+      "slice": 0,
+      "src": "@styles/shared/art/sheen.png"
+    },
+    "socket": {
+      "slice": 76,
+      "src": "@styles/shared/art/socket.png",
+      "width": 19
+    },
+    "socket-rim": {
+      "fill": false,
+      "slice": 76,
+      "src": "@styles/shared/art/socket-rim.png",
+      "tint": true,
+      "width": 19
     },
     "tile": {
       "slice": 24,

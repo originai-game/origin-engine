@@ -111,7 +111,8 @@ export function ArenaVersus(props: ArenaVersusProps) {
       <View class="w-full min-w-0 flex-row items-stretch gap-x-4 compact:flex-col compact:items-stretch compact:gap-x-0 compact:gap-y-1">
         <Side {...(props.nameA ? { name: props.nameA } : {})} team="a" fighters={props.sideA ?? []} />
         <View class="flex-none self-center w-[6.286rem] p-[3px] rounded-[0.857rem] bg-gold shadow-[0px_0px_1.857rem_rgb(255_207_90/0.5)] compact:w-[3.714rem] compact:self-center" aria-hidden="true">
-          <View class="w-full h-[7.143rem] rounded-[0.714rem] bg-[radial-gradient(circle_at_50%_30%,#7a5b16,#2a2008)] flex-row items-center justify-center compact:h-[4.286rem]">
+          <View class="relative w-full h-[7.143rem] rounded-[0.714rem] bg-gold-fg overflow-hidden flex-row items-center justify-center compact:h-[4.286rem]">
+            <View class="absolute -inset-x-4 -top-6 bottom-0 nine-glow bg-gold/40" />
             <Text class="text-6xl leading-none font-bold italic text-gold compact:text-3xl">{t("arena.versus.vs")}</Text>
           </View>
         </View>

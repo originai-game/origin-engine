@@ -53,8 +53,9 @@ export function DailyQuests(props: DailyQuestsProps) {
                 <For each={props.quests}>
                   {(q) => (
                   <View class={`group/row flex-row items-center nine-plate-cut text-fg transition duration-317 border border-rim w-full pr-3 pl-2 py-2 gap-3 compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-transparent data-state-done:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={q().name} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
-                    <View class={`group/well bg-linear-to-b from-white/50 via-white/12 via-50% to-white/6 gap-2 size-16 compact:hidden data-state-done:bg-linear-to-b data-state-done:from-gold-hi data-state-done:via-gold data-state-done:via-45% data-state-done:to-gold/40 data-state-done:bg-transparent data-state-claimed:bg-linear-to-b data-state-claimed:from-white/22 data-state-claimed:to-white/6 data-state-claimed:bg-transparent group-data-state-claimed/row:opacity-66`} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
-                      <View class="absolute justify-center items-center text-fg inset-0 gap-2 group-data-state-done/well:bg-transparent group-data-state-done/well:text-gold">
+                    <View class={`group/well relative nine-socket gap-2 size-16 compact:hidden group-data-state-claimed/row:opacity-66`} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
+                      <View class="absolute inset-0 nine-socket-rim bg-white/40 group-data-state-done/well:bg-gold group-data-state-claimed/well:bg-white/15" />
+                      <View class="absolute justify-center items-center text-fg inset-0 gap-2 group-data-state-done/well:text-gold">
                         <Icon class="size-6" name={q().state === 'claimed' ? 'check' : q().icon} />
                       </View>
                     </View>
