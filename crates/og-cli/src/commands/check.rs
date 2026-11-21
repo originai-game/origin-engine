@@ -19,7 +19,9 @@
 //! resolves as a package either way: through the link `og` keeps in the
 //! project's `node_modules` (project::LINK), by the package's `exports`
 //! (`moduleResolution "bundler"`), so no configuration names an engine
-//! file. A bare entry (no project.ogt) has no link and is not checked.
+//! file. A bare entry (no project.ogt) is checked alone with the same
+//! options where a `node_modules` above it resolves the engine (an engine
+//! checkout's own link), and refused elsewhere.
 //!
 //! The run is `-p <config> --noEmit --pretty false --checkers N` in the
 //! project directory, with compiler-owned incremental state under `.og/check`
@@ -743,8 +745,9 @@ impl Target {
             return Ok(Target { root, config: own });
         }
         // The engine resolves as a package, through the project's link
-        // (project::LINK), which a bare entry does not have.
-        if !p.manifest {
+        // (project::LINK) or one in a node_modules above it (an engine
+        // checkout's own). A bare entry has no link of its own.
+        if !p.manifest && !root.ancestors().any(|d| d.join(project::LINK).exists()) {
             return Err(format!(
                 "{} is in no project (no project.ogt above it): the engine resolves for a type check through a project's {}; check it in a project (og new), or pass --no-check",
                 p.entry.display(),
@@ -753,13 +756,18 @@ impl Target {
         }
         let template: serde_json::Value = serde_json::from_str(TEMPLATE_TSCONFIG)
             .expect("packages/create/template/tsconfig.json");
-        let include: Vec<String> = template["include"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|s| s.as_str())
-            .map(|s| typescript_path(&root.join(s)))
-            .collect();
+        let include: Vec<String> = if p.manifest {
+            template["include"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|s| s.as_str())
+                .map(|s| typescript_path(&root.join(s)))
+                .collect()
+        } else {
+            let entry = p.entry.canonicalize().unwrap_or_else(|_| p.entry.clone());
+            vec![typescript_path(&entry)]
+        };
         let config = serde_json::json!({ "compilerOptions": template["compilerOptions"], "include": include });
         let dir = p.work_dir();
         std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
