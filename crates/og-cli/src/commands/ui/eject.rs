@@ -1,0 +1,622 @@
+//! `og ui eject <name> [project] [--force]` copies one of the engine's TSX
+//! components, screens or controls into the game, as the game's own file,
+//! and points the game's imports of it at the copy. `og ui eject --list
+//! [project]` prints every name with the first line of its doc comment.
+//!
+//! A name is the file's path under the engine package's `src/ui/components/`
+//! (`hud/stat-bar`, `card/hand`), or `screens/<name>` or `controls/<name>`.
+//! The copy is `assets/ui/<name>.tsx`:
+//!
+//! - its relative imports become the engine's package paths
+//!   (`../controls/button` is `@origingame/engine/ui/controls/button`), so it
+//!   keeps using the built-in pieces it composes;
+//! - the strings it reads from its tables are copied into one table beside
+//!   it, `assets/ui/<name>.en.ogt`, each key under `game.` (`card.hand.play`
+//!   is `game.card.hand.play`, in the table and in the code), so the game's
+//!   text never competes with the engine's table for a key;
+//! - every import of it in the game's `.ts`/`.tsx` (by name from
+//!   `@origingame/engine/ui/components`, or by its package path) imports the
+//!   copy instead.
+//!
+//! It writes nothing when the copy or its table exists, unless `--force`; an
+//! unknown name exits 1 with the closest names.
+
+use crate::project;
+use std::collections::BTreeSet;
+use std::path::{Component, Path, PathBuf};
+use std::process::ExitCode;
+
+const BARREL: &str = "@origingame/engine/ui/components";
+const PACKAGE_UI: &str = "@origingame/engine/ui/";
+/// The prefix a copied table's keys take.
+const PREFIX: &str = "game.";
+
+/// One ejectable file: its name, its path under `src/ui`, its exported
+/// function and the first line of its doc comment.
+#[derive(Debug)]
+pub(super) struct Entry {
+    pub name: String,
+    rel: String,
+    summary: String,
+}
+
+/// Every component, screen and control of the package's `src/ui`, by name.
+pub(super) fn library(ui: &Path) -> Vec<Entry> {
+    let mut out = Vec::new();
+    for (dir, named) in [
+        ("components", ""),
+        ("screens", "screens/"),
+        ("controls", "controls/"),
+    ] {
+        let mut files = Vec::new();
+        walk(&ui.join(dir), &mut files);
+        for f in files {
+            let Ok(rest) = f.strip_prefix(ui.join(dir)) else {
+                continue;
+            };
+            let stem = slash(rest).trim_end_matches(".tsx").to_string();
+            if stem == "index" {
+                continue;
+            }
+            let text = std::fs::read_to_string(&f).unwrap_or_default();
+            out.push(Entry {
+                name: format!("{named}{stem}"),
+                rel: format!("{dir}/{stem}"),
+                summary: summary(&text),
+            });
+        }
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out
+}
+
+fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in rd.flatten() {
+        let p = e.path();
+        if e.file_type().is_ok_and(|t| t.is_dir()) {
+            walk(&p, out);
+        } else if p.extension().is_some_and(|x| x == "tsx") {
+            out.push(p);
+        }
+    }
+}
+
+fn slash(p: &Path) -> String {
+    p.components()
+        .map(|c| c.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+/// The first sentence of the last doc comment before `export function`.
+fn summary(text: &str) -> String {
+    let head = &text[..text.find("export function").unwrap_or(0)];
+    let Some(start) = head.rfind("/**") else {
+        return String::new();
+    };
+    let body = &head[start + 3..];
+    let body = &body[..body.find("*/").unwrap_or(body.len())];
+    let words: Vec<&str> = body
+        .lines()
+        .map(|l| l.trim().trim_start_matches('*').trim())
+        .filter(|l| !l.is_empty())
+        .collect();
+    let line = words.join(" ");
+    let end = line
+        .char_indices()
+        .find(|&(i, c)| {
+            (c == '.' || c == ':') && line[i + 1..].starts_with(' ') || i + 1 == line.len()
+        })
+        .map_or(line.len(), |(i, _)| i);
+    line[..end].trim_end_matches(['.', ':']).to_string()
+}
+
+/// Levenshtein distance, for the closest names to a mistyped one.
+fn distance(a: &str, b: &str) -> usize {
+    let b: Vec<char> = b.chars().collect();
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut prev = row[0];
+        row[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let next = (row[j + 1] + 1)
+                .min(row[j] + 1)
+                .min(prev + usize::from(ca != *cb));
+            prev = row[j + 1];
+            row[j + 1] = next;
+        }
+    }
+    row[b.len()]
+}
+
+/// The names nearest `name`, at most three: those a few edits from it, or
+/// whose last segment or a word of their summary is a few edits from its
+/// last segment (`settings` finds `screens/settings`).
+fn closest<'a>(name: &str, lib: &'a [Entry]) -> Vec<&'a str> {
+    let short = name.rsplit('/').next().unwrap_or(name);
+    // How far `a` is from `b`, when near enough to suggest; containment
+    // counts only for words of four letters or more.
+    let near = |a: &str, b: &str| {
+        let d = if b.len().min(a.len()) >= 4 && (b.contains(a) || a.contains(b)) {
+            0
+        } else {
+            distance(a, b)
+        };
+        (d <= (b.len().max(a.len()) / 3).max(1)).then_some(d)
+    };
+    let mut scored: Vec<(usize, &str)> = lib
+        .iter()
+        .filter_map(|e| {
+            let last = e.name.rsplit('/').next().unwrap_or(&e.name);
+            let words = e
+                .summary
+                .to_lowercase()
+                .split(|c: char| !c.is_alphanumeric())
+                .filter(|w| w.len() > 2)
+                .filter_map(|w| near(short, w).map(|d| d + 1))
+                .min();
+            let d = [near(name, &e.name), near(short, last), words]
+                .into_iter()
+                .flatten()
+                .min()?;
+            Some((d, e.name.as_str()))
+        })
+        .collect();
+    scored.sort();
+    scored.into_iter().take(3).map(|(_, n)| n).collect()
+}
+
+/// What an eject wrote: the copy, its table, and the game files whose
+/// imports now point at the copy.
+#[derive(Debug)]
+pub(super) struct Ejected {
+    pub copy: PathBuf,
+    pub table: Option<PathBuf>,
+    pub rewired: Vec<PathBuf>,
+}
+
+/// Copies `name` from the package's `ui` directory into `project`.
+pub(super) fn eject_from(
+    ui: &Path,
+    name: &str,
+    project: &Path,
+    force: bool,
+) -> Result<Ejected, String> {
+    let ui = &normalize(ui);
+    let lib = library(ui);
+    let Some(entry) = lib.iter().find(|e| e.name == name) else {
+        let near = closest(name, &lib);
+        return Err(if near.is_empty() {
+            format!("no built-in '{name}' (og ui eject --list names them)")
+        } else {
+            format!(
+                "no built-in '{name}'; the closest: {} (og ui eject --list names them all)",
+                near.join(", ")
+            )
+        });
+    };
+    if !project.join("project.ogt").is_file() {
+        return Err(format!(
+            "{}: no project.ogt; run it in a game's directory or pass the project",
+            project.display()
+        ));
+    }
+    let source = ui.join(format!("{}.tsx", entry.rel));
+    let text =
+        std::fs::read_to_string(&source).map_err(|e| format!("{}: {e}", source.display()))?;
+    let function = text
+        .split("export function ")
+        .nth(1)
+        .and_then(|r| r.split(|c: char| !c.is_alphanumeric() && c != '_').next())
+        .ok_or_else(|| format!("{}: exports no function", source.display()))?
+        .to_string();
+    let source_dir = source.parent().expect("a file's directory");
+    let copy = project.join("assets/ui").join(format!("{name}.tsx"));
+    let table_path = project.join("assets/ui").join(format!("{name}.en.ogt"));
+    let stem = name.rsplit('/').next().unwrap_or(name);
+
+    // The tables it imports, their keys, and the code with its keys renamed.
+    let mut code = String::new();
+    let mut tables = Vec::new();
+    for line in text.split_inclusive('\n') {
+        let t = line.trim();
+        if let Some(rel) = t
+            .strip_prefix("import \"")
+            .and_then(|r| r.strip_suffix("\";"))
+            .filter(|r| r.ends_with(".ogt"))
+        {
+            let path = source_dir.join(rel);
+            tables.push(
+                std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?,
+            );
+            if tables.len() == 1 {
+                code.push_str(&format!("import \"./{stem}.en.ogt\";\n"));
+            }
+            continue;
+        }
+        code.push_str(line);
+    }
+    let lines: Vec<(String, String)> = tables
+        .iter()
+        .flat_map(|t| t.lines())
+        .filter_map(|l| {
+            let rest = l.strip_prefix("string \"")?;
+            let key = &rest[..rest.find('"')?];
+            Some((key.to_string(), l.to_string()))
+        })
+        .collect();
+    let mut used = BTreeSet::new();
+    for (key, _) in &lines {
+        for q in ['"', '\'', '`'] {
+            let from = format!("{q}{key}{q}");
+            if code.contains(&from) {
+                code = code.replace(&from, &format!("{q}{PREFIX}{key}{q}"));
+                used.insert(key.clone());
+            }
+        }
+    }
+    // A key built at run time: `t(`kit.part.${id}`)` takes every key under
+    // its literal prefix.
+    let mut prefixes = BTreeSet::new();
+    for piece in code.split('`').skip(1).step_by(2) {
+        if let Some(head) = piece.split("${").next()
+            && piece.contains("${")
+            && !head.is_empty()
+            && lines.iter().any(|(k, _)| k.starts_with(head))
+        {
+            prefixes.insert(head.to_string());
+        }
+    }
+    for p in &prefixes {
+        code = code.replace(&format!("`{p}${{"), &format!("`{PREFIX}{p}${{"));
+        for (k, _) in &lines {
+            if k.starts_with(p.as_str()) {
+                used.insert(k.clone());
+            }
+        }
+    }
+    let mut code = relative_imports(&code, source_dir, ui);
+    let table = (!used.is_empty()).then(|| {
+        let mut out = String::from("type strings\nversion 1\n---\nlocale \"en\"\n");
+        let mut seen = BTreeSet::new();
+        for (key, line) in &lines {
+            if used.contains(key) && seen.insert(key.clone()) {
+                out.push_str(&line.replacen(
+                    &format!("string \"{key}\""),
+                    &format!("string \"{PREFIX}{key}\""),
+                    1,
+                ));
+                out.push('\n');
+            }
+        }
+        out
+    });
+    if table.is_none() && !tables.is_empty() {
+        code = code.replace(&format!("import \"./{stem}.en.ogt\";\n"), "");
+    }
+
+    let mut writes = vec![(copy.clone(), code)];
+    if let Some(t) = &table {
+        writes.push((table_path.clone(), t.clone()));
+    }
+    for (path, _) in &writes {
+        if path.exists() && !force {
+            return Err(format!(
+                "{} already exists; nothing written (--force overwrites it)",
+                path.display()
+            ));
+        }
+    }
+    // The game's imports of it, rewired before anything is written.
+    let package_path = format!("{PACKAGE_UI}{}", entry.rel);
+    let mut sources = Vec::new();
+    game_sources(project, &mut sources);
+    let mut rewires = Vec::new();
+    for file in sources {
+        let Ok(before) = std::fs::read_to_string(&file) else {
+            continue;
+        };
+        let target = relative(file.parent().expect("a file's directory"), &copy);
+        let after = rewire(&before, &function, &package_path, &target);
+        if after != before {
+            rewires.push((file, after));
+        }
+    }
+    for (path, text) in writes.iter().chain(&rewires) {
+        std::fs::create_dir_all(path.parent().expect("a file's directory"))
+            .map_err(|e| format!("{}: {e}", path.display()))?;
+        std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
+    Ok(Ejected {
+        copy,
+        table: table.map(|_| table_path),
+        rewired: rewires.into_iter().map(|(p, _)| p).collect(),
+    })
+}
+
+/// The copy's relative imports as the package's paths.
+fn relative_imports(code: &str, dir: &Path, ui: &Path) -> String {
+    let mut out = String::with_capacity(code.len());
+    let mut rest = code;
+    while let Some(at) = rest.find("from \".") {
+        let (head, tail) = rest.split_at(at + "from \"".len());
+        out.push_str(head);
+        let end = tail.find('"').unwrap_or(tail.len());
+        let spec = &tail[..end];
+        let resolved = normalize(&dir.join(spec));
+        match resolved.strip_prefix(ui) {
+            Ok(r) => out.push_str(&format!("{PACKAGE_UI}{}", slash(r))),
+            Err(_) => out.push_str(spec),
+        }
+        rest = &tail[end..];
+    }
+    out.push_str(rest);
+    out
+}
+
+fn normalize(p: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for c in p.components() {
+        match c {
+            Component::ParentDir => {
+                out.pop();
+            }
+            Component::CurDir => {}
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// `to` (a `.tsx` file) from the directory `from`, as an import path.
+fn relative(from: &Path, to: &Path) -> String {
+    let (from, to) = (normalize(from), normalize(to));
+    let a: Vec<_> = from.components().collect();
+    let b: Vec<_> = to.components().collect();
+    let common = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
+    let mut parts: Vec<String> = vec!["..".into(); a.len() - common];
+    parts.extend(
+        b[common..]
+            .iter()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned()),
+    );
+    let joined = parts.join("/");
+    let joined = joined.trim_end_matches(".tsx").to_string();
+    if joined.starts_with("..") {
+        joined
+    } else {
+        format!("./{joined}")
+    }
+}
+
+/// The game's own `.ts`/`.tsx` files, outside installs and outputs.
+fn game_sources(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in rd.flatten() {
+        let p = e.path();
+        let name = e.file_name();
+        let name = name.to_string_lossy();
+        if e.file_type().is_ok_and(|t| t.is_dir()) {
+            if !matches!(
+                name.as_ref(),
+                "node_modules" | "cooked" | "og-out" | "dist" | ".og" | "target" | ".git"
+            ) {
+                game_sources(&p, out);
+            }
+        } else if name.ends_with(".ts") || name.ends_with(".tsx") {
+            out.push(p);
+        }
+    }
+}
+
+/// `text` with its imports of `function` (by name from the barrel) and of
+/// `package_path` (with or without `.tsx`) pointing at `target`.
+fn rewire(text: &str, function: &str, package_path: &str, target: &str) -> String {
+    let mut text = text
+        .replace(&format!("\"{package_path}.tsx\""), &format!("\"{target}\""))
+        .replace(&format!("\"{package_path}\""), &format!("\"{target}\""));
+    let from = format!("from \"{BARREL}\"");
+    let mut search = 0;
+    while let Some(at) = text[search..].find(&from).map(|i| i + search) {
+        let Some(start) = text[..at].rfind("import") else {
+            break;
+        };
+        let end = at + from.len() + usize::from(text[at + from.len()..].starts_with(';'));
+        let clause = &text[start..at];
+        let (Some(open), Some(close)) = (clause.find('{'), clause.rfind('}')) else {
+            search = end;
+            continue;
+        };
+        let names: Vec<&str> = clause[open + 1..close]
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .collect();
+        let is_it = |s: &str| {
+            s.trim_start_matches("type ")
+                .split(" as ")
+                .next()
+                .is_some_and(|n| n.trim() == function)
+        };
+        let Some(spec) = names.iter().find(|s| is_it(s)).map(|s| s.to_string()) else {
+            search = end;
+            continue;
+        };
+        let kept: Vec<&str> = names.into_iter().filter(|s| !is_it(s)).collect();
+        let own = format!("import {{ {spec} }} from \"{target}\";");
+        let replacement = if kept.is_empty() {
+            own
+        } else {
+            format!(
+                "{}{{ {} }} {from};\n{own}",
+                &clause[..open],
+                kept.join(", ")
+            )
+        };
+        text.replace_range(start..end, &replacement);
+        search = start + replacement.len();
+    }
+    text
+}
+
+/// `og ui eject <name> [project] [--force]`, `og ui eject --list [project]`.
+pub(super) fn run(args: &[&str], usage: &str) -> ExitCode {
+    let (mut words, mut list, mut force) = (Vec::new(), false, false);
+    for a in args {
+        match *a {
+            "--list" => list = true,
+            "--force" => force = true,
+            a if a.starts_with('-') => {
+                eprintln!("og ui eject: unknown option `{a}`. {usage}");
+                return ExitCode::from(2);
+            }
+            a => words.push(a),
+        }
+    }
+    let (name, project) = match (list, words.as_slice()) {
+        (true, []) => (None, "."),
+        (true, [p]) => (None, *p),
+        (false, [n]) => (Some(*n), "."),
+        (false, [n, p]) => (Some(*n), *p),
+        _ => {
+            eprintln!("og ui eject: {usage}");
+            return ExitCode::from(2);
+        }
+    };
+    let project = Path::new(project);
+    let Some(package) = project::engine_package(Some(project)) else {
+        eprintln!("og ui eject: {}", project::NO_ENGINE);
+        return ExitCode::FAILURE;
+    };
+    let ui = package.join("src/ui");
+    let Some(name) = name else {
+        for e in library(&ui) {
+            println!("{:<28} {}", e.name, e.summary);
+        }
+        return ExitCode::SUCCESS;
+    };
+    match eject_from(&ui, name, project, force) {
+        Ok(done) => {
+            let shown = |p: &Path| slash(p.strip_prefix(project).unwrap_or(p));
+            println!("og ui eject: '{name}' into {}", shown(&done.copy));
+            if let Some(t) = &done.table {
+                println!("  its strings into {}, keys under `{PREFIX}`", shown(t));
+            }
+            for f in &done.rewired {
+                println!("  {} now imports the copy", shown(f));
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("og ui eject: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::eject_from;
+    use std::path::{Path, PathBuf};
+
+    /// The checkout's `src/ui` (what the engine package ships).
+    fn ui() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui")
+    }
+
+    /// A game in a fresh temporary directory with these files.
+    fn game(name: &str, files: &[(&str, &str)]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("og-ui-eject-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("project.ogt"),
+            "type project\nversion 1\n---\nname \"G\"\n",
+        )
+        .unwrap();
+        for (path, text) in files {
+            let p = dir.join(path);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, text).unwrap();
+        }
+        dir
+    }
+
+    #[test]
+    fn eject_of_an_unknown_name_answers_the_closest() {
+        let dir = game("unknown", &[]);
+        let e = eject_from(&ui(), "card/hnad", &dir, false).unwrap_err();
+        assert!(
+            e.contains("no built-in 'card/hnad'") && e.contains("card/hand"),
+            "{e}"
+        );
+        let e = eject_from(&ui(), "zzzzzzzzzzzzzzzz", &dir, false).unwrap_err();
+        assert!(e.contains("og ui eject --list"), "{e}");
+        assert!(!dir.join("assets").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// The copy keeps the built-ins it composes, reads its own strings under
+    /// `game.`, and the game's import of it (one name among others from the
+    /// barrel) moves to the copy while the rest stay.
+    #[test]
+    fn an_ejected_component_is_the_game_s_own_and_its_imports_follow() {
+        let main = "import { CardFace, CardHand as Hand } from \"@origingame/engine/ui/components\";\nimport { StatBar } from \"@origingame/engine/ui/components\";\nexport const parts = [CardFace, Hand, StatBar];\n";
+        let path = "import { ShooterLoadout } from \"@origingame/engine/ui/components/shooter/loadout\";\n";
+        let dir = game(
+            "hand",
+            &[("src/main.tsx", main), ("assets/ui/screen.tsx", path)],
+        );
+        let done = eject_from(&ui(), "card/hand", &dir, false).unwrap();
+        let copy = std::fs::read_to_string(&done.copy).unwrap();
+        assert!(
+            copy.contains("from \"@origingame/engine/ui/components/card/face\""),
+            "{copy}"
+        );
+        assert!(
+            copy.contains("from \"@origingame/engine/ui/controls/button\""),
+            "{copy}"
+        );
+        assert!(copy.contains("import \"./hand.en.ogt\";"), "{copy}");
+        assert!(
+            copy.contains("t(\"game.card.hand.play\")") && !copy.contains("t(\"card.hand.play\")"),
+            "{copy}"
+        );
+        let table = std::fs::read_to_string(done.table.unwrap()).unwrap();
+        assert!(
+            table.contains("string \"game.card.hand.play\" \"Play\""),
+            "{table}"
+        );
+        assert!(!table.contains("string \"card."), "{table}");
+        let main = std::fs::read_to_string(dir.join("src/main.tsx")).unwrap();
+        assert!(main.contains("import { CardFace } from \"@origingame/engine/ui/components\";\nimport { CardHand as Hand } from \"../assets/ui/card/hand\";"), "{main}");
+        assert!(
+            main.contains("import { StatBar } from \"@origingame/engine/ui/components\";"),
+            "{main}"
+        );
+        assert_eq!(done.rewired.len(), 1);
+        // A second eject without --force writes nothing.
+        let e = eject_from(&ui(), "card/hand", &dir, false).unwrap_err();
+        assert!(e.contains("already exists"), "{e}");
+        // A key built at run time keeps its whole family.
+        let done = eject_from(&ui(), "shooter/loadout", &dir, false).unwrap();
+        let copy = std::fs::read_to_string(&done.copy).unwrap();
+        assert!(
+            copy.contains("t(`game.shooter.loadout.category.${"),
+            "{copy}"
+        );
+        let table = std::fs::read_to_string(done.table.unwrap()).unwrap();
+        assert!(
+            table.contains("string \"game.shooter.loadout.category."),
+            "{table}"
+        );
+        let screen = std::fs::read_to_string(dir.join("assets/ui/screen.tsx")).unwrap();
+        assert!(screen.contains("from \"./shooter/loadout\""), "{screen}");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+}

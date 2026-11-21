@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og ui eject",
+      "change": "`og ui eject` copies a built-in TSX component, screen or control, not a .svelte document. A name is the file's path under the engine's src/ui/components (`hud/stat-bar`, `card/hand`), or `screens/<name>` or `controls/<name>`; a bare screen name (`title`) is refused with the closest names. The copy is `assets/ui/<name>.tsx` with the strings it reads in `assets/ui/<name>.en.ogt` under `game.` keys, its imports of other built-ins kept as the engine's package paths, and every import of it in the game's .ts/.tsx (by name from @origingame/engine/ui/components, or by its package path) moved to the copy. `--list` prints each name with its doc comment's first line instead of a README row. Nothing writes `assets/ui/<name>.svelte` any more, and no `og.load.document` path is printed.",
+      "fix": "Eject by the new name (`og ui eject screens/title`, `og ui eject hud/stat-bar`), and delete any `assets/ui/*.svelte` an earlier eject wrote: the TSX UI never reads it. A screen the game had ejected and edited is ejected again and its edits made in the .tsx.",
+      "find": ["og ui eject", ".svelte"]
+    }
+  ]
+}
