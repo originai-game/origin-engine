@@ -707,7 +707,7 @@ fn settle(engine: u32, frame: &impl Fn() -> Cost, packs: usize) {
 /// drawn as its parts; the pack never loaded, so they are warned of and
 /// boxed; a colour page's glyphs blank (an atlas never uploaded).
 #[test]
-#[ignore = "requires GPU"]
+#[ignore = "TSX core paints no COLR colour emoji yet; owner Text+UI T-01a20000-8956"]
 fn colour_emoji_draw_from_the_emoji_pack_in_colour() {
     for (width, height) in [(1280u32, 720u32), (390, 844)] {
         let (engine, frame, seen, info) = rig(project(), width, height, true);
