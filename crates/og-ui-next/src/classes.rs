@@ -46,6 +46,10 @@ pub struct Classes {
 struct Parsed {
     list: ClassList,
     nine: Vec<Box<str>>,
+    /// The same `nine-` classes as `z-[<n>]` with their variants (`n`
+    /// standing for name `n`), so NSH's own variant and order rules pick
+    /// the one that holds.
+    nine_list: Option<ClassList>,
 }
 
 /// A pack image (`Pack::images`) as the box image it draws, its texture
@@ -136,10 +140,35 @@ impl Classes {
     fn parsed(&mut self, classes: &str) -> &Parsed {
         if !self.lists.contains_key(classes) {
             let expanded = self.expand(classes);
-            let (nine, rest) = crate::pack::split_nine(expanded.as_deref().unwrap_or(classes));
-            let nine = nine.into_iter().map(Box::from).collect();
+            let (mut rest, mut nine, mut stand) = (String::new(), Vec::new(), String::new());
+            for class in expanded
+                .as_deref()
+                .unwrap_or(classes)
+                .split_ascii_whitespace()
+            {
+                let (variants, utility) = class.rsplit_once(':').unwrap_or(("", class));
+                let Some(name) = utility.strip_prefix("nine-") else {
+                    rest.push_str(class);
+                    rest.push(' ');
+                    continue;
+                };
+                nine.push(Box::from(name));
+                if !variants.is_empty() {
+                    stand.push_str(variants);
+                    stand.push(':');
+                }
+                stand.push_str(&format!("z-[{}] ", nine.len()));
+            }
             let list = tailwind::parse(&self.theme, &rest);
-            self.lists.insert(classes.into(), Parsed { list, nine });
+            let nine_list = (!nine.is_empty()).then(|| tailwind::parse(&self.theme, &stand));
+            self.lists.insert(
+                classes.into(),
+                Parsed {
+                    list,
+                    nine,
+                    nine_list,
+                },
+            );
         }
         &self.lists[classes]
     }
@@ -163,7 +192,8 @@ impl Classes {
     /// The state bits `classes` reads (`hover:` …): an element whose
     /// classes read none keeps one record.
     pub fn tracked(&mut self, classes: &str) -> u16 {
-        self.parsed(classes).list.tracked_states()
+        let p = self.parsed(classes);
+        p.list.tracked_states() | p.nine_list.as_ref().map_or(0, ClassList::tracked_states)
     }
 
     /// The record `classes` give an element in `env`.
@@ -179,12 +209,11 @@ impl Classes {
     pub fn record_styled(&mut self, classes: &str, style: &str, env: &Env) -> Record {
         let env = *env;
         let parsed = self.parsed(classes);
-        let (list, nine) = (parsed.list.clone(), parsed.nine.clone());
-        let image = nine
-            .iter()
-            .rev()
-            .find_map(|n| self.images.get(&**n))
-            .copied();
+        let (list, nine, nine_list) = (
+            parsed.list.clone(),
+            parsed.nine.clone(),
+            parsed.nine_list.clone(),
+        );
         let cx = Context {
             env: ClassEnvironment {
                 dark: env.dark,
@@ -212,8 +241,22 @@ impl Classes {
             let _ = out.set(&camel(name), value);
         }
         let mut record = record_of(&out, &props);
-        if let Some(image) = image {
-            record.skin.image = image;
+        // The `nine-<name>` that holds in `env`, the last one written.
+        if let Some(nine_list) = nine_list {
+            let mut stand = Style::default();
+            nine_list.apply(
+                &cx,
+                &self.theme,
+                &mut stand,
+                &mut ClassProps::default(),
+                |_| {},
+            );
+            let held = usize::try_from(stand.z_index - 1)
+                .ok()
+                .and_then(|i| nine.get(i));
+            if let Some(image) = held.and_then(|n| self.images.get(&**n)) {
+                record.skin.image = *image;
+            }
         }
         record
     }
@@ -758,9 +801,21 @@ mod tests {
             (false, true, Tint::Fill, [0.0, 0.0, 1.0, 1.0])
         );
         assert!(r.skin.fill[3] > 0.0, "the classes still apply");
-        // Under a variant too, the last one named winning, in its own colours.
-        let im = c.record("nine-plate md:nine-frame", &env).skin.image;
+        // A variant's holds only in its state or window, then winning.
+        let hover = Env {
+            states: state::HOVERED,
+            ..env
+        };
+        let class = "hover:nine-frame nine-plate";
+        assert_ne!(c.tracked(class), 0, "it reads the hover state");
+        assert_eq!(c.record(class, &env).skin.image.texture, 7);
+        let im = c.record(class, &hover).skin.image;
         assert_eq!((im.texture, im.tint), (9, Tint::Own));
+        assert_eq!(
+            c.record("nine-frame nine-plate", &env).skin.image.texture,
+            7,
+            "the last one"
+        );
         // A name the pack lacks draws nothing and is reported.
         assert_eq!(c.record("nine-gone", &env).skin.image, Slice::default());
         assert_eq!(c.unknown("p-2 nine-gone nine-plate"), ["nine-gone"]);

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "nine-<name>",
+      "summary": "A `nine-<name>` class under a variant holds only in that state or window, as any class does: `hover:nine-plate-lit` draws its art on hover alone, and the last one that holds wins, instead of the last one written applying always."
+    }
+  ]
+}
