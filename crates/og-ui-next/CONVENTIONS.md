@@ -139,7 +139,8 @@ uniform and centred, the stroke staying in px); there are no others. What can be
 `PaintKind::Line` quad over its box (og-draw paint.rs): its points in
 `Paint.points`, box-relative, width `p.x`, closed `p.y`. Events: 0 press, 1 tap, 2 pointerdown,
 3 pointermove, 4 pointerup, 5 wheel, 6 focus, 7 blur, 8 key, 9 change,
-10 action, 11 longpress, 12 hold, 13 dragstart, 14 dragmove, 15 dragend, 16 drop.
+10 action, 11 longpress, 12 hold, 13 dragstart, 14 dragmove, 15 dragend, 16 drop,
+17 pinch, 18 rotate, 19 swipe.
 
 The reply is `OGEV`, a u32 count and the events since the last batch, each
 an id (u32), event (u8), x and y on the UI's surface (f32), then key and
@@ -256,9 +257,20 @@ machines do (ported as logic).
   data-og-touch>` are (docs/ui.md §3.3): after each layout its box, in
   surface px, goes to the action map as a control zone
   (`Tree::take_zones`), which samples the touches that started on it in
-  the tick. No handler runs. A disabled or hidden one is no zone. Until
-  og-ui goes (head 9), og-runtime hands the map og-ui's zones and these
-  together.
+  the tick. No handler runs. A disabled or hidden one is no zone. What
+  the map read comes back before the next layout (`Tree::zone_states`):
+  the control is `active:` while a touch holds it, and a `knob` node
+  inside a stick moves by the stick's knob (a paint transform; layout
+  stays put).
+- **Gestures** (NSH's recognisers, every pointer og-input tracks): each
+  pointer keeps the node that hears `pinch`, `rotate` or `swipe` it went
+  down on. A second finger down on the same node starts events 17 `pinch`
+  and 18 `rotate` (`key` `start`, `move`, `end`; `value` the scale and the
+  turn in radians, clockwise, since they began; x and y the fingers'
+  midpoint), until either lifts. A pointer let go moving at 300 px/s or
+  more, 10 px or more from where it went down, fires 19 `swipe` (`key`
+  `left`, `right`, `up` or `down`; `value` `"vx vy"` in px/s); a pinch's
+  fingers swipe nothing.
 
 | Prop | Value | Means |
 |---|---|---|
@@ -276,6 +288,7 @@ machines do (ported as logic).
 | `touchPad` | an action's name | its box is a d-pad of that action (eight directions) |
 | `touchButton` | an action's name | its box is a button of that action (1 while held) |
 | `deadZone` | 0 to 0.95 | a stick's dead zone, of its radius (0: og-input's 0.15) |
+| `knob` | bool | inside a `touchStick`, it moves with the stick's knob |
 
 ## Accessibility
 

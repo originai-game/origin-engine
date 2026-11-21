@@ -77,7 +77,13 @@ export interface HostProps {
     onDragEnd?: Handler;
     /** A carried node was dropped on this target: `key` that node's data, `value` this target's box. */
     onDrop?: Handler;
-    /** An on-screen stick: its box feeds this input action's x and y (from its centre, y up), with no handler. */
+    /** Two fingers that went down on it pinch: `key` is "start", "move" or "end", `value` the scale since they began, x and y their midpoint. */
+    onPinch?: Handler;
+    /** Two fingers that went down on it turn: as `onPinch`, `value` the turn since they began in radians, clockwise on screen. */
+    onRotate?: Handler;
+    /** A pointer that went down on it was let go moving fast (300 px/s, 10 px): `key` its way, "left", "right", "up" or "down"; `value` its velocity, "vx vy" in px/s. A pinch's fingers swipe nothing. */
+    onSwipe?: Handler;
+    /** An on-screen stick: its box feeds this input action's x and y (from its centre, y up), with no handler. Like `touchPad` and `touchButton`, it is `active:` while a touch holds it. */
     touchStick?: string | undefined;
     /** An on-screen d-pad: its box feeds this input action, the nearest of eight directions. */
     touchPad?: string | undefined;
@@ -85,6 +91,8 @@ export interface HostProps {
     touchButton?: string | undefined;
     /** A `touchStick`'s dead zone, a ratio of its radius from 0 to 0.95; 0 is the default 0.15. */
     deadZone?: number | undefined;
+    /** Inside a `touchStick`: it moves with the stick's knob as og-input reads it. */
+    knob?: boolean | undefined;
     /** Input actions handled where focus is (`{ confirm, details }`); the event's `key` names the action. */
     onAction?: Record<string, Handler> | undefined;
     disabled?: boolean | undefined;

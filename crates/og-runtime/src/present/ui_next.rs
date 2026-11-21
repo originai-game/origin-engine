@@ -1059,6 +1059,19 @@ impl Next {
         Some(self.doc_zones.iter().chain(&self.zones).cloned().collect())
     }
 
+    /// What og-input read from the zones last handed out (its
+    /// `zone_states`, documents' zones first): the tree's controls show
+    /// their press and knob.
+    pub(crate) fn zone_states<'a>(
+        &mut self,
+        states: impl ExactSizeIterator<Item = &'a og_input::ZoneState>,
+    ) {
+        let skip = self.doc_zones.len();
+        if let Some(tree) = &mut self.tree {
+            tree.zone_states(states.skip(skip), self.unit);
+        }
+    }
+
     /// The sounds the tree's controls played this frame (the pack's).
     pub(crate) fn take_sounds(&mut self) -> Vec<og_ui_next::tree::Play> {
         self.tree
@@ -1208,6 +1221,11 @@ impl Next {
         // A press the cursor took confirms nothing at the focus.
         let a_taken = a_was && !(pad.a_pressed || pad.a_held);
         tree.pointer(ptr.x, ptr.y, ptr.pressed, ptr.released, &mut done);
+        // Every finger: pinches, turns and swipes on the elements they
+        // went down on.
+        if tree.has_ops() {
+            tree.touches(&input.pointers);
+        }
         // Op nodes take the wheel, the keys, the UI's input actions and an
         // assistive technology's requests; the `<Glyph>` nodes follow the
         // device.

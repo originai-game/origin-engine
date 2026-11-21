@@ -51,6 +51,12 @@ const FLING_HOLD: f64 = 0.1;
 /// `SCROLL_DECAY`).
 const SCROLL_DECAY: f32 = 2.002;
 
+/// A pointer let go faster than this (px/s) along its main axis swipes,
+/// once it has travelled [`SWIPE_DISTANCE`] (Hammer.js's swipe: 0.3 px/ms
+/// and 10 px).
+const SWIPE_VELOCITY: f32 = 300.0;
+const SWIPE_DISTANCE: f32 = 10.0;
+
 /// No `tabIndex` prop: a Tab stop when it takes presses or is an input.
 pub(super) const NO_TAB: i32 = i32::MIN;
 
@@ -87,6 +93,11 @@ pub(super) struct Per {
     /// with `deadZone` a stick's dead zone.
     pub zone: Option<(og_input::ZoneKind, Box<str>)>,
     pub dead_zone: f32,
+    /// An on-screen control's knob as og-input last read it (from the
+    /// zone's middle, y down), and `knob`: this node moves by the knob of
+    /// the control it is in, at paint.
+    pub knob: [f32; 2],
+    pub rides_knob: bool,
     /// An `Input`'s text, its `placeholder` (shown while the text is
     /// empty) and its caret, a byte offset at a grapheme cluster's edge.
     pub value: String,
@@ -271,6 +282,12 @@ pub struct Input {
     /// handed out ([`Tree::take_zones`]).
     pub(super) zone_els: Vec<u32>,
     zones: Vec<og_input::ControlZone>,
+    /// The element each zone handed out came from, in their order.
+    zone_from: Vec<u32>,
+    /// Pointers 0 to 4 on elements that hear a gesture, and the two
+    /// fingers that pinch and turn one ([`Tree::touches`]).
+    gestures: [Option<Gesturing>; 5],
+    pinch: Option<Pinching>,
     /// The pack's sounds, what this frame plays, and the stream that
     /// picks a clip and its volume and pitch (seeded: a replay plays the
     /// same).
@@ -280,6 +297,28 @@ pub struct Input {
     /// A press `confirm` made: it sounds `confirm`, not `press`.
     confirming: bool,
     drag: Option<Drag>,
+}
+
+/// A pointer that went down on an element hearing `onPinch`, `onRotate`
+/// or `onSwipe`.
+#[derive(Clone, Copy)]
+struct Gesturing {
+    e: u32,
+    from: (f32, f32),
+    tracker: nsh::VelocityTracker,
+    /// It is one of a pinch's fingers: its release swipes nothing.
+    pinched: bool,
+}
+
+/// Two fingers pinching and turning an element: NSH's recogniser, the
+/// pointers' ids, and the last scale and turn reported.
+#[derive(Clone, Copy)]
+struct Pinching {
+    e: u32,
+    a: u32,
+    b: u32,
+    p: nsh::Pinch,
+    last: (f32, f32),
 }
 
 impl Input {
@@ -648,6 +687,10 @@ impl Tree {
                 dead_zone: p.dead_zone,
                 floating: false,
             };
+            match self.input.zone_from.get_mut(k) {
+                Some(f) => *f = e as u32,
+                None => self.input.zone_from.push(e as u32),
+            }
             match self.input.zones.get_mut(k) {
                 Some(z) if same(z) => {}
                 Some(z) => {
@@ -661,11 +704,205 @@ impl Tree {
             }
             k += 1;
         }
+        self.input.zone_from.truncate(k);
         if self.input.zones.len() != k {
             self.input.zones.truncate(k);
             changed = true;
         }
         changed.then(|| self.input.zones.clone())
+    }
+
+    /// What og-input read from each zone [`Tree::take_zones`] handed out,
+    /// in that order (og-input's `ActionMap::zone_states`, surface px over
+    /// `scale` tree units): a control held by any pointer is `active:`,
+    /// and its knob moves the nodes marked `knob` in it, as Unity's
+    /// OnScreenStick draws from its control.
+    pub fn zone_states<'a>(
+        &mut self,
+        states: impl IntoIterator<Item = &'a og_input::ZoneState>,
+        scale: f32,
+    ) {
+        let mut states = states.into_iter();
+        for k in 0..self.input.zone_from.len() {
+            let e = self.input.zone_from[k];
+            let (held, knob) = match states.next() {
+                Some(s) => (s.pointer.is_some(), [s.knob.x / scale, s.knob.y / scale]),
+                None => (false, [0.0; 2]),
+            };
+            if self.els[e as usize].dead {
+                continue;
+            }
+            self.set_state(e, PRESSED, held);
+            let p = &mut self.input.per[e as usize];
+            if p.knob != knob {
+                p.knob = knob;
+                self.paint = true;
+            }
+        }
+    }
+
+    /// The knob offset node `e` moves by at paint: its control's, when it
+    /// is marked `knob`.
+    pub(super) fn knob_of(&self, e: u32) -> [f32; 2] {
+        if !self.input.per(e).is_some_and(|p| p.rides_knob) {
+            return [0.0; 2];
+        }
+        let mut c = self.els[e as usize].parent;
+        while c != NONE {
+            if let Some(p) = self.input.per(c)
+                && p.zone.is_some()
+            {
+                return p.knob;
+            }
+            c = self.els[c as usize].parent;
+        }
+        [0.0; 2]
+    }
+
+    /// Every pointer this frame (og-input's `og.Pointers`, in tree units):
+    /// two fingers down on an element that hears `onPinch` or `onRotate`
+    /// pinch and turn it (NSH's `Pinch`), and a pointer let go fast on one
+    /// that hears `onSwipe` swipes it (NSH's `VelocityTracker`). Each
+    /// pointer keeps the element it went down on.
+    pub fn touches(&mut self, pointers: &og_input::Pointers) {
+        let hears: u32 = OpEvent::Pinch.bit() | OpEvent::Rotate.bit() | OpEvent::Swipe.bit();
+        let ms = self.time * 1000.0;
+        let at = |id: u32| {
+            let p = pointers.position(id);
+            nsh_input::Point {
+                x: nsh_input::Points(p.x),
+                y: nsh_input::Points(p.y),
+            }
+        };
+        for id in 0..5u32 {
+            let bit = 1 << id;
+            let pos = pointers.position(id);
+            if pointers.pressed & bit != 0 {
+                let hit = self.hit_where(pos.x, pos.y, |el| el.js != NONE);
+                let e = self.up(hit, |el| el.listens & hears != 0);
+                self.input.gestures[id as usize] = (e != NONE).then(|| {
+                    let mut tracker = nsh::VelocityTracker::default();
+                    tracker.add(ms, at(id));
+                    Gesturing {
+                        e,
+                        from: (pos.x, pos.y),
+                        tracker,
+                        pinched: false,
+                    }
+                });
+            } else if pointers.held & bit != 0
+                && let Some(g) = &mut self.input.gestures[id as usize]
+            {
+                g.tracker.add(ms, at(id));
+            }
+        }
+        // A second finger on the element the first is on starts a pinch.
+        let pinches = OpEvent::Pinch.bit() | OpEvent::Rotate.bit();
+        if self.input.pinch.is_none() {
+            let down: Vec<(u32, u32)> = (0..5u32)
+                .filter(|id| pointers.held & (1 << id) != 0)
+                .filter_map(|id| self.input.gestures[id as usize].map(|g| (id, g.e)))
+                .collect();
+            if let Some(&(a, e)) = down.first()
+                && let Some(&(b, _)) = down.iter().skip(1).find(|d| d.1 == e)
+                && self.els[e as usize].listens & pinches != 0
+            {
+                for id in [a, b] {
+                    if let Some(g) = &mut self.input.gestures[id as usize] {
+                        g.pinched = true;
+                    }
+                }
+                let p = Pinching {
+                    e,
+                    a,
+                    b,
+                    p: nsh::Pinch::new(at(a), at(b)),
+                    last: (1.0, 0.0),
+                };
+                self.input.pinch = Some(p);
+                self.fire_pinch(e, "start", (1.0, 0.0), &p, pointers);
+            }
+        }
+        if let Some(mut p) = self.input.pinch {
+            let both = pointers.held & (1 << p.a) != 0 && pointers.held & (1 << p.b) != 0;
+            let dead = self.els[p.e as usize].dead;
+            if both && !dead {
+                let (scale, turn) = p.p.at(at(p.a), at(p.b));
+                if (scale, turn.0) != p.last {
+                    p.last = (scale, turn.0);
+                    self.input.pinch = Some(p);
+                    self.fire_pinch(p.e, "move", p.last, &p, pointers);
+                }
+            } else {
+                self.input.pinch = None;
+                if !dead {
+                    self.fire_pinch(p.e, "end", p.last, &p, pointers);
+                }
+            }
+        }
+        for id in 0..5u32 {
+            if pointers.released & (1 << id) == 0 {
+                continue;
+            }
+            let Some(g) = self.input.gestures[id as usize].take() else {
+                continue;
+            };
+            let el = &self.els[g.e as usize];
+            if g.pinched || el.dead || el.listens & OpEvent::Swipe.bit() == 0 {
+                continue;
+            }
+            let pos = pointers.position(id);
+            let (dx, dy) = (pos.x - g.from.0, pos.y - g.from.1);
+            let (vx, vy) = g.tracker.velocity();
+            let horizontal = vx.abs() >= vy.abs();
+            let (d, v) = if horizontal { (dx, vx) } else { (dy, vy) };
+            if d.abs() < SWIPE_DISTANCE || v.abs() < SWIPE_VELOCITY || d.signum() != v.signum() {
+                continue;
+            }
+            let dir = match (horizontal, v > 0.0) {
+                (true, true) => "right",
+                (true, false) => "left",
+                (false, true) => "down",
+                (false, false) => "up",
+            };
+            let mut f = Fired::at(self.els[g.e as usize].js, OpEvent::Swipe, pos.x, pos.y);
+            f.key = dir.into();
+            f.value = format!("{vx} {vy}").into();
+            self.events.push(f);
+        }
+    }
+
+    /// `onPinch` (the scale) and `onRotate` (the turn) on `e`, at the
+    /// pinching fingers' midpoint, for those it hears.
+    fn fire_pinch(
+        &mut self,
+        e: u32,
+        phase: &str,
+        (scale, turn): (f32, f32),
+        p: &Pinching,
+        pointers: &og_input::Pointers,
+    ) {
+        let (a, b) = (pointers.position(p.a), pointers.position(p.b));
+        self.fire_pinch_at(
+            e,
+            phase,
+            scale,
+            turn,
+            ((a.x + b.x) / 2.0, (a.y + b.y) / 2.0),
+        );
+    }
+
+    fn fire_pinch_at(&mut self, e: u32, phase: &str, scale: f32, turn: f32, (x, y): (f32, f32)) {
+        let el = &self.els[e as usize];
+        let (js, listens) = (el.js, el.listens);
+        for (ev, v) in [(OpEvent::Pinch, scale), (OpEvent::Rotate, turn)] {
+            if listens & ev.bit() != 0 {
+                let mut f = Fired::at(js, ev, x, y);
+                f.key = phase.into();
+                f.value = v.to_string().into();
+                self.events.push(f);
+            }
+        }
     }
 
     /// The op element `e` is in that `want` accepts, itself first.

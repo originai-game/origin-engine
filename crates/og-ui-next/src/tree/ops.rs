@@ -49,10 +49,21 @@ pub enum Event {
     /// A carried node was dropped on this `dropTarget`: the node's data in
     /// `key`, this target's box in `value` (`onDrop`).
     Drop,
+    /// Two fingers that went down on it pinch: `key` is `start`, `move`
+    /// or `end`, `value` the scale from where they began, x and y their
+    /// midpoint (`onPinch`).
+    Pinch,
+    /// Two fingers that went down on it turn: as `Pinch`, `value` the
+    /// turn in radians, clockwise on screen (`onRotate`).
+    Rotate,
+    /// A pointer that went down on it was let go moving fast: `key` its
+    /// direction (`left`, `right`, `up`, `down`), `value` its velocity
+    /// `"vx vy"` in px/s (`onSwipe`).
+    Swipe,
 }
 
 impl Event {
-    const ALL: [Event; 17] = [
+    const ALL: [Event; 20] = [
         Event::Press,
         Event::Tap,
         Event::PointerDown,
@@ -70,6 +81,9 @@ impl Event {
         Event::DragMove,
         Event::DragEnd,
         Event::Drop,
+        Event::Pinch,
+        Event::Rotate,
+        Event::Swipe,
     ];
 
     pub fn bit(self) -> u32 {
@@ -669,6 +683,11 @@ impl Tree {
                         }
                         "draggable" => self.input.per[e as usize].drag = value.trim().into(),
                         "dropTarget" => self.input.per[e as usize].drop = value.trim().into(),
+                        "knob" => {
+                            self.input.per[e as usize].rides_knob =
+                                !matches!(value, "" | "false" | "0" | "null");
+                            self.paint = true;
+                        }
                         "deadZone" => {
                             self.input.per[e as usize].dead_zone =
                                 value.trim().parse::<f32>().unwrap_or(0.0).clamp(0.0, 0.95);
@@ -1192,6 +1211,7 @@ mod tests {
                 match c {
                     "row" => s.flex_direction = taffy::FlexDirection::Row,
                     "b" => s.size = taffy::Size::from_lengths(50.0, 20.0),
+                    "big" => s.size = taffy::Size::from_lengths(400.0, 300.0),
                     _ => {}
                 }
             }
@@ -3138,6 +3158,116 @@ mod tests {
         t.apply(&b.bytes()).unwrap();
         frame(&mut t);
         assert_eq!(zones(&mut t), Some(vec![]));
+    }
+
+    /// What og-input read from a control comes back: the control is
+    /// `active:` while a pointer holds it, and a `knob` node inside moves
+    /// by its knob, in tree units (the zones went out in surface px).
+    #[test]
+    fn a_control_shows_the_knob_and_press_og_input_read() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        for (id, class, parent) in [(1, "b", 0), (2, "b", 1)] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        b.op(6).u32(1).str("touchStick").str("move");
+        b.op(6).u32(2).str("knob").str("true");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert!(t.take_zones().is_some());
+        let held = og_input::ZoneState {
+            pointer: Some(2),
+            knob: og_core::glam::Vec2::new(12.0, -4.0),
+            ..Default::default()
+        };
+        t.zone_states([&held], 2.0);
+        frame(&mut t);
+        let knob = t.op(2).unwrap() as usize;
+        let xf = t.xfs[knob];
+        assert!(xf != 0, "the knob draws moved");
+        let [_, _, _, _, e, f, _, _] = t.drawn.transforms[xf as usize];
+        assert_eq!([e, f], [6.0, -2.0], "the knob, in tree units");
+        let one = t.op(1).unwrap();
+        assert!(t.input.per(one).unwrap().states & PRESSED != 0, "held");
+        t.zone_states([&og_input::ZoneState::default()], 2.0);
+        frame(&mut t);
+        assert!(t.input.per(one).unwrap().states & PRESSED == 0, "let go");
+        assert_eq!(t.xfs[knob], 0, "the knob back home");
+    }
+
+    /// Two fingers down on a node that hears `onPinch` and `onRotate`
+    /// pinch and turn it (NSH's recogniser): start, move with the scale
+    /// and the turn from where they began, end. A finger let go fast on
+    /// one that hears `onSwipe` swipes it its way; a slow one does not.
+    #[test]
+    fn fingers_pinch_turn_and_swipe_the_node_they_went_down_on() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("big");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(7).u32(1).u8(Event::Pinch as u8).u8(1);
+        b.op(7).u32(1).u8(Event::Rotate as u8).u8(1);
+        b.op(7).u32(1).u8(Event::Swipe as u8).u8(1);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let mut p = og_input::Pointers::default();
+        let step = |t: &mut Tree, p: &mut og_input::Pointers, at: f64| {
+            t.set_time(at, false);
+            t.touches(p);
+            p.pressed = 0;
+            p.released = 0;
+            std::mem::take(&mut t.events)
+                .into_iter()
+                .map(|f| (f.event, f.key.to_string(), f.value.to_string()))
+                .collect::<Vec<_>>()
+        };
+        // Fingers 1 and 2, 100 px apart, then 200 px apart and turned.
+        p.held = 0b110;
+        p.pressed = 0b110;
+        p.position1 = og_core::glam::Vec2::new(100.0, 100.0);
+        p.position2 = og_core::glam::Vec2::new(200.0, 100.0);
+        let got = step(&mut t, &mut p, 0.0);
+        assert_eq!(got[0], (Event::Pinch, "start".into(), "1".into()));
+        p.position2 = og_core::glam::Vec2::new(100.0, 300.0);
+        let got = step(&mut t, &mut p, 0.1);
+        assert_eq!(got[0], (Event::Pinch, "move".into(), "2".into()));
+        let turn: f32 = got[1].2.parse().unwrap();
+        assert_eq!(got[1].1, "move");
+        assert!((turn - std::f32::consts::FRAC_PI_2).abs() < 1e-5, "{turn}");
+        p.held = 0b100;
+        p.released = 0b010;
+        let got = step(&mut t, &mut p, 0.2);
+        assert_eq!(
+            got.iter().map(|g| g.1.as_str()).collect::<Vec<_>>(),
+            ["end", "end"]
+        );
+        p.held = 0;
+        p.released = 0b100;
+        assert!(
+            step(&mut t, &mut p, 0.3).is_empty(),
+            "a pinch's finger swipes nothing"
+        );
+        // Finger 3: 120 px left in 0.1 s swipes left; 20 px in 1 s does not.
+        for (dx, dt, want) in [(-120.0, 0.1, Some("left")), (20.0, 1.0, None)] {
+            p.held = 0b1000;
+            p.pressed = 0b1000;
+            p.position3 = og_core::glam::Vec2::new(200.0, 150.0);
+            step(&mut t, &mut p, 1.0);
+            p.position3.x += dx / 2.0;
+            step(&mut t, &mut p, 1.0 + dt / 2.0);
+            p.position3.x += dx / 2.0;
+            step(&mut t, &mut p, 1.0 + dt);
+            p.held = 0;
+            p.released = 0b1000;
+            let got = step(&mut t, &mut p, 1.0 + dt);
+            assert_eq!(
+                got.first().map(|g| (g.0, g.1.as_str())),
+                want.map(|w| (Event::Swipe, w))
+            );
+        }
     }
 
     /// A character the body face lacks draws from the face its mixed font

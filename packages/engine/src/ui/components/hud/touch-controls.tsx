@@ -51,7 +51,7 @@ const ENGINE_DEAD_ZONE = 0.15;
 function Stick(props: { action: string; deadZone: number; disabled: boolean; label: string }) {
   return (
     <View
-      class="relative size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate disabled:opacity-45"
+      class="relative size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate active:border-rim-strong disabled:opacity-45"
       role="slider"
       label={props.label}
       valueMin={-1}
@@ -61,7 +61,7 @@ function Stick(props: { action: string; deadZone: number; disabled: boolean; lab
       touchStick={props.action}
       deadZone={props.deadZone}
     >
-      <View class="absolute size-[40%] nine-disc bg-fg/45 shadow-float -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2" />
+      <View knob class="absolute size-[40%] rounded-full nine-disc bg-fg/45 shadow-float -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2" />
     </View>
   );
 }
@@ -70,7 +70,7 @@ function Stick(props: { action: string; deadZone: number; disabled: boolean; lab
 function Pad(props: { action: string; disabled: boolean; label: string }) {
   const arm = "absolute rounded-[0.286rem] bg-tile border border-rim-soft";
   return (
-    <View class="relative size-40 compact:size-28 disabled:opacity-45" role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
+    <View class="relative size-40 compact:size-28 active:scale-97 disabled:opacity-45" role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
       <View class={`${arm} bottom-[38%] left-[30%] right-[30%] top-0`} />
       <View class={`${arm} top-[38%] left-[30%] right-[30%] bottom-0`} />
       <View class={`${arm} right-[38%] top-[30%] bottom-[30%] left-0`} />

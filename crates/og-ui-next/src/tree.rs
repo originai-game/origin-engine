@@ -1621,9 +1621,13 @@ impl Tree {
             if !visible {
                 continue;
             }
+            // A `knob` node rides its on-screen control's knob.
+            let [kx, ky] = self.knob_of(e as u32);
+            let mut t = s.transform;
+            t.translate = [t.translate[0] + kx, t.translate[1] + ky];
             let p = &mut self.drawn;
             let start = p.quads.len();
-            let xf = transformed(p, pxf, &s.transform, [x, y, b.w, b.h]);
+            let xf = transformed(p, pxf, &t, [x, y, b.w, b.h]);
             self.xfs[e] = xf;
             let rect = [x, y, b.w, b.h];
             let radius = radii(s.radius, b.w, b.h);

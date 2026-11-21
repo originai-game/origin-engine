@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "HostProps.onPinch",
+      "summary": "onPinch, onRotate and onSwipe on any host element: two fingers that went down on it pinch and turn it (key start, move, end; value the scale or the turn in radians since they began), and a pointer let go moving fast swipes it (key left, right, up or down; value \"vx vy\" in px/s). They come from NSH's recognisers over every pointer og-input tracks."
+    },
+    {
+      "member": "HostProps.knob",
+      "summary": "knob on a node inside a touchStick moves it with the stick's knob as og-input reads it."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "TouchControls",
+      "summary": "On-screen controls show what og-input reads from them: a stick, d-pad or button is active: while a touch holds it, for every finger and not only the first, and the stick's knob follows the thumb."
+    }
+  ]
+}

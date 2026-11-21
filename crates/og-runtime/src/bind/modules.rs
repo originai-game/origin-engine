@@ -219,6 +219,8 @@ pub(crate) fn mount_back(
                         && let rs = &mut *eng.render.borrow_mut()
                         && let Some(next) = &mut rs.ui_next
                     {
+                        // The controls show what the last sample read.
+                        next.zone_states(og_input::actions::lock(&zones_to).zone_states());
                         out.0.extend(next.end(
                             engine_id,
                             &ui,
