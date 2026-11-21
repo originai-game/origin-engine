@@ -33,7 +33,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
   return (
     <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo text-fg h-auto p-2 gap-2 rounded-block border disabled:text-fg-subtle`} label={t("puzzle.goals.name")} data-low={props.low === true}>
       <View class="flex-row flex-wrap p-1 gap-3 compact:gap-1">
-        <View class={`items-center justify-center min-w-25.5 bg-tile border border-rim py-1 px-2 gap-0 compact:min-w-20.75 data-low:border-[1.5px] data-low:border-warn text-fg ${packClass("Plate", "frame")}`} role={props.counter === 'time' ? 'timer' : 'status'} label={props.counter === 'time' ? t("puzzle.goals.timeLeft", { time: formatDuration(props.seconds) }) : t("puzzle.goals.movesLeft", { moves: props.moves })} data-low={props.low === true}>
+        <View class={`items-center justify-center min-w-25.5 bg-tile border border-rim py-1 px-2 gap-0 compact:min-w-20.75 data-low:border-2 data-low:border-warn text-fg ${packClass("Plate", "frame")}`} role={props.counter === 'time' ? 'timer' : 'status'} label={props.counter === 'time' ? t("puzzle.goals.timeLeft", { time: formatDuration(props.seconds) }) : t("puzzle.goals.movesLeft", { moves: props.moves })} data-low={props.low === true}>
           <Text class={`tabular-nums whitespace-nowrap text-display-lg font-bold data-low:text-warn compact:text-4xl`} data-low={props.low === true}>
             {props.counter === 'time' ? formatDuration(props.seconds) : formatNumber(props.moves)}
           </Text>
@@ -49,12 +49,12 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
         <View class={`flex-row flex-wrap grow shrink basis-0 justify-center gap-1 compact:basis-full`} role="list" label={t("puzzle.goals.name")}>
           <Show when={(props.goals)?.length ?? 0} fallback={<Text class={`tracking-xs text-fg-muted self-center text-center text-shadow-2xs m-0 shrink`}>   {t("puzzle.goals.none")} </Text>}><For each={props.goals}>
             {(g) => (
-            <View class={`items-center min-w-20.75 max-w-32 shadow-[inset_0px_0px_0px_1px_#ffffff14] py-0.5 px-1 gap-0 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Chip", "frame")}`} role="listitem" label={g().done ? t("puzzle.goals.done", { label: g().label }) : t("puzzle.goals.left", { label: g().label, left: g().left })} data-done={g().done}>
+            <View class={`items-center min-w-20.75 max-w-32 inset-ring-1 inset-ring-rim-soft py-0.5 px-1 gap-0 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Chip", "frame")}`} role="listitem" label={g().done ? t("puzzle.goals.done", { label: g().label }) : t("puzzle.goals.left", { label: g().label, left: g().left })} data-done={g().done}>
               <View class={`group/socket grow shrink basis-0 justify-center items-center gap-2 size-12 compact:size-8`}>
                 <Icon class="text-shadow-2xs size-full" name={g().icon} />
               </View>
               <Show when={g().done}>
-                <Icon class={`absolute top-0.5 right-0.5 bg-success shadow-[0px_0px_9.136px_#45e08f] size-4 rounded-control text-bg`} name="check" />
+                <Icon class={`absolute top-0.5 right-0.5 bg-success shadow-glow-sm shadow-success size-4 rounded-control text-bg`} name="check" />
               </Show>
               <Text class={`whitespace-nowrap text-xl font-bold tabular-nums text-fg text-shadow-2xs data-done:text-success`} data-done={g().done}>
                 {formatNumber(g().left)}

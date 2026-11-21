@@ -74,11 +74,11 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
         </Show>
       </View>
       <Show when={(props.rows ?? []).length}>
-        <View class="grow shrink bg-tile shadow-[inset_0px_1px_0px_#ffffff38] gap-2">
+        <View class="grow shrink bg-tile inset-shadow-lit gap-2">
           <Scroll class={`py-1 px-3 gap-2 `} role="table" label={t("puzzle.summary.breakdown")}>
             <For each={props.rows}>
               {(r) => (
-              <View class={`flex-row items-baseline text-fg transition duration-317 py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="row">
+              <View class={`flex-row items-baseline text-fg transition duration-317 py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:inset-shadow-bar data-selected:inset-shadow-accent disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="row">
                 <Text class={`grow shrink basis-0 text-start text-fg`} role="rowheader">
                   {r().label}
                 </Text>
@@ -89,7 +89,7 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
               )}
             </For>
             <Show when={props.total}>
-              <View class={`flex-row items-baseline text-fg transition duration-317 mt-1 border-t border-rim-soft py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:shadow-[inset_3px_0px_0px_#e8e8ed] disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="row">
+              <View class={`flex-row items-baseline text-fg transition duration-317 mt-1 border-t border-rim-soft py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:inset-shadow-bar data-selected:inset-shadow-accent disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="row">
                 <Text class="grow shrink basis-0 text-start text-fg font-bold" role="rowheader">
                   {t("puzzle.summary.total")}
                 </Text>
