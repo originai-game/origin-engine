@@ -317,6 +317,8 @@ pub struct Tree {
     missing: Vec<char>,
     /// The lines [`lay_out`] breaks a text into, kept between texts.
     breaks: Vec<(std::ops::Range<usize>, f32)>,
+    /// The screen transition cover [`Tree::set_cover`] gave this frame.
+    cover: Option<(crate::cover::Cover, bool)>,
     /// Each element's transform in `drawn.transforms` (its own composed
     /// with its ancestors'; 0 none), what its children compose onto.
     xfs: Vec<u32>,
@@ -580,6 +582,7 @@ impl Tree {
             faces: Vec::new(),
             missing: Vec::new(),
             breaks: Vec::new(),
+            cover: None,
         }
     }
 
@@ -2004,7 +2007,21 @@ impl Tree {
                 }
             }
         }
+        // A screen transition's cover, over everything.
+        if let Some((cover, reduced)) = self.cover {
+            cover.paint(vw, vh, reduced, &mut self.drawn.quads);
+        }
         self.drawn.generation += 1;
+    }
+
+    /// This frame's screen transition cover (`None`: none), drawn over
+    /// everything; `reduced` motion draws it as a fade.
+    pub fn set_cover(&mut self, cover: Option<crate::cover::Cover>, reduced: bool) {
+        let cover = cover.map(|c| (c, reduced));
+        if self.cover != cover {
+            self.cover = cover;
+            self.paint = true;
+        }
     }
 
     /// An element's box by its document id (`#Time`), for checks.

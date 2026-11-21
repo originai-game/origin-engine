@@ -590,7 +590,7 @@ pub(crate) fn assemble(
     crate::bind::season::install(&mut world, &layouts)?;
     // og.path and og.timeline after tweens, before og-anim (an animation
     // track sets players) and physics.
-    super::timeline::install(&mut world, mount, &layouts, &ui)?;
+    super::timeline::install(&mut world, mount, &layouts)?;
     let contract = project.is_some_and(|p| p.look.is_some());
     let anim = super::anim::install(&mut world, super::art::step_default(contract, &layouts))?;
     let feel_records = super::feel::Records::of(&world, &layouts)?;

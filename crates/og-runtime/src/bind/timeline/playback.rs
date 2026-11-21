@@ -355,7 +355,6 @@ pub(crate) fn install(
     world: &mut World,
     mount: crate::engine::Mount<'_>,
     layouts: &BTreeMap<String, Layout>,
-    ui: &og_ui::SharedUi,
 ) -> Result<(), String> {
     let engine_id = mount.id;
     let err = |e: Error| e.reason().to_string();
@@ -405,7 +404,6 @@ pub(crate) fn install(
     let sh = mount.modules.timeline.playback.clone();
     *lock(&sh) = Shared::default();
     let rec = r.clone();
-    let ui = ui.clone();
     let state = sh.clone();
     let mut writes = names(&[
         &r.timeline,
@@ -428,7 +426,7 @@ pub(crate) fn install(
                 }],
                 ..Default::default()
             },
-            move |ctx| timeline_system(ctx, engine_id, &state, &rec, &ui),
+            move |ctx| timeline_system(ctx, engine_id, &state, &rec),
         )
         .map_err(err)?;
     world
@@ -504,7 +502,6 @@ fn timeline_system(
     engine_id: u32,
     state: &Mutex<Shared>,
     r: &Rec,
-    ui: &og_ui::SharedUi,
 ) -> og_core::Result<()> {
     let time = ctx.time();
     let rate = i64::from(time.rate);
@@ -692,7 +689,6 @@ fn timeline_system(
                 ctx,
                 engine_id,
                 r,
-                ui,
                 &mut lt,
                 &mut run,
                 &Step {
@@ -759,7 +755,6 @@ fn timeline_system(
         ctx.set_bytes(e, r.timeline.0, &out)?;
         lock(state).runs.insert(key, run);
     }
-    ui.lock().set_captions(&captions);
     lock(state).captions = captions;
     Ok(())
 }
