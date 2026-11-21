@@ -11,7 +11,7 @@ A node in a dialogue's graph.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `title` | `string` | `""` | — | — | — | Its title. |
-| `headers` | `unknown` | `null` | — | — | — | Its header lines, `{ title: "kitchen", "og-film": "segments/kitchen.ogt" }`. |
+| `headers` | `unknown` | `null` | — | — | — | Its header lines, `{ title: "kitchen", "og-flow": "segments/kitchen.ogt" }`. |
 | `choices` | `readonly GraphChoice[]` | `[]` | — | — | — | Its choices, in order (hidden ones too). |
 | `to` | `readonly string[]` | `[]` | — | — | — | The nodes its own steps may jump to, every branch of its conditions counted (a choice's leads are its own). |
 
@@ -19,7 +19,7 @@ A node in a dialogue's graph.
 struct GraphNode {
   doc "A node in a dialogue's graph."
   field title String "Its title."
-  field headers Json "Its header lines, `{ title: \"kitchen\", \"og-film\": \"segments/kitchen.ogt\" }`."
+  field headers Json "Its header lines, `{ title: \"kitchen\", \"og-flow\": \"segments/kitchen.ogt\" }`."
   field choices List.GraphChoice "Its choices, in order (hidden ones too)."
   field to List.String "The nodes its own steps may jump to, every branch of its conditions counted (a choice's leads are its own)."
 }

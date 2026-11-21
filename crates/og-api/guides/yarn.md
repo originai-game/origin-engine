@@ -270,7 +270,7 @@ else if (v) og.story.choose(world, c.value, v.choices[0].index);
 ## 9. Hold at nodes, read hashtags and the graph
 
 Another module can pace a conversation by node instead of by line, as
-og.film paces one by its footage (`film`):
+og.flow paces one by its footage (`flow`):
 
 - `StartDesc.hold` names a header. Entering a node that has that header
   holds the conversation there: `DialogueView.held` is true, and no line

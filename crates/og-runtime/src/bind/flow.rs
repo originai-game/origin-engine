@@ -1,28 +1,28 @@
-//! Interactive film (IDL `film`, guides/film.md): a Yarn dialogue paced by
-//! its footage. `og.film.load` prepares a loaded dialogue: each node with
-//! an `og-film` header names its segment, a timeline whose own video track
-//! plays on a deck. `og.film.start` spawns the film (og.Film) and its
-//! decks (og.FilmDeck, each with og.Timeline, og.VideoPlayer and
-//! og.AudioSource) and starts its conversation holding at each film node
+//! Interactive film (IDL `flow`, guides/flow.md): a Yarn dialogue paced by
+//! its footage. `og.flow.load` prepares a loaded dialogue: each node with
+//! an `og-flow` header names its segment, a timeline whose own video track
+//! plays on a deck. `og.flow.start` spawns the flow (og.Flow) and its
+//! decks (og.FlowDeck, each with og.Timeline, og.VideoPlayer and
+//! og.AudioSource) and starts its conversation holding at each flow node
 //! (og.story's StartDesc.hold).
 //!
-//! The og.film system runs before og.timeline. Each tick it reads the
+//! The og.flow system runs before og.timeline. Each tick it reads the
 //! current deck's og.Timeline time against the segment's markers: the
-//! window opens at `film.open` and locks at `film.lock`; at the cut
-//! (`film.cut`, else the end) the pending choice, else the default, is
+//! window opens at `flow.open` and locks at `flow.lock`; at the cut
+//! (`flow.cut`, else the end) the pending choice, else the default, is
 //! taken, the conversation runs to its next hold, and that node's segment
 //! starts on a deck. The other decks hold the segments the current node
 //! may lead to, paused at their first frame, so their decoders have it.
 //!
-//! Every value is world state: og.Film and og.FilmDeck, the decks'
+//! Every value is world state: og.Flow and og.FlowDeck, the decks'
 //! timelines and players, and the conversation (og.story's block). Only
-//! the prepared dialogues (og.film.load, in every process) and the ops a
+//! the prepared dialogues (og.flow.load, in every process) and the ops a
 //! call queued for this tick are the engine's; [`Rt::views`] caches what
-//! the last tick showed for og.film.view, which systems may call.
+//! the last tick showed for og.flow.view, which systems may call.
 //!
-//! og.Film, og.FilmDeck and the film events are lazy
-//! (`crate::engine::lazy`): a world that never loads a film keeps its type
-//! table and hash, and has no og.film system.
+//! og.Flow, og.FlowDeck and the flow events are lazy
+//! (`crate::engine::lazy`): a world that never loads a flow keeps its type
+//! table and hash, and has no og.flow system.
 
 use crate::bind::story::{
     og_story_advance, og_story_choose, og_story_start, og_story_stop, og_story_view,
@@ -30,8 +30,8 @@ use crate::bind::story::{
 use crate::engine::{Engine, engine};
 use crate::host::codec::Layout;
 use crate::host::wire::{
-    ChoiceView, FilmChart, FilmChartLink, FilmChartNode, FilmDesc, FilmHotspot, FilmInfo, FilmView,
-    QteView, WindowView, record,
+    ChoiceView, FlowChart, FlowChartLink, FlowChartNode, FlowHotspot, FlowInfo, FlowStartDesc,
+    FlowView, QteView, WindowView, record,
 };
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
 use og_timeline::HotspotKey;
@@ -40,23 +40,23 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
 
-pub(crate) const FILM: &str = "og.Film";
-pub(crate) const DECK: &str = "og.FilmDeck";
-const SEGMENT: &str = "og.FilmSegment";
-const CHOICE: &str = "og.FilmChoice";
-const CHAPTER: &str = "og.FilmChapter";
-const ENDED: &str = "og.FilmEnded";
-/// og.film's records, registered together.
-pub(crate) const RECORDS: [&str; 6] = [FILM, DECK, SEGMENT, CHOICE, CHAPTER, ENDED];
-pub(crate) const SYSTEM: &str = "og.film";
+pub(crate) const FLOW: &str = "og.Flow";
+pub(crate) const DECK: &str = "og.FlowDeck";
+const SEGMENT: &str = "og.FlowSegment";
+const CHOICE: &str = "og.FlowChoice";
+const CHAPTER: &str = "og.FlowChapter";
+const ENDED: &str = "og.FlowEnded";
+/// og.flow's records, registered together.
+pub(crate) const RECORDS: [&str; 6] = [FLOW, DECK, SEGMENT, CHOICE, CHAPTER, ENDED];
+pub(crate) const SYSTEM: &str = "og.flow";
 const TIMELINE: &str = "og.Timeline";
 const PLAYER: &str = crate::bind::video::PLAYER;
 const AUDIO: &str = "og.AudioSource";
 /// The node header that names a segment (and holds the conversation).
-const HEADER: &str = "og-film";
+const HEADER: &str = "og-flow";
 const MAX_DECKS: u32 = 3;
 
-/// A film node of a prepared dialogue.
+/// A flow node of a prepared dialogue.
 #[derive(Clone, Debug)]
 struct Node {
     title: String,
@@ -74,20 +74,20 @@ struct Node {
     hotspots: Vec<HotspotKey>,
     /// Per choice (by index): its quick-time event (`#qte`).
     qte: Vec<Option<Qte>>,
-    /// Per choice (by index): the film nodes it may lead to, through logic
+    /// Per choice (by index): the flow nodes it may lead to, through logic
     /// nodes.
     choices: Vec<Vec<u32>>,
-    /// The film nodes its own steps may lead to (a node without choices).
+    /// The flow nodes its own steps may lead to (a node without choices).
     next: Vec<u32>,
 }
 
-/// A dialogue og.film.load prepared: its film nodes by id.
+/// A dialogue og.flow.load prepared: its flow nodes by id.
 #[derive(Debug, Default)]
 struct Prepared {
     nodes: BTreeMap<u32, Node>,
-    /// Its film nodes in file order.
+    /// Its flow nodes in file order.
     order: Vec<u32>,
-    /// The film nodes the dialogue's start leads to first.
+    /// The flow nodes the dialogue's start leads to first.
     roots: Vec<u32>,
 }
 
@@ -100,7 +100,7 @@ enum Op {
     Stop,
 }
 
-/// What a film showed at the end of the last tick (og.film.view).
+/// What a flow showed at the end of the last tick (og.flow.view).
 #[derive(Clone, Debug, Default)]
 struct Shown {
     conversation: u32,
@@ -118,7 +118,7 @@ struct Shown {
     chapter: String,
     ending: String,
     ended: bool,
-    hotspots: Vec<FilmHotspot>,
+    hotspots: Vec<FlowHotspot>,
     qtes: Vec<QteView>,
     previous: u64,
     mix: f32,
@@ -136,11 +136,11 @@ pub(crate) struct Ahead {
     pub seconds: f64,
 }
 
-/// og.film on one engine.
+/// og.flow on one engine.
 #[derive(Default)]
 pub(crate) struct Rt {
     /// Prepared dialogues by name.
-    films: BTreeMap<String, Arc<Prepared>>,
+    flows: BTreeMap<String, Arc<Prepared>>,
     ops: Vec<(u64, Op)>,
     views: BTreeMap<u64, Shown>,
     warned: BTreeSet<String>,
@@ -153,14 +153,14 @@ fn lock(m: &Mutex<Rt>) -> MutexGuard<'_, Rt> {
 }
 
 fn state(engine_id: u32) -> Result<ModuleState, String> {
-    Ok(engine(engine_id)?.modules.film.clone())
+    Ok(engine(engine_id)?.modules.flow.clone())
 }
 
 fn bad(m: impl Into<String>) -> og_core::Error {
     og_core::Error::new(og_core::ErrorKind::Invalid, m.into())
 }
 
-/// A film node's id: FNV-1a of its title (never 0, which is none).
+/// A flow node's id: FNV-1a of its title (never 0, which is none).
 fn node_id(title: &str) -> u32 {
     let mut h: u32 = 0x811c_9dc5;
     for b in title.bytes() {
@@ -179,16 +179,16 @@ fn warn(eng: &Engine, rt: &ModuleState, text: String) {
     }
 }
 
-// ── og.film.load ─────────────────────────────────────────────────────────────
+// ── og.flow.load ─────────────────────────────────────────────────────────────
 
-/// Dialogue `name` as og.film plays it: every film node's segment loaded
+/// Dialogue `name` as og.flow plays it: every flow node's segment loaded
 /// and checked, and where each choice may lead.
-fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, FilmInfo), String> {
+fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, FlowInfo), String> {
     let graph = crate::bind::story::graph_of(eng.id, name)
         .ok_or_else(|| format!("no dialogue '{name}' is loaded: og.story.load it first"))?;
     let by_title: BTreeMap<&str, &og_story::graph::GraphNode> =
         graph.iter().map(|n| (n.title.as_str(), n)).collect();
-    // The film nodes reachable from `to` without passing another film node.
+    // The flow nodes reachable from `to` without passing another flow node.
     let reach = |to: &[String]| -> Vec<u32> {
         let mut out = Vec::new();
         let mut seen = BTreeSet::new();
@@ -213,16 +213,16 @@ fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, Fil
         out
     };
     let mut p = Prepared::default();
-    let mut info = FilmInfo {
+    let mut info = FlowInfo {
         dialogue: name.to_string(),
-        ..FilmInfo::default()
+        ..FlowInfo::default()
     };
     for n in &graph {
         let header = |k: &str| n.headers.get(k).cloned().unwrap_or_default();
-        if let Some(c) = n.headers.get("og-film-chapter") {
+        if let Some(c) = n.headers.get("og-flow-chapter") {
             info.chapters.push(c.clone());
         }
-        if let Some(e) = n.headers.get("og-film-ending") {
+        if let Some(e) = n.headers.get("og-flow-ending") {
             info.endings.push(e.clone());
         }
         let Some(segment) = n.headers.get(HEADER) else {
@@ -241,7 +241,7 @@ fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, Fil
         if defaults > 1 {
             return Err(at(format!("{defaults} choices are #default; one at most")));
         }
-        let dissolve = match n.headers.get("og-film-dissolve") {
+        let dissolve = match n.headers.get("og-flow-dissolve") {
             Some(h) => og_timeline::segment::dissolve(h).map_err(at)?,
             None => 0.0,
         };
@@ -272,8 +272,8 @@ fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, Fil
                 open: s.open,
                 lock: s.lock,
                 cut: s.cut,
-                chapter: header("og-film-chapter"),
-                ending: header("og-film-ending"),
+                chapter: header("og-flow-chapter"),
+                ending: header("og-flow-ending"),
                 dissolve,
                 hotspots: s.hotspots,
                 qte,
@@ -291,26 +291,26 @@ fn prepare(eng: &Engine, world: &mut World, name: &str) -> Result<(Prepared, Fil
     p.roots = reach(&[start]);
     if p.nodes.is_empty() {
         return Err(format!(
-            "{name} has no film node: give a node an `og-film: segments/<segment>.ogt` header"
+            "{name} has no flow node: give a node an `og-flow: segments/<segment>.ogt` header"
         ));
     }
     Ok((p, info))
 }
 
-pub fn og_film_load(world: u32, dialogue: String) -> Result<FilmInfo, String> {
+pub fn og_flow_load(world: u32, dialogue: String) -> Result<FlowInfo, String> {
     let eng = engine(world)?;
     let w = eng.world().map_err(|e| {
         format!(
-            "og.film.load registers og.Film, which a system cannot do: load films in setup ({e})"
+            "og.flow.load registers og.Flow, which a system cannot do: load flows in setup ({e})"
         )
     })?;
-    crate::engine::lazy::ensure(&eng, w, FILM)?;
+    crate::engine::lazy::ensure(&eng, w, FLOW)?;
     let (p, info) = prepare(&eng, w, &dialogue)?;
-    lock(&eng.modules.film).films.insert(dialogue, Arc::new(p));
+    lock(&eng.modules.flow).flows.insert(dialogue, Arc::new(p));
     Ok(info)
 }
 
-// ── og.film.start ────────────────────────────────────────────────────────────
+// ── og.flow.start ────────────────────────────────────────────────────────────
 
 fn insert(eng: &Engine, world: &mut World, e: Entity, name: &str, v: Value) -> Result<(), String> {
     let layout = eng
@@ -328,15 +328,15 @@ fn insert(eng: &Engine, world: &mut World, e: Entity, name: &str, v: Value) -> R
         .map_err(|e| e.reason().to_string())
 }
 
-pub fn og_film_start(world: u32, desc: Option<String>) -> Result<Value, String> {
-    let d: FilmDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
+pub fn og_flow_start(world: u32, desc: Option<String>) -> Result<Value, String> {
+    let d: FlowStartDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
     let eng = engine(world)?;
     let w = eng.world().map_err(|e| {
-        format!("og.film.start spawns a film's decks: call it outside a system ({e})")
+        format!("og.flow.start spawns a flow's decks: call it outside a system ({e})")
     })?;
-    if !lock(&eng.modules.film).films.contains_key(&d.dialogue) {
+    if !lock(&eng.modules.flow).flows.contains_key(&d.dialogue) {
         return Err(format!(
-            "the dialogue '{}' is not prepared: og.film.load it in setup",
+            "the dialogue '{}' is not prepared: og.flow.load it in setup",
             d.dialogue
         ));
     }
@@ -353,7 +353,7 @@ pub fn og_film_start(world: u32, desc: Option<String>) -> Result<Value, String> 
         .as_u64()
         .ok_or("og.story.start answered no conversation")? as u32;
     let spawn = |w: &mut World| w.spawn(()).map_err(|e| e.reason().to_string());
-    let film = spawn(w)?;
+    let flow = spawn(w)?;
     let mut first = 0u64;
     for _ in 0..decks {
         let e = spawn(w)?;
@@ -369,13 +369,13 @@ pub fn og_film_start(world: u32, desc: Option<String>) -> Result<Value, String> 
             json!({ "playing": false, "wait": true }),
         )?;
         insert(&eng, w, e, AUDIO, json!({}))?;
-        insert(&eng, w, e, DECK, json!({ "film": film.to_bits() as f64 }))?;
+        insert(&eng, w, e, DECK, json!({ "flow": flow.to_bits() as f64 }))?;
     }
     insert(
         &eng,
         w,
-        film,
-        FILM,
+        flow,
+        FLOW,
         json!({
             "conversation": conversation,
             "decks": decks,
@@ -383,8 +383,8 @@ pub fn og_film_start(world: u32, desc: Option<String>) -> Result<Value, String> 
             "paused": d.paused,
         }),
     )?;
-    lock(&eng.modules.film).views.insert(
-        film.to_bits(),
+    lock(&eng.modules.flow).views.insert(
+        flow.to_bits(),
         Shown {
             conversation,
             pending: -1,
@@ -392,10 +392,10 @@ pub fn og_film_start(world: u32, desc: Option<String>) -> Result<Value, String> 
             ..Shown::default()
         },
     );
-    Ok(json!(film.to_bits() as f64))
+    Ok(json!(flow.to_bits() as f64))
 }
 
-// ── og.film.view and the ops ─────────────────────────────────────────────────
+// ── og.flow.view and the ops ─────────────────────────────────────────────────
 
 /// The choice taken when nothing was: `#default`, else the first enabled.
 fn default_choice(choices: &[ChoiceView]) -> Option<u32> {
@@ -406,9 +406,9 @@ fn default_choice(choices: &[ChoiceView]) -> Option<u32> {
         .map(|c| c.index)
 }
 
-pub fn og_film_view(world: u32, film: f64) -> Option<FilmView> {
+pub fn og_flow_view(world: u32, flow: f64) -> Option<FlowView> {
     let st = state(world).ok()?;
-    let s = lock(&st).views.get(&(film as u64)).cloned()?;
+    let s = lock(&st).views.get(&(flow as u64)).cloned()?;
     let choices = if s.window > 0 {
         og_story_view(world, s.conversation)
             .map(|v| v.choices)
@@ -430,8 +430,8 @@ pub fn og_film_view(world: u32, film: f64) -> Option<FilmView> {
         pending: u32::try_from(s.pending).ok(),
         locked: s.window == 2,
     });
-    Some(FilmView {
-        film: film as u64,
+    Some(FlowView {
+        flow: flow as u64,
         node: s.node,
         segment: s.segment,
         texture: s.texture,
@@ -450,23 +450,23 @@ pub fn og_film_view(world: u32, film: f64) -> Option<FilmView> {
     })
 }
 
-fn queue(world: u32, film: f64, op: Op) -> Result<(), String> {
+fn queue(world: u32, flow: f64, op: Op) -> Result<(), String> {
     let st = state(world)?;
-    let key = film as u64;
+    let key = flow as u64;
     let s = lock(&st)
         .views
         .get(&key)
         .cloned()
-        .ok_or_else(|| format!("entity {key} is no film (og.film.start)"))?;
+        .ok_or_else(|| format!("entity {key} is no flow (og.flow.start)"))?;
     if let Op::Choose(i) = op {
         if s.window != 1 {
             return Err(if s.window == 2 {
                 "the window has locked: the cut takes what was chosen".into()
             } else {
-                "no choice window is open (film.open to film.lock)".into()
+                "no choice window is open (flow.open to flow.lock)".into()
             });
         }
-        let v = og_story_view(world, s.conversation).ok_or("the film's conversation is gone")?;
+        let v = og_story_view(world, s.conversation).ok_or("the flow's conversation is gone")?;
         let c = v
             .choices
             .iter()
@@ -477,43 +477,43 @@ fn queue(world: u32, film: f64, op: Op) -> Result<(), String> {
         }
     }
     if op == Op::Skip && s.ended {
-        return Err("the film has ended: nothing is left to skip".into());
+        return Err("the flow has ended: nothing is left to skip".into());
     }
     lock(&st).ops.push((key, op));
     Ok(())
 }
 
-pub fn og_film_choose(world: u32, film: f64, index: u32) -> Result<(), String> {
-    queue(world, film, Op::Choose(index))
+pub fn og_flow_choose(world: u32, flow: f64, index: u32) -> Result<(), String> {
+    queue(world, flow, Op::Choose(index))
 }
 
-pub fn og_film_play(world: u32, film: f64) -> Result<(), String> {
-    queue(world, film, Op::Play)
+pub fn og_flow_play(world: u32, flow: f64) -> Result<(), String> {
+    queue(world, flow, Op::Play)
 }
 
-pub fn og_film_pause(world: u32, film: f64) -> Result<(), String> {
-    queue(world, film, Op::Pause)
+pub fn og_flow_pause(world: u32, flow: f64) -> Result<(), String> {
+    queue(world, flow, Op::Pause)
 }
 
-pub fn og_film_skip(world: u32, film: f64) -> Result<(), String> {
-    queue(world, film, Op::Skip)
+pub fn og_flow_skip(world: u32, flow: f64) -> Result<(), String> {
+    queue(world, flow, Op::Skip)
 }
 
-pub fn og_film_stop(world: u32, film: f64) -> Result<(), String> {
-    queue(world, film, Op::Stop)
+pub fn og_flow_stop(world: u32, flow: f64) -> Result<(), String> {
+    queue(world, flow, Op::Stop)
 }
 
-// ── og.film.chart ────────────────────────────────────────────────────────────
+// ── og.flow.chart ────────────────────────────────────────────────────────────
 
 /// Graph units between columns and between rows, and around the chart.
 const CHART_COLUMN: f32 = 200.0;
 const CHART_ROW: f32 = 120.0;
 const CHART_MARGIN: f32 = 60.0;
 
-pub fn og_film_chart(world: u32, dialogue: String) -> Result<FilmChart, String> {
+pub fn og_flow_chart(world: u32, dialogue: String) -> Result<FlowChart, String> {
     let st = state(world)?;
-    let p = lock(&st).films.get(&dialogue).cloned().ok_or_else(|| {
-        format!("the dialogue '{dialogue}' is not prepared: og.film.load it in setup")
+    let p = lock(&st).flows.get(&dialogue).cloned().ok_or_else(|| {
+        format!("the dialogue '{dialogue}' is not prepared: og.flow.load it in setup")
     })?;
     Ok(chart(&p))
 }
@@ -532,10 +532,10 @@ fn level_curve(x: f32, y: f32, x2: f32, y2: f32) -> Vec<f32> {
         .collect()
 }
 
-/// Columns by the fewest film nodes from the start (breadth first, so a
+/// Columns by the fewest flow nodes from the start (breadth first, so a
 /// loop back draws as a link to an earlier column); rows by the order each
 /// column was reached in. Nodes the start never reaches follow the deepest.
-fn chart(p: &Prepared) -> FilmChart {
+fn chart(p: &Prepared) -> FlowChart {
     let leads = |n: &Node| -> Vec<u32> {
         let mut out: Vec<u32> = Vec::new();
         for to in n.choices.iter().flatten().chain(&n.next) {
@@ -592,15 +592,15 @@ fn chart(p: &Prepared) -> FilmChart {
         }
     }
     let rows = columns.iter().map(Vec::len).max().unwrap_or(0);
-    let mut out = FilmChart {
+    let mut out = FlowChart {
         width: 2.0 * CHART_MARGIN + columns.len().saturating_sub(1) as f32 * CHART_COLUMN,
         height: 2.0 * CHART_MARGIN + rows.saturating_sub(1) as f32 * CHART_ROW,
-        ..FilmChart::default()
+        ..FlowChart::default()
     };
     for id in &p.order {
         let n = &p.nodes[id];
         let (x, y) = at[id];
-        out.nodes.push(FilmChartNode {
+        out.nodes.push(FlowChartNode {
             node: n.title.clone(),
             segment: n.segment.clone(),
             chapter: n.chapter.clone(),
@@ -612,7 +612,7 @@ fn chart(p: &Prepared) -> FilmChart {
         let mut link = |to: u32, choice: i32| {
             let Some(t) = p.nodes.get(&to) else { return };
             let (x2, y2) = at[&to];
-            out.links.push(FilmChartLink {
+            out.links.push(FlowChartLink {
                 from: n.title.clone(),
                 to: t.title.clone(),
                 choice,
@@ -635,16 +635,16 @@ fn chart(p: &Prepared) -> FilmChart {
 
 // ── the system ───────────────────────────────────────────────────────────────
 
-/// Registers og.film on a world that names its records
+/// Registers og.flow on a world that names its records
 /// (`crate::engine::lazy`): its system, just before og.timeline.
 pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_core::Result<()> {
     if world.systems().contains(&SYSTEM) || RECORDS.iter().any(|r| world.id_by_name(r).is_err()) {
-        // The last of og.film's records to register schedules it.
+        // The last of og.flow's records to register schedules it.
         return Ok(());
     }
     // og.VideoPlayer is registered first (crate::engine::lazy's NEEDS).
     let engine_id = mount.id;
-    let st = mount.modules.film.clone();
+    let st = mount.modules.flow.clone();
     let mut writes: Vec<String> = RECORDS.iter().map(|s| s.to_string()).collect();
     writes.extend([TIMELINE.to_string(), PLAYER.to_string()]);
     world.add_system(
@@ -653,7 +653,7 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
             writes,
             queries: vec![
                 QueryDesc {
-                    write: vec![FILM.into()],
+                    write: vec![FLOW.into()],
                     ..QueryDesc::default()
                 },
                 QueryDesc {
@@ -670,7 +670,7 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
 
 /// The layouts and ids the system writes.
 struct Recs {
-    film: (SchemaId, Layout),
+    flow: (SchemaId, Layout),
     deck: (SchemaId, Layout),
     timeline: (SchemaId, Layout),
     player: (SchemaId, Layout),
@@ -706,26 +706,26 @@ fn send(ctx: &mut SystemContext<'_>, eng: &Engine, name: &str, v: Value) -> og_c
     ctx.send_bytes(id, &l.encode(None, Some(&v)).map_err(bad)?)
 }
 
-/// One film's decks, by entity id (a stable order).
-type Decks = Vec<(Entity, record::FilmDeck)>;
+/// One flow's decks, by entity id (a stable order).
+type Decks = Vec<(Entity, record::FlowDeck)>;
 
 fn system(ctx: &mut SystemContext<'_>, engine_id: u32, st: &ModuleState) -> og_core::Result<()> {
     let Ok(eng) = engine(engine_id) else {
         return Ok(());
     };
     let r = Recs {
-        film: rec(ctx, &eng, FILM)?,
+        flow: rec(ctx, &eng, FLOW)?,
         deck: rec(ctx, &eng, DECK)?,
         timeline: rec(ctx, &eng, TIMELINE)?,
         player: rec(ctx, &eng, PLAYER)?,
     };
     let ops = std::mem::take(&mut lock(st).ops);
-    let mut films: Vec<Entity> = Vec::new();
+    let mut flows: Vec<Entity> = Vec::new();
     for a in ctx.query_with(&QueryDesc {
-        write: vec![FILM.into()],
+        write: vec![FLOW.into()],
         ..QueryDesc::default()
     })? {
-        films.extend_from_slice(a.entities());
+        flows.extend_from_slice(a.entities());
     }
     let mut decks: Decks = Vec::new();
     let mut ids: Vec<Entity> = Vec::new();
@@ -736,17 +736,17 @@ fn system(ctx: &mut SystemContext<'_>, engine_id: u32, st: &ModuleState) -> og_c
         ids.extend_from_slice(a.entities());
     }
     for e in ids {
-        let d: record::FilmDeck = r.deck.1.read(&ctx.get_bytes(e, r.deck.0)?).map_err(bad)?;
+        let d: record::FlowDeck = r.deck.1.read(&ctx.get_bytes(e, r.deck.0)?).map_err(bad)?;
         decks.push((e, d));
     }
     decks.sort_by_key(|(e, _)| e.to_bits());
-    films.sort_by_key(|e| e.to_bits());
+    flows.sort_by_key(|e| e.to_bits());
     let mut views = BTreeMap::new();
-    for f in films {
+    for f in flows {
         let key = f.to_bits();
         let mine: Decks = decks
             .iter()
-            .filter(|(_, d)| d.film == key)
+            .filter(|(_, d)| d.flow == key)
             .cloned()
             .collect();
         let mine_ops: Vec<Op> = ops
@@ -827,19 +827,19 @@ fn tick(
     mut decks: Decks,
     ops: &[Op],
 ) -> og_core::Result<Option<Shown>> {
-    let fb = ctx.get_bytes(f, r.film.0)?;
-    let mut film: record::Film = r.film.1.read(&fb).map_err(bad)?;
-    let conv = film.conversation;
+    let fb = ctx.get_bytes(f, r.flow.0)?;
+    let mut flow: record::Flow = r.flow.1.read(&fb).map_err(bad)?;
+    let conv = flow.conversation;
     let dialogue = crate::bind::story::dialogue_of(eng.id, conv);
     let Some(prep) = dialogue
         .as_ref()
-        .and_then(|d| lock(st).films.get(d).cloned())
+        .and_then(|d| lock(st).flows.get(d).cloned())
     else {
         warn(
             eng,
             st,
             format!(
-                "film {}: its dialogue {} is not prepared (og.film.load it in setup, in every process that restores a film)",
+                "flow {}: its dialogue {} is not prepared (og.flow.load it in setup, in every process that restores a flow)",
                 f.to_bits(),
                 dialogue.as_deref().unwrap_or("(its conversation is gone)")
             ),
@@ -848,36 +848,36 @@ fn tick(
     };
     let dt = ctx.time().dt();
     let half = dt * 0.5;
-    let current = |film: &record::Film| Entity::from_bits(film.current);
+    let current = |flow: &record::Flow| Entity::from_bits(flow.current);
     // og.timeline runs after this system and shows a playing timeline's
     // time plus dt, except on the tick it starts, resumes or is sought
     // (then its time as written): the markers are judged at the time this
     // tick shows. `advancing`: the current deck played last tick and still
     // does.
-    let mut advancing = film.node != 0 && deck_state(ctx, r, current(&film))?.1;
+    let mut advancing = flow.node != 0 && deck_state(ctx, r, current(&flow))?.1;
     let shows =
-        |ctx: &SystemContext<'_>, film: &record::Film, advancing: bool| -> og_core::Result<f32> {
-            let t = deck_state(ctx, r, current(film))?.0;
+        |ctx: &SystemContext<'_>, flow: &record::Flow, advancing: bool| -> og_core::Result<f32> {
+            let t = deck_state(ctx, r, current(flow))?.0;
             Ok(if advancing { t + dt } else { t })
         };
     for op in ops {
         match *op {
-            Op::Choose(i) if film.window == 1 => film.pending = i as i32,
+            Op::Choose(i) if flow.window == 1 => flow.pending = i as i32,
             Op::Choose(_) => {}
             Op::Play | Op::Pause => {
-                film.paused = *op == Op::Pause;
-                advancing &= !film.paused;
-                if !film.ended && film.node != 0 {
-                    let playing = json!({ "playing": !film.paused });
-                    patch(ctx, &r.timeline, current(&film), playing.clone())?;
-                    if let Some(p) = previous(&film) {
+                flow.paused = *op == Op::Pause;
+                advancing &= !flow.paused;
+                if !flow.ended && flow.node != 0 {
+                    let playing = json!({ "playing": !flow.paused });
+                    patch(ctx, &r.timeline, current(&flow), playing.clone())?;
+                    if let Some(p) = previous(&flow) {
                         patch(ctx, &r.timeline, p, playing)?;
                     }
                 }
             }
             Op::Skip => {
-                if let Some(node) = prep.nodes.get(&film.node).filter(|_| !film.ended) {
-                    let t = shows(ctx, &film, advancing)?;
+                if let Some(node) = prep.nodes.get(&flow.node).filter(|_| !flow.ended) {
+                    let t = shows(ctx, &flow, advancing)?;
                     let choosing =
                         og_story_view(eng.id, conv).is_some_and(|v| !v.choices.is_empty());
                     let to = if choosing && t + half < node.open {
@@ -885,7 +885,7 @@ fn tick(
                     } else {
                         node.cut
                     };
-                    patch(ctx, &r.timeline, current(&film), json!({ "time": to }))?;
+                    patch(ctx, &r.timeline, current(&flow), json!({ "time": to }))?;
                     // A sought timeline shows the time written this tick.
                     advancing = false;
                 }
@@ -902,23 +902,23 @@ fn tick(
     }
 
     // The dissolve runs out: the deck it showed under lets go.
-    if film.dissolve_left > 0 && !film.paused {
-        film.dissolve_left -= 1;
+    if flow.dissolve_left > 0 && !flow.paused {
+        flow.dissolve_left -= 1;
     }
-    if film.dissolve_left == 0
-        && let Some(p) = previous(&film)
+    if flow.dissolve_left == 0
+        && let Some(p) = previous(&flow)
     {
         free_deck(ctx, r, p)?;
-        film.previous = 0;
+        flow.previous = 0;
     }
-    if film.qte.len() != QTE_CHOICES {
-        film.qte.resize(QTE_CHOICES, 0);
+    if flow.qte.len() != QTE_CHOICES {
+        flow.qte.resize(QTE_CHOICES, 0);
     }
 
     // Begins node `title`'s segment on a deck (a warm one if it holds it),
     // then runs the node to its choices (or on to its next hold).
     let begin = |ctx: &mut SystemContext<'_>,
-                 film: &mut record::Film,
+                 flow: &mut record::Flow,
                  decks: &mut Decks,
                  title: &str|
      -> og_core::Result<()> {
@@ -928,15 +928,15 @@ fn tick(
                 eng,
                 st,
                 format!(
-                    "film {}: node '{title}' holds without a segment",
+                    "flow {}: node '{title}' holds without a segment",
                     f.to_bits()
                 ),
             );
             return Ok(());
         };
-        let cur = current(film);
-        let prev = previous(film);
-        let target = if film.decks > 1 {
+        let cur = current(flow);
+        let prev = previous(flow);
+        let target = if flow.decks > 1 {
             decks
                 .iter()
                 .find(|(d, k)| *d != cur && k.node == id)
@@ -951,11 +951,11 @@ fn tick(
             if p != target {
                 free_deck(ctx, r, p)?;
             }
-            film.previous = 0;
-            film.dissolve_left = 0;
+            flow.previous = 0;
+            flow.dissolve_left = 0;
         }
         if target != cur && decks.iter().any(|(d, _)| *d == cur) {
-            let ticks = if node.dissolve > 0.0 && film.node != 0 && dt > 0.0 {
+            let ticks = if node.dissolve > 0.0 && flow.node != 0 && dt > 0.0 {
                 (node.dissolve / dt).ceil() as u32
             } else {
                 0
@@ -963,18 +963,18 @@ fn tick(
             if ticks > 0 {
                 // It plays on under the new segment until the dissolve ends.
                 patch(ctx, &r.deck, cur, json!({ "node": 0 }))?;
-                film.previous = cur.to_bits();
-                film.dissolve = ticks;
-                film.dissolve_left = ticks;
+                flow.previous = cur.to_bits();
+                flow.dissolve = ticks;
+                flow.dissolve_left = ticks;
             } else {
                 free_deck(ctx, r, cur)?;
             }
         }
         let warm = decks.iter().any(|(d, k)| *d == target && k.node == id);
         if warm {
-            patch(ctx, &r.timeline, target, json!({ "playing": !film.paused }))?;
+            patch(ctx, &r.timeline, target, json!({ "playing": !flow.paused }))?;
         } else {
-            load_deck(ctx, r, target, id, node, !film.paused)?;
+            load_deck(ctx, r, target, id, node, !flow.paused)?;
         }
         for (d, k) in decks.iter_mut() {
             if *d == target {
@@ -983,69 +983,69 @@ fn tick(
                 k.node = 0;
             }
         }
-        film.current = target.to_bits();
-        film.node = id;
-        film.pending = -1;
-        film.window = 0;
-        film.qte = vec![0; QTE_CHOICES];
+        flow.current = target.to_bits();
+        flow.node = id;
+        flow.pending = -1;
+        flow.window = 0;
+        flow.qte = vec![0; QTE_CHOICES];
         send(
             ctx,
             eng,
             SEGMENT,
-            json!({ "film": f.to_bits() as f64, "node": node.title, "segment": node.segment }),
+            json!({ "flow": f.to_bits() as f64, "node": node.title, "segment": node.segment }),
         )?;
         if !node.chapter.is_empty() {
-            film.chapter = id;
+            flow.chapter = id;
             send(
                 ctx,
                 eng,
                 CHAPTER,
-                json!({ "film": f.to_bits() as f64, "node": node.title, "chapter": node.chapter }),
+                json!({ "flow": f.to_bits() as f64, "node": node.title, "chapter": node.chapter }),
             )?;
         }
         if let Err(e) = og_story_advance(eng.id, conv) {
             warn(
                 eng,
                 st,
-                format!("film {}: node '{title}': {e}", f.to_bits()),
+                format!("flow {}: node '{title}': {e}", f.to_bits()),
             );
         }
         skip_lines(eng, st, f, conv);
         Ok(())
     };
 
-    if !film.ended {
+    if !flow.ended {
         let view = og_story_view(eng.id, conv);
-        if film.node == 0 {
+        if flow.node == 0 {
             match &view {
                 Some(v) if v.held => {
-                    begin(ctx, &mut film, &mut decks, &v.node)?;
+                    begin(ctx, &mut flow, &mut decks, &v.node)?;
                     advancing = false;
                 }
-                _ => film.ended = true,
+                _ => flow.ended = true,
             }
-        } else if let Some(node) = prep.nodes.get(&film.node) {
-            let t = shows(ctx, &film, advancing)?;
+        } else if let Some(node) = prep.nodes.get(&flow.node) {
+            let t = shows(ctx, &flow, advancing)?;
             let choosing = view.as_ref().is_some_and(|v| !v.choices.is_empty());
-            film.window = if !choosing || t + half < node.open {
+            flow.window = if !choosing || t + half < node.open {
                 0
             } else if t + half < node.lock {
                 1
             } else {
                 2
             };
-            if film.window == 1
-                && !film.paused
+            if flow.window == 1
+                && !flow.paused
                 && let Some(v) = &view
             {
-                qte_tick(eng, st, f, &mut film, node, v, dt);
+                qte_tick(eng, st, f, &mut flow, node, v, dt);
             }
-            if !film.paused && t + half >= node.cut {
+            if !flow.paused && t + half >= node.cut {
                 // The cut: the pending choice, else the default; then on to
                 // the next hold.
                 let title = node.title.clone();
                 if let Some(v) = view.as_ref().filter(|v| !v.choices.is_empty()) {
-                    let pending = u32::try_from(film.pending)
+                    let pending = u32::try_from(flow.pending)
                         .ok()
                         .filter(|i| v.choices.iter().any(|c| c.index == *i && c.enabled));
                     if let Some(i) = pending.or_else(|| default_choice(&v.choices)) {
@@ -1054,14 +1054,14 @@ fn tick(
                             eng,
                             CHOICE,
                             json!({
-                                "film": f.to_bits() as f64, "node": title, "index": i, "timedOut": pending.is_none(),
+                                "flow": f.to_bits() as f64, "node": title, "index": i, "timedOut": pending.is_none(),
                             }),
                         )?;
                         if let Err(e) = og_story_choose(eng.id, conv, i) {
                             warn(
                                 eng,
                                 st,
-                                format!("film {}: node '{title}': {e}", f.to_bits()),
+                                format!("flow {}: node '{title}': {e}", f.to_bits()),
                             );
                         }
                     }
@@ -1069,7 +1069,7 @@ fn tick(
                 skip_lines(eng, st, f, conv);
                 match og_story_view(eng.id, conv) {
                     Some(v) if v.held => {
-                        begin(ctx, &mut film, &mut decks, &v.node)?;
+                        begin(ctx, &mut flow, &mut decks, &v.node)?;
                         advancing = false;
                     }
                     Some(v) if !v.ended => {
@@ -1077,20 +1077,20 @@ fn tick(
                             eng,
                             st,
                             format!(
-                                "film {}: after '{title}' the conversation shows choices outside a film node: give that node an `og-film` segment",
+                                "flow {}: after '{title}' the conversation shows choices outside a flow node: give that node an `og-flow` segment",
                                 f.to_bits()
                             ),
                         );
-                        film.ended = true;
+                        flow.ended = true;
                     }
                     _ => {
-                        film.ended = true;
-                        film.window = 0;
+                        flow.ended = true;
+                        flow.window = 0;
                         send(
                             ctx,
                             eng,
                             ENDED,
-                            json!({ "film": f.to_bits() as f64, "node": title, "ending": node.ending }),
+                            json!({ "flow": f.to_bits() as f64, "node": title, "ending": node.ending }),
                         )?;
                     }
                 }
@@ -1099,11 +1099,11 @@ fn tick(
     }
 
     // Warm the segments the current node may lead to on the other decks.
-    if film.decks > 1
-        && !film.ended
-        && let Some(node) = prep.nodes.get(&film.node)
+    if flow.decks > 1
+        && !flow.ended
+        && let Some(node) = prep.nodes.get(&flow.node)
     {
-        let t = shows(ctx, &film, advancing)?;
+        let t = shows(ctx, &flow, advancing)?;
         let view = og_story_view(eng.id, conv);
         let mut want: Vec<u32> = Vec::new();
         match &view {
@@ -1111,7 +1111,7 @@ fn tick(
             Some(v) if !v.choices.is_empty() => {
                 if t + half >= node.open {
                     let mut order: Vec<u32> =
-                        u32::try_from(film.pending).ok().into_iter().collect();
+                        u32::try_from(flow.pending).ok().into_iter().collect();
                     order.extend(default_choice(&v.choices));
                     order.extend(v.choices.iter().filter(|c| c.enabled).map(|c| c.index));
                     for i in order {
@@ -1123,9 +1123,9 @@ fn tick(
         }
         let mut seen = BTreeSet::new();
         want.retain(|w| seen.insert(*w));
-        want.truncate((film.decks - 1) as usize);
-        let cur = current(&film);
-        let prev = previous(&film);
+        want.truncate((flow.decks - 1) as usize);
+        let cur = current(&flow);
+        let prev = previous(&flow);
         let spare = |d: &Entity| *d != cur && Some(*d) != prev;
         let wanted: BTreeSet<u32> = want.iter().copied().collect();
         for w in want {
@@ -1145,31 +1145,31 @@ fn tick(
     }
 
     let out = r
-        .film
+        .flow
         .1
-        .encode(Some(&fb), Some(&film_json(&film)))
+        .encode(Some(&fb), Some(&flow_json(&flow)))
         .map_err(bad)?;
     if out != fb {
-        ctx.set_bytes(f, r.film.0, &out)?;
+        ctx.set_bytes(f, r.flow.0, &out)?;
     }
-    let node = prep.nodes.get(&film.node);
-    let time = shows(ctx, &film, advancing)?;
-    let texture = deck_state(ctx, r, current(&film))?.2;
+    let node = prep.nodes.get(&flow.node);
+    let time = shows(ctx, &flow, advancing)?;
+    let texture = deck_state(ctx, r, current(&flow))?.2;
     let (hotspots, qtes) = match node {
-        Some(n) if film.window > 0 && !film.ended => {
+        Some(n) if flow.window > 0 && !flow.ended => {
             let choices = og_story_view(eng.id, conv)
                 .map(|v| v.choices)
                 .unwrap_or_default();
-            offers(n, &film, &choices, time, dt)
+            offers(n, &flow, &choices, time, dt)
         }
         _ => (Vec::new(), Vec::new()),
     };
-    let previous_texture = match previous(&film) {
+    let previous_texture = match previous(&flow) {
         Some(p) => deck_state(ctx, r, p)?.2,
         None => 0,
     };
-    let mix = if film.dissolve_left > 0 && film.dissolve > 0 {
-        1.0 - film.dissolve_left as f32 / film.dissolve as f32
+    let mix = if flow.dissolve_left > 0 && flow.dissolve > 0 {
+        1.0 - flow.dissolve_left as f32 / flow.dissolve as f32
     } else {
         1.0
     };
@@ -1183,33 +1183,33 @@ fn tick(
         lock: node.map_or(0.0, |n| n.lock),
         cut: node.map_or(0.0, |n| n.cut),
         dt,
-        window: film.window,
-        pending: film.pending,
-        paused: film.paused,
+        window: flow.window,
+        pending: flow.pending,
+        paused: flow.paused,
         chapter: prep
             .nodes
-            .get(&film.chapter)
+            .get(&flow.chapter)
             .map(|n| n.chapter.clone())
             .unwrap_or_default(),
-        ending: if film.ended {
+        ending: if flow.ended {
             node.map(|n| n.ending.clone()).unwrap_or_default()
         } else {
             String::new()
         },
-        ended: film.ended,
+        ended: flow.ended,
         hotspots,
         qtes,
         previous: previous_texture,
         mix,
         ahead: match node {
-            Some(n) if !film.ended => ahead(&prep, n, time),
+            Some(n) if !flow.ended => ahead(&prep, n, time),
             _ => Vec::new(),
         },
     }))
 }
 
 /// Every segment the node in place may cut to (each choice's and its own
-/// steps' film nodes), by its first frame, needed at the cut. The decks
+/// steps' flow nodes), by its first frame, needed at the cut. The decks
 /// warm only as many as they have room for, from the window's open; this
 /// asks the streaming queue for every target's first chunk as soon as the
 /// segment plays, so a choice no deck warmed still starts from a chunk
@@ -1231,10 +1231,10 @@ fn ahead(prep: &Prepared, node: &Node, time: f32) -> Vec<Ahead> {
         .collect()
 }
 
-/// The first frames the films on `eng` may cut to (crate::bind::video's
+/// The first frames the flows on `eng` may cut to (crate::bind::video's
 /// `wanted_chunks` asks for their chunks).
 pub(crate) fn prefetch(eng: &Engine) -> Vec<Ahead> {
-    lock(&eng.modules.film)
+    lock(&eng.modules.flow)
         .views
         .values()
         .flat_map(|s| s.ahead.iter().copied())
@@ -1242,8 +1242,8 @@ pub(crate) fn prefetch(eng: &Engine) -> Vec<Ahead> {
 }
 
 /// The deck dissolving out under the current one, if any.
-fn previous(film: &record::Film) -> Option<Entity> {
-    (film.previous != 0).then(|| Entity::from_bits(film.previous))
+fn previous(flow: &record::Flow) -> Option<Entity> {
+    (flow.previous != 0).then(|| Entity::from_bits(flow.previous))
 }
 
 /// Ticks of input a quick-time event needs.
@@ -1263,7 +1263,7 @@ fn qte_tick(
     eng: &Engine,
     st: &ModuleState,
     f: Entity,
-    film: &mut record::Film,
+    flow: &mut record::Flow,
     node: &Node,
     view: &crate::host::wire::DialogueView,
     dt: f32,
@@ -1275,7 +1275,7 @@ fn qte_tick(
             continue;
         };
         let need = qte_need(q, dt);
-        if film.qte[i] >= need {
+        if flow.qte[i] >= need {
             continue;
         }
         let state = actions
@@ -1286,7 +1286,7 @@ fn qte_tick(
                 eng,
                 st,
                 format!(
-                    "film {}: node '{}': choice {i} is #qte:{}:{}, an action og.input.defineAction has not defined",
+                    "flow {}: node '{}': choice {i} is #qte:{}:{}, an action og.input.defineAction has not defined",
                     f.to_bits(),
                     node.title,
                     q.kind.name(),
@@ -1295,14 +1295,14 @@ fn qte_tick(
             );
             continue;
         };
-        film.qte[i] = match q.kind {
+        flow.qte[i] = match q.kind {
             QteKind::Press => u32::from(s.pressed),
-            QteKind::Hold(_) if s.down => film.qte[i] + 1,
+            QteKind::Hold(_) if s.down => flow.qte[i] + 1,
             QteKind::Hold(_) => 0,
-            QteKind::Mash(_) => film.qte[i] + u32::from(s.pressed),
+            QteKind::Mash(_) => flow.qte[i] + u32::from(s.pressed),
         };
-        if film.qte[i] >= need {
-            film.pending = c.index as i32;
+        if flow.qte[i] >= need {
+            flow.pending = c.index as i32;
         }
     }
 }
@@ -1311,21 +1311,21 @@ fn qte_tick(
 /// its enabled choices, the hotspots only while it is open.
 fn offers(
     node: &Node,
-    film: &record::Film,
+    flow: &record::Flow,
     choices: &[ChoiceView],
     t: f32,
     dt: f32,
-) -> (Vec<FilmHotspot>, Vec<QteView>) {
+) -> (Vec<FlowHotspot>, Vec<QteView>) {
     let mut hotspots = Vec::new();
     let mut qtes = Vec::new();
     let here = og_timeline::eval::hotspots_at(&node.hotspots, t);
     for c in choices.iter().filter(|c| c.enabled) {
-        if film.window == 1
+        if flow.window == 1
             && let Some(id) = c.tags.get("hotspot").and_then(Value::as_str)
             && let Some(h) = here.iter().find(|h| h.id == id)
         {
             let [x, y, width, height] = h.rect;
-            hotspots.push(FilmHotspot {
+            hotspots.push(FlowHotspot {
                 choice: c.index,
                 id: id.to_string(),
                 x,
@@ -1336,7 +1336,7 @@ fn offers(
         }
         if let Some(Some(q)) = node.qte.get(c.index as usize) {
             let need = qte_need(q, dt);
-            let have = film.qte.get(c.index as usize).copied().unwrap_or(0);
+            let have = flow.qte.get(c.index as usize).copied().unwrap_or(0);
             qtes.push(QteView {
                 choice: c.index,
                 kind: q.kind.name().into(),
@@ -1349,7 +1349,7 @@ fn offers(
     (hotspots, qtes)
 }
 
-fn film_json(f: &record::Film) -> Value {
+fn flow_json(f: &record::Flow) -> Value {
     json!({
         "conversation": f.conversation,
         "decks": f.decks,
@@ -1367,7 +1367,7 @@ fn film_json(f: &record::Film) -> Value {
     })
 }
 
-/// A film node shows no Yarn lines (its captions are the segment's): a
+/// A flow node shows no Yarn lines (its captions are the segment's): a
 /// line it reaches is warned of and passed.
 fn skip_lines(eng: &Engine, st: &ModuleState, f: Entity, conv: u32) {
     for _ in 0..64 {
@@ -1381,7 +1381,7 @@ fn skip_lines(eng: &Engine, st: &ModuleState, f: Entity, conv: u32) {
             eng,
             st,
             format!(
-                "film {}: node '{}' says '{}': a film node shows no Yarn lines; put what is said in its segment's caption track",
+                "flow {}: node '{}' says '{}': a flow node shows no Yarn lines; put what is said in its segment's caption track",
                 f.to_bits(),
                 v.node,
                 v.key
@@ -1395,37 +1395,37 @@ fn skip_lines(eng: &Engine, st: &ModuleState, f: Entity, conv: u32) {
 
 // ── the command channel ──────────────────────────────────────────────────────
 
-/// `film:choose:<i>`, `film:play`, `film:pause`: every film this engine shows.
+/// `flow:choose:<i>`, `flow:play`, `flow:pause`: every flow this engine shows.
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_command(
-        "film",
+        "flow",
         og_probe::CommandDesc {
-            usage: "film:choose:<index> | film:play | film:pause | film:skip".into(),
-            doc: "take a choice in every film's open window (ChoiceView.index), play or pause every film, or skip ahead in every film's segment (og.film.skip); it takes effect at this tick's og.film".into(),
+            usage: "flow:choose:<index> | flow:play | flow:pause | flow:skip".into(),
+            doc: "take a choice in every flow's open window (ChoiceView.index), play or pause every flow, or skip ahead in every flow's segment (og.flow.skip); it takes effect at this tick's og.flow".into(),
         },
         move |_world, args| command(engine_id, args),
     );
 }
 
 fn command(engine_id: u32, args: &[String]) -> Result<(), String> {
-    const USAGE: &str = "write film:choose:<index>, film:play, film:pause or film:skip";
+    const USAGE: &str = "write flow:choose:<index>, flow:play, flow:pause or flow:skip";
     let st = state(engine_id)?;
-    let films: Vec<u64> = lock(&st).views.keys().copied().collect();
-    if films.is_empty() {
-        return Err("no film is playing (og.film.start)".into());
+    let flows: Vec<u64> = lock(&st).views.keys().copied().collect();
+    if flows.is_empty() {
+        return Err("no flow is playing (og.flow.start)".into());
     }
     let op = match args.first().map(String::as_str) {
         Some("choose") => Op::Choose(
             args.get(1)
                 .and_then(|a| a.trim().parse().ok())
-                .ok_or("write film:choose:<index>, such as film:choose:0")?,
+                .ok_or("write flow:choose:<index>, such as flow:choose:0")?,
         ),
         Some("play") => Op::Play,
         Some("pause") => Op::Pause,
         Some("skip") => Op::Skip,
         _ => return Err(USAGE.into()),
     };
-    for f in films {
+    for f in flows {
         queue(engine_id, f as f64, op)?;
     }
     Ok(())

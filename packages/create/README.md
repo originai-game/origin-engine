@@ -34,12 +34,12 @@ accepts `--form`, `--genre`, `--view`, `--look`, `--variant`,
 its form's (`2d`: side-2d, top-down-2d; `2.5d`: isometric-2.5d; `3d`:
 third-person-3d, first-person-3d), defaulting to its genre's first view of
 that form; a form and view that disagree are refused. `film` is an
-interactive film (`og api show film`): creation writes the same skeleton
-plus `assets/story/film.yarn` (three film nodes, two endings),
+interactive film (`og api show flow`): creation writes the same skeleton
+plus `assets/story/film.yarn` (three flow nodes, two endings),
 `assets/segments/opening.ogt` and `ending.ogt`, a placeholder
 `assets/clips/opening.ogt` stream, the picture's `assets/ui/film-view.tsx`
 and an entry that loads and starts the film paused and shows it with the
-built-in Subtitles and FilmChoices (from `templates/film`, packed
+built-in Subtitles and FlowChoices (from `templates/film`, packed
 as `film/`; the clip is pinned in `templates/og-assets.json`, so a checkout
 runs `bun scripts/assets.ts ensure templates` first). `--genre
 interactive-film` chooses form film too. A film's genre is

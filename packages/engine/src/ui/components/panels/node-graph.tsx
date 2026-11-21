@@ -4,7 +4,7 @@ import "./node-graph.en.ogt";
 export interface NodeGraphProps {
   /** The nodes: each { id, x, y, label, icon, state, shape, team }, x and y their centres in graph units; state available, locked, active, done or current (a rim and a dim as well as a colour); shape circle, square, hex or diamond; team ally, enemy or empty (pair a side with a shape, so sides are not told by colour alone). */
   nodes: ReadonlyArray<{ id: string; x: number; y: number; label: string; icon: string; state: string; shape: string; team: string }>;
-  /** The links under the nodes: each { id, points, active }, points x, y pairs in graph units (og.film.chart's link points, or the game's own curve sampled), active a path taken. */
+  /** The links under the nodes: each { id, points, active }, points x, y pairs in graph units (og.flow.chart's link points, or the game's own curve sampled), active a path taken. */
   links: ReadonlyArray<{ id: string; points: readonly number[]; active: boolean }>;
   /** The graph's extent in graph units, [x, y, width, height]: it is fitted into the well whole, scaled uniformly and centred. */
   view: readonly [number, number, number, number];

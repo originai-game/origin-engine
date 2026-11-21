@@ -1711,7 +1711,7 @@ const GENRES: Readonly<Record<string, GenreSpec>> = {
   "open-world": { cues: [["day", "explore", 96, 0.4, -0.1], ["night", "calm", 64, 0.25, -0.3], ["danger", "action", 48, 0.8, 0.2]], sfx: [["footstep", 6], ["swing", 3], ["hit", 3], ["hurt", 2], ["pickup", 2], ["door"], ["discover"], ["wind-loop"]] },
 };
 
-/** An interactive film's (og.film): its scores under the footage, and the choice window's sounds. */
+/** An interactive film's (og.flow): its scores under the footage, and the choice window's sounds. */
 const FILM: GenreSpec = { cues: [["scene", "calm", 48, 0.35, -0.1], ["tension", "action", 32, 0.7, 0.1], ["choice", "stinger", 2, 0.6, 0]], sfx: [["choice-open"], ["choice-pick"], ["choice-lock"], ["qte"]] };
 
 /** Each effect's description, length (s), bus and the preset that stands in for it. */

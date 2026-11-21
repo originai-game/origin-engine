@@ -2,5 +2,5 @@ type strings
 version 1
 ---
 locale "en"
-string "screen.film-choices.label" "Choose"
-string "screen.film-choices.qte" "Hold or press"
+string "screen.flow-choices.label" "Choose"
+string "screen.flow-choices.qte" "Hold or press"

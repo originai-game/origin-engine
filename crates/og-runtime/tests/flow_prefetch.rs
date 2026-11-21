@@ -1,6 +1,6 @@
-//! og.film asks for the first chunk of every segment a choice may cut to
+//! og.flow asks for the first chunk of every segment a choice may cut to
 //! while the segment before it plays, not only those a spare deck warms:
-//! a film on one deck (no deck to warm on) whose `start` offers Red
+//! a flow on one deck (no deck to warm on) whose `start` offers Red
 //! (#default), Green and Blue, each its own streamed video, has the host
 //! read each target's stream index and its first chunk before the cut,
 //! and has them read again from the new node's targets after it.
@@ -15,8 +15,8 @@
 //! decided before anything is drawn, and nothing here needs a GPU.
 
 use og_runtime::{
-    Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_film_load,
-    og_film_start, og_film_view, og_game_game, og_host_begin_bundle, og_story_parse, set_hooks,
+    Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_flow_load,
+    og_flow_start, og_flow_view, og_game_game, og_host_begin_bundle, og_story_parse, set_hooks,
     set_render_backend,
 };
 use serde_json::{Value, json};
@@ -33,14 +33,14 @@ fn segment(video: &str, markers: &str) -> String {
     )
 }
 
-const WINDOW: &str = "track marker {\n  key 0.5 {\n    name \"film.open\"\n  }\n  key 0.8 {\n    name \"film.lock\"\n  }\n  key 0.9 {\n    name \"film.cut\"\n  }\n}\n";
+const WINDOW: &str = "track marker {\n  key 0.5 {\n    name \"flow.open\"\n  }\n  key 0.8 {\n    name \"flow.lock\"\n  }\n  key 0.9 {\n    name \"flow.cut\"\n  }\n}\n";
 
 fn script() -> String {
     format!(
         r#"#og-profile:{}
 #og-name:doors
 title: start
-og-film: segments/start.ogt
+og-flow: segments/start.ogt
 ---
 -> Red #line:red #default
     <<jump red>>
@@ -50,15 +50,15 @@ og-film: segments/start.ogt
     <<jump blue>>
 ===
 title: red
-og-film: segments/red.ogt
+og-flow: segments/red.ogt
 ---
 ===
 title: green
-og-film: segments/green.ogt
+og-flow: segments/green.ogt
 ---
 ===
 title: blue
-og-film: segments/blue.ogt
+og-flow: segments/blue.ogt
 ---
 ===
 "#,
@@ -73,7 +73,7 @@ fn project() -> Option<&'static Path> {
     ROOT.get_or_init(|| {
         og_cook::cook::video::av1_encoder()?;
         let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-            .join(format!("og-runtime-film-prefetch-{}", std::process::id()));
+            .join(format!("og-runtime-flow-prefetch-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let clips = root.join("assets/clips");
         std::fs::create_dir_all(&clips).unwrap();
@@ -177,11 +177,11 @@ fn every_cut_target_has_its_first_chunk_read_before_the_cut_on_one_deck() {
         engine,
         script(),
     )));
-    value(og_runtime::host_impl::answer(og_film_load(
+    value(og_runtime::host_impl::answer(og_flow_load(
         engine,
         "doors".into(),
     )));
-    let film = value(og_runtime::host_impl::answer(og_film_start(
+    let flow = value(og_runtime::host_impl::answer(og_flow_start(
         engine,
         Some(json!({ "dialogue": "doors", "decks": 1 }).to_string()),
     )))
@@ -195,7 +195,7 @@ fn every_cut_target_has_its_first_chunk_read_before_the_cut_on_one_deck() {
         );
     }
     let view = || -> Value {
-        serde_json::from_str(&og_runtime::host_impl::json(og_film_view(engine, film))).unwrap()
+        serde_json::from_str(&og_runtime::host_impl::json(og_flow_view(engine, flow))).unwrap()
     };
     // A few ticks into `start`, well before its window opens at 0.5 s.
     for _ in 0..6 {

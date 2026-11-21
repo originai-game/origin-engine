@@ -94,7 +94,7 @@ test("a restore that moves og.Time past the script's last scheduled tick still r
 
 test("a save a command takes and restores at once leaves the world's tick and hash as they were", () => {
   // A command runs between ticks, so its restore applies before the next tick moves anything; one
-  // applied as that tick ended undid it, leaving the run a tick behind (film guide §8).
+  // applied as that tick ended undid it, leaving the run a tick behind (flow guide §8).
   const game = "packages/engine/tests/fixtures/restore-forward";
   const plain = run([ogBin(), "run", "--headless", game, "--no-render", "--json", "--commands", "1:quit"], repo);
   const restored = run([ogBin(), "run", "--headless", game, "--no-render", "--json", "--commands", "0.5:roundtrip;1:quit"], repo);

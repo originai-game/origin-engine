@@ -217,6 +217,18 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 }
                 continue;
             }
+            if b["codemod"]["kind"] == "flow-rename" {
+                for (file, text, touched) in &mut texts {
+                    if let Some((upgraded, renamed)) = flow_rename(text) {
+                        *text = upgraded;
+                        *touched = true;
+                        for (from, to, n) in renamed {
+                            codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": from, "to": to, "count": n }));
+                        }
+                    }
+                }
+                continue;
+            }
             if b["codemod"]["kind"] == "vfx-glow" {
                 for (file, text, touched) in &mut texts {
                     if file.extension().is_some_and(|e| e == "ogt")
@@ -488,6 +500,133 @@ fn vfx_glow(text: &str) -> Option<(String, usize)> {
     }
     // A version 1 file without a flash reads the same at version 1.
     (n > 0).then_some((out, n))
+}
+
+/// How a name og.film gave must sit in the text to be one of its names.
+#[derive(Clone, Copy)]
+enum Sits {
+    /// A whole name: no identifier character on either side
+    /// (`FilmView`, never `MyFilmView` or `FilmViewProps`).
+    Whole,
+    /// The start of a name: no identifier character or `-` before it
+    /// (`og-film`, `og-film-chapter`).
+    Start,
+    /// A whole quoted string (`"film.open"`), not an expression that
+    /// reads a `film` of the game's.
+    Quoted,
+    /// A screen's name: a whole quoted string, the head of its strings'
+    /// keys (`screen.film-choices.label`) or of its parts
+    /// (`::part(film-choices.shade)`); never a file's path.
+    Screen,
+}
+
+/// og.film's names as og.flow's (the flow-rename codemod).
+const FLOW_NAMES: &[(&str, &str, Sits)] = &[
+    ("og.film", "og.flow", Sits::Whole),
+    ("og.Film", "og.Flow", Sits::Whole),
+    ("FilmDesc", "FlowStartDesc", Sits::Whole),
+    ("FilmInfo", "FlowInfo", Sits::Whole),
+    ("FilmDeck", "FlowDeck", Sits::Whole),
+    ("FilmHotspot", "FlowHotspot", Sits::Whole),
+    ("FilmView", "FlowView", Sits::Whole),
+    ("FilmChart", "FlowChart", Sits::Whole),
+    ("FilmChartNode", "FlowChartNode", Sits::Whole),
+    ("FilmChartLink", "FlowChartLink", Sits::Whole),
+    ("FilmSegment", "FlowSegment", Sits::Whole),
+    ("FilmChoice", "FlowChoice", Sits::Whole),
+    ("FilmChapter", "FlowChapter", Sits::Whole),
+    ("FilmEnded", "FlowEnded", Sits::Whole),
+    ("FilmChoices", "FlowChoices", Sits::Whole),
+    ("FilmChoicesProps", "FlowChoicesProps", Sits::Whole),
+    ("FilmChaptersScreen", "FlowChaptersScreen", Sits::Whole),
+    (
+        "FilmChaptersScreenProps",
+        "FlowChaptersScreenProps",
+        Sits::Whole,
+    ),
+    ("FilmFlowchartScreen", "FlowChartScreen", Sits::Whole),
+    (
+        "FilmFlowchartScreenProps",
+        "FlowChartScreenProps",
+        Sits::Whole,
+    ),
+    ("FilmGalleryScreen", "FlowGalleryScreen", Sits::Whole),
+    (
+        "FilmGalleryScreenProps",
+        "FlowGalleryScreenProps",
+        Sits::Whole,
+    ),
+    ("film:choose", "flow:choose", Sits::Whole),
+    ("film:play", "flow:play", Sits::Whole),
+    ("film:pause", "flow:pause", Sits::Whole),
+    ("film:skip", "flow:skip", Sits::Whole),
+    ("og-film", "og-flow", Sits::Start),
+    ("film.open", "flow.open", Sits::Quoted),
+    ("film.lock", "flow.lock", Sits::Quoted),
+    ("film.cut", "flow.cut", Sits::Quoted),
+    ("film-choices", "flow-choices", Sits::Screen),
+    ("film-chapters", "flow-chapters", Sits::Screen),
+    ("film-flowchart", "flow-chart", Sits::Screen),
+    ("film-gallery", "flow-gallery", Sits::Screen),
+];
+
+/// A name [`flow_rename`] rewrote: as it was, as it is, and how often.
+type FlowRenamed = (&'static str, &'static str, usize);
+
+/// og.film became og.flow: a game's text with every name of [`FLOW_NAMES`]
+/// as it is now, and how often each was rewritten; `None` for a text that
+/// names none. The game's own names stay (`FilmRef`, a `film` variable, a
+/// file `film-view.tsx`), and so does the `film` field of og.FlowView,
+/// og.FlowDeck and the events, which the type check names.
+fn flow_rename(text: &str) -> Option<(String, Vec<FlowRenamed>)> {
+    let ident = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '$';
+    let quote = |c: char| matches!(c, '"' | '\'' | '`');
+    let mut out = String::with_capacity(text.len());
+    let mut counts = vec![0usize; FLOW_NAMES.len()];
+    let mut i = 0;
+    while let Some(c) = text[i..].chars().next() {
+        let (head, rest) = text.split_at(i);
+        let before = head.chars().next_back();
+        let hit = FLOW_NAMES
+            .iter()
+            .enumerate()
+            .filter(|(_, (from, _, sits))| {
+                let Some(after) = rest.strip_prefix(from) else {
+                    return false;
+                };
+                let after = after.chars().next();
+                let quoted = before.is_some_and(quote) && after == before;
+                match sits {
+                    Sits::Whole => !before.is_some_and(ident) && !after.is_some_and(ident),
+                    Sits::Start => !before.is_some_and(|c| ident(c) || c == '-'),
+                    Sits::Quoted => quoted,
+                    Sits::Screen => {
+                        quoted
+                            || (after == Some('.')
+                                && (head.ends_with("screen.") || head.ends_with("part(")))
+                    }
+                }
+            })
+            .max_by_key(|(_, (from, ..))| from.len());
+        match hit {
+            Some((k, (from, to, _))) => {
+                out.push_str(to);
+                counts[k] += 1;
+                i += from.len();
+            }
+            None => {
+                out.push(c);
+                i += c.len_utf8();
+            }
+        }
+    }
+    let renamed: Vec<_> = FLOW_NAMES
+        .iter()
+        .zip(counts)
+        .filter(|(_, n)| *n > 0)
+        .map(|((from, to, _), n)| (*from, *to, n))
+        .collect();
+    (!renamed.is_empty()).then_some((out, renamed))
 }
 
 /// A light's `static` mark moved to its mobility: in a scene's
@@ -877,8 +1016,8 @@ fn ui_core(text: &str) -> Option<(String, Vec<Rewrite>, Vec<usize>)> {
 }
 
 /// The game's own text: `src/`, `assets/` and `tests/` (TypeScript,
-/// JavaScript, `.ogt`, UI documents and style sheets), leaving out build
-/// output and dependencies.
+/// JavaScript, `.ogt`, UI documents, style sheets and Yarn), leaving out
+/// build output and dependencies.
 fn game_sources(root: &Path) -> Vec<PathBuf> {
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         let Ok(rd) = std::fs::read_dir(dir) else {
@@ -892,9 +1031,11 @@ fn game_sources(root: &Path) -> Vec<PathBuf> {
                 if !matches!(name, "node_modules" | ".og" | "cooked" | "dist" | "og-out") {
                     walk(&p, out);
                 }
-            } else if [".ts", ".tsx", ".js", ".mjs", ".ogt", ".svelte", ".css"]
-                .iter()
-                .any(|x| name.ends_with(x))
+            } else if [
+                ".ts", ".tsx", ".js", ".mjs", ".ogt", ".svelte", ".css", ".yarn",
+            ]
+            .iter()
+            .any(|x| name.ends_with(x))
             {
                 out.push(p);
             }
@@ -1137,6 +1278,84 @@ fn print_text(r: &Value, dry: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// og.film's names become og.flow's wherever a game writes them (code,
+    /// Yarn headers, a segment's markers, commands, screens' names, keys
+    /// and parts), and nothing of the game's own is touched. Ways this
+    /// could fail: a name rewritten inside a longer one (`FilmRef`,
+    /// `MyFilmView`, `FilmViewer`), a file's path taken for a screen's
+    /// name, the game's own `film.open` expression taken for the marker,
+    /// or `FilmDesc` becoming og.nav's FlowDesc.
+    #[test]
+    fn flow_rename_takes_og_films_names_and_leaves_the_games_own() {
+        let game = r#"import type { FilmView as View, FilmChartLink } from "@origingame/engine";
+import { FilmChoices, FilmFlowchartScreen } from "@origingame/engine/ui/components";
+import { FilmViewer, MyFilmView } from "../assets/ui/film-view.tsx";
+import "./film-choices";
+const FilmRef = defineResource("FilmRef", { film: Entity() });
+og.film.load(world, "film");
+const desc: og.FilmDesc = { dialogue: "film", paused: true };
+const film = og.film.start(world, desc);
+world.query(og.Film, og.FilmDeck);
+og.story.start(world, { dialogue: "film", hold: "og-film" });
+og.ui.push(world, 'film-flowchart');
+const label = t("screen.film-choices.label");
+if (film.open && marker === "film.cut") run("10.6:film:choose:0", `film:play`);
+"#;
+        let want = r#"import type { FlowView as View, FlowChartLink } from "@origingame/engine";
+import { FlowChoices, FlowChartScreen } from "@origingame/engine/ui/components";
+import { FilmViewer, MyFilmView } from "../assets/ui/film-view.tsx";
+import "./film-choices";
+const FilmRef = defineResource("FilmRef", { film: Entity() });
+og.flow.load(world, "film");
+const desc: og.FlowStartDesc = { dialogue: "film", paused: true };
+const film = og.flow.start(world, desc);
+world.query(og.Flow, og.FlowDeck);
+og.story.start(world, { dialogue: "film", hold: "og-flow" });
+og.ui.push(world, 'flow-chart');
+const label = t("screen.flow-choices.label");
+if (film.open && marker === "flow.cut") run("10.6:flow:choose:0", `flow:play`);
+"#;
+        let (out, renamed) = flow_rename(game).unwrap();
+        assert_eq!(out, want);
+        let count = |from: &str| renamed.iter().find(|r| r.0 == from).map_or(0, |r| r.2);
+        assert_eq!(
+            (count("og.film"), count("FilmView"), count("og-film")),
+            (2, 1, 1)
+        );
+        assert_eq!(
+            renamed.iter().map(|r| r.2).sum::<usize>(),
+            15,
+            "{renamed:?}"
+        );
+        // A Yarn story, a segment and a style sheet.
+        let texts = [
+            (
+                "title: a\nog-film: segments/a.ogt\nog-film-chapter: chapter.a\n---\n===\n",
+                "title: a\nog-flow: segments/a.ogt\nog-flow-chapter: chapter.a\n---\n===\n",
+            ),
+            (
+                "track marker {\n  key 3 {\n    name \"film.open\"\n  }\n}\n",
+                "track marker {\n  key 3 {\n    name \"flow.open\"\n  }\n}\n",
+            ),
+            (
+                "Screen::part(film-choices.shade) { opacity: 0.5 }\n",
+                "Screen::part(flow-choices.shade) { opacity: 0.5 }\n",
+            ),
+        ];
+        for (text, want) in texts {
+            assert_eq!(flow_rename(text).map(|r| r.0).as_deref(), Some(want));
+        }
+        // Nothing of og.film's: a look named film, a blog's header, a path.
+        for own in [
+            "post { filmGrain 0.04 }\n",
+            "blog-film: yes\n",
+            "import x from \"./ui/film-gallery.tsx\";\n",
+            "const s = film.cut + film.lock;\n",
+        ] {
+            assert!(flow_rename(own).is_none(), "{own}");
+        }
+    }
 
     /// og new's tsconfig.json before the engine resolved as a package
     /// comes out as og new writes it now, and an entry the rewrite cannot

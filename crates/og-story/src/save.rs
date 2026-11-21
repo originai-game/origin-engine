@@ -25,7 +25,10 @@ const MAGIC: &[u8; 4] = b"OGST";
 /// Version 8 checkpoints option reason arguments and check targets.
 /// Version 9 adds a conversation's hold header and whether its node was
 /// let go from it (og.story's StartDesc.hold), and the held wait.
-pub const SAVE_VERSION: u8 = 9;
+/// Version 10 is version 9 after og.film became og.flow: a conversation
+/// saved holding on `og-film` holds on `og-flow`, the header its dialogue
+/// now carries.
+pub const SAVE_VERSION: u8 = 10;
 
 /// og-core's [`ByteWriter`] (its primitives, by `Deref`) and the story's values.
 struct W<'a>(ByteWriter<'a>);
@@ -571,7 +574,13 @@ impl Story {
             };
             let last_roll = if r.bool()? { Some(r.roll()?) } else { None };
             let (hold, released) = if v >= 9 {
-                (r.str()?, r.bool()?)
+                let hold = r.str()?;
+                let hold = if v == 9 && hold == "og-film" {
+                    "og-flow".to_string()
+                } else {
+                    hold
+                };
+                (hold, r.bool()?)
             } else {
                 (String::new(), false)
             };

@@ -291,8 +291,8 @@ test("form film (or genre interactive-film) writes the film skeleton over the on
   const made = files(join(scratch, "film"));
   for (const f of ["assets/story/film.yarn", "assets/segments/opening.ogt", "assets/segments/ending.ogt", "assets/clips/opening.ogt", "assets/clips/opening.mp4", "assets/ui/film-view.tsx", "tests/smoke.og.ts", "tsconfig.json"]) expect(made).toContain(f);
   const main = read("film/src/main.ts");
-  expect(main).toContain('og.film.start(world, { dialogue: "film", paused: true })');
-  for (const screen of ["return FilmChoices({", "return Subtitles({"]) expect(main).toContain(screen);
+  expect(main).toContain('og.flow.start(world, { dialogue: "film", paused: true })');
+  for (const screen of ["return FlowChoices({", "return Subtitles({"]) expect(main).toContain(screen);
   const block = read("film/project.ogt").split("create {")[1]!;
   expect(block).toContain('form "film"');
   expect(block).toContain('genre "interactive-film"');

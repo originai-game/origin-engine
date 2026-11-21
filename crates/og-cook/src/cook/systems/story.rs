@@ -148,12 +148,12 @@ pub(crate) fn check_story_keys(
     out
 }
 
-/// The cook's check of the dialogues og.film plays (those with a node
-/// headed `og-film`): each film node's segment is a timeline og.film can
+/// The cook's check of the dialogues og.flow plays (those with a node
+/// headed `og-flow`): each flow node's segment is a timeline og.flow can
 /// play (`segment` answers it by asset id: `None` when there is none), at
 /// most one of its choices is `#default`, it says no Yarn lines, and every
-/// node with choices is a film node. As (source, error).
-pub(crate) fn check_films(
+/// node with choices is a flow node. As (source, error).
+pub(crate) fn check_flows(
     stories: &[(&str, &[u8])],
     segment: &dyn Fn(&str) -> Option<Result<og_timeline::segment::Segment, String>>,
     functions: &std::collections::BTreeMap<String, og_story::yarn::types::Function>,
@@ -167,15 +167,15 @@ pub(crate) fn check_films(
             continue;
         };
         let graph = d.graph();
-        if !graph.iter().any(|n| n.headers.contains_key("og-film")) {
+        if !graph.iter().any(|n| n.headers.contains_key("og-flow")) {
             continue;
         }
         let mut errors = Vec::new();
         for n in &graph {
-            let Some(seg) = n.headers.get("og-film") else {
+            let Some(seg) = n.headers.get("og-flow") else {
                 if !n.choices.is_empty() {
                     errors.push(format!(
-                        "node '{}' offers choices but has no og-film segment: in a film every choice is a film node's, timed by its segment",
+                        "node '{}' offers choices but has no og-flow segment: in a flow every choice is a flow node's, timed by its segment",
                         n.title
                     ));
                 }
@@ -195,7 +195,7 @@ pub(crate) fn check_films(
                 }
                 Some(Ok(s)) => Some(s.hotspots.into_iter().map(|k| k.id).collect()),
             };
-            if let Some(h) = n.headers.get("og-film-dissolve")
+            if let Some(h) = n.headers.get("og-flow-dissolve")
                 && let Err(e) = og_timeline::segment::dissolve(h)
             {
                 errors.push(format!("node '{}': {e}", n.title));
@@ -237,7 +237,7 @@ pub(crate) fn check_films(
             if !said.is_empty() {
                 let lines: Vec<String> = said.iter().map(usize::to_string).collect();
                 errors.push(format!(
-                    "node '{}' says Yarn lines (line {}): a film node shows none; put what is said in its segment's caption track",
+                    "node '{}' says Yarn lines (line {}): a flow node shows none; put what is said in its segment's caption track",
                     n.title,
                     lines.join(", ")
                 ));

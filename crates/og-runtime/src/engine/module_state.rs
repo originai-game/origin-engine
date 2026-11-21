@@ -31,7 +31,7 @@ pub(crate) struct Modules {
     pub stream: stream::ModuleState,
     pub agents: agents::ModuleState,
     pub story: story::ModuleState,
-    pub film: flow::ModuleState,
+    pub flow: flow::ModuleState,
     pub platform: platform::ModuleState,
     pub net: net::ModuleState,
     pub i18n: i18n::ModuleState,

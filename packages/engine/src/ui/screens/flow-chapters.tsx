@@ -4,8 +4,8 @@ import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import "./flow-chapters.en.ogt";
 
-export interface FilmChaptersScreenProps {
-  /** The chapters, in order (og.film.load's chapters): keyed rows of { id, title, thumb (texture: the chapter's save's poster), locked (not reached yet: no save to play from) }. */
+export interface FlowChaptersScreenProps {
+  /** The chapters, in order (og.flow.load's chapters): keyed rows of { id, title, thumb (texture: the chapter's save's poster), locked (not reached yet: no save to play from) }. */
   chapters: ReadonlyArray<{ id: string; title: string; thumb: Texture | 0; locked: boolean }>;
   /** The chapter selected now (its key). */
   selected: string;
@@ -15,7 +15,7 @@ export interface FilmChaptersScreenProps {
   onSelect?: (e: UiEvent, key?: string) => void;
 }
 
-export function FilmChaptersScreen(props: FilmChaptersScreenProps) {
+export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
   return (
     <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:gap-y-3`}>
       <View class={`absolute bg-linear-to-b from-black/90 via-black/82 via-40% to-black/94 inset-0`} />
@@ -27,7 +27,7 @@ export function FilmChaptersScreen(props: FilmChaptersScreenProps) {
           </View>
         </Button>
         <Text class={`font-display text-[2.857rem] font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-[1.857rem] compact:grow compact:shrink-0 compact:basis-full`}>
-          {t("screen.film-chapters.title")}
+          {t("screen.flow-chapters.title")}
         </Text>
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4">
@@ -47,7 +47,7 @@ export function FilmChaptersScreen(props: FilmChaptersScreenProps) {
               </View>
               <View class="flex-row items-baseline gap-x-2 px-0.5">
                 <Text class={`text-fg/74 grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg/56 compact:text-[1.071rem]`}>
-                  {c().locked ? t("screen.film-chapters.locked") : c().title}
+                  {c().locked ? t("screen.flow-chapters.locked") : c().title}
                 </Text>
               </View>
             </View>
@@ -59,7 +59,7 @@ export function FilmChaptersScreen(props: FilmChaptersScreenProps) {
   );
 }
 
-export const fixtures: Record<string, Partial<FilmChaptersScreenProps>> = {
+export const fixtures: Record<string, Partial<FlowChaptersScreenProps>> = {
   default: {"selected":"c2","chapters":[{"id":"c1","title":"1 · The kitchen","thumb":0,"locked":false},{"id":"c2","title":"2 · The hall","thumb":0,"locked":false},{"id":"c3","title":"3 · The stairs","thumb":0,"locked":true},{"id":"c4","title":"4 · Dawn","thumb":0,"locked":true}]},
 };
 
@@ -67,4 +67,4 @@ export const fixtures: Record<string, Partial<FilmChaptersScreenProps>> = {
 export const actions = {"select":"Play the chapter","back":"Back"} as const;
 
 /** How the screen mounts: its layer, first focus, what lies under it, input, pause and back. */
-export const screen = {"name":"film-chapters","layer":"menu","focus":"Body/Chapters","under":"dim","input":"menu","pause":true,"capture":true,"remember":true,"back":"pop"} as const;
+export const screen = {"name":"flow-chapters","layer":"menu","focus":"Body/Chapters","under":"dim","input":"menu","pause":true,"capture":true,"remember":true,"back":"pop"} as const;

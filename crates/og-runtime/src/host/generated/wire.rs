@@ -24921,16 +24921,16 @@ impl ToJson for SightPlane {
     }
 }
 
-/// `FilmDesc`: packages/knowledge/wiki/film.md.
+/// `FlowStartDesc`: packages/knowledge/wiki/flow.md.
 #[derive(Clone, Debug, PartialEq)]
-pub struct FilmDesc {
+pub struct FlowStartDesc {
     pub dialogue: String,
     pub node: String,
     pub decks: u32,
     pub paused: bool,
 }
 
-impl Default for FilmDesc {
+impl Default for FlowStartDesc {
     fn default() -> Self {
         Self {
             dialogue: Default::default(),
@@ -24941,7 +24941,7 @@ impl Default for FilmDesc {
     }
 }
 
-impl FromJson for FilmDesc {
+impl FromJson for FlowStartDesc {
     fn from_json(v: &Value) -> Result<Self, String> {
         Self::from_json_over(v, Self::default())
     }
@@ -24956,7 +24956,7 @@ impl FromJson for FilmDesc {
     }
 }
 
-impl ToJson for FilmDesc {
+impl ToJson for FlowStartDesc {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("dialogue".into(), self.dialogue.to_json());
@@ -24967,16 +24967,16 @@ impl ToJson for FilmDesc {
     }
 }
 
-/// `FilmInfo`: packages/knowledge/wiki/film.md.
+/// `FlowInfo`: packages/knowledge/wiki/flow.md.
 #[derive(Clone, Debug, PartialEq)]
-pub struct FilmInfo {
+pub struct FlowInfo {
     pub dialogue: String,
     pub segments: Vec<String>,
     pub chapters: Vec<String>,
     pub endings: Vec<String>,
 }
 
-impl Default for FilmInfo {
+impl Default for FlowInfo {
     fn default() -> Self {
         Self {
             dialogue: Default::default(),
@@ -24987,7 +24987,7 @@ impl Default for FilmInfo {
     }
 }
 
-impl FromJson for FilmInfo {
+impl FromJson for FlowInfo {
     fn from_json(v: &Value) -> Result<Self, String> {
         Self::from_json_over(v, Self::default())
     }
@@ -25002,7 +25002,7 @@ impl FromJson for FilmInfo {
     }
 }
 
-impl ToJson for FilmInfo {
+impl ToJson for FlowInfo {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("dialogue".into(), self.dialogue.to_json());
@@ -25013,7 +25013,7 @@ impl ToJson for FilmInfo {
     }
 }
 
-/// `WindowView`: packages/knowledge/wiki/film.md.
+/// `WindowView`: packages/knowledge/wiki/flow.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WindowView {
     pub ticks_left: u32,
@@ -25063,9 +25063,9 @@ impl ToJson for WindowView {
     }
 }
 
-/// `FilmHotspot`: packages/knowledge/wiki/film.md.
+/// `FlowHotspot`: packages/knowledge/wiki/flow.md.
 #[derive(Clone, Debug, PartialEq)]
-pub struct FilmHotspot {
+pub struct FlowHotspot {
     pub choice: u32,
     pub id: String,
     pub x: f32,
@@ -25074,7 +25074,7 @@ pub struct FilmHotspot {
     pub height: f32,
 }
 
-impl Default for FilmHotspot {
+impl Default for FlowHotspot {
     fn default() -> Self {
         Self {
             choice: Default::default(),
@@ -25087,7 +25087,7 @@ impl Default for FilmHotspot {
     }
 }
 
-impl FromJson for FilmHotspot {
+impl FromJson for FlowHotspot {
     fn from_json(v: &Value) -> Result<Self, String> {
         Self::from_json_over(v, Self::default())
     }
@@ -25104,7 +25104,7 @@ impl FromJson for FilmHotspot {
     }
 }
 
-impl ToJson for FilmHotspot {
+impl ToJson for FlowHotspot {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("choice".into(), self.choice.to_json());
@@ -25117,7 +25117,7 @@ impl ToJson for FilmHotspot {
     }
 }
 
-/// `QteView`: packages/knowledge/wiki/film.md.
+/// `QteView`: packages/knowledge/wiki/flow.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct QteView {
     pub choice: u32,
@@ -25167,10 +25167,10 @@ impl ToJson for QteView {
     }
 }
 
-/// `FilmView`: packages/knowledge/wiki/film.md.
+/// `FlowView`: packages/knowledge/wiki/flow.md.
 #[derive(Clone, Debug, PartialEq)]
-pub struct FilmView {
-    pub film: u64,
+pub struct FlowView {
+    pub flow: u64,
     pub node: String,
     pub segment: String,
     pub texture: u64,
@@ -25178,7 +25178,7 @@ pub struct FilmView {
     pub cut: f32,
     pub choices: Vec<ChoiceView>,
     pub window: Option<WindowView>,
-    pub hotspots: Vec<FilmHotspot>,
+    pub hotspots: Vec<FlowHotspot>,
     pub qtes: Vec<QteView>,
     pub previous: u64,
     pub mix: f32,
@@ -25188,10 +25188,10 @@ pub struct FilmView {
     pub ended: bool,
 }
 
-impl Default for FilmView {
+impl Default for FlowView {
     fn default() -> Self {
         Self {
-            film: Default::default(),
+            flow: Default::default(),
             node: Default::default(),
             segment: Default::default(),
             texture: Default::default(),
@@ -25211,14 +25211,14 @@ impl Default for FilmView {
     }
 }
 
-impl FromJson for FilmView {
+impl FromJson for FlowView {
     fn from_json(v: &Value) -> Result<Self, String> {
         Self::from_json_over(v, Self::default())
     }
     fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
         let o = object(v)?;
         Ok(Self {
-            film: field(o, "film", d.film)?,
+            flow: field(o, "flow", d.flow)?,
             node: field(o, "node", d.node)?,
             segment: field(o, "segment", d.segment)?,
             texture: field(o, "texture", d.texture)?,
@@ -25238,10 +25238,10 @@ impl FromJson for FilmView {
     }
 }
 
-impl ToJson for FilmView {
+impl ToJson for FlowView {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
-        o.insert("film".into(), self.film.to_json());
+        o.insert("flow".into(), self.flow.to_json());
         o.insert("node".into(), self.node.to_json());
         o.insert("segment".into(), self.segment.to_json());
         o.insert("texture".into(), self.texture.to_json());
@@ -25261,9 +25261,9 @@ impl ToJson for FilmView {
     }
 }
 
-/// `FilmChartNode`: packages/knowledge/wiki/film.md.
+/// `FlowChartNode`: packages/knowledge/wiki/flow.md.
 #[derive(Clone, Debug, PartialEq)]
-pub struct FilmChartNode {
+pub struct FlowChartNode {
     pub node: String,
     pub segment: String,
     pub chapter: String,
@@ -25273,7 +25273,7 @@ pub struct FilmChartNode {
     pub y: f32,
 }
 
-impl Default for FilmChartNode {
+impl Default for FlowChartNode {
     fn default() -> Self {
         Self {
             node: Default::default(),
@@ -25287,7 +25287,7 @@ impl Default for FilmChartNode {
     }
 }
 
-impl FromJson for FilmChartNode {
+impl FromJson for FlowChartNode {
     fn from_json(v: &Value) -> Result<Self, String> {
         Self::from_json_over(v, Self::default())
     }
@@ -25305,7 +25305,7 @@ impl FromJson for FilmChartNode {
     }
 }
 
-impl ToJson for FilmChartNode {
+impl ToJson for FlowChartNode {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("node".into(), self.node.to_json());
@@ -25319,16 +25319,16 @@ impl ToJson for FilmChartNode {
     }
 }
 
-/// `FilmChartLink`: packages/knowledge/wiki/film.md.
+/// `FlowChartLink`: packages/knowledge/wiki/flow.md.
 #[derive(Clone, Debug, PartialEq)]
-pub struct FilmChartLink {
+pub struct FlowChartLink {
     pub from: String,
     pub to: String,
     pub choice: i32,
     pub points: Vec<f32>,
 }
 
-impl Default for FilmChartLink {
+impl Default for FlowChartLink {
     fn default() -> Self {
         Self {
             from: Default::default(),
@@ -25339,7 +25339,7 @@ impl Default for FilmChartLink {
     }
 }
 
-impl FromJson for FilmChartLink {
+impl FromJson for FlowChartLink {
     fn from_json(v: &Value) -> Result<Self, String> {
         Self::from_json_over(v, Self::default())
     }
@@ -25354,7 +25354,7 @@ impl FromJson for FilmChartLink {
     }
 }
 
-impl ToJson for FilmChartLink {
+impl ToJson for FlowChartLink {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("from".into(), self.from.to_json());
@@ -25365,16 +25365,16 @@ impl ToJson for FilmChartLink {
     }
 }
 
-/// `FilmChart`: packages/knowledge/wiki/film.md.
+/// `FlowChart`: packages/knowledge/wiki/flow.md.
 #[derive(Clone, Debug, PartialEq)]
-pub struct FilmChart {
-    pub nodes: Vec<FilmChartNode>,
-    pub links: Vec<FilmChartLink>,
+pub struct FlowChart {
+    pub nodes: Vec<FlowChartNode>,
+    pub links: Vec<FlowChartLink>,
     pub width: f32,
     pub height: f32,
 }
 
-impl Default for FilmChart {
+impl Default for FlowChart {
     fn default() -> Self {
         Self {
             nodes: Default::default(),
@@ -25385,7 +25385,7 @@ impl Default for FilmChart {
     }
 }
 
-impl FromJson for FilmChart {
+impl FromJson for FlowChart {
     fn from_json(v: &Value) -> Result<Self, String> {
         Self::from_json_over(v, Self::default())
     }
@@ -25400,7 +25400,7 @@ impl FromJson for FilmChart {
     }
 }
 
-impl ToJson for FilmChart {
+impl ToJson for FlowChart {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("nodes".into(), self.nodes.to_json());
@@ -36983,9 +36983,9 @@ pub mod record {
         }
     }
 
-    /// `Film`: packages/knowledge/wiki/film.md.
+    /// `Flow`: packages/knowledge/wiki/flow.md.
     #[derive(Clone, Debug, PartialEq)]
-    pub struct Film {
+    pub struct Flow {
         pub conversation: u32,
         pub decks: u32,
         pub current: u64,
@@ -37001,7 +37001,7 @@ pub mod record {
         pub qte: Vec<u32>,
     }
 
-    impl Default for Film {
+    impl Default for Flow {
         fn default() -> Self {
             Self {
                 conversation: Default::default(),
@@ -37021,7 +37021,7 @@ pub mod record {
         }
     }
 
-    impl FromJson for Film {
+    impl FromJson for Flow {
         fn from_json(v: &Value) -> Result<Self, String> {
             Self::from_json_over(v, Self::default())
         }
@@ -37045,80 +37045,80 @@ pub mod record {
         }
     }
 
-    /// `FilmDeck`: packages/knowledge/wiki/film.md.
+    /// `FlowDeck`: packages/knowledge/wiki/flow.md.
     #[derive(Clone, Debug, PartialEq)]
-    pub struct FilmDeck {
-        pub film: u64,
+    pub struct FlowDeck {
+        pub flow: u64,
         pub node: u32,
     }
 
-    impl Default for FilmDeck {
+    impl Default for FlowDeck {
         fn default() -> Self {
             Self {
-                film: Default::default(),
+                flow: Default::default(),
                 node: Default::default(),
             }
         }
     }
 
-    impl FromJson for FilmDeck {
+    impl FromJson for FlowDeck {
         fn from_json(v: &Value) -> Result<Self, String> {
             Self::from_json_over(v, Self::default())
         }
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                film: field(o, "film", d.film)?,
+                flow: field(o, "flow", d.flow)?,
                 node: field(o, "node", d.node)?,
             })
         }
     }
 
-    /// `FilmSegment`: packages/knowledge/wiki/film.md.
+    /// `FlowSegment`: packages/knowledge/wiki/flow.md.
     #[derive(Clone, Debug, PartialEq)]
-    pub struct FilmSegment {
-        pub film: u64,
+    pub struct FlowSegment {
+        pub flow: u64,
         pub node: String,
         pub segment: String,
     }
 
-    impl Default for FilmSegment {
+    impl Default for FlowSegment {
         fn default() -> Self {
             Self {
-                film: Default::default(),
+                flow: Default::default(),
                 node: Default::default(),
                 segment: Default::default(),
             }
         }
     }
 
-    impl FromJson for FilmSegment {
+    impl FromJson for FlowSegment {
         fn from_json(v: &Value) -> Result<Self, String> {
             Self::from_json_over(v, Self::default())
         }
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                film: field(o, "film", d.film)?,
+                flow: field(o, "flow", d.flow)?,
                 node: field(o, "node", d.node)?,
                 segment: field(o, "segment", d.segment)?,
             })
         }
     }
 
-    /// `FilmChoice`: packages/knowledge/wiki/film.md.
+    /// `FlowChoice`: packages/knowledge/wiki/flow.md.
     #[derive(Clone, Debug, PartialEq)]
-    pub struct FilmChoice {
-        pub film: u64,
+    pub struct FlowChoice {
+        pub flow: u64,
         pub node: String,
         pub index: u32,
         pub timed_out: bool,
     }
 
-    impl Default for FilmChoice {
+    impl Default for FlowChoice {
         fn default() -> Self {
             Self {
-                film: Default::default(),
+                flow: Default::default(),
                 node: Default::default(),
                 index: Default::default(),
                 timed_out: Default::default(),
@@ -37126,14 +37126,14 @@ pub mod record {
         }
     }
 
-    impl FromJson for FilmChoice {
+    impl FromJson for FlowChoice {
         fn from_json(v: &Value) -> Result<Self, String> {
             Self::from_json_over(v, Self::default())
         }
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                film: field(o, "film", d.film)?,
+                flow: field(o, "flow", d.flow)?,
                 node: field(o, "node", d.node)?,
                 index: field(o, "index", d.index)?,
                 timed_out: field(o, "timedOut", d.timed_out)?,
@@ -37141,64 +37141,64 @@ pub mod record {
         }
     }
 
-    /// `FilmChapter`: packages/knowledge/wiki/film.md.
+    /// `FlowChapter`: packages/knowledge/wiki/flow.md.
     #[derive(Clone, Debug, PartialEq)]
-    pub struct FilmChapter {
-        pub film: u64,
+    pub struct FlowChapter {
+        pub flow: u64,
         pub node: String,
         pub chapter: String,
     }
 
-    impl Default for FilmChapter {
+    impl Default for FlowChapter {
         fn default() -> Self {
             Self {
-                film: Default::default(),
+                flow: Default::default(),
                 node: Default::default(),
                 chapter: Default::default(),
             }
         }
     }
 
-    impl FromJson for FilmChapter {
+    impl FromJson for FlowChapter {
         fn from_json(v: &Value) -> Result<Self, String> {
             Self::from_json_over(v, Self::default())
         }
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                film: field(o, "film", d.film)?,
+                flow: field(o, "flow", d.flow)?,
                 node: field(o, "node", d.node)?,
                 chapter: field(o, "chapter", d.chapter)?,
             })
         }
     }
 
-    /// `FilmEnded`: packages/knowledge/wiki/film.md.
+    /// `FlowEnded`: packages/knowledge/wiki/flow.md.
     #[derive(Clone, Debug, PartialEq)]
-    pub struct FilmEnded {
-        pub film: u64,
+    pub struct FlowEnded {
+        pub flow: u64,
         pub node: String,
         pub ending: String,
     }
 
-    impl Default for FilmEnded {
+    impl Default for FlowEnded {
         fn default() -> Self {
             Self {
-                film: Default::default(),
+                flow: Default::default(),
                 node: Default::default(),
                 ending: Default::default(),
             }
         }
     }
 
-    impl FromJson for FilmEnded {
+    impl FromJson for FlowEnded {
         fn from_json(v: &Value) -> Result<Self, String> {
             Self::from_json_over(v, Self::default())
         }
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                film: field(o, "film", d.film)?,
+                flow: field(o, "flow", d.flow)?,
                 node: field(o, "node", d.node)?,
                 ending: field(o, "ending", d.ending)?,
             })

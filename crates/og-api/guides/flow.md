@@ -3,7 +3,7 @@
 An interactive film is a Yarn dialogue whose nodes play footage. The story
 stays in Yarn (`yarn`), each segment is a timeline with a video track
 (`animation §13`), and the footage is a streamed video (`audio §8`).
-og.film moves the conversation from segment to segment and warms the
+og.flow moves the conversation from segment to segment and warms the
 segments a choice may lead to. Nothing else is new: captions, markers,
 transitions and sound are the timeline's, saves are the world's.
 
@@ -15,25 +15,25 @@ assets/segments/kitchen.ogt   # a segment: type timeline with one video track
 assets/clips/kitchen.ogt      # footage: type video, stream true
 ```
 
-Load the dialogue, then the film, in GameDesc.start, in every process that
-may restore a film:
+Load the dialogue, then the flow, in GameDesc.start, in every process that
+may restore a flow:
 
 ```ts
 og.story.load(world, "story/film.yarn");
-og.film.load(world, "film");
-const film = og.film.start(world, { dialogue: "film", paused: true });
+og.flow.load(world, "film");
+const flow = og.flow.start(world, { dialogue: "film", paused: true });
 ```
 
-`og.film.load` loads every segment and through it every video. A stream
-fetches nothing until it plays, so a film of hundreds of segments loads
+`og.flow.load` loads every segment and through it every video. A stream
+fetches nothing until it plays, so a flow of hundreds of segments loads
 them all at start.
 
-## 2. Write a film node
+## 2. Write a flow node
 
 ```yarn
 title: kitchen
-og-film: segments/kitchen.ogt
-og-film-chapter: chapter.kitchen
+og-flow: segments/kitchen.ogt
+og-flow-chapter: chapter.kitchen
 ---
 -> Take the knife #line:kitchen.knife #hotspot:knife
     <<set $brave = true>>
@@ -47,15 +47,15 @@ og-film-chapter: chapter.kitchen
 
 | Header or tag | Meaning |
 |---|---|
-| `og-film: <timeline>` | The segment this node plays. A node without it is a logic node: it runs through at once (branch on variables there) |
-| `og-film-chapter: <key>` | Entering it sends og.FilmChapter: a chapter to list and to save at |
-| `og-film-ending: <id>` | Its segment's cut with the conversation over sends og.FilmEnded with this id |
-| `og-film-dissolve: <seconds>` | Its segment dissolves in over the one before (0 to 5 s), which plays on under it; without it the cut is hard |
-| `#default` on a choice | Taken when the window locks with nothing chosen. Put it on exactly one choice of each film node with choices; without one the first enabled choice is taken |
-| `#hotspot:<id>` on a choice | Also taken by clicking the hotspot `id` on the picture (a `track hotspot` key of its segment). FilmView.hotspots gives it while the window is open |
-| `#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>` on a choice | Taken by an og.input action in the window: one press, held that long, or pressed that many times. Only the node's first 8 choices may be a QTE; FilmView.qtes gives their progress |
+| `og-flow: <timeline>` | The segment this node plays. A node without it is a logic node: it runs through at once (branch on variables there) |
+| `og-flow-chapter: <key>` | Entering it sends og.FlowChapter: a chapter to list and to save at |
+| `og-flow-ending: <id>` | Its segment's cut with the conversation over sends og.FlowEnded with this id |
+| `og-flow-dissolve: <seconds>` | Its segment dissolves in over the one before (0 to 5 s), which plays on under it; without it the cut is hard |
+| `#default` on a choice | Taken when the window locks with nothing chosen. Put it on exactly one choice of each flow node with choices; without one the first enabled choice is taken |
+| `#hotspot:<id>` on a choice | Also taken by clicking the hotspot `id` on the picture (a `track hotspot` key of its segment). FlowView.hotspots gives it while the window is open |
+| `#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>` on a choice | Taken by an og.input action in the window: one press, held that long, or pressed that many times. Only the node's first 8 choices may be a QTE; FlowView.qtes gives their progress |
 
-A film node holds no Yarn lines: what is said is the segment's caption
+A flow node holds no Yarn lines: what is said is the segment's caption
 track, so there is one source of subtitles. Choice text is the Yarn
 option's, translated as any line is.
 
@@ -76,10 +76,10 @@ track caption {
 }
 track marker {
   key 12 {
-    name "film.open"
+    name "flow.open"
   }
   key 17 {
-    name "film.lock"
+    name "flow.lock"
   }
 }
 track hotspot {
@@ -95,11 +95,11 @@ track hotspot {
 ```
 
 - The video track names no entity: it plays on the og.Timeline's own
-  player, and og.film plays each segment on a deck, an entity with an
+  player, and og.flow plays each segment on a deck, an entity with an
   og.Timeline and an og.VideoPlayer. A segment has exactly one such track.
-- `film.open` shows the choices, `film.lock` ends choosing, and the cut is
-  `film.cut` if the segment has one, else its end. Keep
-  `film.open < film.lock ≤ cut`.
+- `flow.open` shows the choices, `flow.lock` ends choosing, and the cut is
+  `flow.cut` if the segment has one, else its end. Keep
+  `flow.open < flow.lock ≤ cut`.
 - A node without choices plays to its cut and goes on.
 - `from` lets several segments share one long file, which the one-decoder
   mode needs (§6).
@@ -115,48 +115,48 @@ Thresholds that read well:
 | Window (open to lock) | 4 to 10 s; under 3 s only for a QTE-style beat |
 | Lock to cut | 0.5 to 1.5 s: the time the next segment has to start from a warm frame |
 | Key frame interval | at most 1 s at the cut (`keyframe`), so a cut never waits on a seek |
-| Chunk | the default 6 s; 2 to 4 s for films that cut every few seconds |
+| Chunk | the default 6 s; 2 to 4 s for flows that cut every few seconds |
 
-## 4. Show the film
+## 4. Show the flow
 
-Each tick, read `og.film.view`: put its `texture` on a full-screen sprite
+Each tick, read `og.flow.view`: put its `texture` on a full-screen sprite
 or UI image, and while `window` is set offer `choices` with the time left
-(`ticksLeft / ticksTotal`). Call `og.film.choose` when one is picked; the
+(`ticksLeft / ticksTotal`). Call `og.flow.choose` when one is picked; the
 footage plays on to the cut, and a later pick replaces it until the window
 locks.
 
-The built-in `FilmChoices` draws the window and `Subtitles` the segment's
+The built-in `FlowChoices` draws the window and `Subtitles` the segment's
 captions (`@origingame/engine/ui/components`). Both take plain values:
-keep a signal per world, set it each tick from `og.film.view` and
-`og.timeline.captions`, and pass it to the mounts. `FilmChoices` derives
+keep a signal per world, set it each tick from `og.flow.view` and
+`og.timeline.captions`, and pass it to the mounts. `FlowChoices` derives
 the choice rows, the pending one, each QTE's progress, the hotspots, the
 time left and the lock from the view itself, and calls `onChoose` with the
 ChoiceView.index of a row or hotspot pressed (nothing after the lock):
 
 ```ts
 import { createSignal, mount } from "@origingame/engine/ui";
-import { FilmChoices, Subtitles } from "@origingame/engine/ui/components";
+import { FlowChoices, Subtitles } from "@origingame/engine/ui/components";
 
-const view = createSignal<FilmView | null>(null);        // one per world
+const view = createSignal<FlowView | null>(null);        // one per world
 const captions = createSignal<readonly TimelineCaption[]>([]);
 
 // A system, each tick:
-view.set(og.film.view(world, film));
+view.set(og.flow.view(world, flow));
 captions.set(og.timeline.captions(world));
 
 // GameDesc.ui:
 mount(world, FilmView, { get picture() { return view()?.texture ?? 0; }, ... });
 mount(world, Subtitles, { get captions() { return captions(); } });
-mount(world, FilmChoices, {
+mount(world, FlowChoices, {
   get view() { return view(); },
-  onChoose: (e, index) => void og.film.choose(e.world, film, index),
+  onChoose: (e, index) => void og.flow.choose(e.world, flow, index),
 });
 ```
 
-Mount `Subtitles` before `FilmChoices`, so the choices lie over the
+Mount `Subtitles` before `FlowChoices`, so the choices lie over the
 captions. `og new --form film` writes this whole presentation
 (`src/main.ts`, `assets/ui/film-view.tsx`). A test takes a choice without
-a press through a command (`film:choose:<index>`) or a playtest.
+a press through a command (`flow:choose:<index>`) or a playtest.
 
 The screen's hotspot layer fills the surface, so a hotspot's `rect`
 (fractions of the picture) lands on the picture only when the game draws
@@ -164,24 +164,24 @@ The screen's hotspot layer fills the surface, so a hotspot's `rect`
 letterboxes the video places its own hotspots over where it drew it.
 
 A choice is also taken by its QTE (`#qte` on it) or its hotspot (`#hotspot`):
-og.film records the QTE itself from the actions the tags name, and
-`FilmChoices` shows its progress from the view. `og.film.skip` jumps a seen segment
+og.flow records the QTE itself from the actions the tags name, and
+`FlowChoices` shows its progress from the view. `og.flow.skip` jumps a seen segment
 to its window, then to its cut.
 
-On the web, audio starts only after a gesture: start the film paused
-behind a title screen and call `og.film.play` from its Start button.
+On the web, audio starts only after a gesture: start the flow paused
+behind a title screen and call `og.flow.play` from its Start button.
 
 ## 5. Saves, chapters and seen segments
 
-A film is world state: a snapshot taken mid-segment restores to the same
-frame, window and pending choice. On og.FilmChapter, take a snapshot into
+A flow is world state: a snapshot taken mid-segment restores to the same
+frame, window and pending choice. On og.FlowChapter, take a snapshot into
 a save slot with the chapter's name and the segment's poster
 (VideoInfo.poster) as its thumbnail.
 
-The built-in `film-chapters` screen lists og.film.load's `chapters`, each
+The built-in `flow-chapters` screen lists og.flow.load's `chapters`, each
 `{ id, title, thumb, locked }` from a chapter's save; `select` plays from
-it. `film-gallery` lists its `endings`, locked until reached.
-`FilmFlowchartScreen` draws `og.film.chart` (a dialogue's film nodes by
+it. `flow-gallery` lists its `endings`, locked until reached.
+`FlowChartScreen` draws `og.flow.chart` (a dialogue's flow nodes by
 depth, through logic nodes) through the built-in NodeGraph: pass its nodes
 as `{ id, x, y, label, icon, state, shape, team }`, marking `done` the
 segments the player has seen and `current` the one playing, its links with
@@ -190,20 +190,20 @@ reports `onPick(e, id)` for a node, `onPlay` for Play from here (only while
 `canPlay`), and `onZoom` and `onPan` for the zoom and pan the game keeps.
 
 What lasts across playthroughs (segments seen, endings reached) is the
-game's, kept outside the world. Count it from og.FilmSegment and
-og.FilmEnded under these keys, so tools agree:
+game's, kept outside the world. Count it from og.FlowSegment and
+og.FlowEnded under these keys, so tools agree:
 
 | Key | Value |
 |---|---|
-| `film.<dialogue>.seen` | node titles whose segment has played |
-| `film.<dialogue>.endings` | ending ids reached |
+| `flow.<dialogue>.seen` | node titles whose segment has played |
+| `flow.<dialogue>.endings` | ending ids reached |
 
-Telemetry, when a game sends it: `film_choice {node, index, timedOut}`,
-`film_ending {ending}`, `film_quit {node}`.
+Telemetry, when a game sends it: `flow_choice {node, index, timedOut}`,
+`flow_ending {ending}`, `flow_quit {node}`.
 
 ## 6. Decks and devices
 
-`FilmDesc.decks` is 3 by default: one plays, two hold the segments the
+`FlowStartDesc.decks` is 3 by default: one plays, two hold the segments the
 current node may lead to, paused on their first frame, the chosen one
 first, then the default. A cut then shows a frame already decoded.
 
@@ -237,7 +237,7 @@ consistent and one tool continues them:
 ## 8. Test every route
 
 The world is deterministic, so a test walks `og.story.graph` from the
-start, chooses each choice of each film node in turn with `film:choose:<i>`
+start, chooses each choice of each flow node in turn with `flow:choose:<i>`
 and asserts every ending is reached and every segment played. Check also
 that a snapshot taken inside a window and restored reaches the same world
 hash as the run that was never interrupted. A command runs between ticks
@@ -255,7 +255,7 @@ qa_roundtrip: (world) => {
 ```
 
 ```ts
-const choose = "10.6:film:choose:0";
+const choose = "10.6:flow:choose:0";
 const plain = await runPlaytest({ commands: `${choose};19.6:quit` });
 const restored = await runPlaytest({ commands: `${choose};11.1:qa_roundtrip;19.6:quit` });
 expect(restored.tick).toBe(plain.tick);

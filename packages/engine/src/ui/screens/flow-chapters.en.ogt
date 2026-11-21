@@ -3,5 +3,5 @@ version 1
 ---
 locale "en"
 string "screen.common.back" "Back"
-string "screen.film-chapters.title" "Chapters"
-string "screen.film-chapters.locked" "Not reached yet"
+string "screen.flow-chapters.title" "Chapters"
+string "screen.flow-chapters.locked" "Not reached yet"

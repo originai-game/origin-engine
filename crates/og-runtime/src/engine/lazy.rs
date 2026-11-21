@@ -215,7 +215,7 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::bind::story::BARK_SAID,
         enable: |w, _| w.grant(crate::bind::story::SYSTEM, &[crate::bind::story::BARK_SAID]),
     },
-    // og.film: its system once a game loads a film (og.film.load registers
+    // og.flow: its system once a game loads a flow (og.flow.load registers
     // its records together, TOGETHER).
     Lazy {
         name: crate::bind::flow::RECORDS[0],
@@ -569,7 +569,7 @@ const TOGETHER: &[&[&str]] = &[
 ];
 
 /// Lazy records a module's system declares beside its own, registered
-/// before its records enable it: og.film's system writes its decks'
+/// before its records enable it: og.flow's system writes its decks'
 /// og.VideoPlayer.
 const NEEDS: &[(&[&str], &[&str])] =
     &[(&crate::bind::flow::RECORDS, &[crate::bind::video::PLAYER])];

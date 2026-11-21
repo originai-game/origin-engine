@@ -12,7 +12,7 @@
 //! - [`eval`]: every value a track sets as a function of the time alone, so
 //!   seeking is exact.
 //! - [`captions`]: `.srt` cues and word-timestamp `.json` (the cook's import).
-//! - [`segment`]: a timeline as og.film's segment (its own video track and
+//! - [`segment`]: a timeline as og.flow's segment (its own video track and
 //!   the markers that time its choice window).
 //!
 //! Only `+ − × ÷`, `sqrt` and og-core's deterministic trigonometry: the same

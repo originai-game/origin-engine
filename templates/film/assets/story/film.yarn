@@ -1,8 +1,8 @@
 #og-profile:yarn-spinner-3.2.2
 #og-name:film
 title: opening
-og-film: segments/opening.ogt
-og-film-chapter: chapter.opening
+og-flow: segments/opening.ogt
+og-flow-chapter: chapter.opening
 ---
 -> Stay #line:opening.stay #default
     <<jump stay>>
@@ -10,12 +10,12 @@ og-film-chapter: chapter.opening
     <<jump leave>>
 ===
 title: stay
-og-film: segments/ending.ogt
-og-film-ending: stay
+og-flow: segments/ending.ogt
+og-flow-ending: stay
 ---
 ===
 title: leave
-og-film: segments/ending.ogt
-og-film-ending: leave
+og-flow: segments/ending.ogt
+og-flow-ending: leave
 ---
 ===

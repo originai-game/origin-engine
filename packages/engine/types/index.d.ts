@@ -24110,7 +24110,7 @@ export interface StartDesc {
    */
   readonly vars?: unknown;
   /**
-   * A node header, such as `og-film`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.film starts its conversation with `og-film`.
+   * A node header, such as `og-flow`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.flow starts its conversation with `og-flow`.
    * See `yarn §9`.
    *
    * @default ""
@@ -24292,7 +24292,7 @@ export interface GraphChoice {
 export interface GraphNode {
   /** Its title. */
   readonly title: string;
-  /** Its header lines, `{ title: "kitchen", "og-film": "segments/kitchen.ogt" }`. */
+  /** Its header lines, `{ title: "kitchen", "og-flow": "segments/kitchen.ogt" }`. */
   readonly headers: unknown;
   /** Its choices, in order (hidden ones too). */
   readonly choices: readonly GraphChoice[];
@@ -26620,7 +26620,7 @@ export interface Hello {
   /** The probe members this build serves. */
   readonly members: readonly string[];
   /**
-   * The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.film) and `video`. Every build carries all of them; the web loads each on a game's first call into it.
+   * The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.flow) and `video`. Every build carries all of them; the web loads each on a game's first call into it.
    */
   readonly modules: readonly string[];
 }
@@ -32723,19 +32723,19 @@ export interface SightBlocker {
 
 
 
-// ── film ────────────────────────────────────────────────────────
-// Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-film: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `film.open` marker, lock at `film.lock` and are taken at its cut (`film.cut`, else its end), the default (`#default`) when none was chosen.
-// The story stays og.story's, the footage og.video's, the timing og.timeline's: og.film moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
+// ── flow ────────────────────────────────────────────────────────
+// Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen.
+// The story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
 // See `flow`.
 
 /**
- * A film to start.
+ * A flow to start.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
-export interface FilmDesc {
+export interface FlowStartDesc {
   /**
-   * The dialogue (StoryAsset.name), loaded with og.story.load and og.film.load.
+   * The dialogue (StoryAsset.name), loaded with og.story.load and og.flow.load.
    *
    * @default ""
    */
@@ -32747,38 +32747,38 @@ export interface FilmDesc {
    */
   readonly node?: string;
   /**
-   * Decks to play on, 1 to 3 (0: 3). One plays; the others warm what the film may cut to. 1 warms nothing (one decoder: WeChat on iOS).
+   * Decks to play on, 1 to 3 (0: 3). One plays; the others warm what the flow may cut to. 1 warms nothing (one decoder: WeChat on iOS).
    *
    * @default 0
    * @range ..3
    */
   readonly decks?: number;
   /**
-   * Start holding the first segment's first frame, warmed, until og.film.play (a title screen before the first gesture).
+   * Start holding the first segment's first frame, warmed, until og.flow.play (a title screen before the first gesture).
    *
    * @default false
    */
   readonly paused?: boolean;
 }
 
-/** What og.film.load prepared. */
-export interface FilmInfo {
+/** What og.flow.load prepared. */
+export interface FlowInfo {
   /** The dialogue. */
   readonly dialogue: string;
-  /** Its film nodes (those with `og-film`), in file order. */
+  /** Its flow nodes (those with `og-flow`), in file order. */
   readonly segments: readonly string[];
-  /** Its chapters' i18n keys (`og-film-chapter`), in file order. */
+  /** Its chapters' i18n keys (`og-flow-chapter`), in file order. */
   readonly chapters: readonly string[];
-  /** Its endings (`og-film-ending`), in file order. */
+  /** Its endings (`og-flow-ending`), in file order. */
   readonly endings: readonly string[];
 }
 
 /**
- * A film og.film.start made: the conversation it paces and its decks. og.film writes it; read og.film.view.
+ * A flow og.flow.start made: the conversation it paces and its decks. og.flow writes it; read og.flow.view.
  *
- * The value of the `Film` component (token `og.Film`).
+ * The value of the `Flow` component (token `og.Flow`).
  */
-export interface Film {
+export interface Flow {
   /**
    * Its og.story conversation.
    *
@@ -32792,13 +32792,13 @@ export interface Film {
    */
   readonly decks: number;
   /**
-   * The deck playing now (an og.FilmDeck).
+   * The deck playing now (an og.FlowDeck).
    *
    * @readonly written by the engine
    */
   readonly current: Entity;
   /**
-   * The film node playing, as its id (a hash of its title; og.film.view names it); 0 before the first.
+   * The flow node playing, as its id (a hash of its title; og.flow.view names it); 0 before the first.
    *
    * @readonly written by the engine
    */
@@ -32811,13 +32811,13 @@ export interface Film {
    */
   readonly pending: number;
   /**
-   * 0 closed, 1 open (choices shown), 2 locked (past film.lock: the cut takes pending, else the default).
+   * 0 closed, 1 open (choices shown), 2 locked (past flow.lock: the cut takes pending, else the default).
    *
    * @readonly written by the engine
    */
   readonly window: number;
   /**
-   * Held by og.film.pause (or FilmDesc.paused) until og.film.play.
+   * Held by og.flow.pause (or FlowStartDesc.paused) until og.flow.play.
    *
    * @readonly written by the engine
    */
@@ -32835,7 +32835,7 @@ export interface Film {
    */
   readonly ended: boolean;
   /**
-   * The deck dissolving out (`og-film-dissolve`), playing on under the current one; 0: none.
+   * The deck dissolving out (`og-flow-dissolve`), playing on under the current one; 0: none.
    *
    * @readonly written by the engine
    */
@@ -32862,19 +32862,19 @@ export interface Film {
 }
 
 /**
- * An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The film's current deck plays; the others hold a segment it may cut to, paused at its first frame.
+ * An entity og.flow plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The flow's current deck plays; the others hold a segment it may cut to, paused at its first frame.
  *
- * The value of the `FilmDeck` component (token `og.FilmDeck`).
+ * The value of the `FlowDeck` component (token `og.FlowDeck`).
  */
-export interface FilmDeck {
+export interface FlowDeck {
   /**
-   * Its film.
+   * Its flow.
    *
    * @readonly written by the engine
    */
-  readonly film: Entity;
+  readonly flow: Entity;
   /**
-   * The film node whose segment it holds (its id, as og.Film.node); 0: none.
+   * The flow node whose segment it holds (its id, as og.Flow.node); 0: none.
    *
    * @readonly written by the engine
    */
@@ -32883,9 +32883,9 @@ export interface FilmDeck {
 
 /** A segment's choice window. */
 export interface WindowView {
-  /** Ticks until it locks (film.lock). */
+  /** Ticks until it locks (flow.lock). */
   readonly ticksLeft: number;
-  /** Ticks from film.open to film.lock. */
+  /** Ticks from flow.open to flow.lock. */
   readonly ticksTotal: number;
   /**
    * The ChoiceView.index taken when nothing was chosen (`#default`, else the first enabled).
@@ -32893,14 +32893,14 @@ export interface WindowView {
   readonly defaultChoice: number;
   /** The choice taken so far. */
   readonly pending: number | null;
-  /** Past film.lock: choosing is over; the cut takes pending, else the default. */
+  /** Past flow.lock: choosing is over; the cut takes pending, else the default. */
   readonly locked: boolean;
 }
 
 /**
  * A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open.
  */
-export interface FilmHotspot {
+export interface FlowHotspot {
   /** The ChoiceView.index it takes. */
   readonly choice: number;
   /** The hotspot's id. */
@@ -32951,11 +32951,11 @@ export interface QteView {
   readonly done: boolean;
 }
 
-/** What a film shows now. */
-export interface FilmView {
-  /** The film. */
-  readonly film: Entity;
-  /** The film node playing. */
+/** What a flow shows now. */
+export interface FlowView {
+  /** The flow. */
+  readonly flow: Entity;
+  /** The flow node playing. */
   readonly node: string;
   /** Its segment's asset id. */
   readonly segment: string;
@@ -32970,7 +32970,7 @@ export interface FilmView {
    */
   readonly time: number;
   /**
-   * When it cuts to the next: its film.cut marker, else its duration.
+   * When it cuts to the next: its flow.cut marker, else its duration.
    *
    * @unit s (seconds of simulation time)
    */
@@ -32982,11 +32982,11 @@ export interface FilmView {
   /**
    * The hotspots that take a choice now: while the window is open, those of its enabled choices.
    */
-  readonly hotspots: readonly FilmHotspot[];
+  readonly hotspots: readonly FlowHotspot[];
   /** The quick-time events of its enabled choices while the window is open or locked. */
   readonly qtes: readonly QteView[];
   /**
-   * The picture dissolving out (`og-film-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`.
+   * The picture dissolving out (`og-flow-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`.
    */
   readonly previous: Texture;
   /**
@@ -32995,7 +32995,7 @@ export interface FilmView {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly mix: number;
-  /** Held by og.film.pause. */
+  /** Held by og.flow.pause. */
   readonly paused: boolean;
   /** The last chapter entered. */
   readonly chapter: string;
@@ -33005,18 +33005,18 @@ export interface FilmView {
   readonly ended: boolean;
 }
 
-/** A film node on og.film.chart's layout. */
-export interface FilmChartNode {
+/** A flow node on og.flow.chart's layout. */
+export interface FlowChartNode {
   /** Its title. */
   readonly node: string;
   /** Its segment's asset id. */
   readonly segment: string;
-  /** Its `og-film-chapter`, if any. */
+  /** Its `og-flow-chapter`, if any. */
   readonly chapter: string;
-  /** Its `og-film-ending`, if any. */
+  /** Its `og-flow-ending`, if any. */
   readonly ending: string;
   /**
-   * Its column: the fewest film nodes from the start before it (unreached nodes after the deepest).
+   * Its column: the fewest flow nodes from the start before it (unreached nodes after the deepest).
    */
   readonly depth: number;
   /** Its centre across, graph units (NodeGraph's). */
@@ -33025,11 +33025,11 @@ export interface FilmChartNode {
   readonly y: number;
 }
 
-/** Where a film node may lead, through logic nodes. */
-export interface FilmChartLink {
+/** Where a flow node may lead, through logic nodes. */
+export interface FlowChartLink {
   /** The node. */
   readonly from: string;
-  /** The film node it may lead to. */
+  /** The flow node it may lead to. */
   readonly to: string;
   /** The ChoiceView.index that leads there; -1 for a node without choices. */
   readonly choice: number;
@@ -33040,13 +33040,13 @@ export interface FilmChartLink {
 }
 
 /**
- * A dialogue's film nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.
+ * A dialogue's flow nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.
  */
-export interface FilmChart {
-  /** Its film nodes, in file order. */
-  readonly nodes: readonly FilmChartNode[];
+export interface FlowChart {
+  /** Its flow nodes, in file order. */
+  readonly nodes: readonly FlowChartNode[];
   /** Where each leads. */
-  readonly links: readonly FilmChartLink[];
+  readonly links: readonly FlowChartLink[];
   /** Its extent across, graph units (NodeGraph's view is `[0, 0, width, height]`). */
   readonly width: number;
   /** Its extent down. */
@@ -33054,13 +33054,13 @@ export interface FilmChart {
 }
 
 /**
- * A film began a node's segment.
+ * A flow began a node's segment.
  *
- * The payload of the `FilmSegment` event (token `og.FilmSegment`).
+ * The payload of the `FlowSegment` event (token `og.FlowSegment`).
  */
-export interface FilmSegment {
-  /** The film. */
-  readonly film: Entity;
+export interface FlowSegment {
+  /** The flow. */
+  readonly flow: Entity;
   /** The node (at most 63 bytes). */
   readonly node: string;
   /** Its segment's asset id (at most 63 bytes). */
@@ -33068,13 +33068,13 @@ export interface FilmSegment {
 }
 
 /**
- * A film took a choice at its cut (before og.story ran it).
+ * A flow took a choice at its cut (before og.story ran it).
  *
- * The payload of the `FilmChoice` event (token `og.FilmChoice`).
+ * The payload of the `FlowChoice` event (token `og.FlowChoice`).
  */
-export interface FilmChoice {
-  /** The film. */
-  readonly film: Entity;
+export interface FlowChoice {
+  /** The flow. */
+  readonly flow: Entity;
   /** The node (at most 63 bytes). */
   readonly node: string;
   /** The ChoiceView.index taken. */
@@ -33084,13 +33084,13 @@ export interface FilmChoice {
 }
 
 /**
- * A film entered a chapter's node (`og-film-chapter`): a place to save.
+ * A flow entered a chapter's node (`og-flow-chapter`): a place to save.
  *
- * The payload of the `FilmChapter` event (token `og.FilmChapter`).
+ * The payload of the `FlowChapter` event (token `og.FlowChapter`).
  */
-export interface FilmChapter {
-  /** The film. */
-  readonly film: Entity;
+export interface FlowChapter {
+  /** The flow. */
+  readonly flow: Entity;
   /** The node (at most 63 bytes). */
   readonly node: string;
   /** The chapter's i18n key (at most 63 bytes). */
@@ -33098,16 +33098,16 @@ export interface FilmChapter {
 }
 
 /**
- * A film's last segment reached its cut with the conversation ended.
+ * A flow's last segment reached its cut with the conversation ended.
  *
- * The payload of the `FilmEnded` event (token `og.FilmEnded`).
+ * The payload of the `FlowEnded` event (token `og.FlowEnded`).
  */
-export interface FilmEnded {
-  /** The film. */
-  readonly film: Entity;
+export interface FlowEnded {
+  /** The flow. */
+  readonly flow: Entity;
   /** The last node (at most 63 bytes). */
   readonly node: string;
-  /** Its `og-film-ending`, empty without one (at most 63 bytes). */
+  /** Its `og-flow-ending`, empty without one (at most 63 bytes). */
   readonly ending: string;
 }
 
@@ -38084,100 +38084,100 @@ export declare namespace og {
     function forget(world: World, team: number): Result<void>;
   }
   /**
-   * A film og.film.start made: the conversation it paces and its decks. og.film writes it; read og.film.view.
+   * A flow og.flow.start made: the conversation it paces and its decks. og.flow writes it; read og.flow.view.
    */
-  const Film: ComponentType<{ readonly conversation: FieldSpec<"u32">; readonly decks: FieldSpec<"u32">; readonly current: FieldSpec<"Entity">; readonly node: FieldSpec<"u32">; readonly pending: FieldSpec<"i32">; readonly window: FieldSpec<"u32">; readonly paused: FieldSpec<"bool">; readonly chapter: FieldSpec<"u32">; readonly ended: FieldSpec<"bool">; readonly previous: FieldSpec<"Entity">; readonly dissolve: FieldSpec<"u32">; readonly dissolveLeft: FieldSpec<"u32">; readonly qte: ListSpec<"u32"> }, Film>;
+  const Flow: ComponentType<{ readonly conversation: FieldSpec<"u32">; readonly decks: FieldSpec<"u32">; readonly current: FieldSpec<"Entity">; readonly node: FieldSpec<"u32">; readonly pending: FieldSpec<"i32">; readonly window: FieldSpec<"u32">; readonly paused: FieldSpec<"bool">; readonly chapter: FieldSpec<"u32">; readonly ended: FieldSpec<"bool">; readonly previous: FieldSpec<"Entity">; readonly dissolve: FieldSpec<"u32">; readonly dissolveLeft: FieldSpec<"u32">; readonly qte: ListSpec<"u32"> }, Flow>;
   /**
-   * An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The film's current deck plays; the others hold a segment it may cut to, paused at its first frame.
+   * An entity og.flow plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The flow's current deck plays; the others hold a segment it may cut to, paused at its first frame.
    */
-  const FilmDeck: ComponentType<{ readonly film: FieldSpec<"Entity">; readonly node: FieldSpec<"u32"> }, FilmDeck>;
-  /** A film began a node's segment. */
-  const FilmSegment: EventType<FilmSegment>;
-  /** A film took a choice at its cut (before og.story ran it). */
-  const FilmChoice: EventType<FilmChoice>;
-  /** A film entered a chapter's node (`og-film-chapter`): a place to save. */
-  const FilmChapter: EventType<FilmChapter>;
-  /** A film's last segment reached its cut with the conversation ended. */
-  const FilmEnded: EventType<FilmEnded>;
+  const FlowDeck: ComponentType<{ readonly flow: FieldSpec<"Entity">; readonly node: FieldSpec<"u32"> }, FlowDeck>;
+  /** A flow began a node's segment. */
+  const FlowSegment: EventType<FlowSegment>;
+  /** A flow took a choice at its cut (before og.story ran it). */
+  const FlowChoice: EventType<FlowChoice>;
+  /** A flow entered a chapter's node (`og-flow-chapter`): a place to save. */
+  const FlowChapter: EventType<FlowChapter>;
+  /** A flow's last segment reached its cut with the conversation ended. */
+  const FlowEnded: EventType<FlowEnded>;
   /**
-   * Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-film: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `film.open` marker, lock at `film.lock` and are taken at its cut (`film.cut`, else its end), the default (`#default`) when none was chosen.
-   * The story stays og.story's, the footage og.video's, the timing og.timeline's: og.film moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
+   * Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen.
+   * The story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.
    * See `flow`.
    */
-  namespace film {
+  namespace flow {
     /**
-     * Prepare a loaded dialogue's film: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.film's records. Call it in setup, after og.story.load, in every process that restores a film.
+     * Prepare a loaded dialogue's flow: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.flow's records. Call it in setup, after og.story.load, in every process that restores a flow.
      *
      * @param world The world.
      * @param dialogue The dialogue (StoryAsset.name).
      * @returns Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track.
      */
-    function load(world: World, dialogue: string): Result<FilmInfo>;
+    function load(world: World, dialogue: string): Result<FlowInfo>;
     /**
-     * Start a film: its decks, and its conversation held at the first film node, whose segment plays from the next tick. Outside a system (setup or a command).
+     * Start a flow: its decks, and its conversation held at the first flow node, whose segment plays from the next tick. Outside a system (setup or a command).
      *
      * @param world The world.
      * @param desc The dialogue, and optionally the node, the decks and whether it starts paused.
-     * @returns The film's entity (og.Film), or why not: a dialogue og.film.load has not prepared, an unknown node, or inside a system.
+     * @returns The flow's entity (og.Flow), or why not: a dialogue og.flow.load has not prepared, an unknown node, or inside a system.
      */
-    function start(world: World, desc?: FilmDesc): Result<Entity>;
+    function start(world: World, desc?: FlowStartDesc): Result<Entity>;
     /**
-     * What a film shows now: its picture, segment time, choices and window.
+     * What a flow shows now: its picture, segment time, choices and window.
      *
      * @param world The world.
-     * @param film The film.
-     * @returns Null for an entity that is no film.
+     * @param flow The flow.
+     * @returns Null for an entity that is no flow.
      */
-    function view(world: World, film: Entity): FilmView | null;
+    function view(world: World, flow: Entity): FlowView | null;
     /**
-     * Take a choice while the window is open: recorded now (FilmView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.film applies it this tick.
+     * Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.flow applies it this tick.
      *
      * @param world The world.
-     * @param film The film.
+     * @param flow The flow.
      * @param index ChoiceView.index.
      * @returns Refused outside an open window, or for a choice that is hidden or disabled.
      */
-    function choose(world: World, film: Entity, index: number): Result<void>;
+    function choose(world: World, flow: Entity, index: number): Result<void>;
     /**
-     * Play a paused film from where it is. Systems may call it.
+     * Play a paused flow from where it is. Systems may call it.
      *
      * @param world The world.
-     * @param film The film.
-     * @returns Refused for an entity that is no film.
+     * @param flow The flow.
+     * @returns Refused for an entity that is no flow.
      */
-    function play(world: World, film: Entity): Result<void>;
+    function play(world: World, flow: Entity): Result<void>;
     /**
-     * Hold a film on its frame (a pause menu); its window's time holds too. Systems may call it.
+     * Hold a flow on its frame (a pause menu); its window's time holds too. Systems may call it.
      *
      * @param world The world.
-     * @param film The film.
-     * @returns Refused for an entity that is no film.
+     * @param flow The flow.
+     * @returns Refused for an entity that is no flow.
      */
-    function pause(world: World, film: Entity): Result<void>;
+    function pause(world: World, flow: Entity): Result<void>;
     /**
-     * Skip ahead in the segment playing: to its window's open (film.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide film §5). Systems may call it.
+     * Skip ahead in the segment playing: to its window's open (flow.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide flow §5). Systems may call it.
      *
      * @param world The world.
-     * @param film The film.
-     * @returns Refused for an entity that is no film, or one that has ended.
+     * @param flow The flow.
+     * @returns Refused for an entity that is no flow, or one that has ended.
      */
-    function skip(world: World, film: Entity): Result<void>;
+    function skip(world: World, flow: Entity): Result<void>;
     /**
-     * A prepared dialogue's film nodes and where each may lead, laid out for a flowchart.
+     * A prepared dialogue's flow nodes and where each may lead, laid out for a flowchart.
      *
      * @param world The world.
-     * @param dialogue The dialogue (StoryAsset.name), prepared by og.film.load.
-     * @returns Refused for a dialogue og.film.load has not prepared.
+     * @param dialogue The dialogue (StoryAsset.name), prepared by og.flow.load.
+     * @returns Refused for a dialogue og.flow.load has not prepared.
      */
-    function chart(world: World, dialogue: string): Result<FilmChart>;
+    function chart(world: World, dialogue: string): Result<FlowChart>;
     /**
-     * End a film: its conversation stops and its decks and entity are despawned this tick. Systems may call it.
+     * End a flow: its conversation stops and its decks and entity are despawned this tick. Systems may call it.
      *
      * @param world The world.
-     * @param film The film.
-     * @returns Refused for an entity that is no film.
+     * @param flow The flow.
+     * @returns Refused for an entity that is no flow.
      */
-    function stop(world: World, film: Entity): Result<void>;
+    function stop(world: World, flow: Entity): Result<void>;
   }
   /**
    * The scene og.scene.change put in place and the one it waits to put in place: world state, saved, restored and hashed. Registered at the first og.scene.change; a world that never changes scene keeps its type table, saves and hash.

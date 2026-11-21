@@ -465,7 +465,7 @@ pub struct VideoTrack {
 /// A key of a `hotspot` track: from its time, hotspot `id` covers `rect`
 /// (x, y, width, height in fractions of the video frame, from its top
 /// left), moving linearly to the same id's next key and held after its
-/// last, until a key `off`. A hotspot is a place to click: og.film offers
+/// last, until a key `off`. A hotspot is a place to click: og.flow offers
 /// a choice tagged `#hotspot:<id>` there; nothing draws it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotspotKey {

@@ -1289,24 +1289,24 @@ export interface HostAbi<A, V> {
   og_sight_reveal(world: number, team: number, point: string, radius: number): string;
   /** `og.sight.forget` */
   og_sight_forget(world: number, team: number): string;
-  /** `og.film.load` */
-  og_film_load(world: number, dialogue: string): string;
-  /** `og.film.start` */
-  og_film_start(world: number, desc: string | undefined): string;
-  /** `og.film.view` */
-  og_film_view(world: number, film: number): string;
-  /** `og.film.choose` */
-  og_film_choose(world: number, film: number, index: number): string;
-  /** `og.film.play` */
-  og_film_play(world: number, film: number): string;
-  /** `og.film.pause` */
-  og_film_pause(world: number, film: number): string;
-  /** `og.film.skip` */
-  og_film_skip(world: number, film: number): string;
-  /** `og.film.chart` */
-  og_film_chart(world: number, dialogue: string): string;
-  /** `og.film.stop` */
-  og_film_stop(world: number, film: number): string;
+  /** `og.flow.load` */
+  og_flow_load(world: number, dialogue: string): string;
+  /** `og.flow.start` */
+  og_flow_start(world: number, desc: string | undefined): string;
+  /** `og.flow.view` */
+  og_flow_view(world: number, flow: number): string;
+  /** `og.flow.choose` */
+  og_flow_choose(world: number, flow: number, index: number): string;
+  /** `og.flow.play` */
+  og_flow_play(world: number, flow: number): string;
+  /** `og.flow.pause` */
+  og_flow_pause(world: number, flow: number): string;
+  /** `og.flow.skip` */
+  og_flow_skip(world: number, flow: number): string;
+  /** `og.flow.chart` */
+  og_flow_chart(world: number, dialogue: string): string;
+  /** `og.flow.stop` */
+  og_flow_stop(world: number, flow: number): string;
   /** `og.scene.preload` */
   og_scene_preload(world: number, scene: string): string;
   /** `og.scene.progress` */
@@ -1916,15 +1916,15 @@ export const SYMBOLS: readonly string[] = [
   "og_sight_explored",
   "og_sight_reveal",
   "og_sight_forget",
-  "og_film_load",
-  "og_film_start",
-  "og_film_view",
-  "og_film_choose",
-  "og_film_play",
-  "og_film_pause",
-  "og_film_skip",
-  "og_film_chart",
-  "og_film_stop",
+  "og_flow_load",
+  "og_flow_start",
+  "og_flow_view",
+  "og_flow_choose",
+  "og_flow_play",
+  "og_flow_pause",
+  "og_flow_skip",
+  "og_flow_chart",
+  "og_flow_stop",
   "og_scene_preload",
   "og_scene_progress",
   "og_scene_release",
@@ -2247,29 +2247,29 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
       if (typeof entity !== "number") notEntity("og.destruction.cell2d", "entity", entity);
       return abi.og_destruction_cell2d(world, entity, point);
     },
-    og_film_view(world: number, film: number) {
-      if (typeof film !== "number") notEntity("og.film.view", "film", film);
-      return abi.og_film_view(world, film);
+    og_flow_view(world: number, flow: number) {
+      if (typeof flow !== "number") notEntity("og.flow.view", "flow", flow);
+      return abi.og_flow_view(world, flow);
     },
-    og_film_choose(world: number, film: number, index: number) {
-      if (typeof film !== "number") notEntity("og.film.choose", "film", film);
-      return abi.og_film_choose(world, film, index);
+    og_flow_choose(world: number, flow: number, index: number) {
+      if (typeof flow !== "number") notEntity("og.flow.choose", "flow", flow);
+      return abi.og_flow_choose(world, flow, index);
     },
-    og_film_play(world: number, film: number) {
-      if (typeof film !== "number") notEntity("og.film.play", "film", film);
-      return abi.og_film_play(world, film);
+    og_flow_play(world: number, flow: number) {
+      if (typeof flow !== "number") notEntity("og.flow.play", "flow", flow);
+      return abi.og_flow_play(world, flow);
     },
-    og_film_pause(world: number, film: number) {
-      if (typeof film !== "number") notEntity("og.film.pause", "film", film);
-      return abi.og_film_pause(world, film);
+    og_flow_pause(world: number, flow: number) {
+      if (typeof flow !== "number") notEntity("og.flow.pause", "flow", flow);
+      return abi.og_flow_pause(world, flow);
     },
-    og_film_skip(world: number, film: number) {
-      if (typeof film !== "number") notEntity("og.film.skip", "film", film);
-      return abi.og_film_skip(world, film);
+    og_flow_skip(world: number, flow: number) {
+      if (typeof flow !== "number") notEntity("og.flow.skip", "flow", flow);
+      return abi.og_flow_skip(world, flow);
     },
-    og_film_stop(world: number, film: number) {
-      if (typeof film !== "number") notEntity("og.film.stop", "film", film);
-      return abi.og_film_stop(world, film);
+    og_flow_stop(world: number, flow: number) {
+      if (typeof flow !== "number") notEntity("og.flow.stop", "flow", flow);
+      return abi.og_flow_stop(world, flow);
     },
   };
 }

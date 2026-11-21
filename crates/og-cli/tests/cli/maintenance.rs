@@ -253,6 +253,98 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// `og upgrade` across the release where og.film became og.flow (its
+/// `flow-rename` codemod): the game's Yarn headers, its segment's markers
+/// and its code take og.flow's names, each rewrite is reported with its
+/// file, and nothing is left to edit by hand. Ways this could fail: Yarn
+/// files not read (the story still says `og-film` and no longer cooks),
+/// or the rewrite reported but not written.
+#[test]
+fn upgrade_renames_og_film_in_a_games_yarn_segments_and_code() {
+    let dir = scratch_root();
+    std::fs::remove_dir_all(dir.join("crates")).unwrap();
+    for d in ["src", "assets/story", "assets/segments"] {
+        std::fs::create_dir_all(dir.join(d)).unwrap();
+    }
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"u\"\nid \"u\"\nengine \"0.9.2\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    let files = [
+        (
+            "assets/story/film.yarn",
+            "title: a\nog-film: segments/a.ogt\nog-film-ending: brave\n---\n===\n",
+            "title: a\nog-flow: segments/a.ogt\nog-flow-ending: brave\n---\n===\n",
+        ),
+        (
+            "assets/segments/a.ogt",
+            "type timeline\nversion 1\n---\ntrack marker {\n  key 3 {\n    name \"film.open\"\n  }\n}\n",
+            "type timeline\nversion 1\n---\ntrack marker {\n  key 3 {\n    name \"flow.open\"\n  }\n}\n",
+        ),
+        (
+            "src/main.ts",
+            "og.film.load(world, \"film\");\nconst film = og.film.start(world, { dialogue: \"film\" });\n",
+            "og.flow.load(world, \"film\");\nconst film = og.flow.start(world, { dialogue: \"film\" });\n",
+        ),
+    ];
+    for (path, before, _) in files {
+        std::fs::write(dir.join(path), before).unwrap();
+    }
+    let fake = dir.join("fake-engine");
+    std::fs::create_dir_all(&fake).unwrap();
+    std::fs::write(fake.join("package.json"), r#"{ "version": "0.9.3" }"#).unwrap();
+    let entry = |v: &str, breaking: serde_json::Value| serde_json::json!({ "version": v, "kind": "patch", "simulation": "unchanged", "breaking": breaking, "added": [], "fixed": ["x"] });
+    let renamed = serde_json::json!([{ "member": "og.film is og.flow", "change": "c", "fix": "f", "codemod": { "kind": "flow-rename" } }]);
+    let log = serde_json::json!({
+        "schema": 1,
+        "unreleased": { "simulation": "unchanged", "breaking": [], "added": [], "fixed": [] },
+        "versions": [entry("0.9.3", renamed), entry("0.9.2", serde_json::json!([]))],
+    });
+    std::fs::write(fake.join("changelog.json"), log.to_string()).unwrap();
+    let out = og()
+        .args(["upgrade", "--to", "0.9.3", "--json"])
+        .current_dir(&dir)
+        .env("OG_ENGINE_PACKAGE", &fake)
+        .output()
+        .unwrap();
+    let r: serde_json::Value =
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|e| panic!("{e}: {}", text(&out)));
+    assert_eq!(out.status.code(), Some(0), "{r}");
+    assert_eq!(r["status"], "done", "{r}");
+    for (path, _, after) in files {
+        assert_eq!(
+            std::fs::read_to_string(dir.join(path)).unwrap(),
+            after,
+            "{path}"
+        );
+    }
+    let rewrites = |file: &str, from: &str| {
+        r["codemods"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["file"] == file && c["from"] == from)
+            .map(|c| {
+                (
+                    c["to"].as_str().unwrap().to_string(),
+                    c["count"].as_u64().unwrap(),
+                )
+            })
+    };
+    assert_eq!(
+        rewrites("assets/story/film.yarn", "og-film"),
+        Some(("og-flow".into(), 2)),
+        "{r}"
+    );
+    assert_eq!(
+        rewrites("src/main.ts", "og.film"),
+        Some(("og.flow".into(), 2)),
+        "{r}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `og upgrade` with a dev build `dev.<date>.<n>` installed: a release pin
 /// moves onto it only when --to names it, crossing its base release's
 /// versions and its own unreleased entry, and never from a release newer

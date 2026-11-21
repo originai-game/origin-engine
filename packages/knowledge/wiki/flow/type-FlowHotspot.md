@@ -1,10 +1,10 @@
 <!-- Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate. -->
 
-Module [`film`](../film.md) · [index](../index.md)
+Module [`flow`](../flow.md) · [index](../index.md)
 
-<a id="type-FilmHotspot"></a>
+<a id="type-FlowHotspot"></a>
 
-### `FilmHotspot` (struct)
+### `FlowHotspot` (struct)
 
 A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open.
 
@@ -18,7 +18,7 @@ A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `tr
 | `height` | `number` | `0` | — | `ratio` | — | Its height. |
 
 ```ogt
-struct FilmHotspot {
+struct FlowHotspot {
   doc "A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open."
   field choice u32 "The ChoiceView.index it takes."
   field id String "The hotspot's id."
@@ -37,4 +37,4 @@ struct FilmHotspot {
 }
 ```
 
-<sub>Module `film` line 89</sub>
+<sub>Module `flow` line 89</sub>

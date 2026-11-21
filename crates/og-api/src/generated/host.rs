@@ -1451,26 +1451,26 @@ pub trait SightApi: Wire {
     fn og_sight_forget(&self, world: u32, team: u32) -> String;
 }
 
-/// `film`: packages/knowledge/wiki/film.md.
-pub trait FilmApi: Wire {
-    /// `og.film.load`
-    fn og_film_load(&self, world: u32, dialogue: String) -> String;
-    /// `og.film.start`
-    fn og_film_start(&self, world: u32, desc: Option<String>) -> String;
-    /// `og.film.view`
-    fn og_film_view(&self, world: u32, film: f64) -> String;
-    /// `og.film.choose`
-    fn og_film_choose(&self, world: u32, film: f64, index: u32) -> String;
-    /// `og.film.play`
-    fn og_film_play(&self, world: u32, film: f64) -> String;
-    /// `og.film.pause`
-    fn og_film_pause(&self, world: u32, film: f64) -> String;
-    /// `og.film.skip`
-    fn og_film_skip(&self, world: u32, film: f64) -> String;
-    /// `og.film.chart`
-    fn og_film_chart(&self, world: u32, dialogue: String) -> String;
-    /// `og.film.stop`
-    fn og_film_stop(&self, world: u32, film: f64) -> String;
+/// `flow`: packages/knowledge/wiki/flow.md.
+pub trait FlowApi: Wire {
+    /// `og.flow.load`
+    fn og_flow_load(&self, world: u32, dialogue: String) -> String;
+    /// `og.flow.start`
+    fn og_flow_start(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.flow.view`
+    fn og_flow_view(&self, world: u32, flow: f64) -> String;
+    /// `og.flow.choose`
+    fn og_flow_choose(&self, world: u32, flow: f64, index: u32) -> String;
+    /// `og.flow.play`
+    fn og_flow_play(&self, world: u32, flow: f64) -> String;
+    /// `og.flow.pause`
+    fn og_flow_pause(&self, world: u32, flow: f64) -> String;
+    /// `og.flow.skip`
+    fn og_flow_skip(&self, world: u32, flow: f64) -> String;
+    /// `og.flow.chart`
+    fn og_flow_chart(&self, world: u32, dialogue: String) -> String;
+    /// `og.flow.stop`
+    fn og_flow_stop(&self, world: u32, flow: f64) -> String;
 }
 
 /// `scene`: packages/knowledge/wiki/scene.md.
@@ -1500,9 +1500,9 @@ pub trait LoadingApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi {}
+pub trait Host: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi {}
 
-impl<T: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi> Host for T {}
+impl<T: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FlowApi + SceneApi + LoadingApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -2093,15 +2093,15 @@ pub const SYMBOLS: &[&str] = &[
     "og_sight_explored",
     "og_sight_reveal",
     "og_sight_forget",
-    "og_film_load",
-    "og_film_start",
-    "og_film_view",
-    "og_film_choose",
-    "og_film_play",
-    "og_film_pause",
-    "og_film_skip",
-    "og_film_chart",
-    "og_film_stop",
+    "og_flow_load",
+    "og_flow_start",
+    "og_flow_view",
+    "og_flow_choose",
+    "og_flow_play",
+    "og_flow_pause",
+    "og_flow_skip",
+    "og_flow_chart",
+    "og_flow_stop",
     "og_scene_preload",
     "og_scene_progress",
     "og_scene_release",

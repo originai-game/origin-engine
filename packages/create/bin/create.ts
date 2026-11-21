@@ -156,7 +156,7 @@ export function skeletonFiles(): string[] {
   return skeleton;
 }
 
-/** The film skeleton, what `form film` adds over template/ (og api show film): templates/film in a checkout, the package's film/ once packed. */
+/** The film skeleton, what `form film` adds over template/ (og api show flow): templates/film in a checkout, the package's film/ once packed. */
 export function filmDir(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   for (const candidate of [join(here, "..", "..", "..", "templates", "film"), join(here, "..", "film")]) {
@@ -247,7 +247,7 @@ export function create(options: CreateOptions): Created {
   for (const name of new Set(choices.lang.map((l) => fontPackFor(l, available)).filter((n) => n !== undefined))) {
     copy(available.find((p) => p.name === name)!.dir, join(dir, "assets", "fonts", name));
   }
-  // A film adds its story, segments, placeholder clip and entry (og api show film).
+  // A film adds its story, segments, placeholder clip and entry (og api show flow).
   if (choices.form === "film") copy(filmDir(), dir);
   const look = `looks/${id}.ogt`;
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
@@ -272,8 +272,8 @@ Choices are constraints and hints in project.ogt's create block.
 The look, variant and UI also configure its look file, which draws in the
 look's own mood; no gameplay is generated.
   --form      2d, 2.5d or 3d (a game, its view one of the form's), or film: an
-              interactive film (og.film), which adds a Yarn story, two segments, a
-              placeholder clip, the picture and the film-choices and subtitles screens;
+              interactive film (og.flow), which adds a Yarn story, two segments, a
+              placeholder clip, the picture and the flow-choices and subtitles screens;
               --genre interactive-film is the same; view and players do not apply to a film
   --genre --view --look --variant --ui --platform --input --players --lang --music
               creation choices; --lang en,zh accepts comma-separated tags. A look must
@@ -347,7 +347,7 @@ function main(argv: string[]): number {
     }
   }
   const made = create({ dir: dir ?? id ?? (name ? slug(name) : "origin-game"), ...(name === undefined ? {} : { name }), ...(id === undefined ? {} : { id }), ...(premise === undefined ? {} : { premise }), choices: parseCreationInput(choices), force });
-  console.log(`Created ${made.name} (${made.id}) in ${relative(process.cwd(), made.dir) || "."}: ${made.files.length} files.\nCreation choices are in project.ogt. ${made.choices.form === "film" ? "Write the story and segments (og api show film), replace the placeholder clip" : "Build the game with the engine API"}, then run og check and og run .`);
+  console.log(`Created ${made.name} (${made.id}) in ${relative(process.cwd(), made.dir) || "."}: ${made.files.length} files.\nCreation choices are in project.ogt. ${made.choices.form === "film" ? "Write the story and segments (og api show flow), replace the placeholder clip" : "Build the game with the engine API"}, then run og check and og run .`);
   return 0;
 }
 

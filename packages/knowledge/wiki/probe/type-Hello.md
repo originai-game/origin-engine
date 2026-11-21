@@ -18,7 +18,7 @@ The wire's hello: who is speaking.
 | `tier` | `RenderBackend` | `"webgpu"` | — | — | — | The renderer backend (RenderCapabilities.backend), which names the reference frames' directory. |
 | `build` | `BuildProfile` | `"dev"` | — | — | — | The build configuration. |
 | `members` | `readonly string[]` | `[]` | — | — | — | The probe members this build serves. |
-| `modules` | `readonly string[]` | `[]` | — | — | — | The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.film) and `video`. Every build carries all of them; the web loads each on a game's first call into it. |
+| `modules` | `readonly string[]` | `[]` | — | — | — | The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.flow) and `video`. Every build carries all of them; the web loads each on a game's first call into it. |
 
 ```ogt
 struct Hello {
@@ -33,7 +33,7 @@ struct Hello {
   field tier RenderBackend "The renderer backend (RenderCapabilities.backend), which names the reference frames' directory."
   field build BuildProfile "The build configuration."
   field members List.String "The probe members this build serves."
-  field modules List.String "The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.film) and `video`. Every build carries all of them; the web loads each on a game's first call into it."
+  field modules List.String "The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.flow) and `video`. Every build carries all of them; the web loads each on a game's first call into it."
 }
 ```
 

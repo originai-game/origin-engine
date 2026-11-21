@@ -3207,48 +3207,48 @@ unsafe extern "C" fn og_sight_forget(args: *const crate::OgValue, out: *mut crat
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_film_load(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as FilmApi>::og_film_load(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_flow_load(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_load(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_film_start(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as FilmApi>::og_film_start(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_flow_start(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_start(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_film_view(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as FilmApi>::og_film_view(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_flow_view(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_view(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_film_choose(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as FilmApi>::og_film_choose(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+unsafe extern "C" fn og_flow_choose(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_choose(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_film_play(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as FilmApi>::og_film_play(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_flow_play(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_play(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_film_pause(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as FilmApi>::og_film_pause(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_flow_pause(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_pause(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_film_skip(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as FilmApi>::og_film_skip(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_flow_skip(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_skip(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_film_chart(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as FilmApi>::og_film_chart(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_flow_chart(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_chart(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_film_stop(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as FilmApi>::og_film_stop(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+unsafe extern "C" fn og_flow_stop(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_stop(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3973,15 +3973,15 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_sight_explored", arity: 3, call: og_sight_explored },
     crate::Symbol { name: c"og_sight_reveal", arity: 4, call: og_sight_reveal },
     crate::Symbol { name: c"og_sight_forget", arity: 2, call: og_sight_forget },
-    crate::Symbol { name: c"og_film_load", arity: 2, call: og_film_load },
-    crate::Symbol { name: c"og_film_start", arity: 2, call: og_film_start },
-    crate::Symbol { name: c"og_film_view", arity: 2, call: og_film_view },
-    crate::Symbol { name: c"og_film_choose", arity: 3, call: og_film_choose },
-    crate::Symbol { name: c"og_film_play", arity: 2, call: og_film_play },
-    crate::Symbol { name: c"og_film_pause", arity: 2, call: og_film_pause },
-    crate::Symbol { name: c"og_film_skip", arity: 2, call: og_film_skip },
-    crate::Symbol { name: c"og_film_chart", arity: 2, call: og_film_chart },
-    crate::Symbol { name: c"og_film_stop", arity: 2, call: og_film_stop },
+    crate::Symbol { name: c"og_flow_load", arity: 2, call: og_flow_load },
+    crate::Symbol { name: c"og_flow_start", arity: 2, call: og_flow_start },
+    crate::Symbol { name: c"og_flow_view", arity: 2, call: og_flow_view },
+    crate::Symbol { name: c"og_flow_choose", arity: 3, call: og_flow_choose },
+    crate::Symbol { name: c"og_flow_play", arity: 2, call: og_flow_play },
+    crate::Symbol { name: c"og_flow_pause", arity: 2, call: og_flow_pause },
+    crate::Symbol { name: c"og_flow_skip", arity: 2, call: og_flow_skip },
+    crate::Symbol { name: c"og_flow_chart", arity: 2, call: og_flow_chart },
+    crate::Symbol { name: c"og_flow_stop", arity: 2, call: og_flow_stop },
     crate::Symbol { name: c"og_scene_preload", arity: 2, call: og_scene_preload },
     crate::Symbol { name: c"og_scene_progress", arity: 2, call: og_scene_progress },
     crate::Symbol { name: c"og_scene_release", arity: 2, call: og_scene_release },

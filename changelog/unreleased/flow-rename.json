@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og.film is og.flow",
+      "change": "The module that paces a Yarn dialogue by its segments is og.flow, in every name a game writes. API: `og.film.*` is `og.flow.*`, the component `og.Film` is `og.Flow`, `og.FilmDeck` `og.FlowDeck`, the events `og.FilmSegment`, `og.FilmChoice`, `og.FilmChapter` and `og.FilmEnded` are `og.Flow…`, and the types `FilmInfo`, `FilmView`, `FilmHotspot`, `FilmChart`, `FilmChartNode` and `FilmChartLink` are `Flow…`; `FilmDesc` is `FlowStartDesc` (og.nav has a FlowDesc). Yarn headers: `og-film`, `og-film-chapter`, `og-film-ending` and `og-film-dissolve` are `og-flow…`. Timeline markers: `film.open`, `film.lock` and `film.cut` are `flow.open`, `flow.lock` and `flow.cut`. Probe commands: `film:choose:<index>`, `film:play`, `film:pause` and `film:skip` are `flow:…`. Components and screens: `FilmChoices` is `FlowChoices` (screen `flow-choices`), `FilmChaptersScreen` `FlowChaptersScreen` (`flow-chapters`), `FilmFlowchartScreen` `FlowChartScreen` (`flow-chart`) and `FilmGalleryScreen` `FlowGalleryScreen` (`flow-gallery`), with their string keys (`screen.flow-choices.label`) and parts (`::part(flow-choices.shade)`). The guide is `og api show flow`. What the module does is unchanged, and a save taken before the upgrade restores: its og.Film records and its conversation's hold header are read as the new names.",
+      "fix": "`og upgrade` rewrites all of these in src/, assets/ and tests/, Yarn files included. One rename is left to you: the field that names the flow on `FlowView`, `og.FlowDeck` and the four events was `film` and is `flow` (`view.film` becomes `view.flow`, an event's `e.film` `e.flow`); `og check` names each read of the old field. The persistence keys and telemetry names the guide suggests are now `flow.<dialogue>.seen`, `flow.<dialogue>.endings`, `flow_choice`, `flow_ending` and `flow_quit`; they are your game's own and `og upgrade` leaves them, so a shipped game keeps the keys its players' data is under.",
+      "codemod": {
+        "kind": "flow-rename"
+      }
+    }
+  ],
+  "added": [
+    {
+      "member": "og upgrade",
+      "summary": "Reads a game's Yarn files (`.yarn` under src/, assets/ and tests/) with its other sources, so a rewrite or a line to edit by hand can name one."
+    }
+  ]
+}

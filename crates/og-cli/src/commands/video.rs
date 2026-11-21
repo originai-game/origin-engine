@@ -1,4 +1,4 @@
-//! `og video`: tools for the footage of an interactive film (og.film's
+//! `og video`: tools for the footage of an interactive film (og.flow's
 //! segments).
 //!
 //! - `og video edges <path> [--out <dir>]` writes the first and last frame

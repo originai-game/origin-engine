@@ -3207,48 +3207,48 @@ pub fn og_sight_forget(world: u32, team: u32) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_film_load(world: u32, dialogue: String) -> String {
-    <Host as FilmApi>::og_film_load(&Host, world, dialogue)
+pub fn og_flow_load(world: u32, dialogue: String) -> String {
+    <Host as FlowApi>::og_flow_load(&Host, world, dialogue)
 }
 
 #[wasm_bindgen]
-pub fn og_film_start(world: u32, desc: Option<String>) -> String {
-    <Host as FilmApi>::og_film_start(&Host, world, desc)
+pub fn og_flow_start(world: u32, desc: Option<String>) -> String {
+    <Host as FlowApi>::og_flow_start(&Host, world, desc)
 }
 
 #[wasm_bindgen]
-pub fn og_film_view(world: u32, film: f64) -> String {
-    <Host as FilmApi>::og_film_view(&Host, world, film)
+pub fn og_flow_view(world: u32, flow: f64) -> String {
+    <Host as FlowApi>::og_flow_view(&Host, world, flow)
 }
 
 #[wasm_bindgen]
-pub fn og_film_choose(world: u32, film: f64, index: u32) -> String {
-    <Host as FilmApi>::og_film_choose(&Host, world, film, index)
+pub fn og_flow_choose(world: u32, flow: f64, index: u32) -> String {
+    <Host as FlowApi>::og_flow_choose(&Host, world, flow, index)
 }
 
 #[wasm_bindgen]
-pub fn og_film_play(world: u32, film: f64) -> String {
-    <Host as FilmApi>::og_film_play(&Host, world, film)
+pub fn og_flow_play(world: u32, flow: f64) -> String {
+    <Host as FlowApi>::og_flow_play(&Host, world, flow)
 }
 
 #[wasm_bindgen]
-pub fn og_film_pause(world: u32, film: f64) -> String {
-    <Host as FilmApi>::og_film_pause(&Host, world, film)
+pub fn og_flow_pause(world: u32, flow: f64) -> String {
+    <Host as FlowApi>::og_flow_pause(&Host, world, flow)
 }
 
 #[wasm_bindgen]
-pub fn og_film_skip(world: u32, film: f64) -> String {
-    <Host as FilmApi>::og_film_skip(&Host, world, film)
+pub fn og_flow_skip(world: u32, flow: f64) -> String {
+    <Host as FlowApi>::og_flow_skip(&Host, world, flow)
 }
 
 #[wasm_bindgen]
-pub fn og_film_chart(world: u32, dialogue: String) -> String {
-    <Host as FilmApi>::og_film_chart(&Host, world, dialogue)
+pub fn og_flow_chart(world: u32, dialogue: String) -> String {
+    <Host as FlowApi>::og_flow_chart(&Host, world, dialogue)
 }
 
 #[wasm_bindgen]
-pub fn og_film_stop(world: u32, film: f64) -> String {
-    <Host as FilmApi>::og_film_stop(&Host, world, film)
+pub fn og_flow_stop(world: u32, flow: f64) -> String {
+    <Host as FlowApi>::og_flow_stop(&Host, world, flow)
 }
 
 #[wasm_bindgen]

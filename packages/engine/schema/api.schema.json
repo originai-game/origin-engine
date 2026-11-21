@@ -16267,32 +16267,32 @@
       "callbacks": []
     },
     {
-      "name": "film",
-      "doc": "Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-film: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `film.open` marker, lock at `film.lock` and are taken at its cut (`film.cut`, else its end), the default (`#default`) when none was chosen.\nThe story stays og.story's, the footage og.video's, the timing og.timeline's: og.film moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.\nSee `flow`.",
+      "name": "flow",
+      "doc": "Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen.\nThe story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state.\nSee `flow`.",
       "place": "namespace",
       "publish": true,
       "types": [
-        "FilmDesc",
-        "FilmInfo",
-        "Film",
-        "FilmDeck",
+        "FlowStartDesc",
+        "FlowInfo",
+        "Flow",
+        "FlowDeck",
         "WindowView",
-        "FilmHotspot",
+        "FlowHotspot",
         "QteView",
-        "FilmView",
-        "FilmChartNode",
-        "FilmChartLink",
-        "FilmChart",
-        "FilmSegment",
-        "FilmChoice",
-        "FilmChapter",
-        "FilmEnded"
+        "FlowView",
+        "FlowChartNode",
+        "FlowChartLink",
+        "FlowChart",
+        "FlowSegment",
+        "FlowChoice",
+        "FlowChapter",
+        "FlowEnded"
       ],
       "consts": [],
       "functions": [
         {
           "name": "load",
-          "doc": "Prepare a loaded dialogue's film: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.film's records. Call it in setup, after og.story.load, in every process that restores a film.",
+          "doc": "Prepare a loaded dialogue's flow: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.flow's records. Call it in setup, after og.story.load, in every process that restores a flow.",
           "params": [
             {
               "name": "world",
@@ -16307,13 +16307,13 @@
               "doc": "The dialogue (StoryAsset.name)."
             }
           ],
-          "returns": "Result<FilmInfo>",
+          "returns": "Result<FlowInfo>",
           "returnsDoc": "Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track.",
           "publish": true
         },
         {
           "name": "start",
-          "doc": "Start a film: its decks, and its conversation held at the first film node, whose segment plays from the next tick. Outside a system (setup or a command).",
+          "doc": "Start a flow: its decks, and its conversation held at the first flow node, whose segment plays from the next tick. Outside a system (setup or a command).",
           "params": [
             {
               "name": "world",
@@ -16323,18 +16323,18 @@
             },
             {
               "name": "desc",
-              "type": "FilmDesc",
+              "type": "FlowStartDesc",
               "optional": true,
               "doc": "The dialogue, and optionally the node, the decks and whether it starts paused."
             }
           ],
           "returns": "Result<Entity>",
-          "returnsDoc": "The film's entity (og.Film), or why not: a dialogue og.film.load has not prepared, an unknown node, or inside a system.",
+          "returnsDoc": "The flow's entity (og.Flow), or why not: a dialogue og.flow.load has not prepared, an unknown node, or inside a system.",
           "publish": true
         },
         {
           "name": "view",
-          "doc": "What a film shows now: its picture, segment time, choices and window.",
+          "doc": "What a flow shows now: its picture, segment time, choices and window.",
           "params": [
             {
               "name": "world",
@@ -16343,19 +16343,19 @@
               "doc": "The world."
             },
             {
-              "name": "film",
+              "name": "flow",
               "type": "Entity",
               "optional": false,
-              "doc": "The film."
+              "doc": "The flow."
             }
           ],
-          "returns": "Option<FilmView>",
-          "returnsDoc": "Null for an entity that is no film.",
+          "returns": "Option<FlowView>",
+          "returnsDoc": "Null for an entity that is no flow.",
           "publish": true
         },
         {
           "name": "choose",
-          "doc": "Take a choice while the window is open: recorded now (FilmView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.film applies it this tick.",
+          "doc": "Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.flow applies it this tick.",
           "params": [
             {
               "name": "world",
@@ -16364,10 +16364,10 @@
               "doc": "The world."
             },
             {
-              "name": "film",
+              "name": "flow",
               "type": "Entity",
               "optional": false,
-              "doc": "The film."
+              "doc": "The flow."
             },
             {
               "name": "index",
@@ -16382,7 +16382,7 @@
         },
         {
           "name": "play",
-          "doc": "Play a paused film from where it is. Systems may call it.",
+          "doc": "Play a paused flow from where it is. Systems may call it.",
           "params": [
             {
               "name": "world",
@@ -16391,19 +16391,19 @@
               "doc": "The world."
             },
             {
-              "name": "film",
+              "name": "flow",
               "type": "Entity",
               "optional": false,
-              "doc": "The film."
+              "doc": "The flow."
             }
           ],
           "returns": "Result<Void>",
-          "returnsDoc": "Refused for an entity that is no film.",
+          "returnsDoc": "Refused for an entity that is no flow.",
           "publish": true
         },
         {
           "name": "pause",
-          "doc": "Hold a film on its frame (a pause menu); its window's time holds too. Systems may call it.",
+          "doc": "Hold a flow on its frame (a pause menu); its window's time holds too. Systems may call it.",
           "params": [
             {
               "name": "world",
@@ -16412,19 +16412,19 @@
               "doc": "The world."
             },
             {
-              "name": "film",
+              "name": "flow",
               "type": "Entity",
               "optional": false,
-              "doc": "The film."
+              "doc": "The flow."
             }
           ],
           "returns": "Result<Void>",
-          "returnsDoc": "Refused for an entity that is no film.",
+          "returnsDoc": "Refused for an entity that is no flow.",
           "publish": true
         },
         {
           "name": "skip",
-          "doc": "Skip ahead in the segment playing: to its window's open (film.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide film §5). Systems may call it.",
+          "doc": "Skip ahead in the segment playing: to its window's open (flow.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide flow §5). Systems may call it.",
           "params": [
             {
               "name": "world",
@@ -16433,19 +16433,19 @@
               "doc": "The world."
             },
             {
-              "name": "film",
+              "name": "flow",
               "type": "Entity",
               "optional": false,
-              "doc": "The film."
+              "doc": "The flow."
             }
           ],
           "returns": "Result<Void>",
-          "returnsDoc": "Refused for an entity that is no film, or one that has ended.",
+          "returnsDoc": "Refused for an entity that is no flow, or one that has ended.",
           "publish": true
         },
         {
           "name": "chart",
-          "doc": "A prepared dialogue's film nodes and where each may lead, laid out for a flowchart.",
+          "doc": "A prepared dialogue's flow nodes and where each may lead, laid out for a flowchart.",
           "params": [
             {
               "name": "world",
@@ -16457,16 +16457,16 @@
               "name": "dialogue",
               "type": "String",
               "optional": false,
-              "doc": "The dialogue (StoryAsset.name), prepared by og.film.load."
+              "doc": "The dialogue (StoryAsset.name), prepared by og.flow.load."
             }
           ],
-          "returns": "Result<FilmChart>",
-          "returnsDoc": "Refused for a dialogue og.film.load has not prepared.",
+          "returns": "Result<FlowChart>",
+          "returnsDoc": "Refused for a dialogue og.flow.load has not prepared.",
           "publish": true
         },
         {
           "name": "stop",
-          "doc": "End a film: its conversation stops and its decks and entity are despawned this tick. Systems may call it.",
+          "doc": "End a flow: its conversation stops and its decks and entity are despawned this tick. Systems may call it.",
           "params": [
             {
               "name": "world",
@@ -16475,14 +16475,14 @@
               "doc": "The world."
             },
             {
-              "name": "film",
+              "name": "flow",
               "type": "Entity",
               "optional": false,
-              "doc": "The film."
+              "doc": "The flow."
             }
           ],
           "returns": "Result<Void>",
-          "returnsDoc": "Refused for an entity that is no film.",
+          "returnsDoc": "Refused for an entity that is no flow.",
           "publish": true
         }
       ],
@@ -43093,7 +43093,7 @@
         },
         "hold": {
           "type": "string",
-          "description": "A node header, such as `og-film`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.film starts its conversation with `og-film`.\nSee `yarn §9`.",
+          "description": "A node header, such as `og-flow`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.flow starts its conversation with `og-flow`.\nSee `yarn §9`.",
           "default": ""
         }
       },
@@ -43536,7 +43536,7 @@
           "description": "Its title."
         },
         "headers": {
-          "description": "Its header lines, `{ title: \"kitchen\", \"og-film\": \"segments/kitchen.ogt\" }`."
+          "description": "Its header lines, `{ title: \"kitchen\", \"og-flow\": \"segments/kitchen.ogt\" }`."
         },
         "choices": {
           "type": "array",
@@ -47214,7 +47214,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.film) and `video`. Every build carries all of them; the web loads each on a game's first call into it."
+          "description": "The engine modules beyond the core, sorted: `destruction`, `motion`, `nav` (with og.ai), `physics`, `story` (with og.flow) and `video`. Every build carries all of them; the web loads each on a game's first call into it."
         }
       },
       "required": [
@@ -56031,15 +56031,15 @@
       },
       "additionalProperties": false
     },
-    "FilmDesc": {
+    "FlowStartDesc": {
       "x-og-kind": "desc",
-      "x-og-module": "film",
-      "description": "A film to start.",
+      "x-og-module": "flow",
+      "description": "A flow to start.",
       "type": "object",
       "properties": {
         "dialogue": {
           "type": "string",
-          "description": "The dialogue (StoryAsset.name), loaded with og.story.load and og.film.load.",
+          "description": "The dialogue (StoryAsset.name), loaded with og.story.load and og.flow.load.",
           "default": ""
         },
         "node": {
@@ -56051,22 +56051,22 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Decks to play on, 1 to 3 (0: 3). One plays; the others warm what the film may cut to. 1 warms nothing (one decoder: WeChat on iOS).",
+          "description": "Decks to play on, 1 to 3 (0: 3). One plays; the others warm what the flow may cut to. 1 warms nothing (one decoder: WeChat on iOS).",
           "default": 0,
           "maximum": 3
         },
         "paused": {
           "type": "boolean",
-          "description": "Start holding the first segment's first frame, warmed, until og.film.play (a title screen before the first gesture).",
+          "description": "Start holding the first segment's first frame, warmed, until og.flow.play (a title screen before the first gesture).",
           "default": false
         }
       },
       "additionalProperties": false
     },
-    "FilmInfo": {
+    "FlowInfo": {
       "x-og-kind": "struct",
-      "x-og-module": "film",
-      "description": "What og.film.load prepared.",
+      "x-og-module": "flow",
+      "description": "What og.flow.load prepared.",
       "type": "object",
       "properties": {
         "dialogue": {
@@ -56078,21 +56078,21 @@
           "items": {
             "type": "string"
           },
-          "description": "Its film nodes (those with `og-film`), in file order."
+          "description": "Its flow nodes (those with `og-flow`), in file order."
         },
         "chapters": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Its chapters' i18n keys (`og-film-chapter`), in file order."
+          "description": "Its chapters' i18n keys (`og-flow-chapter`), in file order."
         },
         "endings": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Its endings (`og-film-ending`), in file order."
+          "description": "Its endings (`og-flow-ending`), in file order."
         }
       },
       "required": [
@@ -56103,10 +56103,10 @@
       ],
       "additionalProperties": false
     },
-    "Film": {
+    "Flow": {
       "x-og-kind": "component",
-      "x-og-module": "film",
-      "description": "A film og.film.start made: the conversation it paces and its decks. og.film writes it; read og.film.view.",
+      "x-og-module": "flow",
+      "description": "A flow og.flow.start made: the conversation it paces and its decks. og.flow writes it; read og.flow.view.",
       "type": "object",
       "properties": {
         "conversation": {
@@ -56127,7 +56127,7 @@
         },
         "current": {
           "$ref": "#/$defs/Entity",
-          "description": "The deck playing now (an og.FilmDeck).",
+          "description": "The deck playing now (an og.FlowDeck).",
           "default": 0,
           "readOnly": true
         },
@@ -56135,7 +56135,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The film node playing, as its id (a hash of its title; og.film.view names it); 0 before the first.",
+          "description": "The flow node playing, as its id (a hash of its title; og.flow.view names it); 0 before the first.",
           "default": 0,
           "readOnly": true
         },
@@ -56151,13 +56151,13 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "0 closed, 1 open (choices shown), 2 locked (past film.lock: the cut takes pending, else the default).",
+          "description": "0 closed, 1 open (choices shown), 2 locked (past flow.lock: the cut takes pending, else the default).",
           "default": 0,
           "readOnly": true
         },
         "paused": {
           "type": "boolean",
-          "description": "Held by og.film.pause (or FilmDesc.paused) until og.film.play.",
+          "description": "Held by og.flow.pause (or FlowStartDesc.paused) until og.flow.play.",
           "default": false,
           "readOnly": true
         },
@@ -56177,7 +56177,7 @@
         },
         "previous": {
           "$ref": "#/$defs/Entity",
-          "description": "The deck dissolving out (`og-film-dissolve`), playing on under the current one; 0: none.",
+          "description": "The deck dissolving out (`og-flow-dissolve`), playing on under the current one; 0: none.",
           "default": 0,
           "readOnly": true
         },
@@ -56212,15 +56212,15 @@
       },
       "additionalProperties": false
     },
-    "FilmDeck": {
+    "FlowDeck": {
       "x-og-kind": "component",
-      "x-og-module": "film",
-      "description": "An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The film's current deck plays; the others hold a segment it may cut to, paused at its first frame.",
+      "x-og-module": "flow",
+      "description": "An entity og.flow plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The flow's current deck plays; the others hold a segment it may cut to, paused at its first frame.",
       "type": "object",
       "properties": {
-        "film": {
+        "flow": {
           "$ref": "#/$defs/Entity",
-          "description": "Its film.",
+          "description": "Its flow.",
           "default": 0,
           "readOnly": true
         },
@@ -56228,7 +56228,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The film node whose segment it holds (its id, as og.Film.node); 0: none.",
+          "description": "The flow node whose segment it holds (its id, as og.Flow.node); 0: none.",
           "default": 0,
           "readOnly": true
         }
@@ -56237,7 +56237,7 @@
     },
     "WindowView": {
       "x-og-kind": "struct",
-      "x-og-module": "film",
+      "x-og-module": "flow",
       "description": "A segment's choice window.",
       "type": "object",
       "properties": {
@@ -56245,13 +56245,13 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Ticks until it locks (film.lock)."
+          "description": "Ticks until it locks (flow.lock)."
         },
         "ticksTotal": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Ticks from film.open to film.lock."
+          "description": "Ticks from flow.open to flow.lock."
         },
         "defaultChoice": {
           "type": "integer",
@@ -56274,7 +56274,7 @@
         },
         "locked": {
           "type": "boolean",
-          "description": "Past film.lock: choosing is over; the cut takes pending, else the default."
+          "description": "Past flow.lock: choosing is over; the cut takes pending, else the default."
         }
       },
       "required": [
@@ -56286,9 +56286,9 @@
       ],
       "additionalProperties": false
     },
-    "FilmHotspot": {
+    "FlowHotspot": {
       "x-og-kind": "struct",
-      "x-og-module": "film",
+      "x-og-module": "flow",
       "description": "A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open.",
       "type": "object",
       "properties": {
@@ -56335,7 +56335,7 @@
     },
     "QteView": {
       "x-og-kind": "struct",
-      "x-og-module": "film",
+      "x-og-module": "flow",
       "description": "A choice taken by a quick-time event (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>`): the og.input action's presses or hold while the window is open.",
       "type": "object",
       "properties": {
@@ -56372,19 +56372,19 @@
       ],
       "additionalProperties": false
     },
-    "FilmView": {
+    "FlowView": {
       "x-og-kind": "struct",
-      "x-og-module": "film",
-      "description": "What a film shows now.",
+      "x-og-module": "flow",
+      "description": "What a flow shows now.",
       "type": "object",
       "properties": {
-        "film": {
+        "flow": {
           "$ref": "#/$defs/Entity",
-          "description": "The film."
+          "description": "The flow."
         },
         "node": {
           "type": "string",
-          "description": "The film node playing."
+          "description": "The flow node playing."
         },
         "segment": {
           "type": "string",
@@ -56401,7 +56401,7 @@
         },
         "cut": {
           "type": "number",
-          "description": "When it cuts to the next: its film.cut marker, else its duration.",
+          "description": "When it cuts to the next: its flow.cut marker, else its duration.",
           "x-og-unit": "s"
         },
         "choices": {
@@ -56425,7 +56425,7 @@
         "hotspots": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/FilmHotspot"
+            "$ref": "#/$defs/FlowHotspot"
           },
           "description": "The hotspots that take a choice now: while the window is open, those of its enabled choices."
         },
@@ -56438,7 +56438,7 @@
         },
         "previous": {
           "$ref": "#/$defs/Texture",
-          "description": "The picture dissolving out (`og-film-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`."
+          "description": "The picture dissolving out (`og-flow-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`."
         },
         "mix": {
           "type": "number",
@@ -56447,7 +56447,7 @@
         },
         "paused": {
           "type": "boolean",
-          "description": "Held by og.film.pause."
+          "description": "Held by og.flow.pause."
         },
         "chapter": {
           "type": "string",
@@ -56463,7 +56463,7 @@
         }
       },
       "required": [
-        "film",
+        "flow",
         "node",
         "segment",
         "texture",
@@ -56482,10 +56482,10 @@
       ],
       "additionalProperties": false
     },
-    "FilmChartNode": {
+    "FlowChartNode": {
       "x-og-kind": "struct",
-      "x-og-module": "film",
-      "description": "A film node on og.film.chart's layout.",
+      "x-og-module": "flow",
+      "description": "A flow node on og.flow.chart's layout.",
       "type": "object",
       "properties": {
         "node": {
@@ -56498,17 +56498,17 @@
         },
         "chapter": {
           "type": "string",
-          "description": "Its `og-film-chapter`, if any."
+          "description": "Its `og-flow-chapter`, if any."
         },
         "ending": {
           "type": "string",
-          "description": "Its `og-film-ending`, if any."
+          "description": "Its `og-flow-ending`, if any."
         },
         "depth": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Its column: the fewest film nodes from the start before it (unreached nodes after the deepest)."
+          "description": "Its column: the fewest flow nodes from the start before it (unreached nodes after the deepest)."
         },
         "x": {
           "type": "number",
@@ -56530,10 +56530,10 @@
       ],
       "additionalProperties": false
     },
-    "FilmChartLink": {
+    "FlowChartLink": {
       "x-og-kind": "struct",
-      "x-og-module": "film",
-      "description": "Where a film node may lead, through logic nodes.",
+      "x-og-module": "flow",
+      "description": "Where a flow node may lead, through logic nodes.",
       "type": "object",
       "properties": {
         "from": {
@@ -56542,7 +56542,7 @@
         },
         "to": {
           "type": "string",
-          "description": "The film node it may lead to."
+          "description": "The flow node it may lead to."
         },
         "choice": {
           "type": "integer",
@@ -56566,23 +56566,23 @@
       ],
       "additionalProperties": false
     },
-    "FilmChart": {
+    "FlowChart": {
       "x-og-kind": "struct",
-      "x-og-module": "film",
-      "description": "A dialogue's film nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.",
+      "x-og-module": "flow",
+      "description": "A dialogue's flow nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.",
       "type": "object",
       "properties": {
         "nodes": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/FilmChartNode"
+            "$ref": "#/$defs/FlowChartNode"
           },
-          "description": "Its film nodes, in file order."
+          "description": "Its flow nodes, in file order."
         },
         "links": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/FilmChartLink"
+            "$ref": "#/$defs/FlowChartLink"
           },
           "description": "Where each leads."
         },
@@ -56603,15 +56603,15 @@
       ],
       "additionalProperties": false
     },
-    "FilmSegment": {
+    "FlowSegment": {
       "x-og-kind": "event",
-      "x-og-module": "film",
-      "description": "A film began a node's segment.",
+      "x-og-module": "flow",
+      "description": "A flow began a node's segment.",
       "type": "object",
       "properties": {
-        "film": {
+        "flow": {
           "$ref": "#/$defs/Entity",
-          "description": "The film."
+          "description": "The flow."
         },
         "node": {
           "type": "string",
@@ -56623,21 +56623,21 @@
         }
       },
       "required": [
-        "film",
+        "flow",
         "node",
         "segment"
       ],
       "additionalProperties": false
     },
-    "FilmChoice": {
+    "FlowChoice": {
       "x-og-kind": "event",
-      "x-og-module": "film",
-      "description": "A film took a choice at its cut (before og.story ran it).",
+      "x-og-module": "flow",
+      "description": "A flow took a choice at its cut (before og.story ran it).",
       "type": "object",
       "properties": {
-        "film": {
+        "flow": {
           "$ref": "#/$defs/Entity",
-          "description": "The film."
+          "description": "The flow."
         },
         "node": {
           "type": "string",
@@ -56655,22 +56655,22 @@
         }
       },
       "required": [
-        "film",
+        "flow",
         "node",
         "index",
         "timedOut"
       ],
       "additionalProperties": false
     },
-    "FilmChapter": {
+    "FlowChapter": {
       "x-og-kind": "event",
-      "x-og-module": "film",
-      "description": "A film entered a chapter's node (`og-film-chapter`): a place to save.",
+      "x-og-module": "flow",
+      "description": "A flow entered a chapter's node (`og-flow-chapter`): a place to save.",
       "type": "object",
       "properties": {
-        "film": {
+        "flow": {
           "$ref": "#/$defs/Entity",
-          "description": "The film."
+          "description": "The flow."
         },
         "node": {
           "type": "string",
@@ -56682,21 +56682,21 @@
         }
       },
       "required": [
-        "film",
+        "flow",
         "node",
         "chapter"
       ],
       "additionalProperties": false
     },
-    "FilmEnded": {
+    "FlowEnded": {
       "x-og-kind": "event",
-      "x-og-module": "film",
-      "description": "A film's last segment reached its cut with the conversation ended.",
+      "x-og-module": "flow",
+      "description": "A flow's last segment reached its cut with the conversation ended.",
       "type": "object",
       "properties": {
-        "film": {
+        "flow": {
           "$ref": "#/$defs/Entity",
-          "description": "The film."
+          "description": "The flow."
         },
         "node": {
           "type": "string",
@@ -56704,11 +56704,11 @@
         },
         "ending": {
           "type": "string",
-          "description": "Its `og-film-ending`, empty without one (at most 63 bytes)."
+          "description": "Its `og-flow-ending`, empty without one (at most 63 bytes)."
         }
       },
       "required": [
-        "film",
+        "flow",
         "node",
         "ending"
       ],

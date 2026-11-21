@@ -522,7 +522,7 @@ pub(crate) fn owns_camera(engine: u32) -> bool {
         .any(|r| r.camera.is_some())
 }
 
-/// Loaded timeline `h` as og.film's segment, with its video's handle and
+/// Loaded timeline `h` as og.flow's segment, with its video's handle and
 /// `from` in place of its id.
 pub(crate) fn segment(
     engine: u32,

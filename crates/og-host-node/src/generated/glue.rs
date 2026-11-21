@@ -3838,58 +3838,58 @@ pub fn og_sight_forget(env: Env, world: u32, team: u32) -> String {
     <Host as SightApi>::og_sight_forget(&Host, world, team)
 }
 
-#[napi(js_name = "og_film_load")]
-pub fn og_film_load(env: Env, world: u32, dialogue: String) -> String {
+#[napi(js_name = "og_flow_load")]
+pub fn og_flow_load(env: Env, world: u32, dialogue: String) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as FilmApi>::og_film_load(&Host, world, dialogue)
+    <Host as FlowApi>::og_flow_load(&Host, world, dialogue)
 }
 
-#[napi(js_name = "og_film_start")]
-pub fn og_film_start(env: Env, world: u32, desc: Option<String>) -> String {
+#[napi(js_name = "og_flow_start")]
+pub fn og_flow_start(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as FilmApi>::og_film_start(&Host, world, desc)
+    <Host as FlowApi>::og_flow_start(&Host, world, desc)
 }
 
-#[napi(js_name = "og_film_view")]
-pub fn og_film_view(env: Env, world: u32, film: f64) -> String {
+#[napi(js_name = "og_flow_view")]
+pub fn og_flow_view(env: Env, world: u32, flow: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as FilmApi>::og_film_view(&Host, world, film)
+    <Host as FlowApi>::og_flow_view(&Host, world, flow)
 }
 
-#[napi(js_name = "og_film_choose")]
-pub fn og_film_choose(env: Env, world: u32, film: f64, index: u32) -> String {
+#[napi(js_name = "og_flow_choose")]
+pub fn og_flow_choose(env: Env, world: u32, flow: f64, index: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as FilmApi>::og_film_choose(&Host, world, film, index)
+    <Host as FlowApi>::og_flow_choose(&Host, world, flow, index)
 }
 
-#[napi(js_name = "og_film_play")]
-pub fn og_film_play(env: Env, world: u32, film: f64) -> String {
+#[napi(js_name = "og_flow_play")]
+pub fn og_flow_play(env: Env, world: u32, flow: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as FilmApi>::og_film_play(&Host, world, film)
+    <Host as FlowApi>::og_flow_play(&Host, world, flow)
 }
 
-#[napi(js_name = "og_film_pause")]
-pub fn og_film_pause(env: Env, world: u32, film: f64) -> String {
+#[napi(js_name = "og_flow_pause")]
+pub fn og_flow_pause(env: Env, world: u32, flow: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as FilmApi>::og_film_pause(&Host, world, film)
+    <Host as FlowApi>::og_flow_pause(&Host, world, flow)
 }
 
-#[napi(js_name = "og_film_skip")]
-pub fn og_film_skip(env: Env, world: u32, film: f64) -> String {
+#[napi(js_name = "og_flow_skip")]
+pub fn og_flow_skip(env: Env, world: u32, flow: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as FilmApi>::og_film_skip(&Host, world, film)
+    <Host as FlowApi>::og_flow_skip(&Host, world, flow)
 }
 
-#[napi(js_name = "og_film_chart")]
-pub fn og_film_chart(env: Env, world: u32, dialogue: String) -> String {
+#[napi(js_name = "og_flow_chart")]
+pub fn og_flow_chart(env: Env, world: u32, dialogue: String) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as FilmApi>::og_film_chart(&Host, world, dialogue)
+    <Host as FlowApi>::og_flow_chart(&Host, world, dialogue)
 }
 
-#[napi(js_name = "og_film_stop")]
-pub fn og_film_stop(env: Env, world: u32, film: f64) -> String {
+#[napi(js_name = "og_flow_stop")]
+pub fn og_flow_stop(env: Env, world: u32, flow: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as FilmApi>::og_film_stop(&Host, world, film)
+    <Host as FlowApi>::og_flow_stop(&Host, world, flow)
 }
 
 #[napi(js_name = "og_scene_preload")]

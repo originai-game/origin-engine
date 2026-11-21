@@ -624,7 +624,7 @@ pub(crate) fn diagnose(
             r.notes.push(what);
         }
     }
-    // Dialogues og.film plays: their segments, defaults and lines. An error
+    // Dialogues og.flow plays: their segments, defaults and lines. An error
     // of the dialogue's (the cook fails), on a cached cook too.
     let segment = |id: &str| {
         sources
@@ -636,7 +636,7 @@ pub(crate) fn diagnose(
                     .and_then(|t| t.segment())
             })
     };
-    for (rel, what) in story::check_films(&stories, &segment, story_functions) {
+    for (rel, what) in story::check_flows(&stories, &segment, story_functions) {
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             match &mut r.error {
                 Some(e) => {

@@ -1,18 +1,18 @@
-//! og.film on the runtime: a dialogue of film nodes plays each node's
+//! og.flow on the runtime: a dialogue of flow nodes plays each node's
 //! segment on a deck, opens and locks its choice window by the segment's
-//! markers, cuts at `film.cut` to the segment of the node the choice (or
+//! markers, cuts at `flow.cut` to the segment of the node the choice (or
 //! the default) leads to, through logic nodes, and warms that segment on
 //! another deck first.
 //!
 //! One project: `start` (choices Door, Knife #default, Wait; window 0.3 s
 //! to 0.7 s, cut 0.8 s) leads to `hall` (no choices, a 1 s segment) and
 //! on through the logic node `branch` to `brave` or `shy` by `$brave`, or
-//! straight to `wait`; each of the three ends the film.
+//! straight to `wait`; each of the three ends the flow.
 //!
 //! Ways this could fail: a timeout taking the first choice, not the one
 //! marked #default; a choice outside the window accepted; the cut at the
-//! segment's end instead of film.cut, or a tick late; a logic node held
-//! like a film node (a segment-less stall) or its branch read before the
+//! segment's end instead of flow.cut, or a tick late; a logic node held
+//! like a flow node (a segment-less stall) or its branch read before the
 //! choice's `<<set>>`; the warm deck holding the default after a choice
 //! (the cut then loads cold) or the cut not landing on the warm deck; a
 //! restore inside the window losing the pending choice or the deck state
@@ -28,8 +28,8 @@
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_commands,
-    og_engine_probe_dump, og_film_chart, og_film_choose, og_film_load, og_film_skip, og_film_start,
-    og_film_view, og_game_game, og_host_begin_bundle, og_input_define_action, og_load_timeline,
+    og_engine_probe_dump, og_flow_chart, og_flow_choose, og_flow_load, og_flow_skip, og_flow_start,
+    og_flow_view, og_game_game, og_host_begin_bundle, og_input_define_action, og_load_timeline,
     og_story_parse, og_system_define_system, og_world_events, og_world_get, og_world_get_tick,
     og_world_restore, og_world_snapshot, set_hooks,
 };
@@ -40,7 +40,7 @@ use std::rc::Rc;
 use std::sync::OnceLock;
 
 const WATCH: u32 = 1;
-const EVENTS: [&str; 3] = ["og.FilmSegment", "og.FilmChoice", "og.FilmEnded"];
+const EVENTS: [&str; 3] = ["og.FlowSegment", "og.FlowChoice", "og.FlowEnded"];
 
 fn segment(markers: &str) -> String {
     format!(
@@ -48,16 +48,16 @@ fn segment(markers: &str) -> String {
     )
 }
 
-const WINDOW: &str = "track marker {\n  key 0.3 {\n    name \"film.open\"\n  }\n  key 0.7 {\n    name \"film.lock\"\n  }\n  key 0.8 {\n    name \"film.cut\"\n  }\n}\n";
+const WINDOW: &str = "track marker {\n  key 0.3 {\n    name \"flow.open\"\n  }\n  key 0.7 {\n    name \"flow.lock\"\n  }\n  key 0.8 {\n    name \"flow.cut\"\n  }\n}\n";
 
-const DUEL: &str = "track marker {\n  key 0.2 {\n    name \"film.open\"\n  }\n  key 0.8 {\n    name \"film.lock\"\n  }\n  key 0.9 {\n    name \"film.cut\"\n  }\n}\ntrack hotspot {\n  key 0.2 {\n    id \"knife\"\n    rect 0.1 0.1 0.2 0.2\n  }\n  key 0.6 {\n    id \"knife\"\n    rect 0.5 0.1 0.2 0.2\n  }\n}\n";
+const DUEL: &str = "track marker {\n  key 0.2 {\n    name \"flow.open\"\n  }\n  key 0.8 {\n    name \"flow.lock\"\n  }\n  key 0.9 {\n    name \"flow.cut\"\n  }\n}\ntrack hotspot {\n  key 0.2 {\n    id \"knife\"\n    rect 0.1 0.1 0.2 0.2\n  }\n  key 0.6 {\n    id \"knife\"\n    rect 0.5 0.1 0.2 0.2\n  }\n}\n";
 
 fn duel() -> String {
     format!(
         r#"#og-profile:{}
 #og-name:duel
 title: duel
-og-film: segments/duel.ogt
+og-flow: segments/duel.ogt
 ---
 -> Dodge #line:dodge #qte:hold:dodge:200
     <<jump dodged>>
@@ -67,19 +67,19 @@ og-film: segments/duel.ogt
     <<jump frozen>>
 ===
 title: dodged
-og-film: segments/brave.ogt
-og-film-dissolve: 0.25
-og-film-ending: dodged
+og-flow: segments/brave.ogt
+og-flow-dissolve: 0.25
+og-flow-ending: dodged
 ---
 ===
 title: grabbed
-og-film: segments/shy.ogt
-og-film-ending: grabbed
+og-flow: segments/shy.ogt
+og-flow-ending: grabbed
 ---
 ===
 title: frozen
-og-film: segments/wait.ogt
-og-film-ending: frozen
+og-flow: segments/wait.ogt
+og-flow-ending: frozen
 ---
 ===
 "#,
@@ -90,10 +90,10 @@ og-film-ending: frozen
 fn script() -> String {
     format!(
         r#"#og-profile:{}
-#og-name:film
+#og-name:flow
 title: start
-og-film: segments/start.ogt
-og-film-chapter: chapter.start
+og-flow: segments/start.ogt
+og-flow-chapter: chapter.start
 ---
 <<declare $brave = false>>
 -> Door #line:door
@@ -105,7 +105,7 @@ og-film-chapter: chapter.start
     <<jump wait>>
 ===
 title: hall
-og-film: segments/hall.ogt
+og-flow: segments/hall.ogt
 ---
 <<jump branch>>
 ===
@@ -118,18 +118,18 @@ title: branch
 <<endif>>
 ===
 title: brave
-og-film: segments/brave.ogt
-og-film-ending: brave
+og-flow: segments/brave.ogt
+og-flow-ending: brave
 ---
 ===
 title: shy
-og-film: segments/shy.ogt
-og-film-ending: shy
+og-flow: segments/shy.ogt
+og-flow-ending: shy
 ---
 ===
 title: wait
-og-film: segments/wait.ogt
-og-film-ending: wait
+og-flow: segments/wait.ogt
+og-flow-ending: wait
 ---
 ===
 "#,
@@ -143,7 +143,7 @@ fn project() -> Option<&'static Path> {
     ROOT.get_or_init(|| {
         og_cook::cook::video::av1_encoder()?;
         let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-            .join(format!("og-runtime-film-{}", std::process::id()));
+            .join(format!("og-runtime-flow-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         let clips = root.join("assets/clips");
         std::fs::create_dir_all(&clips).unwrap();
@@ -177,7 +177,7 @@ fn project() -> Option<&'static Path> {
     .as_deref()
 }
 
-/// (tick, event name, event) of every film event of one engine.
+/// (tick, event name, event) of every flow event of one engine.
 type Seen = Rc<RefCell<Vec<(u32, String, Value)>>>;
 
 struct Game(Seen);
@@ -220,15 +220,15 @@ fn ok<T: og_runtime::wire::ToJson>(r: Result<T, String>) -> Value {
 
 struct Run {
     engine: u32,
-    film: f64,
+    flow: f64,
     decks: u32,
     seen: Seen,
 }
 
-/// An engine with the dialogue loaded and prepared and the film started
+/// An engine with the dialogue loaded and prepared and the flow started
 /// on `decks` decks.
 fn start(root: &Path, decks: u32) -> Run {
-    start_in(root, decks, "film")
+    start_in(root, decks, "flow")
 }
 
 fn start_in(root: &Path, decks: u32, dialogue: &str) -> Run {
@@ -256,8 +256,8 @@ fn start_in(root: &Path, decks: u32, dialogue: &str) -> Run {
                 .to_string(),
         ),
     ));
-    let info = ok(og_film_load(engine, dialogue.into()));
-    if dialogue == "film" {
+    let info = ok(og_flow_load(engine, dialogue.into()));
+    if dialogue == "flow" {
         assert_eq!(
             info["segments"],
             json!(["start", "hall", "brave", "shy", "wait"]),
@@ -265,7 +265,7 @@ fn start_in(root: &Path, decks: u32, dialogue: &str) -> Run {
         );
         assert_eq!(info["endings"], json!(["brave", "shy", "wait"]), "{info}");
     }
-    let film = ok(og_film_start(
+    let flow = ok(og_flow_start(
         engine,
         Some(json!({ "dialogue": dialogue, "decks": decks }).to_string()),
     ))
@@ -273,7 +273,7 @@ fn start_in(root: &Path, decks: u32, dialogue: &str) -> Run {
     .unwrap();
     Run {
         engine,
-        film,
+        flow,
         decks,
         seen,
     }
@@ -286,10 +286,10 @@ fn frame(engine: u32, n: u32) {
 }
 
 fn view(r: &Run) -> Value {
-    serde_json::from_str(&og_runtime::host_impl::json(og_film_view(r.engine, r.film))).unwrap()
+    serde_json::from_str(&og_runtime::host_impl::json(og_flow_view(r.engine, r.flow))).unwrap()
 }
 
-/// Frames until the film ends (at most 10 s), and one more, so the watch
+/// Frames until the flow ends (at most 10 s), and one more, so the watch
 /// has read that tick's events.
 fn to_end(r: &Run) {
     for _ in 0..600 {
@@ -299,15 +299,15 @@ fn to_end(r: &Run) {
         }
         frame(r.engine, 1);
     }
-    panic!("the film never ended: {}", view(r));
+    panic!("the flow never ended: {}", view(r));
 }
 
-/// The film nodes whose segments started, in order, with their ticks.
+/// The flow nodes whose segments started, in order, with their ticks.
 fn segments(r: &Run) -> Vec<(u32, String)> {
     r.seen
         .borrow()
         .iter()
-        .filter(|(_, n, _)| n == "og.FilmSegment")
+        .filter(|(_, n, _)| n == "og.FlowSegment")
         .map(|(t, _, e)| (*t, e["node"].as_str().unwrap().to_string()))
         .collect()
 }
@@ -325,17 +325,17 @@ fn events(r: &Run, name: &str) -> Vec<Value> {
         .collect()
 }
 
-/// Each deck and the og.Timeline asset it holds (0: none). og.film.start
-/// spawns the decks right after the film, on a fresh world the next
+/// Each deck and the og.Timeline asset it holds (0: none). og.flow.start
+/// spawns the decks right after the flow, on a fresh world the next
 /// entity ids.
 fn decks(r: &Run) -> Vec<(f64, u64)> {
     (1..=r.decks)
         .map(|k| {
-            let e = r.film + f64::from(k);
-            let d = ok(og_world_get(r.engine, e, "og.FilmDeck".into()));
+            let e = r.flow + f64::from(k);
+            let d = ok(og_world_get(r.engine, e, "og.FlowDeck".into()));
             assert_eq!(
-                d["film"].as_f64(),
-                Some(r.film),
+                d["flow"].as_f64(),
+                Some(r.flow),
                 "entity {e} is no deck: {d}"
             );
             let t = ok(og_world_get(r.engine, e, "og.Timeline".into()));
@@ -351,7 +351,7 @@ fn asset(r: &Run, name: &str) -> u64 {
 }
 
 fn current(r: &Run) -> f64 {
-    ok(og_world_get(r.engine, r.film, "og.Film".into()))["current"]
+    ok(og_world_get(r.engine, r.flow, "og.Flow".into()))["current"]
         .as_f64()
         .unwrap()
 }
@@ -371,14 +371,14 @@ fn every_route_reaches_its_ending_at_the_segments_cuts() {
     let a = start(root, 3);
     to_end(&a);
     assert_eq!(route(&a), ["start", "hall", "brave"]);
-    let chosen = events(&a, "og.FilmChoice");
+    let chosen = events(&a, "og.FlowChoice");
     assert_eq!(chosen.len(), 1, "{chosen:?}");
     assert_eq!(chosen[0]["index"], json!(1), "the #default, not the first");
     assert_eq!(chosen[0]["timedOut"], json!(true));
-    assert_eq!(events(&a, "og.FilmEnded")[0]["ending"], json!("brave"));
+    assert_eq!(events(&a, "og.FlowEnded")[0]["ending"], json!("brave"));
     assert_eq!(view(&a)["ending"], json!("brave"));
     assert_eq!(view(&a)["chapter"], json!("chapter.start"));
-    // The cut at film.cut (0.8 s: 48 ticks at 60 Hz), not the end (60);
+    // The cut at flow.cut (0.8 s: 48 ticks at 60 Hz), not the end (60);
     // `hall` without markers cuts at its end; the logic node costs no tick.
     let ticks: Vec<u32> = segments(&a).into_iter().map(|(t, _)| t).collect();
     assert_eq!(
@@ -392,39 +392,39 @@ fn every_route_reaches_its_ending_at_the_segments_cuts() {
     frame(b.engine, 10);
     assert!(
         view(&b)["window"].is_null(),
-        "closed before film.open: {}",
+        "closed before flow.open: {}",
         view(&b)
     );
-    let early = og_runtime::host_impl::answer(og_film_choose(b.engine, b.film, 0));
+    let early = og_runtime::host_impl::answer(og_flow_choose(b.engine, b.flow, 0));
     assert!(early.contains("no choice window"), "{early}");
     frame(b.engine, 15);
     let w = view(&b);
     assert_eq!(w["window"]["locked"], json!(false), "{w}");
     assert_eq!(w["window"]["defaultChoice"], json!(1), "{w}");
     assert_eq!(w["choices"].as_array().map(Vec::len), Some(3), "{w}");
-    ok(og_film_choose(b.engine, b.film, 0));
+    ok(og_flow_choose(b.engine, b.flow, 0));
     frame(b.engine, 1);
     assert_eq!(view(&b)["window"]["pending"], json!(0));
     to_end(&b);
     assert_eq!(route(&b), ["start", "hall", "shy"]);
-    assert_eq!(events(&b, "og.FilmChoice")[0]["timedOut"], json!(false));
+    assert_eq!(events(&b, "og.FlowChoice")[0]["timedOut"], json!(false));
 
     // Wait (index 2) through the command channel, then a choice too late.
     let c = start(root, 3);
     frame(c.engine, 25);
     let s: Value = serde_json::from_str(&og_engine_probe_commands(
         c.engine,
-        "0:film:choose:2".into(),
+        "0:flow:choose:2".into(),
     ))
     .unwrap();
     assert_eq!(s["scheduled"], json!(1), "{s}");
     frame(c.engine, 20);
     assert_eq!(view(&c)["window"]["locked"], json!(true), "{}", view(&c));
-    let late = og_runtime::host_impl::answer(og_film_choose(c.engine, c.film, 0));
+    let late = og_runtime::host_impl::answer(og_flow_choose(c.engine, c.flow, 0));
     assert!(late.contains("locked"), "{late}");
     to_end(&c);
     assert_eq!(route(&c), ["start", "wait"]);
-    assert_eq!(events(&c, "og.FilmEnded")[0]["ending"], json!("wait"));
+    assert_eq!(events(&c, "og.FlowEnded")[0]["ending"], json!("wait"));
 }
 
 #[test]
@@ -455,7 +455,7 @@ fn the_choice_warms_its_segment_and_the_cut_lands_on_that_deck() {
         decks(&r)
     );
     assert_eq!(warm(&r), [hall], "the default's segment warms first");
-    ok(og_film_choose(r.engine, r.film, 2));
+    ok(og_flow_choose(r.engine, r.flow, 2));
     frame(r.engine, 2);
     assert_eq!(warm(&r), [wait], "the chosen segment replaces it");
     let warm_deck = decks(&r)
@@ -487,7 +487,7 @@ fn a_snapshot_inside_the_window_restores_the_pending_choice_and_the_decks() {
     };
     let a = start(root, 3);
     frame(a.engine, 25);
-    ok(og_film_choose(a.engine, a.film, 0));
+    ok(og_flow_choose(a.engine, a.flow, 0));
     frame(a.engine, 1);
     let snap = ok(og_world_snapshot(a.engine, None))
         .as_str()
@@ -499,7 +499,7 @@ fn a_snapshot_inside_the_window_restores_the_pending_choice_and_the_decks() {
     assert_eq!(view(&a)["ending"], json!("shy"));
 
     // A fresh process: the dialogue loaded and prepared, the snapshot
-    // restored over the film it started.
+    // restored over the flow it started.
     let b = start(root, 3);
     ok(og_world_restore(b.engine, snap, None));
     frame(b.engine, 1);
@@ -556,7 +556,7 @@ fn a_held_qte_takes_its_choice_and_letting_go_starts_it_again() {
     command(&a, "key_up:Space");
     to_end(&a);
     assert_eq!(route(&a), ["duel", "dodged"]);
-    assert_eq!(events(&a, "og.FilmChoice")[0]["timedOut"], json!(false));
+    assert_eq!(events(&a, "og.FlowChoice")[0]["timedOut"], json!(false));
 
     // Let go after 8 ticks and held 8 more: never 12 in a row, the default.
     let b = start_in(root, 3, "duel");
@@ -572,7 +572,7 @@ fn a_held_qte_takes_its_choice_and_letting_go_starts_it_again() {
     command(&b, "key_up:Space");
     to_end(&b);
     assert_eq!(route(&b), ["duel", "frozen"]);
-    assert_eq!(events(&b, "og.FilmChoice")[0]["timedOut"], json!(true));
+    assert_eq!(events(&b, "og.FlowChoice")[0]["timedOut"], json!(true));
 }
 
 #[test]
@@ -616,7 +616,7 @@ fn a_hotspot_moves_with_its_keys_only_while_the_window_is_open() {
     // The hotspot's choice is taken as any choice is.
     let b = start_in(root, 3, "duel");
     to_window(&b);
-    ok(og_film_choose(b.engine, b.film, 1));
+    ok(og_flow_choose(b.engine, b.flow, 1));
     to_end(&b);
     assert_eq!(route(&b), ["duel", "grabbed"]);
 }
@@ -629,22 +629,22 @@ fn skip_goes_to_the_window_then_to_the_cut_and_takes_the_default() {
     };
     let r = start_in(root, 3, "duel");
     frame(r.engine, 2);
-    ok(og_film_skip(r.engine, r.film));
+    ok(og_flow_skip(r.engine, r.flow));
     frame(r.engine, 1);
     let v = view(&r);
     assert!(
         (v["time"].as_f64().unwrap() - 0.2).abs() < 0.02,
-        "at film.open: {v}"
+        "at flow.open: {v}"
     );
     assert!(!v["window"].is_null(), "{v}");
     let before = segments(&r).len();
-    ok(og_film_skip(r.engine, r.film));
+    ok(og_flow_skip(r.engine, r.flow));
     frame(r.engine, 2);
     assert_eq!(segments(&r).len(), before + 1, "the cut came at once");
     assert_eq!(route(&r), ["duel", "frozen"]);
-    assert_eq!(events(&r, "og.FilmChoice")[0]["timedOut"], json!(true));
+    assert_eq!(events(&r, "og.FlowChoice")[0]["timedOut"], json!(true));
     to_end(&r);
-    let after = og_runtime::host_impl::answer(og_film_skip(r.engine, r.film));
+    let after = og_runtime::host_impl::answer(og_flow_skip(r.engine, r.flow));
     assert!(after.contains("ended"), "{after}");
 }
 
@@ -656,15 +656,15 @@ fn a_dissolve_plays_the_old_deck_under_the_new_and_lets_it_go() {
     };
     let r = start_in(root, 3, "duel");
     to_window(&r);
-    ok(og_film_choose(r.engine, r.film, 0));
+    ok(og_flow_choose(r.engine, r.flow, 0));
     let left = current(&r);
     while route(&r).len() < 2 {
         frame(r.engine, 1);
     }
-    let film = ok(og_world_get(r.engine, r.film, "og.Film".into()));
-    assert_eq!(film["previous"].as_f64(), Some(left), "{film}");
+    let flow = ok(og_world_get(r.engine, r.flow, "og.Flow".into()));
+    assert_eq!(flow["previous"].as_f64(), Some(left), "{flow}");
     // 0.25 s at 60 Hz.
-    assert_eq!(film["dissolve"], json!(15), "{film}");
+    assert_eq!(flow["dissolve"], json!(15), "{flow}");
     let v = view(&r);
     let mix = v["mix"].as_f64().unwrap();
     assert!(mix < 0.2, "{v}");
@@ -686,20 +686,20 @@ fn a_dissolve_plays_the_old_deck_under_the_new_and_lets_it_go() {
         (json!(1.0), json!(0)),
         "{v}"
     );
-    let film = ok(og_world_get(r.engine, r.film, "og.Film".into()));
-    assert_eq!(film["previous"], json!(0), "{film}");
+    let flow = ok(og_world_get(r.engine, r.flow, "og.Flow".into()));
+    assert_eq!(flow["previous"], json!(0), "{flow}");
     let freed = decks(&r).into_iter().find(|(e, _)| *e == left).unwrap();
     assert_eq!(freed.1, 0, "its deck is let go");
 }
 
 #[test]
-fn the_chart_lays_film_nodes_out_by_depth_through_logic_nodes() {
+fn the_chart_lays_flow_nodes_out_by_depth_through_logic_nodes() {
     let Some(root) = project() else {
         eprintln!("skipped: no ffmpeg with an AV1 encoder");
         return;
     };
     let r = start(root, 3);
-    let c = ok(og_film_chart(r.engine, "film".into()));
+    let c = ok(og_flow_chart(r.engine, "flow".into()));
     let at: Vec<(String, u64, f64, f64)> = c["nodes"]
         .as_array()
         .unwrap()

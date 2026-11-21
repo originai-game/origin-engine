@@ -64,7 +64,7 @@ the core controls.
 | Death, retry, revive offer, game over | `game-over` |
 | Creator tools (inspector, hierarchy, catalogues) | `creator-tools` |
 | Credits | `credits` |
-| Interactive film (og.film: the window's choices with the time left, hotspots on the picture and quick-time progress; the story-so-far flowchart; chapter select; the ending gallery) | `film-choices`, `film-flowchart`, `film-chapters`, `film-gallery` |
+| Interactive film (og.flow: the window's choices with the time left, hotspots on the picture and quick-time progress; the story-so-far flowchart; chapter select; the ending gallery) | `flow-choices`, `flow-chart`, `flow-chapters`, `flow-gallery` |
 | Card, confirm dialog | `card`, `confirm` |
 | Lists and tables (data list, key-value and stat compare, table, tree, calendar, pagination) | `data-list`, `key-values`, `table`, `tree`, `calendar`, `pagination` |
 | HUD feedback (objectives, rating, banner, subtitles, notifications) | `objective-tracker`, `star-rating`, `banner`, `subtitles`, `notifications` |
@@ -89,10 +89,10 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `creator-tools` (`creator-tools.svelte`) | `frame` (`.chosen`), `label`, `title` |
 | `credits` (`credits.svelte`) | `frame`, `heading`, `name`, `shade`, `rule` (`.end`), `role` |
 | `data-list` (`data-list.svelte`) | `frame`, `row` (a button), `label`, `figure`, `note` |
-| `film-chapters` (`film-chapters.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name`, `shade`, `plate`, `lock` |
-| `film-choices` (`film-choices.svelte`) | `frame`, `timer`, `choice` (a button: `.chosen` `[aria-current]` `:disabled`), `hotspot` (a button: `:disabled`), `qte`, `shade` |
-| `film-flowchart` (`film-flowchart.svelte`) | `frame`, `band`, `title`, `detail`, `shade`, `kicker` |
-| `film-gallery` (`film-gallery.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name`, `shade`, `plate`, `lock`, `mark` |
+| `flow-chapters` (`flow-chapters.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name`, `shade`, `plate`, `lock` |
+| `flow-choices` (`flow-choices.svelte`) | `frame`, `timer`, `choice` (a button: `.chosen` `[aria-current]` `:disabled`), `hotspot` (a button: `:disabled`), `qte`, `shade` |
+| `flow-chart` (`flow-chart.svelte`) | `frame`, `band`, `title`, `detail`, `shade`, `kicker` |
+| `flow-gallery` (`flow-gallery.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name`, `shade`, `plate`, `lock`, `mark` |
 | `game-over` (`game-over.svelte`) | `frame`, `title`, `figure`, `label`, `offer` |
 | `hud-editor` (`hud-editor.svelte`) | `hint`, `dock` |
 | `key-values` (`key-values.svelte`) | `frame`, `row`, `label`, `figure`, `delta` (`.up` `.down`) |

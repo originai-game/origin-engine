@@ -19,6 +19,10 @@
 //! mapping (`migrate`). A record that only gained fields needs no step: a
 //! restore takes it with the added fields at their declared defaults
 //! (`save::engine_owned`); a field removed, renamed or retyped does.
+//!
+//! A record that took another name is in [`RETYPED`]: its saved type takes
+//! the name before any other step looks at the save, so the steps and the
+//! restore see it under the name this build declares.
 
 use og_ecs::SnapshotEdit;
 
@@ -1275,6 +1279,53 @@ fn ui_upgrade(edit: &mut SnapshotEdit) -> Result<(), String> {
         .map_err(|e| e.reason().to_string())
 }
 
+/// A record that took another name: the name it was saved under, its name
+/// now, and its fields that took another name with it.
+type Retyped = (
+    &'static str,
+    &'static str,
+    &'static [(&'static str, &'static str)],
+);
+
+/// The records that took another name, oldest first.
+const RETYPED: &[Retyped] = &[
+    // og.film became og.flow; the field naming a deck's or an event's flow
+    // went with it.
+    ("og.Film", "og.Flow", &[]),
+    ("og.FilmDeck", "og.FlowDeck", &[("film", "flow")]),
+    ("og.FilmSegment", "og.FlowSegment", &[("film", "flow")]),
+    ("og.FilmChoice", "og.FlowChoice", &[("film", "flow")]),
+    ("og.FilmChapter", "og.FlowChapter", &[("film", "flow")]),
+    ("og.FilmEnded", "og.FlowEnded", &[("film", "flow")]),
+];
+
+/// Gives every saved type in [`RETYPED`] its name now: its components,
+/// resource and events keep their bytes and its version. Returns what it
+/// renamed, for the log.
+fn retype(edit: &mut SnapshotEdit) -> Result<Vec<String>, String> {
+    let mut done = Vec::new();
+    for (saved, now, fields) in RETYPED {
+        let Some(mut schema) = edit.schema(saved).cloned() else {
+            continue;
+        };
+        schema.name = (*now).to_string();
+        for f in &mut schema.fields {
+            if let Some((_, new)) = fields.iter().find(|(old, _)| f.name == *old) {
+                f.name = (*new).to_string();
+            }
+        }
+        edit.map_type(saved, schema, &mut |v| Ok(v.to_vec()))
+            .map_err(|e| {
+                format!(
+                    "the engine's rename of {saved} to {now} failed: {}",
+                    e.reason()
+                )
+            })?;
+        done.push(format!("{saved} is {now}"));
+    }
+    Ok(done)
+}
+
 /// A state block's version: the `u32` its bytes start with.
 fn block_version(edit: &SnapshotEdit, name: &str) -> Option<u32> {
     let b = edit.block(name)?;
@@ -1290,7 +1341,8 @@ pub(crate) fn upgrade(snapshot: &[u8]) -> Result<Option<Upgraded>, String> {
     let Ok(mut edit) = SnapshotEdit::from_bytes(snapshot) else {
         return Ok(None);
     };
-    let mut done = Vec::new();
+    // Names first: the lazy check and the steps below go by this build's.
+    let mut done = retype(&mut edit)?;
     // Older engines registered some now-lazy records eagerly. An unused
     // schema must not opt the restored world into those modules again.
     // An empty archetype still uses its schemas: a later spawn reuses its
@@ -1397,6 +1449,108 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+
+    /// A save from before og.film became og.flow holds og.Film, og.FilmDeck
+    /// and the film events under those names, the deck and the events
+    /// naming their flow `film`: upgraded, it holds them exactly as this
+    /// build declares them, every value's bytes as saved, and restores
+    /// into a world that registered this build's records. Ways this could
+    /// fail: a type left under its old name or a field left `film` (the
+    /// restore refuses the save), an event queue or a component dropped,
+    /// or the renamed types then taken for unused lazy ones and removed.
+    #[test]
+    fn a_save_from_before_og_flow_restores_its_film_as_a_flow() {
+        use crate::host::codec::{Layout, RecordKind};
+        let mut old = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+        let mut now = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+        let (mut components, mut events) = (Vec::new(), Vec::new());
+        for (i, (saved, name, fields)) in RETYPED.iter().enumerate() {
+            let decl = og_api::host::RECORDS
+                .iter()
+                .find(|d| d.schema == *name)
+                .unwrap_or_else(|| panic!("{name} is not a record"));
+            let layout = Layout::from_decl(decl).unwrap();
+            let current = layout.schema();
+            let mut schema = current.clone();
+            schema.name = (*saved).to_string();
+            for (before, after) in *fields {
+                let f = schema
+                    .fields
+                    .iter_mut()
+                    .find(|f| f.name == *after)
+                    .unwrap_or_else(|| panic!("{name} has no field {after}"));
+                f.name = (*before).to_string();
+            }
+            // Each number its own value; a string, a list and a bool empty.
+            use og_core::reflect::FieldType;
+            let bytes: Vec<u8> = schema
+                .fields
+                .iter()
+                .enumerate()
+                .flat_map(|(k, f)| {
+                    let mut v = vec![0u8; f.ty.size()];
+                    if matches!(f.ty, FieldType::U32 | FieldType::I32 | FieldType::U64) {
+                        v[0] = (16 * (i + 1) + k) as u8;
+                    }
+                    v
+                })
+                .collect();
+            let id = old.register_schema(schema).unwrap();
+            let id_now = now.register_schema(current.clone()).unwrap();
+            match layout.kind {
+                RecordKind::Component => components.push((id, id_now, bytes, current)),
+                RecordKind::Event => {
+                    old.send_bytes(id, &bytes).unwrap();
+                    events.push((*saved, *name, current));
+                }
+                RecordKind::Resource => panic!("{name}: a resource has no case here"),
+            }
+        }
+        assert_eq!((components.len(), events.len()), (2, 4));
+        let entity = old
+            .spawn_bytes(components.iter().map(|c| (c.0, c.2.clone())).collect())
+            .unwrap();
+        let saved = old.snapshot();
+        assert!(
+            now.check_snapshot(&saved, false).is_err(),
+            "the save as it was does not restore"
+        );
+        let (bytes, steps) = upgrade(&saved).unwrap().expect("the renames ran");
+        assert_eq!(steps.len(), RETYPED.len(), "{steps:?}");
+        let edit = SnapshotEdit::from_bytes(&bytes).unwrap();
+        for (saved, name, _) in RETYPED {
+            assert!(edit.schema(saved).is_none(), "{saved} is still in the save");
+            assert!(edit.schema(name).is_some(), "{name}");
+        }
+        // A save keeps a type's name, version and its fields' names and types.
+        let laid_out = |s: &og_core::reflect::Schema| {
+            let fields: Vec<_> = s.fields.iter().map(|f| (f.name.clone(), f.ty)).collect();
+            (s.name.clone(), s.version, fields)
+        };
+        for (saved, name, current) in &events {
+            assert_eq!(
+                edit.schema(name).map(laid_out),
+                Some(laid_out(current)),
+                "{saved}"
+            );
+            assert!(edit.has_events(name), "{name}'s queued event");
+        }
+        assert!(upgrade(&bytes).unwrap().is_none(), "nothing is left to do");
+        now.check_snapshot(&bytes, false).unwrap();
+        now.restore(&bytes).unwrap();
+        for (_, id, value, current) in &components {
+            assert_eq!(
+                edit.schema(&current.name).map(laid_out),
+                Some(laid_out(current))
+            );
+            assert_eq!(
+                &now.get_bytes(entity, *id).unwrap(),
+                value,
+                "{}",
+                current.name
+            );
         }
     }
 

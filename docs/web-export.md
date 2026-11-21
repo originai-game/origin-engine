@@ -332,7 +332,7 @@ variant: what counts is the largest one a player downloads, never the sum
 Each publish module, single-threaded and lanes, is split (Binaryen's `wasm-split`, pinned by
 `scripts/install-tools.sh`; `packages/engine/scripts/wasm-split.ts`) into
 the primary, which boots, and one module per optional capability:
-`physics`, `story` (with og.film), `nav` (with og.ai), `motion`,
+`physics`, `story` (with og.flow), `nav` (with og.ai), `motion`,
 `destruction` and `video` (`scripts/wasm-modules.json` assigns the
 functions). What a game using none of them runs stays in the primary,
 so such a game loads none: every function its ticks, snapshots and

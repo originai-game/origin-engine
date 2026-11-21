@@ -1,4 +1,4 @@
-//! The story's bindings (StoryApi, FilmApi).
+//! The story's bindings (StoryApi, FlowApi).
 //! Expanded for a host by [`crate::host_bindings!`].
 
 #[doc(hidden)]
@@ -94,33 +94,33 @@ macro_rules! __og_host_bindings_story {
                 $crate::og_story_mark(world, id, desc)
             }
         }
-        impl $crate::host_impl::api::FilmApi for $host {
-            fn og_film_load(&self, world: u32, dialogue: String) -> String {
-                $crate::host_impl::answer($crate::og_film_load(world, dialogue))
+        impl $crate::host_impl::api::FlowApi for $host {
+            fn og_flow_load(&self, world: u32, dialogue: String) -> String {
+                $crate::host_impl::answer($crate::og_flow_load(world, dialogue))
             }
-            fn og_film_start(&self, world: u32, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_film_start(world, desc))
+            fn og_flow_start(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_flow_start(world, desc))
             }
-            fn og_film_view(&self, world: u32, film: f64) -> String {
-                $crate::host_impl::json($crate::og_film_view(world, film))
+            fn og_flow_view(&self, world: u32, flow: f64) -> String {
+                $crate::host_impl::json($crate::og_flow_view(world, flow))
             }
-            fn og_film_choose(&self, world: u32, film: f64, index: u32) -> String {
-                $crate::host_impl::answer($crate::og_film_choose(world, film, index))
+            fn og_flow_choose(&self, world: u32, flow: f64, index: u32) -> String {
+                $crate::host_impl::answer($crate::og_flow_choose(world, flow, index))
             }
-            fn og_film_play(&self, world: u32, film: f64) -> String {
-                $crate::host_impl::answer($crate::og_film_play(world, film))
+            fn og_flow_play(&self, world: u32, flow: f64) -> String {
+                $crate::host_impl::answer($crate::og_flow_play(world, flow))
             }
-            fn og_film_pause(&self, world: u32, film: f64) -> String {
-                $crate::host_impl::answer($crate::og_film_pause(world, film))
+            fn og_flow_pause(&self, world: u32, flow: f64) -> String {
+                $crate::host_impl::answer($crate::og_flow_pause(world, flow))
             }
-            fn og_film_skip(&self, world: u32, film: f64) -> String {
-                $crate::host_impl::answer($crate::og_film_skip(world, film))
+            fn og_flow_skip(&self, world: u32, flow: f64) -> String {
+                $crate::host_impl::answer($crate::og_flow_skip(world, flow))
             }
-            fn og_film_chart(&self, world: u32, dialogue: String) -> String {
-                $crate::host_impl::answer($crate::og_film_chart(world, dialogue))
+            fn og_flow_chart(&self, world: u32, dialogue: String) -> String {
+                $crate::host_impl::answer($crate::og_flow_chart(world, dialogue))
             }
-            fn og_film_stop(&self, world: u32, film: f64) -> String {
-                $crate::host_impl::answer($crate::og_film_stop(world, film))
+            fn og_flow_stop(&self, world: u32, flow: f64) -> String {
+                $crate::host_impl::answer($crate::og_flow_stop(world, flow))
             }
         }
     };

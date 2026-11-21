@@ -1,25 +1,25 @@
-//! A timeline as og.film plays it, a segment: one video track without an
+//! A timeline as og.flow plays it, a segment: one video track without an
 //! entity (it plays on the deck's own og.VideoPlayer), and the markers
-//! `film.open`, `film.lock` and `film.cut` that time its choice window.
+//! `flow.open`, `flow.lock` and `flow.cut` that time its choice window.
 //! og-cook checks a dialogue's segments with it and og-runtime plays them
 //! by it, so the two never disagree; so are a choice's `#qte` tags.
 
 use crate::{HotspotKey, Timeline, Track};
 
-/// The marker that shows a film node's choices.
-pub const OPEN: &str = "film.open";
+/// The marker that shows a flow node's choices.
+pub const OPEN: &str = "flow.open";
 /// The marker that ends choosing.
-pub const LOCK: &str = "film.lock";
+pub const LOCK: &str = "flow.lock";
 /// The marker that cuts to the next segment (else the end).
-pub const CUT: &str = "film.cut";
+pub const CUT: &str = "flow.cut";
 
-/// What og.film reads of a segment.
+/// What og.flow reads of a segment.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Segment {
     /// The first key of its video track: the video's asset id and its `from`.
     pub video: Option<(String, f32)>,
-    /// When the window opens (`film.open`, else 0), locks (`film.lock`,
-    /// else the cut) and the segment cuts (`film.cut`, else its duration;
+    /// When the window opens (`flow.open`, else 0), locks (`flow.lock`,
+    /// else the cut) and the segment cuts (`flow.cut`, else its duration;
     /// never past it), in seconds.
     pub open: f32,
     pub lock: f32,
@@ -58,17 +58,17 @@ impl QteKind {
     }
 }
 
-/// The most choices of a node a quick-time event may take (og.Film.qte
+/// The most choices of a node a quick-time event may take (og.Flow.qte
 /// keeps their progress).
 pub const QTE_CHOICES: usize = 8;
 
-/// A node's `og-film-dissolve` header: the seconds its segment dissolves
+/// A node's `og-flow-dissolve` header: the seconds its segment dissolves
 /// in over the one before, more than 0 and at most 5.
 pub fn dissolve(header: &str) -> Result<f32, String> {
     match header.trim().parse::<f32>() {
         Ok(s) if s > 0.0 && s <= 5.0 => Ok(s),
         _ => Err(format!(
-            "og-film-dissolve: {header} is not a dissolve's seconds, more than 0 and at most 5 (`og-film-dissolve: 0.5`)"
+            "og-flow-dissolve: {header} is not a dissolve's seconds, more than 0 and at most 5 (`og-flow-dissolve: 0.5`)"
         )),
     }
 }
@@ -163,7 +163,7 @@ mod tests {
     #[test]
     fn the_markers_time_the_window_and_their_absence_falls_back_to_the_ends() {
         let s = parse(&format!(
-            "{VIDEO}track marker {{\n  key 3 {{\n    name \"film.open\"\n  }}\n  key 7 {{\n    name \"film.lock\"\n  }}\n  key 8 {{\n    name \"film.cut\"\n  }}\n}}\n"
+            "{VIDEO}track marker {{\n  key 3 {{\n    name \"flow.open\"\n  }}\n  key 7 {{\n    name \"flow.lock\"\n  }}\n  key 8 {{\n    name \"flow.cut\"\n  }}\n}}\n"
         ))
         .segment()
         .unwrap();
@@ -173,7 +173,7 @@ mod tests {
         let s = parse(VIDEO).segment().unwrap();
         assert_eq!((s.open, s.lock, s.cut), (0.0, 10.0, 10.0));
         // A lock before the open, a cut past the end clamped below a lock.
-        let late = "track marker {\n  key 6 {\n    name \"film.open\"\n  }\n  key 5 {\n    name \"film.lock\"\n  }\n}\n";
+        let late = "track marker {\n  key 6 {\n    name \"flow.open\"\n  }\n  key 5 {\n    name \"flow.lock\"\n  }\n}\n";
         assert!(
             parse(&format!("{VIDEO}{late}"))
                 .segment()

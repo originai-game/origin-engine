@@ -94,7 +94,7 @@ beyond the platform SDK's rooms.
 - **A runtime module is loaded when it is used.** `og-runtime` is the core
   (declarations, engines, the tick, assets, saves, the probe) plus modules,
   one per IDL module that binds a feature crate (physics, story with
-  og.film, navigation with og.ai, the motion model, destruction, video).
+  og.flow, navigation with og.ai, the motion model, destruction, video).
   Every engine carries every module: natively they are linked, and the
   web's publish modules split each into its own wasm part that the engine
   loads on a game's first call into it, so a game that uses none loads

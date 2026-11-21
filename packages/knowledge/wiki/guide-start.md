@@ -32,12 +32,12 @@ an interactive film (`--genre interactive-film` is the same choice).
   view that disagree, or a look that does not draw them (pixel in 3d), exit
   1 naming the looks that do.
 - `film` writes the same skeleton plus a film to replace: the story in
-  `assets/story/film.yarn`, a segment per film node in `assets/segments/`,
+  `assets/story/film.yarn`, a segment per flow node in `assets/segments/`,
   a placeholder stream in `assets/clips/`, the picture's screen in
   `assets/ui/film-view.tsx`, and a `src/main.ts` that loads the story
   and the film, starts it paused and shows it with the built-in
-  `Subtitles` and `FilmChoices`. Read the film guide next (`og api
-  show film`): it covers the story, segments, choices, saves and route
+  `Subtitles` and `FlowChoices`. Read the flow guide next (`og api
+  show flow`): it covers the story, segments, choices, saves and route
   tests. A film's genre is `interactive-film`, and it has no `view` or
   `players`; passing another genre, a view or players exits 1.
 - `--variant <name>` picks one of the look's variants (looks), written into

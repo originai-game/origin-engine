@@ -76,7 +76,7 @@ impl Dialogue {
 
 impl Dialogue {
     /// The source lines of the lines node `title` says, its choices' bodies
-    /// included (og.film refuses them in a film node).
+    /// included (og.flow refuses them in a flow node).
     pub fn said_in(&self, title: &str) -> Vec<usize> {
         let mut out: Vec<usize> = self
             .nodes
@@ -160,7 +160,7 @@ mod tests {
             r#"#og-profile:yarn-spinner-3.2.2
 #og-name:film
 title: kitchen
-og-film: segments/kitchen.ogt
+og-flow: segments/kitchen.ogt
 ---
 <<declare $brave = false>>
 -> Take the knife #line:kitchen.knife #hotspot:knife
@@ -174,7 +174,7 @@ og-film: segments/kitchen.ogt
     <<endif>>
 ===
 title: hall
-og-film: segments/hall.ogt
+og-flow: segments/hall.ogt
 ---
 <<jump ending>>
 ===
@@ -183,7 +183,7 @@ title: yard
 <<jump ending>>
 ===
 title: ending
-og-film-ending: brave
+og-flow-ending: brave
 ---
 ===
 "#,
@@ -193,7 +193,7 @@ og-film-ending: brave
         let titles: Vec<_> = g.iter().map(|n| n.title.as_str()).collect();
         assert_eq!(titles, ["kitchen", "hall", "yard", "ending"]);
         let k = &g[0];
-        assert_eq!(k.headers["og-film"], "segments/kitchen.ogt");
+        assert_eq!(k.headers["og-flow"], "segments/kitchen.ogt");
         assert!(
             k.to.is_empty(),
             "the node's own steps jump nowhere: {:?}",
@@ -213,6 +213,6 @@ og-film-ending: brave
             Some("")
         );
         assert_eq!(g[1].to, ["ending"]);
-        assert_eq!(g[3].headers["og-film-ending"], "brave");
+        assert_eq!(g[3].headers["og-flow-ending"], "brave");
     }
 }

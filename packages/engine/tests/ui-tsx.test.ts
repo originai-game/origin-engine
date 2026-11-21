@@ -232,24 +232,24 @@ test("a display frame sends the UI's changes at each tick boundary", () => {
   renderers.delete(id);
 });
 
-// FilmChoices (the 底牌 playtest, film guide §4) takes og.film.view's value and
+// FlowChoices (the 底牌 playtest, flow guide §4) takes og.flow.view's value and
 // derives its rows itself. Ways this could fail: a pressed row or hotspot
 // reporting its place in the list instead of ChoiceView.index (choice 3 is
 // listed before 1 here); a disabled choice, or any after the lock, still
 // taking presses; the pending choice not marked; the screen showing with no
 // window.
-test("FilmChoices shows a film's window from its view and reports the ChoiceView.index pressed", async () => {
-  const dir = mkdtempSync(join(tmpdir(), "og-tsx-film-"));
+test("FlowChoices shows a flow's window from its view and reports the ChoiceView.index pressed", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-flow-"));
   try {
     writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
-    writeFileSync(join(dir, "main.ts"), `export { FilmChoices } from "@origingame/engine/ui/components";\n`);
+    writeFileSync(join(dir, "main.ts"), `export { FlowChoices } from "@origingame/engine/ui/components";\n`);
     const out = join(dir, "game.js");
     const b = await bundleGame(join(dir, "main.ts"), out, "native");
     if (!b.ok) throw new Error(b.reason);
     const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
     const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
     writeFileSync(out, readFileSync(out, "utf8").replace(/(["'])[^"']*\/ui\/rt(\.ts)?\1/g, JSON.stringify(rt)).replace(/(["'])@origingame\/engine\/ui\1/g, JSON.stringify(ui)));
-    const { FilmChoices } = await import(out);
+    const { FlowChoices } = await import(out);
     const { loadNativeHost } = await import("../src/node/index.ts");
     loadNativeHost();
 
@@ -266,7 +266,7 @@ test("FilmChoices shows a film's window from its view and reports the ChoiceView
     });
     const v = createSignal<unknown>(view(null));
     const chosen: number[] = [];
-    mount(world, FilmChoices, { get view() { return v(); }, onChoose: (_e: unknown, index: number) => chosen.push(index) });
+    mount(world, FlowChoices, { get view() { return v(); }, onChoose: (_e: unknown, index: number) => chosen.push(index) });
     const ops = () => batches.flat();
     expect(ops().some((op) => op[0] === "createText")).toBe(false);
 
@@ -542,23 +542,23 @@ test("a glyph prompt shows the player's rebinding on the next frame", () => {
   }
 });
 
-// FilmFlowchartScreen draws og.film.chart through NodeGraph. Ways this could
+// FlowChartScreen draws og.flow.chart through NodeGraph. Ways this could
 // fail: a pressed node reporting nothing or another node's id (the graph's
 // pick not passed through); Play from here firing for a node the player
 // cannot play from; the chart's nodes not reaching the graph at all.
-test("FilmFlowchartScreen passes a picked node's id through and plays only where it can", async () => {
+test("FlowChartScreen passes a picked node's id through and plays only where it can", async () => {
   const dir = mkdtempSync(join(tmpdir(), "og-tsx-flowchart-"));
   try {
     writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
     const screen = fileURLToPath(new URL("../src/ui/screens/flow-chart.tsx", import.meta.url));
-    writeFileSync(join(dir, "main.ts"), `export { FilmFlowchartScreen, fixtures } from ${JSON.stringify(screen)};\n`);
+    writeFileSync(join(dir, "main.ts"), `export { FlowChartScreen, fixtures } from ${JSON.stringify(screen)};\n`);
     const out = join(dir, "game.js");
     const b = await bundleGame(join(dir, "main.ts"), out, "native");
     if (!b.ok) throw new Error(b.reason);
     const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
     const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
     writeFileSync(out, readFileSync(out, "utf8").replace(/(["'])[^"']*\/ui\/rt(\.ts)?\1/g, JSON.stringify(rt)).replace(/(["'])@origingame\/engine\/ui\1/g, JSON.stringify(ui)));
-    const { FilmFlowchartScreen, fixtures } = await import(out);
+    const { FlowChartScreen, fixtures } = await import(out);
     const { loadNativeHost } = await import("../src/node/index.ts");
     loadNativeHost();
 
@@ -569,7 +569,7 @@ test("FilmFlowchartScreen passes a picked node's id through and plays only where
     const canPlay = createSignal(false);
     const picked: string[] = [];
     let played = 0;
-    mount(world, FilmFlowchartScreen, { ...fixtures.default, get canPlay() { return canPlay(); }, onPick: (_e: unknown, id: string) => picked.push(id), onPlay: () => played++ });
+    mount(world, FlowChartScreen, { ...fixtures.default, get canPlay() { return canPlay(); }, onPick: (_e: unknown, id: string) => picked.push(id), onPlay: () => played++ });
     const ops = () => batches.flat();
     const texts = ops().filter((op) => op[0] === "createText").map((op) => op[2]);
     for (const label of ["Kitchen", "Cellar", "Dawn"]) expect(texts).toContain(label);

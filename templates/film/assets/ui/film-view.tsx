@@ -2,15 +2,15 @@ import type { Texture } from "@origingame/engine";
 import { Image, Show, View } from "@origingame/engine/ui";
 
 export interface FilmViewProps {
-  /** The texture og.film.view gives for the segment playing (0 before the first frame). */
+  /** The texture og.flow.view gives for the segment playing (0 before the first frame). */
   picture: Texture | 0;
-  /** The picture dissolving out under it (FilmView.previous; 0: none). */
+  /** The picture dissolving out under it (FlowView.previous; 0: none). */
   previous: Texture | 0;
-  /** How far the dissolve is: the picture's opacity over the previous one (FilmView.mix). */
+  /** How far the dissolve is: the picture's opacity over the previous one (FlowView.mix). */
   mix: number;
 }
 
-/** The footage fills the surface, so FilmChoices' hotspot fractions land on the picture (film §4). */
+/** The footage fills the surface, so FlowChoices' hotspot fractions land on the picture (flow §4). */
 export function FilmView(props: FilmViewProps) {
   return (
     <View class="absolute inset-0 bg-shade-deep">

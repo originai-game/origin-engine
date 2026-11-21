@@ -1,50 +1,50 @@
-module film {
-  doc "Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-film: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `film.open` marker, lock at `film.lock` and are taken at its cut (`film.cut`, else its end), the default (`#default`) when none was chosen."
-  doc "The story stays og.story's, the footage og.video's, the timing og.timeline's: og.film moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state."
+module flow {
+  doc "Interactive film (FMV): a Yarn dialogue paced by its footage. A node with an `og-flow: <timeline>` header plays that segment (a timeline with a video track) on a deck; its choices open at the segment's `flow.open` marker, lock at `flow.lock` and are taken at its cut (`flow.cut`, else its end), the default (`#default`) when none was chosen."
+  doc "The story stays og.story's, the footage og.video's, the timing og.timeline's: og.flow moves the conversation between segments and warms those a choice may lead to on its other decks. All of it is world state."
   guide "flow"
   split story video
 
-  struct FilmDesc {
-    doc "A film to start."
+  struct FlowStartDesc {
+    doc "A flow to start."
     desc true
-    field dialogue String "The dialogue (StoryAsset.name), loaded with og.story.load and og.film.load."
+    field dialogue String "The dialogue (StoryAsset.name), loaded with og.story.load and og.flow.load."
     field node String "The node to start at (empty: the dialogue's start)."
-    field decks u32 "Decks to play on, 1 to 3 (0: 3). One plays; the others warm what the film may cut to. 1 warms nothing (one decoder: WeChat on iOS)." {
+    field decks u32 "Decks to play on, 1 to 3 (0: 3). One plays; the others warm what the flow may cut to. 1 warms nothing (one decoder: WeChat on iOS)." {
       max 3
     }
-    field paused bool "Start holding the first segment's first frame, warmed, until og.film.play (a title screen before the first gesture)."
+    field paused bool "Start holding the first segment's first frame, warmed, until og.flow.play (a title screen before the first gesture)."
   }
 
-  struct FilmInfo {
-    doc "What og.film.load prepared."
+  struct FlowInfo {
+    doc "What og.flow.load prepared."
     field dialogue String "The dialogue."
-    field segments List.String "Its film nodes (those with `og-film`), in file order."
-    field chapters List.String "Its chapters' i18n keys (`og-film-chapter`), in file order."
-    field endings List.String "Its endings (`og-film-ending`), in file order."
+    field segments List.String "Its flow nodes (those with `og-flow`), in file order."
+    field chapters List.String "Its chapters' i18n keys (`og-flow-chapter`), in file order."
+    field endings List.String "Its endings (`og-flow-ending`), in file order."
   }
 
-  component Film {
-    doc "A film og.film.start made: the conversation it paces and its decks. og.film writes it; read og.film.view."
+  component Flow {
+    doc "A flow og.flow.start made: the conversation it paces and its decks. og.flow writes it; read og.flow.view."
     field conversation u32 "Its og.story conversation." {
       readonly true
     }
     field decks u32 "Its decks." {
       readonly true
     }
-    field current Entity "The deck playing now (an og.FilmDeck)." {
+    field current Entity "The deck playing now (an og.FlowDeck)." {
       readonly true
     }
-    field node u32 "The film node playing, as its id (a hash of its title; og.film.view names it); 0 before the first." {
+    field node u32 "The flow node playing, as its id (a hash of its title; og.flow.view names it); 0 before the first." {
       readonly true
     }
     field pending i32 "The choice taken in the window (ChoiceView.index); -1: none yet." {
       default -1
       readonly true
     }
-    field window u32 "0 closed, 1 open (choices shown), 2 locked (past film.lock: the cut takes pending, else the default)." {
+    field window u32 "0 closed, 1 open (choices shown), 2 locked (past flow.lock: the cut takes pending, else the default)." {
       readonly true
     }
-    field paused bool "Held by og.film.pause (or FilmDesc.paused) until og.film.play." {
+    field paused bool "Held by og.flow.pause (or FlowStartDesc.paused) until og.flow.play." {
       readonly true
     }
     field chapter u32 "The node of the last chapter entered (its id, as `node`); 0: none." {
@@ -53,7 +53,7 @@ module film {
     field ended bool "The last segment played to its cut and the conversation ended." {
       readonly true
     }
-    field previous Entity "The deck dissolving out (`og-film-dissolve`), playing on under the current one; 0: none." {
+    field previous Entity "The deck dissolving out (`og-flow-dissolve`), playing on under the current one; 0: none." {
       readonly true
     }
     field dissolve u32 "The dissolve's length, ticks." {
@@ -67,26 +67,26 @@ module film {
     }
   }
 
-  component FilmDeck {
-    doc "An entity og.film plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The film's current deck plays; the others hold a segment it may cut to, paused at its first frame."
-    field film Entity "Its film." {
+  component FlowDeck {
+    doc "An entity og.flow plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The flow's current deck plays; the others hold a segment it may cut to, paused at its first frame."
+    field flow Entity "Its flow." {
       readonly true
     }
-    field node u32 "The film node whose segment it holds (its id, as og.Film.node); 0: none." {
+    field node u32 "The flow node whose segment it holds (its id, as og.Flow.node); 0: none." {
       readonly true
     }
   }
 
   struct WindowView {
     doc "A segment's choice window."
-    field ticksLeft u32 "Ticks until it locks (film.lock)."
-    field ticksTotal u32 "Ticks from film.open to film.lock."
+    field ticksLeft u32 "Ticks until it locks (flow.lock)."
+    field ticksTotal u32 "Ticks from flow.open to flow.lock."
     field defaultChoice u32 "The ChoiceView.index taken when nothing was chosen (`#default`, else the first enabled)."
     field pending Option.u32 "The choice taken so far."
-    field locked bool "Past film.lock: choosing is over; the cut takes pending, else the default."
+    field locked bool "Past flow.lock: choosing is over; the cut takes pending, else the default."
   }
 
-  struct FilmHotspot {
+  struct FlowHotspot {
     doc "A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open."
     field choice u32 "The ChoiceView.index it takes."
     field id String "The hotspot's id."
@@ -115,149 +115,149 @@ module film {
     field done bool "Reached: the choice is pending."
   }
 
-  struct FilmView {
-    doc "What a film shows now."
-    field film Entity "The film."
-    field node String "The film node playing."
+  struct FlowView {
+    doc "What a flow shows now."
+    field flow Entity "The flow."
+    field node String "The flow node playing."
     field segment String "Its segment's asset id."
     field texture Texture "The current deck's picture (its og.VideoPlayer.texture): put it on a full-screen sprite or image."
     field time f32 "Seconds into the segment." {
       unit s
     }
-    field cut f32 "When it cuts to the next: its film.cut marker, else its duration." {
+    field cut f32 "When it cuts to the next: its flow.cut marker, else its duration." {
       unit s
     }
     field choices List.ChoiceView "The node's choices while its window is open or locked (og.story's)."
     field window Option.WindowView "The window, while it is open or locked."
-    field hotspots List.FilmHotspot "The hotspots that take a choice now: while the window is open, those of its enabled choices."
+    field hotspots List.FlowHotspot "The hotspots that take a choice now: while the window is open, those of its enabled choices."
     field qtes List.QteView "The quick-time events of its enabled choices while the window is open or locked."
-    field previous Texture "The picture dissolving out (`og-film-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`."
+    field previous Texture "The picture dissolving out (`og-flow-dissolve`); 0: none. Draw it under `texture`, which shows at `mix`."
     field mix f32 "How far the dissolve is: `texture`'s opacity over `previous`, 1 without one." {
       unit ratio
     }
-    field paused bool "Held by og.film.pause."
+    field paused bool "Held by og.flow.pause."
     field chapter String "The last chapter entered."
     field ending String "The ending reached, once ended."
     field ended bool "It played to its end."
   }
 
-  struct FilmChartNode {
-    doc "A film node on og.film.chart's layout."
+  struct FlowChartNode {
+    doc "A flow node on og.flow.chart's layout."
     field node String "Its title."
     field segment String "Its segment's asset id."
-    field chapter String "Its `og-film-chapter`, if any."
-    field ending String "Its `og-film-ending`, if any."
-    field depth u32 "Its column: the fewest film nodes from the start before it (unreached nodes after the deepest)."
+    field chapter String "Its `og-flow-chapter`, if any."
+    field ending String "Its `og-flow-ending`, if any."
+    field depth u32 "Its column: the fewest flow nodes from the start before it (unreached nodes after the deepest)."
     field x f32 "Its centre across, graph units (NodeGraph's)."
     field y f32 "Its centre down."
   }
 
-  struct FilmChartLink {
-    doc "Where a film node may lead, through logic nodes."
+  struct FlowChartLink {
+    doc "Where a flow node may lead, through logic nodes."
     field from String "The node."
-    field to String "The film node it may lead to."
+    field to String "The flow node it may lead to."
     field choice i32 "The ChoiceView.index that leads there; -1 for a node without choices."
     field points List.f32 "A curve from one to the other as x, y pairs in graph units: a cubic leaving and arriving level, sampled in 16 segments (NodeGraph's link `points`)."
   }
 
-  struct FilmChart {
-    doc "A dialogue's film nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen."
-    field nodes List.FilmChartNode "Its film nodes, in file order."
-    field links List.FilmChartLink "Where each leads."
+  struct FlowChart {
+    doc "A dialogue's flow nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen."
+    field nodes List.FlowChartNode "Its flow nodes, in file order."
+    field links List.FlowChartLink "Where each leads."
     field width f32 "Its extent across, graph units (NodeGraph's view is `[0, 0, width, height]`)."
     field height f32 "Its extent down."
   }
 
-  event FilmSegment {
-    doc "A film began a node's segment."
-    field film Entity "The film."
+  event FlowSegment {
+    doc "A flow began a node's segment."
+    field flow Entity "The flow."
     field node String "The node (at most 63 bytes)."
     field segment String "Its segment's asset id (at most 63 bytes)."
   }
 
-  event FilmChoice {
-    doc "A film took a choice at its cut (before og.story ran it)."
-    field film Entity "The film."
+  event FlowChoice {
+    doc "A flow took a choice at its cut (before og.story ran it)."
+    field flow Entity "The flow."
     field node String "The node (at most 63 bytes)."
     field index u32 "The ChoiceView.index taken."
     field timedOut bool "Nothing was chosen in the window: the default was taken."
   }
 
-  event FilmChapter {
-    doc "A film entered a chapter's node (`og-film-chapter`): a place to save."
-    field film Entity "The film."
+  event FlowChapter {
+    doc "A flow entered a chapter's node (`og-flow-chapter`): a place to save."
+    field flow Entity "The flow."
     field node String "The node (at most 63 bytes)."
     field chapter String "The chapter's i18n key (at most 63 bytes)."
   }
 
-  event FilmEnded {
-    doc "A film's last segment reached its cut with the conversation ended."
-    field film Entity "The film."
+  event FlowEnded {
+    doc "A flow's last segment reached its cut with the conversation ended."
+    field flow Entity "The flow."
     field node String "The last node (at most 63 bytes)."
-    field ending String "Its `og-film-ending`, empty without one (at most 63 bytes)."
+    field ending String "Its `og-flow-ending`, empty without one (at most 63 bytes)."
   }
 
   fn load {
-    doc "Prepare a loaded dialogue's film: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.film's records. Call it in setup, after og.story.load, in every process that restores a film."
+    doc "Prepare a loaded dialogue's flow: every segment's timeline (and through it every video, which fetches nothing until it plays) and og.flow's records. Call it in setup, after og.story.load, in every process that restores a flow."
     param world World "The world."
     param dialogue String "The dialogue (StoryAsset.name)."
-    returns Result.FilmInfo "Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track."
+    returns Result.FlowInfo "Refused for a dialogue not loaded, or a segment that is not a cooked timeline with a video track."
   }
 
   fn start {
-    doc "Start a film: its decks, and its conversation held at the first film node, whose segment plays from the next tick. Outside a system (setup or a command)."
+    doc "Start a flow: its decks, and its conversation held at the first flow node, whose segment plays from the next tick. Outside a system (setup or a command)."
     param world World "The world."
-    param desc FilmDesc "The dialogue, and optionally the node, the decks and whether it starts paused."
-    returns Result.Entity "The film's entity (og.Film), or why not: a dialogue og.film.load has not prepared, an unknown node, or inside a system."
+    param desc FlowStartDesc "The dialogue, and optionally the node, the decks and whether it starts paused."
+    returns Result.Entity "The flow's entity (og.Flow), or why not: a dialogue og.flow.load has not prepared, an unknown node, or inside a system."
   }
 
   fn view {
-    doc "What a film shows now: its picture, segment time, choices and window."
+    doc "What a flow shows now: its picture, segment time, choices and window."
     param world World "The world."
-    param film Entity "The film."
-    returns Option.FilmView "Null for an entity that is no film."
+    param flow Entity "The flow."
+    returns Option.FlowView "Null for an entity that is no flow."
   }
 
   fn choose {
-    doc "Take a choice while the window is open: recorded now (FilmView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.film applies it this tick."
+    doc "Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.flow applies it this tick."
     param world World "The world."
-    param film Entity "The film."
+    param flow Entity "The flow."
     param index u32 "ChoiceView.index."
     returns Result.Void "Refused outside an open window, or for a choice that is hidden or disabled."
   }
 
   fn play {
-    doc "Play a paused film from where it is. Systems may call it."
+    doc "Play a paused flow from where it is. Systems may call it."
     param world World "The world."
-    param film Entity "The film."
-    returns Result.Void "Refused for an entity that is no film."
+    param flow Entity "The flow."
+    returns Result.Void "Refused for an entity that is no flow."
   }
 
   fn pause {
-    doc "Hold a film on its frame (a pause menu); its window's time holds too. Systems may call it."
+    doc "Hold a flow on its frame (a pause menu); its window's time holds too. Systems may call it."
     param world World "The world."
-    param film Entity "The film."
-    returns Result.Void "Refused for an entity that is no film."
+    param flow Entity "The flow."
+    returns Result.Void "Refused for an entity that is no flow."
   }
 
   fn skip {
-    doc "Skip ahead in the segment playing: to its window's open (film.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide film §5). Systems may call it."
+    doc "Skip ahead in the segment playing: to its window's open (flow.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide flow §5). Systems may call it."
     param world World "The world."
-    param film Entity "The film."
-    returns Result.Void "Refused for an entity that is no film, or one that has ended."
+    param flow Entity "The flow."
+    returns Result.Void "Refused for an entity that is no flow, or one that has ended."
   }
 
   fn chart {
-    doc "A prepared dialogue's film nodes and where each may lead, laid out for a flowchart."
+    doc "A prepared dialogue's flow nodes and where each may lead, laid out for a flowchart."
     param world World "The world."
-    param dialogue String "The dialogue (StoryAsset.name), prepared by og.film.load."
-    returns Result.FilmChart "Refused for a dialogue og.film.load has not prepared."
+    param dialogue String "The dialogue (StoryAsset.name), prepared by og.flow.load."
+    returns Result.FlowChart "Refused for a dialogue og.flow.load has not prepared."
   }
 
   fn stop {
-    doc "End a film: its conversation stops and its decks and entity are despawned this tick. Systems may call it."
+    doc "End a flow: its conversation stops and its decks and entity are despawned this tick. Systems may call it."
     param world World "The world."
-    param film Entity "The film."
-    returns Result.Void "Refused for an entity that is no film."
+    param flow Entity "The flow."
+    returns Result.Void "Refused for an entity that is no flow."
   }
 }
