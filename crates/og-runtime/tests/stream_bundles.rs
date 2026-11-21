@@ -2497,6 +2497,10 @@ fn a_cells_light_shines_up_with_its_models() {
 #[test]
 fn a_recorded_frame_waits_for_model_textures_and_a_display_frame_does_not() {
     let _lock = TEST_LOCK.lock().unwrap();
+    // The maps are decoded only once the test lets them (or after 20 s,
+    // so a frame that waits fails the test instead of hanging it): a frame
+    // that does not wait finds them still decoding however slowly it runs.
+    static DECODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     struct Slow;
     impl Hooks for Slow {
         fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
@@ -2515,7 +2519,12 @@ fn a_recorded_frame_waits_for_model_textures_and_a_display_frame_does_not() {
         ) -> Option<TextureWork> {
             let (t, f) = (t.clone(), f.cloned());
             Some(Box::new(move || {
-                std::thread::sleep(std::time::Duration::from_millis(300));
+                let t0 = std::time::Instant::now();
+                while !DECODE.load(std::sync::atomic::Ordering::Acquire)
+                    && t0.elapsed() < std::time::Duration::from_secs(20)
+                {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
                 t.to_texture_source(f.as_ref()).map_err(|e| e.to_string())
             }))
         }
@@ -2527,6 +2536,10 @@ fn a_recorded_frame_waits_for_model_textures_and_a_display_frame_does_not() {
     let path = base.join("plain");
     parcel(&path, "parcel", "parcel", 100, false);
     for kind in [FrameKind::Recorded, FrameKind::Scripted, FrameKind::Display] {
+        DECODE.store(
+            kind == FrameKind::Recorded,
+            std::sync::atomic::Ordering::Release,
+        );
         set_hooks(Rc::new(Slow));
         og_host_begin_bundle();
         let game = og_game_game(Some(r#"{"seed":1}"#.into()));
@@ -2575,6 +2588,7 @@ fn a_recorded_frame_waits_for_model_textures_and_a_display_frame_does_not() {
                 0,
                 "a display or scripted frame never waits ({kind:?})"
             );
+            DECODE.store(true, std::sync::atomic::Ordering::Release);
         }
         assert!(og_engine_destroy(engine));
     }
