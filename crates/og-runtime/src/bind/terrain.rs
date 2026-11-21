@@ -59,8 +59,9 @@ pub(crate) struct LoadedTerrain {
     pub field: Option<TerrainData>,
     /// Edited: `field` holds the edits and the renderer draws it.
     pub edited: bool,
-    /// Level-0 tiles' heights decoded for sampling, by tile index.
-    pub tiles: std::cell::RefCell<IdMap<u32, Arc<[f32]>>>,
+    /// Level-0 tiles' heights and hole masks decoded for sampling, by
+    /// tile index.
+    pub tiles: std::cell::RefCell<IdMap<u32, SampledTile>>,
     pub layers: Vec<TerrainLayer>,
     /// The texture arrays its layers sample (`layers`, `layerNormals`), as
     /// load indices in RenderState::texture_arrays: resolved to the
@@ -203,7 +204,7 @@ impl LoadedTerrain {
     }
 
     /// Whether the cell under `p` (the terrain's space) is a hole: the
-    /// field's hole map, or the hole flag its level-0 tile carries.
+    /// field's hole map, or its level-0 tile's.
     fn hole(&self, p: Vec2) -> bool {
         if let Some(d) = &self.field {
             return d.hole(p);
@@ -211,45 +212,55 @@ impl LoadedTerrain {
         if !self.cooked.layout.holes {
             return false;
         }
-        let sampler = self.tile_sampler();
-        sampler
+        self.tile_sampler()
             .cell_of(p)
-            .is_some_and(|(c, r)| og_render::hole_bit((sampler.sample)(c, r)))
+            .is_some_and(|(c, r)| self.hole_at(c, r))
+    }
+
+    /// The level-0 tile holding field sample (`c`, `r`), decoded once, and
+    /// the sample's place in its `(tile + 3)²` samples.
+    fn sampled(&self, c: u32, r: u32) -> (SampledTile, usize) {
+        let l = self.cooked.layout;
+        let (t, side) = (l.tile, l.heights_side());
+        let (tx, tz) = l.tiles(0);
+        let (x, z) = ((c / t).min(tx - 1), (r / t).min(tz - 1));
+        let index = l.index(0, x, z);
+        let at = ((r - z * t + 1) * side + (c - x * t + 1)) as usize;
+        let mut cache = self.tiles.borrow_mut();
+        let tile = cache
+            .entry(index)
+            .or_insert_with(|| match self.cooked.tile_heights(index) {
+                Ok((h, m)) => (Arc::from(h), m.map(Arc::from)),
+                Err(_) => (Arc::from(vec![0.0; (side * side) as usize]), None),
+            })
+            .clone();
+        (tile, at)
+    }
+
+    /// Whether the cell at field sample (`c`, `r`) is a hole, from its
+    /// level-0 tile's mask.
+    pub(crate) fn hole_at(&self, c: u32, r: u32) -> bool {
+        let ((_, mask), at) = self.sampled(c, r);
+        mask.is_some_and(|m| m[at] != 0)
     }
 
     /// The level-0 tiles as a sampler, decoded as they are read.
     fn tile_sampler(&self) -> og_render::TerrainSampler<impl Fn(u32, u32) -> f32 + '_> {
         let l = self.cooked.layout;
-        let t = l.tile;
-        let side = l.heights_side();
         og_render::TerrainSampler {
             size: l.size,
             columns: l.columns,
             rows: l.rows,
             sample: move |c: u32, r: u32| {
-                let (tx, tz) = l.tiles(0);
-                let (x, z) = ((c / t).min(tx - 1), (r / t).min(tz - 1));
-                let index = l.index(0, x, z);
-                let tile = {
-                    let mut cache = self.tiles.borrow_mut();
-                    match cache.get(&index) {
-                        Some(h) => h.clone(),
-                        None => {
-                            let h: Arc<[f32]> = self
-                                .cooked
-                                .tile_heights(index)
-                                .map(Arc::from)
-                                .unwrap_or_else(|_| Arc::from(vec![0.0; (side * side) as usize]));
-                            cache.insert(index, h.clone());
-                            h
-                        }
-                    }
-                };
-                tile[((r - z * t + 1) * side + (c - x * t + 1)) as usize]
+                let ((heights, _), at) = self.sampled(c, r);
+                heights[at]
             },
         }
     }
 }
+
+/// A level-0 tile decoded for sampling: its heights and hole mask.
+pub(crate) type SampledTile = (Arc<[f32]>, Option<Arc<[u8]>>);
 
 fn handle(index: usize) -> u64 {
     crate::world::assets::handle(index)

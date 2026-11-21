@@ -135,11 +135,17 @@ impl TerrainRenderer {
             bytemuck::cast_slice(&tile.heights),
         );
         // The horizon words in the rows under the heights as numbers (exact:
-        // each under 2^24), the last row padded.
+        // each under 2^24), then from the next row the hole mask's words
+        // (`pack_hole_words`), each part's last row padded.
         let rows = gpu.layout.heights_rows() - hs;
         let mut words = vec![0f32; (rows * hs) as usize];
         for (w, v) in words.iter_mut().zip(tile.horizon.iter()) {
             *w = *v as f32;
+        }
+        if let Some(mask) = &tile.holes {
+            let at = (gpu.layout.horizon_words().div_ceil(hs) * hs) as usize;
+            let packed = crate::terrain_tiles::pack_hole_words(mask);
+            words[at..at + packed.len()].copy_from_slice(&packed);
         }
         crate::traffic::write_buffer(
             queue,

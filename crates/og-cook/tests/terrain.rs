@@ -190,7 +190,7 @@ fn a_terrain_cooks_into_tiles_and_loads_back() {
     // before quantising, this filters the quantised field).
     let pyramid = data.height_pyramid(&t.layout);
     for index in [0, 4, t.layout.index(1, 1, 0), t.layout.index(2, 0, 0)] {
-        let tile = t.tile_heights(index).unwrap();
+        let (tile, _) = t.tile_heights(index).unwrap();
         let want = data.tile_heights(&t.layout, index, &pyramid);
         let off = tile
             .iter()
@@ -567,10 +567,11 @@ fn adjacent_terrains_with_equal_edge_samples_meet_exactly() {
     }
 }
 
-/// A terrain with holes keeps every 16-bit step of its heightmap: the hole
-/// flags travel beside the heights, not in their lowest bit. Every sample
-/// is odd (a lowest bit a flag would take), one cell far from the probe is
-/// cut out, and the same heights cook with and without it.
+/// A terrain with holes keeps every 16-bit step of its heightmap: its hole
+/// mask travels beside the heights, a byte per cell, never in a height's
+/// bits. Every sample is odd (a lowest bit a flag would take), one cell is
+/// cut out, the same heights load with and without it, and the tile's mask
+/// and the field's hole map name the same cell.
 #[test]
 fn holes_keep_every_height_step() {
     let at = |x: u32, y: u32| (2 * ((x * 131 + y * 71) % 30_000) + 1) as u16;
@@ -614,12 +615,32 @@ fn holes_keep_every_height_step() {
                 "({x}, {y}): {} vs the source's {want}",
                 a.heights[i]
             );
-            // Off the cut cell's corners, the same bits with or without holes.
-            if !(60..=61).contains(&x) || !(60..=61).contains(&y) {
-                assert_eq!(a.heights[i].to_bits(), b.heights[i].to_bits(), "({x}, {y})");
-            }
+            assert_eq!(a.heights[i].to_bits(), b.heights[i].to_bits(), "({x}, {y})");
         }
     }
+    // The level-0 tile's mask (its border one sample wide): the cell at
+    // sample (60, 60) alone, cut.
+    let tile = bundle
+        .load_terrain("terrain/with.ogt")
+        .unwrap()
+        .tile(0)
+        .unwrap();
+    let mask = tile.holes.as_deref().expect("a hole mask");
+    let side = 67;
+    assert_eq!(mask.len(), side * side);
+    for (i, &m) in mask.iter().enumerate() {
+        let (x, y) = (i % side, i / side);
+        assert_eq!(m != 0, (x, y) == (61, 61), "sample ({x}, {y}) of the tile");
+    }
+    assert!(
+        bundle
+            .load_terrain("terrain/without.ogt")
+            .unwrap()
+            .tile(0)
+            .unwrap()
+            .holes
+            .is_none()
+    );
 }
 
 /// A terrain may name layer arrays another cooked bundle provides

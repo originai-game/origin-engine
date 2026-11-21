@@ -74,8 +74,8 @@ pub struct TerrainLayout {
     pub control: u32,
     /// Pyramid levels; the last is one tile.
     pub levels: u32,
-    /// The terrain has holes: each tile height's lowest bit is the hole
-    /// flag of the cell at that sample ([`mark_holes`]).
+    /// The terrain has holes: each tile carries its hole mask
+    /// ([`TerrainTile::holes`], [`HoleCounts::tile_mask`]).
     pub holes: bool,
     /// The control map's pages of four channels (1 to 4; one per four
     /// layers): each tile's control texels hold them one after the other.
@@ -238,11 +238,23 @@ impl TerrainLayout {
         self.horizon_side() * self.horizon_side() * HORIZON_WORDS
     }
 
-    /// Rows of a tile's height texture: its `heights_side()` rows of
-    /// heights, then its horizon words (each as the f32 of its value,
-    /// exact under 2^24) row after row.
+    /// A tile's hole-mask words in its height rows: its `heights_side()²`
+    /// cells' bytes, [`HOLE_CELLS_PER_WORD`] to a word (0 without holes).
+    pub fn hole_words(&self) -> u32 {
+        if self.holes {
+            (self.heights_side() * self.heights_side()).div_ceil(HOLE_CELLS_PER_WORD)
+        } else {
+            0
+        }
+    }
+
+    /// Rows of a tile's height buffer: its `heights_side()` rows of
+    /// heights, then its horizon words, then with holes its hole-mask
+    /// words ([`pack_hole_words`]), each as the f32 of its value (exact
+    /// under 2^24) row after row, each part starting a row.
     pub fn heights_rows(&self) -> u32 {
-        self.heights_side() + self.horizon_words().div_ceil(self.heights_side())
+        let side = self.heights_side();
+        side + self.horizon_words().div_ceil(side) + self.hole_words().div_ceil(side)
     }
 
     /// Normal-map texels per tile side (its samples).
@@ -268,8 +280,8 @@ impl TerrainLayout {
         }
     }
 
-    /// The GPU bytes one resident tile takes (heights and horizon, normals
-    /// and control with their mips).
+    /// The GPU bytes one resident tile takes (heights, horizon and hole
+    /// mask, normals and control with their mips).
     pub fn slot_bytes(&self) -> u64 {
         let h = self.heights_side() as u64;
         let rows = self.heights_rows() as u64;
@@ -363,30 +375,42 @@ impl HoleCounts {
     }
 }
 
-/// `height` with its lowest bit set to `hole` (the flag the tile's height
-/// texture carries for the shaders).
-pub fn with_hole_bit(height: f32, hole: bool) -> f32 {
-    f32::from_bits((height.to_bits() & !1) | u32::from(hole))
+/// A hole mask's cells in one word of the height buffer: three bytes, so
+/// the word's value is exact as an f32 (terrain.wgsl `terrain_hole_from`).
+pub const HOLE_CELLS_PER_WORD: u32 = 3;
+
+/// A hole mask (one byte a cell, 0 kept, 255 cut) as the words its tile's
+/// height rows end with: cell `i` is byte `i % 3` (lowest first) of word
+/// `i / 3`, each word the f32 of its value.
+pub fn pack_hole_words(mask: &[u8]) -> Vec<f32> {
+    mask.chunks(HOLE_CELLS_PER_WORD as usize)
+        .map(|c| {
+            c.iter()
+                .enumerate()
+                .fold(0u32, |w, (k, &b)| w | (u32::from(b) << (8 * k))) as f32
+        })
+        .collect()
 }
 
-/// Whether a tile height carries the hole flag ([`with_hole_bit`]).
-pub fn hole_bit(height: f32) -> bool {
-    height.to_bits() & 1 != 0
-}
-
-/// Marks a tile's `(tile + 3)²` heights ([`HeightPyramid::tile_heights`]) with the hole
-/// flags of the cells at their samples on its level.
-pub fn mark_holes(layout: &TerrainLayout, index: u32, heights: &mut [f32], holes: &HoleCounts) {
-    let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
-    let t = layout.tile as i64;
-    let side = layout.heights_side() as i64;
-    for j in 0..side {
-        let gz = tz as i64 * t + j - 1;
-        for i in 0..side {
-            let gx = tx as i64 * t + i - 1;
-            let at = (j * side + i) as usize;
-            heights[at] = with_hole_bit(heights[at], holes.hole(layout, k, gx, gz));
+impl HoleCounts {
+    /// A tile's hole mask: one byte (0 kept, 255 cut) per cell at each of
+    /// its `(tile + 3)²` samples ([`HeightPyramid::tile_heights`]'s), the
+    /// cell of its level there ([`HoleCounts::hole`]).
+    pub fn tile_mask(&self, layout: &TerrainLayout, index: u32) -> Vec<u8> {
+        let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
+        let t = layout.tile as i64;
+        let side = layout.heights_side() as i64;
+        let mut out = vec![0u8; (side * side) as usize];
+        for j in 0..side {
+            let gz = tz as i64 * t + j - 1;
+            for i in 0..side {
+                let gx = tx as i64 * t + i - 1;
+                if self.hole(layout, k, gx, gz) {
+                    out[(j * side + i) as usize] = 255;
+                }
+            }
         }
+        out
     }
 }
 
@@ -399,6 +423,9 @@ pub struct TerrainTile {
     pub heights: Arc<[f32]>,
     /// Its horizon ([`HeightPyramid::horizon`]): `horizon_words()`.
     pub horizon: Arc<[u32]>,
+    /// With holes, its hole mask ([`HoleCounts::tile_mask`]): a byte per
+    /// cell at each of its `heights_side()²` samples, non-zero cut.
+    pub holes: Option<Arc<[u8]>>,
     pub normals: Arc<[u32]>,
     pub control: Option<Arc<[u8]>>,
     pub range: (f32, f32),
@@ -436,15 +463,21 @@ impl TerrainTile {
             }
             _ => true,
         };
+        let holes_ok = match &self.holes {
+            Some(m) => layout.holes && m.len() as u64 == h * h,
+            None => !layout.holes,
+        };
         self.heights.len() as u64 == h * h
             && self.horizon.len() == layout.horizon_words() as usize
+            && holes_ok
             && self.normals.len() as u64 == mip_texels(layout.normals_side())
             && control_ok
     }
 
     /// A tile from its heights (`(tile + 3)²` at its level, the border
-    /// clamped at the terrain's edge), horizon ([`HeightPyramid::horizon`])
-    /// and control texels: builds the normal map (central differences,
+    /// clamped at the terrain's edge), horizon ([`HeightPyramid::horizon`]),
+    /// hole mask ([`HoleCounts::tile_mask`]) and control texels: builds the
+    /// normal map (central differences,
     /// one-sided at the terrain's edge, as the collider's surface) and the
     /// mips.
     pub fn build(
@@ -452,6 +485,7 @@ impl TerrainTile {
         index: u32,
         heights: Vec<f32>,
         horizon: Vec<u32>,
+        holes: Option<Vec<u8>>,
         control: Option<Vec<u8>>,
     ) -> TerrainTile {
         let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
@@ -557,6 +591,7 @@ impl TerrainTile {
         TerrainTile {
             heights: Arc::from(heights),
             horizon: Arc::from(horizon),
+            holes: holes.map(Arc::from),
             normals: Arc::from(normals),
             control,
             range: (lo, hi),
@@ -606,7 +641,7 @@ impl TerrainData {
 
     /// A tile ready to draw (`pyramid`: this field's height pyramid;
     /// `control`: its control pyramid; `holes`: its hole counts, which
-    /// mark the heights).
+    /// make the tile's hole mask).
     pub fn tile(
         &self,
         layout: &TerrainLayout,
@@ -615,15 +650,12 @@ impl TerrainData {
         control: Option<&ControlPyramid>,
         holes: Option<&HoleCounts>,
     ) -> TerrainTile {
-        let mut heights = self.tile_heights(layout, index, pyramid);
-        if let Some(h) = holes {
-            mark_holes(layout, index, &mut heights, h);
-        }
         TerrainTile::build(
             layout,
             index,
-            heights,
+            self.tile_heights(layout, index, pyramid),
             self.horizon(layout, index, pyramid),
+            holes.map(|h| h.tile_mask(layout, index)),
             control.map(|p| p.tile(layout, index)),
         )
     }

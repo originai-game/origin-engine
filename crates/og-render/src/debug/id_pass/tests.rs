@@ -335,7 +335,7 @@ pub(super) fn a_terrain_hides_what_its_hill_stands_before_and_shows_it_through_h
 pub(super) fn a_streamed_terrain_draws_as_its_field_in_memory_does() {
     let mut data = field(hill);
     let (cx, cz) = data.cells();
-    // A hole in the middle, whose flag the samples carry when streamed.
+    // A hole in the middle, which the tiles' masks carry when streamed.
     let mut holes = vec![0u8; (cx * cz) as usize];
     for r in 60..68 {
         for c in 60..68 {
@@ -349,12 +349,11 @@ pub(super) fn a_streamed_terrain_draws_as_its_field_in_memory_does() {
         .terrain_layout(scene.world.terrains[0].terrain)
         .unwrap();
     assert!(layout.holes);
-    // The tiles' samples: the height with the hole flag of the cell at
-    // it in its lowest bit.
+    // The tiles' samples: the height and whether the cell at it is cut.
     let raw = |_: usize, c: u32, r: u32| {
         let h = data.heights[(r * 129 + c) as usize];
         let hole = data.hole(Vec2::new(c as f32 * 0.5 - 31.75, r as f32 * 0.5 - 31.75));
-        Some(f32::from_bits((h.to_bits() & !1) | u32::from(hole)))
+        Some((h, hole))
     };
     let a = render_ids(&scene, &ids, &|_, _, _| None, 160, 90);
     scene.world.terrains[0].terrain = scene.add_terrain_stream(layout, data.range());

@@ -100,8 +100,8 @@ pub use terrain::{
     TerrainControl, TerrainData, TerrainLayer, TerrainLod, TerrainSampler,
 };
 pub use terrain_tiles::{
-    ControlPyramid, HeightPyramid, HoleCounts, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES,
-    TERRAIN_TILE, TerrainLayout, TerrainTile, hole_bit, mark_holes, with_hole_bit,
+    ControlPyramid, HOLE_CELLS_PER_WORD, HeightPyramid, HoleCounts, MAX_TERRAIN_PYRAMID,
+    MAX_TERRAIN_TILES, TERRAIN_TILE, TerrainLayout, TerrainTile, pack_hole_words,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};

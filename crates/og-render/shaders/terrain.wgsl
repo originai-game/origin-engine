@@ -154,13 +154,30 @@ fn tile_ref(lvl: u32, u: vec2<f32>) -> TileRef {
   return r;
 }
 
-// The same rows as TerrainLayout::heights_rows: heights, then horizon words.
+// The same rows as TerrainLayout::heights_rows: heights, then horizon
+// words, then with holes the hole mask's words (three cells a word).
+fn height_rows() -> u32 {
+  let side = u32(terrain.tiles.x) + 3u;
+  let horizon = (u32(terrain.tiles.x) + 7u) / 8u + 1u;
+  let holes = select(0u, (side * side + 2u) / 3u, terrain.params.z > 0.5);
+  return side + (horizon * horizon * 4u + side - 1u) / side + (holes + side - 1u) / side;
+}
+
 fn height_word(p: vec2<i32>, slot: i32) -> f32 {
-  let t = u32(terrain.tiles.x);
-  let side = t + 3u;
-  let horizon = (t + 7u) / 8u + 1u;
-  let rows = side + (horizon * horizon * 4u + side - 1u) / side;
-  return heights[(u32(slot) * rows + u32(p.y)) * side + u32(p.x)];
+  let side = u32(terrain.tiles.x) + 3u;
+  return heights[(u32(slot) * height_rows() + u32(p.y)) * side + u32(p.x)];
+}
+
+// Whether the cell at sample `c` of resident slot `slot` (its tile's
+// (tile + 3)² samples, the border included) is cut: its byte of the hole
+// mask's words after the horizon's rows (terrain_tiles.rs pack_hole_words).
+fn hole_cell(c: vec2<u32>, slot: i32) -> bool {
+  let side = u32(terrain.tiles.x) + 3u;
+  let horizon = (u32(terrain.tiles.x) + 7u) / 8u + 1u;
+  let first = (side + (horizon * horizon * 4u + side - 1u) / side) * side;
+  let i = min(c.y, side - 1u) * side + min(c.x, side - 1u);
+  let w = u32(heights[u32(slot) * height_rows() * side + first + i / 3u]);
+  return ((w >> (8u * (i % 3u))) & 255u) > 127u;
 }
 
 // The height at level coordinates `u` from a resident tile: bilinear
@@ -417,9 +434,8 @@ fn toksvig_roughness(roughness: f32, variance: f32) -> f32 {
 override TERRAIN_HOLES: bool = true;
 
 // Whether the field cell under field coordinates `s` is cut out: with
-// holes, each tile height's lowest bit is the hole flag of the cell at
-// its sample (terrain_tiles.rs mark_holes), read from the finest resident
-// tile there.
+// holes, the hole mask of the finest resident tile there (`hole_cell`,
+// terrain_tiles.rs HoleCounts::tile_mask).
 fn terrain_hole(s: vec2<f32>) -> bool {
   if (!TERRAIN_HOLES || terrain.params.z < 0.5) { return false; }
   return terrain_hole_from(resident_from(0u, s));
@@ -431,8 +447,7 @@ fn terrain_hole_from(o: Resident) -> bool {
   if (o.r.slot < 0.0) { return false; }
   let t = terrain.tiles.x;
   let c = clamp(floor(o.u) - o.r.tile * t, vec2<f32>(0.0), vec2<f32>(t)) + 1.0;
-  let h = height_word(vec2<i32>(c), i32(o.r.slot));
-  return (bitcast<u32>(h) & 1u) != 0u;
+  return hole_cell(vec2<u32>(c), i32(o.r.slot));
 }
 
 // `terrain_hole` at a point of the terrain's space.

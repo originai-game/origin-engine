@@ -84,6 +84,7 @@ fn a_normal_mip_keeps_the_mean_direction_and_the_spread() {
         p.tile_heights(&l, 0, field),
         vec![0; l.horizon_words() as usize],
         None,
+        None,
     );
     let ns = l.normals_side() as usize;
     let (base, top) = (&tile.normals[..ns * ns], *tile.normals.last().unwrap());
@@ -114,6 +115,7 @@ fn a_normal_mip_keeps_the_mean_direction_and_the_spread() {
         0,
         p.tile_heights(&l, 0, plane),
         vec![0; l.horizon_words() as usize],
+        None,
         None,
     );
     let (d, len) = unpack_normal(*flat.normals.last().unwrap());

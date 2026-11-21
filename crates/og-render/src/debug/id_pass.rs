@@ -68,12 +68,13 @@ pub struct IdSources {
     pub grass: Vec<u32>,
 }
 
-/// The heights of the terrains whose fields the scene does not hold (a
+/// The samples of the terrains whose fields the scene does not hold (a
 /// streamed terrain's tiles live on the GPU): `(its index in
-/// [`RenderScene::terrains`], column, row)` to the level-0 sample there,
-/// as its tile holds it (its lowest bit the hole flag of the cell at it,
-/// [`crate::hole_bit`]); `None` leaves the terrain out of the pass.
-pub type IdHeights<'a> = dyn Fn(usize, u32, u32) -> Option<f32> + 'a;
+/// [`RenderScene::terrains`], column, row)` to the level-0 height there
+/// and whether the cell at it is a hole, as its tile holds them
+/// ([`crate::TerrainTile::holes`]); `None` leaves the terrain out of the
+/// pass.
+pub type IdHeights<'a> = dyn Fn(usize, u32, u32) -> Option<(f32, bool)> + 'a;
 
 /// What the pass saw of one id.
 #[derive(Clone, Debug, PartialEq)]
@@ -451,7 +452,7 @@ pub fn render_ids_from(
         let field = scene.terrain(t.terrain);
         let raw = move |c: u32, r: u32| match field {
             Some(d) => d.heights.get((r * d.columns + c) as usize).copied(),
-            None => heights(k, c, r),
+            None => heights(k, c, r).map(|(h, _)| h),
         };
         let Some((positions, locals, indices)) = scene
             .terrain_clipmap(k, &terrain_view(&main, height, main.far))
@@ -471,7 +472,7 @@ pub fn render_ids_from(
                 Box::new(move |xz: Vec2| {
                     let s = ((xz - lo) / cell).floor().max(Vec2::ZERO);
                     let (c, r) = ((s.x as u32).min(cols - 1), (s.y as u32).min(rows - 1));
-                    heights(k, c, r).is_some_and(crate::hole_bit)
+                    heights(k, c, r).is_some_and(|(_, hole)| hole)
                 }) as Box<CutTest>
             }),
         };
@@ -513,7 +514,7 @@ pub fn render_ids_from(
         let field = scene.terrain(t.terrain);
         let raw = |c: u32, r: u32| match field {
             Some(d) => d.heights.get((r * d.columns + c) as usize).copied(),
-            None => heights(k, c, r),
+            None => heights(k, c, r).map(|(h, _)| h),
         };
         let lift = grass.tallest() * 0.5;
         let far = main.far.min(grass.distance + lift);

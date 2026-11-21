@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og cook terrain",
+      "summary": "A terrain's holes are cooked once, as one byte per cell, which the renderer, scattering and physics all read; heights no longer carry a hole flag in their lowest bit, so a cell's height is exact. Cooked terrains are a new format (cooker r28): og cook cooks them again."
+    }
+  ]
+}

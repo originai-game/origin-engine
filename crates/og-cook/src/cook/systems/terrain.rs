@@ -128,9 +128,9 @@
 //! **Holes.** A `holes` map (any size, read at each cell's centre) cuts
 //! the cells it is black or transparent over out of the surface: neither
 //! drawn nor collided with (a cave mouth, a pit, a tunnel through a
-//! hill). Each tile carries its cells' flags, one bit per sample after
-//! its heights (which keep all 16 bits), a coarser level's cell a hole
-//! where most of the field cells it spans are (`og_render_data::HoleCounts`).
+//! hill). Each tile carries its hole mask after its heights, a byte per
+//! sample's cell, a coarser level's cell a hole where most of the field
+//! cells it spans are (`og_render_data::HoleCounts::tile_mask`).
 //!
 //! The heightmap and the control map are read relative to the terrain file
 //! (or, failing that, `assets/`); they are part of the terrain, not
@@ -840,17 +840,14 @@ pub(crate) fn cook_terrain(
     let holes = field.hole_counts();
     let heights = field.height_pyramid(&layout);
     // Every tile of every level: its heights quantised over the steps'
-    // range (with holes, followed by its samples' cells' hole flags),
+    // range (with holes, followed by its hole mask),
     // its control texels, each zlib'd on its own.
     let mut tiles = Vec::new();
     let mut packed = Vec::new();
     let mut control_packed = Vec::new();
     for index in 0..layout.tile_count() {
         let (level, x, z) = layout.locate(index).expect("in the layout");
-        let mut tile = field.tile_heights(&layout, index, &heights);
-        if let Some(h) = &holes {
-            og_render_data::mark_holes(&layout, index, &mut tile, h);
-        }
+        let tile = field.tile_heights(&layout, index, &heights);
         let (mut lo, mut hi) = (f32::MAX, f32::MIN);
         let mut q = Vec::with_capacity(tile.len() * 2);
         for v in &tile {
@@ -866,14 +863,10 @@ pub(crate) fn cook_terrain(
         for w in field.horizon(&layout, index, &heights) {
             q.extend_from_slice(&w.to_le_bytes());
         }
-        // With holes, then each sample's hole flag, one bit each: the
-        // heights keep all 16 bits (a 16-bit heightmap's every step).
-        if holes.is_some() {
-            let mut mask = vec![0u8; tile.len().div_ceil(8)];
-            for (i, v) in tile.iter().enumerate() {
-                mask[i / 8] |= u8::from(og_render_data::hole_bit(*v)) << (i % 8);
-            }
-            q.extend_from_slice(&mask);
+        // With holes, then its hole mask, a byte per sample's cell: the
+        // mask the renderer and physics read as it is.
+        if let Some(h) = &holes {
+            q.extend_from_slice(&h.tile_mask(&layout, index));
         }
         let z_heights = miniz_oxide::deflate::compress_to_vec_zlib(&q, 6);
         let (control_offset, control_bytes) = match &pyramid {
@@ -955,9 +948,8 @@ pub(crate) fn cook_terrain(
         tile: layout.tile,
         control: layout.control,
         levels: layout.levels,
-        // As a loaded height carries them: its f32 lowest bit the hole flag, clear.
-        height_min: og_render_data::with_hole_bit(lo_all, false),
-        height_max: og_render_data::with_hole_bit(hi_all, false),
+        height_min: lo_all,
+        height_max: hi_all,
         steps_min: step_lo,
         steps_max: step_hi,
         layers: layers.len() as u32,

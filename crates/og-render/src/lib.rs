@@ -441,8 +441,7 @@ pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind
 pub use terrain::TerrainStampDraw;
 pub use terrain_tiles::{
     ControlPyramid, HeightPyramid, HoleCounts, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES,
-    TERRAIN_TILE, TerrainLayout, TerrainTile, TerrainView, hole_bit, mark_holes,
-    terrain_tiles_wanted, with_hole_bit,
+    TERRAIN_TILE, TerrainLayout, TerrainTile, TerrainView, terrain_tiles_wanted,
 };
 pub use texture::{TextureCompression, TextureDesc, TextureFormat, TextureFormats, TextureUpload};
 pub use texture_array::{TextureArrayData, TextureArrayHandle, TextureArrayInfo};

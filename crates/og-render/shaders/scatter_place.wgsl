@@ -54,22 +54,23 @@ const PLACE_PER_LANE: u32 = 4u;
 // scatter_cull.rs MAX_CHUNK_COPIES: the chunk's draws' first vector.
 const PLACE_TAIL: u32 = 4096u;
 
-// The ground's raw level-0 height sample (column `c`, row `r`, clamped to
-// the field), its lowest bit the hole flag of the cell at it with holes.
-fn place_raw(c: u32, r: u32) -> f32 {
+// The ground's level-0 sample (column `c`, row `r`, clamped to the
+// field): its resident slot and its place in that tile's samples (slot
+// < 0: not resident).
+fn place_at(c: u32, r: u32) -> vec3<i32> {
   let last = vec2<u32>(terrain.extent.zw) - 1u;
   let u = vec2<f32>(min(vec2<u32>(c, r), last));
   let t = terrain.tiles.x;
   let tr = tile_ref(0u, u);
-  if (tr.slot < 0.0) { return 0.0; }
+  if (tr.slot < 0.0) { return vec3<i32>(0, 0, -1); }
   let l = clamp(vec2<i32>(u - tr.tile * t) + 1, vec2<i32>(0), vec2<i32>(i32(t) + 2));
-  return height_word(l, i32(tr.slot));
+  return vec3<i32>(l, i32(tr.slot));
 }
 
 fn place_sample(c: u32, r: u32) -> f32 {
-  let h = place_raw(c, r);
-  if (terrain.params.z > 0.5) { return bitcast<f32>(bitcast<u32>(h) & ~1u); }
-  return h;
+  let a = place_at(c, r);
+  if (a.z < 0) { return 0.0; }
+  return height_word(a.xy, a.z);
 }
 
 // terrain.rs TerrainSampler::grid: sample coordinates of `p`.
@@ -137,7 +138,8 @@ fn place_hole(p: vec2<f32>) -> bool {
   if (!(t.x >= 0.0 && t.y >= 0.0 && t.x <= n.x && t.y <= n.y)) { return false; }
   let c = min(u32(t.x), u32(terrain.extent.z) - 2u);
   let r = min(u32(t.y), u32(terrain.extent.w) - 2u);
-  return (bitcast<u32>(place_raw(c, r)) & 1u) != 0u;
+  let a = place_at(c, r);
+  return a.z >= 0 && hole_cell(vec2<u32>(a.xy), a.z);
 }
 
 // scatter.rs TileGround::control: channel `k` at `p`, bilinear between the

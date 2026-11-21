@@ -82,41 +82,38 @@ impl CookedTerrain {
     }
 
     /// The bytes of a tile's inflated heights stream: its 16-bit heights,
-    /// then its horizon's words and, with holes, its samples' hole flags
-    /// (one bit each, the first sample's the first byte's lowest).
+    /// then its horizon's words and, with holes, its hole mask (a byte per
+    /// sample's cell, `og_render_data::HoleCounts::tile_mask`).
     fn stream_bytes(&self) -> usize {
         let samples = (self.layout.heights_side() as usize).pow(2);
-        let mask = if self.layout.holes {
-            samples.div_ceil(8)
-        } else {
-            0
-        };
+        let mask = if self.layout.holes { samples } else { 0 };
         samples * 2 + self.layout.horizon_words() as usize * 4 + mask
     }
 
-    /// A tile's heights in metres from its inflated 16-bit values, each
-    /// one's f32 lowest bit its cell's hole flag (`og_render_data::hole_bit`;
-    /// clear without holes, so a sample decodes to the same bits whether or
-    /// not its terrain has holes elsewhere).
+    /// A tile's heights in metres from its inflated stream.
     pub fn heights_from(&self, index: u32, raw: &[u8]) -> Result<Vec<f32>, LoadError> {
         let samples = (self.layout.heights_side() as usize).pow(2);
         if raw.len() != self.stream_bytes() {
             return Err(self.bad(format!("tile {index} holds the wrong number of heights")));
         }
-        let mask = &raw[samples * 2 + self.layout.horizon_words() as usize * 4..];
         let (lo, hi) = self.steps;
         let span = hi - lo;
         Ok(raw[..samples * 2]
             .as_chunks::<2>()
             .0
             .iter()
-            .enumerate()
-            .map(|(i, v)| {
-                let h = lo + u16::from_le_bytes(*v) as f32 / 65535.0 * span;
-                let hole = mask.get(i / 8).is_some_and(|m| m >> (i % 8) & 1 != 0);
-                og_render_data::with_hole_bit(h, hole)
-            })
+            .map(|v| lo + u16::from_le_bytes(*v) as f32 / 65535.0 * span)
             .collect())
+    }
+
+    /// A tile's hole mask from its inflated stream (`None` without holes).
+    pub fn holes_from<'a>(&self, raw: &'a [u8]) -> Option<&'a [u8]> {
+        let samples = (self.layout.heights_side() as usize).pow(2);
+        let at = samples * 2 + self.layout.horizon_words() as usize * 4;
+        self.layout
+            .holes
+            .then(|| raw.get(at..at + samples))
+            .flatten()
     }
 
     /// A tile ready to draw from its inflated bytes (normals and mips
@@ -153,6 +150,7 @@ impl CookedTerrain {
             index,
             h,
             horizon,
+            self.holes_from(heights).map(<[u8]>::to_vec),
             c,
         ))
     }
@@ -184,10 +182,14 @@ impl CookedTerrain {
         self.tile_from(index, &h, c.as_deref())
     }
 
-    /// A tile's `(tile + 3)²` heights in metres (no normals, no control).
-    pub fn tile_heights(&self, index: u32) -> Result<Vec<f32>, LoadError> {
+    /// A tile's `(tile + 3)²` heights in metres and, with holes, its hole
+    /// mask (no normals, no control).
+    pub fn tile_heights(&self, index: u32) -> Result<(Vec<f32>, Option<Vec<u8>>), LoadError> {
         let (h, _) = self.inflate(index)?;
-        self.heights_from(index, &h)
+        Ok((
+            self.heights_from(index, &h)?,
+            self.holes_from(&h).map(<[u8]>::to_vec),
+        ))
     }
 
     /// The whole field from its level-0 tiles: every height, and the
@@ -208,8 +210,9 @@ impl CookedTerrain {
         for z in 0..tz as usize {
             for x in 0..tx as usize {
                 let index = l.index(0, x as u32, z as u32);
-                let (h, cz) = self.inflate(index)?;
-                let h = self.heights_from(index, &h)?;
+                let (raw, cz) = self.inflate(index)?;
+                let h = self.heights_from(index, &raw)?;
+                let mask = self.holes_from(&raw);
                 // The tile's samples, a row at a time.
                 let n = (t + 1).min(cols - x * t);
                 for j in 0..=t {
@@ -219,11 +222,12 @@ impl CookedTerrain {
                     }
                     let src = &h[(j + 1) * side + 1..][..n];
                     heights[r * cols + x * t..][..n].copy_from_slice(src);
-                    if l.holes && r + 1 < rows {
+                    if let Some(mask) = mask
+                        && r + 1 < rows
+                    {
                         let m = n.min(cols - 1 - x * t);
-                        for (hole, v) in holes[r * (cols - 1) + x * t..][..m].iter_mut().zip(src) {
-                            *hole = u8::from(og_render_data::hole_bit(*v));
-                        }
+                        holes[r * (cols - 1) + x * t..][..m]
+                            .copy_from_slice(&mask[(j + 1) * side + 1..][..m]);
                     }
                 }
                 if let Some(cz) = cz {

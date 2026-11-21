@@ -4,28 +4,29 @@ use super::*;
 
 /// Presentation-only diagnostics of the extracted terrain, from the same
 /// clipmap layout the renderer uploads. Never stored in the ECS.
-/// The heights the id pass draws this frame's streamed terrains with
-/// (`og_render::IdHeights`): each one's level-0 samples, hole bits and
-/// all, decoded from its cooked tiles as they are read (the tiles
-/// og.terrain.sample reads). A terrain whose field is in memory is read
-/// from the scene.
-pub(crate) fn id_heights(rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option<f32> + '_ {
-    type Sample<'a> = Box<dyn Fn(u32, u32) -> f32 + 'a>;
-    let samplers: Vec<Option<Sample>> = rs
+/// The samples the id pass draws this frame's streamed terrains with
+/// (`og_render::IdHeights`): each one's level-0 heights and the hole mask
+/// of the cell at each, decoded from its cooked tiles as they are read
+/// (the tiles og.terrain.sample reads). A terrain whose field is in
+/// memory is read from the scene.
+pub(crate) fn id_heights(rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option<(f32, bool)> + '_ {
+    let loaded: Vec<Option<&super::LoadedTerrain>> = rs
         .scene
         .world
         .terrains
         .iter()
         .map(|d| {
-            let (_, t) = rs
-                .terrain
+            rs.terrain
                 .loaded
                 .iter()
-                .find(|(_, t)| t.render == d.terrain)?;
-            Some(Box::new(t.tile_sampler().sample) as Sample)
+                .find(|(_, t)| t.render == d.terrain)
+                .map(|(_, t)| t)
         })
         .collect();
-    move |k, c, r| Some(samplers.get(k)?.as_ref()?(c, r))
+    move |k, c, r| {
+        let t = (*loaded.get(k)?)?;
+        Some(((t.tile_sampler().sample)(c, r), t.hole_at(c, r)))
+    }
 }
 
 pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {

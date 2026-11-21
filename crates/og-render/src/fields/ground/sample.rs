@@ -91,11 +91,17 @@ impl Ground for TileGround<'_> {
             return Some(false);
         }
         let (t, x, z) = self.tile(p)?;
+        let l = &self.layout;
+        let side = l.heights_side() as i64;
+        let (bx, bz) = ((x * l.tile) as i64, (z * l.tile) as i64);
         let s = self.sampler(t, x, z);
-        Some(
-            s.cell_of(p)
-                .is_some_and(|(c, r)| crate::terrain_tiles::hole_bit((s.sample)(c, r))),
-        )
+        Some(s.cell_of(p).is_some_and(|(c, r)| {
+            let i = (c as i64 - bx + 1).clamp(0, side - 1);
+            let j = (r as i64 - bz + 1).clamp(0, side - 1);
+            t.holes
+                .as_ref()
+                .is_some_and(|m| m[(j * side + i) as usize] != 0)
+        }))
     }
     fn height(&self, p: Vec2) -> Option<f32> {
         let (t, x, z) = self.tile(p)?;

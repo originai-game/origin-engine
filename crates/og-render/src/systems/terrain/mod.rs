@@ -43,13 +43,15 @@
 //! weights and heights for its roughness, never their normal maps.
 //!
 //! **Holes.** [`TerrainData::holes`] cuts cells out (a cave mouth, a
-//! pit): every tile height's lowest bit carries the hole flag of the cell
-//! at its sample on the tile's level (`terrain_tiles::mark_holes`, a
+//! pit): every tile carries its hole mask, a byte per cell at its samples
+//! on its level ([`TerrainTile::holes`], `HoleCounts::tile_mask`: a
 //! coarser cell a hole where most of its field cells are), and the lit,
 //! prepass and shadow passes discard a fragment over a hole of the finest
-//! resident tile, so light falls through it too. No binding: the flag
-//! rides in the height texture the passes already read. Physics removes
-//! the same cells from the height field (og-physics `HeightfieldDesc`).
+//! resident tile, so light falls through it too. No binding: the mask
+//! rides in its slot's rows of the height buffer the passes already read,
+//! three cells a word (`pack_hole_words`). Physics removes the same cells
+//! from the height field (og-physics `HeightfieldDesc`), the field's mask
+//! assembled from the tiles' (og-bundle `CookedTerrain::field`).
 //!
 //! **Layer arrays.** A terrain's layers may take their albedo and normal
 //! maps from two texture arrays instead ([`Terrain::layer_arrays`], each
