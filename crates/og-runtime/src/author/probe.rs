@@ -17,6 +17,7 @@
 use crate::engine::{DECL, assemble};
 use crate::engine::{Engine, call, engine, extract_layouts, hooks, invalidate};
 use crate::present::extract::{RenderState, extract};
+use og_api::host::{DISPATCH_COMMAND, DISPATCH_FACTS};
 use og_core::base64;
 use og_ecs::{Entity, World};
 use og_probe::{Capture, Frame, Probe};
@@ -555,7 +556,7 @@ pub(crate) fn register_one(
                 .get(&action)
                 .map(|c| c.handler)
                 .ok_or_else(|| format!("'{action}' is no longer registered by the game"))?;
-            call(&eng, 1, handler, json!(args).to_string())
+            call(&eng, DISPATCH_COMMAND, handler, json!(args).to_string())
                 .map(|_| ())
                 .map_err(|e| format!("{action}: {e}"))
         })
@@ -730,7 +731,7 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             let Some(facts) = eng.state.borrow().facts else {
                 return Value::Null;
             };
-            call(&eng, 2, facts, String::new())
+            call(&eng, DISPATCH_FACTS, facts, String::new())
                 .ok()
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or(Value::Null)

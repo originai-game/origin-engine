@@ -14,9 +14,8 @@
 
 use std::cell::Cell;
 
-/// The buffer's size in bytes: what a host installs, and what the runtime
-/// (`SHARED_BYTES` in runtime.ts) views.
-pub const SHARED_BYTES: usize = 65536;
+// The buffer's size in bytes is the host ABI's (`og_api::host::SHARED_BYTES`).
+pub use og_api::host::SHARED_BYTES;
 
 thread_local! {
     static SHARED: Cell<*mut u8> = const { Cell::new(std::ptr::null_mut()) };

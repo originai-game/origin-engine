@@ -1,5 +1,7 @@
 use super::*;
 
+use og_api::host::{DISPATCH_COMMAND, DISPATCH_UI};
+
 mod assemble;
 mod render;
 
@@ -260,7 +262,7 @@ pub(super) fn run_start(eng: &Engine) -> Result<(), String> {
     let start = eng.state.borrow_mut().start.take();
     if let Some(start) = start {
         before_structural(eng);
-        if let Err(e) = call(eng, 1, start, "[]".into()) {
+        if let Err(e) = call(eng, DISPATCH_COMMAND, start, "[]".into()) {
             let text =
                 format!("GameDesc.start threw, so the world is half-built and does not run: {e}");
             eng.state.borrow_mut().start_failed = Some(text.clone());
@@ -281,7 +283,7 @@ pub(crate) fn run_ui_registration(eng: &Engine, callback: Option<u32>) -> Result
     let before = eng.world()?.world_hash();
     // An absent callback on reload is still a registration pass: it disposes
     // the presentation IDs removed with the old GameDesc.ui.
-    let result = call(eng, 6, callback.unwrap_or(u32::MAX), String::new());
+    let result = call(eng, DISPATCH_UI, callback.unwrap_or(u32::MAX), String::new());
     let after = eng.world()?.world_hash();
     let result = if before == after {
         result.map(|_| ())

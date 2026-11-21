@@ -1,5 +1,7 @@
 use super::*;
 
+use og_api::host::{DISPATCH_CONDITION, DISPATCH_HOOK, DISPATCH_SYSTEM, FRAME_QUERY_WORD};
+
 // ── engines ─────────────────────────────────────────────────────────────────
 
 /// A registered system as the engine runs it.
@@ -369,10 +371,6 @@ pub(crate) fn clear_world_queries() {
 
 // ── game code calls ─────────────────────────────────────────────────────────
 
-/// Where a system call's query description starts in the shared buffer, in
-/// words: after the four doubles of the time scale.
-pub(crate) const FRAME_QUERY_WORD: usize = 8;
-
 /// Runs one registered system: publish its archetypes as views (their
 /// columns are borrowed when game code takes them, `view_columns`), write
 /// the call's frame description (the time scale and the archetypes) to the
@@ -449,7 +447,7 @@ pub(super) fn run_system(
     let t0 = hooks.as_ref().map_or(0.0, |h| h.now_ms());
     let result = match &hooks {
         Some(h) => h.dispatch(&Dispatch {
-            kind: 0,
+            kind: DISPATCH_SYSTEM,
             engine: engine_id,
             id: callback,
             query,
@@ -489,7 +487,7 @@ fn run_frame(
     let fail = |m: String| Error::new(ErrorKind::Invalid, m);
     let eng = engine(engine_id).map_err(fail)?;
     let callback = match kind {
-        3 => eng.state.borrow().systems[index].condition,
+        DISPATCH_CONDITION => eng.state.borrow().systems[index].condition,
         _ => Some(eng.state.borrow().systems[index].callback),
     }
     .ok_or_else(|| fail("no callback".into()))?;
@@ -529,7 +527,7 @@ pub(super) fn run_condition(
     index: usize,
     ctx: &mut SystemContext<'_>,
 ) -> og_core::Result<bool> {
-    let answer = run_frame(engine_id, index, ctx, 3, String::new())?;
+    let answer = run_frame(engine_id, index, ctx, DISPATCH_CONDITION, String::new())?;
     Ok(answer == "true")
 }
 
@@ -540,7 +538,7 @@ pub(super) fn run_hook(
     ctx: &mut SystemContext<'_>,
     e: Entity,
 ) -> og_core::Result<()> {
-    run_frame(engine_id, index, ctx, 4, e.to_bits().to_string()).map(|_| ())
+    run_frame(engine_id, index, ctx, DISPATCH_HOOK, e.to_bits().to_string()).map(|_| ())
 }
 
 /// Calls a command handler (or the facts function) between ticks.

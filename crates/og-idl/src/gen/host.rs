@@ -54,6 +54,45 @@ pub fn consts_rs(ix: &Index<'_>) -> String {
     out
 }
 
+/// `(name, Rust type, value, doc)` of a host-ABI constant. Authored here
+/// once: the dispatcher's kinds and the shared buffer's layout. `host_rs`
+/// emits them as `og_api::host::*` and `abi_ts` as abi.ts's exports, so the
+/// engine's dispatcher calls and the TypeScript dispatcher's branches read
+/// one table.
+type AbiConst = (&'static str, &'static str, u32, &'static str);
+
+const ABI_CONSTS: &[AbiConst] = &[
+    (
+        "DISPATCH_SYSTEM",
+        "u32",
+        0,
+        "A system call (`Dispatch.kind`): the shared buffer opens with the time scale's four doubles, then the system's archetypes from word `FRAME_QUERY_WORD`.",
+    ),
+    ("DISPATCH_COMMAND", "u32", 1, "A command handler's call (`Dispatch.kind`): the command's arguments are the payload's JSON list."),
+    ("DISPATCH_FACTS", "u32", 2, "The facts function's call (`Dispatch.kind`): its answer is `=` then the facts' JSON."),
+    ("DISPATCH_CONDITION", "u32", 3, "A system's run condition (`Dispatch.kind`): the answer is `=true` or `=false`."),
+    ("DISPATCH_HOOK", "u32", 4, "A hook's call (`Dispatch.kind`): the payload is the hooked entity."),
+    ("DISPATCH_PLATFORM", "u32", 5, "The platform pump's call (`Dispatch.kind`): the host drains what it handed the engine."),
+    ("DISPATCH_UI", "u32", 6, "A named UI registration pass (`Dispatch.kind`): the world is read only, and a changed world hash refuses it."),
+    ("SHARED_BYTES", "usize", 65536, "The shared buffer's size in bytes: what a host installs, and what both sides view."),
+    ("FRAME_QUERY_WORD", "usize", 8, "Where a system call's archetypes start in the shared buffer, in words: after the time scale's four doubles."),
+];
+
+/// The host-ABI constants as Rust items, appended to host.rs.
+fn abi_consts_rs(out: &mut String) {
+    out.push_str("\n/// The host ABI's constants: the dispatcher's kinds and the shared buffer's layout, one table (og-idl's gen/host.rs) both hosts read.\n");
+    for (name, ty, value, doc) in ABI_CONSTS {
+        let _ = writeln!(out, "/// {doc}\npub const {name}: {ty} = {value};");
+    }
+}
+
+/// The host-ABI constants as TypeScript exports, written before the `Dispatcher` type.
+fn abi_consts_ts(out: &mut String) {
+    for (name, _, value, doc) in ABI_CONSTS {
+        out.push_str(&format!("/** {doc} */\nexport const {name} = {value};\n"));
+    }
+}
+
 /// How one IDL type crosses the host boundary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Wire {
@@ -571,6 +610,7 @@ pub fn host_rs(ix: &Index<'_>) -> String {
     out.push_str("];\n");
 
     out.push_str("\npub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};\n");
+    abi_consts_rs(&mut out);
     out
 }
 
@@ -904,9 +944,10 @@ pub fn abi_ts(ix: &Index<'_>) -> String {
          // and `V` how it hands out a component's column views (the shared buffer\n\
          // is `unknown`: each loader knows its host's form).\n\n\
          /// The engine's call back into the runtime (`og_host_set_dispatcher`).\n\
-         export type Dispatcher = (kind: number, engine: number, id: number, query: number, tick: number, dt: number, elapsed: number, payload: string) => string;\n\n\
-         export interface HostAbi<A, V> {\n",
+         export type Dispatcher = (kind: number, engine: number, id: number, query: number, tick: number, dt: number, elapsed: number, payload: string) => string;\n\n",
     );
+    abi_consts_ts(&mut out);
+    out.push_str("\nexport interface HostAbi<A, V> {\n");
     for (name, params, ret, doc) in LIFECYCLE {
         out.push_str(&format!("  /** {doc} */\n"));
         let ps: Vec<String> = params.iter().map(|(n, _, t)| format!("{n}: {t}")).collect();

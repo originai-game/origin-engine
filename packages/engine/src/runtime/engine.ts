@@ -1,5 +1,5 @@
 import type * as Api from "@origingame/engine";
-import type { Dispatcher } from "../generated/abi.ts";
+import { DISPATCH_COMMAND, DISPATCH_CONDITION, DISPATCH_FACTS, DISPATCH_HOOK, DISPATCH_PLATFORM, DISPATCH_SYSTEM, DISPATCH_UI, type Dispatcher } from "../generated/abi.ts";
 import type { A11yUpdate } from "../web/a11y.ts";
 import { type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice, noPlatform } from "../platform-local.ts";
 import { type GameToken, callbacks, conditions, engineGames, engineRoots, gameHandles, hookEntries, systems } from "./declare.ts";
@@ -24,7 +24,7 @@ const engines = new Map<number, Engine>();
 
 /** Dispatch kinds: system, command, facts, condition, hook, platform, UI registration. */
 export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payload) => {
-  if (kind === 5) {
+  if (kind === DISPATCH_PLATFORM) {
     try {
       engines.get(engine)?.pumpPlatform();
       // The TSX UI's ops since the last boundary, and its events back.
@@ -50,7 +50,7 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
   // What the shared buffer held for an outer call is gone.
   const described = ++rt.sharedStamp;
   try {
-    if (kind === 6) {
+    if (kind === DISPATCH_UI) {
       const errors: string[] = [];
       const outerRegistration = rt.uiRegistrationErrors;
       rt.uiRegistrationErrors = errors;
@@ -60,7 +60,7 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
         return errors.join("\n");
       } finally { rt.uiRegistrationErrors = outerRegistration; }
     }
-    if (kind === 0) {
+    if (kind === DISPATCH_SYSTEM) {
       const system = systems.get(id);
       if (!system || !fn) return `the dispatcher has no system with callback id ${id}: the bundle declared ${systems.size} system(s); was the engine built from another bundle?`;
       rt.running = { system, tick };
@@ -75,11 +75,11 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
       return "";
     }
     if (!fn) return `the dispatcher has no callback with id ${id}`;
-    if (kind === 3 || kind === 4) {
-      const entry = (kind === 3 ? conditions : hookEntries).get(id);
-      if (!entry) return `the dispatcher has no ${kind === 3 ? "run condition" : "hook"} with callback id ${id}`;
+    if (kind === DISPATCH_CONDITION || kind === DISPATCH_HOOK) {
+      const entry = (kind === DISPATCH_CONDITION ? conditions : hookEntries).get(id);
+      if (!entry) return `the dispatcher has no ${kind === DISPATCH_CONDITION ? "run condition" : "hook"} with callback id ${id}`;
       rt.running = { system: entry, tick };
-      if (kind === 3) {
+      if (kind === DISPATCH_CONDITION) {
         const holds = fn(world) === true;
         flushRecords();
         return holds ? "=true" : "=false";
@@ -88,12 +88,12 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
       flushRecords();
       return "";
     }
-    if (kind === 1) {
+    if (kind === DISPATCH_COMMAND) {
       fn(world, Object.freeze(JSON.parse(payload || "[]")));
       flushRecords();
       return "";
     }
-    if (kind === 2) {
+    if (kind === DISPATCH_FACTS) {
       const facts = JSON.stringify(fn(world) ?? null);
       flushRecords();
       return "=" + facts;

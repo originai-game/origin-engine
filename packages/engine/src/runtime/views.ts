@@ -1,6 +1,7 @@
 import { componentId, forgetComponents } from "./components.ts";
 import type { SystemEntry, Token } from "./declare.ts";
-import { COLUMNS, type ColumnArray, type ColumnSpec, FRAME_QUERY_WORD, abi, words } from "./host.ts";
+import { COLUMNS, type ColumnArray, type ColumnSpec, abi, words } from "./host.ts";
+import { FRAME_QUERY_WORD } from "../generated/abi.ts";
 import { type Result, parse, refused } from "./result.ts";
 import { rt } from "./state.ts";
 

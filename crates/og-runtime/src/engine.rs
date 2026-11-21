@@ -51,6 +51,7 @@ use og_core::IdMap;
 use og_core::reflect::Reflect;
 use og_core::{Error, ErrorKind, Rng, Time};
 use og_ecs::{Entity, FieldRef, QueryDesc, SchemaId, SystemContext, SystemDesc, World, WorldDesc};
+use og_api::host::DISPATCH_PLATFORM;
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell, UnsafeCell};
 use std::collections::{BTreeMap, BTreeSet};
@@ -66,9 +67,9 @@ pub type TextureWork =
 /// One call into game code.
 #[derive(Clone, Debug)]
 pub struct Dispatch {
-    /// 0 system, 1 command, 2 facts, 3 a run condition (answers `=true`
-    /// or `=false`), 4 a hook (payload: the entity), 5 the platform pump,
-    /// 6 named UI registration (world reads only).
+    /// One of og-api's `host` constants: `DISPATCH_SYSTEM`, `DISPATCH_COMMAND`,
+    /// `DISPATCH_FACTS`, `DISPATCH_CONDITION`, `DISPATCH_HOOK`,
+    /// `DISPATCH_PLATFORM` or `DISPATCH_UI`.
     pub kind: u32,
     pub engine: u32,
     /// The callback id the runtime's table holds the function under.
@@ -88,7 +89,7 @@ impl Dispatch {
     /// dispatches.
     pub fn platform_pump(engine: u32, time: &og_core::Time) -> Self {
         Self {
-            kind: 5,
+            kind: DISPATCH_PLATFORM,
             engine,
             id: 0,
             query: 0,

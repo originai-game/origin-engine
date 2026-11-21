@@ -1,4 +1,5 @@
-import { SHARED_BYTES, abi, words } from "./host.ts";
+import { abi, words } from "./host.ts";
+import { SHARED_BYTES } from "../generated/abi.ts";
 import { type RecordField, decodeComponentField, encodeComponentField } from "./record-bytes.ts";
 import { type Result, parse } from "./result.ts";
 import { rt } from "./state.ts";

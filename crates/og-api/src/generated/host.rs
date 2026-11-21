@@ -2285,3 +2285,23 @@ pub const SYMBOLS: &[&str] = &[
 ];
 
 pub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};
+
+/// The host ABI's constants: the dispatcher's kinds and the shared buffer's layout, one table (og-idl's gen/host.rs) both hosts read.
+/// A system call (`Dispatch.kind`): the shared buffer opens with the time scale's four doubles, then the system's archetypes from word `FRAME_QUERY_WORD`.
+pub const DISPATCH_SYSTEM: u32 = 0;
+/// A command handler's call (`Dispatch.kind`): the command's arguments are the payload's JSON list.
+pub const DISPATCH_COMMAND: u32 = 1;
+/// The facts function's call (`Dispatch.kind`): its answer is `=` then the facts' JSON.
+pub const DISPATCH_FACTS: u32 = 2;
+/// A system's run condition (`Dispatch.kind`): the answer is `=true` or `=false`.
+pub const DISPATCH_CONDITION: u32 = 3;
+/// A hook's call (`Dispatch.kind`): the payload is the hooked entity.
+pub const DISPATCH_HOOK: u32 = 4;
+/// The platform pump's call (`Dispatch.kind`): the host drains what it handed the engine.
+pub const DISPATCH_PLATFORM: u32 = 5;
+/// A named UI registration pass (`Dispatch.kind`): the world is read only, and a changed world hash refuses it.
+pub const DISPATCH_UI: u32 = 6;
+/// The shared buffer's size in bytes: what a host installs, and what both sides view.
+pub const SHARED_BYTES: usize = 65536;
+/// Where a system call's archetypes start in the shared buffer, in words: after the time scale's four doubles.
+pub const FRAME_QUERY_WORD: usize = 8;

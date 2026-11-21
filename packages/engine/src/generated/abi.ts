@@ -7,6 +7,25 @@
 /// The engine's call back into the runtime (`og_host_set_dispatcher`).
 export type Dispatcher = (kind: number, engine: number, id: number, query: number, tick: number, dt: number, elapsed: number, payload: string) => string;
 
+/** A system call (`Dispatch.kind`): the shared buffer opens with the time scale's four doubles, then the system's archetypes from word `FRAME_QUERY_WORD`. */
+export const DISPATCH_SYSTEM = 0;
+/** A command handler's call (`Dispatch.kind`): the command's arguments are the payload's JSON list. */
+export const DISPATCH_COMMAND = 1;
+/** The facts function's call (`Dispatch.kind`): its answer is `=` then the facts' JSON. */
+export const DISPATCH_FACTS = 2;
+/** A system's run condition (`Dispatch.kind`): the answer is `=true` or `=false`. */
+export const DISPATCH_CONDITION = 3;
+/** A hook's call (`Dispatch.kind`): the payload is the hooked entity. */
+export const DISPATCH_HOOK = 4;
+/** The platform pump's call (`Dispatch.kind`): the host drains what it handed the engine. */
+export const DISPATCH_PLATFORM = 5;
+/** A named UI registration pass (`Dispatch.kind`): the world is read only, and a changed world hash refuses it. */
+export const DISPATCH_UI = 6;
+/** The shared buffer's size in bytes: what a host installs, and what both sides view. */
+export const SHARED_BYTES = 65536;
+/** Where a system call's archetypes start in the shared buffer, in words: after the time scale's four doubles. */
+export const FRAME_QUERY_WORD = 8;
+
 export interface HostAbi<A, V> {
   /** Install the function the engine calls for systems, commands and facts: `dispatcher(kind, engine, id, query, tick, dt, elapsed, payload)` (payload: a command's arguments as a JSON list) returns `""` on success, the error otherwise (`kind`: 0 system, 1 command, 2 facts, whose answer is `"="` then JSON). A system's call has an empty payload: its time scale and its query's archetypes are in the shared buffer (og_host_shared) when the dispatcher is entered. */
   og_host_set_dispatcher(dispatcher: Dispatcher): void;

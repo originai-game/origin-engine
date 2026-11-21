@@ -1,5 +1,5 @@
 import bindings from "../../types/bindings.json" with { type: "json" };
-import { type HostAbi, SYMBOLS, checkEntities } from "../generated/abi.ts";
+import { type HostAbi, SHARED_BYTES, SYMBOLS, checkEntities } from "../generated/abi.ts";
 import { forgetComponents } from "./components.ts";
 import { dispatch } from "./engine.ts";
 import { dirtyRecords, flushRecords } from "./resources.ts";
@@ -120,10 +120,7 @@ export function abi(): HostAbi<Uint32Array, unknown> {
 
 // ── the shared buffer ─────────────────────────────────────────────────────
 
-/** The shared buffer's size in bytes (og-runtime's shared.rs). */
-export const SHARED_BYTES = 65536;
-/** Where a system call's archetypes start in it, in words: after the time scale's four doubles. */
-export const FRAME_QUERY_WORD = 8;
+// Its size and layout are the host ABI's constants (../generated/abi.ts).
 
 
 
