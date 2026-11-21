@@ -43,7 +43,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
       data-status-error={props.status === "error"}
     >
       <View class={`flex-row shrink w-full min-h-0`}>
-        <Text class={`text-display-lg compact:text-title leading-[1.1] font-bold tracking-label uppercase min-w-0 whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
+        <Text class={`text-display-lg compact:text-title leading-tight font-bold tracking-label uppercase min-w-0 whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
           {props.title !== "" ? props.title : t("rhythm.songs.title")}
         </Text>
       </View>
@@ -77,17 +77,17 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                         class={`transition duration-317 w-full min-w-0 min-h-11 py-1 pl-1 pr-3 compact:data-selected:pl-1 nine-plate-cut bg-tile hover:bg-surface disabled:opacity-62 disabled:bg-tile data-selected:ml-6 compact:data-selected:ml-0 data-selected:py-2 data-selected:bg-surface-hover data-selected:inset-ring-2 data-selected:inset-ring-hud-accent`}
                       >
                         <View class={`flex-row items-center gap-4 w-full min-w-0`}>
-                          <View class={`shrink size-15 compact:size-12 data-selected:size-20 rounded-[0.8rem] bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5 data-selected:from-rim-strong data-selected:via-rim data-selected:to-hud-accent`}>
+                          <View class={`shrink size-15 compact:size-12 data-selected:size-20 rounded-panel bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5 data-selected:from-rim-strong data-selected:via-rim data-selected:to-hud-accent`}>
                             <Show when={s().jacket} fallback={
-                              <View class={`size-full rounded-[0.7rem] bg-glass flex-row items-center justify-center`}>
+                              <View class={`size-full rounded-card bg-glass flex-row items-center justify-center`}>
                                 <Icon class={`size-11/25 text-hud-accent`} name="music" />
                               </View>
                             }>
-                              <Image class={`size-full rounded-[0.7rem] object-cover`} src={s().jacket} />
+                              <Image class={`size-full rounded-card object-cover`} src={s().jacket} />
                             </Show>
                           </View>
                           <View class={`flex-col items-start gap-0.5 min-w-0 grow`}>
-                            <Text class={`max-w-full text-start text-xl compact:text-base leading-[1.2] font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg data-selected:text-3xl compact:data-selected:text-base data-selected:font-bold`}>
+                            <Text class={`max-w-full text-start text-xl compact:text-base leading-tight font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg data-selected:text-3xl compact:data-selected:text-base data-selected:font-bold`}>
                               {s().title}
                             </Text>
                             <Text class={`max-w-full text-start text-caption whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>
@@ -153,16 +153,16 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                       class={`group/detail flex-[4] min-w-0 min-h-0 p-1 compact:flex-none compact:w-full compact:p-0 ${packClass("Panel", "frame")}`}
                     >
                       <View class={`flex-row items-start gap-4 w-full min-w-0 compact:items-center`}>
-                        <View class={`shrink w-21/50 max-w-75 compact:w-23 compact:max-w-none aspect-square rounded-[1.2rem] bg-linear-to-b from-sheen to-hud-accent shadow-[0px_0px_10px_#38e8ff] p-0.75 group-data-locked/detail:from-rim-strong group-data-locked/detail:via-rim group-data-locked/detail:to-rim-soft group-data-locked/detail:shadow-none`}>
-                          <View class={`relative size-full rounded-[1rem] bg-glass`}>
+                        <View class={`shrink w-21/50 max-w-75 compact:w-23 compact:max-w-none aspect-square rounded-sheet bg-linear-to-b from-sheen to-hud-accent shadow-glow p-0.75 group-data-locked/detail:from-rim-strong group-data-locked/detail:via-rim group-data-locked/detail:to-rim-soft group-data-locked/detail:shadow-none`}>
+                          <View class={`relative size-full rounded-panel bg-glass`}>
                             <Show when={s().jacket} fallback={
                               <View class={`absolute inset-0 flex-row items-center justify-center`}>
                                 <Icon class={`size-11/25 text-hud-accent`} name="music" />
                               </View>
                             }>
-                              <Image class={`size-full rounded-[1rem] object-cover`} src={s().jacket} />
+                              <Image class={`size-full rounded-panel object-cover`} src={s().jacket} />
                             </Show>
-                            <View class={`absolute inset-0 rounded-[1rem] bg-shade-deep opacity-0 group-data-locked/detail:opacity-100`} />
+                            <View class={`absolute inset-0 rounded-panel bg-shade-deep opacity-0 group-data-locked/detail:opacity-100`} />
                           </View>
                         </View>
                         <View class={`flex-col items-start gap-1 min-w-0 grow`}>
@@ -181,7 +181,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               </Show>
                             </View>
                           </Show>
-                          <Text class={`w-full text-start text-[3.571rem] compact:text-title leading-[1.05] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
+                          <Text class={`w-full text-start text-display-xl compact:text-title leading-flat font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
                             {s().title}
                           </Text>
                           <Text class={`w-full text-start text-base compact:text-caption whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>
@@ -190,11 +190,11 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                           <View class={`flex flex-row flex-wrap gap-2 py-1 items-stretch max-w-full compact:flex-nowrap compact:items-center compact:py-0`}>
                             <View class={`flex-col items-start gap-0 min-w-20 compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
                               <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 compact:hidden`}>{t("rhythm.songs.bpmLabel")}</Text>
-                              <Text class={`text-display-md compact:text-base leading-[1.05] font-bold tabular-nums whitespace-nowrap`}>{s().bpm}</Text>
+                              <Text class={`text-display-md compact:text-base leading-flat font-bold tabular-nums whitespace-nowrap`}>{s().bpm}</Text>
                             </View>
                             <View class={`flex-col items-start gap-0 min-w-20 compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
                               <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 compact:hidden`}>{t("rhythm.songs.lengthLabel")}</Text>
-                              <Text class={`text-display-md compact:text-base leading-[1.05] font-bold tabular-nums whitespace-nowrap`}>{s().length}</Text>
+                              <Text class={`text-display-md compact:text-base leading-flat font-bold tabular-nums whitespace-nowrap`}>{s().length}</Text>
                             </View>
                             <View
                               role="button"
@@ -206,7 +206,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               data-pressed={s().id === props.previewing}
                               class={`min-h-11 compact:min-h-8.75 min-w-30 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-glass nine-plate-cut hover:bg-plate-hi data-pressed:bg-hud-accent text-fg data-pressed:text-hud-accent-fg disabled:opacity-50 disabled:bg-glass ${packClass("Button", "plate")}`}
                             >
-                              <Text class={`shrink-0 pointer-coarse:hidden text-[1.75rem] leading-none`} glyph="details" />
+                              <Text class={`shrink-0 pointer-coarse:hidden text-title leading-none`} glyph="details" />
                               <Show when={s().id === props.previewing}>
                                 <View class={`shrink flex-row items-end gap-0.5 h-2.75 compact:hidden`}>
                                   <View class={`w-0.75 h-3/5 bg-current animate-pulse`} />

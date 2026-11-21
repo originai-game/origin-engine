@@ -33,7 +33,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
       role="group"
       label={t("rhythm.plate.name", { title: props.title })}
     >
-      <View class={`shrink size-21 compact:size-14 rounded-[1rem] bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5`}>
+      <View class={`shrink size-21 compact:size-14 rounded-panel bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5`}>
         <Show when={props.jacket} fallback={
           <View class={`size-full rounded-panel bg-plate-hi flex-row items-center justify-center`}>
             <Icon class={`size-11/25 text-hud-accent`} name="music" />
@@ -43,7 +43,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
         </Show>
       </View>
       <View class={`flex-col gap-0.5 min-w-0 grow`}>
-        <Text class={`text-title compact:text-base leading-[1.15] font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
+        <Text class={`text-title compact:text-base leading-tight font-bold whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
           {props.title}
         </Text>
         <Show when={props.artist !== "" || props.bpm !== ""}>

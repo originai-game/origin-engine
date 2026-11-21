@@ -26,7 +26,7 @@ export function RhythmChain(props: RhythmChainProps) {
             <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78`}>
               {t("rhythm.chain.label")}
             </Text>
-            <Text class={`text-title leading-[1.1] font-bold tabular-nums whitespace-nowrap text-hud-accent`}>
+            <Text class={`text-title leading-tight font-bold tabular-nums whitespace-nowrap text-hud-accent`}>
               {props.multiplier}
             </Text>
           </View>
@@ -53,7 +53,7 @@ export function RhythmChain(props: RhythmChainProps) {
             >
               <View class={`h-full flex-row gap-0.75`} style={{ width: `${(props.steps ?? 8) * 15 - 3}px` }}>
                 <For each={Array.from({ length: props.steps ?? 8 }, (_, i) => i)}>
-                  {() => <View class={`w-3 shrink-0 bg-hud-accent shadow-[0px_0px_6px_#38e8ff]`} />}
+                  {() => <View class={`w-3 shrink-0 bg-hud-accent shadow-glow-sm`} />}
                 </For>
               </View>
             </View>

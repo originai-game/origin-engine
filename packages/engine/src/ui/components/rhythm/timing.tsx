@@ -47,7 +47,7 @@ export function RhythmTiming(props: RhythmTimingProps) {
           {t("rhythm.timing.label")}
         </Text>
         <View class={`flex flex-row flex-wrap justify-between items-center gap-y-0.5 gap-x-1 compact:flex-nowrap`}>
-          <View class={`relative h-1.5 flex-1 basis-full compact:basis-0 compact:min-w-0 bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38]`}>
+          <View class={`relative h-1.5 flex-1 basis-full compact:basis-0 compact:min-w-0 bg-well ring ring-rim`}>
             <View class={`absolute left-1/2 -translate-x-1/2 top-0 -mt-1 w-0.5 h-3.5 bg-sheen`} />
             <For each={props.hits ?? []} key={(h) => h.id}>
               {(h) => (

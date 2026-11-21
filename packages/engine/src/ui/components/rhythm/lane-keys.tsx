@@ -20,7 +20,7 @@ export function RhythmLaneKeys(props: RhythmLaneKeysProps) {
             <View
               role="text"
               label={l().held ? t("rhythm.lanes.held", { key: l().key }) : l().key}
-              class={`min-w-11 compact:min-w-7.5 min-h-8.5 compact:min-h-7 px-1 flex-row items-center justify-center bg-linear-to-b from-key-hi to-key-lo rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-held:bg-linear-to-b data-held:from-hud-accent-hi data-held:to-hud-accent data-held:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
+              class={`min-w-11 compact:min-w-7.5 min-h-8.5 compact:min-h-7 px-1 flex-row items-center justify-center bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key data-held:bg-linear-to-b data-held:from-hud-accent-hi data-held:to-hud-accent data-held:shadow-glow-lg data-held:inset-shadow-lip`}
               data-held={l().held}
             >
               <Text class={`text-base compact:text-caption font-bold text-hud-accent-fg text-center`}>{l().key}</Text>

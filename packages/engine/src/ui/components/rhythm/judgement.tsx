@@ -48,7 +48,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           <Show when={!props.broken}>
             <Show when={Math.max(props.hit, 1)} keyed>
               {() => (
-              <Text class={`text-[10.714rem] compact:text-7xl leading-[0.85] font-bold tabular-nums italic whitespace-nowrap text-fg text-stroke-3 text-stroke-bg animate-beat`}>
+              <Text class={`text-8xl compact:text-7xl leading-flat font-bold tabular-nums italic whitespace-nowrap text-fg text-stroke-3 text-stroke-bg animate-beat`}>
                 {formatNumber(props.combo)}
               </Text>
               )}
@@ -56,7 +56,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           </Show>
           <View class={`flex-col items-center gap-0.5 compact:flex-row compact:items-baseline compact:gap-2`}>
             <Text
-              class={`text-base font-semibold uppercase whitespace-nowrap text-hud-accent tracking-[0.4em] compact:tracking-label data-broken:text-fg-muted data-broken:tracking-label`}
+              class={`text-base font-semibold uppercase whitespace-nowrap text-hud-accent tracking-kicker compact:tracking-label data-broken:text-fg-muted data-broken:tracking-label`}
               data-broken={props.broken}
             >
               {props.broken ? t("rhythm.judge.broken") : t("rhythm.judge.combo")}
@@ -84,7 +84,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           data-judgement-miss={judgement === "miss"}
         >
           <Text
-            class={`max-w-full min-w-0 text-8xl compact:text-title leading-[1.05] font-bold italic tracking-wide uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
+            class={`max-w-full min-w-0 text-8xl compact:text-title leading-flat font-bold italic tracking-wide uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-hud-accent data-judgement-good:text-boon data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
             data-judgement-perfect={judgement === "perfect"}
             data-judgement-great={judgement === "great"}
             data-judgement-good={judgement === "good"}

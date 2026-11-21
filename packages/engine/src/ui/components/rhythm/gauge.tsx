@@ -36,7 +36,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
       data-ready={props.ready}
     >
       <View
-        class={`relative flex-1 min-h-0 w-6.5 compact:w-4 overflow-hidden -skew-y-12 group-data-side-end/gauge:skew-y-12 bg-well/82 shadow-[0px_0px_0px_1px_#ffffff40,0px_3px_8px_#00000073] data-danger:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12px_#ff4d5eb3] data-danger:animate-pulse data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_0px_0px_1px_#ffffff40]`}
+        class={`relative flex-1 min-h-0 w-6.5 compact:w-4 overflow-hidden -skew-y-12 group-data-side-end/gauge:skew-y-12 bg-well shadow-plate ring ring-rim data-danger:shadow-glow data-danger:shadow-foe data-danger:ring data-danger:ring-foe data-danger:animate-pulse data-ready:shadow-glow-lg data-ready:inset-ring-1 data-ready:inset-ring-rim`}
         role="meter"
         label={(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
         valueMin={0}
@@ -46,7 +46,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
         data-ready={props.ready}
       >
         <View
-          class={`absolute bottom-0 left-0 w-full bg-boon shadow-[0px_0px_6px_#55e39a66] group-data-kind-fever/gauge:bg-fever group-data-kind-fever/gauge:shadow-[0px_0px_6px_#ff3d8a66] group-data-danger/gauge:bg-critical`}
+          class={`absolute bottom-0 left-0 w-full bg-boon shadow-glow-sm shadow-fill-strong group-data-kind-fever/gauge:bg-fever group-data-kind-fever/gauge:shadow-glow-sm group-data-kind-fever/gauge:shadow-fill-strong group-data-danger/gauge:bg-critical`}
           style={{ height: `${full * 100}%` }}
         />
         <For each={Array.from({ length: 9 }, (_, i) => i)}>
@@ -74,7 +74,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
       </Show>
       <Show when={props.key !== ""}>
         <Text
-          class={`max-w-full px-1 text-center text-xs font-bold bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] data-ready:bg-linear-to-b data-ready:from-hud-accent-hi data-ready:to-hud-accent data-ready:shadow-[0px_0px_14px_#38e8ff,inset_0px_-2.288px_0px_#0000002e]`}
+          class={`max-w-full px-1 text-center text-xs font-bold bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-control shadow-key data-ready:bg-linear-to-b data-ready:from-hud-accent-hi data-ready:to-hud-accent data-ready:shadow-glow-lg data-ready:inset-shadow-lip`}
           data-ready={props.ready}
         >
           {props.key}
