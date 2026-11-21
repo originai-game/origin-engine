@@ -1148,6 +1148,9 @@ impl Tree {
                 crate::text::measure(m, t, run, width)
             });
         }
+        if laid_out {
+            self.clamp_scrolls();
+        }
         // A box that moved slides there when it transitions its layout.
         let arena = &self.arena;
         self.motion.relayout(|n| arena.box_of(n));
@@ -1308,7 +1311,10 @@ impl Tree {
             let (px, py, pv, pclip) = if el.arena_parent == NONE {
                 (0.0, 0.0, true, screen)
             } else {
-                self.abs[el.arena_parent as usize]
+                // A scroller's children move by its scroll.
+                let [sx, sy] = self.scroll_of(el.arena_parent);
+                let (px, py, pv, pclip) = self.abs[el.arena_parent as usize];
+                (px - sx, py - sy, pv, pclip)
             };
             // What it inherits comes from the element it inherits from,
             // which a fixed one is not the arena child of: one not reached
@@ -1345,7 +1351,8 @@ impl Tree {
             let clip = pclip;
             // What overflows a box that does not show it is cut to it.
             let o = taffy::CoreStyle::overflow(&r.layout);
-            let inner = if o.x != taffy::Overflow::Visible || o.y != taffy::Overflow::Visible {
+            let scroller = self.input.per(e as u32).is_some_and(|p| p.scroller);
+            let inner = if scroller || o.x != taffy::Overflow::Visible || o.y != taffy::Overflow::Visible {
                 [
                     clip[0].max(x),
                     clip[1].max(y),

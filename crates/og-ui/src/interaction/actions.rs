@@ -129,6 +129,11 @@ impl ActionHint {
 }
 
 impl Ui {
+    /// The action's input is down this tick (held, before or past any hold).
+    pub fn action_down(&self, name: &str) -> bool {
+        self.interaction.action_down(name)
+    }
+
     /// The UI actions fired this tick, in order.
     pub fn fired_actions(&self) -> &[String] {
         &self.interaction.actions.fired

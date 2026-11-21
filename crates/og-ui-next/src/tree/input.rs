@@ -23,11 +23,33 @@ const CLICK_SLOP: f32 = 4.0;
 /// Two presses this close (s) on one element are a double press (Rune's
 /// `double_click_interval`).
 const DOUBLE_PRESS: f64 = 0.5;
+/// A hold's progress as text, "0.42", written into `buf` (no allocation).
+fn progress(t: f32, buf: &mut [u8; 8]) -> &str {
+    let hundredths = (t.clamp(0.0, 1.0) * 100.0) as u32;
+    buf[..2].copy_from_slice(b"0.");
+    buf[2] = b'0' + (hundredths / 10) as u8;
+    buf[3] = b'0' + (hundredths % 10) as u8;
+    std::str::from_utf8(&buf[..4]).expect("ascii")
+}
+
 /// Whether two points are within [`CLICK_SLOP`] of each other.
 fn near(a: (f32, f32), b: (f32, f32)) -> bool {
     let (dx, dy) = (a.0 - b.0, a.1 - b.1);
     dx * dx + dy * dy <= CLICK_SLOP * CLICK_SLOP
 }
+
+/// A finger that travels further than this (px) pans what scrolls under
+/// it, and is no tap (Rune's `TOUCH_SLOP`).
+const TOUCH_SLOP: f32 = 8.0;
+/// A finger held still this long (s) is a long press (Rune's
+/// `LONG_PRESS`, Chromium's).
+const LONG_PRESS: f64 = 0.5;
+/// A pan let go after resting this long (s) throws nothing (Rune's
+/// `FLING_HOLD`).
+const FLING_HOLD: f64 = 0.1;
+/// A fling's speed falls by e every 1 / this seconds (Rune's
+/// `SCROLL_DECAY`).
+const SCROLL_DECAY: f32 = 2.002;
 
 /// No `tabIndex` prop: a Tab stop when it takes presses or is an input.
 pub(super) const NO_TAB: i32 = i32::MIN;
@@ -48,6 +70,50 @@ pub(super) struct Per {
     pub glyph: Box<str>,
     /// Its interaction states ([`crate::classes::state`] bits).
     pub states: u16,
+    /// A `Scroll`: its children move by `scroll` (x, y), within what
+    /// runs past its box.
+    pub scroller: bool,
+    pub scroll: [f32; 2],
+    /// `hold`: seconds a press or `confirm` is held on it before it
+    /// presses (0: it presses on release).
+    pub hold: f32,
+    /// `autofocus`: it takes the focus once it shows.
+    pub autofocus: bool,
+}
+
+/// What a finger on a touch screen is doing.
+#[derive(Clone, Copy, PartialEq)]
+enum Touch {
+    /// Still within the slop: a tap, or a long press when it stays.
+    Pending,
+    /// It pans scroller `e` along one axis, from its offset `from`.
+    Pan { e: u32, horizontal: bool, from: f32 },
+    /// It drags what heard its `pointerdown`, or nothing pans.
+    Drag,
+    /// A long press fired: it lifts on nothing.
+    Long,
+}
+
+/// A finger on a touch screen (Rune's `touch.rs`).
+struct Finger {
+    origin: (f32, f32),
+    /// Travel along the pan, its time and its speed (px/s).
+    last: f32,
+    at: f64,
+    velocity: f32,
+    mode: Touch,
+    /// When, still pending, it is a long press.
+    due: f64,
+}
+
+/// A press held on a node with a `hold` duration.
+struct Holding {
+    e: u32,
+    start: f64,
+    /// Held by `confirm` (Enter, Space, a pad's A), else by the pointer.
+    keys: bool,
+    /// It completed and pressed: it waits for the release.
+    done: bool,
 }
 
 /// The press the pointer holds on an op element.
@@ -97,6 +163,21 @@ pub struct Input {
     keyed: bool,
     /// A `<Glyph>` came or changed: the host gives the glyphs again.
     pub(super) glyphs_wanted: bool,
+    /// The op elements under a point, innermost first (scratch).
+    chain: Vec<u32>,
+    /// The scroller wheel notches went to, along which axis and when (s).
+    latch: Option<(u32, bool, f64)>,
+    /// The pointer is a finger, a finger is down, and a fling coasts
+    /// (scroller, axis, speed px/s, last step time).
+    touch: bool,
+    finger: Option<Finger>,
+    fling: Option<(u32, bool, f32, f64)>,
+    holding: Option<Holding>,
+    /// The player used a pad last: focus a node takes by itself
+    /// (`autofocus`, a modal opening) shows its ring.
+    pad: bool,
+    /// `autofocus` nodes waiting to show.
+    pub(super) autofocus: Vec<u32>,
 }
 
 impl Input {
@@ -151,11 +232,24 @@ impl Tree {
         el.disabled != NONE && og_reactive::bind::truthy(&queue::get(el.disabled))
     }
 
+    /// Fires `event` on `e` when it listens. A pointer event's `value` is
+    /// `e`'s box on the surface, "x y width height", so a slider turns
+    /// the pointer into a value on its own track.
     fn fire(&mut self, e: u32, event: OpEvent, x: f32, y: f32) {
         let el = &self.els[e as usize];
-        if el.listens & event.bit() != 0 {
-            self.events.push(Fired::at(el.js, event, x, y));
+        if el.listens & event.bit() == 0 {
+            return;
         }
+        let mut f = Fired::at(el.js, event, x, y);
+        if matches!(
+            event,
+            OpEvent::PointerDown | OpEvent::PointerMove | OpEvent::PointerUp | OpEvent::LongPress
+        ) && let Some(&(bx, by, ..)) = self.abs.get(e as usize)
+        {
+            let b = self.arena.box_of(el.node);
+            f.value = format!("{bx} {by} {} {}", b.w, b.h).into();
+        }
+        self.events.push(f);
     }
 
     /// Sets (or clears) interaction state `bit` on op element `e`, and
@@ -254,6 +348,9 @@ impl Tree {
                 self.fire(l, OpEvent::PointerMove, x, y);
             }
         }
+        if moved && !pressed {
+            self.finger_moved(x, y);
+        }
         let mut took = false;
         if pressed {
             if under != NONE {
@@ -276,6 +373,26 @@ impl Tree {
                     second,
                 });
                 self.set_state(e, PRESSED, true);
+                if self.input.per(e).is_some_and(|p| p.hold > 0.0) {
+                    self.input.holding = Some(Holding {
+                        e,
+                        start: self.time,
+                        keys: false,
+                        done: false,
+                    });
+                }
+            }
+            // A finger stops a fling under it, and may pan or long-press.
+            if self.input.touch {
+                self.input.fling = None;
+                self.input.finger = Some(Finger {
+                    origin: (x, y),
+                    last: 0.0,
+                    at: self.time,
+                    velocity: 0.0,
+                    mode: Touch::Pending,
+                    due: self.time + LONG_PRESS,
+                });
             }
             // A press focuses what it lands in, or blurs (Rune: a press
             // on content that takes no focus).
@@ -299,11 +416,23 @@ impl Tree {
                     self.fire(l, OpEvent::PointerUp, x, y);
                 }
             }
+            if let Some(f) = self.input.finger.take()
+                && let Touch::Pan { e, horizontal, .. } = f.mode
+                && self.time - f.at < FLING_HOLD
+                && f.velocity.abs() > 1.0
+            {
+                self.input.fling = Some((e, horizontal, f.velocity, self.time));
+            }
             if let Some(h) = self.input.held.take() {
                 took = true;
                 self.set_state(h.e, PRESSED, false);
                 let el = &self.els[h.e as usize];
-                if !el.dead && el.js != NONE && self.inside(h.e, x, y) && !self.disabled(h.e) {
+                let holds = self.input.per(h.e).is_some_and(|p| p.hold > 0.0);
+                if holds {
+                    // A hold presses when it completes, not on release.
+                    self.input.first = None;
+                } else if !el.dead && el.js != NONE && self.inside(h.e, x, y) && !self.disabled(h.e)
+                {
                     self.click(h.e, x, y, h.second);
                     self.input.first = (!h.moved && !h.second).then_some((h.e, self.time, h.at));
                 } else {
@@ -328,16 +457,213 @@ impl Tree {
         }
     }
 
-    /// A wheel by (dx, dy) at (x, y): the innermost op element under it
-    /// that listens hears it, with the deltas in `x` and `y`.
+    /// The op elements at (x, y), innermost first, into `chain`.
+    fn chain_at(&mut self, x: f32, y: f32) {
+        let mut chain = std::mem::take(&mut self.input.chain);
+        chain.clear();
+        let mut e = self.hit_where(x, y, |el| el.js != NONE);
+        while e != NONE {
+            if self.els[e as usize].js != NONE {
+                chain.push(e);
+            }
+            e = self.els[e as usize].parent;
+        }
+        self.input.chain = chain;
+    }
+
+    /// How far a scroller's children may move it: what runs past its box,
+    /// right and down.
+    fn extent(&self, e: u32) -> [f32; 2] {
+        let node = self.els[e as usize].node;
+        let b = self.arena.box_of(node);
+        let (mut right, mut bottom) = (0.0f32, 0.0f32);
+        for &c in self.arena.children(node) {
+            let k = self.arena.box_of(c);
+            right = right.max(k.x + k.w);
+            bottom = bottom.max(k.y + k.h);
+        }
+        [
+            (right + b.inset[2] - b.w).max(0.0),
+            (bottom + b.inset[3] - b.h).max(0.0),
+        ]
+    }
+
+    fn scroller(&self, e: u32) -> bool {
+        self.input.per(e).is_some_and(|p| p.scroller) && !self.els[e as usize].dead
+    }
+
+    /// A scroller's axis: horizontal when only its width runs over.
+    fn axis(&self, e: u32) -> Option<bool> {
+        if !self.scroller(e) {
+            return None;
+        }
+        let [w, h] = self.extent(e);
+        Some(h <= 0.0 && w > 0.0)
+    }
+
+    /// How far op element `e`'s children are moved: its scroll.
+    pub(super) fn scroll_of(&self, e: u32) -> [f32; 2] {
+        match e {
+            NONE => [0.0; 2],
+            e => self.input.per(e).map_or([0.0; 2], |p| p.scroll),
+        }
+    }
+
+    /// Op element `e`'s scroll offset along `horizontal` (else down).
+    pub(super) fn scroll_at(&self, e: u32, horizontal: bool) -> f32 {
+        self.scroll_of(e)[usize::from(!horizontal)]
+    }
+
+    /// Sets scroller `e`'s offset along an axis, within its extent;
+    /// whether it moved.
+    fn scroll_to(&mut self, e: u32, horizontal: bool, to: f32) -> bool {
+        let k = usize::from(!horizontal);
+        let to = to.clamp(0.0, self.extent(e)[k]);
+        let p = &mut self.input.per[e as usize];
+        if p.scroll[k] == to {
+            return false;
+        }
+        p.scroll[k] = to;
+        self.paint = true;
+        true
+    }
+
+    /// After a layout: each scroller's offset stays within its extent.
+    pub(super) fn clamp_scrolls(&mut self) {
+        for e in 0..self.input.per.len() as u32 {
+            if self.scroller(e) {
+                let [x, y] = self.scroll_of(e);
+                self.scroll_to(e, true, x);
+                self.scroll_to(e, false, y);
+            }
+        }
+    }
+
+    /// A wheel by (dx, dy) at (x, y). The nearest op element under it
+    /// that listens hears it, with the deltas in `x` and `y`, and takes it
+    /// unless a scroller is nearer (NSH's `wheel_listener`); else the
+    /// innermost scroller along the wheel's axis that can move scrolls
+    /// (NSH's `scroll_target`), and notches that keep coming stay on it
+    /// (NSH's `latch_holds`).
     pub fn wheel(&mut self, x: f32, y: f32, dx: f32, dy: f32) {
         if dx == 0.0 && dy == 0.0 {
             return;
         }
-        let under = self.hit_where(x, y, |el| el.js != NONE);
-        let l = self.up(under, |el| el.listens & OpEvent::Wheel.bit() != 0);
-        if l != NONE {
+        self.chain_at(x, y);
+        let chain = std::mem::take(&mut self.input.chain);
+        let heard = nsh::wheel_listener(
+            chain.iter().copied(),
+            |&e| self.els[e as usize].listens & OpEvent::Wheel.bit() != 0,
+            |&e| self.scroller(e),
+        );
+        if let Some((l, _)) = heard {
             self.fire(l, OpEvent::Wheel, dx, dy);
+        }
+        let taken = heard.is_some_and(|(_, takes)| takes);
+        let horizontal = dx.abs() > dy.abs();
+        let delta = |axis_h: bool| if axis_h && dx != 0.0 { dx } else { dy };
+        let now = self.time * 1000.0;
+        let latched = self
+            .input
+            .latch
+            .filter(|&(e, h, last)| self.scroller(e) && nsh::latch_holds(h, last, horizontal, now));
+        let target = match latched {
+            Some((e, ..)) => Some(e),
+            None if taken => None,
+            None => nsh::scroll_target(
+                chain
+                    .iter()
+                    .copied()
+                    .filter(|&e| self.scroller(e))
+                    .collect(),
+                nsh_input::Points(dx),
+                nsh_input::Points(dy),
+                |&e| self.axis(e),
+                |&e| {
+                    let h = self.axis(e) == Some(true);
+                    let (at, max) = (self.scroll_at(e, h), self.extent(e)[usize::from(!h)]);
+                    let d = delta(h);
+                    (d > 0.0 && at < max) || (d < 0.0 && at > 0.0)
+                },
+            ),
+        };
+        self.input.chain = chain;
+        if let Some(e) = target {
+            let h = self.axis(e) == Some(true);
+            self.scroll_to(e, h, self.scroll_at(e, h) + delta(h));
+            self.input.fling = None;
+            self.input.latch = Some((e, horizontal, now));
+        }
+    }
+
+    /// The device the player used last: a touch screen (`touch`: a drag
+    /// pans what scrolls, a still finger long-presses) or a pad (`pad`:
+    /// focus a node takes by itself shows its ring).
+    pub fn set_device(&mut self, touch: bool, pad: bool) {
+        self.input.touch = touch;
+        self.input.pad = pad;
+    }
+
+    /// Scrolls the scrollers around op element `e` so its box shows, as
+    /// focus moved by the keys does (CSS's `scrollIntoView` nearest).
+    fn reveal(&mut self, e: u32) {
+        let Some(&(mut ex, mut ey, ..)) = self.abs.get(e as usize) else {
+            return;
+        };
+        let b = self.arena.box_of(self.els[e as usize].node);
+        let mut s = self.els[e as usize].parent;
+        while s != NONE {
+            if self.scroller(s)
+                && let Some(&(sx, sy, ..)) = self.abs.get(s as usize)
+            {
+                let sb = self.arena.box_of(self.els[s as usize].node);
+                for (h, at, size, from, span) in
+                    [(true, ex, b.w, sx, sb.w), (false, ey, b.h, sy, sb.h)]
+                {
+                    let by = if at < from {
+                        at - from
+                    } else if at + size > from + span {
+                        (at + size - from - span).min(at - from)
+                    } else {
+                        0.0
+                    };
+                    let old = self.scroll_at(s, h);
+                    if by != 0.0 && self.scroll_to(s, h, old + by) {
+                        let moved = self.scroll_at(s, h) - old;
+                        if h {
+                            ex -= moved;
+                        } else {
+                            ey -= moved;
+                        }
+                    }
+                }
+            }
+            s = self.els[s as usize].parent;
+        }
+    }
+
+    /// A press on a node with a `hold` starts it; elsewhere it presses.
+    fn press_or_hold(&mut self, e: u32, keys: bool) {
+        if self.input.per(e).is_some_and(|p| p.hold > 0.0) {
+            if self.input.holding.as_ref().is_none_or(|h| h.e != e) {
+                self.input.holding = Some(Holding {
+                    e,
+                    start: self.time,
+                    keys,
+                    done: false,
+                });
+            }
+        } else {
+            self.click(e, 0.0, 0.0, false);
+        }
+    }
+
+    fn fire_value(&mut self, e: u32, event: OpEvent, value: &str) {
+        let el = &self.els[e as usize];
+        if el.listens & event.bit() != 0 {
+            let mut f = Fired::at(el.js, event, 0.0, 0.0);
+            f.value = value.into();
+            self.events.push(f);
         }
     }
 
@@ -405,6 +731,9 @@ impl Tree {
             }
         }
         self.input.focus = e;
+        if e != NONE && visible {
+            self.reveal(e);
+        }
         if e != NONE {
             self.set_state(e, FOCUSED, true);
             self.set_state(e, FOCUS_VISIBLE, visible);
@@ -552,7 +881,7 @@ impl Tree {
                 self.input.modality = Modality::Keyboard;
                 self.set_state(f, FOCUS_VISIBLE, true);
             }
-            self.click(f, 0.0, 0.0, false);
+            self.press_or_hold(f, true);
             self.input.keyed = true;
             return true;
         }
@@ -595,7 +924,7 @@ impl Tree {
             if !self.input.keyed {
                 self.input.modality = Modality::Keyboard;
                 self.set_state(f, FOCUS_VISIBLE, true);
-                self.click(f, 0.0, 0.0, false);
+                self.press_or_hold(f, true);
             }
             return true;
         }
@@ -603,8 +932,160 @@ impl Tree {
     }
 
     /// The frame's input ended: what a key consumed is forgotten.
-    pub fn input_done(&mut self) {
+    ///
+    /// `confirm`: the `confirm` action is down (a hold it began goes on
+    /// while it is). Here a still finger's long press comes due, a hold
+    /// moves on, completes or lets go, and a fling coasts.
+    pub fn input_done(&mut self, confirm: bool) {
         self.input.keyed = false;
+        let now = self.time;
+        // An `autofocus` node takes the focus once it shows.
+        let mut k = 0;
+        while k < self.input.autofocus.len() {
+            let e = self.input.autofocus[k];
+            if self.els[e as usize].dead {
+                self.input.autofocus.swap_remove(k);
+            } else if self.focusable(e) {
+                self.input.autofocus.swap_remove(k);
+                if self.input.pad {
+                    self.input.modality = Modality::Keyboard;
+                }
+                self.focus(e);
+            } else {
+                k += 1;
+            }
+        }
+        // A long press: the finger stayed within the slop.
+        if let Some(f) = &self.input.finger
+            && f.mode == Touch::Pending
+            && now >= f.due
+        {
+            let (x, y) = f.origin;
+            self.chain_at(x, y);
+            let l = self
+                .input
+                .chain
+                .iter()
+                .copied()
+                .find(|&e| self.els[e as usize].listens & OpEvent::LongPress.bit() != 0);
+            if let Some(l) = l {
+                self.fire(l, OpEvent::LongPress, x, y);
+                self.cancel_press();
+                if let Some(f) = &mut self.input.finger {
+                    f.mode = Touch::Long;
+                }
+            }
+        }
+        // A hold: held by its press while inside it, or by `confirm` on
+        // the focus.
+        if let Some(h) = &self.input.holding {
+            let (e, start, keys, done) = (h.e, h.start, h.keys, h.done);
+            let held = if keys {
+                confirm && self.input.focus == e
+            } else {
+                self.input.held.as_ref().is_some_and(|p| p.e == e)
+                    && self.input.per(e).is_some_and(|p| p.states & PRESSED != 0)
+            };
+            let dur = self.input.per(e).map_or(0.0, |p| p.hold);
+            if !held || self.els[e as usize].dead {
+                self.input.holding = None;
+                if !done && !self.els[e as usize].dead {
+                    self.fire_value(e, OpEvent::Hold, "0");
+                }
+            } else if !done {
+                let t = ((now - start) as f32 / dur.max(f32::EPSILON)).min(1.0);
+                if t >= 1.0 {
+                    self.fire_value(e, OpEvent::Hold, "1");
+                    self.click(e, 0.0, 0.0, false);
+                    if let Some(h) = &mut self.input.holding {
+                        h.done = true;
+                    }
+                } else {
+                    let mut buf = [0u8; 8];
+                    let text = progress(t, &mut buf);
+                    self.fire_value(e, OpEvent::Hold, text);
+                }
+            }
+        }
+        // A fling coasts (Rune's exact exponential decay) until it stops
+        // or meets its scroller's end.
+        if let Some((e, h, v, last)) = self.input.fling {
+            let dt = (now - last) as f32;
+            if dt > 0.0 {
+                let decay = (-SCROLL_DECAY * dt).exp();
+                let by = v * (1.0 - decay) / SCROLL_DECAY;
+                let moved = self.scroller(e) && self.scroll_to(e, h, self.scroll_at(e, h) + by);
+                let v = v * decay;
+                self.input.fling = (moved && v.abs() > 1.0).then_some((e, h, v, now));
+            }
+        }
+    }
+
+    /// Whether a hold, a fling or a finger's long press is under way:
+    /// the host runs [`Tree::input_done`] each frame while it is.
+    pub fn input_busy(&self) -> bool {
+        self.input.holding.is_some() || self.input.fling.is_some() || self.input.finger.is_some()
+    }
+
+    /// The press the pointer holds lets go without a press.
+    fn cancel_press(&mut self) {
+        if let Some(h) = self.input.held.take() {
+            self.set_state(h.e, PRESSED, false);
+        }
+        self.input.first = None;
+    }
+
+    /// A finger moved to (x, y): past the slop it pans the scroller under
+    /// where it went down along the way it went, unless what heard its
+    /// `pointerdown` drags; a pan lets the press go.
+    fn finger_moved(&mut self, x: f32, y: f32) {
+        let Some(f) = &self.input.finger else { return };
+        let (ox, oy) = f.origin;
+        let (dx, dy) = (x - ox, y - oy);
+        if f.mode == Touch::Pending && dx * dx + dy * dy > TOUCH_SLOP * TOUCH_SLOP {
+            let horizontal = dx.abs() > dy.abs();
+            let mode = if self.input.capture != NONE {
+                Touch::Drag
+            } else {
+                self.chain_at(ox, oy);
+                let e =
+                    self.input.chain.iter().copied().find(|&e| {
+                        self.scroller(e) && self.extent(e)[usize::from(!horizontal)] > 0.0
+                    });
+                match e {
+                    Some(e) => Touch::Pan {
+                        e,
+                        horizontal,
+                        from: self.scroll_at(e, horizontal),
+                    },
+                    None => Touch::Drag,
+                }
+            };
+            if matches!(mode, Touch::Pan { .. }) {
+                self.cancel_press();
+            }
+            if let Some(f) = &mut self.input.finger {
+                f.mode = mode;
+            }
+        }
+        let now = self.time;
+        let Some(f) = &mut self.input.finger else {
+            return;
+        };
+        if let Touch::Pan {
+            e,
+            horizontal,
+            from,
+        } = f.mode
+        {
+            let along = if horizontal { dx } else { dy };
+            let dt = (now - f.at) as f32;
+            if dt > 0.0 {
+                f.velocity = -(along - f.last) / dt;
+            }
+            (f.last, f.at) = (along, now);
+            self.scroll_to(e, horizontal, from - along);
+        }
     }
 
     /// The modals that opened and closed since the last input (Rune's
@@ -659,7 +1140,14 @@ impl Tree {
             self.input.capture = NONE;
             self.tab_stops();
             let first = self.input.stops.first().copied().unwrap_or(m);
-            self.focus(first);
+            if self.input.pad {
+                self.input.modality = Modality::Keyboard;
+            }
+            // An `autofocus` node in it waits to take it instead.
+            let wants = self.input.autofocus.iter().any(|&a| self.within(a, m));
+            if !wants {
+                self.focus(first);
+            }
         }
     }
 

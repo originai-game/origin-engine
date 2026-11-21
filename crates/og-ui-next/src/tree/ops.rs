@@ -32,10 +32,15 @@ pub enum Event {
     /// An input action its `actions` prop lists (`onAction`), by name in
     /// the event's `key`.
     Action,
+    /// A finger held still on it for 0.5 s (`onLongPress`).
+    LongPress,
+    /// A held press on a node with a `hold` duration: its progress, 0 to
+    /// 1, in `value` each frame; "0" when it lets go early (`onHold`).
+    Hold,
 }
 
 impl Event {
-    const ALL: [Event; 11] = [
+    const ALL: [Event; 13] = [
         Event::Press,
         Event::Tap,
         Event::PointerDown,
@@ -47,6 +52,8 @@ impl Event {
         Event::Key,
         Event::Change,
         Event::Action,
+        Event::LongPress,
+        Event::Hold,
     ];
 
     pub fn bit(self) -> u16 {
@@ -518,6 +525,7 @@ impl Tree {
                         t => return Err(format!("og.ui ops: unknown tag {t}")),
                     };
                     let e = self.create(id, kind, false)?;
+                    self.input.per[e as usize].scroller = tag == 3;
                     if tag == 6 {
                         self.els[e as usize].line = Some((Vec::new(), false));
                     }
@@ -575,6 +583,17 @@ impl Tree {
                             }
                         }
                         "actions" => self.input.per[e as usize].actions = value.into(),
+                        "autofocus" => {
+                            let on = !matches!(value, "" | "false" | "0" | "null");
+                            self.input.per[e as usize].autofocus = on;
+                            self.input.autofocus.retain(|&a| a != e);
+                            if on {
+                                self.input.autofocus.push(e);
+                            }
+                        }
+                        "hold" => {
+                            self.input.per[e as usize].hold = value.trim().parse().unwrap_or(0.0);
+                        }
                         "glyph" => {
                             self.input.per[e as usize].glyph = value.into();
                             self.input.glyphs_wanted = true;
@@ -1609,7 +1628,7 @@ mod tests {
         // again.
         assert!(t.key("Enter", false, false, false, false));
         t.action("confirm");
-        t.input_done();
+        t.input_done(false);
         let presses: Vec<_> = t.events.iter().map(|f| (f.id, f.event)).collect();
         assert_eq!(presses, [(1, Event::Press)]);
         t.events.clear();
@@ -1731,5 +1750,250 @@ mod tests {
             t.events[0].id, 2,
             "released: the moves go under the pointer"
         );
+    }
+
+    /// A 50 by 40 `Scroll` (id 10) of four 50 by 20 rows (ids 1 to 4,
+    /// pressable) in a column: 40 px run past its end.
+    fn list(t: &mut Tree) {
+        let mut b = Batch::default();
+        b.op(1).u32(99).u8(0);
+        b.op(4).u32(99).str("col");
+        b.op(8).u32(0).u32(99).u32(u32::MAX);
+        b.op(1).u32(10).u8(3);
+        b.op(4).u32(10).str("col s");
+        b.op(8).u32(99).u32(10).u32(u32::MAX);
+        for id in 1..=4 {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("b");
+            b.op(7).u32(id).u8(Event::Press as u8).u8(1);
+            b.op(8).u32(10).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(t);
+    }
+
+    fn scrolled(t: &Tree) -> f32 {
+        t.scroll_at(t.op(10).unwrap(), false)
+    }
+
+    /// A scroll view whose class sets a fixed 50 by 40 box (`s`).
+    fn scrolling() -> Tree {
+        let mut t = tree();
+        t.set_resolver(Box::new(|class, _, _| {
+            let mut s = taffy::Style::default();
+            for c in class.split_whitespace() {
+                match c {
+                    "col" => s.flex_direction = taffy::FlexDirection::Column,
+                    "s" => s.size = taffy::Size::from_lengths(50.0, 40.0),
+                    "b" => {
+                        s.size = taffy::Size::from_lengths(50.0, 20.0);
+                        s.flex_shrink = 0.0;
+                    }
+                    _ => {}
+                }
+            }
+            Record {
+                layout: rune_taffy::CompactStyle::from(&s),
+                ..Record::default()
+            }
+        }));
+        t
+    }
+
+    /// The wheel scrolls the scroller under it, within what runs past its
+    /// end; its rows move with it, a press lands on the row now there,
+    /// and the clipped row under it answers nothing.
+    #[test]
+    fn the_wheel_scrolls_a_scroll_and_its_rows_move() {
+        let mut t = scrolling();
+        list(&mut t);
+        assert_eq!(t.op_box(2).unwrap()[1], 20.0);
+        t.wheel(10.0, 10.0, 0.0, 30.0);
+        frame(&mut t);
+        assert_eq!(scrolled(&t), 30.0);
+        assert_eq!(t.op_box(2).unwrap()[1], -10.0, "row 2 moved up by 30");
+        t.wheel(10.0, 10.0, 0.0, 100.0);
+        frame(&mut t);
+        assert_eq!(scrolled(&t), 40.0, "no further than its end");
+        // Row 4 (60..80) now shows at 20..40.
+        at(&mut t, 10.0, 30.0, true, false);
+        at(&mut t, 10.0, 30.0, false, true);
+        assert_eq!(t.events.iter().map(|f| f.id).collect::<Vec<_>>(), [4]);
+        t.events.clear();
+        // Below the scroller (y 50) is row 4's old place: clipped, no hit.
+        at(&mut t, 10.0, 50.0, true, false);
+        at(&mut t, 10.0, 50.0, false, true);
+        assert!(t.events.is_empty());
+    }
+
+    /// A finger past the 8 px slop pans the scroller and lets the press
+    /// go; let go while moving, it flings on, slowing to a stop. Within
+    /// the slop it is a tap.
+    #[test]
+    fn a_finger_pans_and_flings_a_scroll() {
+        let mut t = scrolling();
+        list(&mut t);
+        t.set_device(true, false);
+        t.set_time(1.0, false);
+        at(&mut t, 10.0, 30.0, true, false);
+        t.set_time(1.016, false);
+        at(&mut t, 10.0, 25.0, false, false);
+        assert_eq!(scrolled(&t), 0.0, "within the slop");
+        t.set_time(1.032, false);
+        at(&mut t, 10.0, 18.0, false, false);
+        assert_eq!(scrolled(&t), 12.0);
+        t.set_time(1.048, false);
+        at(&mut t, 10.0, 15.0, false, true);
+        assert!(t.events.is_empty(), "a pan presses nothing");
+        assert_eq!(scrolled(&t), 15.0);
+        // 3 px in 16 ms: it coasts on, never back.
+        let mut last = 15.0;
+        for k in 1..60 {
+            t.set_time(1.048 + k as f64 / 60.0, false);
+            t.input_done(false);
+            frame(&mut t);
+            assert!(scrolled(&t) >= last);
+            last = scrolled(&t);
+        }
+        // About 190 px/s coasts about 93 px (v / 2.002): it meets the end.
+        assert_eq!(last, 40.0, "it coasts on to the end and stops there");
+        assert!(!t.input_busy());
+        t.set_time(3.0, false);
+        at(&mut t, 10.0, 10.0, true, false);
+        at(&mut t, 12.0, 12.0, false, true);
+        assert_eq!(t.events.len(), 1, "a tap within the slop presses");
+    }
+
+    /// A finger held still 0.5 s on a node that listens long-presses it,
+    /// and its release presses nothing.
+    #[test]
+    fn a_still_finger_long_presses() {
+        let mut t = scrolling();
+        list(&mut t);
+        let mut b = Batch::default();
+        b.op(7).u32(2).u8(Event::LongPress as u8).u8(1);
+        t.apply(&b.bytes()).unwrap();
+        t.set_device(true, false);
+        t.set_time(1.0, false);
+        at(&mut t, 10.0, 30.0, true, false);
+        t.set_time(1.4, false);
+        t.input_done(false);
+        assert!(t.events.is_empty());
+        t.set_time(1.5, false);
+        t.input_done(false);
+        at(&mut t, 10.0, 30.0, false, true);
+        let got: Vec<_> = t.events.iter().map(|f| (f.id, f.event)).collect();
+        assert_eq!(got, [(2, Event::LongPress)]);
+    }
+
+    /// A press held on a `hold` node reports its progress and presses it
+    /// when it completes, not on release; let go early, it reports 0 and
+    /// presses nothing. `confirm` held on its focus does the same.
+    #[test]
+    fn a_hold_reports_progress_and_presses_when_it_completes() {
+        let mut t = stated();
+        buttons(&mut t, &["b"]);
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("hold").str("0.5");
+        b.op(7).u32(1).u8(Event::Hold as u8).u8(1);
+        t.apply(&b.bytes()).unwrap();
+        let got = |t: &mut Tree| {
+            let v: Vec<_> = t
+                .events
+                .drain(..)
+                .filter(|f| matches!(f.event, Event::Hold | Event::Press))
+                .map(|f| (f.event, f.value.to_string()))
+                .collect();
+            v
+        };
+        t.set_time(1.0, false);
+        at(&mut t, 10.0, 10.0, true, false);
+        t.set_time(1.25, false);
+        t.input_done(false);
+        assert_eq!(got(&mut t), [(Event::Hold, "0.50".into())]);
+        t.set_time(1.5, false);
+        t.input_done(false);
+        assert_eq!(
+            got(&mut t),
+            [(Event::Hold, "1".into()), (Event::Press, "".into())]
+        );
+        at(&mut t, 10.0, 10.0, false, true);
+        t.input_done(false);
+        assert!(got(&mut t).is_empty(), "the release presses nothing more");
+        // Let go early.
+        t.set_time(2.0, false);
+        at(&mut t, 10.0, 10.0, true, false);
+        t.set_time(2.1, false);
+        at(&mut t, 10.0, 10.0, false, true);
+        t.input_done(false);
+        assert_eq!(got(&mut t), [(Event::Hold, "0".into())]);
+        // Confirm held on the focus.
+        t.key("Tab", false, false, false, false);
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(1));
+        t.set_time(3.0, false);
+        t.action("confirm");
+        t.input_done(true);
+        t.set_time(3.6, false);
+        t.input_done(true);
+        let v = got(&mut t);
+        assert_eq!(v.last(), Some(&(Event::Press, "".into())));
+    }
+
+    /// Focus the keys move to a row below a scroller's end scrolls it
+    /// into view.
+    #[test]
+    fn keyboard_focus_scrolls_into_view() {
+        let mut t = scrolling();
+        list(&mut t);
+        for _ in 0..4 {
+            t.key("Tab", false, false, false, false);
+            frame(&mut t);
+        }
+        assert_eq!(t.focused_id(), Some(4));
+        assert_eq!(scrolled(&t), 40.0, "row 4 (60..80) shows at the end");
+        t.key("Tab", true, false, false, false);
+        t.key("Tab", true, false, false, false);
+        t.key("Tab", true, false, false, false);
+        frame(&mut t);
+        assert_eq!(scrolled(&t), 0.0, "row 1 at the top");
+    }
+
+    /// An `autofocus` node takes the focus once it shows, with the ring
+    /// when the player used a pad last; a pointer event's `value` is its
+    /// node's box, which a slider reads its track from.
+    #[test]
+    fn autofocus_and_the_box_on_pointer_events() {
+        let mut t = stated();
+        t.set_device(false, true);
+        let mut b = Batch::default();
+        b.op(1).u32(100).u8(0);
+        b.op(4).u32(100).str("row");
+        b.op(8).u32(0).u32(100).u32(u32::MAX);
+        for id in [1, 2] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("b fw");
+            b.op(7).u32(id).u8(Event::Press as u8).u8(1);
+            b.op(7).u32(id).u8(Event::PointerDown as u8).u8(1);
+            b.op(8).u32(100).u32(id).u32(u32::MAX);
+        }
+        b.op(6).u32(2).str("autofocus").str("true");
+        t.apply(&b.bytes()).unwrap();
+        t.input_done(false);
+        assert_eq!(t.focused_id(), None, "not shown yet");
+        frame(&mut t);
+        t.input_done(false);
+        assert_eq!(t.focused_id(), Some(2));
+        frame(&mut t);
+        assert_eq!(t.op_box(2).unwrap()[2], 90.0, "a pad player sees the ring");
+        t.events.clear();
+        // 2 is 90 wide at x 50 with its ring; press 3/4 along it.
+        at(&mut t, 117.5, 5.0, true, false);
+        let down = t
+            .events
+            .iter()
+            .find(|f| f.event == Event::PointerDown)
+            .unwrap();
+        assert_eq!((down.id, &*down.value), (2, "50 0 90 20"));
     }
 }

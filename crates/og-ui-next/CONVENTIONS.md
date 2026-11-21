@@ -127,7 +127,7 @@ spaces); there are no others. What can be an image is an `Image` (an
 `PaintKind::Line` quad over its box (og-draw paint.rs): its points in
 `Paint.points`, box-relative, width `p.x`, closed `p.y`. Events: 0 press, 1 tap, 2 pointerdown,
 3 pointermove, 4 pointerup, 5 wheel, 6 focus, 7 blur, 8 key, 9 change,
-10 action.
+10 action, 11 longpress, 12 hold.
 
 The reply is `OGEV`, a u32 count and the events since the last batch, each
 an id (u32), event (u8), x and y on the UI's surface (f32), then key and
@@ -160,7 +160,11 @@ machines do (ported as logic).
   `pointerdown`, `pointermove`, `pointerup` and `wheel` (x and y carry the
   wheel's deltas) go to the innermost node under the pointer that listens,
   except that the node that heard `pointerdown` hears the moves and the
-  `pointerup` until the release, wherever the pointer goes (a drag);
+  `pointerup` until the release, wherever the pointer goes (a drag). A
+  pointer event's `value` is the box of the node that hears it on the
+  surface, `"x y width height"`, so a slider reads `(x - box.x) /
+  box.width`; `longpress` (a finger held still 0.5 s; its release then
+  presses nothing) carries it too;
   `focus` and `blur` as focus moves; `key` (`key` is the
   `KeyboardEvent.code`) to the focused node or the nearest around it that
   listens; `action` to the focused node or the nearest around it whose
@@ -177,14 +181,32 @@ machines do (ported as logic).
   the arrows instead (a slider), and the d-pad still moves it. Enter or
   Space presses the focused control; so does `confirm`
   when no node around it lists `confirm`, but not twice in one frame.
-- **Modals**: when a `modal` node shows, focus moves to its first Tab stop
-  (else itself) and stays inside it. When it goes, focus returns to the
-  node that had it before.
+- **Modals**: when a `modal` node shows, focus moves to its `autofocus`
+  node, else its first Tab stop (else itself), and stays inside it. When it
+  goes, focus returns to the node that had it before. An `autofocus` node
+  outside one takes the focus once it shows. Focus a node takes by itself
+  shows its ring when the player used a pad last.
+- **Scroll**: a `Scroll`'s children move by its offset, clipped to its box,
+  within what runs past its end (horizontal when only its width runs
+  over). The wheel scrolls the innermost one under it along its axis that
+  can still move, unless a nearer node listens to `wheel` (NSH's
+  `wheel_listener`, `scroll_target`); notches that keep coming within
+  200 ms stay on it. On a touch screen a finger past 8 px pans the
+  scroller under where it went down, along the way it went, unless what
+  heard its `pointerdown` drags; a pan lets the press go, and a pan let go
+  while moving flings on, slowing by e each 0.5 s (Rune's touch
+  scrolling). Focus the keys move scrolls into view.
+- **Hold**: a node with `hold` presses when a press or `confirm` has been
+  held on it that long, not on release; `hold` events carry the progress
+  in `value` each frame (`"0.42"`, `"1"` as it completes, `"0"` when it
+  lets go early: release, leaving it, or a pan).
 
 | Prop | Value | Means |
 |---|---|---|
 | `actions` | names, space separated | the input actions it answers (`onAction={{ confirm, details }}`) |
 | `glyph` | an action's name | a `Text` node showing that action's binding on the current device (`<Glyph action>`) |
+| `autofocus` | bool | it takes the focus once it shows |
+| `hold` | seconds | a press or `confirm` must be held this long to press it |
 
 ## Accessibility
 

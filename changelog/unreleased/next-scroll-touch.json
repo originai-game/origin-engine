@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og-ui input (TSX)",
+      "summary": "`<Scroll>` scrolls. Its children move with the wheel (notches stay on one list while they keep coming), with a finger dragged past 8 px on a touch screen (flinging on when let go while moving), and with keyboard or pad focus, which scrolls the focused control into view. Its children are clipped to its box. A finger held still for 0.5 s fires `onLongPress`. A `hold` prop (seconds) makes a control press only once a press or `confirm` has been held that long: `onHold` reports the progress in `value` each frame, \"1\" when it completes and \"0\" when it lets go early. An `autofocus` control takes the focus as it shows, with the focus ring for a pad player. Pointer events carry the box of the node that hears them in `value` (\"x y width height\"), so a slider maps a drag to its own track."
+    }
+  ]
+}

@@ -739,6 +739,9 @@ impl Next {
         // surface: a press and a release over one element click it.
         let input = ui.input();
         let mut done = Vec::new();
+        // A finger pans what scrolls and long-presses.
+        let device = ui.device();
+        tree.set_device(device == og_ui::Device::Touch, device.is_pad());
         tree.pointer(
             input.pointer.x * unit,
             input.pointer.y * unit,
@@ -808,8 +811,7 @@ impl Next {
                     Some((dir, time + f64::from(d.slow) / 1000.0))
                 }
             };
-            tree.input_done();
-            let device = ui.device();
+            tree.input_done(ui.action_down("confirm"));
             if tree.glyphs_wanted() || self.device != Some(device) {
                 self.device = Some(device);
                 tree.set_glyphs(&|action| ui.glyph(action).map(|g| g.text));
