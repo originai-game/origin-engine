@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui.scope",
+      "summary": "A game that uses UI stores but draws no UI (no TSX mount, no document) no longer warns at its first tick that the default pack's shapes (`@styles/shared/shapes/*.svg`) and glyph icons (`@styles/shared/glyphs/…`) are not in the cooked bundle: the UI loads its pack's images and icons once a TSX mount or a document mount draws, which is when the cook bundles them."
+    }
+  ]
+}

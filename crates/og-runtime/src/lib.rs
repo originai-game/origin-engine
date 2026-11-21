@@ -403,7 +403,8 @@ pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
                 eng.render
                     .borrow_mut()
                     .ui_next
-                    .get_or_insert_with(|| Box::new(present::ui_next::Next::new()));
+                    .get_or_insert_with(|| Box::new(present::ui_next::Next::new()))
+                    .draws = true;
                 present::ui_next::pack_images(world);
             }
             let (reply, tables) = {

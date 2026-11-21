@@ -83,6 +83,11 @@ pub(crate) struct Next {
     /// The pack's glyph art (its `icons`), texture slots by og-input's
     /// glyph name (`xbox.a`, `key.keye`), loaded with its images.
     icons: BTreeMap<String, u32>,
+    /// A TSX op batch or a document mount reached the core: it draws, so
+    /// [`pack_images`] loads the pack's images. A core that only keeps the
+    /// game's stores draws nothing and loads none (a game without a UI
+    /// cooks no pack images).
+    pub(crate) draws: bool,
     /// The pack's sounds with their clips loaded, by scope and event,
     /// loaded with its images ([`pack_images`]).
     sounds: Rc<og_ui_next::tree::SoundTable>,
@@ -185,7 +190,7 @@ pub(crate) fn pack_images(engine: u32) {
     };
     let pack = style_id(engine);
     match &eng.render.borrow().ui_next {
-        Some(next) if next.images_for.as_ref() != Some(&pack) => {}
+        Some(next) if next.draws && next.images_for.as_ref() != Some(&pack) => {}
         _ => return,
     }
     let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
@@ -432,6 +437,7 @@ impl Next {
             images: BTreeMap::new(),
             images_for: None,
             icons: BTreeMap::new(),
+            draws: false,
             sounds: Rc::default(),
             signals: BTreeMap::new(),
             rows: BTreeMap::new(),
@@ -572,6 +578,7 @@ impl Next {
                     }
                 }
                 self.mounts.insert(mount, (document, inputs, sources));
+                self.draws = true;
                 self.tree = None;
                 return Some(json!({ "ok": true, "value": null }));
             }
