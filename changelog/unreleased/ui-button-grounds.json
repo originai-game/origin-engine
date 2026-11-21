@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Button variant danger, ghost and quiet",
+      "summary": "Each now draws on an opaque ground (danger on glass-lo, ghost and quiet on surface), so its label reads over any scene. Before, danger had a 10% tint and ghost and quiet no fill, and over a light scene their text read under 2:1."
+    }
+  ]
+}
