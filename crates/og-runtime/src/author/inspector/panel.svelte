@@ -1,5 +1,4 @@
 <meta name="component" content="inspector">
-<meta name="parts" content="Inspector.frame Inspector.title">
 <meta name="prop:key" content="string" data-doc="The toggle key as the toolbar says it (F1, Ctrl+F1).">
 <meta name="prop:keyTip" content="string" data-doc="What the toggle key button's tooltip says.">
 <meta name="prop:dirty" content="number" data-doc="Fields edited since the last save.">
@@ -25,9 +24,9 @@
 <meta name="prop:status" content="string" data-doc="The footer's last message.">
 
 <div id="Screen">
-  <div id="Inspector" part="Inspector.frame">
+  <div id="Inspector" part="frame">
     <div id="Bar" class="line">
-      <p id="Title" part="Inspector.title">Inspector</p>
+      <p id="Title" part="title">Inspector</p>
       <button id="Key" class="tool" variant="quiet" title={keyTip}>{key}</button>
       <span class="gap"></span>
       <button id="Save" class="tool" variant={dirty > 0 ? "primary" : "secondary"} disabled={dirty == 0} title="Write the edited fields into the scenes' text (save_scene)">{dirty > 0 ? "Save (" + dirty + ")" : "Save"}</button>

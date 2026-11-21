@@ -10,7 +10,7 @@
      so the bones light together as it passes. -->
 <div id="SkeletonGroup" layout="stack" gap="loose" role="progressbar" aria-busy="true" aria-label={name || t("component.skeleton-group.loading")} class:avatar={shape == 'avatar'} class:block={shape == 'block'} class:row={shape == 'row'} class:card={shape == 'card'}>
   {#each items as item (item.id)}
-    <div class="item" data-layout={shape == 'row' ? 'row' : 'stack'} gap="tight">
+    <div class="item" layout="stack" gap="tight">
       {#if shape == 'avatar' || shape == 'block' || shape == 'row' || shape == 'card'}<div class="art" part="skeleton"><div class="sheen" part="sheen" play="shimmer"></div></div>{/if}
       {#if shape != 'avatar' && shape != 'block'}<div class="lines" layout="stack" gap="tight" fill>
         <div class="piece first line" part="skeleton"><div class="sheen" part="sheen" play="shimmer"></div></div>
@@ -27,7 +27,7 @@
 .piece.last { width: 62%; }
 .avatar .art { width: var(--size-lg); height: var(--size-lg); --skeleton-radius: var(--radius-capsule); }
 .block .art { height: var(--size-3xl); }
-.row .item { --layout-gap-tight: var(--layout-gap-loose); }
+.row .item { flex-direction: row; align-items: center; --layout-gap-tight: var(--layout-gap-loose); }
 .row .art { width: var(--size-touch); height: var(--size-touch); --skeleton-radius: var(--radius-capsule); }
 .row .lines .sheen { left: calc((var(--size-touch) + var(--layout-gap-loose)) * -1); }
 .row .piece.first { width: 60%; }

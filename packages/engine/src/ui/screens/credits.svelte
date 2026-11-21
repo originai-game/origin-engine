@@ -12,7 +12,7 @@
   {#if keyArt != 0}<art id="Key" kind="keyArt" src={keyArt}></art>{/if}
   <div class="shade" id="Veil" part="shade"></div>
   <header id="Bar" layout="row"><button id="Back" variant="quiet" onclick={back}><div class="back"><og-icon class="chevron" icon="chevronLeft"></og-icon><span>{t("screen.common.back")}</span></div></button></header>
-  <div id="Window" data-fill="true">
+  <div id="Window" fill>
   <div id="Roll">
     <art id="Logo" kind="logo" src={logo}></art>
     {#each sections as s (s.id)}
