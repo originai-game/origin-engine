@@ -34,5 +34,9 @@ the changes after it are only these:
   `Pop`, `Stamp`, `Beat`, `Float` and `Shimmer` with their classes
   `animate-pop` … `animate-shimmer` and their timings in `preset`.
 
+- `style.rs` adds the `env()` variables `hud-inset-top|right|bottom|left`
+  (the HUD's safe area, which og-ui-next adds at layout) and
+  `Style::env_padding`, which reads the padding's `env()` terms.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.

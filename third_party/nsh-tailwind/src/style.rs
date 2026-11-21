@@ -1446,6 +1446,17 @@ pub enum EnvVar {
     /// `keyboard-inset-height` (the VirtualKeyboard API's): the software
     /// keyboard's height over the surface, 0 while it is hidden.
     KeyboardInsetHeight,
+    // Origin Engine: the HUD's safe area (the safe-area insets with left
+    // and right capped to the HUD's widest aspect), which og-ui-next adds
+    // at layout (`Record::safe`).
+    /// `hud-inset-top`.
+    HudInsetTop,
+    /// `hud-inset-right`.
+    HudInsetRight,
+    /// `hud-inset-bottom`.
+    HudInsetBottom,
+    /// `hud-inset-left`.
+    HudInsetLeft,
 }
 
 impl EnvVar {
@@ -1457,8 +1468,21 @@ impl EnvVar {
             "safe-area-inset-bottom" => Self::SafeAreaInsetBottom,
             "safe-area-inset-left" => Self::SafeAreaInsetLeft,
             "keyboard-inset-height" => Self::KeyboardInsetHeight,
+            // Origin Engine: the HUD's safe area.
+            "hud-inset-top" => Self::HudInsetTop,
+            "hud-inset-right" => Self::HudInsetRight,
+            "hud-inset-bottom" => Self::HudInsetBottom,
+            "hud-inset-left" => Self::HudInsetLeft,
             _ => return None,
         })
+    }
+}
+
+impl Style {
+    /// Origin Engine: the `env()` variables its padding reads, by physical
+    /// edge (top, right, bottom, left).
+    pub fn env_padding(&self) -> [Option<EnvVar>; 4] {
+        self.pending.env.padding
     }
 }
 

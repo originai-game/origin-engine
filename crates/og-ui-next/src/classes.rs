@@ -171,6 +171,21 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         layout: CompactStyle::from(&style.layout),
         ..Record::default()
     };
+    // `pt-[calc(env(hud-inset-top)+16px)]`: padding that adds the HUD's
+    // safe area, on the side whose own inset it reads.
+    for (k, var) in style.env_padding().into_iter().enumerate() {
+        use nsh_tailwind::style::EnvVar::*;
+        let side = match var {
+            Some(HudInsetTop) => 0,
+            Some(HudInsetRight) => 1,
+            Some(HudInsetBottom) => 2,
+            Some(HudInsetLeft) => 3,
+            _ => continue,
+        };
+        if side == k {
+            r.safe[1] |= 1 << k;
+        }
+    }
     let (view, text, skin) = (&style.view, &style.text, &mut r.skin);
     skin.fill = linear(view.background_color);
     skin.opacity = view.opacity;
@@ -527,6 +542,24 @@ mod tests {
             (exit.skin.opacity, exit.skin.transform.translate[1]),
             (0.0, 8.0)
         );
+    }
+
+    #[test]
+    fn hud_insets_add_to_the_padding_side_that_reads_them() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        let env = Env {
+            window: [800.0, 600.0],
+            ..Env::default()
+        };
+        let r = c.record(
+            "pt-[calc(env(hud-inset-top)+16px)] pl-[env(hud-inset-left)] pr-4",
+            &env,
+        );
+        assert_eq!(r.safe, [0, 0b1001]);
+        let s = taffy::Style::from(&r.layout_in([5.0, 7.0, 0.0, 30.0]));
+        assert_eq!(s.padding.top, taffy::LengthPercentage::length(21.0));
+        assert_eq!(s.padding.left, taffy::LengthPercentage::length(30.0));
+        assert_eq!(s.padding.right, taffy::LengthPercentage::length(16.0));
     }
 
     #[test]
