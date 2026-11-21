@@ -138,12 +138,7 @@ pub fn day_night_scene(hours: f32, fog: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     colonnade(&mut scene);
     let look = day_night(hours, 25.0, 70.0);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: look.light_direction,
-        color: look.light_color,
-        intensity: look.light_intensity,
-        ..Default::default()
-    };
+    scene.lighting.light = look.key();
     scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: look.sun_direction,

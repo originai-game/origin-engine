@@ -62,9 +62,11 @@ test("get answers the sun og.DayNight drives as it is drawn, and og.Time whole",
         d.enabled = true;
         d.start = 12;
         d.speed = 0;
-        for (const name of ["sun", "lamp"]) {
+        // The cycle drives the light the key light would draw (the brighter, sun);
+        // a dim one beside it is a candidate the key light leaves out.
+        for (const [name, intensity] of [["sun", 2.4], ["lamp", 0.05]] as const) {
           const e = must(world.spawn({ name }));
-          world.insert(e, og.DirectionalLight, { color: { r: 1, g: 1, b: 1 }, intensity: 2.4 });
+          world.insert(e, og.DirectionalLight, { color: { r: 1, g: 1, b: 1 }, intensity });
         }
       },
     }),
@@ -82,9 +84,11 @@ test("get answers the sun og.DayNight drives as it is drawn, and og.Time whole",
   expect(day!.hours).toBeCloseTo(12, 4);
   expect(day!.lightIntensity).toBeCloseTo(sun!.intensity as number, 5);
   expect(day!.toLight).toEqual(sun!.toLight);
-  // Only the first directional light is driven.
+  // Only the light the cycle took the place of is driven; the other keeps its stored values and draws nothing.
+  expect(sun!.keyShare).toBe(1);
   expect("drivenBy" in lamp!).toBeFalse();
-  expect(lamp!.intensity).toBeCloseTo(2.4, 5);
+  expect(lamp!.intensity).toBeCloseTo(0.05, 5);
+  expect(lamp!.keyShare).toBe(0);
   // og.Time as a system reads it: the clock, its rate and the time scale.
   expect([time!.rate, time!.scale, time!.hitStopTicks]).toEqual([60, 1, 0]);
   expect(time!.scaledDt).toBeCloseTo(1 / 60, 6);
@@ -95,4 +99,9 @@ test("get answers the sun og.DayNight drives as it is drawn, and og.Time whole",
   expect((night!.toLight as number[])[1]).toBeGreaterThan(0);
   expect(night!.intensity as number).toBeLessThan(0.5 * (sun!.intensity as number));
   expect((night!.color as number[])[2]).toBeGreaterThan((night!.color as number[])[0]!);
+  // A second light dimmer than the sun it drives but brighter than the moon is drawn at night, not overwritten.
+  const [bright, lit] = read("0:set:lamp.og.DirectionalLight.intensity=2;0:get:sun.og.DirectionalLight;0:get:lamp.og.DirectionalLight");
+  expect(lit!.keyShare).toBe(1);
+  expect(bright!.keyShare).toBe(0);
+  expect(lit!.intensity).toBeCloseTo(2, 5);
 });

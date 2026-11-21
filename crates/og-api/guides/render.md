@@ -89,7 +89,11 @@ feeds back into the simulation.
   the moon fades lights the scene without a jump. Fade one out as the
   other comes up; a fill or rim light is a point, spot or rect light. A
   development build warns, naming them, when another shines with a quarter
-  of the drawn one's light or more.
+  of the drawn one's light or more. With og.DayNight running, its sun and
+  moon take the place of the light that would be drawn without it (with
+  that light's shadow settings) and hand over to each other by the same
+  rule; `get:<light>.og.DirectionalLight` answers `keyShare`, the light's
+  share of the one drawn. `og bake lightmaps` bounces the same one light.
 - Point lights: cube shadows take six passes per light, paraboloid two
   (coarser; large casters' edges stay straight).
 - Rect lights: the soft shadow is the costliest light in a frame (two maps
@@ -366,8 +370,9 @@ depth-normal prepass: the first one pays for it.
 - DayNight: the image-based light follows the sky as drawn, captured a
   slice a frame. The probe answers a pure function of the tick:
   `get:og.DayNight` adds `hours`, `toSun`, `toLight`, `lightColor` and
-  `lightIntensity`; `get:<sun>.og.DirectionalLight` gives the drawn
-  `color` and `intensity` with `toLight` and `drivenBy`.
+  `lightIntensity` (the light drawn, the sun's or the moon's or the two
+  handing over); `get:<sun>.og.DirectionalLight` of the light it drives
+  gives the drawn `color` and `intensity` with `toLight` and `drivenBy`.
 - Seasons: an enabled og.Season sets the sun's path and the day's length
   by its date and latitude in place of `DayNight.tilt` (`seasons §3`).
 - PhysicalSky gives blue overhead, red sunsets, a white glow round the sun

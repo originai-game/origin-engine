@@ -390,9 +390,30 @@ impl Default for DirectionalLight {
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyLight {
     pub light: DirectionalLight,
+    /// The candidate (an index into the slice) it is, the brighter of two
+    /// handing over: its shadow settings are the drawn light's.
+    pub source: usize,
+    /// The candidate blended in with it while the two hand over.
+    pub blended: Option<usize>,
+    /// `source`'s share of the drawn light: 1 out of a handover, down to
+    /// 0.5 where the two are equal (`blended` has the rest).
+    pub weight: f32,
     /// The lights (indices into the slice) left out of the drawn one while
     /// they shine with at least a quarter of its radiance.
     pub left_out: Vec<usize>,
+}
+
+impl KeyLight {
+    /// Candidate `i`'s share of the drawn light: 0 for one left out.
+    pub fn share(&self, i: usize) -> f32 {
+        if i == self.source {
+            self.weight
+        } else if Some(i) == self.blended {
+            1.0 - self.weight
+        } else {
+            0.0
+        }
+    }
 }
 
 /// The one directional light a frame draws (its cascades, the sky's sun,
@@ -418,7 +439,7 @@ pub fn key_light(lights: &[DirectionalLight]) -> Option<KeyLight> {
     let (&first, rest) = order.split_first()?;
     let (a, ra) = (lights[first], radiance(&lights[first]));
     let mut light = a;
-    let mut blended = 0;
+    let (mut blended, mut weight) = (None, 1.0);
     if let Some(&second) = rest.first() {
         let (b, rb) = (lights[second], radiance(&lights[second]));
         let q = if ra + rb > 0.0 {
@@ -430,7 +451,7 @@ pub fn key_light(lights: &[DirectionalLight]) -> Option<KeyLight> {
         // The brighter's weight: a half where they are equal.
         let w = 0.5 + 0.5 * t * t * (3.0 - 2.0 * t);
         if w < 1.0 {
-            blended = 1;
+            (blended, weight) = (Some(second), w);
             let towards =
                 |l: &DirectionalLight| l.direction_to_light.try_normalize().unwrap_or(Vec3::Y);
             let v = towards(&a) * w + towards(&b) * (1.0 - w);
@@ -444,12 +465,18 @@ pub fn key_light(lights: &[DirectionalLight]) -> Option<KeyLight> {
             light.intensity = intensity * reach;
         }
     }
-    let left_out = rest[blended..]
+    let left_out = rest[usize::from(blended.is_some())..]
         .iter()
         .copied()
         .filter(|&i| radiance(&lights[i]) > 0.0 && radiance(&lights[i]) >= 0.25 * ra)
         .collect();
-    Some(KeyLight { light, left_out })
+    Some(KeyLight {
+        light,
+        source: first,
+        blended,
+        weight,
+        left_out,
+    })
 }
 
 pub use crate::shadows::MAX_SHADOWED_LIGHTS;
@@ -991,6 +1018,9 @@ mod sky_params_tests {
             dawn,
             KeyLight {
                 light: sun,
+                source: 1,
+                blended: None,
+                weight: 1.0,
                 left_out: vec![]
             }
         );
@@ -1011,8 +1041,11 @@ mod sky_params_tests {
             worst = worst.max((drawn(s + 1e-3) - drawn(s)).length());
         }
         assert!(worst < 0.02, "{worst}");
-        // Equal, they light from between them, dimmed by its √½ reach.
+        // Equal, they light from between them, dimmed by its √½ reach,
+        // each a half of it.
         let even = drawn(1.0);
+        let k = key_light(&[up, light(east, Vec3::ONE, 1.0)]).unwrap();
+        assert_eq!((k.share(0), k.share(1)), (0.5, 0.5));
         assert!((even - Vec3::new(0.5, 0.5, 0.0)).length() < 1e-5, "{even}");
         // Out of the handover each is its own light.
         assert_eq!(drawn(1.6), east * 1.6);

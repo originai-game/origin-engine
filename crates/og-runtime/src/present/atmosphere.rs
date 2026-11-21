@@ -20,6 +20,7 @@ pub use shader::{
     og_load_shader, og_render_set_material_shader, og_render_set_shader_param,
     og_render_shader_material,
 };
+pub(crate) use sky::day_night_look;
 #[cfg(not(feature = "publish"))]
 pub(crate) use sky::derive;
 pub use sky::og_atmosphere_time_of_day;
@@ -64,6 +65,19 @@ pub(crate) struct AtmoLayouts {
 }
 
 impl AtmoLayouts {
+    /// The records the key light reads (`crate::present::key_light`).
+    pub(crate) fn day_night(&self) -> Option<&Layout> {
+        self.day_night.as_ref()
+    }
+
+    pub(crate) fn physical_sky(&self) -> Option<&Layout> {
+        self.physical_sky.as_ref()
+    }
+
+    pub(crate) fn season(&self) -> Option<&Layout> {
+        self.season.as_ref()
+    }
+
     /// The air a frame draws: og.Wind and the og.WindMotors where `h`
     /// places them (`wind::frame_air`).
     pub(crate) fn air(&self, world: &World, h: &mut Hierarchy) -> og_env::air::Air {

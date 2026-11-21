@@ -10,9 +10,8 @@ use crate::atmo_scenes::{colonnade, colonnade_camera};
 use crate::kit;
 use glam::{Mat4, Quat, Vec2, Vec3};
 use og_render::{
-    Aurora, Background, Bloom, Camera, Clouds, DirectionalLight, Environment, Exposure, Fog,
-    PhysicalAtmosphere, ProceduralSky, RenderScene, StandardMaterial, SurfaceWeather, day_night,
-    shapes,
+    Aurora, Background, Bloom, Camera, Clouds, Environment, Exposure, Fog, PhysicalAtmosphere,
+    ProceduralSky, RenderScene, StandardMaterial, SurfaceWeather, day_night, shapes,
 };
 
 /// The scenes of this module, in `SCENES` order.
@@ -83,12 +82,7 @@ fn physical_look(
     scene: &mut RenderScene,
     look: og_render::DayNightLook,
 ) -> og_render::DayNightLook {
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: look.light_direction,
-        color: look.light_color,
-        intensity: look.light_intensity,
-        ..Default::default()
-    };
+    scene.lighting.light = look.key();
     scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: look.sun_direction,

@@ -25,8 +25,7 @@ fn hours(d: &record::DayNight, time: &og_core::Time) -> f64 {
 }
 
 /// An enabled og.DayNight at the world's tick: its row, the clock, the
-/// look, and the directional light's intensity (the look's times
-/// lightIntensity).
+/// look, and lightIntensity, the multiplier on its sun and moon.
 struct DayNightNow {
     d: record::DayNight,
     /// The og.Season that sets the sun's path, if one does.
@@ -59,7 +58,7 @@ fn day_night_now(
         Some(a) => look.with_atmosphere(a),
         None => look,
     };
-    let intensity = look.light_intensity * d.light_intensity.max(0.0);
+    let intensity = d.light_intensity.max(0.0);
     Some(DayNightNow {
         d,
         season,
@@ -67,6 +66,18 @@ fn day_night_now(
         look,
         intensity,
     })
+}
+
+/// og.DayNight's look at the world's tick and the multiplier on its sun
+/// and moon (lightIntensity): the key light's candidates
+/// (`crate::present::key_light`). `None` while it is absent or off.
+pub(crate) fn day_night_look(
+    world: &World,
+    layout: Option<&Layout>,
+    physical: Option<&Layout>,
+    season: Option<&Layout>,
+) -> Option<(og_render::DayNightLook, f32)> {
+    day_night_now(world, layout, physical, season).map(|n| (n.look, n.intensity))
 }
 
 /// An enabled og.Season that sets the sun's path (Season.sun), at the
@@ -227,7 +238,7 @@ pub(super) fn extract(
         season,
         hours: now,
         look,
-        intensity,
+        intensity: _,
     }) = day_night_now(
         world,
         layouts.day_night.as_ref(),
@@ -240,9 +251,8 @@ pub(super) fn extract(
         if let Some(a) = &air {
             stepped = stepped.with_atmosphere(a);
         }
-        scene.lighting.light.direction_to_light = look.light_direction;
-        scene.lighting.light.color = look.light_color;
-        scene.lighting.light.intensity = intensity;
+        // The light itself is the key light's (`lights`, which takes the
+        // cycle's sun and moon among its candidates).
         scene.lighting.environment.intensity = look.ambient;
         scene.atmosphere.adaptation = look.adaptation;
         scene.lighting.environment.sky = ProceduralSky {
@@ -341,12 +351,16 @@ fn xyz(v: Vec3) -> Value {
 
 /// What the probe's `get` answers for records og.DayNight drives (the
 /// `og_probe::DeriveFn` the runtime installs): og.DayNight gains the clock
-/// and the light it makes (`hours`, `toSun`, `toLight`, `lightColor`,
-/// `lightIntensity`); the first og.DirectionalLight, the one it drives, is
-/// answered with the colour and intensity it is drawn with, `toLight` (the
-/// unit vector towards the sun or the moon that replaces the entity's -Z)
-/// and `drivenBy`; og.Season is answered with og.atmosphere.season's
-/// fields, its `day` the date drawn and the air's temperature now as
+/// (`hours`, `toSun`) and the light drawn (`toLight`, `lightColor`,
+/// `lightIntensity`: the key light, `crate::present::key_light`, of which
+/// the cycle's sun and moon are candidates); the og.DirectionalLight it
+/// drives (the one the key light would draw without it) is answered with
+/// the colour and intensity it is drawn with, `toLight` (the unit vector
+/// towards the light drawn, which replaces the entity's -Z) and
+/// `drivenBy`; every og.DirectionalLight gains `keyShare`, its share of
+/// the light drawn (1 drawn alone, between 0 and 1 while two hand over, 0
+/// left out); og.Season is answered with og.atmosphere.season's fields,
+/// its `day` the date drawn and the air's temperature now as
 /// `temperatureNow` (og.Season.temperature is the year's mean). Reads
 /// only; the world is never written. A publish build has no `get`, so no
 /// derive.
@@ -358,61 +372,78 @@ pub(crate) fn derive(
     name: &str,
     fields: &mut serde_json::Map<String, Value>,
 ) {
-    let driven = match (name, entity) {
-        (crate::bind::season::STATE, None) => {
-            use crate::host::wire::ToJson;
-            if let Some(info) = crate::bind::season::of_world(world, layouts)
-                && let Value::Object(info) = info.to_json()
-            {
-                fields.extend(info.into_iter().map(|(k, v)| match k.as_str() {
-                    "temperature" => ("temperatureNow".into(), v),
-                    _ => (k, v),
-                }));
-            }
-            return;
+    if let (crate::bind::season::STATE, None) = (name, entity) {
+        use crate::host::wire::ToJson;
+        if let Some(info) = crate::bind::season::of_world(world, layouts)
+            && let Value::Object(info) = info.to_json()
+        {
+            fields.extend(info.into_iter().map(|(k, v)| match k.as_str() {
+                "temperature" => ("temperatureNow".into(), v),
+                _ => (k, v),
+            }));
         }
-        ("og.DayNight", None) => false,
-        ("og.DirectionalLight", Some(e)) => {
-            let first = crate::present::fx::rows(world, layouts.get("og.DirectionalLight"))
-                .into_iter()
-                .next()
-                .map(|(bits, _)| bits);
-            if first != Some(e.to_bits()) {
-                return;
-            }
-            true
-        }
-        _ => return,
-    };
-    let Some(now) = day_night_now(
+        return;
+    }
+    if !matches!(
+        (name, entity),
+        ("og.DayNight", None) | ("og.DirectionalLight", Some(_))
+    ) {
+        return;
+    }
+    let now = day_night_now(
         world,
         layouts.get("og.DayNight"),
         layouts.get("og.PhysicalSky"),
         layouts.get(crate::bind::season::STATE),
+    );
+    if now.is_none() && entity.is_none() {
+        return;
+    }
+    let stage = crate::present::key_light::Layouts {
+        directional: layouts.get("og.DirectionalLight"),
+        day_night: layouts.get("og.DayNight"),
+        physical_sky: layouts.get("og.PhysicalSky"),
+        season: layouts.get(crate::bind::season::STATE),
+    };
+    let mut h = crate::present::extract::Hierarchy::of(world);
+    let Some(key) = crate::present::key_light::key(
+        world,
+        stage,
+        &mut |e| h.world_of(e),
+        og_render::DirectionalLight::default(),
     ) else {
         return;
     };
-    let c = now.look.light_color;
-    if driven {
-        // The stored colour's lanes (a fourth, if any, kept).
-        let mut color = fields.get("color").cloned().unwrap_or(json!([1, 1, 1]));
-        if let Some(lanes) = color.as_array_mut() {
-            for (i, v) in [c.x, c.y, c.z].into_iter().enumerate() {
-                if let Some(slot) = lanes.get_mut(i) {
-                    *slot = json!(v);
+    let light = key.light;
+    let to_light = light.direction_to_light.normalize_or_zero();
+    match entity {
+        Some(e) => {
+            fields.insert("keyShare".into(), json!(key.share_of(e.to_bits())));
+            if key.driven != Some(e.to_bits()) {
+                return;
+            }
+            // The stored colour's lanes (a fourth, if any, kept).
+            let mut color = fields.get("color").cloned().unwrap_or(json!([1, 1, 1]));
+            if let Some(lanes) = color.as_array_mut() {
+                for (i, v) in light.color.to_array().into_iter().enumerate() {
+                    if let Some(slot) = lanes.get_mut(i) {
+                        *slot = json!(v);
+                    }
                 }
             }
+            fields.insert("color".into(), color);
+            fields.insert("intensity".into(), json!(light.intensity));
+            fields.insert("toLight".into(), xyz(to_light));
+            fields.insert("drivenBy".into(), json!("og.DayNight"));
         }
-        fields.insert("color".into(), color);
-        fields.insert("intensity".into(), json!(now.intensity));
-        fields.insert("toLight".into(), xyz(now.look.light_direction));
-        fields.insert("drivenBy".into(), json!("og.DayNight"));
-    } else {
-        fields.insert("hours".into(), json!(now.hours));
-        fields.insert("toSun".into(), xyz(now.look.sun_direction));
-        fields.insert("toLight".into(), xyz(now.look.light_direction));
-        fields.insert("lightColor".into(), xyz(c));
-        fields.insert("lightIntensity".into(), json!(now.intensity));
+        None => {
+            let Some(now) = now else { return };
+            fields.insert("hours".into(), json!(now.hours));
+            fields.insert("toSun".into(), xyz(now.look.sun_direction));
+            fields.insert("toLight".into(), xyz(to_light));
+            fields.insert("lightColor".into(), xyz(light.color));
+            fields.insert("lightIntensity".into(), json!(light.intensity));
+        }
     }
 }
 

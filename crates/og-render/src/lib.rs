@@ -404,7 +404,9 @@ pub use gpu::shared_frames;
 pub use mesh::gltf;
 
 pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
-pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night, day_night_under, moon_phase_light};
+pub use atmosphere::{
+    BodyLight, DayNightLook, Fog, SkyLook, day_night, day_night_under, moon_phase_light,
+};
 pub use aurora::Aurora;
 pub use auto_quality::{AutoQuality, AutoQualityBounds, FrameSample};
 pub use capture::{

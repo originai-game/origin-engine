@@ -202,9 +202,12 @@ fn world_transforms(s: &SceneDesc) -> Vec<Mat4> {
     out
 }
 
-/// The scene's lights as the tracer's.
+/// The scene's lights as the tracer's: its directional lights keyed as a
+/// frame draws them (`og_render::key_light`: the brightest, two handing
+/// over), so the bake bounces the one light the game is lit by.
 fn lights(s: &SceneDesc, world: &[Mat4]) -> Vec<Light> {
     let mut out = Vec::new();
+    let mut directional = Vec::new();
     let forward = |m: &Mat4| m.transform_vector3(Vec3::NEG_Z).normalize_or(Vec3::NEG_Y);
     let radiance = |t: &ComponentTable, e: usize, intensity: f32| {
         vec3(t, e, "color", Vec3::ONE) * num(t, e, "intensity", intensity)
@@ -212,9 +215,11 @@ fn lights(s: &SceneDesc, world: &[Mat4]) -> Vec<Light> {
     for (e, m) in world.iter().enumerate() {
         let at = m.transform_point3(Vec3::ZERO);
         if let Some(t) = table(s, "DirectionalLight").filter(|t| t.get(e).is_some()) {
-            out.push(Light::Directional {
-                towards: -forward(m),
-                radiance: radiance(t, e, 3.0),
+            directional.push(og_render::DirectionalLight {
+                direction_to_light: -forward(m),
+                color: vec3(t, e, "color", Vec3::ONE),
+                intensity: num(t, e, "intensity", 3.0),
+                ..Default::default()
             });
         }
         if let Some(t) = table(s, "PointLight").filter(|t| t.get(e).is_some()) {
@@ -245,6 +250,12 @@ fn lights(s: &SceneDesc, world: &[Mat4]) -> Vec<Light> {
                 two_sided: num(t, e, "twoSided", 0.0) != 0.0,
             });
         }
+    }
+    if let Some(key) = og_render::key_light(&directional) {
+        out.push(Light::Directional {
+            towards: key.light.direction_to_light.normalize_or(Vec3::Y),
+            radiance: key.light.color * key.light.intensity,
+        });
     }
     out
 }

@@ -16,6 +16,7 @@ pub(crate) mod geometry;
 pub(crate) mod glyphs;
 pub(crate) mod hlod;
 pub(crate) mod interpolate;
+pub(crate) mod key_light;
 pub(crate) mod light2d_at;
 pub(crate) mod loading;
 pub(crate) mod look;

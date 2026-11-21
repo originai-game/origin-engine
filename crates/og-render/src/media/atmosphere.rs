@@ -379,12 +379,11 @@ impl AtmosphereGpu {
 pub struct DayNightLook {
     /// Towards the sun (below the horizon at night).
     pub sun_direction: Vec3,
-    /// Towards the light that lights the scene: the sun by day, the moon
-    /// (opposite the sun) by night.
-    pub light_direction: Vec3,
-    /// The directional light's linear colour and intensity.
-    pub light_color: Vec3,
-    pub light_intensity: f32,
+    /// The sun's light and the moon's, each by its own height: the two
+    /// candidates the key light ([`crate::key_light`]) draws one of, handing
+    /// over between them at dusk and dawn ([`DayNightLook::lights`]).
+    pub sun_light: BodyLight,
+    pub moon_light: BodyLight,
     /// The sky to draw and to light with.
     pub sky: SkyLook,
     /// The sun colour the sky and its light use.
@@ -403,7 +402,39 @@ pub struct DayNightLook {
     pub fog_sun: Option<Vec3>,
 }
 
+/// A sky body's light on the land: towards it, its linear colour and its
+/// intensity.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BodyLight {
+    pub direction: Vec3,
+    pub color: Vec3,
+    pub intensity: f32,
+}
+
 impl DayNightLook {
+    /// The sun's and the moon's lights as directional lights with `base`'s
+    /// shadow settings, their intensity times `scale`: the candidates the
+    /// key light takes for og.DayNight.
+    pub fn lights(
+        &self,
+        base: &crate::DirectionalLight,
+        scale: f32,
+    ) -> [crate::DirectionalLight; 2] {
+        [self.sun_light, self.moon_light].map(|b| crate::DirectionalLight {
+            direction_to_light: b.direction,
+            color: b.color,
+            intensity: b.intensity * scale,
+            ..*base
+        })
+    }
+
+    /// The light the key light draws of the two alone, with the default
+    /// shadow settings.
+    pub fn key(&self) -> crate::DirectionalLight {
+        let lights = self.lights(&crate::DirectionalLight::default(), 1.0);
+        crate::key_light(&lights).map_or(lights[0], |k| k.light)
+    }
+
     /// The moon `size` degrees in radius at `phase` (as [`SkyLook`]'s),
     /// opposite the sun: drawn in the sky, scattered by the air under a
     /// physical sky ([`SkyLook::moon_light`]), and the moonlight's
@@ -412,23 +443,21 @@ impl DayNightLook {
     pub fn with_moon(mut self, size: f32, phase: f32) -> DayNightLook {
         self.sky.moon_size = size;
         self.sky.moon_phase = phase;
-        self.keyed()
+        self.lit()
     }
 
-    /// The directional light: the sun's or the moon's, whichever lights
-    /// the land more. Each is its own light by its own height: the sun's
-    /// by [`day_night_under`]'s ramps, or under a physical sky its colour
-    /// after crossing the air; the moon's ([`MOONLIGHT`] by its phase) full
-    /// from about 13° up under the gradient, and under a physical sky
-    /// crossing the air as the sun's does, low and orange as it rises.
-    /// The moon stands opposite the sun, so it rises as the sun sets and
-    /// takes the light over a few minutes after sunset, not once the
-    /// twilight has gone (the sun's light faded out about 7° under the
-    /// horizon and the moon's began only there, leaving the land without
-    /// a key light for most of an hour). Where the two are about equal the
-    /// light dims through the swap, so the shadows never jump from one
-    /// side to the other at full strength.
-    fn keyed(mut self) -> DayNightLook {
+    /// The sun's light and the moon's, each its own light by its own
+    /// height: the sun's by [`day_night_under`]'s ramps, or under a
+    /// physical sky its colour after crossing the air; the moon's
+    /// ([`MOONLIGHT`] by its phase) full from about 13° up under the
+    /// gradient, and under a physical sky crossing the air as the sun's
+    /// does, low and orange as it rises. The moon stands opposite the sun,
+    /// so it rises as the sun sets and takes the light over a few minutes
+    /// after sunset, not once the twilight has gone. Which of them is drawn
+    /// is the key light's choice ([`crate::key_light`]), which dims the
+    /// light through the swap where the two are about equal, so the shadows
+    /// never jump from one side to the other at full strength.
+    fn lit(mut self) -> DayNightLook {
         let sun = self.sun_direction;
         let moon = self.sky.moon_toward(sun);
         let phase = moon_phase_light(self.sky.moon_phase);
@@ -465,16 +494,15 @@ impl DayNightLook {
                 )
             }
         };
-        let swap = ramp(
-            0.0,
-            0.2,
-            (sun_light - moon_light).abs() / (sun_light + moon_light).max(1e-9),
-        );
-        (self.light_direction, self.light_color, self.light_intensity) = if sun_light >= moon_light
-        {
-            (sun, sun_color, sun_light * swap)
-        } else {
-            (moon, moon_color, moon_light * swap)
+        self.sun_light = BodyLight {
+            direction: sun,
+            color: sun_color,
+            intensity: sun_light,
+        };
+        self.moon_light = BodyLight {
+            direction: moon,
+            color: moon_color,
+            intensity: moon_light,
         };
         self
     }
@@ -498,7 +526,7 @@ impl DayNightLook {
         // exposure, as the gradient's brightness was.
         self.sky.brightness = 1.1;
         // The sun's and the moon's light cross the air.
-        self = self.keyed();
+        self = self.lit();
         // The image-based light at full strength by day, and up to four
         // times it as the sun sets: the eye's adaptation to the shade (as
         // an exposure opened for the land, not the sky), so land under a
@@ -736,10 +764,17 @@ pub fn day_night_under(sun: Vec3) -> DayNightLook {
     let adaptation = (SHADE_FLOOR / shade.max(1e-6)).max(1.0);
     DayNightLook {
         sun_direction: sun,
-        // Set by `keyed`.
-        light_direction: sun,
-        light_color: sun_color,
-        light_intensity: 0.0,
+        // Set by `lit`.
+        sun_light: BodyLight {
+            direction: sun,
+            color: sun_color,
+            intensity: 0.0,
+        },
+        moon_light: BodyLight {
+            direction: -sun,
+            color: MOON_COLOR,
+            intensity: 0.0,
+        },
         sky,
         sun_color,
         ambient: sky_light * adaptation,
@@ -747,7 +782,7 @@ pub fn day_night_under(sun: Vec3) -> DayNightLook {
         fog_color: horizon * (0.8 + 0.2 * day),
         fog_sun: None,
     }
-    .keyed()
+    .lit()
 }
 
 #[cfg(test)]
@@ -788,7 +823,7 @@ mod tests {
     /// The sun's direct light on level ground against the sky's, the
     /// contrast its shadows have there.
     fn ground_contrast(look: &DayNightLook) -> f32 {
-        look.light_intensity * look.light_direction.y.max(0.0) / look.ambient
+        look.key().intensity * look.key().direction_to_light.y.max(0.0) / look.ambient
     }
 
     /// A warm dusk: at the default tilt (25°) the sun is 10 to
@@ -814,7 +849,7 @@ mod tests {
             );
         }
         for h in [17.0, 17.25] {
-            let c = day_night(h, 25.0, 90.0).light_color;
+            let c = day_night(h, 25.0, 90.0).key().color;
             assert!(c.z < 0.75 * c.x, "{h} h: the sun is warm, {c}");
         }
         assert!(ground_contrast(&day_night(17.5, 25.0, 90.0)) < 0.4);
@@ -856,8 +891,8 @@ mod tests {
         let (noon, midnight) = (day_night(12.0, 25.0, 90.0), day_night(0.0, 25.0, 90.0));
         assert_eq!(noon.ambient, 1.0);
         assert!(midnight.adaptation > 10.0, "{}", midnight.adaptation);
-        assert!((midnight.light_direction + midnight.sun_direction).length() < 1e-5);
-        let moon = midnight.light_intensity / noon.light_intensity;
+        assert!((midnight.key().direction_to_light + midnight.sun_direction).length() < 1e-5);
+        let moon = midnight.key().intensity / noon.key().intensity;
         assert!((0.25..=0.4).contains(&moon), "{moon}");
         assert_eq!(midnight.sky.glow, 0.0);
         // Twilight keeps the glow on the horizon the sun set behind.
@@ -877,15 +912,15 @@ mod tests {
         assert!(noon.sky.physical.is_some() && noon.ambient == 1.0);
         let lum = |c: Vec3| c.dot(Vec3::new(0.2126, 0.7152, 0.0722));
         let warm = |c: Vec3| c.x / c.z;
-        assert!(warm(dusk.light_color) > 2.0 * warm(noon.light_color));
-        assert!(dusk.light_intensity < 0.5 * noon.light_intensity);
-        assert!((set.light_direction + set.sun_direction).length() < 1e-5);
-        assert!(set.light_intensity < 0.5 * PHYSICAL_MOONLIGHT);
-        assert!(warm(set.light_color) > 2.0, "{}", set.light_color);
+        assert!(warm(dusk.key().color) > 2.0 * warm(noon.key().color));
+        assert!(dusk.key().intensity < 0.5 * noon.key().intensity);
+        assert!((set.key().direction_to_light + set.sun_direction).length() < 1e-5);
+        assert!(set.key().intensity < 0.5 * PHYSICAL_MOONLIGHT);
+        assert!(warm(set.key().color) > 2.0, "{}", set.key().color);
         let night = at(23.0);
-        assert!((night.light_direction + night.sun_direction).length() < 1e-5);
-        assert!((night.light_intensity / PHYSICAL_MOONLIGHT - 1.0).abs() < 0.03);
-        assert!(warm(night.light_color) < 0.75, "{}", night.light_color);
+        assert!((night.key().direction_to_light + night.sun_direction).length() < 1e-5);
+        assert!((night.key().intensity / PHYSICAL_MOONLIGHT - 1.0).abs() < 0.03);
+        assert!(warm(night.key().color) < 0.75, "{}", night.key().color);
         assert!(lum(dusk.fog_color) < 0.5 * lum(noon.fog_color));
         assert!(noon.fog_color.z > noon.fog_color.x, "{}", noon.fog_color);
     }
@@ -911,12 +946,12 @@ mod tests {
                     look
                 }
             };
-            let night = at(0.0).light_intensity;
+            let night = at(0.0).key().intensity;
             for (from, to) in [(17.5, 20.0), (4.0, 6.5)] {
                 let (mut stretch, mut longest) = (0, 0);
                 for m in 0..=((to - from) * 60.0) as i32 {
                     let h = from + m as f32 / 60.0;
-                    stretch = if at(h).light_intensity < night / 25.0 {
+                    stretch = if at(h).key().intensity < night / 25.0 {
                         stretch + 1
                     } else {
                         0
@@ -931,13 +966,13 @@ mod tests {
             for h in [18.5, 5.5] {
                 let look = at(h);
                 assert!(
-                    (look.light_direction + look.sun_direction).length() < 1e-5,
+                    (look.key().direction_to_light + look.sun_direction).length() < 1e-5,
                     "{h} h"
                 );
                 assert!(
-                    look.light_intensity > night / 3.0,
+                    look.key().intensity > night / 3.0,
                     "physical {physical}, {h} h: {} against {night}",
-                    look.light_intensity
+                    look.key().intensity
                 );
             }
         }
@@ -979,8 +1014,8 @@ mod tests {
         let ratio = (sky(&quarter, Vec3::Y) - base) / (sky(&full, Vec3::Y) - base);
         assert!((ratio - 0.377).abs() < 0.02, "{ratio}");
         assert!((sky(&new, Vec3::Y) - sky(&none, Vec3::Y)).abs() < 1e-3 * sky(&full, Vec3::Y));
-        assert!((quarter.light_intensity / full.light_intensity - 0.377).abs() < 2e-3);
-        assert!(new.light_intensity < 1e-3 * full.light_intensity);
+        assert!((quarter.key().intensity / full.key().intensity - 0.377).abs() < 2e-3);
+        assert!(new.key().intensity < 1e-3 * full.key().intensity);
         // The moonlit sky fills the land's shade: the eye opens less for it.
         assert!(
             full.adaptation < none.adaptation,

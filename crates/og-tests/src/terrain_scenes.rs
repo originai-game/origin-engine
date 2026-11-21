@@ -444,8 +444,9 @@ pub fn fair_sky(scene: &mut RenderScene, hours: f32) {
     // A path with no tilt: only the look's colours are taken.
     let look = og_render::day_night(hours, 0.0, 57.3)
         .with_atmosphere(&og_render::PhysicalAtmosphere::EARTH);
-    scene.lighting.light.color = look.light_color;
-    scene.lighting.light.intensity = look.light_intensity;
+    let key = look.key();
+    scene.lighting.light.color = key.color;
+    scene.lighting.light.intensity = key.intensity;
     scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: sun,

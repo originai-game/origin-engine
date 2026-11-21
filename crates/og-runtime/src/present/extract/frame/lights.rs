@@ -5,8 +5,9 @@ use super::*;
 /// The lights and their cookies.
 pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let scene = &mut rs.scene;
-    // Lights: the directional light og_render::key_light draws of them all
-    // (the brightest, two handing over), then point and spot lights in
+    // Lights: the key light (crate::present::key_light: the brightest of
+    // the directional lights and og.DayNight's sun and moon, two handing
+    // over), then point and spot lights in
     // entity order (deterministic); og-render culls them to the view and
     // keeps at most MAX_LIGHTS.
     let forward = |m: Mat4| {
@@ -19,51 +20,32 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     // set it: kept from the last frame, a Sky turned off went on lighting
     // the scene and filling its background.
     scene.lighting.environment.sky = og_render::ProceduralSky::default();
-    if let Some(dl) = &layouts.directional {
-        let mut found: Vec<(u64, og_render::DirectionalLight)> = Vec::new();
-        for (e, v) in rows(world, dl) {
-            let Ok(v) = crate::host::wire::record::DirectionalLight::from_json(&v) else {
-                continue;
-            };
-            let m = h.world_of(e);
-            let mut light = scene.lighting.light;
-            let dir = forward(m);
-            light.direction_to_light = if dir == Vec3::ZERO { Vec3::Y } else { -dir };
-            light.color = Vec3::new(v.color.r, v.color.g, v.color.b);
-            light.intensity = v.intensity;
-            light.cast_shadows = v.cast_shadow;
-            light.max_shadow_distance = v.shadow_distance;
-            light.shadow_box = v.shadow_box;
-            light.shadow_focus = v.shadow_focus;
-            light.shadow_focus_drop = v.shadow_focus_drop;
-            light.shadow_bias = v.shadow_bias;
-            light.shadow_normal_bias = v.shadow_normal_bias;
-            light.shadow_softness = v.shadow_softness;
-            light.cascade_blend = v.cascade_blend;
-            found.push((e, light));
-        }
-        // Equal lights go to the one spawned first.
-        og_core::sort::sort_by_key(&mut found, |(e, _)| Entity::from_bits(*e).index());
-        let lights: Vec<_> = found.iter().map(|(_, l)| *l).collect();
-        if let Some(key) = og_render::key_light(&lights) {
-            scene.lighting.light = key.light;
-            scene.lighting.environment.sky.sun_direction =
-                key.light.direction_to_light.normalize_or_zero();
-            // One directional light is drawn: the log names the lights
-            // whose light is lost (a development build's warning).
-            #[cfg(not(feature = "publish"))]
-            if !key.left_out.is_empty() {
-                let names: Vec<String> = key
-                    .left_out
-                    .iter()
-                    .map(|&i| Entity::from_bits(found[i].0).to_string())
-                    .collect();
-                rs.notes.push(format!(
-                    "og.DirectionalLight: one of the scene's {} directional lights is drawn, the brightest (two within 1.5x of each other blend as they hand over), so the light of {} is not; fade the others out while one shines, or light with og.PointLight, og.SpotLight or og.RectLight",
-                    found.len(),
-                    names.join(", "),
-                ));
-            }
+    let stage = crate::present::key_light::Layouts {
+        directional: layouts.directional.as_ref(),
+        day_night: layouts.atmo.day_night(),
+        physical_sky: layouts.atmo.physical_sky(),
+        season: layouts.atmo.season(),
+    };
+    if let Some(key) =
+        crate::present::key_light::key(world, stage, &mut |e| h.world_of(e), scene.lighting.light)
+    {
+        scene.lighting.light = key.light;
+        scene.lighting.environment.sky.sun_direction =
+            key.light.direction_to_light.normalize_or_zero();
+        // One directional light is drawn: the log names the lights
+        // whose light is lost (a development build's warning).
+        #[cfg(not(feature = "publish"))]
+        if !key.left_out.is_empty() {
+            let names: Vec<String> = key
+                .left_out
+                .iter()
+                .map(|&e| Entity::from_bits(e).to_string())
+                .collect();
+            rs.notes.push(format!(
+                "og.DirectionalLight: one of the scene's {} directional lights is drawn, the brightest (two within 1.5x of each other blend as they hand over), so the light of {} is not; fade the others out while one shines, or light with og.PointLight, og.SpotLight or og.RectLight",
+                key.lights,
+                names.join(", "),
+            ));
         }
     }
     // Each light with its cookie (PointLight.cookie, SpotLight.cookie).

@@ -607,9 +607,10 @@ fn far_night_clouds_take_the_moonlit_air() {
             .with_moon(1.6, 0.5)
             .with_atmosphere(&og_render::PhysicalAtmosphere::EARTH);
         let scene = &mut built.scene;
-        scene.lighting.light.direction_to_light = look.light_direction;
-        scene.lighting.light.color = look.light_color;
-        scene.lighting.light.intensity = look.light_intensity;
+        let key = look.key();
+        scene.lighting.light.direction_to_light = key.direction_to_light;
+        scene.lighting.light.color = key.color;
+        scene.lighting.light.intensity = key.intensity;
         scene.lighting.environment = Environment {
             sky: ProceduralSky {
                 sun_direction: look.sun_direction,
@@ -696,7 +697,8 @@ fn the_moon_lights_the_clouds_at_night() {
         let look = og_render::day_night(hours, 25.0, 90.0)
             .with_moon(1.6, 0.5)
             .with_atmosphere(&og_render::PhysicalAtmosphere::EARTH);
-        let moon = look.light_direction;
+        let key = look.key();
+        let moon = key.direction_to_light;
         assert!(
             moon.dot(look.sun_direction) < 0.0,
             "the moon keys {hours} h"
@@ -704,9 +706,9 @@ fn the_moon_lights_the_clouds_at_night() {
         let frame = |cover: Option<f32>| {
             let mut built = scenes::build("water-ocean-night").expect("night sea");
             let scene = &mut built.scene;
-            scene.lighting.light.direction_to_light = look.light_direction;
-            scene.lighting.light.color = look.light_color;
-            scene.lighting.light.intensity = look.light_intensity;
+            scene.lighting.light.direction_to_light = key.direction_to_light;
+            scene.lighting.light.color = key.color;
+            scene.lighting.light.intensity = key.intensity;
             scene.lighting.environment = Environment {
                 sky: ProceduralSky {
                     sun_direction: look.sun_direction,

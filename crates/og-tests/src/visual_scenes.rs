@@ -161,12 +161,7 @@ fn body(
 fn daylight() -> RenderScene {
     let mut scene = RenderScene::new();
     let look = day_night(15.5, 35.0, 55.0);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: look.light_direction,
-        color: look.light_color,
-        intensity: look.light_intensity,
-        ..Default::default()
-    };
+    scene.lighting.light = look.key();
     scene.lighting.environment = Environment {
         sky: ProceduralSky {
             sun_direction: look.sun_direction,
