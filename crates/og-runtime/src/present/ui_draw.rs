@@ -27,7 +27,11 @@ pub(crate) struct MaterialProbe {
 
 impl og_probe::UiTree for MaterialProbe {
     fn elements(&self, world: &og_ecs::World) -> Vec<og_probe::UiElement> {
-        self.ui.elements(world)
+        let mut elements = self.ui.elements(world);
+        if let Some(next) = &self.render.borrow().ui_next {
+            elements.extend(next.elements());
+        }
+        elements
     }
 
     fn surface(&self, world: &og_ecs::World) -> Option<(f32, f32, f32)> {

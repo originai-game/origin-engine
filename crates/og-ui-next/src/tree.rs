@@ -1200,6 +1200,29 @@ impl Tree {
         Some((x, y, b.w, b.h))
     }
 
+    /// Each live element with a document id: its id, its box on screen
+    /// (x, y, width, height), whether it shows, and its text.
+    pub fn dump(&self) -> Vec<(&str, [f32; 4], bool, &str)> {
+        self.els
+            .iter()
+            .enumerate()
+            .filter(|(_, el)| !el.dead && el.style != NONE)
+            .filter_map(|(e, el)| {
+                let ins = &self.insts[el.inst as usize];
+                let c = &self.docs[ins.doc as usize];
+                let id = c.doc.nodes[c.style.nodes[el.style as usize].node as usize]
+                    .id
+                    .as_str();
+                if id.is_empty() {
+                    return None;
+                }
+                let (x, y, shown, _) = *self.abs.get(e)?;
+                let b = self.arena.box_of(el.node);
+                Some((id, [x, y, b.w, b.h], shown, &*el.text))
+            })
+            .collect()
+    }
+
     /// The text an element shows, by its document id.
     pub fn text(&self, id: &str) -> Option<&str> {
         self.els

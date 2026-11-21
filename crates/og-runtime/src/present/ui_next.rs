@@ -447,6 +447,26 @@ impl Next {
         ]
     }
 
+    /// The new core's elements with a document id, as the probe's UI dump
+    /// lists them: id, box on screen and text, from the arena.
+    pub(crate) fn elements(&self) -> Vec<og_probe::UiElement> {
+        let Some(tree) = &self.tree else { return Vec::new() };
+        tree.dump()
+            .into_iter()
+            .filter(|(_, _, shown, _)| *shown)
+            .map(|(id, [x, y, width, height], _, text)| og_probe::UiElement {
+                id: id.into(),
+                path: id.into(),
+                text: text.into(),
+                x,
+                y,
+                width,
+                height,
+                ..Default::default()
+            })
+            .collect()
+    }
+
     /// What `__runtime_probe__` reads beside the timings.
     pub(crate) fn probe(&self) -> Value {
         let s = &self.spans;
