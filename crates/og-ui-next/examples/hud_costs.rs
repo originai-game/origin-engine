@@ -161,8 +161,8 @@ fn main() {
         if run == 0 {
             shown = (tree.len(), f.ops, changed.ops);
             println!(
-                "first frame {f:?}; one change {changed:?}; {} items",
-                tree.items.len()
+                "first frame {f:?}; one change {changed:?}; {} quads",
+                tree.drawn.quads.len()
             );
             for id in ["Clock", "Time", "Tasks", "Hotbar", "AbilityBar"] {
                 println!("  #{id}: {:?} {:?}", tree.find(id), tree.text(id));

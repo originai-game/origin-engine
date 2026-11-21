@@ -5,8 +5,8 @@
 //! the values, answers the reads and goes into checkpoints; each is also
 //! mirrored into an og-ui-next signal. Its mounts go to the new core
 //! alone, so og-ui draws none of them. At the end of the UI's tick the tree commits what the stores
-//! changed, lays out and paints; its items are emitted to the overlay
-//! beside og-ui's.
+//! changed, lays out and paints into its arena, which the render scene's
+//! paint pass draws at the UI's layer (`widgets::emit`).
 
 use og_ui::reactive::session::{Command, Session};
 use og_ui_next::look::{Layer, Look};
@@ -72,15 +72,15 @@ pub(crate) struct Next {
     built: bool,
     /// The game's stores: their values, reads and checkpoints.
     pub(crate) store: Session,
-    /// The items the overlay draws, as og-ui's frame carries them.
-    pub frame: og_ui::UiFrame,
+    /// What the tree last painted (og-draw's arena), swapped into the
+    /// render scene when it is newer (`widgets::emit`); its generation is
+    /// counted here, across trees.
+    pub paint: og_render::paint::Paint,
     pub spans: Spans,
     /// Whether the body font draws (has a handle in the scene).
     font: bool,
     /// The locale the tree's strings are in.
     language: String,
-    /// The overlay texts and sprites its last emit added.
-    pub emitted: std::cell::Cell<(usize, usize, usize)>,
 }
 
 fn source(v: &Value) -> Option<(String, String)> {
@@ -131,11 +131,10 @@ impl Next {
             mounts: BTreeMap::new(),
             built: false,
             store: Session::default(),
-            frame: og_ui::UiFrame::default(),
+            paint: og_render::paint::Paint::default(),
             spans: Spans::default(),
             font: false,
             language: String::new(),
-            emitted: Default::default(),
         }
     }
 
@@ -444,10 +443,9 @@ impl Next {
         if painted {
             // The tree paints its items afresh each time: the overlay takes
             // them, and the tree reuses the old ones' capacity.
-            std::mem::swap(&mut self.frame.items, &mut tree.items);
-            self.frame.viewport = og_ui::Viewport::new(v.width * unit, v.height * unit);
-            self.frame.unit = 1.0;
-            self.frame.generation = tree.generation;
+            let generation = self.paint.generation + 1;
+            std::mem::swap(&mut self.paint, &mut tree.drawn);
+            self.paint.generation = generation;
         }
         let allocated = allocations() - a0;
         self.spans.frame = t2 - t0;
@@ -502,43 +500,31 @@ impl Next {
     /// What `__runtime_probe__` reads beside the timings.
     pub(crate) fn probe(&self) -> Value {
         let s = &self.spans;
-        let texts: Vec<Value> = self
-            .frame
-            .items
-            .iter()
-            .filter_map(|it| match &it.cmd {
-                og_ui::DrawCmd::Text {
-                    x,
-                    baseline,
-                    size,
-                    text,
-                    color,
-                    font,
-                    clip,
-                    bounds,
-                    ..
-                } => Some(json!({
-                    "text": text, "x": x, "baseline": baseline, "size": size, "color": color,
-                    "font": format!("{font:?}"), "clip": [clip.x, clip.y, clip.width, clip.height],
-                    "bounds": [bounds.x, bounds.y, bounds.width, bounds.height], "level": it.level,
-                })),
-                _ => None,
-            })
-            .take(4)
-            .collect();
-        let mut kinds = serde_json::Map::new();
-        for it in &self.frame.items {
-            let k = format!("{:?}", it.cmd);
-            let k = k.split([' ', '{', '(']).next().unwrap_or("").to_string();
-            let n = kinds.get(&k).and_then(Value::as_u64).unwrap_or(0);
-            kinds.insert(k, (n + 1).into());
+        let p = &self.paint;
+        let mut kinds = [0usize; 4];
+        for q in &p.quads {
+            kinds[(q.kind as usize).min(3)] += 1;
         }
+        // The first glyphs' places, as the paint pass reads them.
+        let glyphs: Vec<Value> = p
+            .quads
+            .iter()
+            .filter(|q| q.kind == og_render::paint::PaintKind::Glyph as u32)
+            .take(4)
+            .map(|q| json!({
+                "char": char::from_u32(q.a).map(String::from), "x": q.rect[0], "baseline": q.rect[1],
+                "size": q.rect[2], "color": q.color, "clip": q.clip, "font": q.b,
+            }))
+            .collect();
+        let kinds =
+            json!({ "solid": kinds[0], "gradient": kinds[1], "glyph": kinds[2], "icon": kinds[3] });
         json!({
             "look_ms": s.look, "build_ms": s.build, "build_allocations": s.build_allocations,
             "frame_ms": s.frame, "commit_ms": s.commit, "layout_ms": s.layout,
             "allocations": s.allocations, "ops": s.ops, "refolded": s.refolded,
-            "elements": s.elements, "items": self.frame.items.len(), "mounts": self.mounts.len(),
-            "kinds": kinds, "font": self.font, "texts": texts, "emitted": self.emitted.get(),
+            "elements": s.elements, "quads": p.quads.len(), "gradients": p.gradients.len(),
+            "mounts": self.mounts.len(), "kinds": kinds, "font": self.font, "glyphs": glyphs,
+            "generation": p.generation,
         })
     }
 }

@@ -194,6 +194,8 @@ use visibility::meshlet_gpu;
 pub mod particles;
 use gpu::pipeline_cache;
 pub use og_draw::kurbo;
+/// og-ui's paint arena, drawn by the paint pass (`ui/paint.rs`).
+pub use og_draw::paint;
 use particles::particles_gpu;
 pub use pipeline_cache::set_pipeline_cache_dir;
 pub use pipeline_features::LitFeatures;

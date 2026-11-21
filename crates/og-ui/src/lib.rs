@@ -50,6 +50,7 @@ pub const DEFAULT_FONT_ASSET: &str = "@styles/shared/InstrumentSans[wdth,wght].t
 mod default_icons;
 pub use default_icons::DEFAULT_ICON_NAMES;
 pub use default_icons::commands as builtin_icon;
+pub use default_icons::svg as builtin_icon_svg;
 
 #[doc(hidden)]
 pub mod a11y;

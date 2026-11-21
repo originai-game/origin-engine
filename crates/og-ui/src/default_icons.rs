@@ -62,6 +62,14 @@ icons!(
     "wheat",
 );
 
+/// Built-in icon `name`'s SVG source, for a host that paints its own.
+pub fn svg(name: &str) -> Option<&'static str> {
+    ICONS
+        .iter()
+        .find(|icon| icon.name == name)
+        .map(|icon| icon.svg)
+}
+
 pub(crate) fn find(name: &str) -> Option<&'static str> {
     ICONS
         .iter()

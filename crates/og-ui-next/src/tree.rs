@@ -11,9 +11,10 @@ use crate::doc::DocStyle;
 use crate::look::Look;
 use crate::queue::{self, Op, Reads, Target};
 use crate::style::{Record, Rgba, Text};
+use og_draw::paint::{Paint, PaintKind, PaintQuad};
 use og_ui::bind::{Env, Expr, Scope, Screen};
 use og_ui::doc::{Lit, NodeKind, PropValue, UiDocument, schema::Kind};
-use og_ui::{DrawCmd, DrawItem, IconAtlas, IconCell, Rect};
+use og_ui::{IconAtlas, IconCell};
 use rustc_hash::FxHashMap;
 use serde_json::Value;
 use std::cell::Cell;
@@ -159,15 +160,24 @@ pub struct Tree {
     screen: u32,
     dirty: Vec<u32>,
     paint: bool,
-    pub items: Vec<DrawItem>,
-    /// Bumped each time `items` change.
-    pub generation: u64,
-    /// Each element's place on screen, whether it shows, and its depth.
-    abs: Vec<(f32, f32, bool, i32)>,
-    /// Each built-in icon's commands as last emitted, by name and the
-    /// bits of its rect, clip and colour: an icon that did not move is
-    /// not flattened again on a repaint.
-    icons: Vec<(&'static str, [u32; 12], Vec<DrawCmd>)>,
+    /// What it paints (og-draw's arena, drawn by og-render's paint
+    /// pass), refilled in place: its generation moves each repaint.
+    pub drawn: Paint,
+    /// Each element's place on screen, whether it shows, and the clip its
+    /// children paint in (x0, y0, x1, y1).
+    abs: Vec<(f32, f32, bool, [f32; 4])>,
+    /// Each element's text laid out as glyph quads from its leaf's top
+    /// left, kept while its text, width and run stay.
+    glyphs: Vec<Glyphs>,
+}
+
+/// An element's text as glyph quads (from its leaf's top left; colour and
+/// clip set as they are copied), and what they were laid out from.
+#[derive(Default)]
+struct Glyphs {
+    text: Box<str>,
+    key: [u32; 5],
+    quads: Vec<PaintQuad>,
 }
 
 static NEXT_TREE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
@@ -308,10 +318,9 @@ impl Tree {
             screen: queue::signal(0.into()),
             dirty: Vec::new(),
             paint: true,
-            items: Vec::new(),
-            generation: 0,
+            drawn: Paint::default(),
             abs: Vec::new(),
-            icons: Vec::new(),
+            glyphs: Vec::new(),
         }
     }
 
@@ -985,207 +994,137 @@ impl Tree {
 
     fn repaint(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) {
         let (vw, vh) = self.env.size.get();
-        let clip = Rect::new(0.0, 0.0, vw, vh);
-        self.items.clear();
+        let screen = [0.0, 0.0, vw, vh];
+        let p = &mut self.drawn;
+        p.clear();
+        (p.width, p.height) = (vw, vh);
+        // Font slots: the body's (0) and the icon set's (1); the host adds
+        // each one's other pages.
+        let body = fonts.body.handle;
+        let icon_font = icons.font.as_ref().and_then(|f| f.handle);
+        let firsts = [body, icon_font];
+        if p.fonts.len() != 2 || (0..2).any(|k| p.fonts[k].first().copied() != firsts[k]) {
+            p.fonts = firsts.iter().map(|h| h.iter().copied().collect()).collect();
+        }
         self.abs.clear();
-        let font = fonts.body.handle;
+        self.glyphs.resize_with(self.els.len(), Glyphs::default);
         let m = &fonts.body.metrics;
         for e in 0..self.els.len() {
             let el = &self.els[e];
             let b = self.arena.box_of(el.node);
-            let (px, py, pv, pd) = if el.arena_parent == NONE {
-                (0.0, 0.0, true, -1)
+            let (px, py, pv, pclip) = if el.arena_parent == NONE {
+                (0.0, 0.0, true, screen)
             } else {
                 self.abs[el.arena_parent as usize]
             };
-            // Painter levels: an element over its parent, its text over its
-            // own fill (og-render draws a level's text before its shapes).
-            let depth = pd + 1;
-            let (under, over) = (2 * depth, 2 * depth + 1);
             // `display: none` leaves a zero box at its parent's corner:
             // nothing of it or under it paints.
+            let r = &el.record;
             let visible = pv
                 && !el.dead
                 && el.hidden == 0
                 && el.eff.opacity > 0.0
-                && el.record.layout.display() != taffy::Display::None;
+                && r.layout.display() != taffy::Display::None;
             let (x, y) = (px + b.x, py + b.y);
-            self.abs.push((x, y, visible, depth));
+            let clip = pclip;
+            // What overflows a box that does not show it is cut to it.
+            let o = taffy::CoreStyle::overflow(&r.layout);
+            let inner = if o.x != taffy::Overflow::Visible || o.y != taffy::Overflow::Visible {
+                [
+                    clip[0].max(x),
+                    clip[1].max(y),
+                    clip[2].min(x + b.w),
+                    clip[3].min(y + b.h),
+                ]
+            } else {
+                clip
+            };
+            self.abs.push((x, y, visible, inner));
             if !visible {
                 continue;
             }
-            let r = &el.record;
+            let p = &mut self.drawn;
             let alpha = el.eff.opacity;
+            let rect = [x, y, b.w, b.h];
+            let radius = r.radius.min(b.w.min(b.h) / 2.0);
             if r.fill[3] > 0.0 {
                 let mut c = r.fill;
                 c[3] *= alpha;
-                self.items.push(item(
-                    under,
-                    DrawCmd::Quad {
-                        rect: Rect::new(x, y, b.w, b.h),
-                        radius: r.radius.min(b.w.min(b.h) / 2.0),
-                        color: c,
-                        clip,
-                    },
+                p.quads
+                    .push(quad(PaintKind::Solid, rect, clip, c, radius, 0, 0));
+            }
+            if let Some(g) = &r.gradient {
+                let gi = p.gradient(g.angle, g.stops().iter().copied());
+                p.quads.push(quad(
+                    PaintKind::Gradient,
+                    rect,
+                    clip,
+                    [1.0, 1.0, 1.0, alpha],
+                    radius,
+                    gi,
+                    0,
                 ));
             }
             let mut ink = el.eff.ink;
             ink[3] *= alpha;
             if el.kind == Kind::Icon && !el.text.is_empty() {
                 let size = b.w.min(b.h).max(1.0);
+                let square = [x + (b.w - size) / 2.0, y + (b.h - size) / 2.0, size, size];
                 match icons.find_drawn(&el.text) {
-                    Some((IconCell::Glyph(f, ch), _)) => {
+                    Some((IconCell::Glyph(_, ch), _)) => {
                         let (asc, desc) = icons
                             .font
                             .as_ref()
                             .map_or((0.8, -0.2), |f| (f.metrics.ascender, f.metrics.descender));
                         let top = y + (b.h - (asc - desc) * size) / 2.0;
-                        self.items.push(item(
-                            over,
-                            text_cmd(
-                                0,
-                                x + (b.w - size) / 2.0,
-                                top + asc * size,
-                                size,
-                                ch.to_string(),
-                                ink,
-                                f,
-                                clip,
-                                0.0,
-                            ),
+                        p.quads.push(quad(
+                            PaintKind::Glyph,
+                            [square[0], top + asc * size, size, 0.0],
+                            clip,
+                            ink,
+                            0.0,
+                            ch as u32,
+                            1,
                         ));
                     }
-                    Some((IconCell::Image(t, uv), pictures)) => self.items.push(item(
-                        under,
-                        DrawCmd::Image {
-                            rect: Rect::new(
-                                x + (b.w - size) / 2.0,
-                                y + (b.h - size) / 2.0,
-                                size,
-                                size,
-                            ),
-                            texture: Some(t),
-                            uv,
-                            color: if pictures {
-                                [1.0, 1.0, 1.0, alpha]
-                            } else {
-                                ink
-                            },
-                            clip,
-                        },
-                    )),
-                    // The engine's own set (Lucide), drawn as og-ui draws it.
+                    // A texture grid's cell: not painted by the arena yet.
+                    Some((IconCell::Image(..), _)) => {}
                     Some((IconCell::Builtin(name), _)) => {
-                        let rect =
-                            Rect::new(x + (b.w - size) / 2.0, y + (b.h - size) / 2.0, size, size);
-                        let color = og_ui::Srgba::from_linear(ink);
-                        let key = [
-                            rect.x,
-                            rect.y,
-                            rect.width,
-                            rect.height,
-                            clip.x,
-                            clip.y,
-                            clip.width,
-                            clip.height,
-                            ink[0],
-                            ink[1],
-                            ink[2],
-                            ink[3],
-                        ]
-                        .map(f32::to_bits);
-                        let at = match self
-                            .icons
-                            .iter()
-                            .position(|(n, k, _)| *n == name && *k == key)
-                        {
-                            Some(at) => at,
-                            None => {
-                                let cmds = og_ui::builtin_icon(
-                                    name,
-                                    rect,
-                                    clip,
-                                    color,
-                                    &og_ui::Theme::default(),
-                                );
-                                self.icons.push((name, key, cmds));
-                                self.icons.len() - 1
-                            }
-                        };
-                        self.items
-                            .extend(self.icons[at].2.iter().map(|c| item(under, c.clone())));
+                        let set = crate::icons::icons();
+                        if p.icons.is_none() {
+                            p.icons = Some(set.segments.clone());
+                        }
+                        if let Some((first, count)) = set.find(name) {
+                            p.quads.push(quad(
+                                PaintKind::Icon,
+                                square,
+                                clip,
+                                ink,
+                                0.0,
+                                first,
+                                count,
+                            ));
+                        }
                     }
                     None => {}
                 }
             }
-            if let (Some(leaf), Some(font)) = (el.leaf, font)
+            if let (Some(leaf), Some(_)) = (el.leaf, body)
                 && !el.text.is_empty()
             {
                 let lb = self.arena.box_of(leaf);
+                let g = &mut self.glyphs[e];
+                lay_out(g, &el.text, &el.eff, lb.w, m);
                 let (lx, ly) = (x + lb.x, y + lb.y);
-                let t = &el.eff.text;
-                let size = el.eff.size;
-                let tracking = t.tracking(size);
-                let line = t.line_height(size);
-                let lines = if t.nowrap {
-                    vec![og_text::text::Line {
-                        width: og_text::text::widest_line(
-                            &el.text,
-                            m,
-                            size,
-                            tracking,
-                            og_text::shape::Features::NONE,
-                        ),
-                        text: el.text.to_string(),
-                    }]
-                } else {
-                    og_text::text::break_lines(
-                        &el.text,
-                        m,
-                        size,
-                        tracking,
-                        og_text::shape::Features::NONE,
-                        Some(lb.w + 0.5),
-                    )
-                };
-                let glyph = (m.ascender - m.descender) * size;
-                let weight = if t.weight >= 600 { size * 0.03 } else { 0.0 };
-                for (k, l) in lines.into_iter().enumerate() {
-                    let top = ly + k as f32 * line + (line - glyph) / 2.0;
-                    let dx = match t.align {
-                        1 => (lb.w - l.width) / 2.0,
-                        2 => lb.w - l.width,
-                        _ => 0.0,
-                    };
-                    self.items.push(item(
-                        over,
-                        text_cmd(
-                            e as u64 + 1,
-                            lx + dx,
-                            top + m.ascender * size,
-                            size,
-                            l.text,
-                            ink,
-                            font,
-                            clip,
-                            if size > 0.0 { tracking / size } else { 0.0 },
-                        ),
-                    ));
-                    if let Some(DrawItem {
-                        cmd:
-                            DrawCmd::Text {
-                                weight: w, bounds, ..
-                            },
-                        ..
-                    }) = self.items.last_mut()
-                    {
-                        *w = weight;
-                        *bounds = Rect::new(lx + dx, top, l.width, line);
-                    }
-                }
+                p.quads.extend(g.quads.iter().map(|q| PaintQuad {
+                    rect: [q.rect[0] + lx, q.rect[1] + ly, q.rect[2], q.rect[3]],
+                    clip,
+                    color: ink,
+                    ..*q
+                }));
             }
         }
-        self.generation += 1;
+        self.drawn.generation += 1;
     }
 
     /// An element's box by its document id (`#Time`), for checks.
@@ -1237,40 +1176,98 @@ impl Tree {
     }
 }
 
-fn item(level: i32, cmd: DrawCmd) -> DrawItem {
-    DrawItem {
-        level,
-        cmd,
-        transform: og_ui::Affine::IDENTITY,
+fn quad(
+    kind: PaintKind,
+    rect: [f32; 4],
+    clip: [f32; 4],
+    color: Rgba,
+    radius: f32,
+    a: u32,
+    b: u32,
+) -> PaintQuad {
+    PaintQuad {
+        rect,
+        clip,
+        color,
+        radius,
+        kind: kind as u32,
+        a,
+        b,
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn text_cmd(
-    source: u64,
-    x: f32,
-    baseline: f32,
-    size: f32,
-    text: String,
-    color: Rgba,
-    font: og_draw::FontHandle,
-    clip: Rect,
-    tracking: f32,
-) -> DrawCmd {
-    DrawCmd::Text {
-        source,
-        x,
-        baseline,
-        size,
-        text,
-        color,
-        font,
-        bounds: Rect::new(x, baseline - size, 0.0, size),
-        clip,
-        tracking,
-        weight: 0.0,
-        glow: None,
-        placements: Vec::new(),
+/// Lays `text` out as glyph quads of font slot 0 from its leaf's top left
+/// (a quad's x the pen, y the baseline, w the size), when it, the width
+/// or the run changed since `g` was laid out.
+fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::text::FontMetrics) {
+    let t = &eff.text;
+    let size = eff.size;
+    let tracking = t.tracking(size);
+    let line = t.line_height(size);
+    let bold = t.weight >= 600;
+    let key = [
+        width.to_bits(),
+        size.to_bits(),
+        tracking.to_bits(),
+        line.to_bits(),
+        u32::from(t.align) | u32::from(t.nowrap) << 2 | u32::from(bold) << 3,
+    ];
+    if g.key == key && *g.text == *text {
+        return;
+    }
+    g.key = key;
+    if *g.text != *text {
+        g.text = text.into();
+    }
+    g.quads.clear();
+    let glyph = (m.ascender - m.descender) * size;
+    let weight = if bold { size * 0.03 } else { 0.0 };
+    let track = if size > 0.0 { tracking / size } else { 0.0 };
+    let features = og_text::shape::Features::NONE;
+    let place = |k: usize, l: &str, w: f32, quads: &mut Vec<PaintQuad>| {
+        let top = k as f32 * line + (line - glyph) / 2.0;
+        let dx = match t.align {
+            1 => (width - w) / 2.0,
+            2 => width - w,
+            _ => 0.0,
+        };
+        let baseline = top + m.ascender * size;
+        let mut pen = 0.0f32;
+        let mut prev: Option<char> = None;
+        for ch in l.chars() {
+            if !m.has(ch) {
+                prev = None;
+                continue;
+            }
+            if let Some(p) = prev {
+                pen += m.kern(p, ch);
+            }
+            if !ch.is_whitespace() {
+                quads.push(quad(
+                    PaintKind::Glyph,
+                    [dx + pen * size, baseline, size, 0.0],
+                    [0.0; 4],
+                    [0.0; 4],
+                    weight,
+                    ch as u32,
+                    0,
+                ));
+            }
+            pen += m.advance(ch) + track;
+            prev = Some(ch);
+        }
+    };
+    let one = og_text::text::widest_line(text, m, size, tracking, features);
+    if t.nowrap || (one <= width + 0.5 && !text.contains('\n')) {
+        for (k, l) in text.split('\n').enumerate() {
+            let w = og_text::text::widest_line(l, m, size, tracking, features);
+            place(k, l, w, &mut g.quads);
+        }
+        return;
+    }
+    let lines = og_text::text::break_lines(text, m, size, tracking, features, Some(width + 0.5));
+    for (k, l) in lines.iter().enumerate() {
+        place(k, &l.text, l.width, &mut g.quads);
     }
 }
 
@@ -1336,14 +1333,14 @@ mod tests {
             ..Default::default()
         };
         tree.frame(&fonts, &IconAtlas::default());
-        let level = |text: bool| {
-            tree.items
+        let at = |glyph: bool| {
+            tree.drawn
+                .quads
                 .iter()
-                .find(|i| matches!(i.cmd, DrawCmd::Text { .. }) == text)
-                .map(|i| i.level)
+                .position(|q| (q.kind == PaintKind::Glyph as u32) == glyph)
                 .unwrap()
         };
-        assert!(level(true) > level(false), "the text over its panel");
+        assert!(at(true) > at(false), "the text over its panel");
     }
 
     /// A `display: none` element paints nothing, nor does what is under
@@ -1376,12 +1373,13 @@ mod tests {
             ..Default::default()
         };
         tree.frame(&fonts, &IconAtlas::default());
-        let texts = tree
-            .items
+        let glyphs = tree
+            .drawn
+            .quads
             .iter()
-            .filter(|i| matches!(i.cmd, DrawCmd::Text { .. }))
+            .filter(|q| q.kind == PaintKind::Glyph as u32)
             .count();
-        assert_eq!(texts, 1, "only the shown text");
+        assert_eq!(glyphs, "shown".len(), "only the shown text");
     }
 
     /// An inset with `auto` sides places the box by the others: an
@@ -1566,7 +1564,18 @@ mod tests {
         tree.resize(200.0, 200.0);
         tree.mount("i", &[]).unwrap();
         tree.frame(&og_ui::Fonts::default(), &IconAtlas::default());
-        assert!(!tree.items.is_empty(), "the clock's strokes");
+        let icon = tree
+            .drawn
+            .quads
+            .iter()
+            .find(|q| q.kind == PaintKind::Icon as u32);
+        let (first, count) = crate::icons::icons().find("clock").unwrap();
+        assert_eq!(
+            icon.map(|q| (q.a, q.b, q.rect[2])),
+            Some((first, count, 16.0)),
+            "the clock's strokes in its 16 px box"
+        );
+        assert!(count > 4, "a circle and two hands: {count} segments");
     }
 
     /// A scroller's `:state(more)` holds while its content runs past its

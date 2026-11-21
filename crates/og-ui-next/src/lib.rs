@@ -7,6 +7,7 @@
 pub mod arena;
 pub mod cooked;
 pub mod doc;
+pub mod icons;
 pub mod look;
 pub mod prim;
 pub mod queue;
