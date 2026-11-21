@@ -6,18 +6,18 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `A11yRequest` (struct)
 
-A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls).
+A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's accessibility mirror sends it when a reader focuses, activates or adjusts a mirrored node, and a native window sends it for the platform's reader. Raises an A11yAction event; the UI acts on it at the start of the next frame.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `action` | `A11yActionKind` | `"focus"` | — | — | — | What is asked. |
-| `path` | `string` | `""` | — | — | — | The control's path, as og.ui.a11y() names it. |
+| `path` | `string` | `""` | — | — | — | The node's id in the UI's accessibility tree, as text. |
 
 ```ogt
 struct A11yRequest {
-  doc "A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls)."
+  doc "A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's accessibility mirror sends it when a reader focuses, activates or adjusts a mirrored node, and a native window sends it for the platform's reader. Raises an A11yAction event; the UI acts on it at the start of the next frame."
   field action A11yActionKind "What is asked."
-  field path String "The control's path, as og.ui.a11y() names it."
+  field path String "The node's id in the UI's accessibility tree, as text."
 }
 ```
 

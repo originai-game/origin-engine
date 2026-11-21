@@ -2796,7 +2796,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("The control's path, as og.ui.a11y() names it."),
+                doc: doc!("The node's id in the UI's accessibility tree, as text."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

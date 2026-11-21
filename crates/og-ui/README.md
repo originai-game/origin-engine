@@ -319,7 +319,7 @@ table) names its own with `Ui::semantics` (a document's `role` and `aria-*`): on
 `a11y::ROLES` (menu, menuitem, tree, treeitem, table, row, cell,
 tabpanel, toolbar, region…), a name, a value, its states and a range;
 an unknown role is refused with a frame warning. The probe's `dump_ui` carries them on
-every element; `Ui::a11y()` (`og.ui.a11y()`) answers the tree of the
+every element; `Ui::a11y()` answers the tree of the
 elements with a role, with full paths, nearest-ancestor parents, whole
 bounds, the focus order and the focused path, for a shell to mirror into
 the page. Focus order is the tree's order (the drawing order: the page,

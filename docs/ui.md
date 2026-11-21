@@ -1487,23 +1487,13 @@ TypeScript's `textPath` is `{ data, radius, offset, percent, reverse }`
 
 #### Live regions
 
-`aria-live`, `role="status"`, `"log"` and `"alert"` and `aria-atomic`
-follow ARIA with the default `aria-relevant` (`additions text`): entering
-nodes and changed names or values announce; removals, emptied text, a
-region arriving with content, a hidden ancestor, the first tree a host
-reads and the update after a restore announce nothing. A toast
-(`og.ui.toast`, a row of the `notifications` screen's log) announces as it
-appears. Each change
-announces once from the tree the host last read. Natively the AccessKit
-bridge (`native_a11y::Bridge`) speaks through two polite and two assertive
-hidden live nodes, alternating so repeats are heard; `take_announcements`
-holds at most `ANNOUNCEMENTS` (16), dropping the oldest. The web mirror
-writes the frame answer's `announce` list into the page's regions. Both
-work in publish builds; `og.ui.a11y()` gives each node `live` and
-`atomic`. Announcing reads only changed nodes and their ancestors to the
-region (O(depth)); an idle frame reads nothing. The queue is presentation
-only, never checkpointed. Under `OG_UI_CHECK_BOUNDED` the whole-tree twin
-of each update must announce the same.
+A node with a `live` prop, or the role `status`, `log` (polite) or
+`alert` (assertive), is a live region in the accessibility tree
+(crates/og-ui-next CONVENTIONS.md §Accessibility); `status` and `alert`
+are atomic. The engine keeps no announcement queue: the web mirror gives
+the node `aria-live` and `aria-atomic` with its text as content, and a
+native window's AccessKit adapter announces it, so the platform says
+what changes in it. Both work in publish builds.
 
 ```svelte
 <text role="status">{$saved}</text>

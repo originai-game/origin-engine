@@ -1036,8 +1036,6 @@ export interface HostAbi<A, V> {
   og_ui_hud_reset(key: string): void;
   /** `og.ui.focus` */
   og_ui_focus(pad: number): string;
-  /** `og.ui.a11y` */
-  og_ui_a11y(): string;
   /** `og.ui.feedback` */
   og_ui_feedback(event: string, rise: number): void;
   /** `og.ui.setHaptics` */
@@ -1899,7 +1897,6 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_hud_step",
   "og_ui_hud_reset",
   "og_ui_focus",
-  "og_ui_a11y",
   "og_ui_feedback",
   "og_ui_set_haptics",
   "og_ui_set_navigation",

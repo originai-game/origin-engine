@@ -122,9 +122,6 @@ macro_rules! __og_host_bindings_ui {
                 $crate::og_ui_focus(pad)
             }
 
-            fn og_ui_a11y(&self) -> String {
-                $crate::host_impl::json($crate::og_ui_a11y())
-            }
             fn og_ui_tick(&self) -> u32 {
                 $crate::og_ui_tick()
             }

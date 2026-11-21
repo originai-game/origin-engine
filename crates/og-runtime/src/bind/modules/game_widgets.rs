@@ -171,45 +171,6 @@ pub fn og_ui_focus(pad: u32) -> String {
     with_ui("og.ui.focus", |ui| ui.focus_path(pad).to_string()).unwrap_or_default()
 }
 
-/// An accessibility tree as og.ui.a11y answers it (IDL `ui.A11yTree`).
-/// The accessibility tree as JSON, its rectangles times `unit` (1: the
-/// game's units, as og.ui.a11y gives them; the frame's og-ui unit: CSS px,
-/// as the page's mirror places its nodes).
-pub(crate) fn a11y_tree(t: &og_ui::A11yTree, unit: f32) -> wire::A11yTree {
-    wire::A11yTree {
-        nodes: t
-            .nodes
-            .iter()
-            .map(|n| wire::A11yNode {
-                path: n.path.clone(),
-                parent: n.parent.clone(),
-                role: n.role.clone(),
-                name: n.name.clone(),
-                description: n.description.clone(),
-                value: n.value.clone(),
-                states: n.states.clone(),
-                value_min: n.value_min,
-                value_max: n.value_max,
-                value_now: n.value_now,
-                level: n.level.map(u32::from),
-                live: n.live.clone(),
-                atomic: n.atomic,
-                notify: n.notify,
-                x: n.x * unit,
-                y: n.y * unit,
-                width: n.width * unit,
-                height: n.height * unit,
-            })
-            .collect(),
-        focus_order: t.focus_order.clone(),
-        focused: t.focused.clone(),
-    }
-}
-
-pub fn og_ui_a11y() -> wire::A11yTree {
-    with_ui("og.ui.a11y", |ui| a11y_tree(ui.a11y(), 1.0)).unwrap_or_default()
-}
-
 pub fn og_ui_tick() -> u32 {
     with_ui("og.ui.tick", |ui| ui.tick() as u32).unwrap_or(0)
 }

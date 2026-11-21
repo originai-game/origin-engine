@@ -14,7 +14,7 @@ interface UiSource {
   # members follow, each quoted below
 ```
 
-<sub>Module `ui` line 1574</sub>
+<sub>Module `ui` line 1532</sub>
 
 <a id="member-UiSource-scope"></a>
 
@@ -32,7 +32,7 @@ prop scope String "The owning scope." {
 }
 ```
 
-<sub>Module `ui` line 1576</sub>
+<sub>Module `ui` line 1534</sub>
 
 <a id="member-UiSource-id"></a>
 
@@ -50,4 +50,4 @@ prop id String "The store ID within that scope." {
 }
 ```
 
-<sub>Module `ui` line 1579</sub>
+<sub>Module `ui` line 1537</sub>

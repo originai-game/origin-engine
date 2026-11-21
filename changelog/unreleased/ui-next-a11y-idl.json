@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.a11y",
+      "change": "`og.ui.a11y()` and its `A11yTree` and `A11yNode` types are gone: the old UI core's accessibility tree has no reader left. The page's mirror and a native window's screen reader read the new core's tree, built from each TSX node's tag, a11y props and listeners. The `path` an `og.A11yAction` (and `A11yRequest`) carries is now that tree's node id as text, not an element path.",
+      "fix": "Give nodes their roles, names and states with the a11y props (`role`, `label`, `checked`, `valueNow`… in og-ui's accessibility contract) instead of reading the tree back. Nothing reads the tree back from game code: a playtest that read `og.ui.a11y()` checks the props it set. Code that matched an `og.A11yAction`'s `path` against element paths compares node ids.",
+      "find": ["og.ui.a11y", "A11yTree", "A11yNode"]
+    }
+  ]
+}

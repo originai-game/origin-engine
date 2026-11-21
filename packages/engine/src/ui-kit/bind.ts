@@ -63,7 +63,6 @@ export const widgets = {
   hudSelect: (key: string): void => abi().og_ui_hud_select(key),
   hudStep: (scale: number, opacity: number): void => abi().og_ui_hud_step(scale, opacity),
   hudReset: (key: string): void => abi().og_ui_hud_reset(key),
-  a11y: (): Api.A11yTree => parse(abi().og_ui_a11y()),
   tick: (): number => abi().og_ui_tick(),
   // World-space UI (docs/ui.md §1, §3.3).
   defineMass: (name: string, desc?: Api.MassTemplateDesc): Api.Result<number> => parse(abi().og_ui_define_mass(name, json(desc))),

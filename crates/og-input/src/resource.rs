@@ -243,17 +243,17 @@ impl TextInput {
 }
 
 /// An assistive technology's request on a UI control (IDL
-/// `input.A11yAction`, an engine extension): the web shell's mirror of
-/// `og.ui.a11y()` sends it when a screen reader focuses, activates or
-/// adjusts a mirrored node. og-ui acts on it at the start of the next
-/// frame, against the last frame's controls.
+/// `input.A11yAction`, an engine extension): the web shell's accessibility
+/// mirror or a native window sends it when a screen reader focuses,
+/// activates or adjusts a node. The UI acts on it at the start of the next
+/// frame.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
 #[reflect(name = "og.A11yAction")]
 pub struct A11yAction {
     /// What is asked ([`crate::A11yAct::index`]).
     #[reflect(variants = ["focus", "activate", "increment", "decrement"])]
     pub action: u32,
-    /// The control's path, as `og.ui.a11y()` names it.
+    /// The node's id in the UI's accessibility tree, as text.
     pub path: Str256,
 }
 

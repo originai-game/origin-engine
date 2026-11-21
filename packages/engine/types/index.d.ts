@@ -4087,12 +4087,12 @@ export interface TextEntry {
 export type A11yActionKind = "focus" | "activate" | "increment" | "decrement";
 
 /**
- * A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls).
+ * A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's accessibility mirror sends it when a reader focuses, activates or adjusts a mirrored node, and a native window sends it for the platform's reader. Raises an A11yAction event; the UI acts on it at the start of the next frame.
  */
 export interface A11yRequest {
   /** What is asked. */
   readonly action: A11yActionKind;
-  /** The control's path, as og.ui.a11y() names it. */
+  /** The node's id in the UI's accessibility tree, as text. */
   readonly path: string;
 }
 
@@ -4977,14 +4977,14 @@ export interface Wheel {
 }
 
 /**
- * A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.
+ * A screen reader's request on a UI control (an engine extension): the web shell's accessibility mirror or a native window sends it; the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.
  *
  * The payload of the `A11yAction` event (token `og.A11yAction`).
  */
 export interface A11yAction {
   /** What is asked. */
   readonly action: A11yActionKind;
-  /** The control's path, as og.ui.a11y() names it. */
+  /** The node's id in the UI's accessibility tree, as text. */
   readonly path: string;
 }
 
@@ -26480,101 +26480,6 @@ export interface HudEdit {
 
 
 
-/**
- * One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).
- */
-export interface A11yNode {
-  /** Its path, as touch_move_to and og.ui.focus name it. */
-  readonly path: string;
-  /** The path of the nearest node above it in the tree; empty at the top. */
-  readonly parent: string;
-  /**
-   * Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, log, dialog, tooltip, separator, group, list, listitem, and the landmarks navigation, main, banner, contentinfo, complementary, article, region.
-   */
-  readonly role: string;
-  /**
-   * Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value).
-   */
-  readonly name: string;
-  /**
-   * Read after the name (aria-description): a text field's placeholder when a label names it; empty for none.
-   */
-  readonly description: string;
-  /**
-   * Its value as text (a slider's number, a progress's percent, a field's text); empty for none.
-   */
-  readonly value: string;
-  /**
-   * Its states: disabled, focused, focusable, checked, selected, expanded, collapsed (expandable and closed), pressed, busy, offscreen (a scroll container cuts it out of view).
-   */
-  readonly states: readonly string[];
-  /**
-   * A range's smallest value (aria-valuemin): a slider's min, a bounded stepper's, 0 for a progress (in percent) and a meter; null for a stepper without bounds and a control that is no range.
-   */
-  readonly valueMin: number | null;
-  /**
-   * A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is.
-   */
-  readonly valueMax: number | null;
-  /**
-   * A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range.
-   */
-  readonly valueNow: number | null;
-  /** A heading's level, 1 to 6 (aria-level; <h1> to <h6>); null for anything else. */
-  readonly level: number | null;
-  /**
-   * A live region's setting (aria-live, or its role's: status and log are polite, alert assertive): polite or assertive, empty for none. A screen reader announces what changes in it; the web mirror and the native tree speak it.
-   */
-  readonly live: string;
-  /**
-   * A live region that announces its whole text when any of it changes (aria-atomic, or its role's: status and alert); false for none.
-   */
-  readonly atomic: boolean;
-  /**
-   * A live region that announces as it appears (an alert, a toast); another region announces only what changes in it after it entered.
-   */
-  readonly notify: boolean;
-  /**
-   * Left edge of the whole element.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly x: number;
-  /**
-   * Top edge of the whole element.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly y: number;
-  /**
-   * Width.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly width: number;
-  /**
-   * Height.
-   *
-   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
-   */
-  readonly height: number;
-}
-
-/**
- * The last frame's accessibility tree, built from the same nodes the UI draws and takes input on.
- */
-export interface A11yTree {
-  /** The nodes, in tree order: the page, then each layer over it (a dialog after the page). */
-  readonly nodes: readonly A11yNode[];
-  /**
-   * The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open.
-   */
-  readonly focusOrder: readonly string[];
-  /** The path keyboard and pad 0's focus is on; empty for none. */
-  readonly focused: string;
-}
-
-
 
 
 
@@ -29035,7 +28940,7 @@ export interface UiElement {
   /** The text it shows, if any. */
   readonly text: string;
   /**
-   * Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element.
+   * Its accessibility role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element.
    */
   readonly role: string;
   /**
@@ -35332,7 +35237,7 @@ export declare namespace og {
   /** A wheel or trackpad scroll. */
   const Wheel: EventType<Wheel>;
   /**
-   * A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.
+   * A screen reader's request on a UI control (an engine extension): the web shell's accessibility mirror or a native window sends it; the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.
    */
   const A11yAction: EventType<A11yAction>;
   /**
@@ -38777,10 +38682,6 @@ export declare namespace og {
      * @param pad The pad, 0 to 3; past 3 answers empty.
      */
     function focus(pad: number): string;
-    /**
-     * The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.
-     */
-    function a11y(): A11yTree;
     /**
      * Play a UI event's style feedback (docs/ui.md §3.1): a random sound from its set, never repeating the last, with volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff and sliderTick; game code plays scrollTick, typewriter, counterTick, notification, warning, error, success, reward and revealCommon to revealMythic. Choices use UI state and replay deterministically. An unknown event or one the style leaves silent plays nothing.
      *

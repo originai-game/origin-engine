@@ -6,20 +6,20 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `og.A11yAction` (event)
 
-A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.
+A screen reader's request on a UI control (an engine extension): the web shell's accessibility mirror or a native window sends it; the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.
 
 Token `og.A11yAction`, registered under the schema name `og.A11yAction`; its value type is `A11yAction`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `action` | `A11yActionKind` | `"focus"` | — | — | — | What is asked. |
-| `path` | `string` | `""` | — | — | — | The control's path, as og.ui.a11y() names it. |
+| `path` | `string` | `""` | — | — | — | The node's id in the UI's accessibility tree, as text. |
 
 ```ogt
 event A11yAction {
-  doc "A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused."
+  doc "A screen reader's request on a UI control (an engine extension): the web shell's accessibility mirror or a native window sends it; the UI takes it at the start of the next frame. A path longer than 255 bytes is refused."
   field action A11yActionKind "What is asked."
-  field path String "The control's path, as og.ui.a11y() names it."
+  field path String "The node's id in the UI's accessibility tree, as text."
 }
 ```
 

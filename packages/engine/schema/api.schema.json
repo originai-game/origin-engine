@@ -12389,8 +12389,6 @@
         "VirtualCursor",
         "HudPlacement",
         "HudEdit",
-        "A11yNode",
-        "A11yTree",
         "UiProp",
         "Position",
         "MotionToken",
@@ -12896,13 +12894,6 @@
             }
           ],
           "returns": "String",
-          "publish": true
-        },
-        {
-          "name": "a11y",
-          "doc": "The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. A shell mirrors it into the page for screen readers; a playtest reads the same fields on dump_ui's elements.",
-          "params": [],
-          "returns": "A11yTree",
           "publish": true
         },
         {
@@ -20944,7 +20935,7 @@
     "A11yRequest": {
       "x-og-kind": "struct",
       "x-og-module": "input",
-      "description": "A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. Raises an A11yAction event; the UI acts on it at the start of the next frame, against the last frame's controls (a path naming no focusable control of the topmost dialog is ignored; increment and decrement also take a stepper's spinbutton, whose buttons are the focusable controls).",
+      "description": "A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's accessibility mirror sends it when a reader focuses, activates or adjusts a mirrored node, and a native window sends it for the platform's reader. Raises an A11yAction event; the UI acts on it at the start of the next frame.",
       "type": "object",
       "properties": {
         "action": {
@@ -20953,7 +20944,7 @@
         },
         "path": {
           "type": "string",
-          "description": "The control's path, as og.ui.a11y() names it."
+          "description": "The node's id in the UI's accessibility tree, as text."
         }
       },
       "required": [
@@ -21185,7 +21176,7 @@
             },
             "path": {
               "type": "string",
-              "description": "The control's path, as og.ui.a11y() names it."
+              "description": "The node's id in the UI's accessibility tree, as text."
             }
           },
           "required": [
@@ -22246,7 +22237,7 @@
     "A11yAction": {
       "x-og-kind": "event",
       "x-og-module": "input",
-      "description": "A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.",
+      "description": "A screen reader's request on a UI control (an engine extension): the web shell's accessibility mirror or a native window sends it; the UI takes it at the start of the next frame. A path longer than 255 bytes is refused.",
       "type": "object",
       "properties": {
         "action": {
@@ -22255,7 +22246,7 @@
         },
         "path": {
           "type": "string",
-          "description": "The control's path, as og.ui.a11y() names it."
+          "description": "The node's id in the UI's accessibility tree, as text."
         }
       },
       "required": [
@@ -47870,176 +47861,6 @@
       ],
       "additionalProperties": false
     },
-    "A11yNode": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).",
-      "type": "object",
-      "properties": {
-        "path": {
-          "type": "string",
-          "description": "Its path, as touch_move_to and og.ui.focus name it."
-        },
-        "parent": {
-          "type": "string",
-          "description": "The path of the nearest node above it in the tree; empty at the top."
-        },
-        "role": {
-          "type": "string",
-          "description": "Its role (probe.UiElement.role): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, log, dialog, tooltip, separator, group, list, listitem, and the landmarks navigation, main, banner, contentinfo, complementary, article, region."
-        },
-        "name": {
-          "type": "string",
-          "description": "Its accessible name: what a screen reader says it is. A text field or area is named by the label before it in its row, else by its placeholder, else by its id; never by the text in it (that is its value)."
-        },
-        "description": {
-          "type": "string",
-          "description": "Read after the name (aria-description): a text field's placeholder when a label names it; empty for none."
-        },
-        "value": {
-          "type": "string",
-          "description": "Its value as text (a slider's number, a progress's percent, a field's text); empty for none."
-        },
-        "states": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Its states: disabled, focused, focusable, checked, selected, expanded, collapsed (expandable and closed), pressed, busy, offscreen (a scroll container cuts it out of view)."
-        },
-        "valueMin": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A range's smallest value (aria-valuemin): a slider's min, a bounded stepper's, 0 for a progress (in percent) and a meter; null for a stepper without bounds and a control that is no range."
-        },
-        "valueMax": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A range's largest value (aria-valuemax): a slider's max, a bounded stepper's, 100 for a progress, a meter's max; null as valueMin is."
-        },
-        "valueNow": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A range's value as a number (aria-valuenow; value says it as people read it): a slider's, a stepper's, a meter's, a progress's percent; null for a control that is no range."
-        },
-        "level": {
-          "anyOf": [
-            {
-              "type": "integer",
-              "minimum": 0,
-              "maximum": 4294967295
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A heading's level, 1 to 6 (aria-level; <h1> to <h6>); null for anything else."
-        },
-        "live": {
-          "type": "string",
-          "description": "A live region's setting (aria-live, or its role's: status and log are polite, alert assertive): polite or assertive, empty for none. A screen reader announces what changes in it; the web mirror and the native tree speak it."
-        },
-        "atomic": {
-          "type": "boolean",
-          "description": "A live region that announces its whole text when any of it changes (aria-atomic, or its role's: status and alert); false for none."
-        },
-        "notify": {
-          "type": "boolean",
-          "description": "A live region that announces as it appears (an alert, a toast); another region announces only what changes in it after it entered."
-        },
-        "x": {
-          "type": "number",
-          "description": "Left edge of the whole element.",
-          "x-og-unit": "cssPx"
-        },
-        "y": {
-          "type": "number",
-          "description": "Top edge of the whole element.",
-          "x-og-unit": "cssPx"
-        },
-        "width": {
-          "type": "number",
-          "description": "Width.",
-          "x-og-unit": "cssPx"
-        },
-        "height": {
-          "type": "number",
-          "description": "Height.",
-          "x-og-unit": "cssPx"
-        }
-      },
-      "required": [
-        "path",
-        "parent",
-        "role",
-        "name",
-        "description",
-        "value",
-        "states",
-        "valueMin",
-        "valueMax",
-        "valueNow",
-        "level",
-        "live",
-        "atomic",
-        "notify",
-        "x",
-        "y",
-        "width",
-        "height"
-      ],
-      "additionalProperties": false
-    },
-    "A11yTree": {
-      "x-og-kind": "struct",
-      "x-og-module": "ui",
-      "description": "The last frame's accessibility tree, built from the same nodes the UI draws and takes input on.",
-      "type": "object",
-      "properties": {
-        "nodes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/A11yNode"
-          },
-          "description": "The nodes, in tree order: the page, then each layer over it (a dialog after the page)."
-        },
-        "focusOrder": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "The paths keyboard Tab and the pads visit, in order: the nodes marked focusable, within the topmost dialog while one is open."
-        },
-        "focused": {
-          "type": "string",
-          "description": "The path keyboard and pad 0's focus is on; empty for none."
-        }
-      },
-      "required": [
-        "nodes",
-        "focusOrder",
-        "focused"
-      ],
-      "additionalProperties": false
-    },
     "UiProp": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -52833,7 +52654,7 @@
         },
         "role": {
           "type": "string",
-          "description": "Its accessibility role (og.ui.a11y): button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element."
+          "description": "Its accessibility role: button, link, text, heading, image, checkbox, radio, switch, slider, spinbutton, textbox, combobox, listbox, option, tab, tablist, radiogroup, progressbar, meter, timer, status, alert, dialog, tooltip, separator, group; empty for a presentational element."
         },
         "name": {
           "type": "string",

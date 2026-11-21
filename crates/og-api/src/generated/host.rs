@@ -1151,8 +1151,6 @@ pub trait UiApi: Wire {
     fn og_ui_hud_reset(&self, key: String);
     /// `og.ui.focus`
     fn og_ui_focus(&self, pad: u32) -> String;
-    /// `og.ui.a11y`
-    fn og_ui_a11y(&self) -> String;
     /// `og.ui.feedback`
     fn og_ui_feedback(&self, event: String, rise: f64);
     /// `og.ui.setHaptics`
@@ -2091,7 +2089,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_hud_step",
     "og_ui_hud_reset",
     "og_ui_focus",
-    "og_ui_a11y",
     "og_ui_feedback",
     "og_ui_set_haptics",
     "og_ui_set_navigation",

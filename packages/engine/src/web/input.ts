@@ -74,7 +74,7 @@ export type InjectedInput =
       kind: "a11y";
       /** What a screen reader asked of the UI control at `path` (a11y.ts): focus it, activate it, or step an adjustable one. */
       action: A11yActionName;
-      /** The control's path, as og.ui.a11y() names it. */
+      /** The node's id in the UI's accessibility tree, as text (the mirror's data-og-path). */
       path: string;
     };
 

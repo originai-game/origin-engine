@@ -543,8 +543,8 @@ for `--time` and `--perf-out`); its options are in the script.
 ### The accessibility mirror in the browser
 
 `packages/engine/tests/web/a11y.ts` runs the dev export of
-`tests/fixtures/a11y` and checks the shell's DOM mirror of `og.ui.a11y()`
-(src/web/a11y.ts) against the UI and Chrome's own accessibility tree:
+`tests/fixtures/a11y` and checks the shell's DOM mirror of the new core's
+accessibility tree (src/web/a11y.ts) against the UI and Chrome's own accessibility tree:
 structure, bounds, roles, screen-reader-style clicks, the live region,
 `prefers-contrast` and `prefers-reduced-motion`. It writes
 `dist/test-a11y/out/a11y-<tier>.json`.

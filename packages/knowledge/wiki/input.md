@@ -105,7 +105,7 @@ module input {
 | [`WheelInput`](input/type-WheelInput.md) | struct |  | A wheel or trackpad scroll at a point. |
 | [`TextEntry`](input/type-TextEntry.md) | struct |  | Typed or composed text (an engine extension of protocol 5): what the page's `beforeinput` inserted (a key's character, a paste, an input method's commit), or with `composing` an input method's compos… |
 | [`A11yActionKind`](input/type-A11yActionKind.md) | enum |  | What an assistive technology asks of a UI control. |
-| [`A11yRequest`](input/type-A11yRequest.md) | struct |  | A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. |
+| [`A11yRequest`](input/type-A11yRequest.md) | struct |  | A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's accessibility mirror sends it when a reader focuses, activates or adjusts a mirrored node, and a native … |
 | [`InjectedInput`](input/type-InjectedInput.md) | union |  | One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it. |
 | [`og.Input`](input/record-Input.md) | resource |  | The input state at the start of this tick (og-input's og.Input, version 3). |
 | [`og.Pointers`](input/record-Pointers.md) | resource |  | Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. |
@@ -118,7 +118,7 @@ module input {
 | [`og.PointerUp`](input/record-PointerUp.md) | event |  | A pointer button went up (or a touch lifted). |
 | [`og.PointerMove`](input/record-PointerMove.md) | event |  | A pointer moved. |
 | [`og.Wheel`](input/record-Wheel.md) | event |  | A wheel or trackpad scroll. |
-| [`og.A11yAction`](input/record-A11yAction.md) | event |  | A screen reader's request on a UI control (an engine extension): the web shell sends it from its mirror of og.ui.a11y(); the UI takes it at the start of the next frame. |
+| [`og.A11yAction`](input/record-A11yAction.md) | event |  | A screen reader's request on a UI control (an engine extension): the web shell's accessibility mirror or a native window sends it; the UI takes it at the start of the next frame. |
 
 ## Constants
 

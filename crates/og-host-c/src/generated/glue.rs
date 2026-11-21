@@ -2579,11 +2579,6 @@ unsafe extern "C" fn og_ui_focus(args: *const crate::OgValue, out: *mut crate::O
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
-unsafe extern "C" fn og_ui_a11y(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as UiApi>::og_ui_a11y(&Host);
-    unsafe { crate::IntoC::into_c(r, out) }
-}
-
 unsafe extern "C" fn og_ui_feedback(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as UiApi>::og_ui_feedback(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -4093,7 +4088,6 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_ui_hud_step", arity: 2, call: og_ui_hud_step },
     crate::Symbol { name: c"og_ui_hud_reset", arity: 1, call: og_ui_hud_reset },
     crate::Symbol { name: c"og_ui_focus", arity: 1, call: og_ui_focus },
-    crate::Symbol { name: c"og_ui_a11y", arity: 0, call: og_ui_a11y },
     crate::Symbol { name: c"og_ui_feedback", arity: 2, call: og_ui_feedback },
     crate::Symbol { name: c"og_ui_set_haptics", arity: 1, call: og_ui_set_haptics },
     crate::Symbol { name: c"og_ui_set_navigation", arity: 1, call: og_ui_set_navigation },

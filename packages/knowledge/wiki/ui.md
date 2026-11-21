@@ -93,9 +93,6 @@ module ui {
 | [`og.ui.hudStep`](ui/fn-hudStep.md) | function | `(scale: number, opacity: number): void` | Steps the selected element's size and opacity: each -1, 0 or +1 step (a tenth larger or smaller, a tenth more or less opaque), within its limits. |
 | [`og.ui.hudReset`](ui/fn-hudReset.md) | function | `(key: string): void` | Puts an element back where it was laid out: its key, empty for the selected one, `*` for every one. |
 | [`og.ui.focus`](ui/fn-focus.md) | function | `(pad: number): string` | The path of the control pad pad's focus is on in the last frame (pad 0: the shared focus of the pointer, keyboard and pad 0), as touch_move_to resolves it; empty when it is on none. |
-| [`A11yNode`](ui/type-A11yNode.md) | struct |  | One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out). |
-| [`A11yTree`](ui/type-A11yTree.md) | struct |  | The last frame's accessibility tree, built from the same nodes the UI draws and takes input on. |
-| [`og.ui.a11y`](ui/fn-a11y.md) | function | `(): A11yTree` | The accessibility tree of the last frame: every element with a role, its name, value, states and bounds, and the focus order Tab walks. |
 | [`og.ui.feedback`](ui/fn-feedback.md) | function | `(event: string, rise: number): void` | Play a UI event's style feedback (docs/ui.md §3.1): a random sound from its set, never repeating the last, with volume and pitch from the set's ranges, and its haptic pattern at the player's strength… |
 | [`og.ui.setHaptics`](ui/fn-setHaptics.md) | function | `(intensity: number): void` | The player's haptic strength (a settings screen's vibration slider or switch): 0 turns the UI's haptics off, 1 (the default) plays the style's patterns as set; between scales them. |
 | [`og.ui.setNavigation`](ui/fn-setNavigation.md) | function | `(on: boolean): void` | Whether keyboard and gamepad navigation moves focus on this screen (on by default). |
@@ -229,7 +226,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1353</sub>
+<sub>Module `ui` line 1311</sub>
 
 ```ogt
 column UiMaterial {
@@ -240,4 +237,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1360</sub>
+<sub>Module `ui` line 1318</sub>
