@@ -1334,6 +1334,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/fantasy/art/frame-filigree.png",
+      "sha256": "e72d31902eb9a3df148b5265b94c3d91ef6197896465930ea3c8e6f500270e19",
+      "size": 105502,
+      "visibility": "public"
+    },
+    {
       "path": "styles/fantasy/art/glow.png",
       "sha256": "52e5bb01f956ac7daa032533181606e45855c9a65b287cf8b69601cd8ca38855",
       "size": 99299,
