@@ -290,7 +290,23 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
       if (ihalf.x > 0.0 && ihalf.y > 0.0) {
         inner = edge(sd_round_box(in.local - ic, ihalf, ir), scale);
       }
-      a *= edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - inner);
+      let ring = edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - inner);
+      a *= ring;
+      if (q.k.z != 0u) {
+        // The side a pixel is on: the nearest edge in units of its width,
+        // so two sides meet on the line from the outer to the inner corner.
+        let e = vec4<f32>(in.local.y + half.y, half.x - in.local.x, half.y - in.local.y, in.local.x + half.x)
+          / max(w, vec4<f32>(1e-4));
+        var side = 0u;
+        var best = e.x;
+        if (e.y < best) { best = e.y; side = 1u; }
+        if (e.z < best) { best = e.z; side = 2u; }
+        if (e.w < best) { side = 3u; }
+        if ((q.k.z & (1u << side)) != 0u) {
+          rgb = q.uv.rgb;
+          a = q.uv.a * ring;
+        }
+      }
     }
     case 5u: {
       let s = sd_round_box(in.local - q.p.xy, half + vec2<f32>(q.p.w), grown(q.r, q.p.w));

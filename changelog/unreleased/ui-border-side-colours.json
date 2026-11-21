@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI borders",
+      "summary": "A border side's own colour draws (`border-rim border-t-accent`): the sides that differ from the rest take their colour, split at the corners as CSS joins them. The whole border used to take the top side's colour, so a Spinner's arc did not show."
+    }
+  ]
+}

@@ -342,6 +342,12 @@ impl PaintRenderer {
         let mut first = 0u32;
         for q in &paint.quads {
             let mut g = PaintGpu {
+                // A border's other sides' colour (an image sets its own).
+                uv: if q.kind == PaintKind::Border as u32 {
+                    q.uv
+                } else {
+                    [0.0; 4]
+                },
                 rect: q.rect,
                 clip: q.clip,
                 color: q.color,

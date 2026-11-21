@@ -1683,17 +1683,25 @@ impl Tree {
                     0,
                 ));
             }
-            if s.border_color[3] > 0.0 && s.border.iter().any(|&w| w > 0.0) {
-                p.quads.push(quad(
-                    PaintKind::Border,
-                    rect,
-                    clip,
-                    faded(s.border_color),
-                    radius,
-                    s.border,
-                    0,
-                    0,
-                ));
+            let sides = if s.border_side[3] > 0.0 {
+                s.border_sides
+            } else {
+                0
+            };
+            if (s.border_color[3] > 0.0 || sides != 0) && s.border.iter().any(|&w| w > 0.0) {
+                p.quads.push(PaintQuad {
+                    uv: faded(s.border_side),
+                    ..quad(
+                        PaintKind::Border,
+                        rect,
+                        clip,
+                        faded(s.border_color),
+                        radius,
+                        s.border,
+                        0,
+                        u32::from(sides),
+                    )
+                });
             }
             let o = &s.outline;
             if o.width > 0.0 && o.color[3] > 0.0 {

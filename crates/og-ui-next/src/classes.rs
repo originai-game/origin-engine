@@ -361,7 +361,21 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         [c.top_left, c.top_right, c.bottom_right, c.bottom_left].map(|v| v.map_or(all, |p| p.0));
     let w = &view.borders.widths;
     skin.border = [w.top.0, w.right.0, w.bottom.0, w.left.0];
-    skin.border_color = linear(view.borders.colors[0]);
+    // The commonest side colour is the border's; the sides of the first
+    // other one take it (a third colour draws as the second); a tie goes to the
+    // top's.
+    let cs = view.borders.colors;
+    let base = *cs
+        .iter()
+        .rev()
+        .max_by_key(|c| cs.iter().filter(|d| d == c).count())
+        .expect("four sides");
+    skin.border_color = linear(base);
+    skin.border_sides = 0;
+    if let Some(&side) = cs.iter().find(|&&c| c != base) {
+        skin.border_side = linear(side);
+        skin.border_sides = (0..4).filter(|&k| cs[k] != base).fold(0, |m, k| m | 1 << k);
+    }
     r.layout.set_border(skin.border);
     skin.outline.width = view.outline.width.0;
     skin.outline.offset = view.outline.offset.0;
@@ -835,6 +849,31 @@ mod tests {
         // A name the pack lacks draws nothing and is reported.
         assert_eq!(c.record("nine-gone", &env).skin.image, Slice::default());
         assert_eq!(c.unknown("p-2 nine-gone nine-plate"), ["nine-gone"]);
+    }
+
+    /// A side's colour over the border's (a spinner's arc,
+    /// `border-rim border-t-accent`): the commonest colour is the border's,
+    /// the other sides are marked; one colour marks none.
+    #[test]
+    fn a_side_colour_marks_its_side() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        let env = Env::default();
+        let s = c
+            .record("border-4 border-[#ff0000] border-t-[#0000ff]", &env)
+            .skin;
+        assert_eq!((s.border_color[0], s.border_color[2]), (1.0, 0.0));
+        assert_eq!((s.border_side[0], s.border_side[2]), (0.0, 1.0));
+        assert_eq!(s.border_sides, 1, "top only");
+        let s = c
+            .record("border-4 border-[#ff0000] border-x-[#0000ff]", &env)
+            .skin;
+        assert_eq!(s.border_sides, 0b1010, "right and left");
+        assert_eq!(
+            c.record("border-4 border-[#ff0000]", &env)
+                .skin
+                .border_sides,
+            0
+        );
     }
 
     #[test]

@@ -33,7 +33,9 @@ pub enum PaintKind {
     Icon = 3,
     /// The ring between the box rounded by `radius` and it inset by `p`'s
     /// widths (top, right, bottom, left), in `color`: a border, or an
-    /// outline drawn as the ring of a box grown around its owner.
+    /// outline drawn as the ring of a box grown around its owner. The sides
+    /// in `b` (bits: 1 top, 2 right, 4 bottom, 8 left) are in `uv`'s colour
+    /// instead, split at the corners as CSS joins them.
     Border = 4,
     /// The box's outer shadow, outside the box only: the box moved by `p`'s
     /// x and y, grown by its spread (w) and blurred by its blur (z, CSS's

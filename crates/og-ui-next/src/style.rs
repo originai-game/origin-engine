@@ -433,7 +433,12 @@ pub struct Skin {
     pub radius: [f32; 4],
     /// Border widths, top, right, bottom, left (also in the layout).
     pub border: [f32; 4],
+    /// The border's colour, and `border_side`'s on the sides in
+    /// `border_sides` (bits: 1 top, 2 right, 4 bottom, 8 left), as
+    /// `border-t-*` over `border-*` writes them; motion animates the first.
     pub border_color: Rgba,
+    pub border_side: Rgba,
+    pub border_sides: u8,
     /// Box shadows, `shadow_count` of them, first on top.
     pub shadows: [Shadow; SHADOWS],
     pub shadow_count: u8,
@@ -461,6 +466,8 @@ impl Default for Skin {
             radius: [0.0; 4],
             border: [0.0; 4],
             border_color: [0.0; 4],
+            border_side: [0.0; 4],
+            border_sides: 0,
             shadows: [Shadow::default(); SHADOWS],
             shadow_count: 0,
             outline: Outline::default(),
