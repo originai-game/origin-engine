@@ -100,7 +100,8 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // not show holds the clock as a pause does: no tick runs and no time is
     // owed, so the world (and its sound, rendered up to its tick) waits for
     // the footage instead of running ahead of it.
-    let paused = eng.probe.borrow().paused() || eng.render.borrow().video_stalled;
+    let held = eng.probe.borrow().paused();
+    let paused = held || eng.render.borrow().video_stalled;
     let (mut due, before, tick_ms) = {
         let mut st = eng.state.borrow_mut();
         let tick_ms = 1000.0 / f64::from(st.rate);
@@ -243,6 +244,8 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         .and_then(|w| w.resource::<og_input::PointerLock>().ok().map(|l| l.wanted))
         .unwrap_or(false);
     let probe = eng.probe.borrow();
+    // `paused`: the clock was held for this frame or is held after it (a
+    // host pump at one of its boundaries may resume or pause it).
     // `behind`: real time the accumulator holds that no tick has simulated
     // yet, so a host can place an input event within the next tick.
     // `text`: the focused text control (where the page's text target goes,
@@ -261,7 +264,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // power preference for the next load, asks pointer lock for raw input).
     let mut answer = json!({
         "ok": true, "ticks": ticks, "tick": tick, "rendered": rendered,
-        "paused": probe.paused(), "quit": probe.quit_requested(), "behind": behind,
+        "paused": held || probe.paused(), "quit": probe.quit_requested(), "behind": behind,
         "text": text, "stepMs": step_ms, "renderMs": render_ms,
         "pending": probe.steps_left(), "pointerLock": pointer_lock,
         "maxFps": max_fps, "fullscreen": page["fullscreen"],
