@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui.Line",
+      "summary": "Line takes viewBox ([w, h], or SVG's \"x y w h\") and fit (\"fill\", the default, or \"contain\"): its points are in the view's space and map onto the laid-out box as it paints, stretched or uniformly scaled and centred, with the stroke width staying in screen px. A chart, map or graph whose box is a flex remainder no longer has to guess its width."
+    }
+  ]
+}

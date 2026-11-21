@@ -126,9 +126,9 @@ struct El {
     /// each row of an `{#each}` sets its own of the same rule.
     holds: Box<[u64]>,
     eff: Inherit,
-    /// A `<Line>`'s points (x, y pairs in its box, CSS px) and whether it
-    /// closes; `None` for any other node.
-    line: Option<(Vec<f32>, bool)>,
+    /// A `<Line>`'s points and how they map onto its box; `None` for any
+    /// other node.
+    line: Option<Box<Line>>,
     /// An op node's own image props over its classes' box image; `None`
     /// for a node that sets none.
     image: Option<Box<ImageProps>>,
@@ -138,6 +138,44 @@ struct El {
     /// `group-data-*:` variants read; 0 none.
     attrs: Vec<Box<str>>,
     data: u32,
+}
+
+/// A `<Line>`'s own props (CONVENTIONS.md §Ops).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Line {
+    /// x, y pairs: CSS px from the box's top left, or units of `view`.
+    pub(crate) points: Vec<f32>,
+    pub(crate) closed: bool,
+    /// `viewBox` as SVG's min-x, min-y, width and height: the points'
+    /// space, which is mapped onto the laid-out box as it paints; `None` px.
+    pub(crate) view: Option<[f32; 4]>,
+    /// `fit="contain"`: the view scales uniformly and is centred in the box
+    /// (SVG's `meet`); otherwise it stretches to fill it.
+    pub(crate) contain: bool,
+}
+
+impl Line {
+    /// The points in the box's px, for a box `w` by `h`.
+    fn mapped(&self, w: f32, h: f32) -> impl Iterator<Item = [f32; 2]> + '_ {
+        let (s, o) = match self.view {
+            Some([vx, vy, vw, vh]) if vw > 0.0 && vh > 0.0 => {
+                let (sx, sy) = (w / vw, h / vh);
+                let (s, pad) = if self.contain {
+                    let k = sx.min(sy);
+                    ([k, k], [(w - vw * k) / 2.0, (h - vh * k) / 2.0])
+                } else {
+                    ([sx, sy], [0.0, 0.0])
+                };
+                (s, [pad[0] - vx * s[0], pad[1] - vy * s[1]])
+            }
+            _ => ([1.0, 1.0], [0.0, 0.0]),
+        };
+        self.points
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(move |&[x, y]| [o[0] + x * s[0], o[1] + y * s[1]])
+    }
 }
 
 /// What an element's props set of its box image (CONVENTIONS.md §Images):
@@ -1522,19 +1560,19 @@ impl Tree {
             }
             let mut ink = own_ink;
             ink[3] *= alpha;
-            if let Some((points, closed)) = &el.line {
+            if let Some(line) = &el.line {
                 let stroke = s_line_color(&r.stroke, ink, alpha);
-                let n = points.len() / 2;
+                let n = line.points.len() / 2;
                 if r.stroke_width >= 1.0 && n >= 2 && stroke[3] > 0.0 {
                     let first = p.points.len() as u32;
-                    p.points.extend_from_slice(points.as_chunks::<2>().0);
+                    p.points.extend(line.mapped(b.w, b.h));
                     p.quads.push(quad(
                         PaintKind::Line,
                         rect,
                         clip,
                         stroke,
                         [0.0; 4],
-                        [r.stroke_width, f32::from(u8::from(*closed)), 0.0, 0.0],
+                        [r.stroke_width, f32::from(u8::from(line.closed)), 0.0, 0.0],
                         first,
                         n as u32,
                     ));

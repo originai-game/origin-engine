@@ -527,7 +527,7 @@ impl Tree {
                     let e = self.create(id, kind, false)?;
                     self.input.per[e as usize].scroller = tag == 3;
                     if tag == 6 {
-                        self.els[e as usize].line = Some((Vec::new(), false));
+                        self.els[e as usize].line = Some(Box::default());
                     }
                     self.input.per[e as usize].input = tag == 4;
                     self.sem
@@ -599,21 +599,32 @@ impl Tree {
                             self.input.glyphs_wanted = true;
                         }
                         // A `<Line>`'s points, numbers split by commas or
-                        // spaces, read into its own buffer.
-                        "points" | "closed" if self.els[e as usize].line.is_some() => {
-                            let (points, closed) =
-                                self.els[e as usize].line.as_mut().expect("a line");
-                            if name == "closed" {
-                                *closed = !matches!(value, "" | "false" | "0");
-                            } else {
-                                points.clear();
-                                points.extend(
-                                    value
-                                        .split([',', ' '])
-                                        .filter(|t| !t.is_empty())
-                                        .map(|t| t.parse::<f32>().unwrap_or(0.0)),
-                                );
-                                points.truncate(points.len() & !1);
+                        // spaces, read into its own buffer; `viewBox` the
+                        // points' space (`w h`, or SVG's `x y w h`).
+                        "points" | "closed" | "viewBox" | "fit"
+                            if self.els[e as usize].line.is_some() =>
+                        {
+                            let line = self.els[e as usize].line.as_mut().expect("a line");
+                            let numbers = |v: &str| -> Vec<f32> {
+                                v.split([',', ' '])
+                                    .filter(|t| !t.is_empty())
+                                    .map(|t| t.parse::<f32>().unwrap_or(0.0))
+                                    .collect()
+                            };
+                            match name {
+                                "closed" => line.closed = !matches!(value, "" | "false" | "0"),
+                                "fit" => line.contain = value == "contain",
+                                "viewBox" => {
+                                    line.view = match numbers(value)[..] {
+                                        [w, h] => Some([0.0, 0.0, w, h]),
+                                        [x, y, w, h] => Some([x, y, w, h]),
+                                        _ => None,
+                                    }
+                                }
+                                _ => {
+                                    line.points = numbers(value);
+                                    line.points.truncate(line.points.len() & !1);
+                                }
                             }
                             self.paint = true;
                         }
@@ -1112,6 +1123,53 @@ mod tests {
         );
         let pts = &t.drawn.points[q.a as usize..(q.a + q.b) as usize];
         assert_eq!(pts, [[0.0, 10.0], [5.0, 0.0], [9.5, 10.0]]);
+    }
+
+    /// A `<Line>`'s `viewBox` maps its points onto the laid-out box as it
+    /// paints: stretched by default, and with `fit="contain"` scaled
+    /// uniformly and centred, an SVG view's min-x shifting them; the
+    /// stroke's width stays in px.
+    #[test]
+    fn a_line_maps_its_view_box_onto_its_box() {
+        let mut t = tree();
+        t.set_resolver(Box::new(|_, _, _, _| {
+            let s = taffy::Style {
+                size: taffy::Size::from_lengths(200.0, 100.0),
+                flex_shrink: 0.0,
+                ..taffy::Style::default()
+            };
+            Record {
+                layout: rune_taffy::CompactStyle::from(&s),
+                stroke_width: 2.0,
+                stroke: Some([1.0; 4]),
+                ..Record::default()
+            }
+        }));
+        let mut b = Batch::default();
+        for (id, view, fit) in [(1, "100 100", ""), (2, "10 0 100 100", "contain")] {
+            b.op(1).u32(id).u8(6);
+            b.op(4).u32(id).str("line");
+            b.op(6).u32(id).str("points").str("10 0 110 50");
+            b.op(6).u32(id).str("viewBox").str(view);
+            b.op(6).u32(id).str("fit").str(fit);
+            b.op(8).u32(0).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let lines: Vec<_> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Line as u32)
+            .map(|q| (q.p[0], &t.drawn.points[q.a as usize..(q.a + q.b) as usize]))
+            .collect();
+        assert_eq!(
+            lines,
+            [
+                (2.0, &[[20.0, 0.0], [220.0, 50.0]][..]),
+                (2.0, &[[50.0, 0.0], [150.0, 50.0]][..]),
+            ]
+        );
     }
 
     /// An `Image`'s `src` draws its texture over its box once the host

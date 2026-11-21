@@ -40,10 +40,13 @@ export const Scroll = host<HostProps>("scroll");
 /**
  * A polyline in its box: `points` are x, y pairs in CSS px from the box's
  * top left, stroked by `stroke-*` classes (colour and width; the ink and 1
- * px without), round joins and caps, `closed` back to the first point. No
+ * px without), round joins and caps, `closed` back to the first point. With
+ * `viewBox` (`[w, h]`, or SVG's `"x y w h"`) the points are in that space,
+ * mapped onto the laid-out box as it paints: stretched to fill it, or with
+ * `fit="contain"` scaled uniformly and centred; the stroke stays in px. No
  * fill, curves or dashes: what can be an image is an `Image`.
  */
-export const Line = host<HostProps & { points: readonly number[]; closed?: boolean | undefined }>("line");
+export const Line = host<HostProps & { points: readonly number[]; closed?: boolean | undefined; viewBox?: readonly [number, number] | string | undefined; fit?: "fill" | "contain" | undefined }>("line");
 export const Input = host<HostProps & { value?: string | undefined; placeholder?: string | undefined }>("input");
 
 /** `<Show when={c} fallback={…} keyed>`: compiled to the renderer's `cond`. */

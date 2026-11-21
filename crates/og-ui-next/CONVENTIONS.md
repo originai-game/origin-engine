@@ -126,7 +126,9 @@ node); strings are a u32 byte length and UTF-8; numbers are little-endian.
 
 Tags: 0 `View`, 1 `Text`, 2 `Image`, 3 `Scroll`, 4 `Input`, 5 `Icon`, 6
 `Line` (its `points` and `closed` are setProps: numbers split by commas or
-spaces); there are no others. What can be an image is an `Image` (an
+spaces; `viewBox`, `w h` or SVG's `x y w h`, puts the points in that space,
+mapped onto the laid-out box as it paints, stretched or with `fit` `contain`
+uniform and centred, the stroke staying in px); there are no others. What can be an image is an `Image` (an
 `.svg` file too: the cook makes it a texture). A line paints one
 `PaintKind::Line` quad over its box (og-draw paint.rs): its points in
 `Paint.points`, box-relative, width `p.x`, closed `p.y`. Events: 0 press, 1 tap, 2 pointerdown,
