@@ -7,7 +7,7 @@ import { afterAll, expect, test } from "bun:test";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
-import { defaultRoots, payload, packs, type Roots } from "../scripts/lib.ts";
+import { defaultRoots, ogtTopLevel, payload, packs, type Roots } from "../scripts/lib.ts";
 import { bundle, validate } from "../scripts/validate.ts";
 
 /** packages/engine's version: what the scaffold pins. */
@@ -40,6 +40,32 @@ function added(mutate: (r: Roots) => void): string[] {
 }
 
 const edit = (path: string, f: (s: string) => string) => writeFileSync(path, f(readFileSync(path, "utf8")));
+
+// ogtTopLevel is a TS subset of og-core's parser (crates/og-core/src/ogt.rs,
+// its Grammar section), which create and the knowledge scripts cannot
+// import: these are the grammar's constructs as that doc states them, so a
+// change on either side shows here before validate misreads a project.ogt.
+test("ogtTopLevel reads og-core's .ogt grammar", () => {
+  const text = [
+    "# a comment before the header",
+    "type scene",
+    "version 1",
+    "---",
+    'name "Main"   # trailing comment',
+    "gravity 0 -9.81 0",
+    'entity "player" {',
+    "\ttags hero",
+    "}",
+    "",
+    "linear true",
+  ].join("\n");
+  const { type, entries } = ogtTopLevel(text);
+  expect(type).toBe("scene");
+  expect([...entries]).toEqual([["name", "Main"], ["gravity", "0 -9.81 0"], ["entity", "player"], ["linear", "true"]]);
+  // A header alone, and no header at all.
+  expect(ogtTopLevel("type terrain\nversion 1\n---\n")).toEqual({ type: "terrain", entries: new Map() });
+  expect(ogtTopLevel('name "x"\n').entries.get("name")).toBe("x");
+});
 
 test("the committed package is valid against the platform rules", () => {
   expect(validate(real)).toEqual([]);
