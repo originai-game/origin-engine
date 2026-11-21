@@ -438,7 +438,7 @@ pub(crate) fn finish(
     let mut index = assets::build(root, &manifest, sources, parsed_refs, threads)?;
     let before_code = BeforeCode {
         uses_motion,
-        ui_ids: scan::code_ui_ids(root),
+        ui: scan::code_ui(root),
         roots: index.roots.clone(),
         users: index.users.clone(),
         computed: index.computed.clone(),
@@ -495,10 +495,11 @@ pub(crate) fn finish(
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct BeforeCode {
     uses_motion: bool,
-    /// The built-in `@ui/` ids the code named ([`scan::code_ui_ids`]): the
-    /// scan bundles those screens, so another set needs the whole cook.
+    /// What the code asks of the built-in UI ([`scan::code_ui`]): the scan
+    /// bundles the screens it names and the default face for a TSX UI, so
+    /// another answer needs the whole cook.
     #[serde(default)]
-    ui_ids: BTreeSet<String>,
+    ui: scan::CodeUi,
     roots: BTreeSet<String>,
     users: BTreeMap<String, BTreeSet<String>>,
     computed: Vec<assets::ComputedLoad>,
@@ -509,7 +510,8 @@ pub(crate) struct BeforeCode {
 /// are as they were. `false` when it cannot answer and the whole cook must:
 /// the code uses og.motion, or did (its model is read from outside the
 /// project, and the manifest names it), the code names another set of
-/// built-in `@ui/` documents (the scan bundles them), or the last cook's
+/// built-in `@ui/` documents or starts or stops drawing a TSX UI (the scan
+/// bundles them and the default face), or the last cook's
 /// files do not read back.
 pub(crate) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookError> {
     let cooked_dir = root.join("cooked");
@@ -521,7 +523,7 @@ pub(crate) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookEr
     ) else {
         return Ok(false);
     };
-    if before.uses_motion || motion::uses_motion(root) || scan::code_ui_ids(root) != before.ui_ids {
+    if before.uses_motion || motion::uses_motion(root) || scan::code_ui(root) != before.ui {
         return Ok(false);
     }
     let mut index = assets::Index {

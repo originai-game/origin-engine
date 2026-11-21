@@ -318,6 +318,41 @@ fn a_built_in_screen_newly_named_in_code_cooks_in() {
     assert!(bundle.output("@ui/screens/pause.en.ogt").is_ok());
 }
 
+/// A game whose code draws a TSX UI (imports `@origingame/engine/ui`)
+/// carries the default face, as a game with a `.svelte` document does, and
+/// gains it when its code starts to. Ways it could fail: a TSX-only game
+/// cooks without the face, so its tree has no body font and draws no text;
+/// the cook after a change to code alone keeps the old bundle.
+#[test]
+fn code_drawing_a_tsx_ui_carries_the_default_face() {
+    let root = project("code-tsx-face", &[]);
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"p\"\n",
+    )
+    .unwrap();
+    let cook = || {
+        let r =
+            og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
+                .unwrap();
+        assert!(r.ok(), "{}", r.errors().join("\n"));
+        Bundle::open(&root.join("cooked")).unwrap()
+    };
+    std::fs::write(root.join("src/main.ts"), "export default 1;\n").unwrap();
+    assert!(
+        cook().output(og_ui::DEFAULT_FONT_ASSET).is_err(),
+        "no UI, no face"
+    );
+    std::fs::write(
+        root.join("src/main.ts"),
+        "import { mount } from \"@origingame/engine/ui\";\nexport default mount;\n",
+    )
+    .unwrap();
+    assert!(cook().output(og_ui::DEFAULT_FONT_ASSET).is_ok());
+}
+
 #[test]
 fn manifest_only_edits_update_a_cached_builtin_documents_dependencies() {
     let root = project(

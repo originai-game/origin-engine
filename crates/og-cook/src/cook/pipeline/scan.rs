@@ -44,11 +44,18 @@ pub(crate) struct Scan {
     pub(crate) external: Vec<PathBuf>,
 }
 
-/// The built-in `@ui/` ids the game's code names as string literals
-/// (`og.load.document(world, "@ui/screens/pause.svelte")`): an input of the
-/// scan, so a cook after a change to code alone recooks when they change.
-pub(crate) fn code_ui_ids(root: &Path) -> BTreeSet<String> {
-    let mut ids = BTreeSet::new();
+/// What the game's code asks of the built-in UI: the `@ui/` ids it names
+/// (the scan bundles those screens) and whether it draws a TSX UI (it
+/// imports `@origingame/engine/ui` or a subpath), which needs the default
+/// face as a `.svelte` document does.
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct CodeUi {
+    pub ids: BTreeSet<String>,
+    pub tsx: bool,
+}
+
+pub(crate) fn code_ui(root: &Path) -> CodeUi {
+    let mut ui = CodeUi::default();
     for path in super::assets::game_typescript(root).unwrap_or_default() {
         let Ok(text) = std::fs::read_to_string(&path) else {
             continue;
@@ -57,14 +64,17 @@ pub(crate) fn code_ui_ids(root: &Path) -> BTreeSet<String> {
         let Ok(refs) = super::ts_refs::parse(&path, &text) else {
             continue;
         };
-        ids.extend(
-            refs.literals
-                .into_iter()
-                .map(|l| l.value)
-                .filter(|v| v.starts_with(ui_components::PREFIX)),
-        );
+        for l in refs.literals {
+            if l.value.starts_with(ui_components::PREFIX) {
+                ui.ids.insert(l.value);
+            } else if l.value == "@origingame/engine/ui"
+                || l.value.starts_with("@origingame/engine/ui/")
+            {
+                ui.tsx = true;
+            }
+        }
     }
-    ids
+    ui
 }
 
 pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
@@ -195,12 +205,12 @@ pub(crate) fn scan_with(
         used.extend(ui_components::uses(doc));
     }
     // The built-in screens the game's code names by id.
-    if let Some(root) = assets_dir
+    let code = assets_dir
         .parent()
         .filter(|r| r.join("project.ogt").is_file())
-    {
-        used.extend(code_ui_ids(root));
-    }
+        .map(code_ui)
+        .unwrap_or_default();
+    used.extend(code.ids.iter().cloned());
     let components = match ui_components::resolve(game.clone(), used) {
         Ok(r) => {
             builtins.extend(r.files);
@@ -211,10 +221,11 @@ pub(crate) fn scan_with(
             game
         }
     };
-    // Documents can use the default UI without naming a font or a look.
-    // Keep its outline-only face separate and lazy like a font-pack face;
-    // projects with no UI documents do not carry it at all.
-    if files.iter().any(|(id, _)| ext(id) == "svelte")
+    // Documents and TSX UIs can use the default UI without naming a font
+    // or a look. Keep its outline-only face separate and lazy like a
+    // font-pack face; projects with no UI do not carry it at all.
+    if code.tsx
+        || files.iter().any(|(id, _)| ext(id) == "svelte")
         || builtins.keys().any(|id| ext(id) == "svelte")
     {
         let settings = format!("{}.ogt", og_ui::DEFAULT_FONT_ASSET);
