@@ -13,7 +13,7 @@ Where a film node may lead, through logic nodes.
 | `from` | `string` | `""` | — | — | — | The node. |
 | `to` | `string` | `""` | — | — | — | The film node it may lead to. |
 | `choice` | `number` | `0` | — | — | — | The ChoiceView.index that leads there; -1 for a node without choices. |
-| `d` | `string` | `""` | — | — | — | A curve from one to the other in SVG path data, graph units (NodeGraph's link `d`). |
+| `points` | `readonly number[]` | `[]` | — | — | — | A curve from one to the other as x, y pairs in graph units: a cubic leaving and arriving level, sampled in 16 segments (NodeGraph's link `points`). |
 
 ```ogt
 struct FilmChartLink {
@@ -21,7 +21,7 @@ struct FilmChartLink {
   field from String "The node."
   field to String "The film node it may lead to."
   field choice i32 "The ChoiceView.index that leads there; -1 for a node without choices."
-  field d String "A curve from one to the other in SVG path data, graph units (NodeGraph's link `d`)."
+  field points List.f32 "A curve from one to the other as x, y pairs in graph units: a cubic leaving and arriving level, sampled in 16 segments (NodeGraph's link `points`)."
 }
 ```
 

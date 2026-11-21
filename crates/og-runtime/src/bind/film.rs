@@ -518,6 +518,20 @@ pub fn og_film_chart(world: u32, dialogue: String) -> Result<FilmChart, String> 
     Ok(chart(&p))
 }
 
+/// A link from (x, y) to (x2, y2) leaving and arriving level: the cubic
+/// with both handles at the middle column, in 16 segments.
+fn level_curve(x: f32, y: f32, x2: f32, y2: f32) -> Vec<f32> {
+    let mid = (x + x2) * 0.5;
+    (0..=16)
+        .flat_map(|k| {
+            let u = k as f32 / 16.0;
+            let w = 1.0 - u;
+            let (a, b, c, d) = (w * w * w, 3.0 * w * w * u, 3.0 * w * u * u, u * u * u);
+            [a * x + (b + c) * mid + d * x2, (a + b) * y + (c + d) * y2]
+        })
+        .collect()
+}
+
 /// Columns by the fewest film nodes from the start (breadth first, so a
 /// loop back draws as a link to an earlier column); rows by the order each
 /// column was reached in. Nodes the start never reaches follow the deepest.
@@ -598,12 +612,11 @@ fn chart(p: &Prepared) -> FilmChart {
         let mut link = |to: u32, choice: i32| {
             let Some(t) = p.nodes.get(&to) else { return };
             let (x2, y2) = at[&to];
-            let mid = (x + x2) * 0.5;
             out.links.push(FilmChartLink {
                 from: n.title.clone(),
                 to: t.title.clone(),
                 choice,
-                d: format!("M{x} {y} C {mid} {y}, {mid} {y2}, {x2} {y2}"),
+                points: level_curve(x, y, x2, y2),
             });
         };
         for (i, tos) in n.choices.iter().enumerate() {

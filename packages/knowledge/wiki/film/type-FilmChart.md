@@ -12,7 +12,7 @@ A dialogue's film nodes laid out as a flowchart, columns by depth from the start
 |---|---|---|---|---|---|---|
 | `nodes` | `readonly FilmChartNode[]` | `[]` | — | — | — | Its film nodes, in file order. |
 | `links` | `readonly FilmChartLink[]` | `[]` | — | — | — | Where each leads. |
-| `width` | `number` | `0` | — | — | — | Its extent across, graph units (NodeGraph's view is `0 0 width height`). |
+| `width` | `number` | `0` | — | — | — | Its extent across, graph units (NodeGraph's view is `[0, 0, width, height]`). |
 | `height` | `number` | `0` | — | — | — | Its extent down. |
 
 ```ogt
@@ -20,7 +20,7 @@ struct FilmChart {
   doc "A dialogue's film nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen."
   field nodes List.FilmChartNode "Its film nodes, in file order."
   field links List.FilmChartLink "Where each leads."
-  field width f32 "Its extent across, graph units (NodeGraph's view is `0 0 width height`)."
+  field width f32 "Its extent across, graph units (NodeGraph's view is `[0, 0, width, height]`)."
   field height f32 "Its extent down."
 }
 ```

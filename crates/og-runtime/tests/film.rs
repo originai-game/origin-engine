@@ -749,12 +749,17 @@ fn the_chart_lays_film_nodes_out_by_depth_through_logic_nodes() {
             s("hall", "shy", -1)
         ]
     );
-    assert!(
-        c["links"][2]["d"]
-            .as_str()
-            .unwrap()
-            .starts_with("M60 60 C 160 60, 160 180, 260 180"),
-        "{}",
-        c["links"][2]
-    );
+    // start (60, 60) to wait (260, 180): a curve leaving and arriving
+    // level, so a quarter along it is still near the start's row (a
+    // straight line would be at (110, 90)).
+    let p: Vec<f64> = c["links"][2]["points"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect();
+    assert_eq!(p.len(), 34, "{}", c["links"][2]);
+    assert_eq!((p[0], p[1], p[32], p[33]), (60.0, 60.0, 260.0, 180.0));
+    assert_eq!((p[8], p[9]), (119.375, 78.75));
+    assert_eq!((p[16], p[17]), (160.0, 120.0));
 }

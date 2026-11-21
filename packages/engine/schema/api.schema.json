@@ -60648,16 +60648,19 @@
           "maximum": 2147483647,
           "description": "The ChoiceView.index that leads there; -1 for a node without choices."
         },
-        "d": {
-          "type": "string",
-          "description": "A curve from one to the other in SVG path data, graph units (NodeGraph's link `d`)."
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "A curve from one to the other as x, y pairs in graph units: a cubic leaving and arriving level, sampled in 16 segments (NodeGraph's link `points`)."
         }
       },
       "required": [
         "from",
         "to",
         "choice",
-        "d"
+        "points"
       ],
       "additionalProperties": false
     },
@@ -60683,7 +60686,7 @@
         },
         "width": {
           "type": "number",
-          "description": "Its extent across, graph units (NodeGraph's view is `0 0 width height`)."
+          "description": "Its extent across, graph units (NodeGraph's view is `[0, 0, width, height]`)."
         },
         "height": {
           "type": "number",

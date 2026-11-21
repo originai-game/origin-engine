@@ -34731,8 +34731,10 @@ export interface FilmChartLink {
   readonly to: string;
   /** The ChoiceView.index that leads there; -1 for a node without choices. */
   readonly choice: number;
-  /** A curve from one to the other in SVG path data, graph units (NodeGraph's link `d`). */
-  readonly d: string;
+  /**
+   * A curve from one to the other as x, y pairs in graph units: a cubic leaving and arriving level, sampled in 16 segments (NodeGraph's link `points`).
+   */
+  readonly points: readonly number[];
 }
 
 /**
@@ -34743,7 +34745,7 @@ export interface FilmChart {
   readonly nodes: readonly FilmChartNode[];
   /** Where each leads. */
   readonly links: readonly FilmChartLink[];
-  /** Its extent across, graph units (NodeGraph's view is `0 0 width height`). */
+  /** Its extent across, graph units (NodeGraph's view is `[0, 0, width, height]`). */
   readonly width: number;
   /** Its extent down. */
   readonly height: number;

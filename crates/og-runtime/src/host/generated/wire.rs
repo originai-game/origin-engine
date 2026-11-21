@@ -28473,7 +28473,7 @@ pub struct FilmChartLink {
     pub from: String,
     pub to: String,
     pub choice: i32,
-    pub d: String,
+    pub points: Vec<f32>,
 }
 
 impl Default for FilmChartLink {
@@ -28482,7 +28482,7 @@ impl Default for FilmChartLink {
             from: Default::default(),
             to: Default::default(),
             choice: Default::default(),
-            d: Default::default(),
+            points: Default::default(),
         }
     }
 }
@@ -28497,7 +28497,7 @@ impl FromJson for FilmChartLink {
             from: field(o, "from", d.from)?,
             to: field(o, "to", d.to)?,
             choice: field(o, "choice", d.choice)?,
-            d: field(o, "d", d.d)?,
+            points: field(o, "points", d.points)?,
         })
     }
 }
@@ -28508,7 +28508,7 @@ impl ToJson for FilmChartLink {
         o.insert("from".into(), self.from.to_json());
         o.insert("to".into(), self.to.to_json());
         o.insert("choice".into(), self.choice.to_json());
-        o.insert("d".into(), self.d.to_json());
+        o.insert("points".into(), self.points.to_json());
         Value::Object(o)
     }
 }

@@ -156,14 +156,14 @@ module film {
     field from String "The node."
     field to String "The film node it may lead to."
     field choice i32 "The ChoiceView.index that leads there; -1 for a node without choices."
-    field d String "A curve from one to the other in SVG path data, graph units (NodeGraph's link `d`)."
+    field points List.f32 "A curve from one to the other as x, y pairs in graph units: a cubic leaving and arriving level, sampled in 16 segments (NodeGraph's link `points`)."
   }
 
   struct FilmChart {
     doc "A dialogue's film nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen."
     field nodes List.FilmChartNode "Its film nodes, in file order."
     field links List.FilmChartLink "Where each leads."
-    field width f32 "Its extent across, graph units (NodeGraph's view is `0 0 width height`)."
+    field width f32 "Its extent across, graph units (NodeGraph's view is `[0, 0, width, height]`)."
     field height f32 "Its extent down."
   }
 
