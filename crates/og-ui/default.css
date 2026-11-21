@@ -2424,6 +2424,7 @@
     --color-stage-muted: oklch(from var(--seed-neutral) 0.711 min(c, 0.04) h);
     --color-stage-raised: oklch(from var(--seed-neutral) 0.227 min(c, 0.04) h);
     --color-stage-surface: oklch(from var(--seed-neutral) 0.192 min(c, 0.04) h);
+    --color-stick: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
     --color-success: color(from color(from var(--seed-success) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))));
     --color-surface: oklch(from var(--seed-neutral) 0.227 min(c, 0.04) h);
     --color-surface-hover: oklch(from var(--seed-neutral) 0.349 min(c, 0.04) h);
@@ -2644,6 +2645,7 @@
     --color-stage-muted: oklch(from var(--seed-neutral) 0.711 min(c, 0.04) h);
     --color-stage-raised: oklch(from var(--seed-neutral) 0.227 min(c, 0.04) h);
     --color-stage-surface: oklch(from var(--seed-neutral) 0.192 min(c, 0.04) h);
+    --color-stick: oklch(from var(--seed-neutral) 0.396 min(c, 0.04) h);
     --color-success: color(from color(from var(--seed-success) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
     --color-surface: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
     --color-surface-hover: oklch(from var(--seed-neutral) 0.923 min(c, 0.04) h);

@@ -27,6 +27,7 @@
         "light": "#bac5dc"
       },
       "stage-muted": "#eaf6ff",
+      "stick": "#101828",
       "tile": {
         "dark": "#626c80",
         "light": "#7c869b"
@@ -613,6 +614,10 @@
       "stage-muted": "#97a2b8",
       "stage-raised": "#141c2c",
       "stage-surface": "#0c1424",
+      "stick": {
+        "dark": "#eaf6ff",
+        "light": "#3d4759"
+      },
       "success": {
         "dark": "#45e08f",
         "light": "#13612a"

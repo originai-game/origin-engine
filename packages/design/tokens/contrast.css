@@ -88,7 +88,9 @@
     focus bg,
     focus surface-raised,
     well-rim surface,
-    well-rim surface-raised;
+    well-rim surface-raised,
+    stick tile,
+    stick tile-pressed;
   /* Text over glass ([ink, material, what passes under it]): the material's tint
      mixed over the underlay as CSS mixes it (srgb, the blur leaving a flat
      underlay as it is), and optionally a fill over that in linear light. #e4e4e4

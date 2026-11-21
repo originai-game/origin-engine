@@ -66,6 +66,7 @@
   --color-gold: #8a5a00;
   --color-hud: oklch(from var(--seed-neutral) 0.986 min(c, 0.04) h / 0.86);
   --color-knob: oklch(from var(--seed-neutral) 1 min(c, 0.04) h);
+  --color-stick: oklch(from var(--seed-neutral) 0.396 min(c, 0.04) h);
   --color-sheen: rgb(255 255 255 / 0.5);
   --color-track: oklch(from var(--seed-neutral) 0.547 min(c, 0.04) h);
   --color-minimap: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.6);
@@ -76,7 +77,10 @@
      the fever gauge, a late judgement, the dark well a tag or dial sits
      in, a key cap's face from its top (`-hi`) to its foot (`-lo`) and its
      ink, and the chart tiers easy to master. `-fg` is the ink on a fill
-     of that colour, `-hi` the lit top of its gradient. */
+     of that colour, `-hi` the lit top of its gradient. `stick` (beside
+     `knob`, a slider's and a switch's thumb) is a touch stick's knob on
+     its ring, 3:1 on tile and tile-pressed: dark on the pale ring in
+     light, pale on the dark one. */
   --color-hud-accent: oklch(from var(--seed-hud) max(l, 0.75) c h);
   --color-hud-accent-fg: #0b0f18;
   --color-hud-accent-hi: #d6fdff;
@@ -266,6 +270,7 @@
   --color-gold: #ffcf5a;
   --color-hud: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.8);
   --color-knob: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
+  --color-stick: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-sheen: rgb(255 255 255 / 0.12);
   --color-glass-hi: oklch(from var(--seed-neutral) 0.31 min(c, 0.04) h / 0.97);
   --color-glass: oklch(from var(--seed-neutral) 0.225 min(c, 0.04) h / 0.97);
@@ -334,6 +339,7 @@
   --color-fill-strong: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
   --color-border: oklch(from var(--seed-neutral) 0.62 min(c, 0.04) h);
   --color-tile: oklch(from var(--seed-neutral) 0.62 min(c, 0.04) h);
+  --color-stick: oklch(from var(--seed-neutral) 0.21 min(c, 0.04) h);
 }
 
 :root[data-scheme=dark][data-contrast=more] {
