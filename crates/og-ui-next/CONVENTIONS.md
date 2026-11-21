@@ -288,7 +288,7 @@ machines do (ported as logic).
 | `touchPad` | an action's name | its box is a d-pad of that action (eight directions) |
 | `touchButton` | an action's name | its box is a button of that action (1 while held) |
 | `deadZone` | 0 to 0.95 | a stick's dead zone, of its radius (0: og-input's 0.15) |
-| `knob` | bool | inside a `touchStick`, it moves with the stick's knob |
+| `knob` | bool | inside a `touchStick`, it moves with the stick's knob, held inside the stick's box |
 
 ## Accessibility
 

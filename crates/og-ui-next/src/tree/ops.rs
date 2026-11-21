@@ -3167,7 +3167,7 @@ mod tests {
     fn a_control_shows_the_knob_and_press_og_input_read() {
         let mut t = tree();
         let mut b = Batch::default();
-        for (id, class, parent) in [(1, "b", 0), (2, "b", 1)] {
+        for (id, class, parent) in [(1, "big", 0), (2, "b", 1)] {
             b.op(1).u32(id).u8(0);
             b.op(4).u32(id).str(class);
             b.op(8).u32(parent).u32(id).u32(u32::MAX);
@@ -3191,6 +3191,17 @@ mod tests {
         assert_eq!([e, f], [6.0, -2.0], "the knob, in tree units");
         let one = t.op(1).unwrap();
         assert!(t.input.per(one).unwrap().states & PRESSED != 0, "held");
+        // Pushed to the ring's edge (150 px of tree), the knob (20 px
+        // tall: 10 of radius) stops 140 from the centre, inside the ring.
+        let edge = og_input::ZoneState {
+            pointer: Some(2),
+            knob: og_core::glam::Vec2::new(0.0, 300.0),
+            ..Default::default()
+        };
+        t.zone_states([&edge], 2.0);
+        frame(&mut t);
+        let [_, _, _, _, e, f, _, _] = t.drawn.transforms[t.xfs[knob] as usize];
+        assert_eq!([e, f], [0.0, 140.0], "the knob inside the ring");
         t.zone_states([&og_input::ZoneState::default()], 2.0);
         frame(&mut t);
         assert!(t.input.per(one).unwrap().states & PRESSED == 0, "let go");

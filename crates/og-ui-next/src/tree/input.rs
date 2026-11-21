@@ -742,7 +742,9 @@ impl Tree {
     }
 
     /// The knob offset node `e` moves by at paint: its control's, when it
-    /// is marked `knob`.
+    /// is marked `knob`, held inside the control's ring (its radius less
+    /// the knob's, each half its box's smaller side): og-input keeps the
+    /// finger's offset to the ring's edge, and the knob is drawn art.
     pub(super) fn knob_of(&self, e: u32) -> [f32; 2] {
         if !self.input.per(e).is_some_and(|p| p.rides_knob) {
             return [0.0; 2];
@@ -752,7 +754,18 @@ impl Tree {
             if let Some(p) = self.input.per(c)
                 && p.zone.is_some()
             {
-                return p.knob;
+                let radius = |el: u32| {
+                    let b = self.arena.box_of(self.els[el as usize].node);
+                    b.w.min(b.h) / 2.0
+                };
+                let room = (radius(c) - radius(e)).max(0.0);
+                let [x, y] = p.knob;
+                let len = (x * x + y * y).sqrt();
+                return if len > room {
+                    [x / len * room, y / len * room]
+                } else {
+                    p.knob
+                };
             }
             c = self.els[c as usize].parent;
         }
