@@ -12,6 +12,7 @@ pub mod doc;
 pub mod icons;
 pub mod look;
 pub mod motion;
+pub mod nav;
 pub mod pack;
 pub mod prim;
 pub mod queue;
