@@ -17,7 +17,6 @@ use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
 
-mod overlap;
 pub(crate) mod subset;
 
 /// Where a glyph by id (a shaped form) is keyed in the blob: 0x110000 + id,
@@ -375,7 +374,7 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
         // Overlapping contours (the OVERLAP flag) would leave their inner
         // edges as seams in the field: the field is of the outline's union.
         let b = [bbox.x_min, bbox.y_min, bbox.x_max, bbox.y_max].map(f64::from);
-        (b, overlap::remove_overlaps(shape))
+        (b, og_text::overlap::remove_overlaps(shape))
     };
     // The glyph's box in font units: left, bottom, right, top.
     if shape.contours.is_empty() || bbox[2] <= bbox[0] || bbox[3] <= bbox[1] {

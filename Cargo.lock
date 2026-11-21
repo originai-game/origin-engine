@@ -3703,10 +3703,12 @@ dependencies = [
 name = "og-text"
 version = "0.9.0"
 dependencies = [
+ "fdsm",
  "font-rs",
  "harfrust",
  "kurbo",
  "libm",
+ "nalgebra 0.34.2",
  "og-core",
  "og-css",
  "og-draw",

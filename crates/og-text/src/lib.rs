@@ -13,6 +13,7 @@ pub mod glyphs;
 pub mod ink;
 pub mod layout;
 mod ot_languages;
+pub mod overlap;
 pub mod raster;
 pub mod shape;
 pub mod text;
