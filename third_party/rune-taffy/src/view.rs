@@ -60,6 +60,8 @@ impl CoreStyle for FlexChildStyle<'_> {
     #[inline(always)]
     fn direction(&self) -> Direction { self.style.direction() }
     #[inline(always)]
+    fn order(&self) -> i32 { self.style.order() }
+    #[inline(always)]
     fn overflow(&self) -> Point<Overflow> { self.style.overflow() }
     #[inline(always)]
     fn scrollbar_width(&self) -> f32 { self.style.scrollbar_width() }

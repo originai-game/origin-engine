@@ -137,6 +137,7 @@ fn has_cold_fields(s: &Style) -> bool {
         || !rect_is_zero_lp(&s.border)
         || s.box_sizing != BoxSizing::BorderBox
         || s.direction != Direction::Ltr
+        || s.order != 0
         || s.scrollbar_width != 0.0
         || s.contain != Contain::NONE
         || s.justify_items != AlignItems::NORMAL

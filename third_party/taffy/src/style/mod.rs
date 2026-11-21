@@ -114,6 +114,12 @@ pub trait CoreStyle {
     fn box_sizing(&self) -> BoxSizing {
         BoxSizing::BorderBox
     }
+    /// CSS's `order`: a flex or grid item's place among its siblings for
+    /// layout (stable: equal values keep document order). 0 is the default.
+    #[inline(always)]
+    fn order(&self) -> i32 {
+        0
+    }
 
     /// The direction of text, table and grid columns, and horizontal overflow.
     #[inline(always)]
@@ -833,6 +839,9 @@ pub struct Style<S: CheapCloneStr = DefaultCheapStr> {
     /// 1.0 is the default value, and this value must be positive.
     #[cfg(feature = "flexbox")]
     pub flex_shrink: f32,
+    /// CSS's `order`: a flex or grid item's place among its siblings for
+    /// layout, stable (equal values keep document order); 0 is the default.
+    pub order: i32,
 
     // Grid container properies
     /// Defines the track sizing functions (heights) of the grid rows
@@ -926,6 +935,7 @@ impl<S: CheapCloneStr> Style<S> {
         flex_shrink: 1.0,
         #[cfg(feature = "flexbox")]
         flex_basis: Dimension::AUTO,
+        order: 0,
         // Grid
         #[cfg(feature = "grid")]
         grid_template_rows: GridTrackVec::new(),
@@ -982,6 +992,10 @@ impl<S: CheapCloneStr> CoreStyle for Style<S> {
     #[inline(always)]
     fn box_sizing(&self) -> BoxSizing {
         self.box_sizing
+    }
+    #[inline(always)]
+    fn order(&self) -> i32 {
+        self.order
     }
     #[inline(always)]
     fn direction(&self) -> Direction {
@@ -1086,6 +1100,10 @@ impl<T: CoreStyle> CoreStyle for &'_ T {
     #[inline(always)]
     fn box_sizing(&self) -> BoxSizing {
         (*self).box_sizing()
+    }
+    #[inline(always)]
+    fn order(&self) -> i32 {
+        (*self).order()
     }
     #[inline(always)]
     fn direction(&self) -> Direction {
@@ -1677,6 +1695,7 @@ mod tests {
             flex_shrink: 1.0,
             #[cfg(feature = "flexbox")]
             flex_basis: super::Dimension::AUTO,
+            order: 0,
             size: Size::auto(),
             min_size: Size::auto(),
             max_size: Size::auto(),
