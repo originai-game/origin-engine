@@ -350,6 +350,10 @@ impl PaintRenderer {
                 k: [q.kind, q.a, q.b, q.xf],
                 ..Default::default()
             };
+            if q.kind == PaintKind::Line as u32 {
+                self.segments_of(q, &paint.points, g);
+                continue;
+            }
             // What the quad samples; a quad that samples nothing draws with
             // whatever is bound.
             let mut wants = None;
@@ -413,6 +417,52 @@ impl PaintRenderer {
                 bind: bind.unwrap_or(PaintBind::White),
                 first,
                 count: self.gpu.len() as u32 - first,
+            });
+        }
+    }
+
+    /// A polyline's instances, one a segment, each over its segment's
+    /// bounds and the stroke's reach: `uv` its ends, `r` its neighbours'
+    /// far ends, `p` the width and which neighbours it has and whether
+    /// each wins a tie (the lower segment does), all in CSS px. A pixel
+    /// paints in the segment nearest it of itself and its neighbours, so
+    /// round joins are a union with no alpha drawn twice.
+    fn segments_of(&mut self, q: &og_draw::paint::PaintQuad, points: &[[f32; 2]], g: PaintGpu) {
+        let (width, closed) = (q.p[0], q.p[1] > 0.5);
+        let Some(pts) = points.get(q.a as usize..(q.a + q.b) as usize) else {
+            return;
+        };
+        if width < 1.0 || pts.len() < 2 {
+            return;
+        }
+        let n = pts.len();
+        let at = |k: usize| [pts[k][0] + q.rect[0], pts[k][1] + q.rect[1]];
+        let count = if closed && n > 2 { n } else { n - 1 };
+        let reach = 0.5 * width + 1.0;
+        for k in 0..count {
+            let (a, b) = (at(k), at((k + 1) % n));
+            let prev = (k > 0 || count == n).then(|| at((k + n - 1) % n));
+            let next = (k + 1 < count || count == n).then(|| at((k + 2) % n));
+            // Bits: 1 a neighbour before, 2 after; 4 the one before wins a
+            // tie (it is lower), 8 the one after does (the closing wrap).
+            let flags = u32::from(prev.is_some())
+                | u32::from(next.is_some()) << 1
+                | u32::from(k > 0) << 2
+                | u32::from(k + 1 == count && count == n) << 3;
+            let x0 = a[0].min(b[0]) - reach;
+            let y0 = a[1].min(b[1]) - reach;
+            let [pv, nx] = [prev.unwrap_or(a), next.unwrap_or(b)];
+            self.gpu.push(PaintGpu {
+                rect: [
+                    x0,
+                    y0,
+                    a[0].max(b[0]) + reach - x0,
+                    a[1].max(b[1]) + reach - y0,
+                ],
+                uv: [a[0], a[1], b[0], b[1]],
+                r: [pv[0], pv[1], nx[0], nx[1]],
+                p: [width, flags as f32, 0.0, 0.0],
+                ..g
             });
         }
     }

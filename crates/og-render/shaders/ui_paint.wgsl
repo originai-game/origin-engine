@@ -30,7 +30,8 @@ struct PaintGpu {
   // shadow's offset (xy), blur (z) and spread (w); CSS px.
   p: vec4<f32>,
   // x: the kind (0 solid, 1 gradient, 2 glyph, 3 icon, 4 border, 5 shadow,
-  // 6 inset shadow, 7 image), y and z its gradient, or its first segment and their
+  // 6 inset shadow, 7 image, 8 a polyline's segment: ends in uv, its
+  // neighbours' far ends in r, width and flags in p), y and z its gradient, or its first segment and their
   // count, or an image's flags (1 fill, 2 tile), w its transform (0 none).
   k: vec4<u32>,
   // An image's radial wipe: the fraction hidden, the start angle, 1 for
@@ -206,6 +207,13 @@ fn inside(v: f32, lo: f32, hi: f32) -> f32 {
   return clamp(v, min(lo + 0.5, 0.5 * (lo + hi)), max(hi - 0.5, 0.5 * (lo + hi)));
 }
 
+// The distance from `p` to the segment `a` `b`.
+fn segment_distance(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
+  let ab = b - a;
+  let h = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-8), 0.0, 1.0);
+  return length(p - a - ab * h);
+}
+
 fn median(r: f32, g: f32, b: f32) -> f32 {
   return max(min(r, g), min(max(r, g), b));
 }
@@ -324,6 +332,27 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
         let r = length(in.local) * scale * turn;
         a *= clamp(min(t, shown - t) * r + 0.5, 0.0, 1.0) * select(0.0, 1.0, shown > 0.0);
       }
+    }
+    case 8u: {
+      // A polyline's segment, round capped: painted only where it is the
+      // nearest of itself and its neighbours (a tie to the lower one), so
+      // a join draws once.
+      let at = q.rect.xy + half + in.local;
+      let flags = u32(q.p.y);
+      let d = segment_distance(at, q.uv.xy, q.uv.zw);
+      if ((flags & 1u) != 0u) {
+        let dp = segment_distance(at, q.r.xy, q.uv.xy);
+        if (dp < d || ((flags & 4u) != 0u && dp == d)) {
+          discard;
+        }
+      }
+      if ((flags & 2u) != 0u) {
+        let dn = segment_distance(at, q.uv.zw, q.r.zw);
+        if (dn < d || ((flags & 8u) != 0u && dn == d)) {
+          discard;
+        }
+      }
+      a *= edge(d - 0.5 * q.p.x, scale);
     }
     default: {
       a *= edge(sd_round_box(in.local, half, q.r), scale);

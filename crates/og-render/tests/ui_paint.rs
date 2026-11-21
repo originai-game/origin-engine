@@ -6,6 +6,8 @@
 //!   keeping them at their slice's on-screen width, or its centre drawn
 //!   without the fill flag
 //! - a radial wipe showing the wrong quarter, or sweeping the wrong way
+//! - a polyline's join drawn by both its segments (twice the alpha), or a
+//!   closed one missing its closing side
 use glam::Vec3;
 use og_render::paint::{IMAGE_FILL, PaintKind, PaintQuad};
 use og_render::{
@@ -21,7 +23,9 @@ fn render(quads: impl FnOnce(&mut RenderScene) -> Vec<PaintQuad>) -> Vec<u8> {
     scene.ui.overlay = Some(Overlay::new(W as f32, W as f32, 1.0));
     let made = quads(&mut scene);
     let p = &mut scene.ui.paint;
+    let points = std::mem::take(&mut p.points);
     p.clear();
+    p.points = points;
     (p.width, p.height) = (W as f32, W as f32);
     p.quads = made;
     p.generation = 1;
@@ -170,4 +174,65 @@ fn a_radial_wipe_shows_its_share_from_the_top_in_its_direction() {
         near(at(&px, 84, 84), BLACK, "the bottom right");
         near(at(&px, 44, 84), BLACK, "the bottom left");
     }
+}
+
+fn line(points: &mut Vec<[f32; 2]>, pts: &[[f32; 2]], width: f32, closed: bool) -> PaintQuad {
+    let first = points.len() as u32;
+    points.extend_from_slice(pts);
+    PaintQuad {
+        rect: [10.0, 10.0, 100.0, 100.0],
+        clip: [0.0, 0.0, W as f32, W as f32],
+        color: [1.0, 1.0, 1.0, 0.5],
+        radius: [0.0; 4],
+        p: [width, f32::from(u8::from(closed)), 0.0, 0.0],
+        kind: PaintKind::Line as u32,
+        a: first,
+        b: pts.len() as u32,
+        xf: 0,
+        uv: [0.0; 4],
+        wipe: [0.0; 4],
+    }
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn a_polyline_draws_its_joins_once_and_closes_when_closed() {
+    let mut points = Vec::new();
+    let quads = vec![
+        // A V, its join at (60, 90) in the box (70, 100 on screen).
+        line(
+            &mut points,
+            &[[10.0, 10.0], [60.0, 90.0], [100.0, 10.0]],
+            8.0,
+            false,
+        ),
+        // A closed square: its fourth side, (10, 100) back to (10, 60).
+        line(
+            &mut points,
+            &[[0.0, 50.0], [40.0, 50.0], [40.0, 90.0], [0.0, 90.0]],
+            4.0,
+            true,
+        ),
+    ];
+    let px = render(|scene| {
+        scene.ui.paint.points = points;
+        quads
+    });
+    let mid = at(&px, 45, 66);
+    assert!(mid[0] > 60, "the stroke draws: {mid:?}");
+    let join = at(&px, 70, 99);
+    let off = mid
+        .iter()
+        .zip(join)
+        .map(|(&m, j)| m.abs_diff(j))
+        .max()
+        .unwrap();
+    assert!(
+        off <= 6,
+        "the join as bright as the stroke, not twice: {join:?} vs {mid:?}"
+    );
+    near(at(&px, 70, 108), BLACK, "outside the round join");
+    let closing = at(&px, 10, 80);
+    assert!(closing[0] > 60, "the closing side: {closing:?}");
+    near(at(&px, 30, 80), BLACK, "inside the square");
 }
