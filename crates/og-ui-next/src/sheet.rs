@@ -1,9 +1,9 @@
-//! The CSS a sheet is written in, split once at load: its rule blocks and
-//! their declarations. Nothing here runs per element or per frame.
+//! The design tokens' CSS (`packages/design/tokens/*.css`) split once at
+//! load: its rule blocks and their declarations, which [`crate::tokens`]
+//! reads. Nothing here runs per element or per frame.
 
 /// Each top-level rule's prelude and body, `@media` and other at-rule
-/// blocks flattened into their inner rules (their condition is the
-/// compiler's, `crate::style`). Comments are skipped.
+/// blocks flattened into their inner rules. Comments are skipped.
 pub fn blocks(css: &str) -> Vec<(&str, &str)> {
     let mut out = Vec::new();
     collect(css, &mut out);
@@ -82,7 +82,7 @@ fn trim_comments(mut text: &str) -> &str {
 
 /// `text` split on `sep` outside parentheses, quotes and comments (a
 /// comment's apostrophe opens no quote).
-pub fn split_top(text: &str, sep: u8) -> impl Iterator<Item = &str> {
+fn split_top(text: &str, sep: u8) -> impl Iterator<Item = &str> {
     let bytes = text.as_bytes();
     let mut depth = 0i32;
     let mut quote = 0u8;

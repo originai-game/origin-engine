@@ -263,7 +263,7 @@ fn theme_wire(engine: u32, s: &super::UiSettings) -> crate::host::wire::UiTheme 
         tracking: numbers("tracking"),
         font_weight: numbers("fontWeight"),
         blur: numbers("blur"),
-        durations: (*crate::present::ui_next::durations(engine)).clone(),
+        durations: (*crate::present::ui_next::durations()).clone(),
         style: s
             .style
             .trim_end_matches('/')

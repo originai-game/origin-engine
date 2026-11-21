@@ -26,7 +26,7 @@ use rune_motion::{
 use rune_taffy::BoxLayout;
 
 use crate::arena::Id;
-use crate::style::{Record, Rgba, SHADOWS, Shadow, Skin};
+use crate::record::{Record, Rgba, SHADOWS, Shadow, Skin};
 
 /// `transition-colors`: fill, ink, border and outline colours.
 pub const COLORS: u8 = 1;

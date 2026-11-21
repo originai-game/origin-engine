@@ -11,7 +11,7 @@
 //!     cargo run --release -p og-ui-next --example op_costs [N]
 
 use og_ui::IconAtlas;
-use og_ui_next::style::Record;
+use og_ui_next::record::Record;
 use og_ui_next::tree::{MAGIC, Tree};
 use std::time::Instant;
 

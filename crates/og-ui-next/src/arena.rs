@@ -31,7 +31,7 @@ const EMPTY: u32 = u32::MAX - 1;
 const NO_MEMO: [(u32, f32, f32); 2] = [(EMPTY, 0.0, 0.0); 2];
 
 /// How a text leaf's text runs: what its measure reads, resolved from its
-/// element's record ([`crate::style::Text`]).
+/// element's record ([`crate::record::Text`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Run {
     /// Font size, CSS px.

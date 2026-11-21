@@ -256,7 +256,11 @@ pub(crate) struct ImageProps {
 impl ImageProps {
     /// The box image `base` (its classes') with these props over it, the
     /// source's slot from `textures` (none: 0).
-    fn over(&self, base: &crate::style::Slice, textures: Option<&Textures>) -> crate::style::Slice {
+    fn over(
+        &self,
+        base: &crate::record::Slice,
+        textures: Option<&Textures>,
+    ) -> crate::record::Slice {
         let mut im = *base;
         if !self.handle.is_nan() {
             im.texture = textures.map_or(0, |f| f(self.handle));
@@ -1164,7 +1168,7 @@ impl Tree {
             };
             let image = og_draw::TextureHandle::from_slot(im.texture).filter(|_| im.wipe > 0.0);
             // A fill-tinted image takes the fill's colour in its place.
-            let fill_tints = image.is_some() && im.tint == crate::style::Tint::Fill;
+            let fill_tints = image.is_some() && im.tint == crate::record::Tint::Fill;
             if s.fill[3] > 0.0 && !fill_tints {
                 p.quads.push(quad(
                     PaintKind::Solid,
@@ -1204,9 +1208,9 @@ impl Tree {
                     im.width
                 };
                 let color = match im.tint {
-                    crate::style::Tint::Own => [1.0, 1.0, 1.0, alpha],
-                    crate::style::Tint::Ink => faded(own_ink),
-                    crate::style::Tint::Fill => faded(s.fill),
+                    crate::record::Tint::Own => [1.0, 1.0, 1.0, alpha],
+                    crate::record::Tint::Ink => faded(own_ink),
+                    crate::record::Tint::Fill => faded(s.fill),
                 };
                 let flags = (u32::from(im.fill) * og_draw::paint::IMAGE_FILL)
                     | (u32::from(im.tile) * og_draw::paint::IMAGE_TILE);
@@ -1461,7 +1465,7 @@ impl Tree {
                     } else {
                         (size / 14.0).max(1.0)
                     };
-                    use crate::style::Decoration as D;
+                    use crate::record::Decoration as D;
                     for &[x0, base, w] in &g.lines {
                         let at = [
                             (D::UNDERLINE, base + 0.12 * size),
@@ -1646,7 +1650,7 @@ fn quad(
 /// parent's `parent` to `p.transforms`: its index, or `parent` when its own
 /// is the identity. CSS's order: move to the origin, translate (its
 /// percentages of the box's own size), rotate, scale, move back.
-fn transformed(p: &mut Paint, parent: u32, t: &crate::style::Transform, rect: [f32; 4]) -> u32 {
+fn transformed(p: &mut Paint, parent: u32, t: &crate::record::Transform, rect: [f32; 4]) -> u32 {
     if t.is_identity() {
         return parent;
     }
@@ -1670,7 +1674,7 @@ fn transformed(p: &mut Paint, parent: u32, t: &crate::style::Transform, rect: [f
 
 /// `t` on a box at `rect` as a 2D affine map (a, b, c, d, e, f): a point
 /// (x, y) goes to (a x + c y + e, b x + d y + f).
-fn affine(t: &crate::style::Transform, rect: [f32; 4]) -> [f32; 6] {
+fn affine(t: &crate::record::Transform, rect: [f32; 4]) -> [f32; 6] {
     let (sin, cos) = og_core::math::sin_cos(t.rotate);
     let [sx, sy] = t.scale;
     let (a, b, c, d) = (cos * sx, sin * sx, -sin * sy, cos * sy);

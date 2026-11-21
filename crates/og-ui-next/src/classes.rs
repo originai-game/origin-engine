@@ -7,7 +7,7 @@
 
 use crate::motion;
 use crate::pack::NineSlice;
-use crate::style::{GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Slice, Text, Tint};
+use crate::record::{GRADIENT_STOPS, Gradient, Record, Rgba, SHADOWS, Shadow, Slice, Text, Tint};
 use nsh_tailwind::effects::{Filter, GradientKind, Keyframes};
 use nsh_tailwind::geometry::{DefiniteLength, Points, Size};
 use nsh_tailwind::style::{Color, Style, StyleValue, SvgPaint, TextAlign, TextTransform};

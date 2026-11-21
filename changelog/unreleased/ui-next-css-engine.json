@@ -1,0 +1,16 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og.ui.theme",
+      "change": "The TSX core no longer compiles CSS: a style pack's `tokens.css` and `surfaces.css` no longer restyle TSX elements, and `og.ui.theme().durations` reads the design's `--motion-duration-*` tokens, not a pack's override of them.",
+      "fix": "Style TSX elements with classes and the pack's `pack.json` theme; set a transition's length with a `duration-*` class.",
+      "find": [
+        "--motion-duration-",
+        "surfaces.css",
+        "tokens.css",
+        "theme().durations"
+      ]
+    }
+  ]
+}

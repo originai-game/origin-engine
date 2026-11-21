@@ -20,7 +20,7 @@ pub enum Op {
         node: u32,
         text: Box<str>,
     },
-    /// A compiled style condition of an element ([`crate::doc::DocStyle::conditions`]).
+    /// A style condition of an element, by its index in the element's conditions.
     Holds {
         tree: u32,
         node: u32,

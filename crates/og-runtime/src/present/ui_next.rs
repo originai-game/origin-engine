@@ -352,54 +352,13 @@ pub(crate) fn pack_theme(
     serde_json::from_str(&text).unwrap_or_default()
 }
 
-/// The motion durations of the style in effect (`--motion-duration-*`, the
-/// default tokens with the pack's over them) by name, in milliseconds:
-/// read once per style.
-pub(crate) fn durations(engine: u32) -> Rc<BTreeMap<String, f32>> {
-    /// The style's id and the durations read for it.
-    type Read = Option<(Option<String>, Rc<BTreeMap<String, f32>>)>;
+/// The design's motion durations (`--motion-duration-*`) by name, in
+/// milliseconds: read once.
+pub(crate) fn durations() -> Rc<BTreeMap<String, f32>> {
     thread_local! {
-        static READ: RefCell<Read> = const { RefCell::new(None) };
+        static READ: Rc<BTreeMap<String, f32>> = Rc::new(og_ui_next::pack::design::durations());
     }
-    let style = style_id(engine);
-    READ.with(|r| {
-        if let Some((s, d)) = &*r.borrow()
-            && *s == style
-        {
-            return d.clone();
-        }
-        let defaults = og_ui_next::look::default_tokens();
-        let mut tokens = og_ui_next::tokens::Tokens::parse(defaults);
-        if let Some((_, files)) = active_pack(engine)
-            && let Some(layer) = og_ui_next::look::pack_layer(&files)
-        {
-            tokens.over(layer.tokens);
-        }
-        const PREFIX: &str = "--motion-duration-";
-        let mut out = BTreeMap::new();
-        for line in defaults.split(PREFIX).skip(1) {
-            let Some((name, _)) = line.split_once(':') else {
-                continue;
-            };
-            let Some(value) = tokens.get(&format!("{PREFIX}{name}")) else {
-                continue;
-            };
-            let value = value.trim();
-            let ms = match value.strip_suffix("ms") {
-                Some(n) => n.trim().parse::<f32>().ok(),
-                None => value
-                    .strip_suffix('s')
-                    .and_then(|n| n.trim().parse::<f32>().ok())
-                    .map(|s| s * 1000.0),
-            };
-            if let Some(ms) = ms {
-                out.insert(name.trim().to_string(), ms);
-            }
-        }
-        let out = Rc::new(out);
-        *r.borrow_mut() = Some((style, out.clone()));
-        out
-    })
+    READ.with(Rc::clone)
 }
 
 /// The pack layers the UI styles with: the default pack, style `id`'s
@@ -999,7 +958,7 @@ impl Next {
             } else {
                 Some(if sy > 0.0 { Nav::Down } else { Nav::Up })
             };
-            let d = durations(engine);
+            let d = durations();
             let ms = |name: &str, or: f32| d.get(name).copied().unwrap_or(or);
             let (fast, slow) = (ms("fast", 180.0), ms("slow", 400.0));
             self.stick = match (dir, self.stick) {

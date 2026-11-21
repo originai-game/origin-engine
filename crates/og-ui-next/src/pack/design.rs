@@ -37,6 +37,25 @@ fn tables(seeds: &str) -> [Tokens; 2] {
     Scheme::ALL.map(|s| t.scheme(s.name()))
 }
 
+/// The design's motion durations (`--motion-duration-<name>`) by name, in
+/// milliseconds: what og.ui.theme answers as `durations`.
+pub fn durations() -> std::collections::BTreeMap<String, f32> {
+    const PREFIX: &str = "--motion-duration-";
+    let [t, _] = tables("");
+    names()
+        .into_iter()
+        .filter_map(|name| {
+            let key = name.strip_prefix(PREFIX)?.to_owned();
+            let v = t.get(&name)?.trim();
+            let ms = match v.strip_suffix("ms") {
+                Some(n) => n.trim().parse::<f32>().ok()?,
+                None => v.strip_suffix('s')?.trim().parse::<f32>().ok()? * 1000.0,
+            };
+            Some((key, ms))
+        })
+        .collect()
+}
+
 /// Every token's name, in the files' order.
 fn names() -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
