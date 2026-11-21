@@ -49,7 +49,8 @@ export function parseStrings(text: string): StringTableText {
   return { locale, base, strings };
 }
 
-const ACCENTS: Readonly<Record<string, string>> = {
+/** The pseudo-locale's accents, the same letters og-i18n's `accent` (`format.rs`). */
+export const ACCENTS: Readonly<Record<string, string>> = {
   a: "á", e: "é", i: "í", o: "ö", u: "ü", c: "ç", n: "ñ", y: "ý", A: "Á", E: "É", I: "Í", O: "Ö", U: "Ü", C: "Ç", N: "Ñ", Y: "Ý",
 };
 /** Rich text tags (`[b]`, `[color=info]`): markup, not words. */
