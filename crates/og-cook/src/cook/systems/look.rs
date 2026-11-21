@@ -242,7 +242,7 @@ pub(crate) fn builtin_files(
             let text = String::from_utf8_lossy(bytes);
             let named = if source.ends_with(".css") {
                 shared_files(source, &text)
-            } else if crate::cook::ui_documents::is_pack(source) {
+            } else if crate::cook::ui_packs::is_pack(source) {
                 pack_files(source, &text)
             } else {
                 continue;

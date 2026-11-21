@@ -45,6 +45,7 @@ pub mod riv;
 mod test_dir;
 pub mod ui_components;
 mod ui_documents;
+mod ui_packs;
 pub mod ui_screens;
 pub mod vector;
 
