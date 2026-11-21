@@ -192,6 +192,8 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
             .replace('\\', "/")
     };
     let (mut codemods, mut manual, mut review) = (Vec::new(), Vec::new(), Vec::new());
+    // The new UI core has no `uiCore` switch: its line leaves project.ogt.
+    let mut drop_ui_core = false;
     for e in &crossed {
         let version = e["version"].as_str().unwrap_or("");
         for b in e["breaking"].as_array().into_iter().flatten() {
@@ -220,6 +222,36 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                         *touched = true;
                         codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": "flash", "to": "glow", "count": n }));
                     }
+                }
+                continue;
+            }
+            if b["codemod"]["kind"] == "ui-core" {
+                drop_ui_core = true;
+                for (file, text, touched) in &mut texts {
+                    if !file.extension().is_some_and(|e| e == "svelte") {
+                        continue;
+                    }
+                    let Some((upgraded, rewrites, lines)) = ui_core(text) else {
+                        continue;
+                    };
+                    let mut counted: Vec<(Rewrite, usize)> = Vec::new();
+                    for r in rewrites {
+                        match counted.iter_mut().find(|(k, _)| *k == r) {
+                            Some((_, n)) => *n += 1,
+                            None => counted.push((r, 1)),
+                        }
+                    }
+                    for ((from_s, to_s), n) in counted {
+                        codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": from_s, "to": to_s, "count": n }));
+                    }
+                    for line in lines {
+                        manual.push(json!({
+                            "version": version, "member": member, "change": b["change"], "fix": b["fix"],
+                            "file": rel(file), "line": line, "text": upgraded.lines().nth(line - 1).unwrap_or("").trim(),
+                        }));
+                    }
+                    *touched |= upgraded != *text;
+                    *text = upgraded;
                 }
                 continue;
             }
@@ -272,7 +304,9 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
     if kind != "none" {
         let manifest = p.root.join("project.ogt");
         match std::fs::read_to_string(&manifest) {
-            Ok(text) => match set_engine_line(&text, &to) {
+            Ok(text) => match set_engine_line(&text, &to)
+                .map(|t| if drop_ui_core { without_ui_core(&t) } else { t })
+            {
                 Some(t) => writes.push((manifest, t)),
                 None => {
                     return failed(
@@ -383,8 +417,187 @@ fn vfx_glow(text: &str) -> Option<(String, usize)> {
     (n > 0).then_some((out, n))
 }
 
-/// The game's own text: `src/`, `assets/` and `tests/` (TypeScript, JavaScript and
-/// `.ogt`), leaving out build output and dependencies.
+/// One attribute's text before and after a codemod.
+type Rewrite = (String, String);
+
+/// A `.svelte` document's markup moved to the new UI core's attributes
+/// (`changelog/unreleased/ui-core-rewrite.json`): the layout data
+/// attributes become typed fields, surface data attributes their names,
+/// `part="Comp.x"` its surface and the `parts` meta line goes. Only tags
+/// are read: text, quoted values, `<style>` and `<script>` stay as they
+/// are. Answers the new text, each rewrite (old, new) and the 1-based lines
+/// of the attributes it could not rewrite; `None` when nothing changed.
+fn ui_core(text: &str) -> Option<(String, Vec<Rewrite>, Vec<usize>)> {
+    let (mut out, mut rewrites, mut manual) = (String::new(), Vec::new(), Vec::new());
+    let line_of = |at: usize| text[..at].matches('\n').count() + 1;
+    let mut i = 0;
+    while let Some(lt) = text[i..].find('<').map(|n| i + n) {
+        out.push_str(&text[i..lt]);
+        // A raw block's body is copied whole.
+        let raw = ["style", "script"].into_iter().find(|t| {
+            text[lt + 1..].starts_with(t)
+                && text[lt + 1 + t.len()..].starts_with(|c: char| c == '>' || c.is_whitespace())
+        });
+        if let Some(t) = raw {
+            let end = text[lt..]
+                .find(&format!("</{t}>"))
+                .map_or(text.len(), |n| lt + n + t.len() + 3);
+            out.push_str(&text[lt..end]);
+            i = end;
+            continue;
+        }
+        let name_end = text[lt + 1..]
+            .find(|c: char| c.is_whitespace() || c == '>' || c == '/')
+            .map_or(text.len(), |n| lt + 1 + n);
+        let tag = &text[lt + 1..name_end];
+        if tag.is_empty() || !tag.starts_with(|c: char| c.is_ascii_alphabetic()) {
+            out.push('<');
+            i = lt + 1;
+            continue;
+        }
+        // The tag's attributes: (leading space, name, raw value with its `=`).
+        let mut attrs: Vec<(&str, &str, &str, usize)> = Vec::new();
+        let mut j = name_end;
+        let close;
+        loop {
+            let ws = j;
+            while text[j..].starts_with(char::is_whitespace) {
+                j += text[j..].chars().next().map_or(1, char::len_utf8);
+            }
+            if j >= text.len() || text[j..].starts_with('>') || text[j..].starts_with("/>") {
+                close = &text
+                    [ws..(j + if text[j..].starts_with("/>") { 2 } else { 1 }).min(text.len())];
+                j = (j + close.trim_start().len()).min(text.len());
+                break;
+            }
+            let n0 = j;
+            while j < text.len()
+                && !text[j..]
+                    .starts_with(|c: char| c.is_whitespace() || c == '=' || c == '>' || c == '/')
+            {
+                j += text[j..].chars().next().map_or(1, char::len_utf8);
+            }
+            if j == n0 {
+                j += 1;
+            }
+            let name = &text[n0..j];
+            let v0 = j;
+            if text[j..].starts_with('=') {
+                j += 1;
+                match text[j..].chars().next() {
+                    Some(q @ ('"' | '\'')) => {
+                        j = text[j + 1..].find(q).map_or(text.len(), |n| j + 1 + n + 1);
+                    }
+                    Some('{') => {
+                        let mut depth = 0;
+                        for (k, c) in text[j..].char_indices() {
+                            depth += match c {
+                                '{' => 1,
+                                '}' => -1,
+                                _ => 0,
+                            };
+                            if depth == 0 {
+                                j += k + 1;
+                                break;
+                            }
+                        }
+                    }
+                    _ => {
+                        while j < text.len()
+                            && !text[j..].starts_with(|c: char| c.is_whitespace() || c == '>')
+                        {
+                            j += text[j..].chars().next().map_or(1, char::len_utf8);
+                        }
+                    }
+                }
+            }
+            attrs.push((&text[ws..n0], name, &text[v0..j], n0));
+        }
+        fn literal(v: &str) -> Option<&str> {
+            let v = v.strip_prefix('=').unwrap_or(v);
+            (v.len() >= 2 && (v.starts_with('"') || v.starts_with('\'')))
+                .then(|| &v[1..v.len() - 1])
+        }
+        if tag == "meta"
+            && attrs
+                .iter()
+                .any(|a| a.1 == "name" && literal(a.2) == Some("parts"))
+        {
+            rewrites.push((text[lt..j].to_string(), String::new()));
+            i = j;
+            if text[i..].starts_with('\n') {
+                i += 1;
+            }
+            continue;
+        }
+        out.push('<');
+        out.push_str(tag);
+        for (ws, name, value, at) in attrs {
+            let lit = literal(value);
+            let new: Option<String> = match (name, lit) {
+                (
+                    "data-layout",
+                    Some("row" | "stack" | "overlay" | "scroll" | "center" | "wrap"),
+                ) => Some(format!("layout{value}")),
+                ("data-layout", Some("cluster" | "switcher")) => Some("layout=\"wrap\"".into()),
+                ("data-layout", Some("shell")) => Some("layout=\"stack\" fill".into()),
+                ("data-gap", Some(_)) => Some(format!("gap{value}")),
+                (
+                    "data-anchor",
+                    Some(
+                        "fill" | "top-start" | "top-end" | "bottom-start" | "bottom-end"
+                        | "top-edge" | "bottom-edge",
+                    ),
+                ) => Some(format!("anchor{value}")),
+                ("data-fill", Some("true" | "")) => Some("fill".into()),
+                ("data-fill", None) if value.is_empty() => Some("fill".into()),
+                ("data-from", Some("end")) => Some("reverse".into()),
+                ("data-rarity", _) => Some(format!("tier{value}")),
+                ("data-tone" | "data-shape" | "data-team" | "data-trend", _) => {
+                    Some(format!("{}{value}", &name[5..]))
+                }
+                ("data-motion", Some(_)) => Some(format!("play{value}")),
+                ("part", Some(v)) if v.contains('.') => Some(format!(
+                    "part=\"{}\"",
+                    v.split_whitespace()
+                        .map(|p| p.rsplit('.').next().unwrap_or(p))
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                )),
+                // Layout fields are literal on the new core: a bound one, or
+                // a value with no field, is the author's to rewrite.
+                (
+                    "data-layout" | "data-gap" | "data-anchor" | "data-fill" | "data-from"
+                    | "data-motion",
+                    _,
+                ) => {
+                    manual.push(line_of(at));
+                    None
+                }
+                _ => None,
+            };
+            out.push_str(ws);
+            match new {
+                Some(n) => {
+                    rewrites.push((format!("{name}{value}"), n.clone()));
+                    out.push_str(&n);
+                }
+                None => {
+                    out.push_str(name);
+                    out.push_str(value);
+                }
+            }
+        }
+        out.push_str(close);
+        i = j;
+    }
+    out.push_str(&text[i..]);
+    (!rewrites.is_empty() || !manual.is_empty()).then_some((out, rewrites, manual))
+}
+
+/// The game's own text: `src/`, `assets/` and `tests/` (TypeScript,
+/// JavaScript, `.ogt`, UI documents and style sheets), leaving out build
+/// output and dependencies.
 fn game_sources(root: &Path) -> Vec<PathBuf> {
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         let Ok(rd) = std::fs::read_dir(dir) else {
@@ -398,7 +611,7 @@ fn game_sources(root: &Path) -> Vec<PathBuf> {
                 if !matches!(name, "node_modules" | ".og" | "cooked" | "dist" | "og-out") {
                     walk(&p, out);
                 }
-            } else if [".ts", ".tsx", ".js", ".mjs", ".ogt"]
+            } else if [".ts", ".tsx", ".js", ".mjs", ".ogt", ".svelte", ".css"]
                 .iter()
                 .any(|x| name.ends_with(x))
             {
@@ -411,6 +624,17 @@ fn game_sources(root: &Path) -> Vec<PathBuf> {
     walk(&root.join("assets"), &mut out);
     walk(&root.join("tests"), &mut out);
     out
+}
+
+/// project.ogt without its `uiCore` line.
+fn without_ui_core(text: &str) -> String {
+    text.split_inclusive('\n')
+        .filter(|l| {
+            !l.trim_start()
+                .strip_prefix("uiCore")
+                .is_some_and(|r| r.starts_with(char::is_whitespace))
+        })
+        .collect()
 }
 
 /// project.ogt with its `engine "<v>"` line set to `to`.
@@ -508,5 +732,43 @@ mod tests {
             ogt.replace("0.5.0", "0.6.2")
         );
         assert!(set_engine_line("type project\n---\nengineer \"a\"\n", "1.0.0").is_none());
+    }
+
+    #[test]
+    fn ui_core_rewrites_tags_only() {
+        let doc = concat!(
+            "<meta name=\"type\" content=\"component\">\n",
+            "<meta name=\"parts\" content=\"Slot.frame Slot.icon\">\n",
+            "<meta name=\"prop:r\" content=\"string\" data-doc=\"on data-rarity (data-fill too)\">\n",
+            "<div part=\"Slot.frame\" data-layout=\"cluster\" data-gap=\"tight\" data-rarity={r}>\n",
+            "  <span data-fill data-from=\"end\" data-layout=\"cover\" class=\"a\">data-tone=\"x\"</span>\n",
+            "  <i data-anchor=\"top\" data-motion=\"pulse\" data-tone='warn'/>\n",
+            "  <b data-layout={a ? 'row' : 'stack'}></b>\n",
+            "</div>\n",
+            "<style>.a[data-tone=\"x\"] { color: red; }</style>\n",
+        );
+        let (out, rewrites, manual) = ui_core(doc).unwrap();
+        assert_eq!(
+            out,
+            concat!(
+                "<meta name=\"type\" content=\"component\">\n",
+                "<meta name=\"prop:r\" content=\"string\" data-doc=\"on data-rarity (data-fill too)\">\n",
+                "<div part=\"frame\" layout=\"wrap\" gap=\"tight\" tier={r}>\n",
+                "  <span fill reverse data-layout=\"cover\" class=\"a\">data-tone=\"x\"</span>\n",
+                "  <i data-anchor=\"top\" play=\"pulse\" tone='warn'/>\n",
+                "  <b data-layout={a ? 'row' : 'stack'}></b>\n",
+                "</div>\n",
+                "<style>.a[data-tone=\"x\"] { color: red; }</style>\n",
+            )
+        );
+        // cover, a `top` anchor and a bound layout have no field: the
+        // author writes a class.
+        assert_eq!(manual, [5, 6, 7]);
+        assert_eq!(rewrites.len(), 9);
+        assert!(ui_core("<div class=\"a\">{a<b}</div>\n").is_none());
+        assert_eq!(
+            without_ui_core("name \"x\"\nuiCore next\nuiCores 1\n"),
+            "name \"x\"\nuiCores 1\n"
+        );
     }
 }

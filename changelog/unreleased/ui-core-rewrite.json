@@ -4,8 +4,9 @@
     {
       "member": "UI documents",
       "change": "Every screen and component document runs on the new UI core: styles compile at cook time to typed records, elements live in a flat arena and only what a binding changed is updated. There is no `uiCore` key in project.ogt and no way back to the old core; the old forms below are refused, not translated.",
-      "fix": "Remove a `uiCore` line from project.ogt, run `og upgrade`, then fix what it lists as manual with the replacements below.",
-      "find": ["uiCore"]
+      "fix": "Run `og upgrade`: it removes project.ogt's `uiCore` line and rewrites each document's literal layout, surface and motion data attributes, `part=\"Comp.x\"` and the `parts` meta line. Fix what it lists as manual (a bound or fieldless layout attribute) and what the items below find, with their replacements.",
+      "find": ["uiCore"],
+      "codemod": { "kind": "ui-core" }
     },
     {
       "member": "Layout attributes",
