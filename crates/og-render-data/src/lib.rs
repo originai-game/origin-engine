@@ -10,7 +10,8 @@
 //!   pre-encoded uploads, texture arrays and render target textures.
 //! - [`material`]: [`StandardMaterial`], its uv transforms and physical
 //!   extensions; [`environment`]: prefiltered environment maps (and their
-//!   CPU bake, feature `bake`); [`terrain`] and [`terrain_tiles`]: height
+//!   CPU bake, feature `bake`); [`light`]: the directional and local
+//!   lights; [`terrain`] and [`terrain_tiles`]: height
 //!   fields, layers and the tile pyramid; [`particles`], [`effect`],
 //!   [`effects`]: emitters, effect materials and colour tables.
 //! - The CPU builders whose output is cooked data: [`shapes`],
@@ -42,6 +43,7 @@ pub mod gltf;
 pub mod hooks;
 pub mod ibl;
 pub mod impostor;
+pub mod light;
 pub mod lightmap;
 pub mod lod;
 pub mod material;

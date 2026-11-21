@@ -341,12 +341,6 @@ fn hemisphere(position: Vec3, range: f32, axis: Vec3) -> Frustum {
     Frustum(planes)
 }
 
-pub(crate) fn spot_cone(angle_degrees: f32, penumbra: f32) -> (f32, f32) {
-    let outer = angle_degrees.clamp(0.1, 89.0).to_radians();
-    let inner = outer * (1.0 - penumbra.clamp(0.0, 1.0));
-    (outer.cos(), inner.cos())
-}
-
 /// The most shadowed lights a frame draws screen-space contact shadows for
 /// (contact.wgsl `cs_contact`): one each in the AO texture's g, b and a.
 pub(crate) const CONTACT_LIGHTS: usize = 3;
@@ -555,7 +549,8 @@ pub(crate) fn local_lights(
                 angle_degrees,
                 penumbra,
             } => {
-                let (cos_outer, cos_inner) = spot_cone(angle_degrees, penumbra);
+                let (cos_outer, cos_inner) =
+                    og_render_data::light::spot_cone(angle_degrees, penumbra);
                 (
                     1.0,
                     direction.normalize_or(Vec3::NEG_Y),

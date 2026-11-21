@@ -179,7 +179,8 @@ fn light_at(light: &Light, reach: f32, p: Vec3, probe: &mut [[f32; 4]]) {
                 penumbra,
             } = light.kind
             {
-                let (cos_outer, cos_inner) = crate::frame::spot_cone(angle_degrees, penumbra);
+                let (cos_outer, cos_inner) =
+                    og_render_data::light::spot_cone(angle_degrees, penumbra);
                 let axis = direction.normalize_or(Vec3::NEG_Y);
                 let t = ((-l).dot(axis) - cos_outer) / (cos_inner - cos_outer).max(1e-4);
                 let t = t.clamp(0.0, 1.0);

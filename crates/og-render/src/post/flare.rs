@@ -197,7 +197,7 @@ pub(crate) fn flare_sources(
                 angle_degrees,
                 penumbra,
             } => {
-                let (outer, inner) = crate::frame::spot_cone(angle_degrees, penumbra);
+                let (outer, inner) = og_render_data::light::spot_cone(angle_degrees, penumbra);
                 let to_eye = (camera.eye - l.position).normalize_or_zero();
                 let cos = direction.normalize_or_zero().dot(to_eye);
                 smoothstep(outer, inner.max(outer + 1e-4), cos)
