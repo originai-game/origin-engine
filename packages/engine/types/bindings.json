@@ -8062,6 +8062,11 @@
           "name": "loop",
           "column": "bool",
           "default": false
+        },
+        {
+          "name": "preroll",
+          "column": "bool",
+          "default": false
         }
       ]
     },

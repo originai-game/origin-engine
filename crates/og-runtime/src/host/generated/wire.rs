@@ -35419,6 +35419,7 @@ pub mod record {
         pub time: f32,
         pub speed: f32,
         pub r#loop: bool,
+        pub preroll: bool,
     }
 
     impl Default for Timeline {
@@ -35429,6 +35430,7 @@ pub mod record {
                 time: Default::default(),
                 speed: 1.0_f32,
                 r#loop: Default::default(),
+                preroll: Default::default(),
             }
         }
     }
@@ -35445,6 +35447,7 @@ pub mod record {
                 time: field(o, "time", d.time)?,
                 speed: field(o, "speed", d.speed)?,
                 r#loop: field(o, "loop", d.r#loop)?,
+                preroll: field(o, "preroll", d.preroll)?,
             })
         }
     }

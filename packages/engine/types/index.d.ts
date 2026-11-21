@@ -29919,6 +29919,10 @@ export interface Timeline {
    * Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded.
    */
   loop: boolean;
+  /**
+   * Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. og.flow sets it on a warming deck.
+   */
+  preroll: boolean;
 }
 
 /**
@@ -37400,7 +37404,7 @@ export declare namespace og {
   /**
    * Plays a loaded timeline. Set `playing` (or call og.timeline.play) to run it from `time`; write `time` (or call og.timeline.seek) to jump; og.timeline.stop goes back to 0 and lets go of what it owns.
    */
-  const Timeline: ComponentType<{ readonly asset: FieldSpec<"TimelineAsset">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool"> }, Timeline>;
+  const Timeline: ComponentType<{ readonly asset: FieldSpec<"TimelineAsset">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly preroll: FieldSpec<"bool"> }, Timeline>;
   /**
    * A timeline started playing from stopped or ended (not on a resume from pause, nor on a loop).
    */

@@ -27,7 +27,7 @@ mod present;
 pub(crate) use present::present;
 
 use crate::{present::feel, world::assets};
-use evaluate::{Evaluated, NESTED, NESTED_TRACKS, Step, drop_ended_voices, evaluate};
+use evaluate::{Evaluated, NESTED, NESTED_TRACKS, Step, drop_ended_voices, evaluate, preroll};
 use playback::{Op, Rec, Run, shared};
 pub(crate) use playback::{install, register_records};
 pub use playback::{

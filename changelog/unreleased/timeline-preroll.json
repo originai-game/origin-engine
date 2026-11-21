@@ -1,0 +1,15 @@
+{
+  "simulation": "changed",
+  "added": [
+    {
+      "member": "og.Timeline.preroll",
+      "summary": "Prepares a stopped timeline without showing it: nothing of it is evaluated (no camera, caption, sound, effect or event), the entity's og.VideoPlayer holds the frame its own video track starts with, paused, and the engine modules the timeline needs are fetched. Set it some ticks before playing a cutscene that opens on footage, so its first frame is already decoded. Playing, pausing or seeking the timeline evaluates it as before."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.flow",
+      "summary": "A deck that warms a segment holds it through og.Timeline.preroll instead of writing the deck's og.VideoPlayer itself, so the timeline is the one place a segment's start is prepared. A warming deck's player takes its first frame in og.timeline, one system later in the same tick than before; a save taken while a deck warms restores as before."
+    }
+  ]
+}

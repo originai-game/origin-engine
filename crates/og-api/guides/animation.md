@@ -460,6 +460,14 @@ loads it. An og.Timeline component plays it on its entity.
 - While a timeline with a camera track plays or is paused it owns
   og.Camera and the camera brain waits; it hands back the camera it found
   when it stops or ends.
+- A cutscene that opens on footage hitches at its first frame unless the
+  decoder already has it. Set `preroll` on the og.Timeline while it is
+  stopped, some ticks before you play it: nothing of it is shown, heard or
+  taken (no camera, caption, sound or event), the entity's og.VideoPlayer
+  holds the frame its own video track starts with, and the engine modules
+  it needs are fetched. Then play it; `preroll` does nothing to a timeline
+  that plays, is paused or was sought. og.flow pre-rolls the segments a
+  choice may lead to this way (`flow` §6).
 - Loading a timeline (og.load.timeline, outside a system) grants
   og.timeline the records its tracks write. Values it wrote stay when it
   stops; the camera, its depth of field and the materials go back. A

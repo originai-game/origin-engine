@@ -30,8 +30,9 @@ use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_commands,
     og_engine_probe_dump, og_flow_chart, og_flow_choose, og_flow_load, og_flow_skip, og_flow_start,
     og_flow_view, og_game_game, og_host_begin_bundle, og_input_define_action, og_load_timeline,
-    og_story_parse, og_system_define_system, og_world_events, og_world_get, og_world_get_tick,
-    og_world_restore, og_world_snapshot, set_hooks,
+    og_story_parse, og_system_define_system, og_timeline_captions, og_world_events, og_world_get,
+    og_world_get_tick, og_world_insert, og_world_restore, og_world_snapshot, og_world_spawn,
+    set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -49,6 +50,12 @@ fn segment(markers: &str) -> String {
 }
 
 const WINDOW: &str = "track marker {\n  key 0.3 {\n    name \"flow.open\"\n  }\n  key 0.7 {\n    name \"flow.lock\"\n  }\n  key 0.8 {\n    name \"flow.cut\"\n  }\n}\n";
+
+/// hall says a line from its first tick: a deck that only warms it says none.
+const HALL: &str = "track caption {\n  key 0 {\n    text \"In the hall\"\n  }\n}\n";
+
+/// A timeline that opens on footage 0.4 s in, from the clip's 0.3 s.
+const LATE: &str = "type timeline\nversion 1\n---\nduration 1\ntrack video {\n  key 0.4 {\n    video \"clips/a.ogt\"\n    from 0.3\n  }\n}\n";
 
 const DUEL: &str = "track marker {\n  key 0.2 {\n    name \"flow.open\"\n  }\n  key 0.8 {\n    name \"flow.lock\"\n  }\n  key 0.9 {\n    name \"flow.cut\"\n  }\n}\ntrack hotspot {\n  key 0.2 {\n    id \"knife\"\n    rect 0.1 0.1 0.2 0.2\n  }\n  key 0.6 {\n    id \"knife\"\n    rect 0.5 0.1 0.2 0.2\n  }\n}\n";
 
@@ -162,7 +169,7 @@ fn project() -> Option<&'static Path> {
         std::fs::create_dir_all(&segments).unwrap();
         for (name, markers) in [
             ("start", WINDOW),
-            ("hall", ""),
+            ("hall", HALL),
             ("brave", ""),
             ("shy", ""),
             ("wait", ""),
@@ -170,6 +177,7 @@ fn project() -> Option<&'static Path> {
         ] {
             std::fs::write(segments.join(format!("{name}.ogt")), segment(markers)).unwrap();
         }
+        std::fs::write(segments.join("late.ogt"), LATE).unwrap();
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         Some(root)
@@ -508,6 +516,131 @@ fn a_snapshot_inside_the_window_restores_the_pending_choice_and_the_decks() {
     assert_eq!(hash(b.engine), want, "the same world as never interrupted");
     to_end(&b);
     assert_eq!(view(&b)["ending"], json!("shy"));
+}
+
+fn timeline_of(r: &Run, e: f64) -> Value {
+    ok(og_world_get(r.engine, e, "og.Timeline".into()))
+}
+
+fn player_of(r: &Run, e: f64) -> Value {
+    ok(og_world_get(r.engine, e, "og.VideoPlayer".into()))
+}
+
+fn said(r: &Run) -> Vec<String> {
+    og_timeline_captions(r.engine)
+        .into_iter()
+        .map(|c| c.text)
+        .collect()
+}
+
+/// A deck that warms a segment holds it in pre-roll (og.Timeline.preroll):
+/// its timeline is stopped at 0 and nothing of it is evaluated, its player
+/// holds the segment's video paused at its first frame, and the cut plays
+/// that deck. Ways this could fail: the warm segment evaluated (hall's
+/// caption said while start still plays), the player left without the
+/// video (the cut then waits for a first frame), or the pre-roll left on
+/// the deck the cut plays.
+#[test]
+fn a_warming_deck_holds_its_first_frame_and_says_nothing_until_the_cut() {
+    let Some(root) = project() else {
+        eprintln!("skipped: no ffmpeg with an AV1 encoder");
+        return;
+    };
+    let r = start(root, 2);
+    let hall = asset(&r, "hall");
+    frame(r.engine, 25);
+    let playing = current(&r);
+    let (warm, held) = decks(&r).into_iter().find(|(e, _)| *e != playing).unwrap();
+    assert_eq!(held, hall, "the default's segment warms");
+    let t = timeline_of(&r, warm);
+    assert_eq!(
+        (&t["playing"], &t["preroll"], t["time"].as_f64()),
+        (&json!(false), &json!(true), Some(0.0)),
+        "{t}"
+    );
+    let p = player_of(&r, warm);
+    assert_eq!(p["video"], player_of(&r, playing)["video"], "{p}");
+    assert!(p["video"].as_f64().unwrap() > 0.0, "{p}");
+    assert_eq!(
+        (&p["playing"], p["time"].as_f64()),
+        (&json!(false), Some(0.0)),
+        "{p}"
+    );
+    assert_eq!(said(&r), [] as [&str; 0], "the warm segment says nothing");
+
+    // Nothing chosen: the cut (0.8 s) takes the default, to hall.
+    frame(r.engine, 30);
+    assert_eq!(view(&r)["node"], json!("hall"));
+    assert_eq!(current(&r), warm, "the cut plays the warm deck");
+    let t = timeline_of(&r, warm);
+    assert_eq!(
+        (&t["playing"], &t["preroll"]),
+        (&json!(true), &json!(false)),
+        "{t}"
+    );
+    assert_eq!(said(&r), ["In the hall"]);
+}
+
+/// A game's own timeline in pre-roll: its entity's og.VideoPlayer holds the
+/// frame the video track starts with (the first key's `from`, the video
+/// starting 0.4 s in), paused, while the same timeline without `preroll`
+/// touches nothing; a seek then evaluates it as a seek always did. Ways
+/// this could fail: the frame at the timeline's time taken where no key
+/// shows yet (no video, or frame 0 instead of 0.3 s), a stopped timeline
+/// without `preroll` prepared too, or pre-roll overriding a seek.
+#[test]
+fn a_stopped_timeline_in_preroll_prepares_the_frame_its_video_starts_with() {
+    let Some(root) = project() else {
+        eprintln!("skipped: no ffmpeg with an AV1 encoder");
+        return;
+    };
+    let r = start(root, 1);
+    let late = ok(og_load_timeline(r.engine, "segments/late.ogt".into()));
+    let spawn = |preroll: bool| {
+        let e = ok(og_world_spawn(r.engine, Some("{}".into())))
+            .as_f64()
+            .unwrap();
+        ok(og_world_insert(
+            r.engine,
+            e,
+            "og.Timeline".into(),
+            Some(json!({ "asset": late, "preroll": preroll }).to_string()),
+        ));
+        e
+    };
+    let (ready, plain) = (spawn(true), spawn(false));
+    frame(r.engine, 2);
+    let p = player_of(&r, ready);
+    assert!(p["video"].as_f64().unwrap() > 0.0, "{p}");
+    assert_eq!(&p["playing"], &json!(false), "{p}");
+    assert!((p["time"].as_f64().unwrap() - 0.3).abs() < 1e-6, "{p}");
+    assert!(
+        og_world_get(r.engine, plain, "og.VideoPlayer".into()).is_err(),
+        "a stopped timeline without preroll prepares nothing"
+    );
+    let t = timeline_of(&r, ready);
+    assert_eq!(
+        (&t["playing"], t["time"].as_f64()),
+        (&json!(false), Some(0.0)),
+        "{t}"
+    );
+
+    // A seek to 0.5 s shows the video 0.1 s past its key: 0.3 + 0.1.
+    ok(og_world_insert(
+        r.engine,
+        ready,
+        "og.Timeline".into(),
+        Some(json!({ "asset": late, "preroll": true, "time": 0.5 }).to_string()),
+    ));
+    frame(r.engine, 1);
+    let p = player_of(&r, ready);
+    assert!((p["time"].as_f64().unwrap() - 0.4).abs() < 1e-6, "{p}");
+    frame(r.engine, 3);
+    let p = player_of(&r, ready);
+    assert!(
+        (p["time"].as_f64().unwrap() - 0.4).abs() < 1e-6,
+        "pre-roll does not take a sought timeline back to its start: {p}"
+    );
 }
 
 fn command(r: &Run, cmd: &str) {

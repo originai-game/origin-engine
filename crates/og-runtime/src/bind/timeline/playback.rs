@@ -2,6 +2,7 @@
 
 use super::*;
 use og_core::bytes::ByteReader;
+use std::collections::BTreeSet;
 
 // ── og.timeline: ops and the playback state ─────────────────────────────────
 
@@ -51,6 +52,10 @@ pub(super) struct Shared {
     pub(super) ops: Vec<(u64, Op)>,
     /// The captions the last tick showed, `(id, text)` (og.timeline.captions).
     captions: Vec<(String, String)>,
+    /// The og.Timeline entities in pre-roll last tick: each asks for the
+    /// modules it needs once, as its pre-roll begins. Not saved: a restored
+    /// world asks again.
+    prerolled: BTreeSet<u64>,
 }
 
 /// Engine `engine`'s runs (fresh ones for an engine that is gone).
@@ -538,6 +543,9 @@ fn timeline_system(
     // The caption keys showing this tick, in the timelines' order: the
     // UI's `$captions` (docs/ui.md §2). Nothing here draws them.
     let mut captions: Vec<(String, String)> = Vec::new();
+    let was = std::mem::take(&mut lock(state).prerolled);
+    let mut prerolled = BTreeSet::new();
+    let mut wanted: Vec<String> = Vec::new();
     for e in rows {
         let key = e.to_bits();
         let cb = ctx.get_bytes(e, r.timeline.0)?;
@@ -729,6 +737,15 @@ fn timeline_system(
                 }
             }
         }
+        // Pre-roll: stopped and holding nothing, it prepares what its time
+        // starts with instead of showing it.
+        if row.preroll && !playing && !run.active {
+            preroll(ctx, r, &lt, e, t)?;
+            prerolled.insert(key);
+            if !was.contains(&key) {
+                wanted.push(lt.id.clone());
+            }
+        }
         for (a, b) in &spans {
             markers(ctx, key, asset, &lt, *a, *b, "", 0)?;
         }
@@ -755,7 +772,20 @@ fn timeline_system(
         ctx.set_bytes(e, r.timeline.0, &out)?;
         lock(state).runs.insert(key, run);
     }
-    lock(state).captions = captions;
+    {
+        let mut sh = lock(state);
+        sh.captions = captions;
+        sh.prerolled = prerolled;
+    }
+    // The modules a pre-rolled timeline needs (its videos' and its
+    // story's), asked for once as its pre-roll begins.
+    if !wanted.is_empty()
+        && let Ok(eng) = crate::engine::engine(engine_id)
+    {
+        for id in wanted {
+            crate::world::needs::asset(&eng, &id, None);
+        }
+    }
     Ok(())
 }
 

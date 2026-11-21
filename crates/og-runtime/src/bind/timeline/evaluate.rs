@@ -610,20 +610,76 @@ fn video(
     let Some(&handle) = lt.videos.get(&key.video) else {
         return Ok(());
     };
+    show(
+        ctx,
+        (id, l),
+        e,
+        handle,
+        vt,
+        speed.is_some(),
+        key.speed * speed.unwrap_or(1.0),
+    )
+}
+
+/// Sets `e`'s og.VideoPlayer to `video` at `time` and `speed`, playing or
+/// holding that frame. Written only when it differs.
+fn show(
+    ctx: &mut SystemContext<'_>,
+    player: (SchemaId, &crate::host::codec::Layout),
+    e: Entity,
+    video: u64,
+    time: f32,
+    playing: bool,
+    speed: f32,
+) -> og_core::Result<()> {
+    let (id, l) = player;
     let old = ctx.get_bytes(e, id).ok();
     let mut p = match &old {
         Some(b) => l.decode(b),
         None => json!({}),
     };
-    p["video"] = json!(handle);
-    p["time"] = json!(vt.max(0.0));
-    p["playing"] = json!(speed.is_some());
-    p["speed"] = json!(key.speed * speed.unwrap_or(1.0));
+    p["video"] = json!(video);
+    p["time"] = json!(time.max(0.0));
+    p["playing"] = json!(playing);
+    p["speed"] = json!(speed);
     let out = l.encode(old.as_deref(), Some(&p)).map_err(invalid)?;
     match old {
         Some(b) if b == out => {}
         Some(_) => ctx.set_bytes(e, id, &out)?,
         None => ctx.insert_bytes(e, id, &out)?,
+    }
+    Ok(())
+}
+
+/// A stopped timeline's pre-roll (og.Timeline.preroll) at `t`: its own
+/// video tracks' player, the owner's og.VideoPlayer, holds the frame the
+/// track shows at `t`, or the first key's first frame when the video
+/// starts later, so its decoder has it before the timeline plays. A video
+/// track that names an entity is left alone: that player may be showing
+/// something else until the timeline takes it.
+pub(super) fn preroll(
+    ctx: &mut SystemContext<'_>,
+    r: &Rec,
+    lt: &Loaded,
+    owner: Entity,
+    t: f32,
+) -> og_core::Result<()> {
+    let (Ok(id), Some(l)) = (ctx.id_by_name(crate::bind::video::PLAYER), &r.video) else {
+        return Ok(());
+    };
+    for track in &lt.timeline.tracks {
+        let Track::Video(v) = track else { continue };
+        if !v.entity.is_empty() {
+            continue;
+        }
+        let at = eval::video_at(v, t)
+            .map(|(k, time)| (&v.keys[k], time))
+            .or_else(|| v.keys.first().map(|k| (k, k.from)));
+        if let Some((key, time)) = at
+            && let Some(&handle) = lt.videos.get(&key.video)
+        {
+            show(ctx, (id, l), owner, handle, time, false, key.speed)?;
+        }
     }
     Ok(())
 }

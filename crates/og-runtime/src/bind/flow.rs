@@ -778,8 +778,9 @@ fn deck_state(ctx: &SystemContext<'_>, r: &Recs, e: Entity) -> og_core::Result<(
     Ok((t.time, t.playing, p.texture))
 }
 
-/// Puts node `id`'s segment on `deck`, paused at its first frame (or
-/// playing from 0).
+/// Puts node `id`'s segment on `deck`: playing from 0, or in pre-roll
+/// (og.Timeline.preroll), where og.timeline has the deck's player hold the
+/// segment's first frame and shows nothing of it.
 fn load_deck(
     ctx: &mut SystemContext<'_>,
     r: &Recs,
@@ -792,16 +793,8 @@ fn load_deck(
         ctx,
         &r.timeline,
         deck,
-        json!({ "asset": node.timeline as f64, "time": 0.0, "playing": playing, "loop": false, "speed": 1.0 }),
+        json!({ "asset": node.timeline as f64, "time": 0.0, "playing": playing, "loop": false, "speed": 1.0, "preroll": !playing }),
     )?;
-    if let Some((video, from)) = node.first {
-        patch(
-            ctx,
-            &r.player,
-            deck,
-            json!({ "video": video as f64, "time": from, "playing": false, "wait": true }),
-        )?;
-    }
     patch(ctx, &r.deck, deck, json!({ "node": id }))
 }
 
@@ -868,7 +861,7 @@ fn tick(
                 flow.paused = *op == Op::Pause;
                 advancing &= !flow.paused;
                 if !flow.ended && flow.node != 0 {
-                    let playing = json!({ "playing": !flow.paused });
+                    let playing = json!({ "playing": !flow.paused, "preroll": false });
                     patch(ctx, &r.timeline, current(&flow), playing.clone())?;
                     if let Some(p) = previous(&flow) {
                         patch(ctx, &r.timeline, p, playing)?;
@@ -972,7 +965,12 @@ fn tick(
         }
         let warm = decks.iter().any(|(d, k)| *d == target && k.node == id);
         if warm {
-            patch(ctx, &r.timeline, target, json!({ "playing": !flow.paused }))?;
+            patch(
+                ctx,
+                &r.timeline,
+                target,
+                json!({ "playing": !flow.paused, "preroll": false }),
+            )?;
         } else {
             load_deck(ctx, r, target, id, node, !flow.paused)?;
         }

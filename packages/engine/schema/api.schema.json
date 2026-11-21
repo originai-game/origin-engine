@@ -52428,6 +52428,11 @@
           "type": "boolean",
           "description": "Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded.",
           "default": false
+        },
+        "preroll": {
+          "type": "boolean",
+          "description": "Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. og.flow sets it on a warming deck.",
+          "default": false
         }
       },
       "additionalProperties": false

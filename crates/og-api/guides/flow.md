@@ -205,7 +205,9 @@ Telemetry, when a game sends it: `flow_choice {node, index, timedOut}`,
 
 `FlowStartDesc.decks` is 3 by default: one plays, two hold the segments the
 current node may lead to, paused on their first frame, the chosen one
-first, then the default. A cut then shows a frame already decoded.
+first, then the default. A cut then shows a frame already decoded. A deck
+that holds a segment is its timeline in pre-roll (og.Timeline.preroll):
+nothing of the segment is seen or heard until the cut plays it.
 
 | Device | Decks |
 |---|---|
