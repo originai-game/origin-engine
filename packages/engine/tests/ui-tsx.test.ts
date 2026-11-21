@@ -295,7 +295,8 @@ test("a component's imported string table is registered before it is built", () 
     writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\nname \"p\"\n");
     mkdirSync(join(dir, "src"));
     mkdirSync(join(dir, "assets"));
-    writeFileSync(join(dir, "src/main.ts"), `export { Spinner } from "@origingame/engine/ui/components";\n`);
+    // A module imported by its path bundles its tables as the barrel does.
+    writeFileSync(join(dir, "src/main.ts"), `export { ErrorState } from "@origingame/engine/ui/components/base/error-state.tsx";\n`);
     cookProject(dir, dir);
     const shown: string[] = [];
     const game = og.game({

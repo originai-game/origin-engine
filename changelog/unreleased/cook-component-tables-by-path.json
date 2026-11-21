@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "@origingame/engine/ui/components/*",
+      "summary": "A built-in component imported by its path (`@origingame/engine/ui/components/base/error-state.tsx`, `ui/controls/*`, `ui/screens/*`) bundles its string tables as the barrel import does: its text no longer shows raw keys such as `base.error.title`."
+    }
+  ]
+}

@@ -75,7 +75,14 @@ pub(crate) fn code_ui(root: &Path) -> CodeUi {
                 || l.value.starts_with("@origingame/engine/ui/")
             {
                 ui.tsx = true;
-                ui.components |= l.value == "@origingame/engine/ui/components";
+                // The barrel or one module by its path (`ui/components/…`,
+                // `ui/controls/…`, `ui/screens/…`): either imports tables.
+                ui.components |= ["components", "controls", "screens"].iter().any(|d| {
+                    l.value
+                        .strip_prefix("@origingame/engine/ui/")
+                        .and_then(|r| r.strip_prefix(d))
+                        .is_some_and(|r| r.is_empty() || r.starts_with('/'))
+                });
             }
         }
     }
