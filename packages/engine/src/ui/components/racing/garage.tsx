@@ -30,9 +30,9 @@ export interface RacingGarageProps {
   onBuy?: (e: UiEvent, id: string) => void;
 }
 
-const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi/95 disabled:opacity-45 nine-plate-cut ${packClass("Button", "plate")}`;
-const stepButton = `size-11 items-center justify-center p-0 text-fg bg-plate-hi hover:bg-glass-hi/95 nine-plate-cut ${packClass("Button", "plate")}`;
-const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi/95 disabled:opacity-45 flex-1 min-w-[8.571rem] nine-plate-cut ${packClass("Button", "plate", "primary")}`;
+const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-45 nine-plate-cut ${packClass("Button", "plate")}`;
+const stepButton = `size-11 items-center justify-center p-0 text-fg bg-plate-hi hover:bg-glass-hi nine-plate-cut ${packClass("Button", "plate")}`;
+const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-45 flex-1 min-w-[8.571rem] nine-plate-cut ${packClass("Button", "plate", "primary")}`;
 const keyCap = `shrink-0 pointer-coarse:hidden text-[1.286rem] leading-none`;
 
 /**
@@ -76,7 +76,7 @@ export function RacingGarage(props: RacingGarageProps) {
               {(v) => (
                 <View class="flex-col gap-1 w-full" label={v().title} data-owned={v().owned} data-chosen={v().id === props.chosen} data-locked={v().locked}>
                   <Show when={!v().image}>
-                    <View class={`w-full aspect-[3.2] bg-white/4 nine-panel-cut`} />
+                    <View class={`w-full aspect-[3.2] bg-lit-soft nine-panel-cut`} />
                   </Show>
                   <Text class={`w-full text-left text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-hud-accent text-stroke-3 text-stroke-bg`}>{v().body}</Text>
                   <Text class={`w-full text-left text-[4.714rem] leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>

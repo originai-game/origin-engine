@@ -41,14 +41,14 @@ export function RacingStandings(props: RacingStandingsProps) {
       data-fallback={!props.hasPlayer}
     >
       <Show when={rows().length} fallback={
-        <Text class={`py-[0.286rem] px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 bg-linear-to-r from-glass/89 to-entry-lo/47`} role="status">{t("racing.standings.empty")}</Text>
+        <Text class={`py-[0.286rem] px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted bg-glass`} role="status">{t("racing.standings.empty")}</Text>
       }>
         <Scroll class="w-full min-h-0 flex-1">
           <View class="flex-col w-full gap-y-[0.286rem] compact:gap-y-[0.143rem]" role="list" label={name()}>
             <For each={rows()} key={(r) => r.id}>
               {(r, i) => (
                 <View
-                  class={`group/srow flex-row items-center gap-x-[0.571rem] w-full min-w-0 pr-[0.857rem] bg-glass/89 nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-hud-accent compact:gap-x-[0.429rem] compact:pr-[0.571rem] compact:hidden compact:data-on:flex compact:group-data-fallback/standings:data-top:flex`}
+                  class={`group/srow flex-row items-center gap-x-[0.571rem] w-full min-w-0 pr-[0.857rem] bg-glass nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-hud-accent compact:gap-x-[0.429rem] compact:pr-[0.571rem] compact:hidden compact:data-on:flex compact:group-data-fallback/standings:data-top:flex`}
                   role="listitem"
                   label={r().name}
                   current={r().player}
@@ -58,11 +58,11 @@ export function RacingStandings(props: RacingStandingsProps) {
                   data-player={r().player}
                   data-retired={r().state === "retired"}
                 >
-                  <Text class={`shrink-0 w-[2.143rem] leading-[1.857rem] text-center text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-white/14 group-data-player/srow:bg-black/20 compact:w-[1.714rem] compact:leading-[1.429rem] compact:text-[0.929rem]`}>
+                  <Text class={`shrink-0 w-[2.143rem] leading-[1.857rem] text-center text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-surface group-data-player/srow:bg-plate-hi compact:w-[1.714rem] compact:leading-[1.429rem] compact:text-[0.929rem]`}>
                     {formatNumber(r().position)}
                   </Text>
                   <View
-                    class={`shrink-0 w-[0.357rem] h-[1.429rem] bg-white/55 compact:h-[1rem]`}
+                    class={`shrink-0 w-[0.357rem] h-[1.429rem] bg-sheen compact:h-[1rem]`}
                     style={{ backgroundColor: r().color || undefined }}
                   />
                   <Text class={`flex-1 min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-[0.929rem]`}>{r().name}</Text>

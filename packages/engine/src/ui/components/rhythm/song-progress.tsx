@@ -28,7 +28,7 @@ export function RhythmSongProgress(props: RhythmSongProgressProps) {
       valueText={props.elapsed !== "" ? t("rhythm.progress.time", { elapsed: props.elapsed, length: props.length }) : `${formatNumber(full * 100, { decimals: 0 })}%`}
     >
       <View class={`relative w-full h-[0.357rem] bg-well/79`}>
-        <View class={`absolute left-0 top-0 h-full bg-linear-to-r from-hud-accent to-white shadow-[0px_0px_12px_#38e8ff]`} style={{ width: `${full * 100}%` }} />
+        <View class={`absolute left-0 top-0 h-full bg-linear-to-r from-hud-accent to-sheen shadow-[0px_0px_12px_#38e8ff]`} style={{ width: `${full * 100}%` }} />
       </View>
       <Show when={props.elapsed !== ""}>
         <Show when={full < 0.9} fallback={

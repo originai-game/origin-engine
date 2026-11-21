@@ -45,7 +45,7 @@ export function RacingBanner(props: RacingBannerProps) {
         </Show>
       </View>
       <Show when={props.detail !== ""}>
-        <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg/78 text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.detail}</Text>
+        <Text class={`max-w-full min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted text-stroke-3 text-stroke-bg compact:tracking-normal`}>{props.detail}</Text>
       </Show>
     </>
   );

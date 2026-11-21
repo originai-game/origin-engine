@@ -27,8 +27,8 @@ function ordinal(n: number): string {
   return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
 }
 
-const hudLabel = `text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`;
-const actionButton = `min-h-11 min-w-[8.571rem] flex-row items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi shadow-[inset_0px_0px_0px_1px_#ffffff3d] hover:bg-glass-hi/95 disabled:opacity-45 compact:flex-1 compact:min-w-0 ${packClass("Button", "plate")}`;
+const hudLabel = `text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted`;
+const actionButton = `min-h-11 min-w-[8.571rem] flex-row items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi shadow-[inset_0px_0px_0px_1px_#ffffff3d] hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 ${packClass("Button", "plate")}`;
 const keyCap = `shrink-0 pointer-coarse:hidden text-[1.286rem] leading-none`;
 
 /**
@@ -74,10 +74,10 @@ export function RacingResults(props: RacingResultsProps) {
           </View>
           <View class="flex-col self-stretch min-w-0 min-h-0">
             <View class="flex-row items-center gap-4 py-[0.143rem] pr-3 shrink-0">
-              <Text class={`shrink-0 w-[2.286rem] text-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`}>{t("racing.results.position")}</Text>
-              <Text class={`flex-1 text-left text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78`}>{t("racing.results.driver")}</Text>
-              <Text class={`shrink-0 w-[7.886rem] text-right text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 compact:w-[6.143rem] compact:tracking-[0.04em] compact:text-[0.857rem]`}>{t("racing.results.time")}</Text>
-              <Text class={`shrink-0 w-[3.429rem] text-right text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg/78 compact:w-[2.571rem] compact:tracking-[0.04em] compact:text-[0.857rem]`}>{t("racing.results.points")}</Text>
+              <Text class={`shrink-0 w-[2.286rem] text-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted`}>{t("racing.results.position")}</Text>
+              <Text class={`flex-1 text-left text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted`}>{t("racing.results.driver")}</Text>
+              <Text class={`shrink-0 w-[7.886rem] text-right text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted compact:w-[6.143rem] compact:tracking-[0.04em] compact:text-[0.857rem]`}>{t("racing.results.time")}</Text>
+              <Text class={`shrink-0 w-[3.429rem] text-right text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted compact:w-[2.571rem] compact:tracking-[0.04em] compact:text-[0.857rem]`}>{t("racing.results.points")}</Text>
             </View>
             <Scroll class="flex-1 min-h-0 w-full">
               <View class="flex-col gap-[0.143rem] w-full" role="list" label={heading()}>
@@ -95,7 +95,7 @@ export function RacingResults(props: RacingResultsProps) {
                       data-dnf={r().state === "dnf"}
                       data-dsq={r().state === "dsq"}
                     >
-                      <Text class={`shrink-0 self-stretch w-[2.286rem] text-center leading-[3.143rem] text-[1.143rem] font-bold tabular-nums tracking-normal text-fg bg-white/14 group-data-leader/results:bg-gold group-data-leader/results:text-gold-fg group-data-player/results:bg-black/20 group-data-player/results:text-gold-fg compact:text-[0.929rem]`}>
+                      <Text class={`shrink-0 self-stretch w-[2.286rem] text-center leading-[3.143rem] text-[1.143rem] font-bold tabular-nums tracking-normal text-fg bg-surface group-data-leader/results:bg-gold group-data-leader/results:text-gold-fg group-data-player/results:bg-plate-hi group-data-player/results:text-gold-fg compact:text-[0.929rem]`}>
                         {r().state === "dnf" || r().state === "dsq" ? t("racing.results.unplaced") : formatNumber(r().position)}
                       </Text>
                       <View class="flex-1 min-w-0 flex-row flex-wrap items-center gap-x-0.5 gap-y-0.5">
@@ -136,7 +136,7 @@ export function RacingResults(props: RacingResultsProps) {
           <Text glyph="details" class={keyCap} />
           <Text>{t("racing.results.retry")}</Text>
         </View>
-        <View class={`min-h-11 min-w-[8.571rem] flex-row items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi shadow-[inset_0px_0px_0px_1px_#ffffff3d] hover:bg-glass-hi/95 disabled:opacity-45 compact:flex-1 compact:min-w-0 bg-hud-accent text-gold-fg shadow-none ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
+        <View class={`min-h-11 min-w-[8.571rem] flex-row items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-plate-hi shadow-[inset_0px_0px_0px_1px_#ffffff3d] hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 bg-hud-accent text-gold-fg shadow-none ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
           <Text>{t("racing.results.continue")}</Text>
         </View>
       </View>

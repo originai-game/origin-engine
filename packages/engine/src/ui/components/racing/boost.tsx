@@ -48,7 +48,7 @@ export function RacingBoost(props: RacingBoostProps) {
         <View class="flex-row items-center gap-x-2 min-w-0">
           <Text class={`shrink min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-ally text-stroke-3 text-stroke-bg compact:tracking-normal`}>{label()}</Text>
           <Show when={(props.key ?? "") !== ""}>
-            <Text class={`shrink min-w-[1.571rem] max-w-[60%] pointer-coarse:hidden bg-linear-to-b from-white to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] leading-[1.5] font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
+            <Text class={`shrink min-w-[1.571rem] max-w-[60%] pointer-coarse:hidden bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] leading-[1.5] font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
           </Show>
         </View>
         <View class={`relative w-full h-[0.857rem] overflow-hidden bg-well/82 shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_5.714px_#00000073] compact:h-[0.571rem]`}>
