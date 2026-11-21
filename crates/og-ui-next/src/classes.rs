@@ -391,13 +391,16 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     skin.outline.width = view.outline.width.0;
     skin.outline.offset = view.outline.offset.0;
     skin.outline.color = linear(view.outline.color);
-    // Translate, scale and rotate in their own fields; a percentage
-    // translate, skew and 3D need the box or a matrix and are left out.
+    // Translate (a fraction of the box's own size resolved at paint),
+    // scale and rotate in their own fields; skew and 3D need a matrix and
+    // are left out.
     for op in view.transform.ops() {
         let (t, v) = (&mut skin.transform, op.value);
         match op.kind {
             TransformKind::TranslateX => t.translate[0] += v,
             TransformKind::TranslateY => t.translate[1] += v,
+            TransformKind::TranslateXFraction => t.percent[0] += v,
+            TransformKind::TranslateYFraction => t.percent[1] += v,
             TransformKind::Scale => t.scale = [t.scale[0] * v, t.scale[1] * v],
             TransformKind::ScaleX => t.scale[0] *= v,
             TransformKind::ScaleY => t.scale[1] *= v,
@@ -738,6 +741,13 @@ mod tests {
             (exit.skin.opacity, exit.skin.transform.translate[1]),
             (0.0, 8.0)
         );
+        // A fraction translates by the box's own size, at paint; a later
+        // length on the same axis replaces it, as in Tailwind.
+        let m = c
+            .record("-translate-x-1/2 -translate-y-1/2 translate-x-2", &env)
+            .skin
+            .transform;
+        assert_eq!((m.translate, m.percent), ([8.0, 0.0], [0.0, -0.5]));
     }
 
     #[test]

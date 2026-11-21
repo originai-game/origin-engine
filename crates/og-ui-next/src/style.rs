@@ -313,6 +313,9 @@ pub struct Outline {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform {
     pub translate: [f32; 2],
+    /// A translation by fractions of the box's own size (CSS's
+    /// percentages, `-translate-x-1/2`), on top of `translate`.
+    pub percent: [f32; 2],
     pub scale: [f32; 2],
     /// Radians, clockwise.
     pub rotate: f32,
@@ -324,6 +327,7 @@ impl Default for Transform {
     fn default() -> Self {
         Transform {
             translate: [0.0; 2],
+            percent: [0.0; 2],
             scale: [1.0; 2],
             rotate: 0.0,
             origin: [0.5; 2],
@@ -333,7 +337,10 @@ impl Default for Transform {
 
 impl Transform {
     pub fn is_identity(&self) -> bool {
-        self.translate == [0.0; 2] && self.scale == [1.0; 2] && self.rotate == 0.0
+        self.translate == [0.0; 2]
+            && self.percent == [0.0; 2]
+            && self.scale == [1.0; 2]
+            && self.rotate == 0.0
     }
 }
 

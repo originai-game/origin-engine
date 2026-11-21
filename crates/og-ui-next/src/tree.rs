@@ -2205,10 +2205,10 @@ fn quad(
 
 /// Adds the transform of a box `rect` (x, y, w, h) composed onto its
 /// parent's `parent` to `p.transforms`: its index, or `parent` when its own
-/// is the identity. CSS's order: move to the origin, translate, rotate,
-/// scale, move back.
+/// is the identity. CSS's order: move to the origin, translate (its
+/// percentages of the box's own size), rotate, scale, move back.
 fn transformed(p: &mut Paint, parent: u32, t: &crate::style::Transform, rect: [f32; 4]) -> u32 {
-    if t.translate == [0.0; 2] && t.scale == [1.0; 2] && t.rotate == 0.0 {
+    if t.is_identity() {
         return parent;
     }
     if p.transforms.is_empty() {
@@ -2219,8 +2219,8 @@ fn transformed(p: &mut Paint, parent: u32, t: &crate::style::Transform, rect: [f
     let (a, b, c, d) = (cos * sx, sin * sx, -sin * sy, cos * sy);
     let ox = rect[0] + t.origin[0] * rect[2];
     let oy = rect[1] + t.origin[1] * rect[3];
-    let e = ox + t.translate[0] - (a * ox + c * oy);
-    let f = oy + t.translate[1] - (b * ox + d * oy);
+    let e = ox + t.translate[0] + t.percent[0] * rect[2] - (a * ox + c * oy);
+    let f = oy + t.translate[1] + t.percent[1] * rect[3] - (b * ox + d * oy);
     let [pa, pb, pc, pd, pe, pf, _, _] = p.transforms[parent as usize];
     p.transforms.push([
         pa * a + pc * b,

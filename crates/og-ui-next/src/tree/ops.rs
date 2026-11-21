@@ -2442,6 +2442,44 @@ mod tests {
         }
     }
 
+    /// `-translate-x-1/2 -translate-y-1/2` moves a box by half its own size
+    /// at paint, centring it on its `left-1/2 top-1/2` point. Real classes,
+    /// end to end.
+    #[test]
+    fn a_fraction_translate_is_of_the_box_itself() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, _, _, _| {
+            classes
+                .borrow_mut()
+                .record(class, &crate::classes::Env::default())
+        }));
+        let mut b = Batch::default();
+        for (id, class, parent) in [
+            (1, "relative w-[100px] h-[100px]", 0),
+            (
+                2,
+                "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[40px] h-[20px] bg-white",
+                1,
+            ),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let [x, y, w, h] = t.op_box(2).unwrap();
+        assert_eq!([x, y, w, h], [50.0, 50.0, 40.0, 20.0], "layout stays");
+        let q = t.drawn.quads.last().unwrap();
+        let [a, b, c, d, e, f, _, _] = t.drawn.transforms[q.xf as usize];
+        assert_eq!(
+            [a * x + c * y + e, b * x + d * y + f],
+            [30.0, 40.0],
+            "drawn half its size back"
+        );
+    }
+
     /// `order-*` places a flex or grid item among its siblings for layout,
     /// as CSS's `order`: the flex row and the grid's auto-placement take
     /// order-modified document order. Real classes, end to end.

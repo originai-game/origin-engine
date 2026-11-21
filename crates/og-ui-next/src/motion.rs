@@ -249,12 +249,14 @@ fn read(ch: usize, s: &Skin) -> L {
         RADIUS_CH => v[..4].copy_from_slice(&s.radius),
         TRANSFORM_CH => {
             let t = &s.transform;
-            v[..5].copy_from_slice(&[
+            v[..7].copy_from_slice(&[
                 t.translate[0],
                 t.translate[1],
                 t.scale[0],
                 t.scale[1],
                 t.rotate,
+                t.percent[0],
+                t.percent[1],
             ]);
         }
         TEXT_SHADOW_CH => v = shadow_lanes(&s.text_shadow),
@@ -275,6 +277,7 @@ fn write(ch: usize, s: &mut Skin, L(v): &L) {
         TRANSFORM_CH => {
             let t = &mut s.transform;
             (t.translate, t.scale, t.rotate) = ([v[0], v[1]], [v[2], v[3]], v[4]);
+            t.percent = [v[5], v[6]];
         }
         TEXT_SHADOW_CH => put_shadow(&mut s.text_shadow, v),
         BLUR_CH => s.backdrop_blur = v[0].max(0.0),

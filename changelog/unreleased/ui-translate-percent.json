@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui classes",
+      "summary": "A fraction translate class (`-translate-x-1/2`, `translate-y-full`) moves the element by its own box's size at paint, as in Tailwind; it moved nothing, so an element centred with `left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2` sat with its top left corner on the point. It animates with the rest of the transform."
+    }
+  ]
+}
