@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "RpgCharacter, RpgCombo, RpgCommands, RpgCompanions, RpgEffects, RpgEnemyInfo, RpgExperience, RpgHints",
+      "summary": "The character HUD components ship as TSX beside their component documents: same props, states, strings and accessibility, styled with Tailwind classes and the new UI's primitives. HudBar, HudPortrait and HudEffect have no TSX ports yet, so companions, enemy-info and effects carry faithful local stand-ins to swap for the shared components when they land; octagon clip-paths become rounded plates, a key cap hides under a touch screen through pointer-coarse, and skew, glows and container queries are approximated or dropped."
+    }
+  ]
+}
