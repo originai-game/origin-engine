@@ -109,7 +109,15 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
     let files = if wiki {
         og_idl::generate_wiki(&api)
     } else {
-        og_idl::generate(&api)
+        let mut files = og_idl::generate(&api);
+        match ui_declarations(root) {
+            Ok(ui) => files.extend(ui),
+            Err(e) => {
+                eprintln!("og api gen: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+        files
     };
     let written = match og_idl::write(root, &files) {
         Ok(written) => written,
@@ -165,6 +173,14 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
         println!("removed {}", p.display());
     }
     ExitCode::SUCCESS
+}
+
+/// `@origingame/engine/ui`'s declarations (`og_idl::ui_declarations`), emitted
+/// with the tsrs `og check` uses.
+fn ui_declarations(root: &Path) -> Result<Vec<og_idl::Generated>, String> {
+    let tsrs = crate::commands::check::locate_tsrs(Some(&root.join("packages/engine")))?
+        .ok_or_else(|| crate::commands::check::NO_TSRS.to_string())?;
+    og_idl::ui_declarations(root, &tsrs.path)
 }
 
 /// The guides `og api gen` writes from other sources than the IDL, as (path, text).
@@ -242,7 +258,14 @@ fn api_check(root: &Path) -> ExitCode {
             line: 1,
         })
         .collect();
-    match og_idl::check(root).map(|d| stale.into_iter().chain(d).collect::<Vec<_>>()) {
+    let ui = match ui_declarations(root) {
+        Ok(ui) => ui,
+        Err(e) => {
+            eprintln!("og api check: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    match og_idl::check(root, &ui).map(|d| stale.into_iter().chain(d).collect::<Vec<_>>()) {
         Err(e) => {
             eprint!("og api check: {e}");
             ExitCode::FAILURE

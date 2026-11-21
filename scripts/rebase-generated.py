@@ -47,9 +47,16 @@ def regenerate():
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = std::path::Path::new(".");
     let api = og_idl::read(&root.join(og_idl::IDL_PATH))?;
-    let files = og_idl::generate(&api);
+    let mut files = og_idl::generate(&api);
+    // @origingame/engine/ui's declarations, with the tsrs og check finds first.
+    let tsrs = std::env::var_os("OG_TSRS")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::split_paths(&std::env::var_os("PATH")?).map(|d| d.join("tsrs")).find(|p| p.is_file()))
+        .ok_or("no tsrs: run scripts/install-tools.sh or set OG_TSRS")?;
+    let ui = og_idl::ui_declarations(root, &tsrs)?;
+    files.extend(ui.iter().cloned());
     og_idl::write(root, &files)?;
-    for drift in og_idl::check(root)? {
+    for drift in og_idl::check(root, &ui)? {
         if let og_idl::Drift::Unexpected(path) = drift {
             std::fs::remove_file(root.join(path))?;
         } else {

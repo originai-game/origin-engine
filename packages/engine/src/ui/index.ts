@@ -7,14 +7,13 @@
 import type { Texture, World } from "@origingame/engine";
 import { abi } from "../runtime/host.ts";
 import { json } from "../runtime/result.ts";
-import { type Renderer, Renderer as UiRenderer, RendererContext, type UiNode, component, element, insert, spread } from "./rt.ts";
+import { type Renderer, Renderer as UiRenderer, RendererContext, component, element, insert, spread } from "./rt.ts";
 import { type Accessor, createContext, createMemo, createRoot, createSignal, onCleanup, provide, untrack, useContext } from "./signals.ts";
 
 export { batch, createContext, createEffect, createMemo, createRenderEffect, createRoot, createSignal, onCleanup, untrack, useContext } from "./signals.ts";
 export type { Accessor, Context, Signal } from "./signals.ts";
-// The public shapes are the declaration's (types/ui.d.ts), which games read.
-import type { HostProps, UiChild } from "../../types/ui.d.ts";
-export type { HostProps, UiChild, UiEvent, UiNode } from "../../types/ui.d.ts";
+import type { HostProps, UiChild, UiNode } from "./types.ts";
+export type { HostProps, UiChild, UiEvent, UiNode } from "./types.ts";
 
 
 /** The id the host calls take: the runtime's world (WorldImpl) carries it. */
@@ -108,8 +107,10 @@ export function useWorld(): World {
 }
 
 /** Each world's renderer: its op buffer and handlers. */
+/** @internal */
 export const renderers = new Map<number, Renderer>();
 
+/** @internal */
 export function rendererFor(world: World): Renderer {
   let ui = renderers.get(idOf(world));
   if (!ui) {
