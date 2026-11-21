@@ -140,11 +140,10 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 ## Streams and landing
 
 - The coordinator delegates streams with `create_thread`, each owning a
-  feature area on one branch, overlapping ones in order. Default:
-  `external-agent:claude-code` with `["model:claude-opus-5-5","effort:medium"]`,
-  project `origingame/origin-engine`. A hard problem may go to
-  `["model:claude-fable-5-1","effort:high"]`. A stopped thread is not
-  resumed.
+  feature area on one branch, overlapping ones in order. Default: Amp's
+  own mode with model `anthropic/claude-opus-5-5`, project
+  `origingame/origin-engine`. A hard problem may go to
+  `anthropic/claude-fable-5-2`. A stopped thread is not resumed.
 - A stream finishes its work whole and sends it as one stack of logical
   commits (a move and a logic edit never share one). Authors run only fast
   checks: `cargo check --workspace --all-targets`, Clippy, their crates'
