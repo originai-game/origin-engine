@@ -275,7 +275,7 @@ test("every column factory and constant the IDL declares is a named export", () 
   for (const c of bindings.columns as Array<{ name: string }>) if (typeof exported[c.name] !== "function") missing.push(`${c.name} (column factory)`);
   for (const m of catalog["x-og-modules"]) for (const c of m.consts as Array<CatalogFn & { value?: unknown }>) {
     if (!(c.name in exported)) missing.push(`${c.name} (const of ${m.name})`);
-    else if (exported[c.name] !== c.value) missing.push(`${c.name} is ${String(exported[c.name])}, declared ${String(c.value)}`);
+    else if (JSON.stringify(exported[c.name]) !== JSON.stringify(c.value)) missing.push(`${c.name} is ${JSON.stringify(exported[c.name])}, declared ${JSON.stringify(c.value)}`);
   }
   expect(missing).toEqual([]);
   // Each makes a field the engine takes (beforeAll inserted them), holding the factory's default.
