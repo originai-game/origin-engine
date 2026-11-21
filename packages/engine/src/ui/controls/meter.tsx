@@ -27,7 +27,7 @@ export function Meter(props: MeterProps) {
       data-poor={props.region === "poor"}
     >
       <View
-        class={`h-full rounded-capsule bg-success shadow-[inset_0px_1px_0px_0px_#ffffff0f] transition-layout duration-180 ease-out data-empty:hidden group-data-suboptimum/meter:bg-warn group-data-poor/meter:bg-danger`}
+        class={`h-full rounded-capsule bg-success inset-shadow-lit transition-layout duration-180 ease-out data-empty:hidden group-data-suboptimum/meter:bg-warn group-data-poor/meter:bg-danger`}
         data-empty={fraction() <= 0}
         style={{ width: `${fraction() * 100}%` }}
       />
