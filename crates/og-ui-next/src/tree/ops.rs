@@ -1445,6 +1445,63 @@ mod tests {
         assert_eq!(got[1].2, [3.0; 4], "its slices are the classes'");
     }
 
+    /// A row sized to its content (a `justify-items-center` grid item)
+    /// counts a `grow basis-0` item at its max-content width, as CSS does,
+    /// not at its zero basis: the title screen's prompt between two rules.
+    #[test]
+    fn a_content_sized_row_gives_a_zero_basis_item_its_content() {
+        use taffy::prelude::*;
+        let mut t = tree();
+        t.set_resolver(Box::new(|class, _, _, _| {
+            let mut s = taffy::Style::default();
+            match class {
+                "grid" => {
+                    s.display = Display::Grid;
+                    s.justify_items = AlignItems::CENTER;
+                    s.size.width = length(400.0);
+                }
+                "row" => s.flex_direction = FlexDirection::Row,
+                "rule" => {
+                    (s.flex_grow, s.flex_shrink, s.flex_basis) = (0.0, 0.0, length(20.0));
+                    s.size.height = length(2.0);
+                }
+                "prompt" => (s.flex_grow, s.flex_shrink, s.flex_basis) = (1.0, 1.0, length(0.0)),
+                "text" => s.size = Size::from_lengths(50.0, 10.0),
+                _ => {}
+            }
+            Record {
+                layout: rune_taffy::CompactStyle::from(&s),
+                ..Record::default()
+            }
+        }));
+        let mut b = Batch::default();
+        for (id, class, parent) in [
+            (1, "grid", 0),
+            (2, "row", 1),
+            (3, "rule", 2),
+            (4, "prompt", 2),
+            (5, "text", 4),
+            (6, "rule", 2),
+        ] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(
+            t.op_box(2).unwrap()[2],
+            90.0,
+            "two rules and the prompt's content"
+        );
+        assert_eq!(
+            t.op_box(4).unwrap()[2],
+            50.0,
+            "the prompt is as wide as its content"
+        );
+        assert_eq!(t.op_box(2).unwrap()[0], 155.0, "the row is centred");
+    }
+
     /// A node's `data-*` props and its nearest groups' reach its classes'
     /// resolver as its data context: its own by name, a group's as
     /// `group/name` from the nearest group of that name only, and a prop

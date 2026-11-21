@@ -1485,7 +1485,14 @@ fn determine_container_main_size(
                 if lines.len() > 1 {
                     f32_max(size, main_axis_available_space)
                 } else {
-                    size
+                    // Fit-content: the container's max-content size, which sums its items'
+                    // max-content contributions whatever their flex basis, capped by the
+                    // available space (a `flex: 1 1 0` item counts at its content, not at 0),
+                    // and never below the sum of the items' hypothetical sizes.
+                    let max_content_space = available_space.with_main(dir, AvailableSpace::MaxContent);
+                    let max_content_size = intrinsic_main_size(tree, max_content_space, lines, constants)
+                        + main_content_box_inset;
+                    f32_max(size, f32_min(max_content_size, main_axis_available_space))
                 }
             }
             AvailableSpace::MinContent if constants.is_wrap => {
