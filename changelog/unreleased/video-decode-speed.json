@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.video: native playback",
+      "summary": "Footage plays several times faster headless (og test, og run --headless) and costs less CPU in a native build: the native decoder's 4:2:0 to RGBA conversion, which a tick waits for and which took most of a frame's decode, now converts pairs of rows with vector instructions (AVX2 where the CPU has it) and splits a large picture across threads. 360 ticks of 1344x768 footage on an NVIDIA L4 host take 2.0 to 2.5 s instead of 12.1 s (1.7 s with the film paused). Its bytes are unchanged, so frames and world hashes are the same."
+    }
+  ]
+}
