@@ -71,6 +71,35 @@
   --color-minimap: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.6);
   --color-minimap-edge: #ffffff14;
   --color-slot-selected-edge: #ffffff8c;
+  /* The HUD's own colours, over the scene in either scheme: its instrument
+     accent (and the ink on it), foe and ally, a boon, a vital in danger,
+     the fever gauge, a late judgement, the dark well a tag or dial sits
+     in, a key cap's face from its top (`-hi`) to its foot (`-lo`) and its
+     ink, and the chart tiers easy to master. `-fg` is the ink on a fill
+     of that colour, `-hi` the lit top of its gradient. */
+  --color-hud-accent: oklch(from var(--seed-hud) max(l, 0.75) c h);
+  --color-hud-accent-fg: #0b0f18;
+  --color-hud-accent-hi: #d6fdff;
+  --color-foe: rgb(255 77 94);
+  --color-foe-fg: #801823;
+  --color-ally: rgb(79 216 255);
+  --color-boon: rgb(85 227 154);
+  --color-boon-fg: #011e0f;
+  --color-critical: rgb(222 38 52);
+  --color-fever: rgb(255 61 138);
+  --color-late: rgb(255 140 70);
+  --color-well: #060910e0;
+  --color-key-hi: #d8dbe2;
+  --color-key-lo: #c9d1e2;
+  --color-key-fg: #262b38;
+  --color-gold-fg: #241a04;
+  --color-gold-hi: #fff2c4;
+  --color-epic-hi: #d9c6fe;
+  --color-chart-easy: rgb(52 199 120);
+  --color-chart-normal: rgb(50 160 230);
+  --color-chart-hard: rgb(255 165 40);
+  --color-chart-expert: rgb(255 61 138);
+  --color-chart-master: rgb(160 90 255);
   /* The game components' materials (role.css and the controls dress with
      them): `glass` a frame's body from its lit top (`-hi`) to its foot
      (`-lo`), all but opaque (no blur: a backdrop pass per frame costs a

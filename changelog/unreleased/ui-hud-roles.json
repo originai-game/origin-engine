@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "default style pack (theme colours)",
+      "summary": "The default pack names the HUD's own colours, so a TSX component styles them by role (bg-hud-accent, text-foe, border-ally…): hud-accent with hud-accent-fg and hud-accent-hi, foe and foe-fg, ally, boon and boon-fg, critical, fever, late, well, key-hi, key-lo, key-fg, gold-fg, gold-hi, epic-hi and chart-easy to chart-master. A style pack restyles them like any other theme colour; -fg is the ink on that fill, -hi the lit top of its gradient."
+    }
+  ]
+}

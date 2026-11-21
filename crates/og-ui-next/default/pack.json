@@ -101,6 +101,7 @@
         "dark": "#e8e8ed",
         "light": "#1c1c1e"
       },
+      "ally": "#4fd8ff",
       "bg": {
         "dark": "#000000",
         "light": "#e7f3ff"
@@ -109,6 +110,8 @@
         "dark": "#0a1120",
         "light": "#deeaff"
       },
+      "boon": "#55e39a",
+      "boon-fg": "#011e0f",
       "border": {
         "dark": "#2f384a",
         "light": "#d1ddf4"
@@ -121,10 +124,16 @@
         "dark": "#343d4f6b",
         "light": "#ffffffb8"
       },
+      "chart-easy": "#34c778",
+      "chart-expert": "#ff3d8a",
+      "chart-hard": "#ffa528",
+      "chart-master": "#a05aff",
+      "chart-normal": "#32a0e6",
       "common": {
         "dark": "#4b5568",
         "light": "#bac5dc"
       },
+      "critical": "#de2634",
       "danger": {
         "dark": "#ff9599",
         "light": "#ac0010"
@@ -145,6 +154,8 @@
         "dark": "#c86ff5",
         "light": "#7d3fc4"
       },
+      "epic-hi": "#d9c6fe",
+      "fever": "#ff3d8a",
       "fg": {
         "dark": "#edf6ff",
         "light": "#121824"
@@ -173,6 +184,8 @@
         "dark": "#f5f5fa",
         "light": "#39393c"
       },
+      "foe": "#ff4d5e",
+      "foe-fg": "#801823",
       "glass": {
         "dark": "#141b2cf7",
         "light": "#f3fafff7"
@@ -197,6 +210,8 @@
         "dark": "#ffcf5a",
         "light": "#8a5a00"
       },
+      "gold-fg": "#241a04",
+      "gold-hi": "#fff2c4",
       "health": {
         "dark": "#30d158",
         "light": "#1b7a38"
@@ -205,14 +220,21 @@
         "dark": "#0e1626cc",
         "light": "#f1fbffdb"
       },
+      "hud-accent": "#38e8ff",
+      "hud-accent-fg": "#0b0f18",
+      "hud-accent-hi": "#d6fdff",
       "info": {
         "dark": "#5cc8ff",
         "light": "#0052a6"
       },
+      "key-fg": "#262b38",
+      "key-hi": "#d8dbe2",
+      "key-lo": "#c9d1e2",
       "knob": {
         "dark": "#eaf6ff",
         "light": "#ffffff"
       },
+      "late": "#ff8c46",
       "legendary": {
         "dark": "#ffa53d",
         "light": "#973107"
@@ -408,6 +430,7 @@
         "dark": "#ffa53d",
         "light": "#973107"
       },
+      "well": "#060910e0",
       "well-rim": {
         "dark": "#707b8f",
         "light": "#8892a8"
