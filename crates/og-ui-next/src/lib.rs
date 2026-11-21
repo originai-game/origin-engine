@@ -70,6 +70,61 @@ mod tests {
         assert_eq!(a.box_of(second).x, 10.0 + 60.0 + 4.0);
     }
 
+    /// Words of half the size a character, broken greedily at spaces
+    /// to `width` (a word wider than it overflows whole, as CSS's
+    /// `overflow-wrap: normal`).
+    fn wrapped(text: &str, run: &arena::Run, width: Option<f32>) -> (f32, f32) {
+        let ch = run.size * 0.5;
+        let width = width.filter(|_| !run.nowrap);
+        let (mut widest, mut line, mut lines) = (0.0f32, 0.0f32, 1.0f32);
+        for word in text.split(' ') {
+            let w = word.chars().count() as f32 * ch;
+            let next = if line > 0.0 { line + ch + w } else { w };
+            if line > 0.0 && width.is_some_and(|max| next > max) {
+                widest = widest.max(line);
+                line = w;
+                lines += 1.0;
+            } else {
+                line = next;
+            }
+        }
+        (widest.max(line), lines * run.size)
+    }
+
+    fn row_of(width: f32) -> CompactStyle {
+        let mut row = CompactStyle::default();
+        row.set_flex_direction(taffy::FlexDirection::Row);
+        row.set_align_items(taffy::AlignItems::FLEX_START);
+        row.set_size(taffy::Size {
+            width: taffy::Dimension::length(width),
+            height: taffy::Dimension::auto(),
+        });
+        row
+    }
+
+    /// A text's min-content width is its longest word, not its unbroken
+    /// line: a flex item with the automatic minimum shrinks to it in a
+    /// row too narrow for the line, and wraps there. Wrong (min-content
+    /// measured unbroken, as before): the item keeps the line's 90 px.
+    /// A nowrap line is one unbreakable segment.
+    #[test]
+    fn a_texts_min_content_is_its_longest_word() {
+        let mut m = wrapped;
+        for (nowrap, want) in [(false, (40.0, 60.0)), (true, (90.0, 20.0))] {
+            let mut a = arena::Arena::new();
+            let r = a.element(0, row_of(30.0));
+            let e = a.element(r, CompactStyle::default());
+            // 20 px: 10 px a character; "bbbb" is 40 px, the line 90.
+            let t = a.text(e, "aa bbbb c", 20.0);
+            let mut run = arena::Run::sized(20.0);
+            run.nowrap = nowrap;
+            a.set_run(t, run);
+            a.layout(1280.0, 720.0, &mut m);
+            let b = a.box_of(e);
+            assert_eq!((b.w, b.h), want, "nowrap {nowrap}");
+        }
+    }
+
     #[test]
     fn an_empty_element_keeps_its_own_size_and_padding() {
         let mut a = arena::Arena::new();

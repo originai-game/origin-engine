@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI text intrinsic width",
+      "summary": "A TSX text's min-content width is its longest word (a `whitespace-nowrap` text's whole line), as in CSS, instead of its unbroken line. Grid `min-content` and `auto` tracks, `w-min`, `w-fit` and a flex item's automatic minimum width now let a text wrap down to its longest word."
+    }
+  ]
+}

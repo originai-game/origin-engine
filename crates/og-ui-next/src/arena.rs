@@ -365,9 +365,13 @@ impl Arena {
                         let Some((i, (text, run))) = text else {
                             return Size::ZERO;
                         };
+                        // CSS intrinsic sizes: min-content breaks at every
+                        // opportunity (width 0: the longest word, a nowrap
+                        // line whole), max-content never.
                         let avail = known.width.or(match avail.width {
                             AvailableSpace::Definite(w) => Some(w),
-                            _ => None,
+                            AvailableSpace::MinContent => Some(0.0),
+                            AvailableSpace::MaxContent => None,
                         });
                         let n = &nodes[i];
                         let key = avail.map_or(u32::MAX, |w| w.to_bits().min(EMPTY - 1));
