@@ -26,7 +26,7 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
         </Button>
-        <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 grow shrink m-0 compact:text-3xl compact:grow compact:shrink-0 compact:basis-full`}>
+        <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg grow shrink m-0 compact:text-3xl compact:grow compact:shrink-0 compact:basis-full`}>
           {t("screen.flow-chapters.title")}
         </Text>
       </View>
@@ -43,10 +43,10 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
                     <Icon class="text-warn size-6 shrink" name="lock" />
                   </View>
                 </Show>
-                <View class="absolute shadow-[inset_0px_0px_0px_1px_#ffffff29,inset_0px_1px_0px_#ffffff8c] inset-0 group-data-locked/card:shadow-[inset_0px_0px_0px_1px_#ffffff1f] group-data-selected/card:shadow-[inset_0px_0px_0px_2.288px_#38e8ff,inset_0px_3.424px_0px_#ffffff80]" />
+                <View class="absolute inset-shadow-lit inset-ring-1 inset-ring-rim inset-0 group-data-locked/card:inset-ring-1 group-data-locked/card:inset-ring-rim group-data-selected/card:inset-shadow-lit group-data-selected/card:inset-ring-2 group-data-selected/card:inset-ring-hud-accent" />
               </View>
               <View class="flex-row items-baseline gap-x-2 px-0.5">
-                <Text class={`text-fg-muted grow shrink basis-0 text-[1.214rem] leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg-muted compact:text-reading`}>
+                <Text class={`text-fg-muted grow shrink basis-0 text-base leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg-muted compact:text-reading`}>
                   {c().locked ? t("screen.flow-chapters.locked") : c().title}
                 </Text>
               </View>

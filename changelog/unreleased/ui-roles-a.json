@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Screen components",
+      "summary": "The screens write theme steps and roles only where they wrote brackets, literal colours and opacity modifiers: type sizes, tracking and leading, radii, rims and lit edges, glows in the state's role, halos on the background role, and the menu's and title's washes in the whole background role."
+    }
+  ]
+}

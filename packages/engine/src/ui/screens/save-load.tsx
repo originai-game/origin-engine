@@ -39,11 +39,11 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           </View>
         </Button>
         <Show when={props.mode === "save"} fallback={
-            <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 compact:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
+            <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg shrink m-0 compact:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
               {t("screen.save-load.loadTitle")}
             </Text>
         }>
-          <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 compact:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
+          <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg shrink m-0 compact:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
             {t("screen.save-load.saveTitle")}
           </Text>
         </Show>
@@ -54,12 +54,12 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           <View class="gap-y-2" focus-group="stop">
             <For each={props.slots}>
               {(s) => (
-              <View class={`flex-row group/slot nine-plate-cut text-fg transition duration-317 border border-white/7 items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-26 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
+              <View class={`flex-row group/slot nine-plate-cut text-fg transition duration-317 border border-rim-soft items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-26 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
                 <Art class={`w-37.5 aspect-89/50 h-auto object-cover compact:w-24 group-data-empty-slot/slot:hidden`} kind="saveThumb" src={s().thumb} />
                 <View class="grow shrink basis-0 gap-y-0.5 pr-12 group-data-empty-slot/slot:pr-0 compact:pr-0">
                   <Show when={s().empty} fallback={
                     <>
-                      <Text class={`text-xl leading-tight font-bold line-clamp-1 text-ellipsis m-0 compact:text-[1.214rem]`}>
+                      <Text class={`text-xl leading-tight font-bold line-clamp-1 text-ellipsis m-0 compact:text-base`}>
                         {s().title}
                       </Text>
                       <Text class="line-clamp-1 text-ellipsis text-base text-fg-muted m-0">{s().place}</Text>
@@ -79,7 +79,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
                   </Show>
                 </View>
                 <Show when={s().auto}>
-                  <Text class={`text-shadow-2xs bg-tile absolute top-2 right-3 text-xs font-bold tracking-label uppercase shadow-[inset_0px_1px_0px_#ffffff38] py-0.5 px-2 rounded-control compact:right-auto compact:left-2`}>
+                  <Text class={`text-shadow-2xs bg-tile absolute top-2 right-3 text-xs font-bold tracking-label uppercase inset-shadow-lit py-0.5 px-2 rounded-control compact:right-auto compact:left-2`}>
                     {t("screen.save-load.auto")}
                   </Text>
                 </Show>
@@ -88,11 +88,11 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
             </For>
           </View>
         </Scroll>
-        <Scroll class={`gap-y-2 bg-plate-hi border border-white/18 nine-panel-cut p-4 narrow:bg-none narrow:bg-transparent narrow:p-0 data-blank:bg-none data-blank:bg-transparent data-blank:shadow-none ${packClass("Panel", "frame")}`} data-blank={props.selected === ""}>
+        <Scroll class={`gap-y-2 bg-plate-hi border border-rim nine-panel-cut p-4 narrow:bg-none narrow:bg-transparent narrow:p-0 data-blank:bg-none data-blank:bg-transparent data-blank:shadow-none ${packClass("Panel", "frame")}`} data-blank={props.selected === ""}>
           <For each={props.slots}>
             {(s) => (
             <Show when={s().id === props.selected}>
-              <Art class={`w-full aspect-89/50 h-auto object-cover mb-1 shadow-[inset_0px_0px_0px_1px_#ffffff1f] narrow:hidden`} kind="saveThumb" src={s().thumb} />
+              <Art class={`w-full aspect-89/50 h-auto object-cover mb-1 inset-ring-1 inset-ring-rim narrow:hidden`} kind="saveThumb" src={s().thumb} />
               <Show when={s().empty} fallback={
                 <>
                   <Text class="text-title leading-tight font-bold line-clamp-2 m-0 narrow:hidden">

@@ -24,7 +24,7 @@ export interface PaginationProps {
 export function Pagination(props: PaginationProps) {
   return (
     <View class={`flex-row items-center text-fg max-w-full p-0 gap-1 disabled:text-fg-subtle`} label={props.label}>
-      <Button class={`min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} disabled={props.atStart} onPress={(e) => props.onPrevious?.(e)} label={props.label}>
+      <Button class={`min-w-11 min-h-11 p-0 rounded-control ${packClass("Button", "plate")}`} disabled={props.atStart} onPress={(e) => props.onPrevious?.(e)} label={props.label}>
         <Icon class="size-4" name="chevronLeft" />
       </Button>
       <View class="flex-row flex-wrap items-center shrink justify-center p-0 m-0 gap-1">
@@ -37,7 +37,7 @@ export function Pagination(props: PaginationProps) {
               </Text>
             </Show>
             <Show when={!p().gap}>
-              <Button class={`bg-tile shadow-[inset_0px_0px_0px_1px_#ffffff1a] min-w-11 min-h-11 font-bold rounded-[4.576px] data-variant-primary:text-accent data-current:text-hud-accent-fg ${packClass("Button", "plate")}`} onPress={(e) => props.onPage?.(e, p().id)} data-current={p().current} data-variant-primary={(p().current ? "primary" : "quiet") === "primary"} data-variant-quiet={(p().current ? "primary" : "quiet") === "quiet"}>
+              <Button class={`bg-tile inset-ring-1 inset-ring-rim-soft min-w-11 min-h-11 font-bold rounded-control data-variant-primary:text-accent data-current:text-hud-accent-fg ${packClass("Button", "plate")}`} onPress={(e) => props.onPage?.(e, p().id)} data-current={p().current} data-variant-primary={(p().current ? "primary" : "quiet") === "primary"} data-variant-quiet={(p().current ? "primary" : "quiet") === "quiet"}>
                 <Text class="tabular-nums">{p().label}</Text>
               </Button>
             </Show>
@@ -45,7 +45,7 @@ export function Pagination(props: PaginationProps) {
           )}
         </For>
       </View>
-      <Button class={`min-w-11 min-h-11 p-0 rounded-[4.576px] ${packClass("Button", "plate")}`} disabled={props.atEnd} onPress={(e) => props.onNext?.(e)} label={props.label}>
+      <Button class={`min-w-11 min-h-11 p-0 rounded-control ${packClass("Button", "plate")}`} disabled={props.atEnd} onPress={(e) => props.onNext?.(e)} label={props.label}>
         <Icon class="size-4" name="chevronRight" />
       </Button>
     </View>

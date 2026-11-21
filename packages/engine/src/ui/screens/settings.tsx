@@ -45,7 +45,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </View>
         </Button>
         <View class="flex-row grow shrink basis-0 items-baseline flex-wrap gap-x-4 gap-y-0.5 compact:grow compact:shrink-0 compact:basis-full compact:items-start compact:flex-col">
-          <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 m-0 compact:text-3xl shrink`}>
+          <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg m-0 compact:text-3xl shrink`}>
             {t("screen.settings.title")}
           </Text>
           <Show when={props.note !== ""}>
@@ -57,7 +57,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       </View>
       <View class="grow shrink basis-0 gap-y-4">
         <Show when={props.page}>
-          <View class={`flex-row items-center gap-x-3 border-b border-white/14`} role="tablist">
+          <View class={`flex-row items-center gap-x-3 border-b border-rim`} role="tablist">
             <Text class="flex-none pointer-coarse:hidden" glyph="tabPrev" />
             <Scroll class="grow shrink gap-x-6 py-0.5 px-4 compact:gap-x-4 compact:-mx-4">
               <For each={props.pages}>
@@ -92,7 +92,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                     <Show when={entry().kind === "toggle"}>
                       <View class="flex-row items-center group/switch min-h-16 text-lg grow shrink text-fg-muted py-1 px-4 compact:text-base compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
                         <Text>{entry().name}</Text>
-                        <View class="ml-auto relative h-4 w-7 rounded-capsule bg-track shadow-[inset_0px_0px_0px_1px_#4e586c]">
+                        <View class="ml-auto relative h-4 w-7 rounded-capsule bg-track inset-ring-1 inset-ring-rim">
                           <View class="absolute top-0.5 left-0.5 size-3 rounded-capsule bg-fg-muted transition-transform duration-200 ease-out group-data-checked/switch:translate-x-3 group-data-checked/switch:bg-accent" />
                         </View>
                       </View>
@@ -117,7 +117,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                             else if (e.key === "ArrowLeft" || e.key === "ArrowDown") props.onChange?.(e, entry().id, Math.max(entry().min ?? 0, now - step));
                           }}
                         >
-                          <View class="relative grow shrink basis-0 h-1 rounded-capsule bg-track shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_0px_#ffffff24]" onPointerDown={dragged} onPointerMove={dragged}>
+                          <View class="relative grow shrink basis-0 h-1 rounded-capsule bg-track inset-shadow-lit ring ring-rim" onPointerDown={dragged} onPointerMove={dragged}>
                             <View class="absolute left-0 top-0 h-full rounded-capsule bg-accent" style={{ width: `${at}%` }} />
                             <View class="absolute top-0 size-2.5 -translate-y-1 rounded-capsule bg-accent shadow-panel" style={{ left: `calc(${at}% - 5px)` }} />
                           </View>
@@ -131,7 +131,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                         </Text>
                         <View class="flex-col gap-1 min-w-0">
                           <View
-                            class={`flex-row items-center justify-between gap-2 h-9 py-0 px-3 rounded-[4.576px] bg-tile shadow-[inset_0px_0px_0px_1px_#4e586c] data-open:shadow-[inset_0px_0px_0px_1px_#38e8ff]`}
+                            class={`flex-row items-center justify-between gap-2 h-9 py-0 px-3 rounded-control bg-tile inset-ring-1 inset-ring-rim data-open:inset-ring-1 data-open:inset-ring-hud-accent`}
                             role="combobox"
                             tabIndex={0}
                             label={entry().name}
@@ -151,10 +151,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
                             <Icon class={`size-4 shrink ${openChoice() === entry().id ? "rotate-180" : ""}`} name="chevronDown" />
                           </View>
                           <Show when={openChoice() === entry().id}>
-                            <View class={`flex-col rounded-[4.576px] bg-tile shadow-[inset_0px_0px_0px_1px_#4e586c] overflow-hidden`} role="listbox" label={entry().name} onAction={{ back: (e) => openChoice.set("") }}>
+                            <View class={`flex-col rounded-control bg-tile inset-ring-1 inset-ring-rim overflow-hidden`} role="listbox" label={entry().name} onAction={{ back: (e) => openChoice.set("") }}>
                               <For each={entry().options ?? []}>
                                 {(opt) => (
-                                  <View class="flex-row items-center justify-start gap-2 min-h-8 py-0 px-3 text-start text-sm font-semibold text-fg bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c,inset_0px_1px_0px_0px_#ffffff1f] transition duration-317 hover:bg-none hover:bg-raised-hover-lo data-selected:text-accent data-selected:bg-surface-hover data-selected:shadow-[inset_0px_0px_0px_1px_#38e8ff]" role="option" tabIndex={0} selected={opt() === String(entry().value)} label={opt()} onPress={(e) => { props.onChange?.(e, entry().id, opt()); openChoice.set(""); }}>
+                                  <View class="flex-row items-center justify-start gap-2 min-h-8 py-0 px-3 text-start text-sm font-semibold text-fg bg-raised-lo inset-shadow-lit inset-ring-1 inset-ring-rim transition duration-317 hover:bg-none hover:bg-raised-hover-lo data-selected:text-accent data-selected:bg-surface-hover data-selected:inset-ring-1 data-selected:inset-ring-hud-accent" role="option" tabIndex={0} selected={opt() === String(entry().value)} label={opt()} onPress={(e) => { props.onChange?.(e, entry().id, opt()); openChoice.set(""); }}>
                                     <Text class="whitespace-nowrap">{opt()}</Text>
                                   </View>
                                 )}

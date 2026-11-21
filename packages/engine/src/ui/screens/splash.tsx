@@ -27,7 +27,7 @@ export function SplashScreen(props: SplashScreenProps) {
           {(m) => (
           <View class={`items-center gap-y-3 w-full transition-opacity duration-240 ease-out data-away:hidden data-away:transition-opacity data-away:duration-180 data-away:ease-in data-away:opacity-0 starting:opacity-0 data-hidden:hidden`} data-hidden={m().id !== props.mark} label={m().name} data-away={m().id !== props.mark}>
             <Show when={m().texture !== 0} fallback={
-                <Text class="max-w-full leading-tight font-bold tracking-[0.24em] uppercase text-center text-shadow-xs text-shadow-bg/60 m-0">
+                <Text class="max-w-full leading-tight font-bold tracking-kicker uppercase text-center text-shadow-xs text-shadow-bg m-0">
                   {m().name}
                 </Text>
             }>
@@ -56,12 +56,12 @@ export function SplashScreen(props: SplashScreenProps) {
             <Counter class="text-caption font-bold text-fg-muted" value={props.progress > 1 ? 1 : props.progress} format="percent" decimals={0} />
           </View>
           <View class={`bg-lit shadow-sunk h-1 rounded-capsule overflow-hidden`}>
-            <View class={`bg-linear-to-r from-hud-accent/60 to-sheen h-full shadow-[0px_0px_13.712px_#38e8ff] duration-317`} style={{ width: `${(100 * (props.progress > 1 ? 1 : props.progress))}%` }} />
+            <View class={`bg-linear-to-r from-hud-accent to-sheen h-full shadow-glow-lg duration-317`} style={{ width: `${(100 * (props.progress > 1 ? 1 : props.progress))}%` }} />
           </View>
         </View>
       </Show>
       <View class={`flex-row absolute right-6 bottom-4 items-center gap-x-2 text-caption text-fg-muted compact:bottom-4 compact:justify-center compact:inset-x-4`}>
-        <Text class="text-xs leading-loose font-bold text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden shrink">
+        <Text class="text-xs leading-loose font-bold text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-key py-0 px-1 rounded-control pointer-coarse:hidden shrink">
           {t("screen.splash.skipKey")}
         </Text>
         <Text class="pointer-coarse:hidden shrink">{t("screen.splash.skip")}</Text>

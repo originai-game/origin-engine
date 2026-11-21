@@ -37,18 +37,18 @@ export function GameOverScreen(props: GameOverScreenProps) {
   return (
     <View class="grow shrink basis-0 justify-center items-center w-full p-8 gap-2 compact:p-4">
       <View class={`text-fg items-center w-full max-w-105 p-0 gap-4 disabled:text-fg-subtle short:grid short:items-center short:gap-y-2 short:gap-x-6 short:max-w-210 short:grid-cols-[1fr_1fr] short:grid-rows-[1fr_auto_auto_auto_auto_1fr] short:justify-items-center ${packClass("Panel", "frame")}`}>
-        <Text class={`font-display font-bold leading-[0.95] tracking-md uppercase text-transparent max-w-full text-center bg-linear-to-b from-glass from-10% via-danger via-48% to-critical m-0 short:text-[4.429rem]`}>
+        <Text class={`font-display font-bold leading-flat tracking-md uppercase text-transparent max-w-full text-center bg-linear-to-b from-glass from-10% via-danger via-48% to-critical m-0 short:text-8xl`}>
           {props.title}
         </Text>
         <View class="w-full h-0.5">
-          <Text class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-danger shadow-[0px_0px_11.424px_#ff4d5e] size-2.25" />
+          <Text class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-danger shadow-glow shadow-foe size-2.25" />
         </View>
         <View class="flex-row flex-wrap justify-center gap-y-1 gap-x-6 items-end">
           <View class="items-center shrink">
             <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0`}>
               {t("screen.game-over.score")}
             </Text>
-            <Text class={`tabular-nums text-fg text-[2.714rem] leading-flat font-bold m-0`}>
+            <Text class={`tabular-nums text-fg text-5xl leading-flat font-bold m-0`}>
               {t("screen.game-over.Value", { value: props.score })}
             </Text>
           </View>
@@ -70,8 +70,8 @@ export function GameOverScreen(props: GameOverScreenProps) {
               <Button class={`${packClass("Button", "plate")}`} onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
             </View>
         }>
-          <View class={`grid justify-items-stretch self-stretch text-center bg-plate-hi border border-white/18 nine-plate-cut p-4 gap-2 short:justify-self-stretch`}>
-            <Text class="justify-self-center text-center leading-22 text-display-md font-bold tabular-nums text-fg shadow-[inset_0px_0px_0px_5.712px_#ffcf5a,inset_0px_0px_0px_8px_#060910cc] m-0 size-22 rounded-full short:leading-16 short:size-16">
+          <View class={`grid justify-items-stretch self-stretch text-center bg-plate-hi border border-rim nine-plate-cut p-4 gap-2 short:justify-self-stretch`}>
+            <Text class="justify-self-center text-center leading-22 text-display-md font-bold tabular-nums text-fg inset-ring-6 inset-ring-gold m-0 size-22 rounded-full short:leading-16 short:size-16">
               {t("screen.game-over.Left", { value: formatDuration(props.left) })}
             </Text>
             <Text class="text-title font-bold tracking-md uppercase text-fg m-0">

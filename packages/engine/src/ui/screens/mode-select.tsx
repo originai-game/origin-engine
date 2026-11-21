@@ -35,7 +35,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
         </Button>
-        <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 shrink m-0 narrow:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
+        <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg shrink m-0 narrow:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
           {t("screen.mode-select.title")}
         </Text>
         <View class="grow shrink basis-0 h-px bg-linear-to-r from-sheen to-transparent to-80% m-0 compact:hidden" />
@@ -54,10 +54,10 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                   </Text>
                 </Show>
                 <View class="gap-y-1 p-6 compact:gap-y-0.5 compact:p-3">
-                  <Text class={`tracking-xs text-shadow-xs text-shadow-bg/60 text-6xl leading-tight font-bold m-0 compact:text-display-sm`}>
+                  <Text class={`tracking-xs text-shadow-xs text-shadow-bg text-6xl leading-tight font-bold m-0 compact:text-display-sm`}>
                     {mode().name}
                   </Text>
-                  <Text class="text-[1.214rem] leading-snug text-fg-muted line-clamp-2 m-0 compact:text-base">
+                  <Text class="text-base leading-snug text-fg-muted line-clamp-2 m-0 compact:text-base">
                     {mode().line}
                   </Text>
                   <Show when={mode().locked}>
@@ -67,7 +67,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                     </View>
                   </Show>
                 </View>
-                <View class="absolute shadow-[inset_0px_0px_0px_1px_#ffffff29,inset_0px_1px_0px_#ffffff8c] inset-0 group-data-selection-on/mode:shadow-[inset_0px_0px_0px_2.288px_#38e8ff,inset_0px_3.424px_0px_#ffffff80]" />
+                <View class="absolute inset-shadow-lit inset-ring-1 inset-ring-rim inset-0 group-data-selection-on/mode:inset-shadow-lit group-data-selection-on/mode:inset-ring-2 group-data-selection-on/mode:inset-ring-hud-accent" />
               </View>
             </View>
             )}

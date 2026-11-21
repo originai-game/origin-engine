@@ -27,24 +27,24 @@ export function TitleScreen(props: TitleScreenProps) {
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
       <View class="absolute inset-0">{props.background?.()}</View>
-      <View class="absolute inset-0 bg-linear-to-b from-bg/35 via-transparent via-30% to-bg/96" />
+      <View class="absolute inset-0 bg-linear-to-b from-bg via-transparent via-30% to-bg" />
       <View class="grid grid-cols-1 grid-rows-[1fr_auto_1fr_auto_auto_auto] justify-items-center gap-y-3 h-full pt-12 pb-6 px-12 compact:gap-y-2 compact:pt-8 compact:pb-4 compact:px-4">
         <Show when={props.logo === 0 && props.name !== ""} fallback={
             <Art class={`row-[2] aspect-12/5 h-auto object-contain compact:w-43/50`} kind="logo" src={props.logo} />
         }>
-          <Text class={`tracking-sm uppercase text-shadow-xs text-shadow-bg/60 row-[2] max-w-full text-[5.429rem] leading-tight font-bold text-center m-0 compact:text-display-xl`}>
+          <Text class={`tracking-sm uppercase text-shadow-xs text-shadow-bg row-[2] max-w-full text-8xl leading-tight font-bold text-center m-0 compact:text-display-xl`}>
             {props.name}
           </Text>
         </Show>
         <View class="flex-row row-[4] items-center gap-x-4 compact:gap-x-2">
-          <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent/90 shadow-[0px_0px_11.424px_#38e8ff] compact:basis-8`} />
-          <View class={`grow shrink basis-0 text-lg font-semibold tracking-[0.28em] uppercase text-center compact:text-base compact:tracking-wide`}>
-            <Text class="text-shadow-sm text-shadow-bg/80 m-0 pointer-coarse:hidden">{t("screen.title.press")}</Text>
-            <Text class="hidden text-shadow-sm text-shadow-bg/80 m-0 pointer-coarse:flex">
+          <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent shadow-glow compact:basis-8`} />
+          <View class={`grow shrink basis-0 text-lg font-semibold tracking-kicker uppercase text-center compact:text-base compact:tracking-wide`}>
+            <Text class="text-shadow-sm text-shadow-bg m-0 pointer-coarse:hidden">{t("screen.title.press")}</Text>
+            <Text class="hidden text-shadow-sm text-shadow-bg m-0 pointer-coarse:flex">
               {t("screen.title.tap")}
             </Text>
           </View>
-          <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent/90 shadow-[0px_0px_11.424px_#38e8ff] -scale-x-100 scale-y-100 compact:basis-8`} />
+          <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent shadow-glow -scale-x-100 scale-y-100 compact:basis-8`} />
         </View>
         <Text class="row-[5] text-xs tracking-sm text-fg-muted text-center m-0">{props.legal}</Text>
         <Text class="row-[6] justify-self-end text-xs tabular-nums text-fg-muted m-0 compact:justify-self-center">

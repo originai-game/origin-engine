@@ -31,7 +31,7 @@ export function Confirm(props: ConfirmProps) {
           <Text class="shrink">{t("screen.confirm.undone")}</Text>
         </View>
       </Show>
-      <Text class={`font-display text-3xl font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg/60 m-0 compact:text-2xl`}>
+      <Text class={`font-display text-3xl font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg m-0 compact:text-2xl`}>
         {props.title}
       </Text>
       <Scroll class="min-h-5.75 shrink gap-2 data-hidden:hidden" data-hidden={props.body === ""}>

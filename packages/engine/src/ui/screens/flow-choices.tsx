@@ -57,7 +57,7 @@ export function FlowChoices(props: FlowChoicesProps) {
           <For each={now().spots} key={(s) => s.index}>
             {(s) => (
               <View
-                class="flex-row items-center justify-center gap-1 absolute min-w-11 min-h-11 rounded-control ring-2 ring-gold bg-gold/12 hover:bg-gold/24 disabled:opacity-45 disabled:ring-rim"
+                class="flex-row items-center justify-center gap-1 absolute min-w-11 min-h-11 rounded-control ring-2 ring-gold bg-gold hover:bg-gold disabled:opacity-45 disabled:ring-rim"
                 role="button"
                 label={s().label}
                 disabled={now().locked}
@@ -67,7 +67,7 @@ export function FlowChoices(props: FlowChoicesProps) {
             )}
           </For>
         </View>
-        <View class="absolute inset-x-0 bottom-0 items-center bg-linear-to-t from-shade-deep/80 to-transparent pt-12 pb-[calc(env(hud-inset-bottom)+24px)] pl-[calc(env(hud-inset-left)+48px)] pr-[calc(env(hud-inset-right)+48px)] compact:px-4 compact:pb-[calc(env(hud-inset-bottom)+16px)]">
+        <View class="absolute inset-x-0 bottom-0 items-center bg-linear-to-t from-shade-deep to-transparent pt-12 pb-[calc(env(hud-inset-bottom)+24px)] pl-[calc(env(hud-inset-left)+48px)] pr-[calc(env(hud-inset-right)+48px)] compact:px-4 compact:pb-[calc(env(hud-inset-bottom)+16px)]">
           <View class="w-full max-w-240 gap-2" role="group" label={t("screen.flow-choices.label")}>
             <Progress value={now().left} class="h-1 rounded-none" />
             <View class="flex-row flex-wrap gap-2 compact:flex-col compact:flex-nowrap">

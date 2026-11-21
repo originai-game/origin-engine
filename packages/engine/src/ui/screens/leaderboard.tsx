@@ -40,7 +40,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
       <View class={`absolute bg-linear-to-r from-shade-deep via-shade-deep via-55% to-shade-deep inset-0`} />
       <View class={`w-full max-w-264 flex-row flex-wrap items-center gap-y-2 gap-x-3 p-0 mx-auto`}>
         <Button class={`shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}><Text>{t("screen.common.back")}</Text></Button>
-        <Text class={`font-display text-[3.286rem] font-bold leading-flat tracking-sm uppercase text-fg grow shrink m-0 compact:text-display-sm`}>
+        <Text class={`font-display text-display-xl font-bold leading-flat tracking-sm uppercase text-fg grow shrink m-0 compact:text-display-sm`}>
           {t("screen.leaderboard.title")}
         </Text>
         <Button class={`h-7 px-3 compact:h-8 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onPeriod?.(e)}>
@@ -48,25 +48,25 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         </Button>
       </View>
       <View class="flex-row flex-wrap items-center w-fit max-w-264 bg-tile nine-plate-cut p-0.75 mx-auto gap-0 compact:w-full" focus-group="wrap">
-        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:shadow-[inset_0px_-2.288px_0px_#38e8ff] compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "global"} data-selection-on={props.tab === "global"}>
+        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "global"} data-selection-on={props.tab === "global"}>
           <Text class="compact:text-ellipsis">{t("screen.leaderboard.global")}</Text>
         </Button>
-        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:shadow-[inset_0px_-2.288px_0px_#38e8ff] compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "friends"} data-selection-on={props.tab === "friends"}>
+        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "friends"} data-selection-on={props.tab === "friends"}>
           <Text class="compact:text-ellipsis">{t("screen.leaderboard.friends")}</Text>
         </Button>
-        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:shadow-[inset_0px_-2.288px_0px_#38e8ff] compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "league"} data-selection-on={props.tab === "league"}>
+        <Button class={`uppercase tracking-wide data-selection-off:text-fg-muted data-selection-on:text-fg data-selection-on:bg-surface-hover data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent compact:tracking-sm compact:grow compact:shrink compact:basis-0 compact:min-w-0 compact:px-1 ${packClass("Button", "plate")}`} data-selection-off={props.tab !== "league"} data-selection-on={props.tab === "league"}>
           <Text class="compact:text-ellipsis">{t("screen.leaderboard.league")}</Text>
         </Button>
       </View>
       <Show when={props.tab === "league"}>
-        <View class={`w-full max-w-264 flex-row items-center nine-panel-cut flex-wrap bg-plate-hi border border-white/18 py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
+        <View class={`w-full max-w-264 flex-row items-center nine-panel-cut flex-wrap bg-plate-hi border border-rim py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
           <Text class="text-title font-bold tracking-sm uppercase text-gold m-0 shrink">
             {props.league.name}
           </Text>
           <Text class="grow shrink text-caption text-fg-muted m-0">
             {t("screen.leaderboard.Lines", { league_demote: props.league.demote, league_promote: props.league.promote })}
           </Text>
-          <Text class="text-xs font-bold tracking-label uppercase text-fg bg-tile shadow-[inset_0px_1px_0px_#ffffff38] whitespace-nowrap py-0 px-1 m-0 shrink">
+          <Text class="text-xs font-bold tracking-label uppercase text-fg bg-tile inset-shadow-lit whitespace-nowrap py-0 px-1 m-0 shrink">
             {t("screen.leaderboard.Ends", { league_ends: formatDuration(props.league.ends) })}
           </Text>
         </View>
@@ -86,7 +86,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
                   {r().name}
                 </Text>
                 <Show when={r().you}>
-                  <Text class="text-xs font-bold tracking-label uppercase text-hud-accent bg-tile shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap py-0 px-1">
+                  <Text class="text-xs font-bold tracking-label uppercase text-hud-accent bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-1 inset-ring-hud-accent whitespace-nowrap py-0 px-1">
                     {t("screen.leaderboard.you")}
                   </Text>
                 </Show>
@@ -106,7 +106,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         <Text class="text-base font-semibold whitespace-nowrap shrink m-0 overflow-hidden">
           {props.me.name}
         </Text>
-        <Text class="text-xs font-bold tracking-label uppercase text-hud-accent bg-tile shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] whitespace-nowrap mr-auto py-0 px-1">
+        <Text class="text-xs font-bold tracking-label uppercase text-hud-accent bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-1 inset-ring-hud-accent whitespace-nowrap mr-auto py-0 px-1">
           {t("screen.leaderboard.you")}
         </Text>
         <Text class={`tabular-nums text-fg text-display-md font-bold whitespace-nowrap text-end m-0 compact:text-title shrink`}>

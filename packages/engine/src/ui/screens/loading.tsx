@@ -50,10 +50,10 @@ export function LoadingScreen(props: LoadingScreenProps) {
         <View class="gap-5 short:flex-row short:items-end short:gap-4 compact:gap-4">
           <View class="max-w-3/5 gap-0.5 compact:max-w-full short:max-w-9/20 short:grow short:shrink short:basis-0 short:min-w-0">
             <View class={`flex-row items-center text-xs font-semibold tracking-label uppercase text-hud-accent gap-2.5 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
-              <View class="w-8 h-0.5 bg-hud-accent shadow-[0px_0px_6.864px_#38e8ff]" />
+              <View class="w-8 h-0.5 bg-hud-accent shadow-glow-sm" />
               <Text class="shrink">{t("screen.loading.entering")}</Text>
             </View>
-            <Text class={`font-display text-[3.857rem] compact:text-[2.286rem] short:text-3xl font-bold leading-[1.04] tracking-tight text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 m-0 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
+            <Text class={`font-display text-7xl compact:text-display-md short:text-3xl font-bold leading-flat tracking-tight text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg m-0 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
               {props.place}
             </Text>
           </View>
@@ -63,7 +63,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
                 {t("screen.loading.tip")}
               </Text>
               <View class={`flex-row items-center justify-center shrink ml-auto gap-x-1 text-xs font-semibold tracking-label px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
-                <Text class="min-w-5.5 text-xs leading-loose font-bold text-center text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
+                <Text class="min-w-5.5 text-xs leading-loose font-bold text-center text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-key py-0 px-1 rounded-control pointer-coarse:hidden">
                   {t("screen.loading.nextKey")}
                 </Text>
                 <Text>{t("screen.loading.next")}</Text>
@@ -75,7 +75,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
         </View>
         <View class="items-center gap-4.5 compact:items-stretch compact:flex-col-reverse compact:gap-3">
           <View class={`group/bar grow shrink h-3 bg-track shadow-sunk gap-2 overflow-hidden compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-full`} role="progressbar" label={props.place} valueMin={0} valueMax={1} valueNow={props.progress} data-ready={props.ready === true}>
-            <View class={`absolute top-0 left-0 bg-linear-to-r from-hud-accent/55 to-hud-accent h-full shadow-[0px_0px_16px_#38e8ff99,inset_-3.424px_0px_0px_#ffffff] duration-400 group-data-ready/bar:shadow-[0px_0px_16px_#38e8ff99]`} style={{ width: `${(100 * (props.progress <= 0 ? 0 : props.progress >= 1 ? 1 : props.progress))}%` }} />
+            <View class={`absolute top-0 left-0 bg-linear-to-r from-hud-accent to-hud-accent h-full shadow-glow-lg inset-shadow-bar inset-shadow-knob duration-400 group-data-ready/bar:shadow-glow-lg`} style={{ width: `${(100 * (props.progress <= 0 ? 0 : props.progress >= 1 ? 1 : props.progress))}%` }} />
           </View>
           <View class="flex-row items-center gap-y-2 gap-x-3 compact:flex-wrap">
             <Show when={!props.ready}>
@@ -87,13 +87,13 @@ export function LoadingScreen(props: LoadingScreenProps) {
               </Text>
             </Show>
             <Show when={!(props.ready && props.waits)}>
-              <Text class={`tabular-nums text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg/55 min-w-18 text-display-lg leading-flat text-end font-bold whitespace-nowrap m-0 data-ready:text-hud-accent compact:ml-auto compact:min-w-0 compact:text-display-sm short:text-title shrink`} data-ready={props.ready === true}>
+              <Text class={`tabular-nums text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg min-w-18 text-display-lg leading-flat text-end font-bold whitespace-nowrap m-0 data-ready:text-hud-accent compact:ml-auto compact:min-w-0 compact:text-display-sm short:text-title shrink`} data-ready={props.ready === true}>
                 {t("screen.loading.Percent", { progress: `${formatNumber((props.progress) * 100, { decimals: 0 })}%` })}
               </Text>
             </Show>
             <Show when={props.ready && props.waits}>
               <Button class={`text-accent gap-x-2 min-h-11 font-bold px-5.5 compact:grow compact:shrink compact:basis-auto animate-pop ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
-                <Text class="min-w-5.5 text-xs leading-loose font-bold text-center text-fg bg-hud-accent-fg uppercase tracking-label whitespace-normal py-0 px-1 rounded-[4.576px] pointer-coarse:hidden">
+                <Text class="min-w-5.5 text-xs leading-loose font-bold text-center text-fg bg-hud-accent-fg uppercase tracking-label whitespace-normal py-0 px-1 rounded-control pointer-coarse:hidden">
                   {t("screen.loading.continueKey")}
                 </Text>
                 <Text class="uppercase tracking-label whitespace-normal pointer-coarse:hidden">

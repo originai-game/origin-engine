@@ -25,9 +25,9 @@ export function Subtitles(props: SubtitlesProps) {
             {(l, i) => (
               <View class="group/line items-center gap-0.5" data-past={i() < all().length - 1}>
                 <Show when={l().speaker}>
-                  <Text class="text-sm font-bold uppercase tracking-wide text-gold text-shadow-xs text-shadow-bg/80">{l().speaker}</Text>
+                  <Text class="text-sm font-bold uppercase tracking-wide text-gold text-shadow-xs text-shadow-bg">{l().speaker}</Text>
                 </Show>
-                <Text class="text-2xl font-semibold leading-snug text-center text-fg text-shadow-sm text-shadow-bg/90 group-data-past/line:text-sm compact:text-xl">{l().text}</Text>
+                <Text class="text-2xl font-semibold leading-snug text-center text-fg text-shadow-sm text-shadow-bg group-data-past/line:text-sm compact:text-xl">{l().text}</Text>
               </View>
             )}
           </For>
