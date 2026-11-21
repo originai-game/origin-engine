@@ -29,6 +29,10 @@ pub(in super::super) struct GridItem {
     /// The index of the item in the children array
     pub source_order: u16,
 
+    /// Its `order` style: auto-placement takes the items in order-modified
+    /// document order (CSS Grid §8.5), equal ones in document order.
+    pub css_order: i32,
+
     /// The item's definite row-start and row-end, as resolved by the placement algorithm
     /// (in origin-zero coordinates). Set by the placement algorithm.
     pub row: Line<OriginZeroLine>,
@@ -123,6 +127,7 @@ impl GridItem {
         GridItem {
             node,
             source_order,
+            css_order: style.order(),
             row: UNPLACED,
             column: UNPLACED,
             is_compressible_replaced: style.is_compressible_replaced(),

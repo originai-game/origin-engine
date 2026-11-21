@@ -32,6 +32,9 @@ struct FlexItem {
 
     /// The order of the node relative to it's siblings
     order: u32,
+    /// Its `order` style: items are laid out in order-modified document
+    /// order (§5.4), sorted by it, equal ones in document order.
+    css_order: i32,
 
     /// The base size of this item
     size: Size<Option<f32>>,
@@ -812,6 +815,7 @@ fn generate_anonymous_flex_items(
             FlexItem {
                 node: child,
                 order: index as u32,
+                css_order: child_style.order(),
                 size: child_style
                     .size()
                     .maybe_resolve(percent_resolution_size, |val, basis| tree.calc(val, basis))
@@ -876,6 +880,11 @@ fn generate_anonymous_flex_items(
             }
             flex_items.push(item);
         });
+    // §5.4: order-modified document order. A stable sort, done only when an
+    // item has a non-zero `order`, so the common case allocates nothing.
+    if flex_items.iter().any(|item| item.css_order != 0) {
+        flex_items.sort_by_key(|item| item.css_order);
+    }
     flex_items
 }
 
@@ -2821,6 +2830,24 @@ fn final_layout_pass(
     overflow_rect
 }
 
+/// The item of the in-flow child at document index `order`, when the lines hold the items in
+/// document order: the one at `cursor`, which then moves past it.
+fn next_in_document_order<'a>(
+    lines: &'a mut [FlexLine],
+    cursor: &mut (usize, usize),
+    order: u32,
+) -> Option<&'a mut FlexItem> {
+    while cursor.0 < lines.len() && cursor.1 >= lines[cursor.0].items.len() {
+        *cursor = (cursor.0 + 1, 0);
+    }
+    let item = lines.get_mut(cursor.0)?.items.get_mut(cursor.1)?;
+    if item.order != order {
+        return None;
+    }
+    cursor.1 += 1;
+    Some(item)
+}
+
 /// Collect out-of-flow candidates in document order: direct out-of-flow children (computing their
 /// static positions per the flexbox alignment rules) interleaved with the candidates bubbled out
 /// of each in-flow item's subtree. Final sizing and positioning happens in the shared
@@ -2833,13 +2860,12 @@ fn collect_oof_candidates(
     flex_lines: &mut [FlexLine],
     candidates: &mut OofCandidates,
 ) {
-    // Lines are contiguous slices of the items in document order (reversal is applied to
-    // positions, not storage), so walking the lines yields items sorted by `order`
-    let mut items = flex_lines
-        .iter_mut()
-        .flat_map(|line| line.items.iter_mut())
-        .filter(|item| !item.oof_candidates.is_empty())
-        .peekable();
+    // Lines are contiguous slices of the items in order-modified document order (reversal is
+    // applied to positions, not storage). Without a CSS `order` that is document order, so a
+    // cursor walking the lines meets the items sorted by `order`; with one, each in-flow child
+    // finds its item by its document index.
+    let reordered = flex_lines.iter().flat_map(|line| line.items.iter()).any(|item| item.css_order != 0);
+    let mut cursor = (0usize, 0usize);
 
     let dir = constants.dir;
     let container_size = constants.container_size;
@@ -2873,7 +2899,12 @@ fn collect_oof_candidates(
         // In-flow item: merge the candidates bubbled out of its subtree
         if !position.is_out_of_flow() {
             drop(child_style);
-            if let Some(item) = items.next_if(|item| item.order == order as u32) {
+            let item = if reordered {
+                flex_lines.iter_mut().flat_map(|line| line.items.iter_mut()).find(|item| item.order == order as u32)
+            } else {
+                next_in_document_order(flex_lines, &mut cursor, order as u32)
+            };
+            if let Some(item) = item {
                 candidates.append(&mut item.oof_candidates);
             }
             continue;

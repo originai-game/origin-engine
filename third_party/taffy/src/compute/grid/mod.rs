@@ -368,7 +368,18 @@ pub fn compute_grid_layout<Tree: LayoutGridContainer>(
     let mut cell_occupancy_matrix = CellOccupancyMatrix::with_track_counts(est_col_counts, est_row_counts);
     // `items` is in document order from here on (placement only fills in each item's grid area). The track
     // sizing and baseline passes sort references to the items rather than the items themselves.
+    // Auto-placement takes the items in order-modified document order (§8.5): sorted by `order`
+    // for it, then back in document order. Only when an item has one, so most grids allocate nothing.
+    let reordered = items.iter().any(|item| item.css_order != 0);
+    if reordered {
+        let mut pairs: Vec<(GridItem, ItemPlacement)> = items.drain(..).zip(placements.drain(..)).collect();
+        pairs.sort_by_key(|(item, _)| item.css_order);
+        (items, placements) = pairs.into_iter().unzip();
+    }
     place_grid_items(&mut cell_occupancy_matrix, &mut items, &placements, style.grid_auto_flow());
+    if reordered {
+        items.sort_by_key(|item| item.source_order);
+    }
 
     // Extract track counts from previous step (auto-placement can expand the number of tracks)
     let final_col_counts = *cell_occupancy_matrix.track_counts(AbsoluteAxis::Horizontal);

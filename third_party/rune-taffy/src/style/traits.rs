@@ -39,6 +39,11 @@ impl CoreStyle for CompactStyle {
     }
 
     #[inline(always)]
+    fn order(&self) -> i32 {
+        self.extra.as_ref().map_or(0, |s| s.order)
+    }
+
+    #[inline(always)]
     fn overflow(&self) -> Point<Overflow> {
         Point {
             x: decode_overflow(self.box_flags >> 4),
