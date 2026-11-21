@@ -62,6 +62,39 @@ pub(crate) fn base_strings(
     Ok(())
 }
 
+/// The cooked string table `id` of the engine's bundle.
+pub(crate) fn read_table(eng: &Engine, id: &str) -> Result<StringTable, String> {
+    let assets = eng.assets.borrow();
+    let (bytes, bundle) = assets.blob(id)?;
+    let text = bundle
+        .strings_text(id, bytes.bytes())
+        .map_err(|e| e.to_string())?;
+    StringTable::parse(&text).map_err(|e| format!("{id}: {e}"))
+}
+
+/// A UI's string table as base strings of its locale, beside the game's
+/// tables (a document's, a TSX component's): a translation table of the
+/// same locale keeps its own entries.
+pub(crate) fn add_base(eng: &Engine, table: StringTable) -> Result<(), String> {
+    let strings = table
+        .entries
+        .into_iter()
+        .map(|(key, (text, _))| (key, text))
+        .collect();
+    base_strings(eng, &table.locale, &strings)
+}
+
+/// The string tables a world's TSX components import (op 12 of the UI's
+/// batches), registered as base strings; one that does not read is a
+/// warning, as a missing key is.
+pub(crate) fn component_tables(eng: &Engine, ids: Vec<String>) {
+    for id in ids {
+        if let Err(e) = read_table(eng, &id).and_then(|t| add_base(eng, t)) {
+            note(eng.id, format!("og.ui: the string table {id}: {e}"));
+        }
+    }
+}
+
 fn info(engine: u32) -> LocaleInfo {
     with(engine, |s| {
         let active = s.catalog.active();

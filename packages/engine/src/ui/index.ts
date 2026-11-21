@@ -125,6 +125,7 @@ export type UiLayer = "hud" | "menu" | "modal" | "popover" | "toast" | "tooltip"
  */
 export function mount<P>(world: World, Component: (props: P) => UiChild, props: P, options?: { layer?: UiLayer }): () => void {
   const ui = rendererFor(world);
+  ui.sendTables();
   let dispose!: () => void;
   const root = createRoot((d) => {
     dispose = d;

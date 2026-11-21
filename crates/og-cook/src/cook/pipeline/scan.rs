@@ -45,13 +45,17 @@ pub(crate) struct Scan {
 }
 
 /// What the game's code asks of the built-in UI: the `@ui/` ids it names
-/// (the scan bundles those screens) and whether it draws a TSX UI (it
+/// (the scan bundles those screens), whether it draws a TSX UI (it
 /// imports `@origingame/engine/ui` or a subpath), which needs the default
-/// face as a `.svelte` document does.
+/// face as a `.svelte` document does, and whether it uses the built-in TSX
+/// components (`@origingame/engine/ui/components`), whose string tables
+/// it then bundles.
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub(crate) struct CodeUi {
     pub ids: BTreeSet<String>,
     pub tsx: bool,
+    #[serde(default)]
+    pub components: bool,
 }
 
 pub(crate) fn code_ui(root: &Path) -> CodeUi {
@@ -71,6 +75,7 @@ pub(crate) fn code_ui(root: &Path) -> CodeUi {
                 || l.value.starts_with("@origingame/engine/ui/")
             {
                 ui.tsx = true;
+                ui.components |= l.value == "@origingame/engine/ui/components";
             }
         }
     }
@@ -221,6 +226,13 @@ pub(crate) fn scan_with(
             game
         }
     };
+    // The built-in TSX components' string tables.
+    if code.components {
+        match ui_components::tsx_tables() {
+            Ok(tables) => builtins.extend(tables),
+            Err(e) => early_errors.push(("@ui".into(), "document", e)),
+        }
+    }
     // Documents and TSX UIs can use the default UI without naming a font
     // or a look. Keep its outline-only face separate and lazy like a
     // font-pack face; projects with no UI do not carry it at all.

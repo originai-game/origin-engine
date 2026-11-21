@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui.mount",
+      "summary": "A TSX component's string table, imported beside it as `import \"./x.en.ogt\"`, is registered with the world before the component builds, so its t() shows the text instead of the raw key (First Light's quest tracker drew `rpg.quests.main`, and every built-in component with its own table warned `og.i18n.t: no table has …`). The cook bundles the built-in components' tables when a game imports @origingame/engine/ui/components. The rpg and strategy components now import their kit's shared table, which holds their strings."
+    }
+  ]
+}

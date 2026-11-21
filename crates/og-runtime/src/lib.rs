@@ -383,16 +383,24 @@ pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
                     .get_or_insert_with(|| Box::new(present::ui_next::Next::new()));
                 present::ui_next::pack_images(world);
             }
-            let mut rs = eng.render.borrow_mut();
-            let rs = &mut *rs;
-            let next = rs
-                .ui_next
-                .get_or_insert_with(|| Box::new(present::ui_next::Next::new()));
-            // The TS renderer's op batches, beside the store's commands.
-            match ops {
-                Some(ops) => next.ops(world, &ui.lock(), ops),
-                None => next.patch(bytes),
-            }
+            let (reply, tables) = {
+                let mut rs = eng.render.borrow_mut();
+                let next = rs
+                    .ui_next
+                    .get_or_insert_with(|| Box::new(present::ui_next::Next::new()));
+                // The TS renderer's op batches, beside the store's commands.
+                match ops {
+                    Some(ops) => {
+                        let reply = next.ops(world, &ui.lock(), ops);
+                        (reply, next.take_strings())
+                    }
+                    None => (next.patch(bytes), Vec::new()),
+                }
+            };
+            // Its components' string tables, registered once the render
+            // state is free (a table's locale may load its fonts).
+            bind::i18n::component_tables(&eng, tables);
+            reply
         }
         None => og_ui::reactive::wire::encode(&serde_json::json!({
             "ok": false, "reason": "og.ui: world has no UI"

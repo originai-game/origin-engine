@@ -663,6 +663,15 @@ impl Next {
     /// the first played frame only commits. Only when there is no tree yet:
     /// a live tree and its motion clock are left alone. Its warnings wait
     /// for the tick's end.
+    /// The string tables the batches since the last call named, for the
+    /// caller to register once it no longer holds the render state.
+    pub(crate) fn take_strings(&mut self) -> Vec<String> {
+        self.tree
+            .as_mut()
+            .map(Tree::take_strings)
+            .unwrap_or_default()
+    }
+
     pub(crate) fn warm(
         &mut self,
         engine: u32,

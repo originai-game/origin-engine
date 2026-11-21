@@ -236,6 +236,59 @@ pub fn ui_dir() -> Option<&'static Path> {
     .as_deref()
 }
 
+/// The string tables the engine's TSX components import (`import
+/// "./x.en.ogt"` in a `.tsx` under `src/ui`), by bundle id
+/// (`@ui/components/base/states.en.ogt`) with their bytes: a game that
+/// imports `@origingame/engine/ui/components` bundles them, and the UI
+/// renderer registers the ones its code imported (CONVENTIONS.md §Ops).
+pub fn tsx_tables() -> Result<Vec<(String, &'static [u8])>, String> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                walk(&p, out);
+            } else if p.extension().is_some_and(|x| x == "tsx") {
+                out.push(p);
+            }
+        }
+    }
+    let Some(ui) = ui_dir() else {
+        return Ok(Vec::new());
+    };
+    let mut files = Vec::new();
+    walk(ui, &mut files);
+    let mut ids = BTreeSet::new();
+    for file in files {
+        let text =
+            std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
+        let dir = file
+            .parent()
+            .and_then(|d| d.strip_prefix(ui).ok())
+            .unwrap_or(Path::new(""));
+        for line in text.lines() {
+            let Some(spec) = line
+                .trim()
+                .strip_prefix("import ")
+                .map(|r| r.trim().trim_end_matches(';').trim_matches(['"', '\'']))
+                .filter(|s| s.starts_with("./") && s.ends_with(".ogt"))
+            else {
+                continue;
+            };
+            let rel = dir.join(&spec[2..]);
+            ids.insert(format!(
+                "{PREFIX}{}",
+                rel.to_string_lossy().replace('\\', "/")
+            ));
+        }
+    }
+    ids.into_iter()
+        .map(|id| Ok((id.clone(), intern(read(&id)?))))
+        .collect()
+}
+
 /// The engine's sources a cook reads its built-in documents and default
 /// style from, outside the project: `src/ui`, and in a checkout the design
 /// tokens and `crates/og-ui/default.css`. A long-running cook watches them

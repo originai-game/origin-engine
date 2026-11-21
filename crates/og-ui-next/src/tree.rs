@@ -269,6 +269,9 @@ pub struct Tree {
     /// A batch changed a `data-*` prop, a class or the op tree's shape:
     /// the data contexts are worked out again after it.
     data_dirty: bool,
+    /// The string tables op batches named (op 12), for the host to
+    /// register ([`Tree::take_strings`]).
+    strings: Vec<String>,
     /// What moves, keyed by arena node ([`crate::motion`]), at the UI
     /// tick's `time`; `shown` is what each element passes down this frame
     /// as motion shows it ([`Shown`]).
@@ -484,6 +487,7 @@ impl Tree {
             classes: ops::Classes::default(),
             events: Vec::new(),
             data_dirty: false,
+            strings: Vec::new(),
             motion: crate::motion::Motion::new(),
             time: 0.0,
             shown: Vec::new(),

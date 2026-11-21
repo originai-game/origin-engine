@@ -122,6 +122,7 @@ node); strings are a u32 byte length and UTF-8; numbers are little-endian.
 | 9 | `remove` | parent, child | detaches it |
 | 10 | `release` | id | frees it and its subtree |
 | 11 | `placeholder` | id | an empty anchor that takes no room (`Show`/`For` insert before it) |
+| 12 | `strings` | table id | registers that bundle string table's base strings with the world, before the ops that follow read it |
 
 Tags: 0 `View`, 1 `Text`, 2 `Image`, 3 `Scroll`, 4 `Input`, 5 `Icon`, 6
 `Line` (its `points` and `closed` are setProps: numbers split by commas or
@@ -141,6 +142,14 @@ the states a class variant reads: one is on unless its value is empty or
 `false`; `data-ready:` reads the node's own, `group-data-ready/<name>:`
 (`group-data-ready:` for an unnamed `group`) the nearest ancestor with
 `group/<name>`. Only the boolean form: `data-[state=open]:` is not read.
+
+A component's string table is a side-effect import beside it, `import
+"./x.en.ogt"`: the build turns it into `strings("<id>")` (`@ui/<path under
+src/ui>` for the engine's, the asset id for a game's), the renderer sends
+each recorded table once as op 12 ahead of its first batch, and `mount()`
+sends them before it builds, so a component's first `t()` finds its text.
+The cook bundles the engine components' tables when code imports
+`@origingame/engine/ui/components`.
 
 ## Input (head 4)
 

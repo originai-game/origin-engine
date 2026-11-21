@@ -57,6 +57,16 @@ type Transport = (bytes: Uint8Array) => Uint8Array;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+/**
+ * The string tables the bundle's components import (`import "./x.en.ogt"`,
+ * which the build turns into a call of this), by bundle id: each world's
+ * renderer sends them once (op 12), and the host registers them.
+ */
+const tables: string[] = [];
+export function strings(id: string): void {
+  if (!tables.includes(id)) tables.push(id);
+}
+
 /** One world's UI: its op buffer, its ids and its handlers. */
 export class Renderer {
   private buf = new ArrayBuffer(4096);
@@ -74,6 +84,8 @@ export class Renderer {
   /** Nodes taken out of their parent this batch: released at the flush unless put back. */
   private readonly orphans = new Set<number>();
   private flushing = false;
+  /** How many of the recorded string tables this world was sent. */
+  private tablesSent = 0;
   errors: string[] = [];
 
   private readonly transport: Transport;
@@ -100,6 +112,11 @@ export class Renderer {
     this.at += 4 + written;
   }
   private op(code: number): void { this.count++; this.u8(code); }
+
+  /** Sends the string tables recorded since the last flush, so a component's `t()` reads them as it is built. */
+  sendTables(): void {
+    if (this.tablesSent < tables.length) this.flush();
+  }
 
   private alloc(): UiNode { return new UiNode(this.free.pop() ?? this.nextId++, this); }
 
@@ -166,6 +183,7 @@ export class Renderer {
     if (this.flushing) return;
     this.flushing = true;
     try {
+      for (; this.tablesSent < tables.length; this.tablesSent++) { this.op(12); this.str(tables[this.tablesSent]!); }
       for (let round = 0; round < 16; round++) {
         for (const id of this.orphans) { this.op(10); this.u32(id); this.forget(id); }
         this.orphans.clear();

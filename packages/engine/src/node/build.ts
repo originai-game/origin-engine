@@ -228,8 +228,21 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
       // og.assert's places (src/node/assert-sites.ts), in the game's own files only.
       const project = projectRoot(absEntry);
       // A component's strings (`import "./x.en.ogt"`) are the cook's: the
-      // bundle keeps nothing of them.
-      build.onLoad({ filter: /\.ogt$/, namespace: "file" }, () => ({ contents: "", loader: "js" }));
+      // bundle records only the table's id, which the UI renderer sends the
+      // host to register. An engine table's id is `@ui/<path under src/ui>`
+      // (the cook bundles them for a game using the built-in components), a
+      // game's its path under assets/.
+      const engineUi = join(ENGINE_ROOT, "src", "ui") + sep;
+      const assets = join(project, "assets") + sep;
+      build.onLoad({ filter: /\.ogt$/, namespace: "file" }, (a) => {
+        const id = a.path.startsWith(engineUi)
+          ? `@ui/${a.path.slice(engineUi.length)}`
+          : relative(a.path.startsWith(assets) ? assets : project, a.path);
+        return {
+          contents: `import { strings } from "@origingame/engine/ui/rt";\nstrings(${JSON.stringify(id.split(sep).join("/"))});\n`,
+          loader: "js",
+        };
+      });
       // TSX and JSX (the game's and the engine's UI components) compile with
       // nsh-jsx to the UI renderer's calls (crates/og-ui-next/CONVENTIONS.md
       // §JSX compile), after the og.assert sites are placed.

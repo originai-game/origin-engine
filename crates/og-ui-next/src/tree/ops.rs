@@ -749,6 +749,12 @@ impl Tree {
                     self.els[e as usize].hidden = 1;
                     self.inherit(e);
                 }
+                // strings: a string table the bundle's components import,
+                // for the host to register as base strings
+                12 => {
+                    let id = r.str()?;
+                    self.strings.push(id.to_owned());
+                }
                 c => return Err(format!("og.ui ops: unknown op {c}")),
             }
         }
@@ -817,6 +823,12 @@ impl Tree {
     /// Writes the events since the last call, after [`EVENTS`]: a u32
     /// count, then each one's id (u32), event (u8), x and y (f32), key and
     /// value (u32 length and UTF-8).
+    /// The string tables the batches since the last call named (op 12), by
+    /// bundle id: the host registers each as base strings.
+    pub fn take_strings(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.strings)
+    }
+
     pub fn take_events(&mut self, out: &mut Vec<u8>) {
         out.extend_from_slice(EVENTS);
         out.extend_from_slice(&(self.events.len() as u32).to_le_bytes());

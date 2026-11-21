@@ -5,15 +5,16 @@
 
 import { expect, test } from "bun:test";
 import { defineSystem, og, type World } from "@origingame/engine";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundleGame, compileJsx } from "../src/node/build.ts";
+import { cookProject } from "./support/og-bin.ts";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type GameToken } from "../src/runtime.ts";
-import { Text, View, mount, renderers, useStore } from "../src/ui/index.ts";
-import { Renderer } from "../src/ui/rt.ts";
+import { Text, View, mount, renderers, t, useStore } from "../src/ui/index.ts";
+import { Renderer, strings } from "../src/ui/rt.ts";
 import { createSignal } from "../src/ui/signals.ts";
 
 const SOURCE = `import { View, Text, Show, Switch, Match, packClass } from "@origingame/engine/ui";
@@ -39,7 +40,7 @@ function decode(bytes: Uint8Array): Op[] {
   const u8 = () => v.getUint8(at++);
   const u32 = () => { const n = v.getUint32(at, true); at += 4; return n; };
   const str = () => { const n = u32(); const s = new TextDecoder().decode(bytes.subarray(at, at + n)); at += n; return s; };
-  const names = ["", "create", "createText", "setText", "setClass", "setStyle", "setProp", "listen", "insert", "remove", "release", "placeholder"];
+  const names = ["", "create", "createText", "setText", "setClass", "setStyle", "setProp", "listen", "insert", "remove", "release", "placeholder", "strings"];
   const ops: Op[] = [];
   for (let i = u32(); i > 0; i--) {
     const code = u8();
@@ -50,6 +51,7 @@ function decode(bytes: Uint8Array): Op[] {
     else if (code === 7) ops.push([name, u32(), u8(), u8()]);
     else if (code === 8) { const p = u32(), c = u32(), b = u32(); ops.push([name, p, c, b === 0xffffffff ? -1 : b]); }
     else if (code === 9) ops.push([name, u32(), u32()]);
+    else if (code === 12) ops.push([name, str()]);
     else ops.push([name, u32()]);
   }
   expect(at).toBe(bytes.length);
@@ -145,6 +147,8 @@ test("a native bundle compiles the engine's TSX components with the game's", asy
     // the compile-time Show/For imports, which the engine does not export.
     expect(code).not.toContain("@origingame/engine/ui/components");
     expect(code).toMatch(/from ["'][^"']*ui\/rt(\.ts)?["']/);
+    // The component's `import "./spinner.en.ogt"` records the table's bundle id.
+    expect(code).toMatch(/strings\d*\("@ui\/components\/base\/spinner\.en\.ogt"\)/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -264,7 +268,7 @@ test("onLongPress and onHold listen on the tree's codes, with hold and autofocus
   try {
     const held: string[] = [];
     mount(world, () => View({ hold: 0.5, autofocus: true, onLongPress: () => held.push("long"), onHold: (e) => held.push(e.type) }), {});
-    const ops = batches[0]!;
+    const ops = batches.flat();
     expect(ops).toContainEqual(["listen", 2, 11, 1]);
     expect(ops).toContainEqual(["listen", 2, 12, 1]);
     expect(ops).toContainEqual(["setProp", 2, "hold", "0.5"]);
@@ -274,5 +278,36 @@ test("onLongPress and onHold listen on the tree's codes, with hold and autofocus
     expect(held).toEqual(["hold", "long"]);
   } finally {
     renderers.delete(9002);
+  }
+});
+
+// A built-in component's string table, cooked into a game that uses the
+// built-in components and recorded by its import, reaches the world before
+// the component's t() reads it: without it the text is the raw key.
+test("a component's imported string table is registered before it is built", () => {
+  loadNativeHost();
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-strings-"));
+  try {
+    writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\nname \"p\"\n");
+    mkdirSync(join(dir, "src"));
+    mkdirSync(join(dir, "assets"));
+    writeFileSync(join(dir, "src/main.ts"), `export { Spinner } from "@origingame/engine/ui/components";\n`);
+    cookProject(dir, dir);
+    const shown: string[] = [];
+    const game = og.game({
+      ui(world) {
+        // What the build makes of the component's `import "./states.en.ogt"`.
+        strings("@ui/components/base/states.en.ogt");
+        mount(world, () => { shown.push(t("base.error.retry")); return Text({ children: shown[0] }); }, {});
+      },
+    });
+    const created = createEngine(game as unknown as GameToken, { root: dir });
+    if (!created.ok) throw new Error(created.reason);
+    const engine = created.value;
+    engine.frame(1000 / 60);
+    expect(shown).toEqual(["Try again"]);
+    renderers.delete((engine.world as unknown as { id: number }).id);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
