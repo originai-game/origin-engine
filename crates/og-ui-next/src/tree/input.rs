@@ -1012,7 +1012,7 @@ impl Tree {
         if let Some((e, h, v, last)) = self.input.fling {
             let dt = (now - last) as f32;
             if dt > 0.0 {
-                let decay = (-SCROLL_DECAY * dt).exp();
+                let decay = og_core::math::exp(-SCROLL_DECAY * dt);
                 let by = v * (1.0 - decay) / SCROLL_DECAY;
                 let moved = self.scroller(e) && self.scroll_to(e, h, self.scroll_at(e, h) + by);
                 let v = v * decay;
