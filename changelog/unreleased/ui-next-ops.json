@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "og-ui's new core takes the TSX renderer's op batches (crates/og-ui-next/CONVENTIONS.md §Ops) through the UI patch call: nodes made, inserted, moved, removed and released, their texts, classes, styles, props and the events they listen to. The first batch builds the tree while the game loads, and the reply carries the presses since the last batch for the renderer to dispatch by id."
+    }
+  ]
+}

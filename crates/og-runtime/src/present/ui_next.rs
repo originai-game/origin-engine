@@ -69,7 +69,8 @@ pub(crate) struct Next {
     rows: BTreeMap<(String, String), Rows>,
     /// Mounted documents: mount id to (document, inputs).
     mounts: BTreeMap<(String, String), Mount>,
-    built: bool,
+    /// Warnings of a build an op batch made, for the tick's end.
+    held: Vec<String>,
     /// What the new core's documents did since the game last took them
     /// (`og.ui.docEvents`).
     pub(crate) events: Vec<og_ui::DocEvent>,
@@ -132,7 +133,7 @@ impl Next {
             signals: BTreeMap::new(),
             rows: BTreeMap::new(),
             mounts: BTreeMap::new(),
-            built: false,
+            held: Vec::new(),
             store: Session::default(),
             events: Vec::new(),
             paint: og_render::paint::Paint::default(),
@@ -346,93 +347,146 @@ impl Next {
 
     /// The UI's tick is ending: the tree is made again if a mount changed
     /// or the scheme did, then commits, lays out and paints.
+    /// The look in the UI's scheme and the game's pack, loaded when it
+    /// changed: whether it did.
+    fn load_look(&mut self, engine: u32, ui: &og_ui::Ui, now: &dyn Fn() -> f64) -> bool {
+        if self.look.is_some() {
+            return false;
+        }
+        let t = now();
+        let scheme_name = if self.scheme == og_ui::Scheme::Light {
+            "light"
+        } else {
+            "dark"
+        };
+        let mut layers = vec![Layer {
+            tokens: og_ui_next::look::default_tokens(),
+            surfaces: og_ui_next::look::DEFAULT_SURFACES,
+        }];
+        let pack = active_pack(engine);
+        if let Some(layer) = pack
+            .as_ref()
+            .and_then(|(_, files)| og_ui_next::look::pack_layer(files))
+        {
+            layers.push(layer);
+        }
+        // The cook compiled every document's style against this look
+        // and carries its root: no token or sheet is read here.
+        let key = Look::key_of(&layers, scheme_name);
+        self.section = og_ui_next::look::section(key);
+        let root = ui.documents().into_iter().find_map(|n| {
+            let doc = ui.shared_document(&n)?;
+            let bytes = cooked_style(engine, &doc.source, &self.section)?;
+            og_ui_next::cooked::root(&bytes, key)
+        });
+        self.look = Some(Rc::new(match root {
+            Some(steps) => Look::cooked(&layers, scheme_name, steps),
+            None => Look::load(&layers, scheme_name),
+        }));
+        self.spans.look = now() - t;
+        true
+    }
+
+    /// Makes the tree when there is none: its documents' mounts
+    /// instantiated, ready for op batches. Its time and allocations are
+    /// the build's.
+    fn build(&mut self, engine: u32, ui: &og_ui::Ui, now: &dyn Fn() -> f64) {
+        if self.tree.is_some() {
+            return;
+        }
+        self.load_look(engine, ui, now);
+        let a0 = allocations();
+        let t0 = now();
+        let library = ui
+            .documents()
+            .into_iter()
+            .filter_map(|n| ui.shared_document(&n));
+        let look = self.look.clone().expect("loaded above");
+        let library: Vec<_> = library.collect();
+        let mut tree = Tree::new(look, library.iter().cloned());
+        for doc in &library {
+            if let Some(bytes) = cooked_style(engine, &doc.source, &self.section) {
+                tree.set_cooked(&doc.source, bytes);
+            }
+        }
+        tree.set_strings(
+            &self.language,
+            Box::new(move |key| crate::bind::i18n::message(engine, key)),
+        );
+        for (doc, inputs, _) in self.mounts.values() {
+            let inputs: Vec<(&str, u32)> = inputs.iter().map(|(n, s)| (n.as_str(), *s)).collect();
+            if let Err(e) = tree.mount(doc, &inputs) {
+                self.held.push(e);
+            }
+        }
+        self.tree = Some(tree);
+        self.spans.build = now() - t0;
+        self.spans.build_allocations = allocations() - a0;
+    }
+
+    /// An op batch of the TS renderer (CONVENTIONS.md §Ops), applied to
+    /// the tree now: the first one makes the tree, so a mount pays for its
+    /// build while the game loads and the first frame only commits and
+    /// paints. The reply is the events since the last batch, or the
+    /// refusal of an op.
+    pub(crate) fn ops(&mut self, engine: u32, ui: &og_ui::Ui, bytes: &[u8]) -> Vec<u8> {
+        self.scheme = ui.theme().scheme;
+        self.build(engine, ui, &crate::author::probe::now_ms);
+        let tree = self.tree.as_mut().expect("built above");
+        let mut out = Vec::new();
+        match tree.apply(bytes) {
+            Ok(()) => tree.take_events(&mut out),
+            Err(e) => {
+                out.extend_from_slice(og_ui_next::tree::REFUSED);
+                out.extend_from_slice(e.as_bytes());
+            }
+        }
+        out
+    }
+
+    /// The UI's tick is ending: the tree is made again if a mount changed
+    /// or the scheme did, then commits, lays out and paints.
     pub(crate) fn end(
         &mut self,
         engine: u32,
         ui: &og_ui::Ui,
         now: &dyn Fn() -> f64,
     ) -> Vec<String> {
-        let mut warnings = Vec::new();
+        let mut warnings = std::mem::take(&mut self.held);
         let scheme = ui.theme().scheme;
+        // A tree of op nodes stays: its texts are the renderer's, and a new
+        // look restyles it in place.
+        let ops = self.tree.as_ref().is_some_and(|t| t.has_ops());
         // A new locale is a new tree: its bindings read the strings anew.
         let language = crate::bind::i18n::language(engine);
         if language != self.language {
             self.language = language;
-            self.tree = None;
+            if !ops {
+                self.tree = None;
+            }
         }
         // The game's pack over the defaults; a switch is another look.
-        let pack = active_pack(engine);
-        let pack_id = pack.as_ref().map(|(id, _)| id.clone());
+        let pack_id = active_pack(engine).map(|(id, _)| id);
         if scheme != self.scheme || pack_id != self.pack {
             self.scheme = scheme;
             self.pack = pack_id;
             self.look = None;
-            self.tree = None;
+            if !ops {
+                self.tree = None;
+            }
         }
-        if self.mounts.is_empty() {
+        if self.mounts.is_empty() && !ops {
             return warnings;
         }
-        let scheme_name = if scheme == og_ui::Scheme::Light {
-            "light"
-        } else {
-            "dark"
-        };
-        if self.look.is_none() {
-            let t = now();
-            let mut layers = vec![Layer {
-                tokens: og_ui_next::look::default_tokens(),
-                surfaces: og_ui_next::look::DEFAULT_SURFACES,
-            }];
-            if let Some(layer) = pack
-                .as_ref()
-                .and_then(|(_, files)| og_ui_next::look::pack_layer(files))
-            {
-                layers.push(layer);
-            }
-            // The cook compiled every document's style against this look
-            // and carries its root: no token or sheet is read here.
-            let key = Look::key_of(&layers, scheme_name);
-            self.section = og_ui_next::look::section(key);
-            let root = ui.documents().into_iter().find_map(|n| {
-                let doc = ui.shared_document(&n)?;
-                let bytes = cooked_style(engine, &doc.source, &self.section)?;
-                og_ui_next::cooked::root(&bytes, key)
-            });
-            self.look = Some(Rc::new(match root {
-                Some(steps) => Look::cooked(&layers, scheme_name, steps),
-                None => Look::load(&layers, scheme_name),
-            }));
-            self.spans.look = now() - t;
+        if self.load_look(engine, ui, now)
+            && let (Some(tree), Some(look)) = (&mut self.tree, &self.look)
+        {
+            tree.set_look(look.clone());
         }
+        self.build(engine, ui, now);
+        warnings.append(&mut self.held);
         let a0 = allocations();
         let t0 = now();
-        let building = self.tree.is_none();
-        if building {
-            let library = ui
-                .documents()
-                .into_iter()
-                .filter_map(|n| ui.shared_document(&n));
-            let look = self.look.clone().expect("loaded above");
-            let library: Vec<_> = library.collect();
-            let mut tree = Tree::new(look, library.iter().cloned());
-            for doc in &library {
-                if let Some(bytes) = cooked_style(engine, &doc.source, &self.section) {
-                    tree.set_cooked(&doc.source, bytes);
-                }
-            }
-            tree.set_strings(
-                &self.language,
-                Box::new(move |key| crate::bind::i18n::message(engine, key)),
-            );
-            for (doc, inputs, _) in self.mounts.values() {
-                let inputs: Vec<(&str, u32)> =
-                    inputs.iter().map(|(n, s)| (n.as_str(), *s)).collect();
-                if let Err(e) = tree.mount(doc, &inputs) {
-                    warnings.push(e);
-                }
-            }
-            self.tree = Some(tree);
-        }
         let Some(tree) = &mut self.tree else {
             return warnings;
         };
@@ -483,11 +537,6 @@ impl Next {
         self.spans.ops = commit.ops;
         self.spans.refolded = commit.refolded;
         self.spans.elements = tree.len();
-        if building || !self.built {
-            self.built = true;
-            self.spans.build = t2 - t0;
-            self.spans.build_allocations = allocated;
-        }
         warnings
     }
 

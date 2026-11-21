@@ -314,13 +314,17 @@ pub fn shared_ui(engine: u32) -> Option<og_ui::SharedUi> {
 pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
     match shared_ui(world) {
         // The documents run on og-ui's new core: its mounts are the new core's.
-        Some(_) => {
+        Some(ui) => {
             let eng = engine::engine(world).expect("shared_ui found it");
             let mut rs = eng.render.borrow_mut();
             let next = rs
                 .ui_next
                 .get_or_insert_with(|| Box::new(present::ui_next::Next::new()));
-            next.patch(bytes)
+            // The TS renderer's op batches, beside the store's commands.
+            match bytes.strip_prefix(og_ui_next::tree::MAGIC) {
+                Some(ops) => next.ops(world, &ui.lock(), ops),
+                None => next.patch(bytes),
+            }
         }
         None => og_ui::reactive::wire::encode(&serde_json::json!({
             "ok": false, "reason": "og.ui: world has no UI"
