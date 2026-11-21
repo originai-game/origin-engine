@@ -638,6 +638,43 @@ font-weight: 700; font-stretch: 75%; font-optical-sizing: none; }}
     }
 }
 
+/// A text drawn in a variable face's instance (a weight its axes reach)
+/// names the characters the face lacks, as a text in the face itself
+/// does, so the host loads the font pack that covers them (the Chinese
+/// pack for a Chinese name in the default UI face) instead of drawing
+/// boxes and saying nothing.
+#[test]
+fn text_in_a_variable_instance_names_the_characters_it_lacks() {
+    let font = face("templates/styles/shared/InstrumentSans[wdth,wght].ttf", 7);
+    let file = font.metrics.file.clone().unwrap();
+    let mut d = doc_in(
+        Fonts {
+            body: font,
+            ..Fonts::default()
+        },
+        Vec::new(),
+        r#"<p id="Name">林薇 Lin</p>"#,
+        "p { width: max-content; font-weight: 700; }",
+    );
+    for (i, f) in file.take_instances().iter().enumerate() {
+        f.set_handle(FontHandle::from_index(100 + i));
+    }
+    d.step(InputFrame::default());
+    let t = drawn(&d, "Name");
+    assert!(
+        !t.is_empty() && t.iter().all(|t| t.font.index() >= 100),
+        "drawn in the instance: {t:?}"
+    );
+    let missing: Vec<char> =
+        d.ui.frame()
+            .missing_glyphs
+            .iter()
+            .filter(|(f, _)| f.index() >= 100)
+            .flat_map(|(_, c)| c.iter().copied())
+            .collect();
+    assert_eq!(missing, ['林', '薇'], "{:?}", d.ui.frame().missing_glyphs);
+}
+
 /// Rich paragraphs shape variable instances at their selected axes, not
 /// merely paint instance outlines over advances from the default face.
 #[test]

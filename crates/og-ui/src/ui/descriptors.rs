@@ -347,6 +347,9 @@ pub struct FamilyLists {
     fonts: elsa::FrozenMap<FamilySelection, Box<ResolvedFamily>>,
     /// Faces at a variable font's instance ([`Fonts::instanced`]).
     instances: elsa::FrozenMap<InstanceKey, Box<UiFont>>,
+    /// Each instance's face by the handle it draws as (the first made),
+    /// so [`Fonts::face`] finds text drawn in one.
+    instance_faces: elsa::FrozenMap<og_draw::FontHandle, Box<UiFont>>,
     /// Mixed fonts presenting their emoji otherwise than by Unicode
     /// ([`Fonts::presented`]), by the font's handle, its runs' and file's
     /// addresses (the entry holds both) and the presentation.
@@ -1064,13 +1067,18 @@ impl Fonts {
                 let handle = instance
                     .handle()
                     .or_else(|| file.stand_in(&instance).and_then(|f| f.handle()));
-                self.family_lists.instances.insert(
-                    key,
-                    Box::new(UiFont {
-                        handle,
-                        metrics: font.metrics.at_instance(instance),
-                    }),
-                )
+                let made = UiFont {
+                    handle,
+                    metrics: font.metrics.at_instance(instance),
+                };
+                if let Some(h) = handle
+                    && self.family_lists.instance_faces.get(&h).is_none()
+                {
+                    self.family_lists
+                        .instance_faces
+                        .insert(h, Box::new(made.clone()));
+                }
+                self.family_lists.instances.insert(key, Box::new(made))
             }
         };
         Some(made)
@@ -1503,8 +1511,9 @@ impl Fonts {
         }
     }
 
-    /// The face drawn as `handle`: a role's, a companion, the locale's or
-    /// a fallback.
+    /// The face drawn as `handle`: a role's, a companion, the locale's, a
+    /// fallback, or a variable face's instance (a weight or width a text
+    /// is drawn at).
     pub fn face(&self, handle: og_draw::FontHandle) -> Option<&UiFont> {
         [
             Some(&self.body),
@@ -1522,6 +1531,7 @@ impl Fonts {
         .chain(&self.chain)
         .chain(&self.fallbacks)
         .find(|f| f.handle == Some(handle))
+        .or_else(|| self.family_lists.instance_faces.get(&handle))
     }
 
     /// The style's CJK companion of `role` in the active locale's forms
