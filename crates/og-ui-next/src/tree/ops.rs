@@ -3697,6 +3697,53 @@ mod tests {
         assert_eq!(t.xfs[knob], 0, "the knob back home");
     }
 
+    /// A held d-pad carries the way og-input reads from it as
+    /// `data-dir-<way>` (y up: two on a diagonal, none in its dead
+    /// middle), a stick carries none, and a pad that stops being a zone
+    /// while held reads as let go.
+    #[test]
+    fn a_held_pad_carries_the_way_it_reads() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        for id in [1, 2] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("b");
+            b.op(8).u32(0).u32(id).u32(u32::MAX);
+        }
+        b.op(6).u32(1).str("touchPad").str("move");
+        b.op(6).u32(2).str("touchStick").str("look");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert!(t.take_zones().is_some());
+        let held = |x: f32, y: f32| og_input::ZoneState {
+            pointer: Some(0),
+            value: og_core::glam::Vec2::new(x, y),
+            ..Default::default()
+        };
+        let dirs = |t: &Tree, id: u32| -> Vec<String> {
+            let e = t.op(id).unwrap() as usize;
+            t.els[e].attrs.iter().map(|a| a.to_string()).collect()
+        };
+        t.zone_states([&held(-1.0, 1.0), &held(1.0, -1.0)], 1.0);
+        assert_eq!(dirs(&t, 1), ["dir-left", "dir-up"], "up and to the left");
+        assert_eq!(dirs(&t, 2), [""; 0], "a stick has no way");
+        t.zone_states([&held(0.0, -1.0), &held(0.0, 0.0)], 1.0);
+        assert_eq!(dirs(&t, 1), ["dir-down"]);
+        t.zone_states([&held(0.0, 0.0), &held(0.0, 0.0)], 1.0);
+        assert_eq!(dirs(&t, 1), [""; 0], "held in its dead middle");
+        t.zone_states([&held(1.0, 0.0), &held(0.0, 0.0)], 1.0);
+        assert_eq!(dirs(&t, 1), ["dir-right"]);
+        // Disabled while held: og-input drops the zone and says no more.
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("disabled").str("true");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(t.take_zones().map(|z| z.len()), Some(1));
+        assert_eq!(dirs(&t, 1), [""; 0], "let go with its zone");
+        let one = t.op(1).unwrap();
+        assert!(t.input.per(one).unwrap().states & PRESSED == 0);
+    }
+
     /// Two fingers down on a node that hears `onPinch` and `onRotate`
     /// pinch and turn it (NSH's recogniser): start, move with the scale
     /// and the turn from where they began, end. A finger let go fast on

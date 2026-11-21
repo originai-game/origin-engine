@@ -259,9 +259,12 @@ machines do (ported as logic).
   (`Tree::take_zones`), which samples the touches that started on it in
   the tick. No handler runs. A disabled or hidden one is no zone. What
   the map read comes back before the next layout (`Tree::zone_states`):
-  the control is `active:` while a touch holds it, and a `knob` node
+  the control is `active:` while a touch holds it, a `knob` node
   inside a stick moves by the stick's knob (a paint transform; layout
-  stays put).
+  stays put), and a held d-pad carries the way it reads as
+  `data-dir-up|right|down|left` (two on a diagonal, none in its dead
+  middle), which its classes read (`group-data-dir-up/pad:` lights an
+  arm). A control that stops being a zone while held reads as let go.
 - **Gestures** (NSH's recognisers, every pointer og-input tracks): each
   pointer keeps the node that hears `pinch`, `rotate` or `swipe` it went
   down on. A second finger down on the same node starts events 17 `pinch`
@@ -285,7 +288,7 @@ machines do (ported as logic).
 | `draggable` | data | it can be picked up and dragged, carrying this data |
 | `dropTarget` | an id | a carried node can be dropped on it |
 | `touchStick` | an action's name | its box is a stick of that action (x, y from its centre) |
-| `touchPad` | an action's name | its box is a d-pad of that action (eight directions) |
+| `touchPad` | an action's name | its box is a d-pad of that action (eight directions); held, it carries `data-dir-<way>` |
 | `touchButton` | an action's name | its box is a button of that action (1 while held) |
 | `deadZone` | 0 to 0.95 | a stick's dead zone, of its radius (0: og-input's 0.15) |
 | `knob` | bool | inside a `touchStick`, it moves with the stick's knob, held inside the stick's box |
