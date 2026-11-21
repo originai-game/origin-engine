@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook",
+      "summary": "A document's own strings (its `<meta name=\"strings\">`, such as the built-in film-choices screen's English) are no longer checked as a locale's table: the cook stopped reporting the game's `en.ogt` as missing keys it has, and the screen's keys as not in the base table."
+    }
+  ]
+}

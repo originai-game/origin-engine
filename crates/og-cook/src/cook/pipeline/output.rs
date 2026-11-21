@@ -554,10 +554,24 @@ pub(crate) fn diagnose(
         story_functions,
         ..
     } = *cx;
+    // A document's own strings (its `<meta name="strings">`: a built-in
+    // screen's `.en.ogt`, a component `og ui add` copied) are its fallback
+    // text, which the runtime adds under the game's tables; they are no
+    // locale's table, so the check across tables leaves them out.
+    let own: BTreeSet<&str> = sources
+        .iter()
+        .filter(|s| s.kind == &crate::cook::ui_documents::DOCUMENT)
+        .filter_map(|s| {
+            let text = std::str::from_utf8(&s.bytes).ok()?;
+            let imports = execute::document_imports(s, text).ok()?;
+            crate::cook::ui_components::parsed(&s.rel, text, imports).ok()
+        })
+        .flat_map(|doc| doc.strings.iter().map(String::as_str))
+        .collect();
     // Across the string tables: every locale has every key, with its arguments.
     let tables: Vec<(&str, &[u8])> = sources
         .iter()
-        .filter(|s| s.kind == &strings::STRINGS)
+        .filter(|s| s.kind == &strings::STRINGS && !own.contains(s.rel.as_str()))
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
     // Diagnostics describe source assets, never change their cooked blobs.

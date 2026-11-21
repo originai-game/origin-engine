@@ -445,3 +445,41 @@ fn a_font_pack_ships_word_dictionaries_only_for_the_games_locales() {
         "{warnings:?}"
     );
 }
+
+/// A document's own strings (`<meta name="strings">`, as a built-in screen
+/// carries its `.en.ogt`) are its fallback text, not a locale's table: the
+/// check neither compares them with the base nor puts their keys on the
+/// game's own table of the same locale, whose real gaps it still reports.
+#[test]
+fn a_documents_own_strings_are_not_a_locale_table() {
+    let zh = String::from_utf8(table("zh", &[("a", "甲"), ("b", "乙")]))
+        .unwrap()
+        .replace("locale \"zh\"\n", "locale \"zh\"\nbase true\n")
+        .into_bytes();
+    let root = project(
+        "own",
+        &[
+            ("strings/zh.ogt", zh),
+            ("strings/en.ogt", table("en", &[("a", "A")])),
+            (
+                "ui/panel.svelte",
+                b"<meta name=\"screen\" content=\"panel\">\n<meta name=\"strings\" content=\"./panel.en.ogt\">\n<p>{t(\"panel.title\")}</p>\n"
+                    .to_vec(),
+            ),
+            ("ui/panel.en.ogt", table("en", &[("panel.title", "Panel")])),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.errors().is_empty(), "{:?}", report.errors());
+    let keys: Vec<&String> = report
+        .warnings
+        .iter()
+        .filter(|w| w.contains(" key "))
+        .collect();
+    assert_eq!(
+        keys,
+        ["assets/strings/en.ogt: missing key 'b' (zh has it)"],
+        "{:?}",
+        report.warnings
+    );
+}
