@@ -25,21 +25,21 @@ export interface ActionButtonProps {
 export function ActionButton(props: ActionButtonProps) {
   return (
     <View
-      class={`flex-row items-center justify-center gap-1 relative rounded-capsule border-2 border-rim-strong bg-raised-hi shadow-float active:scale-97 disabled:opacity-45 duration-160 data-primary:size-20 data-primary:border-transparent data-primary:bg-accent size-16`}
+      class={`flex-row items-center justify-center gap-1 relative group/disc rounded-capsule border-2 border-rim-strong bg-raised-hi text-fg shadow-float active:scale-97 disabled:opacity-45 duration-160 data-primary:size-20 data-primary:border-transparent data-primary:bg-accent data-primary:text-accent-fg size-16`}
       touchButton={props.action}
       data-primary={props.primary}
       disabled={props.disabled}
       label={props.label}
       role="button"
     >
-      <View class="size-full flex-row items-center justify-center absolute inset-0 bg-linear-to-b from-white/12 to-black/30 data-primary:from-white/55 data-primary:to-black/10 rounded-capsule" />
+      <View class="size-full flex-row items-center justify-center absolute inset-0 bg-linear-to-b from-white/12 to-black/30 group-data-primary/disc:from-white/30 group-data-primary/disc:to-black/10 rounded-capsule" />
       <Show when={(props.charge ?? -1) >= 0}>
         <View class="absolute inset-0 nine-ring bg-gold/50" wipe={Math.min(Math.max(props.charge ?? 0, 0), 1)} data-charged={(props.charge ?? 0) >= 1} />
       </Show>
       <Show when={props.icon} fallback={
-        <Text class="text-sm whitespace-nowrap text-fg data-primary:text-accent-fg">{props.label}</Text>
+        <Text class="text-sm whitespace-nowrap">{props.label}</Text>
       }>
-        <Icon class="size-8 text-fg data-primary:text-accent-fg" name={props.icon} />
+        <Icon class="size-8" name={props.icon} />
       </Show>
     </View>
   );

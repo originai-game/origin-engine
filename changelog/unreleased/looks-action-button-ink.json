@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ActionButton",
+      "summary": "A primary ActionButton's label and icon draw in `accent-fg` on its accent disc (17:1 in the default pack's dark scheme). They read `data-primary:` on themselves, but only the disc carries `data-primary`, so they kept `fg`, near-white on the light accent (1.4:1). The ink is now set on the disc and inherited, and the face's sheen follows the disc through `group-data-primary/disc:`, at 30% white so a dark accent (fantasy's red) keeps its white ink above 4.5:1."
+    }
+  ]
+}
