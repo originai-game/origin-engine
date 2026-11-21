@@ -68,18 +68,18 @@ export function InteractionPrompt(props: InteractionPromptProps) {
     >
       <View class="relative z-1 shrink-0 flex-row items-center justify-center size-9">
         <Show when={hold() >= 0}>
-          <View class="absolute inset-0 rounded-full bg-fg/78" />
+          <View class="absolute inset-0 rounded-full bg-fg-muted" />
           <View class="absolute inset-0 nine-ring bg-sheen" wipe={hold() >= 1 ? 1 : hold()} role="meter" label={t("world.prompt.hold")} valueMin={0} valueMax={1} valueNow={hold() >= 1 ? 1 : hold()} />
         </Show>
-        <Text class="z-1 min-w-6.5 h-6.5 px-1.25 text-center text-sm leading-6.5 font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-[0px_0.143rem_0px_#0000008c,inset_0px_-0.143rem_0px_#0000002e] group-data-pressed:translate-y-0.5 group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-[0px_0px_1rem_#38e8ff,inset_0px_-0.143rem_0px_#0000002e] group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-6.5 group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg/95 group-data-pad:shadow-[0px_0px_0px_1.5px_#ffffff99,0px_2px_0px_#00000099]" data-action={action() || undefined}>{key()}</Text>
+        <Text class="z-1 min-w-6.5 h-6.5 px-1.25 text-center text-sm leading-6.5 font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key group-data-pressed:translate-y-0.5 group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-glow-lg group-data-pressed:inset-shadow-lip group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-6.5 group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg group-data-pad:shadow-key group-data-pad:ring-2 group-data-pad:ring-rim-strong" data-action={action() || undefined}>{key()}</Text>
       </View>
       <View class="flex-col min-w-0 -ml-2.5 pt-1 px-3 pb-1.25 pl-4 nine-plate-cut bg-plate-hi">
-        <Text class="text-reading leading-[1.15] font-bold tracking-md uppercase whitespace-nowrap group-data-disabled:text-fg-muted">{props.verb}</Text>
+        <Text class="text-reading leading-tight font-bold tracking-md uppercase whitespace-nowrap group-data-disabled:text-fg-muted">{props.verb}</Text>
         <Show when={name() !== ""}>
-          <Text class="min-w-0 max-w-50 text-[0.75rem] leading-[1.2] font-semibold tracking-wide uppercase whitespace-nowrap truncate text-fg-muted">{name()}</Text>
+          <Text class="min-w-0 max-w-50 text-2xs leading-tight font-semibold tracking-wide uppercase whitespace-nowrap truncate text-fg-muted">{name()}</Text>
         </Show>
         <Show when={props.disabled && reason() !== ""}>
-          <View class="flex-row items-center gap-x-1 min-w-0 text-[0.75rem] leading-[1.2] font-bold tracking-wide uppercase whitespace-nowrap text-danger">
+          <View class="flex-row items-center gap-x-1 min-w-0 text-2xs leading-tight font-bold tracking-wide uppercase whitespace-nowrap text-danger">
             <Icon class="shrink-0 size-3" name="lock" />
             <Text class="min-w-0 max-w-50 whitespace-nowrap truncate">{reason()}</Text>
           </View>

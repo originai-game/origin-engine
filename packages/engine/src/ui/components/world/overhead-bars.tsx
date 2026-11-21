@@ -45,7 +45,7 @@ export function OverheadBars(props: OverheadBarsProps) {
               <View
                 anchor={anchor}
                 lift={[0, height(), 0]}
-                class="-translate-x-1/2 relative h-1.25 w-11.5 bg-track shadow-[0px_0px_0px_1px_#ffffff47]"
+                class="-translate-x-1/2 relative h-1.25 w-11.5 bg-track ring ring-rim"
               >
                 <View
                   class="absolute left-0 top-0 h-full bg-success data-ally:bg-info data-enemy:bg-danger data-neutral:bg-gold"
@@ -59,7 +59,7 @@ export function OverheadBars(props: OverheadBarsProps) {
                 <View
                   anchor={anchor}
                   lift={[0, height() - 0.12, 0]}
-                  class="-translate-x-1/2 relative h-0.75 w-9.25 bg-track shadow-[0px_0px_0px_1px_#ffffff47]"
+                  class="-translate-x-1/2 relative h-0.75 w-9.25 bg-track ring ring-rim"
                 >
                   <View
                     class="absolute left-0 top-0 h-full bg-mana"

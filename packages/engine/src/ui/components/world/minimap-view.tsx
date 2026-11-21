@@ -75,9 +75,9 @@ function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: 
   };
   const ring = () =>
     m().kind === "ping"
-      ? "shadow-[inset_0px_0px_0px_0.143rem_rgb(255_170_60),0px_0px_0px_0.286rem_rgb(255_170_60/0.22)]"
+      ? "ring-4 ring-fill inset-ring-2 inset-ring-warn"
       : m().kind === "ping" || m().kind === "ally" || m().kind === "poi" || m().kind === "loot"
-        ? "shadow-[0px_0px_0px_0.143rem_#262a33]"
+        ? "ring-2 ring-key-fg"
         : "";
   return (
     <View
@@ -86,7 +86,7 @@ function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: 
       style={{ width: `${pip()}rem`, height: `${pip()}rem`, left: left(), top: top(), background: fill() }}
     >
       <Show when={m().kind === "ping"}>
-        <View class="absolute inset-0 rounded-full shadow-[inset_0px_0px_0px_0.143rem_rgb(255_170_60),0px_0px_0px_0.286rem_rgb(255_170_60/0.22)] animate-ping" />
+        <View class="absolute inset-0 rounded-full ring-4 ring-fill inset-ring-2 inset-ring-warn animate-ping" />
       </Show>
     </View>
   );
@@ -104,7 +104,7 @@ export function MinimapView(props: MinimapViewProps) {
   return (
     <View class="flex-col items-center gap-y-1" role="image" label={props.zone || t("component.minimap-view.name")} data-square={props.square === true}>
       <View
-        class={`relative rounded-full p-1.25 data-square:rounded-panel bg-conic from-rim-strong via-rim-soft to-rim-strong shadow-[0px_0.571rem_1.714rem_#0000008c]`}
+        class={`relative rounded-full p-1.25 data-square:rounded-panel bg-conic from-rim-strong via-rim-soft to-rim-strong shadow-float`}
         data-square={props.square === true}
       >
         <View
@@ -147,7 +147,7 @@ export function MinimapView(props: MinimapViewProps) {
             </For>
           </View>
           <Show when={round()}>
-            <View class="absolute inset-0 rounded-full border border-white/8 pointer-events-none" />
+            <View class="absolute inset-0 rounded-full border border-rim-soft pointer-events-none" />
           </Show>
           <View
             class="absolute left-1/2 top-1/2 w-20 h-40 -bg-conic-30 from-hud-accent to-transparent to-17%"
@@ -166,12 +166,12 @@ export function MinimapView(props: MinimapViewProps) {
             <Line
               points={[ARROW_BOX / 2, 1.8, ARROW_BOX - 3.6, ARROW_BOX - 3.6, ARROW_BOX / 2, ARROW_BOX - 10.2, 3.6, ARROW_BOX - 3.6]}
               closed
-              class="stroke-white stroke-2"
+              class="stroke-fg stroke-2"
             />
           </View>
-          <View class="absolute inset-0 rounded-full pointer-events-none shadow-[inset_0px_0px_0px_0.071rem_#ffffff33,inset_0px_0px_2.143rem_#1a1e28b3] data-square:rounded-card" data-square={props.square === true} />
+          <View class="absolute inset-0 rounded-full pointer-events-none inset-shadow-sunk inset-ring-1 inset-ring-rim data-square:rounded-card" data-square={props.square === true} />
         </View>
-        <Text class="absolute top-1.75 left-1/2 -translate-x-1/2 min-w-6 h-6 flex-row items-center justify-center rounded-full bg-foe shadow-[0px_0px_0px_0.143rem_#262a33,0px_0px_0.714rem_#ff4d5eb3] text-caption font-bold leading-none text-foe-fg whitespace-nowrap">
+        <Text class="absolute top-1.75 left-1/2 -translate-x-1/2 min-w-6 h-6 flex-row items-center justify-center rounded-full bg-foe shadow-glow shadow-foe ring-2 ring-key-fg text-caption font-bold leading-none text-foe-fg whitespace-nowrap">
           {t("component.minimap-view.north")}
         </Text>
       </View>

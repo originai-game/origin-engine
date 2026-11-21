@@ -69,12 +69,12 @@ function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
       style={{ left: `calc(${((props.poi.bearing * K + props.wrap) / 9) * 100}% - 2.857rem)` }}
     >
       <Show when={(props.poi.icon ?? "") !== ""} fallback={
-        <View class="size-2.5 m-0.25 rotate-45 shadow-[0px_0px_0px_0.143rem_#1a1e28d9]" style={{ background: ink() }} />
+        <View class="size-2.5 m-0.25 rotate-45 ring-2 ring-entry-hi" style={{ background: ink() }} />
       }>
         <Icon class="size-3" name={props.poi.icon} style={{ color: ink() }} />
       </Show>
       <Show when={(props.poi.distance ?? -1) >= 0}>
-        <Text class="text-caption leading-[1.1] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0)}${props.units}`}</Text>
+        <Text class="text-caption leading-tight font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0)}${props.units}`}</Text>
       </Show>
     </View>
   );
@@ -87,12 +87,12 @@ export function Compass(props: CompassProps) {
   return (
     <View class="flex-col items-center w-160 max-w-full" role="status" label={t("component.compass.name")} valueText={`${formatNumber(degrees())}°`}>
       <View class="flex-col items-center relative z-1 -mb-1">
-        <Text class="py-0 px-1.25 text-xs leading-[1.35] font-bold tabular-nums text-key-fg bg-hud-accent rounded-tl-control rounded-br-control text-shadow-none">
+        <Text class="py-0 px-1.25 text-xs leading-snug font-bold tabular-nums text-key-fg bg-hud-accent rounded-tl-control rounded-br-control text-shadow-none">
           {(degrees() < 9.5 ? "00" : degrees() < 99.5 ? "0" : "") + formatNumber(degrees()) + "°"}
         </Text>
       </View>
       <View class="relative w-full h-12.5 overflow-hidden">
-        <View class="absolute inset-x-0 top-0 h-9 bg-linear-to-b from-surface/0 to-surface/55" />
+        <View class="absolute inset-x-0 top-0 h-9 bg-linear-to-b from-surface to-surface" />
         <View
           class="absolute top-0 bottom-0 left-1/2 w-9/1"
           style={{ transform: `translateX(${(-(heading() * K + 3) / 9) * 100}%)` }}
@@ -103,7 +103,7 @@ export function Compass(props: CompassProps) {
               const opacity = Math.min(Math.max((d - 0.05) * 25, 0), 1);
               return (
                 <Text
-                  class={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${p().cardinal ? "text-xl leading-none text-fg" : "text-base leading-[1.2] text-fg-muted"}`}
+                  class={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${p().cardinal ? "text-xl leading-none text-fg" : "text-base leading-tight text-fg-muted"}`}
                   style={{ left: `${(p().at / 9) * 100}%`, opacity }}
                 >
                   {t(p().key)}
