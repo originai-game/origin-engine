@@ -134,7 +134,10 @@ an id (u32), event (u8), x and y on the UI's surface (f32), then key and
 value (strings; empty unless `key` or `change`), which the renderer
 dispatches to handlers by id. A refused op stops the batch (the ops before
 it stay applied) and the reply is `OGER` and the reason. `data-*` props are
-the states a class variant reads (`data-ready:` …).
+the states a class variant reads: one is on unless its value is empty or
+`false`; `data-ready:` reads the node's own, `group-data-ready/<name>:`
+(`group-data-ready:` for an unnamed `group`) the nearest ancestor with
+`group/<name>`. Only the boolean form: `data-[state=open]:` is not read.
 
 ## Input (head 4)
 

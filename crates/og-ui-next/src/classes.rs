@@ -207,6 +207,21 @@ impl Classes {
     /// through NSH's own declarations, so it takes what a style prop
     /// takes. A declaration NSH does not know is skipped.
     pub fn record_styled(&mut self, classes: &str, style: &str, env: &Env) -> Record {
+        self.record_data(classes, style, env, "")
+    }
+
+    /// [`Classes::record_styled`] for an element with `data-*` attributes:
+    /// `data` names them, separated by spaces, the element's own as
+    /// `name` and its nearest ancestor group's as `group/name` (`/name`
+    /// for an unnamed `group`), which `data-<name>:` and
+    /// `group-data-<name>[/group]:` read.
+    pub fn record_data(&mut self, classes: &str, style: &str, env: &Env, data: &str) -> Record {
+        let has = |group: Option<&str>, name: &str| {
+            data.split(' ').any(|t| match group {
+                None => t == name,
+                Some(g) => t.strip_prefix(g).and_then(|r| r.strip_prefix('/')) == Some(name),
+            })
+        };
         let env = *env;
         let parsed = self.parsed(classes);
         let (list, nine, nine_list) = (
@@ -232,7 +247,7 @@ impl Classes {
         };
         let mut out = Style::default();
         let mut props = ClassProps::default();
-        list.apply(&cx, &self.theme, &mut out, &mut props, |_| {});
+        list.apply_data(&cx, &has, &self.theme, &mut out, &mut props, |_| {});
         for (name, value) in declarations(style) {
             let value = match value.parse::<f32>() {
                 Ok(n) => StyleValue::Number(n),
@@ -244,8 +259,9 @@ impl Classes {
         // The `nine-<name>` that holds in `env`, the last one written.
         if let Some(nine_list) = nine_list {
             let mut stand = Style::default();
-            nine_list.apply(
+            nine_list.apply_data(
                 &cx,
+                &has,
                 &self.theme,
                 &mut stand,
                 &mut ClassProps::default(),
@@ -819,6 +835,31 @@ mod tests {
         // A name the pack lacks draws nothing and is reported.
         assert_eq!(c.record("nine-gone", &env).skin.image, Slice::default());
         assert_eq!(c.unknown("p-2 nine-gone nine-plate"), ["nine-gone"]);
+    }
+
+    #[test]
+    fn data_variants_read_the_element_and_its_nearest_group() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        let env = Env::default();
+        let class =
+            "opacity-50 data-on:opacity-75 group-data-armed/booster:p-2 group-data-open:pt-1";
+        let pad = |r: &Record| taffy::Style::from(&r.layout).padding.top;
+        let r = c.record_data(class, "", &env, "");
+        assert_eq!(
+            (r.skin.opacity, pad(&r)),
+            (0.5, taffy::LengthPercentage::length(0.0))
+        );
+        let r = c.record_data(class, "", &env, "on booster/armed");
+        assert_eq!(
+            (r.skin.opacity, pad(&r)),
+            (0.75, taffy::LengthPercentage::length(8.0))
+        );
+        // Another group's, or its own, `armed` is not the booster group's.
+        let r = c.record_data(class, "", &env, "armed boost/armed /open");
+        assert_eq!(
+            (r.skin.opacity, pad(&r)),
+            (0.5, taffy::LengthPercentage::length(4.0))
+        );
     }
 
     #[test]

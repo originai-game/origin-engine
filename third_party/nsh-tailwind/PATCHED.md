@@ -45,5 +45,9 @@ the changes after it are only these:
   `text-stroke-<number>`, `text-stroke-[<length>]` and
   `text-stroke-<color>`.
 
+- `tailwind/mod.rs` adds `ClassList::apply_data`, `apply` with the
+  node's `data-*` attributes (the `Data` predicate `apply_with` takes), so
+  og-ui-next's tree resolves `data-<name>:` and `group-data-<name>:`.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.

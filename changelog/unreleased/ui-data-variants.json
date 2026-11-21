@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "data-*",
+      "summary": "A TSX element's `data-*` props drive its classes' `data-<name>:` variants, and `group-data-<name>/<group>:` reads the nearest ancestor `group/<group>`'s: `data-on={props.on}` with `data-on:bg-accent` now marks it. A prop is on unless its value is empty or `false`; changing it restyles the element and the group's descendants that read it."
+    }
+  ]
+}

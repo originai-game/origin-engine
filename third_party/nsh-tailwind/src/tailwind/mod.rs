@@ -740,6 +740,31 @@ impl ClassList {
         );
     }
 
+    /// [`ClassList::apply`] for a node with `data-*` attributes: `data`
+    /// answers whether the node (`None`) or its nearest ancestor group of
+    /// that name (`Some`, `""` unnamed) has the named one, which
+    /// `data-<name>:` and `group-data-<name>:` read.
+    pub fn apply_data(
+        &self,
+        cx: &Context<'_>,
+        data: &dyn Fn(Option<&str>, &str) -> bool,
+        theme: &Theme,
+        style: &mut Style,
+        props: &mut ClassProps,
+        inline: impl FnOnce(&mut Style),
+    ) {
+        self.apply_with(
+            cx,
+            data,
+            theme,
+            CurrentColor::default(),
+            DEFAULT_CH,
+            style,
+            props,
+            inline,
+        );
+    }
+
     /// [`ClassList::apply`] in a tree, where `current` says what the
     /// node's `currentColor` comes from and `ch` is its font's `0` advance.
     #[allow(clippy::too_many_arguments)]

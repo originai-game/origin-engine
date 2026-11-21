@@ -132,6 +132,12 @@ struct El {
     /// An op node's own image props over its classes' box image; `None`
     /// for a node that sets none.
     image: Option<Box<ImageProps>>,
+    /// An op node's `data-*` props that are on (names without `data-`,
+    /// sorted), and its data context's entry ([`ops::Classes::data_id`]):
+    /// these and its nearest groups', which its classes' `data-*:` and
+    /// `group-data-*:` variants read; 0 none.
+    attrs: Vec<Box<str>>,
+    data: u32,
 }
 
 /// What an element's props set of its box image (CONVENTIONS.md §Images):
@@ -260,6 +266,9 @@ pub struct Tree {
     by_js: Vec<u32>,
     classes: ops::Classes,
     pub events: Vec<ops::Fired>,
+    /// A batch changed a `data-*` prop, a class or the op tree's shape:
+    /// the data contexts are worked out again after it.
+    data_dirty: bool,
     /// What moves, keyed by arena node ([`crate::motion`]), at the UI
     /// tick's `time`; `shown` is what each element passes down this frame
     /// as motion shows it ([`Shown`]).
@@ -474,6 +483,7 @@ impl Tree {
             by_js: Vec::new(),
             classes: ops::Classes::default(),
             events: Vec::new(),
+            data_dirty: false,
             motion: crate::motion::Motion::new(),
             time: 0.0,
             shown: Vec::new(),
@@ -839,6 +849,8 @@ impl Tree {
             record,
             holds: Box::default(),
             line: None,
+            attrs: Vec::new(),
+            data: 0,
             image: None,
             eff: self.root,
         });

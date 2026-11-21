@@ -267,11 +267,12 @@ fn resolver(
     };
     // The tree asks for an entry's state records (motion's `starting:`
     // and `exit:`; the input's); the inline style lies over the classes.
-    let resolve: Resolve = Box::new(move |class, style, states| {
-        classes.borrow_mut().record_styled(
+    let resolve: Resolve = Box::new(move |class, style, states, data| {
+        classes.borrow_mut().record_data(
             class,
             style,
             &og_ui_next::classes::Env { states, ..env },
+            data,
         )
     });
     (resolve, widths)
@@ -1091,24 +1092,33 @@ mod tests {
         for (dark, scheme) in [(false, Scheme::Light), (true, Scheme::Dark)] {
             let (resolve, _) = resolver(u32::MAX, None, dark, [1280.0, 720.0], &BTreeMap::new());
             let hex = pack.theme(scheme)["colors"]["surface"].as_str().unwrap();
-            let want = resolve(&format!("bg-[{hex}]"), "", 0).skin.fill;
-            assert_eq!(resolve("bg-surface", "", 0).skin.fill, want, "{scheme:?}");
+            let want = resolve(&format!("bg-[{hex}]"), "", 0, "").skin.fill;
+            assert_eq!(
+                resolve("bg-surface", "", 0, "").skin.fill,
+                want,
+                "{scheme:?}"
+            );
         }
         let light = pack.theme(Scheme::Light)["colors"]["surface"].clone();
         assert_ne!(light, pack.theme(Scheme::Dark)["colors"]["surface"]);
         let (resolve, _) = resolver(u32::MAX, None, true, [1280.0, 720.0], &BTreeMap::new());
         let starting = og_ui_next::classes::state::STARTING;
         assert_eq!(
-            resolve("opacity-50 starting:opacity-0", "", 0).skin.opacity,
+            resolve("opacity-50 starting:opacity-0", "", 0, "")
+                .skin
+                .opacity,
             0.5
         );
         assert_eq!(
-            resolve("opacity-50 starting:opacity-0", "", starting)
+            resolve("opacity-50 starting:opacity-0", "", starting, "")
                 .skin
                 .opacity,
             0.0
         );
         // The op's inline style is over its classes.
-        assert_eq!(resolve("opacity-50", "opacity: 0.25", 0).skin.opacity, 0.25);
+        assert_eq!(
+            resolve("opacity-50", "opacity: 0.25", 0, "").skin.opacity,
+            0.25
+        );
     }
 }

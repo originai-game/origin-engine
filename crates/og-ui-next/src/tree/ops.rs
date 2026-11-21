@@ -83,7 +83,9 @@ impl Fired {
 /// A class string and inline style to their record under the given
 /// [`crate::classes::state`] bits: 0, or `STARTING` and `EXIT` for the
 /// records motion enters from and leaves to.
-pub type Resolve = Box<dyn Fn(&str, &str, u16) -> Record>;
+/// `data` is the node's data context ([`Classes::data_id`]): its own
+/// `data-*` names and its nearest groups' as `group/name`, by spaces.
+pub type Resolve = Box<dyn Fn(&str, &str, u16, &str) -> Record>;
 
 use crate::classes::state::{
     DISABLED, EXIT, FOCUS_VISIBLE, FOCUS_WITHIN, FOCUSED, HOVERED, PRESSED, STARTING,
@@ -111,7 +113,10 @@ pub struct Classes {
     /// Each entry's interaction states its record reads, and its records
     /// under the ones it reads, made the first time they are met.
     tracked: Vec<u16>,
-    stated: FxHashMap<(u32, u16), Record>,
+    stated: FxHashMap<(u32, u16, u32), Record>,
+    /// The data contexts met, by id less one (0: none).
+    datas: Vec<Box<str>>,
+    data_index: FxHashMap<Box<str>, u32>,
     buf: String,
     resolve: Option<Resolve>,
 }
@@ -125,12 +130,12 @@ fn tracks(resolve: Option<&Resolve>, c: &str, s: &str, base: &Record) -> u16 {
     };
     let mut t = 0;
     for bit in INTERACTION {
-        if f(c, s, bit) != *base {
+        if f(c, s, bit, "") != *base {
             t |= bit;
         }
     }
     let all = INTERACTION.iter().fold(0, |a, b| a | b);
-    if t != all && f(c, s, all) != f(c, s, t) {
+    if t != all && f(c, s, all, "") != f(c, s, t, "") {
         t = all;
     }
     t
@@ -142,8 +147,8 @@ fn resolved(resolve: Option<&Resolve>, c: &str, s: &str) -> (Record, [Option<Box
     let Some(f) = resolve else {
         return (Record::default(), [None, None]);
     };
-    let base = f(c, s, 0);
-    let other = |state| Some(Box::new(f(c, s, state))).filter(|r| **r != base);
+    let base = f(c, s, 0, "");
+    let other = |state| Some(Box::new(f(c, s, state, ""))).filter(|r| **r != base);
     let presence = [other(STARTING), other(EXIT)];
     (base, presence)
 }
@@ -154,17 +159,43 @@ impl Classes {
         self.tracked.get(i as usize).copied().unwrap_or(0)
     }
 
-    /// Entry `i`'s record under interaction states `states`.
-    pub(super) fn record(&mut self, i: u32, states: u16) -> &Record {
+    /// Entry `i`'s record under interaction states `states` and data
+    /// context `data`.
+    pub(super) fn record(&mut self, i: u32, states: u16, data: u32) -> &Record {
         let st = states & self.tracked(i);
-        if st == 0 {
+        if st == 0 && data == 0 {
             return &self.records[i as usize];
         }
         let resolve = self.resolve.as_ref();
         let key = &self.keys[i as usize];
-        self.stated.entry((i, st)).or_insert_with(|| {
+        let d = data.checked_sub(1).map_or("", |d| &*self.datas[d as usize]);
+        self.stated.entry((i, st, data)).or_insert_with(|| {
             let (c, s) = Self::split(key);
-            resolve.map_or_else(Record::default, |f| f(c, s, st))
+            resolve.map_or_else(Record::default, |f| f(c, s, st, d))
+        })
+    }
+
+    /// The id of data context `data` (0 for none), interned.
+    pub(super) fn data_id(&mut self, data: &str) -> u32 {
+        if data.is_empty() {
+            return 0;
+        }
+        if let Some(&i) = self.data_index.get(data) {
+            return i;
+        }
+        self.datas.push(data.into());
+        let i = self.datas.len() as u32;
+        self.data_index.insert(data.into(), i);
+        i
+    }
+
+    /// The groups entry `i`'s classes make it (`group`: `""`,
+    /// `group/name`: `name`).
+    fn groups(&self, i: u32) -> impl Iterator<Item = &str> {
+        let class = self.keys.get(i as usize).map_or("", |k| Self::split(k).0);
+        class.split_ascii_whitespace().filter_map(|c| match c {
+            "group" => Some(""),
+            c => c.strip_prefix("group/"),
         })
     }
 
@@ -303,7 +334,8 @@ impl Tree {
     pub(super) fn restyle(&mut self, e: u32) {
         let class = self.els[e as usize].class;
         let states = self.input.per(e).map_or(0, |p| p.states);
-        let record = self.classes.record(class, states);
+        let data = self.els[e as usize].data;
+        let record = self.classes.record(class, states, data);
         if self.els[e as usize].record != *record {
             // The new record's transition runs the change.
             let old = std::mem::replace(&mut self.els[e as usize].record, record.clone());
@@ -353,6 +385,8 @@ impl Tree {
             record,
             holds: Box::default(),
             line: None,
+            attrs: Vec::new(),
+            data: 0,
             image: None,
             eff: self.root,
         });
@@ -467,9 +501,7 @@ impl Tree {
         }
     }
 
-    /// Applies an op batch (after [`MAGIC`]) in order. A refused op stops
-    /// the batch; the ones before it stay applied.
-    pub fn apply(&mut self, bytes: &[u8]) -> Result<(), String> {
+    fn apply_ops(&mut self, bytes: &[u8]) -> Result<(), String> {
         let mut r = Reader { b: bytes, at: 0 };
         let count = r.u32()?;
         for _ in 0..count {
@@ -513,6 +545,7 @@ impl Tree {
                     let text = r.str()?;
                     let old = self.els[e as usize].class;
                     self.els[e as usize].class = self.classes.with(old, code == 4, text);
+                    self.data_dirty = true;
                     self.restyle(e);
                 }
                 // setProp
@@ -580,8 +613,8 @@ impl Tree {
                                 "wipe" => props.wipe = number.map(|w| w.clamp(0.0, 1.0)),
                                 "wipeStart" => props.wipe_start = number,
                                 _ => {
-                                    props.wipe_ccw =
-                                        (!value.is_empty()).then_some(!matches!(value, "false" | "0"))
+                                    props.wipe_ccw = (!value.is_empty())
+                                        .then_some(!matches!(value, "false" | "0"))
                                 }
                             }
                             self.paint = true;
@@ -589,8 +622,22 @@ impl Tree {
                         "name" if self.els[e as usize].kind == Kind::Icon => {
                             self.set_text(e, value);
                         }
-                        // The rest are read by their own heads: `data-*`
-                        // by class variants, roles and labels by a11y.
+                        // A `data-*` attribute, on unless empty or false:
+                        // the classes' `data-*:` variants read it here,
+                        // their `group-data-*:` ones in its group's nodes.
+                        n if n.starts_with("data-") => {
+                            let n = &n["data-".len()..];
+                            let on = !matches!(value, "" | "false");
+                            let attrs = &mut self.els[e as usize].attrs;
+                            match (attrs.binary_search_by(|a| (**a).cmp(n)), on) {
+                                (Err(at), true) => attrs.insert(at, n.into()),
+                                (Ok(at), false) => drop(attrs.remove(at)),
+                                _ => {}
+                            }
+                            self.data_dirty = true;
+                        }
+                        // The rest are read by their own heads: roles and
+                        // labels by a11y.
                         _ => {}
                     }
                 }
@@ -632,6 +679,7 @@ impl Tree {
                         .attach(self.els[child as usize].node, pnode, before);
                     let el = &mut self.els[child as usize];
                     (el.parent, el.arena_parent) = (p, p);
+                    self.data_dirty = true;
                     self.leaving.retain(|l| l.0 != child);
                     self.sem.exiting(el.node, false);
                     self.ordered = false;
@@ -689,6 +737,62 @@ impl Tree {
             return Err("og.ui ops: bytes after the last op".into());
         }
         Ok(())
+    }
+
+    /// Applies an op batch (after [`MAGIC`]) in order. A refused op stops
+    /// the batch; the ones before it stay applied, and the data contexts
+    /// follow them.
+    pub fn apply(&mut self, bytes: &[u8]) -> Result<(), String> {
+        let applied = self.apply_ops(bytes);
+        self.refresh_data();
+        applied
+    }
+
+    /// Works out each op node's data context again when a batch changed a
+    /// `data-*` prop, a class or the tree's shape: its own `data-*` names,
+    /// then each of its nearest ancestor groups' as `group/name`, and
+    /// restyles the nodes whose context changed.
+    fn refresh_data(&mut self) {
+        if !std::mem::take(&mut self.data_dirty) {
+            return;
+        }
+        let mut data = String::new();
+        // The group names met, nearest first: a farther group of one is hidden.
+        let mut seen: Vec<String> = Vec::new();
+        for e in 0..self.els.len() as u32 {
+            let el = &self.els[e as usize];
+            if el.js == NONE || el.dead {
+                continue;
+            }
+            data.clear();
+            seen.clear();
+            for a in &el.attrs {
+                data.push_str(a);
+                data.push(' ');
+            }
+            let mut p = el.parent;
+            while p != NONE {
+                let pe = &self.els[p as usize];
+                for g in self.classes.groups(pe.class) {
+                    if seen.iter().any(|s| s == g) {
+                        continue;
+                    }
+                    seen.push(g.to_owned());
+                    for a in &pe.attrs {
+                        data.push_str(g);
+                        data.push('/');
+                        data.push_str(a);
+                        data.push(' ');
+                    }
+                }
+                p = pe.parent;
+            }
+            let id = self.classes.data_id(data.trim_end());
+            if id != self.els[e as usize].data {
+                self.els[e as usize].data = id;
+                self.restyle(e);
+            }
+        }
     }
 
     /// Writes the events since the last call, after [`EVENTS`]: a u32
@@ -842,7 +946,7 @@ mod tests {
         let mut t = Tree::new(look, []);
         t.resize(400.0, 300.0);
         // `row` lays its children in a row; `b` is 50 by 20.
-        t.set_resolver(Box::new(|class, _, _| {
+        t.set_resolver(Box::new(|class, _, _, _| {
             let mut s = taffy::Style::default();
             for c in class.split_whitespace() {
                 match c {
@@ -939,7 +1043,7 @@ mod tests {
     #[test]
     fn a_line_paints_its_points_as_one_stroke() {
         let mut t = tree();
-        t.set_resolver(Box::new(|class, _, _| {
+        t.set_resolver(Box::new(|class, _, _, _| {
             let mut r = Record::default();
             if class.contains("w2") {
                 r.stroke_width = 2.0;
@@ -986,7 +1090,7 @@ mod tests {
     #[test]
     fn image_props_lie_over_the_classes_image() {
         let mut t = tree();
-        t.set_resolver(Box::new(|class, _, _| {
+        t.set_resolver(Box::new(|class, _, _, _| {
             let mut r = Record::default();
             if class.contains("nine") {
                 r.skin.image.texture = 4;
@@ -1037,6 +1141,47 @@ mod tests {
         assert_eq!(got[1].2, [3.0; 4], "its slices are the classes'");
     }
 
+    /// A node's `data-*` props and its nearest groups' reach its classes'
+    /// resolver as its data context: its own by name, a group's as
+    /// `group/name` from the nearest group of that name only, and a prop
+    /// turned off or a group's changing restyles the nodes that read it.
+    #[test]
+    fn data_props_reach_the_resolver_with_the_nearest_groups() {
+        let mut t = tree();
+        t.set_resolver(Box::new(|_, _, _, data| {
+            let mut r = Record::default();
+            r.skin.opacity = 1.0 - data.split(' ').filter(|d| !d.is_empty()).count() as f32 / 10.0;
+            r.font_size = if data.contains("b/armed") { 30.0 } else { 16.0 };
+            r
+        }));
+        let mut b = Batch::default();
+        // 1 (group/b) > 2 > 3 (group/b) > 4
+        for (id, class) in [(1, "group/b"), (2, "x"), (3, "group/b"), (4, "y")] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str(class);
+        }
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        b.op(8).u32(2).u32(3).u32(u32::MAX);
+        b.op(8).u32(3).u32(4).u32(u32::MAX);
+        b.op(6).u32(1).str("data-armed").str("true");
+        b.op(6).u32(2).str("data-on").str("true");
+        b.op(6).u32(2).str("data-off").str("false");
+        t.apply(&b.bytes()).unwrap();
+        let rec = |t: &Tree, id: usize| {
+            let r = &t.els[t.by_js[id] as usize].record;
+            (r.skin.opacity, r.font_size)
+        };
+        assert_eq!(rec(&t, 2), (0.8, 30.0), "on, and b/armed from 1");
+        assert_eq!(rec(&t, 4), (1.0, 16.0), "3 is its nearest b, unarmed");
+        assert_eq!(rec(&t, 1), (0.9, 16.0), "its own armed, no group above it");
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("data-armed").str("false");
+        t.apply(&b.bytes()).unwrap();
+        assert_eq!(rec(&t, 2), (0.9, 16.0), "the group's change restyles it");
+        assert_eq!(rec(&t, 1), (1.0, 16.0));
+    }
+
     #[test]
     fn a_broken_batch_is_refused() {
         let mut t = tree();
@@ -1053,7 +1198,7 @@ mod tests {
     /// 0.2 s, linearly, in from and out to transparent.
     fn fading() -> Tree {
         let mut t = tree();
-        t.set_resolver(Box::new(|class, _, state| {
+        t.set_resolver(Box::new(|class, _, state, _| {
             let mut s = taffy::Style::default();
             if class != "row" {
                 s.size = taffy::Size::from_lengths(50.0, 20.0);
@@ -1278,7 +1423,7 @@ mod tests {
     /// `focus-visible:` makes `fw` 90.
     fn stated() -> Tree {
         let mut t = tree();
-        t.set_resolver(Box::new(|class, _, state| {
+        t.set_resolver(Box::new(|class, _, state, _| {
             let mut s = taffy::Style::default();
             for c in class.split_whitespace() {
                 let w = match c {
