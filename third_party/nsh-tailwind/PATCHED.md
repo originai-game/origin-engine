@@ -49,5 +49,14 @@ the changes after it are only these:
   node's `data-*` attributes (the `Data` predicate `apply_with` takes), so
   og-ui-next's tree resolves `data-<name>:` and `group-data-<name>:`.
 
+- `tailwind/utilities.rs`, `style.rs` and `css.rs` (each marked in place):
+  `flex-1`, `flex: <number>` and a `flex` shorthand without a basis take
+  the basis `0%`, as Tailwind's `flex: 1` and browsers' expansion of the
+  shorthand do (it was 0 px, React Native's): against a container of no
+  definite size it is the item's content. An explicit unitless `0` basis
+  after two factors stays 0 px. `style.rs`'s `flex_shorthand` and
+  `flex_and_grid_longhands_override_their_shorthands_in_any_order` expect
+  the `0%`.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.

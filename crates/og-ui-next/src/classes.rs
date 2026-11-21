@@ -256,7 +256,13 @@ impl Classes {
             position: 0,
             group: &|_| 0,
         };
+        // CSS's initial flex values under the classes: an item is `flex: 0
+        // 1 auto` with the automatic minimum, so it shrinks with its
+        // siblings but not below its content (NSH's defaults are React
+        // Native's: no shrink, minimum 0).
         let mut out = Style::default();
+        out.layout.flex_shrink = 1.0;
+        out.layout.min_size = taffy::Size::auto();
         let mut props = ClassProps::default();
         list.apply_data(&cx, &has, &self.theme, &mut out, &mut props, |_| {});
         for (name, value) in declarations(style) {

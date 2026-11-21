@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og.ui layout",
+      "change": "A TSX element lays out with CSS's initial flex values, as a browser does: an item is `flex: 0 1 auto`, so it shrinks with its siblings when a line overflows, and its minimum is the automatic one (not below its content, 0 for a scroll container). `flex-1` and `flex: <n>` take Tailwind's `0%` basis, which in a column of no definite height is the item's content. A `Scroll` is a scroll container, as `overflow: auto` is. Before, items did not shrink unless they said `shrink`, minimums were 0 and `flex-1`'s basis was 0 px (React Native's layout).",
+      "fix": "Give `shrink-0` to an item that must keep its size in a crowded row, and `min-w-0` or `min-h-0` to one that must shrink below its content. A `basis-0` Scroll in a column whose height comes from its content is 0 tall, as in a browser: give the column a height (`h-full`, a fixed height), or use `flex-1` or `basis-auto`.",
+      "find": [
+        "basis-0",
+        "flex-1",
+        "<Scroll"
+      ]
+    }
+  ]
+}

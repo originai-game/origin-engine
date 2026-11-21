@@ -3143,12 +3143,15 @@ impl StyleKey {
                 // `flexShrink: 0`).
                 let (grow, shrink, basis) = match value {
                     StyleValue::Null => (0.0, 0.0, Dimension::auto()),
-                    StyleValue::Number(n) if n >= 0.0 => (n, 1.0, Dimension::length(0.0)),
+                    // Origin Engine: an omitted basis is `0%`, as browsers
+                    // expand `flex: <number>` (it was 0 px).
+                    StyleValue::Number(n) if n >= 0.0 => (n, 1.0, Dimension::percent(0.0)),
                     StyleValue::Number(_) => return Err(StyleError::InvalidValue),
                     StyleValue::Str(s) => {
                         let (grow, shrink, basis) = css::flex(s).ok_or(StyleError::InvalidValue)?;
                         let basis = match basis.map(|b| (b, css::length_or_percent(b))) {
-                            None => Dimension::length(0.0),
+                            // Origin Engine: `0%`, as above.
+                            None => Dimension::percent(0.0),
                             // A CSS length (`30px`, `2rem`) or a percentage.
                             Some((_, Some(DefiniteLength::Absolute(a)))) => {
                                 Dimension::length(a.to_points(crate::geometry::REM_SIZE).0)
@@ -4843,7 +4846,7 @@ mod tests {
             })
         };
         let (n, t) = (StyleValue::Number, StyleValue::Str);
-        let (zero, auto) = (Dimension::length(0.0), Dimension::auto());
+        let (zero, auto) = (Dimension::percent(0.0), Dimension::auto());
         assert_eq!(flex(n(2.0)), Ok((2.0, 1.0, zero)));
         // `0` shrinks as CSS's does (React Native's did not).
         assert_eq!(flex(n(0.0)), Ok((0.0, 1.0, zero)));
@@ -4853,7 +4856,7 @@ mod tests {
         assert_eq!(flex(t("2 0 50%")), Ok((2.0, 0.0, Dimension::percent(0.5))));
         assert_eq!(flex(t("30px 2")), Ok((2.0, 1.0, Dimension::length(30.0))));
         assert_eq!(flex(t("1 0")), Ok((1.0, 0.0, zero)));
-        assert_eq!(flex(t("0 0 0")), Ok((0.0, 0.0, zero)));
+        assert_eq!(flex(t("0 0 0")), Ok((0.0, 0.0, Dimension::length(0.0))));
         assert_eq!(flex(StyleValue::Null), Ok((0.0, 0.0, auto)));
         // Negative factors (React Native's `flex: -1`) are no CSS.
         for v in [n(-1.0), t("-1"), t("1 -1"), t("1 2 3 4"), t("nope")] {
@@ -4999,7 +5002,7 @@ mod tests {
         in_any_order(&[("flexGrow", Number(2.0)), ("flex", Number(1.0))], |s| {
             assert_eq!(s.layout.flex_grow, 2.0);
             assert_eq!(s.layout.flex_shrink, 1.0);
-            assert_eq!(s.layout.flex_basis, Dimension::length(0.0));
+            assert_eq!(s.layout.flex_basis, Dimension::percent(0.0));
         });
         in_any_order(
             &[

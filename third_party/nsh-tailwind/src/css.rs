@@ -139,7 +139,8 @@ pub(crate) fn flex(s: &str) -> Option<(f32, f32, Option<&str>)> {
         },
         [a, b, c] => match (factor(a), factor(b), factor(c)) {
             // After two factors, a unitless 0 is the basis.
-            (Some(g), Some(sh), Some(0.0)) => (g, sh, None),
+            // Origin Engine: 0 px, since an omitted basis is now `0%`.
+            (Some(g), Some(sh), Some(0.0)) => (g, sh, Some("0px")),
             (Some(g), Some(sh), _) => (g, sh, Some(basis(c)?)),
             (None, Some(g), Some(sh)) => (g, sh, Some(basis(a)?)),
             _ => return None,

@@ -1113,12 +1113,21 @@ impl Tree {
             opacity: from.opacity * r.skin.opacity,
         };
         let mut layout = r.layout_in(self.insets);
-        // An anchored node is out of flow: the host places it.
-        if el.hidden > 0 || el.anchor.is_some() {
+        // A `Scroll` is a scroll container on both axes, as `overflow:
+        // auto` is: its automatic minimum is 0, so its content does not
+        // size it. An anchored node is out of flow: the host places it.
+        let scroller = self.input.per(e).is_some_and(|p| p.scroller);
+        if el.hidden > 0 || el.anchor.is_some() || scroller {
             let mut s = taffy::Style::from(&layout);
+            if scroller {
+                s.overflow = taffy::Point {
+                    x: taffy::Overflow::Scroll,
+                    y: taffy::Overflow::Scroll,
+                };
+            }
             if el.hidden > 0 {
                 s.display = taffy::Display::None;
-            } else {
+            } else if el.anchor.is_some() {
                 s.position = taffy::Position::Absolute;
             }
             layout = rune_taffy::CompactStyle::from(&s);

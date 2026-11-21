@@ -2523,6 +2523,45 @@ mod tests {
         );
     }
 
+    /// Classes lay out with CSS's initial flex values: a `w-full min-w-0`
+    /// bar beside a `shrink-0` count gives way to it (meta/daily-quests),
+    /// and a `flex-1 min-h-0` `Scroll` in a column sized to its content
+    /// keeps its content's height (Tailwind's `0%` basis; racing/standings).
+    /// Real classes, end to end.
+    #[test]
+    fn classes_lay_out_with_css_flex_defaults() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, _, _, _| {
+            classes
+                .borrow_mut()
+                .record(class, &crate::classes::Env::default())
+        }));
+        let mut b = Batch::default();
+        for (id, tag, class, parent) in [
+            (1, 0, "flex flex-row w-[300px]", 0),
+            (2, 0, "w-full min-w-0 h-[10px]", 1),
+            (3, 0, "shrink-0 w-[50px] h-[10px]", 1),
+            (7, 0, "flex flex-row items-start h-[300px]", 0),
+            (4, 0, "flex flex-col w-[100px]", 7),
+            (5, 3, "flex-1 min-h-0", 4),
+            (6, 0, "h-[40px]", 5),
+        ] {
+            b.op(1).u32(id).u8(tag);
+            b.op(4).u32(id).str(class);
+            b.op(8).u32(parent).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(t.op_box(2).unwrap()[2], 250.0, "the bar gives way");
+        assert_eq!(t.op_box(3).unwrap()[0], 250.0, "the count sits beside it");
+        assert_eq!(
+            t.op_box(5).unwrap()[3],
+            40.0,
+            "the scroll keeps its rows' height"
+        );
+    }
+
     /// `order-*` places a flex or grid item among its siblings for layout,
     /// as CSS's `order`: the flex row and the grid's auto-placement take
     /// order-modified document order. Real classes, end to end.

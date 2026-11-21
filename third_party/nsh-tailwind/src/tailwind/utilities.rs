@@ -1518,11 +1518,14 @@ fn keyword(u: &str) -> Option<Vec<Decl>> {
         "flex-wrap" => sets(K::FlexWrap, "wrap"),
         "flex-wrap-reverse" => sets(K::FlexWrap, "wrap-reverse"),
         "flex-nowrap" => sets(K::FlexWrap, "nowrap"),
+        // Origin Engine: Tailwind's `flex: 1`, whose basis is `0%`: against
+        // a container of no definite size it is the item's content, as in a
+        // browser (NSH's was 0 px, React Native's `flex: 1`).
         "flex-1" => {
             return Some(vec![
                 setn(K::FlexGrow, 1.0),
                 setn(K::FlexShrink, 1.0),
-                setn(K::FlexBasis, 0.0),
+                sets(K::FlexBasis, "0%"),
             ]);
         }
         "flex-auto" => {
