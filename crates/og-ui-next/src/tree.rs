@@ -1752,6 +1752,12 @@ impl Tree {
                     None => {}
                 }
             }
+            // An `Input` showing its placeholder draws it at half its ink.
+            let field = self.input.per(e as u32).filter(|f| f.input);
+            let mut text_ink = ink;
+            if field.is_some_and(|f| f.value.is_empty()) {
+                text_ink[3] *= 0.5;
+            }
             if let (Some(leaf), Some(_)) = (el.leaf, body)
                 && !el.text.is_empty()
             {
@@ -1794,7 +1800,7 @@ impl Tree {
                 p.quads.extend(g.quads.iter().map(|q| PaintQuad {
                     rect: [q.rect[0] + lx, q.rect[1] + ly, q.rect[2], q.rect[3]],
                     clip,
-                    color: ink,
+                    color: text_ink,
                     ..*q
                 }));
                 let d = s.decoration;
@@ -1831,6 +1837,37 @@ impl Tree {
                         }
                     }
                 }
+            }
+            // The focused `Input`'s caret: a bar the text's height before
+            // the character it stands at, in the text's ink.
+            if let (Some(leaf), Some(f)) = (el.leaf, field)
+                && self.input.focus_el() == e as u32
+            {
+                let t = &el.eff.text;
+                let size = el.eff.size;
+                let typed = !f.value.is_empty();
+                let before = if typed { &f.value[..f.caret.min(f.value.len())] } else { "" };
+                let features = og_text::shape::Features::NONE;
+                let pen = og_text::text::widest_line(before, m, size, t.tracking(size), features);
+                let dx = if typed {
+                    self.glyphs[e].lines.first().map_or(0.0, |l| l[0])
+                } else {
+                    0.0
+                };
+                let glyph = (m.ascender - m.descender) * size;
+                let top = (t.line_height(size) - glyph) / 2.0;
+                let lb = self.arena.box_of(leaf);
+                let rect = [x + lb.x + dx + pen, y + lb.y + top, (size / 14.0).max(1.0), glyph];
+                p.quads.push(quad(
+                    PaintKind::Solid,
+                    rect,
+                    clip,
+                    ink,
+                    [0.0; 4],
+                    [0.0; 4],
+                    0,
+                    0,
+                ));
             }
             if xf != 0 {
                 for q in &mut self.drawn.quads[start..] {

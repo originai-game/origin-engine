@@ -3910,6 +3910,7 @@ dependencies = [
  "og-core",
  "og-css",
  "og-draw",
+ "og-i18n",
  "og-input",
  "og-reactive",
  "og-text",

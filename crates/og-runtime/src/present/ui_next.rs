@@ -826,6 +826,11 @@ impl Next {
         if tree.has_ops() {
             let (x, y) = (input.pointer.x * unit, input.pointer.y * unit);
             tree.wheel(x, y, input.wheel.x * unit, input.wheel.y * unit);
+            // Typed text goes into the focused `Input` before its keys
+            // edit it, as they arrived.
+            if !input.text.is_empty() {
+                tree.type_text(&input.text);
+            }
             for code in &input.keys_pressed {
                 tree.key(code, input.shift, input.ctrl, input.alt, input.meta);
             }

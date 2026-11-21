@@ -159,6 +159,7 @@ export const Scroll: (props: HostProps) => UiNode;
  * fill, curves or dashes: what can be an image is an `Image`.
  */
 export const Line: (props: HostProps & { points: readonly number[]; closed?: boolean | undefined; viewBox?: readonly [number, number] | string | undefined; fit?: "fill" | "contain" | undefined }) => UiNode;
+/** A one-line text field: focused, it takes typed text at its caret and fires `onChange` with its whole text in `value`; `value` set from outside replaces it; `placeholder` shows while it is empty. */
 export const Input: (props: HostProps & { value?: string | undefined; placeholder?: string | undefined }) => UiNode;
 
 /** `<Show when={c} fallback={…} keyed>`. */

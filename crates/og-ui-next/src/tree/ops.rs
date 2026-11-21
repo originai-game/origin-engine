@@ -527,7 +527,8 @@ impl Tree {
                         0..=6 => Kind::Box,
                         t => return Err(format!("og.ui ops: unknown tag {t}")),
                     };
-                    let e = self.create(id, kind, false)?;
+                    // An `Input` shows its text in a text leaf of its own.
+                    let e = self.create(id, kind, tag == 4)?;
                     self.input.per[e as usize].scroller = tag == 3;
                     if tag == 6 {
                         self.els[e as usize].line = Some(Box::default());
@@ -614,6 +615,18 @@ impl Tree {
                             if per.zone.is_some() {
                                 self.input.zone_els.push(e);
                             }
+                        }
+                        "value" | "placeholder" if self.input.per[e as usize].input => {
+                            let p = &mut self.input.per[e as usize];
+                            if name == "placeholder" {
+                                p.placeholder = value.into();
+                            } else if p.value != value {
+                                // Set from outside: the caret goes to the end.
+                                p.value.clear();
+                                p.value.push_str(value);
+                                p.caret = p.value.len();
+                            }
+                            self.show_value(e);
                         }
                         "deadZone" => {
                             self.input.per[e as usize].dead_zone =
@@ -2218,6 +2231,91 @@ mod tests {
             .find(|f| f.event == Event::PointerDown)
             .unwrap();
         assert_eq!((down.id, &*down.value), (2, "50 0 90 20"));
+    }
+
+    /// A focused `Input` takes typed text at its caret and edits with its
+    /// keys, a combining mark going with its base, and hears `change`
+    /// with its text each time; its caret is drawn where it stands; a
+    /// `value` set from outside replaces the text.
+    #[test]
+    fn an_input_edits_at_its_caret_and_hears_change() {
+        use og_text::text::{FontMetrics, UiFont};
+        let fonts = og_ui::Fonts {
+            body: UiFont {
+                handle: Some(og_draw::FontHandle::from_index(0)),
+                metrics: FontMetrics::fixed(0.5),
+            },
+            ..Default::default()
+        };
+        let mut t = stated();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(4);
+        b.op(7).u32(1).u8(Event::Change as u8).u8(1);
+        b.op(6).u32(1).str("placeholder").str("Name");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(1).u32(2).u8(0);
+        b.op(7).u32(2).u8(Event::Press as u8).u8(1);
+        b.op(8).u32(0).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        t.frame(&fonts, &IconAtlas::default());
+        assert!(!t.type_text("x"), "no focus, no edit");
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(1));
+        let changes = |t: &mut Tree| -> Vec<String> {
+            let out = t
+                .events
+                .iter()
+                .filter(|f| f.event == Event::Change)
+                .map(|f| f.value.to_string())
+                .collect();
+            t.events.clear();
+            out
+        };
+        t.events.clear();
+        t.type_text("ab");
+        t.type_text("e\u{301}");
+        assert_eq!(changes(&mut t), ["ab", "abe\u{301}"]);
+        // ← steps over the e and its accent; the arrows stay in the field.
+        assert!(t.key("ArrowLeft", false, false, false, false));
+        assert_eq!(t.focused_id(), Some(1));
+        t.type_text("X");
+        assert!(t.key("Backspace", false, false, false, false));
+        assert!(t.key("Backspace", false, false, false, false));
+        assert!(t.key("Delete", false, false, false, false));
+        assert_eq!(
+            changes(&mut t),
+            ["abXe\u{301}", "abe\u{301}", "ae\u{301}", "a"]
+        );
+        // The caret is after "a": half an em (the class's 14 px) in, at the
+        // fixed face's advance.
+        let caret = |t: &mut Tree| {
+            t.frame(&fonts, &IconAtlas::default());
+            let x0 = t.op_box(1).unwrap()[0];
+            t.drawn
+                .quads
+                .iter()
+                .find(|q| q.kind == og_draw::paint::PaintKind::Solid as u32 && q.rect[2] <= 2.0)
+                .map(|q| q.rect[0] - x0)
+        };
+        assert_eq!(caret(&mut t), Some(7.0));
+        t.key("Home", false, false, false, false);
+        assert_eq!(caret(&mut t), Some(0.0));
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("value").str("Zed");
+        t.apply(&b.bytes()).unwrap();
+        assert_eq!(
+            caret(&mut t),
+            Some(21.0),
+            "a new value puts the caret at its end"
+        );
+        assert!(
+            changes(&mut t).is_empty(),
+            "a value set from outside is no change"
+        );
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(2));
+        assert_eq!(caret(&mut t), None, "no caret without the focus");
+        assert!(!t.type_text("x"));
     }
 
     /// An on-screen control's box is a zone of the action it names, in

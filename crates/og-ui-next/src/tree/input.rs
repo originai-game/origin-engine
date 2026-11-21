@@ -84,6 +84,35 @@ pub(super) struct Per {
     /// with `deadZone` a stick's dead zone.
     pub zone: Option<(og_input::ZoneKind, Box<str>)>,
     pub dead_zone: f32,
+    /// An `Input`'s text, its `placeholder` (shown while the text is
+    /// empty) and its caret, a byte offset at a grapheme cluster's edge.
+    pub value: String,
+    pub placeholder: Box<str>,
+    pub caret: usize,
+}
+
+/// The grapheme cluster edge before (`back`) or after byte `at` in `text`
+/// (og-i18n's UAX #29 segmenter): one step of the caret, one Backspace.
+fn cluster_edge(text: &str, at: usize, back: bool) -> usize {
+    // The segmenter counts in characters; the caret is in bytes.
+    let bytes: Vec<usize> = text
+        .char_indices()
+        .map(|(b, _)| b)
+        .chain([text.len()])
+        .collect();
+    let edges = og_i18n::graphemes(text)
+        .into_iter()
+        .map(|(_, end)| bytes[end]);
+    let edges: Vec<usize> = std::iter::once(0).chain(edges).collect();
+    if back {
+        edges.iter().rev().copied().find(|&b| b < at).unwrap_or(0)
+    } else {
+        edges
+            .iter()
+            .copied()
+            .find(|&b| b > at)
+            .unwrap_or(text.len())
+    }
 }
 
 /// What a finger on a touch screen is doing.
@@ -201,9 +230,90 @@ impl Input {
     pub(super) fn per(&self, e: u32) -> Option<&Per> {
         self.per.get(e as usize)
     }
+
+    /// The element with the keyboard focus (NONE: none).
+    pub(super) fn focus_el(&self) -> u32 {
+        self.focus
+    }
 }
 
 impl Tree {
+    /// Shows an `Input`'s text, or its placeholder while it is empty, and
+    /// paints its caret again.
+    pub(super) fn show_value(&mut self, e: u32) {
+        let p = &self.input.per[e as usize];
+        let shown = if p.value.is_empty() {
+            &*p.placeholder
+        } else {
+            &*p.value
+        };
+        let shown = shown.to_owned();
+        self.set_text(e, &shown);
+        self.paint = true;
+    }
+
+    /// The focused `Input` that takes edits: shown and enabled.
+    fn editing(&self) -> Option<u32> {
+        let f = self.input.focus;
+        (f != NONE && self.input.per(f).is_some_and(|p| p.input) && !self.disabled(f)).then_some(f)
+    }
+
+    /// Text typed this frame (og-input's `og.TextInput` stream, or the
+    /// printable keys) goes into the focused `Input` at its caret, which
+    /// hears `change` with its new text. Whether one took it.
+    pub fn type_text(&mut self, text: &str) -> bool {
+        let Some(e) = self.editing() else {
+            return false;
+        };
+        let p = &mut self.input.per[e as usize];
+        let at = p.caret.min(p.value.len());
+        let before = p.value.len();
+        for ch in text.chars().filter(|c| !c.is_control()) {
+            p.value.insert(at + (p.value.len() - before), ch);
+        }
+        if p.value.len() == before {
+            return false;
+        }
+        p.caret = at + (p.value.len() - before);
+        self.edited(e);
+        true
+    }
+
+    /// An editing key on the focused `Input`: Backspace and Delete remove
+    /// the grapheme cluster before and after the caret, ←/→ step over one,
+    /// Home and End go to the ends. Whether it was one.
+    fn edit_key(&mut self, e: u32, code: &str) -> bool {
+        let p = &mut self.input.per[e as usize];
+        let at = p.caret.min(p.value.len());
+        match code {
+            "Backspace" | "Delete" => {
+                let (a, b) = if code == "Backspace" {
+                    (cluster_edge(&p.value, at, true), at)
+                } else {
+                    (at, cluster_edge(&p.value, at, false))
+                };
+                p.caret = a;
+                if a < b {
+                    p.value.replace_range(a..b, "");
+                    self.edited(e);
+                }
+            }
+            "ArrowLeft" => p.caret = cluster_edge(&p.value, at, true),
+            "ArrowRight" => p.caret = cluster_edge(&p.value, at, false),
+            "Home" => p.caret = 0,
+            "End" => p.caret = p.value.len(),
+            _ => return false,
+        }
+        self.paint = true;
+        true
+    }
+
+    fn edited(&mut self, e: u32) {
+        self.show_value(e);
+        let value = self.input.per[e as usize].value.clone();
+        self.fire_value(e, OpEvent::Change, &value);
+    }
+
     /// The on-screen controls' zones for og-input's action map
     /// ([`og_input::ActionMap::set_zones`]), after [`Tree::present`]: each
     /// shown, enabled control's box in surface px. `None` when none came,
@@ -795,6 +905,8 @@ impl Tree {
             }
         }
         self.input.focus = e;
+        // An `Input`'s caret shows while it has the focus.
+        self.paint = true;
         if e != NONE && visible {
             self.reveal(e);
         }
@@ -902,6 +1014,15 @@ impl Tree {
         self.sync_modals();
         if code == "Tab" && !(ctrl || alt || meta) {
             self.tab(shift);
+            return true;
+        }
+        // The focused `Input` edits with its keys (arrows across its text
+        // included); the game's shortcuts with Control, Alt or Command
+        // pass on.
+        if let Some(e) = self.editing()
+            && !(ctrl || alt || meta)
+            && self.edit_key(e, code)
+        {
             return true;
         }
         let dir = match code {

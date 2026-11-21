@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "Input",
+      "summary": "A TSX `<Input>` edits: focused, it takes typed text at a drawn caret, Backspace and Delete remove a whole character (an accented letter or emoji as one), the arrows, Home and End move the caret, and `onChange` fires with the field's whole text in `value`. `placeholder` shows dimmed while it is empty; `value` set from outside replaces the text. Before, an Input showed nothing and took no typing."
+    }
+  ]
+}

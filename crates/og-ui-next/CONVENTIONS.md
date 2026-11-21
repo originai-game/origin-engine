@@ -214,6 +214,15 @@ machines do (ported as logic).
   held on it that long, not on release; `hold` events carry the progress
   in `value` each frame (`"0.42"`, `"1"` as it completes, `"0"` when it
   lets go early: release, leaving it, or a pan).
+- **Text fields**: a focused `Input` takes typed text (og-input's
+  `og.TextInput` stream, or the printable keys) at its caret and hears
+  `change` with its whole text in `value` each time. Backspace and Delete
+  remove the grapheme cluster before and after the caret (UAX #29: a base
+  and its marks go together), ←/→ step over one, Home and End go to the
+  ends; keys with Control, Alt or Command pass on to the game. `value` set
+  from outside replaces the text (caret at its end, no `change`);
+  `placeholder` shows at half ink while it is empty. One line, no
+  selection, undo or input-method composition yet.
 - **On-screen controls**: a node with `touchStick`, `touchPad` or
   `touchButton` is an input source of the og-input action it names, as a
   document's `<joystick action>`, `<dpad action>` and `<button
@@ -230,6 +239,8 @@ machines do (ported as logic).
 | `glyph` | an action's name | a `Text` node showing that action's binding on the current device (`<Glyph action>`) |
 | `autofocus` | bool | it takes the focus once it shows |
 | `hold` | seconds | a press or `confirm` must be held this long to press it |
+| `value` | text | an `Input`'s text, set from outside |
+| `placeholder` | text | what an empty `Input` shows |
 | `touchStick` | an action's name | its box is a stick of that action (x, y from its centre) |
 | `touchPad` | an action's name | its box is a d-pad of that action (eight directions) |
 | `touchButton` | an action's name | its box is a button of that action (1 while held) |
