@@ -60,7 +60,7 @@ function Tool(props: { label: string; on?: boolean | undefined; quiet?: boolean 
       disabled={props.disabled}
       data-on={props.on}
       data-quiet={props.quiet}
-      class={`flex-row items-center justify-center shrink-0 h-7 px-2.5 rounded-md text-sm text-fg bg-raised-lo border border-border hover:bg-raised-hover-lo active:bg-raised-pressed data-quiet:bg-transparent data-quiet:border-transparent data-quiet:hover:bg-fill data-on:bg-accent/15 data-on:border-accent/70 data-on:hover:bg-accent/25 disabled:text-fg-subtle disabled:bg-fill disabled:border-transparent ${props.class ?? ""}`}
+      class={`flex-row items-center justify-center shrink-0 h-7 px-2.5 rounded-md text-sm text-fg bg-raised-lo border border-border hover:bg-raised-hover-lo active:bg-raised-pressed data-quiet:bg-transparent data-quiet:border-transparent data-quiet:hover:bg-surface-hover data-on:bg-accent data-on:border-accent data-on:text-accent-fg data-on:hover:bg-accent disabled:text-fg-subtle disabled:bg-well disabled:border-transparent ${props.class ?? ""}`}
       onPress={() => props.onPress()}
     >
       <Text class="whitespace-nowrap">{props.label}</Text>
@@ -175,7 +175,7 @@ export function Inspector(props: InspectorProps) {
               {(r) => (
                 <View class="flex-row items-center gap-0.5 shrink-0" style={{ "padding-left": `${r().depth * 12}px` }}>
                   <Show when={r().fold !== "leaf"} fallback={<View class="size-6 shrink-0" />}>
-                    <View role="button" label={r().label} class="size-6 shrink-0 items-center justify-center rounded-sm hover:bg-fill" onPress={() => click("Fold", r().id)}>
+                    <View role="button" label={r().label} class="size-6 shrink-0 items-center justify-center rounded-sm hover:bg-surface-hover" onPress={() => click("Fold", r().id)}>
                       <Chevron open={r().fold === "open"} />
                     </View>
                   </Show>
@@ -185,7 +185,7 @@ export function Inspector(props: InspectorProps) {
                     selected={r().selected}
                     data-on={r().selected}
                     data-unnamed={!r().named}
-                    class="grow min-w-0 flex-row items-center h-7 px-2 rounded-sm text-sm text-fg hover:bg-fill data-unnamed:text-fg-muted data-on:bg-accent/15"
+                    class="grow min-w-0 flex-row items-center h-7 px-2 rounded-sm text-sm text-fg hover:bg-surface-hover data-unnamed:text-fg-muted data-on:bg-surface-hover data-on:border-l-3 data-on:border-hud-accent"
                     onPress={() => click("Label", r().id)}
                   >
                     <Text class="truncate">{r().label}</Text>
@@ -233,7 +233,7 @@ export function Inspector(props: InspectorProps) {
           <For each={v().sections} key={(s) => s.id}>
             {(s) => (
               <View class="flex-col gap-1 shrink-0">
-                <View role="button" label={s().name} expanded={s().open} class="flex-row items-center gap-1 h-7 px-1 rounded-sm bg-well text-sm hover:bg-fill" onPress={() => click("Section", s().id)}>
+                <View role="button" label={s().name} expanded={s().open} class="flex-row items-center gap-1 h-7 px-1 rounded-sm bg-well text-sm hover:bg-surface-hover" onPress={() => click("Section", s().id)}>
                   <Chevron open={s().open} />
                   <Text class="grow min-w-0 truncate">{s().name}</Text>
                 </View>
@@ -274,7 +274,7 @@ export function Inspector(props: InspectorProps) {
                             role="combobox"
                             label={f().name}
                             valueText={f().choice}
-                            class="grow min-w-0 flex-row items-center justify-between h-7 px-2 rounded-md bg-well border border-border text-sm hover:bg-fill"
+                            class="grow min-w-0 flex-row items-center justify-between h-7 px-2 rounded-md bg-well border border-border text-sm hover:bg-surface-hover"
                             onPress={() => {
                               const o = f().options;
                               changed("current", o[(o.indexOf(f().choice) + 1) % o.length], f().id);
@@ -285,7 +285,7 @@ export function Inspector(props: InspectorProps) {
                           </View>
                         </Show>
                         <Show when={f().editor === "link"}>
-                          <View role="link" label={f().text} description="Select this entity" class="grow min-w-0 h-7 flex-row items-center px-2 rounded-sm text-sm text-info hover:bg-fill" onPress={() => click("Link", f().id)}>
+                          <View role="link" label={f().text} description="Select this entity" class="grow min-w-0 h-7 flex-row items-center px-2 rounded-sm text-sm text-info hover:bg-surface-hover" onPress={() => click("Link", f().id)}>
                             <Text class="truncate">{f().text}</Text>
                           </View>
                         </Show>

@@ -1,0 +1,17 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Hud components",
+      "summary": "The HUD's meters, bars, buttons, prompts and feed rows draw their grounds on pack slots and theme roles in those grounds' inks, so their text reads over a bright scene in every pack (the action button's fill, the bar and orb-meter sheens, the killfeed and loot-entry rows and the QTE keycaps)."
+    },
+    {
+      "member": "World components",
+      "summary": "Compass, interaction prompt, minimap, minimap view and speech bubble draw their grounds on theme roles in those grounds' inks, so their text reads over a bright scene in every pack (the compass and minimap ticks, the minimap view's heading cone and the speech bubble's progress line)."
+    },
+    {
+      "member": "Inspector panel",
+      "summary": "The inspector's tool buttons, tree rows, section headers and field editors use the surface-hover ground for hover and selection and the accent ground in its own ink for the on state, so their text reads in every pack."
+    }
+  ]
+}
