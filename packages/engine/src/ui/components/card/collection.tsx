@@ -59,7 +59,7 @@ export function CardCollection(props: CardCollectionProps) {
                 <View class={`flex-row items-center justify-center group/filter min-h-11 min-w-11 text-fg-muted py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={f().id === props.filter} label={f().label} onPress={(e) => props.onChoosefilter?.(e, f().id)} data-selected={f().id === props.filter}>
                   <Text class="whitespace-nowrap">{f().label}</Text>
                   <Show when={(f().count ?? 0) > 0}>
-                    <Text class={`text-[0.857rem] font-bold bg-white/8 text-fg-muted py-0 px-1 rounded-capsule group-data-selected/filter:bg-none group-data-selected/filter:bg-hud-accent group-data-selected/filter:text-hud-accent-fg`}>
+                    <Text class={`text-[0.857rem] font-bold ${f().id === props.filter ? "bg-hud-accent text-hud-accent-fg" : `${packClass("Chip", "frame")} text-fg-muted`} py-0 px-1 rounded-capsule`}>
                       {formatNumber(f().count ?? 0)}
                     </Text>
                   </Show>
