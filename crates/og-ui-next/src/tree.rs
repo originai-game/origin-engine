@@ -1396,8 +1396,8 @@ impl Tree {
                     crate::style::Tint::Ink => faded(own_ink),
                     crate::style::Tint::Fill => faded(s.fill),
                 };
-                let flags = u32::from(im.fill) * og_draw::paint::IMAGE_FILL
-                    | u32::from(im.tile) * og_draw::paint::IMAGE_TILE;
+                let flags = (u32::from(im.fill) * og_draw::paint::IMAGE_FILL)
+                    | (u32::from(im.tile) * og_draw::paint::IMAGE_TILE);
                 let cut = if im.wipe < 1.0 { 1.0 - im.wipe } else { 0.0 };
                 p.quads.push(PaintQuad {
                     uv: im.uv,

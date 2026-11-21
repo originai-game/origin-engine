@@ -602,7 +602,7 @@ impl Tree {
                                 "wipeStart" => props.wipe_start = number,
                                 _ => {
                                     props.wipe_ccw =
-                                        (!value.is_empty()).then(|| !matches!(value, "false" | "0"))
+                                        (!value.is_empty()).then_some(!matches!(value, "false" | "0"))
                                 }
                             }
                             self.paint = true;
