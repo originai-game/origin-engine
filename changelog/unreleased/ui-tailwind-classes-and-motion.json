@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "TSX UI classes",
+      "summary": "An element a TSX component makes takes its look from its `class`: Tailwind v4.1's utilities and variants (`hover:`, `focus-visible:`, `disabled:`, `data-*:`, `dark:`, breakpoints, the size classes `narrow:`, `short:`, `compact:` and `touch:`), resolved against the active style pack's theme over the engine's default pack in the UI's scheme. Colours, radii, type, shadows and eases are the design language's names (`bg-surface`, `text-fg-muted`, `rounded-card`, `shadow-panel`; og-ui-next's CONVENTIONS.md §Theme and packs lists them). A scheme, pack or breakpoint change restyles every element in place."
+    },
+    {
+      "member": "TSX UI motion",
+      "summary": "Classes animate: `transition-*`, `duration-*` and `ease-*` run a change of class on the tick's time; an element inserted into a shown parent enters from its `starting:` classes, and one removed with `exit:` classes stays drawn until its exit settles. The player's reduced-motion setting is honoured."
+    }
+  ]
+}

@@ -11,9 +11,11 @@
 use og_reactive::reactive::session::{Command, Session};
 use og_ui_next::look::{Layer, Look};
 use og_ui_next::queue;
-use og_ui_next::tree::Tree;
+use og_ui_next::pack::{Pack, Scheme};
+use og_ui_next::tree::{Resolve, Tree};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
+use std::cell::RefCell;
 use std::rc::Rc;
 
 /// A mirrored keyed collection: its key field and rows in order.
@@ -65,6 +67,11 @@ pub(crate) struct Next {
     /// The cooked section of the look's documents ([`og_ui_next::look::section`]).
     section: String,
     tree: Option<Tree>,
+    /// What the tree's class resolver was made for: the pack, the scheme
+    /// (dark) and the UI box's size class.
+    resolved: Option<(Option<String>, bool, SizeClass)>,
+    /// The widths the resolver's theme breaks at (CSS px).
+    widths: Vec<f32>,
     signals: BTreeMap<(String, String), u32>,
     rows: BTreeMap<(String, String), Rows>,
     /// Mounted documents: mount id to (document, inputs).
@@ -118,6 +125,80 @@ fn active_pack(engine: u32) -> Option<(String, Vec<(String, String)>)> {
     Some((id, serde_json::from_str(&text).ok()?))
 }
 
+/// Style `id`'s pack (its `pack.json`, cooked as an `og.UiPack`), if it
+/// has one.
+fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {
+    let eng = crate::engine::engine(engine).ok()?;
+    let assets = eng.assets.borrow();
+    let blob = format!("{}/pack.json", id.trim_end_matches('/'));
+    let (bytes, bundle) = assets.blob(&blob).ok()?;
+    let text = bundle.pack_text(&blob, bytes.bytes()).ok()?;
+    og_ui_next::pack::Layer::parse(&text).ok()
+}
+
+/// Where a UI box falls among what classes read of it: how many of the
+/// theme's widths it reaches, and whether it is under 500 px tall and
+/// wider than tall. A box that stays in one resolves every class alike
+/// (an arbitrary `min-[…]:` width is not counted).
+type SizeClass = (u8, bool, bool);
+
+fn size_class(widths: &[f32], [w, h]: [f32; 2]) -> SizeClass {
+    (widths.iter().filter(|&&x| w >= x).count() as u8, h < 500.0, w > h)
+}
+
+/// The op nodes' class resolver: the default pack with style `pack`'s
+/// over it, its theme in the scheme, for a UI box of `window` CSS px; and
+/// the widths that theme breaks at.
+fn resolver(engine: u32, pack: Option<&str>, dark: bool, window: [f32; 2]) -> (Resolve, Vec<f32>) {
+    let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
+    layers.extend(pack.and_then(|id| pack_layer(engine, id)));
+    let scheme = if dark { Scheme::Dark } else { Scheme::Light };
+    let pack = Pack::new(&layers);
+    // Tailwind's breakpoints (1rem = 16 px), the size classes' 600 and a
+    // pack's own.
+    let mut widths = vec![600.0, 640.0, 768.0, 1024.0, 1280.0, 1536.0];
+    if let Some(Value::Object(b)) = pack.theme(scheme).get("breakpoints") {
+        widths.extend(b.values().filter_map(Value::as_f64).map(|w| w as f32));
+    }
+    // The cook checked the theme: what it left out, it reported then.
+    let classes = og_ui_next::classes::Classes::new(Some(&pack.theme_json(scheme)))
+        .or_else(|_| og_ui_next::classes::Classes::new(None))
+        .expect("the default theme reads")
+        .0;
+    let classes = RefCell::new(classes);
+    let env = og_ui_next::classes::Env {
+        window,
+        dark,
+        ..Default::default()
+    };
+    // The tree asks for an entry's state records (motion's `starting:`
+    // and `exit:`; the input's); an inline style waits for
+    // Classes::record_styled.
+    let resolve: Resolve = Box::new(move |class, _style, states| {
+        classes.borrow_mut().record(class, &og_ui_next::classes::Env { states, ..env })
+    });
+    (resolve, widths)
+}
+
+impl Next {
+    /// Gives the tree the class resolver of the pack, the scheme and the
+    /// box's size class, when it has another one: every op node restyles.
+    fn resolve(&mut self, engine: u32, ui: &og_ui::Ui) {
+        let Some(tree) = &mut self.tree else { return };
+        let v = ui.frame().viewport;
+        let window = [v.width, v.height];
+        let dark = self.scheme == og_ui::Scheme::Dark;
+        let at = size_class(&self.widths, window);
+        if self.resolved.as_ref().is_some_and(|(p, d, c)| *p == self.pack && *d == dark && *c == at) {
+            return;
+        }
+        let (resolve, widths) = resolver(engine, self.pack.as_deref(), dark, window);
+        tree.set_resolver(resolve);
+        self.resolved = Some((self.pack.clone(), dark, size_class(&widths, window)));
+        self.widths = widths;
+    }
+}
+
 fn allocations() -> usize {
     og_core::alloc::thread_allocations()
 }
@@ -130,6 +211,8 @@ impl Next {
             look: None,
             section: String::new(),
             tree: None,
+            resolved: None,
+            widths: Vec::new(),
             signals: BTreeMap::new(),
             rows: BTreeMap::new(),
             mounts: BTreeMap::new(),
@@ -420,6 +503,11 @@ impl Next {
             }
         }
         self.tree = Some(tree);
+        // Before the first op batch, so a mount's records are the pack's
+        // from its first frame.
+        self.pack = active_pack(engine).map(|(id, _)| id);
+        self.resolved = None;
+        self.resolve(engine, ui);
         self.spans.build = now() - t0;
         self.spans.build_allocations = allocations() - a0;
     }
@@ -487,6 +575,7 @@ impl Next {
             tree.set_look(look.clone());
         }
         self.build(engine, ui, now);
+        self.resolve(engine, ui);
         warnings.append(&mut self.held);
         let a0 = allocations();
         let t0 = now();
@@ -649,5 +738,25 @@ mod tests {
         assert_eq!(read(&mut next), json!(12));
         saved.restore(&ui, Some(&mut next.store)).unwrap();
         assert_eq!(read(&mut next), json!(7));
+    }
+
+    /// The resolver reads the pack's theme in the UI's scheme and gives the
+    /// tree's state records: `bg-surface` is the scheme's surface, and
+    /// `starting:` holds only under its bit.
+    #[test]
+    fn the_resolver_reads_the_scheme_and_the_state_bits() {
+        let pack = Pack::new(&[og_ui_next::pack::Layer::default_pack()]);
+        for (dark, scheme) in [(false, Scheme::Light), (true, Scheme::Dark)] {
+            let (resolve, _) = resolver(u32::MAX, None, dark, [1280.0, 720.0]);
+            let hex = pack.theme(scheme)["colors"]["surface"].as_str().unwrap();
+            let want = resolve(&format!("bg-[{hex}]"), "", 0).skin.fill;
+            assert_eq!(resolve("bg-surface", "", 0).skin.fill, want, "{scheme:?}");
+        }
+        let light = pack.theme(Scheme::Light)["colors"]["surface"].clone();
+        assert_ne!(light, pack.theme(Scheme::Dark)["colors"]["surface"]);
+        let (resolve, _) = resolver(u32::MAX, None, true, [1280.0, 720.0]);
+        let starting = og_ui_next::classes::state::STARTING;
+        assert_eq!(resolve("opacity-50 starting:opacity-0", "", 0).skin.opacity, 0.5);
+        assert_eq!(resolve("opacity-50 starting:opacity-0", "", starting).skin.opacity, 0.0);
     }
 }
