@@ -1,7 +1,7 @@
 // The download channel's files of one version (docs/release.md §1, §3):
 // per target an archive `origin-engine-<v>-<target>.tar.gz` of the dist
-// layout, then `manifest.json`, for a release (not a dev build) the
-// launcher's `install.sh` and `install.ps1`, `SHA256SUMS` over all of them
+// layout, then `manifest.json`, the launcher's `install.sh` and
+// `install.ps1`, `SHA256SUMS` over all of them
 // (what the platform's upload takes) and `SHA256SUMS.minisig`.
 //
 //   bun scripts/release-dist.ts <dir> --version <v> [--registry] [--revision <sha>] [--targets <t,...>]
@@ -77,6 +77,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { MAX_ARCHIVE, archivePath, packArchive, type VfxEntry } from "../packages/engine/src/node/vfx-pack.ts";
 import { installers, pinnedKey } from "../packages/launcher/build.ts";
+import { VERSION_RE } from "../packages/launcher/og.ts";
 
 export const TARGETS = {
   "x86_64-unknown-linux-gnu": { platform: "linux-x64", tsrs: "linux-x64-gnu", exe: "og" },
@@ -546,9 +547,11 @@ function sign(dir: string, version: string, revision: string): boolean {
 
 /**
  * What the platform's upload takes beside the archives (docs/release.md §3):
- * manifest.json; for a release (never a dev build) the launcher's install.sh
- * and install.ps1, which move on the site only with a newer release; and
- * SHA256SUMS over all of them, signed. A dev build `dev.<date>.<n>` records
+ * manifest.json; the launcher's install.sh and install.ps1, a dev build's
+ * too, so `<version>/install.sh` installs a launcher that installs that
+ * version (the site's root copies move only with a newer release, and an
+ * older launcher refuses a newer version's name); and SHA256SUMS over all
+ * of them, signed. A dev build `dev.<date>.<n>` records
  * the release it is based on (`base`) beside its exact `revision`; `looks`
  * (null for a backfill) names the catalogue, previews and creation document. Returns
  * the archives' targets.
@@ -577,14 +580,11 @@ export function finish(dir: string, version: string, revision: string, releasedA
   };
   writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   const files = [...archives.map((t) => archiveName(version, t)), ...Object.keys(vfx).map(archivePath), ...wasmFiles(dir), ...(looks?.files ?? []), "manifest.json"];
-  rmSync(join(dir, "install.sh"), { force: true });
-  rmSync(join(dir, "install.ps1"), { force: true });
-  if (channel === "release") {
-    const { sh, ps1 } = installers();
-    writeFileSync(join(dir, "install.sh"), sh, { mode: 0o755 });
-    writeFileSync(join(dir, "install.ps1"), ps1);
-    files.push("install.sh", "install.ps1");
-  }
+  if (!VERSION_RE.test(version)) die(`the launcher the installers carry (packages/launcher/og.ts VERSION_RE) refuses ${version}; a version is published with a launcher that installs it`);
+  const { sh, ps1 } = installers();
+  writeFileSync(join(dir, "install.sh"), sh, { mode: 0o755 });
+  writeFileSync(join(dir, "install.ps1"), ps1);
+  files.push("install.sh", "install.ps1");
   writeFileSync(join(dir, "SHA256SUMS"), files.map((f) => `${sha256(join(dir, f))}  ${f}\n`).join(""));
   for (const t of archives) {
     const size = statSync(join(dir, archiveName(version, t))).size;
@@ -668,7 +668,7 @@ function signAgain(dir: string, version: string) {
   const looks: LooksRelease | null = prior.looks ? { looks: prior.looks, creation: prior.creation ?? null, files } : null;
   const { archives, signed } = finish(dir, version, record.revision, releasedAt, vfx, looks, record.base);
   writeFileSync(recordFile, `${JSON.stringify({ ...record, releasedAt, targets: archives, signed }, null, 2)}\n`);
-  say(`${version}: SHA256SUMS over ${archives.length} archive(s), manifest.json${isDev(version) ? "" : ", install.sh, install.ps1"}${signed ? "; signed" : "; unsigned"}`);
+  say(`${version}: SHA256SUMS over ${archives.length} archive(s), manifest.json, install.sh, install.ps1${signed ? "; signed" : "; unsigned"}`);
 }
 
 async function main() {

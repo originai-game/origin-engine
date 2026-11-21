@@ -10,7 +10,7 @@
 // and every request carrying `Authorization: Bearer
 // $OG_PLATFORM_ENGINE_UPLOAD_TOKEN` (a project secret):
 //
-//   1. PUT B/SHA256SUMS            the signed list (the archives, manifest.json, and a release's
+//   1. PUT B/SHA256SUMS            the signed list (the archives, manifest.json, and the version's
 //                                  install.sh and install.ps1); re-uploading it voids an earlier signature
 //   2. PUT B/SHA256SUMS.minisig    verified at once against the engine's key (422 signature_invalid)
 //   3. PUT B/<file>                each file the list names (422 sha256_mismatch, not_signed)

@@ -28,9 +28,10 @@ installed into E2B, production's provider, last.
 | `<version>/previews/<slug>.webp`, `<version>/previews/<slug>.<variant>.webp`, `<version>/previews/ui/<pack>.webp` | the creation document's previews, 960 x 540 webp, drawn by this version on the GPU host (below, The looks) | immutable |
 | `<version>/creation.json` | the creation document (create-game's `creationDocument`, `packages/create/README.md` §Creation document) with every preview slot filled `{path, url, sha256, size, engine}` | immutable |
 | `<version>/manifest.json` | `{version, base?, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx: {<pack>: {url, sha256, size, version, minEngine}}, looks?: {catalogue: {url, sha256, size}, previews: {<slug> \| <slug>.<variant>: {url, sha256, size, engine}}}, creation?: {url, sha256, size}}`; `engine` is the version that drew the preview; a backfill has no `looks` and `creation` | immutable |
-| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`, the split engine modules' as `wasm/<variant>/<file>`), the looks files' (`looks/catalogue.json`, `previews/...`, `creation.json`), manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
+| `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`, the split engine modules' as `wasm/<variant>/<file>`), the looks files' (`looks/catalogue.json`, `previews/...`, `creation.json`), manifest.json's and the version's installers', signed with the engine's key (below) | immutable |
 | `latest/manifest.json` | the newest release (never a dev build) | no-cache |
-| `install.sh`, `install.ps1` | install the `og` launcher (`packages/launcher`) | no-cache |
+| `<version>/install.sh`, `<version>/install.ps1` | install the `og` launcher this version was published with, which installs it; a dev build's too (§1a) | immutable |
+| `install.sh`, `install.ps1` | install the `og` launcher (`packages/launcher`), the newest release's copies | no-cache |
 
 `<version>` is a release `x.y.z` or a dev build `dev.<YYYYMMDD>.<n>`
 (`channel: "dev"`, §1a); the dev builds before 0.9.0, `x.y.z-dev.n` (the
@@ -208,7 +209,13 @@ tarballs of a `release.yml -f dev=true` run instead). The platform then pins
 that exact version. Its directory carries the previews `scripts/release.sh
 previews` drew for those tarballs on the GPU host (§1 The looks), or the
 publish is refused. A dev build runs no install test and no browser tier, and writes
-no receipt, tag or changelog entry; `latest` never points at one. A
+no receipt, tag or changelog entry; `latest` never points at one.
+The site's root `install.sh` stays the newest release's, whose launcher
+may not know a dev build's name (launcher 1 refuses `dev.<date>.<n>`), so
+a dev build carries its own installers, signed with it:
+`curl -fsSL https://origingame.ai/downloads/engine/<dev>/install.sh | sh`
+(`irm …/<dev>/install.ps1 | iex`) installs the launcher that installs it,
+and that launcher installs every earlier version too. A
 release (§3) is cut at a milestone, from whatever dev build the testing
 settled on, with every gate.
 
@@ -326,7 +333,8 @@ passed on this machine and in the container (a dev build excepted), and
 for the checkout's version a HEAD whose packaged inputs moved since the
 pack. The platform verifies the signature and every sha256 again, checks
 the manifest and refuses to overwrite a published version; `latest/` and
-the installers move only with a newer release. Every archive is at most
+the root installers move only with a newer release (each version keeps its
+own, §1). Every archive is at most
 210 MiB, the platform's request limit.
 
 **A release, step by step:** the packing hosts build the tarballs, and an

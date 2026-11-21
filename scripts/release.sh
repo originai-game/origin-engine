@@ -27,7 +27,7 @@
 #                                               og and addon, unpacked from dist/release/<version>/'s tarballs (templates/looks/preview/
 #                                               render.ts --gpu: a software or absent adapter fails), into previews/ with looks-render.json;
 #                                               then `archive` again, which ships them (docs/release.md §1 The looks)
-#   scripts/release.sh sign [<version>]         manifest.json, a release's install.sh and install.ps1, SHA256SUMS and its signature
+#   scripts/release.sh sign [<version>]         manifest.json, the version's install.sh and install.ps1, SHA256SUMS and its signature
 #                                               again over the archives in place (OG_ENGINE_MINISIGN_KEY); the install test's passes stand
 #   scripts/release.sh fetch <run-id>           download the release workflow run's `release-<version>` artifact (gh run download) into
 #                                               dist/release/<version>/, then `archive`
@@ -38,7 +38,7 @@
 #                                               every version has (a backfill); records each pass in release.json
 #   scripts/release.sh publish [<version>] [--dry-run]
 #                                               upload SHA256SUMS, its signature and every file it lists (the three archives, manifest.json,
-#                                               a release's install.sh and install.ps1) to the platform, then publish there
+#                                               the version's install.sh and install.ps1) to the platform, then publish there
 #                                               (scripts/release-publish.ts; OG_PLATFORM_ENGINE_UPLOAD_TOKEN); refuses a dirty pack, a missing
 #                                               target, a version without its own previews (`previews`), an unsigned SHA256SUMS or one that does not verify with docs/release.md's public
 #                                               key, an archive not verified on both platforms, and (the checkout's version) a HEAD whose
@@ -266,7 +266,7 @@ cmd_previews() {
   og_say "release: previews of $v drawn into ${out#"$OG_ROOT"/}/previews/; now scripts/release.sh archive $v"
 }
 
-# Signs a packed version again (manifest.json, a release's installers, SHA256SUMS, the signature) over its
+# Signs a packed version again (manifest.json, its installers, SHA256SUMS, the signature) over its
 # archives in place, keeping the install test's passes: what a thread with OG_ENGINE_MINISIGN_KEY runs on
 # archives packed and verified elsewhere.
 cmd_sign() {
@@ -304,7 +304,9 @@ cmd_dev() {
   if [ -f "$tmp/looks-render.json" ]; then cp -R "$tmp/previews" "$tmp/looks-render.json" "$out/" || return 1; fi
   [ -d "$src" ] || rev=(--revision "$(gh run view "$src" -R "$REPO" --json headSha -q .headSha)")
   bun scripts/release-dist.ts "$out" --version "$v" "${rev[@]}" || return 1
-  OG_RELEASE_DEV=1 cmd_publish "$v"
+  OG_RELEASE_DEV=1 cmd_publish "$v" || return 1
+  # The root installer is the newest release's, whose launcher may refuse this name (docs/release.md §1a).
+  og_say "release: $v installs with its own launcher: curl -fsSL https://origingame.ai/downloads/engine/$v/install.sh | sh"
 }
 
 case "$verb" in

@@ -157,6 +157,8 @@ describe("vfx archives", () => {
     expect(sums).toContain(`${manifest.looks.catalogue.sha256}  looks/catalogue.json\n`);
     expect(sums).toContain(`${sha("pix")}  previews/pixel.webp\n`);
     for (const f of ["previews/pixel.8bit.webp", "previews/ui/fantasy.webp", "creation.json"]) expect(sums).toContain(`  ${f}\n`);
+    // A dev build carries the launcher's installers too: the site's root installer may be older than its name.
+    for (const f of ["install.sh", "install.ps1"]) expect(sums).toContain(`${sha(readFileSync(join(dir, f)))}  ${f}\n`);
     // Every line verifies from the version's directory, as publish checks them.
     // Git Bash on Windows has sha256sum, and shasum only as a Perl script.
     const check = process.platform === "win32" ? ["sha256sum", "-c", "SHA256SUMS"] : ["shasum", "-a", "256", "-c", "SHA256SUMS"];
