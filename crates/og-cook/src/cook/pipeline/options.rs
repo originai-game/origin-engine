@@ -410,6 +410,10 @@ pub struct CookOptions {
     /// A publish's cook (`og build --publish`): a prefab override that no
     /// longer does anything is refused instead of noted.
     pub publish: bool,
+    /// What the game's code reaches, as its bundle resolved it
+    /// ([`CodeGraph`]): the built-in UI and string tables the cook adds.
+    /// Default: code that reaches none of them.
+    pub code: CodeGraph,
 }
 
 pub(crate) fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core::ogt::Block> {

@@ -559,6 +559,14 @@ pub fn bundle_native(project: &Project, package: &Path) -> Result<NativeBundle, 
     Ok(bundle)
 }
 
+/// The import graph the bundler wrote beside the bundle at `out`
+/// (`<out>.graph.json`, og-cook's `CodeGraph`).
+pub fn graph_of(out: &Path) -> PathBuf {
+    let mut name = out.as_os_str().to_owned();
+    name.push(".graph.json");
+    PathBuf::from(name)
+}
+
 /// Only a live watch session replaces its own bundle.
 pub fn bundle_native_to(project: &Project, package: &Path, out: &Path) -> Result<(), String> {
     let cache = crate::bundle_cache::BundleCache::open(project, package, out);

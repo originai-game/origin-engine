@@ -197,13 +197,15 @@ impl BundleCache {
         let Ok(record) = fs::read_to_string(self.directory.join("key")) else {
             return false;
         };
-        let Some((code, map)) = self.outputs() else {
+        let Some((code, map, graph)) = self.outputs() else {
             return false;
         };
-        if record != self.record(&code, &map) {
+        if record != self.record(&code, &map, &graph) {
             return false;
         }
-        fs::write(out, code).is_ok() && fs::write(out.with_extension("js.map"), map).is_ok()
+        fs::write(out, code).is_ok()
+            && fs::write(out.with_extension("js.map"), map).is_ok()
+            && fs::write(crate::project::graph_of(out), graph).is_ok()
     }
 
     pub fn configure(&self, command: &mut Command) -> std::io::Result<()> {
@@ -232,7 +234,11 @@ impl BundleCache {
                 .then(|| fs::read(path).ok())
                 .flatten()
         };
-        let (Some(code), Some(map)) = (read(out), read(&out.with_extension("js.map"))) else {
+        let (Some(code), Some(map), Some(graph)) = (
+            read(out),
+            read(&out.with_extension("js.map")),
+            read(&crate::project::graph_of(out)),
+        ) else {
             return;
         };
         let key = self.directory.join("key");
@@ -240,25 +246,31 @@ impl BundleCache {
         let _ = fs::remove_file(&key);
         if fs::write(self.directory.join("bundle.js"), &code).is_ok()
             && fs::write(self.directory.join("bundle.js.map"), &map).is_ok()
+            && fs::write(self.directory.join("bundle.js.graph.json"), &graph).is_ok()
         {
-            let _ = fs::write(key, self.record(&code, &map));
+            let _ = fs::write(key, self.record(&code, &map, &graph));
         }
     }
 
-    fn outputs(&self) -> Option<(Vec<u8>, Vec<u8>)> {
+    fn outputs(&self) -> Option<(Vec<u8>, Vec<u8>, Vec<u8>)> {
         let read = |name: &str| {
             let path = self.directory.join(name);
             (fs::metadata(&path).ok()?.len() <= MAX_OUTPUT)
                 .then(|| fs::read(path).ok())
                 .flatten()
         };
-        Some((read("bundle.js")?, read("bundle.js.map")?))
+        Some((
+            read("bundle.js")?,
+            read("bundle.js.map")?,
+            read("bundle.js.graph.json")?,
+        ))
     }
 
-    fn record(&self, code: &[u8], map: &[u8]) -> String {
+    fn record(&self, code: &[u8], map: &[u8], graph: &[u8]) -> String {
         let mut hash = std::hash::DefaultHasher::new();
         code.hash(&mut hash);
         map.hash(&mut hash);
+        graph.hash(&mut hash);
         format!("{} {}", self.key, hash.finish())
     }
 }

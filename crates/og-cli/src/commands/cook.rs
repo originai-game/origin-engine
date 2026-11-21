@@ -30,7 +30,7 @@
 //! colour textures, and the shared texture cache keeps both encodings.
 
 use crate::project::Project;
-use og_cook::cook::TextureOptions;
+use og_cook::cook::{CodeGraph, TextureOptions};
 use og_cook::{CookOptions, Report, cook_project};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -241,55 +241,25 @@ pub fn mesh_options(root: &Path) -> Result<og_cook::cook::MeshOptions, String> {
             )
         })?;
     }
-    o.raycast = raycasts(root);
     Ok(o)
 }
 
-/// Whether the project at `root` names `raycast` in its sources, scenes or
-/// documents (og.render.raycast): only then do its models carry a cooked
-/// raycast BVH, which is about a quarter of a model blob. A model's
-/// `model { raycast true }` cooks one anyway, and a raycast at a model
-/// cooked without builds it then. Read as text, as `og build` finds the
-/// engine modules a game references, so it errs towards cooking one.
-fn raycasts(root: &Path) -> bool {
-    // A model's own `raycast true|false` import setting is not a raycast.
-    fn names(text: &str) -> bool {
-        let word = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '$');
-        text.match_indices("raycast").any(|(at, m)| {
-            let rest = &text[at + m.len()..];
-            let setting = rest.trim_start_matches([' ', '\t']);
-            !word(text[..at].chars().next_back())
-                && !word(rest.chars().next())
-                && !(setting.starts_with("true") || setting.starts_with("false"))
-        })
-    }
-    fn walk(dir: &Path) -> bool {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            return false;
-        };
-        entries.flatten().any(|e| {
-            let name = e.file_name();
-            let name = name.to_string_lossy();
-            let Ok(kind) = e.file_type() else {
-                return false;
-            };
-            if kind.is_dir() {
-                !name.starts_with('.')
-                    && !matches!(&*name, "node_modules" | "cooked" | "dist" | "og-out")
-                    && walk(&e.path())
-            } else {
-                let source = [
-                    ".ts", ".tsx", ".mts", ".js", ".mjs", ".svelte", ".html", ".ogt",
-                ]
-                .iter()
-                .any(|x| name.ends_with(x));
-                kind.is_file()
-                    && source
-                    && std::fs::read_to_string(e.path()).is_ok_and(|t| names(&t))
-            }
-        })
-    }
-    walk(root)
+/// The cook's options for the project at `root`, its code reaching what
+/// `code` says: the code's raycasts decide whether models carry a cooked
+/// raycast BVH (`MeshOptions::raycast`, about a quarter of a model blob; a
+/// model's `model { raycast true|false }` decides for it, and a raycast at
+/// a model cooked without one builds it then).
+fn options(root: &Path, threads: usize, web: bool, code: CodeGraph) -> Result<CookOptions, String> {
+    let mut mesh = mesh_options(root)?;
+    mesh.raycast = code.raycast;
+    Ok(CookOptions {
+        threads,
+        schemas: engine_schemas(),
+        texture: texture_options(root, web)?,
+        mesh,
+        code,
+        ..CookOptions::default()
+    })
 }
 
 /// Cooks a project for a native run, or for the web export (`web`, which
@@ -301,14 +271,35 @@ pub fn cook(root: &Path, threads: usize, web: bool) -> Result<Report, String> {
 /// [`cook`] for a publish (`og build --publish`): a prefab override that
 /// no longer does anything is refused, naming it.
 pub fn cook_for(root: &Path, threads: usize, web: bool, publish: bool) -> Result<Report, String> {
-    let options = CookOptions {
-        threads,
-        schemas: engine_schemas(),
-        texture: texture_options(root, web)?,
-        mesh: mesh_options(root)?,
-        publish,
-        ..CookOptions::default()
-    };
+    cook_with(root, threads, web, publish, code_graph(root)?)
+}
+
+/// What the code of the project at `root` reaches: the import graph of a
+/// native bundle of it (the bundle og run makes, from its cache when the
+/// code is as it was). An entry that does not exist reaches nothing.
+pub fn code_graph(root: &Path) -> Result<CodeGraph, String> {
+    let p = Project::open(root)?;
+    if !p.entry.is_file() {
+        return Ok(CodeGraph::default());
+    }
+    let package = crate::project::engine_package(Some(&p.root))
+        .ok_or_else(|| format!("og cook: {}", crate::project::NO_ENGINE))?;
+    let bundle =
+        crate::project::bundle_native(&p, &package).map_err(|e| format!("og cook: {e}"))?;
+    CodeGraph::read(&crate::project::graph_of(&bundle))
+}
+
+/// [`cook_for`] with the code's graph given (`code_graph`, or the one the
+/// bundle a run just made wrote).
+pub fn cook_with(
+    root: &Path,
+    threads: usize,
+    web: bool,
+    publish: bool,
+    code: CodeGraph,
+) -> Result<Report, String> {
+    let options = options(root, threads, web, code)?;
+    let options = CookOptions { publish, ..options };
     let report = cook_project(root, &options).map_err(|e| format!("og cook: {e}"))?;
     if report.ok() {
         Ok(report)
@@ -452,6 +443,14 @@ pub fn slowest_lines(r: &Report) -> Vec<String> {
 /// took against the reload budget. One process: what an earlier cook
 /// parsed and did not change is not parsed again.
 fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> ExitCode {
+    // The watch follows the assets; the code's graph is read once.
+    let code = match code_graph(root) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("{e}");
+            return ExitCode::FAILURE;
+        }
+    };
     let assets = root.join("assets");
     let mut watched = vec![assets.clone()];
     watched.extend(og_cook::cook::look::styles_dir().map(Path::to_path_buf));
@@ -513,15 +512,9 @@ fn watch(root: &Path, threads: usize, json: bool, exit_after: Option<usize>) -> 
             .map(|c| c.strip_prefix(&assets).unwrap_or(c))
             .map(|c| c.to_string_lossy().replace('\\', "/"))
             .collect();
-        let options = match (texture_options(root, false), mesh_options(root)) {
-            (Ok(texture), Ok(mesh)) => CookOptions {
-                threads,
-                schemas: engine_schemas(),
-                texture,
-                mesh,
-                ..CookOptions::default()
-            },
-            (Err(e), _) | (_, Err(e)) => {
+        let options = match options(root, threads, false, code.clone()) {
+            Ok(o) => o,
+            Err(e) => {
                 eprintln!("og cook: {e}");
                 continue;
             }

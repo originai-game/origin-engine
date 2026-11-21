@@ -220,7 +220,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     // The type check first: its failure leaves no bundle for the playtests.
     let checked = if check {
         if p.has_assets() {
-            // Cook first, as og run does, so the check sees what the run would.
+            // Cook with the code's import graph (a bundle of it, cached).
             if let Err(e) = crate::cook::cook(&p.root, 0, false) {
                 eprintln!("og test: {e}");
                 return ExitCode::FAILURE;

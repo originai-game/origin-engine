@@ -77,6 +77,7 @@ pub(crate) fn scan_sources(
     cook_index: &index::Index,
     threads: usize,
     development: bool,
+    code: &CodeGraph,
 ) -> Result<Scanned, CookError> {
     let Scan {
         mut sources,
@@ -89,6 +90,7 @@ pub(crate) fn scan_sources(
         &|path| cook_index.read(path),
         threads,
         development,
+        code,
     )?;
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();

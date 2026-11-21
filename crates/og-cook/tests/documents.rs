@@ -246,15 +246,16 @@ fn uses(root: &std::path::Path, id: &str) -> Vec<String> {
     bundle.document_uses(id, &bytes).unwrap()
 }
 
-/// A game whose code draws a TSX UI (imports `@origingame/engine/ui`)
-/// carries the default face and the default pack's shapes (`nine-disc` …),
-/// as a game with a `.svelte` document does, and gains them when its code
-/// starts to. Ways it could fail: a TSX-only game cooks without the face, so
-/// its tree has no body font and draws no text, or without the shapes, so
-/// every `nine-<name>` of the default pack draws nothing; the cook after a
-/// change to code alone keeps the old bundle.
+/// A game whose bundle reaches the engine's TSX UI (its import graph,
+/// `CookOptions::code`) carries the default face, the default pack's
+/// shapes (`nine-disc` …) and the string tables of the components it
+/// imports, and only those. Ways it could fail: a TSX-only game cooks
+/// without the face, so its tree has no body font and draws no text, or
+/// without the shapes, so every `nine-<name>` of the default pack draws
+/// nothing; a component's table left out shows its raw keys; a table the
+/// bundle does not hold ships anyway; another graph keeps the old bundle.
 #[test]
-fn code_drawing_a_tsx_ui_carries_the_default_face() {
+fn code_reaching_the_tsx_ui_carries_the_default_face_and_its_tables() {
     let root = project("code-tsx-face", &[]);
     std::fs::create_dir_all(root.join("assets")).unwrap();
     std::fs::create_dir_all(root.join("src")).unwrap();
@@ -263,17 +264,19 @@ fn code_drawing_a_tsx_ui_carries_the_default_face() {
         "type project\nversion 1\n---\nname \"p\"\n",
     )
     .unwrap();
-    let cook = || {
-        let r =
-            og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
-                .unwrap();
+    std::fs::write(root.join("src/main.ts"), "export default 1;\n").unwrap();
+    let cook = |code: og_cook::cook::CodeGraph| {
+        let options = CookOptions {
+            code,
+            ..CookOptions::default()
+        };
+        let r = og_cook::cook::cook_project_with_texture_cache(&root, &options, None).unwrap();
         assert!(r.ok(), "{}", r.errors().join("\n"));
         Bundle::open(&root.join("cooked")).unwrap()
     };
-    std::fs::write(root.join("src/main.ts"), "export default 1;\n").unwrap();
     let shapes = ["disc", "ring", "tile", "plate-cut", "panel-cut", "chip-cut"]
         .map(|s| format!("@styles/shared/shapes/{s}.svg"));
-    let bundle = cook();
+    let bundle = cook(Default::default());
     assert!(
         bundle.output(og_ui::DEFAULT_FONT_ASSET).is_err(),
         "no UI, no face"
@@ -282,16 +285,25 @@ fn code_drawing_a_tsx_ui_carries_the_default_face() {
         shapes.iter().all(|id| bundle.output(id).is_err()),
         "no UI, no shapes"
     );
-    std::fs::write(
-        root.join("src/main.ts"),
-        "import { mount } from \"@origingame/engine/ui\";\nexport default mount;\n",
-    )
-    .unwrap();
-    let bundle = cook();
+    let ui = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui");
+    let (bar, ring) = (
+        "@ui/components/hud/bar.en.ogt",
+        "@ui/components/hud/progress-ring.en.ogt",
+    );
+    let bundle = cook(og_cook::cook::CodeGraph {
+        tsx: true,
+        tables: [(bar.to_string(), ui.join("components/hud/bar.en.ogt"))].into(),
+        ..Default::default()
+    });
     assert!(bundle.output(og_ui::DEFAULT_FONT_ASSET).is_ok());
     for id in &shapes {
         assert!(bundle.output(id).is_ok(), "{id}");
     }
+    assert!(bundle.output(bar).is_ok(), "the reached table");
+    assert!(
+        bundle.output(ring).is_err(),
+        "a table the bundle does not hold"
+    );
 }
 
 /// An engine whose styles directory predates the default pack's shapes
@@ -331,12 +343,14 @@ fn styles_missing_a_default_image_fail_the_cook() {
         "type project\nversion 1\n---\nname \"p\"\n",
     )
     .unwrap();
-    std::fs::write(
-        root.join("src/main.ts"),
-        "import { mount } from \"@origingame/engine/ui\";\nexport default mount;\n",
-    )
-    .unwrap();
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let options = CookOptions {
+        code: og_cook::cook::CodeGraph {
+            tsx: true,
+            ..Default::default()
+        },
+        ..CookOptions::default()
+    };
+    let report = cook_project(&root, &options).unwrap();
     let errors = report.errors().join("\n");
     assert!(
         errors.contains("@styles/shared/shapes/disc.svg"),

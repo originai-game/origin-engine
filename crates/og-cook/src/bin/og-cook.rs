@@ -1,7 +1,10 @@
-//! `og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json]`
+//! `og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json] [--graph bundle.graph.json]`
 //!
 //! Cooks `<project>/assets` into `<project>/cooked` and prints the report. A
 //! development tool for this crate; `og cook` is the user-facing command.
+//! `--graph` is the import graph the engine's bundler wrote beside a bundle
+//! of the game (og-cook's `CodeGraph`); without it the cook adds none of
+//! the built-in UI code would reach.
 
 use og_cook::{CookOptions, cook_project};
 use std::process::ExitCode;
@@ -15,6 +18,16 @@ fn main() -> ExitCode {
         match a.as_str() {
             "--threads" => options.threads = args.next().and_then(|v| v.parse().ok()).unwrap_or(0),
             "--report" => report = args.next(),
+            "--graph" => {
+                let path = args.next().unwrap_or_default();
+                match og_cook::cook::CodeGraph::read(std::path::Path::new(&path)) {
+                    Ok(g) => options.code = g,
+                    Err(e) => {
+                        eprintln!("{e}");
+                        return ExitCode::from(2);
+                    }
+                }
+            }
             "--json" => json = args.next(),
             "--schemas" => {
                 let path = args.next().unwrap_or_default();
@@ -38,7 +51,7 @@ fn main() -> ExitCode {
             }
             "-h" | "--help" => {
                 println!(
-                    "usage: og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json]"
+                    "usage: og-cook <project> [--threads N] [--report out.md] [--json out.json] [--schemas schema.json] [--graph bundle.graph.json]"
                 );
                 return ExitCode::SUCCESS;
             }

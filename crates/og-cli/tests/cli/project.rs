@@ -126,9 +126,15 @@ fn session_startup_failure_names_the_cause_without_waiting_for_readiness() {
 fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
     let dir = scratch_root();
     std::fs::remove_dir_all(dir.join("crates")).unwrap();
-    // A stand-in engine package: the exporter leaves a mark when it runs.
+    // A stand-in engine package: the exporter leaves a mark when it runs;
+    // the bundler writes a bundle and its import graph (the cook's input).
     let engine = dir.join("engine");
     std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    std::fs::write(
+        engine.join("src/node/build.ts"),
+        "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], 'export default 0;'); await Bun.write(process.argv[i + 1] + '.graph.json', JSON.stringify({ engine: import.meta.dir, files: [] }));\n",
+    )
+    .unwrap();
     let mark = dir.join("exported");
     std::fs::write(
         engine.join("src/node/web-build.ts"),
@@ -237,7 +243,8 @@ fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
     .unwrap();
     std::fs::write(
         engine.join("src/node/build.ts"),
-        "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], `export default ${Date.now()};`);\n",
+        // The bundle and its import graph (an entry reaching no engine UI).
+        "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], `export default ${Date.now()};`); await Bun.write(process.argv[i + 1] + '.graph.json', JSON.stringify({ engine: import.meta.dir, files: [] }));\n",
     )
     .unwrap();
     // The game acknowledges each bundle, then waits for the test to release

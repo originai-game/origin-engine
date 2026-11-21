@@ -47,6 +47,11 @@ export function compileJsx(path: string, source: string): Compiled {
   return JSON.parse(jsxAddon!.og_node_jsx(path, source)) as Compiled;
 }
 
+/** The bundler's import graph (esbuild's metafile shape): each input by its path relative to the working directory. */
+interface Metafile {
+  inputs: Record<string, { imports: Array<{ path: string; external?: boolean }> }>;
+}
+
 declare const Bun: {
   build(o: {
     entrypoints: string[];
@@ -58,7 +63,8 @@ declare const Bun: {
     sourcemap?: "none" | "inline" | "linked" | "external";
     naming?: string;
     plugins?: unknown[];
-  }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ path: string; kind: string; size: number; text(): Promise<string> }> }>;
+    metafile?: boolean;
+  }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ path: string; kind: string; size: number; text(): Promise<string> }>; metafile?: Metafile }>;
   write(path: string, data: string): Promise<number>;
   resolveSync(specifier: string, parent: string): string;
   JSONC: { parse(text: string): unknown };
@@ -158,6 +164,29 @@ const ADOPT_SITES = `{
   if (game !== null && typeof game === "object") (globalThis.__og_assert_game_sites ??= new WeakMap()).set(game, sites);
 }
 `;
+
+/**
+ * The files the game's entry reaches, as the bundler resolved its imports
+ * (the bundle's metafile, `<out>.graph.json`): the game's own modules and
+ * every engine module and string table it imports, by absolute path, with
+ * the engine package's root. What the bundle adds beside the entry (the
+ * development inspector) is not the game's. The cook reads it to know
+ * which built-in UI, string tables and raycast BVHs the code needs
+ * (og-cook's `CodeGraph`).
+ */
+export function reached(meta: Metafile, entry: string): { engine: string; files: string[] } {
+  const abs = (p: string) => (/^[a-z][\w+.-]*:/i.test(p) ? p : resolve(process.cwd(), p));
+  const inputs = new Map(Object.entries(meta.inputs).map(([k, v]) => [abs(k), v]));
+  const seen = new Set<string>();
+  const stack = [entry];
+  while (stack.length > 0) {
+    const file = stack.pop()!;
+    if (seen.has(file)) continue;
+    seen.add(file);
+    for (const i of inputs.get(file)?.imports ?? []) stack.push(abs(i.path));
+  }
+  return { engine: ENGINE_ROOT, files: [...seen].filter((f) => isAbsolute(f)).sort() };
+}
 
 /** Bundle `entry` (whose default export is `og.game(...)`) into `out`, its source map into `<out>.map`. */
 export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" | "web-live" | "web-code" = "native", minify = false, maps: MapOptions = {}, cacheInputs?: ReadonlySet<string>): Promise<Bundled> {
@@ -306,6 +335,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     throw: false,
     sourcemap: "external",
     plugins: [engine],
+    metafile: true,
   });
   bundlerMs = +(performance.now() - tBun).toFixed(1);
   bundleTrace("bundle-bundler", { ms: bundlerMs, jsxMs: +jsxMs.toFixed(1), jsxCount, minify });
@@ -337,6 +367,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     if (maps.link !== false) text = `${text.replace(/\n*$/, "\n")}//# sourceMappingURL=${basename(mapFile)}\n`;
   } else rmSync(mapFile, { force: true });
   await Bun.write(out, text);
+  if (r.metafile) writeFileSync(`${out}.graph.json`, JSON.stringify(reached(r.metafile, absEntry)));
   const ms = +(performance.now() - t0).toFixed(1);
   bundleTrace("bundle-end", { ok: true, ms, bytes: new TextEncoder().encode(text).length, bundlerMs, jsxMs: +jsxMs.toFixed(1), jsxCount, cacheable });
   return { ok: true, out, bytes: new TextEncoder().encode(text).length, ms, ...(sourcemap ? { map: mapFile } : {}), ...(cacheInputs ? { cacheable } : {}) };

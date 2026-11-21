@@ -16,7 +16,7 @@
 //! used back here, so a module is named `cook::<module>` wherever it lives.
 
 mod pipeline;
-pub use pipeline::{asset_move, assets, cache, stats, ts_refs};
+pub use pipeline::{asset_move, assets, cache, graph, stats, ts_refs};
 use pipeline::{
     execute, import_defaults, index, kinds, options, output, plan, provided, report, scan, stage,
     stream,
@@ -49,6 +49,7 @@ pub mod ui_screens;
 pub mod vector;
 
 use execute::{read_sibling, run};
+pub use graph::CodeGraph;
 pub use options::{CookOptions, FontSettings, MeshOptions, Palette, TextureOptions};
 use options::{
     anim_settings, conform_off, font_settings, mesh_for, mesh_texture, model_stream_textures,
@@ -328,7 +329,13 @@ pub fn cook_project_with_texture_cache(
         mut early_errors,
         mut consumed,
         components,
-    } = scan_sources(assets_dir, &cook_index, threads, !options.publish)?;
+    } = scan_sources(
+        assets_dir,
+        &cook_index,
+        threads,
+        !options.publish,
+        &options.code,
+    )?;
     laps.lap("scan");
     let imported = import(&mut sources, &mut consumed, texture_cache, threads);
     laps.lap("import");

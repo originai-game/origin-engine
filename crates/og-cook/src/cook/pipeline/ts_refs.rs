@@ -1,6 +1,9 @@
 //! Static asset references and conservative computed-load prefixes in game code.
 use oxc_allocator::Allocator;
-use oxc_ast::ast::{CallExpression, Expression, StringLiteral, TemplateLiteral};
+use oxc_ast::ast::{
+    CallExpression, Expression, IdentifierReference, StaticMemberExpression, StringLiteral,
+    TemplateLiteral,
+};
 use oxc_ast_visit::{Visit, walk};
 use oxc_parser::Parser;
 use oxc_span::{GetSpan, SourceType};
@@ -25,6 +28,9 @@ pub struct Computed {
 pub struct References {
     pub literals: Vec<Literal>,
     pub computed: Vec<Computed>,
+    /// Every name the code reads: identifiers it references and the
+    /// properties it reads by name (`og.render.raycast` reads `raycast`).
+    pub names: BTreeSet<String>,
 }
 
 /// Parse instead of matching source text: comments, escapes, regex literals,
@@ -146,6 +152,15 @@ impl<'a> Visit<'a> for Visitor<'_> {
             });
         }
         walk::walk_expression(self, expr);
+    }
+
+    fn visit_identifier_reference(&mut self, id: &IdentifierReference<'a>) {
+        self.refs.names.insert(id.name.as_str().to_owned());
+    }
+
+    fn visit_static_member_expression(&mut self, m: &StaticMemberExpression<'a>) {
+        self.refs.names.insert(m.property.name.as_str().to_owned());
+        walk::walk_static_member_expression(self, m);
     }
 
     fn visit_string_literal(&mut self, s: &StringLiteral<'a>) {

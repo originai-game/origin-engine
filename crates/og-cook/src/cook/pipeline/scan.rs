@@ -44,53 +44,16 @@ pub(crate) struct Scan {
     pub(crate) external: Vec<PathBuf>,
 }
 
-/// What the game's code asks of the built-in UI: the `@ui/` ids it names
-/// (the scan bundles those screens), whether it draws a TSX UI (it
-/// imports `@origingame/engine/ui` or a subpath), which needs the default
-/// face as a `.svelte` document does, and whether it uses the built-in TSX
-/// components (`@origingame/engine/ui/components`), whose string tables
-/// it then bundles.
-#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
-pub(crate) struct CodeUi {
-    pub ids: BTreeSet<String>,
-    pub tsx: bool,
-    #[serde(default)]
-    pub components: bool,
-}
-
-pub(crate) fn code_ui(root: &Path) -> CodeUi {
-    let mut ui = CodeUi::default();
-    for path in super::assets::game_typescript(root).unwrap_or_default() {
-        let Ok(text) = std::fs::read_to_string(&path) else {
-            continue;
-        };
-        // Code that does not parse is the asset index's to report.
-        let Ok(refs) = super::ts_refs::parse(&path, &text) else {
-            continue;
-        };
-        for l in refs.literals {
-            if l.value.starts_with(ui_components::PREFIX) {
-                ui.ids.insert(l.value);
-            } else if l.value == "@origingame/engine/ui"
-                || l.value.starts_with("@origingame/engine/ui/")
-            {
-                ui.tsx = true;
-                // The barrel or one module by its path (`ui/components/…`,
-                // `ui/controls/…`, `ui/screens/…`): either imports tables.
-                ui.components |= ["components", "controls", "screens"].iter().any(|d| {
-                    l.value
-                        .strip_prefix("@origingame/engine/ui/")
-                        .and_then(|r| r.strip_prefix(d))
-                        .is_some_and(|r| r.is_empty() || r.starts_with('/'))
-                });
-            }
-        }
-    }
-    ui
-}
-
+/// The project's assets for a reader of its sources alone (the art
+/// contract's roles): no code, so none of the built-in UI it would add.
 pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
-    scan_with(assets_dir, &|path| std::fs::read(path), 1, false)
+    scan_with(
+        assets_dir,
+        &|path| std::fs::read(path),
+        1,
+        false,
+        &CodeGraph::default(),
+    )
 }
 
 /// The kind of a file whose extension alone says it.
@@ -133,6 +96,7 @@ pub(crate) fn scan_with(
     read_file: &(impl Fn(&Path) -> std::io::Result<Vec<u8>> + Sync),
     threads: usize,
     development: bool,
+    code: &CodeGraph,
 ) -> Result<Scan, CookError> {
     let mut files = Vec::new();
     walk(assets_dir, "", &mut files)
@@ -226,11 +190,6 @@ pub(crate) fn scan_with(
         used.extend(ui_components::uses(doc));
     }
     // The built-in screens the game's code names by id.
-    let code = assets_dir
-        .parent()
-        .filter(|r| r.join("project.ogt").is_file())
-        .map(code_ui)
-        .unwrap_or_default();
     used.extend(code.ids.iter().cloned());
     let components = match ui_components::resolve(game.clone(), used) {
         Ok(r) => {
@@ -242,11 +201,18 @@ pub(crate) fn scan_with(
             game
         }
     };
-    // The built-in TSX components' string tables.
-    if code.components {
-        match ui_components::tsx_tables() {
-            Ok(tables) => builtins.extend(tables),
-            Err(e) => early_errors.push(("@ui".into(), "document", e)),
+    // The engine string tables the bundle holds (its components'), read
+    // from the files the bundler resolved.
+    let mut table_inputs = Vec::new();
+    for (id, path) in &code.tables {
+        match std::fs::read(path) {
+            Ok(bytes) => {
+                builtins.insert(id.clone(), ui_components::intern(bytes));
+                table_inputs.push(path.clone());
+            }
+            Err(e) => {
+                early_errors.push((id.clone(), "strings", format!("{}: {e}", path.display())))
+            }
         }
     }
     // Documents and TSX UIs can use the default UI without naming a font
@@ -319,6 +285,7 @@ pub(crate) fn scan_with(
     }
     let mut external: Vec<PathBuf> = builtins
         .keys()
+        .filter(|id| !code.tables.contains_key(*id))
         .filter_map(|id| {
             look::style_path(id)
                 .map(Path::to_path_buf)
@@ -326,6 +293,7 @@ pub(crate) fn scan_with(
         })
         .collect();
     external.extend(base_inputs);
+    external.extend(table_inputs);
     let read = |rel: &str, path: &Path| -> Result<Vec<u8>, CookError> {
         match builtins.get(rel) {
             Some(b) => Ok(b.to_vec()),

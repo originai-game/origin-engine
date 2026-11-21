@@ -438,7 +438,6 @@ pub(crate) fn finish(
     let mut index = assets::build(root, &manifest, sources, parsed_refs, threads)?;
     let before_code = BeforeCode {
         uses_motion,
-        ui: scan::code_ui(root),
         roots: index.roots.clone(),
         users: index.users.clone(),
         computed: index.computed.clone(),
@@ -495,11 +494,6 @@ pub(crate) fn finish(
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct BeforeCode {
     uses_motion: bool,
-    /// What the code asks of the built-in UI ([`scan::code_ui`]): the scan
-    /// bundles the screens it names and the default face for a TSX UI, so
-    /// another answer needs the whole cook.
-    #[serde(default)]
-    ui: scan::CodeUi,
     roots: BTreeSet<String>,
     users: BTreeMap<String, BTreeSet<String>>,
     computed: Vec<assets::ComputedLoad>,
@@ -509,10 +503,10 @@ pub(crate) struct BeforeCode {
 /// plan are written again from the last cook's manifest and assets, which
 /// are as they were. `false` when it cannot answer and the whole cook must:
 /// the code uses og.motion, or did (its model is read from outside the
-/// project, and the manifest names it), the code names another set of
-/// built-in `@ui/` documents or starts or stops drawing a TSX UI (the scan
-/// bundles them and the default face), or the last cook's
-/// files do not read back.
+/// project, and the manifest names it), or the last cook's files do not
+/// read back. Code that reaches other built-in UI is another
+/// [`CookOptions::code`], which the index never takes for a change to code
+/// alone.
 pub(crate) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookError> {
     let cooked_dir = root.join("cooked");
     let (Some(manifest), Ok(last)) = (
@@ -523,7 +517,7 @@ pub(crate) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookEr
     ) else {
         return Ok(false);
     };
-    if before.uses_motion || motion::uses_motion(root) || scan::code_ui(root) != before.ui {
+    if before.uses_motion || motion::uses_motion(root) {
         return Ok(false);
     }
     let mut index = assets::Index {

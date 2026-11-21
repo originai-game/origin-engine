@@ -269,9 +269,9 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
     Ok(r)
 }
 
-/// Cook (when the project has assets), type-check when `check` (the
-/// diagnostics printed, as the `check` event with `json`) and bundle; the
-/// bundle's path.
+/// Type-check when `check` (the diagnostics printed, as the `check` event
+/// with `json`), bundle, and cook (when the project has assets) with the
+/// bundle's import graph; the bundle's path.
 pub fn prepare(
     p: &Project,
     package: &Path,
@@ -291,9 +291,16 @@ pub fn prepare_traced(
     trace: Option<&Path>,
 ) -> Result<project::NativeBundle, String> {
     let origin = crate::trace::epoch_ms();
+    if check {
+        crate::check::require(p, package, json)?;
+    }
+    // The bundle first: its import graph is the cook's input (what the
+    // code reaches decides the built-in UI and string tables it carries).
+    let bundle = project::bundle_native(p, package)?;
     let mut cook_spans = Vec::new();
     if p.has_assets() {
-        let report = crate::cook::cook(&p.root, 0, false)?;
+        let code = og_cook::cook::CodeGraph::read(&project::graph_of(&bundle))?;
+        let report = crate::cook::cook_with(&p.root, 0, false, false, code)?;
         cook_spans = crate::trace::cook_events(&report, origin, origin);
         let cooked = report
             .assets
@@ -308,10 +315,7 @@ pub fn prepare_traced(
     if let Some(path) = trace {
         crate::trace::write_prelude(path, cook_spans, origin)?;
     }
-    if check {
-        crate::check::require(p, package, json)?;
-    }
-    project::bundle_native(p, package)
+    Ok(bundle)
 }
 
 pub fn run(args: &[&str]) -> ExitCode {
