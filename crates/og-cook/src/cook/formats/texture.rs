@@ -30,8 +30,14 @@ pub struct Image {
 /// matches).
 pub fn decode(bytes: &[u8]) -> Result<Image, String> {
     if std::str::from_utf8(bytes).is_ok_and(|text| text.contains("<svg")) {
-        let tree = resvg::usvg::Tree::from_data(bytes, &resvg::usvg::Options::default())
-            .map_err(|e| format!("SVG: {e}"))?;
+        // `currentColor` is white, the tint, as in a cooked vector: a
+        // single-colour SVG is a mask its draw colours.
+        let options = resvg::usvg::Options {
+            style_sheet: Some("svg { color: white }".into()),
+            ..Default::default()
+        };
+        let tree =
+            resvg::usvg::Tree::from_data(bytes, &options).map_err(|e| format!("SVG: {e}"))?;
         let size = tree.size().to_int_size();
         let mut pixmap = resvg::tiny_skia::Pixmap::new(size.width(), size.height())
             .ok_or("SVG: image dimensions exceed the rasterizer's limits")?;
@@ -1025,6 +1031,15 @@ pub(crate) fn split_texture(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// An SVG's `currentColor` decodes white, so the draw colour tints
+    /// it; its literal colours keep their own.
+    #[test]
+    fn an_svg_current_color_is_white() {
+        let svg = br##"<svg width="2" height="1" xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1" fill="currentColor"/><rect x="1" width="1" height="1" fill="#ff0000"/></svg>"##;
+        let image = decode(svg).unwrap();
+        assert_eq!(image.rgba, [255, 255, 255, 255, 255, 0, 0, 255]);
+    }
 
     #[cfg(feature = "basis")]
     #[test]
