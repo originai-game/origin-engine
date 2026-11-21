@@ -177,6 +177,31 @@ impl Look {
     }
 }
 
+/// A pack's layer from its files (asset id, CSS), as og.load.style and
+/// the cook hold them: its `tokens.css` and `surfaces.css` beside each
+/// other at the pack's top. `None` when it has neither (a pack only the
+/// old core reads).
+pub fn pack_layer(files: &[(String, String)]) -> Option<Layer<'_>> {
+    let top = |name: &str| {
+        files
+            .iter()
+            .filter(|(id, _)| id.rsplit_once('/').map_or(id.as_str(), |(_, f)| f) == name)
+            .min_by_key(|(id, _)| id.matches('/').count())
+            .map(|(_, css)| css.as_str())
+    };
+    let (tokens, surfaces) = (top("tokens.css"), top("surfaces.css"));
+    (tokens.is_some() || surfaces.is_some()).then(|| Layer {
+        tokens: tokens.unwrap_or(""),
+        surfaces: surfaces.unwrap_or(""),
+    })
+}
+
+/// The section of a document blob that holds its style compiled against
+/// the look of key `key` ([`crate::cooked`]).
+pub fn section(key: u64) -> String {
+    format!("next-{key:016x}")
+}
+
 /// The default style's tokens: the design language's token files, then
 /// the old default style's (`og_ui::DEFAULT_CSS`, which holds the
 /// generated theme's tokens) until the switch removes it. Joined once.

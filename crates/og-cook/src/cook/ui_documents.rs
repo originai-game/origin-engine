@@ -265,34 +265,33 @@ fn plan_document<'a>(
     }
     let dependencies = dependencies.join("\n");
     assets::record_dependencies(parsed_refs, &s.rel, &dependencies);
-    // The new core's looks: a token, surface or compiler change cooks
-    // the documents' compiled styles again.
-    let layers = [og_ui_next::look::Layer {
-        tokens: og_ui_next::look::default_tokens(),
-        surfaces: og_ui_next::look::DEFAULT_SURFACES,
-    }];
-    let looks = ["dark", "light"].map(|s| og_ui_next::look::Look::key_of(&layers, s).to_le_bytes());
-    let st = stamp(&[
-        b"svelte document 2",
-        &hash,
-        dependencies.as_bytes(),
-        &looks[0],
-        &looks[1],
-    ]);
+    // The new core's looks, the default and each pack of the project
+    // over it: a token, surface, pack or compiler change cooks the
+    // documents' compiled styles again.
+    let packs: Vec<&Source> = sources.iter().filter(|x| x.kind == &STYLE).collect();
+    let mut looks = Vec::new();
+    for k in default_keys() {
+        looks.extend_from_slice(&k.to_le_bytes());
+    }
+    for pack in &packs {
+        looks.extend_from_slice(pack.rel.as_bytes());
+        looks.extend_from_slice(&pack.hash.to_le_bytes());
+    }
+    let st = stamp(&[b"svelte document 3", &hash, dependencies.as_bytes(), &looks]);
     outs.push((
         s.rel.clone(),
         format::Document::NAME,
         st,
-        Box::new(DocumentJob(s, uses)),
+        Box::new(DocumentJob(s, uses, packs)),
     ));
 }
 
 /// A document's one output.
-struct DocumentJob<'a>(&'a Source, Vec<String>);
+struct DocumentJob<'a>(&'a Source, Vec<String>, Vec<&'a Source>);
 
 impl Job for DocumentJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let DocumentJob(s, uses) = self;
+        let DocumentJob(s, uses, packs) = self;
         let text = std::str::from_utf8(&s.bytes)
             .map_err(|_| CookError("a document is text (UTF-8)".into()))?;
         let imports = execute::document_imports(s, text).map_err(CookError)?;
@@ -319,16 +318,23 @@ impl Job for DocumentJob<'_> {
             let bytes = serde_json::to_vec(uses).expect("strings serialize");
             w.raw("uses", bytes, 16);
         }
-        // Its styles on og-ui's new core, compiled against the default
-        // look in each scheme (og_ui_next::cooked): the runtime maps them.
-        with_next_looks(|looks| {
-            for (scheme, look) in looks {
-                let style = og_ui_next::doc::DocStyle::compile(doc, look.tokens(), look.surfaces());
-                if let Some(bytes) = og_ui_next::cooked::encode(&style, doc.nodes.len(), look) {
-                    w.raw(&format!("next-{scheme}"), bytes, 16);
-                }
+        // Its styles on og-ui's new core, compiled against each look in
+        // each scheme (og_ui_next::cooked), a section by the look's key:
+        // the runtime maps the one of the look it runs.
+        for scheme in ["dark", "light"] {
+            let mut looks: Vec<(u64, Option<&Source>)> = vec![(0, None)];
+            looks.extend(packs.iter().map(|p| (p.hash, Some(*p))));
+            for (id, pack) in looks {
+                with_look(id, scheme, pack, |look| {
+                    let Some(look) = look else { return };
+                    let style =
+                        og_ui_next::doc::DocStyle::compile(doc, look.tokens(), look.surfaces());
+                    if let Some(bytes) = og_ui_next::cooked::encode(&style, doc.nodes.len(), look) {
+                        w.raw(&og_ui_next::look::section(look.key), bytes, 16);
+                    }
+                });
             }
-        });
+        }
         let slots = doc
             .nodes
             .iter()
@@ -349,22 +355,54 @@ impl Job for DocumentJob<'_> {
     }
 }
 
-/// The default look of og-ui's new core in each scheme, read once per
-/// cook thread (a look is not shared between threads).
-fn with_next_looks<R>(f: impl FnOnce(&[(&str, og_ui_next::look::Look); 2]) -> R) -> R {
-    thread_local! {
-        static LOOKS: std::cell::OnceCell<[(&'static str, og_ui_next::look::Look); 2]> =
-            const { std::cell::OnceCell::new() };
-    }
-    LOOKS.with(|l| {
-        f(l.get_or_init(|| {
-            let layers = [og_ui_next::look::Layer {
-                tokens: og_ui_next::look::default_tokens(),
-                surfaces: og_ui_next::look::DEFAULT_SURFACES,
-            }];
-            ["dark", "light"].map(|s| (s, og_ui_next::look::Look::load(&layers, s)))
-        }))
+/// The default look's keys, dark then light.
+fn default_keys() -> [u64; 2] {
+    static KEYS: std::sync::OnceLock<[u64; 2]> = std::sync::OnceLock::new();
+    *KEYS.get_or_init(|| {
+        let layers = [og_ui_next::look::Layer {
+            tokens: og_ui_next::look::default_tokens(),
+            surfaces: og_ui_next::look::DEFAULT_SURFACES,
+        }];
+        ["dark", "light"].map(|s| og_ui_next::look::Look::key_of(&layers, s))
     })
+}
+
+/// The new core's look in `scheme`: the default, with `pack`'s layer over
+/// it when there is one (`id`, its content hash, keys it), read once per
+/// cook thread (a look is not shared between threads). `None` for a pack
+/// that has no tokens.css or surfaces.css, which only the old core reads.
+fn with_look<R>(
+    id: u64,
+    scheme: &'static str,
+    pack: Option<&Source>,
+    f: impl FnOnce(Option<&og_ui_next::look::Look>) -> R,
+) -> R {
+    use std::collections::HashMap;
+    use std::rc::Rc;
+    thread_local! {
+        static LOOKS: std::cell::RefCell<HashMap<(u64, &'static str), Option<Rc<og_ui_next::look::Look>>>> =
+            Default::default();
+    }
+    let found = LOOKS.with(|l| l.borrow().get(&(id, scheme)).cloned());
+    let look = found.unwrap_or_else(|| {
+        let mut layers = vec![og_ui_next::look::Layer {
+            tokens: og_ui_next::look::default_tokens(),
+            surfaces: og_ui_next::look::DEFAULT_SURFACES,
+        }];
+        let files: Vec<(String, String)> = pack
+            .and_then(|p| serde_json::from_slice(&p.bytes).ok())
+            .unwrap_or_default();
+        let look = match pack {
+            None => Some(Rc::new(og_ui_next::look::Look::load(&layers, scheme))),
+            Some(_) => og_ui_next::look::pack_layer(&files).map(|layer| {
+                layers.push(layer);
+                Rc::new(og_ui_next::look::Look::load(&layers, scheme))
+            }),
+        };
+        LOOKS.with(|l| l.borrow_mut().insert((id, scheme), look.clone()));
+        look
+    });
+    f(look.as_deref())
 }
 
 /// The kinds this module cooks.

@@ -926,16 +926,12 @@ impl Bundle {
         }
     }
 
-    /// A UI document blob's styles compiled for og-ui's new core in
-    /// `scheme` (`og_ui_next::cooked`); none from an older cook.
-    pub fn document_next_style<'b>(
-        &self,
-        id: &str,
-        bytes: &'b [u8],
-        scheme: &str,
-    ) -> Option<&'b [u8]> {
+    /// A UI document blob's section `name`: its style compiled for
+    /// og-ui's new core against one look (`og_ui_next::look::section`);
+    /// none when the cook did not compile it for that look.
+    pub fn document_section<'b>(&self, id: &str, bytes: &'b [u8], name: &str) -> Option<&'b [u8]> {
         let blob = self.blob::<format::Document>(id, bytes).ok()?;
-        blob.raw_opt(&format!("next-{scheme}"))
+        blob.raw_opt(name)
     }
 
     /// The ids of the documents defining the components a UI document blob

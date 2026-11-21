@@ -57,7 +57,11 @@ type Mount = (String, Vec<(String, u32)>);
 
 pub(crate) struct Next {
     scheme: og_ui::Scheme,
+    /// The style pack the look lays over the defaults (its id), if any.
+    pack: Option<String>,
     look: Option<Rc<Look>>,
+    /// The cooked section of the look's documents ([`og_ui_next::look::section`]).
+    section: String,
     tree: Option<Tree>,
     signals: BTreeMap<(String, String), u32>,
     rows: BTreeMap<(String, String), Rows>,
@@ -89,15 +93,28 @@ fn source(v: &Value) -> Option<(String, String)> {
     ))
 }
 
-/// Document `id`'s style as the cook compiled it for the new core in
-/// `scheme`, when its blob has one.
-fn cooked_style(engine: u32, id: &str, scheme: &str) -> Option<Rc<[u8]>> {
+/// Document `id`'s section `name` (its style the cook compiled for the
+/// new core against one look), when its blob has it.
+fn cooked_style(engine: u32, id: &str, name: &str) -> Option<Rc<[u8]>> {
     let eng = crate::engine::engine(engine).ok()?;
     let assets = eng.assets.borrow();
     let (bytes, bundle) = assets.blob(id).ok()?;
     bundle
-        .document_next_style(id, bytes.bytes(), scheme)
+        .document_section(id, bytes.bytes(), name)
         .map(Rc::from)
+}
+
+/// The style pack `og.ui.configure` set (its id and CSS files as the cook
+/// stored them), none for the default style.
+fn active_pack(engine: u32) -> Option<(String, Vec<(String, String)>)> {
+    let eng = crate::engine::engine(engine).ok()?;
+    let handle = eng.state.borrow().ui_desc.get("style")?.as_f64()?;
+    let i = crate::world::assets::index_of(handle)?;
+    let assets = eng.assets.borrow();
+    let id = assets.styles.get(i)?.id.clone();
+    let (bytes, bundle) = assets.blob(&id).ok()?;
+    let text = bundle.style_text(&id, bytes.bytes()).ok()?;
+    Some((id, serde_json::from_str(&text).ok()?))
 }
 
 fn allocations() -> usize {
@@ -108,7 +125,9 @@ impl Next {
     pub(crate) fn new() -> Next {
         Next {
             scheme: og_ui::Scheme::Dark,
+            pack: None,
             look: None,
+            section: String::new(),
             tree: None,
             signals: BTreeMap::new(),
             rows: BTreeMap::new(),
@@ -308,8 +327,12 @@ impl Next {
             self.language = language;
             self.tree = None;
         }
-        if scheme != self.scheme {
+        // The game's pack over the defaults; a switch is another look.
+        let pack = active_pack(engine);
+        let pack_id = pack.as_ref().map(|(id, _)| id.clone());
+        if scheme != self.scheme || pack_id != self.pack {
             self.scheme = scheme;
+            self.pack = pack_id;
             self.look = None;
             self.tree = None;
         }
@@ -323,16 +346,23 @@ impl Next {
         };
         if self.look.is_none() {
             let t = now();
-            let layers = [Layer {
+            let mut layers = vec![Layer {
                 tokens: og_ui_next::look::default_tokens(),
                 surfaces: og_ui_next::look::DEFAULT_SURFACES,
             }];
+            if let Some(layer) = pack
+                .as_ref()
+                .and_then(|(_, files)| og_ui_next::look::pack_layer(files))
+            {
+                layers.push(layer);
+            }
             // The cook compiled every document's style against this look
             // and carries its root: no token or sheet is read here.
             let key = Look::key_of(&layers, scheme_name);
+            self.section = og_ui_next::look::section(key);
             let root = ui.documents().into_iter().find_map(|n| {
                 let doc = ui.shared_document(&n)?;
-                let bytes = cooked_style(engine, &doc.source, scheme_name)?;
+                let bytes = cooked_style(engine, &doc.source, &self.section)?;
                 og_ui_next::cooked::root(&bytes, key)
             });
             self.look = Some(Rc::new(match root {
@@ -353,7 +383,7 @@ impl Next {
             let library: Vec<_> = library.collect();
             let mut tree = Tree::new(look, library.iter().cloned());
             for doc in &library {
-                if let Some(bytes) = cooked_style(engine, &doc.source, scheme_name) {
+                if let Some(bytes) = cooked_style(engine, &doc.source, &self.section) {
                     tree.set_cooked(&doc.source, bytes);
                 }
             }
