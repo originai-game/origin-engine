@@ -37,14 +37,14 @@ export function TitleScreen(props: TitleScreenProps) {
           </Text>
         </Show>
         <View class="flex-row row-[4] items-center gap-x-4 compact:gap-x-2">
-          <Text class={`basis-[8.571rem] h-px bg-linear-to-r from-transparent to-[#38e8ffe5] shadow-[0px_0px_11.424px_#38e8ff] compact:basis-[2.286rem]`} />
+          <Text class={`shrink-0 basis-[8.571rem] h-px bg-linear-to-r from-transparent to-[#38e8ffe5] shadow-[0px_0px_11.424px_#38e8ff] compact:basis-[2.286rem]`} />
           <View class={`grow shrink basis-0 text-[1.286rem] font-semibold tracking-[0.28em] uppercase text-center compact:text-base compact:tracking-wide`}>
             <Text class="text-shadow-sm text-shadow-bg/80 m-0 pointer-coarse:hidden">{t("screen.title.press")}</Text>
             <Text class="hidden text-shadow-sm text-shadow-bg/80 m-0 pointer-coarse:flex">
               {t("screen.title.tap")}
             </Text>
           </View>
-          <Text class={`basis-[8.571rem] h-px bg-linear-to-r from-transparent to-[#38e8ffe5] shadow-[0px_0px_11.424px_#38e8ff] -scale-x-100 scale-y-100 compact:basis-[2.286rem]`} />
+          <Text class={`shrink-0 basis-[8.571rem] h-px bg-linear-to-r from-transparent to-[#38e8ffe5] shadow-[0px_0px_11.424px_#38e8ff] -scale-x-100 scale-y-100 compact:basis-[2.286rem]`} />
         </View>
         <Text class="row-[5] text-[0.857rem] tracking-sm text-fg/56 text-center m-0">{props.legal}</Text>
         <Text class="row-[6] justify-self-end text-[0.857rem] tabular-nums text-fg/56 m-0 compact:justify-self-center">
