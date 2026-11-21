@@ -1149,6 +1149,14 @@ impl Next {
                     y,
                     width,
                     height,
+                    // A word its lines cut where UAX #14 has no break.
+                    detail: if n.broken.is_empty() {
+                        Default::default()
+                    } else {
+                        [("brokenWords".to_string(), json!(n.broken))]
+                            .into_iter()
+                            .collect()
+                    },
                     ..Default::default()
                 }
             })

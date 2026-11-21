@@ -47,8 +47,64 @@ pub fn measure(m: &FontMetrics, text: &str, run: &Run, width: Option<f32>) -> (f
     (w, lines.len().max(1) as f32 * run.line)
 }
 
+/// Where `lines` (each ended by `\n`, as `text` was laid out) start a
+/// line inside a word: at a place UAX #14 gives no break opportunity and
+/// no `\n` of `text` ends the line before. Each as `…end|start…` of the
+/// two lines, a few characters of each.
+pub fn broken_words(text: &str, lines: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut parts = lines.split_terminator('\n');
+    let Some(mut before) = parts.next() else {
+        return out;
+    };
+    let mut breaks = None;
+    let mut at = text.find(before).map_or(0, |i| i + before.len());
+    for line in parts {
+        let Some(start) = text[at..].find(line).map(|i| at + i) else {
+            break;
+        };
+        if !line.is_empty() && !text[..start].ends_with('\n') {
+            let opportunities: &Vec<usize> = breaks.get_or_insert_with(|| {
+                og_i18n::segmenter::line(Default::default())
+                    .segment_str(text)
+                    .collect()
+            });
+            if !opportunities.contains(&start) {
+                let tail: String = {
+                    let c: Vec<char> = before.chars().rev().take(12).collect();
+                    c.into_iter().rev().collect()
+                };
+                let head: String = line.chars().take(12).collect();
+                out.push(format!("{tail}|{head}"));
+            }
+        }
+        at = start + line.len();
+        before = line;
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_line_starting_inside_a_word_is_a_broken_word() {
+        use super::broken_words;
+        // Breaks at spaces, after a hyphen and at a newline are allowed.
+        assert!(broken_words("Main quest log", "Main\nquest log\n").is_empty());
+        assert!(broken_words("well-known", "well-\nknown\n").is_empty());
+        assert!(broken_words("Leader\nboard", "Leader\nboard\n").is_empty());
+        assert!(broken_words("One", "One\n").is_empty());
+        // Inside a word: listed with the two sides.
+        assert_eq!(
+            broken_words("Leaderboard", "Leaderb\noard\n"),
+            ["Leaderb|oard"]
+        );
+        assert_eq!(
+            broken_words("The Leaderboard", "The\nLeaderb\noard\n"),
+            ["Leaderb|oard"]
+        );
+    }
+
     use super::*;
     use og_text::shape::FontFile;
     use std::sync::Arc;

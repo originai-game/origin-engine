@@ -381,6 +381,9 @@ struct Glyphs {
     quads: Vec<PaintQuad>,
     /// Each line's start x, baseline and width, for its decoration.
     lines: Vec<[f32; 3]>,
+    /// The lines' texts as laid out, each ended by `\n`: what the probe's
+    /// dump checks for a word broken where UAX #14 has no break.
+    line_text: String,
 }
 
 mod input;
@@ -2211,6 +2214,7 @@ fn lay_out(
     }
     g.quads.clear();
     g.lines.clear();
+    g.line_text.clear();
     let glyph = (m.ascender - m.descender) * size;
     let weight = if bold { size * 0.03 } else { 0.0 };
     let track = if size > 0.0 { tracking / size } else { 0.0 };
@@ -2264,6 +2268,8 @@ fn lay_out(
         for (k, (r, w)) in breaks.iter().enumerate() {
             let l = text[r.clone()].trim_end_matches(['\n', '\r']);
             place(k, l, w * size, &mut g.quads, &mut g.lines);
+            g.line_text.push_str(l);
+            g.line_text.push('\n');
         }
         return;
     }
@@ -2272,6 +2278,8 @@ fn lay_out(
         for (k, l) in text.split('\n').enumerate() {
             let w = og_text::text::widest_line(l, m, size, track, features);
             place(k, l, w, &mut g.quads, &mut g.lines);
+            g.line_text.push_str(l);
+            g.line_text.push('\n');
         }
         return;
     }
@@ -2286,6 +2294,8 @@ fn lay_out(
     );
     for (k, l) in lines.iter().enumerate() {
         place(k, &l.text, l.width, &mut g.quads, &mut g.lines);
+        g.line_text.push_str(&l.text);
+        g.line_text.push('\n');
     }
 }
 

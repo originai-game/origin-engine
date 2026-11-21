@@ -1002,6 +1002,10 @@ pub struct OpNode<'a> {
     pub rect: [f32; 4],
     pub shown: bool,
     pub text: &'a str,
+    /// Where its laid-out lines cut a word with no UAX #14 break there,
+    /// each as `end of the line|start of the next`: a text measured
+    /// narrower than it draws. Empty: none.
+    pub broken: Vec<String>,
 }
 
 impl Tree {
@@ -1046,6 +1050,9 @@ impl Tree {
                     rect: [x, y, b.w, b.h],
                     shown,
                     text: &el.text,
+                    broken: self.glyphs.get(e).map_or(Vec::new(), |g| {
+                        crate::text::broken_words(&g.text, &g.line_text)
+                    }),
                 })
             })
             .collect()

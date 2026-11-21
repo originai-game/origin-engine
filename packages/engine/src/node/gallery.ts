@@ -79,6 +79,11 @@ export function rawKeys(dump: { elements?: Array<{ text?: string; name?: string 
   return [...found].sort();
 }
 
+/** The words a UI dump's texts break across lines where UAX #14 has no break (`end|start`). */
+export function brokenWords(dump: { elements?: Array<{ brokenWords?: string[] }> }): string[] {
+  return [...new Set((dump.elements ?? []).flatMap((e) => e.brokenWords ?? []))];
+}
+
 const PROJECT = `type project
 version 1
 ---
@@ -213,7 +218,7 @@ async function main(): Promise<number> {
     return { ok: (await p.exited) === 0, log: o + e };
   };
   const keys = tableKeys();
-  /** The hard defects, by fixture: a mount that threw, a raw string key drawn. */
+  /** The hard defects, by fixture: a mount that threw, a raw string key drawn, a word broken across lines. */
   const defects: string[] = [];
   if (!(await run(["cook", "."])).ok) return 1;
   // A pack loads its look and fonts over a few frames; a page settles in 12 ticks.
@@ -243,8 +248,11 @@ async function main(): Promise<number> {
     const dumps = readdirSync(shots).filter((f) => /^dump_ui-\d+\.json$/.test(f)).sort();
     dumps.forEach((f, n) => {
       if (n < list.length && !threw.has(n)) {
-        const raw = rawKeys(JSON.parse(readFileSync(join(shots, f), "utf8")), keys);
+        const dump = JSON.parse(readFileSync(join(shots, f), "utf8"));
+        const raw = rawKeys(dump, keys);
         if (raw.length) defects.push(`${where(n)}: draws raw string keys ${raw.join(", ")}`);
+        const broken = brokenWords(dump);
+        if (broken.length) defects.push(`${where(n)}: breaks inside a word ${broken.join(", ")}`);
       }
       rmSync(join(shots, f));
     });
