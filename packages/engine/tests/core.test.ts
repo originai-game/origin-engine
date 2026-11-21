@@ -79,7 +79,7 @@ type Procgen = { hashes: Record<string, string | number>; noise: number; refused
 
 /** The shared procgen pin (tests/fixtures/procgen-pin.json): the scenario and the cross-host hashes, also og-core's test's. */
 const procgenPin = JSON.parse(
-  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "..", "tests", "fixtures", "procgen-pin.json"), "utf8"),
+  readFileSync(join(pkg, "..", "..", "tests", "fixtures", "procgen-pin.json"), "utf8"),
 ) as { pinned: Record<string, string> };
 
 test("og.procgen and og.Rng's picks give og-core's pinned outputs, bit for bit, through the API", () => {
