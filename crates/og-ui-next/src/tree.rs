@@ -305,6 +305,13 @@ pub struct Tree {
     /// Each element's text laid out as glyph quads from its leaf's top
     /// left, kept while its text, width and run stay.
     glyphs: Vec<Glyphs>,
+    /// The faces text was measured and laid out in (the body's, then its
+    /// fallbacks'): when a locale links others, every text is again.
+    faces: Vec<Option<og_draw::FontHandle>>,
+    /// Characters text was laid out with that no face has, each once,
+    /// until [`Tree::take_missing`]: the host loads a font pack that
+    /// covers them (docs/ui.md §3.4), and the text draws in it once linked.
+    missing: Vec<char>,
     /// Each element's transform in `drawn.transforms` (its own composed
     /// with its ancestors'; 0 none), what its children compose onto.
     xfs: Vec<u32>,
@@ -560,6 +567,8 @@ impl Tree {
             input: input::Input::new(),
             last_pointer: (f32::NAN, f32::NAN, 0),
             paints: 0,
+            faces: Vec::new(),
+            missing: Vec::new(),
         }
     }
 
@@ -1156,6 +1165,12 @@ impl Tree {
         }
     }
 
+    /// The characters laid-out text drew that no face has, since the last
+    /// call: a frame that found none allocates nothing.
+    pub fn take_missing(&mut self) -> Vec<char> {
+        std::mem::take(&mut self.missing)
+    }
+
     /// Drains the queue, refolds what changed, lays out and paints. The
     /// fonts measure text; `icons` draws icons.
     pub fn frame(&mut self, fonts: &og_ui::Fonts, icons: &IconAtlas) -> Frame {
@@ -1245,7 +1260,24 @@ impl Tree {
         let moving = self.motion.tick_at(self.time);
         self.settle_exits();
         let (w, h) = self.env.size.get();
-        let m = &text_font(fonts).metrics;
+        let tf = text_font(fonts);
+        let faces = || {
+            std::iter::once(tf.handle).chain(
+                tf.metrics
+                    .runs
+                    .iter()
+                    .flat_map(|r| r.iter().map(|f| f.handle)),
+            )
+        };
+        if !faces().eq(self.faces.iter().copied()) {
+            self.faces = faces().collect();
+            self.arena.remeasure();
+            for g in &mut self.glyphs {
+                g.key = [u32::MAX; 5];
+            }
+            self.paint = true;
+        }
+        let m = &tf.metrics;
         let laid_out = self.arena.layout(w, h, &mut |t, run, width| {
             crate::text::measure(m, t, run, width)
         });
@@ -1725,7 +1757,7 @@ impl Tree {
             {
                 let lb = self.arena.box_of(leaf);
                 let g = &mut self.glyphs[e];
-                lay_out(g, &el.text, &el.eff, lb.w, m);
+                lay_out(g, &el.text, &el.eff, lb.w, m, &mut self.missing);
                 let (lx, ly) = (x + lb.x, y + lb.y);
                 let sh = s.text_shadow;
                 if sh.color[3] > 0.0 {
@@ -2039,9 +2071,16 @@ fn slot_of(k: u8) -> u32 {
 
 /// Lays `text` out as glyph quads from its leaf's top left (a quad's x the
 /// pen, y the baseline, w the size; `b` the font slot of the face that
-/// has the character, [`slot_of`]), when it, the width, the run or the
-/// faces changed since `g` was laid out.
-fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::text::FontMetrics) {
+/// has the character, [`slot_of`]), when it, the width or the run changed
+/// since `g` was laid out (a change of faces clears `g.key`: `present`).
+fn lay_out(
+    g: &mut Glyphs,
+    text: &str,
+    eff: &Inherit,
+    width: f32,
+    m: &og_text::text::FontMetrics,
+    missing: &mut Vec<char>,
+) {
     let t = &eff.text;
     let size = eff.size;
     let tracking = t.tracking(size);
@@ -2052,10 +2091,7 @@ fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::t
         size.to_bits(),
         tracking.to_bits(),
         line.to_bits(),
-        u32::from(t.align)
-            | u32::from(t.nowrap) << 2
-            | u32::from(bold) << 3
-            | (m.runs.as_ref().map_or(0, |r| r.len() as u32) << 4),
+        u32::from(t.align) | u32::from(t.nowrap) << 2 | u32::from(bold) << 3,
     ];
     if g.key == key && *g.text == *text {
         return;
@@ -2071,7 +2107,7 @@ fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::t
     let weight = if bold { size * 0.03 } else { 0.0 };
     let track = if size > 0.0 { tracking / size } else { 0.0 };
     let features = og_text::shape::Features::NONE;
-    let place =
+    let mut place =
         |k: usize, l: &str, w: f32, quads: &mut Vec<PaintQuad>, lines: &mut Vec<[f32; 3]>| {
             let top = k as f32 * line + (line - glyph) / 2.0;
             let dx = match t.align {
@@ -2085,6 +2121,9 @@ fn lay_out(g: &mut Glyphs, text: &str, eff: &Inherit, width: f32, m: &og_text::t
             let mut prev: Option<char> = None;
             for ch in l.chars() {
                 if !m.has(ch) {
+                    if !ch.is_whitespace() && !ch.is_control() && !missing.contains(&ch) {
+                        missing.push(ch);
+                    }
                     prev = None;
                     continue;
                 }

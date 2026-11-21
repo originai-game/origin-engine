@@ -665,6 +665,18 @@ impl Next {
     /// for the tick's end.
     /// The string tables the batches since the last call named, for the
     /// caller to register once it no longer holds the render state.
+    /// The characters the tree's texts drew that no face has, with the
+    /// body's handle: og-ui's frame's `missing_glyphs` for the
+    /// new core, so an installed font pack that covers them loads.
+    pub(crate) fn take_missing(
+        &mut self,
+        ui: &og_ui::Ui,
+    ) -> Option<(og_render::FontHandle, Vec<char>)> {
+        let chars = self.tree.as_mut()?.take_missing();
+        let body = ui.fonts().body.handle?;
+        (!chars.is_empty()).then_some((body, chars))
+    }
+
     pub(crate) fn take_strings(&mut self) -> Vec<String> {
         self.tree
             .as_mut()

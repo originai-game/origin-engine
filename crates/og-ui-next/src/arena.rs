@@ -153,6 +153,17 @@ impl Arena {
         }
     }
 
+    /// Every text leaf measures again at the next layout: the font it
+    /// measures in changed (a locale linked a face for what it lacked).
+    pub fn remeasure(&mut self) {
+        for id in 0..self.nodes.len() as Id {
+            if self.nodes[id as usize].text.is_some() {
+                self.nodes[id as usize].memo.set(NO_MEMO);
+                self.touch(id, false);
+            }
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.nodes.len()
     }

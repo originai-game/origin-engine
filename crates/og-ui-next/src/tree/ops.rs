@@ -2201,7 +2201,7 @@ mod tests {
     /// falls back to (a CJK pack), in that face's own paint slot, which
     /// the paint lists with the face's handle; the body's stay in slot 0.
     #[test]
-    fn a_character_the_body_lacks_draws_from_its_fallback_face() {
+    fn a_character_the_body_lacks_draws_from_the_fallback_face_linked_for_it() {
         use og_text::text::{FontMetrics, UiFont};
         let face = |h: usize, m: FontMetrics| UiFont {
             handle: Some(og_draw::FontHandle::from_index(h)),
@@ -2215,21 +2215,29 @@ mod tests {
             body,
             ..Default::default()
         };
-        fonts.body.metrics.mixed = Some(std::sync::Arc::new(mixed));
         let mut t = tree();
         let mut b = Batch::default();
         b.op(2).u32(1).str("A中");
         b.op(8).u32(0).u32(1).u32(u32::MAX);
         t.apply(&b.bytes()).unwrap();
+        let glyphs = |t: &Tree| -> Vec<_> {
+            t.drawn
+                .quads
+                .iter()
+                .filter(|q| q.kind == og_draw::paint::PaintKind::Glyph as u32)
+                .map(|q| (char::from_u32(q.a).unwrap(), q.b))
+                .collect()
+        };
         t.frame(&fonts, &IconAtlas::default());
-        let glyphs: Vec<_> = t
-            .drawn
-            .quads
-            .iter()
-            .filter(|q| q.kind == og_draw::paint::PaintKind::Glyph as u32)
-            .map(|q| (char::from_u32(q.a).unwrap(), q.b))
-            .collect();
-        assert_eq!(glyphs, [('A', 0), ('中', 2)]);
+        assert_eq!(glyphs(&t), [('A', 0)]);
+        // No face has it yet: reported once, for the host to load a pack.
+        assert_eq!(t.take_missing(), ['中']);
+        // A locale links the face later, with nothing in the tree changed:
+        // the text is measured and drawn again in it.
+        fonts.body.metrics.mixed = Some(std::sync::Arc::new(mixed));
+        t.frame(&fonts, &IconAtlas::default());
+        assert_eq!(glyphs(&t), [('A', 0), ('中', 2)]);
+        assert!(t.take_missing().is_empty());
         let five = og_draw::FontHandle::from_index(5);
         assert_eq!(t.drawn.fonts[2].first(), Some(&five));
     }

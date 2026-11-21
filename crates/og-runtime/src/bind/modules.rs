@@ -236,6 +236,7 @@ pub(crate) fn mount_back(
                             &crate::author::probe::now_ms,
                             Some(&|bits| ui_world::Feed::world_pose(ctx, bits).map(|p| p.0)),
                         ));
+                        out.1.extend(next.take_missing(&ui));
                     }
                     // The on-screen controls documents laid out feed their
                     // actions from the next tick's sample (docs/ui.md §3.3).
