@@ -224,6 +224,10 @@ pub(crate) fn mount_back(
                     // The documents on og-ui's new core lay out and paint
                     // after og-ui's frame (present/ui_next.rs).
                     crate::present::ui_next::pack_images(engine_id);
+                    // The on-screen controls documents and the new core
+                    // laid out feed their actions from the next tick's
+                    // sample (docs/ui.md §3.3).
+                    let mut zones = ui.take_control_zones();
                     if let Ok(eng) = engine(engine_id)
                         && let rs = &mut *eng.render.borrow_mut()
                         && let Some(next) = &mut rs.ui_next
@@ -237,10 +241,9 @@ pub(crate) fn mount_back(
                             Some(&|bits| ui_world::Feed::world_pose(ctx, bits).map(|p| p.0)),
                         ));
                         out.1.extend(next.take_missing(&ui));
+                        zones = next.control_zones(zones);
                     }
-                    // The on-screen controls documents laid out feed their
-                    // actions from the next tick's sample (docs/ui.md §3.3).
-                    if let Some(zones) = ui.take_control_zones() {
+                    if let Some(zones) = zones {
                         og_input::actions::lock(&zones_to).set_zones(zones);
                     }
                     out

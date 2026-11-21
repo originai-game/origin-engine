@@ -214,6 +214,15 @@ machines do (ported as logic).
   held on it that long, not on release; `hold` events carry the progress
   in `value` each frame (`"0.42"`, `"1"` as it completes, `"0"` when it
   lets go early: release, leaving it, or a pan).
+- **On-screen controls**: a node with `touchStick`, `touchPad` or
+  `touchButton` is an input source of the og-input action it names, as a
+  document's `<joystick action>`, `<dpad action>` and `<button
+  data-og-touch>` are (docs/ui.md §3.3): after each layout its box, in
+  surface px, goes to the action map as a control zone
+  (`Tree::take_zones`), which samples the touches that started on it in
+  the tick. No handler runs. A disabled or hidden one is no zone. Until
+  og-ui goes (head 9), og-runtime hands the map og-ui's zones and these
+  together.
 
 | Prop | Value | Means |
 |---|---|---|
@@ -221,6 +230,10 @@ machines do (ported as logic).
 | `glyph` | an action's name | a `Text` node showing that action's binding on the current device (`<Glyph action>`) |
 | `autofocus` | bool | it takes the focus once it shows |
 | `hold` | seconds | a press or `confirm` must be held this long to press it |
+| `touchStick` | an action's name | its box is a stick of that action (x, y from its centre) |
+| `touchPad` | an action's name | its box is a d-pad of that action (eight directions) |
+| `touchButton` | an action's name | its box is a button of that action (1 while held) |
+| `deadZone` | 0 to 0.95 | a stick's dead zone, of its radius (0: og-input's 0.15) |
 
 ## Accessibility
 

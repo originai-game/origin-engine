@@ -87,6 +87,14 @@ export interface HostProps {
   hold?: number | undefined;
   /** Takes focus when it appears (a dialog's first control). */
   autofocus?: boolean | undefined;
+  /** An on-screen stick: its box feeds this input action's x and y (from its centre, y up), with no handler. */
+  touchStick?: string | undefined;
+  /** An on-screen d-pad: its box feeds this input action, the nearest of eight directions. */
+  touchPad?: string | undefined;
+  /** An on-screen button: its box presses this input action while a touch that started on it is held. */
+  touchButton?: string | undefined;
+  /** A `touchStick`'s dead zone, a ratio of its radius from 0 to 0.95; 0 is the default 0.15. */
+  deadZone?: number | undefined;
   /** Input actions handled where focus is (`{ confirm, details }`); the event's `key` names the action. */
   onAction?: Record<string, Handler> | undefined;
   disabled?: boolean | undefined;

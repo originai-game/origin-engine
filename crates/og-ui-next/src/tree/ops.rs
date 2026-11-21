@@ -458,6 +458,7 @@ impl Tree {
         self.motion.forget(node);
         self.sem.release(node);
         self.input.modal_els.retain(|&m| m != e);
+        self.input.zone_els.retain(|&z| z != e);
         self.anchored.retain(|&a| a != e);
         self.leaving.retain(|l| l.0 != e);
         if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
@@ -595,6 +596,28 @@ impl Tree {
                         }
                         "hold" => {
                             self.input.per[e as usize].hold = value.trim().parse().unwrap_or(0.0);
+                        }
+                        "touchStick" | "touchPad" | "touchButton" => {
+                            let kind = match name {
+                                "touchStick" => og_input::ZoneKind::Stick,
+                                "touchPad" => og_input::ZoneKind::Pad,
+                                _ => og_input::ZoneKind::Button,
+                            };
+                            let action = value.trim();
+                            let per = &mut self.input.per[e as usize];
+                            if !action.is_empty() {
+                                per.zone = Some((kind, action.into()));
+                            } else if per.zone.as_ref().is_some_and(|z| z.0 == kind) {
+                                per.zone = None;
+                            }
+                            self.input.zone_els.retain(|&z| z != e);
+                            if per.zone.is_some() {
+                                self.input.zone_els.push(e);
+                            }
+                        }
+                        "deadZone" => {
+                            self.input.per[e as usize].dead_zone =
+                                value.trim().parse::<f32>().unwrap_or(0.0).clamp(0.0, 0.95);
                         }
                         "glyph" => {
                             self.input.per[e as usize].glyph = value.into();
@@ -2195,6 +2218,54 @@ mod tests {
             .find(|f| f.event == Event::PointerDown)
             .unwrap();
         assert_eq!((down.id, &*down.value), (2, "50 0 90 20"));
+    }
+
+    /// An on-screen control's box is a zone of the action it names, in
+    /// surface px; one disabled or no longer a control leaves, and a frame
+    /// where nothing changed hands out nothing.
+    #[test]
+    fn on_screen_controls_are_zones_of_their_actions() {
+        use og_input::ZoneKind;
+        let mut t = stated();
+        let mut b = Batch::default();
+        b.op(1).u32(100).u8(0);
+        b.op(4).u32(100).str("row");
+        b.op(8).u32(0).u32(100).u32(u32::MAX);
+        for id in [1, 2] {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("b fw");
+            b.op(8).u32(100).u32(id).u32(u32::MAX);
+        }
+        b.op(6).u32(1).str("touchStick").str("move");
+        b.op(6).u32(1).str("deadZone").str("0.2");
+        b.op(6).u32(2).str("touchButton").str("jump");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let zones = |t: &mut Tree| {
+            t.take_zones().map(|z| {
+                z.iter()
+                    .map(|z| (z.action.clone(), z.kind, [z.x, z.width], z.dead_zone))
+                    .collect::<Vec<_>>()
+            })
+        };
+        let (x1, w1) = (t.op_box(1).unwrap()[0], t.op_box(1).unwrap()[2]);
+        let (x2, w2) = (t.op_box(2).unwrap()[0], t.op_box(2).unwrap()[2]);
+        assert!(x2 > x1, "the button comes after the stick");
+        assert_eq!(
+            zones(&mut t),
+            Some(vec![
+                ("move".into(), ZoneKind::Stick, [x1, w1], 0.2),
+                ("jump".into(), ZoneKind::Button, [x2, w2], 0.0),
+            ])
+        );
+        frame(&mut t);
+        assert_eq!(zones(&mut t), None, "nothing changed");
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("disabled").str("true");
+        b.op(6).u32(2).str("touchButton").str("");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(zones(&mut t), Some(vec![]));
     }
 
     /// A character the body face lacks draws from the face its mixed font

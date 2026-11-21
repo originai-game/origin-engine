@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "touchStick",
+      "summary": "TSX elements take `touchStick`, `touchPad` and `touchButton` naming an input action (and `deadZone` for a stick): the element's box becomes an on-screen stick, d-pad or button that feeds that action as the documents' `<joystick action>`, `<dpad action>` and `<button data-og-touch>` do, so movement and buttons work with no handler. A disabled or hidden one feeds nothing."
+    }
+  ]
+}

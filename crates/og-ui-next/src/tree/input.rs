@@ -14,7 +14,7 @@
 
 use super::ops::{Event as OpEvent, Fired};
 use super::*;
-use crate::classes::state::{FOCUS_VISIBLE, FOCUS_WITHIN, FOCUSED, HOVERED, PRESSED};
+use crate::classes::state::{DISABLED, FOCUS_VISIBLE, FOCUS_WITHIN, FOCUSED, HOVERED, PRESSED};
 use nsh_input::input as nsh;
 
 /// A press that travelled further than this (px) is no click of a double
@@ -79,6 +79,11 @@ pub(super) struct Per {
     pub hold: f32,
     /// `autofocus`: it takes the focus once it shows.
     pub autofocus: bool,
+    /// `touchStick`, `touchPad` or `touchButton`: an on-screen control,
+    /// its box an input source of the action named (og-input's zone),
+    /// with `deadZone` a stick's dead zone.
+    pub zone: Option<(og_input::ZoneKind, Box<str>)>,
+    pub dead_zone: f32,
 }
 
 /// What a finger on a touch screen is doing.
@@ -178,6 +183,10 @@ pub struct Input {
     pad: bool,
     /// `autofocus` nodes waiting to show.
     pub(super) autofocus: Vec<u32>,
+    /// The elements that are on-screen controls, and the zones last
+    /// handed out ([`Tree::take_zones`]).
+    pub(super) zone_els: Vec<u32>,
+    zones: Vec<og_input::ControlZone>,
 }
 
 impl Input {
@@ -195,6 +204,61 @@ impl Input {
 }
 
 impl Tree {
+    /// The on-screen controls' zones for og-input's action map
+    /// ([`og_input::ActionMap::set_zones`]), after [`Tree::present`]: each
+    /// shown, enabled control's box in surface px. `None` when none came,
+    /// went, moved or changed since the last call; such a frame allocates
+    /// nothing.
+    pub fn take_zones(&mut self) -> Option<Vec<og_input::ControlZone>> {
+        let mut k = 0;
+        let mut changed = false;
+        for i in 0..self.input.zone_els.len() {
+            let e = self.input.zone_els[i] as usize;
+            let p = &self.input.per[e];
+            let Some((kind, action)) = &p.zone else {
+                continue;
+            };
+            let Some(&(x, y, true, _)) = self.abs.get(e) else {
+                continue;
+            };
+            let b = self.arena.box_of(self.els[e].node);
+            if self.els[e].dead || p.states & DISABLED != 0 || b.w <= 0.0 || b.h <= 0.0 {
+                continue;
+            }
+            let same = |z: &og_input::ControlZone| {
+                z.kind == *kind
+                    && *z.action == **action
+                    && [z.x, z.y, z.width, z.height, z.dead_zone] == [x, y, b.w, b.h, p.dead_zone]
+            };
+            let next = || og_input::ControlZone {
+                action: action.to_string(),
+                kind: *kind,
+                x,
+                y,
+                width: b.w,
+                height: b.h,
+                dead_zone: p.dead_zone,
+            };
+            match self.input.zones.get_mut(k) {
+                Some(z) if same(z) => {}
+                Some(z) => {
+                    *z = next();
+                    changed = true;
+                }
+                None => {
+                    self.input.zones.push(next());
+                    changed = true;
+                }
+            }
+            k += 1;
+        }
+        if self.input.zones.len() != k {
+            self.input.zones.truncate(k);
+            changed = true;
+        }
+        changed.then(|| self.input.zones.clone())
+    }
+
     /// The op element `e` is in that `want` accepts, itself first.
     fn up(&self, mut e: u32, want: impl Fn(&El) -> bool) -> u32 {
         while e != NONE {

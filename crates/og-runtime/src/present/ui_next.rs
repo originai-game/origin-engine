@@ -111,6 +111,10 @@ pub(crate) struct Next {
     /// (`glyphs::generate`): a fresh tree painted, so its text arrives
     /// with its panels.
     pub(crate) settle_glyphs: bool,
+    /// The on-screen controls' zones, og-ui's documents' and the tree's,
+    /// as last handed to the action map, which takes the whole set.
+    doc_zones: Vec<og_input::ControlZone>,
+    zones: Vec<og_input::ControlZone>,
     /// The device whose bindings the `<Glyph>` nodes show.
     device: Option<og_ui::Device>,
     /// The left stick's held direction and when it moves the focus again.
@@ -334,6 +338,8 @@ impl Next {
             textures: Rc::default(),
             generation: 0,
             settle_glyphs: false,
+            doc_zones: Vec::new(),
+            zones: Vec::new(),
         }
     }
 
@@ -675,6 +681,29 @@ impl Next {
         let chars = self.tree.as_mut()?.take_missing();
         let body = ui.fonts().body.handle?;
         (!chars.is_empty()).then_some((body, chars))
+    }
+
+    /// The action map's control zones, og-ui's `docs` (its
+    /// `take_control_zones`) and the tree's on-screen controls together:
+    /// `None` when neither changed.
+    pub(crate) fn control_zones(
+        &mut self,
+        docs: Option<Vec<og_input::ControlZone>>,
+    ) -> Option<Vec<og_input::ControlZone>> {
+        let own = match &mut self.tree {
+            Some(tree) => tree.take_zones(),
+            None => (!self.zones.is_empty()).then(Vec::new),
+        };
+        if docs.is_none() && own.is_none() {
+            return None;
+        }
+        if let Some(docs) = docs {
+            self.doc_zones = docs;
+        }
+        if let Some(own) = own {
+            self.zones = own;
+        }
+        Some(self.doc_zones.iter().chain(&self.zones).cloned().collect())
     }
 
     pub(crate) fn take_strings(&mut self) -> Vec<String> {

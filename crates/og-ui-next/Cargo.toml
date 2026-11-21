@@ -20,6 +20,8 @@ nsh-reactive = { path = "../../third_party/nsh-reactive" }
 # Tailwind classes resolved to styles (NSH's resolver).
 nsh-tailwind = { path = "../../third_party/nsh-tailwind" }
 nsh-input = { path = "../../third_party/nsh-input" }
+# On-screen controls feed og-input actions as its control zones.
+og-input = { path = "../og-input" }
 rune-taffy = { path = "../../third_party/rune-taffy" }
 # UI motion: transitions, presence and layout animation (src/motion.rs).
 rune-motion = { path = "../../third_party/rune-motion" }
