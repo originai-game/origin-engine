@@ -2540,11 +2540,13 @@ impl Len {
         match v {
             StyleValue::Number(n) => Ok(Len::Px(n)),
             StyleValue::Str("auto") => Ok(Len::Auto),
-            StyleValue::Str(s) => s
-                .strip_suffix('%')
-                .and_then(|p| p.trim().parse::<f32>().ok())
-                .map(|p| Len::Pct(p / 100.0))
-                .ok_or(StyleError::InvalidValue),
+            // A percentage, else a CSS length (`28px`, `1.5rem`, `28`), as
+            // an inline style writes it.
+            StyleValue::Str(s) => match s.trim().strip_suffix('%') {
+                Some(p) => p.trim().parse::<f32>().ok().map(|p| Len::Pct(p / 100.0)),
+                None => css::length(s).map(Len::Px),
+            }
+            .ok_or(StyleError::InvalidValue),
             StyleValue::Null => Ok(Len::Auto),
         }
     }
@@ -4257,6 +4259,26 @@ impl Style {
 
 #[cfg(test)]
 mod tests {
+    /// An inline style's lengths with units size the box: `28px` was
+    /// refused and left it `auto` (a TSX `style={{ width: "28px" }}`).
+    #[test]
+    fn a_length_with_units_sizes_the_box() {
+        use super::{Style, StyleValue};
+        for (v, want) in [("28px", 28.0), ("1.5rem", 24.0), ("28", 28.0)] {
+            let mut s = Style::default();
+            s.set("width", StyleValue::Str(v)).unwrap();
+            assert_eq!(s.layout.size.width, taffy::Dimension::length(want), "{v}");
+        }
+        let mut s = Style::default();
+        s.set("width", StyleValue::Str("50%")).unwrap();
+        assert_eq!(s.layout.size.width, taffy::Dimension::percent(0.5));
+        assert!(
+            Style::default()
+                .set("width", StyleValue::Str("wide"))
+                .is_err()
+        );
+    }
+
     #[test]
     fn font_family_lists_name_their_families_in_order() {
         use super::{FamilyName, font_families};

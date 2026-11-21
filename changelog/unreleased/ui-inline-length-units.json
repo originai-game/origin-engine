@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "UI inline styles",
+      "summary": "An inline style's length with a unit (`style={{ width: \"28px\" }}`, `1.5rem`) sizes the box. It was refused and left the box `auto`, so a Spinner stretched to the screen's width and its spin drew a long diagonal stroke."
+    }
+  ]
+}
