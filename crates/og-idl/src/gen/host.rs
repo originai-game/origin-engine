@@ -576,7 +576,46 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_engine_perf_report",
         &[("engine", "u32", "number"), ("budgets", "String", "string")],
         "String",
-        "The performance record's report so far, as JSON `{ json, text }`: each line's mean, median, p95, p99 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes.",
+        "The performance record's report so far, as JSON `{ json, text }`: each line's mean, median, p95, p99 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes. The record is the engine's only one of frame times: `frame interval` (a presenting host's, og_present_frame's) and `frame work` are its lines.",
+    ),
+    (
+        "og_engine_perf_frames",
+        &[("engine", "u32", "number")],
+        "String",
+        "The performance record's frames since the last call, binned (field telemetry's `frames`): JSON `{ count, ms, bins, interval, work, hitches, longHitches, max }`, `bins` the 11 upper edges in ms (8.4 to 250) and `interval` and `work` 12 counts each, the last above 250 ms. A hitch is a frame whose interval is more than twice the median of the 64 before it, a long one also 250 ms or more. `null` while the record is off.",
+    ),
+];
+
+/// The presenting host's members: what a host that shows the engine's
+/// frames on a display (the web Worker's canvas, the desktop shell's
+/// window) tells the engine and asks of it. The engine keeps the duties
+/// themselves (pacing under the frame cap, the display's interval,
+/// automatic quality's budget, the frame-time record), so every
+/// presenting host keeps them alike.
+const PRESENT: &[LifecycleMember] = &[
+    (
+        "og_present_frame",
+        &[("engine", "u32", "number"), ("now_ms", "f64", "number")],
+        "String",
+        "One display frame of a presenting host at `now_ms`, the host's monotonic clock (requestAnimationFrame's timestamp, the desktop window loop's). The engine keeps the frame cap (og.render.setDisplay, DisplayInfo.maxFps) by drawing only some display frames, measures the display's interval from these timestamps unless og_present_refresh told it, and runs a drawn one as og_engine_frame with the time since the last drawn one, which the performance record takes as its interval. JSON: og_engine_frame's answer with `drawn: true`, or `{ ok: true, drawn: false }`; both with `nextMs`, the host time the next frame to draw is due, which a host without a display callback waits until (winit's ControlFlow::WaitUntil). A host calls it on every display frame, drawn or not, and names its locale at og_engine_create (`locale`).",
+    ),
+    (
+        "og_present_resume",
+        &[("engine", "u32", "number")],
+        "()",
+        "The clock stopped, held or went on (play paused or resumed, a probe capture's wait): the next og_present_frame draws, and is handed no time from before.",
+    ),
+    (
+        "og_present_refresh",
+        &[("engine", "u32", "number"), ("hz", "f64", "number")],
+        "()",
+        "The display's refresh rate as the host reads it from the display (the desktop window's monitor), Hz; 0 or less is unknown. A host that does not tell it calls og_present_frame on every display frame (requestAnimationFrame), whose timestamps measure it.",
+    ),
+    (
+        "og_present_fullscreen",
+        &[("engine", "u32", "number"), ("on", "bool", "boolean")],
+        "()",
+        "The host's window went fullscreen or left it (the page's fullscreenchange, the desktop window): DisplayInfo.fullscreen, and the player's setting follows it, so a player who leaves with Escape finds Fullscreen off. The frame answer's `fullscreen` is what the player asks for, which the host carries out.",
     ),
 ];
 
@@ -586,6 +625,11 @@ const HOST_TRAITS: &[(&str, &str, &[LifecycleMember])] = &[
         "Lifecycle",
         "Engine lifecycle: what the TypeScript loaders drive.",
         LIFECYCLE,
+    ),
+    (
+        "Present",
+        "What a presenting host tells the engine and asks of it: the frames it shows on a display.",
+        PRESENT,
     ),
 ];
 
@@ -1057,7 +1101,7 @@ pub fn abi_ts(ix: &Index<'_>) -> String {
             ret.ts()
         ));
     }
-    out.push_str("}\n\n/** Every binding symbol, in binding-table order, then the lifecycle members. */\nexport const SYMBOLS: readonly string[] = [\n");
+    out.push_str("}\n\n/** Every binding symbol, in binding-table order, then the lifecycle and present members. */\nexport const SYMBOLS: readonly string[] = [\n");
     for b in &all {
         out.push_str(&format!("  \"{}\",\n", b.symbol));
     }

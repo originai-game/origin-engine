@@ -62,7 +62,7 @@ pub use author::lanes::{panic_report, record_panic, report as lanes_report};
 pub use present::glyphs::glyphs_pending;
 
 pub use author::memory::memory_report;
-pub use author::perf::{report as perf_report, set as perf_set};
+pub use author::perf::{report as perf_report, set as perf_set, take_frames as perf_frames};
 #[cfg(not(feature = "publish"))]
 pub use author::probe::dev_refresh;
 #[cfg(not(feature = "publish"))]
@@ -194,8 +194,7 @@ pub use present::atmosphere::{
 pub use present::baked::og_render_baked_lighting;
 pub use present::display::{
     FrameKind, lose_device, og_render_display, og_render_reset_display, og_render_set_display,
-    set_capture_only, set_display_interval, set_frame_kind, set_fullscreen, set_mouse_report,
-    set_power_preference,
+    set_capture_only, set_frame_kind, set_fullscreen, set_mouse_report, set_power_preference,
 };
 pub use present::feel::{
     og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,
@@ -441,6 +440,22 @@ pub fn og_engine_command(engine: u32, action: String, args: String) -> String {
 
 pub fn og_engine_frame(engine: u32, elapsed_ms: f64) -> String {
     frame(engine, elapsed_ms)
+}
+
+pub fn og_present_frame(engine: u32, now_ms: f64) -> String {
+    present::pacing::frame(engine, now_ms)
+}
+
+pub fn og_present_resume(engine: u32) {
+    present::pacing::resume(engine)
+}
+
+pub fn og_present_refresh(engine: u32, hz: f64) {
+    present::pacing::refresh(engine, hz)
+}
+
+pub fn og_present_fullscreen(engine: u32, on: bool) {
+    set_fullscreen(engine, on)
 }
 
 pub fn og_engine_write_resource(world: u32, resource: String, value: String) -> String {

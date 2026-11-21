@@ -13,7 +13,7 @@ Run options and their help: `og run --help` (`--perf`, `--budget`).
 og run . --headless --size 2560x1440 --ticks 1200 --perf og-out/perf
 ```
 
-`--perf <dir>` records one row per drawn frame and, when the run ends,
+`--perf <dir>` records one row per frame and, when the run ends,
 writes `perf.txt` (for a person) and `perf.json` (for a tool) to `<dir>`
 and prints the text. Each frame draws once per tick, as a traced run's do,
 so the record holds every frame of the run. A run of a few thousand
@@ -25,18 +25,23 @@ pass before the frames you care about: they are in the record too, and
 the report names them as hitches with their first-use cause.
 
 The record costs a few counters per frame, so the numbers are the
-game's. It is left out of a publish build.
+game's. It is the engine's only record of frame times: `og run --json`'s
+frame figures, `og run --device`'s, a desktop package's exit report and
+field telemetry's `frames` are read from it, so they count the same
+frames and the same hitches. A published page with field telemetry on
+records its play through it.
 
 <a id="guide-perf-2"></a>
 ### `perf §2` The report's lines
 
-Each line is one cost of the frame, in milliseconds, with its median,
-95th percentile and maximum over the run, and its share of the median
+Each line is one cost of the frame, in milliseconds, with its mean,
+median, 95th and 99th percentiles and maximum over the run, and its share of the median
 frame interval:
 
 | line | what it measures |
 |---|---|
-| `frame interval` | time from one drawn frame to the next, as the host saw it |
+| `frame interval` | time from one drawn frame to the next: a presenting host's display frames (the web page's, the desktop window's), else the engine's clock between frames |
+| `frame work` | the engine's time on the frame: its ticks and its render submission |
 | `gpu frame` | the GPU's time on the frame, first pass to last |
 | `gpu <pass>` | one render pass's time alone on the GPU, when no other pass ran |
 | `cpu ticks` | the ticks run before the frame, all their systems |
@@ -107,8 +112,10 @@ may take half.
 <a id="guide-perf-4"></a>
 ### `perf §4` Hitches
 
-A hitch is a frame whose interval passed twice the run's median. Each
-has a cause:
+A hitch is a frame whose interval is more than twice the median of the
+64 frames before it (none in the first 8), so a game drawn at a steady 30
+has no hitch at 50 ms and one at 60 Hz does. One of 250 ms or more is a
+long hitch (field telemetry counts both). Each has a cause:
 
 - `pipeline compile N ms`: the frame made a pipeline it met for the first
   time. Warm it while loading.

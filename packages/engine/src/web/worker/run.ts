@@ -5,13 +5,12 @@
 
 import type { Engine } from "../../runtime.ts";
 import type { WorkerAudio, WebAudioGlue } from "../audio.ts";
-import type { FrameCounter } from "../frames.ts";
 import type { WebExtras, WebGlue } from "../host.ts";
 import { drainRing, stampAt, type InjectedInput } from "../input.ts";
 import { PlatformCounter } from "../settle.ts";
 import type { HostError } from "../shell.ts";
 import type { WorkerScope } from "./messages.ts";
-import { BootClock, EngineTrace, FrameRecords, PageRelay, ProbeRequests } from "./state.ts";
+import { BootClock, EngineTrace, PageRelay, ProbeRequests } from "./state.ts";
 
 declare const self: WorkerScope;
 
@@ -67,16 +66,12 @@ export class Run {
   audio: WorkerAudio | null = null;
   /** The audio decoder Worker's script (the start message's `decoders.audio`). */
   audioDecoder: string | undefined;
-  /** Field telemetry's frame counts (frames.ts), when the page's build has telemetry on; null otherwise. */
-  frameCounter: FrameCounter | null = null;
   /** What the page was asked and answered: the ticks behind the gate apply its answers (settle.ts). */
   readonly platformCounter = new PlatformCounter();
   /** Where the boot went (BootPhases), sent with the first frame. */
   readonly boot = new BootClock();
   /** What the page was last told of a frame's answer. */
   readonly page = new PageRelay(post);
-  /** The played frames' timings (the shell's `timings` call). */
-  readonly records = new FrameRecords();
   /** The run's trace while one is recorded. */
   readonly trace = new EngineTrace();
   /** The probe's requests: answered between frames, a pending capture on a later one. */

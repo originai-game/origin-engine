@@ -87,14 +87,28 @@ pub fn advance(id: u32, steps: u32) -> String {
     }
 }
 
-/// `og_engine_frame`.
+/// `og_engine_frame`: a harness's frame, whose interval in the
+/// performance record is the engine's clock between frames (a harness's
+/// `elapsed_ms` is its own clock, one tick in a scripted run).
 pub fn frame(id: u32, elapsed_ms: f64) -> String {
+    frame_value(id, elapsed_ms, None).to_string()
+}
+
+fn refused(reason: impl Into<String>) -> Value {
+    json!({ "ok": false, "reason": reason.into() })
+}
+
+/// One frame handed `elapsed_ms`, answered as `og_engine_frame` is.
+/// `interval_ms` is the presenting host's interval since its last drawn
+/// frame (`og_present_frame`), which the performance record takes; `None`
+/// for a harness's frame.
+pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) -> Value {
     let eng = match engine(id) {
         Ok(e) => e,
-        Err(e) => return refuse(e),
+        Err(e) => return refused(e),
     };
     if eng.stepping.get() {
-        return refuse("frame was called from inside a system");
+        return refused("frame was called from inside a system");
     }
     // A playing video player with `wait` whose frame the last frame could
     // not show holds the clock as a pause does: no tick runs and no time is
@@ -121,7 +135,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // and the TSX UI's ops since the last boundary.
     let pump = || pump_platform(&eng);
     if let Err(e) = pump().and_then(|()| tick_boundary(&eng)) {
-        return refuse(e);
+        return refused(e);
     }
     // No tick before GameDesc.start has run, and no time owed for the wait.
     if start_waiting(&eng) {
@@ -164,9 +178,9 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         // frame may have reached several ticks past the last answer's.
         Ok(Err(e)) => {
             let tick = eng.world().map(|w| w.time().tick).ok();
-            return json!({ "ok": false, "reason": err(e), "tick": tick }).to_string();
+            return json!({ "ok": false, "reason": err(e), "tick": tick });
         }
-        Err(e) => return refuse(e),
+        Err(e) => return refused(e),
     };
     if ticks > 0 {
         eng.state.borrow_mut().step_ms = step_ms(&eng, t0) / f64::from(ticks);
@@ -183,14 +197,29 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     let rendered = match if capture_only {
         Ok(false)
     } else {
-        render(&eng, alpha, elapsed_ms)
+        render(&eng, alpha, interval_ms, t0)
     } {
         Ok(r) => r,
-        Err(e) => return refuse(e),
+        Err(e) => return refused(e),
     };
+    // A frame that drew nothing (no renderer, capture-only) is a row of the
+    // performance record too: its interval and work.
+    if !rendered {
+        let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+        crate::author::perf::frame(
+            id,
+            tick,
+            interval_ms,
+            rprobe::now_ms() - t0,
+            0.0,
+            &[],
+            &[],
+            &og_render::FrameStats::default(),
+        );
+    }
     // Automatic quality reads the drawn frame: its interval, the engine's
     // work on it (ticks and render) and the GPU's newest time.
-    let (max_fps, page) = {
+    let page = {
         let gpu_ms = {
             let st = eng.state.borrow();
             st.gpu_frame_ms
@@ -204,10 +233,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
                 gpu_ms,
             );
         }
-        (
-            crate::present::display::max_fps(&rs),
-            crate::present::display::page_asks(&rs),
-        )
+        crate::present::display::page_asks(&rs)
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     let (behind, step_ms, render_ms) = {
@@ -257,8 +283,6 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // `pointerLock`: og.PointerLock.wanted, the game's ask for the pointer
     // lock (the web shell requests it on the next press, exits it when
     // false, and reports `locked` back as input).
-    // `maxFps`: the frame cap resolved (og.render.setDisplay; 0: the
-    // display's rate), which the web Worker keeps by skipping display frames.
     // `fullscreen`, `lowPower`, `rawMouse`: what the player's settings ask
     // of the page (the web shell enters or leaves fullscreen, keeps the
     // power preference for the next load, asks pointer lock for raw input).
@@ -267,7 +291,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         "paused": held || probe.paused(), "quit": probe.quit_requested(), "behind": behind,
         "text": text, "stepMs": step_ms, "renderMs": render_ms,
         "pending": probe.steps_left(), "pointerLock": pointer_lock,
-        "maxFps": max_fps, "fullscreen": page["fullscreen"],
+        "fullscreen": page["fullscreen"],
         "lowPower": page["lowPower"], "rawMouse": page["rawMouse"],
         "cursor": cursor,
     });
@@ -316,7 +340,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     {
         answer["saved"] = saved;
     }
-    answer.to_string()
+    answer
 }
 
 /// The new core's accessibility update for a host that mirrors it, when
@@ -403,9 +427,15 @@ pub(crate) fn extract_frame(
 }
 
 /// Draws the frame, between the last two ticks at `alpha`
-/// (`super::interpolate`) or at the tick (`None`); `interval_ms` is the
-/// host's time since the last frame (the perf record's).
-fn render(eng: &Engine, alpha: Option<f32>, interval_ms: f64) -> Result<bool, String> {
+/// (`super::interpolate`) or at the tick (`None`). For the performance
+/// record: `interval_ms` is the presenting host's time since its last drawn
+/// frame (`None`: a harness's frame), `began` when the frame's work began.
+fn render(
+    eng: &Engine,
+    alpha: Option<f32>,
+    interval_ms: Option<f64>,
+    began: f64,
+) -> Result<bool, String> {
     if eng.render.borrow().backend.is_none() {
         return Ok(false);
     }
@@ -456,6 +486,7 @@ fn render(eng: &Engine, alpha: Option<f32>, interval_ms: f64) -> Result<bool, St
         eng.id,
         tick,
         interval_ms,
+        rprobe::now_ms() - began,
         st.render_ms,
         &passes,
         &gpu,

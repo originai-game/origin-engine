@@ -21,6 +21,7 @@ pub(crate) mod key_light;
 pub(crate) mod light2d_at;
 pub(crate) mod loading;
 pub(crate) mod look;
+pub(crate) mod pacing;
 pub(crate) mod presentation;
 pub(crate) mod probes;
 pub(crate) mod reveal;

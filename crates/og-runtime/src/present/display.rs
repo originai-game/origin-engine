@@ -13,13 +13,13 @@
 //! (`RenderBackend::presents`: the web canvas) applies the render scale and
 //! automatic quality, so a native run (`og run --commands`, `og test`, the
 //! reference captures) draws every frame at its fixed size and scale 1.
-//! The frame cap is the host's to keep (the web Worker skips display
-//! frames, `packages/engine/src/web/worker.ts`); the engine answers it with
-//! every frame (`maxFps`), and with it what the page does for the player:
-//! `fullscreen` (the shell enters or leaves it), `lowPower` (the shell
-//! keeps it for the next load: the adapter is chosen once, at the boot)
-//! and `rawMouse` (pointer lock's unadjustedMovement). The graphics preset
-//! (`quality`) is drawn on every host, as RenderSettings' quality is.
+//! The frame cap is kept by the engine's pacer (`present/pacing.rs`), which
+//! a presenting host hands every display frame (`og_present_frame`); the
+//! frame answer carries what the host does for the player: `fullscreen`
+//! (the host enters or leaves it), `lowPower` (the shell keeps it for the
+//! next load: the adapter is chosen once, at the boot) and `rawMouse`
+//! (pointer lock's unadjustedMovement). The graphics preset (`quality`) is
+//! drawn on every host, as RenderSettings' quality is.
 
 use crate::engine::engine;
 use crate::host::wire;
@@ -261,8 +261,9 @@ impl FrameKind {
 #[derive(Default)]
 pub(crate) struct DisplayState {
     pub settings: Settings,
-    /// The display's interval as the host measured it, ms (0: unknown).
-    pub display_ms: f64,
+    /// Which display frames are drawn, and the display's interval
+    /// (`og_present_frame`).
+    pub pacer: super::pacing::Pacer,
     pub auto: Option<AutoQuality>,
     /// The kind of frame the host steps: what the presentation's async
     /// stages make it wait for ([`FrameKind`], `crate::present::barrier`).
@@ -304,8 +305,8 @@ impl Default for Mouse {
 
 impl DisplayState {
     fn bounds(&self, phone: bool) -> AutoQualityBounds {
-        let display = if self.display_ms > 0.0 {
-            self.display_ms
+        let display = if self.pacer.display_ms() > 0.0 {
+            self.pacer.display_ms()
         } else {
             UNKNOWN_DISPLAY_MS
         };
@@ -403,8 +404,7 @@ pub(crate) fn after_frame(
     }
 }
 
-/// The frame cap resolved for engine `id` (0: the display's rate): the
-/// frame answer's `maxFps`.
+/// The frame cap resolved (0: the display's rate), which the pacer keeps.
 pub(crate) fn max_fps(rs: &RenderState) -> u32 {
     rs.display.settings.max_fps(phone(rs))
 }
@@ -414,7 +414,7 @@ pub(crate) fn max_fps(rs: &RenderState) -> u32 {
 /// load, so letting automatic quality read it made the same script draw at
 /// another render scale from run to run: the web tiers' looks and
 /// Meridian, 2026-11-06), one written out (`og render`), or the display's.
-/// Host-only, beside [`set_display_interval`]; the game API is unchanged.
+/// Host-only; the game API is unchanged.
 pub fn set_frame_kind(id: u32, kind: FrameKind) {
     if let Ok(eng) = engine(id) {
         eng.render.borrow_mut().display.kind = kind;
@@ -433,20 +433,11 @@ pub fn set_capture_only(id: u32, on: bool) {
     }
 }
 
-/// The display's interval as the host measured it (the web Worker's
-/// requestAnimationFrame), ms; 0 or less is unknown.
-pub fn set_display_interval(id: u32, ms: f64) {
-    if let Ok(eng) = engine(id)
-        && let Ok(mut rs) = eng.render.try_borrow_mut()
-    {
-        rs.display.display_ms = if ms.is_finite() { ms.max(0.0) } else { 0.0 };
-    }
-}
-
-/// The page went fullscreen or left it (the web shell's
-/// `fullscreenchange`): `DisplayInfo.fullscreen`, and the player's setting
-/// follows it, so a player who leaves with Escape finds Fullscreen off on
-/// the settings page and the shell does not ask for it again.
+/// `og_present_fullscreen`: the host's window went fullscreen or left it
+/// (the page's `fullscreenchange`, the desktop window): `DisplayInfo.fullscreen`,
+/// and the player's setting follows it, so a player who leaves with Escape
+/// finds Fullscreen off on the settings page and the host does not ask for
+/// it again.
 pub fn set_fullscreen(id: u32, on: bool) {
     if let Ok(eng) = engine(id)
         && let Ok(mut rs) = eng.render.try_borrow_mut()
@@ -563,8 +554,8 @@ pub fn og_render_display(world: u32) -> Option<wire::DisplayInfo> {
         settings: d.settings.wire(),
         presenting,
         max_fps: max_fps(&rs),
-        display_hz: if d.display_ms > 0.0 {
-            (1000.0 / d.display_ms) as f32
+        display_hz: if d.pacer.display_ms() > 0.0 {
+            (1000.0 / d.pacer.display_ms()) as f32
         } else {
             0.0
         },
@@ -623,15 +614,13 @@ mod tests {
     /// (60 on a 30 Hz display is 33 ms), and the display's at no cap.
     #[test]
     fn the_budget_is_the_cap_or_the_display() {
-        let mut d = DisplayState {
-            display_ms: 1000.0 / 120.0,
-            ..Default::default()
-        };
+        let mut d = DisplayState::default();
+        d.pacer.tell(120.0);
         assert!((d.bounds(true).budget_ms - 1000.0 / 60.0).abs() < 1e-9);
         assert!((d.bounds(false).budget_ms - 1000.0 / 120.0).abs() < 1e-9);
-        d.display_ms = 1000.0 / 30.0;
+        d.pacer.tell(30.0);
         assert!((d.bounds(true).budget_ms - 1000.0 / 30.0).abs() < 1e-9);
-        d.display_ms = 0.0;
+        d.pacer.tell(0.0);
         assert!((d.bounds(false).budget_ms - UNKNOWN_DISPLAY_MS).abs() < 1e-9);
     }
 }

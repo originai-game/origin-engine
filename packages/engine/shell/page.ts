@@ -25,8 +25,7 @@
 //   (where the Worker's boot went) and
 //   `error`: what stopped the engine, a panic with its tick and lane, an
 //   error or a hang) and the platform's `og-probe`
-//   postMessage wire; the played
-//   frames' timings on `globalThis.__og_timings__` (`og run --device`);
+//   postMessage wire;
 // - PWA: the service worker (publish builds) and the add-to-home-screen hint
 //   only when the install criteria hold;
 // - "Made with Origin Engine" in the corner unless the project turns it off.
@@ -42,7 +41,7 @@ import { deferredPlatform, HELLO_WAIT_MS, pageProviders, playerPlatform, playerR
 import type { Providers } from "../src/provider.ts";
 import { localPlatform, memoryPersistence, type PlatformHost, type PlatformNotice } from "../src/platform-local.ts";
 import type { HostError } from "../src/web/shell.ts";
-import type { FrameStats } from "../src/web/frames.ts";
+import type { FrameStats } from "./telemetry.ts";
 import { mapStack } from "../src/sourcemap.ts";
 import { PROBE_GLOBAL, REPLAY_SEED_PARAM } from "../src/generated/consts.ts";
 import { browserOf, crashFields, deviceOf, gpuOf, memoryOf, playFields, type Context, type MemoryInfo } from "./telemetry.ts";
@@ -139,7 +138,6 @@ export function fileUrl(config: Pick<ShellConfig, "files">, name: string, base: 
   return new URL(`./${typeof served === "string" ? served : name}`, base).href;
 }
 
-const TIMINGS_GLOBAL = "__og_timings__";
 const TRACE_PARAM = "trace";
 const LOG_LINES = 200;
 /** Field telemetry's throttle (docs/web-export.md §Telemetry): a play sample at most this often, on a hidden page after at least the second, at most this many a session. */
@@ -857,8 +855,6 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // `devInspector`: opens or closes the inspector (`og dev --web`'s Stage channel).
   if (config.build === "dev") probe["devInspector"] = (open: boolean) => shell.call("inspector", open);
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
-  // The played frames' display intervals and engine work, ms (`og run --device` reads them; `true` resets).
-  (globalThis as Record<string, unknown>)[TIMINGS_GLOBAL] = (reset?: boolean) => shell.call("timings", reset === true);
   wire = mountWire({
     probe: () => (method, params) => shell.probe(method, params ?? {}),
     targetSize: () => ({ width: canvas.width || Math.round(box.width * Math.min(devicePixelRatio || 1, config.dprCap)), height: canvas.height || Math.round(box.height * Math.min(devicePixelRatio || 1, config.dprCap)) }),

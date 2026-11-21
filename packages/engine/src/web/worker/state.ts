@@ -1,7 +1,7 @@
 // What the engine Worker (worker.ts) keeps between frames, one object per
 // concern, each with its own state and nothing of another's: where the boot
-// went (BootClock), what the page was last told (PageRelay), the played
-// frames' timings (FrameRecords), the run's trace (EngineTrace) and the probe
+// went (BootClock), what the page was last told (PageRelay), the run's
+// trace (EngineTrace) and the probe
 // requests waiting for an answer (ProbeRequests). startWorker holds the run
 // itself: the engine, the clock and the frame loop.
 
@@ -121,37 +121,6 @@ export class PageRelay {
       this.#buffering = buffering;
       post({ type: "buffering", on: buffering });
     }
-  }
-}
-
-/** Played frames whose timings the Worker keeps (`timings`). */
-const FRAME_RECORDS = 4096;
-
-/**
- * The played frames' timings, the last FRAME_RECORDS of them (the shell's
- * `timings` call, which `og run --device` reads): the display interval
- * (this frame's timestamp minus the last one's) and the engine's work
- * (`engine.frame`: input, ticks, render submission), ms.
- */
-export class FrameRecords {
-  readonly #intervals = new Float32Array(FRAME_RECORDS);
-  readonly #work = new Float32Array(FRAME_RECORDS);
-  #recorded = 0;
-
-  add(interval: number, work: number): void {
-    this.#intervals[this.#recorded % FRAME_RECORDS] = interval;
-    this.#work[this.#recorded % FRAME_RECORDS] = work;
-    this.#recorded++;
-  }
-
-  /** The frames played since the last reset (at most FRAME_RECORDS, oldest first); `reset` starts again. */
-  take(reset: boolean): { frames: number; intervals: number[]; work: number[] } {
-    const recorded = this.#recorded;
-    const n = Math.min(recorded, FRAME_RECORDS);
-    const at = (a: Float32Array) => Array.from({ length: n }, (_, i) => Math.round(a[(recorded - n + i) % FRAME_RECORDS]! * 1000) / 1000);
-    const answer = { frames: recorded, intervals: at(this.#intervals), work: at(this.#work) };
-    if (reset) this.#recorded = 0;
-    return answer;
   }
 }
 

@@ -3,8 +3,10 @@
 // `globalThis.__og_host`, turns OgValues into JavaScript values and back,
 // and gives the game's dispatcher to the engine. A bundle that opens the
 // window (packages/engine/src/hermes/shell.ts) leaves `__og_frame`, and the
-// shell runs the display loop: pump the window, call the frame, until the
-// window closes; then it prints `__og_report()` and calls `__og_close()`. A bundle without one (the
+// shell runs the display loop: pump the window, call the frame with the
+// time now, wait until the time it answers (when the engine's frame cap
+// next draws), until the window closes; then it prints `__og_report()` and
+// calls `__og_close()`. A bundle without one (the
 // game-frame benchmark, bench/game-frame/hermes.ts) runs once.
 //
 //   og-hermes <bundle.hbc> [key=value ...]
@@ -12,7 +14,8 @@
 //
 // Each key=value becomes `globalThis.__og_env[key]` (key=@file: the file's
 // text); a package's shell.env lines are read first, and OG_ROOT and
-// OG_PROJECT name its directory. OG_SHELL_FRAMES=<n> closes after n frames;
+// OG_PROJECT name its directory, and OG_LOCALE is the OS's locale unless
+// given. OG_SHELL_FRAMES=<n> closes after n display frames;
 // OG_SHELL_CAPTURE=<file.png> writes the last frame there.
 
 #include <hermes/hermes.h>
@@ -27,6 +30,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "og_host.h"
@@ -320,6 +324,14 @@ int main(int argc, char **argv) {
             return jsi::String::createFromUtf8(rt, answer);
           }));
   rt.global().setProperty(
+      rt, "__og_window_fullscreen",
+      jsi::Function::createFromHostFunction(
+          rt, jsi::PropNameID::forAscii(rt, "__og_window_fullscreen"), 1,
+          [](jsi::Runtime &, const jsi::Value &, const jsi::Value *args, size_t n) {
+            if (n > 0) og_c_window_fullscreen(args[0].getBool());
+            return jsi::Value::undefined();
+          }));
+  rt.global().setProperty(
       rt, "__og_audio",
       jsi::Function::createFromHostFunction(
           rt, jsi::PropNameID::forAscii(rt, "__og_audio"), 0,
@@ -372,6 +384,10 @@ int main(int argc, char **argv) {
     std::string value = pair[eq + 1] == '@' ? readFile(pair.c_str() + eq + 2) : pair.substr(eq + 1);
     env.setProperty(rt, pair.substr(0, eq).c_str(), jsi::String::createFromUtf8(rt, value));
   }
+  // The player's locale, as the OS names it, unless the package gave one.
+  if (!env.hasProperty(rt, "OG_LOCALE"))
+    if (const char *locale = og_c_locale())
+      env.setProperty(rt, "OG_LOCALE", jsi::String::createFromUtf8(rt, locale));
   rt.global().setProperty(rt, "__og_env", env);
 
   std::string code = readFile(bundle.c_str());
@@ -385,13 +401,15 @@ int main(int argc, char **argv) {
       jsi::Function step = frame.getObject(rt).getFunction(rt);
       const char *limitText = std::getenv("OG_SHELL_FRAMES");
       long limit = limitText ? std::atol(limitText) : 0;
-      auto last = std::chrono::steady_clock::now();
+      // Each display frame at the shell's clock (ms since `origin`, never 0); the frame answers when
+      // the next one to draw is due, and the shell waits until then (winit's ControlFlow::WaitUntil).
+      auto origin = std::chrono::steady_clock::now() - std::chrono::milliseconds(1);
+      auto at = [&] { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - origin).count(); };
       for (long n = 0; og_c_window_pump() && (limit == 0 || n < limit); n++) {
-        auto t = std::chrono::steady_clock::now();
-        double elapsed = std::chrono::duration<double, std::milli>(t - last).count();
-        last = t;
-        step.call(rt, elapsed);
+        double next = step.call(rt, at()).asNumber();
         rt.drainMicrotasks();
+        double wait = next - at();
+        if (wait > 0) std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(wait));
       }
       if (const char *capture = std::getenv("OG_SHELL_CAPTURE"))
         if (!og_c_window_capture(capture))

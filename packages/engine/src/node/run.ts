@@ -549,10 +549,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const systemsBefore = asJson ? systemTimes() : [];
     const stepTimes: number[] = [];
     const renderTimes: number[] = [];
-    // Each frame's own time (its frame call to the end of its work, before any pacing wait) and the time between
-    // the starts of consecutive frames: what a paced run's frames actually took.
-    const workTimes: number[] = [];
-    const intervals: number[] = [];
+    // Each frame's own time and the time between consecutive frames are the engine's performance record's
+    // (`frame work`, `frame interval`: author/perf.rs), turned on after the first five frames unless --perf
+    // records the whole run.
     let framesSeen = 0;
     const t0 = performance.now();
     let frameFailed: string | null = null;
@@ -679,7 +678,6 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         const elapsed = ticks !== undefined && at.tick < ticks ? Math.min(wall, (ticks - at.tick) * tickMs - at.behind + 1e-6) : wall;
         cancelled();
         const started = performance.now();
-        if (asJson && framesSeen > 5) intervals.push(started - last);
         last = started;
         if (room !== undefined) extras.og_node_room_pump(engine.id);
         // Without --shared the pump answers a join `unavailable`.
@@ -691,7 +689,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
           frameFailed = answer.reason ?? "the frame failed";
           break;
         }
-        if (asJson && ++framesSeen > 5) {
+        if (asJson && ++framesSeen === 5 && !perfDir) boundHost()!.abi.og_engine_perf(engine.id, true);
+        if (asJson && framesSeen > 5) {
           if ((answer.ticks ?? 0) > 0) stepTimes.push(answer.stepMs ?? 0);
           if (answer.rendered) renderTimes.push(answer.renderMs ?? 0);
         }
@@ -702,7 +701,6 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         const tick = answer.tick ?? 0;
         at = { tick, behind: answer.behind ?? 0 };
         if (forks > 0) atTick(tick, answer.pending ?? 0);
-        if (asJson && framesSeen > 5) workTimes.push(performance.now() - last);
         if (control.signal && tick % 16 === 0) await sleep(0);
         if (answer.quit) {
           quit = true;
@@ -738,6 +736,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       writeFileSync(tracePath, JSON.stringify(trace!.document()));
       outputs.push(tracePath);
     }
+    // The record's frame lines, for --json's frame figures.
+    type PerfLine = { line: string; median: number; p95: number; max: number };
+    const recorded = asJson ? ((JSON.parse(boundHost()!.abi.og_engine_perf_report(engine.id, "{}")) as { json: { lines?: PerfLine[] } | null }).json?.lines ?? []) : [];
+    if (asJson && !perfDir) boundHost()!.abi.og_engine_perf(engine.id, false);
     if (perfDir) {
       const report = JSON.parse(boundHost()!.abi.og_engine_perf_report(engine.id, budgets)) as { json: unknown; text: string };
       mkdirSync(perfDir, { recursive: true });
@@ -819,6 +821,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       return s[Math.min(s.length - 1, Math.floor(q * s.length))]!;
     };
     const r3 = (x: number) => +x.toFixed(3);
+    const line = (name: string) => recorded.find((l) => l.line === name) ?? { median: 0, p95: 0, max: 0 };
     const frames = {
       stepMedianMs: r3(percentile(stepTimes, 0.5)),
       stepP95Ms: r3(percentile(stepTimes, 0.95)),
@@ -828,14 +831,14 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       renderMaxMs: r3(Math.max(0, ...renderTimes)),
       stepped: stepTimes.length,
       rendered: renderTimes.length,
-      // Each frame's own time and the time from one frame's start to the next (paced runs: the pace's tick, unless
-      // a frame's work took longer); the first five frames are left out, as above.
-      workMedianMs: r3(percentile(workTimes, 0.5)),
-      workP95Ms: r3(percentile(workTimes, 0.95)),
-      workMaxMs: r3(Math.max(0, ...workTimes)),
-      intervalMedianMs: r3(percentile(intervals, 0.5)),
-      intervalP95Ms: r3(percentile(intervals, 0.95)),
-      intervalMaxMs: r3(Math.max(0, ...intervals)),
+      // The performance record's frame work and interval (paced runs: the pace's tick, unless a frame's work took
+      // longer); the first five frames are left out unless --perf recorded the whole run.
+      workMedianMs: r3(line("frame work").median),
+      workP95Ms: r3(line("frame work").p95),
+      workMaxMs: r3(line("frame work").max),
+      intervalMedianMs: r3(line("frame interval").median),
+      intervalP95Ms: r3(line("frame interval").p95),
+      intervalMaxMs: r3(line("frame interval").max),
     };
     // Each system's mean milliseconds a run over this run, slowest first.
     const systems = (dump.systems ?? [])

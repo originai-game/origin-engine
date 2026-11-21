@@ -1,0 +1,39 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "Engine.frame answer maxFps",
+      "change": "A frame's answer no longer carries `maxFps`: the engine keeps the frame cap itself for every presenting host (`Engine.present`, the IDL's `og_present_frame`), so no host reads the cap to skip frames. og.render.display's `maxFps` still answers the cap resolved.",
+      "fix": "A host or harness that paced itself by the answer's `maxFps` hands each display frame to `engine.present(nowMs)` instead, which draws or skips it and answers `nextMs`; one that only showed the cap reads `og.render.display(world).maxFps`. No codemod: the field had no reader in a game's code, and a host's loop is rewritten by hand.",
+      "find": ["maxFps"]
+    },
+    {
+      "member": "Telemetry sample frames (hitches)",
+      "change": "A play `sample`'s `frames` are the engine's performance record binned, and a hitch is now a frame whose interval is more than twice the median of the 64 frames before it (none in the first 8), a long one also 250 ms or more; it was any interval of 50 ms or more. The shape `{ count, ms, bins, interval, work, hitches, longHitches, max }` is unchanged. A game drawn at a steady 30 no longer counts every frame a hitch.",
+      "fix": "A dashboard that compares hitch counts across this version reads them as the new definition; nothing in a game changes. No codemod: the figures are the Player's, not a game's source.",
+      "find": ["hitches", "longHitches"]
+    },
+    {
+      "member": "Desktop package exit report",
+      "change": "A desktop package's exit report (`og-hermes`'s last line) carries the engine's performance record as `perf` (its `frame interval`, `frame work` and per-stage lines, after the first 60 drawn frames) in place of `measured`, `intervalMs`, `p50`, `p95`, `frameCallMs`, `gameMs`, `ticksPerFrame` and `gameMsPerTick`.",
+      "fix": "Read `perf.lines` (`frame interval`'s median and p95, `cpu game systems` for the game's code). No codemod: the report is a tool's output.",
+      "find": ["intervalMs", "frameCallMs", "gameMsPerTick", "ticksPerFrame"]
+    }
+  ],
+  "added": [
+    {
+      "member": "Present host interface (og_present_frame, og_present_resume, og_present_refresh, og_present_fullscreen)",
+      "summary": "A presenting host's duties are one interface every host implements: it hands the engine each display frame's timestamp, and the engine paces it under the frame cap, measures the display's interval (or takes the monitor's refresh), records the frame's time and answers when the next drawn frame is due. The web Worker and the desktop shell both use it."
+    },
+    {
+      "member": "og_engine_perf_frames, perf report mean and p99",
+      "summary": "The performance record is the engine's only record of frame times: field telemetry's binned frames, `og run --json`'s and `og run --device`'s frame figures and the desktop report read it. Its report gains a `frame work` line and each line's mean, p99 and frame count, and it records frames that draw nothing (a headless run) too."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Desktop packages: frame cap, locale, fullscreen",
+      "summary": "A desktop package now keeps og.render.setDisplay's frame cap and battery saver (it drew every vsync), takes the display's interval from its monitor's refresh for automatic quality (it assumed 60 Hz), asks og.i18n for the OS's locale (it passed none), and goes fullscreen or leaves it as the player's setting asks, reporting it back."
+    }
+  ]
+}

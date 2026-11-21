@@ -1,4 +1,4 @@
-//! The engine's own bindings (Lifecycle, CommandsApi, ProbeApi, DebugApi, AssertApi).
+//! The engine's own bindings (Lifecycle, Present, CommandsApi, ProbeApi, DebugApi, AssertApi).
 //! Expanded for a host by [`crate::host_bindings!`].
 
 #[doc(hidden)]
@@ -161,6 +161,24 @@ macro_rules! __og_host_bindings_engine {
             }
             fn og_engine_perf_report(&self, engine: u32, budgets: String) -> String {
                 $crate::perf_report(engine, &budgets)
+            }
+            fn og_engine_perf_frames(&self, engine: u32) -> String {
+                $crate::perf_frames(engine)
+            }
+        }
+
+        impl $crate::host_impl::api::Present for $host {
+            fn og_present_frame(&self, engine: u32, now_ms: f64) -> String {
+                $crate::og_present_frame(engine, now_ms)
+            }
+            fn og_present_resume(&self, engine: u32) {
+                $crate::og_present_resume(engine)
+            }
+            fn og_present_refresh(&self, engine: u32, hz: f64) {
+                $crate::og_present_refresh(engine, hz)
+            }
+            fn og_present_fullscreen(&self, engine: u32, on: bool) {
+                $crate::og_present_fullscreen(engine, on)
             }
         }
 

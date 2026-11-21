@@ -8,7 +8,6 @@ import { boundHost, createEngine, isPublishBuild, systemClock, type GameToken } 
 import { SourceMap } from "../../sourcemap.ts";
 import { useSourceMap } from "../../spawn-site.ts";
 import { type Fetched, Received, TRACE_BEFORE_ENGINE, UPLOAD_BUDGET, deviceReport, installFetcher, installImageDecoder, installInflater, installRemoteFetcher, installTranscoder, installVideo, onBar, pageSvg, preloadBundle, prepareTextures } from "../boot.ts";
-import { FrameCounter } from "../frames.ts";
 import { fetchModuleHost, loadEngineModules, loadWebHost } from "../host.ts";
 import type { EngineModules } from "../split.ts";
 import * as pipelines from "../pipelines.ts";
@@ -44,7 +43,6 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     // without it is a headless host (bun's), which draws nothing.
     const unsupported = (self as { navigator?: { gpu?: unknown } }).navigator?.gpu ? await webGpuMissing() : null;
     if (unsupported) return self.postMessage({ type: "unsupported", reason: unsupported });
-    if (data.telemetry) run.frameCounter = new FrameCounter();
     gate.pageStages(data.stages === true);
     const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));
     // Fork s61: the bar runs on past the download (BOOT_SPANS): the bytes, then the transcode by
@@ -165,6 +163,8 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     if (!created.ok) throw new Error(created.reason);
     const engine = created.value;
     run.engine = engine;
+    // Field telemetry's frames are the performance record's (author/perf.rs), binned by the `telemetry` call.
+    if (data.telemetry) boundHost()?.abi.og_engine_perf(engine.id, true);
     // A dev build serves its bundle's map beside it: the game's spawns name their lines with it (spawn-site.ts).
     const sourceMap = isPublishBuild() === true ? null : loadOwnSourceMap();
     if (data.trace) {

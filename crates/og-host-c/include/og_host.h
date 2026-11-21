@@ -58,12 +58,16 @@ const OgSymbol *og_c_symbols(size_t *count);
  * JSON, valid until the next call; `pump` is false once the window closed;
  * `capture` writes the last presented frame as a PNG (opened with keep);
  * `audio` answers what the output device played, as JSON (null without one);
+ * `fullscreen` puts the window fullscreen or takes it out; `locale` answers
+ * the OS's locale tag (NULL for none), valid until the next call;
  * `close` drops the renderer and the window, after the engine. */
 const char *og_c_window_open(uint32_t engine, uint32_t width, uint32_t height,
                              const char *title, bool keep);
 bool og_c_window_pump(void);
 const char *og_c_window_audio(void);
 bool og_c_window_capture(const char *path);
+void og_c_window_fullscreen(bool on);
+const char *og_c_locale(void);
 void og_c_window_close(void);
 
 /* Platform services (src/platform.rs). `data_load` answers the game's saved

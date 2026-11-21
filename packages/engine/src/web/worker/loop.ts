@@ -1,10 +1,11 @@
 // The engine Worker's frame loop (worker.ts): a display frame at a time
 // (requestAnimationFrame in the Worker, a timer where the display sends
 // none), each pumping input and the probe's requests and, while the clock
-// plays, ticking and drawing at the frame cap; and the loop that answers the
+// plays, handed to the engine (`engine.present`), which keeps the frame cap,
+// measures the display and records the frame's time
+// (crates/og-runtime/src/present/pacing.rs); and the loop that answers the
 // probe's requests between frames whether the clock plays or not.
 
-import { FramePacer } from "../pacing.ts";
 import { waitForFrames } from "../rpc-ring.ts";
 import type { Gate } from "./gate.ts";
 import type { WorkerScope } from "./messages.ts";
@@ -22,10 +23,6 @@ export class FrameLoop {
   readonly #gate: Gate;
   #scheduled = false;
   #lastBeat = 0;
-  /** The frame cap (og.render.setDisplay, each frame's `maxFps`) and the display's measured interval (pacing.ts). */
-  readonly #pacer = new FramePacer();
-  #maxFps = 0;
-  #toldDisplayMs = 0;
 
   constructor(run: Run, gate: Gate) {
     this.#run = run;
@@ -45,44 +42,32 @@ export class FrameLoop {
       // Retries first: a capture asked this frame is requested now and answered on a later frame.
       probes.retry();
       probes.drain();
+      // The clock holds while a capture waits for its readback: the engine is told to owe no time
+      // for it. A display frame the cap skips is not drawn, and the next drawn one is handed the
+      // time since the last drawn one, so the fixed tick runs on.
+      if (run.playing && probes.waiting > 0) engine.presentResume();
       if (run.playing && probes.waiting === 0) {
-        drawn = this.#pacer.frame(now, this.#maxFps);
-        const d = this.#pacer.displayMs;
-        if (d > 0 && Math.abs(d - this.#toldDisplayMs) > this.#toldDisplayMs * 0.05) {
-          this.#toldDisplayMs = d;
-          run.glue?.og_web_display_interval?.(engine.id, d);
-        }
-      }
-      // The clock holds while a capture waits for its readback; a display
-      // frame the cap skips is not drawn, and the next drawn one is handed
-      // the time since the last drawn one, so the fixed tick runs on.
-      if (run.playing && probes.waiting === 0 && drawn) {
-        const began = performance.now();
-        const answered = engine.frame(run.last ? now - run.last : 0);
+        const answered = engine.present(now);
         if (!answered.ok) {
           // The tick a system threw in, which a catch-up frame reaches past the last frame's.
           if (typeof answered.tick === "number") run.lastTick = answered.tick;
           run.crash(answered.reason ?? "the engine refused a frame");
           return;
         }
-        if (run.last) {
-          // As the records keep it (single precision), so both count the same frame.
-          const spent = Math.fround(performance.now() - began);
-          run.records.add(now - run.last, spent);
-          run.frameCounter?.add(now - run.last, spent);
+        drawn = answered.drawn;
+        if (drawn) {
+          run.behind = answered.behind ?? 0;
+          run.relay(answered);
+          pumpRoom(engine);
+          pumpShared(engine);
+          if (typeof answered.tick === "number") run.lastTick = answered.tick;
+          this.#gate.warmCovered();
+          if (!run.firstFrame && answered.rendered !== false) {
+            run.firstFrame = true;
+            post(run.boot.firstFrame());
+          }
+          run.audio?.pump();
         }
-        run.behind = answered.behind ?? 0;
-        if (typeof answered.maxFps === "number") this.#maxFps = answered.maxFps;
-        run.relay(answered);
-        pumpRoom(engine);
-        pumpShared(engine);
-        if (typeof answered.tick === "number") run.lastTick = answered.tick;
-        this.#gate.warmCovered();
-        if (!run.firstFrame && answered.rendered !== false) {
-          run.firstFrame = true;
-          post(run.boot.firstFrame());
-        }
-        run.audio?.pump();
       }
       run.flushLog();
     } catch (e) {
@@ -120,7 +105,7 @@ export class FrameLoop {
   play(on: boolean): void {
     this.#run.playing = on;
     this.#run.last = 0;
-    this.#pacer.reset();
+    this.#run.engine?.presentResume();
     if (on) this.schedule();
   }
 

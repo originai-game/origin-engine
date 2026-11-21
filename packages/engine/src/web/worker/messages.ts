@@ -74,7 +74,7 @@ export interface Start {
   prime?: boolean;
   /** Record the run's trace from the boot on (src/trace.ts; the shell's `trace()` reads it). */
   trace?: boolean;
-  /** Count the played frames for field telemetry (frames.ts; the `telemetry` call takes them). */
+  /** Record the played frames for field telemetry (the engine's performance record; the `telemetry` call takes them binned). */
   telemetry?: boolean;
   /** Ask for the low-power GPU adapter: the player's power preference from the last load (og.render.setDisplay). */
   lowPower?: boolean;

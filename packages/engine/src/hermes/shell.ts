@@ -1,58 +1,45 @@
 // A store package's game on the desktop shell (crates/og-host-c/hermes):
 // the game's engine, drawn in the shell's window. The shell evaluates the
 // package's bytecode, which runs `main` with the game, then owns the loop:
-// each display frame it pumps the window and calls `__og_frame(elapsedMs)`;
-// on exit it prints `__og_report()` and calls `__og_close()`.
+// each display frame it pumps the window and calls `__og_frame(nowMs)` with
+// its clock, which hands the frame to the engine (`engine.present`: the frame
+// cap, the display's interval, the frame-time record) and answers when the
+// next drawn frame is due, which the shell waits until; on exit it prints
+// `__og_report()` (the engine's performance record) and calls `__og_close()`.
 //
 // The shell supplies `__og_env`: OG_ROOT (the package's directory: cooked/
 // and project.ogt), OG_PROJECT (project.ogt's text), OG_TITLE, OG_SIZE
-// (`1280x720`, CSS pixels), OG_SHELL_CAPTURE (keep frames for a capture),
+// (`1280x720`, CSS pixels), OG_LOCALE (the OS's locale: og.i18n's), OG_SHELL_CAPTURE (keep frames for a capture),
 // OG_BIN (the shell's directory) and a provider's OG_PROVIDER_LIB. og.platform
 // is platform.ts's.
 
 import { bindHost, createEngine, type GameToken } from "../runtime.ts";
-import type { Dispatcher, HostAbi } from "../generated/abi.ts";
 import { hermesBinding } from "./index.ts";
 import type { ShellProviderFactory } from "../provider.ts";
 import { shellPlatform } from "./platform.ts";
 
 declare const __og_env: Record<string, string | undefined>;
-declare const __og_now: () => number;
 declare const __og_audio: () => string;
 declare const __og_data: (game: string, document?: string) => string | boolean | null;
 declare const __og_provider: (path: string) => string;
 declare const __og_provider_call: (method: string, json: string) => string | null;
 declare const __og_print: (text: string) => void;
 declare const __og_window_open: (engine: number, width: number, height: number, title: string, keep: boolean) => string;
+declare const __og_window_fullscreen: (on: boolean) => void;
 
-/** Frames before the report's figures start: pipelines compile and assets land in the first ones. */
+/** Drawn frames before the report's record starts: pipelines compile and assets land in the first ones. */
 const SETTLE = 60;
 
 /** Runs `game`; `provider` is the store's, when the package bundled one (package.ts --provider). */
 export function main(game: GameToken, provider?: ShellProviderFactory): void {
   const env = __og_env;
-  const now = __og_now;
   const binding = hermesBinding();
-  const raw = binding.abi as unknown as Record<string, unknown>;
-  // The game's time is the dispatcher's: its systems, hooks and callbacks.
-  let gameMs = 0;
-  const abi = {
-    ...raw,
-    og_host_set_dispatcher: (d: Dispatcher) =>
-      binding.abi.og_host_set_dispatcher((...a: Parameters<Dispatcher>) => {
-        const s = now();
-        try {
-          return d(...a);
-        } finally {
-          gameMs += now() - s;
-        }
-      }),
-  } as unknown as HostAbi<Uint32Array, unknown>;
-  bindHost({ ...binding, abi });
+  bindHost(binding);
 
   const created = createEngine(game, {
     ...(env.OG_ROOT === undefined ? {} : { root: env.OG_ROOT }),
     ...(env.OG_PROJECT === undefined ? {} : { project: env.OG_PROJECT }),
+    ...(env.OG_LOCALE ? { locale: env.OG_LOCALE } : {}),
     deferStart: true,
   });
   if (!created.ok) throw new Error(`the game: ${created.reason}`);
@@ -81,45 +68,29 @@ export function main(game: GameToken, provider?: ShellProviderFactory): void {
   const started = engine.advance(0);
   if (!started.ok) throw new Error(`the game's start: ${started.reason}`);
 
-  const intervals: number[] = [];
-  let frames = 0;
-  let calls = 0;
-  let gameTotal = 0;
-  let ticks = 0;
+  let drawn = 0;
+  let fullscreen = false;
   const g = globalThis as unknown as Record<string, unknown>;
-  g.__og_frame = (elapsedMs: number) => {
-    const g0 = gameMs;
-    const s = now();
-    const answer = engine.frame(elapsedMs);
-    const call = now() - s;
-    if (!answer.ok) throw new Error(`frame ${frames}: ${answer.reason}`);
-    if (++frames <= SETTLE) return;
-    intervals.push(elapsedMs);
-    calls += call;
-    gameTotal += gameMs - g0;
-    ticks += answer.ticks ?? 0;
+  g.__og_frame = (nowMs: number): number => {
+    const answer = engine.present(nowMs);
+    if (!answer.ok) throw new Error(`frame ${drawn}: ${answer.reason}`);
+    if (answer.drawn) {
+      // The player's settings ask for fullscreen: the window carries it out and the next pump reports it.
+      if (answer.fullscreen !== undefined && answer.fullscreen !== fullscreen) __og_window_fullscreen((fullscreen = answer.fullscreen));
+      if (++drawn === SETTLE) binding.abi.og_engine_perf(engine.id, true);
+    }
+    return answer.nextMs;
   };
   g.__og_close = () => engine.destroy();
   g.__og_report = () => {
-    const n = intervals.length;
-    const sorted = [...intervals].sort((a, b) => a - b);
-    const at = (q: number) => +(sorted[Math.min(n - 1, Math.floor(n * q))] ?? 0).toFixed(3);
-    const per = (x: number) => +(n === 0 ? 0 : x / n).toFixed(4);
+    const report = drawn >= SETTLE ? (JSON.parse(binding.abi.og_engine_perf_report(engine.id, "{}")) as { json: unknown }).json : null;
     return JSON.stringify({
       engine: "hermes",
       renderer: opened.value,
-      frames,
-      measured: n,
-      // The display frame: its interval (vsync paces it), the frame call (the
-      // engine's tick and draw, the present's wait included) and the game's code in it.
-      intervalMs: per(sorted.reduce((a, b) => a + b, 0)),
-      p50: at(0.5),
-      p95: at(0.95),
-      frameCallMs: per(calls),
-      gameMs: per(gameTotal),
-      // A slow display frame runs several fixed ticks: the game's time per tick.
-      ticksPerFrame: per(ticks),
-      gameMsPerTick: +(ticks === 0 ? 0 : gameTotal / ticks).toFixed(4),
+      frames: drawn,
+      // The engine's performance record after the first SETTLE drawn frames (guide perf): `frame interval` is the
+      // display frame's (vsync paces it), `frame work` the engine's tick and draw, the game's code by stage.
+      perf: report,
       // What the output device played (null on a machine without one).
       audio: JSON.parse(__og_audio()) as unknown,
     });

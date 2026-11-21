@@ -1,12 +1,18 @@
 //! The run's performance record (`og run --perf`, the web shell's
-//! `perf()`, guide perf): one fixed-size row of plain counters per drawn
-//! frame, written into a ring allocated when it is turned on, and a report
+//! `perf()`, guide perf): one fixed-size row of plain counters per
+//! frame (drawn, or a frame with nothing to draw it), written into a ring allocated when it is turned on, and a report
 //! made from it only when asked (at exit). Measurement only: nothing in the
-//! tick reads it.
+//! tick reads it. It is the engine's only record of frame times: `og run
+//! --json`'s frame figures, `og run --device`'s, the desktop shell's exit
+//! report and field telemetry's binned frames ([`take_frames`]) are views
+//! of it.
 //!
-//! A row holds the frame's interval (wall time since the frame before it,
-//! read here: a scripted run's host interval is one tick whatever it took),
-//! its CPU time per engine stage (ticks, physics, UI, the game's systems,
+//! A row holds the frame's interval (a presenting host's, from its display
+//! frames' timestamps, `present/pacing.rs`; for a harness's frame, which no
+//! display paces, the engine's clock since the frame before it: a scripted
+//! run's elapsed time is one tick whatever it took), the frame's work (the
+//! engine's time from the frame call to the end of its render submission),
+//! whether it is a hitch ([`hitch`]), its CPU time per engine stage (ticks, physics, UI, the game's systems,
 //! the engine's other systems; the render's wait for the GPU, its sync, its
 //! build, its passes' encoding and its submit, from og-render's frame
 //! stages), its GPU time (the frame's span, each pass's time alone,
@@ -14,11 +20,10 @@
 //! idled), what moved between the CPU and the GPU
 //! ([`og_render::traffic`]: bytes uploaded, buffers made, readbacks
 //! started, blocking waits for the GPU and pipelines made, each with its
-//! call site) and what it drew. The report gives each line's median, p95 and max, flags a line
+//! call site) and what it drew. The report gives each line's mean, median, p95, p99 and max, flags a line
 //! over its budget (the project's `perf.budgets`, passed in), and lists
-//! every hitch (a frame whose interval passed twice the median) with its
-//! cause: the line that grew most over its own median, or the first-use
-//! work named (a pipeline compiled in the frame).
+//! every hitch with its cause: the line that grew most over its own
+//! median, or the first-use work named (a pipeline compiled in the frame).
 
 use og_core::IdMap;
 use og_ecs::World;
@@ -27,6 +32,17 @@ use std::cell::RefCell;
 
 /// Rows kept: the last this many frames.
 const ROWS: usize = 4096;
+/// The frames before a row its hitch is judged against: about a second.
+const HITCH_WINDOW: usize = 64;
+/// Frames before any is judged a hitch (a first build has none before it).
+const HITCH_AFTER: usize = 8;
+/// A hitch this long is a long one: a stall the player sees as a freeze.
+const LONG_HITCH_MS: f32 = 250.0;
+/// The upper edges of [`take_frames`]' bins, ms: 120, 90, 60, 50, 40, 30,
+/// 24, 20, 15 and 10 Hz, and 4 Hz; the last bin is everything above.
+const FRAME_BINS: [f32; 11] = [
+    8.4, 11.2, 16.8, 20.1, 25.1, 33.4, 41.7, 50.1, 66.7, 100.0, 250.0,
+];
 /// GPU passes told apart (a frame's passes past this go uncounted).
 const PASSES: usize = 64;
 /// Natively, one frame in this many runs serial while the record is on
@@ -66,7 +82,10 @@ struct Row {
     frame: u64,
     tick: u64,
     ticks: u32,
+    /// NaN for a frame with no interval (the first after a resume).
     interval: f32,
+    work: f32,
+    hitch: bool,
     cpu: [f32; CPU.len()],
     /// NaN until the GPU's timing lands (or where it has none).
     gpu_frame: f32,
@@ -92,7 +111,9 @@ const EMPTY: Row = Row {
     frame: 0,
     tick: 0,
     ticks: 0,
-    interval: 0.0,
+    interval: f32::NAN,
+    work: 0.0,
+    hitch: false,
     cpu: [0.0; CPU.len()],
     gpu_frame: f32::NAN,
     gpu_overlapped: f32::NAN,
@@ -130,6 +151,42 @@ struct Perf {
     last_frame: f64,
     /// GPU pass names, in order of first sight; a row's `gpu[i]` is pass i's.
     passes: Vec<String>,
+    /// The frames since the last [`take_frames`], binned.
+    binned: Binned,
+}
+
+/// Frames binned by interval and by work ([`take_frames`]): field
+/// telemetry's `frames`, docs/web-export.md §Telemetry.
+#[derive(Clone, Copy, Default)]
+struct Binned {
+    interval: [u32; FRAME_BINS.len() + 1],
+    work: [u32; FRAME_BINS.len() + 1],
+    count: u32,
+    ms: f64,
+    hitches: u32,
+    long: u32,
+    max: f32,
+}
+
+fn bin(ms: f32) -> usize {
+    FRAME_BINS
+        .iter()
+        .position(|&edge| ms <= edge)
+        .unwrap_or(FRAME_BINS.len())
+}
+
+/// A frame is a hitch when its interval is more than twice the median of
+/// the [`HITCH_WINDOW`] real frames before it (at least [`HITCH_AFTER`]
+/// of them): the one definition every view of the record counts.
+fn hitch(interval: f32, before: &[f32]) -> bool {
+    if before.len() < HITCH_AFTER || !interval.is_finite() {
+        return false;
+    }
+    let mut v = [0.0f32; HITCH_WINDOW];
+    let v = &mut v[..before.len()];
+    v.copy_from_slice(before);
+    v.sort_by(f32::total_cmp);
+    interval > 2.0 * v[v.len() / 2]
 }
 
 thread_local! {
@@ -161,6 +218,7 @@ pub fn set(engine: u32, on: bool) {
                     // build is a hitch like any other.
                     last_frame: now(),
                     passes: Vec::with_capacity(PASSES),
+                    binned: Binned::default(),
                 },
             );
         } else {
@@ -260,13 +318,17 @@ pub(crate) fn held(engine: u32, compiling_ahead: bool, fades: u32) {
     });
 }
 
-/// A drawn frame: closes its row with the render's numbers, and fills
-/// the rows of the frames the GPU's timing names. `_host_interval` is the
-/// host's (one tick in a scripted run): the row's is the wall time here.
+/// A frame: closes its row with the render's numbers, and fills
+/// the rows of the frames the GPU's timing names. `host_interval` is a
+/// presenting host's time since its last drawn frame (0: none, the first
+/// after a resume); `None` for a harness's frame, whose interval is the
+/// engine's clock since the last row. `work_ms` is the frame's work.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn frame(
     engine: u32,
     tick: u64,
-    _host_interval: f64,
+    host_interval: Option<f64>,
+    work_ms: f64,
     render_ms: f64,
     passes: &[og_render::PassTiming],
     gpu: &[og_render::GpuFrame],
@@ -285,8 +347,38 @@ pub(crate) fn frame(
         row.frame = stats.frame;
         row.serial = stats.serial && !whole_run_serial();
         row.tick = tick;
-        row.interval = (at - pf.last_frame) as f32;
+        row.interval = match host_interval {
+            Some(ms) if ms > 0.0 => ms as f32,
+            Some(_) => f32::NAN,
+            None => (at - pf.last_frame) as f32,
+        };
+        row.work = work_ms as f32;
         pf.last_frame = at;
+        if !row.serial {
+            let mut before = [0.0f32; HITCH_WINDOW];
+            let mut n = 0;
+            for back in 1..=ROWS.min(pf.written as usize) {
+                let r = &pf.rows[(pf.next + ROWS - back) % ROWS];
+                if !r.serial && r.interval.is_finite() {
+                    before[n] = r.interval;
+                    n += 1;
+                    if n == HITCH_WINDOW {
+                        break;
+                    }
+                }
+            }
+            row.hitch = hitch(row.interval, &before[..n]);
+            if row.interval.is_finite() {
+                let b = &mut pf.binned;
+                b.interval[bin(row.interval)] += 1;
+                b.work[bin(row.work)] += 1;
+                b.count += 1;
+                b.ms += f64::from(row.interval);
+                b.hitches += u32::from(row.hitch);
+                b.long += u32::from(row.hitch && row.interval >= LONG_HITCH_MS);
+                b.max = b.max.max(row.interval);
+            }
+        }
         // Without the renderer's stages (a backend that keeps none), the
         // passes' encoding and the rest of the render call.
         let staged: f32 = row.cpu[WAIT..=SUBMIT].iter().sum();
@@ -388,6 +480,7 @@ pub fn report(engine: u32, budgets: &str) -> String {
         // The lines: name and each row's value.
         let mut lines: Vec<Line> = vec![
             ("frame interval".into(), Box::new(|r: &Row| r.interval)),
+            ("frame work".into(), Box::new(|r: &Row| r.work)),
             ("gpu frame".into(), Box::new(|r: &Row| r.gpu_frame)),
             ("gpu overlapped".into(), Box::new(|r: &Row| r.gpu_overlapped)),
             ("gpu idle".into(), Box::new(|r: &Row| r.gpu_idle)),
@@ -426,7 +519,7 @@ pub fn report(engine: u32, budgets: &str) -> String {
         // so the encode is the GPU's time too.
         let serial = whole_run_serial();
         let effect = |name: &str| {
-            matches!(name, "frame interval" | "gpu frame" | "gpu overlapped" | "cpu wait for gpu")
+            matches!(name, "frame interval" | "frame work" | "gpu frame" | "gpu overlapped" | "cpu wait for gpu")
                 || (serial && name == "cpu render encode")
         };
         let medians: Vec<f64> = lines
@@ -435,6 +528,7 @@ pub fn report(engine: u32, budgets: &str) -> String {
             .collect();
         let mut out_lines = Vec::new();
         let mut text = format!("og perf: {n} frames\n{:<34} {:>9} {:>9} {:>9}  budget\n", "line", "median", "p95", "max");
+        let ticks: u64 = rows.iter().map(|r| u64::from(r.ticks)).sum();
         let frame_median = medians[0].max(1e-6);
         for ((name, f), &median) in lines.iter().zip(&medians) {
             let v = sorted(rows.iter().map(|r| f(r)));
@@ -444,8 +538,10 @@ pub fn report(engine: u32, budgets: &str) -> String {
             let budget = budgets.get(name).and_then(Value::as_f64);
             let over = budget.is_some_and(|b| median > b);
             let (p95, max) = (at(&v, 0.95), at(&v, 1.0));
+            let mean = v.iter().map(|&x| f64::from(x)).sum::<f64>() / v.len() as f64;
             out_lines.push(json!({
-                "line": name, "median": r2(median), "p95": r2(p95), "max": r2(max),
+                "line": name, "mean": r2(mean), "median": r2(median), "p95": r2(p95),
+                "p99": r2(at(&v, 0.99)), "max": r2(max), "frames": v.len(),
                 "share": r2(median / frame_median), "budget": budget, "over": over,
             }));
             text += &format!(
@@ -495,7 +591,7 @@ pub fn report(engine: u32, budgets: &str) -> String {
         // the pipeline compiled in it.
         let mut hitches = Vec::new();
         for r in &rows {
-            if f64::from(r.interval) <= 2.0 * frame_median {
+            if !r.hitch {
                 continue;
             }
             let mut cause = if r.compile_us > 1000 {
@@ -531,7 +627,10 @@ pub fn report(engine: u32, budgets: &str) -> String {
             }
             hitches.push(json!({ "tick": r.tick, "interval": r2(f64::from(r.interval)), "ticks": r.ticks, "cause": cause }));
         }
-        text += &format!("hitches (interval over 2x the median {frame_median:.2} ms): {}\n", hitches.len());
+        text += &format!(
+            "hitches (interval over 2x the median of the {HITCH_WINDOW} frames before it): {}\n",
+            hitches.len()
+        );
         for h in hitches.iter().take(40) {
             text += &format!(
                 "  tick {:>7}  {:>8.2} ms  {} ticks  {}\n",
@@ -542,10 +641,36 @@ pub fn report(engine: u32, budgets: &str) -> String {
         text += &sites_text;
         let drawn = |f: fn(&Row) -> f32| r2(at(&sorted(rows.iter().map(|r| f(r))), 0.5));
         let json = json!({
-            "frames": n, "lines": out_lines, "costs": costs, "hitches": hitches, "sites": sites,
+            "frames": n, "ticks": ticks, "lines": out_lines, "costs": costs, "hitches": hitches, "sites": sites,
             "draws": drawn(|r| r.draws as f32), "triangles": drawn(|r| r.triangles as f32),
         });
         json!({ "json": json, "text": text }).to_string()
+    })
+}
+
+/// The frames recorded since the last call, binned (field telemetry's
+/// `frames`, docs/web-export.md §Telemetry), as JSON `{ count, ms, bins,
+/// interval, work, hitches, longHitches, max }`, or `null` while the
+/// record is off. Only real frames with an interval count; the counts
+/// start again.
+pub fn take_frames(engine: u32) -> String {
+    PERF.with(|p| {
+        let mut p = p.borrow_mut();
+        let Some(pf) = p.get_mut(&engine) else {
+            return "null".into();
+        };
+        let b = std::mem::take(&mut pf.binned);
+        json!({
+            "count": b.count,
+            "ms": b.ms.round(),
+            "bins": FRAME_BINS.iter().map(|&e| f64::from(e)).map(|e| (e * 10.0).round() / 10.0).collect::<Vec<_>>(),
+            "interval": b.interval,
+            "work": b.work,
+            "hitches": b.hitches,
+            "longHitches": b.long,
+            "max": (f64::from(b.max) * 10.0).round() / 10.0,
+        })
+        .to_string()
     })
 }
 
@@ -669,6 +794,7 @@ mod tests {
                 let mut r = EMPTY;
                 r.tick = i;
                 r.interval = if hitch { 80.0 } else { 20.0 };
+                r.hitch = hitch;
                 r.gpu_frame = r.interval;
                 r.cpu[WAIT] = r.interval - 2.0;
                 r.gpu[0] = 12.0;
@@ -696,5 +822,52 @@ mod tests {
             "{}",
             hitches[0]
         );
+    }
+
+    /// A hitch is judged against the frames before it, not a fixed time: a
+    /// frame of one missed vsync at 60 Hz is none, two missed are; 50 ms in
+    /// a game drawn at a steady 30 is none; nothing is a hitch before
+    /// eight frames.
+    #[test]
+    fn a_hitch_is_twice_the_median_of_the_frames_before_it() {
+        let sixty = [16.7f32; 12];
+        assert!(!hitch(33.3, &sixty));
+        assert!(hitch(50.0, &sixty));
+        let thirty = [33.3f32; 12];
+        assert!(!hitch(50.0, &thirty));
+        assert!(hitch(70.0, &thirty));
+        assert!(!hitch(500.0, &sixty[..7]));
+    }
+
+    /// Telemetry's bins are a view of the rows: a presented frame without
+    /// an interval (the first after a resume) is not counted, a 300 ms
+    /// stall is a long hitch, and a take starts the counts again.
+    #[test]
+    fn take_frames_bins_the_presented_frames() {
+        set(8, true);
+        let stats = og_render::FrameStats::default();
+        let row =
+            |interval: f64, work: f64| frame(8, 0, Some(interval), work, 1.0, &[], &[], &stats);
+        row(0.0, 5.0);
+        for _ in 0..20 {
+            row(16.7, 3.0);
+        }
+        row(300.0, 40.0);
+        let first: Value = serde_json::from_str(&take_frames(8)).unwrap();
+        let again: Value = serde_json::from_str(&take_frames(8)).unwrap();
+        set(8, false);
+        assert_eq!(first["count"], 21);
+        assert_eq!(
+            (first["hitches"].clone(), first["longHitches"].clone()),
+            (json!(1), json!(1))
+        );
+        // 16.7 ms is in the 60 Hz bin (third), 300 ms above the last edge.
+        assert_eq!(first["interval"][2], 20);
+        assert_eq!(first["interval"][11], 1);
+        assert_eq!(first["work"][0], 20);
+        assert_eq!(first["work"][6], 1);
+        assert_eq!(first["max"], 300.0);
+        assert_eq!(again["count"], 0);
+        assert_eq!(take_frames(8), "null");
     }
 }

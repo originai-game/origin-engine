@@ -103,8 +103,18 @@ export interface HostAbi<A, V> {
   og_engine_trace_take(engine: number, last: boolean): string;
   /** Turn an engine's performance record on (a fresh one) or off (`og run --perf`, the shell's `perf()`, guide perf). */
   og_engine_perf(engine: number, on: boolean): void;
-  /** The performance record's report so far, as JSON `{ json, text }`: each line's median, p95 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes. */
+  /** The performance record's report so far, as JSON `{ json, text }`: each line's mean, median, p95, p99 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes. The record is the engine's only one of frame times: `frame interval` (a presenting host's, og_present_frame's) and `frame work` are its lines. */
   og_engine_perf_report(engine: number, budgets: string): string;
+  /** The performance record's frames since the last call, binned (field telemetry's `frames`): JSON `{ count, ms, bins, interval, work, hitches, longHitches, max }`, `bins` the 11 upper edges in ms (8.4 to 250) and `interval` and `work` 12 counts each, the last above 250 ms. A hitch is a frame whose interval is more than twice the median of the 64 before it, a long one also 250 ms or more. `null` while the record is off. */
+  og_engine_perf_frames(engine: number): string;
+  /** One display frame of a presenting host at `now_ms`, the host's monotonic clock (requestAnimationFrame's timestamp, the desktop window loop's). The engine keeps the frame cap (og.render.setDisplay, DisplayInfo.maxFps) by drawing only some display frames, measures the display's interval from these timestamps unless og_present_refresh told it, and runs a drawn one as og_engine_frame with the time since the last drawn one, which the performance record takes as its interval. JSON: og_engine_frame's answer with `drawn: true`, or `{ ok: true, drawn: false }`; both with `nextMs`, the host time the next frame to draw is due, which a host without a display callback waits until (winit's ControlFlow::WaitUntil). A host calls it on every display frame, drawn or not, and names its locale at og_engine_create (`locale`). */
+  og_present_frame(engine: number, now_ms: number): string;
+  /** The clock stopped, held or went on (play paused or resumed, a probe capture's wait): the next og_present_frame draws, and is handed no time from before. */
+  og_present_resume(engine: number): void;
+  /** The display's refresh rate as the host reads it from the display (the desktop window's monitor), Hz; 0 or less is unknown. A host that does not tell it calls og_present_frame on every display frame (requestAnimationFrame), whose timestamps measure it. */
+  og_present_refresh(engine: number, hz: number): void;
+  /** The host's window went fullscreen or left it (the page's fullscreenchange, the desktop window): DisplayInfo.fullscreen, and the player's setting follows it, so a player who leaves with Escape finds Fullscreen off. The frame answer's `fullscreen` is what the player asks for, which the host carries out. */
+  og_present_fullscreen(engine: number, on: boolean): void;
   /** `defineComponent` */
   og_reflect_define_component(name: string, fields: string): string;
   /** `defineResource` */
@@ -1331,7 +1341,7 @@ export interface HostAbi<A, V> {
   og_loading_status(world: number): string;
 }
 
-/** Every binding symbol, in binding-table order, then the lifecycle members. */
+/** Every binding symbol, in binding-table order, then the lifecycle and present members. */
 export const SYMBOLS: readonly string[] = [
   "og_reflect_define_component",
   "og_reflect_define_resource",
@@ -1984,6 +1994,11 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_trace_take",
   "og_engine_perf",
   "og_engine_perf_report",
+  "og_engine_perf_frames",
+  "og_present_frame",
+  "og_present_resume",
+  "og_present_refresh",
+  "og_present_fullscreen",
 ];
 
 /** Why `value`, passed as `param` of `call` where an entity is expected, is not one. */

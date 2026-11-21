@@ -37,9 +37,9 @@
 // of the bundle did not arrive (loadFailure: field telemetry's load failures); { type: "cursor", cursor, image } when the UI's pointer shape changed (og.ui.frameCursor, and its CSS url() image or null); { type: "pointer-lock", wanted } when og.PointerLock.wanted
 // changed (the shell requests the lock on the next press on the canvas, or exits it);
 // { type: "result", id, value | error } for `call` (`advance`,
-// `command`, `hash`, `frame`, `probe`, `timings`: the played frames'
-// display intervals and engine work, and `telemetry`: their counts since the
-// last take, frames.ts, with `start`'s `telemetry: true`); { type: "rpc",
+// `command`, `hash`, `frame`, `probe`, `perf`: the engine's performance
+// record, the only record of the played frames' times, and `telemetry`: its
+// frames binned since the last take, with `start`'s `telemetry: true`); { type: "rpc",
 // frame } for an answer that did not cross the ring.
 //
 // Requests on the ring are served between frames by the request loop
@@ -134,7 +134,7 @@ export function startWorker(game: GameToken): void {
       glue.og_web_set_viewport(engine.id, JSON.stringify(data.viewport));
       if (!run.playing) gate.present();
     }
-    if (data.type === "fullscreen") glue?.og_web_fullscreen?.(engine.id, data.on);
+    if (data.type === "fullscreen") engine.presentFullscreen(data.on);
     if (data.type === "mouse-report") glue?.og_web_mouse_report?.(engine.id, data.active, data.unsupported);
     if (data.type === "keyboard-layout") boundHost()?.abi.og_input_set_keyboard_layout(JSON.stringify(data.labels));
     if (data.type === "audio-latency") run.audio?.latency(data.latency);

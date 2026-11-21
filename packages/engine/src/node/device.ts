@@ -31,8 +31,9 @@
 // the origin's storage cleared first), the play gate passed with a real tap or click,
 // and the engine's own telemetry read: `og:first-frame` (ms from navigation
 // to the first frame drawn behind the gate), `__runtime_probe__.hello()`
-// (the tier), and after a second of warm-up `__og_timings__` (the Worker's
-// played frames: display interval and engine work) over --seconds. Writes
+// (the tier), and after a second of warm-up the engine's performance record
+// (`__runtime_probe__.perf`: its `frame interval` and `frame work` lines)
+// over --seconds. Writes
 // <out>/device.json and <out>/report.md (findings
 // with a fix each, then the measures; no score) and prints one line (or one
 // JSON line with --json). A missing prerequisite exits 1 with one line
@@ -638,14 +639,6 @@ interface Stats {
   max: number;
 }
 
-/** Nearest-rank percentiles, ms to 0.01. */
-function stats(xs: readonly number[]): Stats {
-  const s = [...xs].sort((a, b) => a - b);
-  const r = (x: number) => Math.round(x * 100) / 100;
-  const at = (p: number) => r(s[Math.min(s.length - 1, Math.max(0, Math.ceil((p / 100) * s.length) - 1))] ?? 0);
-  return { count: s.length, mean: r(s.reduce((a, b) => a + b, 0) / Math.max(1, s.length)), p50: at(50), p95: at(95), p99: at(99), max: r(s[s.length - 1] ?? 0) };
-}
-
 interface DeviceInfo {
   userAgent: string;
   platform: string;
@@ -706,10 +699,21 @@ async function until<T>(d: Driver, expression: string, ms: number): Promise<T | 
 const mark = (name: string) => `(performance.getEntriesByName(${JSON.stringify(name)})[0] || {}).startTime || 0`;
 const FAILED = `(() => { const c = document.getElementById("og-error"); return c && !c.hidden ? (c.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 1500) : ""; })()`;
 
-interface Timings {
+/** A line of the performance record's report (`__runtime_probe__.perf("report")`, author/perf.rs). */
+interface PerfLine {
+  line: string;
   frames: number;
-  intervals: number[];
-  work: number[];
+  mean: number;
+  median: number;
+  p95: number;
+  p99: number;
+  max: number;
+}
+
+/** The record's line `name` as the report's Stats; nothing recorded is all zeros. */
+function lineStats(lines: readonly PerfLine[], name: string): Stats {
+  const l = lines.find((x) => x.line === name);
+  return l ? { count: l.frames, mean: l.mean, p50: l.median, p95: l.p95, p99: l.p99, max: l.max } : { count: 0, mean: 0, p50: 0, p95: 0, p99: 0, max: 0 };
 }
 
 interface Measured {
@@ -729,7 +733,7 @@ interface Measured {
 async function measure(d: Driver, url: string, seconds: number): Promise<Measured> {
   await d.open(url);
   const failed = async () => (await d.eval<string>(FAILED).catch(() => "")) || "";
-  const probed = await until<boolean>(d, `typeof __runtime_probe__ === "object" && typeof __og_timings__ === "function" && (${mark("og:first-frame")}) > 0 || !!(${FAILED})`, 90_000);
+  const probed = await until<boolean>(d, `typeof __runtime_probe__ === "object" && typeof __runtime_probe__.perf === "function" && (${mark("og:first-frame")}) > 0 || !!(${FAILED})`, 90_000);
   const card = await failed();
   if (card) refuse(`the page failed: ${card}`);
   if (!probed) refuse(`no first frame in 90 s at ${url}${d.errors().length ? `: ${d.errors()[0]}` : ""}`);
@@ -745,16 +749,16 @@ async function measure(d: Driver, url: string, seconds: number): Promise<Measure
   }
   const startMs = Math.round(await d.eval<number>(mark("og:start")));
   await sleep(1000);
-  await d.eval("__og_timings__(true)");
+  await d.eval(`__runtime_probe__.perf("start")`);
   const t0 = await d.eval<number>("__runtime_probe__.tick()");
   const began = performance.now();
   await sleep(seconds * 1000);
-  const t = await d.eval<Timings>("__og_timings__()");
+  const t = await d.eval<{ json: { frames: number; lines: PerfLine[] } }>(`__runtime_probe__.perf("report")`);
   const t1 = await d.eval<number>("__runtime_probe__.tick()");
   const elapsed = (performance.now() - began) / 1000;
   const after = await failed();
   if (after) refuse(`the page failed while playing: ${after}`);
-  if (t.intervals.length === 0) refuse(`no frame played in ${seconds} s after the gate (the Worker's clock did not run)`);
+  if (t.json.frames === 0) refuse(`no frame played in ${seconds} s after the gate (the Worker's clock did not run)`);
   const device = await d.eval<DeviceInfo>(DEVICE_INFO);
   return {
     firstFrameMs,
@@ -762,10 +766,10 @@ async function measure(d: Driver, url: string, seconds: number): Promise<Measure
     startMs,
     tier: hello.tier ?? "unknown",
     seconds: Math.round(elapsed * 100) / 100,
-    frames: t.frames,
+    frames: t.json.frames,
     ticks: t1 - t0,
-    interval: stats(t.intervals),
-    work: stats(t.work),
+    interval: lineStats(t.json.lines, "frame interval"),
+    work: lineStats(t.json.lines, "frame work"),
     device,
     errors: d.errors(),
   };

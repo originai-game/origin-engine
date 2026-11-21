@@ -243,6 +243,36 @@ pub fn og_engine_perf_report(env: Env, engine: u32, budgets: String) -> String {
     <Host as Lifecycle>::og_engine_perf_report(&Host, engine, budgets)
 }
 
+#[napi(js_name = "og_engine_perf_frames")]
+pub fn og_engine_perf_frames(env: Env, engine: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_perf_frames(&Host, engine)
+}
+
+#[napi(js_name = "og_present_frame")]
+pub fn og_present_frame(env: Env, engine: u32, now_ms: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Present>::og_present_frame(&Host, engine, now_ms)
+}
+
+#[napi(js_name = "og_present_resume")]
+pub fn og_present_resume(env: Env, engine: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Present>::og_present_resume(&Host, engine)
+}
+
+#[napi(js_name = "og_present_refresh")]
+pub fn og_present_refresh(env: Env, engine: u32, hz: f64) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Present>::og_present_refresh(&Host, engine, hz)
+}
+
+#[napi(js_name = "og_present_fullscreen")]
+pub fn og_present_fullscreen(env: Env, engine: u32, on: bool) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Present>::og_present_fullscreen(&Host, engine, on)
+}
+
 #[napi(js_name = "og_reflect_define_component")]
 pub fn og_reflect_define_component(env: Env, name: String, fields: String) -> String {
     let _env = crate::EnvScope::enter(&env);

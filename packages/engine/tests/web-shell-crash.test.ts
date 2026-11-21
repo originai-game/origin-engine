@@ -15,7 +15,7 @@ import { beforeAll, expect, test } from "bun:test";
 import { defineSystem, og } from "../src/index.ts";
 import { connectPage } from "../shell/transport.ts";
 import { browserOf, crashFields, deviceOf, gpuOf, type Context } from "../shell/telemetry.ts";
-import type { FrameStats } from "../src/web/frames.ts";
+import type { FrameStats } from "../shell/telemetry.ts";
 import { loadNativeHost } from "../src/node/index.ts";
 import type { GameToken } from "../src/runtime.ts";
 import { Shell, type HostError } from "../src/web/shell.ts";
@@ -153,7 +153,7 @@ test("a crash after play reports its stack, tick, engine, build, browser, device
       crashed();
     },
   });
-  // The Worker counts the frames it plays (frames.ts), and a take starts the count again.
+  // The engine records the frames the Worker plays (author/perf.rs), and a take starts the count again.
   let frames: FrameStats | null = null;
   for (let i = 0; i < 100 && !(frames && frames.count > 0); i++) {
     await new Promise((r) => setTimeout(r, 20));

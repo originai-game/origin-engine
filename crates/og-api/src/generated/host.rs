@@ -103,8 +103,22 @@ pub trait Lifecycle: Wire {
     fn og_engine_trace_take(&self, engine: u32, last: bool) -> String;
     /// Turn an engine's performance record on (a fresh one) or off (`og run --perf`, the shell's `perf()`, guide perf).
     fn og_engine_perf(&self, engine: u32, on: bool);
-    /// The performance record's report so far, as JSON `{ json, text }`: each line's median, p95 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes.
+    /// The performance record's report so far, as JSON `{ json, text }`: each line's mean, median, p95, p99 and max, flagged against `budgets` (a JSON object of line to milliseconds), and the hitches with their causes. The record is the engine's only one of frame times: `frame interval` (a presenting host's, og_present_frame's) and `frame work` are its lines.
     fn og_engine_perf_report(&self, engine: u32, budgets: String) -> String;
+    /// The performance record's frames since the last call, binned (field telemetry's `frames`): JSON `{ count, ms, bins, interval, work, hitches, longHitches, max }`, `bins` the 11 upper edges in ms (8.4 to 250) and `interval` and `work` 12 counts each, the last above 250 ms. A hitch is a frame whose interval is more than twice the median of the 64 before it, a long one also 250 ms or more. `null` while the record is off.
+    fn og_engine_perf_frames(&self, engine: u32) -> String;
+}
+
+/// What a presenting host tells the engine and asks of it: the frames it shows on a display.
+pub trait Present: Wire {
+    /// One display frame of a presenting host at `now_ms`, the host's monotonic clock (requestAnimationFrame's timestamp, the desktop window loop's). The engine keeps the frame cap (og.render.setDisplay, DisplayInfo.maxFps) by drawing only some display frames, measures the display's interval from these timestamps unless og_present_refresh told it, and runs a drawn one as og_engine_frame with the time since the last drawn one, which the performance record takes as its interval. JSON: og_engine_frame's answer with `drawn: true`, or `{ ok: true, drawn: false }`; both with `nextMs`, the host time the next frame to draw is due, which a host without a display callback waits until (winit's ControlFlow::WaitUntil). A host calls it on every display frame, drawn or not, and names its locale at og_engine_create (`locale`).
+    fn og_present_frame(&self, engine: u32, now_ms: f64) -> String;
+    /// The clock stopped, held or went on (play paused or resumed, a probe capture's wait): the next og_present_frame draws, and is handed no time from before.
+    fn og_present_resume(&self, engine: u32);
+    /// The display's refresh rate as the host reads it from the display (the desktop window's monitor), Hz; 0 or less is unknown. A host that does not tell it calls og_present_frame on every display frame (requestAnimationFrame), whose timestamps measure it.
+    fn og_present_refresh(&self, engine: u32, hz: f64);
+    /// The host's window went fullscreen or left it (the page's fullscreenchange, the desktop window): DisplayInfo.fullscreen, and the player's setting follows it, so a player who leaves with Escape finds Fullscreen off. The frame answer's `fullscreen` is what the player asks for, which the host carries out.
+    fn og_present_fullscreen(&self, engine: u32, on: bool);
 }
 
 /// `reflect`: packages/knowledge/wiki/reflect.md.
@@ -1500,9 +1514,9 @@ pub trait LoadingApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi {}
+pub trait Host: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi> Host for T {}
+impl<T: Lifecycle + Present + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[

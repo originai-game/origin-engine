@@ -7,16 +7,16 @@
 //! Ways this could fail: the settings kept in a world resource (the hash
 //! moves, a replay diverges); the scale applied on the native host (the
 //! reference frames move); a preset step written into RenderSettings (the
-//! probe and a save see automatic quality's choice); the frame cap not
-//! answered with the frame, so the Worker never caps; a device made again
+//! probe and a save see automatic quality's choice); the frame cap kept by
+//! no host (the engine's pacer draws every display frame); a device made again
 //! after a loss handed the lost one's texture encodings (the frame is
 //! refused) or textures transcoded again for the old formats.
 
 use og_render::{GpuMemory, QualityPreset, RenderQuality, RenderScene, RgbaImage};
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_game_game,
-    og_host_begin_bundle, og_render_display, og_render_reset_display, og_render_set_display,
-    set_hooks, set_render_backend,
+    og_host_begin_bundle, og_present_frame, og_present_refresh, og_render_display,
+    og_render_reset_display, og_render_set_display, set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -123,6 +123,60 @@ fn frames(engine: u32, n: usize) -> Value {
     last
 }
 
+// ── the presenting host's frames (og_present_frame) ─────────────────────
+
+/// A presenting host hands every display frame of a 120 Hz display to the
+/// engine: under a 60 cap every other one is drawn and the world keeps its
+/// 60 ticks a second (a drawn frame is handed the time since the last
+/// drawn one, not since the last display frame); `nextMs` is a cap's
+/// interval after the last drawn frame, less the slack; the display's
+/// interval is measured from the timestamps (displayHz) unless the host
+/// read its monitor's (`og_present_refresh`).
+///
+/// Ways it could fail: a skipped frame's time lost (the world runs at half
+/// speed under the cap); a cap kept only by the web Worker (a desktop
+/// window draws at 120); the interval measured only where a host sends it.
+#[test]
+fn a_presenting_host_is_paced_by_the_engine() {
+    let (e, _) = engine(true);
+    set_cap(e, "fps60");
+    let tick0 = answer(og_engine_frame(e, 0.0))["tick"].as_u64().unwrap();
+    let (mut drawn, mut last) = (0, Value::Null);
+    for i in 1..=240 {
+        let a = answer(og_present_frame(e, 1000.0 + f64::from(i) * 1000.0 / 120.0));
+        assert_eq!(a["ok"], json!(true), "{a}");
+        if a["drawn"] == json!(true) {
+            drawn += 1;
+        }
+        last = a;
+    }
+    assert!((119..=121).contains(&drawn), "{drawn} drawn of 240");
+    let ticks = display_tick(e) - tick0;
+    assert!((117..=120).contains(&ticks), "{ticks} ticks in two seconds");
+    let hz = display(e)["displayHz"].as_f64().unwrap();
+    assert!((hz - 120.0).abs() < 1.0, "displayHz {hz}");
+    let next = last["nextMs"].as_f64().unwrap();
+    assert!(
+        next > 3000.0 && next <= 3000.0 + 1000.0 / 60.0,
+        "nextMs {next}: {last}"
+    );
+    og_present_refresh(e, 144.0);
+    let hz = display(e)["displayHz"].as_f64().unwrap();
+    assert!((hz - 144.0).abs() < 0.01, "displayHz {hz}");
+}
+
+fn set_cap(e: u32, cap: &str) {
+    let r = og_runtime::host_impl::answer(og_render_set_display(
+        e,
+        Some(json!({ "frameCap": cap }).to_string()),
+    ));
+    assert_eq!(answer(r)["ok"], json!(true));
+}
+
+fn display_tick(e: u32) -> u64 {
+    answer(og_engine_frame(e, 0.0))["tick"].as_u64().unwrap()
+}
+
 // ── the player's graphics settings (G1-7) ───────────────────────────────
 
 /// The graphics settings round-trip and apply: what og.render.display
@@ -131,8 +185,9 @@ fn frames(engine: u32, n: usize) -> Value {
 /// the others (a game's frame cap leaves the player's render scale); the
 /// player's preset is drawn in place of RenderSettings' quality (which
 /// keeps the game's), on a native run too, and null is the game's again;
-/// the 120 and 144 caps reach the frame answer, and so do fullscreen, the
-/// power preference and raw mouse input, what the web shell acts on.
+/// the 120 and 144 caps reach og.render.display's maxFps, and fullscreen,
+/// the power preference and raw mouse input the frame answer, what the
+/// host acts on.
 ///
 /// Ways it could fail: a field missing from the saved object (fullscreen
 /// or the power preference forgotten on the next load); a partial call
@@ -158,14 +213,14 @@ fn graphics_settings_round_trip_and_apply() {
     });
     assert_eq!(set(e, chosen.clone())["ok"], json!(true));
     let a = frames(e, 1);
+    assert_eq!(display(e)["maxFps"], json!(144));
     assert_eq!(
         (
-            a["maxFps"].clone(),
             a["fullscreen"].clone(),
             a["lowPower"].clone(),
             a["rawMouse"].clone()
         ),
-        (json!(144), json!(true), json!(true), json!(true)),
+        (json!(true), json!(true), json!(true)),
         "{a}"
     );
     assert_eq!(

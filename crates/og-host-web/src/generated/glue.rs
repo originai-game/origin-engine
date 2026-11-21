@@ -204,6 +204,31 @@ pub fn og_engine_perf_report(engine: u32, budgets: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_engine_perf_frames(engine: u32) -> String {
+    <Host as Lifecycle>::og_engine_perf_frames(&Host, engine)
+}
+
+#[wasm_bindgen]
+pub fn og_present_frame(engine: u32, now_ms: f64) -> String {
+    <Host as Present>::og_present_frame(&Host, engine, now_ms)
+}
+
+#[wasm_bindgen]
+pub fn og_present_resume(engine: u32) {
+    <Host as Present>::og_present_resume(&Host, engine)
+}
+
+#[wasm_bindgen]
+pub fn og_present_refresh(engine: u32, hz: f64) {
+    <Host as Present>::og_present_refresh(&Host, engine, hz)
+}
+
+#[wasm_bindgen]
+pub fn og_present_fullscreen(engine: u32, on: bool) {
+    <Host as Present>::og_present_fullscreen(&Host, engine, on)
+}
+
+#[wasm_bindgen]
 pub fn og_reflect_define_component(name: String, fields: String) -> String {
     <Host as ReflectApi>::og_reflect_define_component(&Host, name, fields)
 }

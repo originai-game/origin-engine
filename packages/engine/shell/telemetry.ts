@@ -8,7 +8,29 @@
 // address or what a player typed. A build whose project.ogt says
 // `publish { telemetry off }` measures and sends none of it.
 
-import type { FrameStats } from "../src/web/frames.ts";
+/**
+ * The frames played since the last take (a `sample`'s `frames`): the engine's performance record binned
+ * (og_engine_perf_frames, crates/og-runtime/src/author/perf.rs), whose hitch is a frame over twice the median of
+ * the frames before it.
+ */
+export interface FrameStats {
+  /** Frames counted. */
+  readonly count: number;
+  /** Their display time, ms (the sum of their intervals). */
+  readonly ms: number;
+  /** The bins' upper edges, ms; each histogram has one count more, the bin above the last edge. */
+  readonly bins: readonly number[];
+  /** Display intervals by bin. */
+  readonly interval: readonly number[];
+  /** The engine's work per frame (input, ticks, render submission) by bin. */
+  readonly work: readonly number[];
+  /** Hitches, and those of 250 ms or more. */
+  readonly hitches: number;
+  readonly longHitches: number;
+  /** The longest interval, ms. */
+  readonly max: number;
+}
+
 import { stackFrames } from "../src/sourcemap.ts";
 
 /** A browser: its family, major version and operating system family. */

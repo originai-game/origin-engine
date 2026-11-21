@@ -1,25 +1,7 @@
-// Field telemetry's pure parts (docs/web-export.md §Telemetry): the Worker's
-// frame bins and hitch counts, and the page's browser and device classes.
+// Field telemetry's pure parts (docs/web-export.md §Telemetry): the page's
+// browser and device classes and its memory report.
 import { expect, test } from "bun:test";
-import { FRAME_BINS, FrameCounter } from "../src/web/frames.ts";
 import { browserOf, deviceOf, memoryOf } from "../shell/telemetry.ts";
-
-test("frames fall in the bin whose upper edge they do not pass; hitches count from 50 ms, long ones from 250 ms", () => {
-  const c = new FrameCounter();
-  // 16.8 is the 60 Hz bin's edge (index 2); 16.9 is in the next one; 300 is above the last edge.
-  for (const ms of [8, 16.8, 16.9, 50, 249, 250, 300]) c.add(ms, 1);
-  const s = c.take();
-  expect(s.count).toBe(7);
-  expect(s.interval.length).toBe(FRAME_BINS.length + 1);
-  expect(s.interval[0]).toBe(1);
-  expect(s.interval[2]).toBe(1);
-  expect(s.interval[3]).toBe(1);
-  expect(s.interval[FRAME_BINS.length]).toBe(1);
-  expect(s.work[0]).toBe(7);
-  expect([s.hitches, s.longHitches, s.max]).toEqual([4, 2, 300]);
-  // A take starts the count again.
-  expect(c.take().count).toBe(0);
-});
 
 test("browsers and devices are classed from coarse facts", () => {
   const edge = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0";

@@ -67,10 +67,8 @@ export function callsOf(run: Run): Calls {
       const abi = boundHost()!.abi;
       return { status: JSON.parse(abi.og_net_status(e.id)), hash: JSON.parse(abi.og_net_hash(e.id)), room: JSON.parse(abi.og_platform_room_info(e.id)) };
     },
-    // The frames played since the last reset (oldest first); `true` resets.
-    /** Field telemetry: the frames played since the last take (frames.ts FrameStats), counting from now on; null when the page's build has telemetry off. */
-    telemetry: () => run.frameCounter?.take() ?? null,
-    timings: (_, [reset]) => run.records.take(Boolean(reset)),
+    /** Field telemetry: the frames played since the last take, binned from the engine's performance record (og_engine_perf_frames), counting from now on; null when the page's build has telemetry off. */
+    telemetry: () => (run.engine ? (JSON.parse(boundHost()!.abi.og_engine_perf_frames(run.engine.id)) as unknown) : null),
     /**
      * The run's trace (src/trace.ts): `start` begins one (dropping any), `stop` ends it, `take` (the
      * default) answers the document so far, a Chrome trace as `og run --trace` writes it; null when

@@ -155,7 +155,7 @@ export interface ShellOptions {
   readonly platform?: PlatformHost;
   /** Record the run's trace from the boot on, the boot scene's loads included (`trace()` reads it; `trace("start")` begins one later). */
   readonly trace?: boolean;
-  /** Count the played frames for field telemetry (`call("telemetry")` takes the counts; frames.ts). */
+  /** Record the played frames for field telemetry (`call("telemetry")` takes them binned: shell/telemetry.ts FrameStats). */
   readonly telemetry?: boolean;
   /** Fork s60: project.ogt `publish { pipelines }` (src/web/pipelines.ts): `sync`, `async` or `prewarm`; absent: auto, picked at the adapter. */
   readonly pipelines?: "sync" | "async" | "prewarm";

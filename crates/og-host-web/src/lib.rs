@@ -298,14 +298,6 @@ pub fn og_web_gpu(engine: u32) -> String {
         .unwrap_or_else(|| "null".into())
 }
 
-/// The display's refresh interval the Worker measured (its
-/// requestAnimationFrame's), ms: automatic quality's budget where the frame
-/// cap is the display's rate (og-runtime's `display.rs`).
-#[wasm_bindgen]
-pub fn og_web_display_interval(engine: u32, ms: f64) {
-    og_runtime::set_display_interval(engine, ms);
-}
-
 /// Brackets the probe's `frame` (a harness stepping one tick and one
 /// render) with `scripted` and `display` (og-runtime's `FrameKind`): a
 /// scripted frame draws at the configured quality, never waits and is no
@@ -315,13 +307,6 @@ pub fn og_web_frame_kind(engine: u32, kind: &str) -> Result<(), JsValue> {
     let kind = og_runtime::FrameKind::parse(kind).map_err(|e| JsValue::from_str(&e))?;
     og_runtime::set_frame_kind(engine, kind);
     Ok(())
-}
-
-/// The page went fullscreen or left it (the shell's `fullscreenchange`):
-/// og.render.display's `fullscreen`, which the player's setting follows.
-#[wasm_bindgen]
-pub fn og_web_fullscreen(engine: u32, on: bool) {
-    og_runtime::set_fullscreen(engine, on);
 }
 
 /// What the browser granted the pointer lock: raw movement now (`active`),

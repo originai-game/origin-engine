@@ -226,8 +226,6 @@ export interface WebExtras {
   og_web_bundle_integrity(manifest: string): string;
   /** `highDynamicRange`: the page's `(dynamic-range: high)`, which the Worker cannot ask (undefined: unknown). */
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean, highDynamicRange?: boolean, cpuPassTimingOnly?: boolean): Promise<string>;
-  /** The page went fullscreen or left it (og.render.display's `fullscreen`; the setting follows). */
-  og_web_fullscreen?(engine: number, on: boolean): void;
   /** What the browser granted the pointer lock: raw movement now, and whether it refused unadjustedMovement (og.input.mouse). */
   og_web_mouse_report?(engine: number, active: boolean, unsupported: boolean): void;
   og_web_set_viewport(engine: number, viewport: string): string;
@@ -243,8 +241,6 @@ export interface WebExtras {
   og_web_warm?(engine: number): boolean;
   /** The work a played tick first reaches, without a tick (og_runtime::warm_tick): the UI's documents built on a copy, the height fields' chunk shapes. */
   og_web_warm_tick?(engine: number): void;
-  /** The display's refresh interval the Worker measured, ms (automatic quality's budget at no frame cap). */
-  og_web_display_interval?(engine: number, ms: number): void;
   /** Brackets the probe's `frame` with "scripted" and "display" (og-runtime's FrameKind): a harness's frame draws at the configured quality, never waits and is no sample of automatic quality. */
   og_web_frame_kind(engine: number, kind: "display" | "scripted" | "recorded"): void;
   /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */

@@ -194,6 +194,49 @@ export function fixedClock(engine: Engine, startMs: number): HostClock {
   return { kind: "fixed", now: () => startMs + (engine.world.tick * 1000) / rateOf(engine.id) };
 }
 
+/** A frame's answer (`Engine.frame`, `Engine.present`). */
+export interface FrameAnswer {
+  ok: boolean;
+  ticks?: number;
+  tick?: number;
+  rendered?: boolean;
+  paused?: boolean;
+  quit?: boolean;
+  behind?: number;
+  /** Wall milliseconds a tick took (this frame's mean, or the last frame's that ticked) and the last render took. */
+  stepMs?: number;
+  renderMs?: number;
+  /** The command channel's steps still to run (scheduled, or a screenshot waiting for its frame): a script has ended at 0, however a restore moved og.Time. */
+  pending?: number;
+  reason?: string;
+  /** The UI's focused text control (web/text-input.ts's TextTarget), or null. */
+  text?: { path: string; rect: [number, number, number, number]; multiline: boolean; selection: string; composing: boolean } | null;
+  /** Text a copy or cut took this frame. */
+  copy?: string;
+  /** The haptic patterns the UI's feedback played since the last frame, at the player's strength: [startMs, ms, low, high] pulses (web/haptics.ts plays them). */
+  haptics?: [number, number, number, number][][];
+  /** og.input.rumble's requests since the last frame: [pad (-1 every pad), low, high, ms] (web/gamepad.ts playRumble plays them). */
+  rumble?: [number, number, number, number][];
+  /** What changed in the UI's accessibility tree since the last frame, when the engine was created with `a11y` (web/a11y.ts mirrors it). */
+  a11y?: A11yUpdate;
+  /** A playing video player with `wait` could not show its frame: no tick runs until it can (web/shell.ts onBuffering). Absent: false. */
+  buffering?: boolean;
+  /** og.PointerLock.wanted: the game asks for the pointer lock (the web shell requests it on the next press on the canvas, and exits it when false). */
+  pointerLock?: boolean;
+  /** The pointer's shape the UI resolved over what it is on (a CSS cursor name: og.ui.frameCursor). */
+  cursor?: string;
+  /** On the frames where it changed: the first of the cursor's CSS `url()` images that loads, row-major RGBA8 in base64 with its hotspot, or null for none (`cursor` is its fallback). */
+  cursorImage?: CursorImage | null;
+  /** The player's graphics settings ask for fullscreen (og.render.setDisplay's `fullscreen`): the host enters or leaves it and reports it (`presentFullscreen`). */
+  fullscreen?: boolean;
+  /** The power preference the next load's GPU adapter is asked for: low power (the web shell keeps it in the page's storage). */
+  lowPower?: boolean;
+  /** Ask pointer lock for raw mouse movement (og.input.setMouse's `raw`: unadjustedMovement). */
+  rawMouse?: boolean;
+  /** The scene texts the inspector's Save (or a prefab Apply or Revert) made on a host that writes no files (development builds): the web shell routes them. */
+  saved?: { scenes: { source: string; text: string }[] };
+}
+
 /** A running engine: one world, its probe, and the host's lifecycle calls. */
 export class Engine {
   readonly id: number;
@@ -290,55 +333,41 @@ export class Engine {
     return answer;
   }
 
-  /** One display frame: tick by the wall clock (through the probe: due command steps run), then render. */
-  frame(elapsedMs: number): {
-    ok: boolean;
-    ticks?: number;
-    tick?: number;
-    rendered?: boolean;
-    paused?: boolean;
-    quit?: boolean;
-    behind?: number;
-    /** Wall milliseconds a tick took (this frame's mean, or the last frame's that ticked) and the last render took. */
-    stepMs?: number;
-    renderMs?: number;
-    /** The command channel's steps still to run (scheduled, or a screenshot waiting for its frame): a script has ended at 0, however a restore moved og.Time. */
-    pending?: number;
-    reason?: string;
-    /** The UI's focused text control (web/text-input.ts's TextTarget), or null. */
-    text?: { path: string; rect: [number, number, number, number]; multiline: boolean; selection: string; composing: boolean } | null;
-    /** Text a copy or cut took this frame. */
-    copy?: string;
-    /** The haptic patterns the UI's feedback played since the last frame, at the player's strength: [startMs, ms, low, high] pulses (web/haptics.ts plays them). */
-    haptics?: [number, number, number, number][][];
-    /** og.input.rumble's requests since the last frame: [pad (-1 every pad), low, high, ms] (web/gamepad.ts playRumble plays them). */
-    rumble?: [number, number, number, number][];
-    /** What changed in the UI's accessibility tree since the last frame, when the engine was created with `a11y` (web/a11y.ts mirrors it). */
-    a11y?: A11yUpdate;
-    /** A playing video player with `wait` could not show its frame: no tick runs until it can (web/shell.ts onBuffering). Absent: false. */
-    buffering?: boolean;
-    /** og.PointerLock.wanted: the game asks for the pointer lock (the web shell requests it on the next press on the canvas, and exits it when false). */
-    pointerLock?: boolean;
-    /** The pointer's shape the UI resolved over what it is on (a CSS cursor name: og.ui.frameCursor). */
-    cursor?: string;
-    /** On the frames where it changed: the first of the cursor's CSS `url()` images that loads, row-major RGBA8 in base64 with its hotspot, or null for none (`cursor` is its fallback). */
-    cursorImage?: CursorImage | null;
-    /** The frame cap og.render.setDisplay resolved to (0: the display's rate): the web Worker draws at most this many frames a second (web/pacing.ts). */
-    maxFps?: number;
-    /** The player's graphics settings ask the page to be fullscreen (og.render.setDisplay's `fullscreen`; the web shell enters or leaves it). */
-    fullscreen?: boolean;
-    /** The power preference the next load's GPU adapter is asked for: low power (the web shell keeps it in the page's storage). */
-    lowPower?: boolean;
-    /** Ask pointer lock for raw mouse movement (og.input.setMouse's `raw`: unadjustedMovement). */
-    rawMouse?: boolean;
-    /** The scene texts the inspector's Save (or a prefab Apply or Revert) made on a host that writes no files (development builds): the web shell routes them. */
-    saved?: { scenes: { source: string; text: string }[] };
-  } {
+  /** A harness's frame: tick by `elapsedMs` of its own clock (through the probe: due command steps run), then render. */
+  frame(elapsedMs: number): FrameAnswer {
     this.pumpPlatform();
-    const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));
+    const answer = parse<FrameAnswer>(abi().og_engine_frame(this.id, elapsedMs));
     rt.epoch++;
     this.pumpPlatform();
     return answer;
+  }
+
+  /**
+   * One display frame of a presenting host at `nowMs` on its own clock (requestAnimationFrame's timestamp, the
+   * desktop window loop's): the engine keeps the frame cap, measures the display and draws this frame or skips it
+   * (`drawn`); `nextMs` is when the next frame to draw is due, which a host without a display callback waits until.
+   */
+  present(nowMs: number): FrameAnswer & { drawn: boolean; nextMs: number } {
+    this.pumpPlatform();
+    const answer = parse<FrameAnswer & { drawn: boolean; nextMs: number }>(abi().og_present_frame(this.id, nowMs));
+    rt.epoch++;
+    if (answer.drawn) this.pumpPlatform();
+    return answer;
+  }
+
+  /** The clock stopped, held or went on (play paused or resumed, a capture's wait): the next `present` draws, handed no time from before. */
+  presentResume(): void {
+    abi().og_present_resume(this.id);
+  }
+
+  /** The display's refresh rate as the host reads it from the display (a desktop window's monitor), Hz; 0 is unknown. */
+  presentRefresh(hz: number): void {
+    abi().og_present_refresh(this.id, hz);
+  }
+
+  /** The host's window went fullscreen or left it: og.render.display's `fullscreen`, which the player's setting follows. */
+  presentFullscreen(on: boolean): void {
+    abi().og_present_fullscreen(this.id, on);
   }
 
   /** The probe's JSON-RPC 2.0 entry: one request frame in, its answer frame out. */

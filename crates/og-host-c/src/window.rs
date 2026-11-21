@@ -5,9 +5,16 @@
 //!
 //! The shell owns the loop: `og_c_window_open` once, after the engine
 //! exists and before its first tick, then `og_c_window_pump` before every
-//! frame (winit's `pump_app_events`, so the loop is the shell's on macOS,
-//! Windows and Linux alike). The surface presents with vsync: the frame
-//! call waits for the display. The engine's audio plays on the default
+//! display frame (winit's `pump_app_events`, so the loop is the shell's on
+//! macOS, Windows and Linux alike), each handed to the engine as a
+//! presenting host's (`og_present_frame`), which keeps the frame cap and
+//! answers when the next drawn frame is due: the shell waits until then
+//! (winit's `ControlFlow::WaitUntil`). The surface presents with vsync: a
+//! drawn frame waits for the display. The window tells the engine its
+//! monitor's refresh rate (`og_present_refresh`) and whether it is
+//! fullscreen (`og_present_fullscreen`), and goes fullscreen or leaves it
+//! when the player's settings ask (`og_c_window_fullscreen`); the player's
+//! OS locale is `og_c_locale`'s. The engine's audio plays on the default
 //! output device (og_audio::device, the napi host's `device` sink); a
 //! machine without one runs silent. Gamepads (gilrs-core) are polled each
 //! pump and sent raw and whole when they change, as the web shell's
@@ -33,6 +40,10 @@ use winit::window::{CursorIcon, Window, WindowId};
 
 struct Shell {
     events: EventLoop<()>,
+    /// The monitor's refresh (mHz) and whether the window was fullscreen,
+    /// as the engine was last told.
+    refresh: Option<u32>,
+    fullscreen: bool,
     app: App,
     /// The default output device playing the engine's audio, if there is one.
     audio: Option<og_audio::device::DeviceSink>,
@@ -604,6 +615,8 @@ fn open(engine: u32, width: u32, height: u32, title: String, keep: bool) -> Resu
     SHELL.with(|s| {
         *s.borrow_mut() = Some(Shell {
             events,
+            refresh: None,
+            fullscreen: false,
             app,
             audio,
             pads,
@@ -660,6 +673,25 @@ pub extern "C" fn og_c_window_pump() -> bool {
             .pump_app_events(Some(Duration::ZERO), &mut shell.app);
         let latency = shell.audio.as_ref().map(|a| a.latency());
         let pads = shell.poll_pads();
+        let engine = ENGINE.get();
+        if let Some(w) = shell.app.window.as_ref() {
+            // The monitor the window is on now: its refresh is the display's interval.
+            let refresh = w
+                .current_monitor()
+                .and_then(|m| m.refresh_rate_millihertz());
+            if refresh != shell.refresh {
+                shell.refresh = refresh;
+                og_runtime::og_present_refresh(
+                    engine,
+                    refresh.map_or(0.0, |mhz| f64::from(mhz) / 1000.0),
+                );
+            }
+            let fullscreen = w.fullscreen().is_some();
+            if fullscreen != shell.fullscreen {
+                shell.fullscreen = fullscreen;
+                og_runtime::og_present_fullscreen(engine, fullscreen);
+            }
+        }
         let app = &mut shell.app;
         let closed = app.closed || matches!(status, PumpStatus::Exit(_));
         let mut input = std::mem::take(&mut app.input);
@@ -734,6 +766,32 @@ pub unsafe extern "C" fn og_c_window_capture(path: *const c_char) -> bool {
         pixels: frame.rgba,
     };
     std::fs::write(path, og_render::png(&image)).is_ok()
+}
+
+/// Puts the window fullscreen (borderless, on its monitor) or takes it out,
+/// as the frame answer's `fullscreen` asks; the next pump tells the engine
+/// what the window did.
+#[unsafe(no_mangle)]
+pub extern "C" fn og_c_window_fullscreen(on: bool) {
+    SHELL.with(|s| {
+        if let Some(w) = s.borrow().as_ref().and_then(|s| s.app.window.as_ref()) {
+            w.set_fullscreen(on.then_some(winit::window::Fullscreen::Borderless(None)));
+        }
+    });
+}
+
+/// The player's locale as the OS names it (a BCP 47 tag, `en-US`), or
+/// null where it names none; valid until the next call. The shell gives
+/// it to the engine's creation (`locale`).
+#[unsafe(no_mangle)]
+pub extern "C" fn og_c_locale() -> *const c_char {
+    let Some(tag) = sys_locale::get_locale() else {
+        return std::ptr::null();
+    };
+    ANSWER.with(|a| {
+        *a.borrow_mut() = CString::new(tag).unwrap_or_default();
+        a.borrow().as_ptr()
+    })
 }
 
 /// Closes the window: the engine's renderer goes first (its surface is the
