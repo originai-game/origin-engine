@@ -43,24 +43,12 @@ export interface InspectorProps {
 const TABS = [["entities", "Entities"], ["resources", "Resources"], ["ui", "UI"]] as const;
 
 const BOX: Record<Box["kind"], string> = {
-  bound: "bg-danger/90",
-  margin: "bg-warn/45",
-  border: "bg-gold/55",
-  padding: "bg-success/60",
-  content: "bg-info/45",
+  bound: "border-danger/90",
+  margin: "border-warn/45",
+  border: "border-gold/55",
+  padding: "border-success/60",
+  content: "border-transparent bg-info/45",
 };
-
-/** A box as the rectangles that draw it (x, y, w, h): its content filled, a ring as its four sides' strips. */
-function strips(b: Box): [number, number, number, number][] {
-  if (b.kind === "content") return [[b.x, b.y, b.w, b.h]];
-  const side = b.h - b.t - b.b;
-  return ([
-    [b.x, b.y, b.w, b.t],
-    [b.x, b.y + b.h - b.b, b.w, b.b],
-    [b.x, b.y + b.t, b.l, side],
-    [b.x + b.w - b.r, b.y + b.t, b.r, side],
-  ] as [number, number, number, number][]).filter((r) => r[2] > 0 && r[3] > 0);
-}
 
 /** A toolbar button: quiet, or primary while `on`. */
 function Tool(props: { label: string; on?: boolean | undefined; quiet?: boolean | undefined; disabled?: boolean | undefined; tip?: string | undefined; class?: string | undefined; onPress: () => void }) {
@@ -121,9 +109,13 @@ export function Inspector(props: InspectorProps) {
       <View class="absolute inset-0">
         <For each={v().boxes} key={(b) => b.id}>
           {(b) => (
-            <For each={strips(b())}>
-              {(r) => <View class={`absolute ${BOX[b().kind]}`} style={{ left: `${r()[0]}px`, top: `${r()[1]}px`, width: `${r()[2]}px`, height: `${r()[3]}px` }} />}
-            </For>
+            <View
+              class={`absolute ${BOX[b().kind]}`}
+              style={{
+                left: `${b().x}px`, top: `${b().y}px`, width: `${b().w}px`, height: `${b().h}px`,
+                "border-top-width": `${b().t}px`, "border-right-width": `${b().r}px`, "border-bottom-width": `${b().b}px`, "border-left-width": `${b().l}px`,
+              }}
+            />
           )}
         </For>
       </View>
