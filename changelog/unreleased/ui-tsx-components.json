@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "The engine's components as TSX, imported from @origingame/engine/ui/components: the controls Button, Progress, Meter, Art and Counter; the base set (Avatar, Currency, EmptyState, ErrorState, ItemSlot, ListItem, Pips, Ribbon, SkeletonGroup, Spinner, Steps); and AbilitySlot, AbilityBar and RpgQuestTracker. Props are camelCase values or accessors, actions are callback props that get the event (`onUse={(e, id) => …}`), and states are data-* attributes the classes read."
+    },
+    {
+      "member": "og check",
+      "summary": "A game's TSX typechecks: the project template's tsconfig sets `jsx: preserve`, includes src/**/*.tsx and assets/ui/**/*.tsx, and maps @origingame/engine/ui and @origingame/engine/ui/components (og check maps them too when a game has no tsconfig of its own). Fix: an existing game adds the same three entries to its tsconfig.json."
+    }
+  ]
+}

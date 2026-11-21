@@ -10,7 +10,6 @@ import { VIEW, buildSet, inView } from "./set.ts";
 import { groundAt, must } from "./util.ts";
 
 function build(world: World): void {
-  must(og.load.document(world, "ui/hud.svelte"));
   const land = buildLand(world);
   buildSet(world, land);
   buildEnv(world);

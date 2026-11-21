@@ -1,10 +1,12 @@
-// The cosy HUD (assets/ui/hud.svelte): the clock, the day's tasks and the
+// The cosy HUD (assets/ui/hud.tsx): the clock, the day's tasks and the
 // hotbar, built from the engine's components in the default style. H hides
 // it; a slot pressed on the hotbar is the same choice as its key.
 import { og, defineSystem } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { Pick, Scene, SEASONS, TIMES, WEATHERS } from "./env.ts";
 import { must } from "./util.ts";
+import { mount, useStore } from "@origingame/engine/ui";
+import { Hud as HudView } from "../assets/ui/hud.tsx";
 
 const title = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 const two = (n: number) => (n < 10 ? `0${n}` : `${n}`);
@@ -26,10 +28,10 @@ function slots(weather: number, season: number, time: number) {
   ];
 }
 
-/** Registers the HUD's stores and mounts it (GameDesc.ui). */
+/** Registers the HUD's stores and mounts it (GameDesc.ui); the TSX follows the stores. */
 export function mountHud(world: World): void {
   const scope = og.ui.scope(world, "hud");
-  must(scope.mount("hud", "hud", {
+  const stores = {
     shown: scope.writable("shown", true),
     clock: scope.writable("clock", "06:54"),
     day: scope.writable("day", "Summer · Dawn"),
@@ -37,11 +39,29 @@ export function mountHud(world: World): void {
     quest: scope.writable("quest", "Morning rounds"),
     steps: scope.collection("steps", TASKS.map(t => ({ ...t, done: false })), { key: "id" }),
     slots: scope.collection("slots", slots(0, 1, 0), { key: "id" }),
-  }));
+  };
+  mount(world, () => {
+    const shown = useStore(stores.shown), clock = useStore(stores.clock), day = useStore(stores.day), sky = useStore(stores.sky);
+    const quest = useStore(stores.quest), steps = useStore(stores.steps), bar = useStore(stores.slots);
+    return HudView({
+      get shown() { return shown(); },
+      get clock() { return clock(); },
+      get day() { return day(); },
+      get sky() { return sky(); },
+      get quest() { return quest(); },
+      get steps() { return steps(); },
+      get slots() { return bar(); },
+      // A pressed slot is the same choice as its key.
+      onUse: (e, id) => {
+        const which = ["weather", "season", "time"].indexOf(id);
+        if (which >= 0) must(og.input.intent(e.world, Pick, { which }));
+      },
+    });
+  }, {}, { layer: "hud" });
 }
 
-/** Writes the HUD's stores from the scene, and turns a pressed slot into its choice. */
-export const Hud = defineSystem("Hud", { reads: [Scene], writes: [Pick], after: ["Air"] }, (_q, _t, world) => {
+/** Writes the HUD's stores from the scene. */
+export const Hud = defineSystem("Hud", { reads: [Scene], after: ["Air"] }, (_q, _t, world) => {
   const s = must(world.resource(Scene));
   const scope = og.ui.scope(world, "hud");
   scope.writable("shown", true).set(s.hud === 1);
@@ -60,9 +80,5 @@ export const Hud = defineSystem("Hud", { reads: [Scene], writes: [Pick], after: 
   for (const [i, task] of TASKS.entries()) {
     const row = steps.row(task.id);
     if (row.ok && row.value.done !== done[i]) must(steps.patch(task.id, { done: done[i]! }));
-  }
-  for (const e of og.ui.docEvents(world)) {
-    const which = e.name === "use" ? ["weather", "season", "time"].indexOf(e.rowKey) : -1;
-    if (which >= 0) must(og.input.intent(world, Pick, { which }));
   }
 });

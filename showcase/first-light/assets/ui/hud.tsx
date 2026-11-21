@@ -1,4 +1,4 @@
-import { Icon, Show, Text, View } from "@origingame/engine/ui";
+import { Icon, Show, Text, View, type UiEvent } from "@origingame/engine/ui";
 import { AbilityBar } from "@origingame/engine/ui/components";
 import { RpgQuestTracker } from "@origingame/engine/ui/components";
 
@@ -18,7 +18,7 @@ export interface HudProps {
   /** The hotbar's slots, as AbilityBar takes them. */
   slots: ReadonlyArray<{ id: string; icon: string; name: string; action: string; hotkey: string; cooldown: number; cooldownMax: number; cost: string; unaffordable: boolean; locked: boolean; active: boolean; count: number }>;
   /** A slot was pressed: its id. */
-  onUse?: (id: string) => void;
+  onUse?: (e: UiEvent, id: string) => void;
 }
 
 /**
@@ -45,7 +45,7 @@ export function Hud(props: HudProps) {
           </View>
         </View>
         <View class="flex-row justify-center">
-          <AbilityBar slots={props.slots} column={false} onUse={(id) => id !== undefined && props.onUse?.(id)} />
+          <AbilityBar slots={props.slots} column={false} onUse={(e, id) => props.onUse?.(e, id)} />
         </View>
       </View>
     </Show>

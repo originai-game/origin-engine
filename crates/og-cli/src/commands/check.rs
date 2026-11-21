@@ -774,6 +774,9 @@ impl Target {
             serde_json::json!({
                 "@origingame/engine": [typescript_path(&pkg.join("types/index.d.ts"))],
                 "@origingame/engine/playtest": [typescript_path(&pkg.join("src/playtest.ts"))],
+                // The TSX UI: its primitives and the engine's components.
+                "@origingame/engine/ui": [typescript_path(&pkg.join("src/ui/index.ts"))],
+                "@origingame/engine/ui/components": [typescript_path(&pkg.join("src/ui/components/index.tsx"))],
                 // A playtest file's describe/test/expect (bun:test's own declarations, vendored).
                 "bun:test": [typescript_path(&pkg.join("vendor/bun-types/test.d.ts"))],
                 // og ui check's rules over a playtest's frames (docs/ui.md §6).

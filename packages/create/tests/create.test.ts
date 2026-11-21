@@ -35,7 +35,7 @@ test("the installed npm og routes create and new without a native platform packa
 
 test("the fixtures and the sheet carry the skeleton's tsconfig, whose include names only what a project has", () => {
   const skeleton = readFileSync(join(pkg, "template/tsconfig.json"), "utf8");
-  expect(JSON.parse(skeleton).include).toEqual(["src/**/*.ts", "tests/**/*.ts", ".og/types/**/*.d.ts"]);
+  expect(JSON.parse(skeleton).include).toEqual(["src/**/*.ts", "src/**/*.tsx", "assets/ui/**/*.tsx", "tests/**/*.ts", ".og/types/**/*.d.ts"]);
   const fixtures = join(pkg, "../../tests/fixtures");
   const copies = [...readdirSync(fixtures).map(name => join(fixtures, name)), join(pkg, "../engine/sheets/style")]
     .map(dir => join(dir, "tsconfig.json")).filter(file => existsSync(file));

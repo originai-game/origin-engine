@@ -1,0 +1,77 @@
+import { For, Icon, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Spinner } from "./spinner";
+import "./pips.en.ogt";
+
+export interface PipsProps {
+  /** The resource's name; empty uses Resource. */
+  label?: string;
+  /** The atlas icon for a unit: heart, bullet, bolt or a game's own icon. Default "heart". */
+  icon?: string;
+  /** Keyed units { id, value, label }: value is the filled fraction, 0 to 1; label names the unit for accessibility. The game supplies capacity, ordering and fractional units, with no fixed maximum. */
+  items?: ReadonlyArray<{ id: string; value: number; label?: string }>;
+  /** Waiting for resource data; units are replaced by Loading. Default false. */
+  loading?: boolean;
+  /** The resource is unavailable; its values remain readable. Default false. */
+  disabled?: boolean;
+  /** The full units' colour: empty is the style's pip colour (a life's red); success, warn, danger, info or primary names another. */
+  tone?: string;
+}
+
+/**
+ * A counted resource on one line: its name, then one icon per unit. An
+ * empty unit is its socket; a full one is cut to its fraction and wears
+ * the tone. Unavailable, the units lose their colour and dim, full ones
+ * still brighter than their sockets.
+ */
+export function Pips(props: PipsProps) {
+  return (
+    <View class={`group/pips flex-row flex-wrap items-center text-fg max-w-full p-0 gap-2 disabled:text-fg-subtle`} role="group" label={props.label || t("base.pips.resource")} busy={(props.loading ?? false)} aria-disabled={(props.disabled ?? false)} data-off={(props.disabled ?? false)}>
+      <View class={`text-caption text-fg-muted shrink`}>
+        <Text>{props.label || t("base.pips.resource")}</Text>
+      </View>
+      <Show when={(props.loading ?? false)} fallback={
+        <>
+          <Show when={(props.items ?? []).length} fallback={
+              <View class={`text-caption text-fg-muted shrink`}>
+                <Text>{t("base.pips.empty")}</Text>
+              </View>
+          }>
+            <View class={`flex-row flex-wrap items-center gap-0.5 shrink`}>
+              <For each={props.items ?? []}>
+                {(item) => (
+                <View class={`size-6 shrink`} role="meter" label={item().label || props.label || t("base.pips.resource")} valueMin={0} valueMax={1} valueNow={item().value < 0 ? 0 : item().value > 1 ? 1 : item().value} valueText={`${formatNumber((item().value < 0 ? 0 : item().value > 1 ? 1 : item().value) * 100, { decimals: 0 })}%`}>
+                  <Icon class={`absolute text-fg-subtle inset-0 size-full`} name={(props.icon ?? "heart")} />
+                  <View class="absolute inset-y-0 left-0 overflow-hidden transition-layout duration-240" style={{ width: `${Math.min(Math.max(item().value, 0), 1) * 100}%` }}>
+                    <Icon class={`text-danger size-6 group-data-off/pips:text-fg-muted`} name={(props.icon ?? "heart")} />
+                  </View>
+                </View>
+                )}
+              </For>
+            </View>
+          </Show>
+          <Show when={(props.disabled ?? false)}>
+            <View class={`text-caption bg-raised-lo shadow-[inset_0px_0px_0px_1px_#4e586c] text-fg transition duration-317 py-0 px-2 rounded-capsule shrink`}>
+              <Text class="tabular-nums">{t("base.pips.disabled")}</Text>
+            </View>
+          </Show>
+        </>
+      }>
+        <View class={`flex-row items-center gap-1 shrink`}>
+          <Spinner size={18} name={t("base.pips.loading")} />
+          <View class={`text-caption text-fg-muted shrink`} role="status">
+            <Text>{t("base.pips.loading")}</Text>
+          </View>
+        </View>
+      </Show>
+    </View>
+  );
+}
+
+export const fixtures: Record<string, Partial<PipsProps>> = {
+  default: {"label":"Lives","icon":"heart","tone":"","items":[{"id":"life-a","value":1,"label":"First life"},{"id":"life-b","value":0.5,"label":"Second life"},{"id":"life-c","value":0,"label":"Third life"}],"loading":false,"disabled":false},
+  full: {"label":"Action points","icon":"bolt","tone":"warn","items":[{"id":"ap-a","value":1},{"id":"ap-b","value":1},{"id":"ap-c","value":1}]},
+  empty: {"label":"Lives","items":[]},
+  depleted: {"label":"Lives","items":[{"id":"last","value":0}]},
+  loading: {"label":"Lives","loading":true},
+  disabled: {"label":"Action points","icon":"bolt","tone":"warn","disabled":true,"items":[{"id":"ap-a","value":1}]},
+};

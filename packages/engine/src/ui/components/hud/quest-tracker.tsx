@@ -1,4 +1,4 @@
-import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, t } from "@origingame/engine/ui";
 import "./quest-tracker.en.ogt";
 
 export interface RpgQuestTrackerProps {
@@ -20,17 +20,17 @@ export interface RpgQuestTrackerProps {
  */
 export function RpgQuestTracker(props: RpgQuestTrackerProps) {
   return (
-    <View class={`gap-y-[0.357rem] gap-x-2 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate w-[17.857rem] max-w-full p-2 rounded-block border data-empty:hidden compact:w-full ${packClass("RpgQuestTracker", "frame", "hud")}`} role="status" label={props.label !== '' ? props.label : t("rpg.quests.main")} data-empty={!props.name}>
+    <View class={`gap-y-[0.357rem] gap-x-2 border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate w-[17.857rem] max-w-full p-2 rounded-block border data-empty:hidden compact:w-full`} role="status" label={props.label !== '' ? props.label : t("rpg.quests.main")} data-empty={!props.name}>
       <Show when={props.name}>
-        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-gold whitespace-nowrap text-shadow-xs text-shadow-bg/55 overflow-hidden compact:hidden ${packClass("RpgQuestTracker", "legend")}`}>
+        <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-gold whitespace-nowrap text-shadow-xs text-shadow-bg/55 overflow-hidden compact:hidden`}>
           {props.label !== '' ? props.label : t("rpg.quests.main")}
         </Text>
         <View class="flex-row items-baseline gap-1 compact:hidden">
-          <Text class={`shrink text-[1.214rem] font-semibold whitespace-nowrap text-accent-hover text-shadow-xs text-shadow-bg/55 overflow-hidden ${packClass("RpgQuestTracker", "quest")}`}>
+          <Text class={`shrink text-[1.214rem] font-semibold whitespace-nowrap text-accent-hover text-shadow-xs text-shadow-bg/55 overflow-hidden`}>
             {props.name}
           </Text>
           <Show when={props.distance}>
-            <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-accent-hover py-0 px-1 overflow-hidden ${packClass("RpgQuestTracker", "distance")}`}>
+            <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-accent-hover py-0 px-1 overflow-hidden`}>
               {props.distance}
             </Text>
           </Show>
@@ -38,14 +38,14 @@ export function RpgQuestTracker(props: RpgQuestTrackerProps) {
         <View class="gap-y-[0.286rem] gap-x-2 p-0 m-0">
           <For each={props.steps}>
             {(s, i) => (
-            <View class={`group/step flex-row items-center opacity-66 gap-1 compact:hidden data-current:opacity-100 data-done:opacity-55 compact:data-current:flex ${packClass("RpgQuestTracker", "step")}`} data-done={s.done} data-current={!s.done && (i() === 0 || props.steps[i() - 1]['done'])}>
-              <View class={`rotate-45 shadow-[inset_0px_0px_0px_2.288px_#ffcf5a] mx-[0.143rem] size-2 group-data-done/step:bg-none group-data-done/step:bg-gold ${packClass("RpgQuestTracker", "marker")}`} />
-              <Text class={`shrink text-[0.929rem] font-semibold whitespace-nowrap text-accent-hover text-shadow-xs text-shadow-bg/55 overflow-hidden group-data-done/step:line-through ${packClass("RpgQuestTracker", "text")}`}>
-                {s.text}
+            <View class={`group/step flex-row items-center opacity-66 gap-1 compact:hidden data-current:opacity-100 data-done:opacity-55 compact:data-current:flex`} data-done={s().done} data-current={!s().done && (i() === 0 || props.steps[i() - 1]['done'])}>
+              <View class={`rotate-45 shadow-[inset_0px_0px_0px_2.288px_#ffcf5a] mx-[0.143rem] size-2 group-data-done/step:bg-none group-data-done/step:bg-gold`} />
+              <Text class={`shrink text-[0.929rem] font-semibold whitespace-nowrap text-accent-hover text-shadow-xs text-shadow-bg/55 overflow-hidden group-data-done/step:line-through`}>
+                {s().text}
               </Text>
-              <Show when={s.tag}>
-                <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-accent-hover py-0 px-1 overflow-hidden ${packClass("RpgQuestTracker", "progress")}`}>
-                  {s.tag}
+              <Show when={s().tag}>
+                <Text class={`max-w-[45%] text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-accent-hover py-0 px-1 overflow-hidden`}>
+                  {s().tag}
                 </Text>
               </Show>
             </View>

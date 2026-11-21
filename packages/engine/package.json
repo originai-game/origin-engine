@@ -34,6 +34,10 @@
       "types": "./src/ui/index.ts",
       "default": "./src/ui/index.ts"
     },
+    "./ui/components": {
+      "types": "./src/ui/components/index.tsx",
+      "default": "./src/ui/components/index.tsx"
+    },
     "./ui/rt": {
       "types": "./src/ui/rt.ts",
       "default": "./src/ui/rt.ts"
