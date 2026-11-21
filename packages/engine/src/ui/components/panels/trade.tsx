@@ -4,7 +4,7 @@ import { Spinner } from "../base/spinner";
 import "./economy.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;
 
 /** An item's socket: its ground tinted by its rarity, the icon over it. */
 const socket =
@@ -79,29 +79,29 @@ export function RpgTrade(props: RpgTradeProps) {
           </Text>
         </View>
         <View
-          class="shrink flex-row items-center min-h-11 bg-tile-pressed shadow-[inset_0px_0px_0px_1px_#4e586c] p-0.5 gap-0.5 rounded-control"
+          class="shrink flex-row items-center min-h-11 bg-tile-pressed inset-ring-1 inset-ring-rim p-0.5 gap-0.5 rounded-control"
           role="switch"
           checked={selling()}
           label={selling() ? t("rpg.trade.toBuy") : t("rpg.trade.toSell")}
           disabled={locked()}
           onPress={(e) => props.onSwitchMode?.(e)}
         >
-          <Text class="text-fg-muted py-1 px-2 rounded-control data-on:text-fg data-on:bg-raised-hi data-on:shadow-[inset_0px_1px_0px_#ffffff33]" data-on={!selling()}>
+          <Text class="text-fg-muted py-1 px-2 rounded-control data-on:text-fg data-on:bg-raised-hi data-on:inset-shadow-lit" data-on={!selling()}>
             {t("rpg.trade.buy")}
           </Text>
-          <Text class="text-fg-muted py-1 px-2 rounded-control data-on:text-fg data-on:bg-raised-hi data-on:shadow-[inset_0px_1px_0px_#ffffff33]" data-on={selling()}>
+          <Text class="text-fg-muted py-1 px-2 rounded-control data-on:text-fg data-on:bg-raised-hi data-on:inset-shadow-lit" data-on={selling()}>
             {t("rpg.trade.sell")}
           </Text>
         </View>
         <Show when={props.wallet}>
-          <View class="shrink flex-row items-center text-fg pr-2 pl-0.5 bg-tile-pressed shadow-[inset_0px_0px_0px_1px_#4e586c] font-bold py-0.5 gap-1 rounded-capsule">
+          <View class="shrink flex-row items-center text-fg pr-2 pl-0.5 bg-tile-pressed inset-ring-1 inset-ring-rim font-bold py-0.5 gap-1 rounded-capsule">
             <View class="shrink-0 bg-gold rounded-capsule size-5.5" />
             <Text class="whitespace-nowrap tabular-nums">{props.wallet}</Text>
           </View>
         </Show>
       </View>
       <Show when={props.error}>
-        <Text class="text-danger shadow-[inset_3px_0px_0px_#ff9599] py-1 px-2 m-0" role="alert">
+        <Text class="text-danger inset-shadow-bar inset-shadow-danger py-1 px-2 m-0" role="alert">
           {props.error}
         </Text>
       </Show>

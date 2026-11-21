@@ -77,7 +77,7 @@ export function RpgConversation(props: RpgConversationProps) {
   });
   return (
     <View class={`nine-plate-cut bg-plate-hi text-fg flex-row grow shrink basis-0 flex-wrap overflow-y-auto p-4 gap-4 disabled:text-fg-subtle ${packClass("Plate", "frame")}`} label={props.speaker ? props.speaker : t("rpg.talk.narration")}>
-      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-gold/50 to-transparent pointer-events-none" />
+      <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-gold to-transparent pointer-events-none" />
       <Show when={props.portrait}>
         <Image class="w-40 object-cover object-top compact:size-24 shrink-0" src={props.portrait} />
       </Show>
@@ -123,7 +123,7 @@ export function RpgConversation(props: RpgConversationProps) {
                     {t("rpg.talk.number", { number: r().number })}
                   </Text>
                   <Text class="grow shrink basis-0 text-start">{r().text}</Text>
-                  <View class="rotate-45 bg-gold shadow-[0px_0px_0px_3.424px_#ffcf5a38,0px_0px_11.424px_#ffcf5ab2] size-2 shrink-0 invisible group-data-selected/row:visible" />
+                  <View class="rotate-45 bg-gold shadow-glow shadow-gold ring-3 ring-glow size-2 shrink-0 invisible group-data-selected/row:visible" />
                 </View>
               </View>
             </View>

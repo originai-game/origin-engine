@@ -1,4 +1,4 @@
-import { For, Icon, Line, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Line, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import "./breadcrumbs.en.ogt";
 
 export interface BreadcrumbsProps {
@@ -20,7 +20,7 @@ export interface BreadcrumbsProps {
  */
 export function Breadcrumbs(props: BreadcrumbsProps) {
   return (
-    <View class={`text-fg p-0`} role="navigation" label={props.label || t("component.breadcrumbs.name")}>
+    <View class={`text-fg py-1 px-2 nine-plate-cut ${packClass("Plate", "frame")}`} role="navigation" label={props.label || t("component.breadcrumbs.name")}>
       <View class="flex-row flex-wrap items-center gap-y-0 gap-x-1 p-0 m-0" role="list">
         <For each={props.items} key={(crumb) => crumb.id}>
           {(crumb) => (

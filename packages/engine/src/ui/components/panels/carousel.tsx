@@ -36,11 +36,11 @@ export function Carousel(props: CarouselProps) {
         </Show>
         <For each={props.pages} key={(page) => page.id}>
           {(page, i) => (
-          <View class={`shrink-0 w-full min-w-0 gap-1 p-0 border border-transparent data-selected:border-hud-accent rounded-[6.864px] data-selected:opacity-100 opacity-80`} data-selected={i() === props.index}>
+          <View class={`shrink-0 w-full min-w-0 gap-1 p-0 border border-transparent data-selected:border-hud-accent rounded-field data-selected:opacity-100 opacity-80`} data-selected={i() === props.index}>
             <Show when={page().image} fallback={
-                <View class={`bg-tile shadow-sunk w-full h-32 rounded-[6.864px]`} />
+                <View class={`bg-tile shadow-sunk w-full h-32 rounded-field`} />
             }>
-              <Image class={`object-cover w-full h-32 rounded-[6.864px]`} src={page().image} />
+              <Image class={`object-cover w-full h-32 rounded-field`} src={page().image} />
             </Show>
             <Show when={page().title}>
               <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
@@ -63,11 +63,11 @@ export function Carousel(props: CarouselProps) {
         <View class="relative flex-row items-center grow shrink justify-center gap-1">
           <For each={props.pages} key={(page) => page.id}>
             {() => (
-            <View class={`bg-fg/22 w-4 h-0.5 shrink-0`} />
+            <View class={`bg-fg-subtle w-4 h-0.5 shrink-0`} />
             )}
           </For>
           <Show when={props.pages.length}>
-            <View class={`bg-hud-accent absolute top-0 w-4 h-0.5 shadow-[0px_0px_6.864px_#38e8ff] transition-colors duration-200`} style={{ left: `calc(50% + ${(props.index * 20 - props.pages.length * 10 + 2).toFixed(1)}px)` }} />
+            <View class={`bg-hud-accent absolute top-0 w-4 h-0.5 shadow-glow-sm transition-colors duration-200`} style={{ left: `calc(50% + ${(props.index * 20 - props.pages.length * 10 + 2).toFixed(1)}px)` }} />
           </Show>
         </View>
         <View class={`flex-row gap-1 p-0 size-11 shrink-0 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("component.carousel.next")} disabled={props.pages.length < 2} onPress={(e) => props.onNext?.(e)}>

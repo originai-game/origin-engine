@@ -42,7 +42,7 @@ export function Chart(props: ChartProps) {
             )}
           </For>
         </View>
-        <View class="relative grow min-w-0 border-l border-white/20">
+        <View class="relative grow min-w-0 border-l border-rim">
           <For each={props.ticks ?? []} key={(k) => k.id}>
             {(k) => (
               <View class="absolute inset-x-0 h-px bg-lit" style={{ bottom: `${k().at * 100}%` }} />
@@ -53,7 +53,7 @@ export function Chart(props: ChartProps) {
               {(b) => (
                 <View class="grow basis-0 h-full justify-end px-1" label={`${b().label} ${formatNumber(b().value)}`}>
                   <View
-                    class="w-full -skew-x-6 bg-linear-to-b from-hud-accent-hi to-hud-accent/70 data-tone-danger:from-danger data-tone-danger:to-danger/70 data-tone-success:from-success data-tone-success:to-success/70 data-tone-warn:from-warn data-tone-warn:to-warn/70 data-tone-info:from-info data-tone-info:to-info/70 data-tone-gold:from-gold-hi data-tone-gold:to-gold/70"
+                    class="w-full -skew-x-6 bg-linear-to-b from-hud-accent-hi to-hud-accent data-tone-danger:from-danger data-tone-danger:to-danger data-tone-success:from-success data-tone-success:to-success data-tone-warn:from-warn data-tone-warn:to-warn data-tone-info:from-info data-tone-info:to-info data-tone-gold:from-gold-hi data-tone-gold:to-gold"
                     style={{ height: `${Math.min(Math.max(b().value / max(), 0), 1) * 100}%` }}
                     data-tone-danger={b().tone === "danger"}
                     data-tone-success={b().tone === "success"}

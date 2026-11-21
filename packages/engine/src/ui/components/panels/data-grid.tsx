@@ -42,7 +42,7 @@ export interface DataGridProps {
 export function DataGrid(props: DataGridProps) {
   return (
     <View class={`nine-panel-cut bg-plate-hi text-fg w-full p-0 gap-0 ${packClass("Panel", "frame")}`} role="grid" label={props.label} busy={props.loading}>
-      <View class={`min-h-8 border-b border-white/8 grid gap-x-3 w-full py-2 px-3 compact:flex compact:gap-x-3 compact:flex-wrap compact:gap-y-0.5 compact:items-baseline`} role="row" style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
+      <View class={`min-h-8 border-b border-rim-soft grid gap-x-3 w-full py-2 px-3 compact:flex compact:gap-x-3 compact:flex-wrap compact:gap-y-0.5 compact:items-baseline`} role="row" style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
         <For each={props.columns} key={(c) => c.id}>
           {(c, i) => (
           <Text class={`font-semibold text-xs leading-4.5 text-fg-muted whitespace-nowrap tracking-label uppercase data-numeric:text-end compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-auto compact:order-3 compact:data-first:whitespace-normal compact:data-first:grow compact:data-first:shrink compact:data-first:basis-0 compact:data-first:order-0 compact:data-first:min-w-0 compact:data-last:order-1 compact:data-middle:hidden`} role="columnheader" data-numeric={c().numeric} data-first={i() === 0} data-last={i() === props.columns.length - 1} data-middle={i() > 0 && i() < props.columns.length - 1}>
@@ -77,7 +77,7 @@ export function DataGrid(props: DataGridProps) {
                   </View>
               }>
                 <View class={`w-full items-center p-6 gap-3`} role="status">
-                  <View class={`grow shrink basis-0 bg-well/71 shadow-[inset_0px_0px_0px_1px_#ffffff1a] justify-center items-center gap-3 size-16 rounded-capsule`}>
+                  <View class={`grow shrink basis-0 bg-well inset-ring-1 inset-ring-rim-soft justify-center items-center gap-3 size-16 rounded-capsule`}>
                     <Icon class="size-4" name="bag" />
                   </View>
                   <Text class={`font-semibold text-lg text-fg text-center w-full m-0`}>
@@ -92,7 +92,7 @@ export function DataGrid(props: DataGridProps) {
               </Show>
           }>
             <View class={`w-full items-center p-6 gap-3`} role="alert" label={props.error}>
-              <View class={`grow shrink basis-0 bg-danger/6 shadow-[inset_0px_0px_0px_1.5px_#ff9599] justify-center items-center gap-3 size-16 rounded-capsule`}>
+              <View class={`grow shrink basis-0 bg-danger inset-ring-2 inset-ring-danger justify-center items-center gap-3 size-16 rounded-capsule`}>
                 <Icon class="text-danger" name="close" />
               </View>
               <Text class={`font-semibold text-lg text-fg text-center w-full m-0`}>
@@ -105,22 +105,22 @@ export function DataGrid(props: DataGridProps) {
           </Show>
       }>
         <View class="p-0 gap-0" role="status" label={t("component.data-grid.loading")}>
-          <View class="w-full border-b border-white/8 py-2 px-3">
+          <View class="w-full border-b border-rim-soft py-2 px-3">
             <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
               <View class={`absolute left-0 w-2/5 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 animate-shimmer`} />
             </View>
           </View>
-          <View class="w-full border-b border-white/8 py-2 px-3">
+          <View class="w-full border-b border-rim-soft py-2 px-3">
             <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
               <View class={`absolute left-0 w-2/5 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 animate-shimmer`} />
             </View>
           </View>
-          <View class="w-full border-b border-white/8 py-2 px-3">
+          <View class="w-full border-b border-rim-soft py-2 px-3">
             <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
               <View class={`absolute left-0 w-2/5 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 animate-shimmer`} />
             </View>
           </View>
-          <View class="w-full border-b border-white/8 py-2 px-3">
+          <View class="w-full border-b border-rim-soft py-2 px-3">
             <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
               <View class={`absolute left-0 w-2/5 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 animate-shimmer`} />
             </View>

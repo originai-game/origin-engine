@@ -3,7 +3,7 @@ import type { Texture } from "@origingame/engine";
 import "./tooltip-card.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;
 
 /** One stat row of either card: its words left, its figure right, a hairline rule under all but the last. */
 const statRow =
@@ -55,7 +55,7 @@ export function TooltipCard(props: TooltipCardProps) {
   return (
     <View class="flex-row flex-wrap items-start max-w-full text-fg gap-2 compact:flex-col-reverse compact:flex-nowrap compact:items-stretch" role="tooltip" label={props.title} description={props.body}>
       <Show when={props.compareTitle !== ""}>
-        <View class={`bg-linear-to-b from-raised-pressed to-plate-lo shadow-[inset_0px_0px_0px_1px_#ffffff1f,inset_0px_1px_0px_#ffffff66] text-fg w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
+        <View class={`bg-linear-to-b from-raised-pressed to-plate-lo inset-shadow-lit inset-ring-1 inset-ring-rim text-fg w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
           <Text class="font-semibold text-xs leading-snug text-fg-subtle tracking-label uppercase">
             {props.compareTitle}
           </Text>
@@ -103,7 +103,7 @@ export function TooltipCard(props: TooltipCardProps) {
             </View>
           </Show>
           <View class="grow shrink basis-0 gap-0.5">
-            <Text class="font-display text-[1.357rem] font-bold leading-snug m-0">
+            <Text class="font-display text-lg font-bold leading-snug m-0">
               {props.title}
             </Text>
             <Show when={props.subtitle}>
@@ -157,7 +157,7 @@ export function TooltipCard(props: TooltipCardProps) {
                       </View>
                     </Show>
                   }>
-                    <Text class={`font-bold text-[10px] leading-snug text-success tracking-label whitespace-nowrap bg-well py-0.5 px-1 group-data-change-removed/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
+                    <Text class={`font-bold text-2xs leading-snug text-success tracking-label whitespace-nowrap bg-well py-0.5 px-1 group-data-change-removed/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
                       {s().change === "added" ? t("tooltip.change.added") : t("tooltip.change.removed")}
                     </Text>
                   </Show>

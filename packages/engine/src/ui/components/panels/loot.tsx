@@ -4,7 +4,7 @@ import { Spinner } from "../base/spinner";
 import "./economy.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;
 
 /** An item's socket: its ground tinted by its rarity, the icon over it. */
 const socket =
@@ -67,7 +67,7 @@ export function RpgLoot(props: RpgLootProps) {
         </Text>
       </View>
       <Show when={props.error}>
-        <Text class="text-danger shadow-[inset_3px_0px_0px_#ff9599] py-1 px-2 m-0" role="alert">
+        <Text class="text-danger inset-shadow-bar inset-shadow-danger py-1 px-2 m-0" role="alert">
           {props.error}
         </Text>
       </Show>

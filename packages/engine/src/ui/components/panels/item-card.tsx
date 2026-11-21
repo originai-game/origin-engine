@@ -4,7 +4,7 @@ import { Button } from "../../controls/button";
 import "./item-card.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
-const keyCap = `shrink-0 pointer-coarse:hidden text-[1.5rem] leading-none`;
+const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;
 
 /** A change chip: the delta in the trend's colour with its triangle; plain (no trend) it is muted type with no ground. */
 const deltaChip =
@@ -94,7 +94,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
                 {props.kind}
               </Text>
             </Show>
-            <Text class="text-fg text-shadow-xs text-shadow-border-strong/35 group-data-tier-uncommon/card:text-uncommon group-data-tier-uncommon/card:text-shadow-uncommon/35 group-data-tier-rare/card:text-rare group-data-tier-rare/card:text-shadow-rare/35 group-data-tier-epic/card:text-epic group-data-tier-epic/card:text-shadow-epic/35 group-data-tier-legendary/card:text-legendary group-data-tier-legendary/card:text-shadow-legendary/35 group-data-tier-mythic/card:text-mythic group-data-tier-mythic/card:text-shadow-mythic/35 text-xl m-0 compact:line-clamp-2 compact:overflow-hidden" label={props.name}>
+            <Text class="text-fg text-shadow-xs text-shadow-border-strong group-data-tier-uncommon/card:text-uncommon group-data-tier-uncommon/card:text-shadow-uncommon group-data-tier-rare/card:text-rare group-data-tier-rare/card:text-shadow-rare group-data-tier-epic/card:text-epic group-data-tier-epic/card:text-shadow-epic group-data-tier-legendary/card:text-legendary group-data-tier-legendary/card:text-shadow-legendary group-data-tier-mythic/card:text-mythic group-data-tier-mythic/card:text-shadow-mythic text-xl m-0 compact:line-clamp-2 compact:overflow-hidden" label={props.name}>
               {props.name}
             </Text>
             <Show when={props.line}>
@@ -177,7 +177,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
           </View>
         </Show>
         <Show when={props.lore}>
-          <View class="pl-2 border-l-[1.5px] border-border-strong gap-2 compact:hidden group-data-tier-uncommon/card:border-uncommon group-data-tier-rare/card:border-rare group-data-tier-epic/card:border-epic group-data-tier-legendary/card:border-legendary group-data-tier-mythic/card:border-mythic">
+          <View class="pl-2 border-l-2 border-border-strong gap-2 compact:hidden group-data-tier-uncommon/card:border-uncommon group-data-tier-rare/card:border-rare group-data-tier-epic/card:border-epic group-data-tier-legendary/card:border-legendary group-data-tier-mythic/card:border-mythic">
             <Text class="text-caption text-fg-muted italic m-0">
               {props.lore}
             </Text>
