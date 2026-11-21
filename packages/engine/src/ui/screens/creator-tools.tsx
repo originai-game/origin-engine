@@ -39,7 +39,7 @@ export interface CreatorToolsScreenProps {
  */
 export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
   return (
-    <View class="text-accent-hover">
+    <View class="text-fg">
       <View class={`border-rim bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg flex-wrap items-center p-2 gap-2 border disabled:text-fg-subtle`} role="toolbar">
         <Button class="bg-[#04060c9e] shadow-[inset_0px_0px_0px_1px_#ffffff1a] h-7 font-semibold tracking-[0.14em] uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-[#38e8ff33] data-selection-on:border-transparent data-selection-on:shadow-[inset_0px_-2px_0px_#38e8ff,inset_0px_0px_0px_1px_#ffffff1a] data-selection-off:border-transparent shrink" data-selection-off={props.tool !== "select"} data-selection-on={props.tool === "select"}>
           <Text>{t("screen.creator-tools.select")}</Text>
@@ -68,7 +68,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
       </View>
       <View class="grow shrink basis-0 grid grid-cols-[280px_1fr_360px] grid-rows-[1fr_200px] narrow:grid-cols-[minmax(0,1fr)] narrow:grid-rows-[minmax(0,2fr)_auto_minmax(280px,3fr)]">
         <View class={`border-rim bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c,inset_-1.5px_0px_0px_#38e8ff59] text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex`} data-chosen={props.panel === 'hierarchy'}>
-          <Text class={`tracking-[0.14em] uppercase text-accent-hover/50 text-[0.857rem] font-semibold m-0`}>
+          <Text class={`tracking-[0.14em] uppercase text-fg/50 text-[0.857rem] font-semibold m-0`}>
             {t("screen.creator-tools.hierarchy")}
           </Text>
           <View class="grow shrink basis-0">{props.treePanelHierarchy?.()}</View>
@@ -86,7 +86,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
           </Button>
         </Scroll>
         <View class={`border-rim bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c,inset_1.5px_0px_0px_#38e8ff59] text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex`} data-chosen={props.panel === 'inspector'}>
-          <Text class={`font-display text-[1.143rem] font-bold leading-tight tracking-[-0.01em] text-accent-hover line-clamp-1 text-ellipsis m-0`}>
+          <Text class={`font-display text-[1.143rem] font-bold leading-tight tracking-[-0.01em] text-fg line-clamp-1 text-ellipsis m-0`}>
             {props.selected}
           </Text>
           <Scroll class="grow shrink basis-0">
@@ -94,7 +94,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
           </Scroll>
         </View>
         <View class={`border-rim bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex`} data-chosen={props.panel === 'catalogue'}>
-          <Text class={`tracking-[0.14em] uppercase text-accent-hover/50 text-[0.857rem] font-semibold m-0`}>
+          <Text class={`tracking-[0.14em] uppercase text-fg/50 text-[0.857rem] font-semibold m-0`}>
             {t("screen.creator-tools.catalogue")}
           </Text>
           <View class="grow shrink basis-0">{props.cataloguePanelCatalogue?.()}</View>

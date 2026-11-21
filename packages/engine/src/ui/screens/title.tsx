@@ -22,7 +22,7 @@ export interface TitleScreenProps {
 
 export function TitleScreen(props: TitleScreenProps) {
   return (
-    <View class={`text-accent-hover p-0 overflow-hidden`} onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
+    <View class={`text-fg p-0 overflow-hidden`} onPress={(e) => props.onStart?.(e)} onAction={{ confirm: (e) => props.onStart?.(e) }}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
@@ -46,8 +46,8 @@ export function TitleScreen(props: TitleScreenProps) {
           </View>
           <Text class={`basis-[8.571rem] h-px bg-linear-to-r from-transparent to-[#38e8ffe5] shadow-[0px_0px_11.424px_#38e8ff] -scale-x-100 scale-y-100 compact:basis-[2.286rem]`} />
         </View>
-        <Text class="row-[5] text-[0.857rem] tracking-sm text-accent-hover/56 text-center m-0">{props.legal}</Text>
-        <Text class="row-[6] justify-self-end text-[0.857rem] tabular-nums text-accent-hover/56 m-0 compact:justify-self-center">
+        <Text class="row-[5] text-[0.857rem] tracking-sm text-fg/56 text-center m-0">{props.legal}</Text>
+        <Text class="row-[6] justify-self-end text-[0.857rem] tabular-nums text-fg/56 m-0 compact:justify-self-center">
           {props.version}
         </Text>
       </View>

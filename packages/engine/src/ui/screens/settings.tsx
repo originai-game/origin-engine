@@ -35,10 +35,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
   const listening = createSignal("");
   const openChoice = createSignal("");
   return (
-    <View class={`pt-8 pb-6 text-accent-hover gap-y-4 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
+    <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
       <View class={`absolute bg-linear-to-b from-[#03060ee5] via-[#03060ed1] via-40% to-[#03060ef0] inset-0`} />
       <View class={`min-h-12 border-b border-rim-soft items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
-        <Button class="text-accent-hover/74 compact:-ml-2 shrink" onPress={(e) => props.onBack?.(e)}>
+        <Button class="text-fg/74 compact:-ml-2 shrink" onPress={(e) => props.onBack?.(e)}>
           <View class="items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
@@ -57,7 +57,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       </View>
       <View class="grow shrink basis-0 gap-y-4">
         <Show when={props.page}>
-          <View class={`items-center gap-x-3 border-b border-accent-hover/14`} role="tablist">
+          <View class={`items-center gap-x-3 border-b border-white/14`} role="tablist">
             <Text class="flex-none pointer-coarse:hidden" glyph="tabPrev" />
             <Scroll class="grow shrink gap-x-6 py-0.5 px-4 compact:gap-x-4 compact:-mx-4">
               <For each={props.pages}>
@@ -90,7 +90,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 <Show when={entry().page === props.page}>
                   <View class={`group/row bg-linear-to-r from-[#151d2eb8] to-[#0b101c80] text-fg transition duration-317 shadow-[inset_0px_0px_0px_1px_#ffffff12] hover:bg-transparent hover:bg-linear-to-r hover:from-[#38e8ff3d] hover:via-[#38e8ff14] hover:via-55% hover:to-[#38e8ff08] hover:shadow-[inset_3.424px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e] data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} label={entry().description}>
                     <Show when={entry().kind === "toggle"}>
-                      <View class="group/switch min-h-16 text-[1.286rem] grow shrink text-accent-hover/74 py-1 px-4 compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-accent-hover" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
+                      <View class="group/switch min-h-16 text-[1.286rem] grow shrink text-fg/74 py-1 px-4 compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg" role="switch" tabIndex={0} checked={entry().value === true} label={entry().name} data-checked={entry().value === true} onPress={(e) => props.onChange?.(e, entry().id, !(entry().value === true))}>
                         <Text>{entry().name}</Text>
                         <View class="ml-auto relative h-4 w-7 rounded-capsule bg-tile shadow-[inset_0px_0px_0px_1px_#4e586c]">
                           <View class="absolute top-0.5 left-0.5 size-3 rounded-capsule bg-fg-muted transition-transform duration-200 ease-out group-data-checked/switch:translate-x-3 group-data-checked/switch:bg-accent" />
@@ -99,7 +99,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                     </Show>
                     <Show when={entry().kind === "range"}>
                       <View class="grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-[1.286rem] py-1 px-4 compact:grid-cols-[minmax(0,1fr)] compact:items-stretch compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3">
-                        <Text class="grow shrink text-accent-hover/74 m-0 group-hover/row:text-accent-hover">
+                        <Text class="grow shrink text-fg/74 m-0 group-hover/row:text-fg">
                           {entry().name}
                         </Text>
                         <View
@@ -126,7 +126,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                     </Show>
                     <Show when={entry().kind === "select"}>
                       <View class="grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-[1.286rem] py-1 px-4 compact:grid-cols-[minmax(0,1fr)] compact:items-stretch compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3">
-                        <Text class="grow shrink text-accent-hover/74 m-0 group-hover/row:text-accent-hover">
+                        <Text class="grow shrink text-fg/74 m-0 group-hover/row:text-fg">
                           {entry().name}
                         </Text>
                         <View class="flex-col gap-1 min-w-0">
@@ -165,7 +165,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       </View>
                     </Show>
                     <Show when={entry().kind === "binding"}>
-                      <View class={`grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-[1.286rem] py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-accent-hover data-listening:text-accent data-listening:bg-[#38e8ff14]`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => listening.set(listening() === entry().id ? "" : entry().id)} onKey={(e) => {
+                      <View class={`grid grid-cols-[minmax(182.9px,1fr)_minmax(0,365.7px)] items-center gap-x-6 min-h-16 text-[1.286rem] py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-[1.143rem] compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:text-accent data-listening:bg-[#38e8ff14]`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => listening.set(listening() === entry().id ? "" : entry().id)} onKey={(e) => {
                         if (listening() !== entry().id) return;
                         if (e.key === "Escape") {
                           listening.set("");
@@ -174,7 +174,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                         props.onRebind?.(e, entry().id, e.key);
                         listening.set("");
                       }}>
-                        <Text class="grow shrink text-accent-hover/74 m-0 group-hover/row:text-accent-hover">
+                        <Text class="grow shrink text-fg/74 m-0 group-hover/row:text-fg">
                           {entry().name}
                         </Text>
                         <Show when={listening() === entry().id} fallback={<Text class="justify-self-end" glyph={entry().action} />}>
@@ -196,7 +196,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <Button class="mr-auto compact:mr-0 compact:col-span-full compact:justify-self-start compact:-ml-2 shrink" onPress={(e) => props.onDefaults?.(e)}>
               <Text>{t("screen.settings.defaults")}</Text>
             </Button>
-            <Button class="text-accent-hover bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-[11.429rem] h-9 disabled:border-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent hover:shadow-[inset_0px_2px_0px_#38e8ff] compact:min-w-0 data-pressed:hover:border-transparent shrink" onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
+            <Button class="text-fg bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_1px_0px_#ffffff73] rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-[11.429rem] h-9 disabled:border-transparent active:border-transparent hover:bg-linear-to-b hover:from-[#171f30d6] hover:to-[#080c16e0] hover:bg-transparent hover:border-transparent hover:shadow-[inset_0px_2px_0px_#38e8ff] compact:min-w-0 data-pressed:hover:border-transparent shrink" onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
               <Text>{t("screen.settings.revert")}</Text>
             </Button>
             <Button class="text-accent rounded-tl-[18.288px] rounded-tr-none rounded-br-[18.288px] rounded-bl-none min-w-[11.429rem] h-9 compact:min-w-0 shrink" disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>

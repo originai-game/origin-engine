@@ -16,11 +16,11 @@ export interface TableProps {
  */
 export function Table(props: TableProps) {
   return (
-    <View class={`rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-accent-hover w-full p-0`} role="table" label={props.label}>
+    <View class={`rounded-tl-[13.712px] rounded-tr-none rounded-br-[13.712px] rounded-bl-none bg-linear-to-b from-[#171f30d6] to-[#080c16e0] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] text-fg w-full p-0`} role="table" label={props.label}>
       <View class={`min-h-12 border-b border-material-edge grid grid-cols-[2fr_1fr_1fr] w-full p-2`} role="row">
         <For each={props.columns}>
           {(c, i) => (
-          <Text class={`tracking-[0.14em] uppercase text-accent-hover/50 text-[0.857rem] font-semibold px-2 m-0 data-end:text-end`} role="columnheader" data-end={i() > 0}>
+          <Text class={`tracking-[0.14em] uppercase text-fg/50 text-[0.857rem] font-semibold px-2 m-0 data-end:text-end`} role="columnheader" data-end={i() > 0}>
             {c().label}
           </Text>
           )}
