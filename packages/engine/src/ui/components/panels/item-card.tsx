@@ -191,7 +191,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
           </Show>
           <View class="flex-row items-center w-full gap-1">
             <Show when={props.primary}>
-              <Button variant="primary" class={`grow-1.4 shrink basis-0 min-h-[3.614rem] gap-1 compact:min-h-11 ${packClass("Button", "plate", "primary")}`} disabled={!props.canPrimary} label={props.primary} onPress={(e) => props.onEquip?.(e)}>
+              <Button variant="primary" class={`grow-[1.4] shrink basis-0 min-h-[3.614rem] gap-1 compact:min-h-11 ${packClass("Button", "plate", "primary")}`} disabled={!props.canPrimary} label={props.primary} onPress={(e) => props.onEquip?.(e)}>
                 <Text glyph="details" class={keyCap} />
                 <Text>{props.primary}</Text>
               </Button>

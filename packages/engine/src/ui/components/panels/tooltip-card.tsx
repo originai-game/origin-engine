@@ -86,7 +86,7 @@ export function TooltipCard(props: TooltipCardProps) {
         data-mythic={tier() === "mythic"}
       >
         <Show when={tiered()}>
-          <View class="absolute inset-0 bg-linear-to-b from-current to-transparent to-[90px] opacity-16 pointer-events-none" />
+          <View class="absolute inset-x-0 top-0 h-[90px] bg-linear-to-b from-current to-transparent opacity-16 pointer-events-none" />
           <View class="absolute left-0 right-0 top-0 h-[2px] bg-current pointer-events-none" />
         </Show>
         <View class="relative flex-row items-center gap-y-2 gap-x-3 w-full">

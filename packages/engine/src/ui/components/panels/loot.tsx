@@ -142,7 +142,7 @@ export function RpgLoot(props: RpgLootProps) {
           <Text glyph="back" class={keyCap} />
           <Text>{t("rpg.economy.close")}</Text>
         </Button>
-        <Button variant="primary" class={`grow-1.4 shrink basis-0 min-h-11 gap-1 ${packClass("Button", "plate", "primary")}`} disabled={!items().length || !props.canTakeAll || loading() || busy()} onPress={(e) => props.onTakeAll?.(e)}>
+        <Button variant="primary" class={`grow-[1.4] shrink basis-0 min-h-11 gap-1 ${packClass("Button", "plate", "primary")}`} disabled={!items().length || !props.canTakeAll || loading() || busy()} onPress={(e) => props.onTakeAll?.(e)}>
           <Text>{t("rpg.loot.all")}</Text>
         </Button>
       </View>
