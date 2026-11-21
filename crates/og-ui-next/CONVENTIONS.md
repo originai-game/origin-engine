@@ -13,6 +13,7 @@ it only together with the owners named below.
 | JSX compile | coordinator, head 2 | `og build`, `og check` |
 | Ops and events | coordinator and the UI thread | the TS renderer (head 2), the arena applier (head 3), input (head 4) |
 | Class vocabulary, Record | coordinator, head 1 | paint (head 5), motion, a11y |
+| Accessibility props and roles | a11y (head 7) | the TS renderer, the arena applier, the web mirror |
 | Theme and packs | coordinator and the looks thread | the cook, the platform's looks |
 
 ## Components
@@ -76,7 +77,7 @@ applied in order before the UI's commit. NSH's `ops.rs` subset:
 | `setText` | `id`, `text` | |
 | `setClass` | `id`, `class` | the class string; resolved once per distinct string |
 | `setStyle` | `id`, `style` | inline declarations as text, over the class record |
-| `setProp` | `id`, `name`, `value` (JSON scalar) | `src`, `name` (icon), `disabled`, `tabIndex`, `value`, `role`, `label`, `data-*` |
+| `setProp` | `id`, `name`, `value` (JSON scalar) | `src`, `name` (icon), `disabled`, `tabIndex`, `value`, `role`, `label`, `data-*`, and the a11y props (§Accessibility) |
 | `listen` | `id`, `event`, `enabled` | which events the node wants |
 | `insert` | `parent`, `child`, `before` (id or null) | |
 | `remove` | `parent`, `child` | detaches |
@@ -87,6 +88,50 @@ answers. `data-*` props are the states a class variant reads
 (`data-ready:` …). The reply to a batch carries the events since the last
 one: `[{ id, event, payload }]`, which the renderer dispatches to handlers
 by id.
+
+## Accessibility
+
+What a node is for a screen reader comes from its tag, these props and
+its listeners; `og-ui-next/src/a11y.rs` builds the AccessKit tree from
+them and the arena's boxes and texts. All are `setProp` names; the value is
+a JSON scalar, and `null` unsets it.
+
+| Prop | Value | Means |
+|---|---|---|
+| `role` | an ARIA role name (below) | what it is, over its tag's role |
+| `label` | string | its name; without one a control is named by the text inside it |
+| `description` | string | read after the name |
+| `value` | string | an input's text |
+| `valueText` | string | a range's value as words |
+| `valueMin`, `valueMax`, `valueNow` | number | a range's bounds and value |
+| `checked` | `true`, `false` or `"mixed"` | a checkbox's, radio's or switch's state |
+| `pressed` | `true`, `false` or `"mixed"` | a toggle button's state |
+| `selected`, `expanded` | bool | an option's or tab's, a disclosure's |
+| `busy`, `current` | bool | loading; the current item of a set |
+| `disabled` | bool | unavailable: no actions |
+| `tabIndex` | number | `>= 0` the keyboard reaches it, `-1` it does not |
+| `level` | 1–6 | a heading's level |
+| `live` | `"polite"`, `"assertive"`, `"off"` | how its changes are announced (`status` and `log` are polite, `alert` assertive) |
+| `modal` | bool | a dialog: while one is shown the tree holds only the topmost and what contains it |
+| `hidden` | bool | left out of the tree with its subtree; it still draws |
+
+Roles: `button` `link` `heading` `image` `text` `checkbox` `radio`
+`switch` `slider` `spinbutton` `textbox` `combobox` `listbox` `option`
+`tab` `tablist` `tabpanel` `radiogroup` `progressbar` `meter` `timer`
+`status` `alert` `log` `dialog` `alertdialog` `tooltip` `separator` `list`
+`listitem` `menu` `menubar` `menuitem` `toolbar` `grid` `row` `gridcell`
+`region` `navigation` `main` `group`, and `none` (left out, its children
+join its parent). Another name is a group.
+
+Without `role`: a `text` node is static text, an `input` a text box, a
+`scroll` a scroll view, an `image`/`icon`/`svg` an image when labelled. A
+`view` listening to `press` or `tap` is a button, a modal one a dialog,
+one the keyboard reaches or that is labelled a group; any other view is a
+plain container, left out with its children joining its parent. Inside a
+button, link, checkbox, radio, switch, tab, option, menu item, heading or
+text, the texts are its name, not nodes. A node whose record is
+`display: none` (`hidden`, the class) is absent, as is an empty text.
+Visual hiding is a class; `hidden` the prop hides from the tree alone.
 
 ## Classes and the Record (head 1)
 

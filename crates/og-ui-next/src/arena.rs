@@ -79,6 +79,9 @@ pub struct Arena {
     /// it was laid out at moves nothing (a clock's next minute).
     retexted: Vec<Id>,
     next_key: u64,
+    /// Counts what moves what the arena shows: a layout that laid out, a
+    /// text that changed.
+    rev: u64,
 }
 
 impl Default for Arena {
@@ -99,6 +102,7 @@ impl Arena {
             touched: Vec::new(),
             retexted: Vec::new(),
             next_key: 0,
+            rev: 0,
         };
         a.push(NONE);
         a
@@ -162,6 +166,27 @@ impl Arena {
         (p != NONE).then_some(p)
     }
 
+    /// An element's children, in order.
+    pub fn children(&self, id: Id) -> &[Id] {
+        &self.nodes[id as usize].children
+    }
+
+    /// A text leaf's text.
+    pub fn text_of(&self, id: Id) -> Option<&str> {
+        self.nodes[id as usize].text.as_ref().map(|(t, _)| &**t)
+    }
+
+    /// Whether it makes a box (its style is not `display: none`).
+    pub fn shown(&self, id: Id) -> bool {
+        self.nodes[id as usize].style.display() != taffy::Display::None
+    }
+
+    /// Counts what moved what the arena shows: each layout that laid
+    /// something out and each text that changed. Equal: nothing did.
+    pub fn rev(&self) -> u64 {
+        self.rev
+    }
+
     /// Sets an element's style; an equal style marks nothing.
     pub fn set_style(&mut self, id: Id, style: CompactStyle) {
         let n = &mut self.nodes[id as usize];
@@ -179,6 +204,7 @@ impl Arena {
         {
             *t = text.into();
             self.dirty = true;
+            self.rev += 1;
             if !self.retexted.contains(&id) {
                 self.retexted.push(id);
             }
@@ -332,6 +358,7 @@ impl Arena {
             },
         );
         self.dirty = false;
+        self.rev += 1;
         true
     }
 

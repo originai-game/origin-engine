@@ -3829,6 +3829,7 @@ dependencies = [
 name = "og-ui-next"
 version = "0.9.0"
 dependencies = [
+ "accesskit",
  "bytemuck",
  "nsh-reactive",
  "nsh-tailwind",

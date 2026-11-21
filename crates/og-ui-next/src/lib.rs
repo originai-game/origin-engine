@@ -4,6 +4,7 @@
 //! dense store; a frame with nothing dirty does no style, layout or paint
 //! work. There is no CSS cascade per element.
 
+pub mod a11y;
 pub mod arena;
 pub mod classes;
 pub mod cooked;
