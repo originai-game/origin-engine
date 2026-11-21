@@ -1280,6 +1280,66 @@
       "visibility": "public"
     },
     {
+      "path": "styles/cartoon/art/button-disabled.png",
+      "sha256": "13ab9de78cd7e008b067e6c70d7723db884bcda92431b439d7c6fc3e8c20a3bb",
+      "size": 15824,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/button-hover.png",
+      "sha256": "6d1803c20ab1c490b483661f7d45d6db41868733a4fb69a40042a1f84d73c19b",
+      "size": 21005,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/button-pressed.png",
+      "sha256": "5030ee96d2ca36a7d1aa0c9a8746235da101386994d4cf1788788065cc2991eb",
+      "size": 18734,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/button-primary-hover.png",
+      "sha256": "aae6eade36f6b6e113ef897f9f38899e8049767ce78d10f491aaeb06c4adaff3",
+      "size": 23156,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/button-primary-pressed.png",
+      "sha256": "0311c1900116d5c8ae174ebb045c9c46f3b98ddb51dfc3b55d057e4345bd5aa8",
+      "size": 23032,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/button-primary.png",
+      "sha256": "c5f2c98534438bebd6872f0aaf8c3b7e9d36f9ce7d51222cf04b037576f89f6c",
+      "size": 24441,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/button.png",
+      "sha256": "ef3055d911c4668e28e2c0d0ca71b0b72225009d27c7923017ee52fbf2d86daf",
+      "size": 20280,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/chip.png",
+      "sha256": "616706ea3fc91ee74ba81744a50de7a69b2b82e2512968d1b10c7851ff1f78f1",
+      "size": 9009,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/panel.png",
+      "sha256": "d839dff07d59b074f806fb33bd6678a24d05ef221ecc4c09060db271af98139f",
+      "size": 24337,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/art/plate.png",
+      "sha256": "4dcb497aae06487d700c00822db78a61011f2864f6680c7bc34280cbaeb2466e",
+      "size": 7795,
+      "visibility": "public"
+    },
+    {
       "path": "styles/cjk/FusionPixel12-zhHans.ttf",
       "sha256": "b336514c53b5f83f60749d4226619414d334333562c4ded994b2e66a23006e8b",
       "size": 1377892,
@@ -1307,6 +1367,12 @@
       "path": "styles/cjk/ZCOOLKuaiLe-Regular.ttf",
       "sha256": "1f93f60673494636225a1f736a147d40dd024a9a10a7a5f1891e2fde70682ef7",
       "size": 759628,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/art/chip.png",
+      "sha256": "442da47779f3b0832d2dfcebb131ad57e19d2da55974961982c993b40f945d7d",
+      "size": 14308,
       "visibility": "public"
     },
     {
@@ -1349,6 +1415,72 @@
       "path": "styles/fantasy/art/ground.png",
       "sha256": "e74804ee3cd61123648d17326011757d0982545ac44a1514a29c8a23bc00d607",
       "size": 894479,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/art/plate.png",
+      "sha256": "3ec2fc43f91d0f353fd01ae2c1fa494416c3010e92f257dbd17944c9e009fb06",
+      "size": 11835,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/button-disabled.png",
+      "sha256": "1c6fa0688983414d0afc909fe8489e237e3ced82bbe044c1ed2cf855076b1bc6",
+      "size": 15090,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/button-hover.png",
+      "sha256": "2794c19a767f6b844329f848ae9192400b111123b67b7cb910ee659d19dfd7dc",
+      "size": 17279,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/button-pressed.png",
+      "sha256": "4a35bb147c8220b1483d613d4840bda9f505bc0875465ab5c19bd3525bc63ec4",
+      "size": 16610,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/button-primary-hover.png",
+      "sha256": "46a9d98e78ff813962ae011ec0292363617f4d2420dc282d01714d2634235bd6",
+      "size": 22691,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/button-primary-pressed.png",
+      "sha256": "816a25e98d07c4e0dbe83ebf75e0f9217e1ca53cac976aad98a85cbba53c4c64",
+      "size": 21337,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/button-primary.png",
+      "sha256": "345024301300bec34f0d1a15e5558fc46aa8dbd4e86bd54c6061930c93a435d3",
+      "size": 22621,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/button.png",
+      "sha256": "58041a31db32fc5290e93d6fa2101bb90dcdc668210c322eaaf3f64ca15c60ce",
+      "size": 17509,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/chip.png",
+      "sha256": "9e006707878786413f41d0657550256859165b6ffb5f097fcc564ac13beff57d",
+      "size": 4048,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/panel.png",
+      "sha256": "b98d9d4290dfb13caf10df55e8d29c28671e6e3e3fb8136c90d63a6b9e89d368",
+      "size": 25943,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/scifi/art/plate.png",
+      "sha256": "12915f979543abceb65116a3db4053fc161fb441f66613792719726c7e3962a6",
+      "size": 19492,
       "visibility": "public"
     },
     {

@@ -71,82 +71,6 @@
       "panel": 4.0
     }
   },
-  "variants": {
-    "Button.plate": "nine-button-iron hover:nine-button-iron-hover active:nine-button-iron-pressed disabled:nine-button-disabled",
-    "Button.plate.primary": "nine-button-red hover:nine-button-red-hover active:nine-button-red-pressed disabled:nine-button-disabled",
-    "Panel.frame": "nine-frame-filigree"
-  },
-  "images": {
-    "frame-filigree": {
-      "src": "art/frame-filigree.png",
-      "slice": 160,
-      "width": 58,
-      "fill": false
-    },
-    "button-iron": {
-      "src": "art/button-iron.svg",
-      "slice": [
-        28,
-        24,
-        28,
-        24
-      ]
-    },
-    "button-iron-hover": {
-      "src": "art/button-iron-hover.svg",
-      "slice": [
-        28,
-        24,
-        28,
-        24
-      ]
-    },
-    "button-iron-pressed": {
-      "src": "art/button-iron-pressed.svg",
-      "slice": [
-        28,
-        24,
-        28,
-        24
-      ]
-    },
-    "button-red": {
-      "src": "art/button-red.svg",
-      "slice": [
-        28,
-        24,
-        28,
-        24
-      ]
-    },
-    "button-red-hover": {
-      "src": "art/button-red-hover.svg",
-      "slice": [
-        28,
-        24,
-        28,
-        24
-      ]
-    },
-    "button-red-pressed": {
-      "src": "art/button-red-pressed.svg",
-      "slice": [
-        28,
-        24,
-        28,
-        24
-      ]
-    },
-    "button-disabled": {
-      "src": "art/button-disabled.svg",
-      "slice": [
-        28,
-        24,
-        28,
-        24
-      ]
-    }
-  },
   "fonts": [
     {
       "family": "Fantasy Display",
@@ -281,6 +205,114 @@
         "@styles/shared/sfx-confirm.ogt"
       ],
       "volume": 0.28
+    }
+  },
+  "variants": {
+    "Button.plate": "nine-button-iron hover:nine-button-iron-hover active:nine-button-iron-pressed disabled:nine-button-disabled",
+    "Button.plate.primary": "nine-button-red hover:nine-button-red-hover active:nine-button-red-pressed disabled:nine-button-disabled",
+    "Panel.frame": "nine-frame-filigree",
+    "Plate.frame": "nine-plate bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none",
+    "Chip.frame": "nine-chip bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none"
+  },
+  "images": {
+    "frame-filigree": {
+      "src": "art/frame-filigree.png",
+      "slice": 160,
+      "width": 58,
+      "fill": false
+    },
+    "button-iron": {
+      "src": "art/button-iron.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-iron-hover": {
+      "src": "art/button-iron-hover.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-iron-pressed": {
+      "src": "art/button-iron-pressed.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-red": {
+      "src": "art/button-red.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-red-hover": {
+      "src": "art/button-red-hover.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-red-pressed": {
+      "src": "art/button-red-pressed.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "button-disabled": {
+      "src": "art/button-disabled.svg",
+      "slice": [
+        28,
+        24,
+        28,
+        24
+      ]
+    },
+    "plate": {
+      "src": "art/plate.png",
+      "slice": [
+        38,
+        36,
+        37,
+        37
+      ],
+      "width": [
+        9.5,
+        9.0,
+        9.2,
+        9.2
+      ]
+    },
+    "chip": {
+      "src": "art/chip.png",
+      "slice": [
+        46,
+        52,
+        46,
+        53
+      ],
+      "width": [
+        6.0,
+        6.8,
+        6.0,
+        6.9
+      ]
     }
   }
 }

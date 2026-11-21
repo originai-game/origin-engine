@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Style pack images",
+      "summary": "The cartoon and scifi packs have painted nine-slice art for their buttons (normal, hover, pressed, disabled, and a primary set), panels, HUD plates and chips: cartoon's glossy navy and gold plates, scifi's chamfered cyan and amber frames. Fantasy gains a gold-rimmed HUD plate and an oxblood ribbon chip beside its filigree and iron and red plates, so every built-in pack dresses `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Plate.frame` and `Chip.frame`. Cartoon's primary label takes the dark `fg-inverse` ink (9.9:1 on its gold)."
+    }
+  ]
+}

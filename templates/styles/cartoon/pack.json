@@ -467,5 +467,164 @@
       "panel": 22.0,
       "sheet": 28.0
     }
+  },
+  "variants": {
+    "Button.plate": "nine-button hover:nine-button-hover active:nine-button-pressed disabled:nine-button-disabled bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none",
+    "Button.plate.primary": "nine-button-primary hover:nine-button-primary-hover active:nine-button-primary-pressed disabled:nine-button-disabled text-fg-inverse bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none",
+    "Panel.frame": "nine-panel bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none",
+    "Plate.frame": "nine-plate bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none",
+    "Chip.frame": "nine-chip bg-transparent hover:bg-transparent active:bg-transparent border-transparent outline-0 shadow-none"
+  },
+  "images": {
+    "button": {
+      "src": "art/button.png",
+      "slice": [
+        68,
+        60,
+        58,
+        61
+      ],
+      "width": [
+        17.0,
+        15.0,
+        14.5,
+        15.2
+      ]
+    },
+    "button-hover": {
+      "src": "art/button-hover.png",
+      "slice": [
+        68,
+        60,
+        58,
+        61
+      ],
+      "width": [
+        17.0,
+        15.0,
+        14.5,
+        15.2
+      ]
+    },
+    "button-pressed": {
+      "src": "art/button-pressed.png",
+      "slice": [
+        68,
+        60,
+        58,
+        61
+      ],
+      "width": [
+        17.0,
+        15.0,
+        14.5,
+        15.2
+      ]
+    },
+    "button-disabled": {
+      "src": "art/button-disabled.png",
+      "slice": [
+        68,
+        60,
+        58,
+        61
+      ],
+      "width": [
+        17.0,
+        15.0,
+        14.5,
+        15.2
+      ]
+    },
+    "button-primary": {
+      "src": "art/button-primary.png",
+      "slice": [
+        70,
+        66,
+        64,
+        67
+      ],
+      "width": [
+        17.5,
+        16.5,
+        16.0,
+        16.8
+      ]
+    },
+    "button-primary-hover": {
+      "src": "art/button-primary-hover.png",
+      "slice": [
+        70,
+        66,
+        64,
+        67
+      ],
+      "width": [
+        17.5,
+        16.5,
+        16.0,
+        16.8
+      ]
+    },
+    "button-primary-pressed": {
+      "src": "art/button-primary-pressed.png",
+      "slice": [
+        70,
+        66,
+        64,
+        67
+      ],
+      "width": [
+        17.5,
+        16.5,
+        16.0,
+        16.8
+      ]
+    },
+    "panel": {
+      "src": "art/panel.png",
+      "slice": [
+        61,
+        55,
+        58,
+        53
+      ],
+      "width": [
+        15.2,
+        13.8,
+        14.5,
+        13.2
+      ]
+    },
+    "plate": {
+      "src": "art/plate.png",
+      "slice": [
+        33,
+        34,
+        34,
+        34
+      ],
+      "width": [
+        8.2,
+        8.5,
+        8.5,
+        8.5
+      ]
+    },
+    "chip": {
+      "src": "art/chip.png",
+      "slice": [
+        46,
+        46,
+        46,
+        47
+      ],
+      "width": [
+        6.0,
+        6.0,
+        6.0,
+        6.1
+      ]
+    }
   }
 }
