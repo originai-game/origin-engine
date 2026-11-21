@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI text",
+      "summary": "og-ui's new core draws a text outline (`-webkit-text-stroke`, its width and colour) under the text's fill, half its width showing outside each glyph, for HUD text over a 3D scene. Stroke under fill is the only order (`paint-order` is accepted and ignored). An outline reaches at most as far as the font's distance field: a font cooked with `px_range` a third of its `em_px` carries a 2 px outline at 16 px."
+    }
+  ]
+}

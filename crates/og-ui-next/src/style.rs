@@ -144,6 +144,9 @@ mod op {
     /// Text decoration: code its lines; `v[0]` thickness (0: auto).
     pub const DECORATION: u8 = 60;
     pub const DECORATION_COLOR: u8 = 61;
+    /// Text outline: `v[0]` its width; its colour [`TEXT_STROKE_COLOR`].
+    pub const TEXT_STROKE: u8 = 62;
+    pub const TEXT_STROKE_COLOR: u8 = 63;
 }
 
 /// A length's kind in a step's code.
@@ -334,6 +337,16 @@ impl Transform {
     }
 }
 
+/// A text's outline (`-webkit-text-stroke`): drawn under its fill, so
+/// `width / 2` shows outside each glyph (`paint-order: stroke fill`, the
+/// only order). 0 width or alpha: none.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TextStroke {
+    /// CSS px, the stroke's full width.
+    pub width: f32,
+    pub color: Rgba,
+}
+
 /// A text's decoration lines.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Decoration {
@@ -430,6 +443,7 @@ pub struct Skin {
     pub backdrop_blur: f32,
     pub text_shadow: Shadow,
     pub decoration: Decoration,
+    pub text_stroke: TextStroke,
     pub opacity: f32,
     /// An SVG shape's fill and stroke paint, and its stroke's width.
     pub paint: Rgba,
@@ -454,6 +468,7 @@ impl Default for Skin {
             backdrop_blur: 0.0,
             text_shadow: Shadow::default(),
             decoration: Decoration::default(),
+            text_stroke: TextStroke::default(),
             opacity: 1.0,
             paint: [0.0, 0.0, 0.0, 1.0],
             stroke: [0.0; 4],
@@ -1002,6 +1017,8 @@ pub(crate) fn fold(r: &mut Record, s: &Step) {
             r.skin.decoration.thickness = a;
         }
         op::DECORATION_COLOR => r.skin.decoration.color = s.v,
+        op::TEXT_STROKE => r.skin.text_stroke.width = a,
+        op::TEXT_STROKE_COLOR => r.skin.text_stroke.color = s.v,
         op::OPACITY => r.skin.opacity = a,
         op::FONT_SIZE => {
             r.font_size = a;
@@ -1761,6 +1778,24 @@ fn expand_value(steps: &mut Vec<Step>, name: &str, v: &str) -> bool {
             c.is_none_or(|c| push(op::DECORATION_COLOR, 0, c))
         }
         "text-decoration-color" => color(v).is_some_and(|c| push(op::DECORATION_COLOR, 0, c)),
+        "-webkit-text-stroke" => {
+            let (mut w, mut c) = (None, None);
+            for word in words(v) {
+                match (px(word), color(word)) {
+                    (Some(x), _) if w.is_none() => w = Some(x),
+                    (_, Some(k)) if c.is_none() => c = Some(k),
+                    _ => return false,
+                }
+            }
+            push(op::TEXT_STROKE, 0, [w.unwrap_or(0.0), 0.0, 0.0, 0.0]);
+            c.is_none_or(|c| push(op::TEXT_STROKE_COLOR, 0, c))
+        }
+        "-webkit-text-stroke-width" => {
+            px(v).is_some_and(|w| push(op::TEXT_STROKE, 0, [w, 0.0, 0.0, 0.0]))
+        }
+        "-webkit-text-stroke-color" => color(v).is_some_and(|c| push(op::TEXT_STROKE_COLOR, 0, c)),
+        // Stroke under fill is the only order drawn.
+        "paint-order" => true,
         "opacity" => v
             .parse()
             .is_ok_and(|x| push(op::OPACITY, 0, [x, 0.0, 0.0, 0.0])),

@@ -1516,6 +1516,20 @@ impl Tree {
                         ..*q
                     }));
                 }
+                // The outline under the fill: each glyph thickened by half
+                // the stroke (its field's reach bounds it, in the shader).
+                let st = s.text_stroke;
+                if st.width > 0.0 && st.color[3] > 0.0 {
+                    let mut c = st.color;
+                    c[3] *= alpha;
+                    p.quads.extend(g.quads.iter().map(|q| PaintQuad {
+                        rect: [q.rect[0] + lx, q.rect[1] + ly, q.rect[2], q.rect[3]],
+                        clip,
+                        color: c,
+                        p: [q.p[0] + 0.5 * st.width, 0.0, 0.0, 0.0],
+                        ..*q
+                    }));
+                }
                 p.quads.extend(g.quads.iter().map(|q| PaintQuad {
                     rect: [q.rect[0] + lx, q.rect[1] + ly, q.rect[2], q.rect[3]],
                     clip,
@@ -2106,6 +2120,48 @@ mod tests {
                 assert_eq!(image.color, [1.0; 4], "its own colours");
             }
         }
+    }
+
+    /// A text's outline paints under its glyphs, each glyph thickened by
+    /// half the stroke, in the stroke's colour.
+    #[test]
+    fn a_text_outline_paints_under_its_glyphs() {
+        let doc = UiDocument::parse(
+            "o.svelte",
+            "<meta name=\"component\" content=\"o\">\n\
+             <span id=\"T\">ab</span>\n\
+             <style>\n#T { -webkit-text-stroke: 3px #ff0000; paint-order: stroke fill; }\n</style>",
+        )
+        .unwrap();
+        let look = Rc::new(Look::load(
+            &[Layer {
+                tokens: crate::look::default_tokens(),
+                surfaces: crate::look::DEFAULT_SURFACES,
+            }],
+            "dark",
+        ));
+        let mut tree = Tree::new(look, [Arc::new(doc)]);
+        tree.resize(200.0, 100.0);
+        tree.mount("o", &[]).unwrap();
+        let fonts = og_ui::Fonts {
+            body: og_ui::UiFont {
+                handle: Some(og_draw::FontHandle::from_index(0)),
+                metrics: og_text::text::FontMetrics::fixed(0.5),
+            },
+            ..Default::default()
+        };
+        tree.frame(&fonts, &IconAtlas::default());
+        let q: Vec<&PaintQuad> = tree
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| q.kind == PaintKind::Glyph as u32)
+            .collect();
+        assert_eq!(q.len(), 4, "two outline glyphs, then two fill glyphs");
+        assert_eq!(q[0].color, [1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(q[0].rect, q[2].rect, "the outline sits on its glyph");
+        assert_eq!(q[0].p[0] - q[2].p[0], 1.5, "half the stroke outside");
+        assert_ne!(q[2].color, q[0].color);
     }
 
     /// A `display: none` element paints nothing, nor does what is under
