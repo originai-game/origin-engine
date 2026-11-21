@@ -1553,14 +1553,17 @@ impl Tree {
             let clip = pclip;
             // What overflows a box that does not show it is cut to it.
             let o = taffy::CoreStyle::overflow(&r.layout);
-            let scroller = self.input.per(e as u32).is_some_and(|p| p.scroller);
+            let scroller = self.scroll_axes(e as u32) != [false; 2];
+            // CSS clips overflow at the padding box: what scrolls or runs
+            // over never covers the box's own border.
+            let [bt, br, bb, bl] = s.border;
             let inner =
                 if scroller || o.x != taffy::Overflow::Visible || o.y != taffy::Overflow::Visible {
                     [
-                        clip[0].max(x),
-                        clip[1].max(y),
-                        clip[2].min(x + b.w),
-                        clip[3].min(y + b.h),
+                        clip[0].max(x + bl),
+                        clip[1].max(y + bt),
+                        clip[2].min(x + b.w - br),
+                        clip[3].min(y + b.h - bb),
                     ]
                 } else {
                     clip

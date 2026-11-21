@@ -985,14 +985,39 @@ impl Tree {
             right = right.max(k.x + k.w);
             bottom = bottom.max(k.y + k.h);
         }
+        let [x, y] = self.scroll_axes(e);
         [
-            (right + b.inset[2] - b.w).max(0.0),
-            (bottom + b.inset[3] - b.h).max(0.0),
+            if x {
+                (right + b.inset[2] - b.w).max(0.0)
+            } else {
+                0.0
+            },
+            if y {
+                (bottom + b.inset[3] - b.h).max(0.0)
+            } else {
+                0.0
+            },
         ]
     }
 
+    /// The axes op element `e` scrolls (x, y): both for a `Scroll`, else
+    /// those its `overflow` is `auto` or `scroll` along, as in CSS.
+    pub(super) fn scroll_axes(&self, e: u32) -> [bool; 2] {
+        let Some(p) = self.input.per(e) else {
+            return [false; 2];
+        };
+        if self.els[e as usize].dead {
+            return [false; 2];
+        }
+        if p.scroller {
+            return [true; 2];
+        }
+        let o = taffy::CoreStyle::overflow(&self.els[e as usize].record.layout);
+        [o.x, o.y].map(|o| o == taffy::Overflow::Scroll)
+    }
+
     fn scroller(&self, e: u32) -> bool {
-        self.input.per(e).is_some_and(|p| p.scroller) && !self.els[e as usize].dead
+        self.scroll_axes(e) != [false; 2]
     }
 
     /// A scroller's axis: horizontal when only its width runs over.

@@ -39,6 +39,8 @@ pub struct Classes {
     variants: std::collections::BTreeMap<String, String>,
     /// The pack's nine-slice images by name, in the scheme ([`nine_slice`]).
     images: std::collections::BTreeMap<String, Slice>,
+    /// A class string it parsed reads the window's exact size.
+    sized: bool,
 }
 
 /// A class string parsed: its Tailwind classes, and the names of its
@@ -83,6 +85,7 @@ impl Classes {
                 lists: FxHashMap::default(),
                 variants: Default::default(),
                 images: Default::default(),
+                sized: false,
             },
             ignored,
         ))
@@ -160,6 +163,7 @@ impl Classes {
                 stand.push_str(&format!("z-[{}] ", nine.len()));
             }
             let list = tailwind::parse(&self.theme, &rest);
+            self.sized |= list.deps() & tailwind::deps::SIZE != 0;
             let nine_list = (!nine.is_empty()).then(|| tailwind::parse(&self.theme, &stand));
             self.lists.insert(
                 classes.into(),
@@ -171,6 +175,13 @@ impl Classes {
             );
         }
         &self.lists[classes]
+    }
+
+    /// Whether a class string it resolved reads the window's exact size
+    /// (`w-screen`, `h-[16vh]`): its records change with every resize, not
+    /// only at a breakpoint.
+    pub fn sized(&self) -> bool {
+        self.sized
     }
 
     /// The classes of `classes` that are no known utility, as written, and
@@ -727,6 +738,55 @@ mod tests {
             (exit.skin.opacity, exit.skin.transform.translate[1]),
             (0.0, 8.0)
         );
+    }
+
+    #[test]
+    fn overflow_classes_set_each_axis_as_css() {
+        use taffy::Overflow::*;
+        let (mut c, _) = Classes::new(None).unwrap();
+        for (class, x, y) in [
+            ("overflow-auto", Scroll, Scroll),
+            ("overflow-hidden", Hidden, Hidden),
+            ("overflow-x-auto", Scroll, Visible),
+            ("overflow-y-scroll", Visible, Scroll),
+            ("overflow-x-hidden overflow-y-auto", Hidden, Scroll),
+            ("overflow-clip", Clip, Clip),
+        ] {
+            let r = c.record(class, &Env::default());
+            let o = taffy::CoreStyle::overflow(&r.layout);
+            assert_eq!((o.x, o.y), (x, y), "{class}");
+        }
+    }
+
+    /// `order-*` is the layout's `order`; CSS math in a size resolves
+    /// against the window, which a change of it resolves again.
+    #[test]
+    fn order_and_css_math_classes_resolve() {
+        let (mut c, _) = Classes::new(None).unwrap();
+        for (class, want) in [
+            ("order-2", 2),
+            ("-order-1", -1),
+            ("order-first", -9999),
+            ("order-[5]", 5),
+        ] {
+            let r = c.record(class, &Env::default());
+            assert_eq!(taffy::CoreStyle::order(&r.layout), want, "{class}");
+        }
+        let size = |c: &mut Classes, class: &str, w: f32, h: f32| {
+            let env = Env {
+                window: [w, h],
+                ..Env::default()
+            };
+            let s = taffy::CoreStyle::size(&c.record(class, &env).layout);
+            (s.width.value(), s.height.value())
+        };
+        let math = "size-[max(4rem,min(8.286rem,16vh))]";
+        // 16vh of 600 is 96: between 4rem and 8.286rem.
+        assert_eq!(size(&mut c, math, 800.0, 600.0), (96.0, 96.0));
+        // 16vh of 200 is 32, under 4rem: the floor, as `size-[4rem]` is.
+        let floor = size(&mut c, "size-[4rem]", 800.0, 200.0);
+        assert!(floor.0 > 32.0);
+        assert_eq!(size(&mut c, math, 800.0, 200.0), floor);
     }
 
     #[test]

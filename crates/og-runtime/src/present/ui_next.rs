@@ -69,7 +69,11 @@ pub(crate) struct Next {
     tree: Option<Tree>,
     /// What the tree's class resolver was made for: the pack, the scheme
     /// (dark), high contrast and the UI box's size class.
-    resolved: Option<(Option<String>, bool, bool, SizeClass)>,
+    /// What the class resolver was made for ([`Next::sized`]).
+    resolved: Option<Resolved>,
+    /// Whether a class the resolver resolved reads the window's exact size
+    /// (`w-screen`, `h-[16vh]`): then every resize resolves again.
+    sized: Rc<std::cell::Cell<bool>>,
     /// The widths the resolver's theme breaks at (CSS px).
     widths: Vec<f32>,
     /// The pack images' texture slots by `src`, and the style they were
@@ -262,6 +266,11 @@ fn pack_layer(engine: u32, id: &str) -> Option<og_ui_next::pack::Layer> {
 /// (an arbitrary `min-[…]:` width is not counted).
 type SizeClass = (u8, bool, bool);
 
+/// What a class resolver was made for: the pack, the dark scheme, high
+/// contrast, the size class, and the window when a class it resolved
+/// reads the window's exact size.
+type Resolved = (Option<String>, bool, bool, SizeClass, Option<[f32; 2]>);
+
 fn size_class(widths: &[f32], [w, h]: [f32; 2]) -> SizeClass {
     (
         widths.iter().filter(|&&x| w >= x).count() as u8,
@@ -280,6 +289,7 @@ fn resolver(
     high_contrast: bool,
     window: [f32; 2],
     slots: &BTreeMap<String, u32>,
+    sized: Rc<std::cell::Cell<bool>>,
 ) -> (Resolve, Vec<f32>) {
     let mut layers = vec![og_ui_next::pack::Layer::default_pack()];
     layers.extend(pack.and_then(|id| pack_layer(engine, id)));
@@ -323,12 +333,15 @@ fn resolver(
     // The tree asks for an entry's state records (motion's `starting:`
     // and `exit:`; the input's); the inline style lies over the classes.
     let resolve: Resolve = Box::new(move |class, style, states, data| {
-        classes.borrow_mut().record_data(
+        let mut c = classes.borrow_mut();
+        let record = c.record_data(
             class,
             style,
             &og_ui_next::classes::Env { states, ..env },
             data,
-        )
+        );
+        sized.set(c.sized());
+        record
     });
     (resolve, widths)
 }
@@ -344,13 +357,13 @@ impl Next {
         // The page's `prefers-contrast: more`, as the host reports it.
         let high = v.high_contrast;
         let at = size_class(&self.widths, window);
-        if self
-            .resolved
-            .as_ref()
-            .is_some_and(|(p, d, h, c)| *p == self.pack && *d == dark && *h == high && *c == at)
-        {
+        let exact = self.sized.get().then_some(window);
+        if self.resolved.as_ref().is_some_and(|(p, d, h, c, w)| {
+            *p == self.pack && *d == dark && *h == high && *c == at && *w == exact
+        }) {
             return;
         }
+        let sized = Rc::new(std::cell::Cell::new(false));
         let (resolve, widths) = resolver(
             engine,
             self.pack.as_deref(),
@@ -358,9 +371,17 @@ impl Next {
             high,
             window,
             &self.images,
+            sized.clone(),
         );
         tree.set_resolver(resolve);
-        self.resolved = Some((self.pack.clone(), dark, high, size_class(&widths, window)));
+        self.sized = sized;
+        self.resolved = Some((
+            self.pack.clone(),
+            dark,
+            high,
+            size_class(&widths, window),
+            exact,
+        ));
         self.widths = widths;
     }
 }
@@ -378,6 +399,7 @@ impl Next {
             section: String::new(),
             tree: None,
             resolved: None,
+            sized: Rc::default(),
             widths: Vec::new(),
             images: BTreeMap::new(),
             images_for: None,
@@ -1258,6 +1280,7 @@ mod tests {
                 false,
                 [1280.0, 720.0],
                 &BTreeMap::new(),
+                Rc::default(),
             );
             let hex = pack.theme(scheme)["colors"]["surface"].as_str().unwrap();
             let want = resolve(&format!("bg-[{hex}]"), "", 0, "").skin.fill;
@@ -1277,6 +1300,7 @@ mod tests {
             true,
             [1280.0, 720.0],
             &BTreeMap::new(),
+            Rc::default(),
         );
         let theme: serde_json::Value =
             serde_json::from_str(&pack.theme_json_high_contrast(Scheme::Dark)).unwrap();
@@ -1292,11 +1316,28 @@ mod tests {
             false,
             [1280.0, 720.0],
             &BTreeMap::new(),
+            Rc::default(),
         );
         assert_ne!(
             resolve("bg-tile", "", 0, "").skin.fill,
             high("bg-tile", "", 0, "").skin.fill
         );
+        // A class that reads the window's exact size says so, for the
+        // resolver to be made again at every resize; a breakpoint does not.
+        let sized = Rc::new(std::cell::Cell::new(false));
+        let (by_size, _) = resolver(
+            u32::MAX,
+            None,
+            true,
+            false,
+            [1280.0, 720.0],
+            &BTreeMap::new(),
+            sized.clone(),
+        );
+        by_size("bg-tile md:p-4", "", 0, "");
+        assert!(!sized.get());
+        by_size("h-[16vh]", "", 0, "");
+        assert!(sized.get());
         let starting = og_ui_next::classes::state::STARTING;
         assert_eq!(
             resolve("opacity-50 starting:opacity-0", "", 0, "")
