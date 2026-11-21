@@ -96,6 +96,13 @@ pub(super) struct Per {
     /// its id (non-empty: a drop target).
     pub drag: Box<str>,
     pub drop: Box<str>,
+    /// `focusGroup`: its focusable descendants are one group for the
+    /// arrows and the d-pad (`Some(true)` wraps at its edge, `Some(false)`
+    /// stops: the move leaves it); `focusMemory`: focus coming into it
+    /// lands on `last`, the member it last had.
+    pub group: Option<bool>,
+    pub memory: bool,
+    pub last: Option<u32>,
 }
 
 /// A node being dragged, or a press on one not yet past the slop.
@@ -1235,6 +1242,12 @@ impl Tree {
             self.reveal(e);
         }
         if e != NONE {
+            // Each group around it remembers it.
+            let mut g = self.group_of(e);
+            while g != NONE {
+                self.input.per[g as usize].last = Some(e);
+                g = self.group_of(g);
+            }
             self.set_state(e, FOCUSED, true);
             self.set_state(e, FOCUS_VISIBLE, visible);
             let mut a = e;
@@ -1318,20 +1331,92 @@ impl Tree {
             self.focus(first);
             return true;
         }
-        let mut cands = std::mem::take(&mut self.input.cands);
-        cands.clear();
-        for &e in &self.input.stops {
-            if e != f {
-                cands.push((u64::from(e), self.rect(e)));
-            }
-        }
-        let to = og_ui::nav_neighbour(&self.rect(f), &cands, dir);
-        self.input.cands = cands;
+        let to = self.step(f, dir);
         match to {
-            Some(e) => self.focus(e as u32),
+            Some(e) => self.focus(e),
             None => self.set_state(f, FOCUS_VISIBLE, true),
         }
         true
+    }
+
+    /// The focus group `e` is in (its nearest `focusGroup` ancestor; NONE
+    /// none).
+    fn group_of(&self, e: u32) -> u32 {
+        let mut g = self.els[e as usize].parent;
+        while g != NONE {
+            if self.input.per(g).is_some_and(|p| p.group.is_some()) {
+                return g;
+            }
+            g = self.els[g as usize].parent;
+        }
+        NONE
+    }
+
+    /// Where a move `dir` from stop `f` lands (og-ui's focus groups): in a
+    /// group, among its members first; at its edge a wrapping group goes
+    /// round inside itself, any other leaves for the group around it (the
+    /// whole surface last, which does not wrap). Outside any group the
+    /// move wraps to the far end of its row or column. Coming into a group
+    /// that remembers lands on its last member.
+    fn step(&mut self, f: u32, dir: og_ui::Nav) -> Option<u32> {
+        let from = self.rect(f);
+        let (fx, fy) = from.center();
+        // A move that went back the other way is a wrap.
+        let ahead = |r: &og_ui::Rect| {
+            let (cx, cy) = r.center();
+            match dir {
+                og_ui::Nav::Down => cy > fy,
+                og_ui::Nav::Up => cy < fy,
+                og_ui::Nav::Right => cx > fx,
+                _ => cx < fx,
+            }
+        };
+        let mut level = self.group_of(f);
+        let grouped = level != NONE;
+        let mut cands = std::mem::take(&mut self.input.cands);
+        let to = loop {
+            cands.clear();
+            for &e in &self.input.stops {
+                if e != f && (level == NONE || self.within(e, level)) {
+                    cands.push((u64::from(e), self.rect(e)));
+                }
+            }
+            let hit = og_ui::nav_neighbour(&from, &cands, dir).map(|k| k as u32);
+            let rect = |e: u32| cands.iter().find(|c| c.0 == u64::from(e)).map(|c| c.1);
+            match hit {
+                Some(e) if rect(e).is_some_and(|r| ahead(&r)) => break Some(e),
+                Some(e) if level == NONE && !grouped => break Some(e),
+                Some(e)
+                    if level != NONE
+                        && self.input.per(level).is_some_and(|p| p.group == Some(true)) =>
+                {
+                    break Some(e);
+                }
+                _ if level == NONE => break None,
+                _ => level = self.group_of(level),
+            }
+        };
+        self.input.cands = cands;
+        to.map(|k| self.enter_groups(k, f))
+    }
+
+    /// A move's landing `k` from `f`: coming into a group that remembers
+    /// (the outermost one entered) goes to its last member instead.
+    fn enter_groups(&self, k: u32, f: u32) -> u32 {
+        let mut pick = k;
+        let mut g = self.group_of(k);
+        while g != NONE && !self.within(f, g) {
+            if let Some(p) = self.input.per(g)
+                && p.memory
+                && let Some(last) = p.last
+                && self.input.stops.contains(&last)
+                && self.within(last, g)
+            {
+                pick = last;
+            }
+            g = self.group_of(g);
+        }
+        pick
     }
 
     /// A key went down (its `KeyboardEvent.code`): Tab moves the focus,

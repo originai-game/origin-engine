@@ -223,6 +223,14 @@ machines do (ported as logic).
   from outside replaces the text (caret at its end, no `change`);
   `placeholder` shows at half ink while it is empty. One line, no
   selection, undo or input-method composition yet.
+- **Focus groups**: a node with `focusGroup` makes its focusable
+  descendants one group for the arrows, the d-pad and the stick (og-ui's
+  rule): a move picks among the group's members first; at its edge
+  `"stop"` leaves it for the nearest control beyond (the group around it
+  first) and stays put with none, `"wrap"` goes round inside it. With
+  `focusMemory`, focus coming into the group from outside lands on the
+  member it last had. Outside any group a move wraps to the far end of its
+  row or column. Tab ignores groups.
 - **Drag and drop**: a node with `draggable="<data>"` is picked up when a
   press on it moves past the slop (4 px for a mouse, a finger's 8 px pan
   slop) and then clicks nothing; a node with `dropTarget="<id>"` takes it.
@@ -254,6 +262,8 @@ machines do (ported as logic).
 | `hold` | seconds | a press or `confirm` must be held this long to press it |
 | `value` | text | an `Input`'s text, set from outside |
 | `placeholder` | text | what an empty `Input` shows |
+| `focusGroup` | `stop` or `wrap` | its focusable descendants are one group for the arrows and pads |
+| `focusMemory` | bool | with `focusGroup`, focus coming back lands on its last member |
 | `draggable` | data | it can be picked up and dragged, carrying this data |
 | `dropTarget` | an id | a carried node can be dropped on it |
 | `touchStick` | an action's name | its box is a stick of that action (x, y from its centre) |

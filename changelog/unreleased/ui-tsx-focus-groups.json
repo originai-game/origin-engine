@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "focusGroup",
+      "summary": "TSX elements take `focusGroup` (\"stop\" or \"wrap\") and `focusMemory`: the arrows, d-pad and stick move among the group's focusable members first, and at its edge leave it or wrap inside it; with `focusMemory`, coming back into the group lands on the member focused last (a toolbar, a tab row, an inventory grid)."
+    }
+  ]
+}

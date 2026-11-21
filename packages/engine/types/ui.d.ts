@@ -87,6 +87,10 @@ export interface HostProps {
   hold?: number | undefined;
   /** Takes focus when it appears (a dialog's first control). */
   autofocus?: boolean | undefined;
+  /** Its focusable descendants are one group for the arrows and the d-pad: they move among its members first; at its edge `"stop"` leaves it for the control beyond, `"wrap"` goes round inside it. */
+  focusGroup?: "stop" | "wrap" | undefined;
+  /** With `focusGroup`: focus coming back into it lands on the member it last had. */
+  focusMemory?: boolean | undefined;
   /** Makes it draggable, carrying this data: a press moved past the slop picks it up, as do Enter, Space or `confirm` on it when focused. */
   draggable?: string | undefined;
   /** Makes it a drop target with this id: a carried node let go over it, or put down while it has the focus, drops here. While a node is carried by the keys, targets are focus stops. */

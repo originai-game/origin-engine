@@ -652,6 +652,17 @@ impl Tree {
                             }
                             self.show_value(e);
                         }
+                        "focusGroup" => {
+                            self.input.per[e as usize].group = match value.trim() {
+                                "wrap" => Some(true),
+                                "stop" | "true" => Some(false),
+                                _ => None,
+                            };
+                        }
+                        "focusMemory" => {
+                            self.input.per[e as usize].memory =
+                                !matches!(value, "" | "false" | "0" | "null");
+                        }
                         "draggable" => self.input.per[e as usize].drag = value.trim().into(),
                         "dropTarget" => self.input.per[e as usize].drop = value.trim().into(),
                         "deadZone" => {
@@ -2425,6 +2436,80 @@ mod tests {
         heard(&mut t);
         assert!(t.action("confirm"));
         assert_eq!(heard(&mut t), [40], "node {f} pressed by confirm");
+    }
+
+    /// The arrows move among a focus group's members first: at its edge
+    /// one that stops leaves for the control beyond, one that wraps goes
+    /// round inside itself, and focus coming into one that remembers lands
+    /// on the member it last had.
+    #[test]
+    fn focus_groups_stop_wrap_and_remember() {
+        use og_ui::Nav;
+        // `dir`: the root's direction; 10 is a row group of 2 and 3, then 4.
+        let build = |dir: &str, group: &str, memory: bool| {
+            let mut t = stated();
+            let mut b = Batch::default();
+            b.op(1).u32(100).u8(0);
+            b.op(4).u32(100).str(dir);
+            b.op(8).u32(0).u32(100).u32(u32::MAX);
+            b.op(1).u32(10).u8(0);
+            b.op(4).u32(10).str("row");
+            b.op(6).u32(10).str("focusGroup").str(group);
+            if memory {
+                b.op(6).u32(10).str("focusMemory").str("true");
+            }
+            b.op(8).u32(100).u32(10).u32(u32::MAX);
+            for (id, parent) in [(2, 10), (3, 10), (4, 100)] {
+                b.op(1).u32(id).u8(0);
+                b.op(4).u32(id).str("b");
+                b.op(7).u32(id).u8(Event::Press as u8).u8(1);
+                b.op(8).u32(parent).u32(id).u32(u32::MAX);
+            }
+            t.apply(&b.bytes()).unwrap();
+            frame(&mut t);
+            t.nav(Nav::Right);
+            assert_eq!(
+                t.focused_id(),
+                Some(2),
+                "the first move lands on the first stop"
+            );
+            t
+        };
+        let mut t = build("row", "stop", false);
+        t.nav(Nav::Right);
+        assert_eq!(t.focused_id(), Some(3));
+        t.nav(Nav::Right);
+        assert_eq!(
+            t.focused_id(),
+            Some(4),
+            "a stopping group is left at its edge"
+        );
+        t.nav(Nav::Right);
+        assert_eq!(t.focused_id(), Some(2), "outside any group the move wraps");
+        t.nav(Nav::Left);
+        assert_eq!(
+            t.focused_id(),
+            Some(2),
+            "a group's edge with nothing beyond stays"
+        );
+        let mut t = build("row", "wrap", false);
+        t.nav(Nav::Right);
+        t.nav(Nav::Right);
+        assert_eq!(
+            t.focused_id(),
+            Some(2),
+            "a wrapping group goes round inside"
+        );
+        // 4 is under 2; from 4 Up lands on 2, or on 3 when the group
+        // remembers it had 3.
+        for (memory, lands) in [(false, 2), (true, 3)] {
+            let mut t = build("col", "stop", memory);
+            t.nav(Nav::Right);
+            t.nav(Nav::Down);
+            assert_eq!(t.focused_id(), Some(4));
+            t.nav(Nav::Up);
+            assert_eq!(t.focused_id(), Some(lands), "memory {memory}");
+        }
     }
 
     /// A `draggable` pressed and moved past the slop is picked up (its
