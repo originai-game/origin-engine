@@ -509,11 +509,13 @@ impl Next {
             input.released,
             &mut done,
         );
-        let mounts: Vec<&(String, String)> = self.mounts.keys().collect();
+        // Looked up per event, so a frame without one allocates nothing.
+        let mounts = &self.mounts;
         self.events.extend(done.into_iter().map(|e| {
             og_ui::DocEvent {
                 mount: mounts
-                    .get(e.mount as usize)
+                    .keys()
+                    .nth(e.mount as usize)
                     .map_or_else(String::new, |m| m.1.clone()),
                 path: e.path.into(),
                 row_key: e.row_key.to_string(),
