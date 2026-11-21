@@ -342,8 +342,9 @@ entity \"boss\" {
 
 /// The engine modules a scene needs (the manifest's `modules`) reach
 /// through what it places: a prefab's records and a sub-scene's, never the
-/// game's own; the bundle's are the boot scene's, or every asset's when
-/// project.ogt names no boot scene.
+/// game's own; physics adds the simulation of the scene's og.Physics
+/// profile, else the project's; the bundle's are the boot scene's, or
+/// every asset's when project.ogt names no boot scene.
 #[test]
 fn a_scene_needs_the_modules_of_what_it_places() {
     let root = project("module-needs");
@@ -361,6 +362,11 @@ fn a_scene_needs_the_modules_of_what_it_places() {
         &root,
         "scenes/hub.ogt",
         "type scene\nversion 1\n---\nname \"Hub\"\nentity \"g\" {\n  prefab \"prefabs/guard.ogt\"\n}\nentity \"a\" {\n  scene \"scenes/arena.ogt\"\n}\n",
+    );
+    write(
+        &root,
+        "scenes/mini.ogt",
+        "type scene\nversion 1\n---\nname \"Mini\"\nresource og.Physics {\n  profile 2\n}\nentity \"puck\" {\n  RigidBody {\n    mass 1\n  }\n}\n",
     );
     write(
         &root,
@@ -389,11 +395,30 @@ fn a_scene_needs_the_modules_of_what_it_places() {
             .collect::<Vec<_>>()
     );
     let (hub, bundle) = modules(&root, "scenes/hub.ogt");
-    assert_eq!(hub, ["nav", "physics"]);
-    assert_eq!(modules(&root, "scenes/arena.ogt").0, ["physics"]);
+    assert_eq!(hub, ["nav", "physics", "physics3d"]);
+    assert_eq!(
+        modules(&root, "scenes/arena.ogt").0,
+        ["physics", "physics3d"]
+    );
+    // A 2D minigame in a 3D game: its own profile's simulation.
+    assert_eq!(
+        modules(&root, "scenes/mini.ogt").0,
+        ["physics", "physics2d"]
+    );
     assert!(modules(&root, "scenes/menu.ogt").0.is_empty());
     // No boot scene named: every asset's.
-    assert_eq!(bundle, ["nav", "physics"]);
+    assert_eq!(bundle, ["nav", "physics", "physics2d", "physics3d"]);
+    // A 2D project's scenes step rapier2d.
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\ncreate {\n  form \"2d\"\n}\n",
+    )
+    .unwrap();
+    cook_with(&root, false);
+    assert_eq!(
+        modules(&root, "scenes/arena.ogt").0,
+        ["physics", "physics2d"]
+    );
     std::fs::write(root.join("project.ogt"), "type project\nversion 1\n---\nscene menu\nscenes {\n  menu \"scenes/menu.ogt\"\n  hub \"scenes/hub.ogt\"\n}\n").unwrap();
     cook_with(&root, false);
     assert!(

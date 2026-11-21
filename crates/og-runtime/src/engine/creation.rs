@@ -142,7 +142,6 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         physics: Some(a.mounted.physics.clone()),
         actions: Some(a.mounted.actions.clone()),
         physics_meshes: IdMap::new(),
-        #[cfg(feature = "physics3d")]
         physics_baked: IdMap::new(),
         physics_heightfields: IdMap::new(),
         ui_warned: BTreeSet::new(),

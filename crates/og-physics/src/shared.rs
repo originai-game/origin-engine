@@ -69,9 +69,7 @@ pub type MeshSource = Arc<dyn Fn(u64) -> Option<MeshDesc> + Send + Sync>;
 /// the shapes built from them (assets and caches).
 #[derive(Default)]
 pub(crate) struct Shared {
-    #[cfg(feature = "physics3d")]
     pub sim3: Option<Box<dim3::Sim>>,
-    #[cfg(feature = "physics2d")]
     pub sim2: Option<Box<dim2::Sim>>,
     /// Meshes registered with new geometry since the last step; colliders
     /// built from them are rebuilt.
@@ -91,27 +89,21 @@ pub(crate) struct Shared {
     /// chunk ([`FIELD_CHUNK`]), keyed like the shape cache with the chunk in
     /// the key's shape code ([`chunk_key`]); outside the cache's limit, so
     /// a large field's chunks are never cleared together.
-    #[cfg(feature = "physics3d")]
     pub chunks3: BTreeMap<ShapeKey, rapier3d::prelude::SharedShape>,
     /// Never filled (height fields are 3D only); the step is written once.
-    #[cfg(feature = "physics2d")]
     pub chunks2: BTreeMap<ShapeKey, rapier2d::prelude::SharedShape>,
     /// The bytes of the simulation a restore applied, until the next step
     /// ([`Restored`]).
-    #[cfg(feature = "physics3d")]
     pub restored: Option<Restored>,
     /// Why no height field can be registered in this build
     /// ([`PhysicsSystem::refuse_heightfields`]): every SHAPE_HEIGHTFIELD
     /// collider is refused with it.
     pub heightfields_absent: Option<&'static str>,
-    #[cfg(feature = "physics3d")]
     pub shapes3: BTreeMap<ShapeKey, rapier3d::prelude::SharedShape>,
-    #[cfg(feature = "physics2d")]
     pub shapes2: BTreeMap<ShapeKey, rapier2d::prelude::SharedShape>,
     /// Triangle-mesh shapes the cook baked over a mesh at scale 1, by mesh
     /// handle ([`PhysicsSystem::set_baked_trimesh`]): taken instead of a
     /// build when the mesh is exactly the one baked.
-    #[cfg(feature = "physics3d")]
     pub baked3: IdMap<u64, rapier3d::prelude::SharedShape>,
     /// The colliders [`PhysicsSystem::query_system`] recorded this tick, and
     /// the query view built from them on the first query that asked.

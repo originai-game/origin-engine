@@ -79,11 +79,9 @@ pub struct WaterHeights {
 macro_rules! with_sim {
     ($shared:expr, |$s:ident| $body:expr) => {{
         let shared = lock(&$shared);
-        #[cfg(feature = "physics3d")]
         if let Some($s) = shared.sim3.as_deref() {
             return $body;
         }
-        #[cfg(feature = "physics2d")]
         if let Some($s) = shared.sim2.as_deref() {
             return $body;
         }
@@ -287,11 +285,9 @@ impl PhysicsSystem {
     /// The wheels of the og.Vehicle on `entity` as they are now.
     pub fn vehicle_wheels(&self, entity: Entity) -> Option<Vec<WheelPose>> {
         let shared = lock(&self.shared);
-        #[cfg(feature = "physics3d")]
         if let Some(s) = shared.sim3.as_deref() {
             return dim3::wheels(s, entity.to_bits());
         }
-        #[cfg(feature = "physics2d")]
         if let Some(s) = shared.sim2.as_deref() {
             return dim2::wheels(s, entity.to_bits());
         }
@@ -310,11 +306,9 @@ impl PhysicsSystem {
     /// its first step.
     pub fn ragdoll_pose(&self, entity: Entity) -> Option<Vec<(Vec3, Quat)>> {
         let shared = lock(&self.shared);
-        #[cfg(feature = "physics3d")]
         if let Some(s) = shared.sim3.as_deref() {
             return dim3::ragdoll_pose(s, entity.to_bits());
         }
-        #[cfg(feature = "physics2d")]
         if let Some(s) = shared.sim2.as_deref() {
             return dim2::ragdoll_pose(s, entity.to_bits());
         }

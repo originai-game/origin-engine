@@ -107,6 +107,10 @@ Setting Physics.profile to the other value at run time builds the other
 profile's simulation from the components on the next step, so a 3D game can
 play a 2D scene (a minigame, a side-on section) and switch back. Contacts,
 joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again.
+Every build carries both simulations; on the web each is a module loaded on
+its first use. Give the minigame's scene `resource og.Physics { profile 2 }`
+and preload it (`loading §12`): its simulation is fetched with the scene, so
+the switch never waits for a download.
 
 <a id="guide-physics-3"></a>
 ### `physics §3` The step and what it costs

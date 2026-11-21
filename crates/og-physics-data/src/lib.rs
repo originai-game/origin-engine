@@ -7,14 +7,12 @@
 //! simulation.
 //! og-physics re-exports every item at the path it had there.
 
-#[cfg(feature = "physics3d")]
 use og_core::Result;
 use og_core::glam::Vec3;
 
 mod codec;
 pub use codec::*;
 pub mod fracture;
-#[cfg(feature = "physics3d")]
 pub mod trimesh;
 
 /// Geometry for convex and triangle-mesh colliders, registered under the
@@ -61,7 +59,6 @@ impl MeshDesc {
 /// naming the mesh builds it (rapier's triangle mesh with its BVH), in
 /// bytes for the cook to put beside the mesh: [`PhysicsSystem::set_baked_trimesh`]
 /// takes it back without building anything. 3D only.
-#[cfg(feature = "physics3d")]
 pub fn bake_trimesh(mesh: &MeshDesc) -> Result<Vec<u8>> {
     trimesh::bake(mesh)
 }

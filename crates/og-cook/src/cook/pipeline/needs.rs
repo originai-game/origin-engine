@@ -3,7 +3,10 @@
 //! are its records' (the IDL's `split`: `RigidBody` is in `physics`); a
 //! dialogue's, a video's and a navmesh's are their kind's; an asset needs
 //! its own and those of every asset it references (parsed_refs: a scene's
-//! sub-scenes, prefabs and models, a timeline's clips and scenes). The
+//! sub-scenes, prefabs and models, a timeline's clips and scenes). Physics
+//! is two modules: `physics`, which every physics record's split names, and
+//! the simulation of the world's profile, `physics3d` or `physics2d`: the
+//! scene's own `resource og.Physics { profile }`, else the project's. The
 //! bundle needs its boot scene's, or every asset's when the cook cannot
 //! name that scene.
 //!
@@ -13,6 +16,7 @@
 //! content is prepared (og-runtime's `world::needs`).
 
 use super::*;
+use crate::look::Profile;
 use og_core::ogt::Block;
 
 /// The modules an asset of `kind` needs whatever it holds.
@@ -25,10 +29,22 @@ fn of_kind(kind: &str) -> &'static [&'static str] {
     }
 }
 
+/// The simulation module of a physics profile (og.Physics.profile: 2, the
+/// IDL's PROFILE_2D, is rapier2d; anything else rapier3d, whose step answers
+/// a bad value).
+fn simulation(profile: u64) -> &'static str {
+    if profile == 2 {
+        "physics2d"
+    } else {
+        "physics3d"
+    }
+}
+
 /// The modules a scene's or prefab's text needs by its own records: each
 /// component block in its entities and their overrides, and each
-/// `resource`, by the IDL's `split` (a game's own records need none).
-fn of_records(text: &str) -> BTreeSet<&'static str> {
+/// `resource`, by the IDL's `split` (a game's own records need none); with
+/// `physics`, the simulation of its `og.Physics` profile, else `project`'s.
+fn of_records(text: &str, project: Profile) -> BTreeSet<&'static str> {
     fn split(name: &str) -> &'static [&'static str] {
         let name = name.strip_prefix("og.").unwrap_or(name);
         og_records::RECORDS
@@ -49,20 +65,36 @@ fn of_records(text: &str) -> BTreeSet<&'static str> {
     let Ok(doc) = Document::parse(text) else {
         return out;
     };
+    let mut profile = match project {
+        Profile::TwoD => 2,
+        Profile::ThreeD => 3,
+    };
     for e in &doc.body.entries {
         match (e.key.as_str(), &e.block) {
             ("entity", Some(b)) => walk(b, &mut out),
-            ("resource", _) => {
+            ("resource", block) => {
                 if let Some(r) = e
                     .values
                     .first()
                     .and_then(|v| v.as_word().or_else(|| v.as_str()))
                 {
                     out.extend(split(r));
+                    if r.strip_prefix("og.").unwrap_or(r) == "Physics"
+                        && let Some(p) = block
+                            .as_ref()
+                            .and_then(|b| b.get("profile"))
+                            .and_then(|p| p.values.first())
+                            .and_then(|v| v.as_number()?.as_u64().ok())
+                    {
+                        profile = p;
+                    }
                 }
             }
             _ => {}
         }
+    }
+    if out.contains("physics") {
+        out.insert(simulation(profile));
     }
     out
 }
@@ -73,6 +105,7 @@ pub(crate) fn record(
     sources: &[Source],
     parsed_refs: &BTreeMap<String, BTreeSet<String>>,
     boot: Option<&str>,
+    profile: Profile,
 ) {
     let by_rel: BTreeMap<&str, &Source> = sources.iter().map(|s| (s.rel.as_str(), s)).collect();
     // Every output id (`models/ship.glb#tex0`) to the asset that made it.
@@ -93,7 +126,7 @@ pub(crate) fn record(
             if let Some(s) = by_rel.get(a.source.as_str())
                 && [&scene::SCENE, &scene::PREFAB].contains(&s.kind)
             {
-                m.extend(of_records(&String::from_utf8_lossy(&s.bytes)));
+                m.extend(of_records(&String::from_utf8_lossy(&s.bytes), profile));
             }
             m
         })

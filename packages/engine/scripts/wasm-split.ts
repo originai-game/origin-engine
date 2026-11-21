@@ -80,13 +80,18 @@ export function functionNames(wasm: Uint8Array): string[] {
 }
 
 const CRATE = /([A-Za-z_][A-Za-z0-9_]*)\[[0-9a-f]{6,}\]/g;
-const STD = new Set(["core", "alloc", "std", "hashbrown"]);
+/**
+ * Crates whose generic instances belong with their type arguments: std's
+ * and the serializers' (bincode's deserializer of a rapier2d body is
+ * physics2d's code, called only from physics2d's load).
+ */
+const CARRIERS = new Set(["core", "alloc", "std", "hashbrown", "bincode", "serde_core"]);
 
 /** The module a function belongs to by its name, or null for the primary. */
 export function moduleOf(name: string, rules: Array<[string, RegExp[]]>): string | null {
   if (/^og_[a-z0-9_]+( multivalue shim| externref shim)?$/.test(name)) return null;
   for (const m of name.matchAll(CRATE)) {
-    if (STD.has(m[1]!)) continue;
+    if (CARRIERS.has(m[1]!)) continue;
     const path = name.slice(m.index).replace(/\[[0-9a-f]{6,}\]/g, "");
     for (const [module, patterns] of rules) if (patterns.some((p) => p.test(path))) return module;
     return null;
@@ -115,11 +120,11 @@ export function callGraph(wasmFile: string): Map<string, string[]> {
   return calls;
 }
 
-/** Whether a name reaches its module only through a std generic's type argument (`<alloc::…<og_story::…>>::new`): a body the linker may have folded with other instances. */
+/** Whether a name reaches its module only through a carrier generic's type argument (`<alloc::…<og_story::…>>::new`): a body the linker may have folded with other instances. */
 function generic(name: string): boolean {
   const first = CRATE.exec(name);
   CRATE.lastIndex = 0;
-  return first !== null && STD.has(first[1]!);
+  return first !== null && CARRIERS.has(first[1]!);
 }
 
 /**

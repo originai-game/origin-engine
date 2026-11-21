@@ -16,7 +16,6 @@ pub fn encode<T: serde::Serialize + ?Sized>(out: &mut Vec<u8>, value: &T) -> bin
 }
 
 /// A value [`encode`] wrote, alone in `bytes`.
-#[cfg(feature = "physics3d")]
 pub fn decode<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> bincode::Result<T> {
     use bincode::Options;
     codec().deserialize(bytes)

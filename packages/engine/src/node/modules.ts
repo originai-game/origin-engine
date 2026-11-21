@@ -44,10 +44,22 @@ export function cookedModules(cooked: string): string[] {
 }
 
 /**
+ * The physics simulation a cooked bundle's project steps: `physics2d` for
+ * its manifest's `profile "2d"`, else `physics3d` (as og-cook's
+ * pipeline/needs.rs names a scene's).
+ */
+function simulation(cooked: string): string {
+  const listing = join(cooked, ".cook.ogt");
+  const text = existsSync(listing) ? readFileSync(listing, "utf8") : "";
+  return /^profile "2d"[ \t]*$/m.test(text) ? "physics2d" : "physics3d";
+}
+
+/**
  * The split modules a project references (og-build.json `modules`): those
  * its boot content needs as the cook recorded them ({@link cookedModules}),
  * and those whose IDL module's members its code names (`og.RigidBody`,
- * `og.physics.castRay`; bindings.json `splits` and each record's `split`).
+ * `og.physics.castRay`; bindings.json `splits` and each record's `split`),
+ * with `physics` the simulation of the project's profile.
  * Code is read as text, so it errs towards more; a module named nowhere but
  * called anyway still loads on its first call, and later scenes' modules
  * load as they are prepared (og.scene.preload, og.load.scene, a pre-roll).
@@ -69,5 +81,6 @@ export function referencedModules(project: string, bindings: Bindings): string[]
     }
   };
   walk(project);
+  if (found.has("physics") && !found.has("physics2d") && !found.has("physics3d")) found.add(simulation(join(project, "cooked")));
   return [...found].sort();
 }

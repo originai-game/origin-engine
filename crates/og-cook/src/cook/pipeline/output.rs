@@ -431,7 +431,7 @@ pub(crate) fn finish(
             removed.push(f.clone());
         }
     }
-    needs::record(&mut manifest, sources, parsed_refs, cx.boot);
+    needs::record(&mut manifest, sources, parsed_refs, cx.boot, cx.profile);
     std::fs::create_dir_all(cooked_dir)
         .map_err(|e| CookError(format!("{}: {e}", cooked_dir.display())))?;
     let text = manifest.to_text();

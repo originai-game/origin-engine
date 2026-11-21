@@ -89,18 +89,20 @@ function physics(host: string, ...extra: string[]) {
 // (docs/web-export.md §Modules): a module that loads late changes nothing,
 // so the world is the native host's whether physics arrives at its first
 // call (inside the first tick) or before the engine starts, and a scene
-// without nav, motion, destruction or video loads none of them.
+// without nav, motion, destruction or video loads none of them; physics
+// loads its profile's simulation (physics3d or physics2d), never the other.
 const NO_SPLIT = !existsSync(join(pkg, "dist", "web-publish", "modules", "modules.json"));
 for (const profile of ["3d", "2d"]) {
   test.skipIf(STALE_WASM || NO_SPLIT)(`a ${profile} split publish module gives the native world whenever its modules load, and loads only those it calls`, () => {
     const node = physics("node", "--profile", profile, "--snapshot", "--ticks", "300");
     const late = physics("publish", "--profile", profile, "--snapshot", "--ticks", "300") as ReturnType<typeof physics> & { modules: string[] };
-    const early = physics("publish", "--profile", profile, "--snapshot", "--ticks", "300", "--modules", "physics,nav,story,motion,destruction,video") as ReturnType<typeof physics> & { modules: string[] };
+    const early = physics("publish", "--profile", profile, "--snapshot", "--ticks", "300", "--modules", "physics,physics2d,physics3d,nav,story,motion,destruction,video") as ReturnType<typeof physics> & { modules: string[] };
     expect(late.snapshot).toBe(node.snapshot);
     expect(early.snapshot).toBe(node.snapshot);
     expect(late.modules).toContain("physics");
-    for (const m of ["nav", "motion", "destruction", "video"]) expect(late.modules).not.toContain(m);
-    expect(early.modules).toEqual(["destruction", "motion", "nav", "physics", "story", "video"]);
+    expect(late.modules).toContain(`physics${profile}`);
+    for (const m of ["nav", "motion", "destruction", "video", profile === "2d" ? "physics3d" : "physics2d"]) expect(late.modules).not.toContain(m);
+    expect(early.modules).toEqual(["destruction", "motion", "nav", "physics", "physics2d", "physics3d", "story", "video"]);
     expect(late.modules).not.toContain("world3d");
   }, 180_000);
 
@@ -248,7 +250,7 @@ for (const profile of ["3d", "2d"] as const) {
       expect(lanes.snapshot!.length).toBeGreaterThan(0);
       expect([label, lanes.snapshot]).toEqual([label, node.snapshot!]);
       if (existsSync(join(pkg, "dist", profile === "2d" ? "web-publish-2d" : "web-publish", "modules-lanes", "modules.json"))) {
-        expect([label, lanes.modules!.includes("physics"), lanes.modules!.filter((m) => ["nav", "motion", "destruction", "video"].includes(m))]).toEqual([label, true, []]);
+        expect([label, lanes.modules!.includes("physics"), lanes.modules!.filter((m) => ["nav", "motion", "destruction", "video", profile === "2d" ? "physics3d" : "physics2d"].includes(m))]).toEqual([label, true, []]);
       }
       const file = join(dir, `lanes-${profile}-${bodies}.snapshot`);
       writeFileSync(file, lanes.snapshot!);

@@ -22,21 +22,21 @@ test.skipIf(NO_SPLIT)("a publish build references the modules its game names and
     const project = join(work, "game");
     cpSync(join(repo, "tests", "fixtures", "browser-host"), project, { recursive: true });
     for (const d of ["cooked", "dist", "og-out", ".og"]) rmSync(join(project, d), { recursive: true, force: true });
-    // A game naming physics and a dialogue: those two are referenced, nothing else.
+    // A game naming physics and a dialogue: those two (with its 3D profile's simulation) are referenced, nothing else.
     writeFileSync(join(project, "src", "uses.ts"), "import { og } from \"@origingame/engine\";\nexport const used = [og.RigidBody, og.story.start];\n");
     cookProject(project, repo);
     const out = join(work, "dist");
     const b = await webBuild(project, join(project, "src", "main.ts"), out, true, { ...settingsOf(project), publish: { ...settingsOf(project).publish, modules: "local" } });
     if (!b.ok) throw new Error(b.reason);
     const m = b.manifest!.modules!;
-    expect(m.referenced).toEqual(["physics", "story"]);
+    expect(m.referenced).toEqual(["physics", "physics3d", "story"]);
     expect(m).toMatchObject({ base: "modules/", origin: null, local: true });
     // Every module is beside the page, so an unreferenced one still loads on its first call.
     const listed = JSON.parse(readFileSync(join(pkg, "dist", "web-publish", "modules", "modules.json"), "utf8")) as Record<string, { file: string }>;
     for (const e of Object.values(listed)) expect(existsSync(join(out, e.file))).toBe(true);
     // The page hands the Worker the same list.
     const config = JSON.parse(/<script type="application\/json" id="og-config">([^<]*)<\/script>/.exec(readFileSync(join(out, "index.html"), "utf8"))![1]!);
-    expect(config.modules.single.referenced).toEqual(["physics", "story"]);
+    expect(config.modules.single.referenced).toEqual(["physics", "physics3d", "story"]);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }

@@ -48,7 +48,7 @@ og-tween = { path = "../og-tween", optional = true }
 og-tilemap = { path = "../og-tilemap" }
 # `model { collider true }`: each primitive's triangle-mesh collider baked
 # as the physics that loads it builds it (og-physics-data, below og-physics).
-og-physics-data = { path = "../og-physics-data", features = ["physics3d"] }
+og-physics-data = { path = "../og-physics-data" }
 # `type model`: the cook builds its parts with og-geom's generators. A
 # model's `fracture` block: og-geom cuts the pieces, og-physics-data holds
 # the asset (`cook/systems/fracture.rs`).

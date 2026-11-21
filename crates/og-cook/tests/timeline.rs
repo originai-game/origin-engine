@@ -238,8 +238,8 @@ fn a_scene_track_names_cooked_scenes_and_the_timeline_needs_their_modules() {
     assert!(report.ok(), "{:?}", report.errors());
     let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
     let modules = |id: &str| bundle.asset(id).unwrap().modules.clone();
-    assert_eq!(modules("timelines/level.ogt"), ["physics"]);
-    assert_eq!(modules("timelines/outer.ogt"), ["physics"]);
+    assert_eq!(modules("timelines/level.ogt"), ["physics", "physics3d"]);
+    assert_eq!(modules("timelines/outer.ogt"), ["physics", "physics3d"]);
     assert!(modules("timelines/plain.ogt").is_empty());
 
     let root = project(

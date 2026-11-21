@@ -68,9 +68,6 @@
 //! the meshes registered then. Forces and impulses game code queued for the
 //! next step ([`PhysicsSystem::apply_impulse`] and friends) are in it too.
 
-#[cfg(not(any(feature = "physics2d", feature = "physics3d")))]
-compile_error!("og-physics needs the `physics2d` or the `physics3d` feature (both are default)");
-
 #[path = "vehicle/drivetrain.rs"]
 mod drivetrain;
 mod fluid;
@@ -89,9 +86,7 @@ mod verlet;
 mod water;
 pub use water::{Wakes, WaterAt, WaterBody, WaterCut, WaterMesh};
 
-#[cfg(feature = "physics2d")]
 mod dim2;
-#[cfg(feature = "physics3d")]
 mod dim3;
 
 pub use garment::{GarmentPoints, GarmentPose, GarmentRig};
@@ -186,7 +181,6 @@ fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
 /// (none, 2 or 3) and the bincode of the profile's [`dim3::Sim`].
 struct PhysicsState(Arc<Mutex<Shared>>);
 
-#[cfg(feature = "physics3d")]
 pub use og_physics_data::bake_trimesh;
 
 /// Registers the physics types, inserts `settings` as the `og.Physics`
@@ -381,25 +375,12 @@ fn schedule(world: &mut World, shared: &Arc<Mutex<Shared>>, ids: &Arc<Ids>) -> R
 }
 
 fn check_profile(profile: u32) -> Result<()> {
-    let built = match profile {
-        PROFILE_2D => cfg!(feature = "physics2d"),
-        PROFILE_3D => cfg!(feature = "physics3d"),
-        other => {
-            return Err(Error::new(
-                ErrorKind::Invalid,
-                format!("og.Physics.profile is {other}; it must be 2 (2D) or 3 (3D)"),
-            ));
-        }
-    };
-    if built {
-        Ok(())
-    } else {
-        Err(Error::new(
+    match profile {
+        PROFILE_2D | PROFILE_3D => Ok(()),
+        other => Err(Error::new(
             ErrorKind::Invalid,
-            format!(
-                "og.Physics.profile {profile}: this engine was built without the physics{profile}d feature"
-            ),
-        ))
+            format!("og.Physics.profile is {other}; it must be 2 (2D) or 3 (3D)"),
+        )),
     }
 }
 
@@ -427,9 +408,7 @@ impl PhysicsSystem {
         shared.meshes.insert(handle, Arc::new(mesh));
         shared.stale_meshes.insert(handle);
         shared.field_edits.remove(&handle);
-        #[cfg(feature = "physics3d")]
         shared.shapes3.retain(|k, _| k.mesh != handle);
-        #[cfg(feature = "physics2d")]
         shared.shapes2.retain(|k, _| k.mesh != handle);
         Ok(())
     }
@@ -440,7 +419,6 @@ impl PhysicsSystem {
     /// building one, while the mesh's positions and triangles are exactly
     /// the ones baked (a build over them is the same shape, bit for bit).
     /// Refused for bytes another bake format wrote. 3D only.
-    #[cfg(feature = "physics3d")]
     pub fn set_baked_trimesh(&self, handle: u64, bytes: &[u8]) -> Result<()> {
         let shape = dim3::unbake(bytes)?;
         lock(&self.shared).baked3.insert(handle, shape);
@@ -479,17 +457,13 @@ impl PhysicsSystem {
             return Ok(());
         }
         shared.heightfields.insert(handle, Arc::new(field));
-        #[cfg(feature = "physics3d")]
         if reload_restored(&mut shared, handle)? {
             return Ok(());
         }
         shared.stale_meshes.insert(handle);
         shared.field_edits.remove(&handle);
-        #[cfg(feature = "physics3d")]
-        {
-            shared.shapes3.retain(|k, _| k.mesh != handle);
-            shared.chunks3.retain(|k, _| k.mesh != handle);
-        }
+        shared.shapes3.retain(|k, _| k.mesh != handle);
+        shared.chunks3.retain(|k, _| k.mesh != handle);
         Ok(())
     }
 
@@ -539,20 +513,16 @@ impl PhysicsSystem {
         let whole_pending =
             shared.stale_meshes.contains(&handle) && !shared.field_edits.contains_key(&handle);
         shared.heightfields.insert(handle, Arc::new(field));
-        #[cfg(feature = "physics3d")]
         if reload_restored(&mut shared, handle)? {
             return Ok(());
         }
         shared.stale_meshes.insert(handle);
-        #[cfg(feature = "physics3d")]
-        {
-            // A body's collider is the whole field: built again.
-            shared.shapes3.retain(|k, _| k.mesh != handle);
-            shared.chunks3.retain(|k, _| {
-                k.mesh != handle
-                    || key_chunk(k.shape).is_some_and(|c| chunks.binary_search(&c).is_err())
-            });
-        }
+        // A body's collider is the whole field: built again.
+        shared.shapes3.retain(|k, _| k.mesh != handle);
+        shared.chunks3.retain(|k, _| {
+            k.mesh != handle
+                || key_chunk(k.shape).is_some_and(|c| chunks.binary_search(&c).is_err())
+        });
         if !whole_pending {
             shared.field_edits.entry(handle).or_default().extend(chunks);
         }
@@ -666,16 +636,12 @@ impl PhysicsSystem {
     pub fn remove_mesh(&self, handle: u64) {
         let mut shared = lock(&self.shared);
         shared.meshes.remove(&handle);
-        #[cfg(feature = "physics3d")]
         shared.baked3.remove(&handle);
         shared.heightfields.remove(&handle);
         shared.stale_meshes.insert(handle);
         shared.field_edits.remove(&handle);
-        #[cfg(feature = "physics3d")]
         shared.shapes3.retain(|k, _| k.mesh != handle);
-        #[cfg(feature = "physics3d")]
         shared.chunks3.retain(|k, _| k.mesh != handle);
-        #[cfg(feature = "physics2d")]
         shared.shapes2.retain(|k, _| k.mesh != handle);
     }
 

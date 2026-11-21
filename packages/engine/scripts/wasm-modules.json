@@ -29,11 +29,17 @@
       "^og_physics::destruction",
       "^og_runtime::bind::destruction"
     ],
-    "physics": [
-      "^rapier3d::",
-      "^parry3d::",
+    "physics2d": [
       "^rapier2d::",
       "^parry2d::",
+      "^og_physics::dim2::"
+    ],
+    "physics3d": [
+      "^rapier3d::",
+      "^parry3d::",
+      "^og_physics::dim3::"
+    ],
+    "physics": [
       "^og_physics::",
       "^nalgebra::",
       "^simba::",

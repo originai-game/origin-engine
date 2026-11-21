@@ -327,8 +327,8 @@ pub const PROFILE_2D: u32 = 2;
 /// `Physics.profile`: rapier3d.
 pub const PROFILE_3D: u32 = 3;
 
-/// The physics settings of a world. The profile is the project's
-/// (`physics2d` or `physics3d`); the same components serve both.
+/// The physics settings of a world. The profile picks the 2D or the 3D
+/// simulation, and may change at run time; the same components serve both.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 #[reflect(name = "og.Physics", version = 2)]
 pub struct Physics {

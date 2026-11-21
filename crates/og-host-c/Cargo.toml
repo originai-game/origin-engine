@@ -18,7 +18,7 @@ window = ["dep:winit", "dep:og-render", "dep:pollster", "dep:og-audio", "og-audi
 
 [dependencies]
 og-api = { path = "../og-api" }
-og-runtime = { path = "../og-runtime", default-features = false, features = ["shaping", "physics2d", "physics3d", "fetch"] }
+og-runtime = { path = "../og-runtime", default-features = false, features = ["shaping", "fetch"] }
 og-physics = { path = "../og-physics" }
 # Basis textures transcoded natively, as og-host-node does (`Hooks::texture`).
 og-bundle = { path = "../og-bundle", features = ["transcode"] }

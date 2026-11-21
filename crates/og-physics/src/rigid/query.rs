@@ -9,18 +9,14 @@ pub struct PhysicsQuery {
 }
 
 pub(crate) enum QueryInner {
-    #[cfg(feature = "physics3d")]
     D3(dim3::QueryWorld),
-    #[cfg(feature = "physics2d")]
     D2(dim2::QueryWorld),
 }
 
 impl QueryInner {
     fn build(profile: u32, scene: &Scene, shared: &mut Shared) -> Result<QueryInner> {
         Ok(match profile {
-            #[cfg(feature = "physics3d")]
             PROFILE_3D => QueryInner::D3(dim3::QueryWorld::build(scene, shared)?),
-            #[cfg(feature = "physics2d")]
             PROFILE_2D => QueryInner::D2(dim2::QueryWorld::build(scene, shared)?),
             other => return Err(check_profile(other).unwrap_err()),
         })
@@ -45,9 +41,7 @@ impl PhysicsQuery {
     pub fn raycast(&self, desc: &RaycastDesc) -> Result<Option<RaycastHit>> {
         let max = max_distance(desc.max_distance);
         outside(|| match &*self.inner {
-            #[cfg(feature = "physics3d")]
             QueryInner::D3(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
-            #[cfg(feature = "physics2d")]
             QueryInner::D2(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
         })
     }
@@ -63,9 +57,7 @@ impl PhysicsQuery {
             n => n.min(MAX_RAYCAST_HITS),
         } as usize;
         outside(|| match &*self.inner {
-            #[cfg(feature = "physics3d")]
             QueryInner::D3(q) => q.raycast_all(r.origin, r.direction, max, &r.filter, cap),
-            #[cfg(feature = "physics2d")]
             QueryInner::D2(q) => q.raycast_all(r.origin, r.direction, max, &r.filter, cap),
         })
     }
@@ -74,9 +66,7 @@ impl PhysicsQuery {
     pub fn project_point(&self, desc: &ProjectPointDesc) -> Result<Option<PointProjection>> {
         let max = max_distance(desc.max_distance);
         outside(|| match &*self.inner {
-            #[cfg(feature = "physics3d")]
             QueryInner::D3(q) => q.project_point(desc, max),
-            #[cfg(feature = "physics2d")]
             QueryInner::D2(q) => q.project_point(desc, max),
         })
     }
@@ -87,9 +77,7 @@ impl PhysicsQuery {
         outside(|| {
             let mut shared = lock(&self.shared);
             match &*self.inner {
-                #[cfg(feature = "physics3d")]
                 QueryInner::D3(q) => q.shape_cast(desc, max, &mut shared),
-                #[cfg(feature = "physics2d")]
                 QueryInner::D2(q) => q.shape_cast(desc, max, &mut shared),
             }
         })
@@ -100,9 +88,7 @@ impl PhysicsQuery {
         outside(|| {
             let mut shared = lock(&self.shared);
             match &*self.inner {
-                #[cfg(feature = "physics3d")]
                 QueryInner::D3(q) => q.overlap(desc, &mut shared),
-                #[cfg(feature = "physics2d")]
                 QueryInner::D2(q) => q.overlap(desc, &mut shared),
             }
         })

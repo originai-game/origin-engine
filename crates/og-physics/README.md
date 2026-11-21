@@ -30,8 +30,10 @@ world.step()?;                                                                  
 let hit = physics.query(&world)?.raycast(&RaycastDesc { origin, direction: -Vec3::Y, ..Default::default() })?;
 ```
 
-Features `physics3d` and `physics2d` (both default) choose the rapier
-builds; `og.Physics.profile` (3 or 2) chooses the one a world steps. In 2D
+Both rapier builds are always linked; `og.Physics.profile` (3 or 2)
+chooses the one a world steps, and a world may switch it at run time (a
+2D minigame inside a 3D game). On the web the 2D one is the split module
+`physics2d`, loaded on its first call. In 2D
 bodies move in the xy plane and rotate about z; a transform keeps its z.
 Every record below is in the IDL's physics module
 (`crates/og-api/api/physics.ogt`), and og-runtime links og-physics for both

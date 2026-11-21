@@ -22,7 +22,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 # Shortest float formatting (serde_json's own): a system call's time payload.
 zmij = "1"
-og-physics = { path = "../og-physics", default-features = false }
+og-physics = { path = "../og-physics" }
 og-audio = { path = "../og-audio" }
 og-ui = { path = "../og-ui", default-features = false }
 # The reactive session and its wire format, which the new core's stores use.
@@ -61,7 +61,7 @@ og-video = { path = "../og-video" }
 image = { workspace = true, features = ["exr", "webp"] }
 
 [features]
-default = ["shaping", "physics2d", "physics3d", "fetch"]
+default = ["shaping", "fetch"]
 # A published game: the probe keeps only its player-facing members, the
 # renderer times no pass on the GPU (og-render's `publish`), and the
 # reflected and record field docs are empty (og-core's and og-api's
@@ -75,11 +75,6 @@ profile2d = ["og-render/profile2d"]
 # og-ui's run-time shaping (rustybuzz: Arabic, Indic and the other shaped
 # scripts). A build for games without them can leave it out.
 shaping = ["og-ui/shaping", "og-text/shaping"]
-# The physics profiles built in (og-physics): both by default; a shipping
-# web variant keeps the one its game's profile uses (docs/web-export.md
-# §Variants), and the other profile's calls answer that it is not built.
-physics2d = ["og-physics/physics2d"]
-physics3d = ["og-physics/physics3d"]
 # Natively, og.load.data's integrity check of a version's files
 # (world/data.rs, og-net's sha384). On the web the engine Worker's fetch
 # checks it, so the wasm takes none.

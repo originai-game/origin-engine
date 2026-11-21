@@ -6,7 +6,6 @@ use super::*;
 pub(crate) enum ControlOut {
     Character(CharacterController),
     /// Only a 2D world moves a platformer controller.
-    #[cfg_attr(not(feature = "physics2d"), allow(dead_code))]
     Platformer(PlatformerController),
 }
 
@@ -109,12 +108,8 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>
     let out = {
         let mut shared = lock(shared);
         match settings.profile {
-            #[cfg(feature = "physics3d")]
             PROFILE_3D => {
-                #[cfg(feature = "physics2d")]
-                {
-                    shared.sim2 = None;
-                }
+                shared.sim2 = None;
                 // Stepped: the restored bytes are behind the simulation now.
                 shared.restored = None;
                 let mut sim = shared.sim3.take().unwrap_or_default();
@@ -122,12 +117,8 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>
                 shared.sim3 = Some(sim);
                 out
             }
-            #[cfg(feature = "physics2d")]
             PROFILE_2D => {
-                #[cfg(feature = "physics3d")]
-                {
-                    shared.sim3 = None;
-                }
+                shared.sim3 = None;
                 let mut sim = shared.sim2.take().unwrap_or_default();
                 let out = dim2::step(&settings, dt, tick, &scene, &mut shared, &mut sim)?;
                 shared.sim2 = Some(sim);
@@ -235,9 +226,7 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>
     let pool = laps.phases[stats::Phase::Rapier as usize].split;
     let mut shared = lock(shared);
     let bodies = match () {
-        #[cfg(feature = "physics3d")]
         _ if shared.sim3.is_some() => shared.sim3.as_deref().map_or(0, |s| s.world.bodies.len()),
-        #[cfg(feature = "physics2d")]
         _ if shared.sim2.is_some() => shared.sim2.as_deref().map_or(0, |s| s.world.bodies.len()),
         _ => 0,
     };

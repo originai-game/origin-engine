@@ -279,11 +279,16 @@ there:
 
 | Variant | Where | Built with (og-host-web) | Physics |
 |---|---|---|---|
-| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,physics3d,shaping` | rapier3d |
-| 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,physics3d,shaping`, wasm atomics (§Lanes) | rapier3d (`parallel`) |
-| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,physics2d,profile2d,shaping` | rapier2d |
-| 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,physics2d,profile2d,shaping`, wasm atomics | rapier2d (`parallel`) |
-| dev | `dist/web/origin-engine*` | default features (both profiles) | both, not shipped |
+| 3D publish | `dist/web-publish/origin-engine*` | `--no-default-features --features publish,shaping` | both |
+| 3D lanes | `dist/web-publish/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,shaping`, wasm atomics (§Lanes) | both (`parallel`) |
+| 2D publish | `dist/web-publish-2d/origin-engine*` | `--no-default-features --features publish,profile2d,shaping` | both |
+| 2D lanes | `dist/web-publish-2d/origin-engine-lanes*`, `snippets/` | `--no-default-features --features publish,profile2d,shaping`, wasm atomics | both (`parallel`) |
+| dev | `dist/web/origin-engine*` | default features | both, not shipped |
+
+Every variant links rapier2d and rapier3d, so a world switches
+`og.Physics.profile` at run time (a 2D minigame inside a 3D game). The 2D
+simulation is the split module `physics2d` and the 3D one `physics`
+(§Modules): a page fetches each on its first call.
 
 The feature sets are scripts/wasm-crates.txt's, the gate's own build list
 (scripts/lib.sh reads it); `scripts/release-dist.test.ts` holds the table's
@@ -304,11 +309,13 @@ variant: what counts is the largest one a player downloads, never the sum
 Each publish module, single-threaded and lanes, is split (Binaryen's `wasm-split`, pinned by
 `scripts/install-tools.sh`; `packages/engine/scripts/wasm-split.ts`) into
 the primary, which boots, and one module per optional capability:
-`physics`, `story` (with og.flow), `nav` (with og.ai), `motion`,
+`physics` with its two simulations `physics3d` (rapier3d) and `physics2d`
+(rapier2d), `story` (with og.flow), `nav` (with og.ai), `motion`,
 `destruction`, `video` and `world3d` (terrain, scattered copies and
 grass, planar water, the 3D fluids and volumetric fog's shaders, with
 og.terrain) (`scripts/wasm-modules.json` assigns the
-functions). What a game using none of them runs stays in the primary,
+functions). A world loads `physics` and the simulation of its
+og.Physics.profile; switching the profile loads the other one. What a game using none of them runs stays in the primary,
 so such a game loads none: every function its ticks, snapshots and
 restores run (profiled by `scripts/wasm-profile.ts`), and every function
 a frame, a canvas attach or a geometry call reaches by direct calls
@@ -372,8 +379,9 @@ loading screen and puts them in place before the first tick.
 **What content needs.** The cook records in cooked/.cook.ogt the modules
 each asset needs, `modules nav physics` in its block (sorted, absent when
 none): its own records' (the IDL's `split` line on a module or a record:
-`RigidBody` is in `physics`), its kind's (a dialogue `story`, a video
-`video`, a navmesh `nav`), and those of every asset it places or plays (a
+`RigidBody` is in `physics`, which adds the simulation of the scene's
+`resource og.Physics { profile }`, else of the project's profile), its
+kind's (a dialogue `story`, a video `video`, a navmesh `nav`), and those of every asset it places or plays (a
 scene's sub-scenes, prefabs and models, a timeline's clips and scenes).
 A top-level `modules` line is the bundle's: its boot scene's (project.ogt
 `scene` through `scenes`), or every asset's when project.ogt names none.

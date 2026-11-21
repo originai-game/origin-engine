@@ -194,7 +194,6 @@ pub(crate) struct State {
     pub physics_meshes: IdMap<u64, og_physics::MeshDesc>,
     /// The triangle-mesh colliders the cook baked, by Geometry handle
     /// (`modules::set_baked_trimesh`), given again to a rebuilt physics.
-    #[cfg(feature = "physics3d")]
     pub physics_baked: IdMap<u64, Vec<u8>>,
     /// Every terrain's height field registered with physics, likewise.
     #[cfg_attr(all(feature = "publish", feature = "profile2d"), allow(dead_code))]

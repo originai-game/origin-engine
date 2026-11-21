@@ -19,9 +19,7 @@
 //!   mass properties are diagonalised by glamx's eigensolver, which went
 //!   through the host's libm until `third_party/glamx` and the two hosts
 //!   drifted apart;
-//! - [`physics2d_hash`]: the same scenario in 2D after 600 ticks. A build
-//!   with one physics profile (the `physics2d` or `physics3d` feature alone,
-//!   as og-host-web's per-profile modules are built) has only its own;
+//! - [`physics2d_hash`]: the same scenario in 2D after 600 ticks;
 //! - [`anim_hash`]: the world hash of og-anim's walk scenario
 //!   (`crates/og-anim/tests/support/walk.rs`: graphs, players, root motion,
 //!   blendshapes, IK) after 600 ticks, with every sample of the walk
@@ -44,7 +42,6 @@ mod bouncing_boxes;
 #[path = "../../../og-physics/tests/support/mod.rs"]
 mod physics_support;
 use physics_support::beyond;
-#[cfg(feature = "physics3d")]
 use physics_support::pile;
 
 #[path = "../../../og-anim/tests/support/mod.rs"]
@@ -70,10 +67,8 @@ pub(crate) fn register(probe: &mut og_probe::Probe) {
                     "anim": format!("{:016x}", anim_hash()),
                     "text": format!("{:016x}", text_layout_hash()),
                 });
-                #[cfg(feature = "physics3d")]
-                { digests["physics3d"] = format!("{:016x}", physics3d_hash()).into(); }
-                #[cfg(feature = "physics2d")]
-                { digests["physics2d"] = format!("{:016x}", physics2d_hash()).into(); }
+                digests["physics3d"] = format!("{:016x}", physics3d_hash()).into();
+                digests["physics2d"] = format!("{:016x}", physics2d_hash()).into();
                 Ok(serde_json::json!({ "digests": digests, "parallelCalls": og_lanes::calls_here() - before }))
             },
         )
@@ -198,7 +193,6 @@ fn beyond_hash(profile: u32) -> u64 {
 }
 
 /// See the crate documentation.
-#[cfg(feature = "physics3d")]
 pub fn physics3d_hash() -> u64 {
     let mut h = StableHasher::new();
     h.write_u64(beyond_hash(og_physics::PROFILE_3D));
@@ -212,7 +206,6 @@ pub fn physics3d_hash() -> u64 {
 }
 
 /// See the crate documentation.
-#[cfg(feature = "physics2d")]
 pub fn physics2d_hash() -> u64 {
     beyond_hash(og_physics::PROFILE_2D)
 }
