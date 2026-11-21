@@ -3705,6 +3705,7 @@ dependencies = [
  "fdsm",
  "font-rs",
  "harfrust",
+ "image",
  "kurbo",
  "libm",
  "nalgebra 0.34.2",
