@@ -3718,6 +3718,7 @@ dependencies = [
  "parley_data",
  "parley_engine",
  "skrifa",
+ "tiny-skia",
  "ttf-parser",
  "unicode-bidi",
 ]

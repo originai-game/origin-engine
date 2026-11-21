@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "tests/fixtures/palette-test.ttf",
+      "sha256": "28a44e7609db06400a8220a0fb3851966d8cd3b2b67e80b85624863e4c62b1dd",
+      "size": 1036,
+      "visibility": "public"
+    }
+  ]
+}

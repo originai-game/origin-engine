@@ -48,6 +48,8 @@ fdsm = "0.8.0"
 nalgebra = "0.34.1"
 # fdsm's field images, at fdsm's version, no codecs.
 image = { version = "0.25.6", default-features = false }
+# Colour glyphs' paint graphs painted (vendored: exact reciprocals); no PNG.
+tiny-skia = { version = "0.12.0", default-features = false, features = ["std", "simd"] }
 # The bidirectional algorithm (UAX #9): a line's runs in visual order.
 unicode-bidi = "0.3.18"
 # A cooked font's file (`runtime true`): metrics and outlines of characters
