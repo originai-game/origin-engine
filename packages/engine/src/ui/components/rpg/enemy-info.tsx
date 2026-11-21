@@ -1,4 +1,5 @@
 import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { HudBar } from "../hud/bar";
 import "./rpg.en.ogt";
 
 export interface RpgEnemyInfoProps {
@@ -20,32 +21,6 @@ export interface RpgEnemyInfoProps {
  * The targeted enemy: name, portrait, level, a health bar with its
  * figure and its status effects. Read only.
  */
-
-/** The HUD's leaning health bar as this sheet uses it (a stand-in for HudBar). */
-function EnemyBar(props: { value: number; max: number; label: string }) {
-  const frac = props.max > 0 ? Math.min(Math.max(props.value / props.max, 0), 1) : 0;
-  return (
-    <View class={`relative self-stretch mx-1`}>
-      <View
-        class={`w-full h-[1.714rem] overflow-hidden skew-x-[-22deg] bg-[#04060cb8] shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_4px_#00000073]`}
-        role="meter"
-        label={props.label}
-        valueMin={0}
-        valueMax={props.max > 0 ? props.max : 1}
-        valueNow={props.value <= 0 ? 0 : props.value > props.max ? props.max : props.value}
-      >
-        <View class={`relative h-full bg-[#de2634]`} style={{ width: `${frac * 100}%` }}>
-          <View class={`absolute inset-0 bg-linear-to-b from-[#ffffff8c] to-transparent to-42%`} />
-        </View>
-      </View>
-      <View class={`absolute inset-0 flex-row justify-center items-center`}>
-        <Text class={`px-1 text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 skew-x-[22deg]`}>
-          {t("rpg.party.figure", { now: props.value, max: props.max })}
-        </Text>
-      </View>
-    </View>
-  );
-}
 
 export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
   return (
@@ -69,7 +44,9 @@ export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
         </View>
       </Show>
       <Text class={`text-[0.929rem] text-fg-muted text-center`}>{t("rpg.party.level", { level: props.level })}</Text>
-      <EnemyBar value={props.health} max={props.healthMax} label={t("rpg.party.health")} />
+      <View class="relative self-stretch mx-1">
+        <HudBar value={props.health} max={props.healthMax} showValue />
+      </View>
       <Show when={(props.effects ?? []).length}>
         <View class={`flex-row flex-wrap items-start w-full gap-1`} role="list">
           <For each={props.effects ?? []} key={(e) => e.id}>

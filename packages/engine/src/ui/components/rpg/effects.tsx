@@ -1,4 +1,5 @@
-import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, View, t } from "@origingame/engine/ui";
+import { HudEffect } from "../hud/effect";
 import "./rpg.en.ogt";
 
 export interface RpgEffectsProps {
@@ -7,53 +8,11 @@ export interface RpgEffectsProps {
 }
 
 /**
- * The buffs and debuffs on the leader, under the vitals: a row of effect
- * tiles, each a small tile with two corners cut, its edge green for a boon
- * and red for a harm, the time still to run as a dark sweep over its art
- * and its time or stacks on a tag under it. The row only spaces them; a
- * game that wants another arrangement lays the tile out itself. The game
- * owns every timer; read only.
+ * The buffs and debuffs on the leader, under the vitals: a row of
+ * HudEffect tiles. The row only spaces them; a game that wants another
+ * arrangement lays the tile out itself. The game owns every timer; read
+ * only.
  */
-
-/** The HUD's effect tile as this row uses it (a stand-in for HudEffect). */
-function EffectTile(props: { name: string; icon: number; glyph: string; remaining: number; label: string; harmful: boolean }) {
-  return (
-    <View
-      class={`group/effect flex-col items-center gap-y-[0.214rem] w-fit max-w-full text-fg text-shadow-xs text-shadow-bg/55`}
-      role="group"
-      label={props.name}
-      description={props.label}
-      data-harmful={props.harmful}
-    >
-      <View
-        class={`relative size-[2.143rem] rounded-tl-[5.714px] rounded-tr-none rounded-br-[5.714px] rounded-bl-none bg-[#55e39a] group-data-harmful/effect:bg-[#ff4d5e]`}
-      >
-        <Show when={props.icon !== 0} fallback={
-            <View class={`absolute inset-[2px] flex-row justify-center items-center bg-linear-to-b from-[#171f30d6] to-[#080c16e0] rounded-tl-[5.714px] rounded-tr-none rounded-br-[5.714px] rounded-bl-none`}>
-              <Show when={props.glyph}>
-                <Icon class={`w-[60%] h-[60%] text-fg`} name={props.glyph} />
-              </Show>
-            </View>
-        }>
-          <Image class={`absolute inset-[2px] rounded-tl-[5.714px] rounded-tr-none rounded-br-[5.714px] rounded-bl-none`} src={String(props.icon)} label="" />
-        </Show>
-        <Show when={props.remaining >= 0}>
-          <View
-            class={`absolute inset-x-0 top-0 bg-[#060910ad] rounded-bl-[5.714px]`}
-            style={{ height: `${(1 - Math.min(props.remaining >= 1 ? 1 : props.remaining, 1)) * 100}%` }}
-          />
-        </Show>
-      </View>
-      <Show when={props.label}>
-        <Text
-          class={`max-w-[4.571rem] px-[0.357rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none group-data-harmful/effect:text-[#ff4d5e] compact:px-[0.214rem]`}
-        >
-          {props.label}
-        </Text>
-      </Show>
-    </View>
-  );
-}
 
 export function RpgEffects(props: RpgEffectsProps) {
   return (
@@ -64,8 +23,8 @@ export function RpgEffects(props: RpgEffectsProps) {
     >
       <For each={props.effects ?? []} key={(e) => e.id}>
         {(e) => (
-        <View role="listitem">
-          <EffectTile name={e().name} icon={e().icon} glyph={e().glyph} remaining={e().remaining} label={e().label} harmful={e().harmful} />
+        <View role="listitem" data-harmful={e().harmful}>
+          <HudEffect name={e().name} icon={e().icon} glyph={e().glyph} remaining={e().remaining} label={e().label} harmful={e().harmful} />
         </View>
         )}
       </For>

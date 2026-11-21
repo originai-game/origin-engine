@@ -1,4 +1,5 @@
-import { Show, Text, View, formatDuration, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { HudTimer } from "../hud/hud-timer";
 import "./racing.en.ogt";
 
 export interface RacingLapHudProps {
@@ -34,23 +35,6 @@ export interface RacingLapHudProps {
   timeTotal: number;
   /** Seconds left when the timer turns warn (HudTimer's warnAt); 10 when left out. Default 10. */
   warnAt?: number;
-}
-
-/** Stand-in for hud/hud-timer (not yet ported): the time as words, no ring. */
-function Timer(props: { seconds: number; total: number; warnAt: number; label: string }) {
-  const warn = props.seconds <= props.warnAt;
-  return (
-    <View
-      class={`flex-col items-center gap-1 py-2 px-4`}
-      role="timer"
-      label={props.label}
-      valueText={formatDuration(props.seconds)}
-      busy={false}
-      data-warn={warn}
-    >
-      <Text class={`text-[1.286rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55 data-warn:text-[#ffb547]`}>{formatDuration(props.seconds)}</Text>
-    </View>
-  );
 }
 
 /**
@@ -152,7 +136,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
       </View>
       <Show when={(props.timeLeft ?? -1) >= 0}>
         <View class="self-start">
-          <Timer seconds={props.timeLeft ?? 0} total={props.timeTotal} warnAt={props.warnAt ?? 10} label={t("racing.lap.timeLeft")} />
+          <HudTimer seconds={props.timeLeft ?? 0} total={props.timeTotal} countdown warnAt={props.warnAt ?? 10} paused={false} label={t("racing.lap.timeLeft")} />
         </View>
       </Show>
     </View>

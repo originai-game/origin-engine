@@ -1,4 +1,5 @@
 import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { StatBar } from "../hud/stat-bar";
 import "./racing.en.ogt";
 
 export interface RacingGarageProps {
@@ -26,19 +27,6 @@ export interface RacingGarageProps {
   onSelect?: (e: UiEvent, id: string) => void;
   /** Buy the shown car. */
   onBuy?: (e: UiEvent, id: string) => void;
-}
-
-/** Stand-in for hud/stat-bar (not yet ported): a bare meter row. */
-function StatRow(props: { label: string; value: number; max: number; text: string }) {
-  return (
-    <View class="flex-row items-center gap-x-2 min-w-0" role="meter" label={props.label} valueMin={0} valueMax={props.max} valueNow={props.value} valueText={props.text}>
-      <Text class={`shrink text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7]`}>{props.label}</Text>
-      <View class={`flex-1 min-w-0 h-[0.571rem] overflow-hidden bg-[#04060cb8] shadow-[0px_0px_0px_1px_#ffffff38]`}>
-        <View class="h-full bg-gold" style={{ width: `${(props.max > 0 ? Math.min(props.value / props.max, 1) : 0) * 100}%` }} />
-      </View>
-      <Text class={`shrink text-[0.857rem] font-bold tabular-nums whitespace-nowrap text-fg`}>{props.text}</Text>
-    </View>
-  );
 }
 
 const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#1e2637eb] shadow-[inset_0px_0px_0px_1px_#ffffff3d,inset_0px_1px_0px_#ffffff99] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none hover:bg-[#2a3242eb] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_0px_2.288px_#060910e6] disabled:opacity-45`;
@@ -110,7 +98,7 @@ export function RacingGarage(props: RacingGarageProps) {
               <For each={stats()} key={(s) => s.id}>
                 {(s) => (
                   <View class="min-w-0" role="listitem">
-                    <StatRow label={s().label} value={s().value} max={s().max} text={s().text} />
+                    <StatBar value={s().value} max={s().max} kind="stamina" label={s().label} showValue valueText={s().text} low={0} critical={0} bare name={s().label} />
                   </View>
                 )}
               </For>

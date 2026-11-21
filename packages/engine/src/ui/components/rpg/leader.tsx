@@ -1,6 +1,6 @@
-import { For, Icon, Image, Show, Text, View, createMemo, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { HudBar } from "../hud/bar";
 import "./leader.en.ogt";
-import "../hud/bar.en.ogt";
 
 export interface RpgLeaderProps {
   /** The leader's name; empty hides it. */
@@ -36,41 +36,6 @@ export interface RpgLeaderProps {
  * a warm ghost when it drops and turns to danger when low, a mana bar and
  * a stamina bar cut into cells. Read only.
  */
-
-/**
- * One HudBar block, inlined (hud/bar.svelte is not ported yet): a dark
- * well with a lit rim, a warm ghost behind the fill, the fill in its
- * kind's colour, the value over its most, cells cut across the well and
- * the figure upright over it when showValue. The skew and the gloss
- * gradients stand in for the leaning bar's paint.
- */
-function VitalBar(props: { value: number; max: number; ghost: number; segment: number; low: boolean; showValue: boolean; kind: string; name: string; height: number }) {
-  const cuts = createMemo(() => {
-    const n = props.segment > 0 && props.max > 0 ? Math.max(1, Math.round(props.max / props.segment)) : 1;
-    const lines: number[] = [];
-    for (let k = 1; k < n; k++) lines.push(k / n);
-    return lines;
-  });
-  const fill = (v: number) => (props.max <= 0 || v <= 0 ? 0 : v >= props.max ? 1 : v / props.max);
-  return (
-    <View class={`group/bar relative w-full overflow-hidden bg-[#04060cb8] shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_4px_#00000073] data-low:shadow-[0px_0px_0px_1px_#ff4d5e,0px_0px_12px_#ff4d5eb3]`} role="meter" label={props.name} valueMin={0} valueMax={props.max > 0 ? props.max : 1} valueNow={props.value <= 0 ? 0 : props.max > 0 && props.value >= props.max ? props.max : props.value} data-low={props.low} style={{ height: `${props.height}px` }}>
-      <View class="absolute inset-y-0 left-0 bg-gold/55" style={{ width: `${fill(props.ghost <= props.value ? 0 : props.ghost) * 100}%` }} />
-      <View class={`absolute inset-y-0 left-0 shadow-[inset_0px_2px_0px_#ffffff8c] data-life:bg-[#ff4d5e] data-mana:bg-[#5b9dff] data-stamina:bg-gold group-data-low/bar:bg-danger`} data-life={props.kind === "life"} data-mana={props.kind === "mana"} data-stamina={props.kind === "stamina"} style={{ width: `${fill(props.value) * 100}%` }} />
-      <For each={cuts()}>
-        {(p) => (
-        <View class="absolute top-0 bottom-0 w-[0.214rem] bg-[#04060ce0]" style={{ left: `${p() * 100}%` }} />
-        )}
-      </For>
-      <Show when={props.showValue}>
-        <View class="absolute inset-0 flex-row items-center justify-center px-1">
-          <Text class="text-[0.857rem] font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs text-shadow-bg/55">
-            {t("hud.bar.figure", { now: props.value, max: props.max })}
-          </Text>
-        </View>
-      </Show>
-    </View>
-  );
-}
 
 export function RpgLeader(props: RpgLeaderProps) {
   const low = () => props.healthMax > 0 && props.health <= props.healthMax * (props.low ?? 0.25);
@@ -116,15 +81,15 @@ export function RpgLeader(props: RpgLeaderProps) {
             </View>
           </Show>
         </View>
-        <VitalBar value={props.health} max={props.healthMax} ghost={props.ghost} segment={0} low={low()} showValue={false} kind="life" name={t("hud.bar.health")} height={16} />
+        <HudBar value={props.health} max={props.healthMax} ghost={props.ghost} low={low()} />
         <Show when={props.manaMax > 0}>
           <View class="w-[86%]">
-            <VitalBar value={props.mana} max={props.manaMax} ghost={0} segment={0} low={false} showValue={false} kind="mana" name={t("hud.bar.mana")} height={8} />
+            <HudBar value={props.mana} max={props.manaMax} kind="mana" />
           </View>
         </Show>
         <Show when={props.staminaMax > 0}>
           <View class="w-[72%]">
-            <VitalBar value={props.stamina} max={props.staminaMax} ghost={0} segment={props.segment ?? 0} low={false} showValue={false} kind="stamina" name={t("hud.bar.stamina")} height={6} />
+            <HudBar value={props.stamina} max={props.staminaMax} kind="stamina" segment={props.segment ?? 0} />
           </View>
         </Show>
       </View>

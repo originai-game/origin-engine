@@ -1,4 +1,5 @@
 import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { HudBar } from "../hud/bar";
 import "./rpg.en.ogt";
 
 export interface RpgCompanionsProps {
@@ -18,34 +19,6 @@ export interface RpgCompanionsProps {
 
 function isLow(props: RpgCompanionsProps, m: { fallen: boolean; health: number; healthMax: number }) {
   return !m.fallen && m.healthMax > 0 && m.health <= m.healthMax * (props.low ?? 0.25);
-}
-
-/** The HUD's leaning bar as this plate uses it (a stand-in for HudBar). */
-function CompanionBar(props: { value: number; max: number; ghost: number; height: string; low: boolean; label: string }) {
-  const frac = (v: number) => (props.max > 0 ? Math.min(Math.max(v / props.max, 0), 1) : 0);
-  return (
-    <View
-      class={`group/bar relative w-full overflow-hidden skew-x-[-22deg] bg-[#04060cb8] shadow-[0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff24,0px_2px_4px_#00000073] data-low:shadow-[0px_0px_0px_1px_#ff9599,0px_0px_12px_#de2634b3]`}
-      role="meter"
-      label={props.label}
-      valueMin={0}
-      valueMax={props.max > 0 ? props.max : 1}
-      valueNow={props.value <= 0 ? 0 : props.value > props.max ? props.max : props.value}
-      style={{ height: props.height }}
-      data-low={props.low}
-    >
-      <Show when={props.ghost > props.value}>
-        <View
-          class={`absolute inset-y-0 left-0 bg-linear-to-r from-[#ffcf5a26] to-[#ffcf5ad9]`}
-          style={{ width: `${frac(props.ghost) * 100}%` }}
-        />
-      </Show>
-      <View class={`absolute inset-y-0 left-0`} style={{ width: `${frac(props.value) * 100}%` }}>
-        <View class={`size-full bg-[#ff4d5e] group-data-low/bar:bg-[#de2634]`} />
-        <View class={`absolute inset-0 bg-linear-to-b from-[#ffffff8c] to-transparent to-42%`} />
-      </View>
-    </View>
-  );
 }
 
 export function RpgCompanions(props: RpgCompanionsProps) {
@@ -84,23 +57,9 @@ export function RpgCompanions(props: RpgCompanionsProps) {
               </Text>
             </Show>
           </View>
-          <CompanionBar
-            value={m().health}
-            max={m().healthMax}
-            ghost={m().ghost}
-            height={`0.429rem`}
-            low={isLow(props, m())}
-            label={t("rpg.party.health")}
-          />
+          <HudBar value={m().health} max={m().healthMax} ghost={m().ghost} low={isLow(props, m())} />
           <Show when={m().manaMax > 0 && !m().fallen}>
-            <CompanionBar
-              value={m().mana}
-              max={m().manaMax}
-              ghost={0}
-              height={`0.286rem`}
-              low={false}
-              label={t("rpg.party.mana")}
-            />
+            <HudBar value={m().mana} max={m().manaMax} kind="mana" />
           </Show>
           <Show when={m().key}>
             <Text
