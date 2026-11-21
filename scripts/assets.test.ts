@@ -177,8 +177,9 @@ test("Git holds no binary outside its list: every other one is pinned in the ass
   // unlike `ls-files --eol`, which reads each blob in turn) does not list as text.
   const EMPTY = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
   const text = new Set(git("grep", "--cached", "-I", "-l", "-z", "-e", ""));
+  // A symlink's blob is its target's path (the checkout's node_modules/@origingame/engine).
   const binary = git("ls-files", "-s", "-z")
-    .filter((line) => line.split(" ")[1] !== EMPTY)
+    .filter((line) => line.split(" ")[1] !== EMPTY && !line.startsWith("120000 "))
     .map((line) => line.slice(line.indexOf("\t") + 1))
     .filter((path) => !text.has(path));
   const stray = binary.filter((path) => !IN_GIT.has(path) && !/^packages\/knowledge\/previews\/[^/]+\.webp$/.test(path) && !path.startsWith("third_party/"));
