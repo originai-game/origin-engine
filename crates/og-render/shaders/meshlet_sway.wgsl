@@ -26,25 +26,6 @@ struct MeshletDraw {
 // meshlet.rs FOLIAGE_HEADER_ROWS.
 const SWAY_HEADER_ROWS: u32 = 7u;
 
-// A vertex's leaf in its year (foliage.wgsl `season_leaf`) and
-// its colour lot: `h1` the region's second row (its season and shift),
-// `f1` the vertex's anchor row, `model` its instance now and `origin`
-// the render origin, so every pass and both frames of a motion vector
-// draw the leaf at one size.
-struct MeshletLeaf {
-  leaf: SeasonLeaf,
-  pick: f32,
-};
-
-fn meshlet_leaf(h1: vec4<f32>, f1: vec4<f32>, model: mat4x4<f32>, origin: vec3<f32>, year: LeafYear) -> MeshletLeaf {
-  var l = MeshletLeaf(SeasonLeaf(1.0, 0.0, 0.0), 0.0);
-  if (h1.y <= 0.0 || year.fall.w < 0.5) { return l; }
-  let lot = leaf_order_pick(f1.xyz);
-  l.leaf = season_leaf(lot.x, foliage_tree(model[3].xyz + origin), h1.y, h1.z, year);
-  l.pick = lot.y;
-  return l;
-}
-
 // The header row of the region `region` (the cluster row's w) that holds
 // level `level`'s leaf scale (meshlet.rs `MeshFoliage::level_scales`).
 fn meshlet_scale_row(region: u32, level: u32) -> u32 {
@@ -55,21 +36,6 @@ fn meshlet_scale_row(region: u32, level: u32) -> u32 {
 // how much larger a thinned level of leaf cards draws each leaf.
 fn meshlet_level_scale(row: vec4<f32>, level: u32) -> f32 {
   return row[min(level, 7u) % 4u];
-}
-
-// Where the leaf's year and its level put a vertex resting at `p`: drawn
-// in to its anchor as the leaf is less than whole (a bud, a dropped leaf),
-// out from it on a thinned level (`grow`: the year's kept share times the
-// level's scale).
-fn meshlet_grown(p: vec3<f32>, f1: vec4<f32>, grow: f32) -> vec3<f32> {
-  if (grow == 1.0) { return p; }
-  return f1.xyz + (p - f1.xyz) * grow;
-}
-
-// The vertex's turned colour (foliage.wgsl `season_leaf_color`),
-// from the region's third and fourth rows.
-fn meshlet_leaf_color(h2: vec4<f32>, h3: vec4<f32>, l: MeshletLeaf) -> vec4<f32> {
-  return season_leaf_color(h2.xyz, h3.xyz, l.pick, l.leaf);
 }
 
 // The first vec4 of vertex `index`'s two rows in the region `region`
@@ -100,69 +66,4 @@ fn meshlet_sway(p: vec3<f32>, header: vec4<f32>, f0: vec4<f32>, f1: vec4<f32>,
   let det = dot(a, cross(b, c));
   if (abs(det) <= 1e-20) { return vec3<f32>(0.0); }
   return vec3<f32>(dot(cross(b, c), world), dot(cross(c, a), world), dot(cross(a, b), world)) / det;
-}
-
-// The path inside a crown (an ellipsoid of half-extents `h`, in the
-// mesh's own space) from the point `q` (its position over `h`) along the
-// unit direction `d`: from inside, to where the ray leaves; from outside,
-// the chord ahead of the point.
-fn meshlet_crown_path(q: vec3<f32>, d: vec3<f32>, h: vec3<f32>) -> f32 {
-  let e = d / h;
-  let qa = dot(e, e);
-  let qb = dot(q, e);
-  let qc = dot(q, q) - 1.0;
-  let disc = qb * qb - qa * qc;
-  if (disc <= 0.0) { return 0.0; }
-  let root = sqrt(disc);
-  return select(max(2.0 * root / qa, 0.0) * f32(qb < 0.0), (root - qb) / qa, qc < 0.0);
-}
-
-// A world direction `d` in the mesh's own space (normalised: a scaled
-// instance turns it as its shape turns).
-fn meshlet_model_dir(model: mat4x4<f32>, d: vec3<f32>) -> vec3<f32> {
-  let m = transpose(mat3x3<f32>(model[0].xyz, model[1].xyz, model[2].xyz)) * d;
-  if (dot(m, m) <= 1e-20) { return vec3<f32>(0.0, 1.0, 0.0); }
-  return normalize(m);
-}
-
-// What the tree's own crown hides from the point `p` (the mesh's own
-// space, at rest): x of the light around it, facing `axis` (its normal in
-// that space; a leaf card's, which is lit from both faces, the canopy
-// dome's), y of the sun towards `sun` (that space); 0 none, towards 1
-// deep in a dense crown. After Hegeman, Premoze, Ashikhmin and Drettakis,
-// "Approximate ambient occlusion for trees" (I3D 2006): the crown is an
-// ellipsoid of randomly placed leaves, `h0` the region's first row (its
-// centre) and `h4` its fifth (half-extents, extinction), and light
-// reaches `p` along a direction through the leaves' transmittance,
-// exp(-extinction x the path inside the crown), whether it comes from the
-// sky or the ground: seven directions of the hemisphere about `axis`,
-// cosine-weighted, and the sun's own.
-fn meshlet_crown(p: vec3<f32>, axis: vec3<f32>, sun: vec3<f32>, h0: vec4<f32>, h4: vec4<f32>) -> vec2<f32> {
-  if (h4.w <= 0.0 || min(h4.x, min(h4.y, h4.z)) <= 0.0 || dot(axis, axis) <= 1e-12) { return vec2<f32>(0.0); }
-  let z = normalize(axis);
-  let x = normalize(cross(select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(z.y) > 0.9), z));
-  let y = cross(z, x);
-  let q = (p - h0.xyz) / h4.xyz;
-  var seen = 0.0;
-  for (var k = 0u; k < 7u; k++) {
-    // The axis, then six at 50 degrees from it.
-    var d = z;
-    var w = 0.25;
-    if (k > 0u) {
-      let a = f32(k) * 1.0471976;
-      d = z * 0.643 + (x * cos(a) + y * sin(a)) * 0.766;
-      w = 0.125;
-    }
-    seen += w * exp(-h4.w * meshlet_crown_path(q, d, h4.xyz));
-  }
-  return vec2<f32>(1.0 - seen, 1.0 - exp(-h4.w * meshlet_crown_path(q, sun, h4.xyz)));
-}
-
-// `meshlet_crown`'s axis for a vertex of normal `n` (the mesh's own
-// space): a leaf card's, the canopy dome at its anchor `f1` about the
-// centre in the region's first row `h0`, with `h1` its second (x: 1 for a
-// mesh of leaf cards).
-fn meshlet_crown_axis(n: vec3<f32>, f1: vec4<f32>, h0: vec4<f32>, h1: vec4<f32>) -> vec3<f32> {
-  if (h1.x > 0.5) { return foliage_normal(n, f1.xyz, h0.xyz, 1.0); }
-  return n;
 }
