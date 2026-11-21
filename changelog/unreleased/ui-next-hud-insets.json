@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "A TSX UI's `env(hud-inset-*)` classes (`pt-[calc(env(hud-inset-top)+16px)]` and the other sides) read the HUD's safe area: the viewport's safe-area insets with the host's covered region (the web shell's Back, `cover` on the command channel) folded in, and the HUD band's cap on an ultrawide. Before, the new core laid them out as 0, so a HUD padded by them sat under a notch and under the shell's Back."
+    }
+  ]
+}

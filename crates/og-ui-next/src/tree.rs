@@ -290,6 +290,9 @@ pub struct Tree {
     screen: u32,
     dirty: Vec<u32>,
     paint: bool,
+    /// The HUD's safe-area insets (top, right, bottom, left) a record's
+    /// `env(hud-inset-*)` adds at layout ([`Tree::set_insets`]).
+    insets: [f32; 4],
     /// What it paints (og-draw's arena, drawn by og-render's paint
     /// pass), refilled in place: its generation moves each repaint.
     pub drawn: Paint,
@@ -546,6 +549,7 @@ impl Tree {
             screen: queue::signal(0.into()),
             dirty: Vec::new(),
             paint: true,
+            insets: [0.0; 4],
             drawn: Paint::default(),
             sem: crate::a11y::Semantics::default(),
             abs: Vec::new(),
@@ -1096,7 +1100,7 @@ impl Tree {
             text: r.text.over(&from.text),
             opacity: from.opacity * r.skin.opacity,
         };
-        let mut layout = r.layout_in([0.0; 4]);
+        let mut layout = r.layout_in(self.insets);
         // An anchored node is out of flow: the host places it.
         if el.hidden > 0 || el.anchor.is_some() {
             let mut s = taffy::Style::from(&layout);
@@ -1159,6 +1163,24 @@ impl Tree {
         if moved || self.els.is_empty() {
             for e in 0..self.els.len() as u32 {
                 self.queue(e);
+            }
+        }
+        self.paint = true;
+    }
+
+    /// The HUD's safe-area insets on the tree's surface (top, right,
+    /// bottom, left): the viewport's safe area with the host's covered
+    /// region folded in, which `env(hud-inset-*)` reads. A change lays the
+    /// elements that read them out again.
+    pub fn set_insets(&mut self, insets: [f32; 4]) {
+        if self.insets == insets {
+            return;
+        }
+        self.insets = insets;
+        for e in 0..self.els.len() as u32 {
+            let el = &self.els[e as usize];
+            if !el.dead && el.record.safe != [0; 2] {
+                self.inherit(e);
             }
         }
         self.paint = true;

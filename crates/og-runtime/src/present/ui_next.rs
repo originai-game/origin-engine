@@ -932,6 +932,8 @@ impl Next {
         }
         let v = ui.frame().viewport;
         tree.resize(v.width, v.height);
+        let hud = v.hud_insets(ui.hud_max_aspect());
+        tree.set_insets([hud.top, hud.right, hud.bottom, hud.left]);
         tree.set_time(time, ui.theme().reduced_motion);
         let commit = tree.commit();
         // Anchored nodes where the tick's camera sees their entity or point
