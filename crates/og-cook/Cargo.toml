@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:og-ui-next", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
+cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -38,6 +38,9 @@ og-ui = { path = "../og-ui", optional = true }
 # A document's styles compiled for og-ui's new core, once per scheme, so
 # the runtime maps them instead of parsing tokens and sheets.
 og-ui-next = { path = "../og-ui-next", optional = true }
+# Font files and their glyphs, and Rive files.
+og-text = { path = "../og-text", default-features = false, optional = true }
+og-rive = { path = "../og-rive", optional = true }
 # What og-ui's theme generator (scripts/theme_codegen.rs) reads tokens with:
 # a development cook writes the default style from a checkout's tokens.
 og-css = { path = "../og-css", optional = true }

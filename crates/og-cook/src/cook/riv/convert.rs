@@ -1,5 +1,5 @@
 //! A read `.riv` ([`super::read`]) as og-ui artboards
-//! ([`og_ui::rive::Artboard`]), phase 1 of `docs/ui.md` §3.3: artboards,
+//! ([`og_rive::Artboard`]), phase 1 of `docs/ui.md` §3.3: artboards,
 //! groups, shapes and their paths (points, rectangle, ellipse, triangle,
 //! polygon, star), fills and strokes of solid colours and gradients,
 //! linear animations keying transform, opacity, colour and the paths'
@@ -14,7 +14,7 @@
 use super::read::{Object, RivFile, is_a, type_name};
 use og_core::glam::Vec2;
 use og_draw::ui::{UiBlend, UiCap, UiFillRule};
-use og_ui::rive::{
+use og_rive::{
     Animation, Artboard, Ease, Fit, HAlign, Join, Key, Kind, Loop, NO_FONT, NestedAnimation, Node,
     Outline, Overflow, Prop, Sizing, TextLayout, Track, VAlign, Values, Vertex,
 };
@@ -555,7 +555,7 @@ fn convert(groups: &[Group], assets: &[Asset], g: usize, depth: u32) -> Result<A
                     None => {
                         let img = super::super::texture::decode(bytes)
                             .map_err(|e| format!("{}: its image does not decode: {e}", at(o)))?;
-                        a.images.push(og_ui::rive::Image {
+                        a.images.push(og_rive::Image {
                             id: format!("#image{k}"),
                             size: Vec2::new(img.width as f32, img.height as f32),
                             texture: None,
@@ -897,7 +897,7 @@ fn convert(groups: &[Group], assets: &[Asset], g: usize, depth: u32) -> Result<A
             }
         }
     }
-    og_ui::rive::check(&a)?;
+    og_rive::check(&a)?;
     Ok(a)
 }
 
@@ -933,7 +933,7 @@ fn font_of(a: &mut Artboard, assets: &[Asset], k: usize, at: &str) -> Result<u32
     let face = ttf_parser::Face::parse(bytes, 0)
         .map_err(|e| format!("{at}: its font '{name}' does not parse: {e}"))?;
     let em = f32::from(face.units_per_em()).max(1.0);
-    a.fonts.push(og_ui::rive::Font {
+    a.fonts.push(og_rive::Font {
         id,
         ascent: f32::from(face.ascender()) / em,
         descent: -f32::from(face.descender()) / em,

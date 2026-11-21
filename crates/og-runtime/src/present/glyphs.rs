@@ -1,9 +1,9 @@
 //! Glyphs rendered at run time (`font { runtime true }`, and every font
 //! that ships its file for shaping): before a frame's text is laid out for
 //! drawing, each character the UI measured from a font's file
-//! (`og_ui::shape::FontFile::take_wanted`) or a queued text asked of it,
+//! (`og_text::shape::FontFile::take_wanted`) or a queued text asked of it,
 //! and that its atlas lacks, is rendered from the font's outlines
-//! (`og_ui::glyphs::render_glyph`, the cook's geometry) into a 512² page
+//! (`og_text::glyphs::render_glyph`, the cook's geometry) into a 512² page
 //! of the font's own. Every page of the font learns the glyph's advance,
 //! so text drawn page by page keeps one layout; the page that holds it
 //! learns its bounds. Pages are added as they fill. A colour font
@@ -13,8 +13,8 @@
 
 use crate::present::extract::RenderState;
 use og_render::{ColorSpace, FontHandle, Glyph, GlyphKey, Mips, TextureData, TextureHandle};
-use og_ui::glyphs::GlyphImage;
-use og_ui::shape::FontFile;
+use og_text::glyphs::GlyphImage;
+use og_text::shape::FontFile;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
@@ -257,7 +257,7 @@ fn render_one(
     {
         return Some(Rendered::Colour(g));
     }
-    og_ui::glyphs::render_glyph_on(file.bytes(), file.variations(), k, em, range, grid)
+    og_text::glyphs::render_glyph_on(file.bytes(), file.variations(), k, em, range, grid)
         .map(Rendered::Field)
 }
 
@@ -283,7 +283,7 @@ struct Image<'a> {
 }
 
 /// Gives each instance of a run-time font the UI made since the last
-/// frame (at a variable font's location, or in another palette) (`og_ui::shape::FontFile::take_instances`) a font of its
+/// frame (at a variable font's location, or in another palette) (`og_text::shape::FontFile::take_instances`) a font of its
 /// own: a first page with no glyph (the atlas is the default location's)
 /// whose glyphs are rendered from the instance like any run-time font's.
 /// The UI draws it from the frame after.
@@ -813,7 +813,7 @@ mod tests {
         rs.fonts.push(FontPages { pages: vec![first] });
         rs.runtime_fonts
             .insert(0, RuntimeFont::new(file.clone(), 48.0, 16.0, 0, None));
-        let instance = file.instance(&[(*b"wght", 650.0)], og_ui::shape::Palette::NONE);
+        let instance = file.instance(&[(*b"wght", 650.0)], og_text::shape::Palette::NONE);
         assert!(instance.is_instance());
         assert_eq!(instance.advance('A'), Some(0.8));
         rs.glyphs_settle = true;
@@ -840,7 +840,7 @@ mod tests {
             panic!("A drawn once: {drawn:?}")
         };
         assert_eq!(a.advance, 0.8);
-        let default = og_ui::glyphs::render_glyph(&bytes, 'A', 48.0, 16.0).unwrap();
+        let default = og_text::glyphs::render_glyph(&bytes, 'A', 48.0, 16.0).unwrap();
         let width = |p: [f32; 4]| p[2] - p[0];
         assert!(
             (width(a.plane_bounds) - width(default.plane) - 0.2).abs() < 0.05,
@@ -857,7 +857,7 @@ mod tests {
     /// blue and yellow in its light palette.
     #[test]
     fn a_palette_instance_paints_its_colour_glyphs_in_its_palette() {
-        use og_ui::shape::{Palette, PaletteBase, PaletteSpec};
+        use og_text::shape::{Palette, PaletteBase, PaletteSpec};
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../og-ui/tests/fixtures/palette-test.ttf"

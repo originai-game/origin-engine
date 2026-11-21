@@ -47,14 +47,13 @@ use crate::engine::{Engine, engine, running};
 use crate::{host::wire, parse, refuse};
 use og_core::glam::Vec3;
 use og_ecs::{Entity, SystemDesc, World};
+use og_input::frame::InputFrame;
 use og_physics::{
     MeshDesc, OverlapDesc, Physics, PhysicsQuery, PhysicsSystem, QueryFilter, RaycastDesc,
     ShapeCastDesc, ShapeDesc,
 };
-use og_ui::{
-    Fonts, IconAtlas, InputFrame, Insets, Scheme, SharedUi, Srgba, Theme, Ui, UiDesc, UiFont,
-    Viewport,
-};
+use og_ui::{Fonts, IconAtlas, Scheme, SharedUi, Srgba, Theme, Ui, UiDesc, UiFont};
+use og_ui_model::{Insets, Viewport};
 use serde_json::{Map, Value, json};
 use std::cell::Cell;
 
@@ -401,7 +400,7 @@ pub(crate) fn set_cover(engine_id: u32, args: &[String]) -> Result<(), String> {
             .collect::<Option<_>>()
             .filter(|n: &Vec<f32>| n.len() == 4)
             .ok_or_else(|| format!("cover:{arg}: write four numbers, x,y,width,height in CSS pixels (such as 12,12,40,40), or none"))?;
-        Some(og_ui::Rect::new(n[0], n[1], n[2], n[3]))
+        Some(og_ui_model::Rect::new(n[0], n[1], n[2], n[3]))
     };
     engine(engine_id)?.render.borrow_mut().cover = cover;
     Ok(())
@@ -446,7 +445,7 @@ pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
         high_contrast: w.high_contrast.unwrap_or(false),
         reduced_transparency: false,
         mac_keys: cfg!(target_os = "macos"),
-        covered: og_ui::Rect::new(c.x, c.y, c.width, c.height),
+        covered: og_ui_model::Rect::new(c.x, c.y, c.width, c.height),
         // The renderer's surface says (viewport_of).
         wide_gamut: false,
         high_range: false,

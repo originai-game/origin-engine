@@ -76,7 +76,7 @@ pub fn og_ui_preview_viewport(world: u32, viewport: String) {
             high_contrast: v.high_contrast.unwrap_or(false),
             reduced_transparency: false,
             mac_keys: false,
-            covered: og_ui::Rect::new(c.x, c.y, c.width, c.height),
+            covered: og_ui_model::Rect::new(c.x, c.y, c.width, c.height),
             // The renderer's surface says (viewport_of).
             wide_gamut: false,
             high_range: false,

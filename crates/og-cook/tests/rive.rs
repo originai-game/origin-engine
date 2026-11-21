@@ -38,7 +38,7 @@ fn a_riv_cooks_the_artboards_its_settings_name() {
         let out = bundle.output(id).unwrap_or_else(|e| panic!("{id}: {e:?}"));
         assert_eq!(out.ty, "og.RiveArtboard");
         let bytes = std::fs::read(root.join("cooked").join(&out.file)).unwrap();
-        og_ui::rive::decode(&bundle.rive_artboard(id, &bytes).unwrap()).unwrap()
+        og_rive::decode(&bundle.rive_artboard(id, &bytes).unwrap()).unwrap()
     };
     // The settings choose One of the two and set its role, name and fit.
     let one = load("ui/two_artboards.riv#One");
@@ -46,7 +46,7 @@ fn a_riv_cooks_the_artboards_its_settings_name() {
         (one.role.as_str(), one.label.as_str()),
         ("button", "@chest.open")
     );
-    assert_eq!(one.fit, og_ui::rive::Fit::Cover);
+    assert_eq!(one.fit, og_rive::Fit::Cover);
     assert_eq!(one.align, og_core::glam::Vec2::ZERO);
     assert!(bundle.output("ui/two_artboards.riv#Two").is_err());
     // Without settings, every artboard, a decorative image named after it.
@@ -99,7 +99,7 @@ fn a_riv_text_cooks_its_font_to_the_characters_it_shows() {
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let out = bundle.output("ui/hello_world.riv#New Artboard").unwrap();
     let bytes = std::fs::read(root.join("cooked").join(&out.file)).unwrap();
-    let a = og_ui::rive::decode(
+    let a = og_rive::decode(
         &bundle
             .rive_artboard("ui/hello_world.riv#New Artboard", &bytes)
             .unwrap(),

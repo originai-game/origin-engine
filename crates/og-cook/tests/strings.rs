@@ -184,7 +184,7 @@ fn an_arabic_font_carries_its_joined_forms_and_its_file() {
             .table(ttf_parser::Tag::from_bytes(b"glyf"))
             .is_none()
     );
-    let file = og_ui::shape::FontFile::for_shaping(std::sync::Arc::new(tables)).unwrap();
+    let file = og_text::shape::FontFile::for_shaping(std::sync::Arc::new(tables)).unwrap();
     assert_eq!(
         file.advance('A'),
         None,
@@ -493,7 +493,7 @@ fn a_cjk_face_ships_only_the_ideographs_the_game_shows() {
             .filter(|&c| face.glyph_index(c).is_some())
             .collect();
         // The run-time face reads the cut file as it read the whole one.
-        let run = og_ui::shape::FontFile::new(std::sync::Arc::new(file.clone())).unwrap();
+        let run = og_text::shape::FontFile::new(std::sync::Arc::new(file.clone())).unwrap();
         for c in ['开', '设', 'L'] {
             assert_eq!(run.advance(c).is_some(), shown.contains(c), "{c}");
         }

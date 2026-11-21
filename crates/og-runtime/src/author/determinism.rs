@@ -319,7 +319,7 @@ pub fn text_layout_hash() -> u64 {
         ..Default::default()
     });
     ui.define_document(UiDocument::parse("text-layout.svelte", TEXT_LAYOUT).expect("it parses"));
-    let mount = og_ui::reactive::SourceId::new("og.determinism", "text");
+    let mount = og_reactive::reactive::SourceId::new("og.determinism", "text");
     let mut h = StableHasher::new();
     for width in ["53.25px", "91.75px", "231.5px"] {
         let values = serde_json::json!({

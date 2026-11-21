@@ -32,7 +32,7 @@ use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::glam::Vec2;
 use og_core::ogt::{Block, Entry, Value};
-use og_ui::rive::Fit;
+use og_rive::Fit;
 
 /// One artboard's import settings (`artboard <name> { … }`).
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -369,7 +369,7 @@ pub(super) fn cook_image(
 
 /// Gives every image and font of `a` (and the artboards it nests) its
 /// asset id under `rel`.
-fn place_images(a: &mut og_ui::rive::Artboard, rel: &str) {
+fn place_images(a: &mut og_rive::Artboard, rel: &str) {
     for i in &mut a.images {
         i.id = format!("{rel}{}", i.id);
     }
@@ -451,7 +451,7 @@ pub(super) fn cook(
             a.align = al;
         }
     }
-    let bytes = og_ui::rive::encode(&a);
+    let bytes = og_rive::encode(&a);
     let mut w = BlobWriter::new(
         format::RiveArtboard::type_hash(),
         format::RiveArtboard::schema_version(),
@@ -476,7 +476,7 @@ pub(super) fn cook(
             ", {} texts in {} fonts",
             a.nodes
                 .iter()
-                .filter(|n| matches!(n.kind, og_ui::rive::Kind::Text { .. }))
+                .filter(|n| matches!(n.kind, og_rive::Kind::Text { .. }))
                 .count(),
             a.fonts.len()
         ));
@@ -486,7 +486,7 @@ pub(super) fn cook(
 
 /// Artboard `name` of a `.riv`'s bytes converted, without import settings
 /// (what a test scene draws; a project cooks through its settings).
-pub fn artboard(bytes: &[u8], name: &str) -> Result<og_ui::rive::Artboard, String> {
+pub fn artboard(bytes: &[u8], name: &str) -> Result<og_rive::Artboard, String> {
     let file = read::read(bytes)?;
     let names = convert::names(&file);
     let index = names

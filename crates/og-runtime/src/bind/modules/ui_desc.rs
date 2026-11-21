@@ -312,7 +312,7 @@ fn hex(c: Srgba) -> String {
 }
 
 /// A rectangle as the IDL's `UiRect`.
-pub(super) fn rect_wire(r: &og_ui::Rect) -> crate::host::wire::UiRect {
+pub(super) fn rect_wire(r: &og_ui_model::Rect) -> crate::host::wire::UiRect {
     wire::UiRect {
         x: r.x,
         y: r.y,

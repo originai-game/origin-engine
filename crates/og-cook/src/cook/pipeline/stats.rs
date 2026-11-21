@@ -819,7 +819,7 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
             )
         }
         "og.RiveArtboard" => {
-            let a = og_ui::rive::decode(&bundle.rive_artboard(id, &bytes()?).map_err(e)?)?;
+            let a = og_rive::decode(&bundle.rive_artboard(id, &bytes()?).map_err(e)?)?;
             (
                 "rive",
                 json!({

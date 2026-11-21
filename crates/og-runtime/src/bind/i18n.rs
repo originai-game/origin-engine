@@ -335,7 +335,7 @@ pub(crate) fn ensure_packs(eng: &Engine) {
     for (attribute, bytes) in segmentation {
         let added = match &ui {
             Some(ui) => ui.lock().add_segmentation(&attribute, &bytes),
-            None => og_ui::add_segmentation(&attribute, &bytes),
+            None => og_text::text::add_segmentation(&attribute, &bytes),
         };
         if let Err(e) = added {
             note(eng.id, format!("font packs: {e}"));

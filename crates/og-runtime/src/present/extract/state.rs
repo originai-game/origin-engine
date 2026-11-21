@@ -197,16 +197,16 @@ pub(crate) struct RenderState {
     pub options: Value,
     /// The play surface the host reported (`set_viewport`); `None` uses the
     /// render target at one CSS pixel per device pixel.
-    pub viewport: Option<og_ui::Viewport>,
+    pub viewport: Option<og_ui_model::Viewport>,
     /// The viewport og.ui.previewViewport set (a preview, `og ui check`'s
     /// phone at 2 device pixels per CSS pixel): over the host's, the CSS
     /// surface the screen overlay is laid on ([`crate::present::fx::viewport`]), as
     /// the UI lays out on it.
-    pub preview: Option<og_ui::Viewport>,
+    pub preview: Option<og_ui_model::Viewport>,
     /// The command channel's `cover`: where a host's control would cover
     /// the surface (`Viewport.covered`), over whatever the host reports,
     /// so a native run lays out as the published page with its Back does.
-    pub cover: Option<og_ui::Rect>,
+    pub cover: Option<og_ui_model::Rect>,
     /// The player's colour vision filter (og.ui.configure's colorVision),
     /// over the whole frame whether or not the UI draws anything.
     pub color_filter: Option<og_render::ColorFilter>,

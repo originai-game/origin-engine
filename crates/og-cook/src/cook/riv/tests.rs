@@ -4,7 +4,7 @@
 use super::convert::artboards;
 use super::read::*;
 use og_draw::ui::UiPaint;
-use og_ui::rive::{Artboard, Player};
+use og_rive::{Artboard, Player};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -154,7 +154,7 @@ fn an_artboard_survives_its_codec() {
         .chain(convert("nested_artboard_opacity.riv"))
         .flatten()
     {
-        assert_eq!(og_ui::rive::decode(&og_ui::rive::encode(&a)), Ok(a));
+        assert_eq!(og_rive::decode(&og_rive::encode(&a)), Ok(a));
     }
 }
 
@@ -208,15 +208,11 @@ fn a_hosted_image_is_an_error_naming_it() {
 }
 
 /// The shapes a player draws (its texts and cuts left out).
-fn drawn_shapes(
-    p: &og_ui::rive::Player,
-    rect: [f32; 4],
-    opacity: f32,
-) -> Vec<og_draw::ui::UiShape> {
+fn drawn_shapes(p: &og_rive::Player, rect: [f32; 4], opacity: f32) -> Vec<og_draw::ui::UiShape> {
     p.draw(rect, opacity)
         .into_iter()
         .filter_map(|d| match d {
-            og_ui::rive::Drawn::Shape(s) => Some(*s),
+            og_rive::Drawn::Shape(s) => Some(*s),
             _ => None,
         })
         .collect()
@@ -230,7 +226,7 @@ fn a_text_converts_with_its_run_style_and_keyed_font() {
     let text = a[0]
         .nodes
         .iter()
-        .find(|n| matches!(n.kind, og_ui::rive::Kind::Text { .. }))
+        .find(|n| matches!(n.kind, og_rive::Kind::Text { .. }))
         .expect("a text");
     assert_eq!(text.name, "Hello World");
     assert!((text.values.x - 73.48).abs() < 0.01 && (text.values.y - 175.785).abs() < 0.01);
@@ -238,7 +234,7 @@ fn a_text_converts_with_its_run_style_and_keyed_font() {
     let style = a[0]
         .nodes
         .iter()
-        .find(|n| matches!(n.kind, og_ui::rive::Kind::TextStyle { .. }))
+        .find(|n| matches!(n.kind, og_rive::Kind::TextStyle { .. }))
         .expect("a style");
     assert_eq!((style.values.font_size, style.values.font), (60.0, 0));
     let a = convert("text_style_keyed_font.riv").expect("converts");
@@ -248,7 +244,7 @@ fn a_text_converts_with_its_run_style_and_keyed_font() {
         p.pose()
             .iter()
             .zip(&p.artboard.nodes)
-            .find(|(_, n)| matches!(n.kind, og_ui::rive::Kind::TextStyle { .. }))
+            .find(|(_, n)| matches!(n.kind, og_rive::Kind::TextStyle { .. }))
             .map(|(v, _)| v.font)
     };
     assert_eq!(font(&p), Some(0));

@@ -345,7 +345,7 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
     let upem = face.units_per_em() as f64;
     let mut advance = face.glyph_hor_advance(gid).unwrap_or(0) as f32 / upem as f32;
     if s.pixel > 0 {
-        advance = og_ui::glyphs::snap_to_grid(advance, s.pixel);
+        advance = og_text::glyphs::snap_to_grid(advance, s.pixel);
     }
     let empty = Glyph {
         codepoint: cp,
@@ -359,7 +359,7 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
         // A pixel font: the field is of the glyph's cells on its grid
         // (og-ui's `pixel_cells`, which run-time glyphs share), square
         // corners and straight runs, never overlapping.
-        let cells = og_ui::glyphs::pixel_cells(face, gid, s.pixel);
+        let cells = og_text::glyphs::pixel_cells(face, gid, s.pixel);
         let cell = upem / f64::from(s.pixel);
         let Some(b) = cells.bounds() else {
             return Some(empty);
@@ -437,7 +437,7 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
 
 /// The outline of a pixel glyph's cells, `cell` font units each.
 fn pixel_shape(
-    cells: &og_ui::glyphs::PixelCells,
+    cells: &og_text::glyphs::PixelCells,
     cell: f64,
 ) -> fdsm::shape::Shape<fdsm::shape::Contour> {
     use fdsm::bezier::{Point, Segment};
@@ -680,7 +680,7 @@ pub fn cook(
             right,
             adjust: match s.pixel {
                 0 => v as f32 / upem_f,
-                g => og_ui::glyphs::snap_to_grid(v as f32 / upem_f, g),
+                g => og_text::glyphs::snap_to_grid(v as f32 / upem_f, g),
             },
         })
         .filter(|k| k.adjust != 0.0)
@@ -713,7 +713,7 @@ pub fn cook(
     let mut spaces = unicode_spaces(&face, &glyphs);
     if s.pixel > 0 {
         for g in &mut spaces {
-            g.advance = og_ui::glyphs::snap_to_grid(g.advance, s.pixel);
+            g.advance = og_text::glyphs::snap_to_grid(g.advance, s.pixel);
         }
     }
     if !spaces.is_empty() {

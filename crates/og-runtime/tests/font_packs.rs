@@ -134,7 +134,7 @@ const STATUS: &str = r#"<meta name="component" content="status">
 
 /// One host operation on `ui`'s stores.
 fn store(ui: &mut og_ui::Ui, command: Value) {
-    use og_ui::reactive::wire;
+    use og_reactive::reactive::wire;
     let reply =
         wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
     assert_eq!(reply[0]["ok"], true, "{reply}");
@@ -148,7 +148,7 @@ impl Hooks for Disk {
         {
             let ui = shared_ui(call.engine).expect("the engine's UI");
             let mut ui = ui.lock();
-            let source = og_ui::reactive::SourceId::new("test", "text");
+            let source = og_reactive::reactive::SourceId::new("test", "text");
             let first = MOUNTED.with(|m| {
                 let mut m = m.borrow_mut();
                 let first = !m.contains(&call.engine);
@@ -166,11 +166,11 @@ impl Hooks for Disk {
                     og_ui::UiDocument::parse("ui/status.svelte", STATUS).expect("parses"),
                 );
                 ui.mount_document(
-                    og_ui::reactive::SourceId::new("test", "status"),
+                    og_reactive::reactive::SourceId::new("test", "status"),
                     "status",
                     [("text".to_string(), source.clone())].into(),
                     Default::default(),
-                    &og_ui::bind::NoEnv,
+                    &og_reactive::bind::NoEnv,
                 )
                 .expect("mounts");
             }

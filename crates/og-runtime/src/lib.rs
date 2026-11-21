@@ -409,7 +409,7 @@ pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
             bind::i18n::component_tables(&eng, tables);
             reply
         }
-        None => og_ui::reactive::wire::encode(&serde_json::json!({
+        None => og_reactive::reactive::wire::encode(&serde_json::json!({
             "ok": false, "reason": "og.ui: world has no UI"
         }))
         .expect("bounded error reply"),

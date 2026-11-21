@@ -120,7 +120,7 @@ pub fn warm_tick(id: u32) {
     if let Some(ui) = ui {
         let viewport = crate::bind::modules::viewport_of(id);
         let mut copy = ui.lock().clone();
-        copy.begin(og_ui::InputFrame::default(), viewport);
+        copy.begin(og_input::frame::InputFrame::default(), viewport);
         copy.end();
         crate::present::ui_next::pack_images(id);
     }

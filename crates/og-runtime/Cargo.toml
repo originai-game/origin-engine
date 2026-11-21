@@ -30,6 +30,9 @@ og-reactive = { path = "../og-reactive" }
 # og-ui's new core: every document runs on it.
 og-ui-model = { path = "../og-ui-model" }
 og-ui-next = { path = "../og-ui-next" }
+# Text shaping, run-time glyphs and fonts (`shaping`), and Rive files.
+og-text = { path = "../og-text", default-features = false }
+og-rive = { path = "../og-rive" }
 og-css = { path = "../og-css" }
 og-input = { path = "../og-input" }
 # og.motion's model runs on wgpu (og-anim's `motion`).
@@ -71,7 +74,7 @@ publish = ["og-probe/publish", "og-render/publish", "og-core/publish", "og-api/p
 profile2d = ["og-render/profile2d"]
 # og-ui's run-time shaping (rustybuzz: Arabic, Indic and the other shaped
 # scripts). A build for games without them can leave it out.
-shaping = ["og-ui/shaping"]
+shaping = ["og-ui/shaping", "og-text/shaping"]
 # The physics profiles built in (og-physics): both by default; a shipping
 # web variant keeps the one its game's profile uses (docs/web-export.md
 # §Variants), and the other profile's calls answer that it is not built.

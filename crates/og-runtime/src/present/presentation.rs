@@ -61,14 +61,14 @@ pub(crate) struct UiCheckpoint {
 }
 
 /// The new core's stores in render state `rs`, when the game runs on it.
-pub(crate) fn next_store(rs: &RenderState) -> Option<&og_ui::reactive::session::Session> {
+pub(crate) fn next_store(rs: &RenderState) -> Option<&og_reactive::reactive::session::Session> {
     rs.ui_next.as_deref().map(|n| &n.store)
 }
 
 impl UiCheckpoint {
     pub(crate) fn save(
         ui: &og_ui::SharedUi,
-        store: Option<&og_ui::reactive::session::Session>,
+        store: Option<&og_reactive::reactive::session::Session>,
     ) -> Self {
         let ui = ui.lock();
         Self {
@@ -85,7 +85,7 @@ impl UiCheckpoint {
         ui.restore_world_state(&self.world)
             .map_err(|e| e.reason().to_owned())?;
         match &self.store {
-            Some(saved) => og_ui::reactive::session::Session::default().restore(saved),
+            Some(saved) => og_reactive::reactive::session::Session::default().restore(saved),
             None => Ok(()),
         }
     }
@@ -93,7 +93,7 @@ impl UiCheckpoint {
     pub(crate) fn restore(
         &self,
         ui: &og_ui::SharedUi,
-        store: Option<&mut og_ui::reactive::session::Session>,
+        store: Option<&mut og_reactive::reactive::session::Session>,
     ) -> Result<(), String> {
         self.validate_for(ui, store.as_deref())?;
         let mut ui = ui.lock();
@@ -110,7 +110,7 @@ impl UiCheckpoint {
     pub(crate) fn validate_for(
         &self,
         current: &og_ui::SharedUi,
-        store: Option<&og_ui::reactive::session::Session>,
+        store: Option<&og_reactive::reactive::session::Session>,
     ) -> Result<(), String> {
         let mut ui = og_ui::Ui::default();
         ui.inherit_store_registrations(&current.lock());
