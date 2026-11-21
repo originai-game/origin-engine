@@ -71,11 +71,7 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
                     "bounds": ins.ui_bounds,
                     "element": ins.ui_view.element.as_ref().map(|e| serde_json::json!({
                         "path": e.path, "kind": e.kind,
-                        "box": [e.border_box.x, e.border_box.y, e.border_box.width, e.border_box.height],
-                        "content": [e.content.x, e.content.y, e.content.width, e.content.height],
-                        "styles": e.styles.iter().map(|s| serde_json::json!({ "name": s.name, "value": s.value, "source": s.source })).collect::<Vec<_>>(),
-                        "bindings": e.bindings.iter().map(|(p, x, v)| serde_json::json!({ "prop": p, "expr": x, "value": v })).collect::<Vec<_>>(),
-                        "boundaries": e.boundaries,
+                        "box": [e.x, e.y, e.width, e.height],
                     })),
                 },
                 "dirty": ins.dirty.iter().collect::<Vec<_>>(),

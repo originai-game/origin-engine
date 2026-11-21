@@ -20,7 +20,7 @@
 //! audio stream (its resources).
 
 mod ui_config;
-pub(crate) use ui_config::{LoadedStyle, UiSettings, load_style, new_ui, settings, ui_font};
+pub(crate) use ui_config::{LoadedStyle, UiSettings, load_style, settings, ui_font};
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
 mod ui_frame;
@@ -33,7 +33,7 @@ pub(crate) use ui_frame::{UiFrame, unit_of, with_frame};
 mod widgets;
 pub(crate) use widgets::emit;
 mod game_widgets;
-use crate::{present::art, present::extract, world::assets};
+use crate::{present::extract, world::assets};
 pub use game_widgets::{
     og_ui_feedback, og_ui_preview_viewport, og_ui_set_haptics, og_ui_set_virtual_cursor,
     og_ui_tick, og_ui_virtual_cursor,
@@ -52,7 +52,7 @@ use og_physics::{
     MeshDesc, OverlapDesc, Physics, PhysicsQuery, PhysicsSystem, QueryFilter, RaycastDesc,
     ShapeCastDesc, ShapeDesc,
 };
-use og_ui::{Fonts, IconAtlas, Scheme, SharedUi, Srgba, Theme, Ui, UiDesc, UiFont};
+use og_ui::{Fonts, IconAtlas, Srgba, UiFont};
 use og_ui_model::{Insets, Viewport};
 use serde_json::{Map, Value, json};
 use std::cell::Cell;
@@ -80,7 +80,6 @@ fn err(e: og_core::Error) -> String {
 /// What the modules hand the engine for one world.
 pub(crate) struct Mounted {
     pub physics: PhysicsSystem,
-    pub ui: SharedUi,
     pub audio: og_audio::AudioLink,
     /// The world's gameplay actions (og-input's action map, og.input.*).
     pub actions: og_input::SharedActions,
@@ -92,7 +91,6 @@ pub(crate) fn mount_front(
     world: &mut World,
     engine_id: u32,
     profile: u32,
-    ui: &SharedUi,
 ) -> Result<(PhysicsSystem, og_input::SharedActions), String> {
     world
         .add_system(
@@ -133,7 +131,6 @@ pub(crate) fn mount_front(
     })
     .map_err(err)?;
     let feed = actions.clone();
-    let shared = ui.clone();
     world
         .add_system(
             SystemDesc::new(UI_BEGIN)
@@ -157,7 +154,6 @@ pub(crate) fn mount_front(
                     .with_actions(og_input::actions::lock(&feed).feed());
                 let viewport = viewport_of(engine_id);
                 ui_frame::record(engine_id, &input, viewport, &ctx.time());
-                shared.lock().begin(input, viewport);
                 BUILDING.with(|b| b.set(Some(engine_id)));
                 LAST.with(|l| l.set(Some(engine_id)));
                 Ok(())
@@ -173,11 +169,9 @@ pub(crate) fn mount_back(
     world: &mut World,
     engine_id: u32,
     physics: PhysicsSystem,
-    ui: SharedUi,
     link: Option<og_audio::AudioLink>,
     actions: og_input::SharedActions,
 ) -> Result<Mounted, String> {
-    let shared = ui.clone();
     let feed = ui_world::Feed::of(world);
     let zones_to = actions.clone();
     world
@@ -191,68 +185,62 @@ pub(crate) fn mount_back(
                 // menus still move), never the wall clock.
                 let t = ctx.time();
                 let ui_time = t.seconds(t.tick + 1);
-                let (warnings, missing) = {
-                    let mut ui = shared.lock();
+                BUILDING.with(|b| b.set(None));
+                // The pack's images load once the core draws.
+                crate::present::ui_next::pack_images(engine_id);
+                let (mut warnings, mut missing) = (Vec::new(), Vec::new());
+                if let Ok(eng) = engine(engine_id)
+                    && let rs = &mut *eng.render.borrow_mut()
+                    && let crate::present::extract::RenderState {
+                        ui_next: Some(next),
+                        ui_fonts,
+                        ui_icons,
+                        textures,
+                        geo,
+                        scene,
+                        models,
+                        geometries,
+                        ..
+                    } = rs
+                {
+                    // The controls show what the last sample read.
+                    next.zone_states(og_input::actions::lock(&zones_to).zone_states());
                     // The tick's camera and anchored entities (docs/ui.md §1).
-                    feed.before_end(ctx, &mut ui);
-                    BUILDING.with(|b| b.set(None));
-                    let frame = ui.end();
-                    let mut out = (frame.warnings.clone(), frame.missing_glyphs.clone());
-                    // The documents on og-ui's new core lay out and paint
-                    // after og-ui's frame (present/ui_next.rs).
-                    crate::present::ui_next::pack_images(engine_id);
-                    // The on-screen controls documents and the new core
-                    // laid out feed their actions from the next tick's
-                    // sample (docs/ui.md §3.3).
-                    let mut zones = ui.take_control_zones();
-                    if let Ok(eng) = engine(engine_id)
-                        && let rs = &mut *eng.render.borrow_mut()
-                        && let crate::present::extract::RenderState {
-                            ui_next: Some(next),
-                            textures,
-                            geo,
-                            scene,
-                            models,
-                            geometries,
-                            ..
-                        } = rs
-                    {
-                        // The controls show what the last sample read.
-                        next.zone_states(og_input::actions::lock(&zones_to).zone_states());
-                        out.0.extend(next.end(
-                            engine_id,
-                            &ui,
-                            textures,
-                            ui_time,
-                            t.rate.max(1),
-                            &crate::author::probe::now_ms,
-                            Some(&|bits| ui_world::Feed::world_pose(ctx, bits).map(|p| p.0)),
-                            // What hides an anchored node with `occlusion`:
-                            // the meshes drawn as the tick started.
-                            &mut |from, to, skip| {
-                                crate::present::geometry::blocked(
-                                    geo,
-                                    scene,
-                                    models,
-                                    geometries,
-                                    (from, to),
-                                    skip,
-                                )
-                            },
-                        ));
-                        out.1.extend(next.take_missing(&ui));
-                        zones = next.control_zones(zones);
-                    }
-                    if let Some(zones) = zones {
+                    let view = feed.view(ctx, &viewport_of(engine_id));
+                    warnings = next.end(
+                        engine_id,
+                        (ui_fonts, ui_icons),
+                        view,
+                        textures,
+                        ui_time,
+                        t.rate.max(1),
+                        &crate::author::probe::now_ms,
+                        Some(&|bits| ui_world::Feed::world_pose(ctx, bits).map(|p| p.0)),
+                        // What hides an anchored node with `occlusion`:
+                        // the meshes drawn as the tick started.
+                        &mut |from, to, skip| {
+                            crate::present::geometry::blocked(
+                                geo,
+                                scene,
+                                models,
+                                geometries,
+                                (from, to),
+                                skip,
+                            )
+                        },
+                    );
+                    missing.extend(next.take_missing(ui_fonts));
+                    // The on-screen controls the core laid out feed their
+                    // actions from the next tick's sample (docs/ui.md §3.3).
+                    if let Some(zones) = next.control_zones() {
                         og_input::actions::lock(&zones_to).set_zones(zones);
                     }
-                    out
-                };
+                }
                 if !warnings.is_empty() {
                     note_warnings(engine_id, warnings);
                 }
                 // The characters the frame's texts draw that their faces lack,
-                // found by og-ui on the CPU: the same with a renderer or none.
+                // found by the core on the CPU: the same with a renderer or none.
                 // A character an installed font pack covers loads that pack
                 // instead (docs/ui.md §3.4): it draws from the next frame.
                 if !missing.is_empty()
@@ -320,7 +308,6 @@ pub(crate) fn mount_back(
     audio.bank().start_decode_thread();
     Ok(Mounted {
         physics,
-        ui,
         audio,
         actions,
     })

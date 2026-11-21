@@ -22,7 +22,7 @@
 
 use crate::host::wire::FromJson;
 use crate::present::extract::{Blend, Hierarchy, RenderState, rows};
-use glam::{Mat4, Quat, Vec2, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use og_core::IdMap;
 use og_ecs::World;
 use serde_json::Value;
@@ -364,72 +364,26 @@ pub(crate) fn ui_anchors(rs: &mut RenderState, h: &mut Hierarchy, camera: Option
     if rs.interp.active.is_none() {
         return;
     }
-    let Some(ui) = rs.ui.clone() else {
-        return;
-    };
     let Some((w, ht)) = rs.ui_next.as_ref().and_then(|n| n.surface()) else {
         return;
     };
     let Some(view) = drawn_view(&rs.interp, camera, w, ht) else {
         return;
     };
-    let ui = ui.lock();
-    let Some(next) = rs.ui_next.as_mut() else {
+    let RenderState {
+        ui_next: Some(next),
+        ui_fonts,
+        ui_icons,
+        ..
+    } = rs
+    else {
         return;
     };
-    next.follow_anchors(&ui, |target, lift, _| {
+    next.follow_anchors((ui_fonts, ui_icons), |target, lift, _| {
         let p = match target {
             og_ui_next::tree::AnchorTarget::Entity(bits) => h.world_of(bits).w_axis.truncate(),
             og_ui_next::tree::AnchorTarget::Point(p) => p.into(),
         };
         Some(super::ui_next::sighting(&view, p + Vec3::from(lift), w, ht))
     });
-}
-
-/// How far each anchored UI element (a document's `<anchor>`) moves on a
-/// frame between ticks, CSS px: its point projected with the drawn camera
-/// at its entity's drawn place, less where the tick's camera put it at the
-/// tick, so a nameplate stays on the entity it names
-/// (`og_ui::UiFrame::emit_shifted`). Empty on a frame at the tick; an
-/// element clamped to the screen's edge stays.
-pub(crate) fn ui_shifts(
-    rs: &RenderState,
-    h: &mut Hierarchy,
-    camera: Option<&Value>,
-) -> IdMap<u64, Vec2> {
-    let mut out = IdMap::new();
-    if rs.interp.active.is_none() {
-        return out;
-    }
-    let Some(ui) = rs.ui.clone() else {
-        return out;
-    };
-    let ui = ui.lock();
-    let points = ui.world_anchor_points();
-    let Some(tick_view) = ui.world_view().filter(|_| !points.is_empty()) else {
-        return out;
-    };
-    let vp = ui.viewport();
-    let (w, ht) = (vp.width.max(1.0), vp.height.max(1.0));
-    let drawn_view = drawn_view(&rs.interp, camera, w, ht).unwrap_or(tick_view);
-    for a in points.iter().filter(|a| !a.clamped) {
-        let (at_tick, drawn) = match a.target {
-            og_ui::WorldTarget::Point(p) => (p, p),
-            og_ui::WorldTarget::Entity(e) => (
-                h.tick_world_of(e).w_axis.truncate(),
-                h.world_of(e).w_axis.truncate(),
-            ),
-        };
-        let (Some(t), Some(d)) = (
-            tick_view.project(at_tick + a.offset, w, ht),
-            drawn_view.project(drawn + a.offset, w, ht),
-        ) else {
-            continue;
-        };
-        let shift = Vec2::new(d.0 - t.0, d.1 - t.1);
-        if shift != Vec2::ZERO && shift.is_finite() {
-            out.insert(a.key, shift);
-        }
-    }
-    out
 }

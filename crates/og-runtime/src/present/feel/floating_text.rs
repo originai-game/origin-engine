@@ -8,7 +8,7 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> Result<(), S
         let text = d.text;
         let font = match d.font {
             None => {
-                let has_ui = eng.render.borrow().ui.as_ref().is_some_and(|u| u.lock().fonts().body.handle.is_some());
+                let has_ui = eng.render.borrow().ui_fonts.body.handle.is_some();
                 if !has_ui {
                     return Err("desc.font is null and the UI has no body font: load one with og.load.font and pass it".into());
                 }

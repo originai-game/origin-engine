@@ -248,7 +248,8 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
         let st = eng.state.borrow();
         (st.accumulator_ms, st.step_ms, st.render_ms)
     };
-    let (text, copy) = text_entry(&eng);
+    // The TSX core keeps no text control the page edits and no clipboard.
+    let (text, copy): (Value, Option<String>) = (Value::Null, None);
     // `cursor`: the pointer's shape the UI resolved (og.ui.frameCursor, a
     // CSS cursor name): the web shell sets the canvas's. `cursorImage`, on
     // the frames where it changed: the first of its `url()` images that
@@ -377,33 +378,6 @@ fn haptics_played(eng: &Engine) -> Vec<Vec<[f32; 4]>> {
                 .collect()
         })
         .collect()
-}
-
-/// The UI's focused text control as the web shell takes it (`null`: none),
-/// and the text a copy or cut took since the last frame.
-fn text_entry(eng: &Engine) -> (Value, Option<String>) {
-    let Some(ui) = eng.state.borrow().ui.clone() else {
-        return (Value::Null, None);
-    };
-    let mut ui = ui.lock();
-    let copy = ui.take_clipboard();
-    // The page places its input method's window in CSS px.
-    let u = ui.frame().unit.max(1.0);
-    let text = match &ui.frame().text_input {
-        Some(t) => json!({
-            "path": t.path,
-            "rect": [t.rect.x * u, t.rect.y * u, t.rect.width * u, t.rect.height * u],
-            "multiline": t.multiline,
-            "selection": t.selection,
-            "composing": t.composing,
-            "type": t.input_type.name(),
-            "inputmode": t.inputmode.name(),
-            "autocomplete": t.autocomplete,
-            "secret": t.secret,
-        }),
-        None => Value::Null,
-    };
-    (text, copy)
 }
 
 /// The scene at the world's tick as a frame draws it: between the last two

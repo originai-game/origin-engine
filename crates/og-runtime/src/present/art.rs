@@ -306,59 +306,6 @@ pub(crate) fn paletted(
     }
 }
 
-/// The UI's icons on a strict palette: each icon's colour moved to the
-/// palette's nearest (by Oklab distance), over the overlay's sprites from
-/// `sprites` on and texts from `texts` on.
-pub(crate) fn palette_icons(
-    art: &ArtFrame,
-    overlay: &mut og_render::Overlay,
-    (sprites, texts, shapes): (usize, usize, usize),
-    icons: (&[TextureHandle], &[og_render::FontHandle]),
-) {
-    if art.strict.is_empty() {
-        return;
-    }
-    let to = |c: &mut [f32; 4]| {
-        let rgb = nearest(&art.strict, [c[0], c[1], c[2]]);
-        c[..3].copy_from_slice(&rgb);
-    };
-    for s in &mut overlay.sprites[sprites..] {
-        if s.texture.is_some_and(|t| icons.0.contains(&t)) {
-            to(&mut s.color);
-        }
-    }
-    for t in &mut overlay.texts[texts..] {
-        if icons.1.contains(&t.font) {
-            to(&mut t.color);
-        }
-    }
-    for s in &mut overlay.ui.shapes[shapes..] {
-        if let og_render::UiPaint::Image(im) = &mut s.paint
-            && icons.0.contains(&im.texture)
-        {
-            to(&mut im.tint);
-        }
-    }
-}
-
-/// The palette colour (sRGB bytes) nearest a linear colour, by Oklab
-/// distance, as a linear colour.
-fn nearest(palette: &[[u8; 3]], linear: [f32; 3]) -> [f32; 3] {
-    let target = og_render::oklab(linear);
-    let mut best = (f32::MAX, linear);
-    for c in palette {
-        let lin = c.map(og_core::color::srgb8_to_linear);
-        let p = og_render::oklab(lin);
-        let d = (0..3)
-            .map(|i| (p[i] - target[i]) * (p[i] - target[i]))
-            .sum::<f32>();
-        if d < best.0 {
-            best = (d, lin);
-        }
-    }
-    best.1
-}
-
 /// A look's `ArtCamera` on the main camera, as it is applied under the
 /// contract: `projection` sets og.Camera.orthographic, `fixedAngle` its
 /// rotation from `pitch` (below the horizon) and `yaw` (about +Y), and
@@ -491,21 +438,6 @@ fn resource_json(eng: &Engine, name: &str) -> Option<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_strict_palette_takes_the_nearest_colour_by_oklab() {
-        // A red heart on the handheld greens: by lightness alone it would
-        // take the mid green (48, 98, 48); with its chroma counted, the
-        // yellow-green (139, 172, 15) is nearer (worked out in Oklab in
-        // Python: 0.084 against 0.099 squared). White the lightest, black the
-        // darkest.
-        let greens = [[15, 56, 15], [48, 98, 48], [139, 172, 15], [155, 188, 15]];
-        let lin = |c: [u8; 3]| c.map(og_core::color::srgb8_to_linear);
-        let red = nearest(&greens, [0.8, 0.05, 0.05]);
-        assert_eq!(red, lin([139, 172, 15]));
-        assert_eq!(nearest(&greens, [1.0, 1.0, 1.0]), lin([155, 188, 15]));
-        assert_eq!(nearest(&greens, [0.0, 0.0, 0.0]), lin([15, 56, 15]));
-    }
 
     /// ArtLine lines the meshes where the frame's MaterialStyle sets no
     /// outline: its width, colour, falloff and place (outside, ArtLine's

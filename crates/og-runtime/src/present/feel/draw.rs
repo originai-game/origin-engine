@@ -617,16 +617,15 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
 #[allow(clippy::disallowed_methods)]
 fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
     let list = lock(&feel.shared).floating.clone();
-    let ui = rs.ui.clone();
+    let direction = crate::bind::i18n::direction(rs.engine);
     for t in list {
         // No font of its own: the UI's for this text (its body face, or the
         // locale's or a fallback when the body face lacks a character), cut
         // into one piece per font when it mixes them: a style's Chinese
         // companion draws the Chinese of a line whose Latin is the body's.
-        let body = ui.as_ref().map(|u| {
-            let u = u.lock();
-            let font = u.fonts().for_text(og_ui::FontRole::Body, &t.text);
-            og_ui::pieces(font, &t.text, u.direction(), 0.0)
+        let body = Some({
+            let font = rs.ui_fonts.for_text(og_ui::FontRole::Body, &t.text);
+            og_ui::pieces(font, &t.text, direction, 0.0)
         });
         let age = (now - t.start) as f32;
         if age < 0.0 || age > t.lifetime {

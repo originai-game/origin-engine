@@ -138,7 +138,13 @@ fn tag(engine: u32) -> String {
 
 /// The active locale writes right to left (og.ui.frameDirection).
 pub(crate) fn rtl(engine: u32) -> bool {
-    with(engine, |s| s.catalog.direction() == og_i18n::Direction::Rtl)
+    direction(engine) == og_i18n::Direction::Rtl
+}
+
+/// The active locale's writing direction, which text without a direction
+/// of its own takes.
+pub(crate) fn direction(engine: u32) -> og_i18n::Direction {
+    with(engine, |s| s.catalog.direction())
 }
 
 /// The host's locale at creation (`og run --locale`, the browser's language).
@@ -152,7 +158,7 @@ pub(crate) fn request(eng: &Engine, locale: &str) {
 /// tables', each loaded from the bundle; and its direction.
 pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
     let locale = language(eng.id);
-    let (mut paths, direction) = with(eng.id, |s| {
+    let (mut paths, _) = with(eng.id, |s| {
         let mut paths: Vec<String> = s
             .catalog
             .active()
@@ -223,12 +229,12 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
             chain.push(font);
         }
     }
-    if let Some(ui) = eng.state.borrow().ui.clone() {
-        let mut ui = ui.lock();
+    {
+        let mut rs = eng.render.borrow_mut();
         let mut fonts = og_ui::Fonts {
             chain,
             cjk_locale: og_ui::CjkLocale::of_locale(&tag(eng.id)),
-            ..ui.fonts().clone()
+            ..rs.ui_fonts.clone()
         };
         if let Some(font) = default_font {
             fonts.body = font.clone();
@@ -250,9 +256,9 @@ pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
                 ..Default::default()
             });
         }
-        ui.set_fonts(fonts);
-        ui.set_direction(direction);
-        ui.set_locale(&tag(eng.id));
+        rs.ui_fonts = fonts;
+        // Each face's mixed font, the locale's chain after it.
+        rs.ui_fonts.link();
     }
     with(eng.id, |s| {
         s.fonts = drawn;
@@ -325,18 +331,11 @@ pub(crate) fn ensure_packs(eng: &Engine) {
     let (packs, dictionaries, segmentation) = packs;
     // The hyphenation and word dictionaries the cook shipped for the
     // game's locales: a UI made later finds them installed.
-    let ui = eng.state.borrow().ui.clone();
     for (language, bytes) in dictionaries {
-        match &ui {
-            Some(ui) => ui.lock().add_hyphenation(&language, bytes.into()),
-            None => og_i18n::hyphenation::install(&language, bytes.into()),
-        }
+        og_i18n::hyphenation::install(&language, bytes.into());
     }
     for (attribute, bytes) in segmentation {
-        let added = match &ui {
-            Some(ui) => ui.lock().add_segmentation(&attribute, &bytes),
-            None => og_text::text::add_segmentation(&attribute, &bytes),
-        };
+        let added = og_text::text::add_segmentation(&attribute, &bytes);
         if let Err(e) = added {
             note(eng.id, format!("font packs: {e}"));
         }

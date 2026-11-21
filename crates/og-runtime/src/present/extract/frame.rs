@@ -480,11 +480,10 @@ fn finish(
 
     // Each video's texture shows its player's frame.
     super::video::extract(world, rs);
-    // The UI, over everything else, in the overlay.
-    // Anchored UI moved with its entity's drawn place (`super::interpolate`).
-    let shifts = super::interpolate::ui_shifts(rs, &mut h, camera.as_deref());
+    // The UI, over everything else; anchored nodes moved with their
+    // entity's drawn place (`super::interpolate`).
     super::interpolate::ui_anchors(rs, &mut h, camera.as_deref());
-    super::modules::emit(rs, &shifts);
+    super::modules::emit(rs);
     // The inspector's gizmo (development builds).
     #[cfg(not(feature = "publish"))]
     crate::author::inspector::emit(rs);

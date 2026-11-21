@@ -174,7 +174,7 @@ pub(crate) fn assemble(
     mount: super::Mount<'_>,
     profile: u32,
     project: Option<&ProjectGame>,
-    previous: Option<(&og_ui::SharedUi, og_audio::AudioLink)>,
+    previous: Option<og_audio::AudioLink>,
 ) -> Result<Assembled, String> {
     let engine_id = mount.id;
     bump_layout_epoch();
@@ -370,8 +370,7 @@ pub(crate) fn assemble(
     // the UI's begin), then the game's, then the modules' after them. Every
     // module is mounted from here, by name: the order of these calls is the
     // order its systems run in, so it is written out, not looked up.
-    let ui = super::modules::new_ui(game.tick, u64::from(seed), previous.as_ref().map(|p| p.0))?;
-    let (physics, actions) = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
+    let (physics, actions) = super::modules::mount_front(&mut world, engine_id, profile)?;
     let record_names: Vec<String> = layouts
         .keys()
         .filter(|n| world.id_by_name(n).is_ok())
@@ -604,14 +603,7 @@ pub(crate) fn assemble(
     )?;
     super::agents::mount_nav(&mut world, mount, profile, &physics)?;
     crate::bind::destruction::set_physics(&mount.modules.destruction, &physics);
-    let mounted = super::modules::mount_back(
-        &mut world,
-        engine_id,
-        physics,
-        ui,
-        previous.map(|p| p.1),
-        actions,
-    )?;
+    let mounted = super::modules::mount_back(&mut world, engine_id, physics, previous, actions)?;
     super::feel::install_back(&mut world, &feel, &feel_records)?;
     for name in lazy_named {
         crate::engine::lazy::enable(&mut world, mount, name)?;

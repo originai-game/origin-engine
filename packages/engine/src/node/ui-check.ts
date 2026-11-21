@@ -3,8 +3,8 @@
 // (ui-run.ts, over a screen set × breakpoints × locales) and by playtests (`checkUi`, from
 // `@origingame/engine/ui-check`, on the frames a `dump_ui:<name>.uicheck.json`
 // step saved). It reads one laid-out frame (`og_node_ui_frame`, the native
-// host's reading of og-ui's UiFrame: elements, overlaps, drawn
-// text, fills, the accessibility tree, layout counts, viewport and theme)
+// host's reading of the TSX tree: elements, the accessibility tree,
+// viewport and theme; drawn text, fills and overlaps are pending)
 // and, where there is one, the rendered frame (contrast on pixels).
 //
 // A finding is a fact about the frame that holds whatever the game's taste
@@ -205,11 +205,11 @@ export interface UiRule {
 }
 
 export const RULES: readonly UiRule[] = [
-  { id: "overlap", kind: "finding", title: "overlap (§6.2), across breakpoints and locales", status: "checked" },
-  { id: "text-cut", kind: "finding", title: "text clipped without an ellipsis, or drawn past its box (at any text scale)", status: "checked" },
-  { id: "text-truncated", kind: "finding", title: "text truncated with an ellipsis but without a tooltip", status: "partial", note: "the ellipsis is read from the drawn text; a tooltip exists only while hovered (og-ui builds it then), so a truncated text is reported until U3's dump_ui lists an element's tooltip" },
+  { id: "overlap", kind: "finding", title: "overlap (§6.2), across breakpoints and locales", status: "not checkable yet", note: "the frame carries no drawn text lines, fills, grounds or overlaps until the native reading takes them from og-ui-next's paint list" },
+  { id: "text-cut", kind: "finding", title: "text clipped without an ellipsis, or drawn past its box (at any text scale)", status: "not checkable yet", note: "the frame carries no drawn text lines, fills, grounds or overlaps until the native reading takes them from og-ui-next's paint list" },
+  { id: "text-truncated", kind: "finding", title: "text truncated with an ellipsis but without a tooltip", status: "not checkable yet", note: "the frame carries no drawn text lines, fills, grounds or overlaps until the native reading takes them from og-ui-next's paint list" },
   { id: "offscreen", kind: "finding", title: "an interactive element laid out past the screen with nothing to scroll to it", status: "checked" },
-  { id: "pseudo-overflow", kind: "finding", title: "overflow under the pseudo-locale (+40 % length, accents, brackets)", status: "checked", note: "the pseudo cells run every rule above in og-i18n's pseudo-locale, which lengthens og.i18n.t's text and a document's t() and i18n keys" },
+  { id: "pseudo-overflow", kind: "finding", title: "overflow under the pseudo-locale (+40 % length, accents, brackets)", status: "not checkable yet", note: "the frame carries no drawn text lines, fills, grounds or overlaps until the native reading takes them from og-ui-next's paint list (the pseudo cells run, but the text rules they feed are pending)" },
   { id: "safe-area", kind: "finding", title: "elements outside the safe area", status: "checked" },
   { id: "covered", kind: "finding", title: "elements under the shell's covered region", status: "checked" },
   { id: "focus-reach", kind: "finding", title: "an interactive element unreachable by pad from the default focus", status: "checked" },
@@ -218,12 +218,12 @@ export const RULES: readonly UiRule[] = [
   { id: "feedback", kind: "finding", title: "an interactive element without hover or press states, or a style without a hover or press sound", status: "partial", note: "og-ui's widgets carry their hover and press; a custom interactive container is checked for declared visual states (frame.motion), its resolved states arrive with U3's dump_ui" },
   { id: "motion", kind: "finding", title: "durations outside the style's bounds, missing reduced-motion fallbacks, input refused longer than the entrance", status: "not checkable yet", note: "the style's motion bounds and per-element fallbacks are U4's style v2 tokens on U2's states; the frame does not carry a transition's duration or its reduced variant yet" },
   { id: "art-slot", kind: "finding", title: "art slots still on their placeholder; focal points outside the crop", status: "not checkable yet", note: "slots are specified (og_ui::slot) but not built into a frame or drawn from the style yet (U1, U4); nothing lists a slot's art" },
-  { id: "contrast", kind: "measure", title: "each live text's contrast on the drawn pixels, :1: its ink against the composited ground behind its line", status: "checked", note: "dimmed, disabled, decorative and over-the-scene text (where the UI's grounds, composited, cover less than half) is not measured: its ground is not the UI's" },
-  { id: "text-size", kind: "measure", title: "each text's size, CSS px (dense when its element is marked dense, og-ui's Props::dense)", status: "checked" },
+  { id: "contrast", kind: "measure", title: "each live text's contrast on the drawn pixels, :1: its ink against the composited ground behind its line", status: "not checkable yet", note: "the frame carries no drawn text lines, fills, grounds or overlaps until the native reading takes them from og-ui-next's paint list" },
+  { id: "text-size", kind: "measure", title: "each text's size, CSS px (dense when its element is marked dense, og-ui's Props::dense)", status: "not checkable yet", note: "the frame carries no drawn text lines, fills, grounds or overlaps until the native reading takes them from og-ui-next's paint list" },
   { id: "touch-target", kind: "measure", title: "each control's shorter side on a coarse pointer, CSS px", status: "checked", note: "an element's hitSlop is not in the frame; a link inside a rich text's sentence is marked inline" },
-  { id: "text-scale", kind: "measure", title: "each text's size at the cell's text scale, as a percentage of its size at 100 %", status: "checked", note: "a scale cell configures UiDesc.textScale (og.ui.configure); a text cut there is a text-cut finding of that cell" },
-  { id: "primary-actions", kind: "measure", title: "the buttons filled with the palette's primary, per layer", status: "partial", note: "a button is primary when its fill is the palette's primary; the layers are approximated by the base and each modal until U3's layer stack" },
-  { id: "elements", kind: "measure", title: "the frame's element count and draw commands", status: "checked", note: "per frame; per-tick times are the perf lane's" },
+  { id: "text-scale", kind: "measure", title: "each text's size at the cell's text scale, as a percentage of its size at 100 %", status: "not checkable yet", note: "the frame carries no drawn text lines, fills, grounds or overlaps until the native reading takes them from og-ui-next's paint list" },
+  { id: "primary-actions", kind: "measure", title: "the buttons filled with the palette's primary, per layer", status: "not checkable yet", note: "the frame carries no drawn text lines, fills, grounds or overlaps until the native reading takes them from og-ui-next's paint list; the palette's primary is not in it either" },
+  { id: "elements", kind: "measure", title: "the frame's element count and draw commands", status: "partial", note: "the element count is the TSX tree's; its draw commands come with the paint list's reading (0 until then); per-tick times are the perf lane's" },
 ];
 
 const ruleOf = new Map(RULES.map((r) => [r.id, r]));

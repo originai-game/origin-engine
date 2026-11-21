@@ -26,15 +26,6 @@
 
 use og_ecs::SnapshotEdit;
 
-/// What a migration upgrades.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Target {
-    /// A state block, versioned by the `u32` its bytes start with.
-    Block,
-    /// A component, resource or event, versioned by its schema version.
-    Record,
-}
-
 /// A step's edit of the save.
 type Step = fn(&mut SnapshotEdit) -> Result<(), String>;
 
@@ -43,7 +34,6 @@ type Upgraded = (Vec<u8>, Vec<String>);
 
 /// One engine step: `name` at version `from` becomes version `to`.
 pub(crate) struct Migration {
-    pub target: Target,
     pub name: &'static str,
     pub from: u32,
     pub to: u32,
@@ -57,71 +47,6 @@ pub(crate) struct Migration {
 /// Every engine step, oldest first.
 pub(crate) const MIGRATIONS: &[Migration] = &[
     Migration {
-        target: Target::Block,
-        name: "og.ui",
-        from: 9,
-        to: 11,
-        note: "0.7.7 and earlier: hit transforms (U1), motion channels (U2), feedback sets, the layer stack (U3)",
-        run: Some(ui_9_to_11),
-    },
-    Migration {
-        target: Target::Block,
-        name: "og.ui",
-        from: 11,
-        to: 12,
-        note: "U6b: the focus returns as a stack, one per nested scope",
-        run: Some(ui_upgrade),
-    },
-    Migration {
-        target: Target::Block,
-        name: "og.ui",
-        from: 12,
-        to: 13,
-        note: "U6d: each hit's focusable owner (a press on a grid's item focuses the grid)",
-        run: Some(ui_upgrade),
-    },
-    Migration {
-        target: Target::Block,
-        name: "og.ui",
-        from: 13,
-        to: 14,
-        note: "ui-gaps B1: focus groups, explicit focus moves, tap, double tap and long press recognisers",
-        run: Some(ui_upgrade),
-    },
-    Migration {
-        target: Target::Block,
-        name: "og.ui",
-        from: 14,
-        to: 15,
-        note: "ui-gaps B2: a pad's virtual cursor, the players' HUD layouts and the edit mode",
-        run: Some(ui_upgrade),
-    },
-    Migration {
-        target: Target::Block,
-        name: "og.ui",
-        from: 15,
-        to: 16,
-        note: "UI phase 1: the finger each touch control holds (a stick keeps the touch that grabbed it)",
-        run: Some(ui_upgrade),
-    },
-    Migration {
-        target: Target::Block,
-        name: "og.ui",
-        from: 16,
-        to: 17,
-        note: "og-ui foundation: a list's typeahead (the letters typed to jump and when)",
-        run: Some(ui_upgrade),
-    },
-    Migration {
-        target: Target::Block,
-        name: "og.ui",
-        from: 17,
-        to: 18,
-        note: "og-ui foundation: the Rive players documents' elements play (none before)",
-        run: Some(ui_upgrade),
-    },
-    Migration {
-        target: Target::Record,
         name: "og.Gamepad",
         from: 1,
         to: 2,
@@ -129,7 +54,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: None,
     },
     Migration {
-        target: Target::Record,
         name: "og.AudioSource",
         from: 1,
         to: 2,
@@ -137,7 +61,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: None,
     },
     Migration {
-        target: Target::Record,
         name: "og.AudioBusFx",
         from: 1,
         to: 2,
@@ -145,7 +68,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: None,
     },
     Migration {
-        target: Target::Record,
         name: "og.RigidBody",
         from: 1,
         to: 2,
@@ -153,7 +75,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: None,
     },
     Migration {
-        target: Target::Record,
         name: "og.RigidBody",
         from: 3,
         to: 4,
@@ -161,7 +82,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: None,
     },
     Migration {
-        target: Target::Record,
         name: "og.Physics",
         from: 1,
         to: 2,
@@ -169,7 +89,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: None,
     },
     Migration {
-        target: Target::Record,
         name: "og.Joint",
         from: 1,
         to: 2,
@@ -177,7 +96,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: None,
     },
     Migration {
-        target: Target::Record,
         name: "og.Vehicle",
         from: 1,
         to: 2,
@@ -185,7 +103,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: None,
     },
     Migration {
-        target: Target::Record,
         name: "og.VideoPlayer",
         from: 1,
         to: 2,
@@ -193,7 +110,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(video_player_1_to_2),
     },
     Migration {
-        target: Target::Record,
         name: "og.VideoPlayer",
         from: 2,
         to: 3,
@@ -201,7 +117,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: None,
     },
     Migration {
-        target: Target::Record,
         name: "og.Lighting2D",
         from: 1,
         to: 2,
@@ -209,7 +124,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| became_lazy(e, "og.Lighting2D")),
     },
     Migration {
-        target: Target::Record,
         name: "og.Light2D",
         from: 1,
         to: 2,
@@ -217,7 +131,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| became_lazy(e, "og.Light2D")),
     },
     Migration {
-        target: Target::Record,
         name: "og.Occluder2D",
         from: 1,
         to: 2,
@@ -225,7 +138,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| became_lazy(e, "og.Occluder2D")),
     },
     Migration {
-        target: Target::Record,
         name: "og.Wind",
         from: 1,
         to: 2,
@@ -233,7 +145,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(wind_1_to_2),
     },
     Migration {
-        target: Target::Record,
         name: "og.Wind",
         from: 2,
         to: 3,
@@ -241,7 +152,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(wind_2_to_3),
     },
     Migration {
-        target: Target::Record,
         name: "og.Collider",
         from: 2,
         to: 3,
@@ -249,7 +159,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.Collider", 3)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Light2D",
         from: 2,
         to: 3,
@@ -257,7 +166,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.Light2D", 3)),
     },
     Migration {
-        target: Target::Record,
         name: "og.AiAgent",
         from: 1,
         to: 2,
@@ -265,7 +173,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.AiAgent", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Perception",
         from: 1,
         to: 2,
@@ -273,7 +180,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.Perception", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.PlatformerController",
         from: 1,
         to: 2,
@@ -281,7 +187,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.PlatformerController", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Lockstep",
         from: 1,
         to: 2,
@@ -289,7 +194,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.Lockstep", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.VirtualCamera",
         from: 1,
         to: 2,
@@ -297,7 +201,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.VirtualCamera", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.CameraView",
         from: 1,
         to: 2,
@@ -305,7 +208,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.CameraView", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Mirror",
         from: 1,
         to: 2,
@@ -313,7 +215,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.Mirror", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Afterimage",
         from: 1,
         to: 2,
@@ -321,7 +222,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.Afterimage", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.ReflectionProbe",
         from: 1,
         to: 2,
@@ -329,7 +229,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.ReflectionProbe", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Input",
         from: 2,
         to: 3,
@@ -337,7 +236,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.Input", 3)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Pointers",
         from: 1,
         to: 2,
@@ -345,7 +243,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.Pointers", 2)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Gamepad",
         from: 2,
         to: 3,
@@ -353,7 +250,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.Gamepad", 3)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Rope",
         from: 1,
         to: 2,
@@ -368,7 +264,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         }),
     },
     Migration {
-        target: Target::Record,
         name: "og.Cloth",
         from: 2,
         to: 3,
@@ -383,7 +278,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         }),
     },
     Migration {
-        target: Target::Record,
         name: "og.Garment",
         from: 2,
         to: 3,
@@ -398,7 +292,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         }),
     },
     Migration {
-        target: Target::Record,
         name: "og.SoftBody",
         from: 2,
         to: 3,
@@ -413,7 +306,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         }),
     },
     Migration {
-        target: Target::Record,
         name: "og.WaterSurface",
         from: 1,
         to: 2,
@@ -428,7 +320,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         }),
     },
     Migration {
-        target: Target::Record,
         name: "og.VirtualCamera",
         from: 2,
         to: 3,
@@ -436,7 +327,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| renamed(e, "og.VirtualCamera", 3)),
     },
     Migration {
-        target: Target::Record,
         name: "og.AudioSource",
         from: 3,
         to: 4,
@@ -455,7 +345,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         }),
     },
     Migration {
-        target: Target::Record,
         name: "og.Environment",
         from: 1,
         to: 2,
@@ -470,7 +359,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         }),
     },
     Migration {
-        target: Target::Record,
         name: "og.DayNight",
         from: 1,
         to: 2,
@@ -485,7 +373,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         }),
     },
     Migration {
-        target: Target::Record,
         name: "og.Aurora",
         from: 1,
         to: 2,
@@ -500,7 +387,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         }),
     },
     Migration {
-        target: Target::Record,
         name: "og.Collider",
         from: 3,
         to: 4,
@@ -508,7 +394,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| enumerated(e, "og.Collider", 4)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Cloth",
         from: 3,
         to: 4,
@@ -516,7 +401,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| enumerated(e, "og.Cloth", 4)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Garment",
         from: 3,
         to: 4,
@@ -524,7 +408,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| enumerated(e, "og.Garment", 4)),
     },
     Migration {
-        target: Target::Record,
         name: "og.SoftBody",
         from: 3,
         to: 4,
@@ -532,7 +415,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| enumerated(e, "og.SoftBody", 4)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Fluid3D",
         from: 2,
         to: 3,
@@ -540,7 +422,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| enumerated(e, "og.Fluid3D", 3)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Joint",
         from: 2,
         to: 3,
@@ -548,7 +429,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| enumerated(e, "og.Joint", 3)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Vehicle",
         from: 2,
         to: 3,
@@ -556,7 +436,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| enumerated(e, "og.Vehicle", 3)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Trail",
         from: 1,
         to: 2,
@@ -564,7 +443,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| revariant(e, "og.Trail", 2, "blend", BLEND)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Beam",
         from: 1,
         to: 2,
@@ -572,7 +450,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(|e| revariant(e, "og.Beam", 2, "blend", BLEND)),
     },
     Migration {
-        target: Target::Record,
         name: "og.Beam",
         from: 2,
         to: 3,
@@ -580,7 +457,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(beam_2_to_3),
     },
     Migration {
-        target: Target::Record,
         name: "og.Time",
         from: 1,
         to: 2,
@@ -588,7 +464,6 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(time_1_to_2),
     },
     Migration {
-        target: Target::Record,
         name: "og.DayNight",
         from: 2,
         to: 3,
@@ -1265,20 +1140,6 @@ fn video_player_1_to_2(edit: &mut SnapshotEdit) -> Result<(), String> {
     widened(edit, name, 2)
 }
 
-fn ui_9_to_11(edit: &mut SnapshotEdit) -> Result<(), String> {
-    let bytes = edit.block("og.ui").ok_or("no og.ui block")?;
-    let upgraded = og_ui::Ui::upgrade_state(bytes).map_err(|e| e.reason().to_string())?;
-    edit.set_block("og.ui", upgraded)
-        .map_err(|e| e.reason().to_string())
-}
-
-fn ui_upgrade(edit: &mut SnapshotEdit) -> Result<(), String> {
-    let bytes = edit.block("og.ui").ok_or("no og.ui block")?;
-    let upgraded = og_ui::Ui::upgrade_state(bytes).map_err(|e| e.reason().to_string())?;
-    edit.set_block("og.ui", upgraded)
-        .map_err(|e| e.reason().to_string())
-}
-
 /// A record that took another name: the name it was saved under, its name
 /// now, and its fields that took another name with it.
 type Retyped = (
@@ -1327,11 +1188,6 @@ fn retype(edit: &mut SnapshotEdit) -> Result<Vec<String>, String> {
 }
 
 /// A state block's version: the `u32` its bytes start with.
-fn block_version(edit: &SnapshotEdit, name: &str) -> Option<u32> {
-    let b = edit.block(name)?;
-    Some(u32::from_le_bytes(b.get(..4)?.try_into().ok()?))
-}
-
 /// Upgrades a world snapshot (or a selection) taken by an older engine:
 /// `Ok(None)` when nothing in it needed a step (the bytes restore as they
 /// are), `Ok(Some(bytes))` the upgraded snapshot and the steps it took.
@@ -1371,10 +1227,7 @@ pub(crate) fn upgrade(snapshot: &[u8]) -> Result<Option<Upgraded>, String> {
         done.push(format!("{name}: dropped the unused lazy type"));
     }
     for m in MIGRATIONS {
-        let at = match m.target {
-            Target::Block => block_version(&edit, m.name),
-            Target::Record => edit.schema(m.name).map(|s| s.version),
-        };
+        let at = edit.schema(m.name).map(|s| s.version);
         if at != Some(m.from) {
             continue;
         }
@@ -1750,9 +1603,7 @@ mod tests {
     fn steps_from(name: &str, version: u32) -> usize {
         MIGRATIONS
             .iter()
-            .filter(|m| {
-                m.target == Target::Record && m.name == name && m.from >= version && m.run.is_some()
-            })
+            .filter(|m| m.name == name && m.from >= version && m.run.is_some())
             .count()
     }
 
@@ -2085,7 +1936,7 @@ mod tests {
         for (i, m) in MIGRATIONS.iter().enumerate() {
             // A later step of the same name starts where an earlier ended.
             for later in &MIGRATIONS[i + 1..] {
-                if later.name == m.name && later.target == m.target {
+                if later.name == m.name {
                     assert!(later.from >= m.to, "{} steps overlap", m.name);
                 }
             }

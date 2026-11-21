@@ -111,15 +111,8 @@ pub(crate) fn apply_base(eng: &Engine) -> Result<bool, String> {
             Err(_) => None,
         }
     };
-    let changed = og_ui::set_base_css(css.as_deref())
-        .map_err(|e| format!("{PACK}: {e} (the default style stays)"))?;
-    if changed
-        && let Some(ui) = eng.state.borrow().ui.clone()
-        && ui.lock().styled_by(None)
-    {
-        ui.lock().reset_part_css();
-    }
-    Ok(changed)
+    og_ui::set_base_css(css.as_deref())
+        .map_err(|e| format!("{PACK}: {e} (the default style stays)"))
 }
 
 /// After a hot reload (`og dev`): every style the UI is configured with
@@ -134,9 +127,6 @@ pub(crate) fn refresh(
     laps: &mut Vec<(&'static str, f64)>,
 ) -> Vec<String> {
     let mut failed = Vec::new();
-    if eng.state.borrow().ui.is_none() {
-        return failed;
-    }
     let mut lap = {
         let mut t = crate::author::probe::now_ms();
         move |laps: &mut Vec<(&'static str, f64)>, name| {

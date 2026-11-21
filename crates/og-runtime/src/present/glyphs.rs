@@ -749,14 +749,10 @@ fn note(
 /// of its own): per piece, the characters its face has neither in its atlas
 /// nor in its file, judged as [`unjudged`] judges og-ui's.
 pub(crate) fn ui_lacking(rs: &mut RenderState, text: &str) -> Vec<(FontHandle, Vec<char>)> {
-    let Some(ui) = rs.ui.clone() else {
-        return Vec::new();
-    };
     let found: Vec<(FontHandle, Vec<char>)> = {
-        let u = ui.lock();
-        let fonts = u.fonts();
+        let fonts = &rs.ui_fonts;
         let font = fonts.for_text(og_ui::FontRole::Body, text);
-        og_ui::pieces(font, text, u.direction(), 0.0)
+        og_ui::pieces(font, text, crate::bind::i18n::direction(rs.engine), 0.0)
             .into_iter()
             .filter_map(|p| {
                 let h = p.font?;

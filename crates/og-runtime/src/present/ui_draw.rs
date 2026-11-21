@@ -3,7 +3,7 @@
 
 use crate::engine::engine;
 use crate::world::assets::handle;
-use og_ui::paint::*;
+use og_render::{UiMaterialHandle, UiVectorHandle};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
@@ -19,35 +19,35 @@ pub(crate) struct UiDrawState {
     material_paths: BTreeMap<String, (usize, u64)>,
 }
 
-/// The UI tree plus the loaded materials' own parameter declarations.
+/// Engine `engine`'s UI as the probe reads it: the core's tree, the
+/// surface and style it lays out in, and the loaded materials' own
+/// parameter declarations.
 pub(crate) struct MaterialProbe {
-    pub ui: Box<dyn og_probe::UiTree>,
+    pub engine: u32,
     pub render: std::rc::Rc<std::cell::RefCell<crate::present::extract::RenderState>>,
 }
 
 impl og_probe::UiTree for MaterialProbe {
-    fn elements(&self, world: &og_ecs::World) -> Vec<og_probe::UiElement> {
-        let mut elements = self.ui.elements(world);
-        if let Some(next) = &self.render.borrow().ui_next {
-            elements.extend(next.elements());
-        }
-        elements
+    fn elements(&self, _world: &og_ecs::World) -> Vec<og_probe::UiElement> {
+        self.render
+            .borrow()
+            .ui_next
+            .as_ref()
+            .map(|next| next.elements())
+            .unwrap_or_default()
     }
 
-    fn surface(&self, world: &og_ecs::World) -> Option<(f32, f32, f32)> {
-        self.ui.surface(world)
+    fn surface(&self, _world: &og_ecs::World) -> Option<(f32, f32, f32)> {
+        let v = crate::bind::modules::viewport_of(self.engine);
+        Some((v.width, v.height, if v.dpr > 0.0 { v.dpr } else { 1.0 }))
     }
 
-    fn style(&self, world: &og_ecs::World) -> Option<String> {
-        self.ui.style(world)
+    fn style(&self, _world: &og_ecs::World) -> Option<String> {
+        Some(crate::present::ui_next::style_id(self.engine).unwrap_or_default())
     }
 
-    fn screens(&self, world: &og_ecs::World) -> Vec<String> {
-        self.ui.screens(world)
-    }
-
-    fn extra(&self, world: &og_ecs::World) -> Option<serde_json::Map<String, Value>> {
-        let mut extra = self.ui.extra(world).unwrap_or_default();
+    fn extra(&self, _world: &og_ecs::World) -> Option<serde_json::Map<String, Value>> {
+        let mut extra = serde_json::Map::new();
         let render = self.render.borrow();
         let materials: Vec<Value> = render.ui_draw.material_paths.iter().map(|(id, (i, _))| {
             let (handle, values) = &render.ui_draw.materials[*i];
@@ -100,11 +100,6 @@ pub(crate) fn tune_material(
         values[..numbers.len()].copy_from_slice(&numbers);
     }
     render.ui_draw.materials[i].1[slot] = values;
-    let defaults = render.ui_draw.materials[i].1;
-    drop(render);
-    if let Some(ui) = &eng.state.borrow().ui {
-        ui.lock().define_material(&id, handle, defaults);
-    }
     Ok(())
 }
 
@@ -208,16 +203,6 @@ pub(crate) fn refresh(eng: &crate::engine::Engine) -> Vec<String> {
                 rs.ui_draw.material_paths.insert(id, (i, hash));
             }
             Err(e) => failed.push(format!("og dev: {id}: {e} (the old UI material stays)")),
-        }
-    }
-    // A reload creates a new Ui even when the material bytes did not change.
-    // Register every loaded handle and its current defaults with CSS again.
-    if let Some(ui) = &eng.state.borrow().ui {
-        let render = eng.render.borrow();
-        let mut ui = ui.lock();
-        for (id, (i, _)) in &render.ui_draw.material_paths {
-            let (handle, defaults) = render.ui_draw.materials[*i];
-            ui.define_material(id, handle, defaults);
         }
     }
     failed

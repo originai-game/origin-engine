@@ -18,7 +18,7 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_take_log, og_game_game,
     og_host_begin_bundle, og_load_font, og_render_floating_text, og_render_text,
-    og_system_define_system, og_ui_configure, og_world_get_tick, set_hooks, shared_ui,
+    og_system_define_system, og_ui_configure, og_world_get_tick, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -63,7 +63,18 @@ fn project() -> &'static Path {
             "type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 48\n  px_range 4\n}\n",
         )
         .unwrap();
-        let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+        let report = og_cook::cook_project(
+            &root,
+            // Its label is TSX: the cook bundles the default UI's font and
+            // pack art, as for code that reaches the TSX UI.
+            &og_cook::CookOptions {
+                code: og_cook::cook::CodeGraph {
+                    tsx: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        ).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
     })
@@ -79,58 +90,68 @@ thread_local! {
     static LABEL: RefCell<Option<String>> = const { RefCell::new(None) };
     /// The engine and the tick its system last built the label on.
     static BUILT: std::cell::Cell<(u32, u64)> = const { std::cell::Cell::new((0, 0)) };
-    /// The engines whose UI mounts [`STATUS`].
+    /// The engines whose UI shows the label.
     static MOUNTED: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
 }
 
-/// The label: the text of store `text` (empty: nothing drawn).
-const STATUS: &str = r#"<meta name="component" content="status">
-<text id="Status">{$text}</text>"#;
-
-/// One host operation on `ui`'s stores.
-fn store(ui: &mut og_ui::Ui, command: Value) {
-    use og_reactive::reactive::wire;
-    let reply =
-        wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
-    assert_eq!(reply[0]["ok"], true, "{reply}");
+/// Shows `text` as a TSX label in engine `e`'s tree, as the TS renderer's
+/// op batch does (og-ui-next CONVENTIONS.md §Ops): on the first call a View
+/// holding a text run mounted at the root, after it the run's new text.
+fn label(e: u32, first: bool, text: &str) {
+    let mut ops = Vec::new();
+    let u32s = |ops: &mut Vec<u8>, vs: &[u32]| {
+        for v in vs {
+            ops.extend_from_slice(&v.to_le_bytes());
+        }
+    };
+    let str = |ops: &mut Vec<u8>, s: &str| {
+        ops.extend_from_slice(&(s.len() as u32).to_le_bytes());
+        ops.extend_from_slice(s.as_bytes());
+    };
+    let count = if first {
+        // create 1 (a View), createText 2, insert 2 into 1, 1 into the root.
+        ops.push(1);
+        u32s(&mut ops, &[1]);
+        ops.push(0);
+        ops.push(2);
+        u32s(&mut ops, &[2]);
+        str(&mut ops, text);
+        ops.push(8);
+        u32s(&mut ops, &[1, 2, u32::MAX]);
+        ops.push(8);
+        u32s(&mut ops, &[0, 1, u32::MAX]);
+        4u32
+    } else {
+        ops.push(3);
+        u32s(&mut ops, &[2]);
+        str(&mut ops, text);
+        1
+    };
+    let mut batch = og_ui_next::tree::MAGIC.to_vec();
+    batch.extend_from_slice(&count.to_le_bytes());
+    batch.extend_from_slice(&ops);
+    let reply = og_runtime::og_engine_ui_patch(e, &batch);
+    assert!(
+        !reply.starts_with(og_ui_next::tree::REFUSED),
+        "the ops apply: {}",
+        String::from_utf8_lossy(&reply)
+    );
 }
 
 impl Hooks for Disk {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
         if call.kind == 0 && call.id == BUILD {
-            let label = LABEL.with(|l| l.borrow().clone());
+            let shown = LABEL.with(|l| l.borrow().clone());
             let first = MOUNTED.with(|m| !m.borrow().contains(&call.engine));
-            if label.is_none() && first {
+            if shown.is_none() && first {
                 return Ok(String::new());
             }
-            let ui = shared_ui(call.engine).expect("the engine's UI");
-            let mut ui = ui.lock();
-            let source = og_reactive::reactive::SourceId::new("test", "text");
-            let text = label.clone().unwrap_or_default();
+            let text = shown.clone().unwrap_or_default();
             if first {
                 MOUNTED.with(|m| m.borrow_mut().push(call.engine));
-                store(
-                    &mut ui,
-                    json!({"op": "signal", "source": source, "initial": text}),
-                );
-                ui.define_document(
-                    og_ui::UiDocument::parse("ui/status.svelte", STATUS).expect("parses"),
-                );
-                ui.mount_document(
-                    og_reactive::reactive::SourceId::new("test", "status"),
-                    "status",
-                    [("text".to_string(), source.clone())].into(),
-                    Default::default(),
-                    &og_reactive::bind::NoEnv,
-                )
-                .expect("mounts");
             }
-            // Read when the UI's end builds the document.
-            store(
-                &mut ui,
-                json!({"op": "set", "source": source, "value": text}),
-            );
-            if label.is_some() {
+            label(call.engine, first, &text);
+            if shown.is_some() {
                 BUILT.with(|b| b.set((b.get().0, og_world_get_tick(b.get().0) as u64)));
             }
         }

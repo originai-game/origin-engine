@@ -210,10 +210,11 @@ pub(crate) struct RenderState {
     /// The player's colour vision filter (og.ui.configure's colorVision),
     /// over the whole frame whether or not the UI draws anything.
     pub color_filter: Option<og_render::ColorFilter>,
-    /// The engine's UI, drawn over every frame.
-    pub ui: Option<og_ui::SharedUi>,
-    /// Emitted local shape ranges retained between presentation frames.
-    pub ui_emission: og_ui::RetainedEmission,
+    /// The UI's fonts (og.ui.configure's, the locale's chain and the
+    /// style's families) and icon atlas, which the new core lays out and
+    /// paints with.
+    pub ui_fonts: og_ui::Fonts,
+    pub ui_icons: og_ui::IconAtlas,
     /// The documents, on og-ui's new core.
     pub ui_next: Option<Box<crate::present::ui_next::Next>>,
     /// A UI font's first atlas page → every page, so text is drawn per page.
@@ -340,8 +341,8 @@ impl RenderState {
             preview: None,
             cover: None,
             color_filter: None,
-            ui: None,
-            ui_emission: Default::default(),
+            ui_fonts: Default::default(),
+            ui_icons: Default::default(),
             ui_next: None,
             ui_pages: BTreeMap::new(),
             runtime_fonts: IdMap::new(),

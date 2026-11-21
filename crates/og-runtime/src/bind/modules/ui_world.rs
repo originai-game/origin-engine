@@ -68,28 +68,20 @@ impl Feed {
         ))
     }
 
-    /// The tick's camera and the poses of the entities this frame's anchors
-    /// and panels sit on, handed to the UI before it ends.
-    pub(crate) fn before_end(&self, ctx: &og_ecs::SystemContext<'_>, ui: &mut Ui) {
-        let vp = ui.viewport();
-        let view = self.camera.as_ref().and_then(|(id, layout)| {
-            let bytes = ctx.resource_bytes(*id).ok()?;
-            let cam: crate::host::wire::record::Camera = layout.read(&bytes).ok()?;
-            Some(crate::host::api::camera_of(
-                &cam,
-                vp.width.max(1.0),
-                vp.height.max(1.0),
-            ))
-        });
-        ui.set_world_view(view);
-        let wanted = ui.world_entities();
-        if wanted.is_empty() {
-            return;
-        }
-        let poses: Vec<(u64, og_core::math::Pose)> = wanted
-            .into_iter()
-            .filter_map(|bits| Some((bits, Self::world_pose(ctx, bits)?)))
-            .collect();
-        ui.set_world_poses(&poses);
+    /// The tick's camera on a `vp` surface, which anchored nodes project
+    /// with; none without an og.Camera.
+    pub(crate) fn view(
+        &self,
+        ctx: &og_ecs::SystemContext<'_>,
+        vp: &Viewport,
+    ) -> Option<og_ui::WorldView> {
+        let (id, layout) = self.camera.as_ref()?;
+        let bytes = ctx.resource_bytes(*id).ok()?;
+        let cam: crate::host::wire::record::Camera = layout.read(&bytes).ok()?;
+        Some(crate::host::api::camera_of(
+            &cam,
+            vp.width.max(1.0),
+            vp.height.max(1.0),
+        ))
     }
 }

@@ -49,13 +49,11 @@ struct Checkpoint {
     reveal: crate::present::reveal::Reveal,
 }
 
-/// Portable UI presentation state, carried beside the simulation snapshot.
+/// Portable UI presentation state, carried beside the simulation snapshot:
+/// the new core's stores. A save of an older engine also carries og-ui's
+/// `state` and `world`, which nothing reads now.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) struct UiCheckpoint {
-    state: Vec<u8>,
-    world: Vec<u8>,
-    /// The new core's stores (`uiCore next`); none on og-ui's core, whose
-    /// stores `state` holds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     store: Option<serde_json::Value>,
 }
@@ -66,62 +64,36 @@ pub(crate) fn next_store(rs: &RenderState) -> Option<&og_reactive::reactive::ses
 }
 
 impl UiCheckpoint {
-    pub(crate) fn save(
-        ui: &og_ui::SharedUi,
-        store: Option<&og_reactive::reactive::session::Session>,
-    ) -> Self {
-        let ui = ui.lock();
+    pub(crate) fn save(store: Option<&og_reactive::reactive::session::Session>) -> Self {
         Self {
-            state: ui.save_state(),
-            world: ui.save_world_state(),
             store: store.map(|s| s.save()),
         }
     }
 
-    pub(crate) fn validate(&self) -> Result<(), String> {
-        let mut ui = og_ui::Ui::default();
-        ui.restore_state(&self.state)
-            .map_err(|e| e.reason().to_owned())?;
-        ui.restore_world_state(&self.world)
-            .map_err(|e| e.reason().to_owned())?;
-        match &self.store {
-            Some(saved) => og_reactive::reactive::session::Session::default().restore(saved),
-            None => Ok(()),
+    /// Whether the stores would restore into `store`, the current ones
+    /// (into fresh ones without).
+    pub(crate) fn validate(
+        &self,
+        store: Option<&og_reactive::reactive::session::Session>,
+    ) -> Result<(), String> {
+        match (&self.store, store) {
+            (Some(saved), Some(store)) => store.clone().restore(saved),
+            (Some(saved), None) => {
+                og_reactive::reactive::session::Session::default().restore(saved)
+            }
+            (None, _) => Ok(()),
         }
     }
 
     pub(crate) fn restore(
         &self,
-        ui: &og_ui::SharedUi,
         store: Option<&mut og_reactive::reactive::session::Session>,
     ) -> Result<(), String> {
-        self.validate_for(ui, store.as_deref())?;
-        let mut ui = ui.lock();
-        ui.restore_state(&self.state)
-            .map_err(|e| e.reason().to_owned())?;
-        ui.restore_world_state(&self.world)
-            .map_err(|e| e.reason().to_owned())?;
+        self.validate(store.as_deref())?;
         if let (Some(saved), Some(store)) = (&self.store, store) {
             store.restore(saved)?;
         }
         Ok(())
-    }
-
-    pub(crate) fn validate_for(
-        &self,
-        current: &og_ui::SharedUi,
-        store: Option<&og_reactive::reactive::session::Session>,
-    ) -> Result<(), String> {
-        let mut ui = og_ui::Ui::default();
-        ui.inherit_store_registrations(&current.lock());
-        ui.restore_state(&self.state)
-            .map_err(|e| e.reason().to_owned())?;
-        ui.restore_world_state(&self.world)
-            .map_err(|e| e.reason().to_owned())?;
-        match (&self.store, store) {
-            (Some(saved), Some(store)) => store.clone().restore(saved),
-            _ => Ok(()),
-        }
     }
 }
 
@@ -136,10 +108,7 @@ pub(crate) struct Checkpoints {
 pub(crate) fn save(rs: &mut RenderState) -> u64 {
     let renderer = rs.backend.as_mut().map_or(0, |b| b.save_state());
     let terrain = crate::bind::terrain::checkpoint(rs);
-    let ui = rs
-        .ui
-        .as_ref()
-        .map(|ui| UiCheckpoint::save(ui, next_store(rs)));
+    let ui = Some(UiCheckpoint::save(next_store(rs)));
     let c = &mut rs.checkpoints;
     c.next += 1;
     c.kept.push_back((
@@ -164,9 +133,9 @@ pub(crate) fn save(rs: &mut RenderState) -> u64 {
 
 pub(crate) fn validate_restore(rs: &RenderState, id: u64) -> Result<(), String> {
     if let Some((_, checkpoint)) = rs.checkpoints.kept.iter().find(|(k, _)| *k == id)
-        && let (Some(saved), Some(current)) = (&checkpoint.ui, &rs.ui)
+        && let Some(saved) = &checkpoint.ui
     {
-        saved.validate_for(current, next_store(rs))?;
+        saved.validate(next_store(rs))?;
     }
     Ok(())
 }
@@ -186,9 +155,9 @@ pub(crate) fn restore(rs: &mut RenderState, id: u64) {
             if let Some(b) = rs.backend.as_mut() {
                 b.restore_state(c.renderer);
             }
-            if let (Some(saved), Some(current)) = (&c.ui, &rs.ui) {
+            if let Some(saved) = &c.ui {
                 saved
-                    .restore(current, rs.ui_next.as_deref_mut().map(|n| &mut n.store))
+                    .restore(rs.ui_next.as_deref_mut().map(|n| &mut n.store))
                     .expect("presentation checkpoint preflight passed");
             }
             rs.interp.restore(&c.interp);
@@ -213,7 +182,7 @@ pub(crate) fn restore(rs: &mut RenderState, id: u64) {
 
 /// The presentation hash: FNV-1a over the state a checkpoint keeps that the
 /// CPU holds (og.motion's, then each particle system's ticks, in id order, the
-/// UI's and the models fading in). Equal hashes on
+/// UI's stores and the models fading in). Equal hashes on
 /// one host and backend mean the same frames from the same world.
 pub(crate) fn hash(rs: &RenderState) -> u64 {
     let mut h = rs.motion.hash();
@@ -237,13 +206,8 @@ pub(crate) fn hash(rs: &RenderState) -> u64 {
             put(&t.clock.scale.to_bits().to_le_bytes());
         }
     }
-    if let Some(ui) = &rs.ui {
-        let saved = UiCheckpoint::save(ui, next_store(rs));
-        put(&saved.state);
-        put(&saved.world);
-        if let Some(store) = &saved.store {
-            put(store.to_string().as_bytes());
-        }
+    if let Some(store) = next_store(rs) {
+        put(store.save().to_string().as_bytes());
     }
     rs.reveal.hash(&mut put);
     h

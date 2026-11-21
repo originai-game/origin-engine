@@ -44,13 +44,12 @@ pub(super) fn of(ins: &Inspector, cx: &Ctx) -> (Value, Shown) {
             "Filter entities by name"
         }
         ui_debug::TAB => {
-            let filter = ins.filter.trim().to_lowercase();
-            match ui_debug::lines(&ins.ui_view, &filter) {
+            match ui_debug::lines(&ins.ui_view) {
                 Some(lines) => out.lines = lines,
                 None => out.note = "Pick an element of the game's UI".into(),
             }
             out.boxes = ui_debug::boxes(&ins.ui_view);
-            "Filter styles and bindings by name"
+            "Pick an element of the game's UI"
         }
         _ => {
             resources(ins, cx, &mut out);

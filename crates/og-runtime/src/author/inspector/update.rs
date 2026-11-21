@@ -26,7 +26,16 @@ pub(crate) fn frame(eng: &Engine) {
         let Ok(mut rs) = eng.render.try_borrow_mut() else {
             return;
         };
-        let game = rs.ui.clone();
+        // The UI view reads the game's elements only while it is shown.
+        let elements = rs
+            .ui_next
+            .as_ref()
+            .filter(|_| {
+                rs.inspector
+                    .as_ref()
+                    .is_some_and(|i| i.tab == ui_debug::TAB)
+            })
+            .map(|next| next.elements());
         // The TSX panel's box in the game's UI tree, as last laid out.
         let panel = rs
             .ui_next
@@ -39,8 +48,8 @@ pub(crate) fn frame(eng: &Engine) {
         ins.panel = panel;
         ins.frames += 1;
         // The UI view reads the game's UI only while it is the tab shown.
-        ins.ui_view = match game.filter(|_| ins.tab == ui_debug::TAB) {
-            Some(game) => ui_debug::read(ins, &game.lock()),
+        ins.ui_view = match &elements {
+            Some(elements) => ui_debug::read(ins, elements),
             None => ui_debug::View::default(),
         };
         if ins.selected.is_some_and(|e| !world.is_alive(e)) {

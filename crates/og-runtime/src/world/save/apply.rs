@@ -216,9 +216,9 @@ pub(super) fn apply_keeping(
     if is_selection(&pending.snapshot) {
         return apply_selection(eng, world, pending);
     }
-    if let (Some(saved), Some(ui)) = (&pending.ui, &eng.state.borrow().ui) {
+    if let Some(saved) = &pending.ui {
         let rs = eng.render.borrow();
-        saved.validate_for(ui, crate::present::presentation::next_store(&rs))?;
+        saved.validate(crate::present::presentation::next_store(&rs))?;
     }
     let from = world.time().tick;
     // Nothing for a frame to blend from until the next tick.
@@ -259,9 +259,9 @@ pub(super) fn apply_keeping(
     }
     let to = world.time().tick;
     refresh(eng, world, from, to);
-    if let (Some(saved), Some(ui)) = (&pending.ui, &eng.state.borrow().ui) {
+    if let Some(saved) = &pending.ui {
         let mut rs = eng.render.borrow_mut();
-        saved.restore(ui, rs.ui_next.as_deref_mut().map(|n| &mut n.store))?;
+        saved.restore(rs.ui_next.as_deref_mut().map(|n| &mut n.store))?;
     }
     Ok(())
 }

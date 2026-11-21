@@ -180,7 +180,6 @@ pub(super) fn texts(rs: &mut RenderState, vp: (f32, f32)) {
     let aspect = vp.0 / vp.1;
     let proj = cam.projection.matrix(aspect, cam.near, cam.far);
     let vpm = proj * view;
-    let ui = rs.ui.clone();
     let mut out = Vec::new();
     for t in &rs.geo.texts {
         let clip = vpm * t.position.extend(1.0);
@@ -191,12 +190,7 @@ pub(super) fn texts(rs: &mut RenderState, vp: (f32, f32)) {
         if ndc.z < 0.0 || ndc.z > 1.0 {
             continue;
         }
-        let Some(body) = ui.as_ref().and_then(|u| {
-            u.lock()
-                .fonts()
-                .for_text(og_ui::FontRole::Body, &t.text)
-                .handle
-        }) else {
+        let Some(body) = rs.ui_fonts.for_text(og_ui::FontRole::Body, &t.text).handle else {
             continue;
         };
         let pages = rs

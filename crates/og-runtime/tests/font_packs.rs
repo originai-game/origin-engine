@@ -15,7 +15,7 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_take_log, og_game_game,
     og_host_begin_bundle, og_i18n_locale, og_i18n_set_locale, og_load_font,
-    og_system_define_system, og_ui_configure, shared_ui,
+    og_system_define_system, og_ui_configure, ui_fonts,
 };
 use serde_json::{Value, json};
 use std::cell::RefCell;
@@ -109,7 +109,19 @@ fn cooked(name: &str, atlas: Option<&str>) -> PathBuf {
                 }
             }
         }
-        let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+        let report = og_cook::cook_project(
+            &root,
+            // Its label is TSX: the cook bundles the default UI's font and
+            // pack art, as for code that reaches the TSX UI.
+            &og_cook::CookOptions {
+                code: og_cook::cook::CodeGraph {
+                    tsx: true,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )
+        .unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
     }
@@ -121,23 +133,52 @@ const BUILD: u32 = 1;
 
 thread_local! {
     static LABEL: RefCell<Option<String>> = const { RefCell::new(None) };
-    /// The engines whose UI mounts [`STATUS`].
+    /// The engines whose UI shows the label.
     static MOUNTED: RefCell<Vec<u32>> = const { RefCell::new(Vec::new()) };
 }
 
-/// The label: store `text` in the ramp's xl4 step.
-const STATUS: &str = r#"<meta name="component" content="status">
-<text id="Status">{$text}</text>
-<style>
-#Status { font: var(--text-xl4); letter-spacing: var(--type-xl4-tracking); }
-</style>"#;
-
-/// One host operation on `ui`'s stores.
-fn store(ui: &mut og_ui::Ui, command: Value) {
-    use og_reactive::reactive::wire;
-    let reply =
-        wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
-    assert_eq!(reply[0]["ok"], true, "{reply}");
+/// Shows `text` as a TSX label in engine `e`'s tree, as the TS renderer's
+/// op batch does (og-ui-next CONVENTIONS.md §Ops): on the first call a View
+/// holding a text run mounted at the root, after it the run's new text.
+fn label(e: u32, first: bool, text: &str) {
+    let mut ops = Vec::new();
+    let u32s = |ops: &mut Vec<u8>, vs: &[u32]| {
+        for v in vs {
+            ops.extend_from_slice(&v.to_le_bytes());
+        }
+    };
+    let str = |ops: &mut Vec<u8>, s: &str| {
+        ops.extend_from_slice(&(s.len() as u32).to_le_bytes());
+        ops.extend_from_slice(s.as_bytes());
+    };
+    let count = if first {
+        // create 1 (a View), createText 2, insert 2 into 1, 1 into the root.
+        ops.push(1);
+        u32s(&mut ops, &[1]);
+        ops.push(0);
+        ops.push(2);
+        u32s(&mut ops, &[2]);
+        str(&mut ops, text);
+        ops.push(8);
+        u32s(&mut ops, &[1, 2, u32::MAX]);
+        ops.push(8);
+        u32s(&mut ops, &[0, 1, u32::MAX]);
+        4u32
+    } else {
+        ops.push(3);
+        u32s(&mut ops, &[2]);
+        str(&mut ops, text);
+        1
+    };
+    let mut batch = og_ui_next::tree::MAGIC.to_vec();
+    batch.extend_from_slice(&count.to_le_bytes());
+    batch.extend_from_slice(&ops);
+    let reply = og_runtime::og_engine_ui_patch(e, &batch);
+    assert!(
+        !reply.starts_with(og_ui_next::tree::REFUSED),
+        "the ops apply: {}",
+        String::from_utf8_lossy(&reply)
+    );
 }
 
 impl Hooks for Disk {
@@ -146,9 +187,6 @@ impl Hooks for Disk {
             && call.id == BUILD
             && let Some(text) = LABEL.with(|l| l.borrow().clone())
         {
-            let ui = shared_ui(call.engine).expect("the engine's UI");
-            let mut ui = ui.lock();
-            let source = og_reactive::reactive::SourceId::new("test", "text");
             let first = MOUNTED.with(|m| {
                 let mut m = m.borrow_mut();
                 let first = !m.contains(&call.engine);
@@ -157,28 +195,7 @@ impl Hooks for Disk {
                 }
                 first
             });
-            if first {
-                store(
-                    &mut ui,
-                    json!({"op": "signal", "source": source, "initial": text}),
-                );
-                ui.define_document(
-                    og_ui::UiDocument::parse("ui/status.svelte", STATUS).expect("parses"),
-                );
-                ui.mount_document(
-                    og_reactive::reactive::SourceId::new("test", "status"),
-                    "status",
-                    [("text".to_string(), source.clone())].into(),
-                    Default::default(),
-                    &og_reactive::bind::NoEnv,
-                )
-                .expect("mounts");
-            }
-            // Read when the UI's end builds the document.
-            store(
-                &mut ui,
-                json!({"op": "set", "source": source, "value": text}),
-            );
+            label(call.engine, first, &text);
         }
         Ok(String::new())
     }
@@ -364,9 +381,8 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
     show("Start");
     step();
     step();
-    let ui = shared_ui(engine).unwrap();
     {
-        let ui = ui.lock();
+        let fonts = ui_fonts(engine).unwrap();
         for role in [
             og_ui::FontRole::Body,
             og_ui::FontRole::Display,
@@ -374,7 +390,7 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
             og_ui::FontRole::Rounded,
             og_ui::FontRole::Family(og_ui::Family::new("Instrument Sans", og_ui::FontRole::Body)),
         ] {
-            let (face, synth) = ui.fonts().for_styled(
+            let (face, synth) = fonts.for_styled(
                 role,
                 og_ui::FontQuery::new(700, false).at_width(Some(75.0)),
                 "Victory",
@@ -385,7 +401,7 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
             assert!(file.variations().contains(&(*b"wdth", 75.0)));
             assert!(!synth.bold, "the variable face supplies bold outlines");
         }
-        let japanese = ui.fonts().for_text(og_ui::FontRole::Body, "はじめる");
+        let japanese = fonts.for_text(og_ui::FontRole::Body, "はじめる");
         assert_ne!(
             japanese.metrics.file.as_ref().unwrap().bytes().as_slice(),
             source
@@ -401,8 +417,8 @@ fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
     )));
     step();
     assert_ne!(
-        ui.lock()
-            .fonts()
+        ui_fonts(engine)
+            .unwrap()
             .body
             .metrics
             .file

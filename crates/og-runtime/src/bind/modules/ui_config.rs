@@ -1,29 +1,6 @@
 use super::*;
 use crate::host::wire;
 
-/// A new game's UI, or on a hot reload `previous` itself: its documents and
-/// the timelines they define, stores, mounts, styles and state stay as they
-/// are, in memory (copying them, or saving and restoring them, took seconds
-/// on a page of many components). Nothing changes it until the reload is
-/// committed (probe.rs `after_reload`, which also gives it the new game's
-/// tick rate), so a refused reload leaves the running game's UI untouched.
-pub(crate) fn new_ui(
-    tick: u32,
-    seed: u64,
-    previous: Option<&SharedUi>,
-) -> Result<SharedUi, String> {
-    if let Some(p) = previous {
-        return Ok(p.clone());
-    }
-    let mut ui = Ui::new(UiDesc {
-        theme: Theme::default(),
-        ticks_per_second: tick,
-        fonts: Fonts::default(),
-    });
-    ui.seed_feedback(seed);
-    Ok(SharedUi::new(ui))
-}
-
 /// The UiDesc a configure call makes: the last one's fields with the ones
 /// this call gives (`null` clears a field; one left out keeps its value).
 fn merged_ui_desc(last: &Value, given: Value) -> Result<Value, String> {
@@ -118,70 +95,10 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
                     .styles
                     .get(i)
                     .ok_or_else(|| format!("style: style {h} is not alive"))?;
-                Some((
-                    s.pack.clone(),
-                    s.faces.clone(),
-                    s.textures.clone(),
-                    s.sounds.clone(),
-                ))
+                Some(s.faces.clone())
             }
             None => None,
         };
-        let scheme = match u.scheme {
-            wire::Scheme::Light => Scheme::Light,
-            wire::Scheme::Dark => Scheme::Dark,
-        };
-        let mut theme = Theme::new(scheme);
-        if u.contrast == wire::Contrast::High {
-            theme = theme.to_high_contrast();
-        }
-        if let Some(seeds) = &u.seeds {
-            // In og_ui::Seeds::NAMES order.
-            let given = [
-                &seeds.primary,
-                &seeds.accent,
-                &seeds.neutral,
-                &seeds.danger,
-                &seeds.warn,
-                &seeds.success,
-                &seeds.info,
-                &seeds.team,
-            ];
-            theme.seeds = og_ui::Seeds(given.map(|c| c.as_ref().map(|c| [c.r, c.g, c.b])));
-        }
-        theme.reduced_motion = u.reduced_motion;
-        theme.color_vision =
-            og_render::ColorVision::from_name(u.color_vision.as_str()).unwrap_or_default();
-        theme.color_vision_filter = match u.color_vision_filter {
-            wire::ColorVisionFilter::Simulate => og_render::ColorVisionFilter::Simulate,
-            wire::ColorVisionFilter::Correct => og_render::ColorVisionFilter::Correct,
-        };
-        theme.color_vision_strength = u.color_vision_strength.clamp(0.0, 1.0);
-        theme.text_scale = u.text_scale;
-        theme.unit_pin = if u.unit_scale > 0.0 {
-            u.unit_scale.clamp(1.0, 2.0)
-        } else {
-            0.0
-        };
-        if let Some(sounds) = &u.sounds {
-            for e in og_ui::UiSound::ALL {
-                let given = match e {
-                    og_ui::UiSound::Hover => sounds.hover,
-                    og_ui::UiSound::Press => sounds.press,
-                    og_ui::UiSound::Open => sounds.open,
-                    og_ui::UiSound::Close => sounds.close,
-                    og_ui::UiSound::Success => sounds.success,
-                    og_ui::UiSound::Error => sounds.error,
-                };
-                if let Some(h) = given {
-                    theme.art.sounds[e as usize] = h;
-                    let f = &mut theme.tokens.feedback[e.event().index()];
-                    f.sounds = [0; og_ui::tokens::SET_SOUNDS];
-                    f.sounds[0] = h;
-                    f.count = u8::from(h != 0);
-                }
-            }
-        }
         let font = |h: Option<u64>| -> Result<Option<UiFont>, String> {
             h.map(|h| ui_font(&eng, h as f64)).transpose()
         };
@@ -206,12 +123,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             family_lists: Default::default(),
             backed: Default::default(),
         };
-        let ui = eng
-            .state
-            .borrow()
-            .ui
-            .clone()
-            .ok_or("this engine has no UI")?;
         // A game's atlas (`icons`), else the style's; under either, the
         // set that draws the names it lacks (`fallbackIcons`).
         let atlas_of = |field: &str,
@@ -272,45 +183,16 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             }))
         };
         let atlas = atlas_of("icons", &u.icons)?.unwrap_or_default();
-        // Pictures rich text draws inline by name ([img=…]).
-        let mut images = std::collections::BTreeMap::new();
-        for im in &u.images {
-            let name = im.name.as_str();
-            let Some(t) = im.texture.map(|t| t as f64) else {
-                continue;
-            };
-            if name.is_empty() {
-                return Err("images: an image without a name".into());
-            }
-            let rs = eng.render.borrow();
-            let i = super::assets::index_of(t)
-                .ok_or_else(|| format!("images.{name}.texture: {t} is not a texture"))?;
-            let texture = *rs
-                .textures
-                .get(i)
-                .ok_or_else(|| format!("images.{name}.texture: texture {t} is not alive"))?;
-            let uv = im.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]);
-            let aspect = im.aspect;
-            images.insert(
-                name.to_string(),
-                og_ui::InlineImage {
-                    texture,
-                    uv,
-                    aspect: if aspect > 0.0 { aspect } else { 1.0 },
-                },
-            );
-        }
-        let mut ui = ui.lock();
-        ui.set_theme(theme);
         // The locale's chain and forms (og.i18n) and the documents' named
-        // families (`@font-face`) stay.
+        // families stay; the style's replace the last style's.
+        let mut rs = eng.render.borrow_mut();
         let (chain, cjk_locale, mut families) = (
-            ui.fonts().chain.clone(),
-            ui.fonts().cjk_locale,
-            ui.fonts().families.clone(),
+            rs.ui_fonts.chain.clone(),
+            rs.ui_fonts.cjk_locale,
+            rs.ui_fonts.families.clone(),
         );
         families.retain(|f| !f.document.starts_with("@pack:") && f.document != "@default");
-        if let Some((_, faces, _, _)) = &style {
+        if let Some(faces) = &style {
             families.extend(faces.clone());
         }
         let fonts = Fonts {
@@ -327,39 +209,11 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             && fonts.fallback.is_none()
             && fonts.chain.is_empty()
             && fonts.families.is_empty();
-        ui.set_fonts(fonts);
-        ui.set_icons(atlas);
-        ui.set_images(images);
-        // A document carries the rules of the style it was parsed against.
-        // A game configures its style before it loads documents, so none
-        // is read twice; when this call changes the style under loaded
-        // documents (a style edited under `og dev`), they are read again
-        // below.
-        let restyle = !ui.styled_by(style.as_ref().map(|(pack, ..)| pack));
-        if let Some((pack, _, textures, sounds)) = &style {
-            // The style in effect is installed already: a call that
-            // changes the text scale or the scheme reads no sheet.
-            if restyle {
-                ui.set_style_pack(pack)?;
-            }
-            ui.set_css_sounds(sounds.clone());
-            for (path, texture) in textures {
-                ui.define_texture(path, *texture);
-            }
-        } else {
-            if restyle {
-                ui.clear_style_pack();
-                ui.reset_part_css();
-                ui.set_style_name("");
-            }
-            ui.set_css_sounds(Default::default());
-        }
-        if !restyle {
-            // The theme's type steps name their families among the fonts
-            // set above (installing a style reads it again itself).
-            ui.read_theme_tokens();
-        }
-        drop(ui);
+        rs.ui_fonts = fonts;
+        // Each face's mixed font: the chain and fallbacks after it.
+        rs.ui_fonts.link();
+        rs.ui_icons = atlas;
+        drop(rs);
         eng.render.borrow_mut().color_filter =
             UiSettings::of(&d, String::new(), (false, false)).color_filter();
         let mut st = eng.state.borrow_mut();
@@ -388,13 +242,10 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
     }
 }
 
-/// A loaded CSS directory and the assets its stylesheets reference.
+/// A loaded style directory and the font faces its CSS names.
 pub(crate) struct LoadedStyle {
     pub id: String,
-    pub pack: og_ui::style_pack::StylePack,
     pub faces: Vec<og_ui::FamilyFace>,
-    pub textures: Vec<(String, og_render::TextureHandle)>,
-    pub sounds: std::collections::BTreeMap<String, u64>,
 }
 
 /// `og.load.style`: a cooked UI style, its atlas, fonts, icons and sounds loaded with it.
@@ -438,39 +289,9 @@ pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> 
     let files = serde_json::from_str(&text).map_err(|e| format!("{id}: CSS pack sources: {e}"))?;
     let pack = og_ui::style_pack::StylePack::parse(id, files)?;
     let faces = docs::sheet_faces(eng, &pack.sheet.font_faces, id, &format!("@pack:{id}"))?;
-    let texture = |p: &str| -> Result<og_render::TextureHandle, String> {
-        let i = super::assets::load_texture(eng, p)?;
-        eng.render
-            .borrow()
-            .textures
-            .get(i)
-            .copied()
-            .ok_or_else(|| format!("{id}: the texture {p} did not load"))
-    };
-    let mut textures = Vec::new();
-    let mut sounds = std::collections::BTreeMap::new();
-    for asset in &pack.assets {
-        let ty = {
-            let assets = eng.assets.borrow();
-            let (_, bundle) = assets.blob(asset)?;
-            bundle.output(asset).map_err(|e| e.to_string())?.ty.clone()
-        };
-        match ty.as_str() {
-            "og.Font" => {}
-            "og.Sound" => {
-                let index = super::assets::load_sound(eng, asset)?;
-                sounds.insert(asset.clone(), eng.assets.borrow().sound_handles[index]);
-            }
-            "og.Texture" => textures.push((asset.clone(), texture(asset)?)),
-            _ => return Err(format!("{id}: CSS asset {asset} has unsupported type {ty}")),
-        }
-    }
     Ok(LoadedStyle {
         id: id.to_owned(),
-        pack,
         faces,
-        textures,
-        sounds,
     })
 }
 

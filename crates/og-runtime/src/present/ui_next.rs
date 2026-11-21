@@ -93,9 +93,7 @@ pub(crate) struct Next {
     /// (`glyphs::generate`): a fresh tree painted, so its text arrives
     /// with its panels.
     pub(crate) settle_glyphs: bool,
-    /// The on-screen controls' zones, og-ui's documents' and the tree's,
-    /// as last handed to the action map, which takes the whole set.
-    doc_zones: Vec<og_input::ControlZone>,
+    /// The on-screen controls' zones as last handed to the action map.
     zones: Vec<og_input::ControlZone>,
     /// The og-ui unit the tree lays out in (`UiFrame::unit`): its CSS px
     /// are that many of the surface's, as og-ui's are, so `unitScale`
@@ -663,7 +661,6 @@ impl Next {
             textures: Rc::default(),
             generation: 0,
             settle_glyphs: false,
-            doc_zones: Vec::new(),
             zones: Vec::new(),
             unit: 1.0,
         }
@@ -728,60 +725,45 @@ impl Next {
     }
 
     /// The characters the tree's texts drew that no face has, with the
-    /// body's handle: og-ui's frame's `missing_glyphs` for the
-    /// new core, so an installed font pack that covers them loads.
+    /// body's handle, so an installed font pack that covers them loads.
     pub(crate) fn take_missing(
         &mut self,
-        ui: &og_ui::Ui,
+        fonts: &og_ui::Fonts,
     ) -> Option<(og_render::FontHandle, Vec<char>)> {
         let chars = self.tree.as_mut()?.take_missing();
-        let body = ui.fonts().body.handle?;
+        let body = fonts.body.handle?;
         (!chars.is_empty()).then_some((body, chars))
     }
 
-    /// The action map's control zones, og-ui's `docs` (its
-    /// `take_control_zones`) and the tree's on-screen controls together:
-    /// `None` when neither changed.
-    pub(crate) fn control_zones(
-        &mut self,
-        docs: Option<Vec<og_input::ControlZone>>,
-    ) -> Option<Vec<og_input::ControlZone>> {
+    /// The action map's control zones, the tree's on-screen controls:
+    /// `None` when they did not change.
+    pub(crate) fn control_zones(&mut self) -> Option<Vec<og_input::ControlZone>> {
         let own = match &mut self.tree {
             Some(tree) => tree.take_zones(),
             None => (!self.zones.is_empty()).then(Vec::new),
-        };
-        if docs.is_none() && own.is_none() {
-            return None;
-        }
-        if let Some(docs) = docs {
-            self.doc_zones = docs;
-        }
-        if let Some(own) = own {
-            let u = self.unit;
-            self.zones = own
-                .into_iter()
-                .map(|z| og_input::ControlZone {
-                    x: z.x * u,
-                    y: z.y * u,
-                    width: z.width * u,
-                    height: z.height * u,
-                    ..z
-                })
-                .collect();
-        }
-        Some(self.doc_zones.iter().chain(&self.zones).cloned().collect())
+        }?;
+        let u = self.unit;
+        self.zones = own
+            .into_iter()
+            .map(|z| og_input::ControlZone {
+                x: z.x * u,
+                y: z.y * u,
+                width: z.width * u,
+                height: z.height * u,
+                ..z
+            })
+            .collect();
+        Some(self.zones.clone())
     }
 
     /// What og-input read from the zones last handed out (its
-    /// `zone_states`, documents' zones first): the tree's controls show
-    /// their press and knob.
+    /// `zone_states`): the tree's controls show their press and knob.
     pub(crate) fn zone_states<'a>(
         &mut self,
         states: impl ExactSizeIterator<Item = &'a og_input::ZoneState>,
     ) {
-        let skip = self.doc_zones.len();
         if let Some(tree) = &mut self.tree {
-            tree.zone_states(states.skip(skip), self.unit);
+            tree.zone_states(states, self.unit);
         }
     }
 
@@ -840,7 +822,8 @@ impl Next {
     pub(crate) fn end(
         &mut self,
         engine: u32,
-        ui: &og_ui::Ui,
+        (fonts, icons): (&og_ui::Fonts, &og_ui::IconAtlas),
+        view: Option<og_ui::WorldView>,
         textures: &[og_render::TextureHandle],
         time: f64,
         tps: u32,
@@ -888,7 +871,6 @@ impl Next {
         // Anchored nodes where the tick's camera sees their entity or point
         // (CONVENTIONS.md §World), and whether drawn geometry stands in
         // front of the ones that ask; none without a camera or a world.
-        let view = ui.world_view();
         let (w, h) = (v.width, v.height);
         tree.place_anchors(|target, lift, ask| {
             let (view, world) = (view.as_ref()?, world?);
@@ -1049,8 +1031,8 @@ impl Next {
             }
         }
         let t1 = now();
-        self.font = ui.fonts().body.handle.is_some();
-        let (_, painted) = tree.present(ui.fonts(), ui.icons());
+        self.font = fonts.body.handle.is_some();
+        let (_, painted) = tree.present(fonts, icons);
         let t2 = now();
         if painted {
             // The tree paints its items afresh each time: the overlay takes
@@ -1077,7 +1059,7 @@ impl Next {
     /// (CONVENTIONS.md §World). The next tick's end places them again.
     pub(crate) fn follow_anchors(
         &mut self,
-        ui: &og_ui::Ui,
+        (fonts, icons): (&og_ui::Fonts, &og_ui::IconAtlas),
         project: impl FnMut(
             og_ui_next::tree::AnchorTarget,
             [f32; 3],
@@ -1091,12 +1073,20 @@ impl Next {
             return;
         }
         tree.follow_anchors(project);
-        let (_, painted) = tree.present(ui.fonts(), ui.icons());
+        let (_, painted) = tree.present(fonts, icons);
         if painted {
             self.generation += 1;
             std::mem::swap(&mut self.paint, &mut tree.drawn);
             self.paint.generation = self.generation;
         }
+    }
+
+    /// The UI events the pack gives a pack-wide sound (`hover`, `press`…).
+    pub(crate) fn pack_sound_events(&self) -> Vec<String> {
+        self.sounds
+            .get("")
+            .map(|events| events.keys().cloned().collect())
+            .unwrap_or_default()
     }
 
     /// The surface the tree lays out on, CSS px: what its anchors project
@@ -1376,14 +1366,13 @@ mod tests {
         );
         patch(&mut next, set(7));
         assert_eq!(read(&mut next), json!(7));
-        let ui = og_ui::SharedUi::new(og_ui::Ui::default());
-        let saved = UiCheckpoint::save(&ui, Some(&next.store));
+        let saved = UiCheckpoint::save(Some(&next.store));
         let text = serde_json::to_vec(&saved).unwrap();
         let saved: UiCheckpoint = serde_json::from_slice(&text).unwrap();
-        saved.validate().unwrap();
+        saved.validate(None).unwrap();
         patch(&mut next, set(12));
         assert_eq!(read(&mut next), json!(12));
-        saved.restore(&ui, Some(&mut next.store)).unwrap();
+        saved.restore(Some(&mut next.store)).unwrap();
         assert_eq!(read(&mut next), json!(7));
     }
 

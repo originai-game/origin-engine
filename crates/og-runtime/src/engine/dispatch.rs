@@ -186,9 +186,8 @@ pub(crate) struct State {
     /// The physics profile (2 or 3), from the host's options.
     #[cfg_attr(feature = "publish", allow(dead_code))]
     pub profile: u32,
-    /// The engine modules' handles: physics (meshes, queries) and the UI.
+    /// The engine modules' handles: physics (meshes, queries).
     pub physics: Option<og_physics::PhysicsSystem>,
-    pub ui: Option<og_ui::SharedUi>,
     /// The world's gameplay actions (og.input.defineAction and friends).
     pub actions: Option<og_input::SharedActions>,
     /// Every mesh registered with physics, replayed into a reload's physics.
@@ -209,9 +208,6 @@ pub(crate) struct State {
     /// The host mirrors the UI's accessibility tree (create option `a11y`,
     /// the web Worker): frame answers carry what changed in it.
     pub a11y_mirror: bool,
-    /// Cursor images decoded from their textures, by source
-    /// ([`crate::host::ui_cursor`]).
-    pub cursor_images: crate::host::ui_cursor::Kept,
     /// The cursor the last frame answer carried (its keyword and image id),
     /// so its image is sent only when it changes.
     pub cursor_sent: Option<(&'static str, u64)>,

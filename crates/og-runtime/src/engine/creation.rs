@@ -140,7 +140,6 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         reloaded: None,
         profile,
         physics: Some(a.mounted.physics.clone()),
-        ui: Some(a.mounted.ui.clone()),
         actions: Some(a.mounted.actions.clone()),
         physics_meshes: IdMap::new(),
         #[cfg(feature = "physics3d")]
@@ -150,7 +149,6 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         ui_answers: Default::default(),
         ui_frame: Default::default(),
         a11y_mirror: options["a11y"].as_bool().unwrap_or(false),
-        cursor_images: Default::default(),
         cursor_sent: None,
         undeclared_logged: BTreeSet::new(),
         anim: Some(a.anim.clone()),
@@ -162,7 +160,6 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     };
     og_audio::publish_link(engine_id, a.mounted.audio.clone());
     let render = Rc::new(RefCell::new(RenderState::new(a.game.render.clone())));
-    render.borrow_mut().ui = Some(a.mounted.ui.clone());
     render.borrow_mut().engine = engine_id;
     let engine = Rc::new(Engine {
         id: engine_id,

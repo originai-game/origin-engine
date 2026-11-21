@@ -19,15 +19,6 @@ pub(crate) fn srgb8(linear: f32) -> u8 {
 
 // ── ui: the calls ───────────────────────────────────────────────────────────
 
-/// Runs `f` on the UI whose frame is open; outside a frame, logs a warning
-/// on the engine that opened one last and answers `None`.
-pub(crate) fn with_ui<T>(call: &str, f: impl FnOnce(&mut Ui) -> T) -> Option<T> {
-    let eng = building(call)?;
-    let ui = eng.state.borrow().ui.clone()?;
-    let mut guard = ui.lock();
-    Some(f(&mut guard))
-}
-
 /// The engine whose UI frame is open; outside a frame, logs a warning that
 /// `call` does nothing there on the engine that opened one last.
 pub(crate) fn building(call: &str) -> Option<std::rc::Rc<Engine>> {
@@ -141,21 +132,10 @@ fn answered<T>(f: impl FnOnce(Option<&mut UiAnswers>) -> T) -> T {
 
 pub fn og_ui_frame_cursor() -> String {
     // The last completed frame's: the one the host shows now.
-    // The style draws a pad's virtual cursor: the system's hides.
-    use og_ui_next::Cursor;
-    let Some(engine) = ui_engine() else {
-        return Cursor::Default.name().into();
-    };
-    if crate::present::ui_next::virtual_cursor(engine).is_some_and(|(_, shown)| shown) {
-        return Cursor::None.name().into();
-    }
-    // The TSX element under the pointer's `cursor-*`; `auto` is the arrow.
-    match crate::present::ui_next::cursor(engine).unwrap_or_default() {
-        Cursor::Auto => Cursor::Default,
-        c => c,
-    }
-    .name()
-    .to_string()
+    ui_engine()
+        .and_then(|id| engine(id).ok())
+        .map_or("default", |eng| crate::host::ui_cursor::shape(&eng).keyword)
+        .to_string()
 }
 
 pub fn og_ui_frame_pointer() -> crate::host::wire::UiPointer {
@@ -182,7 +162,7 @@ pub fn og_ui_frame_direction() -> String {
 }
 
 pub fn og_ui_has_icon(name: String) -> bool {
-    with_ui("og.ui.hasIcon", |ui| ui.has_icon(&name)).unwrap_or(false)
+    building("og.ui.hasIcon").is_some_and(|eng| eng.render.borrow().ui_icons.find(&name).is_some())
 }
 
 pub fn og_ui_seconds() -> f64 {

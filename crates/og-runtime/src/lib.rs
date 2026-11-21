@@ -286,11 +286,17 @@ pub fn set_physics_clock(clock: fn() -> f64) {
     og_physics::set_clock(clock);
 }
 
-/// An engine's UI between ticks: its last frame, theme and viewport, which
-/// the native host's `og ui check` reads (og-host-node's `og_node_ui_frame`,
-/// docs/ui.md §6). `None` for an engine without one.
-pub fn shared_ui(engine: u32) -> Option<og_ui::SharedUi> {
-    engine::engine(engine).ok()?.state.borrow().ui.clone()
+/// The fonts an engine's UI lays out and draws with, as og.ui.configure,
+/// the locale and the style left them; `None` for no engine.
+pub fn ui_fonts(engine: u32) -> Option<og_ui::Fonts> {
+    Some(
+        engine::engine(engine)
+            .ok()?
+            .render
+            .borrow()
+            .ui_fonts
+            .clone(),
+    )
 }
 
 /// What a native window's AccessKit session was last sent ([`ui_a11y`]).
@@ -340,6 +346,21 @@ pub fn ui_a11y_action(engine: u32, request: serde_json::Value) -> bool {
     og_input::InputSink::inject(&mut og_input::InputLayer::new(), world, &event)
 }
 
+/// An engine's UI surface, CSS px, and the UI events its pack gives a
+/// pack-wide sound: `og ui check` reads them (og-host-node `og_node_ui_frame`).
+pub fn ui_surface(engine: u32) -> Option<(og_ui_model::Viewport, Vec<String>)> {
+    let eng = engine::engine(engine).ok()?;
+    let sounds = eng
+        .render
+        .try_borrow()
+        .ok()?
+        .ui_next
+        .as_ref()
+        .map(|n| n.pack_sound_events())
+        .unwrap_or_default();
+    Some((bind::modules::viewport_of(engine), sounds))
+}
+
 /// The new core's TSX nodes as the probe lists them, and its focus order
 /// as their paths: `og ui check` reads them (og-host-node `og_node_ui_frame`).
 pub fn ui_next_dump(engine: u32) -> (Vec<og_probe::UiElement>, Vec<String>) {
@@ -377,10 +398,9 @@ pub fn og_engine_inspector_event(engine: u32, event: &str) -> bool {
 
 /// The binary, host-neutral retained UI protocol.
 pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
-    match shared_ui(world) {
-        // A world with a UI: the TS renderer's ops and the game's stores.
-        Some(_) => {
-            let eng = engine::engine(world).expect("shared_ui found it");
+    match engine::engine(world) {
+        // A world: the TS renderer's ops and the game's stores.
+        Ok(eng) => {
             let ops = bytes.strip_prefix(og_ui_next::tree::MAGIC);
             if ops.is_some() {
                 eng.render
@@ -409,8 +429,8 @@ pub fn og_engine_ui_patch(world: u32, bytes: &[u8]) -> Vec<u8> {
             bind::i18n::component_tables(&eng, tables);
             reply
         }
-        None => og_reactive::reactive::wire::encode(&serde_json::json!({
-            "ok": false, "reason": "og.ui: world has no UI"
+        Err(reason) => og_reactive::reactive::wire::encode(&serde_json::json!({
+            "ok": false, "reason": reason
         }))
         .expect("bounded error reply"),
     }

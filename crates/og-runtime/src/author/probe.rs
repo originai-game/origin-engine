@@ -676,12 +676,10 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             crate::bind::motion::present::step(&eng);
         }
     }));
-    if let Some(ui) = eng.state.borrow().ui.as_ref() {
-        probe.set_ui(Box::new(crate::present::ui_draw::MaterialProbe {
-            ui: ui.probe(),
-            render: eng.render.clone(),
-        }));
-    }
+    probe.set_ui(Box::new(crate::present::ui_draw::MaterialProbe {
+        engine: id,
+        render: eng.render.clone(),
+    }));
     // describe and pick: the id pass over the extracted frame, with or
     // without a renderer.
     probe.set_scene_view(Box::new(crate::author::describe::RuntimeView {
@@ -769,15 +767,11 @@ impl Reloader for RuntimeReloader {
             .ok_or("no game was declared; the bundle must export og.game(...)")?;
         let seed = current.resource::<og_core::Rng>().map(|r| r.seed()).ok();
         let eng = engine(self.engine)?;
-        let (profile, ui, project) = {
+        let (profile, project) = {
             let st = eng.state.borrow();
-            (st.profile, st.ui.clone(), st.project.clone())
+            (st.profile, st.project.clone())
         };
-        let link = og_audio::link(self.engine);
-        let previous = match (&ui, link) {
-            (Some(u), Some(l)) => Some((u, l)),
-            _ => None,
-        };
+        let previous = og_audio::link(self.engine);
         let mut a = assemble(
             game as u32,
             seed,
@@ -877,21 +871,17 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) -> Result<(), String> {
         st.save_version = a.game.save_version;
         st.warnings.extend(a.warnings);
         st.physics = Some(a.mounted.physics.clone());
-        // The same UI the old bundle drew (bind/modules/ui_config.rs new_ui), at the new game's rate.
-        a.mounted.ui.lock().set_ticks_per_second(a.game.tick);
-        st.ui = Some(a.mounted.ui.clone());
         st.actions = Some(a.mounted.actions.clone());
         st.anim = Some(a.anim.clone());
         st.feel = Some(a.feel.clone());
     }
     og_audio::publish_link(eng.id, a.mounted.audio.clone());
-    eng.render.borrow_mut().ui = Some(a.mounted.ui.clone());
     if let Ok(mut probe) = eng.probe.try_borrow_mut() {
         for (name, usage, doc) in new_commands {
             let _ = register_one(&mut probe, eng.id, &name, &usage, &doc);
         }
         probe.set_ui(Box::new(crate::present::ui_draw::MaterialProbe {
-            ui: a.mounted.ui.probe(),
+            engine: eng.id,
             render: eng.render.clone(),
         }));
     }

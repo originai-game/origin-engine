@@ -157,15 +157,6 @@ fn warnings(engine: u32) -> Vec<String> {
 #[test]
 fn configure_keeps_the_fields_a_call_leaves_out() {
     let e = engine();
-    let button = og_ui::dress::PartRef::new("Button", "base", og_ui::tokens::ElementClass::Button);
-    let opacity = || {
-        og_runtime::shared_ui(e)
-            .unwrap()
-            .lock()
-            .resolve_part(&button, [80.0, 32.0])
-            .unwrap()
-            .opacity
-    };
     let style = value(og_runtime::host_impl::answer(og_load_style(
         e,
         "styles/mini".into(),
@@ -174,7 +165,6 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
         e,
         json!({ "style": style, "contrast": "high", "scheme": "light" }),
     );
-    assert_eq!(opacity(), 0.37, "the directory CSS applies");
     let t = theme(e);
     assert_eq!(
         (t["style"].as_str(), t["contrast"].as_str()),
@@ -192,7 +182,6 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
         Some("light"),
         "configured scheme stays"
     );
-    assert_eq!(opacity(), 0.37, "pack CSS survives partial configure");
     // A call with nothing keeps everything.
     value(og_runtime::host_impl::answer(og_ui_configure(e, None)));
     assert_eq!(theme(e)["style"].as_str(), Some("mini"));
@@ -211,7 +200,6 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
     // Clearing the style restores the bundled default face, not a fontless UI.
     configure(e, json!({ "style": null }));
     assert_eq!(theme(e)["style"].as_str(), Some(""));
-    assert_eq!(opacity(), 1.0, "clearing the pack removes its CSS");
     let w = warnings(e);
     assert!(w.iter().all(|w| !w.contains("no font")), "{w:?}");
     // A desc that is not an object is refused.
@@ -320,10 +308,9 @@ fn a_style_names_its_assets_relative_to_itself_or_from_assets() {
     )));
     configure(e, json!({ "style": style }));
     assert_eq!(theme(e)["style"].as_str(), Some("copied"));
-    let ui = og_runtime::shared_ui(e).unwrap();
-    let ui = ui.lock();
-    assert_eq!(ui.fonts().families.len(), 3);
-    assert!(ui.fonts().families.iter().all(|f| f.font.handle.is_some()));
+    let fonts = og_runtime::ui_fonts(e).unwrap();
+    assert_eq!(fonts.families.len(), 3);
+    assert!(fonts.families.iter().all(|f| f.font.handle.is_some()));
     assert!(
         warnings(e).iter().all(|w| !w.contains("no font")),
         "its body font, beside it, loaded"

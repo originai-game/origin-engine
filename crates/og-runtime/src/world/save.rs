@@ -166,15 +166,12 @@ pub fn og_world_snapshot(world: u32, desc: Option<String>) -> Result<serde_json:
     };
     match taken {
         Ok((bytes, tick)) => {
-            let ui = (!is_selection(&bytes))
-                .then(|| {
-                    eng.state.borrow().ui.as_ref().map(|ui| {
-                        let rs = eng.render.borrow();
-                        let store = crate::present::presentation::next_store(&rs);
-                        crate::present::presentation::UiCheckpoint::save(ui, store)
-                    })
-                })
-                .flatten();
+            let ui = (!is_selection(&bytes)).then(|| {
+                let rs = eng.render.borrow();
+                crate::present::presentation::UiCheckpoint::save(
+                    crate::present::presentation::next_store(&rs),
+                )
+            });
             Ok(Value::String(encode(&bytes, tick, version, ui.as_ref())))
         }
         Err(e) => Err(e),
@@ -249,7 +246,7 @@ fn decode_save(save: &str) -> Result<Save, String> {
         serde_json::from_slice(&body[end..])
             .map_err(|e| format!("invalid UI presentation checkpoint: {e}"))?;
     if let Some(ui) = &ui {
-        ui.validate()?;
+        ui.validate(None)?;
     }
     Ok(Save {
         snapshot: snapshot.to_vec(),

@@ -10,7 +10,6 @@
 use crate::host::codec::{Layout, RecordKind};
 use crate::host::wire::FromJson;
 use og_ecs::World;
-use og_probe::UiTree;
 use serde_json::{Value, json};
 
 fn text_hash(s: &str) -> u32 {
@@ -102,12 +101,13 @@ pub(crate) fn pulse(engine: u32, world: &World) -> Result<Value, String> {
             ]));
         }
     }
-    let ui: Vec<Value> = st
-        .ui
+    let ui: Vec<Value> = eng
+        .render
+        .borrow()
+        .ui_next
         .as_ref()
-        .map(|u| {
-            og_ui::UiProbe(u.clone())
-                .elements(world)
+        .map(|next| {
+            next.elements()
                 .iter()
                 .map(|el| {
                     json!([
