@@ -141,26 +141,40 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let files = if wiki {
+    let mut files = if wiki {
         og_idl::generate_wiki(&api)
     } else {
-        let mut files = og_idl::generate(&api);
-        match ui_declarations(root) {
-            Ok(ui) => files.extend(ui),
+        og_idl::generate(&api)
+    };
+    let write = |files: &[og_idl::Generated]| -> Result<Vec<String>, ExitCode> {
+        og_idl::write(root, files)
+            .map(|w| w.into_iter().map(str::to_string).collect())
+            .map_err(|e| {
+                eprintln!("og api gen: cannot write under {}: {e}", root.display());
+                ExitCode::FAILURE
+            })
+    };
+    // The IDL's files first: the UI declarations are emitted by type-checking
+    // src/ui against them (types/index.d.ts, src/generated/calls.ts), so a
+    // stale copy of either never blocks its own regeneration.
+    let mut written = match write(&files) {
+        Ok(w) => w,
+        Err(code) => return code,
+    };
+    if !wiki {
+        let ui = match ui_declarations(root) {
+            Ok(ui) => ui,
             Err(e) => {
                 eprintln!("og api gen: {e}");
                 return ExitCode::FAILURE;
             }
+        };
+        match write(&ui) {
+            Ok(w) => written.extend(w),
+            Err(code) => return code,
         }
-        files
-    };
-    let written = match og_idl::write(root, &files) {
-        Ok(written) => written,
-        Err(e) => {
-            eprintln!("og api gen: cannot write under {}: {e}", root.display());
-            return ExitCode::FAILURE;
-        }
-    };
+        files.extend(ui);
+    }
     for path in &written {
         println!("wrote {path}");
     }
