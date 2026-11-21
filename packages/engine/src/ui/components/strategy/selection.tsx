@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Scroll, Show, Text, View, formatNumber, t, type UiEvent } from "@origingame/engine/ui";
+import { For, formatNumber, Icon, Image, packClass, Scroll, Show, t, Text, View, type UiEvent } from "@origingame/engine/ui";
 import "./strategy.en.ogt";
 
 export interface StrategySelectionProps {
@@ -41,15 +41,15 @@ export interface StrategySelectionProps {
  */
 export function StrategySelection(props: StrategySelectionProps) {
   return (
-    <View class={`flex-row items-start gap-x-[1rem] w-full min-w-0 text-fg compact:gap-x-[0.571rem]`} label={props.name !== "" ? props.name : t("strategy.selection.title")} data-kind={props.kind}>
+    <View class={`flex-row items-start gap-x-[1rem] w-full min-w-0 text-fg compact:gap-x-[0.571rem]`} label={props.name !== "" ? props.name : t("strategy.selection.title")} data-kind-unit={props.kind === "unit"} data-kind-building={props.kind === "building"}>
       <Show when={props.name !== ""} fallback={
           <Text class={`flex-1 py-[1.143rem] text-center text-[0.857rem] font-semibold tracking-[0.14em] uppercase text-[#ffffffc7]`} role="status">
             {t("strategy.selection.empty")}
           </Text>
       }>
         <View class={`flex-col gap-y-[0.357rem] shrink min-w-[6.171rem] compact:gap-y-[0.214rem] compact:min-w-[3.429rem]`}>
-          <View class={`self-center size-[6.171rem] compact:size-[3.429rem] p-[0.143rem] bg-linear-to-b from-[#ffffff] to-[#38e8ff] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}>
-            <View class={`size-full flex-row items-center justify-center overflow-hidden bg-linear-to-b from-[#1e2637e5] to-plate-lo rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}>
+          <View class={`self-center size-[6.171rem] compact:size-[3.429rem] p-[0.143rem] nine-plate-cut bg-[#38e8ff]`}>
+            <View class={`size-full flex-row items-center justify-center overflow-hidden nine-plate-cut bg-[#1e2637e5]`}>
               <Show when={props.portrait} fallback={
                   <Icon class={`size-[55%] text-fg`} name={props.icon} />
               }>
@@ -102,13 +102,13 @@ export function StrategySelection(props: StrategySelectionProps) {
             <Show when={(props.stats ?? []).length || props.status !== ""}>
               <View class={`flex-row flex-wrap items-center justify-end gap-x-[0.357rem] gap-y-[0.286rem] min-w-0`} role="list" label={t("strategy.selection.stats")}>
                 <Show when={props.status !== ""}>
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden text-gold bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} role="status">
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status">
                     {props.status}
                   </Text>
                 </Show>
                 <For each={props.stats ?? []} key={(s) => s.id}>
                   {(s) => (
-                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} role="listitem" label={t("strategy.selection.stat", { label: s().label, value: s().value })}>
+                  <Text class={`shrink min-w-0 py-0 px-[0.429rem] leading-[1.6] text-[0.857rem] font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="listitem" label={t("strategy.selection.stat", { label: s().label, value: s().value })}>
                     {t("strategy.selection.stat", { label: s().label, value: s().value })}
                   </Text>
                   )}
@@ -122,16 +122,17 @@ export function StrategySelection(props: StrategySelectionProps) {
               <For each={props.units ?? []} key={(u) => u.id}>
                 {(u, i) => (
                 <View
-                  class={`shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] bg-linear-to-b from-[#ffffffbf] via-[#ffffff38] via-45% to-[#ffffff24] data-selected:bg-linear-to-b data-selected:from-[#ffffff] data-selected:to-[#38e8ff] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none compact:data-past:hidden`}
+                  class={`shrink p-[0.143rem] size-[2.143rem] compact:size-[2.286rem] nine-chip-cut bg-[#ffffffbf] data-selected:bg-[#38e8ff] compact:data-past:hidden ${packClass("Button", "plate")}`}
                   role="option"
                   label={u().name}
                   description={t("strategy.selection.unitValue", { count: u().count, now: u().health, max: u().healthMax })}
                   selected={u().id === props.focused}
-                  data-kind={u().kind}
+                  data-kind-unit={u().kind === "unit"}
+                  data-kind-building={u().kind === "building"}
                   data-past={i() >= 4}
                   onPress={(e) => props.onChoose?.(e, u().id)}
                 >
-                  <View class="relative size-full overflow-hidden rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none">
+                  <View class="relative size-full overflow-hidden">
                     <Show when={u().portrait} fallback={
                         <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-[#1e2637e5] to-plate-lo">
                           <Icon class={`size-[60%] text-fg`} name={u().icon} />
@@ -140,7 +141,7 @@ export function StrategySelection(props: StrategySelectionProps) {
                       <Image class="absolute inset-0 size-full" src={u().portrait} />
                     </Show>
                     <Show when={u().count > 1}>
-                      <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-[0.857rem] font-bold whitespace-nowrap bg-[#060910e0]`}>
+                      <Text class={`absolute right-0 top-0 py-0 px-[0.143rem] leading-[1.2] text-[0.857rem] font-bold whitespace-nowrap bg-[#060910e0] ${packClass("Chip", "frame")}`}>
                         {t("strategy.selection.count", { count: u().count })}
                       </Text>
                     </Show>
@@ -156,7 +157,7 @@ export function StrategySelection(props: StrategySelectionProps) {
                 )}
               </For>
               <Show when={(props.units ?? []).length > 4}>
-                <View class={`hidden compact:flex-row compact:items-center compact:justify-center shrink compact:size-[2.286rem] text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} role="status" label={t("strategy.selection.more", { n: (props.units ?? []).length - 4 })}>
+                <View class={`hidden compact:flex-row compact:items-center compact:justify-center shrink compact:size-[2.286rem] text-[0.929rem] font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status" label={t("strategy.selection.more", { n: (props.units ?? []).length - 4 })}>
                   <Text>{t("strategy.selection.moreCount", { n: (props.units ?? []).length - 4 })}</Text>
                 </View>
               </Show>

@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Image, Show, View, t } from "@origingame/engine/ui";
+import { For, Image, packClass, Show, t, View } from "@origingame/engine/ui";
 import "./strategy.en.ogt";
 
 export interface StrategyMinimapProps {
@@ -28,8 +28,8 @@ export interface StrategyMinimapProps {
  */
 export function StrategyMinimap(props: StrategyMinimapProps) {
   return (
-    <View class={`shrink p-[0.143rem] bg-linear-to-b from-[#ffffffbf] via-[#ffffff38] via-45% to-[#ffffff24] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none w-[14.264rem] h-[14.264rem] compact:w-[6.857rem] compact:h-[6.857rem]`} role="group" label={t("strategy.minimap.name")}>
-      <View class="relative size-full overflow-hidden bg-[#0b1220] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none" role="image" label={t("strategy.minimap.name")}>
+    <View class={`shrink p-[0.143rem] nine-plate-cut bg-[#ffffffbf] w-[14.264rem] h-[14.264rem] compact:w-[6.857rem] compact:h-[6.857rem] ${packClass("Plate", "frame")}`} role="group" label={t("strategy.minimap.name")}>
+      <View class="relative size-full overflow-hidden nine-plate-cut bg-[#0b1220]" role="image" label={t("strategy.minimap.name")}>
         <Show when={props.map}>
           <Image class="absolute inset-0 size-full" src={props.map} />
         </Show>

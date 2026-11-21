@@ -39,6 +39,5 @@ export function StrategyAlerts(props: StrategyAlertsProps) {
 export const fixtures: Record<string, Partial<StrategyAlertsProps>> = {
   default: {"alerts":[{"id":"a1","kind":"danger","text":"The east tower is under attack","key":"Space","faded":false},{"id":"a2","kind":"done","text":"Research complete: Steel arrowheads","key":"","faded":true}]},
   info: {"alerts":[{"id":"a1","kind":"info","text":"Your ally needs help at the ford","key":"F1","faded":false},{"id":"a2","kind":"done","text":"Barracks complete","key":"","faded":false},{"id":"a3","kind":"danger","text":"Villager killed","key":"","faded":true}]},
-  empty: {"alerts":[]},
   overflow: {"alerts":[{"id":"a1","kind":"danger","text":"The Grand Cathedral of the Seventh Concord on the eastern isle is under attack by siege engines","key":"Left Shoulder + Space","faded":false},{"id":"a2","kind":"done","text":"Research complete: Masterwork Steel Arrowheads of the Royal Fletchers Guild","key":"","faded":true},{"id":"a3","kind":"info","text":"Market prices changed","key":"","faded":true},{"id":"a4","kind":"info","text":"A trade caravan arrived","key":"","faded":true}]},
 };

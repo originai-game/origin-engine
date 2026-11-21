@@ -30,7 +30,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
   return (
     <View
       class={`group/gauge flex-col items-center gap-1 h-full min-h-[8.571rem] compact:min-h-0 max-w-[6.857rem] w-full text-fg`}
-      data-kind={(props.kind ?? "life") === "fever" ? "fever" : "life"}
+      data-kind-fever={(props.kind ?? "life") === "fever"}
       data-side-end={(props.side ?? "start") === "end"}
       data-danger={props.danger}
       data-ready={props.ready}

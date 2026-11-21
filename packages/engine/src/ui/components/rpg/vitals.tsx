@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { Image, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { formatNumber, Image, packClass, Show, t, Text, View } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgVitalsProps {
@@ -31,14 +31,14 @@ export interface RpgVitalsProps {
 export function RpgVitals(props: RpgVitalsProps) {
   const bar = (fill: number) => Math.min(Math.max(fill, 0), 1) * 100;
   return (
-    <View class={`group/plate relative w-fit flex-row text-fg`} role="group" label={props.name} data-down={props.down} data-plate={props.plate} data-plate-large={props.plate === "large"} data-plate-compact={props.plate === "compact"}>
+    <View class={`group/plate relative w-fit flex-row text-fg`} role="group" label={props.name} data-down={props.down} data-plate-large={props.plate === "large"} data-plate-compact={props.plate === "compact"}>
       <View class={`shrink size-16 overflow-hidden rounded-capsule group-data-plate-large/plate:size-[10.971rem] compact:group-data-plate-large/plate:size-[7.2rem]`}>
         <Show when={props.portrait !== 0}>
           <Image class={`size-full`} src={props.portrait} />
         </Show>
       </View>
       <Show when={props.level !== 0}>
-        <View class={`absolute left-0 top-[3.429rem] size-6 group-data-plate-large/plate:top-[8.686rem] group-data-plate-large/plate:size-8 compact:group-data-plate-large/plate:top-[4.914rem] bg-surface-raised shadow-[inset_0px_0px_0px_1px_#4e586c] text-fg rounded-capsule flex-row items-center justify-center`}>
+        <View class={`absolute left-0 top-[3.429rem] size-6 group-data-plate-large/plate:top-[8.686rem] group-data-plate-large/plate:size-8 compact:group-data-plate-large/plate:top-[4.914rem] bg-surface-raised shadow-[inset_0px_0px_0px_1px_#4e586c] text-fg rounded-capsule flex-row items-center justify-center ${packClass("Chip", "frame")}`}>
           <Text class={`text-caption font-bold tabular-nums`}>{formatNumber(props.level)}</Text>
         </View>
       </Show>

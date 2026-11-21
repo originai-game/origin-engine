@@ -1,4 +1,4 @@
-import { For, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import "./rhythm.en.ogt";
 
 export interface RhythmChainProps {
@@ -22,7 +22,7 @@ export function RhythmChain(props: RhythmChainProps) {
       <Show when={props.multiplier !== ""}>
         <Show when={`${props.multiplier}·${props.hit}`} keyed>
           {() => (
-          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2px_0px_#38e8ff] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none animate-pop`}>
+          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-[#1e2637e5] nine-plate-cut animate-pop ${packClass("Plate", "frame")}`}>
             <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7]`}>
               {t("rhythm.chain.label")}
             </Text>
@@ -68,6 +68,5 @@ export const fixtures: Record<string, Partial<RhythmChainProps>> = {
   default: {"multiplier":"×4","step":6,"steps":8,"hit":1},
   empty: {"multiplier":"×1","step":0,"steps":8,"hit":0},
   top: {"multiplier":"×8","step":0,"steps":0,"hit":3},
-  none: {"multiplier":"","step":0,"steps":8,"hit":0},
   overflow: {"multiplier":"×128.75","step":19,"steps":20,"hit":4},
 };

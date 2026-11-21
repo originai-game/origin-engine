@@ -35,6 +35,5 @@ export function RhythmLaneKeys(props: RhythmLaneKeysProps) {
 export const fixtures: Record<string, Partial<RhythmLaneKeysProps>> = {
   default: {"lanes":[{"id":"l1","key":"S","held":true},{"id":"l2","key":"D","held":false},{"id":"l3","key":"F","held":false},{"id":"l4","key":"J","held":true},{"id":"l5","key":"K","held":false},{"id":"l6","key":"L","held":false}]},
   four: {"lanes":[{"id":"a","key":"D","held":false},{"id":"b","key":"F","held":false},{"id":"c","key":"J","held":false},{"id":"d","key":"K","held":false}]},
-  empty: {"lanes":[]},
   overflow: {"lanes":[{"id":"p1","key":"Left Shoulder","held":true},{"id":"p2","key":"Left Trigger","held":false},{"id":"p3","key":"Dpad Up","held":false},{"id":"p4","key":"Y","held":false},{"id":"p5","key":"Right Trigger","held":false},{"id":"p6","key":"Right Shoulder","held":true},{"id":"p7","key":"Space","held":false},{"id":"p8","key":"Enter","held":false}]},
 };

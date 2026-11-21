@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./racing.en.ogt";
 
 export interface RacingBannerProps {
@@ -58,7 +58,7 @@ export function RacingBanner(props: RacingBannerProps) {
               when={kind() === "countdown"}
               fallback={
                 <View
-                  class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2.288px_0px_#38e8ff] transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 compact:py-[0.286rem] compact:px-[1rem]`}
+                  class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-[#1e2637e5] nine-plate-cut transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 compact:py-[0.286rem] compact:px-[1rem] ${packClass("Plate", "frame")}`}
                   data-kind-countdown={false}
                 >
                   {plateInner()}
@@ -66,7 +66,7 @@ export function RacingBanner(props: RacingBannerProps) {
               }
             >
               <View
-                class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2.288px_0px_#38e8ff] animate-stamp compact:py-[0.286rem] compact:px-[1rem]`}
+                class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-[0.143rem] py-[0.429rem] px-[1.286rem] bg-[#1e2637e5] nine-plate-cut animate-stamp compact:py-[0.286rem] compact:px-[1rem] ${packClass("Plate", "frame")}`}
                 data-kind-countdown={true}
               >
                 {plateInner()}
@@ -85,6 +85,5 @@ export const fixtures: Record<string, Partial<RacingBannerProps>> = {
   go: { "kind": "go", "figure": 0, "text": "", "at": 4, "place": 0, "detail": "" },
   finalLap: { "kind": "finalLap", "figure": 0, "text": "", "at": 5, "place": 0, "detail": "Lap 3 of 3" },
   finish: { "kind": "finish", "figure": 0, "text": "", "at": 6, "place": 2, "detail": "New lap record" },
-  none: { "kind": "none", "figure": 0, "text": "", "at": 0, "place": 0, "detail": "" },
   overflow: { "kind": "finish", "figure": 0, "text": "", "at": 7, "place": 23, "detail": "Disqualified for cutting the chicane at the Esses on the final lap" },
 };

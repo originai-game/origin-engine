@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { packClass, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgExperienceProps {
@@ -18,7 +18,7 @@ export function RpgExperience(props: RpgExperienceProps) {
   const share = (v: number) => `${formatNumber(v * 100, { decimals: 0 })}%`;
   return (
     <View
-      class={`flex-col w-full gap-y-2 text-fg border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2`}
+      class={`flex-col w-full gap-y-2 text-fg nine-plate-cut bg-[#1e2637e5] p-2 ${packClass("Plate", "frame")}`}
       role="meter"
       label={t("rpg.xp.name")}
       valueMin={0}

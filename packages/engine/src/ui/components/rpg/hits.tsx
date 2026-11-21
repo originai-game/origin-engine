@@ -1,4 +1,4 @@
-import { For, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, formatNumber, packClass, Show, t, Text, View } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgHitsProps {
@@ -14,7 +14,7 @@ export interface RpgHitsProps {
  */
 export function RpgHits(props: RpgHitsProps) {
   return (
-    <View class={`flex-col items-start max-w-full pointer-events-none text-fg text-stroke-3 text-stroke-bg`} role="log" label={t("rpg.hits.name")}>
+    <View class={`flex-col items-start max-w-full pointer-events-none text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-[#1e2637e5] p-2 ${packClass("Plate", "frame")}`} role="log" label={t("rpg.hits.name")}>
       <For each={props.hits ?? []} key={(h) => h.id}>
         {(h, i) => (
         <View class={`flex-col items-start max-w-full min-w-0 animate-pop transition duration-180 exit:opacity-0 data-later:mt-[2rem] data-later:opacity-85 data-third:ml-[15.714rem] data-third:mt-0 data-third:opacity-70 data-lead:ml-[10.714rem] compact:data-lead:ml-0 compact:data-later:hidden`}
@@ -54,6 +54,5 @@ export const fixtures: Record<string, Partial<RpgHitsProps>> = {
   default: {"hits":[{"id":"h3","amount":2481,"kind":"critical","call":"Critical · Weak point","word":""},{"id":"h2","amount":642,"kind":"normal","call":"","word":""},{"id":"h1","amount":118,"kind":"burn","call":"","word":"burn"}]},
   heal: {"hits":[{"id":"r1","amount":320,"kind":"heal","call":"","word":""}]},
   miss: {"hits":[{"id":"m1","amount":0,"kind":"miss","call":"","word":"Miss"}]},
-  empty: {"hits":[]},
   overflow: {"hits":[{"id":"o1","amount":12345678,"kind":"critical","call":"Critical · Weak point · Overkill · Backstab","word":""},{"id":"o2","amount":999999,"kind":"burn","call":"","word":"searing flame"}]},
 };

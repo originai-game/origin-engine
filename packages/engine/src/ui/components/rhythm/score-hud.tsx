@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./rhythm.en.ogt";
 
 export interface RhythmScoreHudProps {
@@ -57,8 +57,7 @@ export function RhythmScoreHud(props: RhythmScoreHudProps) {
             {formatNumber(props.best ?? 0)}
           </Text>
           <Text
-            class={`shrink py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-success data-trend-down:text-danger`}
-            data-trend={(props.score >= (props.best ?? 0)) ? "up" : "down"}
+            class={`shrink py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap bg-[#060910e0] nine-chip-cut text-success data-trend-down:text-danger ${packClass("Chip", "frame")}`}
             data-trend-up={props.score >= (props.best ?? 0)}
             data-trend-down={props.score < (props.best ?? 0)}
           >

@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Image, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { Spinner } from "../base/spinner";
 import "./rhythm.en.ogt";
 
@@ -39,7 +39,8 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
       class={`flex-col gap-3 w-full h-full min-w-0 text-fg`}
       label={props.title !== "" ? props.title : t("rhythm.songs.title")}
       busy={props.status === "loading"}
-      data-status={props.status}
+      data-status-loading={props.status === "loading"}
+      data-status-error={props.status === "error"}
     >
       <View class={`flex-row shrink w-full min-h-0`}>
         <Text class={`text-[2.857rem] compact:text-[1.714rem] leading-[1.1] font-bold tracking-[0.14em] uppercase min-w-0 whitespace-nowrap text-ellipsis overflow-hidden text-fg text-stroke-3 text-stroke-bg`}>
@@ -50,7 +51,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
         <Show when={props.status === "error"} fallback={
           <Show when={(props.songs ?? []).length} fallback={
             <View role="status" class={`flex-col items-center justify-center grow min-h-0`}>
-              <View class={`flex-col items-center gap-1 py-3 px-4 bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}>
+              <View class={`flex-col items-center gap-1 py-3 px-4 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
                 <Text class={`text-[1.143rem] text-fg text-center`}>{t("rhythm.songs.empty")}</Text>
               </View>
             </View>
@@ -73,7 +74,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                         data-previewing={s().id === props.previewing}
                         data-locked={s().locked}
                         data-selected={s().id === props.selected}
-                        class={`transition duration-317 w-full min-w-0 min-h-[3.143rem] py-1 pl-1 pr-3 compact:data-selected:pl-1 rounded-tl-[11.43px] rounded-tr-none rounded-br-[11.43px] rounded-bl-none bg-linear-to-r from-[#0b0f1adb] to-[#0b0f1a80] shadow-[inset_0px_1px_0px_#ffffff24] hover:from-[#141c2eea] hover:to-[#0f15268f] hover:shadow-[inset_0px_0px_0px_1px_#ffffff38,inset_0px_1px_0px_#ffffff6b] disabled:opacity-62 disabled:from-[#0b0f1adb] disabled:to-[#0b0f1a80] disabled:shadow-[inset_0px_1px_0px_#ffffff24] data-selected:ml-[24px] compact:data-selected:ml-0 data-selected:py-2 data-selected:from-[#38e8ff3d] data-selected:to-[#38e8ff08] data-selected:shadow-[inset_3px_0px_0px_#38e8ff,inset_0px_1px_0px_#ffffff2e]`}
+                        class={`transition duration-317 w-full min-w-0 min-h-[3.143rem] py-1 pl-1 pr-3 compact:data-selected:pl-1 bg-[#0b0f1adb] nine-plate-cut hover:bg-[#141c2eea] disabled:opacity-62 disabled:bg-[#0b0f1adb] data-selected:ml-[24px] compact:data-selected:ml-0 data-selected:py-2 data-selected:bg-[#38e8ff3d]`}
                       >
                         <View class={`flex-row items-center gap-4 w-full min-w-0`}>
                           <View class={`shrink size-[4.286rem] compact:size-[3.429rem] data-selected:size-[5.714rem] rounded-[0.8rem] bg-linear-to-b from-[#ffffffbf] via-[#ffffff38] to-[#ffffff24] p-[2px] data-selected:from-white data-selected:via-[#ffffff59] data-selected:to-[#38e8ff]`}>
@@ -95,12 +96,12 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                             <Show when={s().id === props.selected || s().id === props.previewing || s().fresh || s().cleared || s().locked}>
                               <View class={`flex flex-row flex-wrap gap-0.5 mt-[3px]`}>
                                 <Show when={s().id === props.selected}>
-                                  <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="selected">
+                                  <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-selected={true}>
                                     <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-[#38e8ff]`}>{t("rhythm.songs.selected")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={s().id === props.previewing}>
-                                  <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="previewing">
+                                  <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-previewing={true}>
                                     <View class={`shrink flex-row items-end gap-0.5 h-[11px]`}>
                                       <View class={`w-[3px] h-[60%] bg-[#38e8ff] animate-pulse`} />
                                       <View class={`w-[3px] h-full bg-[#38e8ff] animate-pulse`} />
@@ -110,17 +111,17 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                                   </View>
                                 </Show>
                                 <Show when={s().fresh}>
-                                  <View class={`flex-row items-center shrink py-0 px-1 bg-[#ff3d8a] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="fresh">
+                                  <View class={`flex-row items-center shrink py-0 px-1 bg-[#ff3d8a] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-fresh={true}>
                                     <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-white`}>{t("rhythm.songs.fresh")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={s().cleared}>
-                                  <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="cleared">
+                                  <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-cleared={true}>
                                     <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-[#55e39a]`}>{t("rhythm.songs.cleared")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={s().locked}>
-                                  <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="locked">
+                                  <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-locked={true}>
                                     <Icon class={`size-[1.143rem] text-fg-muted`} name="lock" />
                                     <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted`}>{t("rhythm.songs.locked")}</Text>
                                   </View>
@@ -149,7 +150,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                       label={s().title}
                       data-previewing={s().id === props.previewing}
                       data-locked={s().locked}
-                      class={`group/detail flex-[4] min-w-0 min-h-0 p-1 compact:flex-none compact:w-full compact:p-0`}
+                      class={`group/detail flex-[4] min-w-0 min-h-0 p-1 compact:flex-none compact:w-full compact:p-0 ${packClass("Panel", "frame")}`}
                     >
                       <View class={`flex-row items-start gap-4 w-full min-w-0 compact:items-center`}>
                         <View class={`shrink w-[42%] max-w-[21.429rem] compact:w-[6.571rem] compact:max-w-none aspect-square rounded-[1.2rem] bg-linear-to-b from-white to-[#38e8ff] shadow-[0px_0px_10px_#38e8ff] p-[3px] group-data-locked/detail:from-[#ffffffbf] group-data-locked/detail:via-[#ffffff38] group-data-locked/detail:to-[#ffffff24] group-data-locked/detail:shadow-none`}>
@@ -168,12 +169,12 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                           <Show when={s().fresh || s().locked}>
                             <View class={`flex flex-row flex-wrap gap-0.5`}>
                               <Show when={s().fresh}>
-                                <View class={`flex-row items-center shrink py-0 px-1 bg-[#ff3d8a] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="fresh">
+                                <View class={`flex-row items-center shrink py-0 px-1 bg-[#ff3d8a] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-fresh={true}>
                                   <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-white`}>{t("rhythm.songs.fresh")}</Text>
                                 </View>
                               </Show>
                               <Show when={s().locked}>
-                                <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="locked">
+                                <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-locked={true}>
                                   <Icon class={`size-[1.143rem] text-fg-muted`} name="lock" />
                                   <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted`}>{t("rhythm.songs.locked")}</Text>
                                 </View>
@@ -187,11 +188,11 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                             {s().artist}
                           </Text>
                           <View class={`flex flex-row flex-wrap gap-2 py-1 items-stretch max-w-full compact:flex-nowrap compact:items-center compact:py-0`}>
-                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}>
+                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
                               <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] compact:hidden`}>{t("rhythm.songs.bpmLabel")}</Text>
                               <Text class={`text-[2.429rem] compact:text-[1.143rem] leading-[1.05] font-bold tabular-nums whitespace-nowrap text-fg`}>{s().bpm}</Text>
                             </View>
-                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}>
+                            <View class={`flex-col items-start gap-0 min-w-[5.714rem] compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
                               <Text class={`text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-[#ffffffc7] compact:hidden`}>{t("rhythm.songs.lengthLabel")}</Text>
                               <Text class={`text-[2.429rem] compact:text-[1.143rem] leading-[1.05] font-bold tabular-nums whitespace-nowrap text-fg`}>{s().length}</Text>
                             </View>
@@ -203,7 +204,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               onPress={(e) => props.onPreview?.(e, s().id)}
                               onAction={{ details: (e) => props.onPreview?.(e, s().id) }}
                               data-selected={s().id === props.previewing}
-                              class={`min-h-[3.143rem] compact:min-h-[2.514rem] min-w-[8.571rem] compact:min-w-0 flex-row items-center justify-center gap-1 px-3 rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none bg-[#141b2de6] shadow-[inset_0px_0px_0px_1px_#38e8ff80,inset_0px_2px_0px_#38e8ff] hover:bg-[#1c2438ee] data-selected:from-[#dffbff] data-selected:to-[#38e8ff] data-selected:bg-linear-to-b data-selected:shadow-[0px_0px_18px_#38e8ff8c] disabled:opacity-50 disabled:bg-[#141b2de6] disabled:shadow-[inset_0px_0px_0px_1px_#38e8ff80]`}
+                              class={`min-h-[3.143rem] compact:min-h-[2.514rem] min-w-[8.571rem] compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-[#141b2de6] nine-plate-cut hover:bg-[#1c2438ee] data-selected:bg-[#38e8ff] disabled:opacity-50 disabled:bg-[#141b2de6] ${packClass("Button", "plate")}`}
                             >
                               <Text class={`shrink h-[1.75rem] min-w-[1.75rem] px-1 text-center rounded-[4.576px] bg-linear-to-b from-[#ffffff] to-[#c9d1e2] text-[#0b0f18] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] pointer-coarse:hidden`} glyph="details" />
                               <Show when={s().id === props.previewing}>
@@ -227,14 +228,14 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
             </View>
           </Show>
           }>
-            <View role="alert" data-status="error" class={`flex-col items-center justify-center grow min-h-0`}>
-              <View class={`flex-col items-center gap-1 py-3 px-4 bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}>
+            <View role="alert" data-status-error={true} class={`flex-col items-center justify-center grow min-h-0`}>
+              <View class={`flex-col items-center gap-1 py-3 px-4 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
                 <Text class={`text-[1.143rem] text-fg text-center`}>{t("rhythm.songs.error")}</Text>
                 <View
                   role="button"
                   label={t("rhythm.songs.retry")}
                   onPress={(e) => props.onRetry?.(e)}
-                  class={`min-h-[3.143rem] min-w-[8.571rem] flex-row items-center justify-center gap-1 px-3 rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none bg-[#38e8ff] shadow-[inset_0px_2px_0px_#ffffff59] hover:bg-[#6df0ff]`}
+                  class={`min-h-[3.143rem] min-w-[8.571rem] flex-row items-center justify-center gap-1 px-3 bg-[#38e8ff] nine-plate-cut hover:bg-[#6df0ff] ${packClass("Button", "plate", "primary")}`}
                 >
                   <Text class={`text-[0.929rem] font-bold tracking-[0.14em] uppercase text-[#141a02]`}>{t("rhythm.songs.retry")}</Text>
                 </View>
@@ -243,7 +244,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
           </Show>
         }>
           <View role="status" class={`flex-col items-center justify-center grow min-h-0`}>
-            <View class={`flex-col items-center gap-1 py-3 px-4 bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}>
+            <View class={`flex-col items-center gap-1 py-3 px-4 bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}>
               <Spinner name={t("rhythm.songs.loading")} />
               <Text class={`text-[1.143rem] text-fg text-center`}>{t("rhythm.songs.loading")}</Text>
             </View>

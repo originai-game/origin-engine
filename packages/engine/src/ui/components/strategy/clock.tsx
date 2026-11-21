@@ -1,4 +1,4 @@
-import { Show, Text, View, t } from "@origingame/engine/ui";
+import { packClass, Show, t, Text, View } from "@origingame/engine/ui";
 import "./strategy.en.ogt";
 
 export interface StrategyClockProps {
@@ -20,7 +20,7 @@ export interface StrategyClockProps {
 export function StrategyClock(props: StrategyClockProps) {
   return (
     <View
-      class={`group/clock flex-row items-center gap-x-[0.714rem] w-fit max-w-full min-w-0 py-[0.429rem] px-[1rem] text-fg border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate border rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none compact:w-full compact:gap-x-[0.429rem] compact:py-[0.286rem] compact:px-[0.714rem]`}
+      class={`group/clock flex-row items-center gap-x-[0.714rem] w-fit max-w-full min-w-0 py-[0.429rem] px-[1rem] text-fg nine-plate-cut bg-[#1e2637e5] compact:w-full compact:gap-x-[0.429rem] compact:py-[0.286rem] compact:px-[0.714rem] ${packClass("Plate", "frame")}`}
       role="timer"
       label={props.label !== "" ? props.label : t("strategy.clock.name")}
       valueText={props.time}
@@ -36,12 +36,12 @@ export function StrategyClock(props: StrategyClockProps) {
       </Text>
       <Show when={props.paused} fallback={
           <Show when={props.speed !== ""}>
-            <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold tabular-nums text-center whitespace-nowrap bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+            <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold tabular-nums text-center whitespace-nowrap nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
               {props.speed}
             </Text>
           </Show>
       }>
-        <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold tabular-nums text-center whitespace-nowrap text-gold bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} role="status">
+        <Text class={`shrink min-w-[1.571rem] py-0 px-[0.429rem] leading-[1.5] text-[0.857rem] font-bold tabular-nums text-center whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`} role="status">
           {t("strategy.clock.paused")}
         </Text>
       </Show>

@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Image, Line, Match, Show, Switch, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Image, Line, Match, packClass, Show, Switch, t, Text, View, type UiEvent } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgWorldMapProps {
@@ -90,7 +90,6 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                   disabled={m().kind === "player"}
                   selected={m().id === props.selected}
                   data-selected={m().id === props.selected}
-                  data-kind={m().kind}
                   onPress={(e) => props.onChoose?.(e, m().id)}
                 >
                   <Show when={m().id === props.selected}>
@@ -123,7 +122,7 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                       </Match>
                     </Switch>
                   </View>
-                  <Text class={`absolute left-1/2 -translate-x-1/2 top-[2.929rem] py-[0.143rem] px-1 whitespace-nowrap text-[1rem] font-semibold text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none compact:hidden compact:group-data-selected/marker:block group-data-selected/marker:top-[3.286rem] group-data-selected/marker:text-[1.143rem]`}>
+                  <Text class={`absolute left-1/2 -translate-x-1/2 top-[2.929rem] py-[0.143rem] px-1 whitespace-nowrap text-[1rem] font-semibold text-fg nine-plate-cut bg-[#060910e0] compact:hidden compact:group-data-selected/marker:block group-data-selected/marker:top-[3.286rem] group-data-selected/marker:text-[1.143rem] ${packClass("Chip", "frame")}`}>
                     {m().label}
                   </Text>
                 </View>
@@ -133,16 +132,16 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
         </View>
       </View>
       <Show when={props.here}>
-        <View class={`absolute left-2 top-2 flex-row items-center gap-1 py-0.5 px-2 bg-[#1e2637e5] shadow-plate border-rim border rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none compact:left-1 compact:top-1`}>
+        <View class={`absolute left-2 top-2 flex-row items-center gap-1 py-0.5 px-2 nine-plate-cut bg-[#1e2637e5] compact:left-1 compact:top-1 ${packClass("Plate", "frame")}`}>
           <View class={`shrink size-[1rem] rounded-full bg-[#38e8ff] shadow-[0px_0px_10px_#38e8ff99]`} />
           <Text class={`text-[0.929rem] text-fg whitespace-nowrap`}>{props.here}</Text>
         </View>
       </Show>
       <Show when={(props.legend ?? []).length}>
-        <View class={`absolute left-2 bottom-2 max-w-[94%] flex-row flex-wrap items-center gap-x-2 gap-y-1 py-0.5 px-3 text-[0.929rem] bg-[#1e2637e5] shadow-plate border-rim border rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none compact:left-1 compact:right-1 compact:bottom-1 compact:flex-nowrap compact:justify-center compact:px-2 compact:text-[1rem]`} role="group" label={t("rpg.map.legend")}>
+        <View class={`absolute left-2 bottom-2 max-w-[94%] flex-row flex-wrap items-center gap-x-2 gap-y-1 py-0.5 px-3 text-[0.929rem] nine-plate-cut bg-[#1e2637e5] compact:left-1 compact:right-1 compact:bottom-1 compact:flex-nowrap compact:justify-center compact:px-2 compact:text-[1rem] ${packClass("Plate", "frame")}`} role="group" label={t("rpg.map.legend")}>
           <For each={props.legend ?? []} key={(l) => l.id}>
             {(l) => (
-              <View class={`shrink-0 flex-row items-center gap-1 whitespace-nowrap`} data-kind={l().kind}>
+              <View class={`shrink-0 flex-row items-center gap-1 whitespace-nowrap`}>
                 <LegendMark kind={l().kind} />
                 <Text class={`text-[0.929rem] text-fg compact:text-[1rem]`}>{l().label}</Text>
               </View>

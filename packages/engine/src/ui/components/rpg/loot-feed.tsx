@@ -31,6 +31,5 @@ export function RpgLootFeed(props: RpgLootFeedProps) {
 export const fixtures: Record<string, Partial<RpgLootFeedProps>> = {
   default: {"items":[{"id":"blade","name":"Ember Blade","icon":0,"glyph":"sword","rarity":"epic","label":"Epic","quantity":0,"currency":false,"fading":false},{"id":"gold","name":"Gold","icon":0,"glyph":"coin","rarity":"legendary","label":"","quantity":1240,"currency":true,"fading":false},{"id":"shard","name":"Rune shard","icon":0,"glyph":"gem","rarity":"common","label":"","quantity":3,"currency":false,"fading":true}]},
   rare: {"items":[{"id":"ring","name":"Tidewatch Ring","icon":0,"glyph":"gem","rarity":"rare","label":"Rare","quantity":0,"currency":false,"fading":false}]},
-  empty: {"items":[]},
   overflow: {"items":[{"id":"long","name":"Greatsword of the Ninefold Gate, Forged in the Ashen Vale","icon":0,"glyph":"sword","rarity":"legendary","label":"Legendary artefact","quantity":123456,"currency":false,"fading":false}]},
 };

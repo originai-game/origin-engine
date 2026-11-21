@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Image, Line, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Image, Line, packClass, Show, t, Text, View } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgMinimapProps {
@@ -55,7 +55,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
           </View>
         </View>
         <View class="absolute top-0 inset-x-0 flex-row justify-center pointer-events-none">
-          <Text class="py-0 px-1 text-[0.857rem] font-bold whitespace-nowrap text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none">
+          <Text class={`py-0 px-1 text-[0.857rem] font-bold whitespace-nowrap text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
             {t("rpg.minimap.north")}
           </Text>
         </View>
@@ -68,7 +68,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
             </Text>
           </Show>
           <Show when={props.clock !== ""}>
-            <Text class={`shrink max-w-[50%] py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+            <Text class={`shrink max-w-[50%] py-0 px-1 text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
               {props.clock}
             </Text>
           </Show>

@@ -1,4 +1,4 @@
-import { For, Line, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Line, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import "./racing.en.ogt";
 
 export interface RacingTrackMapProps {
@@ -132,7 +132,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
           </Show>
           <Show when={props.length !== ""}>
             <Text
-              class={`shrink-0 max-w-[50%] ml-auto py-0 px-[0.429rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-fg`}
+              class={`shrink-0 max-w-[50%] ml-auto py-0 px-[0.429rem] text-[0.857rem] font-bold tabular-nums whitespace-nowrap overflow-hidden bg-[#060910e0] nine-chip-cut text-fg ${packClass("Chip", "frame")}`}
               label={`${t("racing.map.length")} ${props.length}`}
             >
               {props.length}
@@ -146,7 +146,6 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
 
 export const fixtures: Record<string, Partial<RacingTrackMapProps>> = {
   default: { "path": "M40 170 C10 120 30 50 90 40 C140 30 150 80 190 70 C240 58 250 120 215 150 C185 176 150 140 120 165 C95 188 60 200 40 170 Z", "driven": "M40 170 C10 120 30 50 90 40 C140 30 150 80 190 70", "startX": 40, "startY": 170, "startAngle": -60, "name": "Costa Serpente", "length": "4.8 km", "cars": [{ "id": "okafor", "x": 212, "y": 88, "heading": 0, "color": "#ffd24a", "player": false, "name": "M. Okafor" }, { "id": "lindqvist", "x": 200, "y": 72, "heading": 0, "color": "#4f7bff", "player": false, "name": "S. Lindqvist" }, { "id": "castellanos", "x": 150, "y": 150, "heading": 0, "color": "#55e39a", "player": false, "name": "R. Castellanos" }, { "id": "you", "x": 190, "y": 70, "heading": 100, "color": "", "player": true, "name": "You" }] },
-  empty: { "path": "", "driven": "", "startX": 0, "startY": 0, "startAngle": 0, "name": "", "length": "", "cars": [] },
   start: { "path": "M40 170 C10 120 30 50 90 40 C140 30 150 80 190 70 C240 58 250 120 215 150 C185 176 150 140 120 165 C95 188 60 200 40 170 Z", "driven": "", "startX": 40, "startY": 170, "startAngle": -60, "name": "Costa Serpente", "length": "", "cars": [{ "id": "you", "x": 42, "y": 176, "heading": -20, "color": "", "player": true, "name": "You" }, { "id": "okafor", "x": 46, "y": 184, "heading": 0, "color": "#ffd24a", "player": false, "name": "M. Okafor" }] },
   overflow: { "path": "M30 110 L230 110", "driven": "M30 110 L130 110", "startX": 30, "startY": 110, "startAngle": 90, "name": "Autodromo Internazionale del Circuito delle Colline di Costa Serpente", "length": "20.832 km Nordschleife", "cars": [{ "id": "you", "x": 130, "y": 110, "heading": 90, "color": "", "player": true, "name": "You" }] },
 };

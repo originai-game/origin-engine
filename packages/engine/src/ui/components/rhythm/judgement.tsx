@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./rhythm.en.ogt";
 
 export interface RhythmJudgementProps {
@@ -35,8 +35,13 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
       class={`flex-col items-center w-full`}
       role="group"
       label={t("rhythm.judge.name")}
-      data-judgement={judgement}
-      data-mark={props.mark}
+      data-judgement-perfect={judgement === "perfect"}
+      data-judgement-great={judgement === "great"}
+      data-judgement-good={judgement === "good"}
+      data-judgement-bad={judgement === "bad"}
+      data-judgement-miss={judgement === "miss"}
+      data-mark-fullcombo={props.mark === "fullCombo"}
+      data-mark-allperfect={props.mark === "allPerfect"}
     >
       <Show when={props.combo > 0 || props.broken}>
         <View class={`flex-col items-center max-w-full`} data-broken={props.broken}>
@@ -58,8 +63,9 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
             </Text>
             <Show when={!props.broken && props.mark !== ""}>
               <Text
-                class={`mt-1 compact:mt-0 py-0 px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}
-                data-mark={props.mark}
+                class={`mt-1 compact:mt-0 py-0 px-2 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-gold bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`}
+                data-mark-fullcombo={props.mark === "fullCombo"}
+                data-mark-allperfect={props.mark === "allPerfect"}
               >
                 {props.mark === "allPerfect" ? t("rhythm.judge.allPerfect") : t("rhythm.judge.fullCombo")}
               </Text>
@@ -71,7 +77,6 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
         {() => (
         <View
           class={`flex-col items-center max-w-full mt-6 compact:mt-3 animate-stamp`}
-          data-judgement={judgement}
           data-judgement-perfect={judgement === "perfect"}
           data-judgement-great={judgement === "great"}
           data-judgement-good={judgement === "good"}
@@ -122,6 +127,5 @@ export const fixtures: Record<string, Partial<RhythmJudgementProps>> = {
   great: {"judgement":"great","label":"","timing":"early","offset":"−21 ms","hit":2,"combo":129,"broken":false,"mark":""},
   good: {"judgement":"good","label":"","timing":"late","offset":"+48 ms","hit":3,"combo":130,"broken":false,"mark":""},
   miss: {"judgement":"miss","label":"","timing":"","offset":"","hit":4,"combo":0,"broken":true,"mark":""},
-  none: {"judgement":"none","label":"","timing":"","offset":"","hit":0,"combo":0,"broken":false,"mark":""},
   overflow: {"judgement":"perfect","label":"Transcendent Critical Perfect","timing":"late","offset":"+1 ms","hit":5,"combo":12345,"broken":false,"mark":"allPerfect"},
 };

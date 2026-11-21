@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Icon, Image, packClass, Show, t, Text, View } from "@origingame/engine/ui";
 import "./strategy.en.ogt";
 
 export interface StrategyResourcesProps {
@@ -18,7 +18,7 @@ export interface StrategyResourcesProps {
  */
 export function StrategyResources(props: StrategyResourcesProps) {
   return (
-    <View class={`flex-row flex-wrap items-center w-fit max-w-full min-w-0 gap-x-[1.571rem] gap-y-[0.429rem] py-[0.429rem] px-[1.143rem] text-fg border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none border compact:w-full compact:justify-between compact:gap-x-2 compact:gap-y-1 compact:py-1 compact:px-[0.714rem]`} role="group" label={t("strategy.resources.name")}>
+    <View class={`flex-row flex-wrap items-center w-fit max-w-full min-w-0 gap-x-[1.571rem] gap-y-[0.429rem] py-[0.429rem] px-[1.143rem] text-fg nine-plate-cut bg-[#1e2637e5] compact:w-full compact:justify-between compact:gap-x-2 compact:gap-y-1 compact:py-1 compact:px-[0.714rem] ${packClass("Plate", "frame")}`} role="group" label={t("strategy.resources.name")}>
       <For each={props.resources ?? []} key={(r) => r.id}>
         {(r) => (
         <View class={`group/res flex-row items-center gap-x-[0.5rem] min-w-0 compact:gap-x-1`} role="group" label={t("strategy.resources.value", { name: r().name, amount: r().amount })} data-warn={r().warn}>
@@ -54,7 +54,7 @@ export function StrategyResources(props: StrategyResourcesProps) {
         )}
       </For>
       <Show when={props.tier !== ""}>
-        <Text class={`shrink py-[0.143rem] px-[0.571rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#141a02] bg-[#38e8ff] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+        <Text class={`shrink py-[0.143rem] px-[0.571rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#141a02] nine-chip-cut bg-[#38e8ff] ${packClass("Chip", "frame")}`}>
           {props.tier}
         </Text>
       </Show>

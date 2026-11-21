@@ -15,9 +15,15 @@ export function RpgLockOn(props: RpgLockOnProps) {
   return (
     <View class={`relative size-[6.171rem] shrink-0 pointer-events-none compact:size-[4.114rem]`} role="status" label={props.target !== "" ? t("rpg.lock.target", { name: props.target }) : t("rpg.lock.none")} data-locked={props.target !== ""}>
       <Show when={props.target !== ""}>
-        {/* The ring: the conic arcs cut from a disc by a mask stand in as
-            one lit band with the accent glow. */}
-        <View class="absolute inset-0 rounded-full shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_6px_1px_#38e8ffb3] animate-pop" />
+        {/* The reticle: the svelte's four conic arcs (white, 40° each at
+            0°, 70°, 160° and 250°, clockwise from up) as nine-ring Views;
+            the accent glow went with the mask. */}
+        <View class={`absolute inset-0 animate-pop`}>
+          <View class={`absolute inset-0 nine-ring bg-white`} wipe={1 / 9} wipeStart={0} />
+          <View class={`absolute inset-0 nine-ring bg-white`} wipe={1 / 9} wipeStart={1.2217} />
+          <View class={`absolute inset-0 nine-ring bg-white`} wipe={1 / 9} wipeStart={2.7925} />
+          <View class={`absolute inset-0 nine-ring bg-white`} wipe={1 / 9} wipeStart={4.3633} />
+        </View>
       </Show>
     </View>
   );

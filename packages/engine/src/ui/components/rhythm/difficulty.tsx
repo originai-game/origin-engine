@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import "./rhythm.en.ogt";
 
 export interface RhythmDifficultyProps {
@@ -45,7 +45,6 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                   disabled={l().locked}
                   onPress={(e) => props.onChoose?.(e, l().id)}
                   data-locked={l().locked}
-                  data-tier={l().tier}
                   data-tier-easy={l().tier === "easy"}
                   data-tier-normal={l().tier === "normal"}
                   data-tier-hard={l().tier === "hard"}
@@ -61,13 +60,13 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                         {l().label}
                       </Text>
                       <Show when={l().locked}>
-                        <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="locked">
+                        <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-locked={true}>
                           <Icon class={`size-[1.143rem] text-fg-muted`} name="lock" />
                           <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg-muted`}>{t("rhythm.difficulty.locked")}</Text>
                         </View>
                       </Show>
                       <Show when={l().id === props.selected}>
-                        <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="selected">
+                        <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-selected={true}>
                           <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg`}>{t("rhythm.difficulty.selected")}</Text>
                         </View>
                       </Show>
@@ -79,7 +78,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                     </View>
                     <View class={`flex-row items-center max-w-full min-w-0 compact:flex-none`}>
                       <Show when={l().grade !== ""}>
-                        <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} data-tag="grade">
+                        <View class={`flex-row items-center shrink py-0 px-1 bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`} data-tag-grade={true}>
                           <Text class={`text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-gold`}>{l().grade}</Text>
                         </View>
                       </Show>

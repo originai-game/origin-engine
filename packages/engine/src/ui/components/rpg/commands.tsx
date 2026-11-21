@@ -1,4 +1,4 @@
-import { For, Icon, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, packClass, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgCommandsProps {
@@ -17,7 +17,7 @@ export interface RpgCommandsProps {
 export function RpgCommands(props: RpgCommandsProps) {
   return (
     <View
-      class={`flex-col w-full text-fg border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2 gap-y-2`}
+      class={`flex-col w-full text-fg nine-panel-cut bg-[#1e2637e5] p-2 gap-y-2 ${packClass("Panel", "frame")}`}
       label={t("rpg.commands.name")}
     >
       <View class={`flex-row items-center justify-center w-full shrink-0 min-h-[2.286rem] py-[0.143rem] px-[0.857rem] shadow-[inset_0px_-1px_0px_#343d4f]`}>
@@ -33,7 +33,7 @@ export function RpgCommands(props: RpgCommandsProps) {
         <For each={props.commands ?? []} key={(c) => c.id}>
           {(c) => (
           <View
-            class={`group/cmd flex h-[5.486rem] min-w-0 p-0 bg-tile bg-linear-to-b from-shade to-transparent to-55% rounded-[6px] shadow-[inset_0px_0px_0px_1px_#343d4f] hover:shadow-[inset_0px_0px_0px_1px_#8892a8] data-selected:shadow-[inset_0px_0px_0px_2px_#e8e8ed,inset_0px_3px_0px_#ffffff80] disabled:text-fg-subtle`}
+            class={`group/cmd flex h-[5.486rem] min-w-0 p-0 bg-tile bg-linear-to-b from-shade to-transparent to-55% rounded-[6px] shadow-[inset_0px_0px_0px_1px_#343d4f] hover:shadow-[inset_0px_0px_0px_1px_#8892a8] data-selected:shadow-[inset_0px_0px_0px_2px_#e8e8ed,inset_0px_3px_0px_#ffffff80] disabled:text-fg-subtle ${packClass("Button", "plate", c().id === props.selected ? "primary" : undefined)}`}
             role="button"
             label={c().label}
             selected={c().id === props.selected}

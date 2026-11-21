@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Show, Text, View, formatDuration, t, type UiEvent } from "@origingame/engine/ui";
+import { For, formatDuration, Icon, Image, packClass, Show, t, Text, View, type UiEvent } from "@origingame/engine/ui";
 import "./strategy.en.ogt";
 
 export interface StrategyWaveProps {
@@ -49,7 +49,7 @@ export function StrategyWave(props: StrategyWaveProps) {
       data-done={props.phase === "done"}
       data-near={props.phase === "countdown" && next() >= 0 && next() <= (props.warnAt ?? 5)}
     >
-      <View class={`flex-row items-center gap-x-[0.714rem] min-w-0 py-[0.429rem] px-[1rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[inset_0_0_0_1px_#ff4d5e73,inset_0_2px_0_#ff4d5e] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none group-data-done/wave:shadow-plate compact:gap-x-[0.571rem] compact:py-[0.286rem] compact:px-[0.714rem]`}>
+      <View class={`flex-row items-center gap-x-[0.714rem] min-w-0 py-[0.429rem] px-[1rem] nine-plate-cut bg-[#1e2637e5] compact:gap-x-[0.571rem] compact:py-[0.286rem] compact:px-[0.714rem] ${packClass("Plate", "frame")}`}>
         <Show when={props.icon}>
           <Image class={`shrink size-[1.714rem] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`} src={props.icon} />
         </Show>
@@ -61,7 +61,7 @@ export function StrategyWave(props: StrategyWaveProps) {
                 : (props.name !== "" ? t("strategy.wave.titleNamed", { wave: props.wave, name: props.name }) : t("strategy.wave.title", { wave: props.wave }))}
             </Text>
             <Show when={props.finalWave}>
-              <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-[0.857rem] font-bold whitespace-nowrap text-gold bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+              <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-[0.857rem] font-bold whitespace-nowrap text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
                 {t("strategy.wave.final")}
               </Text>
             </Show>
@@ -95,7 +95,7 @@ export function StrategyWave(props: StrategyWaveProps) {
                 {e().scouted ? e().name : t("strategy.wave.unknown")}
               </Text>
               <Show when={e().boss}>
-                <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-[0.857rem] font-bold whitespace-nowrap text-[#ff4d5e] bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+                <Text class={`shrink py-0 px-[0.357rem] leading-[1.4] text-[0.857rem] font-bold whitespace-nowrap text-[#ff4d5e] nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
                   {t("strategy.wave.boss")}
                 </Text>
               </Show>
@@ -111,7 +111,7 @@ export function StrategyWave(props: StrategyWaveProps) {
       </Show>
       <Show when={props.canCallEarly && props.phase !== "done"}>
         <View
-          class={`min-h-[3.143rem] min-w-0 max-w-full py-[0.286rem] px-[0.857rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-[inset_0_0_0_1px_#38e8ff73,inset_0_2px_0_#38e8ff] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`}
+          class={`min-h-[3.143rem] min-w-0 max-w-full py-[0.286rem] px-[0.857rem] nine-plate-cut bg-[#1e2637e5] ${packClass("Button", "plate", "primary")}`}
           role="button"
           label={t("strategy.wave.callEarly")}
           onPress={(e) => props.onCallEarly?.(e)}

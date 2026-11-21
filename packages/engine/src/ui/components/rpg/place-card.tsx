@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { Icon, Image, packClass, Show, t, Text, View, type UiEvent } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgPlaceCardProps {
@@ -29,7 +29,7 @@ export interface RpgPlaceCardProps {
  */
 export function RpgPlaceCard(props: RpgPlaceCardProps) {
   return (
-    <View class={`flex-row items-stretch w-full min-w-0 text-fg bg-[#0e1626f0] shadow-[inset_0px_0px_0px_1px_#4e586c] rounded-tl-[13.714px] rounded-tr-none rounded-br-[13.714px] rounded-bl-none`} role="region" label={props.name}>
+    <View class={`flex-row items-stretch w-full min-w-0 text-fg nine-panel-cut bg-[#0e1626f0] ${packClass("Panel", "frame")}`} role="region" label={props.name}>
       <Show when={props.picture}>
         <View class="relative shrink-0 w-[34%] compact:w-[26%] overflow-hidden">
           <Image class="absolute inset-0 size-full" src={props.picture} />
@@ -47,11 +47,11 @@ export function RpgPlaceCard(props: RpgPlaceCardProps) {
           </Text>
         </Show>
         <View class="flex-row w-full shrink-0 gap-1 pt-1">
-          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-fg bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#38e8ff80,inset_0px_2px_0px_#38e8ff] data-marked:text-gold focus-visible:shadow-[inset_0px_0px_0px_3px_#ffffff]`} role="button" label={props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")} pressed={props.marked} selected={props.marked} data-marked={props.marked} onPress={(e) => props.onMark?.(e)}>
+          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase nine-plate-cut text-fg bg-[#1e2637e5] data-marked:text-gold ${packClass("Button", "plate")}`} role="button" label={props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")} pressed={props.marked} selected={props.marked} data-marked={props.marked} onPress={(e) => props.onMark?.(e)}>
             <Icon class="shrink-0 size-[1.071rem] compact:hidden" name="flag" />
             <Text class="whitespace-nowrap">{props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")}</Text>
           </View>
-          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-[#141a02] bg-gold shadow-[0px_0px_20px_#38e8ff73] disabled:opacity-45`} role="button" label={t("rpg.place.travel")} disabled={!props.canTravel} onPress={(e) => props.onTravel?.(e)}>
+          <View class={`transition duration-160 flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-[0.929rem] font-bold tracking-[0.14em] uppercase nine-plate-cut text-[#141a02] bg-gold disabled:opacity-45 ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.place.travel")} disabled={!props.canTravel} onPress={(e) => props.onTravel?.(e)}>
             <Icon class="shrink-0 size-[1.071rem] compact:hidden" name="map" />
             <Text class="whitespace-nowrap">{t("rpg.place.travel")}</Text>
           </View>

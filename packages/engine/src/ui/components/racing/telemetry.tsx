@@ -1,5 +1,8 @@
-import { For, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./racing.en.ogt";
+
+/** The rev arc's start: the lower left, −135° from up, sweeping clockwise over the top. */
+const REV_START = -(3 * Math.PI) / 4;
 
 export interface RacingTelemetryProps {
   /** The speed as the game measures it, already in its units (a whole number reads best). */
@@ -53,13 +56,14 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
         valueNow={props.rpm}
         valueText={t("racing.telemetry.rpmValue", { rpm: props.rpm })}
       >
-        {/* The dial (svg arcs in the svelte): the well ring, then the revs as a top-down wipe, then the red zone at the arc's end. */}
+        {/* The dial (svg arcs in the svelte): the well ring, then the revs as a nine-ring wipe from the lower left clockwise over the top (the arc spans 270°, so the wipe is the rev share of 0.75), then the red zone as a second nine-ring over its own span. */}
         <View class="absolute inset-0 rounded-full border-[8px] border-[#ffffff29]" />
-        <View class="absolute left-0 top-0 w-full bg-white/85" style={{ height: `${revFrac() * 100}%` }} />
+        <View class="absolute inset-0 nine-ring bg-white/85" wipe={revFrac()} wipeStart={REV_START} />
         <Show when={props.redline > 0 && max() > 0 && props.redline < max()}>
           <View
-            class="absolute inset-x-0 bottom-0 bg-[#ff4d5e59] group-data-redline/tel:bg-[#ff4d5e]"
-            style={{ height: `${(0.75 - 0.75 * at(props.redline)) * 100}%` }}
+            class="absolute inset-0 nine-ring bg-[#de263459] group-data-redline/tel:bg-[#de2634]"
+            wipe={0.75 - 0.75 * at(props.redline)}
+            wipeStart={REV_START + 1.5 * Math.PI * at(props.redline)}
           />
         </Show>
         <For each={props.scale ?? []} key={(s) => s.id}>
@@ -111,7 +115,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
             <View class={`flex-row items-center justify-center gap-x-[0.571rem] max-w-full min-w-0 mt-[0.286rem] compact:absolute compact:top-full compact:left-0 compact:right-0 compact:mt-[0.143rem] compact:gap-x-[0.357rem] compact:justify-start`}>
               <Show when={props.gear !== ""}>
                 <Text
-                  class={`shrink-0 py-0 px-2 text-[1.143rem] leading-[1.2] font-bold tabular-nums whitespace-nowrap text-[#141a02] bg-[#38e8ff] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none compact:text-[0.929rem]`}
+                  class={`shrink-0 py-0 px-2 text-[1.143rem] leading-[1.2] font-bold tabular-nums whitespace-nowrap text-[#141a02] bg-[#38e8ff] nine-chip-cut compact:text-[0.929rem] ${packClass("Chip", "frame")}`}
                   role="image"
                   label={t("racing.telemetry.gearValue", { gear: props.gear })}
                 >

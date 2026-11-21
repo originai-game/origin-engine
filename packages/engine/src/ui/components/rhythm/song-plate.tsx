@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import "./rhythm.en.ogt";
 
 export interface RhythmSongPlateProps {
@@ -55,8 +55,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
           <View class={`flex flex-row flex-wrap gap-1 mt-0.5`}>
             <Show when={props.chart !== ""}>
               <Text
-                class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-white bg-[#32a0e6] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none data-tier-easy:bg-[#34c778] data-tier-hard:bg-[#ffa528] data-tier-expert:bg-[#ff3d8a] data-tier-master:bg-[#a05aff] data-tier-special:bg-linear-to-r data-tier-special:from-[#ff3d8a] data-tier-special:via-[#a05aff] data-tier-special:to-[#38e8ff]`}
-                data-tier={props.tier}
+                class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-white bg-[#32a0e6] nine-chip-cut data-tier-easy:bg-[#34c778] data-tier-hard:bg-[#ffa528] data-tier-expert:bg-[#ff3d8a] data-tier-master:bg-[#a05aff] data-tier-special:bg-[#a05aff] ${packClass("Chip", "frame")}`}
                 data-tier-easy={props.tier === "easy"}
                 data-tier-hard={props.tier === "hard"}
                 data-tier-expert={props.tier === "expert"}
@@ -68,7 +67,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
             </Show>
             <For each={props.modifiers ?? []} key={(m) => m.id}>
               {(m) => (
-                <Text class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+                <Text class={`max-w-full py-0 px-1 text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`}>
                   {m().label}
                 </Text>
               )}

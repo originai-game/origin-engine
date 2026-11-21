@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { HudTimer } from "../hud/hud-timer";
 import "./racing.en.ogt";
 
@@ -64,7 +64,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
         <View class="flex min-w-0 flex-col items-start gap-y-[0.571rem] pb-[0.286rem] compact:gap-y-[0.286rem] compact:pb-0">
           <Show when={props.laps > 0 || props.lap > 0}>
             <View
-              class={`group/lap shrink-0 flex-row items-baseline gap-x-[0.571rem] py-[0.214rem] px-[0.643rem] bg-linear-to-b from-[#1e2637e5] to-plate-lo rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none shadow-[inset_0px_0px_0px_1px_#38e8ff73,inset_0px_2.288px_0px_#38e8ff]`}
+              class={`group/lap shrink-0 flex-row items-baseline gap-x-[0.571rem] py-[0.214rem] px-[0.643rem] bg-[#1e2637e5] nine-plate-cut ${packClass("Plate", "frame")}`}
               role="group"
               label={props.laps > 0 && props.lap > 0 ? t("racing.lap.lapValue", { lap: props.lap, laps: props.laps }) : t("racing.lap.lap")}
               data-final={props.finalLap}
@@ -100,7 +100,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
           <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-fg-muted compact:tracking-normal`}>{t("racing.lap.last")}</Text>
           <View class="flex-row items-baseline gap-x-[0.429rem]">
             <Show when={props.freshBest}>
-              <Text class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-epic bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>{t("racing.lap.newBest")}</Text>
+              <Text class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap text-epic bg-[#060910e0] nine-chip-cut ${packClass("Chip", "frame")}`}>{t("racing.lap.newBest")}</Text>
             </Show>
             <Text class={`text-[1.143rem] font-bold tabular-nums whitespace-nowrap text-fg-muted group-data-fresh/lastrow:text-epic`}>{props.last !== "" ? props.last : t("racing.lap.none")}</Text>
           </View>
@@ -125,7 +125,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
           >
             <Text class={`min-w-0 text-[0.857rem] font-semibold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#ffffffc7] compact:tracking-normal`}>{props.sector !== "" ? props.sector : t("racing.lap.split")}</Text>
             <Text
-              class={`shrink-0 py-0 px-[0.429rem] text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none data-ahead:bg-[#55e39a] data-ahead:text-[#0d2417] data-behind:bg-[#ff4d5e] data-behind:text-fg`}
+              class={`shrink-0 py-0 px-[0.429rem] text-[1.071rem] font-bold tabular-nums whitespace-nowrap text-fg bg-[#060910e0] nine-chip-cut data-ahead:bg-[#55e39a] data-ahead:text-[#0d2417] data-behind:bg-[#ff4d5e] data-behind:text-fg ${packClass("Chip", "frame")}`}
               data-ahead={(props.splitState ?? "even") === "ahead"}
               data-behind={(props.splitState ?? "even") === "behind"}
             >

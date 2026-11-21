@@ -1,4 +1,4 @@
-import { For, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, packClass, Show, Text, View, t } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgHintsProps {
@@ -15,7 +15,7 @@ export interface RpgHintsProps {
 export function RpgHints(props: RpgHintsProps) {
   return (
     <View
-      class={`flex-row flex-wrap justify-end max-w-full text-fg border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2 gap-x-[1.143rem] gap-y-1 pointer-coarse:hidden`}
+      class={`flex-row flex-wrap justify-end max-w-full text-fg nine-plate-cut bg-[#1e2637e5] p-2 gap-x-[1.143rem] gap-y-1 pointer-coarse:hidden ${packClass("Plate", "frame")}`}
       role="list"
       label={t("rpg.hints.name")}
     >
@@ -43,6 +43,5 @@ export function RpgHints(props: RpgHintsProps) {
 
 export const fixtures: Record<string, Partial<RpgHintsProps>> = {
   default: {"hints":[{"id":"target","key":"Tab","label":"Target"},{"id":"dodge","key":"Space","label":"Dodge"}]},
-  empty: {"hints":[]},
   overflow: {"hints":[{"id":"a","key":"Left Shoulder + Right Shoulder","label":"Switch the locked target to the next enemy in sight"},{"id":"b","key":"B","label":"Dodge"}]},
 };

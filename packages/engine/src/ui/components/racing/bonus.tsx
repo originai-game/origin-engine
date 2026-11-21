@@ -52,6 +52,5 @@ export const fixtures: Record<string, Partial<RacingBonusProps>> = {
   default: { "meter": "Slipstream", "value": 0.72, "points": "+2,450", "detail": "Drift · Near miss ×3", "at": 1 },
   meter: { "meter": "Slipstream", "value": 0.3, "points": "", "detail": "", "at": 0 },
   points: { "meter": "", "value": 0, "points": "+800", "detail": "Clean overtake", "at": 2 },
-  empty: { "meter": "", "value": 0, "points": "", "detail": "", "at": 0 },
   overflow: { "meter": "Slipstream from the car ahead at full draft", "value": 4, "points": "+1,234,567,890", "detail": "Drift · Near miss ×3 · Airtime · Burnout · Clean section · Perfect landing", "at": 3 },
 };

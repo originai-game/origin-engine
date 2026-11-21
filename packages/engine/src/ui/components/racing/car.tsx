@@ -1,4 +1,4 @@
-import { For, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import "./racing.en.ogt";
 
 export interface RacingCarProps {
@@ -29,7 +29,7 @@ export function RacingCar(props: RacingCarProps) {
           <For each={props.tyres ?? []} key={(y) => y.id}>
             {(y) => (
               <Text
-                class={`min-w-0 py-0 px-[0.429rem] text-[0.857rem] leading-[1.5] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none data-good:text-[#55e39a] data-worn:text-gold data-bad:text-[#ff4d5e]`}
+                class={`min-w-0 py-0 px-[0.429rem] text-[0.857rem] leading-[1.5] font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg bg-[#060910e0] nine-chip-cut data-good:text-[#55e39a] data-worn:text-gold data-bad:text-[#ff4d5e] ${packClass("Chip", "frame")}`}
                 role="listitem"
                 data-good={y().state === "good"}
                 data-worn={y().state === "worn"}
@@ -61,7 +61,7 @@ export function RacingCar(props: RacingCarProps) {
         </View>
       </Show>
       <Show when={props.pit}>
-        <View class={`max-w-full min-w-0 py-0 px-[0.571rem] bg-gold rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none compact:tracking-normal`} role="status">
+        <View class={`max-w-full min-w-0 py-0 px-[0.571rem] bg-gold nine-chip-cut compact:tracking-normal ${packClass("Chip", "frame")}`} role="status">
           <Text class={`text-[0.857rem] leading-[1.6] font-bold tracking-[0.14em] uppercase whitespace-nowrap overflow-hidden text-[#0b0f18] compact:tracking-normal`}>{t("racing.car.pit")}</Text>
         </View>
       </Show>
@@ -73,6 +73,5 @@ export const fixtures: Record<string, Partial<RacingCarProps>> = {
   default: { "tyres": [{ "id": "fl", "label": "FL", "text": "92", "state": "good" }, { "id": "fr", "label": "FR", "text": "90", "state": "good" }, { "id": "rl", "label": "RL", "text": "71", "state": "worn" }, { "id": "rr", "label": "RR", "text": "48", "state": "bad" }], "fuel": -1, "fuelText": "", "fuelLow": false, "pit": false },
   fuel: { "tyres": [{ "id": "fl", "label": "FL", "text": "88", "state": "good" }, { "id": "fr", "label": "FR", "text": "86", "state": "good" }, { "id": "rl", "label": "RL", "text": "80", "state": "good" }, { "id": "rr", "label": "RR", "text": "79", "state": "good" }], "fuel": 0.62, "fuelText": "38 L · 7 laps", "fuelLow": false, "pit": false },
   fuelLow: { "tyres": [{ "id": "fl", "label": "FL", "text": "64", "state": "worn" }, { "id": "fr", "label": "FR", "text": "61", "state": "worn" }, { "id": "rl", "label": "RL", "text": "33", "state": "bad" }, { "id": "rr", "label": "RR", "text": "29", "state": "bad" }], "fuel": 0.08, "fuelText": "4 L · 1 lap", "fuelLow": true, "pit": true },
-  empty: { "tyres": [], "fuel": -1, "fuelText": "", "fuelLow": false, "pit": false },
   overflow: { "tyres": [{ "id": "fl", "label": "Front left", "text": "100 % · 104 °C", "state": "good" }, { "id": "fr", "label": "Front right", "text": "100 % · 104 °C", "state": "good" }, { "id": "rl", "label": "Rear left", "text": "3 % · 141 °C", "state": "bad" }, { "id": "rr", "label": "Rear right", "text": "0 % · puncture", "state": "bad" }], "fuel": 3, "fuelText": "112.5 litres · 23 laps at this pace", "fuelLow": true, "pit": true },
 };

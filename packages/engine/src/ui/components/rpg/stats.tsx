@@ -1,4 +1,4 @@
-import { For, Icon, Scroll, Text, View } from "@origingame/engine/ui";
+import { For, Icon, packClass, Scroll, Text, View } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgStatsProps {
@@ -35,7 +35,7 @@ export function RpgStats(props: RpgStatsProps) {
     </View>
   );
   return (
-    <View class={`flex-col size-full p-4 compact:p-2 rounded-tl-[11.429px] rounded-tr-none rounded-br-[11.429px] rounded-bl-none bg-linear-to-b from-[#1b2130ee] to-[#141926f2] shadow-[inset_0px_0px_0px_1px_#ffffff24,inset_0px_1px_0px_0px_#ffffff80] text-fg`} label={props.title}>
+    <View class={`flex-col size-full p-4 compact:p-2 nine-panel-cut bg-[#1b2130ee] text-fg ${packClass("Panel", "frame")}`} label={props.title}>
       <View class={`shrink flex-row items-center justify-center gap-3 w-full`}>
         <View class="shrink-0 w-12 h-4" />
         <Text class={`min-w-0 text-[1.714rem] leading-[1.1] font-bold tracking-[0.04em] uppercase text-fg text-center whitespace-normal`} role="heading" level={2}>

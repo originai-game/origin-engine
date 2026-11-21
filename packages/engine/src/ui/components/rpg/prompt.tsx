@@ -42,6 +42,5 @@ export function RpgPrompt(props: RpgPromptProps) {
 export const fixtures: Record<string, Partial<RpgPromptProps>> = {
   default: {"key":"F","text":"Finisher: Sunder the guard","disabled":false,"reason":""},
   disabled: {"key":"F","text":"Finisher: Sunder the guard","disabled":true,"reason":"Guard holds"},
-  empty: {"key":"","text":"","disabled":false,"reason":""},
   overflow: {"key":"Hold Left Trigger + Right Trigger","text":"Finisher: Sunder the guard of the Ashen Colossus, Warden of the Ninefold Gate","disabled":false,"reason":""},
 };

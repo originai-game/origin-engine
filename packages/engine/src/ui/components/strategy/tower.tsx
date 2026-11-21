@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Image, packClass, Scroll, Show, t, Text, View, type UiEvent } from "@origingame/engine/ui";
 import "./strategy.en.ogt";
 
 export interface StrategyTowerProps {
@@ -35,9 +35,9 @@ export interface StrategyTowerProps {
  */
 export function StrategyTower(props: StrategyTowerProps) {
   return (
-    <View class={`w-full max-h-full min-h-0 flex-col text-fg py-3 px-4 gap-y-4 bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none`} label={props.name !== "" ? props.name : t("strategy.tower.name")}>
+    <View class={`w-full max-h-full min-h-0 flex-col text-fg py-3 px-4 gap-y-4 nine-panel-cut bg-[#1e2637e5] ${packClass("Panel", "frame")}`} label={props.name !== "" ? props.name : t("strategy.tower.name")}>
       <View class="flex-row items-center gap-x-[0.714rem]">
-        <View class="shrink flex-row items-center justify-center p-[0.143rem] size-[3.429rem] overflow-hidden bg-linear-to-b from-[#ffffff] to-[#38e8ff] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none">
+        <View class="shrink flex-row items-center justify-center p-[0.143rem] size-[3.429rem] overflow-hidden nine-chip-cut bg-[#38e8ff]">
           <Show when={props.portrait} fallback={
               <Icon class={`size-[70%] text-fg`} name={props.icon} />
           }>
@@ -48,7 +48,7 @@ export function StrategyTower(props: StrategyTowerProps) {
           {props.name !== "" ? props.name : t("strategy.tower.name")}
         </Text>
         <Show when={props.level > 0}>
-          <Text class={`shrink whitespace-nowrap py-0 px-1 leading-[1.6] text-[0.857rem] font-bold tabular-nums text-gold bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none`}>
+          <Text class={`shrink whitespace-nowrap py-0 px-1 leading-[1.6] text-[0.857rem] font-bold tabular-nums text-gold nine-chip-cut bg-[#060910e0] ${packClass("Chip", "frame")}`}>
             {t("strategy.tower.level", { level: props.level })}
           </Text>
         </Show>
@@ -107,10 +107,10 @@ export function StrategyTower(props: StrategyTowerProps) {
                   </Text>
                 </Show>
               </View>
-              <View class={`shrink min-h-[3.143rem] min-w-[8.829rem] max-w-[40%] py-[0.143rem] px-3 bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none data-affordable:shadow-[inset_0_0_0_1px_#38e8ff73,inset_0_2px_0_#38e8ff] compact:col-start-2 compact:min-w-0 compact:max-w-none compact:py-1 compact:px-2`} role="button" label={t("strategy.tower.upgrade", { name: p().name })} description={p().state === "locked" ? p().reason : p().cost} disabled={p().state !== "affordable"} data-affordable={p().state === "affordable"} data-locked={p().state === "locked"} data-maxed={p().state === "maxed"} data-unaffordable={p().state === "unaffordable"} onPress={(e) => props.onUpgrade?.(e, p().id)}>
+              <View class={`shrink min-h-[3.143rem] min-w-[8.829rem] max-w-[40%] py-[0.143rem] px-3 nine-plate-cut bg-[#1e2637e5] compact:col-start-2 compact:min-w-0 compact:max-w-none compact:py-1 compact:px-2 ${packClass("Button", "plate", p().state === "affordable" ? "primary" : undefined)}`} role="button" label={t("strategy.tower.upgrade", { name: p().name })} description={p().state === "locked" ? p().reason : p().cost} disabled={p().state !== "affordable"} data-affordable={p().state === "affordable"} data-locked={p().state === "locked"} data-maxed={p().state === "maxed"} data-unaffordable={p().state === "unaffordable"} onPress={(e) => props.onUpgrade?.(e, p().id)}>
                 <View class="flex-col items-center gap-y-0.5">
                   <Show when={p().state !== "affordable"}>
-                    <Text class={`max-w-full whitespace-nowrap py-0 px-[0.143rem] leading-[1.6] text-[0.857rem] font-bold tabular-nums bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-[#ff4d5e] data-maxed:text-gold`} data-maxed={p().state === "maxed"}>
+                    <Text class={`max-w-full whitespace-nowrap py-0 px-[0.143rem] leading-[1.6] text-[0.857rem] font-bold tabular-nums nine-chip-cut bg-[#060910e0] text-[#ff4d5e] data-maxed:text-gold ${packClass("Chip", "frame")}`} data-maxed={p().state === "maxed"}>
                       {p().state === "maxed" ? t("strategy.tower.maxed") : p().state === "locked" ? t("strategy.tower.locked") : t("strategy.tower.short")}
                     </Text>
                   </Show>
@@ -127,7 +127,7 @@ export function StrategyTower(props: StrategyTowerProps) {
         </Scroll>
       </Show>
       <View class="flex-row justify-end compact:justify-stretch">
-        <View class={`flex-row items-center gap-x-1 min-h-[3.143rem] py-[0.143rem] px-3 bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-[0.857rem] font-bold tracking-[0.14em] uppercase compact:w-full`} role="button" label={t("strategy.tower.sell")} disabled={!(props.canSell ?? false)} onPress={(e) => props.onSell?.(e)}>
+        <View class={`flex-row items-center gap-x-1 min-h-[3.143rem] py-[0.143rem] px-3 nine-plate-cut bg-[#1e2637e5] text-[0.857rem] font-bold tracking-[0.14em] uppercase compact:w-full ${packClass("Button", "plate")}`} role="button" label={t("strategy.tower.sell")} disabled={!(props.canSell ?? false)} onPress={(e) => props.onSell?.(e)}>
           <Text>{t("strategy.tower.sell")}</Text>
           <Show when={props.sellText !== ""}>
             <Text class={`min-w-0 whitespace-nowrap overflow-hidden text-gold tracking-normal normal-case`}>

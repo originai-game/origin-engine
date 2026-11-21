@@ -42,7 +42,7 @@ export function RacingBoost(props: RacingBoostProps) {
       data-firing={props.firing}
     >
       <Show when={props.icon}>
-        <Image src={props.icon} class={`size-[2.429rem] shrink-0 rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none compact:size-[1.714rem]`} />
+        <Image src={props.icon} class={`size-[2.429rem] shrink-0 nine-plate-cut compact:size-[1.714rem]`} />
       </Show>
       <View class={`flex-1 min-w-0 flex-col gap-y-[0.357rem]`}>
         <View class="flex-row items-center gap-x-2 min-w-0">

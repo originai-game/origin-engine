@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Image, packClass, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgCharacterProps {
@@ -38,7 +38,7 @@ export interface RpgCharacterProps {
 export function RpgCharacter(props: RpgCharacterProps) {
   return (
     <View
-      class={`group/sheet flex-col text-fg p-4 bg-linear-to-b from-[#0f1522ed] to-[#080c16f2] shadow-[inset_0px_0px_0px_1px_#ffffff24,inset_0px_1px_0px_#ffffff80] rounded-tl-[11.428px] rounded-tr-none rounded-br-[11.428px] rounded-bl-none compact:p-2`}
+      class={`group/sheet flex-col text-fg p-4 nine-panel-cut bg-[#0f1522ed] compact:p-2 ${packClass("Panel", "frame")}`}
       label={props.title !== "" ? props.title : props.name}
       data-narrow={props.compact}
       data-dense={props.dense}
@@ -88,7 +88,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "start"}>
               <View
-                class={`group/cell flex size-[5.429rem] p-1 bg-tile bg-linear-to-b from-shade to-transparent to-55% rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-fg shadow-[inset_0px_0px_0px_1px_#ffffff29] hover:shadow-[inset_0px_0px_0px_1px_#ffffff73] data-rarity-common:shadow-[inset_0px_0px_0px_1.5px_#4b5568,inset_0px_0px_12px_0px_#4b556866] data-rarity-uncommon:shadow-[inset_0px_0px_0px_1.5px_#45e08f,inset_0px_0px_12px_0px_#45e08f66] data-rarity-rare:shadow-[inset_0px_0px_0px_1.5px_#5cc8ff,inset_0px_0px_12px_0px_#5cc8ff66] data-rarity-epic:shadow-[inset_0px_0px_0px_1.5px_#c86ff5,inset_0px_0px_12px_0px_#c86ff566] data-rarity-legendary:shadow-[inset_0px_0px_0px_1.5px_#ffa53d,inset_0px_0px_12px_0px_#ffa53d66] data-rarity-mythic:shadow-[inset_0px_0px_0px_1.5px_#ff9599,inset_0px_0px_12px_0px_#ff959966] data-empty:bg-[#0b101c] data-empty:text-fg-muted data-empty:shadow-[inset_0px_0px_0px_1px_#ffffff1a] data-selected:shadow-[inset_0px_0px_0px_2px_#38e8ff,inset_0px_3px_0px_#ffffff80] focus-visible:shadow-[inset_0px_0px_0px_2px_#ffffff,0px_0px_0px_2px_#eadcdfe6] compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem]`}
+                class={`group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-[#0b101c] data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}
@@ -119,7 +119,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "end"}>
               <View
-                class={`group/cell flex size-[5.429rem] p-1 bg-tile bg-linear-to-b from-shade to-transparent to-55% rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-fg shadow-[inset_0px_0px_0px_1px_#ffffff29] hover:shadow-[inset_0px_0px_0px_1px_#ffffff73] data-rarity-common:shadow-[inset_0px_0px_0px_1.5px_#4b5568,inset_0px_0px_12px_0px_#4b556866] data-rarity-uncommon:shadow-[inset_0px_0px_0px_1.5px_#45e08f,inset_0px_0px_12px_0px_#45e08f66] data-rarity-rare:shadow-[inset_0px_0px_0px_1.5px_#5cc8ff,inset_0px_0px_12px_0px_#5cc8ff66] data-rarity-epic:shadow-[inset_0px_0px_0px_1.5px_#c86ff5,inset_0px_0px_12px_0px_#c86ff566] data-rarity-legendary:shadow-[inset_0px_0px_0px_1.5px_#ffa53d,inset_0px_0px_12px_0px_#ffa53d66] data-rarity-mythic:shadow-[inset_0px_0px_0px_1.5px_#ff9599,inset_0px_0px_12px_0px_#ff959966] data-empty:bg-[#0b101c] data-empty:text-fg-muted data-empty:shadow-[inset_0px_0px_0px_1px_#ffffff1a] data-selected:shadow-[inset_0px_0px_0px_2px_#38e8ff,inset_0px_3px_0px_#ffffff80] focus-visible:shadow-[inset_0px_0px_0px_2px_#ffffff,0px_0px_0px_2px_#eadcdfe6] compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem]`}
+                class={`group/cell flex size-[5.429rem] p-1 nine-plate-cut bg-tile text-fg data-empty:bg-[#0b101c] data-empty:text-fg-muted compact:size-[3.857rem] compact:p-[0.143rem] data-dense:size-[3.429rem] data-dense:p-[0.143rem] ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}
@@ -194,5 +194,5 @@ export function RpgCharacter(props: RpgCharacterProps) {
 }
 
 export const fixtures: Record<string, Partial<RpgCharacterProps>> = {
-  default: {"title":"","name":"Brenna Vale","line":"Ranger · Level 12","portrait":0,"figure":0,"slots":[{"id":"hand","side":"start","label":"Weapon","icon":"sword","rarity":"legendary"},{"id":"neck","side":"end","label":"Amulet","icon":"","rarity":"common"}],"selected":"hand","attributes":[{"id":"vit","group":"a","icon":"heart","label":"Vitality","value":"142"},{"id":"str","group":"b","icon":"sword","label":"Strength","value":"14"}]},
+  default: {"title":"","name":"Brenna Vale","line":"Ranger · Level 12","portrait":0,"figure":0,"slots":[{"id":"hand","side":"start","label":"Weapon","icon":"sword","rarity":"legendary"},{"id":"neck","side":"end","label":"Amulet","icon":"","rarity":"common"}],"selected":"hand","attributes":[{"id":"vit","group":"a","icon":"heart","label":"Vitality","value":"142"},{"id":"str","group":"b","icon":"sword","label":"Strength","value":"14"}],"compact":false,"dense":false},
 };

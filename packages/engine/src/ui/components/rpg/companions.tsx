@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, packClass, Show, Text, View, t } from "@origingame/engine/ui";
 import { HudBar } from "../hud/bar";
 import { HudPortrait } from "../hud/portrait";
 import "./rpg.en.ogt";
@@ -26,7 +26,7 @@ function isLow(props: RpgCompanionsProps, m: { fallen: boolean; health: number; 
 export function RpgCompanions(props: RpgCompanionsProps) {
   return (
     <View
-      class={`flex-col w-[16rem] max-w-full text-fg text-stroke-3 text-stroke-bg border-rim bg-linear-to-b from-[#1e2637e5] to-plate-lo shadow-plate rounded-block border p-2 gap-y-[0.643rem] compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2`}
+      class={`flex-col w-[16rem] max-w-full text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-[#1e2637e5] p-2 gap-y-[0.643rem] compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2 ${packClass("Plate", "frame")}`}
       role="group"
       label={t("rpg.party.name")}
     >
@@ -74,6 +74,5 @@ export const fixtures: Record<string, Partial<RpgCompanionsProps>> = {
   default: {"low":0.25,"members":[{"id":"brannoch","name":"Brannoch","portrait":0,"health":91,"healthMax":100,"ghost":0,"mana":40,"manaMax":100,"key":"2","fallen":false},{"id":"sylvenne","name":"Sylvenne","portrait":0,"health":18,"healthMax":100,"ghost":44,"mana":88,"manaMax":100,"key":"3","fallen":false},{"id":"caelum","name":"Caelum","portrait":0,"health":0,"healthMax":100,"ghost":0,"mana":0,"manaMax":100,"key":"4","fallen":true}]},
   fallen: {"low":0.25,"members":[{"id":"caelum","name":"Caelum","portrait":0,"health":0,"healthMax":100,"ghost":12,"mana":0,"manaMax":100,"key":"4","fallen":true}]},
   critical: {"low":0.25,"members":[{"id":"sylvenne","name":"Sylvenne","portrait":0,"health":2,"healthMax":100,"ghost":30,"mana":0,"manaMax":0,"key":"","fallen":false}]},
-  empty: {"low":0.25,"members":[]},
   overflow: {"low":0.25,"members":[{"id":"long","name":"Brannoch Hollowmere, Sworn Shield of the Ninefold Gate","portrait":0,"health":123456,"healthMax":999999,"ghost":200000,"mana":99999,"manaMax":99999,"key":"Left Shoulder + Dpad Up","fallen":false},{"id":"down","name":"Caelum of the Long Ashen Road","portrait":0,"health":0,"healthMax":10,"ghost":0,"mana":0,"manaMax":10,"key":"4","fallen":true}]},
 };

@@ -1,4 +1,4 @@
-import { For, Scroll, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Scroll, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./racing.en.ogt";
 
 export interface RacingStandingsProps {
@@ -48,7 +48,7 @@ export function RacingStandings(props: RacingStandingsProps) {
             <For each={rows()} key={(r) => r.id}>
               {(r, i) => (
                 <View
-                  class={`group/srow flex-row items-center gap-x-[0.571rem] w-full min-w-0 pr-[0.857rem] bg-linear-to-r from-[#0d1526db] to-[#0d152659] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none data-off:hidden data-retired:opacity-60 data-player:from-[#38e8ff] data-player:to-[#38e8ff8c] compact:gap-x-[0.429rem] compact:pr-[0.571rem] compact:hidden compact:data-on:flex compact:data-fallback:data-top:flex`}
+                  class={`group/srow flex-row items-center gap-x-[0.571rem] w-full min-w-0 pr-[0.857rem] bg-[#0d1526db] nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-[#38e8ff] compact:gap-x-[0.429rem] compact:pr-[0.571rem] compact:hidden compact:data-on:flex compact:data-fallback:data-top:flex`}
                   role="listitem"
                   label={r().name}
                   current={r().player}
@@ -68,7 +68,7 @@ export function RacingStandings(props: RacingStandingsProps) {
                   <Text class={`flex-1 min-w-0 text-[1.071rem] font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-[0.929rem]`}>{r().name}</Text>
                   <Show when={r().state !== "racing"}>
                     <Text
-                      class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none data-pitting:text-gold data-retired:text-[#ff4d5e]`}
+                      class={`shrink-0 py-0 px-[0.357rem] text-[0.857rem] font-bold tracking-[0.14em] uppercase whitespace-nowrap text-fg bg-[#060910e0] nine-chip-cut data-pitting:text-gold data-retired:text-[#ff4d5e] ${packClass("Chip", "frame")}`}
                       label={r().state === "pitting" ? t("racing.standings.pittingName") : r().state === "retired" ? t("racing.standings.retiredName") : t("racing.standings.finishedName")}
                       data-pitting={r().state === "pitting"}
                       data-retired={r().state === "retired"}

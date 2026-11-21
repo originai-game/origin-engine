@@ -1,4 +1,4 @@
-import { For, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./rhythm.en.ogt";
 
 export interface RhythmTimingProps {
@@ -17,7 +17,7 @@ export interface RhythmTimingProps {
 export function RhythmTiming(props: RhythmTimingProps) {
   return (
     <View
-      class={`flex-col gap-1 w-[14rem] max-w-full py-2 px-3 bg-[#1e2637e5] shadow-[inset_0px_0px_0px_1px_#ffffff2e,inset_0px_1px_0px_#ffffff8c] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none text-fg`}
+      class={`flex-col gap-1 w-[14rem] max-w-full py-2 px-3 bg-[#1e2637e5] nine-plate-cut text-fg ${packClass("Plate", "frame")}`}
       role="group"
       label={t("rhythm.timing.name")}
     >
@@ -29,7 +29,6 @@ export function RhythmTiming(props: RhythmTimingProps) {
                 role="listitem"
                 label={c().label}
                 class={`flex-row items-baseline gap-4 compact:gap-1 text-fg data-judgement-perfect:text-gold data-judgement-great:text-[#38e8ff] data-judgement-good:text-[#55e39a] data-judgement-bad:text-[#ffb547] data-judgement-miss:text-fg-muted`}
-                data-judgement={c().judgement}
                 data-judgement-perfect={c().judgement === "perfect"}
                 data-judgement-great={c().judgement === "great"}
                 data-judgement-good={c().judgement === "good"}
@@ -58,7 +57,6 @@ export function RhythmTiming(props: RhythmTimingProps) {
                     left: `${(h().offset <= -1 ? 0 : h().offset >= 1 ? 1 : (h().offset + 1) / 2) * 100}%`,
                     opacity: 1 - (h().age <= 0 ? 0 : h().age >= 1 ? 1 : h().age) * 0.8,
                   }}
-                  data-judgement={h().judgement}
                   data-judgement-perfect={h().judgement === "perfect"}
                   data-judgement-great={h().judgement === "great"}
                   data-judgement-good={h().judgement === "good"}

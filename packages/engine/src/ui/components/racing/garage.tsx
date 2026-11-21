@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { For, Icon, Image, Scroll, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Image, Scroll, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import { StatBar } from "../hud/stat-bar";
 import "./racing.en.ogt";
 
@@ -30,8 +30,9 @@ export interface RacingGarageProps {
   onBuy?: (e: UiEvent, id: string) => void;
 }
 
-const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#1e2637eb] shadow-[inset_0px_0px_0px_1px_#ffffff3d,inset_0px_1px_0px_#ffffff99] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none hover:bg-[#2a3242eb] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_0px_2.288px_#060910e6] disabled:opacity-45`;
-const stepButton = `size-11 items-center justify-center p-0 text-fg bg-[#1e2637eb] shadow-[inset_0px_0px_0px_1px_#ffffff3d,inset_0px_1px_0px_#ffffff99] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none hover:bg-[#2a3242eb] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_0px_2.288px_#060910e6]`;
+const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#1e2637eb] hover:bg-[#2a3242eb] disabled:opacity-45 nine-plate-cut ${packClass("Button", "plate")}`;
+const stepButton = `size-11 items-center justify-center p-0 text-fg bg-[#1e2637eb] hover:bg-[#2a3242eb] nine-plate-cut ${packClass("Button", "plate")}`;
+const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#1e2637eb] hover:bg-[#2a3242eb] disabled:opacity-45 flex-1 min-w-[8.571rem] nine-plate-cut ${packClass("Button", "plate", "primary")}`;
 const keyCap = `shrink-0 pointer-coarse:hidden bg-linear-to-b from-[#ffffff] to-[#c9d1e2] text-[#0b0f18] rounded-[4.576px] shadow-[0px_2.288px_0px_#0000008c,inset_0px_-2.288px_0px_#0000002e] text-[0.857rem] leading-[1.5] py-0 px-1`;
 
 /**
@@ -75,7 +76,7 @@ export function RacingGarage(props: RacingGarageProps) {
               {(v) => (
                 <View class="flex-col gap-1 w-full" label={v().title} data-owned={v().owned} data-chosen={v().id === props.chosen} data-locked={v().locked}>
                   <Show when={!v().image}>
-                    <View class={`w-full aspect-[3.2] bg-[#ffffff0a] shadow-[inset_0px_0px_0px_1px_#ffffff1a] rounded-tl-[11.43px] rounded-tr-none rounded-br-[11.43px] rounded-bl-none`} />
+                    <View class={`w-full aspect-[3.2] bg-[#ffffff0a] nine-panel-cut`} />
                   </Show>
                   <Text class={`w-full text-left text-[0.857rem] leading-[1.3] font-semibold tracking-[0.14em] uppercase text-[#38e8ff] text-stroke-3 text-stroke-bg`}>{v().body}</Text>
                   <Text class={`w-full text-left text-[4.714rem] leading-none font-bold italic uppercase text-fg text-stroke-3 text-stroke-bg line-clamp-3 overflow-hidden`}>{v().title}</Text>
@@ -94,7 +95,7 @@ export function RacingGarage(props: RacingGarageProps) {
               </View>
             </View>
           </View>
-          <View class={`grow-[0.6] max-w-full flex-col gap-3 p-3 bg-[#1a2130] shadow-[inset_0px_0px_0px_1px_#ffffff24,inset_0px_1px_0px_#ffffff80] rounded-tl-[11.43px] rounded-tr-none rounded-br-[11.43px] rounded-bl-none compact:w-full compact:shrink-0 compact:p-2`}>
+          <View class={`grow-[0.6] max-w-full flex-col gap-3 p-3 bg-[#1a2130] nine-panel-cut compact:w-full compact:shrink-0 compact:p-2 ${packClass("Panel", "frame")}`}>
             <View class="flex-col gap-3" role="list" label={t("racing.garage.stats")}>
               <For each={stats()} key={(s) => s.id}>
                 {(s) => (
@@ -117,7 +118,7 @@ export function RacingGarage(props: RacingGarageProps) {
                       <Show
                         when={v().owned}
                         fallback={
-                          <View class={`min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#1e2637eb] shadow-[inset_0px_0px_0px_1px_#ffffff3d,inset_0px_1px_0px_#ffffff99] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none hover:bg-[#2a3242eb] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_0px_2.288px_#060910e6] disabled:opacity-45 flex-1 min-w-[8.571rem]`} role="button" disabled={!v().affordable} label={t("racing.garage.buy", { price: v().price })} onPress={(e) => props.onBuy?.(e, v().id)}>
+                          <View class={goButton} role="button" disabled={!v().affordable} label={t("racing.garage.buy", { price: v().price })} onPress={(e) => props.onBuy?.(e, v().id)}>
                             <Text>{t("racing.garage.buy", { price: v().price })}</Text>
                             <Show when={!v().affordable}>
                               <Text>{t("racing.garage.short")}</Text>
@@ -125,13 +126,13 @@ export function RacingGarage(props: RacingGarageProps) {
                           </View>
                         }
                       >
-                        <View class={`min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#1e2637eb] shadow-[inset_0px_0px_0px_1px_#ffffff3d,inset_0px_1px_0px_#ffffff99] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none hover:bg-[#2a3242eb] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_0px_2.288px_#060910e6] disabled:opacity-45 flex-1 min-w-[8.571rem]`} role="button" disabled={v().id === props.chosen} label={v().id === props.chosen ? t("racing.garage.driving") : t("racing.garage.select")} onPress={(e) => props.onSelect?.(e, v().id)}>
+                        <View class={goButton} role="button" disabled={v().id === props.chosen} label={v().id === props.chosen ? t("racing.garage.driving") : t("racing.garage.select")} onPress={(e) => props.onSelect?.(e, v().id)}>
                           <Text>{v().id === props.chosen ? t("racing.garage.driving") : t("racing.garage.select")}</Text>
                         </View>
                       </Show>
                     }
                   >
-                    <View class={`min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-[0.143rem] px-4 text-[0.929rem] font-bold tracking-[0.14em] uppercase text-fg bg-[#1e2637eb] shadow-[inset_0px_0px_0px_1px_#ffffff3d,inset_0px_1px_0px_#ffffff99] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none hover:bg-[#2a3242eb] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_0px_2.288px_#060910e6] disabled:opacity-45 flex-1 min-w-[8.571rem]`} role="button" disabled={true} description={v().price} label={t("racing.garage.locked")}>
+                    <View class={goButton} role="button" disabled={true} description={v().price} label={t("racing.garage.locked")}>
                       <Text>{t("racing.garage.locked")}</Text>
                       <Show when={v().price}>
                         <Text>{v().price}</Text>
@@ -148,7 +149,7 @@ export function RacingGarage(props: RacingGarageProps) {
             <For each={vehicles()} key={(v) => v.id}>
               {(v) => (
                 <View
-                  class={`shrink-0 w-[12.143rem] min-h-16 px-2 py-1 bg-[#141a26] shadow-[inset_0px_0px_0px_1px_#ffffff29] rounded-tl-[6.858px] rounded-tr-none rounded-br-[6.858px] rounded-bl-none hover:shadow-[inset_0px_0px_0px_1px_#ffffff73] focus-visible:shadow-[inset_0px_0px_0px_2.288px_#ffffff,0px_0px_0px_2.288px_#060910e6] data-selected:bg-[#1a2130] data-selected:shadow-[inset_0px_0px_0px_2.288px_#38e8ff] data-locked:text-fg-muted compact:w-[8.857rem]`}
+                  class={`shrink-0 w-[12.143rem] min-h-16 px-2 py-1 bg-[#141a26] nine-plate-cut data-selected:bg-[#1a2130] data-locked:text-fg-muted compact:w-[8.857rem]`}
                   role="option"
                   selected={v().id === props.shown}
                   label={v().title}
@@ -160,7 +161,7 @@ export function RacingGarage(props: RacingGarageProps) {
                   <View class="flex-col gap-1 w-full items-start">
                     <Text class={`w-full text-left text-[0.929rem] leading-[1.15] font-bold text-fg`}>{v().title}</Text>
                     <Text
-                      class={`max-w-full py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase bg-[#060910e0] shadow-[inset_0px_1px_0px_#ffffff38] rounded-tl-[4.576px] rounded-tr-none rounded-br-[4.576px] rounded-bl-none text-fg data-driving:text-[#0b0f18] data-driving:bg-[#38e8ff] data-driving:shadow-none data-locked:text-fg-muted data-price:text-gold`}
+                      class={`max-w-full py-0 px-1 text-[0.857rem] leading-[1.5] font-bold tracking-[0.14em] uppercase bg-[#060910e0] nine-chip-cut text-fg data-driving:text-[#0b0f18] data-driving:bg-[#38e8ff] data-locked:text-fg-muted data-price:text-gold ${packClass("Chip", "frame")}`}
                       data-driving={v().id === props.chosen}
                       data-locked={v().locked && v().id !== props.chosen}
                       data-price={!v().locked && v().id !== props.chosen && !v().owned}
