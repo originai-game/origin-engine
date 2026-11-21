@@ -49,7 +49,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
         <View class={`flex-row flex-wrap grow shrink basis-0 justify-center gap-1 compact:basis-full`} role="list" label={t("puzzle.goals.name")}>
           <Show when={(props.goals)?.length ?? 0} fallback={<Text class={`tracking-xs text-fg-muted self-center text-center text-shadow-2xs m-0 shrink`}>   {t("puzzle.goals.none")} </Text>}><For each={props.goals}>
             {(g) => (
-            <View class={`items-center min-w-[83.2px] max-w-32 bg-white/4 shadow-[inset_0px_0px_0px_1px_#ffffff14] py-0.5 px-1 gap-0 compact:min-w-0 compact:grow compact:shrink compact:basis-0`} role="listitem" label={g().done ? t("puzzle.goals.done", { label: g().label }) : t("puzzle.goals.left", { label: g().label, left: g().left })} data-done={g().done}>
+            <View class={`items-center min-w-[83.2px] max-w-32 shadow-[inset_0px_0px_0px_1px_#ffffff14] py-0.5 px-1 gap-0 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Chip", "frame")}`} role="listitem" label={g().done ? t("puzzle.goals.done", { label: g().label }) : t("puzzle.goals.left", { label: g().label, left: g().left })} data-done={g().done}>
               <View class={`group/socket grow shrink basis-0 justify-center items-center gap-2 size-12 compact:size-8`}>
                 <Icon class="text-shadow-2xs size-full" name={g().icon} />
               </View>
@@ -59,7 +59,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
               <Text class={`whitespace-nowrap text-[1.429rem] font-bold tabular-nums text-fg text-shadow-2xs data-done:text-success`} data-done={g().done}>
                 {formatNumber(g().left)}
               </Text>
-              <Text class={`text-fg/78 max-w-full whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold overflow-hidden`}>
+              <Text class={`text-fg-muted max-w-full whitespace-nowrap text-ellipsis text-[0.857rem] font-semibold overflow-hidden`}>
                 {g().label}
               </Text>
             </View>
@@ -68,7 +68,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
         </View>
         <View class={`justify-center min-w-[230.4px] py-1 px-2 gap-0.5 compact:grow compact:shrink compact:basis-0 compact:min-w-0`} role="status" label={t("puzzle.goals.scoreName", { score: formatNumber(props.score) })}>
           <View class="flex-row items-baseline gap-1">
-            <Text class={`grow shrink basis-0 tracking-[0.14em] uppercase text-fg/78 whitespace-nowrap text-[0.857rem] font-semibold text-shadow-2xs`}>
+            <Text class={`grow shrink basis-0 tracking-[0.14em] uppercase text-fg-muted whitespace-nowrap text-[0.857rem] font-semibold text-shadow-2xs`}>
               {t("puzzle.goals.score")}
             </Text>
             <Text class={`tabular-nums text-fg whitespace-nowrap text-[1.714rem] font-bold shrink`}>
@@ -82,7 +82,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
               </View>
               <For each={props.stars}>
                 {(s) => (
-                <View class={`absolute top-0 text-white/35 size-4 data-lit:text-gold`} data-lit={(props.progress ?? -1) >= s().at}>
+                <View class={`absolute top-0 text-fg-muted size-4 data-lit:text-gold`} data-lit={(props.progress ?? -1) >= s().at}>
                   <Icon class="text-shadow-2xs size-full" name="star" />
                 </View>
                 )}
