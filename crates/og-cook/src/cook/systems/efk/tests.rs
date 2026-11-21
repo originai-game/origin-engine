@@ -3,13 +3,14 @@
 
 use super::*;
 
-const SPRITE: &[u8] =
-    include_bytes!("../../../../tests/fixtures/effekseer/Simple_Sprite_BillBoard.efkproj");
-const RING: &[u8] =
-    include_bytes!("../../../../tests/fixtures/effekseer/Simple_Ring_Shape1.efkproj");
-const RIBBON: &[u8] =
-    include_bytes!("../../../../tests/fixtures/effekseer/Simple_Ribbon_Sword.efkproj");
-const EFKEFC: &[u8] = include_bytes!("../../../../tests/fixtures/effekseer/iwai-ume.efkefc");
+/// A sample's bytes, read when the test runs: the samples are pinned in the
+/// asset store (`og-assets.json`), so the test target builds without them.
+fn fixture(name: &str) -> Vec<u8> {
+    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/effekseer")
+        .join(name);
+    std::fs::read(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+}
 
 /// A PNG's first bytes, for a texture `w` by `h`.
 fn png(w: u32, h: u32) -> Vec<u8> {
@@ -59,7 +60,7 @@ fn line<'a>(text: &'a str, key: &str) -> &'a str {
 
 #[test]
 fn a_billboard_sprite_node_is_an_emitter_of_its_counts_life_size_and_blend() {
-    let c = run(SPRITE);
+    let c = run(&fixture("Simple_Sprite_BillBoard.efkproj"));
     // The vfx parses and names one emitter, the node's.
     let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
     assert_eq!(v.references().emitters, ["fx/a.efkproj#n0.emitter.ogt"]);
@@ -125,7 +126,7 @@ fn a_billboard_sprite_node_is_an_emitter_of_its_counts_life_size_and_blend() {
 
 #[test]
 fn ring_nodes_are_ring_meshes_at_their_start_times() {
-    let c = run(RING);
+    let c = run(&fixture("Simple_Ring_Shape1.efkproj"));
     let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
     let rings: Vec<_> = v
         .elements
@@ -203,7 +204,7 @@ fn a_ring_whose_edges_differ_in_height_is_a_tube() {
 
 #[test]
 fn a_ribbon_is_a_trail_with_its_texture_and_lifetime() {
-    let c = run(RIBBON);
+    let c = run(&fixture("Simple_Ribbon_Sword.efkproj"));
     let v = og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
     let t = v
         .elements
@@ -225,13 +226,14 @@ fn a_ribbon_is_a_trail_with_its_texture_and_lifetime() {
 #[test]
 fn an_efkefc_reads_as_its_project() {
     // The binary file's EDIT chunk holds the editor's project.
-    let root = xml::read_project(EFKEFC).unwrap();
+    let efkefc = fixture("iwai-ume.efkefc");
+    let root = xml::read_project(&efkefc).unwrap();
     assert!(root.at("Root/Children/Node").is_some());
-    let c = run(EFKEFC);
+    let c = run(&efkefc);
     og_bundle::vfx::parse_vfx(&c.vfx).unwrap();
     assert!(!c.files.is_empty());
     // A runtime-only export says how to get the project back.
-    let mut stripped = EFKEFC[..8].to_vec();
+    let mut stripped = efkefc[..8].to_vec();
     stripped.extend_from_slice(b"BIN_\x00\x00\x00\x00");
     let e = xml::read_project(&stripped).unwrap_err();
     assert!(e.contains("no EDIT chunk"), "{e}");
