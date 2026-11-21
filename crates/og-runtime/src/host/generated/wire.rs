@@ -25884,6 +25884,44 @@ impl ToJson for TimelineInfo {
     }
 }
 
+/// `TimelineCaption`: packages/knowledge/wiki/timeline.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TimelineCaption {
+    pub id: String,
+    pub text: String,
+}
+
+impl Default for TimelineCaption {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            text: Default::default(),
+        }
+    }
+}
+
+impl FromJson for TimelineCaption {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            id: field(o, "id", d.id)?,
+            text: field(o, "text", d.text)?,
+        })
+    }
+}
+
+impl ToJson for TimelineCaption {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("id".into(), self.id.to_json());
+        o.insert("text".into(), self.text.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `NetMode`: packages/knowledge/wiki/net.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum NetMode {

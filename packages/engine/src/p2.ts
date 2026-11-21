@@ -89,6 +89,7 @@ export const timeline = Object.freeze({
   pause: (world: W, entity: number) => parse(abi().og_timeline_pause(world.id, entity)),
   seek: (world: W, entity: number, time: number) => parse(abi().og_timeline_seek(world.id, entity, time)),
   stop: (world: W, entity: number) => parse(abi().og_timeline_stop(world.id, entity)),
+  captions: (world: W) => parse(abi().og_timeline_captions(world.id)),
 });
 
 /** og.vfx: composed effects (`type vfx`) played by og.Vfx. */

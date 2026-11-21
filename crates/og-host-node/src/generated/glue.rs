@@ -3838,6 +3838,12 @@ pub fn og_path_nearest(env: Env, world: u32, path: f64, point: String) -> String
     <Host as PathApi>::og_path_nearest(&Host, world, path, point)
 }
 
+#[napi(js_name = "og_timeline_captions")]
+pub fn og_timeline_captions(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimelineApi>::og_timeline_captions(&Host, world)
+}
+
 #[napi(js_name = "og_timeline_info")]
 pub fn og_timeline_info(env: Env, world: u32, asset: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

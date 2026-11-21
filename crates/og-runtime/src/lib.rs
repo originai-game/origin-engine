@@ -169,8 +169,8 @@ pub use bind::terrain::{
 };
 pub use bind::timeline::{
     og_load_timeline, og_path_create, og_path_find, og_path_length, og_path_nearest,
-    og_path_sample, og_timeline_info, og_timeline_pause, og_timeline_play, og_timeline_seek,
-    og_timeline_stop,
+    og_path_sample, og_timeline_captions, og_timeline_info, og_timeline_pause, og_timeline_play,
+    og_timeline_seek, og_timeline_stop,
 };
 pub use bind::vfx::{og_load_vfx, og_vfx_info, og_vfx_spawn};
 pub use bind::video::{og_load_video, og_load_video_info, og_video_capabilities};

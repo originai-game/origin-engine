@@ -1270,6 +1270,8 @@ export interface HostAbi<A, V> {
   og_path_length(world: number, path: number): string;
   /** `og.path.nearest` */
   og_path_nearest(world: number, path: number, point: string): string;
+  /** `og.timeline.captions` */
+  og_timeline_captions(world: number): string;
   /** `og.timeline.info` */
   og_timeline_info(world: number, asset: number): string;
   /** `og.timeline.play` */
@@ -2014,6 +2016,7 @@ export const SYMBOLS: readonly string[] = [
   "og_path_sample",
   "og_path_length",
   "og_path_nearest",
+  "og_timeline_captions",
   "og_timeline_info",
   "og_timeline_play",
   "og_timeline_pause",

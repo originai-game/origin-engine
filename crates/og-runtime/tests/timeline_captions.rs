@@ -1,7 +1,7 @@
 //! A timeline's caption tracks on the runtime: they draw nothing. The keys
 //! showing at the timeline's time are the UI's `$captions` (docs/ui.md
 //! §2), which the built-in `subtitles` screen shows once the game pushes
-//! it.
+//! it, and og.timeline.captions, which a TSX screen takes as a prop.
 //!
 //! `timelines/t.ogt` has two caption tracks: "First." from 1 s to 2 s and
 //! "Second." from 3 s to 5 s on one, "Aside." from 1.5 s to 4 s on the
@@ -17,8 +17,8 @@
 
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_game_game, og_host_begin_bundle,
-    og_i18n_set_locale, og_load_timeline, og_timeline_seek, og_timeline_stop, og_world_insert,
-    og_world_spawn, set_hooks, shared_ui,
+    og_i18n_set_locale, og_load_timeline, og_timeline_captions, og_timeline_seek, og_timeline_stop,
+    og_world_insert, og_world_spawn, set_hooks, shared_ui,
 };
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -186,12 +186,20 @@ fn a_caption_track_feeds_the_subtitles_screen_and_draws_nothing_itself() {
     assert_eq!(said(engine), ["First."]);
     seek(engine, b, 3.5);
     assert_eq!(said(engine), ["First.", "Second.", "Aside."]);
+    // og.timeline.captions answers the same lines, each with an id of its
+    // own (a TSX Subtitles keys its rows by it).
+    let rows = og_timeline_captions(engine);
+    let texts: Vec<_> = rows.iter().map(|c| c.text.as_str()).collect();
+    assert_eq!(texts, ["First.", "Second.", "Aside."]);
+    let ids: std::collections::BTreeSet<_> = rows.iter().map(|c| &c.id).collect();
+    assert_eq!(ids.len(), 3, "{rows:?}");
     value(og_runtime::host_impl::answer(og_timeline_stop(engine, a)));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert_eq!(said(engine), ["Second.", "Aside."], "a's caption went");
     value(og_runtime::host_impl::answer(og_timeline_stop(engine, b)));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     assert_eq!(said(engine), [""; 0]);
+    assert!(og_timeline_captions(engine).is_empty());
 }
 
 /// A caption file's translations beside it (`lines.zh.srt`,

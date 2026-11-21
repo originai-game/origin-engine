@@ -125,18 +125,38 @@ or UI image, and while `window` is set offer `choices` with the time left
 footage plays on to the cut, and a later pick replaces it until the window
 locks.
 
-The built-in `film-choices` screen draws the window
-(`og.load.document(world, "@ui/screens/film-choices.svelte")`, then
-`og.ui.push(world, "film-choices")`). Write its stores from the view each
-tick: `open` (the window is set), `choices` (each ChoiceView as
-`{ id: String(index), text, enabled, chosen: index === window.pending,
-progress: qteOf(index) }`, where `progress` is the choice's QteView.progress
-or -1 for a choice without one), `hotspots` (each FilmView.hotspots entry as
-`{ id: String(choice), x, y, width, height, label }`), `left`
-(`ticksLeft / ticksTotal`) and `locked`. Its `choose` action reports a
-choice row's key and `pick` a hotspot's, the index to pass to
-`og.film.choose`. Put the subtitles screen under it for the segment's
-captions.
+The built-in `FilmChoices` draws the window and `Subtitles` the segment's
+captions (`@origingame/engine/ui/components`). Both take plain values:
+keep a signal per world, set it each tick from `og.film.view` and
+`og.timeline.captions`, and pass it to the mounts. `FilmChoices` derives
+the choice rows, the pending one, each QTE's progress, the hotspots, the
+time left and the lock from the view itself, and calls `onChoose` with the
+ChoiceView.index of a row or hotspot pressed (nothing after the lock):
+
+```ts
+import { createSignal, mount } from "@origingame/engine/ui";
+import { FilmChoices, Subtitles } from "@origingame/engine/ui/components";
+
+const view = createSignal<FilmView | null>(null);        // one per world
+const captions = createSignal<readonly TimelineCaption[]>([]);
+
+// A system, each tick:
+view.set(og.film.view(world, film));
+captions.set(og.timeline.captions(world));
+
+// GameDesc.ui:
+mount(world, FilmView, { get picture() { return view()?.texture ?? 0; }, ... });
+mount(world, Subtitles, { get captions() { return captions(); } });
+mount(world, FilmChoices, {
+  get view() { return view(); },
+  onChoose: (e, index) => void og.film.choose(e.world, film, index),
+});
+```
+
+Mount `Subtitles` before `FilmChoices`, so the choices lie over the
+captions. `og new --form film` writes this whole presentation
+(`src/main.ts`, `assets/ui/film-view.tsx`). A test takes a choice without
+a press through a command (`film:choose:<index>`) or a playtest.
 
 The screen's hotspot layer fills the surface, so a hotspot's `rect`
 (fractions of the picture) lands on the picture only when the game draws
@@ -144,8 +164,8 @@ The screen's hotspot layer fills the surface, so a hotspot's `rect`
 letterboxes the video places its own hotspots over where it drew it.
 
 A choice is also taken by its QTE (`#qte` on it) or its hotspot (`#hotspot`):
-read `og.film.view` each tick, feed the stores, and og.film records the QTE
-itself from the actions the tags name. `og.film.skip` jumps a seen segment
+og.film records the QTE itself from the actions the tags name, and
+`FilmChoices` shows its progress from the view. `og.film.skip` jumps a seen segment
 to its window, then to its cut.
 
 On the web, audio starts only after a gesture: start the film paused

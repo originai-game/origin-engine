@@ -71,6 +71,18 @@ module timeline {
     field markers List.String "Its markers' names, in time order."
   }
 
+  struct TimelineCaption {
+    doc "A caption a playing timeline is saying."
+    field id String "Stable while it shows: the timeline's entity, its track and its key."
+    field text String "Its words, in the player's locale."
+  }
+
+  fn captions {
+    doc "The captions the world's timelines are saying as of the last tick, in the timelines' order and then their tracks': what a subtitles screen shows (the built-in Subtitles takes them as `captions`). Nothing draws them otherwise."
+    param world World "The world."
+    returns List.TimelineCaption "Empty when none is showing."
+  }
+
   fn info {
     doc "What a loaded timeline holds."
     param world World "The world."

@@ -31659,6 +31659,15 @@ export interface TimelineInfo {
   readonly markers: readonly string[];
 }
 
+/** A caption a playing timeline is saying. */
+export interface TimelineCaption {
+  /** Stable while it shows: the timeline's entity, its track and its key. */
+  readonly id: string;
+  /** Its words, in the player's locale. */
+  readonly text: string;
+}
+
+
 
 
 
@@ -39460,6 +39469,13 @@ export declare namespace og {
    * See `animation §13`.
    */
   namespace timeline {
+    /**
+     * The captions the world's timelines are saying as of the last tick, in the timelines' order and then their tracks': what a subtitles screen shows (the built-in Subtitles takes them as `captions`). Nothing draws them otherwise.
+     *
+     * @param world The world.
+     * @returns Empty when none is showing.
+     */
+    function captions(world: World): readonly TimelineCaption[];
     /**
      * What a loaded timeline holds.
      *

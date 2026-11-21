@@ -207,6 +207,9 @@ macro_rules! __og_host_bindings_animation {
             fn og_timeline_stop(&self, world: u32, entity: f64) -> String {
                 $crate::host_impl::answer($crate::og_timeline_stop(world, entity))
             }
+            fn og_timeline_captions(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_timeline_captions(world))
+            }
         }
 
         impl $crate::host_impl::api::MotionApi for $host {

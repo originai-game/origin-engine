@@ -35,9 +35,9 @@ that form; a form and view that disagree are refused. `film` is an
 interactive film (`og api show film`): creation writes the same skeleton
 plus `assets/story/film.yarn` (three film nodes, two endings),
 `assets/segments/opening.ogt` and `ending.ogt`, a placeholder
-`assets/clips/opening.ogt` stream, the picture's `assets/ui/film-view.svelte`
+`assets/clips/opening.ogt` stream, the picture's `assets/ui/film-view.tsx`
 and an entry that loads and starts the film paused and shows it with the
-built-in subtitles and film-choices screens (from `templates/film`, packed
+built-in Subtitles and FilmChoices (from `templates/film`, packed
 as `film/`; the clip is pinned in `templates/og-assets.json`, so a checkout
 runs `bun scripts/assets.ts ensure templates` first). `--genre
 interactive-film` chooses form film too. A film's genre is

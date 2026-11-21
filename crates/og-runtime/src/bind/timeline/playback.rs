@@ -49,6 +49,8 @@ pub(super) struct Run {
 pub(super) struct Shared {
     pub(super) runs: IdMap<u64, Run>,
     pub(super) ops: Vec<(u64, Op)>,
+    /// The captions the last tick showed, `(id, text)` (og.timeline.captions).
+    captions: Vec<(String, String)>,
 }
 
 /// Engine `engine`'s runs (fresh ones for an engine that is gone).
@@ -147,6 +149,17 @@ pub fn og_timeline_seek(world: u32, entity: f64, time: f64) -> Result<(), String
 
 pub fn og_timeline_stop(world: u32, entity: f64) -> Result<(), String> {
     op(world, entity, Op::Stop)
+}
+
+pub fn og_timeline_captions(world: u32) -> Vec<crate::host::wire::TimelineCaption> {
+    lock(&shared(world))
+        .captions
+        .iter()
+        .map(|(id, text)| crate::host::wire::TimelineCaption {
+            id: id.clone(),
+            text: text.clone(),
+        })
+        .collect()
 }
 
 // ── the state block ──────────────────────────────────────────────────────────
@@ -747,6 +760,7 @@ fn timeline_system(
         lock(state).runs.insert(key, run);
     }
     ui.lock().set_captions(&captions);
+    lock(state).captions = captions;
     Ok(())
 }
 

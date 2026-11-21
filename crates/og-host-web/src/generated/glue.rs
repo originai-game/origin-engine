@@ -3207,6 +3207,11 @@ pub fn og_path_nearest(world: u32, path: f64, point: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_timeline_captions(world: u32) -> String {
+    <Host as TimelineApi>::og_timeline_captions(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_timeline_info(world: u32, asset: f64) -> String {
     <Host as TimelineApi>::og_timeline_info(&Host, world, asset)
 }

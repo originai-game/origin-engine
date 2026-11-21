@@ -15801,10 +15801,26 @@
         "TimelineMarker",
         "TimelineEnded",
         "TimelineTrackInfo",
-        "TimelineInfo"
+        "TimelineInfo",
+        "TimelineCaption"
       ],
       "consts": [],
       "functions": [
+        {
+          "name": "captions",
+          "doc": "The captions the world's timelines are saying as of the last tick, in the timelines' order and then their tracks': what a subtitles screen shows (the built-in Subtitles takes them as `captions`). Nothing draws them otherwise.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<TimelineCaption>",
+          "returnsDoc": "Empty when none is showing.",
+          "publish": true
+        },
         {
           "name": "info",
           "doc": "What a loaded timeline holds.",
@@ -56563,6 +56579,27 @@
         "tracks",
         "paths",
         "markers"
+      ],
+      "additionalProperties": false
+    },
+    "TimelineCaption": {
+      "x-og-kind": "struct",
+      "x-og-module": "timeline",
+      "description": "A caption a playing timeline is saying.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable while it shows: the timeline's entity, its track and its key."
+        },
+        "text": {
+          "type": "string",
+          "description": "Its words, in the player's locale."
+        }
+      },
+      "required": [
+        "id",
+        "text"
       ],
       "additionalProperties": false
     },

@@ -1,5 +1,7 @@
 // The engine's built-in components, controls and screens as TSX (CONVENTIONS.md §Components).
 // A game imports them from "@origingame/engine/ui/components".
+export { FilmChoices } from "../screens/film-choices";
+export { Subtitles } from "../screens/subtitles";
 export { Avatar } from "./base/avatar";
 export { Currency } from "./base/currency";
 export { EmptyState } from "./base/empty-state";

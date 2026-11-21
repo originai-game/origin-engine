@@ -1,0 +1,15 @@
+{
+  "added": [
+    {
+      "member": "og.timeline.captions",
+      "summary": "The captions the world's timelines are saying as of the last tick, as { id, text } rows in the timelines' and tracks' order: what a TSX subtitles screen takes as a prop, since a TSX component never reads `$captions`."
+    },
+    {
+      "member": "@origingame/engine/ui/components: FilmChoices, Subtitles",
+      "summary": "An interactive film's window and captions as TSX. FilmChoices takes og.film.view's value (`view`) and derives the choices, the pending one, each QTE's progress, the hotspots, the time left and the lock itself, calling `onChoose(e, index)` for a row or hotspot pressed; Subtitles takes the game's `lines` and og.timeline.captions as `captions`."
+    }
+  ],
+  "fixed": [
+    "The film guide's §4 gives a complete recipe for showing a film's choices (it said to write film-choices' stores from the view, which og.ui.push could not take): mount FilmChoices with the view from a scope store read through useStore. `og new --form film` writes it, with assets/ui/film-view.tsx in place of film-view.svelte."
+  ]
+}

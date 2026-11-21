@@ -182,3 +182,73 @@ test("a display frame sends the UI's changes at each tick boundary", () => {
   expect(flushes).toBeGreaterThanOrEqual(ticks);
   renderers.delete(id);
 });
+
+// FilmChoices (the 底牌 playtest, film guide §4) takes og.film.view's value and
+// derives its rows itself. Ways this could fail: a pressed row or hotspot
+// reporting its place in the list instead of ChoiceView.index (choice 3 is
+// listed before 1 here); a disabled choice, or any after the lock, still
+// taking presses; the pending choice not marked; the screen showing with no
+// window.
+test("FilmChoices shows a film's window from its view and reports the ChoiceView.index pressed", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-film-"));
+  try {
+    writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
+    writeFileSync(join(dir, "main.ts"), `export { FilmChoices } from "@origingame/engine/ui/components";\n`);
+    const out = join(dir, "game.js");
+    const b = await bundleGame(join(dir, "main.ts"), out, "native");
+    if (!b.ok) throw new Error(b.reason);
+    const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
+    const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
+    writeFileSync(out, readFileSync(out, "utf8").replace(/(["'])[^"']*\/ui\/rt(\.ts)?\1/g, JSON.stringify(rt)).replace(/(["'])@origingame\/engine\/ui\1/g, JSON.stringify(ui)));
+    const { FilmChoices } = await import(out);
+    const { loadNativeHost } = await import("../src/node/index.ts");
+    loadNativeHost();
+
+    const batches: Op[][] = [];
+    let next: Uint8Array = reply([]);
+    const world = { id: 9003 } as unknown as World;
+    renderers.set(9003, new Renderer((bytes) => { batches.push(decode(bytes)); const r = next; next = reply([]); return r; }, world));
+    const choice = (index: number, text: string, enabled = true) => ({ index, text, enabled });
+    const view = (window: object | null) => ({
+      choices: window ? [choice(0, "Stay"), choice(3, "Run"), choice(1, "Lie", false)] : [],
+      window,
+      hotspots: window ? [{ choice: 3, id: "door", x: 0.5, y: 0.2, width: 0.1, height: 0.3 }] : [],
+      qtes: [],
+    });
+    const v = createSignal<unknown>(view(null));
+    const chosen: number[] = [];
+    mount(world, FilmChoices, { get view() { return v(); }, onChoose: (_e: unknown, index: number) => chosen.push(index) });
+    const ops = () => batches.flat();
+    expect(ops().some((op) => op[0] === "createText")).toBe(false);
+
+    v.set(view({ ticksLeft: 60, ticksTotal: 120, defaultChoice: 0, pending: 3, locked: false }));
+    renderers.get(9003)!.flush();
+    const texts = ops().filter((op) => op[0] === "createText").map((op) => op[2]);
+    for (const t of ["Stay", "Run", "Lie"]) expect(texts).toContain(t);
+    // The row holding a text: the pressable view around it.
+    const parent = (id: number) => ops().find((op) => op[0] === "insert" && op[2] === id)![1] as number;
+    const pressable = new Set(ops().filter((op) => op[0] === "listen" && op[2] === 0 && op[3] === 1).map((op) => op[1] as number));
+    const row = (text: string) => {
+      let id = ops().find((op) => op[0] === "createText" && op[2] === text)![1] as number;
+      while (!pressable.has(id)) id = parent(id);
+      return id;
+    };
+    expect(ops()).toContainEqual(["setProp", row("Run"), "data-chosen", "true"]);
+    const hotspot = [...pressable].find((id) => ![row("Stay"), row("Run"), row("Lie")].includes(id))!;
+
+    next = reply([[row("Stay"), 0], [row("Run"), 0], [row("Lie"), 0], [hotspot, 0]]);
+    renderers.get(9003)!.flush();
+    renderers.get(9003)!.flush();
+    expect(chosen).toEqual([0, 3, 3]);
+
+    v.set(view({ ticksLeft: 0, ticksTotal: 120, defaultChoice: 0, pending: 3, locked: true }));
+    renderers.get(9003)!.flush();
+    next = reply([[row("Stay"), 0], [hotspot, 0]]);
+    renderers.get(9003)!.flush();
+    renderers.get(9003)!.flush();
+    expect(chosen).toEqual([0, 3, 3]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    renderers.delete(9003);
+  }
+});

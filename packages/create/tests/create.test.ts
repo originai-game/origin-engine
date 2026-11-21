@@ -280,10 +280,10 @@ test("form film (or genre interactive-film) writes the film skeleton over the on
   const r = cli("film", "--form", "film", "--look", "painterly-3d", "--variant", "lush");
   expect(r.code, r.err).toBe(0);
   const made = files(join(scratch, "film"));
-  for (const f of ["assets/story/film.yarn", "assets/segments/opening.ogt", "assets/segments/ending.ogt", "assets/clips/opening.ogt", "assets/clips/opening.mp4", "assets/ui/film-view.svelte", "tests/smoke.og.ts", "tsconfig.json"]) expect(made).toContain(f);
+  for (const f of ["assets/story/film.yarn", "assets/segments/opening.ogt", "assets/segments/ending.ogt", "assets/clips/opening.ogt", "assets/clips/opening.mp4", "assets/ui/film-view.tsx", "tests/smoke.og.ts", "tsconfig.json"]) expect(made).toContain(f);
   const main = read("film/src/main.ts");
   expect(main).toContain('og.film.start(world, { dialogue: "film", paused: true })');
-  for (const screen of ["@ui/screens/film-choices.svelte", "@ui/screens/subtitles.svelte"]) expect(main).toContain(screen);
+  for (const screen of ["return FilmChoices({", "return Subtitles({"]) expect(main).toContain(screen);
   const block = read("film/project.ogt").split("create {")[1]!;
   expect(block).toContain('form "film"');
   expect(block).toContain('genre "interactive-film"');

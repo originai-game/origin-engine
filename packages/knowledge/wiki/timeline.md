@@ -33,6 +33,8 @@ module timeline {
 | [`og.TimelineEnded`](timeline/record-TimelineEnded.md) | event |  | A timeline without loop reached its duration and stopped playing. |
 | [`TimelineTrackInfo`](timeline/type-TimelineTrackInfo.md) | struct |  | One track of a loaded timeline. |
 | [`TimelineInfo`](timeline/type-TimelineInfo.md) | struct |  | A loaded timeline. |
+| [`TimelineCaption`](timeline/type-TimelineCaption.md) | struct |  | A caption a playing timeline is saying. |
+| [`og.timeline.captions`](timeline/fn-captions.md) | function | `(world: World): readonly TimelineCaption[]` | The captions the world's timelines are saying as of the last tick, in the timelines' order and then their tracks': what a subtitles screen shows (the built-in Subtitles takes them as `captions`). |
 | [`og.timeline.info`](timeline/fn-info.md) | function | `(world: World, asset: TimelineAsset): Result<TimelineInfo>` | What a loaded timeline holds. |
 | [`og.timeline.play`](timeline/fn-play.md) | function | `(world: World, entity: Entity): Result<void>` | Play the entity's og.Timeline from its time (0 after a stop or an end); systems may call it, it takes effect at this tick's og.timeline. |
 | [`og.timeline.pause`](timeline/fn-pause.md) | function | `(world: World, entity: Entity): Result<void>` | Hold the entity's og.Timeline where it is (it keeps the camera). |

@@ -1421,6 +1421,8 @@ pub trait PathApi: Wire {
 
 /// `timeline`: packages/knowledge/wiki/timeline.md.
 pub trait TimelineApi: Wire {
+    /// `og.timeline.captions`
+    fn og_timeline_captions(&self, world: u32) -> String;
     /// `og.timeline.info`
     fn og_timeline_info(&self, world: u32, asset: f64) -> String;
     /// `og.timeline.play`
@@ -2206,6 +2208,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_path_sample",
     "og_path_length",
     "og_path_nearest",
+    "og_timeline_captions",
     "og_timeline_info",
     "og_timeline_play",
     "og_timeline_pause",

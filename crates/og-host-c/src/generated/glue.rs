@@ -3207,6 +3207,11 @@ unsafe extern "C" fn og_path_nearest(args: *const crate::OgValue, out: *mut crat
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_timeline_captions(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TimelineApi>::og_timeline_captions(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_timeline_info(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as TimelineApi>::og_timeline_info(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -4248,6 +4253,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_path_sample", arity: 3, call: og_path_sample },
     crate::Symbol { name: c"og_path_length", arity: 2, call: og_path_length },
     crate::Symbol { name: c"og_path_nearest", arity: 3, call: og_path_nearest },
+    crate::Symbol { name: c"og_timeline_captions", arity: 1, call: og_timeline_captions },
     crate::Symbol { name: c"og_timeline_info", arity: 2, call: og_timeline_info },
     crate::Symbol { name: c"og_timeline_play", arity: 2, call: og_timeline_play },
     crate::Symbol { name: c"og_timeline_pause", arity: 2, call: og_timeline_pause },

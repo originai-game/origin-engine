@@ -30,7 +30,9 @@ use crate::{present::feel, world::assets};
 use evaluate::{Evaluated, NESTED, NESTED_TRACKS, Step, drop_ended_voices, evaluate};
 use playback::{Op, Rec, Run, shared};
 pub(crate) use playback::{install, register_records};
-pub use playback::{og_timeline_pause, og_timeline_play, og_timeline_seek, og_timeline_stop};
+pub use playback::{
+    og_timeline_captions, og_timeline_pause, og_timeline_play, og_timeline_seek, og_timeline_stop,
+};
 
 use crate::engine::{Engine, engine};
 use crate::host::codec::{Layout, RecordKind};
