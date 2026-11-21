@@ -286,7 +286,7 @@ fn deformed_vertices_replace_the_mesh() {
 /// through the lean pipelines (a plain material), the full ones (a
 /// textured one) and under GPU culling, at five amounts. It draws that
 /// share of its pixels, its shadow darkens by that share, the pattern
-/// turns with the tick, and at 0 the frame is the one without the box: no
+/// turns with each drawn frame, and at 0 the frame is the one without the box: no
 /// pass (lit, prepass, shadow, the culling's occluders) draws what the
 /// dither cut.
 #[test]
@@ -334,11 +334,13 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
     };
     for (name, textured) in [("lean", false), ("textured", true)] {
         let desc = small();
-        // Two frames each: GPU culling's occluders are the frame before's.
-        let shot = |reveal: Option<f32>, tick: u64| {
+        // Two frames each (GPU culling's occluders are the frame before's),
+        // or `frames`.
+        let shot_after = |reveal: Option<f32>, tick: u64, frames: u32| {
             let mut scene = build(textured, reveal, tick);
-            run(&desc, &mut scene, 2, |_, _| {}).0
+            run(&desc, &mut scene, frames, |_, _| {}).0
         };
+        let shot = |reveal: Option<f32>, tick: u64| shot_after(reveal, tick, 2);
         let (whole, empty) = (shot(Some(1.0), 7), shot(None, 7));
         let boxed = count(&whole, &|x, y| red(px_clamped(&whole, x, y)));
         assert!(boxed > 1500, "{name}: the box covers {boxed} pixels");
@@ -387,14 +389,15 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
             );
             last = s;
         }
-        // The pattern turns with the tick, the share drawn does not.
-        let (a, b) = (shot(Some(0.5), 7), shot(Some(0.5), 8));
+        // The pattern turns with the frames drawn (the TAA jitter's clock,
+        // common.wgsl `dither_cut`), the share drawn does not.
+        let (a, b) = (shot(Some(0.5), 7), shot_after(Some(0.5), 7, 3));
         let moved = count(&a, &|x, y| {
             red(px_clamped(&a, x, y)) != red(px_clamped(&b, x, y))
         });
         assert!(
             moved > boxed / 4,
-            "{name}: {moved} of {boxed} pixels changed between two ticks"
+            "{name}: {moved} of {boxed} pixels changed between two frames"
         );
         // Nothing of it is left at 0, in any pass.
         let gone = shot(Some(0.0), 7);

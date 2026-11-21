@@ -32,7 +32,7 @@ fn fs_shadow(in: ScatterShadowOut, @builtin(front_facing) front: bool) -> @locat
   let dy = dpdyFine(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
   let a = material.base_color.a * textureSample(base_color_tex, material_sampler, base_uv).a;
-  if ((material.emissive.w >= 0.0 && a < material.emissive.w) || scatter_dropped(in.clip.xy, in.fade)) {
+  if ((material.emissive.w >= 0.0 && a < material.emissive.w) || dither_cut(scatter_hidden(in.fade), in.clip.xy, shadow_pass.dither.x)) {
     discard;
   }
   return shadow_depth(in.world, in.clip, dx, dy, front);

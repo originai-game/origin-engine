@@ -117,7 +117,8 @@ pub(crate) struct FrameUniform {
     /// `params_moved`); y: 1 when a view tints clustered instances by level
     /// (`View::lod_debug`); z: 1 in a cube face (probes.rs `face_uniform`),
     /// whose sky under the horizon is the ground's light round the point,
-    /// not land far off (sky.wgsl `land_fog`); w unused.
+    /// not land far off (sky.wgsl `land_fog`); w: the frames drawn since
+    /// the last capture, the dither's turn (common.wgsl `dither_cut`).
     pub drawn: [u32; 4],
     /// The year the seasonal leaves are drawn in (meshlet_foliage.wgsl
     /// `LeafYear`, `LeafCalendar::gpu`; zero: as modelled).

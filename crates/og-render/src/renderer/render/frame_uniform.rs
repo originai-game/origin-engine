@@ -67,6 +67,9 @@ impl Renderer {
             ssr,
         }: WriteFrameUniformsInputs<'_>,
     ) -> WriteFrameUniformsOutputs {
+        // The dither's turn (common.wgsl `dither_cut`): the frames drawn
+        // since the last capture, the TAA jitter's clock.
+        let dither = self.phase() as u32;
         // Uniforms.
         let mut uniform = frame::FrameUniform {
             view_proj: cam.jittered_view_proj.to_cols_array_2d(),
@@ -196,7 +199,7 @@ impl Renderer {
             ssr: ssr::ScreenSpaceReflections::frame_row(ssr),
             // The stamp a material's shader parameter change carries in
             // this frame (`sync_assets`; engine s100).
-            drawn: [self.frame_index as u32, 0, 0, 0],
+            drawn: [self.frame_index as u32, 0, 0, dither],
             leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
             view_rays: frame::view_rays(cam.jittered_view_proj),
         };
@@ -228,6 +231,7 @@ impl Renderer {
                 light: [0.0; 4],
                 time: shadow_time,
                 paraboloid: [0.0; 4],
+                dither: [dither, 0, 0, 0],
                 foliage_wind: uniform.foliage_wind[0],
             };
         }
@@ -244,6 +248,7 @@ impl Renderer {
                         face,
                         self.shadows.local_shadow_size,
                     ),
+                    dither: [dither, 0, 0, 0],
                     foliage_wind: uniform.foliage_wind[0],
                 };
             }
@@ -284,6 +289,7 @@ impl Renderer {
                 light: [0.0; 4],
                 time: shadow_time,
                 paraboloid: [0.0; 4],
+                dither: [dither, 0, 0, 0],
                 foliage_wind: uniform.foliage_wind[0],
             };
         }
@@ -299,6 +305,7 @@ impl Renderer {
                 light: [0.0; 4],
                 time: shadow_time,
                 paraboloid: [0.0; 4],
+                dither: [dither, 0, 0, 0],
                 foliage_wind: uniform.foliage_wind[0],
             };
         }
@@ -350,12 +357,14 @@ impl Renderer {
                 bytemuck::bytes_of(&u),
             );
         }
-        crate::traffic::write_buffer(
-            &self.queue,
-            &self.shadows.shadow_buffer,
-            0,
-            bytemuck::cast_slice(&shadow_slots),
-        );
+        // Each slot at its stride (`SHADOW_SLOT_STRIDE`).
+        let mut slots = vec![0u8; (SHADOW_SLOT_STRIDE as usize) * SHADOW_SLOTS];
+        for (i, slot) in shadow_slots.iter().enumerate() {
+            let at = i * SHADOW_SLOT_STRIDE as usize;
+            slots[at..at + std::mem::size_of::<ShadowPassUniform>()]
+                .copy_from_slice(bytemuck::bytes_of(slot));
+        }
+        crate::traffic::write_buffer(&self.queue, &self.shadows.shadow_buffer, 0, &slots);
         WriteFrameUniformsOutputs { uniform, time: t }
     }
 }

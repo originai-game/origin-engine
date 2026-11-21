@@ -93,7 +93,6 @@ impl Renderer {
                 camera.position,
                 (cam.view_proj, self.height, scene.objects.lod_bias),
                 prev_view_proj,
-                self.phase(),
                 (
                     self.world.wind_field.grid(),
                     self.world.wind_field.lean_cap(),

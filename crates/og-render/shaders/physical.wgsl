@@ -389,7 +389,7 @@ fn fs_volume_exit(in: PhysicalOut) -> @location(0) vec4<u32> {
   hook.front = -1.0;
   hook.wind = frame.foliage_wind[0][0];
   let base = surface_color(hook, shader_params(), look_tint(material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, uv)) * in.color, in.look));
-  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || (EFFECTS && dissolve_at(uv, in.local_pos).w > 0.5) || reveal_cut(look_hidden(in.look), in.clip.xy, frame.time.x)) { discard; }
+  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || (EFFECTS && dissolve_at(uv, in.local_pos).w > 0.5) || dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w)) { discard; }
   var n = normalize(in.normal);
   if ((u32(material.flags.w) & 1u) != 0u) { n = -normalize(cross(dpdxFine(in.world_pos), dpdyFine(in.world_pos))); }
   let depth = dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz);
@@ -606,7 +606,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // Alpha to coverage (mode 16): as pbr_fs.wgsl.
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
   let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
-  if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || reveal_cut(look_hidden(in.look), in.clip.xy, frame.time.x)) {
+  if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w)) {
     discard;
   }
   let alpha = select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);

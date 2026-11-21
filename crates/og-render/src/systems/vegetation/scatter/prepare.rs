@@ -119,7 +119,6 @@ impl ScatterRenderer {
         camera: Vec3,
         (view_proj, height, lod_bias): (Mat4, u32, f32),
         prev_view_proj: Mat4,
-        frame_index: u64,
         (wind_grid, lean_cap, trample): (crate::wind_field::WindGrid, f32, [f32; 4]),
         side_of: impl Fn(usize) -> Option<Side>,
         mesh_bounds: impl Fn(usize) -> Option<(f32, f32, u32)>,
@@ -140,7 +139,6 @@ impl ScatterRenderer {
             place.begin();
         }
         self.placed_chunks.clear();
-        let noise = crossfade_noise_offset(frame_index);
         let mut batches = Vec::new();
         let wind = scene.atmosphere.wind.filter(|w| w.strength > 0.0);
         let previous = self.last_tick.unwrap_or(scene.frame.tick);
@@ -188,7 +186,7 @@ impl ScatterRenderer {
             let (u, g) = Self::slots(
                 device,
                 &self.uniform_layout,
-                [&self.blue_noise, &self.wind_uniform],
+                &self.wind_uniform,
                 [&self.wind_field, &self.trample],
                 self.slots,
             );
@@ -199,7 +197,7 @@ impl ScatterRenderer {
         // decides), never faded; a swaying model's takes the wind below.
         let base = ScatterGpu {
             camera: camera.extend(f32::MAX).to_array(),
-            fade: [f32::MAX, noise, 0.0, 0.0],
+            fade: [f32::MAX, 0.0, 0.0, 0.0],
             view_proj: view_proj.to_cols_array_2d(),
             prev_view_proj: prev_view_proj.to_cols_array_2d(),
             wind: [0.0; 4],
@@ -683,7 +681,7 @@ impl ScatterRenderer {
             };
             let mut gpu = ScatterGpu {
                 camera: camera.extend(s.distance).to_array(),
-                fade: [s.fade_from(), noise, 0.0, 0.0],
+                fade: [s.fade_from(), 0.0, 0.0, 0.0],
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 wind: wind_row,

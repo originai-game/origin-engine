@@ -390,21 +390,15 @@ fn imp_uvs(uv01: vec4<f32>, uv2: vec2<f32>, par01: vec4<f32>, par2: vec2<f32>, f
   return o;
 }
 
-// Whether a pixel of a card is dropped (scatter_dropped's threshold): it
-// keeps its pixels whose noise is at least `lo` and below `hi`, so a copy
-// crossing to its impostor draws the pixels its mesh drops and no others.
-fn imp_dropped(pixel: vec2<f32>, lo: f32, hi: f32) -> bool {
-  let n = scatter_noise(pixel);
-  return n < lo || n >= hi;
-}
-
-// A copy at `at`: its card's (lo, hi) of imp_dropped, the share its mesh
-// shows to all of it. The distance fade shrinks the card as it does the
-// mesh (scatter_scale), never by dropping pixels. A model impostor (no
-// impostor distance) draws whole.
-fn imp_fade(at: vec3<f32>) -> vec2<f32> {
-  if (scatter.impostor_grid.y <= 0.0) { return vec2<f32>(0.0, 1.0); }
-  return vec2<f32>(scatter_near(at), 1.0);
+// How much of the card of copy `i` the dither cuts (instance.wgsl
+// dither_cut): a scattered copy's card draws the pixels its mesh drops
+// (scatter_hidden) and no others; a model impostor (no impostor distance)
+// its look's share (look_hidden: its model's level cross-fading to or
+// from it, a reveal). The distance fade shrinks the card as it does the
+// mesh (scatter_scale), never by dropping pixels.
+fn imp_hidden(i: ScatterInstance) -> f32 {
+  if (scatter.impostor_grid.y <= 0.0) { return look_hidden(i.look); }
+  return scatter_near(i.m3);
 }
 
 // How the wind moves the card's vertex `card` of the copy `i` scaled by

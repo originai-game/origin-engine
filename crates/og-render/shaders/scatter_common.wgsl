@@ -1,12 +1,13 @@
 // Scattered copies over a terrain (scatter.rs): instances cached per chunk,
 // each a world transform, shrunk and thinned out with the distance from the
-// camera (scatter_scale; no dither), crossfaded to their impostor by a
-// temporal blue-noise threshold (scatter_noise), swayed by the wind.
+// camera (scatter_scale; no dither), crossfaded to their impostor by the
+// one dithered transition (common.wgsl dither_cut; scatter_hidden),
+// swayed by the wind.
 // Shared by the lit, prepass and shadow passes, so their coverage agrees.
 
 struct ScatterUniform {
   camera: vec4<f32>,          // xyz: the camera, w: the distance copies reach (m)
-  fade: vec4<f32>,            // x: where the fade starts (m), y: this render frame's turn of the crossfade noise (scatter.rs crossfade_noise_offset)
+  fade: vec4<f32>,            // x: where the fade starts (m), y: unused, zw: a crowd card's views and frames (crowd_card_common.wgsl)
   view_proj: mat4x4<f32>,     // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
   wind: vec4<f32>,            // xy: og.Wind's horizontal direction (x, z), z: the scatter's sway (0: still), w: the trample's recovery (s)
@@ -19,10 +20,6 @@ struct ScatterUniform {
   canopy: vec4<f32>,          // xyz: the mesh's canopy centre in its own space, w: 1 when it has foliage (meshlet.rs MeshFoliage)
 };
 @group(2) @binding(0) var<uniform> scatter: ScatterUniform;
-// The blue-noise tile (blue_noise.rs): 64 x 64 byte thresholds, row by
-// row, four to a u32 (a uniform array, not a texture: the lit pass's
-// fragment stage has no sampled texture left).
-@group(2) @binding(1) var<uniform> scatter_blue_noise: array<vec4<u32>, 256>;
 // The frame's wind (wind.rs WindField) and the simulated field's lean
 // every vegetation tier reads (wind_field.rs; wind_common.wgsl wind_lean).
 @group(2) @binding(2) var<uniform> scatter_wind: WindField;
@@ -43,6 +40,9 @@ struct ScatterInstance {
   @location(5) m1: vec3<f32>,
   @location(6) m2: vec3<f32>,
   @location(7) m3: vec3<f32>,
+  // Its look (pbr.wgsl InstanceFxIn): zero for a copy; a model impostor's
+  // carries how much of it is hidden (instance.wgsl look_hidden).
+  @location(8) look: vec4<f32>,
 };
 
 // How much of a copy standing at `at` shows: 1 inside the fade, 0 past the distance.
@@ -62,22 +62,12 @@ fn scatter_near(at: vec3<f32>) -> f32 {
   return 1.0 - smoothstep(0.9 * far, far, length(at.xz - scatter.camera.xz));
 }
 
-// The crossfade's threshold at `pixel`: the blue-noise tile's, turned by
-// the golden ratio each render frame (scatter.rs crossfade_noise_offset),
-// so each frame is blue noise and each pixel's thresholds over frames are
-// evenly spread, which TAA resolves to the blend. In [0, 1).
-fn scatter_noise(pixel: vec2<f32>) -> f32 {
-  let p = vec2<u32>(max(pixel, vec2<f32>(0.0))) % vec2<u32>(64u);
-  let i = p.y * 64u + p.x;
-  let byte = (scatter_blue_noise[i / 16u][(i / 4u) % 4u] >> ((i % 4u) * 8u)) & 0xffu;
-  let level = (f32(byte) + 0.5) / 256.0;
-  return fract(level + scatter.fade.y);
-}
-
-// Whether a pixel of a copy whose mesh shows `near` (scatter_near) is
-// dropped: the impostor draws the pixels the mesh drops (imp_dropped).
-fn scatter_dropped(pixel: vec2<f32>, near: f32) -> bool {
-  return scatter_noise(pixel) >= near;
+// How much of a copy's mesh the dither cuts (common.wgsl dither_cut)
+// as it crosses to its impostor: it fades out against the impostor by the
+// share it shows (`near`, scatter_near), so each pixel is drawn once, by
+// the mesh or by the card (impostor_common.wgsl imp_hidden).
+fn scatter_hidden(near: f32) -> f32 {
+  return near - 1.0;
 }
 
 // A clip position outside the view: the copy's triangles are culled.

@@ -13,8 +13,10 @@ pub(crate) struct ShadowPassUniform {
     /// x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1
     /// above, z: the map's side, w: the projection's scale (shadow_pass.wgsl).
     pub(crate) paraboloid: [f32; 4],
+    /// x: the frames drawn since the last capture, the dither's turn
+    /// (common.wgsl `dither_cut`, the frame's `drawn.w`); yzw unused.
+    pub(crate) dither: [u32; 4],
     /// Shadows draw only the current deformation; motion history lives in Frame.
-    /// Fills the slot's 256 bytes exactly (SHADOW_SLOT_STRIDE).
     pub(crate) foliage_wind: crate::foliage::FoliageWind,
 }
 
@@ -995,10 +997,7 @@ mod foliage_layout_tests {
             layouter[handle].size as usize,
             std::mem::size_of::<ShadowPassUniform>()
         );
-        assert_eq!(
-            std::mem::size_of::<ShadowPassUniform>() as u64,
-            SHADOW_SLOT_STRIDE
-        );
+        assert!(std::mem::size_of::<ShadowPassUniform>() as u64 <= SHADOW_SLOT_STRIDE);
         assert_eq!(SHADOW_SLOT_STRIDE % 256, 0);
     }
 }

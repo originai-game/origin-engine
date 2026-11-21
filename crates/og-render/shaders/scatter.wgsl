@@ -20,7 +20,7 @@ struct ScatterOut {
   @location(1) normal: vec3<f32>,
   @location(2) uv: vec2<f32>,
   @location(3) color: vec4<f32>,
-  // How much of the copy draws as its mesh (scatter_near; scatter_dropped).
+  // How much of the copy draws as its mesh (scatter_near; scatter_hidden).
   @location(4) @interpolate(flat) fade: f32,
   // The copy's id in the outline target (clump_id); beside the other
   // scalar, so no vector is packed for it (impostor.wgsl).
@@ -112,7 +112,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
   let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
   // One discard for the cut-off and the fade (Metal ignored a second one).
-  if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || scatter_dropped(in.clip.xy, in.fade)) {
+  if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dither_cut(scatter_hidden(in.fade), in.clip.xy, frame.drawn.w)) {
     discard;
   }
   return scatter_lit(in, h, base, select(1.0, coverage, a2c), dpx, dpy, dlx, dly);
@@ -219,7 +219,7 @@ struct ScatterPrepass {
 fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrepass {
   let base = surface_color(scatter_hook(in, front), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
   let flat_n = normalize(cross(dpdxFine(in.world), dpdyFine(in.world)));
-  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || scatter_dropped(in.clip.xy, in.fade)) {
+  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dither_cut(scatter_hidden(in.fade), in.clip.xy, frame.drawn.w)) {
     discard;
   }
   var n = normalize(in.normal);

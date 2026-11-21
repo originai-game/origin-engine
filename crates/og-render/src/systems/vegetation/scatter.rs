@@ -20,8 +20,8 @@
 //! field thins as grass does (`shaders/scatter*.wgsl`). No pixel of the
 //! distance fade is dithered: a static dither left grain TAA cannot
 //! resolve. Only the crossfade from a copy's mesh to its impostor
-//! thresholds pixels, by the blue-noise tile turned each render frame
-//! ([`crossfade_noise_offset`]), the same in the lit, prepass and shadow
+//! thresholds pixels, by the one dithered transition every tier fades by
+//! (common.wgsl `dither_cut`), the same in the lit, prepass and shadow
 //! passes. A streamed terrain's chunks are built
 //! once the level-0 tiles under them have arrived.
 //!
@@ -459,18 +459,6 @@ impl ScatterGpu {
     }
 }
 
-/// How far the crossfade's blue-noise thresholds turn on render frame
-/// `frame_index` (`ScatterUniform.fade.y`): the golden ratio's multiples,
-/// so each pixel's thresholds over consecutive frames are a low-
-/// discrepancy sequence TAA integrates, while every frame's pattern stays
-/// the tile's blue noise (Wolfe, Morrical, Akenine-Möller, Ramamoorthi,
-/// *Spatiotemporal Blue Noise Masks*, EGSR 2022, §2; Peters, *Free blue
-/// noise textures*, 2016). Reduced in f64, so it does not drift.
-fn crossfade_noise_offset(frame_index: u64) -> f32 {
-    const GOLDEN: f64 = 0.618_033_988_749_894_8;
-    ((frame_index as f64 * GOLDEN).fract()) as f32
-}
-
 /// One pass's stride in the uniform buffer: a [`ScatterGpu`] rounded up to
 /// the 256-byte dynamic offset alignment, so a slot never reads its
 /// neighbour's.
@@ -751,11 +739,6 @@ pub(crate) struct ScatterRenderer {
     shadow_pipelines: HashMap<(Option<usize>, Side, u8), crate::ShadowSet>,
     uniform_layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
-    /// The blue-noise tile ([`crate::blue_noise`]) the mesh-to-impostor
-    /// crossfade thresholds its pixels by, its bytes packed into a uniform
-    /// array (group 2 binding 1): a texture there would take the lit pass's
-    /// fragment stage past its 16 sampled textures.
-    blue_noise: wgpu::Buffer,
     slots: u64,
     group: wgpu::BindGroup,
     chunks: HashMap<ChunkKey, Chunk>,

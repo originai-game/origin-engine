@@ -45,7 +45,10 @@ pub(crate) const GROUND_SLOT: usize = SHELTER_SLOT + 1;
 /// Uniform slots of the shadow passes (dynamic offsets): the cascades, the
 /// local faces, the weather occlusion map, then the ground's height map.
 pub(crate) const SHADOW_SLOTS: usize = GROUND_SLOT + 1;
-pub(crate) const SHADOW_SLOT_STRIDE: u64 = 256;
+/// A shadow pass slot's stride: its uniform rounded up to the dynamic
+/// offset alignment.
+pub(crate) const SHADOW_SLOT_STRIDE: u64 =
+    (std::mem::size_of::<ShadowPassUniform>() as u64).next_multiple_of(256);
 
 #[cfg(test)]
 mod tests {

@@ -123,19 +123,10 @@ impl ScatterRenderer {
                 mapped_at_creation: false,
             },
         );
-        let blue_noise = crate::buffer_init(
-            device,
-            queue,
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("scatter blue noise"),
-                contents: crate::blue_noise::BLUE_NOISE,
-                usage: wgpu::BufferUsages::UNIFORM,
-            },
-        );
         let (uniform, group) = Self::slots(
             device,
             &uniform_layout,
-            [&blue_noise, &wind_uniform],
+            &wind_uniform,
             [&p.wind_field, &p.trample],
             4,
         );
@@ -154,7 +145,6 @@ impl ScatterRenderer {
             shadow_pipelines: HashMap::new(),
             uniform_layout,
             uniform,
-            blue_noise,
             slots: 4,
             group,
             chunks: HashMap::new(),
@@ -206,7 +196,7 @@ pub(super) fn level0_under(layout: &TerrainLayout, a: Vec2, b: Vec2) -> Vec<u32>
 }
 
 /// The scatter group's entries (scatter_common.wgsl group 2).
-fn uniform_entries() -> [wgpu::BindGroupLayoutEntry; 5] {
+fn uniform_entries() -> [wgpu::BindGroupLayoutEntry; 4] {
     [
         wgpu::BindGroupLayoutEntry {
             binding: 0,
@@ -215,16 +205,6 @@ fn uniform_entries() -> [wgpu::BindGroupLayoutEntry; 5] {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: true,
                 min_binding_size: wgpu::BufferSize::new(std::mem::size_of::<ScatterGpu>() as u64),
-            },
-            count: None,
-        },
-        wgpu::BindGroupLayoutEntry {
-            binding: 1,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: wgpu::BufferSize::new(crate::blue_noise::BLUE_NOISE.len() as u64),
             },
             count: None,
         },

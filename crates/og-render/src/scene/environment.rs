@@ -69,7 +69,7 @@ pub struct InstanceFx {
     pub outline: u32,
     /// How much of it is drawn, 0 to 1 (1: whole, the default): a model
     /// fading in draws this share of its pixels, dithered in screen space
-    /// (pbr.wgsl `reveal_cut`), and its shadow the same share of its
+    /// (common.wgsl `dither_cut`), and its shadow the same share of its
     /// texels. At 0 nothing of it is drawn, and the renderer makes the
     /// pipelines it will draw with on its compile workers meanwhile
     /// ([`crate::FrameStats::compiling_ahead`]): a producer that keeps it

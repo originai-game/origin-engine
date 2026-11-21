@@ -10,7 +10,7 @@ struct ImpostorShadowOut {
   @location(2) uv2: vec2<f32>,
   @location(3) @interpolate(flat) frames: vec3<u32>,
   @location(4) @interpolate(flat) weights: vec3<f32>,
-  @location(5) @interpolate(flat) fade: vec2<f32>,
+  @location(5) @interpolate(flat) fade: f32,
   @location(6) @interpolate(flat) par01: vec4<f32>,
   @location(7) @interpolate(flat) par2: vec2<f32>,
   // Towards the light from the copy's centre (the frames' depth axis) and
@@ -32,9 +32,9 @@ fn vs_impostor_shadow(@builtin(vertex_index) vertex: u32, i: ScatterInstance) ->
   let card = imp_card(model, vertex, toward, !local);
   let centre = mul_point(model, vec4<f32>(scatter.impostor.xyz, 1.0)).xyz;
   var o: ImpostorShadowOut;
-  o.fade = imp_fade(i.m3);
+  o.fade = imp_hidden(i);
   let world = card.world + vec4<f32>(imp_sway(card, i, size, false), 0.0);
-  o.clip = select(SCATTER_GONE, shadow_project(world, mul_point(shadow_pass.view_proj, world)), size > 0.0 && o.fade.y > o.fade.x);
+  o.clip = select(SCATTER_GONE, shadow_project(world, mul_point(shadow_pass.view_proj, world)), size > 0.0 && abs(o.fade) < 1.0);
   o.world = world.xyz;
   o.uv01 = card.uv01;
   o.uv2 = card.uv2;
@@ -79,7 +79,7 @@ fn fs_impostor_shadow(in: ImpostorShadowOut, @builtin(front_facing) front: bool)
   }
   let cover = imp_coverage(uvs.uv01, uvs.uv2, in.frames, uvs.weights);
   let surface = in.world + in.toward * imp_blended_step(cover, dd) * in.extent;
-  if (cover.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
+  if (cover.alpha < imp_cutoff() || dither_cut(in.fade, in.clip.xy, shadow_pass.dither.x)) {
     discard;
   }
   let c = shadow_card(surface, mul_point(shadow_pass.view_proj, vec4<f32>(surface, 1.0)), in.clip, dx, dy, front);

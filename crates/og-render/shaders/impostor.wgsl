@@ -20,8 +20,8 @@ struct ImpostorOut {
   @location(2) uv2: vec2<f32>,
   @location(3) @interpolate(flat) frames: vec3<u32>,
   @location(4) @interpolate(flat) weights: vec3<f32>,
-  // (lo, hi) of imp_dropped.
-  @location(5) @interpolate(flat) fade: vec2<f32>,
+  // How much of the card the dither cuts (imp_hidden).
+  @location(5) @interpolate(flat) fade: f32,
   @location(6) cur_clip: vec4<f32>,
   @location(7) prev_clip: vec4<f32>,
   // The model's turn (its columns, normalised) and its sphere's radius in the world.
@@ -53,8 +53,8 @@ fn imp_vertex(vertex: u32, i: ScatterInstance) -> ImpostorOut {
   let world = card.world + vec4<f32>(imp_sway(card, i, size, false), 0.0);
   let previous = card.world + vec4<f32>(imp_sway(card, i, size, true), 0.0);
   var o: ImpostorOut;
-  o.fade = imp_fade(i.m3);
-  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, world), size > 0.0 && o.fade.y > o.fade.x);
+  o.fade = imp_hidden(i);
+  o.clip = select(SCATTER_GONE, mul_point(frame.view_proj, world), size > 0.0 && abs(o.fade) < 1.0);
   o.world = world.xyz;
   o.rest = card.world.xyz;
   o.uv01 = card.uv01;
@@ -262,7 +262,7 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   // copy's is (scatter.wgsl).
   let a2c = scatter.impostor_grid.z > 0.5;
   let coverage = clamp((alpha - imp_cutoff()) / max(fwidthFine(alpha), 1e-4) + 0.5, 0.0, 1.0);
-  if (select(alpha < imp_cutoff(), coverage <= 0.0, a2c) || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
+  if (select(alpha < imp_cutoff(), coverage <= 0.0, a2c) || dither_cut(in.fade, in.clip.xy, frame.drawn.w)) {
     discard;
   }
   var o: ImpostorLit;
@@ -362,7 +362,7 @@ struct ImpostorPrepass {
 fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
   imp_set_level(in.uv01.xy);
   let surface = imp_surface(in);
-  if (surface.coverage.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
+  if (surface.coverage.alpha < imp_cutoff() || dither_cut(in.fade, in.clip.xy, frame.drawn.w)) {
     discard;
   }
   let v = toward_eye(surface.world);
@@ -439,7 +439,7 @@ fn fs_impostor_kept(in: ImpostorOut) -> @location(0) vec4<f32> {
   ) * 2.0 - 1.0;
   let pd = vec3<f32>(dot(x, imp_frame_dir(in.frames.x)), dot(x, imp_frame_dir(in.frames.y)), dot(x, imp_frame_dir(in.frames.z)));
   let off = abs(dot(d - pd, c.wa)) / total;
-  if (is_sky_depth(t) || c.alpha < imp_cutoff() || off > IMP_AGREE || dot(x, x) > 1.21 || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
+  if (is_sky_depth(t) || c.alpha < imp_cutoff() || off > IMP_AGREE || dot(x, x) > 1.21 || dither_cut(in.fade, in.clip.xy, frame.drawn.w)) {
     discard;
   }
   return imp_shade(in, imp_surface_of(in, c, world), 1.0);

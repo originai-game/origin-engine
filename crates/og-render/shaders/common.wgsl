@@ -51,6 +51,31 @@ fn ign(px: vec2<f32>) -> f32 {
   return fract(52.9829189 * fract(dot(px, vec2<f32>(0.06711056, 0.00583715))));
 }
 
+// The one dithered transition (Unity's LOD cross-fade, Unreal's dithered
+// LOD transition): whether the dither cuts a pixel of something drawn
+// with `hidden` of its pixels cut (0: whole; `hidden_share`). Every tier
+// fades by it: a model fading in (instance.wgsl `look_hidden`, `InstanceFx::reveal`), an HLOD proxy and
+// the models it stands for, a model between two levels, a scattered copy
+// crossing to its impostor (scatter_common.wgsl `scatter_hidden`), a
+// crowd member between two levels. The threshold is interleaved gradient
+// noise (`ign`; Jimenez, "Next Generation Post Processing in
+// Call of Duty: Advanced Warfare", 2014) over the pass's pixels, turned
+// each drawn frame by `turn` (the frames drawn since the last capture, the
+// TAA jitter's clock: frame.wgsl `frame.drawn.w`, shadow_pass.wgsl
+// `shadow_pass.dither.x`), so the frames (and a temporal resolve) average
+// to the share drawn. A negative `hidden` fades out against one fading
+// in: it keeps exactly the pixels that one cuts, the noise under
+// 1 - |hidden|, so a cross-fade draws each pixel once. The lit pass and
+// the prepass cut the same pixels of a frame; a shadow pass cuts its
+// map's texels, which the shadow's filter averages to a lighter shadow.
+// Callers fold it into their entry point's one discard.
+fn dither_cut(hidden: f32, pixel: vec2<f32>, turn: u32) -> bool {
+  if (hidden == 0.0) { return false; }
+  let noise = ign(floor(pixel) + 5.588238 * f32(turn % 64u));
+  if (hidden > 0.0) { return noise < hidden; }
+  return noise >= 1.0 + hidden;
+}
+
 // The view depth the prepass clears to where it drew nothing (post.rs
 // FAR_DEPTH): the sky. A camera's far plane stays far under it.
 const SKY_VIEW_DEPTH: f32 = 1.0e9;

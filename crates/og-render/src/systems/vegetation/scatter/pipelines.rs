@@ -4,7 +4,7 @@ impl ScatterRenderer {
     pub(super) fn slots(
         device: &wgpu::Device,
         layout: &wgpu::BindGroupLayout,
-        [blue_noise, wind]: [&wgpu::Buffer; 2],
+        wind: &wgpu::Buffer,
         [wind_field, trample]: [&wgpu::TextureView; 2],
         n: u64,
     ) -> (wgpu::Buffer, wgpu::BindGroup) {
@@ -28,10 +28,6 @@ impl ScatterRenderer {
                         offset: 0,
                         size: wgpu::BufferSize::new(std::mem::size_of::<ScatterGpu>() as u64),
                     }),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: blue_noise.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -69,10 +65,6 @@ impl ScatterRenderer {
                         offset: 0,
                         size: wgpu::BufferSize::new(std::mem::size_of::<ScatterGpu>() as u64),
                     }),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.blue_noise.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
