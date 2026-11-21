@@ -1683,8 +1683,8 @@
     },
     {
       "path": "styles/shared/glyphs/face-b.svg",
-      "sha256": "d08b5b849d5656d2330b0b9959ccd9f2519930e0e7a499a5bdd795745ac47cb9",
-      "size": 421,
+      "sha256": "00744a6b301902146f733c0106efffb54b06856f1a3125f9264b40d20fdefa11",
+      "size": 419,
       "visibility": "public"
     },
     {
@@ -1695,8 +1695,8 @@
     },
     {
       "path": "styles/shared/glyphs/face-y.svg",
-      "sha256": "d0a9bf3d7bf562f8f68b943c8867ce315e5d4c0120b864432aedfdafa8beccb5",
-      "size": 281,
+      "sha256": "2fad1941d1e850377b92f797c4ffa2db9f6e9ebdb854845410b935360a15989f",
+      "size": 279,
       "visibility": "public"
     },
     {
