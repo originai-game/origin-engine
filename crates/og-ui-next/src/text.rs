@@ -86,6 +86,8 @@ pub fn broken_words(text: &str, lines: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    use og_text::text::break_lines;
+
     #[test]
     fn a_line_starting_inside_a_word_is_a_broken_word() {
         use super::broken_words;
