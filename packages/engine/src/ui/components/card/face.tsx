@@ -1,5 +1,5 @@
 import type { Texture } from "@origingame/engine";
-import { Icon, Image, Show, Text, View, t } from "@origingame/engine/ui";
+import { Icon, Image, Show, Text, packClass, View, t } from "@origingame/engine/ui";
 import "./card.en.ogt";
 
 export interface CardFaceProps {

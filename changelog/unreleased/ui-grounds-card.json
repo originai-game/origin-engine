@@ -1,1 +1,9 @@
-{"simulation":"unchanged","fixed":[{"member":"Card components","summary":"deck steppers, filter chips, card name plates and pile counts draw on pack slots and opaque theme grounds in those grounds' inks, so their text reads over a bright scene in every pack."}]}
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Card components",
+      "summary": "CardDeckList draws its rows on Row.frame with the selected row's variant, and CardReward rims its relic plate in gold whole, so their text reads over a bright scene in every pack."
+    }
+  ]
+}
