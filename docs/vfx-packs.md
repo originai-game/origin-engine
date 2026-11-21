@@ -95,8 +95,9 @@ a lock of your own. It installs the pack into a scratch game, then has
 `og vfx preview` play its effects there (`og vfx preview --help`'s steps:
 timing, measured bounds, shots, cost):
 
-1. the timing, bounds and six shots, a few effects per call
-   (`--no-cost`), each call holding one GPU slot (`og_gpu_acquire`);
+1. the timing, bounds and six shots, the pack's effects in one call
+   (`--no-cost`, which the command runs a few effects at a time), holding
+   one GPU slot (`og_gpu_acquire`) for it;
 2. each effect's cost in a call of its own (`--cost-only`): an empty scene
    (that run's baseline) and then the effect, holding every slot
    (`og_gpu_acquire_all`) for that call only and releasing them before the

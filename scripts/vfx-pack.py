@@ -22,15 +22,17 @@ catalog fields of extension.json (minEngine, tags, keywords) from a spec:
 
 `preview` installs the pack into a scratch game and has `og vfx preview`
 (crates/og-cli/src/commands/vfx_preview.rs, which owns the stage, the
-camera, the shots and the timing) play each effect there, then writes, per
-effect, preview/<effect>.png (six 960x540 frames in time order, the impact
-frame among them, 3 x 2, the camera placed by the effect's measured core),
-preview/<effect>.cost.json (its peak GPU milliseconds over an empty frame,
-its draws, particle slots and measured bounds) and preview/cover.png, and
-its timing back into assets.json's effects:
+camera, the shots, the timing and the size) play the pack's effects there,
+then writes, per effect, preview/<effect>.png (six 960x540 frames in time
+order, the impact frame among them, 3 x 2, the camera placed by the
+effect's measured core), preview/<effect>.cost.json (its peak GPU
+milliseconds over an empty frame, its draws, particle slots and measured
+bounds) and preview/cover.png, and its timing back into assets.json's
+effects:
 
-1. the shots, `og vfx preview --no-cost` for CHUNK effects at a time, each
-   call holding one GPU slot (scripts/lock.sh's og_gpu_acquire);
+1. the shots, `og vfx preview --no-cost` for the pack's effects in one
+   call (the command runs them a few at a time itself), holding one GPU
+   slot (scripts/lock.sh's og_gpu_acquire) for it;
 2. the cost, `og vfx preview --cost-only` per effect, holding every slot
    (og_gpu_acquire_all) for that call only.
 
@@ -51,8 +53,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-W, H = 960, 540
-CHUNK = 6          # effects per `og vfx preview --no-cost` call (one GPU slot each)
 LOCK_SH = Path(__file__).resolve().parent / "lock.sh"
 
 
@@ -171,7 +171,7 @@ def og_preview(og, game, out, ids, flags, lock):
     og and released by its exit trap when og ends. Its error text, or None."""
     suffix, label = lock
     cmd = ["bash", "-c", f'. "$0" && og_gpu_acquire{suffix} "$1" && shift && "$@"', str(LOCK_SH), label,
-           og, "vfx", "preview", *ids, "--project", str(game), "--out", str(out), "--size", f"{W}x{H}", "--json", *flags]
+           og, "vfx", "preview", *ids, "--project", str(game), "--out", str(out), "--json", *flags]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
     return None if r.returncode == 0 else (r.stdout[-2000:] + r.stderr[-2000:])
 
@@ -200,17 +200,16 @@ def preview(args):
     work = root / "out"
     ids = {rel: f"vfx/{name}/{rel}" for rel in effects}
     try:
-        # The shots, a few effects per call; a call that fails is taken apart
-        # to find the effect that does not play.
+        # The shots, the pack's effects in one call (the command runs them a
+        # few at a time itself); a call that fails is taken apart to find the
+        # effect that does not play.
         failed = {}
-        for k in range(0, len(effects), CHUNK):
-            chunk = effects[k:k + CHUNK]
-            label = f"vfx-pack preview {name}: shots {k + 1}-{min(k + CHUNK, len(effects))} of {len(effects)}"
-            if og_preview(og, game, work, [ids[r] for r in chunk], ["--no-cost"], ("", label)) is not None:
-                for rel in chunk:
-                    err = og_preview(og, game, work, [ids[rel]], ["--no-cost"], ("", f"vfx-pack preview {name}/{rel}"))
-                    if err is not None:
-                        failed[rel] = err
+        label = f"vfx-pack preview {name}: shots, {len(effects)} effects"
+        if og_preview(og, game, work, [ids[r] for r in effects], ["--no-cost"], ("", label)) is not None:
+            for rel in effects:
+                err = og_preview(og, game, work, [ids[rel]], ["--no-cost"], ("", f"vfx-pack preview {name}/{rel}"))
+                if err is not None:
+                    failed[rel] = err
         if failed and not args.skip_failed:
             sys.exit("\n".join(f"{rel}: {err}" for rel, err in failed.items()))
         if failed:
