@@ -1708,52 +1708,6 @@ impl ToJson for ActionKind {
     }
 }
 
-/// `TouchZone`: packages/knowledge/wiki/input.md.
-#[derive(Clone, Debug, PartialEq)]
-pub struct TouchZone {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-}
-
-impl Default for TouchZone {
-    fn default() -> Self {
-        Self {
-            x: Default::default(),
-            y: Default::default(),
-            width: Default::default(),
-            height: Default::default(),
-        }
-    }
-}
-
-impl FromJson for TouchZone {
-    fn from_json(v: &Value) -> Result<Self, String> {
-        Self::from_json_over(v, Self::default())
-    }
-    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
-        let o = object(v)?;
-        Ok(Self {
-            x: field(o, "x", d.x)?,
-            y: field(o, "y", d.y)?,
-            width: field(o, "width", d.width)?,
-            height: field(o, "height", d.height)?,
-        })
-    }
-}
-
-impl ToJson for TouchZone {
-    fn to_json(&self) -> Value {
-        let mut o = Map::new();
-        o.insert("x".into(), self.x.to_json());
-        o.insert("y".into(), self.y.to_json());
-        o.insert("width".into(), self.width.to_json());
-        o.insert("height".into(), self.height.to_json());
-        Value::Object(o)
-    }
-}
-
 /// `InputBinding`: packages/knowledge/wiki/input.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InputBinding {
@@ -1767,7 +1721,6 @@ pub struct InputBinding {
     pub scale: f32,
     pub invert_y: bool,
     pub deadzone: f32,
-    pub zone: TouchZone,
 }
 
 impl Default for InputBinding {
@@ -1783,7 +1736,6 @@ impl Default for InputBinding {
             scale: 1.0_f32,
             invert_y: Default::default(),
             deadzone: Default::default(),
-            zone: Default::default(),
         }
     }
 }
@@ -1805,7 +1757,6 @@ impl FromJson for InputBinding {
             scale: field(o, "scale", d.scale)?,
             invert_y: field(o, "invertY", d.invert_y)?,
             deadzone: field(o, "deadzone", d.deadzone)?,
-            zone: field(o, "zone", d.zone)?,
         })
     }
 }
@@ -1823,7 +1774,6 @@ impl ToJson for InputBinding {
         o.insert("scale".into(), self.scale.to_json());
         o.insert("invertY".into(), self.invert_y.to_json());
         o.insert("deadzone".into(), self.deadzone.to_json());
-        o.insert("zone".into(), self.zone.to_json());
         Value::Object(o)
     }
 }

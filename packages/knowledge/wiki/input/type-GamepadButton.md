@@ -53,4 +53,4 @@ enum GamepadButton {
 }
 ```
 
-<sub>Module `input` line 586</sub>
+<sub>Module `input` line 560</sub>

@@ -3284,46 +3284,6 @@ export type InputDevice = "keyboardMouse" | "xbox" | "playstation" | "switch" | 
 export type ActionKind = "button" | "axis" | "axis2";
 
 /**
- * Where on the play surface a touch binding's touches must start, in fractions of it from the top left; a zone of no size is all of it.
- *
- * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
- */
-export interface TouchZone {
-  /**
-   * Its left edge.
-   *
-   * @default 0
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly x?: number;
-  /**
-   * Its top edge.
-   *
-   * @default 0
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly y?: number;
-  /**
-   * Its width (0: the whole surface).
-   *
-   * @default 0
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly width?: number;
-  /**
-   * Its height (0: the whole surface).
-   *
-   * @default 0
-   * @range 0..1
-   * @unit ratio (a fraction between 0 and 1)
-   */
-  readonly height?: number;
-}
-
-/**
  * One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot.
  * Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive.
  * See `input §1`.
@@ -3392,12 +3352,6 @@ export interface InputBinding {
    * @range 0..0.95
    */
   readonly deadzone?: number;
-  /**
-   * `touch`: where a touch must start to count (empty: anywhere).
-   *
-   * @default {}
-   */
-  readonly zone?: TouchZone;
 }
 
 /**

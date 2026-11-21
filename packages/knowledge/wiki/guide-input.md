@@ -112,8 +112,9 @@ yaw -= m.x * 0.0025;
 - A touch control claims the pointers that started on it: read
   where the pointer started (og.Pointers' `start`), not the position now, to decide which control a
   finger belongs to.
-- A `touch` binding takes a zone, fractions of the play surface from the
-  top left; a zone of no size is all of it.
+- A `touch` binding reads a touch anywhere on the play surface. A touch in
+  one part of the screen is an on-screen button the UI lays out over that
+  part (a View with `touchButton`).
 - Touch sticks, d-pads and buttons are on-screen controls the UI lays out
   (TouchControls, or a View with `touchStick`, `touchPad` or
   `touchButton`), not bindings. Each is a virtual device control that

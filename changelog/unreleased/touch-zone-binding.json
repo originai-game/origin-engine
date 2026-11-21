@@ -1,0 +1,13 @@
+{
+  "breaking": [
+    {
+      "member": "og.input InputBinding.zone, TouchZone",
+      "change": "A `touch` binding no longer takes a zone: it reads a touch anywhere on the play surface. A touch in one part of the screen has one model, the on-screen button the UI lays out (a View with `touchButton`), which also shows its press. A saved binding's `zone` is ignored.",
+      "fix": "Drop the binding's `zone` and put a View with `touchButton=\"<action>\"` over that part of the screen on the HUD (`absolute` with the zone's fractions as percent insets, such as `absolute left-1/2 top-0 w-1/2 h-full` for the right half). No codemod: the replacement is a node in the game's UI tree, not an edit of the binding.",
+      "find": [
+        "zone:",
+        "TouchZone"
+      ]
+    }
+  ]
+}

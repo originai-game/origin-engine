@@ -12,10 +12,10 @@
 //! | `pad.leftTrigger`, `pad.rightTrigger` | a trigger, 0..1 past its dead zone |
 //! | `pad.leftXY`, `pad.rightXY` | a stick, two axes with a radial dead zone |
 //! | `pad.dpad` | the d-pad's four buttons as two axes |
-//! | `touch` | a touch held that started in the binding's zone: 0 or 1 |
+//! | `touch` | a touch held anywhere on the surface: 0 or 1 |
 //!
-//! Touch sticks, d-pads and buttons are on-screen controls the UI lays
-//! out ([`ControlZone`]), not bindings.
+//! Touch sticks, d-pads and buttons, and touches in a part of the screen,
+//! are on-screen controls the UI lays out ([`ControlZone`]), not bindings.
 //!
 //! Every y is up-positive (W, the stick pushed up, the mouse moved up,
 //! the wheel scrolled up: +1), so 2D actions read as
@@ -307,12 +307,9 @@ pub fn deadzone2(v: Vec2, d: f32) -> Vec2 {
     }
 }
 
-/// The play surface touch zones are fractions of.
+/// The play surface.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Surface {
-    /// CSS pixels; 0 when the host has not said (a zone is then all of it).
-    pub width: f32,
-    pub height: f32,
     /// The surface's pointer is coarse (a touch screen): pointer 0 is a
     /// touch, not the mouse.
     pub coarse: bool,
@@ -409,33 +406,11 @@ pub struct Reading {
     pub device: Option<Device>,
 }
 
-/// Where a touch binding's touches must start: fractions of the surface.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Zone {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-}
-
-impl Zone {
-    /// Whether a point (CSS px) lies in it; a zone of no size is the whole surface.
-    pub fn contains(&self, p: Vec2, surface: Surface) -> bool {
-        if self.width <= 0.0 || self.height <= 0.0 || surface.width <= 0.0 || surface.height <= 0.0
-        {
-            return true;
-        }
-        let (u, v) = (p.x / surface.width, p.y / surface.height);
-        u >= self.x && u < self.x + self.width && v >= self.y && v < self.y + self.height
-    }
-}
-
 /// Binding parameters a control's reading depends on.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ReadOptions {
     /// Overrides the pad's dead zone when above 0.
     pub deadzone: f32,
-    pub zone: Zone,
 }
 
 impl Reader<'_> {
@@ -580,9 +555,6 @@ impl Reader<'_> {
             }
             Control::Touch => {
                 for id in self.touch_ids() {
-                    if !o.zone.contains(self.pointers.start(id), self.surface) {
-                        continue;
-                    }
                     if self.pointers.down(id) {
                         r.value.x = 1.0;
                     }

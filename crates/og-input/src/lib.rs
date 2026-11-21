@@ -33,7 +33,7 @@ pub use actions::{
     ConflictPolicy, RebindAnswer, RebindDesc, Rumble, Sensitivity, SharedActions, binding_glyphs,
     combined_glyph, install, overlaps,
 };
-pub use control::{Control, ControlZone, PadDeadzone, Surface, Zone, ZoneKind, ZoneState};
+pub use control::{Control, ControlZone, PadDeadzone, Surface, ZoneKind, ZoneState};
 pub use event::{
     A11yAct, GAMEPAD_BUTTONS, GamepadState, InjectedInput, KeyAction, MAX_GAMEPADS, MAX_POINTERS,
     Modifiers, PointerAction, PointerButton, gamepad_button,

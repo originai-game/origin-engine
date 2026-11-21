@@ -20,7 +20,7 @@
 
 use crate::control::{
     Axis, Axis2, Control, ControlZone, Half, PadDeadzone, ReadOptions, Reader, Reading, Shape,
-    Surface, Zone, ZoneKind, ZoneState, deadzone, deadzone2,
+    Surface, ZoneKind, ZoneState, deadzone, deadzone2,
 };
 use crate::event::{GAMEPAD_BUTTONS, MAX_GAMEPADS};
 use crate::glyph::{Device, Glyph};
@@ -602,7 +602,7 @@ impl ActionMap {
         self.zone_states.iter().map(|(_, s)| s)
     }
 
-    /// The play surface touch zones are fractions of (the host's viewport).
+    /// The play surface: whether its pointer is a finger.
     pub fn set_surface(&mut self, surface: Surface) {
         self.surface = surface;
     }
@@ -998,7 +998,7 @@ impl ActionMap {
                 list.len()
             ));
         }
-        let mut out = if part.is_empty() {
+        let out = if part.is_empty() {
             binding.clone()
         } else {
             if !a.desc.kind.parts().contains(&part) {
@@ -1017,16 +1017,6 @@ impl ActionMap {
             *b.part_mut(part).expect("a part") = binding.control.clone();
             b
         };
-        if out.zone == Zone::default()
-            && let Some(old) = list.get(slot as usize)
-            && part.is_empty()
-            && out
-                .controls()
-                .iter()
-                .all(|(_, c)| c.class() == Device::Touch)
-        {
-            out.zone = old.zone;
-        }
         out.check(a.desc.kind)
             .map_err(|e| format!("{}: {e}", a.desc.name))?;
         Ok(out)

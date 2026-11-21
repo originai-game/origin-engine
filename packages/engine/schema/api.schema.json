@@ -3806,7 +3806,6 @@
         "PauseIntent",
         "InputDevice",
         "ActionKind",
-        "TouchZone",
         "InputBinding",
         "ActionDesc",
         "ActionState",
@@ -18933,47 +18932,6 @@
         "axis2": "Two values, x right and y up: WASD, a stick, the d-pad, a touch stick, the mouse's movement."
       }
     },
-    "TouchZone": {
-      "x-og-kind": "desc",
-      "x-og-module": "input",
-      "description": "Where on the play surface a touch binding's touches must start, in fractions of it from the top left; a zone of no size is all of it.",
-      "type": "object",
-      "properties": {
-        "x": {
-          "type": "number",
-          "description": "Its left edge.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-unit": "ratio"
-        },
-        "y": {
-          "type": "number",
-          "description": "Its top edge.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-unit": "ratio"
-        },
-        "width": {
-          "type": "number",
-          "description": "Its width (0: the whole surface).",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-unit": "ratio"
-        },
-        "height": {
-          "type": "number",
-          "description": "Its height (0: the whole surface).",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-unit": "ratio"
-        }
-      },
-      "additionalProperties": false
-    },
     "InputBinding": {
       "x-og-kind": "desc",
       "x-og-module": "input",
@@ -19031,11 +18989,6 @@
           "default": 0,
           "minimum": 0,
           "maximum": 0.95
-        },
-        "zone": {
-          "$ref": "#/$defs/TouchZone",
-          "description": "`touch`: where a touch must start to count (empty: anywhere).",
-          "default": {}
         }
       },
       "additionalProperties": false

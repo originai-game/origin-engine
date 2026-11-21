@@ -12,7 +12,7 @@ See `input`.
 
 - **TypeScript**: functions are the namespace `og.input`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Input`; 90 more are advanced (`og api show input --all`).
+- **Core** (what most games use): `og.Input`; 89 more are advanced (`og api show input --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -38,7 +38,6 @@ module input {
 | [`og.PauseIntent`](input/record-PauseIntent.md) | event |  | An engine gameplay intent: apply scale at the next tick boundary. |
 | [`InputDevice`](input/type-InputDevice.md) | enum |  | A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. |
 | [`ActionKind`](input/type-ActionKind.md) | enum |  | What an action gives. |
-| [`TouchZone`](input/type-TouchZone.md) | desc struct |  | Where on the play surface a touch binding's touches must start, in fractions of it from the top left; a zone of no size is all of it. |
 | [`InputBinding`](input/type-InputBinding.md) | desc struct |  | One binding of an action: a control, or a composite of parts. |
 | [`ActionDesc`](input/type-ActionDesc.md) | desc struct |  | A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. |
 | [`ActionState`](input/type-ActionState.md) | struct |  | An action this tick. |

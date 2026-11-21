@@ -26,7 +26,6 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `scale` | `number` | `1` | — | — | — | Multiplies the value: the binding's sensitivity (a mouse look's 0.1, a stick's 2); negative inverts it. |
 | `invertY` | `boolean` | `false` | — | — | — | A two-axis value's y is turned over (inverted look). |
 | `deadzone` | `number` | `0` | 0 … 0.95 | — | — | A pad axis's dead zone for this binding, over the pad's (og.input.setDeadzones) when above 0: values inside it read 0 and the rest is rescaled to reach 1. |
-| `zone` | `TouchZone` | `{}` | — | — | — | `touch`: where a touch must start to count (empty: anywhere). |
 
 ```ogt
 struct InputBinding {
@@ -49,8 +48,7 @@ struct InputBinding {
     min 0
     max 0.95
   }
-  field zone TouchZone "`touch`: where a touch must start to count (empty: anywhere)."
 }
 ```
 
-<sub>Module `input` line 93</sub>
+<sub>Module `input` line 68</sub>

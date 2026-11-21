@@ -128,14 +128,12 @@ pub(crate) fn mount_front(
     let (desc, run) = physics.query_system();
     world.add_system(desc, run).map_err(err)?;
     // Gameplay actions, read from the tick's input before the UI and the
-    // game's systems (og-input's actions.rs); touch zones are fractions of
-    // the play surface the UI lays out in.
+    // game's systems (og-input's actions.rs), with whether the play
+    // surface's pointer is a finger.
     let actions: og_input::SharedActions = Default::default();
     og_input::install(world, actions.clone(), move || {
         let v = viewport_of(engine_id);
         Some(og_input::Surface {
-            width: v.width,
-            height: v.height,
             coarse: v.coarse_pointer,
         })
     })

@@ -62,12 +62,6 @@ fn input_binding(b: &og_input::Binding) -> crate::host::wire::InputBinding {
         scale: b.scale,
         invert_y: b.invert_y,
         deadzone: b.deadzone,
-        zone: wire::TouchZone {
-            x: b.zone.x,
-            y: b.zone.y,
-            width: b.zone.width,
-            height: b.zone.height,
-        },
     }
 }
 

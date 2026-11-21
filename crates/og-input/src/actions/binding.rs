@@ -21,8 +21,6 @@ pub struct Binding {
     pub invert_y: bool,
     /// A pad axis's dead zone, over the pad's when above 0.
     pub deadzone: f32,
-    /// Where touches must start (fractions of the surface; empty: all).
-    pub zone: Zone,
 }
 
 impl Default for Binding {
@@ -38,7 +36,6 @@ impl Default for Binding {
             scale: 1.0,
             invert_y: false,
             deadzone: 0.0,
-            zone: Zone::default(),
         }
     }
 }
@@ -180,7 +177,6 @@ impl Binding {
     fn options(&self) -> ReadOptions {
         ReadOptions {
             deadzone: self.deadzone,
-            zone: self.zone,
         }
     }
 
@@ -191,15 +187,6 @@ impl Binding {
         }
         if !(0.0..=0.95).contains(&self.deadzone) {
             return Err("deadzone is 0 to 0.95".into());
-        }
-        let z = self.zone;
-        if ![z.x, z.y, z.width, z.height]
-            .iter()
-            .all(|v| (0.0..=1.0).contains(v))
-        {
-            return Err(
-                "a zone's x, y, width and height are fractions of the surface, 0 to 1".into(),
-            );
         }
         let parse = |name: &str| -> Result<Option<Control>, String> {
             if name.is_empty() {
@@ -263,15 +250,6 @@ impl Binding {
         if !v.is_object() {
             return Err("a binding is an object such as { control: \"KeyW\" }".into());
         }
-        let zone = match v.get("zone") {
-            None | Some(Value::Null) => Zone::default(),
-            Some(z) => Zone {
-                x: f32_of(z, "x", 0.0)?,
-                y: f32_of(z, "y", 0.0)?,
-                width: f32_of(z, "width", 0.0)?,
-                height: f32_of(z, "height", 0.0)?,
-            },
-        };
         Ok(Binding {
             control: str_of(v, "control")?,
             negative: str_of(v, "negative")?,
@@ -283,7 +261,6 @@ impl Binding {
             scale: f32_of(v, "scale", 1.0)?,
             invert_y: bool_of(v, "invertY", false)?,
             deadzone: f32_of(v, "deadzone", 0.0)?,
-            zone,
         })
     }
 
@@ -311,13 +288,6 @@ impl Binding {
         }
         if self.deadzone != 0.0 {
             m.insert("deadzone".into(), json!(self.deadzone));
-        }
-        if self.zone != Zone::default() {
-            let z = self.zone;
-            m.insert(
-                "zone".into(),
-                json!({ "x": z.x, "y": z.y, "width": z.width, "height": z.height }),
-            );
         }
         Value::Object(m)
     }

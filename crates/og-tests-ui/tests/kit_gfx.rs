@@ -99,11 +99,7 @@ fn stick_shot(font: &FontFiles, push: Option<Vec2>) -> (Shot, Stick) {
         pointers: &pointers,
         pads: &og_input::Gamepad::default(),
         deadzones: &[og_input::PadDeadzone::default(); og_input::MAX_GAMEPADS],
-        surface: og_input::Surface {
-            width: vp.width,
-            height: vp.height,
-            coarse: true,
-        },
+        surface: og_input::Surface { coarse: true },
     }
     .read_zone(zone)
     .0;

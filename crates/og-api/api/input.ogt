@@ -65,31 +65,6 @@ module input {
     variant axis2 "Two values, x right and y up: WASD, a stick, the d-pad, a touch stick, the mouse's movement."
   }
 
-  struct TouchZone {
-    doc "Where on the play surface a touch binding's touches must start, in fractions of it from the top left; a zone of no size is all of it."
-    desc true
-    field x f32 "Its left edge." {
-      min 0
-      max 1
-      unit ratio
-    }
-    field y f32 "Its top edge." {
-      min 0
-      max 1
-      unit ratio
-    }
-    field width f32 "Its width (0: the whole surface)." {
-      min 0
-      max 1
-      unit ratio
-    }
-    field height f32 "Its height (0: the whole surface)." {
-      min 0
-      max 1
-      unit ratio
-    }
-  }
-
   struct InputBinding {
     doc "One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot."
     doc "Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive."
@@ -110,7 +85,6 @@ module input {
       min 0
       max 0.95
     }
-    field zone TouchZone "`touch`: where a touch must start to count (empty: anywhere)."
   }
 
   struct ActionDesc {
